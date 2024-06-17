@@ -58,6 +58,10 @@ class ArrayNodeMapTask(PythonTask):
         else:
             actual_task = python_function_task
 
+        # TODO: add support for other Flyte entities
+        if not (isinstance(actual_task, PythonFunctionTask) or isinstance(actual_task, PythonInstanceTask)):
+            raise ValueError("Only PythonFunctionTask and PythonInstanceTask are supported in map tasks.")
+
         for k, v in actual_task.python_interface.inputs.items():
             if bound_inputs and k in bound_inputs:
                 continue
@@ -67,10 +71,6 @@ class ArrayNodeMapTask(PythonTask):
                     for annotation in typing.get_args(v)[1:]:
                         if isinstance(annotation, pickle.BatchSize):
                             raise ValueError("Choosing a BatchSize for map tasks inputs is not supported.")
-
-        # TODO: add support for other Flyte entities
-        if not (isinstance(actual_task, PythonFunctionTask) or isinstance(actual_task, PythonInstanceTask)):
-            raise ValueError("Only PythonFunctionTask and PythonInstanceTask are supported in map tasks.")
 
         n_outputs = len(actual_task.python_interface.outputs)
         if n_outputs > 1:
