@@ -123,10 +123,10 @@ def print_agents_metadata():
     for row in data:
         print(" | ".join(f"{str(value).ljust(width)}" for value, width in zip(row, col_widths)))
 
-    print_table(data)
+    _print_table(data)
 
 
-def print_table(data):
+def _print_table(data):
     # Calculate the width of each column
     col_widths = [max(len(str(item)) for item in col) for col in zip(*data)]
 
