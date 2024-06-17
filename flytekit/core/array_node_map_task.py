@@ -4,6 +4,7 @@ import hashlib
 import logging
 import math
 import os  # TODO: use flytekit logger
+import typing
 from contextlib import contextmanager
 from typing import Any, Dict, List, Optional, Set, Union, cast
 
@@ -13,6 +14,7 @@ from flytekit.core.base_task import PythonTask, TaskResolverMixin
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.interface import transform_interface_to_list_interface
 from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanceTask
+from flytekit.core.type_engine import TypeEngine
 from flytekit.core.utils import timeit
 from flytekit.exceptions import scopes as exception_scopes
 from flytekit.loggers import logger
@@ -21,6 +23,7 @@ from flytekit.models.core.workflow import NodeMetadata
 from flytekit.models.interface import Variable
 from flytekit.models.task import Container, K8sPod, Sql, Task
 from flytekit.tools.module_loader import load_object_from_module
+from flytekit.models import literals as _literal_models
 
 
 class ArrayNodeMapTask(PythonTask):
@@ -208,23 +211,40 @@ class ArrayNodeMapTask(PythonTask):
             kwargs = {**self._partial.keywords, **kwargs}
         return super().__call__(*args, **kwargs)
 
+    def _literal_map_to_python_input(
+        self, literal_map: _literal_models.LiteralMap, ctx: FlyteContext
+    ) -> Dict[str, Any]:
+        task_index = self._compute_array_job_index()
+        map_task_inputs = {}
+        inputs = self.python_interface.inputs
+        for k in self.interface.inputs.keys():
+            v = literal_map.literals[k]
+            if isinstance(v, list) and k not in self.bound_inputs:
+                map_task_inputs[k] = v[task_index]
+                v = self.python_interface.inputs[k]
+                if typing.get_origin(v) is list:
+                    inputs[k] = v.__args__[0]
+            else:
+                map_task_inputs[k] = v
+        return TypeEngine.literal_map_to_kwargs(ctx, _literal_models.LiteralMap(literals=map_task_inputs), inputs)
+
     def execute(self, **kwargs) -> Any:
         ctx = FlyteContextManager.current_context()
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
-            return self._execute_map_task(ctx, **kwargs)
+            return super().execute(**kwargs)
 
         return self._raw_execute(**kwargs)
 
-    def _execute_map_task(self, _: FlyteContext, **kwargs) -> Any:
-        task_index = self._compute_array_job_index()
-        map_task_inputs = {}
-        for k in self.interface.inputs.keys():
-            v = kwargs[k]
-            if isinstance(v, list) and k not in self.bound_inputs:
-                map_task_inputs[k] = v[task_index]
-            else:
-                map_task_inputs[k] = v
-        return exception_scopes.user_entry_point(self.python_function_task.execute)(**map_task_inputs)
+    # def _execute_map_task(self, _: FlyteContext, **kwargs) -> Any:
+    #     task_index = self._compute_array_job_index()
+    #     map_task_inputs = {}
+    #     for k in self.interface.inputs.keys():
+    #         v = kwargs[k]
+    #         if isinstance(v, list) and k not in self.bound_inputs:
+    #             map_task_inputs[k] = v[task_index]
+    #         else:
+    #             map_task_inputs[k] = v
+    #     return exception_scopes.user_entry_point(self.python_function_task.execute)(**map_task_inputs)
 
     @staticmethod
     def _compute_array_job_index() -> int:
