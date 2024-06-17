@@ -25,7 +25,7 @@ from flytekit.models.interface import Variable
 from flytekit.models.task import Container, K8sPod, Sql, Task
 from flytekit.tools.module_loader import load_object_from_module
 from flytekit.types.pickle import pickle
-from flytekit.types.pickle.pickle import FlytePickleTransformer, BatchSize
+from flytekit.types.pickle.pickle import FlytePickleTransformer
 
 
 class ArrayNodeMapTask(PythonTask):
