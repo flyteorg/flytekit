@@ -214,39 +214,36 @@ class ArrayNodeMapTask(PythonTask):
     def _literal_map_to_python_input(
         self, literal_map: _literal_models.LiteralMap, ctx: FlyteContext
     ) -> Dict[str, Any]:
-        task_index = self._compute_array_job_index()
-        map_task_inputs = {}
-
-        inputs = self.python_interface.inputs
-        for k in self.interface.inputs.keys():
-            v = literal_map.literals[k]
-            if v.collection and k not in self.bound_inputs:
-                map_task_inputs[k] = v.collection.literals[task_index]
-                v = self.python_interface.inputs[k]
-                sub_type = ListTransformer.get_sub_type(v)
-                if typing.get_origin(v) is list:
-                    inputs[k] = sub_type
-            else:
-                map_task_inputs[k] = v
-        return TypeEngine.literal_map_to_kwargs(ctx, _literal_models.LiteralMap(literals=map_task_inputs), inputs)
+        ctx = FlyteContextManager.current_context()
+        inputs_interface = self.python_interface.inputs
+        inputs_map = literal_map
+        # If we run locally, we will need to process all of the inputs. If we are running in a remote task execution
+        # environment, then we should process/download/extract only the inputs that are needed for the current task.
+        if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
+            map_task_inputs = {}
+            task_index = self._compute_array_job_index()
+            inputs_interface = self._run_task.python_interface.inputs
+            for k in self.interface.inputs.keys():
+                v = literal_map.literals[k]
+                if k not in self.bound_inputs:
+                    # assert that v.collection is not None
+                    if not v.collection or not isinstance(v.collection.literals, list):
+                        raise ValueError(f"Expected a list of literals for {k}")
+                    map_task_inputs[k] = v.collection.literals[task_index]
+                else:
+                    map_task_inputs[k] = v
+            inputs_map = _literal_models.LiteralMap(literals=map_task_inputs)
+        return TypeEngine.literal_map_to_kwargs(ctx, inputs_map, inputs_interface)
 
     def execute(self, **kwargs) -> Any:
         ctx = FlyteContextManager.current_context()
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
-            return super().execute(**kwargs)
+            return self._execute_map_task(**kwargs)
 
         return self._raw_execute(**kwargs)
 
-    # def _execute_map_task(self, _: FlyteContext, **kwargs) -> Any:
-    #     task_index = self._compute_array_job_index()
-    #     map_task_inputs = {}
-    #     for k in self.interface.inputs.keys():
-    #         v = kwargs[k]
-    #         if isinstance(v, list) and k not in self.bound_inputs:
-    #             map_task_inputs[k] = v[task_index]
-    #         else:
-    #             map_task_inputs[k] = v
-    #     return exception_scopes.user_entry_point(self.python_function_task.execute)(**map_task_inputs)
+    def _execute_map_task(self, _: FlyteContext, **kwargs) -> Any:
+        return exception_scopes.user_entry_point(self.python_function_task.execute)(**kwargs)
 
     @staticmethod
     def _compute_array_job_index() -> int:
@@ -298,8 +295,8 @@ class ArrayNodeMapTask(PythonTask):
         outputs = []
 
         mapped_tasks_count = 0
-        if self._run_task.interface.inputs.items():
-            for k in self._run_task.interface.inputs.keys():
+        if self.python_function_task.interface.inputs.items():
+            for k in self.python_function_task.interface.inputs.keys():
                 v = kwargs[k]
                 if isinstance(v, list) and k not in self.bound_inputs:
                     mapped_tasks_count = len(v)
