@@ -56,7 +56,9 @@ class ArrayNodeMapTask(PythonTask):
         else:
             actual_task = python_function_task
 
-        for _, v in actual_task.python_interface.inputs.items():
+        for k, v in actual_task.python_interface.inputs.items():
+            if k in bound_inputs:
+                continue
             transformer = TypeEngine.get_transformer(v)
             if isinstance(transformer, FlytePickleTransformer):
                 raise ValueError("Pickle transformers are not supported in map tasks.")
