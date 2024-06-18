@@ -1,3 +1,4 @@
+import functools
 import os
 from typing import Any, List, Optional, Set, Union
 
@@ -37,10 +38,10 @@ class ArrayNode(object):
         :param bound_inputs: The set of inputs that should be bound to the map task
         """
         self.target = target
-        self.concurrency = concurrency
-        self.min_successes = min_successes
-        self.min_success_ratio = min_success_ratio
-        self.bound_inputs: Set[Any] = set()
+        self._concurrency = concurrency
+        self._min_successes = min_successes
+        self._min_success_ratio = min_success_ratio
+        # self.bound_inputs: Set[Any] = set()
 
         self.metadata = None
         self.id = target.name
@@ -51,7 +52,7 @@ class ArrayNode(object):
 
         output_as_list_of_optionals = min_success_ratio is not None and min_success_ratio != 1 and n_outputs == 1
         collection_interface = transform_interface_to_list_interface(
-            self.target.python_interface, self.bound_inputs, output_as_list_of_optionals
+            self.target.python_interface, set(), output_as_list_of_optionals
         )
         self._collection_interface = collection_interface
 
@@ -101,20 +102,53 @@ class ArrayNode(object):
         # TODO - pvditt
         # self.target.local_execute(ctx, **kwargs)
 
+    @staticmethod
     def local_execution_mode(self):
         return ExecutionState.Mode.LOCAL_TASK_EXECUTION
 
+    @property
+    def min_success_ratio(self) -> Optional[float]:
+        return self._min_success_ratio
+
+    @property
+    def min_successes(self) -> Optional[int]:
+        return self._min_successes
+
+    @property
+    def concurrency(self) -> Optional[int]:
+        return self._concurrency
+
 
 class ArrayPythonFunctionTaskWrapper(PythonInstanceTask):
-    def __init__(self, task: PythonFunctionTask, task_type: str, name: str, **kwargs):
-        self.python_task = task
-        self.bound_inputs: Set[Any] = set()
+    def __init__(
+        self, task: Union[PythonFunctionTask, functools.partial], bound_inputs: Optional[Set[str]] = None, **kwargs
+    ):
+        self._partial = None
+
+        if isinstance(task, functools.partial):
+            self._partial = task
+            self.python_task = task.func
+        else:
+            self.python_task = task
+
+        self._bound_inputs: Set[str] = bound_inputs or set(bound_inputs) if bound_inputs else set()
+        if self._partial:
+            self._bound_inputs.update(self._partial.keywords.keys())
+
+        # TODO - optional outputs
+        # collection_interface = transform_interface_to_list_interface(
+        #     self.python_task.python_interface, self._bound_inputs, False
+        # )
+        #
+        # self._collection_interface = collection_interface
+
         super().__init__(
-            name=f"array_wrapper.{task.name}",
-            task_config=task.task_config,
-            task_type=task.task_type,
-            interface=task.python_interface,
-            task_resolver=task.task_resolver,
+            # TODO - pvditt name
+            name="array_wrapper",
+            interface=self.python_task.python_interface,
+            task_config=self.python_task.task_config,
+            task_type=self.python_task.task_type,
+            task_resolver=self.python_task.task_resolver,
             **kwargs,
         )
 
@@ -174,6 +208,26 @@ class ArrayPythonFunctionTaskWrapper(PythonInstanceTask):
             os.environ.get(os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME", "0"), "0")
         )
 
+    def __call__(self, *args, **kwargs):
+        """
+        This call method modifies the kwargs and adds kwargs from partial.
+        This is mostly done in the local_execute and compilation only.
+        At runtime, the map_task is created with all the inputs filled in. to support this, we have modified
+        the map_task interface in the constructor.
+        """
+        if self._partial:
+            """If partial exists, then mix-in all partial values"""
+            kwargs = {**self._partial.keywords, **kwargs}
+        return super().__call__(*args, **kwargs)
+
+    @property
+    def python_interface(self):
+        return self.python_task.python_interface
+
+    @property
+    def bound_inputs(self) -> Set[str]:
+        return self._bound_inputs
+
 
 class ArrayPythonFunctionTaskWrapperResolver(tracker.TrackedInstance, TaskResolverMixin):
     """
@@ -181,7 +235,7 @@ class ArrayPythonFunctionTaskWrapperResolver(tracker.TrackedInstance, TaskResolv
     """
 
     def name(self) -> str:
-        return "flytekit.core.array_node_map_task.ArrayNodeMapTaskResolver"
+        return "flytekit.core.array_node_map_task.ArrayPythonFunctionTaskWrapperResolver"
 
     def load_task(self, loader_args: List[str], max_concurrency: int = 0) -> Task:
         """
@@ -211,16 +265,17 @@ class ArrayPythonFunctionTaskWrapperResolver(tracker.TrackedInstance, TaskResolv
 
 
 def map_task(
-    target: Union[Task, LaunchPlan],
+    target: Union[PythonFunctionTask, LaunchPlan, functools.partial],
     concurrency: Optional[int] = None,
     min_successes: Optional[int] = None,
     min_success_ratio: Optional[float] = None,
     **kwargs,
 ):
-    if isinstance(target, PythonFunctionTask):
-        target = ArrayPythonFunctionTaskWrapper(target, target.task_type, target.name, **kwargs)
-
-    node = ArrayNode(target, concurrency, min_successes, min_success_ratio)
+    if isinstance(target, PythonFunctionTask) or isinstance(target, functools.partial):
+        target = ArrayPythonFunctionTaskWrapper(target, **kwargs)
+        node = ArrayNode(target, concurrency, min_successes, min_success_ratio, bound_inputs=target.bound_inputs)
+    else:
+        node = ArrayNode(target, concurrency, min_successes, min_success_ratio)
 
     def callable_entity(**inner_kwargs):
         combined_kwargs = {**kwargs, **inner_kwargs}
