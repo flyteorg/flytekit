@@ -148,7 +148,9 @@ class ImageSpec:
                     f"{str(e)}\n"
                     f"Error: Incompatible Docker package version.\n"
                     f"Current version: {docker.__version__}\n"
-                    f"Please upgrade the Docker package to version 7.1.0 or higher."
+                    f"Please upgrade the Docker package to version 7.1.0 or higher.\n"
+                    f"You can upgrade the package by running:\n"
+                    f"    pip install --upgrade docker"
                 )
 
             click.secho(f"Failed to check if the image exists with error : {e}", fg="red")
