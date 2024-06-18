@@ -1,6 +1,5 @@
 from flytekit.loggers import logger
 
-from .ndarray import NumpyArrayTransformer
 
 try:
     # isolate the exception to the numpy import
