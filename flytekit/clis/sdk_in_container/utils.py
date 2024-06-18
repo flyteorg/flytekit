@@ -124,8 +124,9 @@ def pretty_print_exception(e: Exception):
         click.secho(f"Value Error: {e}", fg="red")
         return
 
-    click.secho(f"Failed with Unknown Exception {type(e)} Reason: {e}", fg="red")  # noqa
-    pretty_print_traceback(e)
+    click.secho(f"Failed with Exception {type(e)} Reason:\n{e}", fg="red")  # noqa
+    if e.__cause__:
+        pretty_print_traceback(e.__cause__)
 
 
 class ErrorHandlingCommand(click.RichGroup):
