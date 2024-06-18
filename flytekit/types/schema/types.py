@@ -9,6 +9,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Type
 
+import numpy as _np
 from dataclasses_json import config
 from marshmallow import fields
 from mashumaro.mixins.json import DataClassJSONMixin
@@ -18,39 +19,8 @@ from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransform
 from flytekit.loggers import logger
 from flytekit.models.literals import Literal, Scalar, Schema
 from flytekit.models.types import LiteralType, SchemaType
-from flytekit.types.numpy import _numpy_installed
 
 T = typing.TypeVar("T")
-
-
-SUPPORTED_SCHEMA_TYPES = {
-    int: SchemaType.SchemaColumn.SchemaColumnType.INTEGER,
-    float: SchemaType.SchemaColumn.SchemaColumnType.FLOAT,
-    bool: SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN,
-    datetime.datetime: SchemaType.SchemaColumn.SchemaColumnType.DATETIME,
-    datetime.timedelta: SchemaType.SchemaColumn.SchemaColumnType.DURATION,
-    str: SchemaType.SchemaColumn.SchemaColumnType.STRING,
-}
-
-if _numpy_installed:
-    import numpy as np
-
-    SUPPORTED_SCHEMA_TYPES.update(
-        {
-            np.int32: SchemaType.SchemaColumn.SchemaColumnType.INTEGER,
-            np.int64: SchemaType.SchemaColumn.SchemaColumnType.INTEGER,
-            np.uint32: SchemaType.SchemaColumn.SchemaColumnType.INTEGER,
-            np.uint64: SchemaType.SchemaColumn.SchemaColumnType.INTEGER,
-            np.float32: SchemaType.SchemaColumn.SchemaColumnType.FLOAT,
-            np.float64: SchemaType.SchemaColumn.SchemaColumnType.FLOAT,
-            np.bool_: SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN,  # type: ignore
-            np.datetime64: SchemaType.SchemaColumn.SchemaColumnType.DATETIME,
-            np.timedelta64: SchemaType.SchemaColumn.SchemaColumnType.DURATION,
-            np.bytes_: SchemaType.SchemaColumn.SchemaColumnType.STRING,
-            np.str_: SchemaType.SchemaColumn.SchemaColumnType.STRING,
-            np.object_: SchemaType.SchemaColumn.SchemaColumnType.STRING,
-        }
-    )
 
 
 class SchemaFormat(Enum):
@@ -349,7 +319,26 @@ class FlyteSchema(DataClassJSONMixin):
 
 
 class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
-    _SUPPORTED_TYPES: typing.Dict[Type, SchemaType.SchemaColumn.SchemaColumnType] = SUPPORTED_SCHEMA_TYPES
+    _SUPPORTED_TYPES: typing.Dict[Type, SchemaType.SchemaColumn.SchemaColumnType] = {
+        _np.int32: SchemaType.SchemaColumn.SchemaColumnType.INTEGER,
+        _np.int64: SchemaType.SchemaColumn.SchemaColumnType.INTEGER,
+        _np.uint32: SchemaType.SchemaColumn.SchemaColumnType.INTEGER,
+        _np.uint64: SchemaType.SchemaColumn.SchemaColumnType.INTEGER,
+        int: SchemaType.SchemaColumn.SchemaColumnType.INTEGER,
+        _np.float32: SchemaType.SchemaColumn.SchemaColumnType.FLOAT,
+        _np.float64: SchemaType.SchemaColumn.SchemaColumnType.FLOAT,
+        float: SchemaType.SchemaColumn.SchemaColumnType.FLOAT,
+        _np.bool_: SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN,  # type: ignore
+        bool: SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN,
+        _np.datetime64: SchemaType.SchemaColumn.SchemaColumnType.DATETIME,
+        datetime.datetime: SchemaType.SchemaColumn.SchemaColumnType.DATETIME,
+        _np.timedelta64: SchemaType.SchemaColumn.SchemaColumnType.DURATION,
+        datetime.timedelta: SchemaType.SchemaColumn.SchemaColumnType.DURATION,
+        _np.bytes_: SchemaType.SchemaColumn.SchemaColumnType.STRING,
+        _np.str_: SchemaType.SchemaColumn.SchemaColumnType.STRING,
+        _np.object_: SchemaType.SchemaColumn.SchemaColumnType.STRING,
+        str: SchemaType.SchemaColumn.SchemaColumnType.STRING,
+    }
 
     def __init__(self):
         super().__init__("FlyteSchema Transformer", FlyteSchema)

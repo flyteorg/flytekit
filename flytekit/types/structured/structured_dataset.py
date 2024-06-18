@@ -323,37 +323,28 @@ def convert_schema_type_to_structured_dataset_type(
 
 
 def get_supported_types():
-    from flytekit.types.numpy import _numpy_installed
+    import numpy as _np
 
     _SUPPORTED_TYPES: typing.Dict[Type, LiteralType] = {  # type: ignore
+        _np.int32: type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
+        _np.int64: type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
+        _np.uint32: type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
+        _np.uint64: type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
         int: type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
+        _np.float32: type_models.LiteralType(simple=type_models.SimpleType.FLOAT),
+        _np.float64: type_models.LiteralType(simple=type_models.SimpleType.FLOAT),
         float: type_models.LiteralType(simple=type_models.SimpleType.FLOAT),
+        _np.bool_: type_models.LiteralType(simple=type_models.SimpleType.BOOLEAN),  # type: ignore
         bool: type_models.LiteralType(simple=type_models.SimpleType.BOOLEAN),
+        _np.datetime64: type_models.LiteralType(simple=type_models.SimpleType.DATETIME),
         _datetime.datetime: type_models.LiteralType(simple=type_models.SimpleType.DATETIME),
+        _np.timedelta64: type_models.LiteralType(simple=type_models.SimpleType.DURATION),
         _datetime.timedelta: type_models.LiteralType(simple=type_models.SimpleType.DURATION),
+        _np.bytes_: type_models.LiteralType(simple=type_models.SimpleType.STRING),
+        _np.str_: type_models.LiteralType(simple=type_models.SimpleType.STRING),
+        _np.object_: type_models.LiteralType(simple=type_models.SimpleType.STRING),
         str: type_models.LiteralType(simple=type_models.SimpleType.STRING),
     }
-
-    if _numpy_installed:
-        import numpy as _np
-
-        _SUPPORTED_TYPES.update(
-            {  # type: ignore
-                _np.int32: type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
-                _np.int64: type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
-                _np.uint32: type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
-                _np.uint64: type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
-                _np.float32: type_models.LiteralType(simple=type_models.SimpleType.FLOAT),
-                _np.float64: type_models.LiteralType(simple=type_models.SimpleType.FLOAT),
-                _np.bool_: type_models.LiteralType(simple=type_models.SimpleType.BOOLEAN),  # type: ignore
-                _np.datetime64: type_models.LiteralType(simple=type_models.SimpleType.DATETIME),
-                _np.timedelta64: type_models.LiteralType(simple=type_models.SimpleType.DURATION),
-                _np.bytes_: type_models.LiteralType(simple=type_models.SimpleType.STRING),
-                _np.str_: type_models.LiteralType(simple=type_models.SimpleType.STRING),
-                _np.object_: type_models.LiteralType(simple=type_models.SimpleType.STRING),
-            }
-        )
-
     return _SUPPORTED_TYPES
 
 
