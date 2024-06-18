@@ -120,13 +120,11 @@ def upgrade_to_rich_logging(log_level: typing.Optional[int] = logging.WARNING):
         tracebacks_suppress=[click, flytekit],
         rich_tracebacks=True,
         omit_repeated_times=False,
-        # show_time=False,
-        # show_level=False,
         show_path=False,
         log_time_format="%H:%M:%S.%f",
         console=Console(width=os.get_terminal_size().columns),
     )
-    # logger
+
     formatter = logging.Formatter(fmt="%(filename)s:%(lineno)d - %(message)s")
     handler.setFormatter(formatter)
     set_flytekit_log_properties(handler, None, _get_env_logging_level(default_level=log_level))
