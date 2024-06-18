@@ -107,6 +107,8 @@ class ImageSpec:
     def exist(self) -> bool:
         """
         Check if the image exists in the registry.
+        Return True if the image exists in the registry, False otherwise.
+        Return None if failed to check if the image exists due to the permission issue or other reasons.
         """
         import docker
         from docker.errors import APIError, ImageNotFound
