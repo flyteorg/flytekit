@@ -729,7 +729,6 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
 
                 return self._async_execute(native_inputs, native_outputs, ctx, exec_ctx, new_user_params)
 
-            logger.debug("Task executed successfully in user level")
             # Lets run the post_execute method. This may result in a IgnoreOutputs Exception, which is
             # bubbled up to be handled at the callee layer.
             native_outputs = self.post_execute(new_user_params, native_outputs)
