@@ -681,6 +681,6 @@ def test_headers():
 
 
 def test_new_remote_file():
-    nf = FlyteFile.new_remote_file(name="foo")
+    nf = FlyteFile.new_remote_file(name="foo.txt")
     assert isinstance(nf, FlyteFile)
-    assert nf.path.endswith('foo')
+    assert nf.path.endswith('foo.txt')
