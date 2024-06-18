@@ -121,6 +121,9 @@ class ImageSpec:
         except APIError as e:
             if e.response.status_code == 404:
                 return False
+
+            click.secho(f"Failed to check if the image exists with error:\n {e}", fg="red")
+            click.secho("Flytekit assumes that the image already exists.", fg="blue")
             return True
         except ImageNotFound:
             return False
@@ -153,7 +156,7 @@ class ImageSpec:
                     f"    pip install --upgrade docker"
                 )
 
-            click.secho(f"Failed to check if the image exists with error : {e}", fg="red")
+            click.secho(f"Failed to check if the image exists with error:\n {e}", fg="red")
             click.secho("Flytekit assumes that the image already exists.", fg="blue")
             return True
 
