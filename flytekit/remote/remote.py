@@ -52,7 +52,7 @@ from flytekit.exceptions.user import (
     FlyteEntityNotExistException,
     FlyteValueException,
 )
-from flytekit.loggers import logger
+from flytekit.loggers import developer_logger, logger
 from flytekit.models import common as common_models
 from flytekit.models import filters as filter_models
 from flytekit.models import launch_plan as launch_plan_models
@@ -912,6 +912,10 @@ class FlyteRemote(object):
                     rsp.status_code,
                     f"Request to send data {upload_location.signed_url} failed.\nResponse: {rsp.text}",
                 )
+
+        developer_logger.debug(
+            f"Uploading {to_upload} to {upload_location.signed_url} native url {upload_location.native_url}"
+        )
 
         return md5_bytes, upload_location.native_url
 

@@ -18,7 +18,7 @@ from flytekit import lazy_module
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
 from flytekit.deck.renderer import Renderable
-from flytekit.loggers import logger
+from flytekit.loggers import developer_logger, logger
 from flytekit.models import literals
 from flytekit.models import types as type_models
 from flytekit.models.literals import Literal, Scalar, StructuredDatasetMetadata
@@ -515,6 +515,9 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                 f"Already registered a handler for {(h.python_type, protocol, h.supported_format)}"
             )
         lowest_level[h.supported_format] = h
+        developer_logger.debug(
+            f"Registered {h} as handler for {h.python_type}, protocol {protocol}, fmt {h.supported_format}"
+        )
 
         if (default_format_for_type or default_for_type) and h.supported_format != GENERIC_FORMAT:
             if h.python_type in cls.DEFAULT_FORMATS and not override:

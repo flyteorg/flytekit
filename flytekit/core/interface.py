@@ -16,7 +16,7 @@ from flytekit.core.docstring import Docstring
 from flytekit.core.sentinel import DYNAMIC_INPUT_BINDING
 from flytekit.core.type_engine import TypeEngine, UnionTransformer
 from flytekit.exceptions.user import FlyteValidationException
-from flytekit.loggers import logger
+from flytekit.loggers import developer_logger, logger
 from flytekit.models import interface as _interface_models
 from flytekit.models.literals import Literal, Scalar, Void
 
@@ -510,6 +510,7 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple, None]) -> Di
 
     else:
         # Handle all other single return types
+        developer_logger.debug(f"Task returns unnamed native tuple {return_annotation}")
         return {default_output_name(): cast(Type, return_annotation)}
 
 
