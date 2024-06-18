@@ -7,15 +7,14 @@ from importlib import metadata
 
 import click
 from packaging.version import Version
-from rich.console import Console
+from rich import print
+from rich.pretty import Pretty
 
 from flytekit.configuration import DefaultImages
 from flytekit.core import context_manager
 from flytekit.core.constants import REQUIREMENTS_FILE_NAME
 from flytekit.image_spec.image_spec import _F_IMG_ID, ImageBuildEngine, ImageSpec, ImageSpecBuilder
 from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
-from rich.pretty import Pretty
-from rich import print
 
 FLYTE_LOCAL_REGISTRY = "localhost:30000"
 
@@ -41,8 +40,12 @@ class EnvdImageSpecBuilder(ImageSpecBuilder):
         try:
             execute_command(build_command)
         except Exception as e:
-            click.secho(f"❌ Failed to build image spec:", fg="red")
-            print(Pretty(asdict(image_spec, dict_factory=lambda x: {k: v for (k, v) in x if v is not None}), indent_size=2))
+            click.secho("❌ Failed to build image spec:", fg="red")
+            print(
+                Pretty(
+                    asdict(image_spec, dict_factory=lambda x: {k: v for (k, v) in x if v is not None}), indent_size=2
+                )
+            )
             raise e from None
 
 

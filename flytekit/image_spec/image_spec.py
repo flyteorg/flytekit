@@ -123,8 +123,8 @@ class ImageSpec:
                 return False
 
             click.secho(f"Failed to check if the image exists with error:\n {e}", fg="red")
-            click.secho("Flytekit assumes that the image already exists.", fg="blue")
-            return True
+            click.secho(f"Flytekit assumes the image {self.image_name()} already exists.", fg="blue")
+            return None
         except ImageNotFound:
             return False
         except Exception as e:
@@ -157,8 +157,8 @@ class ImageSpec:
                 )
 
             click.secho(f"Failed to check if the image exists with error:\n {e}", fg="red")
-            click.secho("Flytekit assumes that the image already exists.", fg="blue")
-            return True
+            click.secho(f"Flytekit assumes the image {self.image_name()} already exists.", fg="blue")
+            return None
 
     def __hash__(self):
         return hash(asdict(self).__str__())
@@ -243,14 +243,17 @@ class ImageSpecBuilder:
             True if the image should be built, otherwise it returns False.
         """
         img_name = image_spec.image_name()
-        if not image_spec.exist():
+        exist = image_spec.exist()
+        if exist is False:
             click.secho(f"Image {img_name} not found. building...", fg="blue")
             return True
+
         if image_spec._is_force_push:
-            click.secho(f"Image {img_name} found but overwriting existing image.", fg="blue")
+            click.secho(f"Overwriting existing image {img_name}.", fg="blue")
             return True
 
-        click.secho(f"Image {img_name} found. Skip building.", fg="blue")
+        if exist is True:
+            click.secho(f"Image {img_name} found. Skip building.", fg="blue")
         return False
 
 
