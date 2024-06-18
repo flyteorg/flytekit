@@ -25,9 +25,12 @@ class NIM(ModelInferenceTemplate):
         gpu: int = 1,
         mem: str = "20Gi",
         shm_size: str = "16Gi",
+        # kubernetes secrets
         ngc_image_secret: Optional[str] = None,
         ngc_secret_group: Optional[str] = None,
         ngc_secret_key: Optional[str] = None,
+        ####################
+        env: Optional[dict[str, str]] = None,
     ):
         if ngc_image_secret is None:
             raise ValueError("NGC image pull credentials must be provided.")
@@ -49,6 +52,7 @@ class NIM(ModelInferenceTemplate):
             cpu=cpu,
             gpu=gpu,
             mem=mem,
+            env=env,
         )
 
         self.nim_pod_template()

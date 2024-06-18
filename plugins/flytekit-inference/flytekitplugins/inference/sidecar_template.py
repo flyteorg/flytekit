@@ -3,6 +3,7 @@ from typing import Optional
 from kubernetes.client.models import (
     V1Container,
     V1ContainerPort,
+    V1EnvVar,
     V1PodSpec,
     V1ResourceRequirements,
 )
@@ -20,6 +21,9 @@ class ModelInferenceTemplate:
         cpu: int = 1,
         gpu: int = 1,
         mem: str = "1Gi",
+        env: Optional[
+            dict[str, str]
+        ] = None,  # https://docs.nvidia.com/nim/large-language-models/latest/configuration.html#environment-variables (do not include secrets)
     ):
         self._node_selector = node_selector
         self._image = image
@@ -28,8 +32,12 @@ class ModelInferenceTemplate:
         self._cpu = cpu
         self._gpu = gpu
         self._mem = mem
+        self._env = env
 
         self._pod_template = PodTemplate()
+
+        if env and not isinstance(env, dict):
+            raise ValueError("env must be a dict.")
 
         self.update_pod_template()
 
@@ -55,6 +63,7 @@ class ModelInferenceTemplate:
                         },
                     ),
                     restart_policy="Always",  # treat this container as a sidecar
+                    env=([V1EnvVar(name=k, value=v) for k, v in self._env.items()] if self._env else None),
                 ),
                 V1Container(
                     name="wait-for-model-server",
