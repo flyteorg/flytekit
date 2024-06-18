@@ -1,6 +1,5 @@
 from flytekit.loggers import logger
 
-
 try:
     # isolate the exception to the numpy import
     import numpy
