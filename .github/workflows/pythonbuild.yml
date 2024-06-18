@@ -418,7 +418,7 @@ jobs:
           uv pip install --system .
           if [ -f dev-requirements.in ]; then uv pip install --system -r dev-requirements.in; fi
           # TODO: move to protobuf>=5. Github issue: https://github.com/flyteorg/flyte/issues/5448
-          uv pip install --system -U $GITHUB_WORKSPACE "protobuf<5"
+          uv pip install --system -U "protobuf<5"
           uv pip freeze
       - name: Test with coverage
         run: |

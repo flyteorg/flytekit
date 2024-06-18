@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Union
 
+from flyteidl.plugins import common_pb2 as plugins_common
 from flyteidl.plugins.kubeflow import common_pb2 as kubeflow_common
 from flyteidl.plugins.kubeflow import mpi_pb2 as mpi_task
 from google.protobuf.json_format import MessageToDict
@@ -171,7 +172,15 @@ class MPIFunctionTask(PythonFunctionTask[MPIJob]):
     ) -> mpi_task.DistributedMPITrainingReplicaSpec:
         resources = convert_resources_to_resource_model(requests=replica_config.requests, limits=replica_config.limits)
         return mpi_task.DistributedMPITrainingReplicaSpec(
+            common=plugins_common.CommonReplicaSpec(
+                replicas=replica_config.replicas,
+                image=replica_config.image,
+                resources=resources.to_flyte_idl() if resources else None,
+                restart_policy=replica_config.restart_policy.value if replica_config.restart_policy else None,
+            ),
             command=replica_config.command,
+            # The forllowing fields are deprecated. They are kept for backwards compatibility.
+            # The following fields are deprecated and will be removed in the future
             replicas=replica_config.replicas,
             image=replica_config.image,
             resources=resources.to_flyte_idl() if resources else None,
@@ -203,10 +212,14 @@ class MPIFunctionTask(PythonFunctionTask[MPIJob]):
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         worker = self._convert_replica_spec(self.task_config.worker)
         if self.task_config.num_workers:
+            worker.common.replicas = self.task_config.num_workers
+            # Deprecated. Only kept for backwards compatibility.
             worker.replicas = self.task_config.num_workers
 
         launcher = self._convert_replica_spec(self.task_config.launcher)
         if self.task_config.num_launcher_replicas:
+            launcher.common.replicas = self.task_config.num_launcher_replicas
+            # Deprecated. Only kept for backwards compatibility.
             launcher.replicas = self.task_config.num_launcher_replicas
 
         run_policy = self._convert_run_policy(self.task_config.run_policy) if self.task_config.run_policy else None
