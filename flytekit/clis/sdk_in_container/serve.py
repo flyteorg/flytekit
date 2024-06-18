@@ -55,8 +55,8 @@ def agent(_: click.Context, port, worker, timeout):
 async def _start_grpc_server(port: int, worker: int, timeout: int):
     from flytekit.extend.backend.agent_service import AgentMetadataService, AsyncAgentService, SyncAgentService
 
+    click.secho("🚀 Starting the agent service...")
     _start_http_server()
-    click.secho("Starting the agent service...", fg="blue")
     print_agents_metadata()
 
     server = grpc.aio.server(futures.ThreadPoolExecutor(max_workers=worker))
@@ -75,7 +75,7 @@ def _start_http_server():
     try:
         from prometheus_client import start_http_server
 
-        click.secho("Starting up the server to expose the prometheus metrics...", fg="blue")
+        click.secho("Starting up the server to expose the prometheus metrics...")
         start_http_server(9090)
     except ImportError as e:
         click.secho(f"Failed to start the prometheus server with error {e}", fg="red")
@@ -104,24 +104,13 @@ def print_agents_metadata():
     from flytekit.extend.backend.base_agent import AgentRegistry
 
     agents = AgentRegistry.list_agents()
-    for agent in agents:
-        name = agent.name
-        metadata = [category.name for category in agent.supported_task_categories]
-        click.secho(f"Starting {name} that supports task categories {metadata}", fg="blue")
 
-    data = [
-        ["Agent Name", "Age", "City"],
-        ["Alice", 30, "New York"],
-        ["Bob", 25, "Los Angeles"],
-        ["Charlie", 35, "Chicago"]
-    ]
-
-    # Calculate the column widths
-    col_widths = [max(len(str(value)) for value in col) for col in zip(*data)]
-
-    # Print the table
-    for row in data:
-        print(" | ".join(f"{str(value).ljust(width)}" for value, width in zip(row, col_widths)))
+    data = [["Agent Name", "Support Task Types", "Is Sync"]]
+    for a in agents:
+        categories = ""
+        for c in a.supported_task_categories:
+            categories += f"{c.name} (v{c.version}) "
+        data.append([a.name, categories, str(a.is_sync)])
 
     _print_table(data)
 

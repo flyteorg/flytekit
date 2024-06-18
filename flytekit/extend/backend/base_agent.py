@@ -18,7 +18,7 @@ from flyteidl.core.execution_pb2 import TaskExecution, TaskLog
 from rich.logging import RichHandler
 from rich.progress import Progress
 
-from flytekit import FlyteContext, PythonFunctionTask, logger
+from flytekit import FlyteContext, PythonFunctionTask
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core import utils
 from flytekit.core.base_task import PythonTask

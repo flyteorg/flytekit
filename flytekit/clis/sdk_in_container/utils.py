@@ -9,7 +9,7 @@ import rich_click as click
 
 from flytekit.exceptions.base import FlyteException
 from flytekit.exceptions.user import FlyteInvalidInputException
-from flytekit.loggers import get_level_from_cli_verbosity, logger, upgrade_to_rich_logging
+from flytekit.loggers import get_level_from_cli_verbosity, logger
 
 project_option = click.Option(
     param_decls=["-p", "--project"],
