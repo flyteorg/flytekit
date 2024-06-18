@@ -15,6 +15,7 @@ import click
 
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.utils import timeit
+from flytekit.loggers import logger
 from flytekit.tools.ignore import DockerIgnore, FlyteIgnore, GitIgnore, Ignore, IgnoreGroup, StandardIgnore
 from flytekit.tools.script_mode import tar_strip_file_attributes
 
@@ -95,6 +96,10 @@ def compute_digest(source: os.PathLike, filter: Optional[callable] = None) -> st
 
         for fname in files:
             abspath = os.path.join(root, fname)
+            # Only consider files that exist (e.g. disregard symlinks that point to non-existent files)
+            if not os.path.exists(abspath):
+                logger.info(f"Skipping non-existent file {abspath}")
+                continue
             relpath = os.path.relpath(abspath, source)
             if filter:
                 if filter(relpath):
