@@ -151,3 +151,23 @@ def test_digest_change(flyte_project):
 
 def test_get_additional_distribution_loc():
     assert get_additional_distribution_loc("s3://my-s3-bucket/dir", "123abc") == "s3://my-s3-bucket/dir/123abc.tar.gz"
+
+
+def test_skip_invalid_symlink_in_compute_digest(tmp_path):
+    tree = {
+        "dir1": {"file1": ""},
+        "dir2": {},
+        "file.txt": "abc",
+    }
+
+    make_tree(tmp_path, tree)
+    os.symlink(str(tmp_path) + "/file.txt", str(tmp_path) + "/dir2/file.txt")
+
+    # Confirm that you can compute the digest without error
+    assert compute_digest(tmp_path) is not None
+
+    # Delete the file backing the symlink
+    os.remove(tmp_path / "file.txt")
+
+    # Confirm that you can compute the digest without error
+    assert compute_digest(tmp_path) is not None
