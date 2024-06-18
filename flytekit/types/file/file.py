@@ -153,7 +153,7 @@ class FlyteFile(os.PathLike, typing.Generic[T], DataClassJSONMixin):
         Create a new FlyteFile object with a remote path.
         """
         ctx = FlyteContextManager.current_context()
-        r = ctx.file_access.get_random_string()
+        r = name or ctx.file_access.get_random_string()
         remote_path = ctx.file_access.join(ctx.file_access.raw_output_prefix, r)
         return cls(path=remote_path)
 
