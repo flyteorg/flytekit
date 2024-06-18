@@ -489,7 +489,7 @@ def get_serializable_node(
             inputs=entity.bindings,
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
-            array_node=get_serializable_array_map_task_node(entity_mapping, settings, entity, options=options),
+            array_node=get_serializable_array_node_map_task(entity_mapping, settings, entity, options=options),
         )
         # TODO: do I need this?
         # if entity._aliases:
@@ -665,7 +665,7 @@ def get_serializable_array_node(
     )
 
 
-def get_serializable_array_map_task_node(
+def get_serializable_array_node_map_task(
     entity_mapping: OrderedDict,
     settings: SerializationSettings,
     node: Node,
