@@ -1,7 +1,6 @@
 from typing import Any, List, Optional, Union
 
 from flytekit.core import interface as flyte_interface
-from flytekit.core.base_task import Task
 from flytekit.core.context_manager import ExecutionState, FlyteContext
 from flytekit.core.interface import transform_interface_to_list_interface
 from flytekit.core.launch_plan import LaunchPlan
@@ -15,7 +14,7 @@ from flytekit.models.core import workflow as _workflow_model
 class ArrayNode(object):
     def __init__(
         self,
-        target: Union[Task, LaunchPlan],
+        target: LaunchPlan,
         concurrency: Optional[int] = None,
         min_successes: Optional[int] = None,
         min_success_ratio: Optional[float] = None,
@@ -49,15 +48,7 @@ class ArrayNode(object):
         self._collection_interface = collection_interface
 
         self.metadata = None
-        if isinstance(target, Task):
-            if metadata:
-                if isinstance(metadata, TaskMetadata):
-                    self.metadata = metadata
-                else:
-                    raise Exception("Invalid metadata for Task. Should be TaskMetadata.")
-            elif target.metadata:
-                self.metadata = target.metadata
-        elif isinstance(target, LaunchPlan):
+        if isinstance(target, LaunchPlan):
             if metadata:
                 if isinstance(metadata, _workflow_model.NodeMetadata):
                     self.metadata = metadata
