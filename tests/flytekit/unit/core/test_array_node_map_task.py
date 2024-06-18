@@ -7,9 +7,12 @@ import pytest
 
 from flytekit import map_task, task, workflow
 from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SerializationSettings
+from flytekit.core import context_manager
 from flytekit.core.array_node_map_task import ArrayNodeMapTask, ArrayNodeMapTaskResolver
 from flytekit.core.task import TaskMetadata
+from flytekit.core.type_engine import TypeEngine
 from flytekit.tools.translator import get_serializable
+from flytekit.types.pickle import BatchSize
 
 
 @pytest.fixture
@@ -52,6 +55,39 @@ def test_execution(serialization_settings):
         return map_task(say_hello)(name=xs)
 
     assert wf() == ["hello hello earth!!", "hello hello mars!!"]
+
+
+def test_remote_execution(serialization_settings):
+    @task
+    def say_hello(name: str) -> str:
+        return f"hello {name}!"
+
+    ctx = context_manager.FlyteContextManager.current_context()
+    with context_manager.FlyteContextManager.with_context(
+            ctx.with_execution_state(
+                ctx.execution_state.with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION)
+            )
+    ) as ctx:
+        t = map_task(say_hello)
+        lm = TypeEngine.dict_to_literal_map(ctx, {"name": ["earth", "mars"]}, type_hints={"name": typing.List[str]})
+        res = t.dispatch_execute(ctx, lm)
+        assert len(res.literals) == 1
+        assert res.literals["o0"].scalar.primitive.string_value == "hello earth!"
+
+
+def test_map_task_with_pickle():
+    @task
+    def say_hello(name: typing.Annotated[typing.Any, BatchSize(10)]) -> str:
+        return f"hello {name}!"
+
+    with pytest.raises(ValueError, match="Choosing a BatchSize for map tasks inputs is not supported."):
+        map_task(say_hello)(name=["abc", "def"])
+
+    @task
+    def say_hello(name: typing.Any) -> str:
+        return f"hello {name}!"
+
+    map_task(say_hello)(name=["abc", "def"])
 
 
 def test_serialization(serialization_settings):
@@ -184,7 +220,7 @@ def test_inputs_outputs_length():
     assert m.python_interface.inputs == {"a": List[int], "b": List[str], "c": List[float]}
     assert (
         m.name
-        == "tests.flytekit.unit.core.test_array_node_map_task.map_many_inputs_bf51001578d0ae197a52c0af0a99dd89-arraynode"
+        == "tests.flytekit.unit.core.test_array_node_map_task.map_many_inputs_6b3bd0353da5de6e84d7982921ead2b3-arraynode"
     )
     r_m = ArrayNodeMapTask(many_inputs)
     assert str(r_m.python_interface) == str(m.python_interface)
@@ -194,7 +230,7 @@ def test_inputs_outputs_length():
     assert m.python_interface.inputs == {"a": List[int], "b": List[str], "c": float}
     assert (
         m.name
-        == "tests.flytekit.unit.core.test_array_node_map_task.map_many_inputs_cb470e880fabd6265ec80e29fe60250d-arraynode"
+        == "tests.flytekit.unit.core.test_array_node_map_task.map_many_inputs_7df6892fe8ce5343c76197a0b6127e80-arraynode"
     )
     r_m = ArrayNodeMapTask(many_inputs, bound_inputs=set("c"))
     assert str(r_m.python_interface) == str(m.python_interface)
@@ -204,7 +240,7 @@ def test_inputs_outputs_length():
     assert m.python_interface.inputs == {"a": List[int], "b": str, "c": float}
     assert (
         m.name
-        == "tests.flytekit.unit.core.test_array_node_map_task.map_many_inputs_316e10eb97f5d2abd585951048b807b9-arraynode"
+        == "tests.flytekit.unit.core.test_array_node_map_task.map_many_inputs_80fd21f14571026755b99d6b1c045089-arraynode"
     )
     r_m = ArrayNodeMapTask(many_inputs, bound_inputs={"c", "b"})
     assert str(r_m.python_interface) == str(m.python_interface)
@@ -214,7 +250,7 @@ def test_inputs_outputs_length():
     assert m.python_interface.inputs == {"a": int, "b": str, "c": float}
     assert (
         m.name
-        == "tests.flytekit.unit.core.test_array_node_map_task.map_many_inputs_758022acd59ad1c8b81670378d4de4f6-arraynode"
+        == "tests.flytekit.unit.core.test_array_node_map_task.map_many_inputs_5d2500dc176052a030efda3b8c283f96-arraynode"
     )
     r_m = ArrayNodeMapTask(many_inputs, bound_inputs={"a", "c", "b"})
     assert str(r_m.python_interface) == str(m.python_interface)

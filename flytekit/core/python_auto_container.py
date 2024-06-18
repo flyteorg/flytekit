@@ -16,7 +16,7 @@ from flytekit.core.tracked_abc import FlyteTrackedABC
 from flytekit.core.tracker import TrackedInstance, extract_task_module
 from flytekit.core.utils import _get_container_definition, _serialize_pod_spec, timeit
 from flytekit.extras.accelerators import BaseAccelerator
-from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec
+from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec, _calculate_deduped_hash_from_image_spec
 from flytekit.loggers import logger
 from flytekit.models import task as _task_model
 from flytekit.models.security import Secret, SecurityContext
@@ -276,8 +276,12 @@ def get_registerable_container_image(img: Optional[Union[str, ImageSpec]], cfg: 
     :return:
     """
     if isinstance(img, ImageSpec):
-        ImageBuildEngine.build(img)
-        return img.image_name()
+        image = cfg.find_image(_calculate_deduped_hash_from_image_spec(img))
+        image_name = image.full if image else None
+        if not image_name:
+            ImageBuildEngine.build(img)
+            image_name = img.image_name()
+        return image_name
 
     if img is not None and img != "":
         matches = _IMAGE_REPLACE_REGEX.findall(img)
@@ -296,10 +300,10 @@ def get_registerable_container_image(img: Optional[Union[str, ImageSpec]], cfg: 
             if img_cfg is None:
                 raise AssertionError(f"Image Config with name {name} not found in the configuration")
             if attr == "version":
-                if img_cfg.tag is not None:
-                    img = img.replace(replace_group, img_cfg.tag)
+                if img_cfg.version is not None:
+                    img = img.replace(replace_group, img_cfg.version)
                 else:
-                    img = img.replace(replace_group, cfg.default_image.tag)
+                    img = img.replace(replace_group, cfg.default_image.version)
             elif attr == "fqn":
                 img = img.replace(replace_group, img_cfg.fqn)
             elif attr == "":
@@ -309,7 +313,7 @@ def get_registerable_container_image(img: Optional[Union[str, ImageSpec]], cfg: 
         return img
     if cfg.default_image is None:
         raise ValueError("An image is required for PythonAutoContainer tasks")
-    return f"{cfg.default_image.fqn}:{cfg.default_image.tag}"
+    return cfg.default_image.full
 
 
 # Matches {{.image.<name>.<attr>}}. A name can be either 'default' indicating the default image passed during

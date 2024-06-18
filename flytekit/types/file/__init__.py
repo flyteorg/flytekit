@@ -20,6 +20,7 @@ This list also contains a bunch of pre-formatted :py:class:`flytekit.types.file.
    PythonNotebook
    SVGImageFile
 """
+
 import typing
 
 from typing_extensions import Annotated, get_args, get_origin
@@ -114,3 +115,8 @@ tfrecords_file = Annotated[str, FileExt("tfrecord")]
 #: Can be used to receive or return an TFRecordFile. The underlying type is a FlyteFile type. This is just a
 #: decoration and useful for attaching content type information with the file and automatically documenting code.
 TFRecordFile = FlyteFile[tfrecords_file]
+
+jsonl_file = Annotated[str, FileExt("jsonl")]
+#: Can be used to receive or return a JSONLFile. The underlying type is a FlyteFile type. This is just a
+#: decoration and useful for attaching content type information with the file and automatically documenting code.
+JSONLFile = FlyteFile[jsonl_file]

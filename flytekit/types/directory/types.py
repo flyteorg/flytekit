@@ -28,8 +28,7 @@ T = typing.TypeVar("T")
 PathType = typing.Union[str, os.PathLike]
 
 
-def noop():
-    ...
+def noop(): ...
 
 
 @dataclass

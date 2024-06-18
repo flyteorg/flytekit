@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from mashumaro.mixins.json import DataClassJSONMixin
 
@@ -15,6 +15,7 @@ class Resources(DataClassJSONMixin):
 
         Resources(cpu="1", mem="2048")  # This is 1 CPU and 2 KB of memory
         Resources(cpu="100m", mem="2Gi")  # This is 1/10th of a CPU and 2 gigabytes of memory
+        Resources(cpu=0.5, mem=1024) # This is 500m CPU and 1 KB of memory
 
         # For Kubernetes-based tasks, pods use ephemeral local storage for scratch space, caching, and for logs.
         # This allocates 1Gi of such local storage.
@@ -28,22 +29,28 @@ class Resources(DataClassJSONMixin):
     Also refer to the `K8s conventions. <https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-units-in-kubernetes>`__
     """
 
-    cpu: Optional[str] = None
-    mem: Optional[str] = None
-    gpu: Optional[str] = None
-    ephemeral_storage: Optional[str] = None
+    cpu: Optional[Union[str, int, float]] = None
+    mem: Optional[Union[str, int]] = None
+    gpu: Optional[Union[str, int]] = None
+    ephemeral_storage: Optional[Union[str, int]] = None
 
     def __post_init__(self):
-        def _check_none_or_str(value):
+        def _check_cpu(value):
             if value is None:
                 return
-            if not isinstance(value, str):
-                raise AssertionError(f"{value} should be a string")
+            if not isinstance(value, (str, int, float)):
+                raise AssertionError(f"{value} should be of type str or int or float")
 
-        _check_none_or_str(self.cpu)
-        _check_none_or_str(self.mem)
-        _check_none_or_str(self.gpu)
-        _check_none_or_str(self.ephemeral_storage)
+        def _check_others(value):
+            if value is None:
+                return
+            if not isinstance(value, (str, int)):
+                raise AssertionError(f"{value} should be of type str or int")
+
+        _check_cpu(self.cpu)
+        _check_others(self.mem)
+        _check_others(self.gpu)
+        _check_others(self.ephemeral_storage)
 
 
 @dataclass
@@ -59,13 +66,15 @@ _ResourceEntry = task_models.Resources.ResourceEntry
 def _convert_resources_to_resource_entries(resources: Resources) -> List[_ResourceEntry]:  # type: ignore
     resource_entries = []
     if resources.cpu is not None:
-        resource_entries.append(_ResourceEntry(name=_ResourceName.CPU, value=resources.cpu))
+        resource_entries.append(_ResourceEntry(name=_ResourceName.CPU, value=str(resources.cpu)))
     if resources.mem is not None:
-        resource_entries.append(_ResourceEntry(name=_ResourceName.MEMORY, value=resources.mem))
+        resource_entries.append(_ResourceEntry(name=_ResourceName.MEMORY, value=str(resources.mem)))
     if resources.gpu is not None:
-        resource_entries.append(_ResourceEntry(name=_ResourceName.GPU, value=resources.gpu))
+        resource_entries.append(_ResourceEntry(name=_ResourceName.GPU, value=str(resources.gpu)))
     if resources.ephemeral_storage is not None:
-        resource_entries.append(_ResourceEntry(name=_ResourceName.EPHEMERAL_STORAGE, value=resources.ephemeral_storage))
+        resource_entries.append(
+            _ResourceEntry(name=_ResourceName.EPHEMERAL_STORAGE, value=str(resources.ephemeral_storage))
+        )
     return resource_entries
 
 

@@ -1,4 +1,3 @@
-from functools import partial
 from typing import Any, Dict, Optional
 
 import aioboto3
@@ -133,9 +132,6 @@ class Boto3AgentMixin:
         :param images: A dict of Docker images to use, for example, when deploying a model on SageMaker.
         :param inputs: The inputs for the task being created.
         :param region: The region for the boto3 client. If not provided, the region specified in the constructor will be used.
-        :param aws_access_key_id: The access key ID to use to access the AWS resources.
-        :param aws_secret_access_key: The secret access key to use to access the AWS resources
-        :param aws_session_token: An AWS session token used as part of the credentials to authenticate the user.
         """
         args = {}
         input_region = None
@@ -152,12 +148,12 @@ class Boto3AgentMixin:
             base = "amazonaws.com.cn" if final_region.startswith("cn-") else "amazonaws.com"
             images = {
                 image_name: (
-                    image(
+                    image.format(
                         account_id=account_id_map[final_region],
                         region=final_region,
                         base=base,
                     )
-                    if isinstance(image, partial)
+                    if isinstance(image, str) and "sagemaker-tritonserver" in image
                     else image
                 )
                 for image_name, image in images.items()

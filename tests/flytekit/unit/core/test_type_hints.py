@@ -1701,8 +1701,8 @@ def test_union_type():
         match=re.escape(
             "Error encountered while executing 'wf2':\n"
             f"  Failed to convert inputs of task '{prefix}tests.flytekit.unit.core.test_type_hints.t2':\n"
-            '  Cannot convert from <FlyteLiteral scalar { union { value { scalar { primitive { string_value: "2" } } } '
-            'type { simple: STRING structure { tag: "str" } } } }> to typing.Union[float, dict] (using tag str)'
+            '  Cannot convert from [Flyte Serialized object: Type: <Literal> Value: <scalar { union { value { scalar { primitive { string_value: "2" } } } '
+            'type { simple: STRING structure { tag: "str" } } } }>] to typing.Union[float, dict] (using tag str)'
         ),
     ):
         assert wf2(a="2") == "2"
@@ -1983,7 +1983,7 @@ def test_promise_illegal_resources():
 
     @workflow
     def my_wf(a: int) -> int:
-        return t1(a=a).with_overrides(requests=Resources(cpu=1))  # type: ignore
+        return t1(a=a).with_overrides(requests=Resources(cpu=1, mem=1.1))  # type: ignore
 
     with pytest.raises(AssertionError):
         my_wf(a=1)

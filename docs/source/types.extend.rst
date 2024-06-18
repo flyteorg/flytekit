@@ -14,6 +14,7 @@ Refer to the :ref:`extensibility contribution guide <cookbook:advanced_custom_ty
    types.builtins.structured
    types.builtins.file
    types.builtins.directory
+   types.builtins.iterator
    extras.pytorch
    extras.tensorflow
    extras.sklearn

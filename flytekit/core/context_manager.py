@@ -13,7 +13,6 @@
 
 from __future__ import annotations
 
-import datetime as _datetime
 import logging as _logging
 import os
 import pathlib
@@ -23,7 +22,7 @@ import typing
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Generator, List, Optional, Union
 
@@ -132,7 +131,7 @@ class ExecutionParameters(object):
             prefix = self.working_directory.name
         task_sandbox_dir = tempfile.mkdtemp(prefix=prefix)  # type: ignore
         p = pathlib.Path(task_sandbox_dir)
-        cp_dir = p.joinpath("__cp")
+        cp_dir = p / "__cp"
         cp_dir.mkdir(exist_ok=True)
         cp = SyncCheckpoint(checkpoint_dest=str(cp_dir))
         b = self.new_builder(self)
@@ -360,7 +359,6 @@ class SecretsManager(object):
         Retrieves a secret using the resolution order -> Env followed by file. If not found raises a ValueError
         param encode_mode, defines the mode to open files, it can either be "r" to read file, or "rb" to read binary file
         """
-        self.check_group_key(group)
         env_var = self.get_secrets_env_var(group, key, group_version)
         fpath = self.get_secrets_file(group, key, group_version)
         v = os.environ.get(env_var)
@@ -380,7 +378,6 @@ class SecretsManager(object):
         """
         Returns a string that matches the ENV Variable to look for the secrets
         """
-        self.check_group_key(group)
         l = [k.upper() for k in filter(None, (group, group_version, key))]
         return f"{self._env_prefix}{'_'.join(l)}"
 
@@ -390,17 +387,9 @@ class SecretsManager(object):
         """
         Returns a path that matches the file to look for the secrets
         """
-        self.check_group_key(group)
         l = [k.lower() for k in filter(None, (group, group_version, key))]
         l[-1] = f"{self._file_prefix}{l[-1]}"
         return os.path.join(self._base_dir, *l)
-
-    @staticmethod
-    def check_group_key(group: Optional[str]):
-        from flytekit.configuration.plugin import get_plugin
-
-        if get_plugin().secret_requires_group() and (group is None or group == ""):
-            raise ValueError("secrets group is a mandatory field.")
 
 
 @dataclass(frozen=True)
@@ -571,8 +560,7 @@ class SerializableToString(typing.Protocol):
     and then added to a literal's metadata.
     """
 
-    def serialize_to_string(self, ctx: FlyteContext, variable_name: str) -> typing.Tuple[str, str]:
-        ...
+    def serialize_to_string(self, ctx: FlyteContext, variable_name: str) -> typing.Tuple[str, str]: ...
 
 
 @dataclass
@@ -937,7 +925,7 @@ class FlyteContextManager(object):
         default_user_space_params = ExecutionParameters(
             execution_id=WorkflowExecutionIdentifier.promote_from_model(default_execution_id),
             task_id=_identifier.Identifier(_identifier.ResourceType.TASK, "local", "local", "local", "local"),
-            execution_date=_datetime.datetime.now(_datetime.timezone.utc),
+            execution_date=datetime.now(timezone.utc),
             stats=mock_stats.MockStats(),
             logging=user_space_logger,
             tmp_dir=user_space_path,

@@ -71,12 +71,12 @@ def set_user_logger_properties(
         user_space_logger.setLevel(level)
 
 
-def _get_env_logging_level() -> int:
+def _get_env_logging_level(default_level: int = logging.WARNING) -> int:
     """
     Returns the logging level set in the environment variable, or logging.WARNING if the environment variable is not
     set.
     """
-    return int(os.getenv(LOGGING_ENV_VAR, logging.WARNING))
+    return int(os.getenv(LOGGING_ENV_VAR, default_level))
 
 
 def initialize_global_loggers():
@@ -93,33 +93,39 @@ def initialize_global_loggers():
     set_flytekit_log_properties(handler, None, _get_env_logging_level())
     set_user_logger_properties(handler, None, logging.INFO)
 
+    # Use Rich logging while running in the local execution
+    if os.environ.get("FLYTE_INTERNAL_EXECUTION_ID", None) is None or interactive.ipython_check():
+        upgrade_to_rich_logging()
 
-def upgrade_to_rich_logging(
-    console: typing.Optional["rich.console.Console"] = None, log_level: typing.Optional[int] = None
-):
-    formatter = logging.Formatter(fmt="%(message)s")
-    handler = logging.StreamHandler()
-    if os.environ.get(LOGGING_RICH_FMT_ENV_VAR) != "0":
-        try:
-            import click
-            from rich.console import Console
-            from rich.logging import RichHandler
 
-            import flytekit
+def is_rich_logging_enabled() -> bool:
+    return os.environ.get(LOGGING_RICH_FMT_ENV_VAR) != "0"
 
-            handler = RichHandler(
-                tracebacks_suppress=[click, flytekit],
-                rich_tracebacks=True,
-                omit_repeated_times=False,
-                log_time_format="%H:%M:%S.%f",
-                console=Console(width=os.get_terminal_size().columns),
-            )
-        except OSError as e:
-            logger.debug(f"Failed to initialize rich logging: {e}")
-            pass
-    handler.setFormatter(formatter)
-    set_flytekit_log_properties(handler, None, level=log_level or _get_env_logging_level())
-    set_user_logger_properties(handler, None, logging.INFO)
+
+def upgrade_to_rich_logging(log_level: typing.Optional[int] = logging.WARNING):
+    if not is_rich_logging_enabled():
+        return
+    try:
+        import click
+        from rich.console import Console
+        from rich.logging import RichHandler
+
+        import flytekit
+
+        handler = RichHandler(
+            tracebacks_suppress=[click, flytekit],
+            rich_tracebacks=True,
+            omit_repeated_times=False,
+            log_time_format="%H:%M:%S.%f",
+            console=Console(width=os.get_terminal_size().columns),
+        )
+        formatter = logging.Formatter(fmt="%(message)s")
+        handler.setFormatter(formatter)
+        set_flytekit_log_properties(handler, None, _get_env_logging_level(default_level=log_level))
+        set_user_logger_properties(handler, None, logging.INFO)
+    except OSError as e:
+        logger.debug(f"Failed to initialize rich logging: {e}")
+        pass
 
 
 def get_level_from_cli_verbosity(verbosity: int) -> int:
@@ -139,8 +145,5 @@ def get_level_from_cli_verbosity(verbosity: int) -> int:
         return logging.DEBUG
 
 
-if interactive.ipython_check():
-    upgrade_to_rich_logging()
-else:
-    # Default initialization
-    initialize_global_loggers()
+# Default initialization
+initialize_global_loggers()
