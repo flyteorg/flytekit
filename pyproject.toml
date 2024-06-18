@@ -18,7 +18,7 @@ dependencies = [
     "croniter>=0.3.20,<4.0.0",
     "dataclasses-json>=0.5.2,<0.5.12", # TODO: remove upper-bound after fixing change in contract
     "diskcache>=5.2.1",
-    "docker>=4.0.0,<7.0.0",
+    "docker>=4.0.0",
     "docstring-parser>=0.9.0",
     "flyteidl>=1.12.0",
     "fsspec>=2023.3.0",
@@ -44,7 +44,7 @@ dependencies = [
     "python-json-logger>=2.0.0",
     "pytimeparse>=1.1.8,<2.0.0",
     "pyyaml!=6.0.0,!=5.4.0,!=5.4.1", # pyyaml is broken with cython 3: https://github.com/yaml/pyyaml/issues/601
-    "requests>=2.18.4,<3.0.0,!=2.32.0,!=2.32.1,!=2.32.2,!=2.32.3",
+    "requests>=2.18.4",
     "rich",
     "rich_click",
     "s3fs>=2023.3.0,!=2024.3.1",
