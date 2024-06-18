@@ -334,7 +334,7 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
         datetime.datetime: SchemaType.SchemaColumn.SchemaColumnType.DATETIME,
         _np.timedelta64: SchemaType.SchemaColumn.SchemaColumnType.DURATION,
         datetime.timedelta: SchemaType.SchemaColumn.SchemaColumnType.DURATION,
-        _np.string_: SchemaType.SchemaColumn.SchemaColumnType.STRING,
+        _np.bytes_: SchemaType.SchemaColumn.SchemaColumnType.STRING,
         _np.str_: SchemaType.SchemaColumn.SchemaColumnType.STRING,
         _np.object_: SchemaType.SchemaColumn.SchemaColumnType.STRING,
         str: SchemaType.SchemaColumn.SchemaColumnType.STRING,
