@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from typing import Any
 
 import pytest
@@ -8,7 +9,7 @@ from flytekit.core.base_task import TaskMetadata
 from flytekit.core.pod_template import PodTemplate
 from flytekit.core.python_auto_container import PythonAutoContainerTask, get_registerable_container_image
 from flytekit.core.resources import Resources
-from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec
+from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec, _calculate_deduped_hash_from_image_spec
 from flytekit.tools.translator import get_serializable_task
 
 
@@ -16,6 +17,12 @@ from flytekit.tools.translator import get_serializable_task
 def default_image_config():
     default_image = Image(name="default", fqn="docker.io/xyz", tag="some-git-hash")
     return ImageConfig(default_image=default_image)
+
+
+@pytest.fixture
+def no_default_image_config():
+    other_image = Image(name="other", fqn="docker.io/xyz", tag="some-git-hash")
+    return ImageConfig.create_from(default_image=None, other_images=[other_image])
 
 
 @pytest.fixture
@@ -30,10 +37,35 @@ def minimal_serialization_settings(default_image_config):
     return SerializationSettings(project="p", domain="d", version="v", image_config=default_image_config)
 
 
+@pytest.fixture
+def minimal_serialization_settings_no_default_image(no_default_image_config):
+    return SerializationSettings(project="p", domain="d", version="v", image_config=no_default_image_config)
+
+
+@pytest.fixture(
+    params=[
+        "default_serialization_settings",
+        "minimal_serialization_settings",
+        "minimal_serialization_settings_no_default_image",
+    ],
+    scope="function",
+)
+def serialization_settings(request):
+    return request.getfixturevalue(request.param)
+
+
 def test_image_name_interpolation(default_image_config):
+    image_spec = ImageSpec(name="image-1", registry="localhost:30000", builder="test")
+
+    new_img_cfg = ImageConfig.create_from(
+        default_image_config.default_image,
+        other_images=[Image.look_up_image_info(_calculate_deduped_hash_from_image_spec(image_spec), "flyte/test:d1")],
+    )
     img_to_interpolate = "{{.image.default.fqn}}:{{.image.default.version}}-special"
-    img = get_registerable_container_image(img=img_to_interpolate, cfg=default_image_config)
+    img = get_registerable_container_image(img=img_to_interpolate, cfg=new_img_cfg)
     assert img == "docker.io/xyz:some-git-hash-special"
+    img = get_registerable_container_image(img=image_spec, cfg=new_img_cfg)
+    assert img == "flyte/test:d1"
 
 
 class DummyAutoContainerTask(PythonAutoContainerTask):
@@ -73,7 +105,7 @@ def test_get_container(default_serialization_settings):
     assert c.image == "docker.io/xyz:some-git-hash"
     assert c.env == {"FOO": "bar"}
 
-    ts = get_serializable_task(default_serialization_settings, task)
+    ts = get_serializable_task(OrderedDict(), default_serialization_settings, task)
     assert ts.template.container.image == "docker.io/xyz:some-git-hash"
     assert ts.template.container.env == {"FOO": "bar"}
 
@@ -86,7 +118,7 @@ def test_get_container_with_task_envvars(default_serialization_settings):
     assert c.image == "docker.io/xyz:some-git-hash"
     assert c.env == {"FOO": "bar", "HAM": "spam"}
 
-    ts = get_serializable_task(default_serialization_settings, task_with_env_vars)
+    ts = get_serializable_task(OrderedDict(), default_serialization_settings, task_with_env_vars)
     assert ts.template.container.image == "docker.io/xyz:some-git-hash"
     assert ts.template.container.env == {"FOO": "bar", "HAM": "spam"}
 
@@ -96,7 +128,7 @@ def test_get_container_without_serialization_settings_envvars(minimal_serializat
     assert c.image == "docker.io/xyz:some-git-hash"
     assert c.env == {"HAM": "spam"}
 
-    ts = get_serializable_task(minimal_serialization_settings, task_with_env_vars)
+    ts = get_serializable_task(OrderedDict(), minimal_serialization_settings, task_with_env_vars)
     assert ts.template.container.image == "docker.io/xyz:some-git-hash"
     assert ts.template.container.env == {"HAM": "spam"}
 
@@ -215,7 +247,7 @@ def test_pod_template(default_serialization_settings):
     #################
     # Test Serialization
     #################
-    ts = get_serializable_task(default_serialization_settings, task_with_pod_template)
+    ts = get_serializable_task(OrderedDict(), default_serialization_settings, task_with_pod_template)
     assert ts.template.container is None
     # k8s_pod content is already verified above, so only check the existence here
     assert ts.template.k8s_pod is not None
@@ -239,15 +271,15 @@ task_with_minimum_pod_template = DummyAutoContainerTask(
 )
 
 
-def test_minimum_pod_template(default_serialization_settings):
+def test_minimum_pod_template(serialization_settings):
     #################
     # Test get_k8s_pod
     #################
 
-    container = task_with_minimum_pod_template.get_container(default_serialization_settings)
+    container = task_with_minimum_pod_template.get_container(serialization_settings)
     assert container is None
 
-    k8s_pod = task_with_minimum_pod_template.get_k8s_pod(default_serialization_settings)
+    k8s_pod = task_with_minimum_pod_template.get_k8s_pod(serialization_settings)
 
     metadata = k8s_pod.metadata
     assert metadata.labels == {"lKeyA": "lValA"}
@@ -279,7 +311,7 @@ def test_minimum_pod_template(default_serialization_settings):
         "task_with_minimum_pod_template",
     ]
 
-    config = task_with_minimum_pod_template.get_config(default_serialization_settings)
+    config = task_with_minimum_pod_template.get_config(serialization_settings)
     assert config == {"primary_container_name": "primary"}
 
     #################
@@ -290,7 +322,7 @@ def test_minimum_pod_template(default_serialization_settings):
     #################
     # Test Serialization
     #################
-    ts = get_serializable_task(default_serialization_settings, task_with_minimum_pod_template)
+    ts = get_serializable_task(OrderedDict(), serialization_settings, task_with_minimum_pod_template)
     assert ts.template.container is None
     # k8s_pod content is already verified above, so only check the existence here
     assert ts.template.k8s_pod is not None

@@ -2,6 +2,7 @@
 This Plugin adds the capability of running distributed pytorch training to Flyte using backend plugins, natively on
 Kubernetes. It leverages `Pytorch Job <https://github.com/kubeflow/pytorch-operator>`_ Plugin from kubeflow.
 """
+
 import os
 from dataclasses import dataclass, field
 from enum import Enum
@@ -310,7 +311,7 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
                 inherits from `FlyteRecoverableException`.
             RuntimeError: If the first exception raised in the local worker group is not and does not
                 inherit from `FlyteRecoverableException`.
-            IgnoreOutputs: Raised when the task is succesfull in any worker group with index > 0.
+            IgnoreOutputs: Raised when the task is successful in any worker group with index > 0.
         """
         try:
             from torch.distributed.launcher.api import LaunchConfig, elastic_launch

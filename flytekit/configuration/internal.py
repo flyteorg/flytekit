@@ -35,6 +35,11 @@ class Images(object):
             return cfg.yaml_config.get("images", images)
 
 
+class Persistence(object):
+    SECTION = "persistence"
+    ATTACH_EXECUTION_METADATA = ConfigEntry(LegacyConfigEntry(SECTION, "attach_execution_metadata", bool))
+
+
 class AWS(object):
     SECTION = "aws"
     S3_ENDPOINT = ConfigEntry(LegacyConfigEntry(SECTION, "endpoint"), YamlConfigEntry("storage.connection.endpoint"))
@@ -64,6 +69,12 @@ class AZURE(object):
     TENANT_ID = ConfigEntry(LegacyConfigEntry(SECTION, "tenant_id"))
     CLIENT_ID = ConfigEntry(LegacyConfigEntry(SECTION, "client_id"))
     CLIENT_SECRET = ConfigEntry(LegacyConfigEntry(SECTION, "client_secret"))
+
+
+class Local(object):
+    SECTION = "local"
+    CACHE_ENABLED = ConfigEntry(LegacyConfigEntry(SECTION, "cache_enabled", bool))
+    CACHE_OVERWRITE = ConfigEntry(LegacyConfigEntry(SECTION, "cache_overwrite", bool))
 
 
 class Credentials(object):

@@ -17,15 +17,18 @@ simple implementation that ships with the core.
    FileAccessProvider
 
 """
+
 import io
 import os
 import pathlib
 import tempfile
 import typing
+from time import sleep
 from typing import Any, Dict, Optional, Union, cast
 from uuid import UUID
 
 import fsspec
+from decorator import decorator
 from fsspec.utils import get_protocol
 from typing_extensions import Unpack
 
@@ -101,6 +104,24 @@ def get_fsspec_storage_options(
     return {}
 
 
+@decorator
+def retry_request(func, *args, **kwargs):
+    # TODO: Remove this method once s3fs has a new release. https://github.com/fsspec/s3fs/pull/865
+    retries = kwargs.pop("retries", 5)
+    for retry in range(retries):
+        try:
+            if retry > 0:
+                sleep(random.randint(0, min(2**retry, 32)))
+            return func(*args, **kwargs)
+        except Exception as e:
+            # Catch this specific error message from S3 since S3FS doesn't catch it and retry the request.
+            if "Please reduce your request rate" in str(e):
+                if retry == retries - 1:
+                    raise e
+            else:
+                raise e
+
+
 class FileAccessProvider(object):
     """
     This is the class that is available through the FlyteContext and can be used for persisting data to the remote
@@ -112,6 +133,7 @@ class FileAccessProvider(object):
         local_sandbox_dir: Union[str, os.PathLike],
         raw_output_prefix: str,
         data_config: typing.Optional[DataConfig] = None,
+        execution_metadata: typing.Optional[dict] = None,
     ):
         """
         Args:
@@ -128,6 +150,11 @@ class FileAccessProvider(object):
         self._local = fsspec.filesystem(None)
 
         self._data_config = data_config if data_config else DataConfig.auto()
+
+        if self.data_config.generic.attach_execution_metadata:
+            self._execution_metadata = execution_metadata
+        else:
+            self._execution_metadata = None
         self._default_protocol = get_protocol(str(raw_output_prefix))
         self._default_remote = cast(fsspec.AbstractFileSystem, self.get_filesystem(self._default_protocol))
         if os.name == "nt" and raw_output_prefix.startswith("file://"):
@@ -154,7 +181,11 @@ class FileAccessProvider(object):
         return self._default_remote
 
     def get_filesystem(
-        self, protocol: typing.Optional[str] = None, anonymous: bool = False, **kwargs
+        self,
+        protocol: typing.Optional[str] = None,
+        anonymous: bool = False,
+        path: typing.Optional[str] = None,
+        **kwargs,
     ) -> fsspec.AbstractFileSystem:
         if not protocol:
             return self._default_remote
@@ -169,6 +200,9 @@ class FileAccessProvider(object):
             if anonymous:
                 kwargs["token"] = _ANON
             return fsspec.filesystem(protocol, **kwargs)  # type: ignore
+        elif protocol == "ftp":
+            kwargs.update(fsspec.implementations.ftp.FTPFileSystem._get_kwargs_from_urls(path))
+            return fsspec.filesystem(protocol, **kwargs)
 
         storage_options = get_fsspec_storage_options(
             protocol=protocol, anonymous=anonymous, data_config=self._data_config, **kwargs
@@ -178,7 +212,7 @@ class FileAccessProvider(object):
 
     def get_filesystem_for_path(self, path: str = "", anonymous: bool = False, **kwargs) -> fsspec.AbstractFileSystem:
         protocol = get_protocol(path)
-        return self.get_filesystem(protocol, anonymous=anonymous, **kwargs)
+        return self.get_filesystem(protocol, anonymous=anonymous, path=path, **kwargs)
 
     @staticmethod
     def is_remote(path: Union[str, os.PathLike]) -> bool:
@@ -212,7 +246,17 @@ class FileAccessProvider(object):
 
     @staticmethod
     def recursive_paths(f: str, t: str) -> typing.Tuple[str, str]:
-        f = os.path.join(f, "")
+        # Only apply the join if the from_path isn't already a file. But we can do this check only
+        # for local files, otherwise assume it's a directory and add /'s as usual
+        if get_protocol(f) == "file":
+            local_fs = fsspec.filesystem("file")
+            if local_fs.exists(f) and local_fs.isdir(f):
+                logger.debug("Adding trailing sep to")
+                f = os.path.join(f, "")
+            else:
+                logger.debug("Not adding trailing sep")
+        else:
+            f = os.path.join(f, "")
         t = os.path.join(t, "")
         return f, t
 
@@ -236,6 +280,7 @@ class FileAccessProvider(object):
                 return anon_fs.exists(path)
             raise oe
 
+    @retry_request
     def get(self, from_path: str, to_path: str, recursive: bool = False, **kwargs):
         file_system = self.get_filesystem_for_path(from_path)
         if recursive:
@@ -247,7 +292,7 @@ class FileAccessProvider(object):
                 return shutil.copytree(
                     self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True
                 )
-            print(f"Getting {from_path} to {to_path}")
+            logger.info(f"Getting {from_path} to {to_path}")
             dst = file_system.get(from_path, to_path, recursive=recursive, **kwargs)
             if isinstance(dst, (str, pathlib.Path)):
                 return dst
@@ -262,6 +307,7 @@ class FileAccessProvider(object):
                 return file_system.get(from_path, to_path, recursive=recursive, **kwargs)
             raise oe
 
+    @retry_request
     def put(self, from_path: str, to_path: str, recursive: bool = False, **kwargs):
         file_system = self.get_filesystem_for_path(to_path)
         from_path = self.strip_file_header(from_path)
@@ -276,6 +322,10 @@ class FileAccessProvider(object):
                     self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True
                 )
             from_path, to_path = self.recursive_paths(from_path, to_path)
+        if self._execution_metadata:
+            if "metadata" not in kwargs:
+                kwargs["metadata"] = {}
+            kwargs["metadata"].update(self._execution_metadata)
         dst = file_system.put(from_path, to_path, recursive=recursive, **kwargs)
         if isinstance(dst, (str, pathlib.Path)):
             return dst
@@ -289,6 +339,7 @@ class FileAccessProvider(object):
         file_name: Optional[str] = None,
         read_chunk_size_bytes: int = 1024,
         encoding: str = "utf-8",
+        skip_raw_data_prefix: bool = False,
         **kwargs,
     ) -> str:
         """
@@ -311,12 +362,13 @@ class FileAccessProvider(object):
             lpath is a file, or a random string if lpath is a buffer
         :param read_chunk_size_bytes: If lpath is a buffer, this is the chunk size to read from it
         :param encoding: If lpath is a io.StringIO, this is the encoding to use to encode it to binary.
+        :param skip_raw_data_prefix: If True, the raw data prefix will not be prepended to the upload_prefix
         :param kwargs: Additional kwargs are passed into the the fsspec put() call or the open() call
         :return: Returns the final path data was written to.
         """
         # First figure out what the destination path should be, then call put.
         upload_prefix = self.get_random_string() if upload_prefix is None else upload_prefix
-        to_path = self.join(self.raw_output_prefix, upload_prefix)
+        to_path = self.join(self.raw_output_prefix, upload_prefix) if not skip_raw_data_prefix else upload_prefix
         if file_name:
             to_path = self.join(to_path, file_name)
         else:

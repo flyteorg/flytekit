@@ -1,10 +1,15 @@
+import os
+import sys
+import traceback
 from functools import wraps as _wraps
 from sys import exc_info as _exc_info
 from traceback import format_tb as _format_tb
 
+import flytekit
 from flytekit.exceptions import base as _base_exceptions
 from flytekit.exceptions import system as _system_exceptions
 from flytekit.exceptions import user as _user_exceptions
+from flytekit.loggers import is_rich_logging_enabled
 from flytekit.models.core import errors as _error_model
 
 
@@ -39,7 +44,7 @@ class FlyteScopedException(Exception):
         traceback_str = "\n    ".join([""] + lines)
 
         format_str = "Traceback (most recent call last):\n" "{traceback}\n" "\n" "Message:\n" "\n" "    {message}"
-        return format_str.format(traceback=traceback_str, message=str(self.value))
+        return format_str.format(traceback=traceback_str, message=f"{self.type.__name__}: {self.value}")
 
     def __str__(self):
         return str(self.value)
@@ -213,7 +218,25 @@ def user_entry_point(wrapped, args, kwargs):
             except FlyteScopedException as exc:
                 raise exc.type(f"Error encountered while executing '{fn_name}':\n  {exc.value}") from exc
             except Exception as exc:
-                raise type(exc)(f"Error encountered while executing '{fn_name}':\n  {exc}") from exc
+                exc_type, exc_value, tb = sys.exc_info()
+                tb = tb.tb_next  # Remove the top frame [wrapped(*args, **kwargs)] from the stack
+
+                if is_rich_logging_enabled():
+                    from rich.console import Console
+                    from rich.traceback import Traceback
+
+                    console = Console()
+
+                    trace = Traceback.extract(exc_type, exc_value, tb)
+                    console.print(Traceback(trace))
+                else:
+                    traceback.print_tb(tb, file=sys.stderr)
+
+                execution_state = flytekit.FlyteContextManager().current_context().execution_state
+                if execution_state.is_local_execution() and os.environ.get("FLYTE_EXIT_ON_USER_EXCEPTION") != "0":
+                    exit(1)
+                else:
+                    raise type(exc)(f"Error encountered while executing '{fn_name}':\n  {exc}") from exc
         else:
             try:
                 return wrapped(*args, **kwargs)

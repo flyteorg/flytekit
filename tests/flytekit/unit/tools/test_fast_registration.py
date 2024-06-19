@@ -7,11 +7,12 @@ import pytest
 from flytekit.tools.fast_registration import (
     FAST_FILEENDING,
     FAST_PREFIX,
+    FastPackageOptions,
     compute_digest,
     fast_package,
     get_additional_distribution_loc,
 )
-from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
+from flytekit.tools.ignore import DockerIgnore, GitIgnore, Ignore, IgnoreGroup, StandardIgnore
 from tests.flytekit.unit.tools.test_ignore import make_tree
 
 
@@ -46,14 +47,14 @@ def flyte_project(tmp_path):
 def test_package(flyte_project, tmp_path):
     archive_fname = fast_package(source=flyte_project, output_dir=tmp_path)
     with tarfile.open(archive_fname) as tar:
-        assert tar.getnames() == [
-            "",  # tar root, output removes leading '/'
+        assert sorted(tar.getnames()) == [
             ".dockerignore",
             ".gitignore",
             "keep.foo",
             "src",
             "src/util",
             "src/workflows",
+            "src/workflows/__pycache__",
             "src/workflows/hello_world.py",
             "utils",
             "utils/util.py",
@@ -64,13 +65,58 @@ def test_package(flyte_project, tmp_path):
     assert str(archive_fname).endswith(FAST_FILEENDING)
 
 
+def test_package_with_ignore(flyte_project, tmp_path):
+    class TestIgnore(Ignore):
+        def _is_ignored(self, path: str) -> bool:
+            return path.startswith("utils")
+
+    options = FastPackageOptions(ignores=[TestIgnore])
+    archive_fname = fast_package(source=flyte_project, output_dir=tmp_path, deref_symlinks=False, options=options)
+    with tarfile.open(archive_fname) as tar:
+        assert sorted(tar.getnames()) == [
+            ".dockerignore",
+            ".gitignore",
+            "keep.foo",
+            "src",
+            "src/util",
+            "src/workflows",
+            "src/workflows/__pycache__",
+            "src/workflows/hello_world.py",
+        ]
+    assert str(os.path.basename(archive_fname)).startswith(FAST_PREFIX)
+    assert str(archive_fname).endswith(FAST_FILEENDING)
+
+
+def test_package_with_ignore_without_defaults(flyte_project, tmp_path):
+    class TestIgnore(Ignore):
+        def _is_ignored(self, path: str) -> bool:
+            return path.startswith("utils")
+
+    options = FastPackageOptions(ignores=[TestIgnore, GitIgnore, DockerIgnore], keep_default_ignores=False)
+    archive_fname = fast_package(source=flyte_project, output_dir=tmp_path, deref_symlinks=False, options=options)
+    with tarfile.open(archive_fname) as tar:
+        assert sorted(tar.getnames()) == [
+            ".dockerignore",
+            ".gitignore",
+            "keep.foo",
+            "src",
+            "src/util",
+            "src/workflows",
+            "src/workflows/__pycache__",
+            "src/workflows/__pycache__/some.pyc",
+            "src/workflows/hello_world.py",
+        ]
+    assert str(os.path.basename(archive_fname)).startswith(FAST_PREFIX)
+    assert str(archive_fname).endswith(FAST_FILEENDING)
+
+
 def test_package_with_symlink(flyte_project, tmp_path):
     archive_fname = fast_package(source=flyte_project / "src", output_dir=tmp_path, deref_symlinks=True)
     with tarfile.open(archive_fname, dereference=True) as tar:
-        assert tar.getnames() == [
-            "",  # tar root, output removes leading '/'
+        assert sorted(tar.getnames()) == [
             "util",
             "workflows",
+            "workflows/__pycache__",
             "workflows/hello_world.py",
         ]
         util = tar.getmember("util")
@@ -105,3 +151,23 @@ def test_digest_change(flyte_project):
 
 def test_get_additional_distribution_loc():
     assert get_additional_distribution_loc("s3://my-s3-bucket/dir", "123abc") == "s3://my-s3-bucket/dir/123abc.tar.gz"
+
+
+def test_skip_invalid_symlink_in_compute_digest(tmp_path):
+    tree = {
+        "dir1": {"file1": ""},
+        "dir2": {},
+        "file.txt": "abc",
+    }
+
+    make_tree(tmp_path, tree)
+    os.symlink(str(tmp_path) + "/file.txt", str(tmp_path) + "/dir2/file.txt")
+
+    # Confirm that you can compute the digest without error
+    assert compute_digest(tmp_path) is not None
+
+    # Delete the file backing the symlink
+    os.remove(tmp_path / "file.txt")
+
+    # Confirm that you can compute the digest without error
+    assert compute_digest(tmp_path) is not None

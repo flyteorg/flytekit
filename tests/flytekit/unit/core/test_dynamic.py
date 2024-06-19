@@ -1,4 +1,6 @@
 import typing
+from collections import OrderedDict
+from typing import List
 
 import pytest
 
@@ -13,6 +15,8 @@ from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
 from flytekit.models.literals import LiteralMap
+from flytekit.tools.translator import get_serializable_task
+from flytekit.types.file import FlyteFile
 
 settings = flytekit.configuration.SerializationSettings(
     project="test_proj",
@@ -89,6 +93,43 @@ def test_dynamic_local():
 
     res = ranged_int_to_str(a=5)
     assert res == ["fast-2", "fast-3", "fast-4", "fast-5", "fast-6"]
+
+
+@pytest.mark.parametrize(
+    "input_val,output_val",
+    [
+        (4, 0),
+        (5, 5),
+    ],
+)
+def test_dynamic_local_default_args_task(input_val, output_val):
+    @task
+    def t1(a: int = 0) -> int:
+        return a
+
+    @dynamic
+    def dt(a: int) -> int:
+        if a % 2 == 0:
+            return t1()
+        return t1(a=a)
+
+    assert dt(a=input_val) == output_val
+
+    with context_manager.FlyteContextManager.with_context(
+        context_manager.FlyteContextManager.current_context().with_serialization_settings(settings)
+    ) as ctx:
+        with context_manager.FlyteContextManager.with_context(
+            ctx.with_execution_state(
+                ctx.execution_state.with_params(
+                    mode=ExecutionState.Mode.TASK_EXECUTION,
+                )
+            )
+        ) as ctx:
+            input_literal_map = TypeEngine.dict_to_literal_map(ctx, {"a": input_val})
+            dynamic_job_spec = dt.dispatch_execute(ctx, input_literal_map)
+            assert len(dynamic_job_spec.nodes) == 1
+            assert len(dynamic_job_spec.tasks) == 1
+            assert dynamic_job_spec.nodes[0].inputs[0].binding.scalar.primitive is not None
 
 
 def test_nested_dynamic_local():
@@ -262,3 +303,63 @@ def test_nested_dynamic_locals():
 
     res = dt(ss="hello")
     assert res == ["In t2 string is hello", "In t3 string is In t2 string is hello"]
+
+
+def test_node_dependency_hints_are_serialized():
+    @task
+    def t1() -> int:
+        return 0
+
+    @task
+    def t2() -> int:
+        return 0
+
+    @dynamic(node_dependency_hints=[t1, t2])
+    def dt(mode: int) -> int:
+        if mode == 1:
+            return t1()
+        if mode == 2:
+            return t2()
+
+        raise ValueError("Invalid mode")
+
+    entity_mapping = OrderedDict()
+    get_serializable_task(entity_mapping, settings, dt)
+
+    serialised_entities_iterator = iter(entity_mapping.values())
+    assert "t1" in next(serialised_entities_iterator).template.id.name
+    assert "t2" in next(serialised_entities_iterator).template.id.name
+
+
+def test_iter():
+    @task(requests=Resources(mem="5Gi"))
+    def ff_list_task() -> List[FlyteFile]:
+        return [FlyteFile(path=__file__, remote_path=False), FlyteFile(path=__file__, remote_path=False)]
+
+    @workflow
+    def sub_wf(input_file: FlyteFile) -> FlyteFile:
+        return input_file
+
+    @dynamic(requests=Resources(mem="5Gi"))
+    def dynamic_task() -> List[FlyteFile]:
+        batched_input_files = ff_list_task()
+        result_files: List[FlyteFile] = []
+
+        for _ in batched_input_files:
+            ...
+
+        return result_files
+
+    with context_manager.FlyteContextManager.with_context(
+        context_manager.FlyteContextManager.current_context().with_serialization_settings(settings)
+    ) as ctx:
+        with context_manager.FlyteContextManager.with_context(
+            ctx.with_execution_state(
+                ctx.execution_state.with_params(
+                    mode=ExecutionState.Mode.TASK_EXECUTION,
+                )
+            )
+        ) as ctx:
+            input_literal_map = TypeEngine.dict_to_literal_map(ctx, {})
+            with pytest.raises(ValueError):
+                dynamic_task.dispatch_execute(ctx, input_literal_map)

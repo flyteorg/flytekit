@@ -52,7 +52,7 @@ the root of your project, it finds the first folder that does not have a ``__ini
     required=False,
     type=click.Path(dir_okay=True, file_okay=False, writable=True, resolve_path=True),
     default=None,
-    help="Directory to write the output zip file containing the protobuf definitions",
+    help="Directory to write the output tar file containing the protobuf definitions",
 )
 @click.option(
     "-D",
@@ -117,6 +117,14 @@ the root of your project, it finds the first folder that does not have a ``__ini
     callback=key_value_callback,
     help="Environment variables to set in the container, of the format `ENV_NAME=ENV_VALUE`",
 )
+@click.option(
+    "--skip-errors",
+    "--skip-error",
+    default=False,
+    is_flag=True,
+    help="Skip errors during registration. This is useful when registering multiple packages and you want to skip "
+    "errors for some packages.",
+)
 @click.argument("package-or-module", type=click.Path(exists=True, readable=True, resolve_path=True), nargs=-1)
 @click.pass_context
 def register(
@@ -135,6 +143,7 @@ def register(
     dry_run: bool,
     activate_launchplans: bool,
     env: typing.Optional[typing.Dict[str, str]],
+    skip_errors: bool,
 ):
     """
     see help
@@ -187,6 +196,7 @@ def register(
             env=env,
             dry_run=dry_run,
             activate_launchplans=activate_launchplans,
+            skip_errors=skip_errors,
         )
     except Exception as e:
         raise e

@@ -1,15 +1,14 @@
 import http
 import json
-import pickle
 import typing
 from dataclasses import dataclass
 from typing import Optional
 
-import grpc
-from flyteidl.admin.agent_pb2 import PENDING, CreateTaskResponse, DeleteTaskResponse, GetTaskResponse, Resource
+from flyteidl.core.execution_pb2 import TaskExecution
 
 from flytekit import lazy_module
-from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry, convert_to_flyte_state, get_agent_secret
+from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource, ResourceMeta
+from flytekit.extend.backend.utils import convert_to_flyte_phase, get_agent_secret
 from flytekit.models.core.execution import TaskLog
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
@@ -20,22 +19,20 @@ DATABRICKS_API_ENDPOINT = "/api/2.1/jobs"
 
 
 @dataclass
-class Metadata:
+class DatabricksJobMetadata(ResourceMeta):
     databricks_instance: str
     run_id: str
 
 
-class DatabricksAgent(AgentBase):
-    def __init__(self):
-        super().__init__(task_type="spark")
+class DatabricksAgent(AsyncAgentBase):
+    name = "Databricks Agent"
 
-    async def async_create(
-        self,
-        context: grpc.ServicerContext,
-        output_prefix: str,
-        task_template: TaskTemplate,
-        inputs: Optional[LiteralMap] = None,
-    ) -> CreateTaskResponse:
+    def __init__(self):
+        super().__init__(task_type_name="spark", metadata_type=DatabricksJobMetadata)
+
+    async def create(
+        self, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs
+    ) -> DatabricksJobMetadata:
         custom = task_template.custom
         container = task_template.container
         databricks_job = custom["databricksConf"]
@@ -70,56 +67,59 @@ class DatabricksAgent(AgentBase):
                 if resp.status != http.HTTPStatus.OK:
                     raise Exception(f"Failed to create databricks job with error: {response}")
 
-        metadata = Metadata(
-            databricks_instance=databricks_instance,
-            run_id=str(response["run_id"]),
-        )
-        return CreateTaskResponse(resource_meta=pickle.dumps(metadata))
+        return DatabricksJobMetadata(databricks_instance=databricks_instance, run_id=str(response["run_id"]))
 
-    async def async_get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
-        metadata = pickle.loads(resource_meta)
-        databricks_instance = metadata.databricks_instance
-        databricks_url = f"https://{databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/get?run_id={metadata.run_id}"
+    async def get(self, resource_meta: DatabricksJobMetadata, **kwargs) -> Resource:
+        databricks_instance = resource_meta.databricks_instance
+        databricks_url = (
+            f"https://{databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/get?run_id={resource_meta.run_id}"
+        )
 
         async with aiohttp.ClientSession() as session:
             async with session.get(databricks_url, headers=get_header()) as resp:
                 if resp.status != http.HTTPStatus.OK:
-                    raise Exception(f"Failed to get databricks job {metadata.run_id} with error: {resp.reason}")
+                    raise Exception(f"Failed to get databricks job {resource_meta.run_id} with error: {resp.reason}")
                 response = await resp.json()
 
-        cur_state = PENDING
+        cur_phase = TaskExecution.UNDEFINED
         message = ""
         state = response.get("state")
+
+        # The databricks job's state is determined by life_cycle_state and result_state. https://docs.databricks.com/en/workflows/jobs/jobs-2.0-api.html#runresultstate
         if state:
-            if state.get("result_state"):
-                cur_state = convert_to_flyte_state(state["result_state"])
-            if state.get("state_message"):
-                message = state["state_message"]
+            life_cycle_state = state.get("life_cycle_state")
+            if result_state_is_available(life_cycle_state):
+                result_state = state.get("result_state")
+                cur_phase = convert_to_flyte_phase(result_state)
+            else:
+                cur_phase = convert_to_flyte_phase(life_cycle_state)
+
+            message = state.get("state_message")
 
         job_id = response.get("job_id")
-        databricks_console_url = f"https://{databricks_instance}/#job/{job_id}/run/{metadata.run_id}"
+        databricks_console_url = f"https://{databricks_instance}/#job/{job_id}/run/{resource_meta.run_id}"
         log_links = [TaskLog(uri=databricks_console_url, name="Databricks Console").to_flyte_idl()]
 
-        return GetTaskResponse(resource=Resource(state=cur_state, message=message), log_links=log_links)
+        return Resource(phase=cur_phase, message=message, log_links=log_links)
 
-    async def async_delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
-        metadata = pickle.loads(resource_meta)
-
-        databricks_url = f"https://{metadata.databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/cancel"
-        data = json.dumps({"run_id": metadata.run_id})
+    async def delete(self, resource_meta: DatabricksJobMetadata, **kwargs):
+        databricks_url = f"https://{resource_meta.databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/cancel"
+        data = json.dumps({"run_id": resource_meta.run_id})
 
         async with aiohttp.ClientSession() as session:
             async with session.post(databricks_url, headers=get_header(), data=data) as resp:
                 if resp.status != http.HTTPStatus.OK:
-                    raise Exception(f"Failed to cancel databricks job {metadata.run_id} with error: {resp.reason}")
+                    raise Exception(f"Failed to cancel databricks job {resource_meta.run_id} with error: {resp.reason}")
                 await resp.json()
-
-        return DeleteTaskResponse()
 
 
 def get_header() -> typing.Dict[str, str]:
     token = get_agent_secret("FLYTE_DATABRICKS_ACCESS_TOKEN")
     return {"Authorization": f"Bearer {token}", "content-type": "application/json"}
+
+
+def result_state_is_available(life_cycle_state: str) -> bool:
+    return life_cycle_state == "TERMINATED"
 
 
 AgentRegistry.register(DatabricksAgent())

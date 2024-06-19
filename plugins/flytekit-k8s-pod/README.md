@@ -10,4 +10,4 @@ To install the plugin, run the following command:
 pip install flytekitplugins-pod
 ```
 
-An [example](https://docs.flyte.org/projects/cookbook/en/latest/auto/integrations/kubernetes/pod/pod.html) can be found in the documentation.
+An [example](https://docs.flyte.org/en/latest/flytesnacks/examples/k8s_pod_plugin/index.html) can be found in the documentation.

@@ -68,10 +68,36 @@ def test_convert_limits(resource_dict: Dict[str, str], expected_resource_name: _
 
 def test_incorrect_type_resources():
     with pytest.raises(AssertionError):
-        Resources(cpu=1)  # type: ignore
+        Resources(cpu=bytes(1))  # type: ignore
     with pytest.raises(AssertionError):
-        Resources(mem=1)  # type: ignore
+        Resources(mem=0.1)  # type: ignore
     with pytest.raises(AssertionError):
-        Resources(gpu=1)  # type: ignore
+        Resources(gpu=0.1)  # type: ignore
     with pytest.raises(AssertionError):
-        Resources(ephemeral_storage=1)  # type: ignore
+        Resources(ephemeral_storage=0.1)  # type: ignore
+
+
+def test_resources_serialization():
+    resources = Resources(cpu="2", mem="1Gi", gpu="1", ephemeral_storage="10Gi")
+    json_str = resources.to_json()
+    assert isinstance(json_str, str)
+    assert '"cpu": "2"' in json_str
+    assert '"mem": "1Gi"' in json_str
+    assert '"gpu": "1"' in json_str
+    assert '"ephemeral_storage": "10Gi"' in json_str
+
+
+def test_resources_deserialization():
+    json_str = '{"cpu": "2", "mem": "1Gi", "gpu": "1", "ephemeral_storage": "10Gi"}'
+    resources = Resources.from_json(json_str)
+    assert resources.cpu == "2"
+    assert resources.mem == "1Gi"
+    assert resources.gpu == "1"
+    assert resources.ephemeral_storage == "10Gi"
+
+
+def test_resources_round_trip():
+    original = Resources(cpu="4", mem="2Gi", gpu="2", ephemeral_storage="20Gi")
+    json_str = original.to_json()
+    result = Resources.from_json(json_str)
+    assert original == result

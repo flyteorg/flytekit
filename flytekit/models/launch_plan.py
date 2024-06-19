@@ -1,6 +1,7 @@
 import typing
 
 from flyteidl.admin import launch_plan_pb2 as _launch_plan
+from google.protobuf.any_pb2 import Any
 
 from flytekit.models import common as _common
 from flytekit.models import interface as _interface
@@ -11,15 +12,17 @@ from flytekit.models.core import identifier as _identifier
 
 
 class LaunchPlanMetadata(_common.FlyteIdlEntity):
-    def __init__(self, schedule, notifications):
+    def __init__(self, schedule, notifications, launch_conditions=None):
         """
 
         :param flytekit.models.schedule.Schedule schedule: Schedule to execute the Launch Plan
         :param list[flytekit.models.common.Notification] notifications: List of notifications based on
             execution status transitions
+        :param launch_conditions: Additional metadata for launching
         """
         self._schedule = schedule
         self._notifications = notifications
+        self._launch_conditions = launch_conditions
 
     @property
     def schedule(self):
@@ -37,14 +40,24 @@ class LaunchPlanMetadata(_common.FlyteIdlEntity):
         """
         return self._notifications
 
+    @property
+    def launch_conditions(self):
+        return self._launch_conditions
+
     def to_flyte_idl(self):
         """
         List of notifications based on Execution status transitions
         :rtype: flyteidl.admin.launch_plan_pb2.LaunchPlanMetadata
         """
+        if self.launch_conditions:
+            a = Any()
+            a.Pack(self.launch_conditions)
+        else:
+            a = None
         return _launch_plan.LaunchPlanMetadata(
             schedule=self.schedule.to_flyte_idl() if self.schedule is not None else None,
             notifications=[n.to_flyte_idl() for n in self.notifications],
+            launch_conditions=a,
         )
 
     @classmethod
@@ -58,6 +71,7 @@ class LaunchPlanMetadata(_common.FlyteIdlEntity):
             if pb2_object.HasField("schedule")
             else None,
             notifications=[_common.Notification.from_flyte_idl(n) for n in pb2_object.notifications],
+            launch_conditions=pb2_object.launch_conditions if pb2_object.HasField("launch_conditions") else None,
         )
 
 
@@ -123,6 +137,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         raw_output_data_config: _common.RawOutputDataConfig,
         max_parallelism: typing.Optional[int] = None,
         security_context: typing.Optional[security.SecurityContext] = None,
+        overwrite_cache: typing.Optional[bool] = None,
     ):
         """
         The spec for a Launch Plan.
@@ -154,6 +169,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         self._raw_output_data_config = raw_output_data_config
         self._max_parallelism = max_parallelism
         self._security_context = security_context
+        self._overwrite_cache = overwrite_cache
 
     @property
     def workflow_id(self):
@@ -226,6 +242,10 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
     def security_context(self) -> typing.Optional[security.SecurityContext]:
         return self._security_context
 
+    @property
+    def overwrite_cache(self) -> typing.Optional[bool]:
+        return self._overwrite_cache
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.launch_plan_pb2.LaunchPlanSpec
@@ -241,6 +261,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
             raw_output_data_config=self.raw_output_data_config.to_flyte_idl(),
             max_parallelism=self.max_parallelism,
             security_context=self.security_context.to_flyte_idl() if self.security_context else None,
+            overwrite_cache=self.overwrite_cache if self.overwrite_cache else None,
         )
 
     @classmethod
@@ -273,6 +294,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
             security_context=security.SecurityContext.from_flyte_idl(pb2.security_context)
             if pb2.security_context
             else None,
+            overwrite_cache=pb2.overwrite_cache if pb2.overwrite_cache else None,
         )
 
 

@@ -1,29 +1,29 @@
 import json
 import shlex
 import subprocess
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from tempfile import NamedTemporaryFile
 from typing import Optional
 
-import grpc
-from flyteidl.admin.agent_pb2 import CreateTaskResponse, DeleteTaskResponse, GetTaskResponse, Resource
-from flytekitplugins.mmcloud.utils import async_check_output, mmcloud_status_to_flyte_state
+from flytekitplugins.mmcloud.utils import async_check_output, mmcloud_status_to_flyte_phase
 
 from flytekit import current_context
-from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry
+from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource, ResourceMeta
 from flytekit.loggers import logger
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
 
 @dataclass
-class Metadata:
+class MMCloudMetadata(ResourceMeta):
     job_id: str
 
 
-class MMCloudAgent(AgentBase):
+class MMCloudAgent(AsyncAgentBase):
+    name = "MMCloud Agent"
+
     def __init__(self):
-        super().__init__(task_type="mmcloud_task")
+        super().__init__(task_type_name="mmcloud_task", metadata_type=MMCloudMetadata)
         self._response_format = ["--format", "json"]
 
     async def async_login(self):
@@ -55,15 +55,11 @@ class MMCloudAgent(AgentBase):
 
             logger.info("Logged in to OpCenter")
 
-    async def async_create(
-        self,
-        context: grpc.ServicerContext,
-        output_prefix: str,
-        task_template: TaskTemplate,
-        inputs: Optional[LiteralMap] = None,
-    ) -> CreateTaskResponse:
+    async def create(
+        self, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs
+    ) -> MMCloudMetadata:
         """
-        Submit Flyte task as MMCloud job to the OpCenter, and return the job UID for the task.
+        Submit a Flyte task as MMCloud job to the OpCenter, and return the job UID for the task.
         """
         submit_command = [
             "float",
@@ -131,16 +127,13 @@ class MMCloudAgent(AgentBase):
             logger.exception("Cannot open job script for writing")
             raise
 
-        metadata = Metadata(job_id=job_id)
+        return MMCloudMetadata(job_id=job_id)
 
-        return CreateTaskResponse(resource_meta=json.dumps(asdict(metadata)).encode("utf-8"))
-
-    async def async_get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
+    async def get(self, resource_meta: MMCloudMetadata, **kwargs) -> Resource:
         """
         Return the status of the task, and return the outputs on success.
         """
-        metadata = Metadata(**json.loads(resource_meta.decode("utf-8")))
-        job_id = metadata.job_id
+        job_id = resource_meta.job_id
 
         show_command = [
             "float",
@@ -171,19 +164,18 @@ class MMCloudAgent(AgentBase):
             logger.exception(f"Failed to obtain status for MMCloud job: {job_id}")
             raise
 
-        task_state = mmcloud_status_to_flyte_state(job_status)
+        task_phase = mmcloud_status_to_flyte_phase(job_status)
 
         logger.info(f"Obtained status for MMCloud job {job_id}: {job_status}")
         logger.debug(f"OpCenter response: {show_response}")
 
-        return GetTaskResponse(resource=Resource(state=task_state))
+        return Resource(phase=task_phase)
 
-    async def async_delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
+    async def delete(self, resource_meta: MMCloudMetadata, **kwargs):
         """
         Delete the task. This call should be idempotent.
         """
-        metadata = Metadata(**json.loads(resource_meta.decode("utf-8")))
-        job_id = metadata.job_id
+        job_id = resource_meta.job_id
 
         cancel_command = [
             "float",
@@ -205,8 +197,6 @@ class MMCloudAgent(AgentBase):
             raise
 
         logger.info(f"Submitted cancel request for MMCloud job: {job_id}")
-
-        return DeleteTaskResponse()
 
 
 AgentRegistry.register(MMCloudAgent())

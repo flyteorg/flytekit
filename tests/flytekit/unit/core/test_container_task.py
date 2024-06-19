@@ -1,3 +1,8 @@
+import os
+import sys
+from collections import OrderedDict
+from typing import Tuple
+
 import pytest
 from kubernetes.client.models import (
     V1Affinity,
@@ -11,12 +16,81 @@ from kubernetes.client.models import (
     V1Toleration,
 )
 
-from flytekit import kwtypes
+from flytekit import kwtypes, task, workflow
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.container_task import ContainerTask
 from flytekit.core.pod_template import PodTemplate
 from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec
 from flytekit.tools.translator import get_serializable_task
+
+
+@pytest.mark.skipif(
+    sys.platform in ["darwin", "win32"],
+    reason="Skip if running on windows or macos due to CI Docker environment setup failure",
+)
+def test_local_execution():
+    calculate_ellipse_area_python_template_style = ContainerTask(
+        name="calculate_ellipse_area_python_template_style",
+        input_data_dir="/var/inputs",
+        output_data_dir="/var/outputs",
+        inputs=kwtypes(a=float, b=float),
+        outputs=kwtypes(area=float, metadata=str),
+        image="ghcr.io/flyteorg/rawcontainers-python:v2",
+        command=[
+            "python",
+            "calculate-ellipse-area.py",
+            "{{.inputs.a}}",
+            "{{.inputs.b}}",
+            "/var/outputs",
+        ],
+    )
+
+    area, metadata = calculate_ellipse_area_python_template_style(a=3.0, b=4.0)
+    assert isinstance(area, float)
+    assert isinstance(metadata, str)
+
+    # Workflow execution with container task
+    @task
+    def t1(a: float, b: float) -> Tuple[float, float]:
+        return a + b, a * b
+
+    @workflow
+    def wf(a: float, b: float) -> Tuple[float, str]:
+        a, b = t1(a=a, b=b)
+        area, metadata = calculate_ellipse_area_python_template_style(a=a, b=b)
+        return area, metadata
+
+    area, metadata = wf(a=3.0, b=4.0)
+    assert isinstance(area, float)
+    assert isinstance(metadata, str)
+
+
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="Skip if running on windows due to path error",
+)
+def test_local_execution_special_cases():
+    # Boolean conversion from string checks
+    assert all([bool(s) for s in ["False", "false", "True", "true"]])
+
+    # Path normalization
+    input_data_dir = "/var/inputs"
+    assert os.path.normpath(input_data_dir) == "/var/inputs"
+    assert os.path.normpath(input_data_dir + "/") == "/var/inputs"
+
+    # Datetime and timedelta string conversions
+    ct = ContainerTask(
+        name="local-execution",
+        image="test-image",
+        command="echo",
+    )
+
+    from datetime import datetime, timedelta
+
+    now = datetime.now()
+    assert datetime.fromisoformat(str(now)) == now
+    td = timedelta(days=1, hours=1, minutes=1, seconds=1, microseconds=1)
+    assert td == ct._string_to_timedelta(str(td))
 
 
 def test_pod_template():
@@ -72,7 +146,7 @@ def test_pod_template():
     #################
     # Test Serialization
     #################
-    ts = get_serializable_task(default_serialization_settings, ct)
+    ts = get_serializable_task(OrderedDict(), default_serialization_settings, ct)
     assert ts.template.metadata.pod_template_name == "my-base-template"
     assert ts.template.container is None
     assert ts.template.k8s_pod is not None
@@ -82,19 +156,6 @@ def test_pod_template():
         {"effect": "NoSchedule", "key": "nvidia.com/gpu", "operator": "Exists"}
     ]
     assert serialized_pod_spec["runtimeClassName"] == "nvidia"
-
-
-def test_local_execution():
-    ct = ContainerTask(
-        name="name",
-        input_data_dir="/var/inputs",
-        output_data_dir="/var/outputs",
-        image="inexistent-image:v42",
-        command=["some", "command"],
-    )
-
-    with pytest.raises(RuntimeError):
-        ct()
 
 
 def test_raw_container_with_image_spec(mock_image_spec_builder):

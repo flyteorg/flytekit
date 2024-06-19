@@ -1,13 +1,13 @@
 from __future__ import annotations
 
+import _datetime
 import collections
 import types
 import typing
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, is_dataclass
 from typing import Dict, Generator, Optional, Type, Union
 
-import _datetime
 from dataclasses_json import config
 from fsspec.utils import get_protocol
 from marshmallow import fields
@@ -114,6 +114,22 @@ class StructuredDataset(DataClassJSONMixin):
         )
 
 
+# flat the nested column map recursively
+def flatten_dict(sub_dict: dict, parent_key: str = "") -> typing.Dict:
+    result = {}
+    for key, value in sub_dict.items():
+        current_key = f"{parent_key}.{key}" if parent_key else key
+        if isinstance(value, dict):
+            result.update(flatten_dict(sub_dict=value, parent_key=current_key))
+        elif is_dataclass(value):
+            fields = getattr(value, "__dataclass_fields__")
+            d = {k: v.type for k, v in fields.items()}
+            result.update(flatten_dict(sub_dict=d, parent_key=current_key))
+        else:
+            result[current_key] = value
+    return result
+
+
 def extract_cols_and_format(
     t: typing.Any,
 ) -> typing.Tuple[Type[T], Optional[typing.OrderedDict[str, Type]], Optional[str], Optional["pa.lib.Schema"]]:
@@ -142,7 +158,16 @@ def extract_cols_and_format(
     if get_origin(t) is Annotated:
         base_type, *annotate_args = get_args(t)
         for aa in annotate_args:
-            if isinstance(aa, StructuredDatasetFormat):
+            if hasattr(aa, "__annotations__"):
+                # handle dataclass argument
+                d = collections.OrderedDict()
+                d.update(aa.__annotations__)
+                ordered_dict_cols = d
+            elif isinstance(aa, dict):
+                d = collections.OrderedDict()
+                d.update(aa)
+                ordered_dict_cols = d
+            elif isinstance(aa, StructuredDatasetFormat):
                 if fmt != "":
                     raise ValueError(f"A format was already specified {fmt}, cannot use {aa}")
                 fmt = aa
@@ -177,7 +202,7 @@ class StructuredDatasetEncoder(ABC):
           is capable of handling.
         :param supported_format: Arbitrary string representing the format. If not supplied then an empty string
           will be used. An empty string implies that the encoder works with any format. If the format being asked
-          for does not exist, the transformer enginer will look for the "" endcoder instead and write a warning.
+          for does not exist, the transformer engine will look for the "" encoder instead and write a warning.
         """
         self._python_type = python_type
         self._protocol = protocol.replace("://", "") if protocol else None
@@ -315,7 +340,7 @@ def get_supported_types():
         _datetime.datetime: type_models.LiteralType(simple=type_models.SimpleType.DATETIME),
         _np.timedelta64: type_models.LiteralType(simple=type_models.SimpleType.DURATION),
         _datetime.timedelta: type_models.LiteralType(simple=type_models.SimpleType.DURATION),
-        _np.string_: type_models.LiteralType(simple=type_models.SimpleType.STRING),
+        _np.bytes_: type_models.LiteralType(simple=type_models.SimpleType.STRING),
         _np.str_: type_models.LiteralType(simple=type_models.SimpleType.STRING),
         _np.object_: type_models.LiteralType(simple=type_models.SimpleType.STRING),
         str: type_models.LiteralType(simple=type_models.SimpleType.STRING),
@@ -323,8 +348,7 @@ def get_supported_types():
     return _SUPPORTED_TYPES
 
 
-class DuplicateHandlerError(ValueError):
-    ...
+class DuplicateHandlerError(ValueError): ...
 
 
 class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
@@ -826,7 +850,8 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         converted_cols: typing.List[StructuredDatasetType.DatasetColumn] = []
         if column_map is None or len(column_map) == 0:
             return converted_cols
-        for k, v in column_map.items():
+        flat_column_map = flatten_dict(column_map)
+        for k, v in flat_column_map.items():
             lt = self._get_dataset_column_literal_type(v)
             converted_cols.append(StructuredDatasetType.DatasetColumn(name=k, literal_type=lt))
         return converted_cols
@@ -835,9 +860,9 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         original_python_type, column_map, storage_format, pa_schema = extract_cols_and_format(t)  # type: ignore
 
         # Get the column information
-        converted_cols: typing.List[
-            StructuredDatasetType.DatasetColumn
-        ] = self._convert_ordered_dict_of_columns_to_list(column_map)
+        converted_cols: typing.List[StructuredDatasetType.DatasetColumn] = (
+            self._convert_ordered_dict_of_columns_to_list(column_map)
+        )
 
         return StructuredDatasetType(
             columns=converted_cols,

@@ -32,6 +32,7 @@ from flytekit.core.task import TaskMetadata, task
 from flytekit.core.testing import patch, task_mock
 from flytekit.core.type_engine import RestrictedTypeError, SimpleTransformer, TypeEngine
 from flytekit.core.workflow import workflow
+from flytekit.exceptions.user import FlyteValidationException
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import types as _core_types
 from flytekit.models.interface import Parameter
@@ -129,6 +130,15 @@ def test_single_output():
         assert outputs.ref.node is nodes[0]
 
     assert context_manager.FlyteContextManager.size() == 1
+
+
+def test_missing_output():
+    @workflow
+    def wf() -> str:
+        return None  # type: ignore
+
+    with pytest.raises(FlyteValidationException, match="Failed to bind output"):
+        wf.compile()
 
 
 def test_engine_file_output():
@@ -422,6 +432,10 @@ def test_flyte_file_in_dataclass():
         assert flyte_tmp_dir in fs.b.a.path
         assert flyte_tmp_dir in fs.b.b.path
 
+        os.makedirs(os.path.dirname(fs.a.path), exist_ok=True)
+        with open(fs.a.path, "w") as file1:
+            file1.write("hello world")
+
         return fs.a.path
 
     @task
@@ -457,11 +471,11 @@ def test_flyte_directory_in_dataclass():
         return fs
 
     @task
-    def t2(fs: FileStruct) -> os.PathLike:
+    def t2(fs: FileStruct) -> FlyteDirectory:
         return fs.a.path
 
     @workflow
-    def wf(path: str) -> os.PathLike:
+    def wf(path: str) -> FlyteDirectory:
         n1 = t1(path=path)
         return t2(fs=n1)
 
@@ -802,7 +816,7 @@ def test_wf1_branches_no_else_malformed_but_no_error():
     def t2(a: str) -> str:
         return a
 
-    with pytest.raises(TypeError):
+    with pytest.raises(FlyteValidationException):
 
         @workflow
         def my_wf(a: int, b: str) -> (int, str):
@@ -1086,18 +1100,6 @@ def test_wf_with_catching_no_return():
             t3(s=x)
 
         wf()
-
-
-def test_wf_custom_types_missing_dataclass_json():
-    with pytest.raises(AssertionError):
-
-        @dataclass
-        class MyCustomType(object):
-            pass
-
-        @task
-        def t1(a: int) -> MyCustomType:
-            return MyCustomType()
 
 
 def test_wf_custom_types():
@@ -1699,8 +1701,8 @@ def test_union_type():
         match=re.escape(
             "Error encountered while executing 'wf2':\n"
             f"  Failed to convert inputs of task '{prefix}tests.flytekit.unit.core.test_type_hints.t2':\n"
-            '  Cannot convert from <FlyteLiteral scalar { union { value { scalar { primitive { string_value: "2" } } } '
-            'type { simple: STRING structure { tag: "str" } } } }> to typing.Union[float, dict] (using tag str)'
+            '  Cannot convert from [Flyte Serialized object: Type: <Literal> Value: <scalar { union { value { scalar { primitive { string_value: "2" } } } '
+            'type { simple: STRING structure { tag: "str" } } } }>] to typing.Union[float, dict] (using tag str)'
         ),
     ):
         assert wf2(a="2") == "2"
@@ -1981,7 +1983,7 @@ def test_promise_illegal_resources():
 
     @workflow
     def my_wf(a: int) -> int:
-        return t1(a=a).with_overrides(requests=Resources(cpu=1))  # type: ignore
+        return t1(a=a).with_overrides(requests=Resources(cpu=1, mem=1.1))  # type: ignore
 
     with pytest.raises(AssertionError):
         my_wf(a=1)

@@ -1,3 +1,5 @@
+import asyncio
+import functools
 import os
 import tarfile
 import tempfile
@@ -9,7 +11,7 @@ import click
 from flytekit.configuration import FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.loggers import logger
-from flytekit.models import launch_plan
+from flytekit.models import launch_plan, task
 from flytekit.models.core.identifier import Identifier
 from flytekit.remote import FlyteRemote
 from flytekit.remote.remote import RegistrationSkipped, _get_git_repo_url
@@ -97,7 +99,9 @@ def package(
             click.secho(f"Fast mode enabled: compressed archive {archive_fname}", dim=True)
 
         with tarfile.open(output, "w:gz") as tar:
-            tar.add(output_tmpdir, arcname="")
+            files: typing.List[str] = os.listdir(output_tmpdir)
+            for ws_file in files:
+                tar.add(os.path.join(output_tmpdir, ws_file), arcname=ws_file)
 
     click.secho(f"Successfully packaged {len(serializable_entities)} flyte objects into {output}", fg="green")
 
@@ -220,6 +224,7 @@ def register(
     env: typing.Optional[typing.Dict[str, str]],
     dry_run: bool = False,
     activate_launchplans: bool = False,
+    skip_errors: bool = False,
 ):
     detected_root = find_common_root(package_or_module)
     click.secho(f"Detected Root {detected_root}, using this to create deployable package...", fg="yellow")
@@ -266,26 +271,47 @@ def register(
         click.secho("No Flyte entities were detected. Aborting!", fg="red")
         return
 
-    for cp_entity in registrable_entities:
+    def _raw_register(cp_entity: FlyteControlPlaneEntity):
         is_lp = False
         if isinstance(cp_entity, launch_plan.LaunchPlan):
             og_id = cp_entity.id
             is_lp = True
         else:
             og_id = cp_entity.template.id
-        secho(og_id, "")
         try:
             if not dry_run:
-                i = remote.raw_register(
-                    cp_entity, serialization_settings, version=version, create_default_launchplan=False
-                )
-                secho(i)
-                if is_lp and activate_launchplans:
-                    secho(og_id, "", op="Activation")
-                    remote.activate_launchplan(i)
-                    secho(i, reason="activated", op="Activation")
+                try:
+                    i = remote.raw_register(
+                        cp_entity, serialization_settings, version=version, create_default_launchplan=False
+                    )
+                    secho(i, state="success")
+                    if is_lp and activate_launchplans:
+                        secho(og_id, "", op="Activation")
+                        remote.activate_launchplan(i)
+                        secho(i, reason="activated", op="Activation")
+                except Exception as e:
+                    if not skip_errors:
+                        raise e
+                    secho(og_id, state="failed")
             else:
                 secho(og_id, reason="Dry run Mode!")
         except RegistrationSkipped:
             secho(og_id, "failed")
+
+    async def _register(entities: typing.List[task.TaskSpec]):
+        loop = asyncio.get_event_loop()
+        tasks = []
+        for entity in entities:
+            tasks.append(loop.run_in_executor(None, functools.partial(_raw_register, entity)))
+        await asyncio.gather(*tasks)
+        return
+
+    # concurrent register
+    cp_task_entities = list(filter(lambda x: isinstance(x, task.TaskSpec), registrable_entities))
+    asyncio.run(_register(cp_task_entities))
+    # serial register
+    cp_other_entities = list(filter(lambda x: not isinstance(x, task.TaskSpec), registrable_entities))
+    for entity in cp_other_entities:
+        _raw_register(entity)
+
     click.secho(f"Successfully registered {len(registrable_entities)} entities", fg="green")

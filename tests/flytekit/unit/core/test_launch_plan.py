@@ -44,7 +44,7 @@ def test_lp_documentation():
     # fixed_and_default_end
 
     # schedule_start
-    sched = CronSchedule("* * ? * * *", kickoff_time_input_arg="abc")
+    sched = CronSchedule(schedule="*/1 * * * *", kickoff_time_input_arg="abc")
     email_notif = notification.Email(
         phases=[_execution_model.WorkflowExecutionPhase.SUCCEEDED], recipients_email=["my-team@email.com"]
     )
@@ -122,7 +122,7 @@ def test_lp_each_parameter():
         launch_plan.LaunchPlan.get_or_create(workflow=wf, name="get_or_create_fixed")
 
     # Schedule Parameter
-    obj = CronSchedule("* * ? * * *", kickoff_time_input_arg="abc")
+    obj = CronSchedule(schedule="*/1 * * * *", kickoff_time_input_arg="abc")
     schedule_lp = launch_plan.LaunchPlan.get_or_create(workflow=wf, name="get_or_create_schedule", schedule=obj)
     schedule_lp1 = launch_plan.LaunchPlan.get_or_create(workflow=wf, name="get_or_create_schedule", schedule=obj)
 
@@ -284,6 +284,20 @@ def test_lp_each_parameter():
     )
     assert max_parallelism_lp1 is max_parallelism_lp2
 
+    # Overwrite cache
+    overwrite_cache = True
+    overwrite_cache_lp1 = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf,
+        name="get_or_create_overwrite_cache",
+        overwrite_cache=overwrite_cache,
+    )
+    overwrite_cache_lp2 = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf,
+        name="get_or_create_overwrite_cache",
+        overwrite_cache=overwrite_cache,
+    )
+    assert overwrite_cache_lp1 is overwrite_cache_lp2
+
     # Default LaunchPlan
     name_lp = launch_plan.LaunchPlan.get_or_create(workflow=wf)
     name_lp1 = launch_plan.LaunchPlan.get_or_create(workflow=wf)
@@ -309,8 +323,8 @@ def test_lp_all_parameters():
         u = t2(a=x, b=y, c=c)
         return u
 
-    obj = CronSchedule("* * ? * * *", kickoff_time_input_arg="abc")
-    obj1 = CronSchedule("10 * ? * * *", kickoff_time_input_arg="abc")
+    obj = CronSchedule(schedule="* * * * * *", kickoff_time_input_arg="abc")
+    obj1 = CronSchedule(schedule="10 * * * * *", kickoff_time_input_arg="abc")
     slack_notif = notification.Slack(
         phases=[_execution_model.WorkflowExecutionPhase.SUCCEEDED], recipients_email=["my-team@slack.com"]
     )
@@ -318,6 +332,7 @@ def test_lp_all_parameters():
     labels = Labels({"label": "foo"})
     annotations = Annotations({"anno": "bar"})
     raw_output_data_config = RawOutputDataConfig("s3://foo/output")
+    overwrite_cache = True
 
     lp = launch_plan.LaunchPlan.get_or_create(
         workflow=wf,
@@ -330,6 +345,7 @@ def test_lp_all_parameters():
         labels=labels,
         annotations=annotations,
         raw_output_data_config=raw_output_data_config,
+        overwrite_cache=overwrite_cache,
     )
     lp2 = launch_plan.LaunchPlan.get_or_create(
         workflow=wf,
@@ -342,6 +358,7 @@ def test_lp_all_parameters():
         labels=labels,
         annotations=annotations,
         raw_output_data_config=raw_output_data_config,
+        overwrite_cache=overwrite_cache,
     )
 
     assert lp is lp2
@@ -358,6 +375,7 @@ def test_lp_all_parameters():
             labels=labels,
             annotations=annotations,
             raw_output_data_config=raw_output_data_config,
+            overwrite_cache=overwrite_cache,
         )
 
 

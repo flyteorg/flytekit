@@ -31,6 +31,9 @@ These classes can be used to create custom accelerator type constants. For examp
 .. currentmodule:: flytekit.extras.accelerators
 
 .. autosummary::
+   :template: custom.rst
+   :toctree: generated/
+   :nosignatures:
 
    BaseAccelerator
    GPUAccelerator
@@ -75,6 +78,8 @@ if you want to use a fractional GPU, you can use the ``partitioned`` method on t
 .. currentmodule:: flytekit.extras.accelerators
 
 .. autosummary::
+   :toctree: generated/
+   :nosignatures:
 
    A10G
    L4
@@ -88,6 +93,7 @@ if you want to use a fractional GPU, you can use the ``partitioned`` method on t
    A100_80GB
 
 """
+
 import abc
 import copy
 from typing import ClassVar, Generic, Optional, Type, TypeVar
@@ -104,8 +110,7 @@ class BaseAccelerator(abc.ABC, Generic[T]):
     """
 
     @abc.abstractmethod
-    def to_flyte_idl(self) -> T:
-        ...
+    def to_flyte_idl(self) -> T: ...
 
 
 class GPUAccelerator(BaseAccelerator):
@@ -196,7 +201,7 @@ class _A100_Base(MultiInstanceGPUAccelerator):
 class _A100(_A100_Base):
     """
     Class that represents an `NVIDIA A100 GPU <https://www.nvidia.com/en-us/data-center/a100/>`_. It is possible
-    to specify a partition of an A100 GPU by using the provided paritions on the class. For example, to specify a
+    to specify a partition of an A100 GPU by using the provided partitions on the class. For example, to specify a
     10GB partition, use ``A100.partition_2g_10gb``.
     Refer to `Partitioned GPUs <https://docs.nvidia.com/datacenter/tesla/mig-user-guide/index.html#partitioning>`_
     """

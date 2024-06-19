@@ -1,11 +1,10 @@
 from typing import Type
 
-from flytekit import Blob, BlobMetadata, BlobType, FlyteContext, Literal, LiteralType, Scalar, lazy_module
+from pyspark.ml import PipelineModel
+
+from flytekit import Blob, BlobMetadata, BlobType, FlyteContext, Literal, LiteralType, Scalar
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extend import TypeTransformer
-
-pyspark_ml = lazy_module("pyspark.ml")
-PipelineModel = pyspark_ml.PipelineModel
 
 
 class PySparkPipelineModelTransformer(TypeTransformer[PipelineModel]):

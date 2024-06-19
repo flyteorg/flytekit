@@ -42,8 +42,12 @@ class Secret(_common.FlyteIdlEntity):
 
     def __post_init__(self):
         from flytekit.configuration.plugin import get_plugin
+        from flytekit.core.context_manager import FlyteContextManager
 
-        if get_plugin().secret_requires_group() and self.group is None:
+        # Only check for the groups during registration.
+        execution = FlyteContextManager.current_context().execution_state
+        in_registration_context = execution.mode is None
+        if in_registration_context and get_plugin().secret_requires_group() and self.group is None:
             raise ValueError("Group is a required parameter")
 
     def to_flyte_idl(self) -> _sec.Secret:
@@ -88,12 +92,14 @@ class Identity(_common.FlyteIdlEntity):
     iam_role: Optional[str] = None
     k8s_service_account: Optional[str] = None
     oauth2_client: Optional[OAuth2Client] = None
+    execution_identity: Optional[str] = None
 
     def to_flyte_idl(self) -> _sec.Identity:
         return _sec.Identity(
             iam_role=self.iam_role if self.iam_role else None,
             k8s_service_account=self.k8s_service_account if self.k8s_service_account else None,
             oauth2_client=self.oauth2_client.to_flyte_idl() if self.oauth2_client else None,
+            execution_identity=self.execution_identity if self.execution_identity else None,
         )
 
     @classmethod
@@ -104,6 +110,7 @@ class Identity(_common.FlyteIdlEntity):
             oauth2_client=OAuth2Client.from_flyte_idl(pb2_object.oauth2_client)
             if pb2_object.oauth2_client and pb2_object.oauth2_client.ByteSize()
             else None,
+            execution_identity=pb2_object.execution_identity if pb2_object.execution_identity else None,
         )
 
 

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import configparser
-import configparser as _configparser
 import os
 import pathlib
 import typing
 from dataclasses import dataclass
+from functools import lru_cache
 from os import getenv
 from pathlib import Path
 
@@ -189,8 +189,8 @@ class ConfigFile(object):
                 logger.warning(f"Error {exc} reading yaml config file at {location}, ignoring...")
                 return None
 
-    def _read_legacy_config(self, location: str) -> _configparser.ConfigParser:
-        c = _configparser.ConfigParser()
+    def _read_legacy_config(self, location: str) -> configparser.ConfigParser:
+        c = configparser.ConfigParser()
         c.read(self._location)
         if c.has_section("internal"):
             raise _user_exceptions.FlyteAssertion(
@@ -230,7 +230,7 @@ class ConfigFile(object):
         raise NotImplementedError("Support for other config types besides .ini / .config files not yet supported")
 
     @property
-    def legacy_config(self) -> _configparser.ConfigParser:
+    def legacy_config(self) -> configparser.ConfigParser:
         return self._legacy_config
 
     @property
@@ -238,6 +238,7 @@ class ConfigFile(object):
         return self._yaml_config
 
 
+@lru_cache
 def get_config_file(c: typing.Union[str, ConfigFile, None]) -> typing.Optional[ConfigFile]:
     """
     Checks if the given argument is a file or a configFile and returns a loaded configFile else returns None

@@ -1,3 +1,5 @@
+from collections import OrderedDict
+
 import pytest
 
 import flytekit
@@ -90,7 +92,7 @@ def test_class_decorator():
     assert t() == "hello world"
     assert t.get_config(settings=ss) == {}
 
-    ts = get_serializable_task(ss, t)
+    ts = get_serializable_task(OrderedDict(), ss, t)
     assert ts.template.config == {"foo": "bar"}
 
     @task
@@ -98,5 +100,5 @@ def test_class_decorator():
     def t() -> str:
         return "hello world"
 
-    ts = get_serializable_task(ss, t)
+    ts = get_serializable_task(OrderedDict(), ss, t)
     assert ts.template.config == {"foo": "baz"}

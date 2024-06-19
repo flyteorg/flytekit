@@ -6,7 +6,7 @@
 #
 aiofiles==23.2.1
     # via gcloud-aio-storage
-aiohttp==3.9.0
+aiohttp==3.9.4
     # via
     #   apache-airflow-providers-http
     #   gcloud-aio-auth
@@ -21,8 +21,9 @@ annotated-types==0.6.0
     # via pydantic
 anyio==4.0.0
     # via httpx
-apache-airflow==2.8.0
+apache-airflow[google]==2.8.0
     # via
+    #   -r dev-requirements.in
     #   apache-airflow-providers-apache-beam
     #   apache-airflow-providers-common-sql
     #   apache-airflow-providers-ftp
@@ -37,10 +38,12 @@ apache-airflow-providers-common-sql==1.8.0
     #   apache-airflow
     #   apache-airflow-providers-google
     #   apache-airflow-providers-sqlite
-apache-airflow-providers-ftp==3.6.0
+apache-airflow-providers-ftp==3.7.0
     # via apache-airflow
 apache-airflow-providers-google==10.11.0
-    # via apache-airflow-providers-apache-beam
+    # via
+    #   apache-airflow
+    #   apache-airflow-providers-apache-beam
 apache-airflow-providers-http==4.6.0
     # via apache-airflow
 apache-airflow-providers-imap==3.4.0
@@ -50,9 +53,7 @@ apache-airflow-providers-sqlite==3.5.0
 apache-beam[gcp]==2.51.0
     # via apache-airflow-providers-apache-beam
 apispec[yaml]==6.3.0
-    # via
-    #   apispec
-    #   flask-appbuilder
+    # via flask-appbuilder
 argcomplete==3.1.4
     # via apache-airflow
 asgiref==3.7.2
@@ -117,9 +118,7 @@ colorlog==4.8.0
 configupdater==3.1.1
     # via apache-airflow
 connexion[flask]==2.14.2
-    # via
-    #   apache-airflow
-    #   connexion
+    # via apache-airflow
 crcmod==1.7
     # via apache-beam
 cron-descriptor==1.4.0
@@ -146,7 +145,7 @@ dill==0.3.1.1
     # via
     #   apache-airflow
     #   apache-beam
-dnspython==2.4.2
+dnspython==2.6.1
     # via
     #   email-validator
     #   pymongo
@@ -509,7 +508,7 @@ httpx==0.25.1
     # via
     #   apache-airflow
     #   apache-airflow-providers-google
-idna==3.4
+idna==3.7
     # via
     #   anyio
     #   email-validator
@@ -633,7 +632,7 @@ opentelemetry-semantic-conventions==0.42b0
     # via opentelemetry-sdk
 ordered-set==4.1.0
     # via flask-limiter
-orjson==3.9.10
+orjson==3.9.15
     # via apache-beam
 overrides==6.5.0
     # via google-cloud-pubsublite
@@ -802,7 +801,7 @@ pyjwt==2.8.0
     #   flask-appbuilder
     #   flask-jwt-extended
     #   gcloud-aio-auth
-pymongo==4.6.0
+pymongo==4.6.3
     # via apache-beam
 pyopenssl==23.3.0
     # via apache-airflow-providers-google
@@ -847,7 +846,7 @@ referencing==0.30.2
     #   jsonschema-specifications
 regex==2023.10.3
     # via apache-beam
-requests==2.31.0
+requests==2.32.2
     # via
     #   apache-airflow-providers-http
     #   apache-beam
@@ -919,7 +918,7 @@ sqlalchemy-spanner==1.6.2
     # via apache-airflow-providers-google
 sqlalchemy-utils==0.41.1
     # via flask-appbuilder
-sqlparse==0.4.4
+sqlparse==0.5.0
     # via
     #   apache-airflow-providers-common-sql
     #   google-cloud-spanner

@@ -41,7 +41,7 @@ This flytekit plugin allows users to generate ID tokens via an external command 
         --project < fill in the gcp project id where the secret was saved >
     ```
 
-    A browser window should open, asking you to login with your GCP account. Then, a succesful log in should be confirmed with *"Successfully logged into accounts.google.com"*.
+    A browser window should open, asking you to login with your GCP account. Then, a successful log in should be confirmed with *"Successfully logged into accounts.google.com"*.
 
     Finally, the token beginning with `eyJhbG..."` should be printed to the console.
 
@@ -97,7 +97,7 @@ Flyte is then deployed behind the Istio ingress gateway and does not need to be 
 
 ### Deployment
 
-1. If not already done, deploy the flyte-core helm chart, [activating auth](https://docs.flyte.org/en/latest/deployment/configuration/auth_setup.html#apply-oidc-configuration). Re-use the web app client id created for IAP (see section above). Disable the default ingress in the helm values by setting `common.ingress.enabled` to `false` in the helm values file.
+1. If not already done, deploy the flyte-core helm chart, [activating auth](https://docs.flyte.org/en/latest/deployment/configuration/auth_setup.html#apply-oidc-configuration). Reuse the web app client id created for IAP (see section above). Disable the default ingress in the helm values by setting `common.ingress.enabled` to `false` in the helm values file.
 
 
 2. Deployment of Istio and the Istio ingress gateway ([docs](https://istio.io/latest/docs/setup/install/helm/))
@@ -288,7 +288,7 @@ Flyte is then deployed behind the Istio ingress gateway and does not need to be 
 
 7. Connect flyteadmin and flyteconsole to the istio ingress gateway:
 
-    So far, we created a GCE ingress (which creates a GCP load balancer). The load balancer is configured to forward all requests to the istio ingress gatway at the edge of the service mesh via http2 and TLS.
+    So far, we created a GCE ingress (which creates a GCP load balancer). The load balancer is configured to forward all requests to the istio ingress gateway at the edge of the service mesh via http2 and TLS.
 
     Next, we configure the Istio service mesh to route requests from the Istio ingress gateway to flyteadmin and flyteconsole.
 
@@ -387,7 +387,7 @@ Flyte is then deployed behind the Istio ingress gateway and does not need to be 
     print(remote.recent_executions())
     ```
 
-    A browser window should open and ask you to login with your Google account. You should then see confirmation that you *"Successfully logged into accounts.google.com"* (this was for the IAP), finally followd by confirmation that you *"Successfully logged into 'your flyte domain'"* (this was for Flyte itself).
+    A browser window should open and ask you to login with your Google account. You should then see confirmation that you *"Successfully logged into accounts.google.com"* (this was for the IAP), finally followed by confirmation that you *"Successfully logged into 'your flyte domain'"* (this was for Flyte itself).
 
 
 

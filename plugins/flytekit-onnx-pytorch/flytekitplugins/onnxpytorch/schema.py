@@ -33,7 +33,7 @@ class PyTorch2ONNXConfig(DataClassJsonMixin):
       do_constant_folding: Whether to apply constant folding for optimization.
       dynamic_axes: Specify axes of tensors as dynamic.
       keep_initializers_as_inputs: Whether to add the initializers as inputs to the graph.
-      custom_opsets: A dictionary of opset doman name and version.
+      custom_opsets: A dictionary of opset domain name and version.
       export_modules_as_functions: Whether to export modules as functions.
     """
 

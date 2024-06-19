@@ -8,19 +8,24 @@ The serialization process is as follows:
 3. Return a literal map with the json and the flyte object store represented as a literalmap {placeholder: flyte type}
 
 """
+
 import uuid
 from typing import Any, Dict, Union, cast
 
 from google.protobuf import json_format, struct_pb2
 from typing_extensions import Annotated
 
-from flytekit import lazy_module
 from flytekit.core import context_manager, type_engine
 from flytekit.models import literals
 
 from . import commons
 
-pydantic = lazy_module("pydantic")
+try:
+    # TODO: Use pydantic v2 to serialize/deserialize data
+    # https://github.com/flyteorg/flyte/issues/5033
+    import pydantic.v1 as pydantic
+except ImportError:
+    import pydantic
 
 BASEMODEL_JSON_KEY = "BaseModel JSON"
 OBJECTS_KEY = "Serialized Flyte Objects"

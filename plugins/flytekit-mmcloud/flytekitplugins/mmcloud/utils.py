@@ -5,39 +5,39 @@ from asyncio.subprocess import PIPE
 from decimal import ROUND_CEILING, Decimal
 from typing import Optional, Tuple
 
-from flyteidl.admin.agent_pb2 import PERMANENT_FAILURE, RETRYABLE_FAILURE, RUNNING, SUCCEEDED, State
+from flyteidl.core.execution_pb2 import TaskExecution
 from kubernetes.utils.quantity import parse_quantity
 
 from flytekit.core.resources import Resources
 
-MMCLOUD_STATUS_TO_FLYTE_STATE = {
-    "Submitted": RUNNING,
-    "Initializing": RUNNING,
-    "Starting": RUNNING,
-    "Executing": RUNNING,
-    "Capturing": RUNNING,
-    "Floating": RUNNING,
-    "Suspended": RUNNING,
-    "Suspending": RUNNING,
-    "Resuming": RUNNING,
-    "Completed": SUCCEEDED,
-    "Cancelled": PERMANENT_FAILURE,
-    "Cancelling": PERMANENT_FAILURE,
-    "FailToComplete": RETRYABLE_FAILURE,
-    "FailToExecute": RETRYABLE_FAILURE,
-    "CheckpointFailed": RETRYABLE_FAILURE,
-    "Timedout": RETRYABLE_FAILURE,
-    "NoAvailableHost": RETRYABLE_FAILURE,
-    "Unknown": RETRYABLE_FAILURE,
-    "WaitingForLicense": PERMANENT_FAILURE,
+MMCLOUD_STATUS_TO_FLYTE_PHASE = {
+    "Submitted": TaskExecution.RUNNING,
+    "Initializing": TaskExecution.RUNNING,
+    "Starting": TaskExecution.RUNNING,
+    "Executing": TaskExecution.RUNNING,
+    "Capturing": TaskExecution.RUNNING,
+    "Floating": TaskExecution.RUNNING,
+    "Suspended": TaskExecution.RUNNING,
+    "Suspending": TaskExecution.RUNNING,
+    "Resuming": TaskExecution.RUNNING,
+    "Completed": TaskExecution.SUCCEEDED,
+    "Cancelled": TaskExecution.FAILED,
+    "Cancelling": TaskExecution.FAILED,
+    "FailToComplete": TaskExecution.FAILED,
+    "FailToExecute": TaskExecution.FAILED,
+    "CheckpointFailed": TaskExecution.FAILED,
+    "Timedout": TaskExecution.FAILED,
+    "NoAvailableHost": TaskExecution.FAILED,
+    "Unknown": TaskExecution.FAILED,
+    "WaitingForLicense": TaskExecution.FAILED,
 }
 
 
-def mmcloud_status_to_flyte_state(status: str) -> State:
+def mmcloud_status_to_flyte_phase(status: str) -> TaskExecution.Phase:
     """
-    Map MMCloud status to Flyte state.
+    Map MMCloud status to Flyte phase.
     """
-    return MMCLOUD_STATUS_TO_FLYTE_STATE[status]
+    return MMCLOUD_STATUS_TO_FLYTE_PHASE[status]
 
 
 def flyte_to_mmcloud_resources(

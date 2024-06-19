@@ -5,12 +5,18 @@
 """
 
 import datetime
-import re as _re
-from typing import Optional
+import re
+from typing import Optional, Protocol, Union
 
-import croniter as _croniter
+import croniter
+from flyteidl.admin import schedule_pb2
+from google.protobuf import message as google_message
 
 from flytekit.models import schedule as _schedule_models
+
+
+class LaunchPlanTriggerBase(Protocol):
+    def to_flyte_idl(self, *args, **kwargs) -> google_message.Message: ...
 
 
 # Duplicates flytekit.common.schedules.Schedule to avoid using the ExtendedSdkType metaclass.
@@ -50,7 +56,7 @@ class CronSchedule(_schedule_models.Schedule):
     ]
 
     # Not a perfect regex but good enough and simple to reason about
-    _OFFSET_PATTERN = _re.compile("([-+]?)P([-+0-9YMWD]+)?(T([-+0-9HMS.,]+)?)?")
+    _OFFSET_PATTERN = re.compile("([-+]?)P([-+0-9YMWD]+)?(T([-+0-9HMS.,]+)?)?")
 
     def __init__(
         self,
@@ -62,7 +68,7 @@ class CronSchedule(_schedule_models.Schedule):
         """
         :param str cron_expression: This should be a cron expression in AWS style.Shouldn't be used in case of native scheduler.
         :param str schedule: This takes a cron alias (see ``_VALID_CRON_ALIASES``) or a croniter parseable schedule.
-          Only one of this or ``cron_expression`` can be set, not both. This uses standard `cron format <https://docs.flyte.org/en/latest/concepts/schedules.html#cron-expression-table>`_
+          Only one of this or ``cron_expression`` can be set, not both. This uses standard `cron format <https://docs.flyte.org/en/latest/concepts/schedules.html#cron-expression>`_
           and is supported by native scheduler
         :param str offset:
         :param str kickoff_time_input_arg: This is a convenient argument to use when your code needs to know what time
@@ -78,14 +84,11 @@ class CronSchedule(_schedule_models.Schedule):
                 kickoff_time_input_arg="kickoff_time")
 
         """
-        if cron_expression is None and schedule is None:
-            raise AssertionError("Either `cron_expression` or `schedule` should be specified.")
-
-        if cron_expression is not None and offset is not None:
-            raise AssertionError("Only `schedule` is supported when specifying `offset`.")
-
-        if cron_expression is not None:
-            CronSchedule._validate_expression(cron_expression)
+        if cron_expression:
+            raise AssertionError(
+                "cron_expression is deprecated and should not be used. Use `schedule` instead. "
+                "See the documentation for more information."
+            )
 
         if schedule is not None:
             CronSchedule._validate_schedule(schedule)
@@ -129,7 +132,7 @@ class CronSchedule(_schedule_models.Schedule):
         try:
             # Cut to 5 fields and just assume year field is good because croniter treats the 6th field as seconds.
             # TODO: Parse this field ourselves and check
-            _croniter.croniter(" ".join(cron_expression.replace("?", "*").split()[:5]))
+            croniter.croniter(" ".join(cron_expression.replace("?", "*").split()[:5]))
         except Exception:
             raise ValueError(
                 "Scheduled string is invalid.  The cron expression was found to be invalid."
@@ -140,7 +143,7 @@ class CronSchedule(_schedule_models.Schedule):
     def _validate_schedule(schedule: str):
         if schedule.lower() not in CronSchedule._VALID_CRON_ALIASES:
             try:
-                _croniter.croniter(schedule)
+                croniter.croniter(schedule)
             except Exception:
                 raise ValueError(
                     "Schedule is invalid. It must be set to either a cron alias or valid cron expression."
@@ -202,3 +205,14 @@ class FixedRate(_schedule_models.Schedule):
                 int(duration.total_seconds() / _SECONDS_TO_MINUTES),
                 _schedule_models.Schedule.FixedRateUnit.MINUTE,
             )
+
+
+class OnSchedule(LaunchPlanTriggerBase):
+    def __init__(self, schedule: Union[CronSchedule, FixedRate]):
+        """
+        :param Union[CronSchedule, FixedRate] schedule: Either a cron or a fixed rate
+        """
+        self._schedule = schedule
+
+    def to_flyte_idl(self) -> schedule_pb2.Schedule:
+        return self._schedule.to_flyte_idl()

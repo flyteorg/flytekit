@@ -14,13 +14,13 @@ To get started with MMCloud, refer to the [MMCloud User Guide](https://docs.memv
 
 This plugin allows executing `PythonFunctionTask` using MMCloud without changing any function code.
 
-[Resource](https://docs.flyte.org/projects/cookbook/en/latest/auto_examples/productionizing/customizing_resources.html) (cpu and mem) requests and limits, [container](https://docs.flyte.org/projects/cookbook/en/latest/auto_examples/customizing_dependencies/multi_images.html) images, and [environment](https://docs.flyte.org/projects/flytekit/en/latest/generated/flytekit.task.html) variable specifications are supported.
+[Resource](https://docs.flyte.org/en/latest/user_guide/productionizing/customizing_task_resources.html) (cpu and mem) requests and limits, [container](https://docs.flyte.org/en/latest/user_guide/customizing_dependencies/multiple_images_in_a_workflow.html) images, and [environment](https://docs.flyte.org/en/latest/api/flytekit/generated/flytekit.task.html) variable specifications are supported.
 
-[ImageSpec](https://docs.flyte.org/projects/cookbook/en/latest/auto_examples/customizing_dependencies/image_spec.html) may be used to define images to run tasks.
+[ImageSpec](https://docs.flyte.org/en/latest/user_guide/customizing_dependencies/imagespec.html) may be used to define images to run tasks.
 
 ### Credentials
 
-The following [secrets](https://docs.flyte.org/projects/cookbook/en/latest/auto_examples/productionizing/use_secrets.html) are required to be defined for the agent server:
+The following [secrets](https://docs.flyte.org/en/latest/user_guide/productionizing/secrets.html) are required to be defined for the agent server:
 * `mmc_address`: MMCloud OpCenter address
 * `mmc_username`: MMCloud OpCenter username
 * `mmc_password`: MMCloud OpCenter password

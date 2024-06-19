@@ -1,8 +1,8 @@
-import json
 import os
 import pathlib
 import shutil
 import subprocess
+from importlib import metadata
 
 import click
 from packaging.version import Version
@@ -11,6 +11,9 @@ from flytekit.configuration import DefaultImages
 from flytekit.core import context_manager
 from flytekit.core.constants import REQUIREMENTS_FILE_NAME
 from flytekit.image_spec.image_spec import _F_IMG_ID, ImageBuildEngine, ImageSpec, ImageSpecBuilder
+from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
+
+FLYTE_LOCAL_REGISTRY = "localhost:30000"
 
 
 class EnvdImageSpecBuilder(ImageSpecBuilder):
@@ -18,36 +21,56 @@ class EnvdImageSpecBuilder(ImageSpecBuilder):
     This class is used to build a docker image using envd.
     """
 
-    def execute_command(self, command):
-        click.secho(f"Run command: {command} ", fg="blue")
-        p = subprocess.Popen(command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-        result = []
-        for line in iter(p.stdout.readline, ""):
-            if p.poll() is not None:
-                break
-            if line.decode().strip() != "":
-                output = line.decode().strip()
-                click.secho(output, fg="blue")
-                result.append(output)
-
-        if p.returncode != 0:
-            _, stderr = p.communicate()
-            raise Exception(f"failed to run command {command} with error {stderr}")
-
-        return result
-
     def build_image(self, image_spec: ImageSpec):
         cfg_path = create_envd_config(image_spec)
 
         if image_spec.registry_config:
             bootstrap_command = f"envd bootstrap --registry-config {image_spec.registry_config}"
-            self.execute_command(bootstrap_command)
+            execute_command(bootstrap_command)
 
         build_command = f"envd build --path {pathlib.Path(cfg_path).parent}  --platform {image_spec.platform}"
-        if image_spec.registry:
+        if image_spec.registry and os.getenv("FLYTE_PUSH_IMAGE_SPEC", "True").lower() in ("true", "1"):
             build_command += f" --output type=image,name={image_spec.image_name()},push=true"
-        self.execute_command(build_command)
+        else:
+            build_command += f" --tag {image_spec.image_name()}"
+        envd_context_switch(image_spec.registry)
+        execute_command(build_command)
+
+
+def envd_context_switch(registry: str):
+    if registry == FLYTE_LOCAL_REGISTRY:
+        # Assume buildkit daemon is running within the sandbox and exposed on port 30003
+        command = "envd context create --name flyte-sandbox --builder tcp --builder-address localhost:30003 --use"
+        p = subprocess.run(command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if p.returncode != 0:
+            # Assume the context already exists
+            execute_command("envd context use --name flyte-sandbox")
+    else:
+        command = "envd context create --name flyte --builder docker-container --builder-address buildkitd-demo -use"
+        p = subprocess.run(command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if p.returncode != 0:
+            # Assume the context already exists
+            execute_command("envd context use --name flyte")
+
+
+def execute_command(command: str):
+    click.secho(f"Run command: {command} ", fg="blue")
+    p = subprocess.Popen(command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    result = []
+    for line in iter(p.stdout.readline, ""):
+        if p.poll() is not None:
+            break
+        if line.decode().strip() != "":
+            output = line.decode().strip()
+            click.secho(output, fg="blue")
+            result.append(output)
+
+    if p.returncode != 0:
+        _, stderr = p.communicate()
+        raise Exception(f"failed to run command {command} with error {stderr}")
+
+    return result
 
 
 def _create_str_from_package_list(packages):
@@ -68,7 +91,7 @@ def create_envd_config(image_spec: ImageSpec) -> str:
     run_commands = _create_str_from_package_list(image_spec.commands)
     conda_channels = _create_str_from_package_list(image_spec.conda_channels)
     apt_packages = _create_str_from_package_list(image_spec.apt_packages)
-    env = {"PYTHONPATH": "/root", _F_IMG_ID: image_spec.image_name()}
+    env = {"PYTHONPATH": "/root:", _F_IMG_ID: image_spec.image_name()}
 
     if image_spec.env:
         env.update(image_spec.env)
@@ -82,8 +105,13 @@ def build():
     install.python_packages(name=[{python_packages}])
     install.apt_packages(name=[{apt_packages}])
     runtime.environ(env={env}, extra_path=['/root'])
-    config.pip_index(url="{pip_index}")
 """
+    if image_spec.pip_extra_index_url is None:
+        envd_config += f'    config.pip_index(url="{pip_index}")\n'
+    else:
+        pip_extra_index_url = " ".join(image_spec.pip_extra_index_url)
+        envd_config += f'    config.pip_index(url="{pip_index}", extra_url="{pip_extra_index_url}")\n'
+
     ctx = context_manager.FlyteContextManager.current_context()
     cfg_path = ctx.file_access.get_random_local_path("build.envd")
     pathlib.Path(cfg_path).parent.mkdir(parents=True, exist_ok=True)
@@ -106,16 +134,20 @@ def build():
         envd_config += f'    install.cuda(version="{image_spec.cuda}", cudnn="{cudnn}")\n'
 
     if image_spec.source_root:
-        shutil.copytree(image_spec.source_root, pathlib.Path(cfg_path).parent, dirs_exist_ok=True)
+        ignore = IgnoreGroup(image_spec.source_root, [GitIgnore, DockerIgnore, StandardIgnore])
+        shutil.copytree(
+            src=image_spec.source_root,
+            dst=pathlib.Path(cfg_path).parent,
+            ignore=shutil.ignore_patterns(*ignore.list_ignored()),
+            dirs_exist_ok=True,
+        )
 
-        version_command = "envd version -s -f json"
-        envd_version = json.loads(EnvdImageSpecBuilder().execute_command(version_command)[0])["envd"].replace("v", "")
-
+        envd_version = metadata.version("envd")
         # Indentation is required by envd
         if Version(envd_version) <= Version("0.3.37"):
-            envd_config += '    io.copy(host_path="./", envd_path="/root")'
+            envd_config += '    io.copy(host_path="./", envd_path="/root")\n'
         else:
-            envd_config += '    io.copy(source="./", target="/root")'
+            envd_config += '    io.copy(source="./", target="/root")\n'
 
     with open(cfg_path, "w+") as f:
         f.write(envd_config)

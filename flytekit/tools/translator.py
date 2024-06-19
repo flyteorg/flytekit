@@ -4,22 +4,26 @@ from collections import OrderedDict
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
-from flytekit import PythonFunctionTask, SourceCode
-from flytekit.configuration import SerializationSettings
+from flyteidl.admin import schedule_pb2
+
+from flytekit import ImageSpec, PythonFunctionTask, SourceCode
+from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core import constants as _common_constants
+from flytekit.core import context_manager
 from flytekit.core.array_node_map_task import ArrayNodeMapTask
 from flytekit.core.base_task import PythonTask
 from flytekit.core.condition import BranchNode
 from flytekit.core.container_task import ContainerTask
 from flytekit.core.gate import Gate
 from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
-from flytekit.core.map_task import MapPythonTask
+from flytekit.core.legacy_map_task import MapPythonTask
 from flytekit.core.node import Node
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceEntity, ReferenceSpec, ReferenceTemplate
 from flytekit.core.task import ReferenceTask
 from flytekit.core.utils import ClassDecorator, _dnsify
 from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase
+from flytekit.image_spec.image_spec import _calculate_deduped_hash_from_image_spec
 from flytekit.models import common as _common_models
 from flytekit.models import common as common_models
 from flytekit.models import interface as interface_models
@@ -84,6 +88,7 @@ class Options(object):
     max_parallelism: typing.Optional[int] = None
     notifications: typing.Optional[typing.List[common_models.Notification]] = None
     disable_notifications: typing.Optional[bool] = None
+    overwrite_cache: typing.Optional[bool] = None
 
     @classmethod
     def default_from(
@@ -159,8 +164,10 @@ def _fast_serialize_command_fn(
 
 
 def get_serializable_task(
+    entity_mapping: OrderedDict,
     settings: SerializationSettings,
     entity: FlyteLocalEntity,
+    options: Optional[Options] = None,
 ) -> TaskSpec:
     task_id = _identifier_model.Identifier(
         _identifier_model.ResourceType.TASK,
@@ -171,10 +178,27 @@ def get_serializable_task(
     )
 
     if isinstance(entity, PythonFunctionTask) and entity.execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
+        for e in context_manager.FlyteEntities.entities:
+            if isinstance(e, PythonAutoContainerTask):
+                # 1. Build the ImageSpec for all the entities that are inside the current context,
+                # 2. Add images to the serialization context, so the dynamic task can look it up at runtime.
+                if isinstance(e.container_image, ImageSpec):
+                    if settings.image_config.images is None:
+                        settings.image_config = ImageConfig.create_from(settings.image_config.default_image)
+                    settings.image_config.images.append(
+                        Image.look_up_image_info(
+                            _calculate_deduped_hash_from_image_spec(e.container_image), e.get_image(settings)
+                        )
+                    )
+
         # In case of Dynamic tasks, we want to pass the serialization context, so that they can reconstruct the state
         # from the serialization context. This is passed through an environment variable, that is read from
         # during dynamic serialization
         settings = settings.with_serialized_context()
+
+        if entity.node_dependency_hints is not None:
+            for entity_hint in entity.node_dependency_hints:
+                get_serializable(entity_mapping, settings, entity_hint, options)
 
     container = entity.get_container(settings)
     # This pod will be incorrect when doing fast serialize
@@ -311,6 +335,7 @@ def get_serializable_workflow(
         name=entity.name,
         version=settings.version,
     )
+
     wf_t = workflow_model.WorkflowTemplate(
         id=wf_id,
         metadata=entity.workflow_metadata.to_flyte_model(),
@@ -361,11 +386,19 @@ def get_serializable_launch_plan(
     else:
         raw_prefix_config = entity.raw_output_data_config or _common_models.RawOutputDataConfig("")
 
+    if entity.trigger:
+        lc = entity.trigger.to_flyte_idl(entity)
+        if isinstance(lc, schedule_pb2.Schedule):
+            raise ValueError("Please continue to use the schedule arg, the trigger arg is not implemented yet")
+    else:
+        lc = None
+
     lps = _launch_plan_models.LaunchPlanSpec(
         workflow_id=wf_id,
         entity_metadata=_launch_plan_models.LaunchPlanMetadata(
             schedule=entity.schedule,
             notifications=options.notifications or entity.notifications,
+            launch_conditions=lc,
         ),
         default_inputs=entity.parameters,
         fixed_inputs=entity.fixed_inputs,
@@ -375,6 +408,7 @@ def get_serializable_launch_plan(
         raw_output_data_config=raw_prefix_config,
         max_parallelism=options.max_parallelism or entity.max_parallelism,
         security_context=options.security_context or entity.security_context,
+        overwrite_cache=options.overwrite_cache or entity.overwrite_cache,
     )
 
     lp_id = _identifier_model.Identifier(
@@ -459,7 +493,11 @@ def get_serializable_node(
             output_aliases=[],
             task_node=workflow_model.TaskNode(
                 reference_id=task_spec.template.id,
-                overrides=TaskNodeOverrides(resources=entity._resources, extended_resources=entity._extended_resources),
+                overrides=TaskNodeOverrides(
+                    resources=entity._resources,
+                    extended_resources=entity._extended_resources,
+                    container_image=entity._container_image,
+                ),
             ),
         )
         if entity._aliases:
@@ -536,7 +574,11 @@ def get_serializable_node(
             output_aliases=[],
             task_node=workflow_model.TaskNode(
                 reference_id=entity.flyte_entity.id,
-                overrides=TaskNodeOverrides(resources=entity._resources, extended_resources=entity._extended_resources),
+                overrides=TaskNodeOverrides(
+                    resources=entity._resources,
+                    extended_resources=entity._extended_resources,
+                    container_image=entity._container_image,
+                ),
             ),
         )
     elif isinstance(entity.flyte_entity, FlyteWorkflow):
@@ -585,7 +627,11 @@ def get_serializable_array_node(
     task_spec = get_serializable(entity_mapping, settings, entity, options)
     task_node = workflow_model.TaskNode(
         reference_id=task_spec.template.id,
-        overrides=TaskNodeOverrides(resources=node._resources, extended_resources=node._extended_resources),
+        overrides=TaskNodeOverrides(
+            resources=node._resources,
+            extended_resources=node._extended_resources,
+            container_image=node._container_image,
+        ),
     )
     node = workflow_model.Node(
         id=entity.name,
@@ -713,7 +759,7 @@ def get_serializable(
         cp_entity = get_reference_spec(entity_mapping, settings, entity)
 
     elif isinstance(entity, PythonTask):
-        cp_entity = get_serializable_task(settings, entity)
+        cp_entity = get_serializable_task(entity_mapping, settings, entity)
 
     elif isinstance(entity, WorkflowBase):
         cp_entity = get_serializable_workflow(entity_mapping, settings, entity, options)
@@ -773,7 +819,7 @@ def gather_dependent_entities(
     The ``get_serializable`` function above takes in an ``OrderedDict`` that helps keep track of dependent entities.
     For example, when serializing a workflow, all its tasks are also serialized. The ordered dict will also contain
     serialized entities that aren't as useful though, like nodes and branches. This is just a small helper function
-    that will pull out the serialzed tasks, workflows, and launch plans. This function is primarily used for testing.
+    that will pull out the serialized tasks, workflows, and launch plans. This function is primarily used for testing.
 
     :param serialized: This should be the filled in OrderedDict used in the get_serializable function above.
     :return:

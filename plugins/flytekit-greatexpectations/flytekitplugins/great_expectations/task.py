@@ -216,7 +216,7 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
         run_id = ge.core.run_identifier.RunIdentifier(
             **{
                 "run_name": self._datasource_name + "_run",
-                "run_time": datetime.datetime.utcnow(),
+                "run_time": datetime.datetime.now(datetime.timezone.utc),
             }
         )
 

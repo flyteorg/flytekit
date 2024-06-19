@@ -1,9 +1,11 @@
 import os
 import sys
+from unittest.mock import Mock
 
 import mock
 import pytest
 
+import flytekit
 from flytekit.configuration import ImageConfig
 from flytekit.configuration.default_images import DefaultImages, PythonVersion
 
@@ -39,10 +41,15 @@ def test_image_config_auto():
 
 
 def test_image_from_flytectl_config():
-    os.environ["FLYTECTL_CONFIG"] = os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/sample.yaml")
-    image_config = ImageConfig.auto(config_file=None)
+    image_config = ImageConfig.auto(
+        config_file=os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/sample.yaml")
+    )
     assert image_config.images[0].full == "docker.io/xyz:latest"
     assert image_config.images[1].full == "docker.io/abc:None"
+    assert (
+        image_config.images[2].full
+        == "docker.io/bcd@sha256:26c68657ccce2cb0a31b330cb0hu3b5e108d467f641c62e13ab40cbec258c68d"
+    )
 
 
 @mock.patch("flytekit.configuration.default_images.sys")
@@ -59,7 +66,28 @@ def test_image_create():
 
     ic = ImageConfig.from_images("cr.flyte.org/im/g:latest")
     assert ic.default_image.fqn == "cr.flyte.org/im/g"
+    assert ic.default_image.full == "cr.flyte.org/im/g:latest"
+
+    ic = ImageConfig.from_images(
+        "cr.flyte.org/im/g@sha256:26c68657ccce2cb0a31b330cb0hu3b5e108d467f641c62e13ab40cbec258c68d"
+    )
+    assert ic.default_image.fqn == "cr.flyte.org/im/g"
+    assert (
+        ic.default_image.full
+        == "cr.flyte.org/im/g@sha256:26c68657ccce2cb0a31b330cb0hu3b5e108d467f641c62e13ab40cbec258c68d"
+    )
 
 
 def test_get_version_suffix():
     assert DefaultImages.get_version_suffix() == "latest"
+
+
+def test_default_image_plugin(monkeypatch):
+    new_default_image = "registry/flytekit:py3.9-latest"
+
+    plugin_mock = Mock()
+    plugin_mock.get_default_image.return_value = new_default_image
+    mock_global_plugin = {"plugin": plugin_mock}
+    monkeypatch.setattr(flytekit.configuration.plugin, "_GLOBAL_CONFIG", mock_global_plugin)
+
+    assert DefaultImages.default_image() == new_default_image

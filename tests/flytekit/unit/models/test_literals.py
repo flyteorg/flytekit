@@ -103,7 +103,7 @@ def test_boolean_primitive():
 
 
 def test_datetime_primitive():
-    dt = datetime.utcnow().replace(tzinfo=timezone.utc)
+    dt = datetime.now(timezone.utc)
     obj = literals.Primitive(datetime=dt)
     assert obj.integer is None
     assert obj.boolean is None
@@ -500,11 +500,12 @@ def test_binding_data_collection_nested():
 @pytest.mark.parametrize("scalar_value_pair", parameterizers.LIST_OF_SCALARS_AND_PYTHON_VALUES)
 def test_scalar_literals(scalar_value_pair):
     scalar, _ = scalar_value_pair
-    obj = literals.Literal(scalar=scalar)
+    obj = literals.Literal(scalar=scalar, metadata={"hello": "world"})
     assert obj.value == scalar
     assert obj.scalar == scalar
     assert obj.collection is None
     assert obj.map is None
+    assert obj.metadata["hello"] == "world"
 
     obj2 = literals.Literal.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
@@ -512,6 +513,11 @@ def test_scalar_literals(scalar_value_pair):
     assert obj2.scalar == scalar
     assert obj2.collection is None
     assert obj2.map is None
+    assert obj2.metadata["hello"] == "world"
+
+    obj = literals.Literal(scalar=scalar)
+    obj2 = literals.Literal.from_flyte_idl(obj.to_flyte_idl())
+    assert obj2.metadata is None
 
 
 @pytest.mark.parametrize("literal_value_pair", parameterizers.LIST_OF_SCALAR_LITERALS_AND_PYTHON_VALUE)
@@ -525,3 +531,11 @@ def test_literal_collection(literal_value_pair):
     assert obj == obj2
     assert all(ll == lit for ll in obj.literals)
     assert len(obj.literals) == 3
+
+
+def test_set_metadata():
+    scalar = literals.Scalar(primitive=literals.Primitive(integer=100))
+    obj = literals.Literal(scalar=scalar)
+    md = {"hello": "world"}
+    obj.set_metadata(md)
+    assert obj.metadata["hello"] == "world"

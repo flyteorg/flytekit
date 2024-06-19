@@ -124,6 +124,15 @@ def resolve_backfill_window(
     "backfill steps fail. If set to false, the backfill will continue to run even if some of the backfill steps "
     "fail (WorkflowFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE).",
 )
+@click.option(
+    "--overwrite-cache",
+    required=False,
+    type=bool,
+    is_flag=True,
+    default=False,
+    show_default=True,
+    help="Whether to overwrite the cache if it already exists.",
+)
 @click.argument(
     "launchplan",
     required=True,
@@ -151,6 +160,7 @@ def backfill(
     execution_name: str,
     version: str,
     fail_fast: bool,
+    overwrite_cache: bool,
 ):
     from_date, to_date = resolve_backfill_window(from_date, to_date, backfill_window)
     remote = get_and_save_remote_with_click_context(ctx, project, domain)
@@ -170,6 +180,7 @@ def backfill(
             failure_policy=WorkflowFailurePolicy.FAIL_IMMEDIATELY
             if fail_fast
             else WorkflowFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE,
+            overwrite_cache=overwrite_cache,
         )
         if dry_run:
             return

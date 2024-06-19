@@ -1,5 +1,6 @@
 import datetime
 import enum
+import os
 import typing
 from dataclasses import dataclass
 
@@ -111,3 +112,16 @@ def task_with_optional(a: typing.Optional[str]) -> str:
 @workflow
 def wf_with_none(a: typing.Optional[str] = None) -> str:
     return task_with_optional(a=a)
+
+
+@task
+def task_with_env_vars(env_vars: typing.List[str]) -> str:
+    collated_env_vars = []
+    for env_var in env_vars:
+        collated_env_vars.append(os.environ[env_var])
+    return ",".join(collated_env_vars)
+
+
+@workflow
+def wf_with_env_vars(env_vars: typing.List[str]) -> str:
+    return task_with_env_vars(env_vars=env_vars)

@@ -13,7 +13,11 @@ def test_load_images():
 
     cfg = get_config_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/sample.yaml"))
     imgs = Images.get_specified_images(cfg)
-    assert imgs == {"abc": "docker.io/abc", "xyz": "docker.io/xyz:latest"}
+    assert imgs == {
+        "abc": "docker.io/abc",
+        "bcd": "docker.io/bcd@sha256:26c68657ccce2cb0a31b330cb0hu3b5e108d467f641c62e13ab40cbec258c68d",
+        "xyz": "docker.io/xyz:latest",
+    }
 
 
 def test_no_images():
@@ -48,7 +52,6 @@ def test_client_secret_location():
     assert platform_cfg.auth_mode == AuthType.CLIENTSECRET.value
 
 
-@mock.patch.dict("os.environ")
 def test_client_secret_env_var():
     cfg = get_config_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/sample.yaml"))
     secret_env_var = Credentials.CLIENT_CREDENTIALS_SECRET_ENV_VAR.read(cfg)
@@ -60,10 +63,10 @@ def test_client_secret_env_var():
     secret_env_var = Credentials.CLIENT_CREDENTIALS_SECRET_ENV_VAR.read(cfg)
     assert secret_env_var == "FAKE_SECRET_NAME"
 
-    os.environ["FAKE_SECRET_NAME"] = "fake_secret_value"
-    platform_cfg = PlatformConfig.auto(cfg)
-    assert platform_cfg.client_credentials_secret == "fake_secret_value"
-    assert platform_cfg.auth_mode == AuthType.CLIENTSECRET.value
+    with mock.patch.dict(os.environ, {"FAKE_SECRET_NAME": "fake_secret_value"}):
+        platform_cfg = PlatformConfig.auto(cfg)
+        assert platform_cfg.client_credentials_secret == "fake_secret_value"
+        assert platform_cfg.auth_mode == AuthType.CLIENTSECRET.value
 
 
 def test_read_file_if_exists():

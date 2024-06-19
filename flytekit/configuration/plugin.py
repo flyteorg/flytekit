@@ -17,6 +17,7 @@ or in pyproject.toml:
 my_plugin = "my_module:MyCustomPlugin"
 ```
 """
+
 from typing import Optional, Protocol, runtime_checkable
 
 from click import Group
@@ -43,6 +44,14 @@ class FlytekitPluginProtocol(Protocol):
     def secret_requires_group() -> bool:
         """Return True if secrets require group entry."""
 
+    @staticmethod
+    def get_default_image() -> Optional[str]:
+        """Get default image. Return None to use the images from flytekit.configuration.DefaultImages"""
+
+    @staticmethod
+    def get_auth_success_html(endpoint: str) -> Optional[str]:
+        """Get default success html for auth. Return None to use flytekit's default success html."""
+
 
 class FlytekitPlugin:
     @staticmethod
@@ -56,7 +65,7 @@ class FlytekitPlugin:
             logger.info("No config files found, creating remote with sandbox config")
         else:  # pragma: no cover
             cfg_obj = Config.auto(config)
-            logger.info(f"Creating remote with config {cfg_obj}" + (f" with file {config}" if config else ""))
+            logger.debug(f"Creating remote with config {cfg_obj}" + (f" with file {config}" if config else ""))
         return FlyteRemote(
             cfg_obj, default_project=project, default_domain=domain, data_upload_location=data_upload_location
         )
@@ -68,8 +77,18 @@ class FlytekitPlugin:
 
     @staticmethod
     def secret_requires_group() -> bool:
-        """Return True if secrets require group entry."""
+        """Return True if secrets require group entry during registration time."""
         return True
+
+    @staticmethod
+    def get_default_image() -> Optional[str]:
+        """Get default image. Return None to use the images from flytekit.configuration.DefaultImages"""
+        return None
+
+    @staticmethod
+    def get_auth_success_html(endpoint: str) -> Optional[str]:
+        """Get default success html. Return None to use flytekit's default success html."""
+        return None
 
 
 def _get_plugin_from_entrypoint():
