@@ -68,7 +68,7 @@ class ModelInferenceTemplate:
                     env=([V1EnvVar(name=k, value=v) for k, v in self._env.items()] if self._env else None),
                     startup_probe=V1Probe(
                         http_get=V1HTTPGetAction(path=self._health_endpoint, port=self._port),
-                        failure_threshold=3,
+                        failure_threshold=100,
                         period_seconds=10,
                     ),
                 ),
