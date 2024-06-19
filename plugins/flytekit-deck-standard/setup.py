@@ -7,7 +7,7 @@ microlib_name = f"flytekitplugins-{PLUGIN_NAME}-standard"
 plugin_requires = [
     "flytekit",
     "markdown",
-    "plotly",
+    # "plotly",
     # ydata-profiling is not compatible with python 3.12 yet: https://github.com/ydataai/ydata-profiling/issues/1510
     "ydata-profiling; python_version<'3.12'",
     "pandas",

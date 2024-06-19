@@ -103,13 +103,16 @@ class TimeLineDeck(Deck):
 
     @property
     def html(self) -> str:
+        gantt_dep_installed = False
         try:
-            from flytekitplugins.deck.renderer import GanttChartRenderer, TableRenderer
+            from flytekitplugins.deck.renderer import TableRenderer
         except ImportError:
             warning_info = "Plugin 'flytekit-deck-standard' is not installed. To display time line, install the plugin in the image."
             logger.warning(warning_info)
             return warning_info
+        from flytekitplugins.deck.renderer import GanttChartRenderer, px_installed
 
+        gantt_dep_installed = px_installed
         if len(self.time_info) == 0:
             return ""
 
@@ -127,7 +130,7 @@ class TimeLineDeck(Deck):
         df["ProcessTime"] = df["ProcessTime"].apply(lambda time: "{:.6f}".format(time))
         df["WallTime"] = df["WallTime"].apply(lambda time: "{:.6f}".format(time))
 
-        gantt_chart_html = GanttChartRenderer().to_html(df)
+        gantt_chart_html = GanttChartRenderer().to_html(df) if gantt_dep_installed else ""
         time_table_html = TableRenderer().to_html(
             df[["Name", "WallTime", "ProcessTime"]],
             header_labels=["Name", "Wall Time(s)", "Process Time(s)"],

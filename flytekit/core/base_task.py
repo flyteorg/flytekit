@@ -463,7 +463,13 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         environment: Optional[Dict[str, str]] = None,
         disable_deck: Optional[bool] = None,
         enable_deck: Optional[bool] = None,
-        deck_fields: Optional[Tuple[DeckField, ...]] = (DeckField.SOURCE_CODE, DeckField.DEPENDENCIES),
+        deck_fields: Optional[Tuple[DeckField, ...]] = (
+            DeckField.SOURCE_CODE,
+            DeckField.DEPENDENCIES,
+            DeckField.TIMELINE,
+            DeckField.INPUT,
+            DeckField.OUTPUT,
+        ),
         **kwargs,
     ):
         """

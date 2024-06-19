@@ -53,7 +53,7 @@ def test_timeline_deck():
     "disable_deck,expected_decks",
     [
         (None, 0),
-        (False, 2),  # source code deck + python dependency deck
+        (False, 5),  # source code + dependency + input + output + timeline decks
         (True, 0),
     ],
 )
@@ -82,7 +82,7 @@ def test_deck_for_task(disable_deck, expected_decks):
             True,
             4,  # time line deck + dependency + input and output decks
         ),
-        (None, True, 2),  # source code deck + python dependency deck
+        (None, True, 5),  # source code + dependency + input + output + timeline decks
     ],
 )
 @mock.patch("flytekit.deck.deck._output_deck")
@@ -135,16 +135,16 @@ def test_invalid_deck_params(deck_fields, enable_deck, disable_deck):
         (
             None,
             False,
-            3,
+            6,
             False,
-        ),  # default deck + source code deck + python dependency deck
+        ),  # default deck + source code + dependency + input + output + timeline decks
         (None, True, 1, False),  # default deck
         (
             True,
             None,
-            3,
+            6,
             False,
-        ),  # default deck + source code deck + python dependency deck
+        ),  # default deck + source code + dependency + input + output + timeline decks
         (False, None, 1, False),  # default deck
         (True, True, -1, True),  # Set both disable_deck and enable_deck to True and confirm that it fails
         (False, False, -1, True),  # Set both disable_deck and enable_deck to False and confirm that it fails

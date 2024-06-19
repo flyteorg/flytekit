@@ -4,16 +4,27 @@ from typing import TYPE_CHECKING, List, Optional, Union
 from flytekit import lazy_module
 from flytekit.types.file import FlyteFile
 
+px_installed: bool = False
 if TYPE_CHECKING:
     import markdown
     import pandas as pd
     import PIL.Image
-    import plotly.express as px
+
+    try:
+        import plotly.express as px
+
+        px_installed = True
+    except ImportError:
+        pass
 else:
     pd = lazy_module("pandas")
     markdown = lazy_module("markdown")
-    px = lazy_module("plotly.express")
     PIL = lazy_module("PIL")
+    try:
+        px = lazy_module("plotly.express")
+        px_installed = True
+    except ImportError:
+        pass
 
 
 class SourceCodeRenderer:
@@ -96,6 +107,8 @@ class BoxRenderer:
     # More detail, see https://plotly.com/python/box-plots/
     def __init__(self, column_name):
         self._column_name = column_name
+        if not px_installed:
+            raise ImportError("plotly is not installed")
 
     def to_html(self, df: "pd.DataFrame") -> str:
         fig = px.box(df, y=self._column_name)
@@ -185,6 +198,10 @@ class GanttChartRenderer:
     - "Finish": datetime.datetime (represents the end time)
     - "Name": string (the name of the task or event)
     """
+
+    def __init__(self) -> None:
+        if not px_installed:
+            raise ImportError("plotly is not installed")
 
     def to_html(self, df: pd.DataFrame, chart_width: Optional[int] = None) -> str:
         fig = px.timeline(df, x_start="Start", x_end="Finish", y="Name", color="Name", width=chart_width)
