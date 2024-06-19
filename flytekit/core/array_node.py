@@ -1,14 +1,20 @@
-from typing import Any, List, Optional, Union
+from typing import Any, List, Optional, Tuple, Union
 
 from flytekit.core import interface as flyte_interface
 from flytekit.core.context_manager import ExecutionState, FlyteContext
-from flytekit.core.interface import transform_interface_to_list_interface
+from flytekit.core.interface import transform_interface_to_list_interface, transform_interface_to_typed_interface
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.node import Node
-from flytekit.core.promise import flyte_entity_call_handler
+from flytekit.core.promise import (
+    Promise,
+    VoidPromise,
+    flyte_entity_call_handler,
+    translate_inputs_to_literals,
+)
 from flytekit.core.task import TaskMetadata
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model
+from flytekit.models.literals import Literal, LiteralCollection
 
 
 class ArrayNode(object):
@@ -37,13 +43,15 @@ class ArrayNode(object):
         self._min_success_ratio = min_success_ratio
         self.id = target.name
 
+        self.bound_inputs = set()
+
         n_outputs = len(self.target.python_interface.outputs)
         if n_outputs > 1:
             raise ValueError("Only tasks with a single output are supported in map tasks.")
 
         output_as_list_of_optionals = min_success_ratio is not None and min_success_ratio != 1 and n_outputs == 1
         collection_interface = transform_interface_to_list_interface(
-            self.target.python_interface, set(), output_as_list_of_optionals
+            self.target.python_interface, self.bound_inputs, output_as_list_of_optionals
         )
         self._collection_interface = collection_interface
 
@@ -54,6 +62,8 @@ class ArrayNode(object):
                     self.metadata = metadata
                 else:
                     raise Exception("Invalid metadata for LaunchPlan. Should be NodeMetadata.")
+        else:
+            raise Exception("Only LaunchPlans are supported for now.")
 
     def construct_node_metadata(self) -> _workflow_model.NodeMetadata:
         # Part of SupportsNodeCreation interface
@@ -82,12 +92,57 @@ class ArrayNode(object):
     def flyte_entity(self) -> Any:
         return self.target
 
-    def local_execute(self, ctx: FlyteContext, **kwargs):
-        pass
-        # TODO - pvditt
-        # self.target.local_execute(ctx, **kwargs)
+    def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
+        outputs_expected = True
+        if not self.python_interface.outputs:
+            outputs_expected = False
 
-    @staticmethod
+        mapped_entity_count = 0
+        for k in self.python_interface.inputs.keys():
+            if k not in self.bound_inputs:
+                v = kwargs[k]
+                if isinstance(v, list) and len(v) > 0 and isinstance(v[0], self.target.python_interface.inputs[k]):
+                    mapped_entity_count = len(v)
+                    break
+                # TODO pvditt - should we error here?
+                # else:
+                #     raise ValueError(
+                #         f"Expected a list of {self.target.python_interface.inputs[k]} but got {type(v)} instead."
+                #     )
+
+        literals = []
+        for i in range(mapped_entity_count):
+            single_instance_inputs = {}
+            for k in self.python_interface.inputs.keys():
+                v = kwargs[k]
+                # do we have to check if v is a list? shouldn't it have to be a list if not bound?
+                if k not in self.bound_inputs:
+                    single_instance_inputs[k] = kwargs[k][i]
+                else:
+                    single_instance_inputs[k] = kwargs[k]
+
+            # translate Python native inputs to Flyte literals
+            literal_map = translate_inputs_to_literals(
+                ctx,
+                incoming_values=single_instance_inputs,
+                flyte_interface_types=transform_interface_to_typed_interface(self.target.python_interface).inputs,
+                native_types=self.target.python_interface.inputs,
+            )
+            kwargs_literals = {k1: Promise(var=k1, val=v1) for k1, v1 in literal_map.items()}
+
+            try:
+                output = self.target.__call__(**kwargs_literals)
+                if outputs_expected:
+                    literals.append(output.val)
+
+            except Exception:
+                if outputs_expected:
+                    literals.append(None)
+
+        if outputs_expected:
+            return Promise(var="o0", val=Literal(collection=LiteralCollection(literals=literals)))
+        return VoidPromise(self.name)
+
     def local_execution_mode(self):
         return ExecutionState.Mode.LOCAL_TASK_EXECUTION
 
