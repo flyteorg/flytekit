@@ -2063,3 +2063,56 @@ def test_unsafe_wf_and_task():
 
     assert wf1_with_unsafe(a=1) == 4
     assert wf1_with_unsafe(a="1") is None
+
+
+def test_wf_with_unsafe_and_safe_tasks():
+    @task(unsafe=True)
+    def t1(a):
+        if type(a) != int:
+            return None
+        return a + 1
+
+    @task
+    def t2(a: typing.Any) -> typing.Any:
+        if type(a) != int:
+            return None
+        return a + 2
+
+    @workflow(unsafe=True)
+    def wf1_with_unsafe(a):
+        a1 = t1(a=a)
+        return t2(a=a1)
+
+    assert wf1_with_unsafe(a=1) == 4
+    assert wf1_with_unsafe(a="1") is None
+
+    @workflow(unsafe=True)
+    def wf2_with_unsafe(a):
+        a1 = t2(a=a)
+        return t1(a=a1)
+
+    assert wf2_with_unsafe(a=1) == 4
+    assert wf2_with_unsafe(a="1") is None
+
+
+def test_unsafe_task_with_specified_input():
+    @task(unsafe=True)
+    def t1(a, b: typing.Any):
+        if type(a) != int:
+            if type(b) != int:
+                return None
+            else:
+                return b
+        elif type(b) != int:
+            return a
+        return a + b
+
+    @workflow(unsafe=True)
+    def wf1_with_unsafe(a: typing.Any, b):
+        r = t1(a=a, b=b)
+        return r
+
+    assert wf1_with_unsafe(a=1, b=2) == 3
+    assert wf1_with_unsafe(a="1", b=2) == 2
+    assert wf1_with_unsafe(a=1, b="2") == 1
+    assert wf1_with_unsafe(a="1", b="2") is None
