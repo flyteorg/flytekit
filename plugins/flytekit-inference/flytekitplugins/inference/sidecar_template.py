@@ -16,7 +16,6 @@ from flytekit import PodTemplate
 class ModelInferenceTemplate:
     def __init__(
         self,
-        node_selector: Optional[dict] = None,
         image: Optional[str] = None,
         health_endpoint: str = "/",
         port: int = 8000,
@@ -27,7 +26,6 @@ class ModelInferenceTemplate:
             dict[str, str]
         ] = None,  # https://docs.nvidia.com/nim/large-language-models/latest/configuration.html#environment-variables (do not include secrets)
     ):
-        self._node_selector = node_selector
         self._image = image
         self._health_endpoint = health_endpoint
         self._port = port
@@ -45,7 +43,6 @@ class ModelInferenceTemplate:
 
     def update_pod_template(self):
         self._pod_template.pod_spec = V1PodSpec(
-            node_selector=self._node_selector,
             containers=[],
             init_containers=[
                 V1Container(
@@ -72,19 +69,6 @@ class ModelInferenceTemplate:
                         period_seconds=10,
                     ),
                 ),
-                # V1Container(
-                #     name="wait-for-model-server",
-                #     image="busybox",
-                #     command=[
-                #         "sh",
-                #         "-c",
-                #         f"until wget -qO- http://localhost:{self._port}/{self._health_endpoint}; do sleep 1; done;",
-                #     ],
-                #     resources=V1ResourceRequirements(
-                #         requests={"cpu": 1, "memory": "100Mi"},
-                #         limits={"cpu": 1, "memory": "100Mi"},
-                #     ),
-                # ),
             ],
         )
 

@@ -19,7 +19,6 @@ from ..sidecar_template import ModelInferenceTemplate
 class NIM(ModelInferenceTemplate):
     def __init__(
         self,
-        node_selector: Optional[dict] = None,
         image: str = "nvcr.io/nim/meta/llama3-8b-instruct:1.0.0",
         health_endpoint: str = "v1/health/ready",
         port: int = 8000,
@@ -29,7 +28,6 @@ class NIM(ModelInferenceTemplate):
         shm_size: str = "16Gi",
         # kubernetes secrets
         ngc_image_secret: Optional[str] = None,
-        ngc_secret_group: Optional[str] = None,
         ngc_secret_key: Optional[str] = None,
         ####################
         env: Optional[dict[str, str]] = None,
@@ -41,7 +39,6 @@ class NIM(ModelInferenceTemplate):
         """
         Initialize NIM class for managing a Kubernetes pod template.
 
-        :param node_selector: A dictionary representing the node selector for the Kubernetes pod.
         :param image: The Docker image to be used for the model server container. Default is "nvcr.io/nim/meta/llama3-8b-instruct:1.0.0".
         :param health_endpoint: The health endpoint for the model server container. Default is "v1/health/ready".
         :param port: The port number for the model server container. Default is 8000.
@@ -50,8 +47,7 @@ class NIM(ModelInferenceTemplate):
         :param mem: The amount of memory requested for the model server container. Default is "20Gi".
         :param shm_size: The size of the shared memory volume. Default is "16Gi".
         :param ngc_image_secret: The name of the Kubernetes secret containing the NGC image pull credentials.
-        :param ngc_secret_group: The name of the Kubernetes secret group containing the NGC API key.
-        :param ngc_secret_key: The key name for the NGC API key within the secret group.
+        :param ngc_secret_key: The key name for the NGC API key.
         :param env: A dictionary of environment variables to be set in the model server container.
         :param hf_repo_ids: A list of Hugging Face repository IDs for LoRA adapters to be downloaded.
         :param hf_token_group: The name of the Kubernetes secret group containing the HuggingFace token.
@@ -60,14 +56,11 @@ class NIM(ModelInferenceTemplate):
         """
         if ngc_image_secret is None:
             raise ValueError("NGC image pull credentials must be provided.")
-        if ngc_secret_group is None:
-            raise ValueError("NGC secret group must be provided.")
         if ngc_secret_key is None:
             raise ValueError("NGC secret key must be provided.")
 
         self._shm_size = shm_size
         self._ngc_image_secret = ngc_image_secret
-        self._ngc_secret_group = ngc_secret_group
         self._ngc_secret_key = ngc_secret_key
         self._hf_repo_ids = hf_repo_ids
         self._hf_token_group = hf_token_group
@@ -75,7 +68,6 @@ class NIM(ModelInferenceTemplate):
         self._lora_adapter_mem = lora_adapter_mem
 
         super().__init__(
-            node_selector=node_selector,
             image=image,
             health_endpoint=health_endpoint,
             port=port,
@@ -100,12 +92,7 @@ class NIM(ModelInferenceTemplate):
         model_server_container.env.append(
             V1EnvVar(
                 name="NGC_API_KEY",
-                value_from=V1EnvVarSource(
-                    secret_key_ref=V1SecretKeySelector(
-                        name=self._ngc_secret_group,
-                        key=self._ngc_secret_key,
-                    )
-                ),
+                value_from=V1EnvVarSource(secret_key_ref=V1SecretKeySelector(key=self._ngc_secret_key)),
             )
         )
         model_server_container.volume_mounts = [V1VolumeMount(name="dshm", mount_path="/dev/shm")]
