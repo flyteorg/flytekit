@@ -4,7 +4,9 @@ from kubernetes.client.models import (
     V1Container,
     V1ContainerPort,
     V1EnvVar,
+    V1HTTPGetAction,
     V1PodSpec,
+    V1Probe,
     V1ResourceRequirements,
 )
 
@@ -64,20 +66,25 @@ class ModelInferenceTemplate:
                     ),
                     restart_policy="Always",  # treat this container as a sidecar
                     env=([V1EnvVar(name=k, value=v) for k, v in self._env.items()] if self._env else None),
-                ),
-                V1Container(
-                    name="wait-for-model-server",
-                    image="busybox",
-                    command=[
-                        "sh",
-                        "-c",
-                        f"until wget -qO- http://localhost:{self._port}/{self._health_endpoint}; do sleep 1; done;",
-                    ],
-                    resources=V1ResourceRequirements(
-                        requests={"cpu": 1, "memory": "100Mi"},
-                        limits={"cpu": 1, "memory": "100Mi"},
+                    startup_probe=V1Probe(
+                        http_get=V1HTTPGetAction(path=self._health_endpoint, port=self._port),
+                        failure_threshold=3,
+                        period_seconds=10,
                     ),
                 ),
+                # V1Container(
+                #     name="wait-for-model-server",
+                #     image="busybox",
+                #     command=[
+                #         "sh",
+                #         "-c",
+                #         f"until wget -qO- http://localhost:{self._port}/{self._health_endpoint}; do sleep 1; done;",
+                #     ],
+                #     resources=V1ResourceRequirements(
+                #         requests={"cpu": 1, "memory": "100Mi"},
+                #         limits={"cpu": 1, "memory": "100Mi"},
+                #     ),
+                # ),
             ],
         )
 
