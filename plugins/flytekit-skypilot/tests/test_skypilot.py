@@ -126,6 +126,16 @@ def mock_fail(sleep_time=SLEEP_TIME):
     return wrapper
 
 
+def mock_exec(sleep_time=SLEEP_TIME):
+    time.sleep(sleep_time)
+    return (0, "Mock Success")
+
+
+def mock_queue(sleep_time=SLEEP_TIME):
+    time.sleep(sleep_time)
+    return [{"job_name": "sky_task.mock_task", "status": sky.JobStatus.RUNNING, "job_id": 0}]
+
+
 async def stop_sky_path():
     SkyTaskTracker._zip_coro.cancel()
     try:
@@ -135,19 +145,27 @@ async def stop_sky_path():
 
 
 async def stop_and_wait(remote_cluster: ClusterManager, remote_task: BaseSkyTask):
-    await asyncio.sleep(CORO_INTERVAL * 2 + 0.5)
-    assert remote_task._task_event_handler.is_terminal()
-    assert remote_task._cluster_event_handler.is_terminal()
-    await asyncio.sleep(AUTO_DOWN + STOP_TIMEOUT + 2)
-    assert remote_cluster._cluster_coroutine.done()
+    max_allowed_time, time_counter = 2 * (CORO_INTERVAL) + TIME_BUFFER, 0
+    while not remote_task._task_event_handler.is_terminal() or not remote_task._cluster_event_handler.is_terminal():
+        await asyncio.sleep(0.1)
+        time_counter += 0.1
+        if time_counter >= max_allowed_time:
+            raise Exception("Task did not enter terminal state")
+
+    max_allowed_time, time_counter = AUTO_DOWN + STOP_TIMEOUT + TIME_BUFFER, 0
+    while not remote_cluster._cluster_coroutine.done():
+        await asyncio.sleep(0.1)
+        time_counter += 0.1
+        if time_counter >= max_allowed_time:
+            raise Exception("Cluster did not finish")
 
 
 def mock_sky_queues():
     sky.status = mock.MagicMock(return_value=[{"status": sky.ClusterStatus.INIT}])
     sky.stop = mock.MagicMock()
     sky.down = mock.MagicMock()
-    sky.queue = mock.MagicMock(side_effect=queue_mock)
-    sky.jobs.queue = mock.MagicMock(side_effect=managed_queue_mock)
+    sky.cancel = mock.MagicMock(side_effect=mock_launch(sleep_time=0))
+    sky.jobs.cancel = mock.MagicMock(side_effect=mock_launch(sleep_time=0))
 
 
 @pytest.fixture
@@ -215,13 +233,21 @@ def mock_provider(mock_fs):
         autospec=True,
         side_effect=(mock_launch(sleep_time=DUMMY_TIME)),
     ) as dummy_launch, mock.patch(
-        "flytekitplugins.skypilot.utils.NormalTask.launch",
+        "flytekitplugins.skypilot.utils.NormalTask.get_launch_handler",
         autospec=True,
-        side_effect=(mock_launch(sleep_time=EXEC_TIME)),
+        return_value=(functools.partial(mock_exec, EXEC_TIME)),
     ) as normal_launch, mock.patch(
-        "flytekitplugins.skypilot.utils.ManagedTask.launch",
+        "flytekitplugins.skypilot.utils.ManagedTask.get_launch_handler",
         autospec=True,
-        side_effect=(mock_launch(sleep_time=EXEC_TIME)),
+        return_value=(functools.partial(mock_exec, EXEC_TIME)),
+    ), mock.patch(
+        "flytekitplugins.skypilot.utils.NormalTask.get_queue_handler",
+        autospec=True,
+        return_value=(functools.partial(mock_queue, EXEC_TIME)),
+    ), mock.patch(
+        "flytekitplugins.skypilot.utils.ManagedTask.get_queue_handler",
+        autospec=True,
+        return_value=(functools.partial(mock_queue, EXEC_TIME)),
     ) as managed_launch, mock.patch(
         "flytekitplugins.skypilot.utils.timeout_handler",
         autospec=True,

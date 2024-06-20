@@ -1,7 +1,8 @@
 import asyncio
+import concurrent.futures as cf
 import multiprocessing
 import traceback
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 from flytekitplugins.skypilot.constants import COROUTINE_INTERVAL
 
@@ -112,18 +113,48 @@ class WrappedProcess(multiprocessing.Process):
         return self._exception
 
 
-class BlockingProcessHandler:
+class BaseProcessHandler:
     def __init__(self, fn: Callable, event_handler: EventHandler = None, name: str = None) -> None:
         if event_handler is None:
             event_handler = EventHandler()
-        self._process = WrappedProcess(target=fn)
-        self._process.start()
         self._check_interval = COROUTINE_INTERVAL
         self._event_handler = event_handler
-        self._task = None
+        self._task: Optional[asyncio.Task] = None
         self._name = name
 
-    async def status_poller(self, extra_events: list[Callable] = None, timeout: int = None) -> bool:
+    async def status_poller(self, extra_events: list[Callable] = None, timeout: int = None) -> tuple[bool, Any]:
+        raise NotImplementedError
+
+    def create_task(self, extra_events: list[Callable] = None, timeout: Optional[int] = None):
+        self._task = asyncio.create_task(self.status_poller(extra_events=extra_events, timeout=timeout))
+
+    def clean_up(self):
+        raise NotImplementedError
+
+    def time_exceeded(self, process_time: int, timeout: Optional[int]):
+        if not timeout:
+            return False
+        return process_time >= timeout
+
+    def cancel(self):
+        if self._task and not self._task.done():
+            self.clean_up()
+
+    def done(self):
+        return self._task and self._task.done()
+
+
+class BlockingProcessHandler(BaseProcessHandler):
+    """
+    function launcher in a separate process, suitable for functions without return value and class functions where the class is not picklable
+    """
+
+    def __init__(self, fn: Callable, event_handler: EventHandler = None, name: str = None) -> None:
+        super().__init__(fn, event_handler, name)
+        self._process = WrappedProcess(target=fn)
+        self._process.start()
+
+    async def status_poller(self, extra_events: list[Callable] = None, timeout: int = None) -> tuple[bool, Any]:
         if extra_events is None:
             extra_events = [self._event_handler.is_terminal]
         else:
@@ -134,12 +165,12 @@ class BlockingProcessHandler:
                 if self._process.exitcode is not None:
                     break
             except ValueError:
-                return False
+                return False, None
             logger.warning(f"{self._name} is stuck")
             for event in extra_events:
                 if event():
                     self.clean_up()
-                    return False
+                    return False, None
             if self.time_exceeded(process_time, timeout):
                 self.clean_up()
                 raise asyncio.exceptions.TimeoutError(f"{self._name} time exceeded")
@@ -154,24 +185,66 @@ class BlockingProcessHandler:
         self.clean_up()
         if launch_exception is not None:
             raise Exception(launch_exception)
-        return True
-
-    def create_task(self, extra_events: list[Callable] = None, timeout: Optional[int] = None):
-        self._task = asyncio.create_task(self.status_poller(extra_events=extra_events, timeout=timeout))
+        return True, None
 
     def clean_up(self):
         self._process.terminate()
         self._process.join()
-        self._process.close()
 
-    def time_exceeded(self, process_time: int, timeout: Optional[int]):
-        if not timeout:
-            return False
-        return process_time >= timeout
 
-    def cancel(self):
-        if self._task and not self._task.done():
-            self.clean_up()
+class ConcurrentProcessHandler(BaseProcessHandler):
+    """
+    function launcher in a separate process, suitable for functions with return value
+    """
 
-    def done(self):
-        return self._task and self._task.done()
+    def __init__(self, fn: Callable, event_handler: EventHandler = None, name: str = None) -> None:
+        super().__init__(fn, event_handler, name)
+        self._fn = fn
+
+    async def status_poller(self, extra_events: list[Callable] = None, timeout: int = None) -> tuple[bool, Any]:
+        if extra_events is None:
+            extra_events = [self._event_handler.is_terminal]
+        else:
+            extra_events.append(self._event_handler.is_terminal)
+        process_time = 0
+        success, task_result, launch_exception = None, None, None
+        with cf.ProcessPoolExecutor() as executor:
+            logger.warning(f"fork type: {executor._mp_context.get_start_method()}")
+            task = executor.submit(self._fn)
+            # breakpoint()
+            while not task.done():
+                logger.warning(f"{self._name} is stuck")
+                for event in extra_events:
+                    if event():
+                        self.clean_up(executor)
+                        success = False
+                        return success, None
+                if self.time_exceeded(process_time, timeout):
+                    self.clean_up(executor)
+                    success = False
+                    launch_exception = asyncio.exceptions.TimeoutError(f"{self._name} time exceeded")
+                    raise launch_exception
+                # await asyncio.wait([task], timeout=self._check_interval)
+                await asyncio.sleep(self._check_interval)
+                process_time += self._check_interval
+
+            try:
+                task_result = task.result()
+                success = True
+                self._event_handler.launch_done_event.set()
+                # executor.shutdown()
+            except Exception as e:
+                launch_exception = launch_exception or e
+                if success is None:
+                    self.clean_up(executor)
+
+        if launch_exception is not None:
+            raise launch_exception
+
+        return success, task_result
+
+    def clean_up(self, executor: cf.ProcessPoolExecutor):
+        if executor._processes:
+            for process in executor._processes:
+                executor._processes[process].terminate()
+                executor._processes[process].join()
