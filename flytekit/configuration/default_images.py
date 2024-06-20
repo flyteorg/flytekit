@@ -4,6 +4,8 @@ import sys
 import typing
 from contextlib import suppress
 
+from flytekit.core.constants import FLYTE_INTERNAL_IMAGE
+
 
 class PythonVersion(enum.Enum):
     PYTHON_3_8 = (3, 8)
@@ -41,7 +43,7 @@ class DefaultImages(object):
     def find_image_for(
         cls, python_version: typing.Optional[PythonVersion] = None, flytekit_version: typing.Optional[str] = None
     ) -> str:
-        default_image_str = os.getenv("FLYTE_INTERNAL_IMAGE")
+        default_image_str = os.getenv(FLYTE_INTERNAL_IMAGE)
         if default_image_str:
             return default_image_str
 
