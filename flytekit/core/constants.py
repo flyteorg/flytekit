@@ -10,5 +10,5 @@ GLOBAL_INPUT_NODE_ID = ""
 START_NODE_ID = "start-node"
 END_NODE_ID = "end-node"
 
-# To override the default container image or the default base image in ImageSpec, set this environment variable.
+# If set this environment variable overrides the default container image and the default base image in ImageSpec.
 FLYTE_INTERNAL_IMAGE = "FLYTE_INTERNAL_IMAGE"
