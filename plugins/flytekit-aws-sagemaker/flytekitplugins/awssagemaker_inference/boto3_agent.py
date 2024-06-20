@@ -1,7 +1,12 @@
 from typing import Optional
 
 from flyteidl.core.execution_pb2 import TaskExecution
+from typing_extensions import Annotated
 
+from flytekit import FlyteContextManager, kwtypes
+from flytekit.core import context_manager
+from flytekit.core.data_persistence import FileAccessProvider
+from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import (
     AgentRegistry,
     Resource,
@@ -34,7 +39,13 @@ class BotoAgent(SyncAgentBase):
     def __init__(self):
         super().__init__(task_type_name="boto")
 
-    async def do(self, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs) -> Resource:
+    async def do(
+        self,
+        task_template: TaskTemplate,
+        output_prefix: str,
+        inputs: Optional[LiteralMap] = None,
+        **kwargs,
+    ) -> Resource:
         custom = task_template.custom
 
         service = custom.get("service")
@@ -54,9 +65,27 @@ class BotoAgent(SyncAgentBase):
             inputs=inputs,
         )
 
-        outputs = None
+        outputs = {"result": {"result": None}}
         if result:
-            outputs = {"result": result}
+            ctx = FlyteContextManager.current_context()
+            builder = ctx.with_file_access(
+                FileAccessProvider(
+                    local_sandbox_dir=ctx.file_access.local_sandbox_dir,
+                    raw_output_prefix=output_prefix,
+                    data_config=ctx.file_access.data_config,
+                )
+            )
+            with context_manager.FlyteContextManager.with_context(builder) as new_ctx:
+                outputs = LiteralMap(
+                    literals={
+                        "result": TypeEngine.to_literal(
+                            new_ctx,
+                            result,
+                            Annotated[dict, kwtypes(allow_pickle=True)],
+                            TypeEngine.to_literal_type(dict),
+                        )
+                    }
+                )
 
         return Resource(phase=TaskExecution.SUCCEEDED, outputs=outputs)
 

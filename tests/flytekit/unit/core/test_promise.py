@@ -13,6 +13,7 @@ from flytekit.core.context_manager import CompilationState, FlyteContextManager
 from flytekit.core.promise import (
     Promise,
     VoidPromise,
+    binding_data_from_python_std,
     create_and_link_node,
     create_and_link_node_from_remote,
     resolve_attr_path_in_promise,
@@ -20,6 +21,7 @@ from flytekit.core.promise import (
 )
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions.user import FlyteAssertion, FlytePromiseAttributeResolveException
+from flytekit.models.types import LiteralType, SimpleType, TypeStructure
 from flytekit.types.pickle.pickle import BatchSize
 
 
@@ -44,7 +46,7 @@ def test_create_and_link_node():
 
     p = create_and_link_node(ctx, t2)
     assert p.ref.var == "o0"
-    assert len(p.ref.node.bindings) == 0
+    assert len(p.ref.node.bindings) == 1
 
 
 def test_create_and_link_node_from_remote():
@@ -77,19 +79,30 @@ def test_create_and_link_node_from_remote_ignore():
         ...
 
     lp = LaunchPlan.get_or_create(wf, name="promise-test", fixed_inputs={"i": 1}, default_inputs={"j": 10})
+    lp_without_fixed_inpus = LaunchPlan.get_or_create(
+        wf, name="promise-test-no-fixed", fixed_inputs=None, default_inputs={"j": 10}
+    )
     ctx = context_manager.FlyteContext.current_context().with_compilation_state(CompilationState(prefix=""))
 
     # without providing the _inputs_not_allowed or _ignorable_inputs, all inputs to lp become required,
     # which is incorrect
-    with pytest.raises(FlyteAssertion, match="Missing input `i` type `<FlyteLiteral simple: INTEGER>`"):
+    with pytest.raises(
+        FlyteAssertion,
+        match=r"Missing input `i` type `\[Flyte Serialized object: Type: <LiteralType> Value: <simple: INTEGER>\]`",
+    ):
         create_and_link_node_from_remote(ctx, lp)
 
-    # Even if j is not provided it will default
+    # Even if j is not provided, it will default
     create_and_link_node_from_remote(ctx, lp, _inputs_not_allowed={"i"}, _ignorable_inputs={"j"})
+
+    # Even if i,j is not provided, it will default
+    create_and_link_node_from_remote(
+        ctx, lp_without_fixed_inpus, _inputs_not_allowed=None, _ignorable_inputs={"i", "j"}
+    )
 
     # value of `i` cannot be overridden
     with pytest.raises(
-        FlyteAssertion, match="ixed inputs cannot be specified. Please remove the following inputs - {'i'}"
+        FlyteAssertion, match="Fixed inputs cannot be specified. Please remove the following inputs - {'i'}"
     ):
         create_and_link_node_from_remote(ctx, lp, _inputs_not_allowed={"i"}, _ignorable_inputs={"j"}, i=15)
 
@@ -226,3 +239,18 @@ def test_resolve_attr_path_in_promise():
     # exception
     with pytest.raises(FlytePromiseAttributeResolveException):
         tgt_promise = resolve_attr_path_in_promise(src_promise["c"])
+
+
+def test_prom_with_union_literals():
+    ctx = FlyteContextManager.current_context()
+    pt = typing.Union[str, int]
+    lt = TypeEngine.to_literal_type(pt)
+    assert lt.union_type.variants == [
+        LiteralType(simple=SimpleType.STRING, structure=TypeStructure(tag="str")),
+        LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
+    ]
+
+    bd = binding_data_from_python_std(ctx, lt, 3, pt, [])
+    assert bd.scalar.union.stored_type.structure.tag == "int"
+    bd = binding_data_from_python_std(ctx, lt, "hello", pt, [])
+    assert bd.scalar.union.stored_type.structure.tag == "str"

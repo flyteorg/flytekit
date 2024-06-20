@@ -136,6 +136,9 @@ class ArtifactIDSpecification(object):
         )
         return artifact_id
 
+    def __repr__(self):
+        return f"ArtifactIDSpecification({self.artifact.name}, {self.artifact.partition_keys}, TP: {self.artifact.time_partitioned})"
+
 
 class ArtifactQuery(object):
     def __init__(
@@ -179,6 +182,25 @@ class ArtifactQuery(object):
             self.binding: Optional[Artifact] = bindings[0]
         else:
             self.binding = None
+
+    @property
+    def bound(self) -> bool:
+        if self.artifact.time_partitioned and not (self.time_partition and self.time_partition.value):
+            return False
+        if self.artifact.partition_keys:
+            artifact_partitions = set(self.artifact.partition_keys)
+            query_partitions = set()
+            if self.partitions and self.partitions.partitions:
+                pp = self.partitions.partitions
+                query_partitions = set([k for k in pp.keys() if pp[k].value])
+
+            if artifact_partitions != query_partitions:
+                logger.error(
+                    f"Query on {self.artifact.name} missing query params {artifact_partitions - query_partitions}"
+                )
+                return False
+
+        return True
 
     def to_flyte_idl(
         self,
@@ -585,14 +607,11 @@ class ArtifactSerializationHandler(typing.Protocol):
     This protocol defines the interface for serializing artifact-related entities down to Flyte IDL.
     """
 
-    def partitions_to_idl(self, p: Optional[Partitions], **kwargs) -> Optional[art_id.Partitions]:
-        ...
+    def partitions_to_idl(self, p: Optional[Partitions], **kwargs) -> Optional[art_id.Partitions]: ...
 
-    def time_partition_to_idl(self, tp: Optional[TimePartition], **kwargs) -> Optional[art_id.TimePartition]:
-        ...
+    def time_partition_to_idl(self, tp: Optional[TimePartition], **kwargs) -> Optional[art_id.TimePartition]: ...
 
-    def artifact_query_to_idl(self, aq: ArtifactQuery, **kwargs) -> art_id.ArtifactQuery:
-        ...
+    def artifact_query_to_idl(self, aq: ArtifactQuery, **kwargs) -> art_id.ArtifactQuery: ...
 
 
 class DefaultArtifactSerializationHandler(ArtifactSerializationHandler):

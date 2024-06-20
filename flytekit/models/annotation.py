@@ -1,4 +1,4 @@
-import json as _json
+import json
 from typing import Any, Dict
 
 from flyteidl.core import types_pb2 as _types_pb2
@@ -25,7 +25,7 @@ class TypeAnnotation:
         """
 
         if self._annotations is not None:
-            annotations = _json_format.Parse(_json.dumps(self.annotations), _struct.Struct())
+            annotations = _json_format.Parse(json.dumps(self.annotations), _struct.Struct())
         else:
             annotations = None
 

@@ -15,7 +15,11 @@ setup(
     author_email="admin@flyte.org",
     description="This package holds the openai plugins for flytekit",
     namespace_packages=["flytekitplugins"],
-    packages=[f"flytekitplugins.{PLUGIN_NAME}", f"flytekitplugins.{PLUGIN_NAME}.chatgpt"],
+    packages=[
+        f"flytekitplugins.{PLUGIN_NAME}",
+        f"flytekitplugins.{PLUGIN_NAME}.chatgpt",
+        f"flytekitplugins.{PLUGIN_NAME}.batch",
+    ],
     install_requires=plugin_requires,
     license="apache2",
     python_requires=">=3.8",
