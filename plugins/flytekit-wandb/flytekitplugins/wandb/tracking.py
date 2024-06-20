@@ -96,6 +96,7 @@ class wandb_init(ClassDecorator):
 
         run = wandb.init(project=self.project, entity=self.entity, id=wand_id, **self.init_kwargs)
 
+        # If FLYTE_EXECUTION_URL is defined, inject it into wandb to link back to the execution.
         execution_url = os.getenv("FLYTE_EXECUTION_URL")
         if execution_url is not None:
             notes_list = [f"[Execution URL]({execution_url})"]
