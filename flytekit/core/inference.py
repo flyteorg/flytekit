@@ -1,19 +1,6 @@
 from typing import Optional
 
-from kubernetes.client.models import (
-    V1Container,
-    V1EmptyDirVolumeSource,
-    V1EnvVar,
-    V1EnvVarSource,
-    V1LocalObjectReference,
-    V1ResourceRequirements,
-    V1SecretKeySelector,
-    V1SecurityContext,
-    V1Volume,
-    V1VolumeMount,
-)
-
-from ..sidecar_template import ModelInferenceTemplate
+from utils import ModelInferenceTemplate
 
 
 class NIM(ModelInferenceTemplate):
@@ -80,6 +67,17 @@ class NIM(ModelInferenceTemplate):
         self.nim_pod_template()
 
     def nim_pod_template(self):
+        from kubernetes.client.models import (
+            V1Container,
+            V1EmptyDirVolumeSource,
+            V1EnvVar,
+            V1LocalObjectReference,
+            V1ResourceRequirements,
+            V1SecurityContext,
+            V1Volume,
+            V1VolumeMount,
+        )
+
         self.pod_template.pod_spec.volumes = [
             V1Volume(
                 name="dshm",
@@ -90,10 +88,7 @@ class NIM(ModelInferenceTemplate):
 
         model_server_container = self.pod_template.pod_spec.init_containers[0]
         model_server_container.env.append(
-            V1EnvVar(
-                name="NGC_API_KEY",
-                value_from=V1EnvVarSource(secret_key_ref=V1SecretKeySelector(key=self._ngc_secret_key)),
-            )
+            V1EnvVar(name="NGC_API_KEY", value=f"$(_UNION_{self._ngc_secret_key.upper()})")
         )
         model_server_container.volume_mounts = [V1VolumeMount(name="dshm", mount_path="/dev/shm")]
         model_server_container.security_context = V1SecurityContext(run_as_user=1000)

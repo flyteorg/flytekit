@@ -1,4 +1,4 @@
-from flytekitplugins.inference import NIM
+from flytekit.core.inference import NIM
 import pytest
 
 secrets = {
