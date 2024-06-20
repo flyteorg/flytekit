@@ -19,7 +19,6 @@ class NIM(ModelInferenceTemplate):
         ####################
         env: Optional[dict[str, str]] = None,
         hf_repo_ids: Optional[list[str]] = None,
-        hf_token_group: Optional[str] = None,
         hf_token_key: Optional[str] = None,
         lora_adapter_mem: Optional[str] = None,
     ):
@@ -37,8 +36,7 @@ class NIM(ModelInferenceTemplate):
         :param ngc_secret_key: The key name for the NGC API key.
         :param env: A dictionary of environment variables to be set in the model server container.
         :param hf_repo_ids: A list of Hugging Face repository IDs for LoRA adapters to be downloaded.
-        :param hf_token_group: The name of the Kubernetes secret group containing the HuggingFace token.
-        :param hf_token_key: The key name for the HuggingFace token within the secret group.
+        :param hf_token_key: The key name for the HuggingFace token.
         :param lora_adapter_mem: The amount of memory requested for the init container that downloads LoRA adapters.
         """
         if ngc_image_secret is None:
@@ -50,7 +48,6 @@ class NIM(ModelInferenceTemplate):
         self._ngc_image_secret = ngc_image_secret
         self._ngc_secret_key = ngc_secret_key
         self._hf_repo_ids = hf_repo_ids
-        self._hf_token_group = hf_token_group
         self._hf_token_key = hf_token_key
         self._lora_adapter_mem = lora_adapter_mem
 
@@ -123,9 +120,9 @@ class NIM(ModelInferenceTemplate):
             export LOCAL_PEFT_DIRECTORY={mount_path}
             mkdir -p $LOCAL_PEFT_DIRECTORY
 
-            # If HF token is provided, log in
-            if [ ! -z "$HF_TOKEN_GROUP" ] && [ ! -z "$HF_TOKEN_KEY" ]; then
-                echo "$HF_TOKEN_GROUP:$HF_TOKEN_KEY" | huggingface-cli login --token
+            # Check if HF token is provided and login if so
+            if [ -n "$_UNION_{self._hf_token_key.upper()}" ]; then
+                huggingface-cli login --token "$_UNION_{self._hf_token_key.upper()}"
             fi
 
             # Download LoRAs from Huggingface Hub
@@ -149,9 +146,3 @@ class NIM(ModelInferenceTemplate):
                     ],
                 ),
             )
-
-            if self._hf_token_group and self._hf_token_key:
-                self.pod_template.pod_spec.init_containers[0].env = [
-                    V1EnvVar(name="HF_TOKEN_GROUP", value=self._hf_token_group),
-                    V1EnvVar(name="HF_TOKEN_KEY", value=self._hf_token_key),
-                ]
