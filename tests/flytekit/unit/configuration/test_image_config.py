@@ -8,7 +8,7 @@ import pytest
 import flytekit
 from flytekit.configuration import ImageConfig
 from flytekit.configuration.default_images import DefaultImages, PythonVersion
-from flytekit.core.constants import FLYTE_INTERNAL_IMAGE
+from flytekit.core.constants import FLYTE_INTERNAL_IMAGE_ENV_VAR
 
 
 @pytest.mark.parametrize(
@@ -40,7 +40,7 @@ def test_image_config_auto(monkeypatch):
     version_str = f"{sys.version_info.major}.{sys.version_info.minor}"
     assert x.images[0].full == f"cr.flyte.org/flyteorg/flytekit:py{version_str}-latest"
 
-    monkeypatch.setenv(FLYTE_INTERNAL_IMAGE, "test")
+    monkeypatch.setenv(FLYTE_INTERNAL_IMAGE_ENV_VAR, "test")
     assert DefaultImages.find_image_for() == "test"
 
 
