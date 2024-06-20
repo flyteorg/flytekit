@@ -11,8 +11,8 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union, ca
 
 from flyteidl.core import tasks_pb2 as _core_task
 
-from flytekit import PodTemplate
 from flytekit.configuration import SerializationSettings
+from flytekit.core.pod_template import PodTemplate
 from flytekit.loggers import logger
 
 if TYPE_CHECKING:
