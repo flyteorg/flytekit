@@ -14,6 +14,7 @@ from flytekit.image_spec.image_spec import _F_IMG_ID, ImageBuildEngine, ImageSpe
 from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
 
 FLYTE_LOCAL_REGISTRY = "localhost:30000"
+FLYTE_ENVD_CONTEXT = "FLYTE_ENVD_CONTEXT"
 
 
 class EnvdImageSpecBuilder(ImageSpecBuilder):
@@ -38,6 +39,9 @@ class EnvdImageSpecBuilder(ImageSpecBuilder):
 
 
 def envd_context_switch(registry: str):
+    if os.getenv(FLYTE_ENVD_CONTEXT):
+        execute_command(f"envd context use --name {os.getenv(FLYTE_ENVD_CONTEXT)}")
+        return
     if registry == FLYTE_LOCAL_REGISTRY:
         # Assume buildkit daemon is running within the sandbox and exposed on port 30003
         command = "envd context create --name flyte-sandbox --builder tcp --builder-address localhost:30003 --use"
