@@ -121,8 +121,7 @@ def modify_literal_uris(lit: Literal):
             )
 
 
-class TypeTransformerFailedError(TypeError, AssertionError, ValueError):
-    ...
+class TypeTransformerFailedError(TypeError, AssertionError, ValueError): ...
 
 
 class TypeTransformer(typing.Generic[T]):
@@ -1023,13 +1022,30 @@ class TypeEngine(typing.Generic[T]):
             # Special case: prevent that for a type `FooEnum(str, Enum)`, the str transformer is used.
             return cls._ENUM_TRANSFORMER
 
+        from flytekit.types.iterator.json_iterator import JSONIterator
+
         for base_type in cls._REGISTRY.keys():
             if base_type is None:
                 continue  # None is actually one of the keys, but isinstance/issubclass doesn't work on it
             try:
-                if isinstance(python_type, base_type) or (
-                    inspect.isclass(python_type) and issubclass(python_type, base_type)
+                origin_type: Optional[typing.Any] = base_type
+                if hasattr(base_type, "__args__"):
+                    origin_base_type = get_origin(base_type)
+                    if isinstance(origin_base_type, type) and issubclass(
+                        origin_base_type, typing.Iterator
+                    ):  # Iterator[JSON]
+                        origin_type = origin_base_type
+
+                if isinstance(python_type, origin_type) or (  # type: ignore[arg-type]
+                    inspect.isclass(python_type) and issubclass(python_type, origin_type)  # type: ignore[arg-type]
                 ):
+                    # Consider Iterator[JSON] but not vanilla Iterator when the value is a JSON iterator.
+                    if (
+                        isinstance(python_type, type)
+                        and issubclass(python_type, JSONIterator)
+                        and not get_args(base_type)
+                    ):
+                        continue
                     return cls._REGISTRY[base_type]
             except TypeError:
                 # As of python 3.9, calls to isinstance raise a TypeError if the base type is not a valid type, which
@@ -1538,7 +1554,7 @@ class UnionTransformer(TypeTransformer[T]):
         super().__init__("Typed Union", typing.Union)
 
     @staticmethod
-    def is_optional_type(t: Type[T]) -> bool:
+    def is_optional_type(t: Type) -> bool:
         """Return True if `t` is a Union or Optional type."""
         return _is_union_type(t) or type(None) in get_args(t)
 
@@ -1579,8 +1595,8 @@ class UnionTransformer(TypeTransformer[T]):
                 if found_res:
                     is_ambiguous = True
                 found_res = True
-            except Exception as e:
-                logger.debug(f"Failed to convert from {python_val} to {t}", e)
+            except Exception:
+                logger.debug(f"Failed to convert from {python_val} to {t}", exc_info=True)
                 continue
 
         if is_ambiguous:
@@ -1682,7 +1698,7 @@ class DictTransformer(TypeTransformer[dict]):
         return None, None
 
     @staticmethod
-    def dict_to_generic_literal(v: dict, allow_pickle: bool) -> Literal:
+    def dict_to_generic_literal(ctx: FlyteContext, v: dict, allow_pickle: bool) -> Literal:
         """
         Creates a flyte-specific ``Literal`` value from a native python dictionary.
         """
@@ -1695,7 +1711,7 @@ class DictTransformer(TypeTransformer[dict]):
             )
         except TypeError as e:
             if allow_pickle:
-                remote_path = FlytePickle.to_pickle(v)
+                remote_path = FlytePickle.to_pickle(ctx, v)
                 return Literal(
                     scalar=Scalar(
                         generic=_json_format.Parse(json.dumps({"pickle_file": remote_path}), _struct.Struct())
@@ -1753,7 +1769,7 @@ class DictTransformer(TypeTransformer[dict]):
             allow_pickle, base_type = DictTransformer.is_pickle(python_type)
 
         if expected and expected.simple and expected.simple == SimpleType.STRUCT:
-            return self.dict_to_generic_literal(python_val, allow_pickle)
+            return self.dict_to_generic_literal(ctx, python_val, allow_pickle)
 
         lit_map = {}
         for k, v in python_val.items():
@@ -1789,16 +1805,16 @@ class DictTransformer(TypeTransformer[dict]):
         # for empty generic we have to explicitly test for lv.scalar.generic is not None as empty dict
         # evaluates to false
         if lv and lv.scalar and lv.scalar.generic is not None:
-            if lv.metadata["format"] == "json":
-                try:
-                    return json.loads(_json_format.MessageToJson(lv.scalar.generic))
-                except TypeError:
-                    raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
-            elif lv.metadata["format"] == "pickle":
+            if lv.metadata and lv.metadata.get("format", None) == "pickle":
                 from flytekit.types.pickle import FlytePickle
 
                 uri = json.loads(_json_format.MessageToJson(lv.scalar.generic)).get("pickle_file")
                 return FlytePickle.from_pickle(uri)
+
+            try:
+                return json.loads(_json_format.MessageToJson(lv.scalar.generic))
+            except TypeError:
+                raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
 
         raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
 

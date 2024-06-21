@@ -52,8 +52,7 @@ class FlytePickle(typing.Generic[T]):
         return _SpecificFormatClass
 
     @classmethod
-    def to_pickle(cls, python_val: typing.Any) -> str:
-        ctx = FlyteContextManager.current_context()
+    def to_pickle(cls, ctx: FlyteContext, python_val: typing.Any) -> str:
         local_dir = ctx.file_access.get_random_local_directory()
         os.makedirs(local_dir, exist_ok=True)
         local_path = ctx.file_access.get_random_local_path()
@@ -102,7 +101,7 @@ class FlytePickleTransformer(TypeTransformer[FlytePickle]):
                 format=self.PYTHON_PICKLE_FORMAT, dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
             )
         )
-        remote_path = FlytePickle.to_pickle(python_val)
+        remote_path = FlytePickle.to_pickle(ctx, python_val)
         return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
 
     def guess_python_type(self, literal_type: LiteralType) -> typing.Type[FlytePickle[typing.Any]]:

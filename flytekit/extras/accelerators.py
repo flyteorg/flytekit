@@ -93,6 +93,7 @@ if you want to use a fractional GPU, you can use the ``partitioned`` method on t
    A100_80GB
 
 """
+
 import abc
 import copy
 from typing import ClassVar, Generic, Optional, Type, TypeVar
@@ -109,8 +110,7 @@ class BaseAccelerator(abc.ABC, Generic[T]):
     """
 
     @abc.abstractmethod
-    def to_flyte_idl(self) -> T:
-        ...
+    def to_flyte_idl(self) -> T: ...
 
 
 class GPUAccelerator(BaseAccelerator):

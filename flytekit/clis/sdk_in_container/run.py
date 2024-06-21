@@ -32,7 +32,7 @@ from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow, WorkflowBase
 from flytekit.exceptions.system import FlyteSystemException
-from flytekit.interaction.click_types import FlyteLiteralConverter, key_value_callback
+from flytekit.interaction.click_types import FlyteLiteralConverter, key_value_callback, labels_callback
 from flytekit.interaction.string_literals import literal_string_repr
 from flytekit.loggers import logger
 from flytekit.models import security
@@ -174,7 +174,7 @@ class RunLevelParams(PyFlyteParams):
             multiple=True,
             type=str,
             show_default=True,
-            callback=key_value_callback,
+            callback=labels_callback,
             help="Labels to be attached to the execution of the format `label_key=label_value`.",
         )
     )
@@ -239,7 +239,7 @@ class RunLevelParams(PyFlyteParams):
     )
     limit: int = make_click_option_field(
         click.Option(
-            param_decls=["--limit", "limit"],
+            param_decls=["--limit"],
             required=False,
             type=int,
             default=50,
@@ -256,6 +256,16 @@ class RunLevelParams(PyFlyteParams):
             help="Assign newly created execution to a given cluster pool",
         )
     )
+    execution_cluster_label: str = make_click_option_field(
+        click.Option(
+            param_decls=["--execution-cluster-label", "--ecl"],
+            required=False,
+            type=str,
+            default="",
+            help="Assign newly created execution to a given execution cluster label",
+        )
+    )
+
     computed_params: RunLevelComputedParams = field(default_factory=RunLevelComputedParams)
     _remote: typing.Optional[FlyteRemote] = None
 
@@ -448,6 +458,7 @@ def run_remote(
         envs=run_level_params.envvars,
         tags=run_level_params.tags,
         cluster_pool=run_level_params.cluster_pool,
+        execution_cluster_label=run_level_params.execution_cluster_label,
     )
 
     console_url = remote.generate_console_url(execution)
@@ -531,7 +542,8 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
                         raise click.UsageError(
                             f"Default for '{input_name}' is a query, which must be specified when running locally."
                         )
-                inputs[input_name] = processed_click_value
+                if processed_click_value is not None:
+                    inputs[input_name] = processed_click_value
 
             if not run_level_params.is_remote:
                 with FlyteContextManager.with_context(_update_flyte_context(run_level_params)):

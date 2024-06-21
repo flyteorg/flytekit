@@ -3,12 +3,6 @@ from flytekit.models.core import catalog, identifier
 from tests.flytekit.unit.common_tests.test_workflow_promote import get_compiled_workflow_closure
 
 
-def test_metadata():
-    md = node_execution_models.NodeExecutionMetaData(retry_group="0", is_parent_node=True, spec_node_id="n0")
-    md2 = node_execution_models.NodeExecutionMetaData.from_flyte_idl(md.to_flyte_idl())
-    assert md == md2
-
-
 def test_workflow_node_metadata():
     wf_exec_id = identifier.WorkflowExecutionIdentifier("project", "domain", "name")
 

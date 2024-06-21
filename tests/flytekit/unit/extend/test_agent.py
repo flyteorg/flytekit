@@ -47,6 +47,7 @@ from flytekit.models.core.identifier import (
     WorkflowExecutionIdentifier,
 )
 from flytekit.models.literals import LiteralMap
+from flytekit.models.security import Identity
 from flytekit.models.task import TaskExecutionMetadata, TaskTemplate
 from flytekit.tools.translator import get_serializable
 
@@ -159,6 +160,7 @@ task_execution_metadata = TaskExecutionMetadata(
     annotations={"annotation_key": "annotation_val"},
     k8s_service_account="k8s service account",
     environment_variables={"env_var_key": "env_var_val"},
+    identity=Identity(execution_identity="task executor"),
 )
 
 

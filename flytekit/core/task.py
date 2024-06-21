@@ -118,8 +118,7 @@ def task(
     pod_template_name: Optional[str] = ...,
     accelerator: Optional[BaseAccelerator] = ...,
     unsafe: bool = ...,
-) -> Callable[[Callable[..., FuncOut]], PythonFunctionTask[T]]:
-    ...
+) -> Callable[[Callable[..., FuncOut]], PythonFunctionTask[T]]: ...
 
 
 @overload
@@ -157,8 +156,7 @@ def task(
     pod_template_name: Optional[str] = ...,
     accelerator: Optional[BaseAccelerator] = ...,
     unsafe: bool = ...,
-) -> Union[PythonFunctionTask[T], Callable[..., FuncOut]]:
-    ...
+) -> Union[PythonFunctionTask[T], Callable[..., FuncOut]]: ...
 
 
 def task(

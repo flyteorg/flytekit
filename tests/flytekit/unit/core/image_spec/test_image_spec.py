@@ -104,14 +104,14 @@ def test_image_spec_engine_priority():
 
 
 def test_build_existing_image_with_force_push():
-    image_spec = Mock()
-    image_spec.exist.return_value = True
-    image_spec._is_force_push = True
+    image_spec = ImageSpec(name="hello", builder="test").force_push()
 
-    ImageBuildEngine._build_image = Mock()
+    builder = Mock()
+    builder.build_image.return_value = "new_image_name"
+    ImageBuildEngine.register("test", builder)
 
     ImageBuildEngine.build(image_spec)
-    ImageBuildEngine._build_image.assert_called_once()
+    builder.build_image.assert_called_once()
 
 
 def test_custom_tag():
@@ -122,3 +122,17 @@ def test_custom_tag():
     )
     spec_hash = calculate_hash_from_image_spec(spec)
     assert spec.image_name() == f"my_image:{spec_hash}-dev"
+
+
+def test_no_build_during_execution():
+    # Check that no builds are called during executions
+    ImageBuildEngine._build_image = Mock()
+
+    ctx = context_manager.FlyteContext.current_context()
+    with context_manager.FlyteContextManager.with_context(
+        ctx.with_execution_state(ctx.execution_state.with_params(mode=ExecutionState.Mode.TASK_EXECUTION))
+    ):
+        spec = ImageSpec(name="my_image_v2", python_version="3.12")
+        ImageBuildEngine.build(spec)
+
+    ImageBuildEngine._build_image.assert_not_called()
