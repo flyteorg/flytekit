@@ -417,6 +417,7 @@ class SkyPathSetting:
             return self.file_access.raw_output_fs.modified(self.remote_path_setting.remote_sky_zip)
         return None
 
+
 def parse_blob_basename(blob_name: str) -> str:
     """
     Parse the blob name to get the task_id

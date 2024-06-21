@@ -443,12 +443,11 @@ async def test_async_agent_remote_fail_task(
     await stop_sky_path()
 
 
-
-@mock.patch("flytekitplugins.skypilot.agent.skylet_constants.CONTROLLER_IDLE_MINUTES_TO_AUTOSTOP", CORO_INTERVAL * 3 / 60)
+@mock.patch(
+    "flytekitplugins.skypilot.agent.skylet_constants.CONTROLLER_IDLE_MINUTES_TO_AUTOSTOP", CORO_INTERVAL * 3 / 60
+)
 @pytest.mark.asyncio
-async def test_async_agent_remote_down(
-    mock_agent, timeout_const_mock, mock_provider, mock_fs
-):
+async def test_async_agent_remote_down(mock_agent, timeout_const_mock, mock_provider, mock_fs):
     (mock_path, dummy_launch, normal_launch, managed_launch, mock_timeout) = mock_provider
     agent, task_spec, context = mock_agent
     assert isinstance(agent, SkyPilotAgent)

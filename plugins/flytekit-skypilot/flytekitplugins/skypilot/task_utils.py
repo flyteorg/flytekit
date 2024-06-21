@@ -62,9 +62,7 @@ class RunCommand(object):
         self.check_resource(task_template)
         if task_template.custom["container_run_type"] == ContainerRunType.RUNTIME:
             python_path_command = f"export PYTHONPATH=$PYTHONPATH:$HOME/{sky.backends.docker_utils.SKY_DOCKER_WORKDIR}"
-            self.full_task_command = "\n".join(
-                filter(None, [python_path_command, raw_task_command])
-            ).strip()
+            self.full_task_command = "\n".join(filter(None, [python_path_command, raw_task_command])).strip()
         else:
             container_entrypoint, container_args = task_template.container.args[0], task_template.container.args[1:]
             docker_run_prefix = f"docker run {'--gpus=all' if self.use_gpu else ''} --entrypoint {container_entrypoint}"

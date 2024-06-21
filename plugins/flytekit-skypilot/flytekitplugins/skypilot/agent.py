@@ -1,6 +1,5 @@
 import asyncio
 import functools
-import multiprocessing
 import os
 from datetime import datetime, timezone
 from typing import Dict, Optional, Tuple, Union
@@ -13,12 +12,12 @@ from flytekitplugins.skypilot.metadata import JobLaunchType, SkyPilotMetadata
 from flytekitplugins.skypilot.task_utils import get_sky_task_config
 from flytekitplugins.skypilot.utils import (
     LAUNCH_TYPE_TO_SKY_STATUS,
+    BlockingProcessHandler,
     ClusterRegistry,
     SkyPathSetting,
     TaskCreationIdentifier,
     TaskRemotePathSetting,
     skypilot_status_to_flyte_phase,
-    BlockingProcessHandler
 )
 from sky.skylet import constants as skylet_constants
 
@@ -133,7 +132,9 @@ class SkyTaskTracker(object):
             )
             cls._JOB_RESIGTRY[resource_meta.job_name] = down_process
             sky_path_setting = TaskRemotePathSetting(
-                file_access=FileAccessProvider(local_sandbox_dir="/tmp", raw_output_prefix=resource_meta.task_metadata_prefix),
+                file_access=FileAccessProvider(
+                    local_sandbox_dir="/tmp", raw_output_prefix=resource_meta.task_metadata_prefix
+                ),
                 job_type=resource_meta.job_launch_type,
                 cluster_name=resource_meta.cluster_name,
                 task_name=resource_meta.job_name,
@@ -146,6 +147,7 @@ def remote_down(cluster_name: str):
     status = sky.status(cluster_name, refresh=True)
     if status:
         sky.down(cluster_name)
+
 
 def remote_setup(remote_meta: SkyPilotMetadata, wrapped, **kwargs):
     sky_path_setting = SkyPathSetting(
