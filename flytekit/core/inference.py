@@ -111,7 +111,7 @@ class NIM(ModelInferenceTemplate):
             if local_peft_dir_env:
                 mount_path = local_peft_dir_env.value
             else:
-                raise ValueError("NIM_PEFT_SOURCE must be set.")
+                raise ValueError("NIM_PEFT_SOURCE environment variable must be set.")
 
             self.pod_template.pod_spec.volumes.append(V1Volume(name="lora", empty_dir={}))
             model_server_container.volume_mounts.append(V1VolumeMount(name="lora", mount_path=mount_path))
