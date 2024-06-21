@@ -137,8 +137,8 @@ class NIM(ModelInferenceTemplate):
 
             # Download LoRAs from Huggingface Hub
             {"".join([f"""
-            mkdir -p $LOCAL_PEFT_DIRECTORY/{repo_id.split("/")[-1]}
-            huggingface-cli download {repo_id} adapter_config.json adapter_model.safetensors --local-dir $LOCAL_PEFT_DIRECTORY/{repo_id.split("/")[-1]}
+            mkdir -p $LOCAL_PEFT_DIRECTORY/{repo_id.split('/')[-1]}
+            huggingface-cli download {repo_id} adapter_config.json adapter_model.safetensors --local-dir $LOCAL_PEFT_DIRECTORY/{repo_id.split('/')[-1]}
             """ for repo_id in self._hf_repo_ids])}
 
             chmod -R 777 $LOCAL_PEFT_DIRECTORY
