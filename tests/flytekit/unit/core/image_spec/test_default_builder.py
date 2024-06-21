@@ -41,7 +41,6 @@ def test_create_docker_context(tmp_path):
     assert "python=3.12" in dockerfile_content
     assert "--requirement requirements.txt" in dockerfile_content
     assert "COPY --chown=flytekit ./src /root" in dockerfile_content
-    assert "COPY ./src /root" in dockerfile_content
     assert "RUN mkdir my_dir" in dockerfile_content
 
     requirements_path = docker_context_path / "requirements.txt"
@@ -61,12 +60,11 @@ def test_create_docker_context_cuda(tmp_path):
     docker_context_path.mkdir()
 
     image_spec = ImageSpec(cuda="12.4.1", cudnn="8")
-    create_docker_context(image_spec, docker_context_path)
 
-    dockerfile_path = docker_context_path / "Dockerfile"
-    assert dockerfile_path.exists()
-    dockerfile_content = dockerfile_path.read_text()
-    assert "nvcr.io/nvidia/driver:535-5.15.0-1048-nvidia-ubuntu22.04" in dockerfile_content
+    msg = "cuda and cudnn do not need to be specified. If you are installed"
+
+    with pytest.raises(ValueError, match=msg):
+        create_docker_context(image_spec, docker_context_path)
 
 
 @pytest.mark.skipif(

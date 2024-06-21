@@ -94,9 +94,10 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
 
     if image_spec.cuda is not None or image_spec.cudnn is not None:
         msg = (
-            "cuda and cudnn is not supported. If you are installed a GPU accelerated "
-            "library on PyPI, then it likely will install cuda from PyPI. With conda"
-            "you can installed cuda from the `nvidia` channel by adding `nvidia` to "
+            "cuda and cudnn do not need to be specified. If you are installed "
+            "a GPU accelerated library on PyPI, then it likely will install cuda "
+            "from PyPI."
+            "With conda you can installed cuda from the `nvidia` channel by adding `nvidia` to "
             "ImageSpec.conda_channels and adding packages from "
             "https://anaconda.org/nvidia into ImageSpec.conda_packages. If you require "
             "cuda for non-python dependencies, you can set a `base_image` with cuda "
