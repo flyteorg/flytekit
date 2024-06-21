@@ -13,6 +13,7 @@ from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import sky
+import sky.exceptions
 import sky.jobs
 from flyteidl.core.execution_pb2 import TaskExecution
 from flytekitplugins.skypilot.constants import (
@@ -414,7 +415,7 @@ class SkyPathSetting:
         if self.file_access.exists(self.remote_path_setting.remote_sky_zip):
             self.file_access.raw_output_fs.ls(self.remote_path_setting.remote_sky_zip, refresh=True)
             return self.file_access.raw_output_fs.modified(self.remote_path_setting.remote_sky_zip)
-
+        return None
 
 def parse_blob_basename(blob_name: str) -> str:
     """
@@ -705,7 +706,7 @@ class NormalTask(BaseSkyTask):
             cluster_name=self.cluster_name,
             stream_logs=False,
             backend=self._backend,
-            detach_run=True,
+            detach_run=False,
         )
 
     def launch(self, task: sky.Task):
@@ -913,17 +914,22 @@ class NormalClusterManager(ClusterManager):
         launches the cluster and run the setup of the task
         """
         dummy_task = task.to_yaml_config()
-        dummy_task.pop("run", None)
+        dummy_task["run"] = "echo Dummy"
         task_name = dummy_task.get("name", None)
         dummy_task.update({"name": f"{task_name}-dummy"})
         dummy_task = sky.Task.from_yaml_config(dummy_task)
+        try:
+            sky.autostop(self._cluster_name, -1)
+        except (ValueError, sky.exceptions.ClusterNotUpError):
+            pass
         sky.launch(
             task=dummy_task,
             cluster_name=self._cluster_name,
             backend=self._backend,
             stream_logs=False,
             detach_setup=True,
-            detach_run=True,
+            detach_run=False,
+            idle_minutes_to_autostop=AUTO_DOWN / 60,
         )
 
     def stop_cluster(self):

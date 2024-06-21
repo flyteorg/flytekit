@@ -441,3 +441,33 @@ async def test_async_agent_remote_fail_task(
     # let loop detect the task deletion
     await stop_and_wait(remote_cluster, remote_task)
     await stop_sky_path()
+
+
+
+@mock.patch("flytekitplugins.skypilot.agent.skylet_constants.CONTROLLER_IDLE_MINUTES_TO_AUTOSTOP", CORO_INTERVAL * 3 / 60)
+@pytest.mark.asyncio
+async def test_async_agent_remote_down(
+    mock_agent, timeout_const_mock, mock_provider, mock_fs
+):
+    (mock_path, dummy_launch, normal_launch, managed_launch, mock_timeout) = mock_provider
+    agent, task_spec, context = mock_agent
+    assert isinstance(agent, SkyPilotAgent)
+    task_spec.template.container._args = get_container_args(mock_fs)
+    create_task_response = await agent.create(
+        context=context, task_template=task_spec.template, output_prefix=mock_fs.raw_output_prefix
+    )
+    resource_meta = create_task_response
+    # let cluster enter submitted state
+    remote_cluster = SkyTaskTracker._CLUSTER_REGISTRY._clusters[resource_meta.cluster_name]
+    remote_task = remote_cluster.tasks.get(resource_meta.job_name)
+    # let skytasktracker put
+    await asyncio.sleep(CORO_INTERVAL * 2)
+    SkyTaskTracker._zip_coro.cancel()
+    await asyncio.sleep(CORO_INTERVAL * 3 + TIME_BUFFER)
+    get_task_response = await agent.get(context=context, resource_meta=resource_meta)
+    phase = get_task_response.phase
+    assert phase == TaskExecution.FAILED
+    # await agent.delete(context=context, resource_meta=resource_meta)
+    # let loop detect the task deletion
+    await stop_and_wait(remote_cluster, remote_task)
+    await stop_sky_path()

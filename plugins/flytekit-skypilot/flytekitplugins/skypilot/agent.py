@@ -18,6 +18,7 @@ from flytekitplugins.skypilot.utils import (
     TaskCreationIdentifier,
     TaskRemotePathSetting,
     skypilot_status_to_flyte_phase,
+    BlockingProcessHandler
 )
 from sky.skylet import constants as skylet_constants
 
@@ -80,7 +81,7 @@ class SkyTaskFuture(object):
 
 
 class SkyTaskTracker(object):
-    _JOB_RESIGTRY: Dict[str, SkyTaskFuture] = {}
+    _JOB_RESIGTRY: Dict[str, BlockingProcessHandler] = {}
     _zip_coro: asyncio.Task = None
     _sky_path_setting: SkyPathSetting = None
     _hostname: str = sky.utils.common_utils.get_user_hash()
@@ -122,6 +123,29 @@ class SkyTaskTracker(object):
         cls._CLUSTER_REGISTRY.create(task, new_task.sky_path_setting)
         return new_task
 
+    @classmethod
+    def agent_health_check(cls, resource_meta: SkyPilotMetadata):
+        # filter out the job that is done
+        cls._JOB_RESIGTRY = {k: v for k, v in cls._JOB_RESIGTRY.items() if v._process.exitcode is None}
+        if not check_remote_agent_alive(resource_meta):
+            down_process = BlockingProcessHandler(
+                functools.partial(remote_setup, resource_meta, remote_down, cluster_name=resource_meta.cluster_name)
+            )
+            cls._JOB_RESIGTRY[resource_meta.job_name] = down_process
+            sky_path_setting = TaskRemotePathSetting(
+                file_access=FileAccessProvider(local_sandbox_dir="/tmp", raw_output_prefix=resource_meta.task_metadata_prefix),
+                job_type=resource_meta.job_launch_type,
+                cluster_name=resource_meta.cluster_name,
+                task_name=resource_meta.job_name,
+            )
+            sky_path_setting.put_error_log("Agent is down, job is stopped.")
+        return
+
+
+def remote_down(cluster_name: str):
+    status = sky.status(cluster_name, refresh=True)
+    if status:
+        sky.down(cluster_name)
 
 def remote_setup(remote_meta: SkyPilotMetadata, wrapped, **kwargs):
     sky_path_setting = SkyPathSetting(
@@ -187,11 +211,7 @@ def remote_deletion(resource_meta: SkyPilotMetadata):
     # this part can be removed if sky job controller down is supported
     # if the zip is not updated for a long time, the agent pod is considered down, so we need to delete the controller
     # TODO: move alive check to agent.get
-    if not check_remote_agent_alive(resource_meta):
-        with multiprocessing.Pool(1) as p:
-            p.starmap(
-                functools.partial(remote_setup, cluster_name=resource_meta.cluster_name), [(resource_meta, sky.down)]
-            )
+    SkyTaskTracker.agent_health_check(resource_meta)
     sky_task_settings = TaskRemotePathSetting(
         file_access=FileAccessProvider(local_sandbox_dir="/tmp", raw_output_prefix=resource_meta.task_metadata_prefix),
         job_type=resource_meta.job_launch_type,
@@ -227,7 +247,7 @@ class SkyPilotAgent(AsyncAgentBase):
         return meta
 
     async def get(self, resource_meta: SkyPilotMetadata, **kwargs) -> Resource:
-        # pdb.set_trace()
+        SkyTaskTracker.agent_health_check(resource_meta)
         received_time = datetime.now(timezone.utc)
         job_status = None
         outputs = None

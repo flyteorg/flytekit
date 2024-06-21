@@ -27,20 +27,14 @@ class SkyPilot(object):
     # accelerators, clouds, regions, spot
     resource_config: Optional[Dict[str, Any]] = None
     file_mounts: Optional[Dict[str, Any]] = None
-    local_config: Optional[Dict[str, str]] = None
     setup: Optional[str] = None
     task_name: str = "sky_task"
-    prompt_cloud: bool = False
     container_run_type: ContainerRunType = ContainerRunType.RUNTIME
     job_launch_type: JobLaunchType = JobLaunchType.NORMAL
-    auto_down: bool = False
-    stop_after: int = None
 
     def __post_init__(self):
         if self.resource_config is None:
             self.resource_config = {}
-        if self.local_config is None:
-            self.local_config = {"local_envs": {}}
 
 
 class SkyPilotFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[SkyPilot]):

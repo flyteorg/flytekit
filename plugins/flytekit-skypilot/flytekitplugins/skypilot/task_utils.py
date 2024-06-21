@@ -59,14 +59,11 @@ class RunCommand(object):
 
     def __init__(self, task_template: TaskTemplate) -> None:
         raw_task_command = shlex.join(task_template.container.args)
-        local_env_prefix = "\n".join(
-            [f"export {k}='{v}'" for k, v in task_template.custom["local_config"]["local_envs"].items()]
-        )
         self.check_resource(task_template)
         if task_template.custom["container_run_type"] == ContainerRunType.RUNTIME:
             python_path_command = f"export PYTHONPATH=$PYTHONPATH:$HOME/{sky.backends.docker_utils.SKY_DOCKER_WORKDIR}"
             self.full_task_command = "\n".join(
-                filter(None, [local_env_prefix, python_path_command, raw_task_command])
+                filter(None, [python_path_command, raw_task_command])
             ).strip()
         else:
             container_entrypoint, container_args = task_template.container.args[0], task_template.container.args[1:]
