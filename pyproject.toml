@@ -37,20 +37,19 @@ dependencies = [
     "marshmallow-enum",
     "marshmallow-jsonschema>=0.12.0",
     "mashumaro>=3.11",
-    "numpy<2",
     "protobuf!=4.25.0",
     "pyarrow",
     "pygments",
     "python-json-logger>=2.0.0",
-    "pytimeparse>=1.1.8,<2.0.0",
+    "pytimeparse>=1.1.8",
     "pyyaml!=6.0.0,!=5.4.0,!=5.4.1", # pyyaml is broken with cython 3: https://github.com/yaml/pyyaml/issues/601
     "requests>=2.18.4",
     "rich",
     "rich_click",
     "s3fs>=2023.3.0,!=2024.3.1",
-    "statsd>=3.0.0,<4.0.0",
+    "statsd>=3.0.0",
     "typing_extensions",
-    "urllib3>=1.22,<3.0.0",
+    "urllib3>=1.22",
 ]
 classifiers = [
     "Intended Audience :: Science/Research",

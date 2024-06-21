@@ -678,3 +678,9 @@ def test_join():
 def test_headers():
     assert FlyteFilePathTransformer.get_additional_headers("xyz") == {}
     assert len(FlyteFilePathTransformer.get_additional_headers(".gz")) == 1
+
+
+def test_new_remote_file():
+    nf = FlyteFile.new_remote_file(name="foo.txt")
+    assert isinstance(nf, FlyteFile)
+    assert nf.path.endswith('foo.txt')
