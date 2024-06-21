@@ -355,13 +355,18 @@ def extract_task_module(
         return name, mod_name, name, os.path.abspath(inspect_file)
 
     mod_name = get_full_module_path(mod, mod_name)
-    BAZEL_MODULE_NAME = "flytekit_package"
-    bazel_module_idx = mod_name.find(BAZEL_MODULE_NAME)
-    # If we see the bazel module name, delete everything before it to get the true mod
+    # If we see the bazel module name or applied workspace, delete everything before it to get the true mod
     # name under bazel.
     # example: "pyflyte.flytekit_package.flytekit.core.python_auto_container" -> "flytekit.core.python_auto_container"
+    BAZEL_MODULE_NAME = "flytekit_package"
+    bazel_module_idx = mod_name.find(BAZEL_MODULE_NAME)
     if bazel_module_idx != -1:
         mod_name = mod_name[bazel_module_idx + len(BAZEL_MODULE_NAME) + 1 :]
+
+    APPLIED_WORKSPACE = "binary.applied"
+    applied_workspace_idx = mod_name.find(APPLIED_WORKSPACE)
+    if applied_workspace_idx != -1:
+        mod_name = mod_name[applied_workspace_idx + len(APPLIED_WORKSPACE) + 1 :]
     return f"{mod_name}.{name}", mod_name, name, os.path.abspath(inspect.getfile(mod))
 
 
