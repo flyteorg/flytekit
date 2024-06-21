@@ -1,6 +1,6 @@
 from typing import Optional
 
-from utils import ModelInferenceTemplate
+from .utils import ModelInferenceTemplate
 
 
 class NIM(ModelInferenceTemplate):
@@ -94,6 +94,9 @@ class NIM(ModelInferenceTemplate):
         if self._hf_repo_ids:
             if not self._lora_adapter_mem:
                 raise ValueError("Memory to allocate to download LoRA adapters must be set.")
+
+            if not self._hf_token_key:
+                self._hf_token_key = ""
 
             local_peft_dir_env = next(
                 (env for env in model_server_container.env if env.name == "NIM_PEFT_SOURCE"), None
