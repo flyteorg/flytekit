@@ -84,9 +84,16 @@ class NIM(ModelInferenceTemplate):
         self.pod_template.pod_spec.image_pull_secrets = [V1LocalObjectReference(name=self._ngc_image_secret)]
 
         model_server_container = self.pod_template.pod_spec.init_containers[0]
-        model_server_container.env.append(
-            V1EnvVar(name="NGC_API_KEY", value=f"$(_UNION_{self._ngc_secret_key.upper()})")
-        )
+
+        if model_server_container.env:
+            model_server_container.env.append(
+                V1EnvVar(name="NGC_API_KEY", value=f"$(_UNION_{self._ngc_secret_key.upper()})")
+            )
+        else:
+            model_server_container.env = [
+                V1EnvVar(name="NGC_API_KEY", value=f"$(_UNION_{self._ngc_secret_key.upper()})")
+            ]
+
         model_server_container.volume_mounts = [V1VolumeMount(name="dshm", mount_path="/dev/shm")]
         model_server_container.security_context = V1SecurityContext(run_as_user=1000)
 
