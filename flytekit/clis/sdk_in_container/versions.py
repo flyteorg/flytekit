@@ -24,8 +24,8 @@ class InstanceDisplayCommand(click.RichCommand):
     Dummy command that displays the version of the entity.
     """
 
-    def __init__(self, name, h, **kwargs):
-        super().__init__(name=name, help=h, **kwargs)
+    def __init__(self, name, help_msg, **kwargs):
+        super().__init__(name=name, help=help_msg, **kwargs)
 
 
 class DynamicEntityVersionCommand(click.RichGroup, DynamicEntityLaunchCommand):
@@ -33,8 +33,8 @@ class DynamicEntityVersionCommand(click.RichGroup, DynamicEntityLaunchCommand):
     Command that retrieves the versions of a remote entity.
     """
 
-    def __init__(self, name: str, h: str, entity_name: str, launcher: str, **kwargs):
-        DynamicEntityLaunchCommand.__init__(self, name, h, entity_name, launcher, **kwargs)
+    def __init__(self, name: str, help_msg: str, entity_name: str, launcher: str, **kwargs):
+        DynamicEntityLaunchCommand.__init__(self, name, help_msg, entity_name, launcher, **kwargs)
 
     def get_params(self, ctx: Context) -> typing.List[Parameter]:
         # we don't use super.get_params here, because DynamicEntityLaunchCommand.get_params adds the options of the entity
@@ -67,7 +67,7 @@ class DynamicEntityVersionCommand(click.RichGroup, DynamicEntityLaunchCommand):
     def get_command(self, ctx, version):
         if ctx.obj is None:
             ctx.obj = {}
-        return InstanceDisplayCommand(name=version, h=f"Created At {self._entity_dict[version]}")
+        return InstanceDisplayCommand(name=version, help_msg=f"Created At {self._entity_dict[version]}")
 
     def invoke(self, ctx: Context) -> typing.Any:
         pass
@@ -78,20 +78,20 @@ class RemoteEntityVersionGroup(RemoteEntityGroup):
     click multicommand that retrieves launchplans/tasks from a remote flyte instance and display version of them.
     """
 
-    def __init__(self, command_name: str, h: str):
-        super().__init__(command_name, h)
+    def __init__(self, command_name: str, help_msg: str):
+        super().__init__(command_name, help_msg)
 
     def get_command(self, ctx: click.Context, name: str):
         if self._command_name in [self.LAUNCHPLAN_COMMAND, self.WORKFLOW_COMMAND]:
             return DynamicEntityVersionCommand(
                 name=name,
-                h=f"Display version of a {self._command_name}.",
+                help_msg=f"Display version of a {self._command_name}.",
                 entity_name=name,
                 launcher=DynamicEntityLaunchCommand.LP_LAUNCHER,
             )
         return DynamicEntityVersionCommand(
             name=name,
-            h=f"Display version of a {self._command_name}.",
+            help_msg=f"Display version of a {self._command_name}.",
             entity_name=name,
             launcher=DynamicEntityLaunchCommand.TASK_LAUNCHER,
         )

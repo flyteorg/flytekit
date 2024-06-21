@@ -613,8 +613,8 @@ class DynamicEntityLaunchCommand(click.RichCommand):
     LP_LAUNCHER = "lp"
     TASK_LAUNCHER = "task"
 
-    def __init__(self, name: str, h: str, entity_name: str, launcher: str, **kwargs):
-        super().__init__(name=name, help=h, **kwargs)
+    def __init__(self, name: str, help_msg: str, entity_name: str, launcher: str, **kwargs):
+        super().__init__(name=name, help=help_msg, **kwargs)
         self._entity_name = entity_name
         self._launcher = launcher
         self._entity = None
@@ -722,10 +722,10 @@ class RemoteEntityGroup(click.RichGroup):
     WORKFLOW_COMMAND = "remote-workflow"
     TASK_COMMAND = "remote-task"
 
-    def __init__(self, command_name: str, h: str):
+    def __init__(self, command_name: str, help_msg: str):
         super().__init__(
             name=command_name,
-            help=f"Retrieve {command_name} from a remote flyte instance and execute them.",
+            help=help_msg,
         )
         self._command_name = command_name
         self._entities = []
@@ -768,13 +768,13 @@ class RemoteEntityGroup(click.RichGroup):
         if self._command_name in [self.LAUNCHPLAN_COMMAND, self.WORKFLOW_COMMAND]:
             return DynamicEntityLaunchCommand(
                 name=name,
-                h=f"Execute a {self._command_name}.",
+                help_msg=f"Execute a {self._command_name}.",
                 entity_name=name,
                 launcher=DynamicEntityLaunchCommand.LP_LAUNCHER,
             )
         return DynamicEntityLaunchCommand(
             name=name,
-            h=f"Execute a {self._command_name}.",
+            help_msg=f"Execute a {self._command_name}.",
             entity_name=name,
             launcher=DynamicEntityLaunchCommand.TASK_LAUNCHER,
         )
