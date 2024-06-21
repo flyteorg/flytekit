@@ -2039,7 +2039,7 @@ def test_unsafe_input_wf_and_task():
     with pytest.raises(TypeError):
         wf1_wo_unsafe(a=1)
 
-    with pytest.raises(TypeTransformerFailedError):
+    with pytest.raises(TypeError):
         wf1_wo_unsafe2(a=1)
 
 
