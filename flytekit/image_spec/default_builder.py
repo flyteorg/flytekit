@@ -6,34 +6,29 @@ import tempfile
 import warnings
 from pathlib import Path
 from string import Template
-from typing import ClassVar, Optional
+from typing import ClassVar
 
 import click
 
-from flytekit.image_spec.image_spec import _F_IMG_ID, ImageSpec, ImageSpecBuilder
+from flytekit.image_spec.image_spec import (
+    _F_IMG_ID,
+    ImageSpec,
+    ImageSpecBuilder,
+)
+from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
 
-# The default image builder base image is located at Dockerfile.default-image-builder.
-# For local testing, build the base image by running:
-# 1. Set environment variable `DEFAULT_BUILDER_BASE_IMAGE=localhost:30000/default-image-builder-base`
-# 2. make setup-multiarch-builder
-# 3. make build-default-image-builder-image
-DEFAULT_BUILDER_BASE_IMAGE_ENV = "DEFAULT_BUILDER_BASE_IMAGE"
-DEFAULT_BUILDER_BASE_IMAGE = "thomasjpfan/default-image-builder-base:0.0.3"
-
-BASE_IMAGE_BUILDER = os.getenv(DEFAULT_BUILDER_BASE_IMAGE_ENV, DEFAULT_BUILDER_BASE_IMAGE)
-
-
-PYTHON_INSTALL_COMMAND = """\
-RUN --mount=type=cache,target=/root/.cache/uv,id=uv \
+PYTHON_INSTALL_COMMAND_TEMPLATE = Template("""\
+RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/uv,id=uv \
+    --mount=from=uv,source=/uv,target=/usr/bin/uv \
     --mount=type=bind,target=requirements.txt,src=requirements.txt \
-    /opt/conda/bin/uv \
-    pip install --python /opt/conda/envs/dev/bin/python $PIP_INDEX \
+    /usr/bin/uv \
+    pip install --python /root/micromamba/envs/dev/bin/python $PIP_EXTRA \
     --requirement requirements.txt
-"""
+""")
 
 APT_INSTALL_COMMAND_TEMPLATE = Template(
     """\
-RUN --mount=type=cache,target=/var/cache/apt,id=apt \
+RUN --mount=type=cache,sharing=locked,mode=0777,target=/var/cache/apt,id=apt \
     apt-get update && apt-get install -y --no-install-recommends \
     $APT_PACKAGES
 """
@@ -42,67 +37,73 @@ RUN --mount=type=cache,target=/var/cache/apt,id=apt \
 DOCKER_FILE_TEMPLATE = Template(
     """\
 #syntax=docker/dockerfile:1.5
-FROM $BASE_IMAGE_BUILDER as build
+FROM ghcr.io/astral-sh/uv:0.2.13 as uv
+FROM mambaorg/micromamba:1.5.8-bookworm-slim as micromamba
 
-RUN --mount=type=cache,target=/opt/conda/pkgs,id=conda \
-    mamba create \
-        -c conda-forge $CONDA_CHANNELS \
-        -n dev -y python=$PYTHON_VERSION $CONDA_PACKAGES
+FROM $BASE_IMAGE
 
-WORKDIR /root
+USER root
+$APT_INSTALL_COMMAND
+RUN update-ca-certificates
 
-$COPY_COMMAND_BUILDER
+RUN id -u flytekit || useradd --create-home --shell /bin/bash flytekit
+RUN chown -R flytekit /root && chown -R flytekit /home
+
+RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/micromamba/pkgs,\
+id=micromamba \
+    --mount=from=micromamba,source=/usr/bin/micromamba,target=/usr/bin/micromamba \
+    /usr/bin/micromamba create -n dev -c conda-forge $CONDA_CHANNELS \
+    python=$PYTHON_VERSION $CONDA_PACKAGES
 
 $PYTHON_INSTALL_COMMAND
 
-RUN /opt/conda/bin/conda-pack -n dev -o /tmp/env.tar && \
-    mkdir /venv && cd /venv && tar xf /tmp/env.tar && \
-    rm /tmp/env.tar
-
-RUN /venv/bin/conda-unpack
-
-FROM $BASE_IMAGE AS runtime
-
-RUN --mount=type=cache,target=/var/cache/apt,id=apt \
-    apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates
-RUN update-ca-certificates
-
-$APT_INSTALL_COMMAND
-
-COPY --from=build /venv /venv
-ENV PATH="/venv/bin:$$PATH"
-
-WORKDIR /root
+# Configure user space
+ENV PATH="/root/micromamba/envs/dev/bin:$$PATH"
 ENV FLYTE_SDK_RICH_TRACEBACKS=0 SSL_CERT_DIR=/etc/ssl/certs $ENV
 
-RUN useradd --create-home --shell /bin/bash -u 1000 flytekit \
-    && chown -R flytekit /root \
-    && chown -R flytekit /home
+# Adds nvidia just in case it exists
+ENV PATH="$$PATH:/usr/local/nvidia/bin:/usr/local/cuda/bin" \
+    LD_LIBRARY_PATH="/usr/local/nvidia/lib64:$$LD_LIBRARY_PATH"
 
 $COPY_COMMAND_RUNTIME
-
 $RUN_COMMANDS
 
-RUN echo "source /venv/bin/activate" >> /home/flytekit/.bashrc
+WORKDIR /root
 SHELL ["/bin/bash", "-c"]
 
 USER flytekit
+RUN echo "export PATH=$$PATH" >> $$HOME/.profile
 """
 )
+
+
+def get_flytekit_for_pypi():
+    from flytekit import __version__
+
+    if not __version__ or "dev" in __version__:
+        return "flytekit"
+    else:
+        return f"flytekit=={__version__}"
 
 
 def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
     """Populate tmp_dir with Dockerfile as specified by the `image_spec`."""
     base_image = image_spec.base_image or "debian:bookworm-slim"
 
-    if image_spec.cuda:
-        # Base image requires an NVIDIA driver. cuda and cudnn will be installed with conda
-        base_image = "nvcr.io/nvidia/driver:535-5.15.0-1048-nvidia-ubuntu22.04"
+    requirements = [get_flytekit_for_pypi()]
 
-    pip_index = f"--index-url {image_spec.pip_index}" if image_spec.pip_index else ""
+    if image_spec.cuda is not None or image_spec.cudnn is not None:
+        msg = (
+            "cuda and cudnn is not supported. If you are installed a GPU accelerated "
+            "library on PyPI, then it likely will install cuda from PyPI. With conda"
+            "you can installed cuda from the `nvidia` channel by adding `nvidia` to "
+            "ImageSpec.conda_channels and adding packages from "
+            "https://anaconda.org/nvidia into ImageSpec.conda_packages. If you require "
+            "cuda for non-python dependencies, you can set a `base_image` with cuda "
+            "preinstalled."
+        )
+        raise ValueError(msg)
 
-    requirements = ["flytekit"]
     if image_spec.requirements:
         with open(image_spec.requirements) as f:
             requirements.extend([line.strip() for line in f.readlines()])
@@ -111,8 +112,10 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
         requirements.extend(image_spec.packages)
 
     requirements_path = tmp_dir / "requirements.txt"
-    requirements_path.write_text("\n".join(requirements))
-    python_install_command = PYTHON_INSTALL_COMMAND
+    requirements_path.write_text(os.linesep.join(requirements))
+
+    pip_extra = f"--index-url {image_spec.pip_index}" if image_spec.pip_index else ""
+    python_install_command = PYTHON_INSTALL_COMMAND_TEMPLATE.substitute(PIP_EXTRA=pip_extra)
     env_dict = {"PYTHONPATH": "/root", _F_IMG_ID: image_spec.image_name()}
 
     if image_spec.env:
@@ -120,27 +123,28 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
 
     env = " ".join(f"{k}={v}" for k, v in env_dict.items())
 
+    apt_packages = ["ca-certificates", "bzip2", "curl"]
     if image_spec.apt_packages:
-        apt_install_command = APT_INSTALL_COMMAND_TEMPLATE.substitute(APT_PACKAGES=" ".join(image_spec.apt_packages))
-    else:
-        apt_install_command = ""
+        apt_packages.extend(image_spec.apt_packages)
+
+    apt_install_command = APT_INSTALL_COMMAND_TEMPLATE.substitute(APT_PACKAGES=" ".join(apt_packages))
 
     if image_spec.source_root:
         source_path = tmp_dir / "src"
-        shutil.copytree(image_spec.source_root, source_path)
-        copy_command_builder = "COPY ./src /root"
+
+        ignore = IgnoreGroup(image_spec.source_root, [GitIgnore, DockerIgnore, StandardIgnore])
+        shutil.copytree(
+            image_spec.source_root,
+            source_path,
+            ignore=shutil.ignore_patterns(*ignore.list_ignored()),
+            dirs_exist_ok=True,
+        )
         copy_command_runtime = "COPY --chown=flytekit ./src /root"
     else:
-        copy_command_builder = ""
         copy_command_runtime = ""
 
     conda_packages = image_spec.conda_packages or []
     conda_channels = image_spec.conda_channels or []
-
-    if image_spec.cuda:
-        conda_packages.append(f"cuda={image_spec.cuda}")
-        if image_spec.cudnn:
-            conda_packages.append(f"cudnn={image_spec.cudnn}")
 
     if conda_packages:
         conda_packages_concat = " ".join(conda_packages)
@@ -163,16 +167,13 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
         run_commands = ""
 
     docker_content = DOCKER_FILE_TEMPLATE.substitute(
-        BASE_IMAGE_BUILDER=BASE_IMAGE_BUILDER,
         PYTHON_VERSION=python_version,
         PYTHON_INSTALL_COMMAND=python_install_command,
         CONDA_PACKAGES=conda_packages_concat,
         CONDA_CHANNELS=conda_channels_concat,
         APT_INSTALL_COMMAND=apt_install_command,
         BASE_IMAGE=base_image,
-        PIP_INDEX=pip_index,
         ENV=env,
-        COPY_COMMAND_BUILDER=copy_command_builder,
         COPY_COMMAND_RUNTIME=copy_command_runtime,
         RUN_COMMANDS=run_commands,
     )
@@ -205,7 +206,12 @@ class DefaultImageBuilder(ImageSpecBuilder):
         "commands",
     }
 
-    def build_image(self, image_spec: ImageSpec) -> Optional[str]:
+    def build_image(self, image_spec: ImageSpec) -> str:
+        return self._build_image(image_spec)
+
+    def _build_image(self, image_spec: ImageSpec, *, push: bool = True) -> str:
+        # For testing, set `push=False`` to just build the image locally and not push to
+        # registry
         unsupported_parameters = [
             name
             for name, value in vars(image_spec).items()
@@ -229,7 +235,7 @@ class DefaultImageBuilder(ImageSpecBuilder):
                 image_spec.platform,
             ]
 
-            if image_spec.registry:
+            if image_spec.registry and push:
                 command.append("--push")
             command.append(tmp_dir)
 
