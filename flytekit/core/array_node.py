@@ -1,4 +1,5 @@
-from typing import Any, List, Optional, Tuple, Union
+import math
+from typing import Any, List, Optional, Set, Tuple, Union
 
 from flytekit.core import interface as flyte_interface
 from flytekit.core.context_manager import ExecutionState, FlyteContext
@@ -12,9 +13,10 @@ from flytekit.core.promise import (
     translate_inputs_to_literals,
 )
 from flytekit.core.task import TaskMetadata
+from flytekit.loggers import logger
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model
-from flytekit.models.literals import Literal, LiteralCollection
+from flytekit.models.literals import Literal, LiteralCollection, Scalar
 
 
 class ArrayNode(object):
@@ -24,6 +26,7 @@ class ArrayNode(object):
         concurrency: Optional[int] = None,
         min_successes: Optional[int] = None,
         min_success_ratio: Optional[float] = None,
+        bound_inputs: Optional[Set[str]] = None,
         metadata: Optional[Union[_workflow_model.NodeMetadata, TaskMetadata]] = None,
     ):
         """
@@ -43,15 +46,15 @@ class ArrayNode(object):
         self._min_success_ratio = min_success_ratio
         self.id = target.name
 
-        self.bound_inputs = set()
-
         n_outputs = len(self.target.python_interface.outputs)
         if n_outputs > 1:
             raise ValueError("Only tasks with a single output are supported in map tasks.")
 
+        self._bound_inputs: Set[str] = bound_inputs or set(bound_inputs) if bound_inputs else set()
+
         output_as_list_of_optionals = min_success_ratio is not None and min_success_ratio != 1 and n_outputs == 1
         collection_interface = transform_interface_to_list_interface(
-            self.target.python_interface, self.bound_inputs, output_as_list_of_optionals
+            self.target.python_interface, self._bound_inputs, output_as_list_of_optionals
         )
         self._collection_interface = collection_interface
 
@@ -99,7 +102,7 @@ class ArrayNode(object):
 
         mapped_entity_count = 0
         for k in self.python_interface.inputs.keys():
-            if k not in self.bound_inputs:
+            if k not in self._bound_inputs:
                 v = kwargs[k]
                 if isinstance(v, list) and len(v) > 0 and isinstance(v[0], self.target.python_interface.inputs[k]):
                     mapped_entity_count = len(v)
@@ -110,22 +113,30 @@ class ArrayNode(object):
                 #         f"Expected a list of {self.target.python_interface.inputs[k]} but got {type(v)} instead."
                 #     )
 
+        failed_count = 0
+        min_successes = mapped_entity_count
+        if self._min_successes:
+            min_successes = self._min_successes
+        elif self._min_success_ratio:
+            min_successes = math.ceil(min_successes * self._min_success_ratio)
+
         literals = []
         for i in range(mapped_entity_count):
             single_instance_inputs = {}
             for k in self.python_interface.inputs.keys():
                 v = kwargs[k]
-                # do we have to check if v is a list? shouldn't it have to be a list if not bound?
-                if k not in self.bound_inputs:
+                # TODO - pvditt do we have to check if v is a list? shouldn't it have to be a list if not bound?
+                if k not in self._bound_inputs:
                     single_instance_inputs[k] = kwargs[k][i]
                 else:
                     single_instance_inputs[k] = kwargs[k]
 
             # translate Python native inputs to Flyte literals
+            typed_interface = transform_interface_to_typed_interface(self.target.python_interface)
             literal_map = translate_inputs_to_literals(
                 ctx,
                 incoming_values=single_instance_inputs,
-                flyte_interface_types=transform_interface_to_typed_interface(self.target.python_interface).inputs,
+                flyte_interface_types={} if typed_interface is None else typed_interface.inputs,
                 native_types=self.target.python_interface.inputs,
             )
             kwargs_literals = {k1: Promise(var=k1, val=v1) for k1, v1 in literal_map.items()}
@@ -135,9 +146,14 @@ class ArrayNode(object):
                 if outputs_expected:
                     literals.append(output.val)
 
-            except Exception:
+            except Exception as exc:
                 if outputs_expected:
-                    literals.append(None)
+                    literal_with_none = Literal(scalar=Scalar(none_type=_literal_models.Void()))
+                    literals.append(literal_with_none)
+                    failed_count += 1
+                    if mapped_entity_count - failed_count < min_successes:
+                        logger.error("The number of successful tasks is lower than the minimum ratio")
+                        raise exc
 
         if outputs_expected:
             return Promise(var="o0", val=Literal(collection=LiteralCollection(literals=literals)))
