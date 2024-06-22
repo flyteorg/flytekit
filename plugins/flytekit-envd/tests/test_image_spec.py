@@ -11,7 +11,7 @@ from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec
 @pytest.fixture(scope="module", autouse=True)
 def register_envd_higher_priority():
     # Register a new envd platform with the highest priority so the test in this file uses envd
-    highest_priority_builder = max(ImageBuildEngine._REGISTRY, key=ImageBuildEngine._REGISTRY.get)
+    highest_priority_builder = max(ImageBuildEngine._REGISTRY, key=lambda name: ImageBuildEngine._REGISTRY[name][1])
     highest_priority = ImageBuildEngine._REGISTRY[highest_priority_builder][1]
     yield ImageBuildEngine.register(
         "envd_high_priority",
