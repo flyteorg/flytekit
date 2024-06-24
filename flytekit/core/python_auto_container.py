@@ -94,6 +94,14 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         )
         self._environment = environment or {}
 
+        super().__init__(
+            task_type=task_type,
+            name=name,
+            task_config=task_config,
+            security_ctx=sec_ctx,
+            **kwargs,
+        )
+
         compilation_state = FlyteContextManager.current_context().compilation_state
         if compilation_state and compilation_state.task_resolver:
             if task_resolver:
@@ -109,14 +117,6 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
 
         self.pod_template = pod_template
         self.accelerator = accelerator
-
-        super().__init__(
-            task_type=task_type,
-            name=name,
-            task_config=task_config,
-            security_ctx=sec_ctx,
-            **kwargs,
-        )
 
 
     @property
