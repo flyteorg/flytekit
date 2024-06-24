@@ -19,5 +19,6 @@ Flytekit API Reference
    tasks.extend
    types.extend
    experimental
+   inference
    pyflyte
    contributing
