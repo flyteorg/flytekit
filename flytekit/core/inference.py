@@ -1,3 +1,20 @@
+"""
+=========
+Inference
+=========
+
+.. currentmodule:: flytekit.core.inference
+
+This module includes inference subclasses that extend the `ModelInferenceTemplate`.
+
+.. autosummary::
+   :nosignatures:
+   :template: custom.rst
+   :toctree: generated/
+
+   NIM
+"""
+
 from typing import Optional
 
 from .utils import ModelInferenceTemplate
