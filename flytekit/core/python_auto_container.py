@@ -87,13 +87,6 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         kwargs["metadata"] = kwargs["metadata"] if "metadata" in kwargs else TaskMetadata()
         kwargs["metadata"].pod_template_name = pod_template_name
 
-        super().__init__(
-            task_type=task_type,
-            name=name,
-            task_config=task_config,
-            security_ctx=sec_ctx,
-            **kwargs,
-        )
         self._container_image = container_image
         # TODO(katrogan): Implement resource overrides
         self._resources = ResourceSpec(
@@ -116,6 +109,15 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
 
         self.pod_template = pod_template
         self.accelerator = accelerator
+
+        super().__init__(
+            task_type=task_type,
+            name=name,
+            task_config=task_config,
+            security_ctx=sec_ctx,
+            **kwargs,
+        )
+
 
     @property
     def task_resolver(self) -> TaskResolverMixin:
