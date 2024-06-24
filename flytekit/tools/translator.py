@@ -183,7 +183,8 @@ def get_serializable_task(
                 # 1. Build the ImageSpec for all the entities that are inside the current context,
                 # 2. Add images to the serialization context, so the dynamic task can look it up at runtime.
                 print("dir(e) dir(e) dir(e) dir(e)", dir(e))
-                assert hasattr(e, "container_image") is True
+                print("container image container image", hasattr(e, "container_image"))
+                print("_container image _container image", hasattr(e, "_container_image"))
                 if isinstance(e.container_image, ImageSpec):
                     if settings.image_config.images is None:
                         settings.image_config = ImageConfig.create_from(settings.image_config.default_image)
