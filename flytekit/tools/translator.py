@@ -182,12 +182,6 @@ def get_serializable_task(
             if isinstance(e, PythonAutoContainerTask):
                 # 1. Build the ImageSpec for all the entities that are inside the current context,
                 # 2. Add images to the serialization context, so the dynamic task can look it up at runtime.
-                print("dir(e):", dir(e))
-                print("isinstance(e, PythonAutoContainerTask)", isinstance(e, PythonAutoContainerTask))
-                print("type(e):", type(e))
-                print("e:", e)
-                print("e.name", e.name)
-
                 if isinstance(e.container_image, ImageSpec):
                     if settings.image_config.images is None:
                         settings.image_config = ImageConfig.create_from(settings.image_config.default_image)

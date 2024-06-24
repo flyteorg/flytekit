@@ -92,13 +92,13 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         self._resources = ResourceSpec(
             requests=requests if requests else Resources(), limits=limits if limits else Resources()
         )
-        self._environment = environment or {}
 
         super().__init__(
             task_type=task_type,
             name=name,
             task_config=task_config,
             security_ctx=sec_ctx,
+            environment=environment,
             **kwargs,
         )
 
@@ -117,7 +117,6 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
 
         self.pod_template = pod_template
         self.accelerator = accelerator
-
 
     @property
     def task_resolver(self) -> TaskResolverMixin:
