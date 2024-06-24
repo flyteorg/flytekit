@@ -101,7 +101,7 @@ def test_image_spec_conda():
 
 def test_image_spec_extra_index_url():
     image_spec = ImageSpec(
-        packages=["-U --pre pandas", "torch", "torchvision"],
+        packages=["-U pandas", "torch", "torchvision"],
         base_image="cr.flyte.org/flyteorg/flytekit:py3.9-latest",
         pip_extra_index_url=[
             "https://download.pytorch.org/whl/cpu",
