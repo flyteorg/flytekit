@@ -87,11 +87,17 @@ class NIM(ModelInferenceTemplate):
 
         if model_server_container.env:
             model_server_container.env.append(
-                V1EnvVar(name="NGC_API_KEY", value=f"$(_UNION_{self._ngc_secret_key.upper()})")
+                V1EnvVar(
+                    name="NGC_API_KEY",
+                    value=f"$(_UNION_{self._ngc_secret_key.upper()})",
+                )
             )
         else:
             model_server_container.env = [
-                V1EnvVar(name="NGC_API_KEY", value=f"$(_UNION_{self._ngc_secret_key.upper()})")
+                V1EnvVar(
+                    name="NGC_API_KEY",
+                    value=f"$(_UNION_{self._ngc_secret_key.upper()})",
+                )
             ]
 
         model_server_container.volume_mounts = [V1VolumeMount(name="dshm", mount_path="/dev/shm")]
@@ -106,7 +112,8 @@ class NIM(ModelInferenceTemplate):
                 self._hf_token_key = ""
 
             local_peft_dir_env = next(
-                (env for env in model_server_container.env if env.name == "NIM_PEFT_SOURCE"), None
+                (env for env in model_server_container.env if env.name == "NIM_PEFT_SOURCE"),
+                None,
             )
             if local_peft_dir_env:
                 mount_path = local_peft_dir_env.value
@@ -136,10 +143,10 @@ class NIM(ModelInferenceTemplate):
             fi
 
             # Download LoRAs from Huggingface Hub
-            {"".join([f"""
-            mkdir -p $LOCAL_PEFT_DIRECTORY/{repo_id.split('/')[-1]}
-            huggingface-cli download {repo_id} adapter_config.json adapter_model.safetensors --local-dir $LOCAL_PEFT_DIRECTORY/{repo_id.split('/')[-1]}
-            """ for repo_id in self._hf_repo_ids])}
+            {"".join([f'''
+            mkdir -p $LOCAL_PEFT_DIRECTORY/{repo_id.split("/")[-1]}
+            huggingface-cli download {repo_id} adapter_config.json adapter_model.safetensors --local-dir $LOCAL_PEFT_DIRECTORY/{repo_id.split("/")[-1]}
+            ''' for repo_id in self._hf_repo_ids])}
 
             chmod -R 777 $LOCAL_PEFT_DIRECTORY
             """,
