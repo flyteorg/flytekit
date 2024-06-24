@@ -108,6 +108,9 @@ def _dispatch_execute(
             # Handle eager-mode (async) tasks
             logger.info("Output is a coroutine")
             outputs = asyncio.run(outputs)
+            # make sure an event loop exists for data persistence step
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
 
         # Step3a
         if isinstance(outputs, VoidPromise):
