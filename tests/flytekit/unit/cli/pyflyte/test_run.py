@@ -516,3 +516,23 @@ def test_envvar_local_execution(envs, envs_argument, expected_output, workflow_f
     )
     output = result.stdout.strip().split("\n")[-1].strip()
     assert output == expected_output
+
+
+@pytest.mark.parametrize(
+    "task_path",
+    [("task_defaults.py")],
+)
+def test_list_default_arguments(task_path):
+    runner = CliRunner()
+    dir_name = os.path.dirname(os.path.realpath(__file__))
+    result = runner.invoke(
+        pyflyte.main,
+        [
+            "run",
+            os.path.join(dir_name, "default_arguments", task_path),
+            "foo",
+        ],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+    assert result.stdout == "Running Execution on local.\n0 Hello Color.RED\n\n"
