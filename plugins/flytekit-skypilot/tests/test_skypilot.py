@@ -15,12 +15,7 @@ from flyteidl.core.execution_pb2 import TaskExecution
 from flytekitplugins.skypilot import SkyPilot, SkyPilotAgent
 from flytekitplugins.skypilot.agent import SkyTaskTracker
 from flytekitplugins.skypilot.task_utils import ContainerRunType, get_sky_task_config
-from flytekitplugins.skypilot.utils import (
-    BaseSkyTask,
-    ClusterManager,
-    SkyPathSetting,
-    TaskStatus,
-)
+from flytekitplugins.skypilot.utils import BaseSkyTask, ClusterManager, SkyPathSetting, TaskStatus
 
 from flytekit import Resources, task
 from flytekit.configuration import DefaultImages, ImageConfig, SerializationSettings
@@ -131,6 +126,11 @@ def mock_exec(sleep_time=SLEEP_TIME):
     return (0, "Mock Success")
 
 
+def mock_dummy(sleep_time=SLEEP_TIME, *args, **kwargs):
+    time.sleep(sleep_time)
+    return (0, "Mock Success")
+
+
 def mock_queue(sleep_time=SLEEP_TIME):
     time.sleep(sleep_time)
     return [{"job_name": "sky_task.mock_task", "status": sky.JobStatus.RUNNING, "job_id": 0}]
@@ -179,18 +179,33 @@ def mock_fs():
     shutil.rmtree(random_dir)
 
 
-task_config = SkyPilot(
+hello0_config = SkyPilot(
     cluster_name=MOCK_CLUSTER,
     setup="echo 'Hello, World!'",
-    resource_config={"image_id": "a/b:c", "ordered": [{"instance_type": "e2-small"}, {"cloud": "aws"}]},
+    resource_config={"ordered": [{"instance_type": "t2.small"}, {"cloud": "aws"}]},
+)
+
+hello1_config = SkyPilot(
+    cluster_name=MOCK_CLUSTER,
+    setup="echo 'Hello, Flyte!'",
+    resource_config={"ordered": [{"instance_type": "t2.small"}, {"cloud": "aws"}]},
+    task_name="say_hello1",
 )
 
 
 @task(
-    task_config=task_config,
+    task_config=hello0_config,
     container_image=DefaultImages.default_image(),
 )
 def say_hello0(name: str) -> str:
+    return f"Hello, {name}."
+
+
+@task(
+    task_config=hello1_config,
+    container_image=DefaultImages.default_image(),
+)
+def say_hello1(name: str) -> str:
     return f"Hello, {name}."
 
 
@@ -229,9 +244,9 @@ def mock_provider(mock_fs):
         autospec=True,
         return_value=SkyPathSetting(task_level_prefix=str(mock_fs.local_sandbox_dir), unique_id="sky_mock"),
     ) as mock_path, mock.patch(
-        "flytekitplugins.skypilot.utils.NormalClusterManager.launch_dummy_task",
+        "flytekitplugins.skypilot.utils.NormalClusterManager.dummy_task_launcher",
         autospec=True,
-        side_effect=(mock_launch(sleep_time=DUMMY_TIME)),
+        return_value=(functools.partial(mock_dummy, EXEC_TIME)),
     ) as dummy_launch, mock.patch(
         "flytekitplugins.skypilot.utils.NormalTask.get_launch_handler",
         autospec=True,
@@ -271,18 +286,23 @@ def timeout_const_mock():
         yield (utils_coro_interval, process_coro_interval, autodown_timeout, down_timeout)
 
 
+def get_task_spec(task):
+    serialization_settings = SerializationSettings(image_config=ImageConfig())
+    task_spec = get_serializable(OrderedDict(), serialization_settings, task)
+    return task_spec
+
+
 @pytest.fixture
 def mock_agent():
-    serialization_settings = SerializationSettings(image_config=ImageConfig())
     context = mock.MagicMock(spec=grpc.ServicerContext)
     mock_sky_queues()
-    task_spec = get_serializable(OrderedDict(), serialization_settings, say_hello0)
+    task_spec = get_task_spec(say_hello0)
     agent = AgentRegistry.get_agent(task_spec.template.type)
     assert isinstance(agent, SkyPilotAgent)
 
-    sky.Task.from_yaml_config = mock.MagicMock(
-        return_value=sky.Task.from_yaml_config({"name": f"sky_task.{MOCK_TASK}"})
-    )
+    # sky.Task.from_yaml_config = mock.MagicMock(
+    #     return_value=sky.Task.from_yaml_config({"name": f"sky_task.{MOCK_TASK}"})
+    # )
     yield agent, task_spec, context
 
 
@@ -470,3 +490,41 @@ async def test_async_agent_remote_down(mock_agent, timeout_const_mock, mock_prov
     # let loop detect the task deletion
     await stop_and_wait(remote_cluster, remote_task)
     await stop_sky_path()
+
+
+@pytest.mark.parametrize("new_task, cycle_call_count", [(say_hello1, 2), (say_hello0, 1)])
+@pytest.mark.asyncio
+async def test_async_agent_different_setup(
+    new_task, cycle_call_count, mock_agent, timeout_const_mock, mock_provider, mock_fs
+):
+    (mock_path, dummy_launch, normal_launch, managed_launch, mock_timeout) = mock_provider
+    agent, task_spec, context = mock_agent
+    assert isinstance(agent, SkyPilotAgent)
+    task_spec.template.container._args = get_container_args(mock_fs)
+    # task_spec.template.custom["job_launch_type"] = job_launch_type
+    with mock.patch(
+        "flytekitplugins.skypilot.utils.NormalClusterManager.reset",
+    ) as mock_lifecycle:
+        create_task_response = await agent.create(
+            context=context, task_template=task_spec.template, output_prefix=mock_fs.raw_output_prefix
+        )
+        new_setup_task_spec = get_task_spec(new_task)
+        new_setup_task_spec.template.container._args = get_container_args(mock_fs)
+        # new_setup_task_spec.template.custom["job_launch_type"] = job_launch_type
+        resource_meta = create_task_response
+        # let cluster enter submitted state
+        remote_cluster = SkyTaskTracker._CLUSTER_REGISTRY._clusters[resource_meta.cluster_name]
+        remote_task = remote_cluster.tasks.get(resource_meta.job_name)
+
+        await asyncio.sleep(CORO_INTERVAL)
+        remote_task._task_event_handler.finished_event.set()
+        new_task_response = await agent.create(
+            context=context, task_template=new_setup_task_spec.template, output_prefix=mock_fs.raw_output_prefix + "_1"
+        )
+        await asyncio.sleep(CORO_INTERVAL)
+        assert mock_lifecycle.call_count == cycle_call_count
+        await agent.delete(context=context, resource_meta=resource_meta)
+        await agent.delete(context=context, resource_meta=new_task_response)
+        # let loop detect the task deletion
+        await stop_and_wait(remote_cluster, remote_task)
+        await stop_sky_path()

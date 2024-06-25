@@ -9,6 +9,14 @@ from flytekitplugins.skypilot.constants import COROUTINE_INTERVAL
 from flytekit import logger
 
 
+def try_cancel_task(task: asyncio.Task):
+    try:
+        if task and not task.done():
+            task.cancel()
+    except asyncio.exceptions.CancelledError:
+        pass
+
+
 class EventHandler(object):
     def __init__(self) -> None:
         self._cancel_event = asyncio.Event()
@@ -34,6 +42,19 @@ class EventHandler(object):
 
     def is_terminal(self):
         return self.cancel_event.is_set() or self.failed_event.is_set() or self.finished_event.is_set()
+
+    async def async_terminal(self):
+        done, pending = await asyncio.wait(
+            [
+                asyncio.create_task(self.cancel_event.wait()),
+                asyncio.create_task(self.failed_event.wait()),
+                asyncio.create_task(self.finished_event.wait()),
+            ],
+            return_when=asyncio.FIRST_COMPLETED,
+        )
+        for task in pending:
+            try_cancel_task(task)
+        return True
 
     def __repr__(self) -> str:
         return (
@@ -69,6 +90,19 @@ class ClusterEventHandler(EventHandler):
     def is_terminal(self):
         return self.cancel_event.is_set() or self.failed_event.is_set() or self.all_task_terminal()
 
+    async def async_terminal(self):
+        done, pending = await asyncio.wait(
+            [
+                asyncio.create_task(self.cancel_event.wait()),
+                asyncio.create_task(self.failed_event.wait()),
+                asyncio.create_task(self.async_all_task_terminal()),
+            ],
+            return_when=asyncio.FIRST_COMPLETED,
+        )
+        for task in pending:
+            try_cancel_task(task)
+        return True
+
     def __repr__(self) -> str:
         return (
             f"ClusterEventHandler(cancel_event={self.cancel_event.is_set()},"
@@ -84,6 +118,11 @@ class ClusterEventHandler(EventHandler):
         for task_handler in self.task_handlers:
             if not task_handler.is_terminal():
                 return False
+        return True
+
+    async def async_all_task_terminal(self):
+        tasks = [asyncio.create_task(task_handler.async_terminal()) for task_handler in self.task_handlers]
+        done, pending = await asyncio.wait(tasks, return_when=asyncio.ALL_COMPLETED)
         return True
 
 
@@ -242,6 +281,39 @@ class ConcurrentProcessHandler(BaseProcessHandler):
             raise launch_exception
 
         return success, task_result
+
+    async def instant_status_poller(self, timeout: int = None) -> tuple[bool, Any]:
+        success, task_result, launch_exception = None, None, None
+        timeout = timeout or (1 << 31 - 1)
+        loop = asyncio.get_event_loop()
+        with cf.ProcessPoolExecutor() as executor:
+            task = loop.run_in_executor(executor, self._fn)
+            event_task = asyncio.create_task(self._event_handler.async_terminal())
+            done, pending = await asyncio.wait([task, event_task], timeout=timeout, return_when=asyncio.FIRST_COMPLETED)
+            for undone in pending:
+                try_cancel_task(undone)
+                if task == undone:
+                    if not event_task.done():
+                        launch_exception = asyncio.exceptions.TimeoutError(f"{self._name} time exceeded")
+                    success = False
+
+            if task in done:
+                try:
+                    task_result = task.result()
+                    success = True
+                except Exception as e:
+                    launch_exception = e
+                    success = False
+
+        if success:
+            self._event_handler.launch_done_event.set()
+            return success, task_result
+
+        self.clean_up(executor)
+        if launch_exception is not None:
+            raise launch_exception
+
+        return success, launch_exception
 
     def clean_up(self, executor: cf.ProcessPoolExecutor):
         if executor._processes:
