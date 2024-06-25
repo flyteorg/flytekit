@@ -95,7 +95,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
 
         # Call super().__init__ after setting _container_image because PythonAutoContainerTask
         # is added to the FlyteEntities in super().__init__. The translator will iterate over
-        # FlyteEntities and call container_image.
+        # FlyteEntities and call entity.container_image().
         # Therefore, we need to ensure the _container_image attribute is set
         # before appending the task to FlyteEntities.
         # https://github.com/flyteorg/flytekit/blob/876877abd8d6f4f54dec2738a0ca07a12e9115b1/flytekit/tools/translator.py#L181
