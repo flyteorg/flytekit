@@ -87,6 +87,15 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         kwargs["metadata"] = kwargs["metadata"] if "metadata" in kwargs else TaskMetadata()
         kwargs["metadata"].pod_template_name = pod_template_name
 
+        super().__init__(
+            task_type=task_type,
+            name=name,
+            task_config=task_config,
+            security_ctx=sec_ctx,
+            environment=environment,
+            **kwargs,
+        )
+
         self._container_image = container_image
         # TODO(katrogan): Implement resource overrides
         self._resources = ResourceSpec(
@@ -108,20 +117,6 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
 
         self.pod_template = pod_template
         self.accelerator = accelerator
-
-        # Call super().__init__ at the end of this function because PythonAutoContainerTask
-        # is added to the FlyteEntities in super().__init__. The translator will iterate over
-        # FlyteEntities and call container_image. Therefore, we need to ensure all attributes are set
-        # before appending the task to FlyteEntities.
-        # https://github.com/flyteorg/flytekit/blob/876877abd8d6f4f54dec2738a0ca07a12e9115b1/flytekit/tools/translator.py#L181
-        super().__init__(
-            task_type=task_type,
-            name=name,
-            task_config=task_config,
-            security_ctx=sec_ctx,
-            environment=environment,
-            **kwargs,
-        )
 
     @property
     def task_resolver(self) -> TaskResolverMixin:

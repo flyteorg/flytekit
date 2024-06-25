@@ -41,6 +41,7 @@ from flytekit.core.workflow import (
 )
 from flytekit.exceptions import scopes as exception_scopes
 from flytekit.exceptions.user import FlyteValueException
+from flytekit.image_spec import ImageSpec
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
@@ -110,6 +111,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         ignore_input_vars: Optional[List[str]] = None,
         execution_mode: ExecutionBehavior = ExecutionBehavior.DEFAULT,
         task_resolver: Optional[TaskResolverMixin] = None,
+        container_image: Optional[Union[str, ImageSpec]] = None,
         node_dependency_hints: Optional[
             Iterable[Union["PythonFunctionTask", "_annotated_launch_plan.LaunchPlan", WorkflowBase]]
         ] = None,
@@ -132,12 +134,14 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         self._native_interface = transform_function_to_interface(task_function, Docstring(callable_=task_function))
         mutated_interface = self._native_interface.remove_inputs(ignore_input_vars)
         name, _, _, _ = extract_task_module(task_function)
+        self._container_image = container_image
         super().__init__(
             task_type=task_type,
             name=name,
             interface=mutated_interface,
             task_config=task_config,
             task_resolver=task_resolver,
+            container_image=container_image,
             **kwargs,
         )
 
