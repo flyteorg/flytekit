@@ -93,8 +93,9 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
             requests=requests if requests else Resources(), limits=limits if limits else Resources()
         )
 
-        # Call super().__init__ after setting _container_image because PythonAutoContainerTask
-        # is added to the FlyteEntities in super().__init__. The translator will iterate over
+        # The serialization of the other tasks (Task -> protobuf), as well as the initialization of the current task, may occur simultaneously.
+        # We should make sure super().__init__ is being called after setting _container_image because PythonAutoContainerTask
+        # is added to the FlyteEntities in super().__init__, and the translator will iterate over
         # FlyteEntities and call entity.container_image().
         # Therefore, we need to ensure the _container_image attribute is set
         # before appending the task to FlyteEntities.
