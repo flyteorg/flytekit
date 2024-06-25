@@ -94,7 +94,16 @@ class wandb_init(ClassDecorator):
             else:
                 wand_id = self.id
 
-        wandb.init(project=self.project, entity=self.entity, id=wand_id, **self.init_kwargs)
+        run = wandb.init(project=self.project, entity=self.entity, id=wand_id, **self.init_kwargs)
+
+        # If FLYTE_EXECUTION_URL is defined, inject it into wandb to link back to the execution.
+        execution_url = os.getenv("FLYTE_EXECUTION_URL")
+        if execution_url is not None:
+            notes_list = [f"[Execution URL]({execution_url})"]
+            if run.notes:
+                notes_list.append(run.notes)
+            run.notes = os.linesep.join(notes_list)
+
         output = self.task_function(*args, **kwargs)
         wandb.finish()
         return output
