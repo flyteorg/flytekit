@@ -930,10 +930,12 @@ def test_dataclass_with_postponed_annotation():
     tf = DataclassTransformer()
     t = tf.get_literal_type(Data)
     assert t.simple == SimpleType.STRUCT
-    with tempfile.NamedTemporaryFile() as f:
-        f.write(b'Hello world!')
+    with tempfile.TemporaryDirectory() as tmp:
+        test_file = os.path.join(tmp, "abc.txt")
+        with open(test_file, "w") as f:
+            f.write("123")
 
-        pv = Data(a=1, f=FlyteFile(f.name))
+        pv = Data(a=1, f=FlyteFile(test_file))
         tf.to_literal(ctx, pv, Data, t)
 
 
