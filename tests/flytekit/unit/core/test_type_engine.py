@@ -920,6 +920,23 @@ def test_dataclass_int_preserving():
     assert ot == o
 
 
+def test_dataclass_with_postponed_annotation():
+    @dataclass
+    class Data:
+        a: int
+        f: "FlyteFile"
+
+    ctx = FlyteContext.current_context()
+    tf = DataclassTransformer()
+    t = tf.get_literal_type(Data)
+    assert t.simple == SimpleType.STRUCT
+    with tempfile.NamedTemporaryFile() as fp:
+        fp.write(b'Hello world!')
+
+        pv = Data(a=1, f=FlyteFile(fp.name))
+        tf.to_literal(ctx, pv, Data, t)
+
+
 @mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
 def test_optional_flytefile_in_dataclass(mock_upload_dir):
     mock_upload_dir.return_value = True
