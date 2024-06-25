@@ -42,6 +42,11 @@ jobs:
         python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
         pandas: ["pandas<2.0.0", "pandas>=2.0.0"]
         numpy: ["numpy<2.0.0", "numpy>=2.0.0"]
+        exclude:
+          - numpy: "numpy>=2.0.0"
+            pandas: "pandas<2.0.0"
+          - numpy: "numpy<2.0.0"
+            pandas: "pandas>=2.0.0"
 
     steps:
       - uses: actions/checkout@v4
