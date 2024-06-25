@@ -25,7 +25,7 @@ T = typing.TypeVar("T")
 
 def repr_kv(k: str, v: Union[Type, Tuple[Type, Any]]) -> str:
     if isinstance(v, tuple):
-        if v[1]:
+        if v[1] is not None:
             return f"{k}: {v[0]}={v[1]}"
         return f"{k}: {v[0]}"
     return f"{k}: {v}"
