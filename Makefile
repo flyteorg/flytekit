@@ -66,6 +66,7 @@ unit_test_codecov2:
 
 .PHONY: unit_test2
 unit_test2:
+	$(PYTEST) -n auto --dist=loadfile -m "serial" tests/flytekit/unit/ --ignore=tests/flytekit/unit/extras/ --ignore=tests/flytekit/unit/models --ignore=tests/flytekit/unit/extend ${CODECOV_OPTS}
 	# Run serial tests without any parallelism
 	$(PYTEST) -m "serial" tests/flytekit/unit/ --ignore=tests/flytekit/unit/extras/ --ignore=tests/flytekit/unit/models --ignore=tests/flytekit/unit/extend ${CODECOV_OPTS}
 
