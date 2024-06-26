@@ -1677,7 +1677,7 @@ class DictTransformer(TypeTransformer[dict]):
     """
 
     def __init__(self):
-        super().__init__("Python Dictionary", dict)
+        super().__init__("Typed Dict", dict)
 
     @staticmethod
     def extract_types_or_metadata(t: Optional[Type[dict]]) -> typing.Tuple:
