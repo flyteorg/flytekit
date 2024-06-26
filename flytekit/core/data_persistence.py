@@ -367,6 +367,8 @@ class FileAccessProvider(object):
         :return: Returns the final path data was written to.
         """
         # First figure out what the destination path should be, then call put.
+        if file_name and file_name.startswith("card"):
+            logger.warning(f"MODELCARD: File name {file_name} upload_prefix {upload_prefix} skip {skip_raw_data_prefix}")
         upload_prefix = self.get_random_string() if upload_prefix is None else upload_prefix
         to_path = self.join(self.raw_output_prefix, upload_prefix) if not skip_raw_data_prefix else upload_prefix
         if file_name:
