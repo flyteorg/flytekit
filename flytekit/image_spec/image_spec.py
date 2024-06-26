@@ -104,7 +104,6 @@ class ImageSpec:
             return os.environ.get(_F_IMG_ID) == self.image_name()
         return True
 
-    @lru_cache
     def exist(self) -> bool:
         """
         Check if the image exists in the registry.
@@ -127,10 +126,14 @@ class ImageSpec:
             return False
         except Exception as e:
             tag = calculate_hash_from_image_spec(self)
-            # if docker engine is not running locally
-            container_registry = DOCKER_HUB
-            if self.registry and "/" in self.registry:
+            # if docker engine is not running locally, use requests to check if the image exists.
+            if "localhost:" in self.registry:
+                container_registry = self.registry
+            elif self.registry and "/" in self.registry:
                 container_registry = self.registry.split("/")[0]
+            else:
+                # Assume the image is in docker hub if users don't specify a registry, such as ghcr.io, docker.io.
+                container_registry = DOCKER_HUB
             if container_registry == DOCKER_HUB:
                 url = f"https://hub.docker.com/v2/repositories/{self.registry}/{self.name}/tags/{tag}"
                 response = requests.get(url)
@@ -139,6 +142,16 @@ class ImageSpec:
 
                 if response.status_code == 404 and "not found" in str(response.content):
                     return False
+
+            if "Not supported URL scheme http+docker" in str(e):
+                raise RuntimeError(
+                    f"{str(e)}\n"
+                    f"Error: Incompatible Docker package version.\n"
+                    f"Current version: {docker.__version__}\n"
+                    f"Please upgrade the Docker package to version 7.1.0 or higher.\n"
+                    f"You can upgrade the package by running:\n"
+                    f"    pip install --upgrade docker"
+                )
 
             click.secho(f"Failed to check if the image exists with error : {e}", fg="red")
             click.secho("Flytekit assumes that the image already exists.", fg="blue")

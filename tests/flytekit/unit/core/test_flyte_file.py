@@ -565,6 +565,24 @@ def test_flyte_file_in_dyn():
 
     assert flyte_tmp_dir in wf(path="s3://somewhere").path
 
+def test_flyte_file_name_with_special_chars():
+    temp_dir = tempfile.TemporaryDirectory()
+    file_path = os.path.join(temp_dir.name, "foo bar")
+    try:
+        with open(file_path, "w") as tmp:
+            tmp.write("hello world")
+
+        @task
+        def get_file_path(f: FlyteFile) -> FlyteFile:
+            return f.path
+
+        @workflow
+        def wf(f: FlyteFile) -> FlyteFile:
+            return get_file_path(f=f)
+
+        wf(f=file_path)
+    finally:
+        temp_dir.cleanup()
 
 def test_flyte_file_annotated_hashmethod(local_dummy_file):
     def calc_hash(ff: FlyteFile) -> str:
@@ -655,3 +673,9 @@ def test_join():
 def test_headers():
     assert FlyteFilePathTransformer.get_additional_headers("xyz") == {}
     assert len(FlyteFilePathTransformer.get_additional_headers(".gz")) == 1
+
+
+def test_new_remote_file():
+    nf = FlyteFile.new_remote_file(name="foo.txt")
+    assert isinstance(nf, FlyteFile)
+    assert nf.path.endswith('foo.txt')
