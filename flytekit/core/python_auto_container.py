@@ -87,19 +87,28 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         kwargs["metadata"] = kwargs["metadata"] if "metadata" in kwargs else TaskMetadata()
         kwargs["metadata"].pod_template_name = pod_template_name
 
-        super().__init__(
-            task_type=task_type,
-            name=name,
-            task_config=task_config,
-            security_ctx=sec_ctx,
-            **kwargs,
-        )
         self._container_image = container_image
         # TODO(katrogan): Implement resource overrides
         self._resources = ResourceSpec(
             requests=requests if requests else Resources(), limits=limits if limits else Resources()
         )
-        self._environment = environment or {}
+
+        # The serialization of the other tasks (Task -> protobuf), as well as the initialization of the current task, may occur simultaneously.
+        # We should make sure super().__init__ is being called after setting _container_image because PythonAutoContainerTask
+        # is added to the FlyteEntities in super().__init__, and the translator will iterate over
+        # FlyteEntities and call entity.container_image().
+        # Therefore, we need to ensure the _container_image attribute is set
+        # before appending the task to FlyteEntities.
+        # https://github.com/flyteorg/flytekit/blob/876877abd8d6f4f54dec2738a0ca07a12e9115b1/flytekit/tools/translator.py#L181
+
+        super().__init__(
+            task_type=task_type,
+            name=name,
+            task_config=task_config,
+            security_ctx=sec_ctx,
+            environment=environment,
+            **kwargs,
+        )
 
         compilation_state = FlyteContextManager.current_context().compilation_state
         if compilation_state and compilation_state.task_resolver:
