@@ -368,7 +368,9 @@ class FileAccessProvider(object):
         """
         # First figure out what the destination path should be, then call put.
         if file_name and file_name.startswith("card"):
-            logger.warning(f"MODELCARD: File name {file_name} upload_prefix {upload_prefix} skip {skip_raw_data_prefix}")
+            logger.warning(
+                f"MODELCARD: File name {file_name} upload_prefix {upload_prefix} skip {skip_raw_data_prefix}"
+            )
         upload_prefix = self.get_random_string() if upload_prefix is None else upload_prefix
         to_path = self.join(self.raw_output_prefix, upload_prefix) if not skip_raw_data_prefix else upload_prefix
         if file_name:
@@ -414,6 +416,8 @@ class FileAccessProvider(object):
             return to_path
 
         if isinstance(lpath, io.StringIO):
+            if file_name and file_name.startswith("card"):
+                logger.warning(f"MODELCARD: lpath is a stringIO, to path {to_path} prefix is {self.raw_output_prefix}")
             if not lpath.readable():
                 raise FlyteAssertion("Buffered reader must be readable")
             fs = self.get_filesystem_for_path(to_path)
@@ -421,6 +425,8 @@ class FileAccessProvider(object):
             with fs.open(to_path, "wb", **kwargs) as s:
                 while data_str := lpath.read(read_chunk_size_bytes):
                     s.write(data_str.encode(encoding))
+            if file_name and file_name.startswith("card"):
+                logger.warning(f"MODELCARD: Done put raw data as {encoding}")
             return to_path
 
         raise FlyteAssertion(f"Unsupported lpath type {type(lpath)}")
