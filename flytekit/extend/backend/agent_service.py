@@ -188,7 +188,11 @@ class SyncAgentService(SyncAgentServiceServicer):
                 connection = agent.connection_type.decode(connection_pb) if connection_pb else None
 
                 res = await mirror_async_methods(
-                    agent.do, task_template=template, inputs=literal_map, output_prefix=output_prefix, connection=connection
+                    agent.do,
+                    task_template=template,
+                    inputs=literal_map,
+                    output_prefix=output_prefix,
+                    connection=connection,
                 )
 
                 if res.outputs is None:

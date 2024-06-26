@@ -68,7 +68,7 @@ class DatabricksAgent(AsyncAgentBase):
             "git_commit": "aff8a9f2adbf5deda81d36d59a0b8fa3b1fc3679",
         }
 
-        databricks_instance = custom["databricksInstance"]
+        databricks_instance = connection.databricks_instance or custom["databricksInstance"]
         databricks_url = f"https://{databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/submit"
         data = json.dumps(databricks_job)
 
