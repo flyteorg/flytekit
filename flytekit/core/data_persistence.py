@@ -444,7 +444,9 @@ class FileAccessProvider(object):
             raise ValueError("Must provide at least one argument")
         base, tails = args[0], list(args[1:])
         if get_protocol(base) not in str(fs.protocol):
-            logger.warning(f"joining {base} with incorrect fs {fs.protocol} vs {get_protocol(base)}")
+            logger.warning(
+                f"joining {base} with incorrect fs {fs.protocol} vs {get_protocol(base)}. Args {args=} FS {fs=}"
+            )
         if base.endswith(fs.sep):  # noqa
             base = base[:-1]
         l = [base]
