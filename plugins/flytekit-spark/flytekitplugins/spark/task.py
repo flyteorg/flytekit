@@ -7,6 +7,7 @@ from google.protobuf.json_format import MessageToDict
 from flytekit import FlyteContextManager, PythonFunctionTask, lazy_module, logger
 from flytekit.configuration import DefaultImages, SerializationSettings
 from flytekit.core.context_manager import ExecutionParameters
+from flytekit.core.python_auto_container import get_registerable_container_image
 from flytekit.extend import ExecutionState, TaskPlugins
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 from flytekit.image_spec import ImageSpec
@@ -53,12 +54,10 @@ class Databricks(Spark):
         databricks_conf: Databricks job configuration compliant with API version 2.1, supporting 2.0 use cases.
         For the configuration structure, visit here.https://docs.databricks.com/dev-tools/api/2.0/jobs.html#request-structure
         For updates in API 2.1, refer to: https://docs.databricks.com/en/workflows/jobs/jobs-api-updates.html
-        databricks_token: Databricks access token. https://docs.databricks.com/dev-tools/api/latest/authentication.html.
         databricks_instance: Domain name of your deployment. Use the form <account>.cloud.databricks.com.
     """
 
     databricks_conf: Optional[Dict[str, Union[str, dict]]] = None
-    databricks_token: Optional[str] = None
     databricks_instance: Optional[str] = None
 
 
@@ -136,6 +135,13 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
             **kwargs,
         )
 
+    def get_image(self, settings: SerializationSettings) -> str:
+        if isinstance(self.container_image, ImageSpec):
+            # Ensure that the code is always copied into the image, even during fast-registration.
+            self.container_image.source_root = settings.source_root
+
+        return get_registerable_container_image(self.container_image, settings.image_config)
+
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         job = SparkJob(
             spark_conf=self.task_config.spark_conf,
@@ -148,7 +154,6 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
         if isinstance(self.task_config, Databricks):
             cfg = cast(Databricks, self.task_config)
             job._databricks_conf = cfg.databricks_conf
-            job._databricks_token = cfg.databricks_token
             job._databricks_instance = cfg.databricks_instance
 
         return MessageToDict(job.to_flyte_idl())

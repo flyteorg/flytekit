@@ -39,7 +39,16 @@ def test_istestfunction():
 def test_container_image_conversion(mock_image_spec_builder):
     default_img = Image(name="default", fqn="xyz.com/abc", tag="tag1")
     other_img = Image(name="other", fqn="xyz.com/other", tag="tag-other")
-    cfg = ImageConfig(default_image=default_img, images=[default_img, other_img])
+    other_img2 = Image(
+        name="other2",
+        fqn="xyz.com/other2",
+        digest="sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d",
+    )
+    other_img3 = Image(
+        name="other3",
+        fqn="xyz.com/other3",
+    )
+    cfg = ImageConfig(default_image=default_img, images=[default_img, other_img, other_img2, other_img3])
     assert get_registerable_container_image(None, cfg) == "xyz.com/abc:tag1"
     assert get_registerable_container_image("", cfg) == "xyz.com/abc:tag1"
     assert get_registerable_container_image("abc", cfg) == "abc"
@@ -55,6 +64,14 @@ def test_container_image_conversion(mock_image_spec_builder):
     assert (
         get_registerable_container_image("{{.image.other.fqn}}:{{.image.default.version}}", cfg) == "xyz.com/other:tag1"
     )
+    assert (
+        get_registerable_container_image("{{.image.other2.fqn}}@{{.image.other2.version}}", cfg)
+        == "xyz.com/other2@sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d"
+    )
+    assert (
+        get_registerable_container_image("{{.image.other3.fqn}}:{{.image.other3.version}}", cfg)
+        == "xyz.com/other3:tag1"
+    )
     assert get_registerable_container_image("{{.image.other.fqn}}", cfg) == "xyz.com/other"
     # Works with images instead of just image
     assert get_registerable_container_image("{{.images.other.fqn}}", cfg) == "xyz.com/other"
@@ -68,7 +85,30 @@ def test_container_image_conversion(mock_image_spec_builder):
     with pytest.raises(AssertionError):
         get_registerable_container_image("{{.image.blah}}", cfg)
 
+    with pytest.raises(AssertionError):
+        get_registerable_container_image("{{.image.other3.blah}}", cfg)
+
     assert get_registerable_container_image("{{.image.default}}", cfg) == "xyz.com/abc:tag1"
+
+    assert (
+        get_registerable_container_image("{{.image.other2}}", cfg)
+        == "xyz.com/other2@sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d"
+    )
+
+    default_img_using_sha = Image(
+        name="default",
+        fqn="xyz.com/abc",
+        digest="sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d",
+    )
+    cfg = ImageConfig(default_image=default_img_using_sha, images=[default_img, other_img, other_img2])
+    assert (
+        get_registerable_container_image("{{.image.default}}", cfg)
+        == "xyz.com/abc@sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d"
+    )
+    assert (
+        get_registerable_container_image("{{.image.default.fqn}}@{{.image.default.version}}", cfg)
+        == "xyz.com/abc@sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d"
+    )
 
     ImageBuildEngine.register("test", mock_image_spec_builder)
     image_spec = ImageSpec(builder="test", python_version="3.7", registry="")
@@ -224,3 +264,23 @@ def test_node_dependency_hints_are_not_allowed():
         @task(node_dependency_hints=[t1])
         def t2(i: str):
             pass
+
+
+def test_default_inputs():
+    @task
+    def foo(x: int = 0, y: str = "Hello") -> int:
+        return x
+
+    assert foo.python_interface.default_inputs_as_kwargs == {"x": 0, "y": "Hello"}
+
+    @task
+    def foo2(x: int, y: str = "Hello") -> int:
+        return x
+
+    assert foo2.python_interface.inputs_with_defaults == {"x": (int, None), "y": (str, "Hello")}
+
+    @task
+    def foo3(x: int, y: str) -> int:
+        return x
+
+    assert foo3.python_interface.inputs_with_defaults == {"x": (int, None), "y": (str, None)}

@@ -1,4 +1,4 @@
-import json as _json
+import json
 
 from flyteidl.plugins import array_job_pb2 as _array_job
 from google.protobuf import json_format as _json_format
@@ -92,7 +92,7 @@ class ArrayJob(_common.FlyteCustomIdlEntity):
         :param dict[T, Text] idl_dict:
         :rtype: ArrayJob
         """
-        pb2_object = _json_format.Parse(_json.dumps(idl_dict), _array_job.ArrayJob())
+        pb2_object = _json_format.Parse(json.dumps(idl_dict), _array_job.ArrayJob())
 
         if pb2_object.HasField("min_successes"):
             return cls(

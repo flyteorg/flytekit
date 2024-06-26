@@ -15,6 +15,7 @@ and Pagerduty is incumbent on those email API being set-up correctly.
 .. autoclass:: flytekit.core.notification.Notification
 
 """
+
 from typing import List
 
 from flytekit.models import common as _common_model

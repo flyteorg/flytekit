@@ -15,6 +15,7 @@ from flyteidl.admin.agent_pb2 import Agent
 from flyteidl.admin.agent_pb2 import TaskCategory as _TaskCategory
 from flyteidl.core import literals_pb2
 from flyteidl.core.execution_pb2 import TaskExecution, TaskLog
+from rich.logging import RichHandler
 from rich.progress import Progress
 
 from flytekit import FlyteContext, PythonFunctionTask, logger
@@ -25,8 +26,9 @@ from flytekit.core.type_engine import TypeEngine, dataclass_from_dict
 from flytekit.exceptions.system import FlyteAgentNotFound
 from flytekit.exceptions.user import FlyteUserException
 from flytekit.extend.backend.utils import is_terminal_phase, mirror_async_methods, render_task_template
+from flytekit.loggers import set_flytekit_log_properties
 from flytekit.models.literals import LiteralMap
-from flytekit.models.task import TaskTemplate
+from flytekit.models.task import TaskExecutionMetadata, TaskTemplate
 
 
 class TaskCategory:
@@ -117,7 +119,9 @@ class SyncAgentBase(AgentBase):
     name = "Base Sync Agent"
 
     @abstractmethod
-    def do(self, task_template: TaskTemplate, inputs: Optional[LiteralMap], **kwargs) -> Resource:
+    def do(
+        self, task_template: TaskTemplate, output_prefix: str, inputs: Optional[LiteralMap] = None, **kwargs
+    ) -> Resource:
         """
         This is the method that the agent will run.
         """
@@ -145,7 +149,14 @@ class AsyncAgentBase(AgentBase):
         return self._metadata_type
 
     @abstractmethod
-    def create(self, task_template: TaskTemplate, inputs: Optional[LiteralMap], **kwargs) -> ResourceMeta:
+    def create(
+        self,
+        task_template: TaskTemplate,
+        output_prefix: str,
+        inputs: Optional[LiteralMap],
+        task_execution_metadata: Optional[TaskExecutionMetadata],
+        **kwargs,
+    ) -> ResourceMeta:
         """
         Return a resource meta that can be used to get the status of the task.
         """
@@ -234,10 +245,13 @@ class SyncAgentExecutorMixin:
         ctx = FlyteContext.current_context()
         ss = ctx.serialization_settings or SerializationSettings(ImageConfig())
         task_template = get_serializable(OrderedDict(), ss, self).template
+        output_prefix = ctx.file_access.get_random_remote_directory()
 
         agent = AgentRegistry.get_agent(task_template.type, task_template.task_type_version)
 
-        resource = asyncio.run(self._do(agent, task_template, kwargs))
+        resource = asyncio.run(
+            self._do(agent=agent, template=task_template, output_prefix=output_prefix, inputs=kwargs)
+        )
         if resource.phase != TaskExecution.SUCCEEDED:
             raise FlyteUserException(f"Failed to run the task {self.name} with error: {resource.message}")
 
@@ -246,12 +260,18 @@ class SyncAgentExecutorMixin:
         return resource.outputs
 
     async def _do(
-        self: PythonTask, agent: SyncAgentBase, template: TaskTemplate, inputs: Dict[str, Any] = None
+        self: PythonTask,
+        agent: SyncAgentBase,
+        template: TaskTemplate,
+        output_prefix: str,
+        inputs: Dict[str, Any] = None,
     ) -> Resource:
         try:
             ctx = FlyteContext.current_context()
             literal_map = TypeEngine.dict_to_literal_map(ctx, inputs or {}, self.get_input_types())
-            return await mirror_async_methods(agent.do, task_template=template, inputs=literal_map)
+            return await mirror_async_methods(
+                agent.do, task_template=template, inputs=literal_map, output_prefix=output_prefix
+            )
         except Exception as error_message:
             raise FlyteUserException(f"Failed to run the task {self.name} with error: {error_message}")
 
@@ -277,7 +297,9 @@ class AsyncAgentExecutorMixin:
         task_template = get_serializable(OrderedDict(), ss, self).template
         self._agent = AgentRegistry.get_agent(task_template.type, task_template.task_type_version)
 
-        resource_mata = asyncio.run(self._create(task_template, output_prefix, kwargs))
+        resource_mata = asyncio.run(
+            self._create(task_template=task_template, output_prefix=output_prefix, inputs=kwargs)
+        )
         resource = asyncio.run(self._get(resource_meta=resource_mata))
 
         if resource.phase != TaskExecution.SUCCEEDED:
@@ -312,6 +334,7 @@ class AsyncAgentExecutorMixin:
             self._agent.create,
             task_template=task_template,
             inputs=literal_map,
+            output_prefix=output_prefix,
         )
 
         signal.signal(signal.SIGINT, partial(self.signal_handler, resource_meta))  # type: ignore
@@ -321,6 +344,7 @@ class AsyncAgentExecutorMixin:
         phase = TaskExecution.RUNNING
 
         progress = Progress(transient=True)
+        set_flytekit_log_properties(RichHandler(log_time_format="%H:%M:%S.%f"), None, None)
         task = progress.add_task(f"[cyan]Running Task {self.name}...", total=None)
         task_phase = progress.add_task("[cyan]Task phase: RUNNING, Phase message: ", total=None, visible=False)
         task_log_links = progress.add_task("[cyan]Log Links: ", total=None, visible=False)

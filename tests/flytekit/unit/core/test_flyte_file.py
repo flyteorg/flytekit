@@ -570,6 +570,24 @@ def test_flyte_file_in_dyn():
 
     assert flyte_tmp_dir in wf(path="s3://somewhere").path
 
+def test_flyte_file_name_with_special_chars():
+    temp_dir = tempfile.TemporaryDirectory()
+    file_path = os.path.join(temp_dir.name, "foo bar")
+    try:
+        with open(file_path, "w") as tmp:
+            tmp.write("hello world")
+
+        @task
+        def get_file_path(f: FlyteFile) -> FlyteFile:
+            return f.path
+
+        @workflow
+        def wf(f: FlyteFile) -> FlyteFile:
+            return get_file_path(f=f)
+
+        wf(f=file_path)
+    finally:
+        temp_dir.cleanup()
 
 def test_flyte_file_annotated_hashmethod(local_dummy_file):
     def calc_hash(ff: FlyteFile) -> str:
@@ -591,6 +609,17 @@ def test_flyte_file_annotated_hashmethod(local_dummy_file):
         t2(ff=ff)
 
     wf(path=local_dummy_file)
+
+
+def test_for_downloading():
+    ff = FlyteFile.from_source(source="s3://sample-path/file")
+    assert ff.path
+    assert ff._downloader is not None
+    assert not ff.downloaded
+
+    if os.name != "nt":
+        fl = FlyteFile.from_source(source=__file__)
+        assert fl.path == __file__
 
 
 @pytest.mark.sandbox_test
@@ -644,3 +673,14 @@ def test_join():
     fs = ctx.file_access.get_filesystem("s3")
     f = ctx.file_access.join("s3://a", "b", "c", fs=fs)
     assert f == fs.sep.join(["s3://a", "b", "c"])
+
+
+def test_headers():
+    assert FlyteFilePathTransformer.get_additional_headers("xyz") == {}
+    assert len(FlyteFilePathTransformer.get_additional_headers(".gz")) == 1
+
+
+def test_new_remote_file():
+    nf = FlyteFile.new_remote_file(name="foo.txt")
+    assert isinstance(nf, FlyteFile)
+    assert nf.path.endswith('foo.txt')

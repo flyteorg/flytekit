@@ -31,6 +31,7 @@ async def test_databricks_agent():
         "This is deprecated!",
         True,
         "A",
+        (),
     )
     task_config = {
         "sparkConf": {

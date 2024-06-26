@@ -1,4 +1,4 @@
 -e file:../../.#egg=flytekit
--e file:../../.#egg=flytekitplugins-pod&subdirectory=plugins/flytekit-k8s-pod
--e file:../../.#egg=flytekitplugins-spark&subdirectory=plugins/flytekit-spark
--e file:../../.#egg=flytekitplugins-awsbatch&subdirectory=plugins/flytekit-aws-batch
+-e file:../flytekit-k8s-pod/.#egg=flytekitplugins-pod
+-e file:../flytekit-spark/.#egg=flytekitplugins-spark
+-e file:../flytekit-aws-batch/.#egg=flytekitplugins-awsbatch

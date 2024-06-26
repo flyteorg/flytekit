@@ -8,13 +8,13 @@ from collections import OrderedDict
 from typing import Any, Dict, Generator, List, Optional, Tuple, Type, TypeVar, Union, cast
 
 from flyteidl.core import artifact_id_pb2 as art_id
-from typing_extensions import get_args, get_origin, get_type_hints
+from typing_extensions import get_args, get_type_hints
 
 from flytekit.core import context_manager
 from flytekit.core.artifact import Artifact, ArtifactIDSpecification, ArtifactQuery
 from flytekit.core.docstring import Docstring
 from flytekit.core.sentinel import DYNAMIC_INPUT_BINDING
-from flytekit.core.type_engine import TypeEngine
+from flytekit.core.type_engine import TypeEngine, UnionTransformer
 from flytekit.exceptions.user import FlyteValidationException
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
@@ -25,7 +25,7 @@ T = typing.TypeVar("T")
 
 def repr_kv(k: str, v: Union[Type, Tuple[Type, Any]]) -> str:
     if isinstance(v, tuple):
-        if v[1]:
+        if v[1] is not None:
             return f"{k}: {v[0]}={v[1]}"
         return f"{k}: {v[0]}"
     return f"{k}: {v}"
@@ -109,8 +109,7 @@ class Interface(object):
                     where runs_before is manually called.
                     """
 
-                def __rshift__(self, *args, **kwargs):
-                    ...  # See runs_before
+                def __rshift__(self, *args, **kwargs): ...  # See runs_before
 
             self._output_tuple_class = Output
         self._docstring = docstring
@@ -218,15 +217,24 @@ def transform_inputs_to_parameters(
     inputs_with_def = interface.inputs_with_defaults
     for k, v in inputs_vars.items():
         val, _default = inputs_with_def[k]
-        if _default is None and get_origin(val) is typing.Union and type(None) in get_args(val):
+        if _default is None and UnionTransformer.is_optional_type(val):
             literal = Literal(scalar=Scalar(none_type=Void()))
             params[k] = _interface_models.Parameter(var=v, default=literal, required=False)
         else:
             if isinstance(_default, ArtifactQuery):
                 params[k] = _interface_models.Parameter(var=v, required=False, artifact_query=_default.to_flyte_idl())
             elif isinstance(_default, Artifact):
-                artifact_id = _default.concrete_artifact_id  # may raise
-                params[k] = _interface_models.Parameter(var=v, required=False, artifact_id=artifact_id)
+                if not _default.version:
+                    # If the artifact is not versioned, assume it's meant to be a query.
+                    q = _default.query()
+                    if q.bound:
+                        params[k] = _interface_models.Parameter(var=v, required=False, artifact_query=q.to_flyte_idl())
+                    else:
+                        raise FlyteValidationException(f"Cannot use default query with artifact {_default.name}")
+                else:
+                    # If it is versioned, assumed it's intentionally hard-coded
+                    artifact_id = _default.concrete_artifact_id  # may raise
+                    params[k] = _interface_models.Parameter(var=v, required=False, artifact_id=artifact_id)
             else:
                 required = _default is None
                 default_lv = None

@@ -7,14 +7,19 @@ import pandas as pd
 import pytest
 from flyteidl.core.types_pb2 import SimpleType
 from flytekitplugins.pydantic import BaseModelTransformer
-from flytekitplugins.pydantic.commons import PYDANTIC_SUPPORTED_FLYTE_TYPES
-from pydantic import BaseModel, Extra
 
 import flytekit
 from flytekit.core import context_manager
 from flytekit.core.type_engine import TypeEngine
 from flytekit.types import directory
 from flytekit.types.file import file
+
+try:
+    # TODO: Use pydantic v2 to serialize/deserialize data
+    # https://github.com/flyteorg/flyte/issues/5033
+    from pydantic.v1 import BaseModel, Extra
+except ImportError:
+    from pydantic import BaseModel, Extra
 
 
 class TrainConfig(BaseModel):
@@ -274,10 +279,6 @@ def test_dynamic(python_type: Type[BaseModel], config_kwargs: Dict[str, Any]):
         sub_wf(cfg=config_instance)
 
     wf()
-
-
-def test_supported():
-    assert len(PYDANTIC_SUPPORTED_FLYTE_TYPES) == 9
 
 
 def test_single_df():

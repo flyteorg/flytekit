@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import datetime as _datetime
+import datetime
 from functools import update_wrapper
-from typing import Any, Callable, Dict, Iterable, List, Optional, Type, TypeVar, Union, overload
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, TypeVar, Union, overload
 
 from flytekit.core import launch_plan as _annotated_launchplan
 from flytekit.core import workflow as _annotated_workflow
@@ -31,8 +31,7 @@ class TaskPlugins(object):
         # Plugin_object_type is a derivative of ``PythonFunctionTask``
 
     Examples of available task plugins include different query-based plugins such as
-    :py:class:`flytekitplugins.athena.task.AthenaTask` and :py:class:`flytekitplugins.hive.task.HiveTask`, ML tools like
-    :py:class:`plugins.awssagemaker.flytekitplugins.awssagemaker.training.SagemakerBuiltinAlgorithmsTask`, kubeflow
+    :py:class:`flytekitplugins.athena.task.AthenaTask` and :py:class:`flytekitplugins.hive.task.HiveTask`, kubeflow
     operators like :py:class:`plugins.kfpytorch.flytekitplugins.kfpytorch.task.PyTorchFunctionTask` and
     :py:class:`plugins.kftensorflow.flytekitplugins.kftensorflow.task.TensorflowFunctionTask`, and generic plugins like
     :py:class:`flytekitplugins.pod.task.PodFunctionTask` which doesn't integrate with third party tools or services.
@@ -91,10 +90,11 @@ def task(
     cache: bool = ...,
     cache_serialize: bool = ...,
     cache_version: str = ...,
+    cache_ignore_input_vars: Tuple[str, ...] = ...,
     retries: int = ...,
     interruptible: Optional[bool] = ...,
     deprecated: str = ...,
-    timeout: Union[_datetime.timedelta, int] = ...,
+    timeout: Union[datetime.timedelta, int] = ...,
     container_image: Optional[Union[str, ImageSpec]] = ...,
     environment: Optional[Dict[str, str]] = ...,
     requests: Optional[Resources] = ...,
@@ -102,7 +102,13 @@ def task(
     secret_requests: Optional[List[Secret]] = ...,
     execution_mode: PythonFunctionTask.ExecutionBehavior = ...,
     node_dependency_hints: Optional[
-        Iterable[Union[PythonFunctionTask, _annotated_launchplan.LaunchPlan, _annotated_workflow.WorkflowBase]]
+        Iterable[
+            Union[
+                PythonFunctionTask,
+                _annotated_launchplan.LaunchPlan,
+                _annotated_workflow.WorkflowBase,
+            ]
+        ]
     ] = ...,
     task_resolver: Optional[TaskResolverMixin] = ...,
     docs: Optional[Documentation] = ...,
@@ -111,8 +117,7 @@ def task(
     pod_template: Optional["PodTemplate"] = ...,
     pod_template_name: Optional[str] = ...,
     accelerator: Optional[BaseAccelerator] = ...,
-) -> Callable[[Callable[..., FuncOut]], PythonFunctionTask[T]]:
-    ...
+) -> Callable[[Callable[..., FuncOut]], PythonFunctionTask[T]]: ...
 
 
 @overload
@@ -122,10 +127,11 @@ def task(
     cache: bool = ...,
     cache_serialize: bool = ...,
     cache_version: str = ...,
+    cache_ignore_input_vars: Tuple[str, ...] = ...,
     retries: int = ...,
     interruptible: Optional[bool] = ...,
     deprecated: str = ...,
-    timeout: Union[_datetime.timedelta, int] = ...,
+    timeout: Union[datetime.timedelta, int] = ...,
     container_image: Optional[Union[str, ImageSpec]] = ...,
     environment: Optional[Dict[str, str]] = ...,
     requests: Optional[Resources] = ...,
@@ -133,7 +139,13 @@ def task(
     secret_requests: Optional[List[Secret]] = ...,
     execution_mode: PythonFunctionTask.ExecutionBehavior = ...,
     node_dependency_hints: Optional[
-        Iterable[Union[PythonFunctionTask, _annotated_launchplan.LaunchPlan, _annotated_workflow.WorkflowBase]]
+        Iterable[
+            Union[
+                PythonFunctionTask,
+                _annotated_launchplan.LaunchPlan,
+                _annotated_workflow.WorkflowBase,
+            ]
+        ]
     ] = ...,
     task_resolver: Optional[TaskResolverMixin] = ...,
     docs: Optional[Documentation] = ...,
@@ -142,8 +154,7 @@ def task(
     pod_template: Optional["PodTemplate"] = ...,
     pod_template_name: Optional[str] = ...,
     accelerator: Optional[BaseAccelerator] = ...,
-) -> Union[PythonFunctionTask[T], Callable[..., FuncOut]]:
-    ...
+) -> Union[PythonFunctionTask[T], Callable[..., FuncOut]]: ...
 
 
 def task(
@@ -152,10 +163,11 @@ def task(
     cache: bool = False,
     cache_serialize: bool = False,
     cache_version: str = "",
+    cache_ignore_input_vars: Tuple[str, ...] = (),
     retries: int = 0,
     interruptible: Optional[bool] = None,
     deprecated: str = "",
-    timeout: Union[_datetime.timedelta, int] = 0,
+    timeout: Union[datetime.timedelta, int] = 0,
     container_image: Optional[Union[str, ImageSpec]] = None,
     environment: Optional[Dict[str, str]] = None,
     requests: Optional[Resources] = None,
@@ -163,7 +175,13 @@ def task(
     secret_requests: Optional[List[Secret]] = None,
     execution_mode: PythonFunctionTask.ExecutionBehavior = PythonFunctionTask.ExecutionBehavior.DEFAULT,
     node_dependency_hints: Optional[
-        Iterable[Union[PythonFunctionTask, _annotated_launchplan.LaunchPlan, _annotated_workflow.WorkflowBase]]
+        Iterable[
+            Union[
+                PythonFunctionTask,
+                _annotated_launchplan.LaunchPlan,
+                _annotated_workflow.WorkflowBase,
+            ]
+        ]
     ] = None,
     task_resolver: Optional[TaskResolverMixin] = None,
     docs: Optional[Documentation] = None,
@@ -172,7 +190,11 @@ def task(
     pod_template: Optional["PodTemplate"] = None,
     pod_template_name: Optional[str] = None,
     accelerator: Optional[BaseAccelerator] = None,
-) -> Union[Callable[[Callable[..., FuncOut]], PythonFunctionTask[T]], PythonFunctionTask[T], Callable[..., FuncOut]]:
+) -> Union[
+    Callable[[Callable[..., FuncOut]], PythonFunctionTask[T]],
+    PythonFunctionTask[T],
+    Callable[..., FuncOut],
+]:
     """
     This is the core decorator to use for any task type in flytekit.
 
@@ -213,6 +235,7 @@ def task(
     :param cache_version: Cache version to use. Changes to the task signature will automatically trigger a cache miss,
            but you can always manually update this field as well to force a cache miss. You should also manually bump
            this version if the function body/business logic has changed, but the signature hasn't.
+    :param cache_ignore_input_vars: Input variables that should not be included when calculating hash for cache.
     :param retries: Number of times to retry this task during a workflow execution.
     :param interruptible: [Optional] Boolean that indicates that this task can be interrupted and/or scheduled on nodes
                           with lower QoS guarantees. This will directly reduce the `$`/`execution cost` associated,
@@ -295,6 +318,7 @@ def task(
             cache=cache,
             cache_serialize=cache_serialize,
             cache_version=cache_version,
+            cache_ignore_input_vars=cache_ignore_input_vars,
             retries=retries,
             interruptible=interruptible,
             deprecated=deprecated,
@@ -337,7 +361,13 @@ class ReferenceTask(ReferenceEntity, PythonFunctionTask):  # type: ignore
     """
 
     def __init__(
-        self, project: str, domain: str, name: str, version: str, inputs: Dict[str, type], outputs: Dict[str, Type]
+        self,
+        project: str,
+        domain: str,
+        name: str,
+        version: str,
+        inputs: Dict[str, type],
+        outputs: Dict[str, Type],
     ):
         super().__init__(TaskReference(project, domain, name, version), inputs, outputs)
 

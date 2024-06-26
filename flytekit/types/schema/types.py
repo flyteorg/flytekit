@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import datetime as _datetime
+import datetime
 import os
 import typing
 from abc import abstractmethod
@@ -68,12 +68,10 @@ class SchemaReader(typing.Generic[T]):
         return None
 
     @abstractmethod
-    def iter(self, **kwargs) -> typing.Generator[T, None, None]:
-        ...
+    def iter(self, **kwargs) -> typing.Generator[T, None, None]: ...
 
     @abstractmethod
-    def all(self, **kwargs) -> T:
-        ...
+    def all(self, **kwargs) -> T: ...
 
 
 class SchemaWriter(typing.Generic[T]):
@@ -95,8 +93,7 @@ class SchemaWriter(typing.Generic[T]):
         return None
 
     @abstractmethod
-    def write(self, *dfs, **kwargs):
-        ...
+    def write(self, *dfs, **kwargs): ...
 
 
 class LocalIOSchemaReader(SchemaReader[T]):
@@ -334,10 +331,10 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
         _np.bool_: SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN,  # type: ignore
         bool: SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN,
         _np.datetime64: SchemaType.SchemaColumn.SchemaColumnType.DATETIME,
-        _datetime.datetime: SchemaType.SchemaColumn.SchemaColumnType.DATETIME,
+        datetime.datetime: SchemaType.SchemaColumn.SchemaColumnType.DATETIME,
         _np.timedelta64: SchemaType.SchemaColumn.SchemaColumnType.DURATION,
-        _datetime.timedelta: SchemaType.SchemaColumn.SchemaColumnType.DURATION,
-        _np.string_: SchemaType.SchemaColumn.SchemaColumnType.STRING,
+        datetime.timedelta: SchemaType.SchemaColumn.SchemaColumnType.DURATION,
+        _np.bytes_: SchemaType.SchemaColumn.SchemaColumnType.STRING,
         _np.str_: SchemaType.SchemaColumn.SchemaColumnType.STRING,
         _np.object_: SchemaType.SchemaColumn.SchemaColumnType.STRING,
         str: SchemaType.SchemaColumn.SchemaColumnType.STRING,
@@ -433,9 +430,9 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
             elif literal_column.type == SchemaType.SchemaColumn.SchemaColumnType.STRING:
                 columns[literal_column.name] = str
             elif literal_column.type == SchemaType.SchemaColumn.SchemaColumnType.DATETIME:
-                columns[literal_column.name] = _datetime.datetime
+                columns[literal_column.name] = datetime.datetime
             elif literal_column.type == SchemaType.SchemaColumn.SchemaColumnType.DURATION:
-                columns[literal_column.name] = _datetime.timedelta
+                columns[literal_column.name] = datetime.timedelta
             elif literal_column.type == SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN:
                 columns[literal_column.name] = bool
             else:

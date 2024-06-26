@@ -428,7 +428,7 @@ def transform_to_comp_expr(expr: ComparisonExpression) -> Tuple[_core_cond.Compa
 
 
 def transform_to_boolexpr(
-    expr: Union[ComparisonExpression, ConjunctionExpression]
+    expr: Union[ComparisonExpression, ConjunctionExpression],
 ) -> Tuple[_core_cond.BooleanExpression, typing.List[Promise]]:
     if isinstance(expr, ConjunctionExpression):
         cexpr, promises = transform_to_conj_expr(expr)

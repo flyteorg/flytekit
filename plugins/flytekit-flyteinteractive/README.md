@@ -35,7 +35,7 @@ def train():
 4. You can access the server by opening a web browser and navigating to `localhost:8080`.
 
 VSCode example screenshot:
-<img src="./docs/example.png">
+<img src="./docs/vscode_example.png">
 
 ## Build Custom Image with VSCode Plugin
 If users want to skip the vscode downloading process at runtime, they have the option to create a custom image with vscode by including the following lines in their Dockerfile.
@@ -103,3 +103,27 @@ def wf():
     t_short_live()
     t_vim()
 ```
+## Jupyter
+
+FlyteInteractive Jupyter offers an easy solution for users to run Python tasks within a Jupyter Notebook server, compatible with any image. `@jupyter` is a decorator which users can put within @task and user function. With `@jupyter`, the task will run a Jupyter Notebook server instead of the user defined functions.
+
+
+## Starter Example
+```python
+from flytekit import task
+from flytekitplugins.flyteinteractive import jupyter
+
+@task
+@jupyter
+def train():
+    ...
+```
+
+## User Guide
+1. Build the image with Dockerfile.dev `docker buildx build --push . -f Dockerfile.dev -t localhost:30000/flytekit:dev --build-arg PYTHON_VERSION=3.8`
+2. Run the decorated task on the remote. For example: `pyflyte run --remote --image localhost:30000/flytekit:dev [PYTHONFILE] [WORKFLOW|TASK] [ARGS]...`
+3. Once the code server is prepared, you can forward a local port to the pod. For example: `kubectl port-forward -n [NAMESPACE] [PODNAME] 8888:8888`.
+4. You can access the server by opening a web browser and navigating to `localhost:8888`.
+
+Jupyter example screenshot:
+<img src="./docs/jupyter_example.png">
