@@ -576,12 +576,14 @@ class FlyteRemote(object):
         project: typing.Optional[str] = None,
         domain: typing.Optional[str] = None,
         limit: typing.Optional[int] = 100,
+        filters: typing.Optional[typing.List[filter_models.Filter]] = None,
     ) -> typing.List[FlyteWorkflowExecution]:
         # Ignore token for now
         exec_models, _ = self.client.list_executions_paginated(
             project or self.default_project,
             domain or self.default_domain,
             limit,
+            filters=filters,
             sort_by=MOST_RECENT_FIRST,
         )
         return [FlyteWorkflowExecution.promote_from_model(e) for e in exec_models]
