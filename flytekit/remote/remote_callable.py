@@ -18,8 +18,7 @@ class RemoteEntity(ABC):
 
     @property
     @abstractmethod
-    def name(self) -> str:
-        ...
+    def name(self) -> str: ...
 
     def construct_node_metadata(self) -> NodeMetadata:
         """

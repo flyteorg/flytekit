@@ -116,8 +116,17 @@ def pretty_print_exception(e: Exception):
         pretty_print_grpc_error(e)
         return
 
-    click.secho(f"Failed with Unknown Exception {type(e)} Reason: {e}", fg="red")  # noqa
-    pretty_print_traceback(e)
+    if isinstance(e, AssertionError):
+        click.secho(f"Assertion Error: {e}", fg="red")
+        return
+
+    if isinstance(e, ValueError):
+        click.secho(f"Value Error: {e}", fg="red")
+        return
+
+    click.secho(f"Failed with Exception {type(e)} Reason:\n{e}", fg="red")  # noqa
+    if e.__cause__:
+        pretty_print_traceback(e.__cause__)
 
 
 class ErrorHandlingCommand(click.RichGroup):

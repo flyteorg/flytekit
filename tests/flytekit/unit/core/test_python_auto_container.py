@@ -9,7 +9,7 @@ from flytekit.core.base_task import TaskMetadata
 from flytekit.core.pod_template import PodTemplate
 from flytekit.core.python_auto_container import PythonAutoContainerTask, get_registerable_container_image
 from flytekit.core.resources import Resources
-from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec
+from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec, _calculate_deduped_hash_from_image_spec
 from flytekit.tools.translator import get_serializable_task
 
 
@@ -55,9 +55,17 @@ def serialization_settings(request):
 
 
 def test_image_name_interpolation(default_image_config):
+    image_spec = ImageSpec(name="image-1", registry="localhost:30000", builder="test")
+
+    new_img_cfg = ImageConfig.create_from(
+        default_image_config.default_image,
+        other_images=[Image.look_up_image_info(_calculate_deduped_hash_from_image_spec(image_spec), "flyte/test:d1")],
+    )
     img_to_interpolate = "{{.image.default.fqn}}:{{.image.default.version}}-special"
-    img = get_registerable_container_image(img=img_to_interpolate, cfg=default_image_config)
+    img = get_registerable_container_image(img=img_to_interpolate, cfg=new_img_cfg)
     assert img == "docker.io/xyz:some-git-hash-special"
+    img = get_registerable_container_image(img=image_spec, cfg=new_img_cfg)
+    assert img == "flyte/test:d1"
 
 
 class DummyAutoContainerTask(PythonAutoContainerTask):

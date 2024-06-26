@@ -92,12 +92,14 @@ class Identity(_common.FlyteIdlEntity):
     iam_role: Optional[str] = None
     k8s_service_account: Optional[str] = None
     oauth2_client: Optional[OAuth2Client] = None
+    execution_identity: Optional[str] = None
 
     def to_flyte_idl(self) -> _sec.Identity:
         return _sec.Identity(
             iam_role=self.iam_role if self.iam_role else None,
             k8s_service_account=self.k8s_service_account if self.k8s_service_account else None,
             oauth2_client=self.oauth2_client.to_flyte_idl() if self.oauth2_client else None,
+            execution_identity=self.execution_identity if self.execution_identity else None,
         )
 
     @classmethod
@@ -108,6 +110,7 @@ class Identity(_common.FlyteIdlEntity):
             oauth2_client=OAuth2Client.from_flyte_idl(pb2_object.oauth2_client)
             if pb2_object.oauth2_client and pb2_object.oauth2_client.ByteSize()
             else None,
+            execution_identity=pb2_object.execution_identity if pb2_object.execution_identity else None,
         )
 
 

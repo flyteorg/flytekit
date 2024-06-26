@@ -560,8 +560,7 @@ class SerializableToString(typing.Protocol):
     and then added to a literal's metadata.
     """
 
-    def serialize_to_string(self, ctx: FlyteContext, variable_name: str) -> typing.Tuple[str, str]:
-        ...
+    def serialize_to_string(self, ctx: FlyteContext, variable_name: str) -> typing.Tuple[str, str]: ...
 
 
 @dataclass

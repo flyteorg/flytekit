@@ -13,14 +13,14 @@ requires-python = ">=3.8,<3.13"
 dependencies = [
     # Please maintain an alphabetical order in the following list
     "adlfs>=2023.3.0",
-    "click>=6.6,<9.0",
+    "click>=6.6",
     "cloudpickle>=2.0.0",
-    "croniter>=0.3.20,<4.0.0",
+    "croniter>=0.3.20",
     "dataclasses-json>=0.5.2,<0.5.12", # TODO: remove upper-bound after fixing change in contract
     "diskcache>=5.2.1",
-    "docker>=4.0.0,<7.0.0",
+    "docker>=4.0.0",
     "docstring-parser>=0.9.0",
-    "flyteidl>=1.11.0b1",
+    "flyteidl>=1.12.0",
     "fsspec>=2023.3.0",
     "gcsfs>=2023.3.0",
     "googleapis-common-protos>=1.57",
@@ -41,15 +41,15 @@ dependencies = [
     "pyarrow",
     "pygments",
     "python-json-logger>=2.0.0",
-    "pytimeparse>=1.1.8,<2.0.0",
+    "pytimeparse>=1.1.8",
     "pyyaml!=6.0.0,!=5.4.0,!=5.4.1", # pyyaml is broken with cython 3: https://github.com/yaml/pyyaml/issues/601
-    "requests>=2.18.4,<3.0.0,!=2.32.0,!=2.32.1,!=2.32.2,!=2.32.3",
+    "requests>=2.18.4",
     "rich",
     "rich_click",
     "s3fs>=2023.3.0,!=2024.3.1",
-    "statsd>=3.0.0,<4.0.0",
+    "statsd>=3.0.0",
     "typing_extensions",
-    "urllib3>=1.22,<3.0.0",
+    "urllib3>=1.22",
 ]
 classifiers = [
     "Intended Audience :: Science/Research",
@@ -118,7 +118,7 @@ branch = true
 
 [tool.ruff]
 line-length = 120
-lint.select = ["E", "W", "F", "I"]
+lint.select = ["E", "W", "F", "I", "B006"]
 lint.ignore = [
     # Whitespace before '{symbol}'
     "E203",
@@ -134,6 +134,10 @@ lint.ignore = [
     "E721",
     # Do not assign a lambda expression, use a def
     "E731",
+]
+extend-exclude = [
+  "tests/",
+  "**/tests/**",
 ]
 
 [tool.ruff.lint.extend-per-file-ignores]

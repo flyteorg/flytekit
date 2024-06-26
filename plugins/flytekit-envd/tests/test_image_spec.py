@@ -57,7 +57,7 @@ def build():
     run(commands=["echo hello"])
     install.python_packages(name=["pandas"])
     install.apt_packages(name=["git"])
-    runtime.environ(env={{'PYTHONPATH': '/root', '_F_IMG_ID': '{image_name}'}}, extra_path=['/root'])
+    runtime.environ(env={{'PYTHONPATH': '/root:', '_F_IMG_ID': '{image_name}'}}, extra_path=['/root'])
     config.pip_index(url="https://private-pip-index/simple")
     install.python(version="3.8")
     io.copy(source="./", target="/root")
@@ -88,7 +88,7 @@ def test_image_spec_conda():
         run(commands=[])
         install.python_packages(name=["flytekit"])
         install.apt_packages(name=[])
-        runtime.environ(env={{'PYTHONPATH': '/root', '_F_IMG_ID': '{image_name}'}}, extra_path=['/root'])
+        runtime.environ(env={{'PYTHONPATH': '/root:', '_F_IMG_ID': '{image_name}'}}, extra_path=['/root'])
         config.pip_index(url="https://pypi.org/simple")
         install.conda(use_mamba=True)
         install.conda_packages(name=["pytorch", "cpuonly"], channel=["pytorch"])
@@ -101,7 +101,7 @@ def test_image_spec_conda():
 
 def test_image_spec_extra_index_url():
     image_spec = ImageSpec(
-        packages=["-U --pre pandas", "torch", "torchvision"],
+        packages=["-U pandas", "torch", "torchvision"],
         base_image="cr.flyte.org/flyteorg/flytekit:py3.9-latest",
         pip_extra_index_url=[
             "https://download.pytorch.org/whl/cpu",
@@ -120,9 +120,9 @@ def test_image_spec_extra_index_url():
     def build():
         base(image="cr.flyte.org/flyteorg/flytekit:py3.9-latest", dev=False)
         run(commands=[])
-        install.python_packages(name=["-U --pre pandas", "torch", "torchvision"])
+        install.python_packages(name=["-U pandas", "torch", "torchvision"])
         install.apt_packages(name=[])
-        runtime.environ(env={{'PYTHONPATH': '/root', '_F_IMG_ID': '{image_name}'}}, extra_path=['/root'])
+        runtime.environ(env={{'PYTHONPATH': '/root:', '_F_IMG_ID': '{image_name}'}}, extra_path=['/root'])
         config.pip_index(url="https://pypi.org/simple", extra_url="https://download.pytorch.org/whl/cpu https://pypi.anaconda.org/scientific-python-nightly-wheels/simple")
     """
     )

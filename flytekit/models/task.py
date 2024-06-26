@@ -528,6 +528,7 @@ class TaskExecutionMetadata(_common.FlyteIdlEntity):
         annotations,
         k8s_service_account,
         environment_variables,
+        identity,
     ):
         """
         Runtime task execution metadata.
@@ -539,6 +540,7 @@ class TaskExecutionMetadata(_common.FlyteIdlEntity):
         :param dict[str, str] annotations: Annotations to use for the execution of this task.
         :param Text k8s_service_account: Service account to use for execution of this task.
         :param dict[str, str] environment_variables: Environment variables for this task.
+        :param flytekit.models.security.Identity identity: Identity of user executing this task
         """
         self._task_execution_id = task_execution_id
         self._namespace = namespace
@@ -546,6 +548,7 @@ class TaskExecutionMetadata(_common.FlyteIdlEntity):
         self._annotations = annotations
         self._k8s_service_account = k8s_service_account
         self._environment_variables = environment_variables
+        self._identity = identity
 
     @property
     def task_execution_id(self):
@@ -571,6 +574,10 @@ class TaskExecutionMetadata(_common.FlyteIdlEntity):
     def environment_variables(self):
         return self._environment_variables
 
+    @property
+    def identity(self):
+        return self._identity
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.agent_pb2.TaskExecutionMetadata
@@ -584,6 +591,7 @@ class TaskExecutionMetadata(_common.FlyteIdlEntity):
             environment_variables={k: v for k, v in self.environment_variables.items()}
             if self.labels is not None
             else None,
+            identity=self.identity.to_flyte_idl() if self.identity else None,
         )
         return task_execution_metadata
 
@@ -604,6 +612,7 @@ class TaskExecutionMetadata(_common.FlyteIdlEntity):
             environment_variables={k: v for k, v in pb2_object.environment_variables.items()}
             if pb2_object.environment_variables is not None
             else None,
+            identity=_sec.Identity.from_flyte_idl(pb2_object.identity) if pb2_object.identity else None,
         )
 
 

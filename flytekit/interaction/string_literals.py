@@ -37,6 +37,8 @@ def scalar_to_string(scalar: Scalar) -> typing.Any:
         return scalar.error.message
     if scalar.structured_dataset:
         return scalar.structured_dataset.uri
+    if scalar.schema:
+        return scalar.schema.uri
     if scalar.blob:
         return scalar.blob.uri
     if scalar.binary:

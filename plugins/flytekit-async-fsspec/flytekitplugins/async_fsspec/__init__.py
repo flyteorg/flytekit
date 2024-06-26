@@ -9,6 +9,7 @@ This package contains things that are useful when extending Flytekit.
 
    AsyncS3FileSystem
 """
+
 import fsspec
 
 from .s3fs.s3fs import AsyncS3FileSystem
