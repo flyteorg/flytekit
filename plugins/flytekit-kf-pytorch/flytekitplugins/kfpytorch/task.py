@@ -183,7 +183,6 @@ class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
         )
 
     def _convert_run_policy(self, run_policy: RunPolicy) -> kubeflow_common.RunPolicy:
-        raise RuneimeError(f"XXXX {run_policy.clean_pod_policy.value}")
         return kubeflow_common.RunPolicy(
             clean_pod_policy=run_policy.clean_pod_policy.value if run_policy.clean_pod_policy else None,
             ttl_seconds_after_finished=run_policy.ttl_seconds_after_finished,
