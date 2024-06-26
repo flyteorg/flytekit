@@ -11,6 +11,7 @@ from flytekit.models.core import condition as _condition
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.literals import Binding as _Binding
 from flytekit.models.literals import RetryStrategy as _RetryStrategy
+from flytekit.models.security import SecurityContext
 from flytekit.models.task import Resources
 
 
@@ -599,10 +600,12 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
         resources: typing.Optional[Resources],
         extended_resources: typing.Optional[tasks_pb2.ExtendedResources],
         container_image: typing.Optional[str] = None,
+        override_security_context: typing.Optional[SecurityContext] = None,
     ):
         self._resources = resources
         self._extended_resources = extended_resources
         self._container_image = container_image
+        self._override_security_context = override_security_context
 
     @property
     def resources(self) -> Resources:
@@ -616,11 +619,18 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
     def container_image(self) -> typing.Optional[str]:
         return self._container_image
 
+    @property
+    def override_security_context(self) -> typing.Optional[SecurityContext]:
+        return self._override_security_context
+
     def to_flyte_idl(self):
         return _core_workflow.TaskNodeOverrides(
             resources=self.resources.to_flyte_idl() if self.resources is not None else None,
             extended_resources=self.extended_resources,
             container_image=self.container_image,
+            override_security_context=self.override_security_context.to_flyte_idl()
+            if self.override_security_context
+            else None,
         )
 
     @classmethod
@@ -628,9 +638,24 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
         resources = Resources.from_flyte_idl(pb2_object.resources)
         extended_resources = pb2_object.extended_resources if pb2_object.HasField("extended_resources") else None
         container_image = pb2_object.container_image if len(pb2_object.container_image) > 0 else None
+        security_context = (
+            SecurityContext.from_flyte_idl(pb2_object.override_security_context)
+            if pb2_object.HasField("override_security_context")
+            else None
+        )
         if bool(resources.requests) or bool(resources.limits):
-            return cls(resources=resources, extended_resources=extended_resources, container_image=container_image)
-        return cls(resources=None, extended_resources=extended_resources, container_image=container_image)
+            return cls(
+                resources=resources,
+                extended_resources=extended_resources,
+                container_image=container_image,
+                override_security_context=security_context,
+            )
+        return cls(
+            resources=None,
+            extended_resources=extended_resources,
+            container_image=container_image,
+            override_security_context=security_context,
+        )
 
 
 class TaskNode(_common.FlyteIdlEntity):
