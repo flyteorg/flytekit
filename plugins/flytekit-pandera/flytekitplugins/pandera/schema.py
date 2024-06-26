@@ -95,7 +95,7 @@ class PanderaTransformer(TypeTransformer[pandera.typing.DataFrame]):
             downloader=downloader,
             supported_mode=SchemaOpenMode.READ,
         )
-        return self._pandera_schema(expected_python_type)(df.open().all())
+        return pandera.typing.DataFrame(self._pandera_schema(expected_python_type)(df.open().all()))
 
 
 TypeEngine.register(PanderaTransformer())
