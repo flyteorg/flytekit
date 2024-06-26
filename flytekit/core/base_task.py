@@ -623,9 +623,12 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                     om = omt.get(v)
                     if om:
                         metadata = {}
+                        logger.warning(f"MODELCARD: Additional items {len(om.additional_items)}")
                         if om.additional_items:
                             for ii in om.additional_items:
+                                logger.warning(f"MODELCARD: Output {k} item {type(ii)} {ii=}")
                                 md_key, md_val = ii.serialize_to_string(ctx, k)
+                                logger.warning(f"MODELCARD: Done for {k}")
                                 metadata[md_key] = md_val
                             logger.info(f"Adding {om.additional_items} additional metadata items {metadata} for {k}")
                         if om.dynamic_partitions or om.time_partition:
