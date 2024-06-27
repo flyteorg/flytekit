@@ -3,6 +3,7 @@ from __future__ import annotations
 import collections
 import copy
 import inspect
+import re
 import typing
 from collections import OrderedDict
 from typing import Any, Dict, Generator, List, Optional, Tuple, Type, TypeVar, Union, cast
@@ -70,6 +71,8 @@ class Interface(object):
         self._inputs: Union[Dict[str, Tuple[Type, Any]], Dict[str, Type]] = {}  # type: ignore
         if inputs:
             for k, v in inputs.items():
+                if not k.isidentifier():
+                    raise ValueError(f'Input name must be valid Python identifier: {k!r}')
                 if type(v) is tuple and len(cast(Tuple, v)) > 1:
                     self._inputs[k] = v  # type: ignore
                 else:
