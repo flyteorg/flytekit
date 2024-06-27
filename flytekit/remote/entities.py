@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from typing import Dict, List, Optional, Tuple, Union
 
+import flyteidl_rust as flyteidl
+
 from flytekit import FlyteContext
 from flytekit.core import constants as _constants
 from flytekit.core import hash as _hash_mixin
@@ -29,15 +31,13 @@ from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.core import workflow as _workflow_models
 from flytekit.models.core.identifier import Identifier
 from flytekit.models.core.workflow import Node, WorkflowMetadata, WorkflowMetadataDefaults
-from flytekit.models.interface import TypedInterface
 from flytekit.models.literals import Binding
-from flytekit.models.task import TaskSpec
 from flytekit.remote import interface as _interface
 from flytekit.remote import interface as _interfaces
 from flytekit.remote.remote_callable import RemoteEntity
 
 
-class FlyteTask(hash_mixin.HashOnReferenceMixin, RemoteEntity, TaskSpec):
+class FlyteTask(hash_mixin.HashOnReferenceMixin, RemoteEntity):
     """A class encapsulating a remote Flyte task."""
 
     def __init__(
@@ -52,18 +52,19 @@ class FlyteTask(hash_mixin.HashOnReferenceMixin, RemoteEntity, TaskSpec):
         config=None,
         should_register: bool = False,
     ):
-        super(FlyteTask, self).__init__(
-            template=_task_model.TaskTemplate(
-                id,
-                type,
-                metadata,
-                interface,
-                custom,
-                container=container,
-                task_type_version=task_type_version,
-                config=config,
-            )
+        # super(FlyteTask, self).__init__(
+        self.template = flyteidl.core.TaskTemplate(
+            id=id,
+            type=type,
+            metadata=metadata,
+            interface=interface,
+            custom=custom,
+            target=container,
+            task_type_version=task_type_version,
+            config=config or {},
         )
+        # )
+        self._python_interface = None
         self._should_register = should_register
 
     @property
@@ -179,16 +180,33 @@ class FlyteTask(hash_mixin.HashOnReferenceMixin, RemoteEntity, TaskSpec):
 
         return t
 
+    @classmethod
+    def promote_from_rust_binding(cls, base_model: flyteidl.core.TaskTemplate) -> FlyteTask:
+        t = FlyteTask(
+            id=base_model.id,
+            type=base_model.type,
+            metadata=base_model.metadata,
+            interface=_interfaces.TypedInterface.promote_from_rust_binding(base_model.interface),
+            custom=base_model.custom,
+            container=base_model.target,
+            task_type_version=base_model.task_type_version,
+        )
+        # Override the newly generated name if one exists in the base model
+        if not base_model.id:
+            t._id = base_model.id
 
-class FlyteTaskNode(_workflow_model.TaskNode):
+        return t
+
+
+class FlyteTaskNode:
     """A class encapsulating a task that a Flyte node needs to execute."""
 
     def __init__(self, flyte_task: FlyteTask):
-        super(FlyteTaskNode, self).__init__(None)
+        # super().__init__(None)
         self._flyte_task = flyte_task
 
     @property
-    def reference_id(self) -> id_models.Identifier:
+    def reference_id(self) -> flyteidl.core.Identifier:
         """A globally unique identifier for the task."""
         return self._flyte_task.id
 
@@ -203,6 +221,14 @@ class FlyteTaskNode(_workflow_model.TaskNode):
         and returns the hydrated Flytekit object for it by fetching it with the FlyteTask control plane.
         """
         return cls(flyte_task=task)
+
+    # @classmethod
+    # def promote_from_rust_binding(cls, task: FlyteTask) -> FlyteTaskNode:
+    #     """
+    #     Takes the idl wrapper for a TaskNode,
+    #     and returns the hydrated Flytekit object for it by fetching it with the FlyteTask control plane.
+    #     """
+    #     return cls(flyte_task=task)
 
 
 class FlyteWorkflowNode(_workflow_model.WorkflowNode):
@@ -358,7 +384,7 @@ class FlyteArrayNode(_workflow_model.ArrayNode):
         )
 
 
-class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
+class FlyteNode(_hash_mixin.HashOnReferenceMixin):
     """A class encapsulating a remote Flyte node."""
 
     def __init__(
@@ -387,18 +413,18 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
         else:
             self._flyte_entity = branch_node or gate_node or array_node
 
-        super(FlyteNode, self).__init__(
-            id=id,
-            metadata=metadata,
-            inputs=bindings,
-            upstream_node_ids=[n.id for n in upstream_nodes],
-            output_aliases=[],
-            task_node=task_node,
-            workflow_node=workflow_node,
-            branch_node=branch_node,
-            gate_node=gate_node,
-            array_node=array_node,
-        )
+        # super(FlyteNode, self).__init__(
+        self.id = id
+        self.metadata = metadata
+        self.inputs = bindings
+        # self.upstream_node_ids=[n.id for n in upstream_nodes]
+        self.output_aliases = []
+        # self.task_node=task_node
+        self.workflow_node = workflow_node
+        self.branch_node = branch_node
+        self.gate_node = gate_node
+        self.array_node = array_node
+        # )
         self._upstream = upstream_nodes
 
     @property

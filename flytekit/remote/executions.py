@@ -4,15 +4,16 @@ import typing
 from abc import abstractmethod
 from typing import Dict, List, Optional, Union
 
+import flyteidl_rust as flyteidl
+
 from flytekit.core.type_engine import LiteralsResolver
 from flytekit.exceptions import user as user_exceptions
 from flytekit.models import execution as execution_models
 from flytekit.models import node_execution as node_execution_models
-from flytekit.models.admin import task_execution as admin_task_execution_models
-from flytekit.models.core import execution as core_execution_models
 from flytekit.models.interface import TypedInterface
 from flytekit.remote.entities import FlyteTask, FlyteWorkflow
 
+import flyteidl_rust as flyteidl
 
 class RemoteExecutionBase(object):
     def __init__(self, *args, **kwargs):
@@ -26,7 +27,7 @@ class RemoteExecutionBase(object):
 
     @property
     @abstractmethod
-    def error(self) -> core_execution_models.ExecutionError: ...
+    def error(self) -> flyteidl.core.ExecutionError: ...
 
     @property
     @abstractmethod
@@ -48,11 +49,17 @@ class RemoteExecutionBase(object):
         return self._outputs
 
 
-class FlyteTaskExecution(RemoteExecutionBase, admin_task_execution_models.TaskExecution):
+class FlyteTaskExecution(RemoteExecutionBase, flyteidl.admin.TaskExecution):
     """A class encapsulating a task execution being run on a Flyte remote backend."""
 
     def __init__(self, *args, **kwargs):
-        super(FlyteTaskExecution, self).__init__(*args, **kwargs)
+        # super(RemoteExecutionBase).__init__(*args, **kwargs)
+        self._inputs = None
+        self._outputs = None
+        self.closure = kwargs["closure"]
+        self.id = kwargs["id"]
+        self.input_uri = kwargs["input_uri"]
+        self.is_parent = kwargs["is_parent"]
         self._flyte_task = None
 
     @property
@@ -62,14 +69,19 @@ class FlyteTaskExecution(RemoteExecutionBase, admin_task_execution_models.TaskEx
     @property
     def is_done(self) -> bool:
         """Whether or not the execution is complete."""
-        return self.closure.phase in {
-            core_execution_models.TaskExecutionPhase.ABORTED,
-            core_execution_models.TaskExecutionPhase.FAILED,
-            core_execution_models.TaskExecutionPhase.SUCCEEDED,
+        # return self.closure.phase in {
+        #     core_execution_models.TaskExecutionPhase.ABORTED,
+        #     core_execution_models.TaskExecutionPhase.FAILED,
+        #     core_execution_models.TaskExecutionPhase.SUCCEEDED,
+        # }
+        return int(self.closure.phase) in {
+            int(flyteidl.task_execution.Phase.Aborted),
+            int(flyteidl.task_execution.Phase.Failed),
+            int(flyteidl.task_execution.Phase.Succeeded),
         }
 
     @property
-    def error(self) -> Optional[core_execution_models.ExecutionError]:
+    def error(self) -> Optional[flyteidl.core.ExecutionError]:
         """
         If execution is in progress, raise an exception. Otherwise, return None if no error was present upon
         reaching completion.
@@ -78,10 +90,21 @@ class FlyteTaskExecution(RemoteExecutionBase, admin_task_execution_models.TaskEx
             raise user_exceptions.FlyteAssertion(
                 "Please what until the task execution has completed before requesting error information."
             )
-        return self.closure.error
+        return (
+            self.closure.output_result if isinstance(self.closure.output_result, flyteidl.core.ExecutionError) else None
+        )
 
     @classmethod
-    def promote_from_model(cls, base_model: admin_task_execution_models.TaskExecution) -> "FlyteTaskExecution":
+    def promote_from_model(cls, base_model: flyteidl.admin.TaskExecution) -> "FlyteTaskExecution":
+        return cls(
+            closure=base_model.closure,
+            id=base_model.id,
+            input_uri=base_model.input_uri,
+            is_parent=base_model.is_parent,
+        )
+
+    @classmethod
+    def promote_from_rust_binding(cls, base_model: flyteidl.admin.TaskExecution) -> "FlyteTaskExecution":
         return cls(
             closure=base_model.closure,
             id=base_model.id,
@@ -90,11 +113,17 @@ class FlyteTaskExecution(RemoteExecutionBase, admin_task_execution_models.TaskEx
         )
 
 
-class FlyteWorkflowExecution(RemoteExecutionBase, execution_models.Execution):
+class FlyteWorkflowExecution(RemoteExecutionBase, flyteidl.admin.Execution):
     """A class encapsulating a workflow execution being run on a Flyte remote backend."""
 
     def __init__(self, *args, **kwargs):
-        super(FlyteWorkflowExecution, self).__init__(*args, **kwargs)
+        # super(FlyteWorkflowExecution, self).__init__(*args, **kwargs)
+        # id = id,
+        # spec = spec,
+        # closure = closure,
+
+        # self.closure = kwargs['closure']
+
         self._node_executions = None
         self._flyte_workflow: Optional[FlyteWorkflow] = None
 
@@ -108,7 +137,7 @@ class FlyteWorkflowExecution(RemoteExecutionBase, execution_models.Execution):
         return self._node_executions or {}
 
     @property
-    def error(self) -> core_execution_models.ExecutionError:
+    def error(self) -> flyteidl.core.ExecutionError:
         """
         If execution is in progress, raise an exception.  Otherwise, return None if no error was present upon
         reaching completion.
@@ -117,18 +146,20 @@ class FlyteWorkflowExecution(RemoteExecutionBase, execution_models.Execution):
             raise user_exceptions.FlyteAssertion(
                 "Please wait until a workflow has completed before checking for an error."
             )
-        return self.closure.error
+        return (
+            self.closure.output_result if isinstance(self.closure.output_result, flyteidl.core.ExecutionError) else None
+        )
 
     @property
     def is_done(self) -> bool:
         """
         Whether or not the execution is complete.
         """
-        return self.closure.phase in {
-            core_execution_models.WorkflowExecutionPhase.ABORTED,
-            core_execution_models.WorkflowExecutionPhase.FAILED,
-            core_execution_models.WorkflowExecutionPhase.SUCCEEDED,
-            core_execution_models.WorkflowExecutionPhase.TIMED_OUT,
+        return int(self._closure.phase) in {
+            int(flyteidl.workflow_execution.Phase.Aborted),
+            int(flyteidl.workflow_execution.Phase.Failed),
+            int(flyteidl.workflow_execution.Phase.Succeeded),
+            int(flyteidl.workflow_execution.Phase.TimedOut),
         }
 
     @classmethod
@@ -138,13 +169,29 @@ class FlyteWorkflowExecution(RemoteExecutionBase, execution_models.Execution):
             id=base_model.id,
             spec=base_model.spec,
         )
+    
+    @classmethod
+    def promote_from_rust_binding(cls, base_model: flyteidl.Execution) -> "FlyteWorkflowExecution":
+        return cls(
+            closure=base_model.closure,
+            id=base_model.id,
+            spec=base_model.spec,
+        )
+
+    @classmethod
+    def promote_from_rust_binding(cls, base_model: flyteidl.admin.Execution) -> "FlyteWorkflowExecution":
+        return cls(
+            closure=base_model.closure,
+            id=base_model.id,
+            spec=base_model.spec,
+        )
 
 
-class FlyteNodeExecution(RemoteExecutionBase, node_execution_models.NodeExecution):
+class FlyteNodeExecution(RemoteExecutionBase, flyteidl.admin.NodeExecution):
     """A class encapsulating a node execution being run on a Flyte remote backend."""
 
     def __init__(self, *args, **kwargs):
-        super(FlyteNodeExecution, self).__init__(*args, **kwargs)
+        # super(FlyteNodeExecution, self).__init__(*args, **kwargs)
         self._task_executions = None
         self._workflow_executions = []
         self._underlying_node_executions = None
@@ -176,7 +223,7 @@ class FlyteNodeExecution(RemoteExecutionBase, node_execution_models.NodeExecutio
         return self.task_executions or self._underlying_node_executions or []
 
     @property
-    def error(self) -> core_execution_models.ExecutionError:
+    def error(self) -> flyteidl.core.ExecutionError:
         """
         If execution is in progress, raise an exception. Otherwise, return None if no error was present upon
         reaching completion.
@@ -185,21 +232,28 @@ class FlyteNodeExecution(RemoteExecutionBase, node_execution_models.NodeExecutio
             raise user_exceptions.FlyteAssertion(
                 "Please wait until the node execution has completed before requesting error information."
             )
-        return self.closure.error
+        return (
+            self.closure.output_result if isinstance(self.closure.output_result, flyteidl.core.ExecutionError) else None
+        )
 
     @property
     def is_done(self) -> bool:
         """Whether or not the execution is complete."""
-        return self.closure.phase in {
-            core_execution_models.NodeExecutionPhase.ABORTED,
-            core_execution_models.NodeExecutionPhase.FAILED,
-            core_execution_models.NodeExecutionPhase.SKIPPED,
-            core_execution_models.NodeExecutionPhase.SUCCEEDED,
-            core_execution_models.NodeExecutionPhase.TIMED_OUT,
+        return int(self.closure.phase) in {
+            int(flyteidl.node_execution.Phase.Aborted),
+            int(flyteidl.node_execution.Phase.Failed),
+            int(flyteidl.node_execution.Phase.Succeeded),
+            int(flyteidl.node_execution.Phase.TimedOut),
         }
 
     @classmethod
     def promote_from_model(cls, base_model: node_execution_models.NodeExecution) -> "FlyteNodeExecution":
+        return cls(
+            closure=base_model.closure, id=base_model.id, input_uri=base_model.input_uri, metadata=base_model.metadata
+        )
+
+    @classmethod
+    def promote_from_rust_binding(cls, base_model: flyteidl.admin.NodeExecution) -> "FlyteNodeExecution":
         return cls(
             closure=base_model.closure, id=base_model.id, input_uri=base_model.input_uri, metadata=base_model.metadata
         )

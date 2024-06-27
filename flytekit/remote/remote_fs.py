@@ -19,7 +19,8 @@ from flytekit.loggers import logger
 from flytekit.tools.script_mode import hash_file
 
 if typing.TYPE_CHECKING:
-    from flytekit.remote.remote import FlyteRemote
+    # from flytekit.remote.remote import FlyteRemote
+    from flytekit.remote.remote_rs import FlyteRemote
 
 _DEFAULT_CALLBACK = NoOpCallback()
 _PREFIX_KEY = "upload_prefix"
