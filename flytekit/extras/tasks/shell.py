@@ -79,6 +79,14 @@ def subproc_execute(command: typing.Union[List[str], str], **kwargs) -> ProcessR
     try:
         # Execute the command and capture stdout and stderr
         result = subprocess.run(command, **kwargs)
+        print(result.check_returncode())
+
+        if "|" in command and kwargs.get("shell"):
+            logger.warning(
+                """Found a pipe in the command and shell=True.
+                This can lead to silent failures if subsequent commands
+                succeed despite previous failures."""
+            )
 
         # Access the stdout and stderr output
         return ProcessResult(result.returncode, result.stdout, result.stderr)
