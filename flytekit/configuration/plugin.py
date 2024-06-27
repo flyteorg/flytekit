@@ -25,7 +25,9 @@ from importlib_metadata import entry_points
 
 from flytekit.configuration import Config, get_config_file
 from flytekit.loggers import logger
-from flytekit.remote import FlyteRemote
+
+from flytekit.remote.remote_rs import FlyteRemote
+
 
 
 @runtime_checkable
