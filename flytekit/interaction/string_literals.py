@@ -5,14 +5,15 @@ import flyteidl_rust as flyteidl
 from flytekit.models.literals import Literal
 
 
+# TODO(WIP):
 def primitive_to_string(primitive: flyteidl.core.Primitive) -> typing.Any:
     """
     This method is used to convert a primitive to a string representation.
     """
-    # if primitive.integer is not None:
-    #     return primitive.integer
-    # if primitive.float_value is not None:
-    #     return primitive.float_value
+    if isinstance(primitive.value, flyteidl.primitive.Value.Integer):
+        return primitive.integer
+    if isinstance(primitive.value, flyteidl.primitive.Value.FloatValue):
+        return primitive.value
     # if primitive.boolean is not None:
     #     return primitive.boolean
     if isinstance(primitive.value, flyteidl.primitive.Value.StringValue):
@@ -24,6 +25,7 @@ def primitive_to_string(primitive: flyteidl.core.Primitive) -> typing.Any:
     raise ValueError(f"Unknown primitive type {primitive}")
 
 
+# TODO(WIP):
 def scalar_to_string(scalar: flyteidl.core.Scalar) -> typing.Any:
     """
     This method is used to convert a scalar to a string representation.

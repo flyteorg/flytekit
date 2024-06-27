@@ -305,7 +305,7 @@ class SimpleTransformer(TypeTransformer[T]):
 
     def guess_python_type(self, literal_type: flyteidl.core.LiteralType) -> Type[T]:
         # In order to compare literal types,
-        # Since we've add __repr__ magic fucntion for enum type to show as int string, we can use `int(str(literal_type.type))`.
+        # Since we've add __repr__ magic function for enum type to show as int string, we can use `int(str(literal_type.type))`.
         """rust
         #[pymethods]
         impl literal_type::Type {
@@ -2124,7 +2124,7 @@ def _register_default_type_transformers():
                 hash="",
                 metadata={},
             ),
-            # Origianl: `x.scalar.primitive.integer`
+            # Original: `x.scalar.primitive.integer`
             lambda x: x.value[0].value[0].value[0],
         )
     )
@@ -2161,7 +2161,7 @@ def _register_default_type_transformers():
                 hash="",
                 metadata={},
             ),
-            # Origianl: `x.scalar.primitive.boolean`
+            # Original: `x.scalar.primitive.boolean`
             lambda x: x.value[0].value[0].value[0],
         )
     )
@@ -2182,11 +2182,12 @@ def _register_default_type_transformers():
                 hash="",
                 metadata={},
             ),
-            # Origianl: `x.scalar.primitive.string`
+            # Original: `x.scalar.primitive.string`
             lambda x: x.value[0].value[0].value[0],
         )
     )
 
+    # TODO(WIP): refactor to `flyteidl-rust`
     # TypeEngine.register(
     #     SimpleTransformer(
     #         "datetime",
@@ -2359,11 +2360,11 @@ class LiteralsResolver(collections.UserDict):
             if attr in self._type_hints:
                 as_type = self._type_hints[attr]
             else:
-                if self.variable_map and attr in self.variable_map.variables:
+                if self.variable_map and attr in self.variable_map.variables:  # type: ignore
                     try:
-                        as_type = TypeEngine.guess_python_type(self.variable_map.variables[attr].type)
+                        as_type = TypeEngine.guess_python_type(self.variable_map.variables[attr].type)  # type: ignore
                     except ValueError as e:
-                        logger.error(f"Could not guess a type for Variable {self.variable_map.variables[attr]}")
+                        logger.error(f"Could not guess a type for Variable {self.variable_map.variables[attr]}")  # type: ignore
                         raise e
                 else:
                     raise ValueError("as_type argument not supplied and Variable map not specified in LiteralsResolver")

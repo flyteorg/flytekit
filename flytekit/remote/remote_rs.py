@@ -23,8 +23,8 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Dict
 
-import flyteidl_rust as flyteidl
 import cloudpickle
+import flyteidl_rust as flyteidl
 import fsspec
 import requests
 
@@ -58,7 +58,6 @@ from flytekit.models.core import workflow as workflow_model
 from flytekit.models.core.identifier import Identifier, ResourceType
 from flytekit.models.execution import (
     NodeExecutionGetDataResponse,
-    NotificationList,
     WorkflowExecutionGetDataResponse,
 )
 from flytekit.models.launch_plan import LaunchPlanState
@@ -77,11 +76,11 @@ from flytekit.tools.translator import (
     get_serializable_launch_plan,
 )
 
-if typing.TYPE_CHECKING:
-    try:
-        from IPython.core.display import HTML
-    except ImportError:
-        ...
+# if typing.TYPE_CHECKING:
+#     try:
+#         from IPython.core.display import HTML
+#     except ImportError:
+#         ...
 
 ExecutionDataResponse = typing.Union[WorkflowExecutionGetDataResponse, NodeExecutionGetDataResponse]
 
@@ -712,13 +711,13 @@ class FlyteRemote(object):
         execution_name = execution_name or (execution_name_prefix or "f") + uuid.uuid4().hex[:19]
         if not options:
             options = Options()
-        if options.disable_notifications is not None:
-            if options.disable_notifications:
-                notifications = None
-            else:
-                notifications = NotificationList(options.notifications)
-        else:
-            notifications = NotificationList([])
+        # if options.disable_notifications is not None:
+        #     if options.disable_notifications:
+        #         notifications = None
+        #     else:
+        #         notifications = NotificationList(options.notifications)
+        # else:
+        #     notifications = NotificationList([])
 
         type_hints = type_hints or {}
         literal_map = {}
@@ -1224,7 +1223,7 @@ class FlyteRemote(object):
             flyteidl.admin.WorkflowExecutionGetDataRequest(id=execution.id)
         )
         lp_id = execution.spec.launch_plan
-        underlying_node_executions = []
+        # underlying_node_executions = []
         # if sync_nodes:
 
         #     underlying_node_executions = [
@@ -1263,11 +1262,11 @@ class FlyteRemote(object):
             #         else {}  # This is for the case where node executions haven't appeared yet
             #     )
         # This is the default case, an execution of a normal workflow through a launch plan
-        else:
-            fetched_lp = self.fetch_launch_plan(lp_id.project, lp_id.domain, lp_id.name, lp_id.version)
-            node_interface = fetched_lp.flyte_workflow.interface
-            execution._flyte_workflow = fetched_lp.flyte_workflow
-            node_mapping = fetched_lp.flyte_workflow._node_map
+        # else:
+        #     fetched_lp = self.fetch_launch_plan(lp_id.project, lp_id.domain, lp_id.name, lp_id.version)
+        #     node_interface = fetched_lp.flyte_workflow.interface
+        #     execution._flyte_workflow = fetched_lp.flyte_workflow
+        #     node_mapping = fetched_lp.flyte_workflow._node_map
 
         # update node executions (if requested), and inputs/outputs
         # if sync_nodes:

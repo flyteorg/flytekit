@@ -241,8 +241,6 @@ def get_serializable_task(
         task_type_version=entity.task_type_version,
         security_context=entity.security_context,
         config=merged_config,
-        # k8s_pod=pod,
-        # sql=entity.get_sql(settings),
         extended_resources=entity.get_extended_resources(settings),
     )
     if settings.should_fast_serialize() and isinstance(entity, PythonAutoContainerTask):

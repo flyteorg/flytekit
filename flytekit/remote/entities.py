@@ -52,6 +52,7 @@ class FlyteTask(hash_mixin.HashOnReferenceMixin, RemoteEntity):
         config=None,
         should_register: bool = False,
     ):
+        # TODO(WIP): use PyO3 function signature to make flyteidl.admin.TaskSpec accept *args and **kwargs.
         # super(FlyteTask, self).__init__(
         self.template = flyteidl.core.TaskTemplate(
             id=id,
@@ -202,7 +203,7 @@ class FlyteTaskNode:
     """A class encapsulating a task that a Flyte node needs to execute."""
 
     def __init__(self, flyte_task: FlyteTask):
-        # super().__init__(None)
+        # super(FlyteTaskNode, self).__init__(None)
         self._flyte_task = flyte_task
 
     @property
@@ -221,14 +222,6 @@ class FlyteTaskNode:
         and returns the hydrated Flytekit object for it by fetching it with the FlyteTask control plane.
         """
         return cls(flyte_task=task)
-
-    # @classmethod
-    # def promote_from_rust_binding(cls, task: FlyteTask) -> FlyteTaskNode:
-    #     """
-    #     Takes the idl wrapper for a TaskNode,
-    #     and returns the hydrated Flytekit object for it by fetching it with the FlyteTask control plane.
-    #     """
-    #     return cls(flyte_task=task)
 
 
 class FlyteWorkflowNode(_workflow_model.WorkflowNode):
@@ -413,6 +406,7 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin):
         else:
             self._flyte_entity = branch_node or gate_node or array_node
 
+        # TODO(WIP): use PyO3 function signature to make flyteidl.core.Node accept *args and **kwargs.
         # super(FlyteNode, self).__init__(
         self.id = id
         self.metadata = metadata

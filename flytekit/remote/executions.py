@@ -13,7 +13,6 @@ from flytekit.models import node_execution as node_execution_models
 from flytekit.models.interface import TypedInterface
 from flytekit.remote.entities import FlyteTask, FlyteWorkflow
 
-import flyteidl_rust as flyteidl
 
 class RemoteExecutionBase(object):
     def __init__(self, *args, **kwargs):
@@ -53,6 +52,7 @@ class FlyteTaskExecution(RemoteExecutionBase, flyteidl.admin.TaskExecution):
     """A class encapsulating a task execution being run on a Flyte remote backend."""
 
     def __init__(self, *args, **kwargs):
+        # TODO(WIP): use PyO3 function signature to make flyteidl.admin.TaskExecution accept *args and **kwargs.
         # super(RemoteExecutionBase).__init__(*args, **kwargs)
         self._inputs = None
         self._outputs = None
@@ -69,11 +69,6 @@ class FlyteTaskExecution(RemoteExecutionBase, flyteidl.admin.TaskExecution):
     @property
     def is_done(self) -> bool:
         """Whether or not the execution is complete."""
-        # return self.closure.phase in {
-        #     core_execution_models.TaskExecutionPhase.ABORTED,
-        #     core_execution_models.TaskExecutionPhase.FAILED,
-        #     core_execution_models.TaskExecutionPhase.SUCCEEDED,
-        # }
         return int(self.closure.phase) in {
             int(flyteidl.task_execution.Phase.Aborted),
             int(flyteidl.task_execution.Phase.Failed),
@@ -117,12 +112,8 @@ class FlyteWorkflowExecution(RemoteExecutionBase, flyteidl.admin.Execution):
     """A class encapsulating a workflow execution being run on a Flyte remote backend."""
 
     def __init__(self, *args, **kwargs):
+        # TODO(WIP): use PyO3 function signature to make flyteidl.admin.Execution accept *args and **kwargs.
         # super(FlyteWorkflowExecution, self).__init__(*args, **kwargs)
-        # id = id,
-        # spec = spec,
-        # closure = closure,
-
-        # self.closure = kwargs['closure']
 
         self._node_executions = None
         self._flyte_workflow: Optional[FlyteWorkflow] = None
@@ -169,14 +160,6 @@ class FlyteWorkflowExecution(RemoteExecutionBase, flyteidl.admin.Execution):
             id=base_model.id,
             spec=base_model.spec,
         )
-    
-    @classmethod
-    def promote_from_rust_binding(cls, base_model: flyteidl.Execution) -> "FlyteWorkflowExecution":
-        return cls(
-            closure=base_model.closure,
-            id=base_model.id,
-            spec=base_model.spec,
-        )
 
     @classmethod
     def promote_from_rust_binding(cls, base_model: flyteidl.admin.Execution) -> "FlyteWorkflowExecution":
@@ -191,6 +174,7 @@ class FlyteNodeExecution(RemoteExecutionBase, flyteidl.admin.NodeExecution):
     """A class encapsulating a node execution being run on a Flyte remote backend."""
 
     def __init__(self, *args, **kwargs):
+        # TODO(WIP): use PyO3 function signature to make flyteidl.admin.TaskSpec accept *args and **kwargs.
         # super(FlyteNodeExecution, self).__init__(*args, **kwargs)
         self._task_executions = None
         self._workflow_executions = []

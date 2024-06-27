@@ -45,7 +45,8 @@ def _calculate_cache_key(
     # Generate a stable representation of the underlying protobuf by passing `deterministic=True` to the
     # protobuf library.
     hashed_inputs = (
-        flyteidl.core.LiteralMap(literal_map_overridden).to_flyte_idl().SerializeToString(deterministic=True)
+        # TODO: we don't have `SerializeToString()` at present.
+        flyteidl.core.LiteralMap(literal_map_overridden).SerializeToString(deterministic=True)
     )
     # Use joblib to hash the string representation of the literal into a fixed length string
     return f"{task_name}-{cache_version}-{joblib.hash(hashed_inputs)}"

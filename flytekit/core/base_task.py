@@ -41,8 +41,6 @@ from typing import (
     cast,
 )
 
-# from flyteidl.core import artifact_id_pb2 as art_id
-# from flyteidl.core import tasks_pb2
 import flyteidl_rust as flyteidl
 
 from flytekit.configuration import LocalConfig, SerializationSettings
@@ -134,7 +132,7 @@ class TaskMetadata(object):
     timeout: Optional[Union[datetime.timedelta, int]] = None
     pod_template_name: Optional[str] = None
     generates_deck: Optional[bool] = False
-    tags: Optional[Dict[str, str]] = field(default_factory=dict)
+    tags: Optional[Dict[str, str]] = field(default_factory=dict)  # type: ignore
 
     def __post_init__(self):
         if self.timeout:
@@ -166,9 +164,9 @@ class TaskMetadata(object):
             runtime=flyteidl.core.RuntimeMetadata(int(flyteidl.core.RuntimeType.FlyteSdk), __version__, "python"),
             timeout=flyteidl.wkt.Duration(
                 seconds=(
-                    self.timeout.days * 24 * 60 * 60 + self.timeout.seconds + self.timeout.microseconds // 1_000_000
+                    self.timeout.days * 24 * 60 * 60 + self.timeout.seconds + self.timeout.microseconds // 1_000_000  # type: ignore
                 ),
-                nanos=(self.timeout.microseconds % 1_000_000 * 1_000),
+                nanos=(self.timeout.microseconds % 1_000_000 * 1_000),  # type: ignore
             )
             if not isinstance(self.timeout, int)
             else flyteidl.wkt.Duration(seconds=int(self.timeout), nanos=0),
@@ -293,7 +291,7 @@ class Task(object):
             kwargs = translate_inputs_to_literals(
                 ctx,
                 incoming_values=kwargs,
-                flyte_interface_types=dict(self.interface.inputs.variables),
+                flyte_interface_types=self.interface.inputs.variables,
                 native_types=self.get_input_types(),  # type: ignore
             )
         except TypeTransformerFailedError as exc:
@@ -349,7 +347,7 @@ class Task(object):
         # TODO maybe this is the part that should be done for local execution, we pass the outputs to some special
         #    location, otherwise we dont really need to right? The higher level execute could just handle literalMap
         # After running, we again have to wrap the outputs, if any, back into Promise objects
-        output_names = list(dict(self.interface.outputs.variables).keys())  # type: ignore
+        output_names = list(self.interface.outputs.variables.keys())  # type: ignore
         if len(output_names) != len(outputs_literals):
             # Length check, clean up exception
             raise AssertionError(f"Length difference {len(output_names)} {len(outputs_literals)}")
@@ -639,7 +637,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                                 metadata[md_key] = md_val
                             logger.info(f"Adding {om.additional_items} additional metadata items {metadata} for {k}")
                         if om.dynamic_partitions or om.time_partition:
-                            a = art_id.ArtifactID(
+                            a = art_id.ArtifactID(  # type: ignore
                                 partitions=idl_partitions_from_dict(om.dynamic_partitions),
                                 time_partition=idl_time_partition_from_datetime(
                                     om.time_partition, om.artifact.time_partition_granularity

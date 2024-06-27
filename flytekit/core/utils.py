@@ -18,6 +18,8 @@ from flytekit.loggers import logger
 if TYPE_CHECKING:
     from flytekit.models import task as task_models
 
+import flyteidl_rust as flyteidl
+
 
 def _dnsify(value: str) -> str:
     """
@@ -80,9 +82,6 @@ def _get_container_definition(
     gpu_request = gpu_request
     memory_limit = memory_limit
     memory_request = memory_request
-
-    # from flytekit.models import task as task_models
-    import flyteidl_rust as flyteidl
 
     # TODO: Use convert_resources_to_resource_model instead of manually fixing the resources.
     requests = []

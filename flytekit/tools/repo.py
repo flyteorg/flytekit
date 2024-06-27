@@ -6,15 +6,14 @@ import tempfile
 import typing
 from pathlib import Path
 
-import flyteidl_rust as flyteidl
 import click
+import flyteidl_rust as flyteidl
 
 from flytekit.configuration import FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.loggers import logger
 from flytekit.models import launch_plan
 from flytekit.remote.remote import RegistrationSkipped, _get_git_repo_url
-
 from flytekit.remote.remote_rs import FlyteRemote
 from flytekit.tools import fast_registration, module_loader
 from flytekit.tools.script_mode import _find_project_root

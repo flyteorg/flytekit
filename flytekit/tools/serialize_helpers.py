@@ -4,8 +4,8 @@ import sys
 import typing
 from collections import OrderedDict
 
-import flyteidl_rust as flyteidl
 import click
+import flyteidl_rust as flyteidl
 
 from flytekit import LaunchPlan
 from flytekit.core import context_manager as flyte_context

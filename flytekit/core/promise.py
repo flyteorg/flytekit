@@ -100,6 +100,7 @@ def translate_inputs_to_literals(
     return result
 
 
+# TODO: refactor to `flyteidl-rust`
 def resolve_attr_path_in_promise(p: Promise) -> Promise:
     """
     resolve_attr_path_in_promise resolves the attribute path in a promise and returns a new promise with the resolved value
@@ -688,7 +689,7 @@ def create_task_output(
 
     # These should be OrderedDicts so it should be safe to iterate over the keys.
     if entity_interface:
-        variables = [k for k in dict(entity_interface.outputs.variables).keys()]
+        variables = [k for k in dict(entity_interface.outputs.variables).keys()]  # type: ignore
 
     named_tuple_name = "DefaultNamedTupleOutput"
     if entity_interface and entity_interface.output_tuple_name:
