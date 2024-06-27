@@ -3,7 +3,6 @@ from __future__ import annotations
 import collections
 import copy
 import dataclasses
-import datetime
 import enum
 import inspect
 import json
@@ -16,6 +15,7 @@ from collections import OrderedDict
 from functools import lru_cache
 from typing import Dict, List, NamedTuple, Optional, Type, cast
 
+import flyteidl_rust as flyteidl
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from flyteidl.core import literals_pb2
 from google.protobuf import json_format as _json_format
@@ -53,7 +53,6 @@ from flytekit.models.literals import (
     Schema,
     StructuredDatasetMetadata,
     Union,
-    Void,
 )
 from flytekit.models.types import LiteralType, SimpleType, StructuredDatasetType, TypeStructure, UnionType
 
@@ -93,32 +92,80 @@ def get_batch_size(t: Type) -> Optional[int]:
     return None
 
 
-def modify_literal_uris(lit: Literal):
+# refactor `Literal` into `flyteidl.core.Literal`
+# refactor `lit.scalar`, `lit.collection`,  `lit.map` into a `literal::Value` enum with types: `Scalar(::prost::alloc::boxed::Box<super::Scalar>)`, `Collection(super::LiteralCollection)`, `Map(super::LiteralMap)`
+def modify_literal_uris(lit: flyteidl.core.Literal):
     """
     Modifies the literal object recursively to replace the URIs with the native paths in case they are of
     type "flyte://"
     """
     from flytekit.remote.remote_fs import FlytePathResolver
 
-    if lit.collection:
-        for l in lit.collection.literals:
+    if isinstance(lit.value, flyteidl.literal.Value.Collection):
+        # TODO: remove rust references
+        """rust
+        pub struct LiteralCollection {
+            [prost(message, repeated, tag = "1")]
+            pub literals: ::prost::alloc::vec::Vec<Literal>,
+        }
+        """
+        for l in lit.value.literals:
             modify_literal_uris(l)
-    elif lit.map:
-        for k, v in lit.map.literals.items():
+    elif isinstance(lit.value, flyteidl.literal.Value.Map):
+        # TODO: remove rust references
+        """rust
+        pub struct LiteralMap {
+            #[prost(map = "string, message", tag = "1")]
+            pub literals: ::std::collections::HashMap<::prost::alloc::string::String, Literal>,
+        }
+        """
+        for k, v in lit.value.literals.items():
             modify_literal_uris(v)
-    elif lit.scalar:
-        if lit.scalar.blob and lit.scalar.blob.uri and lit.scalar.blob.uri.startswith(FlytePathResolver.protocol):
-            lit.scalar.blob._uri = FlytePathResolver.resolve_remote_path(lit.scalar.blob.uri)
-        elif lit.scalar.union:
-            modify_literal_uris(lit.scalar.union.value)
-        elif (
-            lit.scalar.structured_dataset
-            and lit.scalar.structured_dataset.uri
-            and lit.scalar.structured_dataset.uri.startswith(FlytePathResolver.protocol)
+    elif isinstance(lit.value, flyteidl.literal.Value.Scalar):
+        # TODO: remove rust references
+        """rust
+        pub mod scalar {
+            #[::pyo3_macro::with_pyclass]
+            #[derive(::pyo3_macro::WithNew)]
+            #[allow(clippy::derive_partial_eq_without_eq)]
+            #[derive(Clone, PartialEq, ::prost::Oneof)]
+            pub enum Value {
+                #[prost(message, tag = "1")]
+                Primitive(super::Primitive),
+                #[prost(message, tag = "2")]
+                Blob(super::Blob),
+                #[prost(message, tag = "3")]
+                Binary(super::Binary),
+                #[prost(message, tag = "4")]
+                Schema(super::Schema),
+                #[prost(message, tag = "5")]
+                NoneType(super::Void),
+                #[prost(message, tag = "6")]
+                Error(super::Error),
+                #[prost(message, tag = "7")]
+                Generic(super::super::super::google::protobuf::Struct),
+                #[prost(message, tag = "8")]
+                StructuredDataset(super::StructuredDataset),
+                #[prost(message, tag = "9")]
+                Union(::prost::alloc::boxed::Box<super::Union>),
+            }
+        }
+        """
+
+        if (
+            isinstance(lit.value[0].value, flyteidl.scalar.Value.Blob)
+            and lit.value[0].value.uri
+            and lit.value[0].value.uri.startswith(FlytePathResolver.protocol)
         ):
-            lit.scalar.structured_dataset._uri = FlytePathResolver.resolve_remote_path(
-                lit.scalar.structured_dataset.uri
-            )
+            lit.value[0].value._uri = FlytePathResolver.resolve_remote_path(lit.value[0].value.uri)
+        elif isinstance(lit.value[0].value, flyteidl.scalar.Value.Union):
+            modify_literal_uris(lit.value[0].value.value)
+        elif (
+            isinstance(lit.value[0].value, flyteidl.scalar.Value.StructuredDataset)
+            and lit.value[0].value.uri
+            and lit.value[0].value.uri.startswith(FlytePathResolver.protocol)
+        ):
+            lit.value[0].value._uri = FlytePathResolver.resolve_remote_path(lit.value[0].value.uri)
 
 
 class TypeTransformerFailedError(TypeError, AssertionError, ValueError): ...
@@ -157,20 +204,22 @@ class TypeTransformer(typing.Generic[T]):
             raise TypeTransformerFailedError(f"Expected value of type {t} but got '{v}' of type {type(v)}")
 
     @abstractmethod
-    def get_literal_type(self, t: Type[T]) -> LiteralType:
+    def get_literal_type(self, t: Type[T]) -> flyteidl.core.LiteralType:
         """
-        Converts the python type to a Flyte LiteralType
+        Converts the python type to a Flyte flyteidl.core.LiteralType
         """
-        raise NotImplementedError("Conversion to LiteralType should be implemented")
+        raise NotImplementedError("Conversion to flyteidl.core.LiteralType should be implemented")
 
-    def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
+    def guess_python_type(self, literal_type: flyteidl.core.LiteralType) -> Type[T]:
         """
-        Converts the Flyte LiteralType to a python object type.
+        Converts the Flyte flyteidl.core.LiteralType to a python object type.
         """
         raise ValueError("By default, transformers do not translate from Flyte types back to Python types")
 
     @abstractmethod
-    def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
+    def to_literal(
+        self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: flyteidl.core.LiteralType
+    ) -> flyteidl.Literal:
         """
         Converts a given python_val to a Flyte Literal, assuming the given python_val matches the declared python_type.
         Implementers should refrain from using type(python_val) instead rely on the passed in python_type. If these
@@ -217,9 +266,9 @@ class SimpleTransformer(TypeTransformer[T]):
         self,
         name: str,
         t: Type[T],
-        lt: LiteralType,
-        to_literal_transformer: typing.Callable[[T], Literal],
-        from_literal_transformer: typing.Callable[[Literal], T],
+        lt: flyteidl.core.LiteralType,
+        to_literal_transformer: typing.Callable[[T], flyteidl.core.Literal],
+        from_literal_transformer: typing.Callable[[flyteidl.core.Literal], T],
     ):
         super().__init__(name, t)
         self._type = t
@@ -227,24 +276,24 @@ class SimpleTransformer(TypeTransformer[T]):
         self._to_literal_transformer = to_literal_transformer
         self._from_literal_transformer = from_literal_transformer
 
-    def get_literal_type(self, t: Optional[Type[T]] = None) -> LiteralType:
-        return LiteralType.from_flyte_idl(self._lt.to_flyte_idl())
+    def get_literal_type(self, t: Optional[Type[T]] = None) -> flyteidl.core.LiteralType:
+        return self._lt  # flyteidl.core.LiteralType(metadata=self._lt.metadata, annotation=self._lt.annotation, structure=self._lt.structure, type= self._lt.type)
 
-    def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
+    def to_literal(
+        self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: flyteidl.core.LiteralType
+    ) -> flyteidl.core.Literal:
         if type(python_val) != self._type:
             raise TypeTransformerFailedError(
                 f"Expected value of type {self._type} but got '{python_val}' of type {type(python_val)}"
             )
         return self._to_literal_transformer(python_val)
 
-    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
+    def to_python_value(self, ctx: FlyteContext, lv: flyteidl.core.Literal, expected_python_type: Type[T]) -> T:
         expected_python_type = get_underlying_type(expected_python_type)
-
         if expected_python_type != self._type:
             raise TypeTransformerFailedError(
                 f"Cannot convert to type {expected_python_type}, only {self._type} is supported"
             )
-
         try:  # todo(maximsmol): this is quite ugly and each transformer should really check their Literal
             res = self._from_literal_transformer(lv)
             if type(res) != self._type:
@@ -254,8 +303,54 @@ class SimpleTransformer(TypeTransformer[T]):
             # Assume that this is because a property on `lv` was None
             raise TypeTransformerFailedError(f"Cannot convert literal {lv} to {self._type}")
 
-    def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
-        if literal_type.simple is not None and literal_type.simple == self._lt.simple:
+    def guess_python_type(self, literal_type: flyteidl.core.LiteralType) -> Type[T]:
+        # In order to compare literal types,
+        # Since we've add __repr__ magic fucntion for enum type to show as int string, we can use `int(str(literal_type.type))`.
+        """rust
+        #[pymethods]
+        impl literal_type::Type {
+            fn __repr__(&self) -> String {
+                match self {
+                    Self::Simple(value) => format!("{}", value),
+                    _ => todo!(),
+                }
+            }
+        }
+        """
+        # TODO: Or we can just leverag Rust Prost's `as_str_name()` function by exposing it to python binding through PyO3.
+        """rust
+        #[repr(i32)]
+        pub enum SimpleType {
+            None = 0,
+            Integer = 1,
+            Float = 2,
+            String = 3,
+            Boolean = 4,
+            Datetime = 5,
+            Duration = 6,
+            Binary = 7,
+            Error = 8,
+            Struct = 9,
+        }
+        impl SimpleType {
+            pub fn as_str_name(&self) -> &'static str {
+                match self {
+                    SimpleType::None => "NONE",
+                    SimpleType::Integer => "INTEGER",
+                    SimpleType::Float => "FLOAT",
+                    SimpleType::String => "STRING",
+                    SimpleType::Boolean => "BOOLEAN",
+                    SimpleType::Datetime => "DATETIME",
+                    SimpleType::Duration => "DURATION",
+                    SimpleType::Binary => "BINARY",
+                    SimpleType::Error => "ERROR",
+                    SimpleType::Struct => "STRUCT",
+                }
+            }
+        }
+        """
+
+        if literal_type is not None and int(str(literal_type.type)) == int(str(self._lt.type)):
             return self.python_type
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
 
@@ -264,6 +359,7 @@ class RestrictedTypeError(Exception):
     pass
 
 
+# TODO: refactor to `flyteidl-rust`
 class RestrictedTypeTransformer(TypeTransformer[T], ABC):
     """
     Types registered with the RestrictedTypeTransformer are not allowed to be converted to and from literals. In other words,
@@ -283,6 +379,7 @@ class RestrictedTypeTransformer(TypeTransformer[T], ABC):
         raise RestrictedTypeError(f"Transformer for type {self.python_type} is restricted currently")
 
 
+# TODO: refactor to `flyteidl-rust`
 class DataclassTransformer(TypeTransformer[object]):
     """
     The Dataclass Transformer provides a type transformer for dataclasses_json dataclasses.
@@ -591,10 +688,10 @@ class DataclassTransformer(TypeTransformer[object]):
             else:
                 return python_val
         else:
-            for v in dataclasses.fields(python_type):
-                val = python_val.__getattribute__(v.name)
-                field_type = v.type
-                python_val.__setattr__(v.name, self._serialize_flyte_type(val, field_type))
+            dataclass_attributes = typing.get_type_hints(python_type)
+            for n, t in dataclass_attributes.items():
+                val = python_val.__getattribute__(n)
+                python_val.__setattr__(n, self._serialize_flyte_type(val, t))
             return python_val
 
     def _deserialize_flyte_type(self, python_val: T, expected_python_type: Type) -> Optional[T]:
@@ -784,6 +881,7 @@ class DataclassTransformer(TypeTransformer[object]):
         raise ValueError(f"Dataclass transformer cannot reverse {literal_type}")
 
 
+# TODO: refactor to `flyteidl-rust`
 class ProtobufTransformer(TypeTransformer[Message]):
     PB_FIELD_KEY = "pb_type"
 
@@ -825,6 +923,7 @@ class ProtobufTransformer(TypeTransformer[Message]):
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
 
 
+# TODO: refactor to `flyteidl-rust`
 class EnumTransformer(TypeTransformer[enum.Enum]):
     """
     Enables converting a python type enum.Enum to LiteralType.EnumType
@@ -1108,7 +1207,7 @@ class TypeEngine(typing.Generic[T]):
             from flytekit.types.file import image  # noqa: F401
 
     @classmethod
-    def to_literal_type(cls, python_type: Type) -> LiteralType:
+    def to_literal_type(cls, python_type: Type) -> flyteidl.core.LiteralType:
         """
         Converts a python type into a flyte specific ``LiteralType``
         """
@@ -1126,12 +1225,14 @@ class TypeEngine(typing.Generic[T]):
                 data = x.data
         if data is not None:
             idl_type_annotation = TypeAnnotationModel(annotations=data)
-            res = LiteralType.from_flyte_idl(res.to_flyte_idl())
+            res = flyteidl.core.LiteralType(res)
             res._annotation = idl_type_annotation
         return res
 
     @classmethod
-    def to_literal(cls, ctx: FlyteContext, python_val: typing.Any, python_type: Type, expected: LiteralType) -> Literal:
+    def to_literal(
+        cls, ctx: FlyteContext, python_val: typing.Any, python_type: Type, expected: flyteidl.core.LiteralType
+    ) -> flyteidl.core.Literal:
         """
         Converts a python value of a given type and expected ``LiteralType`` into a resolved ``Literal`` value.
         """
@@ -1172,6 +1273,7 @@ class TypeEngine(typing.Generic[T]):
                 break
 
         lv = transformer.to_literal(ctx, python_val, python_type, expected)
+
         modify_literal_uris(lv)
         if hash is not None:
             lv.hash = hash
@@ -1215,7 +1317,7 @@ class TypeEngine(typing.Generic[T]):
         ctx: FlyteContext,
         lm: LiteralMap,
         python_types: typing.Optional[typing.Dict[str, type]] = None,
-        literal_types: typing.Optional[typing.Dict[str, _interface_models.Variable]] = None,
+        literal_types: typing.Optional[typing.Dict[str, flyteidl.core.Variable]] = None,
     ) -> typing.Dict[str, typing.Any]:
         """
         Given a ``LiteralMap`` (usually an input into a task - intermediate), convert to kwargs for the task
@@ -1249,7 +1351,7 @@ class TypeEngine(typing.Generic[T]):
         ctx: FlyteContext,
         d: typing.Dict[str, typing.Any],
         type_hints: Optional[typing.Dict[str, type]] = None,
-    ) -> LiteralMap:
+    ) -> flyteidl.core.LiteralMap:
         """
         Given a dictionary mapping string keys to python values and a dictionary containing guessed types for such string keys,
         convert to a LiteralMap.
@@ -1270,7 +1372,7 @@ class TypeEngine(typing.Generic[T]):
                 )
             except TypeError:
                 raise user_exceptions.FlyteTypeException(type(v), python_type, received_value=v)
-        return LiteralMap(literal_map)
+        return flyteidl.core.LiteralMap(literal_map)
 
     @classmethod
     def dict_to_literal_map_pb(
@@ -1302,7 +1404,7 @@ class TypeEngine(typing.Generic[T]):
         return python_types
 
     @classmethod
-    def guess_python_type(cls, flyte_type: LiteralType) -> type:
+    def guess_python_type(cls, flyte_type: flyteidl.core.LiteralType) -> type:
         """
         Transforms a flyte-specific ``LiteralType`` to a regular python value.
         """
@@ -1321,6 +1423,7 @@ class TypeEngine(typing.Generic[T]):
         raise ValueError(f"No transformers could reverse Flyte literal type {flyte_type}")
 
 
+# TODO: refactor to `flyteidl-rust`
 class ListTransformer(TypeTransformer[T]):
     """
     Transformer that handles a univariate typing.List[T]
@@ -1447,14 +1550,14 @@ def display_pickle_warning(python_type: str):
     )
 
 
-def _add_tag_to_type(x: LiteralType, tag: str) -> LiteralType:
+def _add_tag_to_type(x: flyteidl.core.LiteralType, tag: str) -> flyteidl.core.LiteralType:
     x._structure = TypeStructure(tag=tag)
     return x
 
 
-def _type_essence(x: LiteralType) -> LiteralType:
+def _type_essence(x: flyteidl.core.LiteralType) -> flyteidl.core.LiteralType:
     if x.metadata is not None or x.structure is not None or x.annotation is not None:
-        x = LiteralType.from_flyte_idl(x.to_flyte_idl())
+        x = flyteidl.core.LiteralType.from_flyte_idl(x.to_flyte_idl())
         x._metadata = None
         x._structure = None
         x._annotation = None
@@ -1462,7 +1565,7 @@ def _type_essence(x: LiteralType) -> LiteralType:
     return x
 
 
-def _are_types_castable(upstream: LiteralType, downstream: LiteralType) -> bool:
+def _are_types_castable(upstream: flyteidl.core.LiteralType, downstream: flyteidl.core.LiteralType) -> bool:
     if upstream.collection_type is not None:
         if downstream.collection_type is None:
             return False
@@ -1545,6 +1648,7 @@ def _is_union_type(t):
     return t is typing.Union or get_origin(t) is Union or UnionType and isinstance(t, UnionType)
 
 
+# TODO: refactor to `flyteidl-rust`
 class UnionTransformer(TypeTransformer[T]):
     """
     Transformer that handles a typing.Union[T1, T2, ...]
@@ -1670,6 +1774,7 @@ class UnionTransformer(TypeTransformer[T]):
         raise ValueError(f"Union transformer cannot reverse {literal_type}")
 
 
+# TODO: refactor to `flyteidl-rust`
 class DictTransformer(TypeTransformer[dict]):
     """
     Transformer that transforms a univariate dictionary Dict[str, T] to a Literal Map or
@@ -1830,6 +1935,7 @@ class DictTransformer(TypeTransformer[dict]):
         raise ValueError(f"Dictionary transformer cannot reverse {literal_type}")
 
 
+# TODO: refactor to `flyteidl-rust`
 class TextIOTransformer(TypeTransformer[typing.TextIO]):
     """
     Handler for TextIO
@@ -1862,6 +1968,7 @@ class TextIOTransformer(TypeTransformer[typing.TextIO]):
         return open(local_path, "r")
 
 
+# TODO: refactor to `flyteidl-rust`
 class BinaryIOTransformer(TypeTransformer[typing.BinaryIO]):
     """
     Handler for BinaryIO
@@ -1987,10 +2094,11 @@ def dataclass_from_dict(cls: type, src: typing.Dict[str, typing.Any]) -> typing.
     return cls(**constructor_inputs)
 
 
-def _check_and_covert_float(lv: Literal) -> float:
-    if lv.scalar.primitive.float_value is not None:
-        return lv.scalar.primitive.float_value
-    elif lv.scalar.primitive.integer is not None:
+# TODO: what if user defines a integer value as float value? like second condition below.
+def _check_and_covert_float(lv: flyteidl.core.Literal) -> float:
+    if isinstance(lv.value[0].value[0].value, flyteidl.primitive.Value.FloatValue):
+        return lv.value[0].value[0].value[0]
+    elif isinstance(lv.value[0].value[0].value, flyteidl.primitive.Value.Integer):
         return float(lv.scalar.primitive.integer)
     raise TypeTransformerFailedError(f"Cannot convert literal {lv} to float")
 
@@ -2006,9 +2114,18 @@ def _register_default_type_transformers():
         SimpleTransformer(
             "int",
             int,
-            _type_models.LiteralType(simple=_type_models.SimpleType.INTEGER),
-            lambda x: Literal(scalar=Scalar(primitive=Primitive(integer=x))),
-            lambda x: x.scalar.primitive.integer,
+            flyteidl.core.LiteralType(type=flyteidl.literal_type.Type.Simple(int(flyteidl.core.SimpleType.Integer))),
+            lambda x: flyteidl.core.Literal(
+                value=flyteidl.literal.Value.Scalar(
+                    flyteidl.core.Scalar(
+                        flyteidl.scalar.Value.Primitive(flyteidl.core.Primitive(flyteidl.primitive.Value.Integer(x)))
+                    )
+                ),
+                hash="",
+                metadata={},
+            ),
+            # Origianl: `x.scalar.primitive.integer`
+            lambda x: x.value[0].value[0].value[0],
         )
     )
 
@@ -2016,8 +2133,16 @@ def _register_default_type_transformers():
         SimpleTransformer(
             "float",
             float,
-            _type_models.LiteralType(simple=_type_models.SimpleType.FLOAT),
-            lambda x: Literal(scalar=Scalar(primitive=Primitive(float_value=x))),
+            flyteidl.core.LiteralType(type=flyteidl.literal_type.Type.Simple(int(flyteidl.core.SimpleType.Float))),
+            lambda x: flyteidl.core.Literal(
+                value=flyteidl.literal.Value.Scalar(
+                    flyteidl.core.Scalar(
+                        flyteidl.scalar.Value.Primitive(flyteidl.core.Primitive(flyteidl.primitive.Value.FloatValue(x)))
+                    )
+                ),
+                hash="",
+                metadata={},
+            ),
             _check_and_covert_float,
         )
     )
@@ -2026,9 +2151,18 @@ def _register_default_type_transformers():
         SimpleTransformer(
             "bool",
             bool,
-            _type_models.LiteralType(simple=_type_models.SimpleType.BOOLEAN),
-            lambda x: Literal(scalar=Scalar(primitive=Primitive(boolean=x))),
-            lambda x: x.scalar.primitive.boolean,
+            flyteidl.core.LiteralType(type=flyteidl.literal_type.Type.Simple(int(flyteidl.core.SimpleType.Boolean))),
+            lambda x: flyteidl.core.Literal(
+                value=flyteidl.literal.Value.Scalar(
+                    flyteidl.core.Scalar(
+                        flyteidl.scalar.Value.Primitive(flyteidl.core.Primitive(flyteidl.primitive.Value.BoolValue(x)))
+                    )
+                ),
+                hash="",
+                metadata={},
+            ),
+            # Origianl: `x.scalar.primitive.boolean`
+            lambda x: x.value[0].value[0].value[0],
         )
     )
 
@@ -2036,54 +2170,65 @@ def _register_default_type_transformers():
         SimpleTransformer(
             "str",
             str,
-            _type_models.LiteralType(simple=_type_models.SimpleType.STRING),
-            lambda x: Literal(scalar=Scalar(primitive=Primitive(string_value=x))),
-            lambda x: x.scalar.primitive.string_value,
+            flyteidl.core.LiteralType(type=flyteidl.literal_type.Type.Simple(int(flyteidl.core.SimpleType.String))),
+            lambda x: flyteidl.core.Literal(
+                value=flyteidl.literal.Value.Scalar(
+                    flyteidl.core.Scalar(
+                        flyteidl.scalar.Value.Primitive(
+                            flyteidl.core.Primitive(flyteidl.primitive.Value.StringValue(x))
+                        )
+                    )
+                ),
+                hash="",
+                metadata={},
+            ),
+            # Origianl: `x.scalar.primitive.string`
+            lambda x: x.value[0].value[0].value[0],
         )
     )
 
-    TypeEngine.register(
-        SimpleTransformer(
-            "datetime",
-            datetime.datetime,
-            _type_models.LiteralType(simple=_type_models.SimpleType.DATETIME),
-            lambda x: Literal(scalar=Scalar(primitive=Primitive(datetime=x))),
-            lambda x: x.scalar.primitive.datetime,
-        )
-    )
+    # TypeEngine.register(
+    #     SimpleTransformer(
+    #         "datetime",
+    #         datetime.datetime,
+    #         flyteidl.core.LiteralType(simple=_type_models.SimpleType.DATETIME),
+    #         lambda x: Literal(scalar=Scalar(primitive=Primitive(datetime=x))),
+    #         lambda x: x.scalar.primitive.datetime,
+    #     )
+    # )
 
-    TypeEngine.register(
-        SimpleTransformer(
-            "timedelta",
-            datetime.timedelta,
-            _type_models.LiteralType(simple=_type_models.SimpleType.DURATION),
-            lambda x: Literal(scalar=Scalar(primitive=Primitive(duration=x))),
-            lambda x: x.scalar.primitive.duration,
-        )
-    )
+    # TypeEngine.register(
+    #     SimpleTransformer(
+    #         "timedelta",
+    #         datetime.timedelta,
+    #         flyteidl.core.LiteralType(simple=_type_models.SimpleType.DURATION),
+    #         lambda x: Literal(scalar=Scalar(primitive=Primitive(duration=x))),
+    #         lambda x: x.scalar.primitive.duration,
+    #     )
+    # )
 
-    TypeEngine.register(
-        SimpleTransformer(
-            "date",
-            datetime.date,
-            _type_models.LiteralType(simple=_type_models.SimpleType.DATETIME),
-            lambda x: Literal(
-                scalar=Scalar(primitive=Primitive(datetime=datetime.datetime.combine(x, datetime.time.min)))
-            ),  # convert datetime to date
-            lambda x: x.scalar.primitive.datetime.date(),  # get date from datetime
-        )
-    )
+    # TypeEngine.register(
+    #     SimpleTransformer(
+    #         "date",
+    #         datetime.date,
+    #         flyteidl.core.LiteralType(simple=_type_models.SimpleType.DATETIME),
+    #         lambda x: Literal(
+    #             scalar=Scalar(primitive=Primitive(datetime=datetime.datetime.combine(x, datetime.time.min)))
+    #         ),  # convert datetime to date
+    #         lambda x: x.scalar.primitive.datetime.date(),  # get date from datetime
+    #     )
+    # )
 
-    TypeEngine.register(
-        SimpleTransformer(
-            "none",
-            type(None),
-            _type_models.LiteralType(simple=_type_models.SimpleType.NONE),
-            lambda x: Literal(scalar=Scalar(none_type=Void())),
-            lambda x: _check_and_convert_void(x),
-        ),
-        [None],
-    )
+    # TypeEngine.register(
+    #     SimpleTransformer(
+    #         "none",
+    #         type(None),
+    #         flyteidl.core.LiteralType(simple=_type_models.SimpleType.NONE),
+    #         lambda x: Literal(scalar=Scalar(none_type=Void())),
+    #         lambda x: _check_and_convert_void(x),
+    #     ),
+    #     [None],
+    # )
     TypeEngine.register(ListTransformer())
     if sys.version_info >= (3, 10):
         from types import UnionType
@@ -2120,7 +2265,7 @@ class LiteralsResolver(collections.UserDict):
     def __init__(
         self,
         literals: typing.Dict[str, Literal],
-        variable_map: Optional[Dict[str, _interface_models.Variable]] = None,
+        variable_map: Optional[Dict[str, flyteidl.core.Variable]] = None,
         ctx: Optional[FlyteContext] = None,
     ):
         """
@@ -2167,7 +2312,7 @@ class LiteralsResolver(collections.UserDict):
         return self._native_values
 
     @property
-    def variable_map(self) -> Optional[Dict[str, _interface_models.Variable]]:
+    def variable_map(self) -> Optional[Dict[str, flyteidl.core.Variable]]:
         return self._variable_map
 
     @property
@@ -2204,6 +2349,7 @@ class LiteralsResolver(collections.UserDict):
         :param as_type:
         :return: Python native value from the LiteralMap
         """
+
         if attr not in self._literals:
             raise AttributeError(f"Attribute {attr} not found")
         if attr in self.native_values:
@@ -2213,16 +2359,18 @@ class LiteralsResolver(collections.UserDict):
             if attr in self._type_hints:
                 as_type = self._type_hints[attr]
             else:
-                if self.variable_map and attr in self.variable_map:
+                if self.variable_map and attr in self.variable_map.variables:
                     try:
-                        as_type = TypeEngine.guess_python_type(self.variable_map[attr].type)
+                        as_type = TypeEngine.guess_python_type(self.variable_map.variables[attr].type)
                     except ValueError as e:
-                        logger.error(f"Could not guess a type for Variable {self.variable_map[attr]}")
+                        logger.error(f"Could not guess a type for Variable {self.variable_map.variables[attr]}")
                         raise e
                 else:
                     raise ValueError("as_type argument not supplied and Variable map not specified in LiteralsResolver")
         val = TypeEngine.to_python_value(
-            self._ctx or FlyteContext.current_context(), self._literals[attr], cast(Type, as_type)
+            self._ctx or FlyteContext.current_context(),
+            self._literals[attr],
+            cast(Type, as_type),
         )
         self._native_values[attr] = val
         return val
