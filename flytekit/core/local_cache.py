@@ -1,9 +1,10 @@
 from typing import Optional, Tuple
 
+import flyteidl_rust as flyteidl
 from diskcache import Cache
 
 from flytekit import lazy_module
-from flytekit.models.literals import Literal, LiteralCollection, LiteralMap
+from flytekit.models.literals import Literal, LiteralCollection
 
 joblib = lazy_module("joblib")
 
@@ -12,7 +13,7 @@ joblib = lazy_module("joblib")
 CACHE_LOCATION = "~/.flyte/local-cache"
 
 
-def _recursive_hash_placement(literal: Literal) -> Literal:
+def _recursive_hash_placement(literal: flyteidl.core.Literal) -> flyteidl.core.Literal:
     # Base case, hash gets passed through always if set
     if literal.hash is not None:
         return Literal(hash=literal.hash)
@@ -23,13 +24,16 @@ def _recursive_hash_placement(literal: Literal) -> Literal:
         literal_map = {}
         for key, literal_value in literal.map.literals.items():
             literal_map[key] = _recursive_hash_placement(literal_value)
-        return Literal(map=LiteralMap(literal_map))
+        return Literal(map=flyteidl.core.LiteralMap(literal_map))
     else:
         return literal
 
 
 def _calculate_cache_key(
-    task_name: str, cache_version: str, input_literal_map: LiteralMap, cache_ignore_input_vars: Tuple[str, ...] = ()
+    task_name: str,
+    cache_version: str,
+    input_literal_map: flyteidl.core.LiteralMap,
+    cache_ignore_input_vars: Tuple[str, ...] = (),
 ) -> str:
     # Traverse the literals and replace the literal with a new literal that only contains the hash
     literal_map_overridden = {}
@@ -40,7 +44,9 @@ def _calculate_cache_key(
 
     # Generate a stable representation of the underlying protobuf by passing `deterministic=True` to the
     # protobuf library.
-    hashed_inputs = LiteralMap(literal_map_overridden).to_flyte_idl().SerializeToString(deterministic=True)
+    hashed_inputs = (
+        flyteidl.core.LiteralMap(literal_map_overridden).to_flyte_idl().SerializeToString(deterministic=True)
+    )
     # Use joblib to hash the string representation of the literal into a fixed length string
     return f"{task_name}-{cache_version}-{joblib.hash(hashed_inputs)}"
 
@@ -66,8 +72,11 @@ class LocalTaskCache(object):
 
     @staticmethod
     def get(
-        task_name: str, cache_version: str, input_literal_map: LiteralMap, cache_ignore_input_vars: Tuple[str, ...]
-    ) -> Optional[LiteralMap]:
+        task_name: str,
+        cache_version: str,
+        input_literal_map: flyteidl.core.LiteralMap,
+        cache_ignore_input_vars: Tuple[str, ...],
+    ) -> Optional[flyteidl.core.LiteralMap]:
         if not LocalTaskCache._initialized:
             LocalTaskCache.initialize()
         return LocalTaskCache._cache.get(
@@ -78,9 +87,9 @@ class LocalTaskCache(object):
     def set(
         task_name: str,
         cache_version: str,
-        input_literal_map: LiteralMap,
+        input_literal_map: flyteidl.core.LiteralMap,
         cache_ignore_input_vars: Tuple[str, ...],
-        value: LiteralMap,
+        value: flyteidl.core.LiteralMap,
     ) -> None:
         if not LocalTaskCache._initialized:
             LocalTaskCache.initialize()

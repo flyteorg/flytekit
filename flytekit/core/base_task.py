@@ -25,7 +25,7 @@ import inspect
 import warnings
 from abc import abstractmethod
 from base64 import b64encode
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import (
     Any,
     Coroutine,
@@ -41,8 +41,9 @@ from typing import (
     cast,
 )
 
-from flyteidl.core import artifact_id_pb2 as art_id
-from flyteidl.core import tasks_pb2
+# from flyteidl.core import artifact_id_pb2 as art_id
+# from flyteidl.core import tasks_pb2
+import flyteidl_rust as flyteidl
 
 from flytekit.configuration import LocalConfig, SerializationSettings
 from flytekit.core.artifact_utils import (
@@ -72,11 +73,9 @@ from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
 from flytekit.core.utils import timeit
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
-from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_model
 from flytekit.models.core import workflow as _workflow_model
-from flytekit.models.documentation import Description, Documentation
 from flytekit.models.interface import Variable
 from flytekit.models.security import SecurityContext
 
@@ -134,6 +133,8 @@ class TaskMetadata(object):
     retries: int = 0
     timeout: Optional[Union[datetime.timedelta, int]] = None
     pod_template_name: Optional[str] = None
+    generates_deck: Optional[bool] = False
+    tags: Optional[Dict[str, str]] = field(default_factory=dict)
 
     def __post_init__(self):
         if self.timeout:
@@ -151,28 +152,35 @@ class TaskMetadata(object):
             )
 
     @property
-    def retry_strategy(self) -> _literal_models.RetryStrategy:
-        return _literal_models.RetryStrategy(self.retries)
+    def retry_strategy(self) -> flyteidl.core.RetryStrategy:
+        return flyteidl.core.RetryStrategy(self.retries)
 
-    def to_taskmetadata_model(self) -> _task_model.TaskMetadata:
+    def to_taskmetadata_model(self) -> flyteidl.core.TaskMetadata:
         """
-        Converts to _task_model.TaskMetadata
+        Converts to flyteidl.TaskMetadata
         """
         from flytekit import __version__
 
-        return _task_model.TaskMetadata(
+        return flyteidl.core.TaskMetadata(
             discoverable=self.cache,
-            runtime=_task_model.RuntimeMetadata(
-                _task_model.RuntimeMetadata.RuntimeType.FLYTE_SDK, __version__, "python"
-            ),
-            timeout=self.timeout,
+            runtime=flyteidl.core.RuntimeMetadata(int(flyteidl.core.RuntimeType.FlyteSdk), __version__, "python"),
+            timeout=flyteidl.wkt.Duration(
+                seconds=(
+                    self.timeout.days * 24 * 60 * 60 + self.timeout.seconds + self.timeout.microseconds // 1_000_000
+                ),
+                nanos=(self.timeout.microseconds % 1_000_000 * 1_000),
+            )
+            if not isinstance(self.timeout, int)
+            else flyteidl.wkt.Duration(seconds=int(self.timeout), nanos=0),
             retries=self.retry_strategy,
-            interruptible=self.interruptible,
+            interruptible_value=self.interruptible,
             discovery_version=self.cache_version,
             deprecated_error_message=self.deprecated,
             cache_serializable=self.cache_serialize,
-            pod_template_name=self.pod_template_name,
+            pod_template_name=self.pod_template_name or "",
             cache_ignore_input_vars=self.cache_ignore_input_vars,
+            generates_deck=self.generates_deck,
+            tags=self.tags,
         )
 
 
@@ -196,11 +204,11 @@ class Task(object):
         self,
         task_type: str,
         name: str,
-        interface: _interface_models.TypedInterface,
+        interface: flyteidl.core.TypedInterface,
         metadata: Optional[TaskMetadata] = None,
         task_type_version=0,
         security_ctx: Optional[SecurityContext] = None,
-        docs: Optional[Documentation] = None,
+        docs: Optional[flyteidl.admin.DescriptionEntity] = None,
         **kwargs,
     ):
         self._task_type = task_type
@@ -214,7 +222,7 @@ class Task(object):
         FlyteEntities.entities.append(self)
 
     @property
-    def interface(self) -> _interface_models.TypedInterface:
+    def interface(self) -> flyteidl.core.TypedInterface:
         return self._interface
 
     @property
@@ -242,7 +250,7 @@ class Task(object):
         return self._security_ctx
 
     @property
-    def docs(self) -> Documentation:
+    def docs(self) -> flyteidl.admin.DescriptionEntity:
         return self._docs
 
     def get_type_for_input_var(self, k: str, v: Any) -> type:
@@ -285,14 +293,14 @@ class Task(object):
             kwargs = translate_inputs_to_literals(
                 ctx,
                 incoming_values=kwargs,
-                flyte_interface_types=self.interface.inputs,
+                flyte_interface_types=dict(self.interface.inputs.variables),
                 native_types=self.get_input_types(),  # type: ignore
             )
         except TypeTransformerFailedError as exc:
             msg = f"Failed to convert inputs of task '{self.name}':\n  {exc}"
             logger.error(msg)
             raise TypeError(msg) from exc
-        input_literal_map = _literal_models.LiteralMap(literals=kwargs)
+        input_literal_map = flyteidl.core.LiteralMap(literals=kwargs)
 
         # if metadata.cache is set, check memoized version
         local_config = LocalConfig.auto()
@@ -338,11 +346,10 @@ class Task(object):
             return outputs_literal_map
 
         outputs_literals = outputs_literal_map.literals
-
         # TODO maybe this is the part that should be done for local execution, we pass the outputs to some special
         #    location, otherwise we dont really need to right? The higher level execute could just handle literalMap
         # After running, we again have to wrap the outputs, if any, back into Promise objects
-        output_names = list(self.interface.outputs.keys())  # type: ignore
+        output_names = list(dict(self.interface.outputs.variables).keys())  # type: ignore
         if len(output_names) != len(outputs_literals):
             # Length check, clean up exception
             raise AssertionError(f"Length difference {len(output_names)} {len(outputs_literals)}")
@@ -360,7 +367,7 @@ class Task(object):
     def compile(self, ctx: FlyteContext, *args, **kwargs):
         raise Exception("not implemented")
 
-    def get_container(self, settings: SerializationSettings) -> Optional[_task_model.Container]:
+    def get_container(self, settings: SerializationSettings) -> Optional[flyteidl.core.Container]:
         """
         Returns the container definition (if any) that is used to run the task on hosted Flyte.
         """
@@ -391,7 +398,7 @@ class Task(object):
         """
         return None
 
-    def get_extended_resources(self, settings: SerializationSettings) -> Optional[tasks_pb2.ExtendedResources]:
+    def get_extended_resources(self, settings: SerializationSettings) -> Optional[flyteidl.core.ExtendedResources]:
         """
         Returns the extended resources to allocate to the task on hosted Flyte.
         """
@@ -404,8 +411,8 @@ class Task(object):
     def sandbox_execute(
         self,
         ctx: FlyteContext,
-        input_literal_map: _literal_models.LiteralMap,
-    ) -> _literal_models.LiteralMap:
+        input_literal_map: flyteidl.core.LiteralMap,
+    ) -> flyteidl.core.LiteralMap:
         """
         Call dispatch_execute, in the context of a local sandbox execution. Not invoked during runtime.
         """
@@ -418,8 +425,8 @@ class Task(object):
     def dispatch_execute(
         self,
         ctx: FlyteContext,
-        input_literal_map: _literal_models.LiteralMap,
-    ) -> _literal_models.LiteralMap:
+        input_literal_map: flyteidl.core.LiteralMap,
+    ) -> flyteidl.core.LiteralMap:
         """
         This method translates Flyte's Type system based input values and invokes the actual call to the executor
         This method is also invoked during runtime.
@@ -508,17 +515,22 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             self._disable_deck = True
         if self._python_interface.docstring:
             if self.docs is None:
-                self._docs = Documentation(
-                    short_description=self._python_interface.docstring.short_description,
-                    long_description=Description(value=self._python_interface.docstring.long_description),
+                self._docs = flyteidl.admin.DescriptionEntity(
+                    short_description=self._python_interface.docstring.short_description
+                    if self._python_interface.docstring.short_description
+                    else "",
+                    long_description=flyteidl.admin.Description(
+                        content=self._python_interface.docstring.long_description, format=0, icon_link=""
+                    ),
+                    tags=[],
                 )
             else:
                 if self._python_interface.docstring.short_description:
                     cast(
-                        Documentation, self._docs
+                        flyteidl.admin.DescriptionEntity, self._docs
                     ).short_description = self._python_interface.docstring.short_description
                 if self._python_interface.docstring.long_description:
-                    cast(Documentation, self._docs).long_description = Description(
+                    cast(flyteidl.admin.DescriptionEntity, self._docs).long_description = flyteidl.admin.Description(
                         value=self._python_interface.docstring.long_description
                     )
 
@@ -576,9 +588,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
     def _outputs_interface(self) -> Dict[Any, Variable]:
         return self.interface.outputs  # type: ignore
 
-    def _literal_map_to_python_input(
-        self, literal_map: _literal_models.LiteralMap, ctx: FlyteContext
-    ) -> Dict[str, Any]:
+    def _literal_map_to_python_input(self, literal_map: flyteidl.core.LiteralMap, ctx: FlyteContext) -> Dict[str, Any]:
         return TypeEngine.literal_map_to_kwargs(ctx, literal_map, self.python_interface.inputs)
 
     def _output_to_literal_map(self, native_outputs: Dict[int, Any], ctx: FlyteContext):

@@ -71,7 +71,7 @@ def _get_container_definition(
     gpu_limit: Optional[Union[str, int]] = None,
     memory_limit: Optional[Union[str, int]] = None,
     environment: Optional[Dict[str, str]] = None,
-) -> "task_models.Container":
+) -> "flyteidl.Container":
     ephemeral_storage_limit = ephemeral_storage_limit
     ephemeral_storage_request = ephemeral_storage_request
     cpu_limit = cpu_limit
@@ -81,60 +81,63 @@ def _get_container_definition(
     memory_limit = memory_limit
     memory_request = memory_request
 
-    from flytekit.models import task as task_models
+    # from flytekit.models import task as task_models
+    import flyteidl_rust as flyteidl
 
     # TODO: Use convert_resources_to_resource_model instead of manually fixing the resources.
     requests = []
     if ephemeral_storage_request:
         requests.append(
-            task_models.Resources.ResourceEntry(
-                task_models.Resources.ResourceName.EPHEMERAL_STORAGE,
+            flyteidl.ResourceEntry(
+                int(flyteidl.ResourceName.EPHEMERAL_STORAGE),
                 ephemeral_storage_request,
             )
         )
     if cpu_request:
-        requests.append(task_models.Resources.ResourceEntry(task_models.Resources.ResourceName.CPU, cpu_request))
+        requests.append(flyteidl.core.ResourceEntry(flyteidl.core.ResourceName.CPU, cpu_request))
     if gpu_request:
-        requests.append(task_models.Resources.ResourceEntry(task_models.Resources.ResourceName.GPU, gpu_request))
+        requests.append(flyteidl.core.ResourceEntry(flyteidl.core.ResourceName.GPU, gpu_request))
     if memory_request:
-        requests.append(task_models.Resources.ResourceEntry(task_models.Resources.ResourceName.MEMORY, memory_request))
+        requests.append(flyteidl.core.ResourceEntry(flyteidl.core.ResourceName.MEMORY, memory_request))
 
     limits = []
     if ephemeral_storage_limit:
         limits.append(
-            task_models.Resources.ResourceEntry(
-                task_models.Resources.ResourceName.EPHEMERAL_STORAGE,
+            flyteidl.ResourceEntry(
+                flyteidl.ResourceName.EPHEMERAL_STORAGE,
                 ephemeral_storage_limit,
             )
         )
     if cpu_limit:
-        limits.append(task_models.Resources.ResourceEntry(task_models.Resources.ResourceName.CPU, cpu_limit))
+        limits.append(flyteidl.core.ResourceEntry(flyteidl.core.ResourceName.CPU, cpu_limit))
     if gpu_limit:
-        limits.append(task_models.Resources.ResourceEntry(task_models.Resources.ResourceName.GPU, gpu_limit))
+        limits.append(flyteidl.core.ResourceEntry(flyteidl.core.ResourceName.GPU, gpu_limit))
     if memory_limit:
-        limits.append(task_models.Resources.ResourceEntry(task_models.Resources.ResourceName.MEMORY, memory_limit))
+        limits.append(flyteidl.core.ResourceEntry(flyteidl.core.ResourceName.MEMORY, memory_limit))
 
     if environment is None:
         environment = {}
 
-    return task_models.Container(
+    return flyteidl.core.Container(
         image=image,
         command=command,
         args=args,
-        resources=task_models.Resources(limits=limits, requests=requests),
-        env=environment,
-        config={},
-        data_loading_config=data_loading_config,
+        resources=flyteidl.core.Resources(limits=limits, requests=requests),
+        env=list(environment),
+        config=[],
+        data_config=data_loading_config,
+        ports=[],
+        architecture=0,
     )
 
 
-def _sanitize_resource_name(resource: "task_models.Resources.ResourceEntry") -> str:
+def _sanitize_resource_name(resource: "flyteidl.Resources.ResourceEntry") -> str:
     return _core_task.Resources.ResourceName.Name(resource.name).lower().replace("_", "-")
 
 
 def _serialize_pod_spec(
     pod_template: "PodTemplate",
-    primary_container: "task_models.Container",
+    primary_container: "flyteidl.Container",
     settings: SerializationSettings,
 ) -> Dict[str, Any]:
     # import here to avoid circular import

@@ -8,6 +8,8 @@ from enum import Enum
 from functools import update_wrapper
 from typing import Any, Callable, Coroutine, Dict, List, Optional, Tuple, Type, Union, cast, overload
 
+import flyteidl_rust as flyteidl
+
 from flytekit.core import constants as _common_constants
 from flytekit.core import launch_plan as _annotated_launch_plan
 from flytekit.core.base_task import PythonTask, Task
@@ -44,7 +46,6 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions import scopes as exception_scopes
 from flytekit.exceptions.user import FlyteValidationException, FlyteValueException
 from flytekit.loggers import logger
-from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.documentation import Description, Documentation
@@ -240,7 +241,7 @@ class WorkflowBase(object):
         return self._python_interface
 
     @property
-    def interface(self) -> _interface_models.TypedInterface:
+    def interface(self) -> flyteidl.TypedInterface:
         return self._interface
 
     @property

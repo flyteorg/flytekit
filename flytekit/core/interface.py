@@ -7,6 +7,7 @@ import typing
 from collections import OrderedDict
 from typing import Any, Dict, Generator, List, Optional, Tuple, Type, TypeVar, Union, cast
 
+import flyteidl_rust as flyteidl
 from flyteidl.core import artifact_id_pb2 as art_id
 from typing_extensions import get_args, get_type_hints
 
@@ -247,7 +248,7 @@ def transform_inputs_to_parameters(
 def transform_interface_to_typed_interface(
     interface: typing.Optional[Interface],
     allow_partial_artifact_id_binding: bool = False,
-) -> typing.Optional[_interface_models.TypedInterface]:
+) -> typing.Optional[flyteidl.TypedInterface]:
     """
     Transform the given simple python native interface to FlyteIDL's interface
     """
@@ -264,12 +265,14 @@ def transform_interface_to_typed_interface(
     inputs_map = transform_variable_map(interface.inputs, input_descriptions)
     outputs_map = transform_variable_map(interface.outputs, output_descriptions)
     verify_outputs_artifact_bindings(interface.inputs, outputs_map, allow_partial_artifact_id_binding)
-    return _interface_models.TypedInterface(inputs_map, outputs_map)
+    return flyteidl.core.TypedInterface(
+        flyteidl.core.VariableMap(variables=dict(inputs_map)), flyteidl.core.VariableMap(variables=dict(outputs_map))
+    )
 
 
 def verify_outputs_artifact_bindings(
     inputs: Dict[str, type],
-    outputs: Dict[str, _interface_models.Variable],
+    outputs: Dict[str, flyteidl.Variable],
     allow_partial_artifact_id_binding: bool = False,
 ):
     # collect Artifacts
@@ -397,7 +400,7 @@ def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Doc
 def transform_variable_map(
     variable_map: Dict[str, type],
     descriptions: Optional[Dict[str, str]] = None,
-) -> Dict[str, _interface_models.Variable]:
+) -> Dict[str, flyteidl.Variable]:
     """
     Given a map of str (names of inputs for instance) to their Python native types, return a map of the name to a
     Flyte Variable object with that type.
@@ -428,12 +431,13 @@ def detect_artifact(
     return None
 
 
-def transform_type(x: type, description: Optional[str] = None) -> _interface_models.Variable:
+def transform_type(x: type, description: Optional[str] = None) -> flyteidl.core.Variable:
     artifact_id = detect_artifact(get_args(x))
     if artifact_id:
         logger.debug(f"Found artifact id spec: {artifact_id}")
-    return _interface_models.Variable(
-        type=TypeEngine.to_literal_type(x), description=description, artifact_partial_id=artifact_id
+    _lt = TypeEngine.to_literal_type(x)
+    return flyteidl.core.Variable(
+        type=flyteidl.core.LiteralType(type=_lt.type), description=description, artifact_partial_id=artifact_id
     )
 
 

@@ -5,7 +5,7 @@ import re
 from abc import ABC
 from typing import Callable, Dict, List, Optional, TypeVar, Union
 
-from flyteidl.core import tasks_pb2
+import flyteidl_rust as flyteidl
 
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask, TaskMetadata, TaskResolverMixin
@@ -182,14 +182,14 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
                 self.container_image.source_root = settings.source_root
         return get_registerable_container_image(self.container_image, settings.image_config)
 
-    def get_container(self, settings: SerializationSettings) -> _task_model.Container:
+    def get_container(self, settings: SerializationSettings) -> flyteidl.Container:
         # if pod_template is not None, return None here but in get_k8s_pod, return pod_template merged with container
         if self.pod_template is not None:
             return None
         else:
             return self._get_container(settings)
 
-    def _get_container(self, settings: SerializationSettings) -> _task_model.Container:
+    def _get_container(self, settings: SerializationSettings) -> flyteidl.Container:
         env = {}
         for elem in (settings.env, self.environment):
             if elem:
@@ -227,14 +227,14 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
             return {}
         return {_PRIMARY_CONTAINER_NAME_FIELD: self.pod_template.primary_container_name}
 
-    def get_extended_resources(self, settings: SerializationSettings) -> Optional[tasks_pb2.ExtendedResources]:
+    def get_extended_resources(self, settings: SerializationSettings) -> Optional[flyteidl.ExtendedResources]:
         """
         Returns the extended resources to allocate to the task on hosted Flyte.
         """
         if self.accelerator is None:
             return None
 
-        return tasks_pb2.ExtendedResources(gpu_accelerator=self.accelerator.to_flyte_idl())
+        return flyteidl.ExtendedResources(gpu_accelerator=self.accelerator.to_flyte_idl())
 
 
 class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
