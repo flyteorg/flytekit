@@ -3,6 +3,7 @@ import typing
 from collections import OrderedDict
 from typing import Dict, Tuple, Type
 
+import flyteidl_rust as flyteidl
 import numpy as np
 from typing_extensions import Annotated, get_args, get_origin
 
@@ -78,11 +79,11 @@ class NumpyArrayTransformer(TypeTransformer[np.ndarray]):
             mmap_mode=metadata.get("mmap_mode"),  # type: ignore
         )
 
-    def guess_python_type(self, literal_type: LiteralType) -> typing.Type[np.ndarray]:
+    def guess_python_type(self, literal_type: flyteidl.core.LiteralType) -> typing.Type[np.ndarray]:
         if (
-            literal_type.blob is not None
-            and literal_type.blob.dimensionality == _core_types.BlobType.BlobDimensionality.SINGLE
-            and literal_type.blob.format == self.NUMPY_ARRAY_FORMAT
+            literal_type.type is not None
+            and literal_type.type.dimensionality == _core_types.BlobType.BlobDimensionality.SINGLE
+            and literal_type.type.format == self.NUMPY_ARRAY_FORMAT
         ):
             return np.ndarray
 

@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Type, TypeVar
 
+import flyteidl_rust as flyteidl
 from mashumaro.mixins.json import DataClassJSONMixin
 
 from flytekit.core.context_manager import FlyteContext
@@ -48,8 +49,8 @@ class ErrorTransformer(TypeTransformer[FlyteError]):
             raise TypeTransformerFailedError("Can only convert a generic literal to FlyteError")
         return FlyteError(message=lv.scalar.error.message, failed_node_id=lv.scalar.error.failed_node_id)
 
-    def guess_python_type(self, literal_type: LiteralType) -> Type[FlyteError]:
-        if literal_type.simple and literal_type.simple == _type_models.SimpleType.ERROR:
+    def guess_python_type(self, literal_type: flyteidl.core.LiteralType) -> Type[FlyteError]:
+        if literal_type.type and literal_type.type == _type_models.SimpleType.ERROR:
             return FlyteError
 
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")

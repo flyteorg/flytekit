@@ -7,6 +7,7 @@ from copy import deepcopy
 from enum import Enum
 from typing import Any, Coroutine, Dict, Hashable, List, Optional, Set, Tuple, Union, cast, get_args
 
+import flyteidl_rust as flyteidl
 from google.protobuf import struct_pb2 as _struct
 from typing_extensions import Protocol
 
@@ -46,9 +47,9 @@ from flytekit.models.types import SimpleType
 def translate_inputs_to_literals(
     ctx: FlyteContext,
     incoming_values: Dict[str, Any],
-    flyte_interface_types: Dict[str, _interface_models.Variable],
+    flyte_interface_types: Dict[str, flyteidl.core.Variable],
     native_types: Dict[str, type],
-) -> Dict[str, _literals_models.Literal]:
+) -> Dict[str, flyteidl.core.Literal]:
     """
     The point of this function is to extract out Literals from a collection of either Python native values (which would
     be converted into Flyte literals) or Promises (the literals in which would just get extracted).
@@ -99,6 +100,7 @@ def translate_inputs_to_literals(
     return result
 
 
+# TODO: refactor to `flyteidl-rust`
 def resolve_attr_path_in_promise(p: Promise) -> Promise:
     """
     resolve_attr_path_in_promise resolves the attribute path in a promise and returns a new promise with the resolved value
@@ -687,7 +689,7 @@ def create_task_output(
 
     # These should be OrderedDicts so it should be safe to iterate over the keys.
     if entity_interface:
-        variables = [k for k in entity_interface.outputs.keys()]
+        variables = [k for k in dict(entity_interface.outputs.variables).keys()]  # type: ignore
 
     named_tuple_name = "DefaultNamedTupleOutput"
     if entity_interface and entity_interface.output_tuple_name:
@@ -1215,7 +1217,6 @@ def flyte_entity_call_handler(
             raise AssertionError(
                 f"Received unexpected keyword argument '{k}' in function '{cast(SupportsNodeCreation, entity).name}'"
             )
-
     ctx = FlyteContextManager.current_context()
     if ctx.execution_state and (
         ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION

@@ -9,6 +9,7 @@ import typing
 from dataclasses import dataclass, field, fields
 from typing import cast, get_args
 
+import flyteidl_rust as flyteidl
 import rich_click as click
 from dataclasses_json import DataClassJsonMixin
 from rich.progress import Progress
@@ -37,10 +38,10 @@ from flytekit.interaction.string_literals import literal_string_repr
 from flytekit.loggers import logger
 from flytekit.models import security
 from flytekit.models.common import RawOutputDataConfig
-from flytekit.models.interface import Parameter, Variable
-from flytekit.models.types import SimpleType
-from flytekit.remote import FlyteLaunchPlan, FlyteRemote, FlyteTask, FlyteWorkflow, remote_fs
+from flytekit.models.interface import Parameter
+from flytekit.remote import FlyteLaunchPlan, FlyteTask, FlyteWorkflow, remote_fs
 from flytekit.remote.executions import FlyteWorkflowExecution
+from flytekit.remote.remote_rs import FlyteRemote
 from flytekit.tools import module_loader
 from flytekit.tools.script_mode import _find_project_root, compress_scripts
 from flytekit.tools.translator import Options
@@ -358,7 +359,7 @@ def to_click_option(
     ctx: click.Context,
     flyte_ctx: FlyteContext,
     input_name: str,
-    literal_var: Variable,
+    literal_var: flyteidl.core.Variable,
     python_type: typing.Type,
     default_val: typing.Any,
     required: bool,
@@ -380,7 +381,7 @@ def to_click_option(
         default_val = False
 
     description_extra = ""
-    if literal_var.type.simple == SimpleType.STRUCT:
+    if literal_var.type == flyteidl.core.SimpleType.Struct:
         if default_val and not isinstance(default_val, ArtifactQuery):
             if type(default_val) == dict or type(default_val) == list:
                 default_val = json.dumps(default_val)
@@ -508,7 +509,6 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
         Click command function that is used to execute a flyte workflow from the given entity in the file.
         """
         # By the time we get to this function, all the loading has already happened
-
         run_level_params: RunLevelParams = ctx.obj
         logger.debug(f"Running {entity.name} with {kwargs} and run_level_params {run_level_params}")
 
@@ -565,7 +565,6 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
                     module_name=run_level_params.computed_params.module,
                     copy_all=run_level_params.copy_all,
                 )
-
                 run_remote(
                     remote,
                     remote_entity,
@@ -612,7 +611,7 @@ class DynamicEntityLaunchCommand(click.RichCommand):
     def _get_params(
         self,
         ctx: click.Context,
-        inputs: typing.Dict[str, Variable],
+        inputs: typing.Dict[str, flyteidl.core.Variable],
         native_inputs: typing.Dict[str, type],
         fixed: typing.Optional[typing.Dict[str, Literal]] = None,
         defaults: typing.Optional[typing.Dict[str, Parameter]] = None,
@@ -783,7 +782,7 @@ class WorkflowCommand(click.RichGroup):
         # Add options for each of the workflow inputs
         params = []
         for input_name, input_type_val in loaded_entity.python_interface.inputs_with_defaults.items():
-            literal_var = loaded_entity.interface.inputs.get(input_name)
+            literal_var = loaded_entity.interface.inputs.variables.get(input_name)
             python_type, default_val = input_type_val
             required = type(None) not in get_args(python_type) and default_val is None
             params.append(to_click_option(ctx, flyte_ctx, input_name, literal_var, python_type, default_val, required))

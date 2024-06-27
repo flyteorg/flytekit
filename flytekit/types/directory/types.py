@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Generator, Tuple
 from uuid import UUID
 
+import flyteidl_rust as flyteidl
 import fsspec
 from dataclasses_json import DataClassJsonMixin, config
 from fsspec.utils import get_protocol
@@ -486,10 +487,10 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
         fd._remote_source = uri
         return fd
 
-    def guess_python_type(self, literal_type: LiteralType) -> typing.Type[FlyteDirectory[typing.Any]]:
+    def guess_python_type(self, literal_type: flyteidl.LiteralType) -> typing.Type[FlyteDirectory[typing.Any]]:
         if (
-            literal_type.blob is not None
-            and literal_type.blob.dimensionality == _core_types.BlobType.BlobDimensionality.MULTIPART
+            literal_type.type is not None
+            and literal_type.type.dimensionality == flyteidl.Type.Blob.dimensionality.Multipart
         ):
             return FlyteDirectory.__class_getitem__(literal_type.blob.format)
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")

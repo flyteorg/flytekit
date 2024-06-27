@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Type, Union
 
+import flyteidl_rust as flyteidl
 import jsonlines
 from typing_extensions import TypeAlias
 
@@ -100,11 +101,11 @@ class JSONIteratorTransformer(TypeTransformer[Iterator[JSON]]):
 
         return JSONIterator(reader)
 
-    def guess_python_type(self, literal_type: LiteralType) -> Type[Iterator[JSON]]:
+    def guess_python_type(self, literal_type: flyteidl.core.LiteralType) -> Type[Iterator[JSON]]:
         if (
-            literal_type.blob is not None
-            and literal_type.blob.dimensionality == _core_types.BlobType.BlobDimensionality.SINGLE
-            and literal_type.blob.format == self.JSON_ITERATOR_FORMAT
+            literal_type.type is not None
+            and literal_type.type.dimensionality == _core_types.BlobType.BlobDimensionality.SINGLE
+            and literal_type.type.format == self.JSON_ITERATOR_FORMAT
             and literal_type.metadata == {"format": self.JSON_ITERATOR_METADATA}
         ):
             return Iterator[JSON]  # type: ignore

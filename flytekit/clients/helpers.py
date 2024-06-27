@@ -1,3 +1,6 @@
+import flyteidl_rust as flyteidl
+
+
 def iterate_node_executions(
     client,
     workflow_execution_identifier=None,
@@ -22,13 +25,16 @@ def iterate_node_executions(
     counter = 0
     while True:
         if workflow_execution_identifier is not None:
-            node_execs, next_token = client.list_node_executions(
-                workflow_execution_identifier=workflow_execution_identifier,
-                limit=num_to_fetch,
-                token=token,
-                filters=filters,
-                unique_parent_id=unique_parent_id,
+            node_execution_list = client.list_node_executions(
+                flyteidl.admin.NodeExecutionListRequest(
+                    workflow_execution_id=workflow_execution_identifier,
+                    limit=num_to_fetch,
+                    token=token,
+                    filters=filters or "",
+                    unique_parent_id=unique_parent_id or "",
+                )
             )
+            node_execs, next_token = node_execution_list.node_executions, node_execution_list.token
         else:
             node_execs, next_token = client.list_node_executions_for_task_paginated(
                 task_execution_identifier=task_execution_identifier,
@@ -61,12 +67,15 @@ def iterate_task_executions(client, node_execution_identifier, limit=None, filte
         num_to_fetch = limit
     counter = 0
     while True:
-        task_execs, next_token = client.list_task_executions_paginated(
-            node_execution_identifier=node_execution_identifier,
-            limit=num_to_fetch,
-            token=token,
-            filters=filters,
+        task__execution_list = client.list_task_executions(
+            flyteidl.admin.TaskExecutionListRequest(
+                node_execution_id=node_execution_identifier,
+                limit=num_to_fetch,
+                token=token,
+                filters=filters or "",
+            )
         )
+        task_execs, next_token = task__execution_list.task_executions, task__execution_list.token
         for t in task_execs:
             counter += 1
             if limit is not None and counter > limit:

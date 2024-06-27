@@ -8,6 +8,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field, is_dataclass
 from typing import Dict, Generator, Optional, Type, Union
 
+import flyteidl_rust as flyteidl
 from dataclasses_json import config
 from fsspec.utils import get_protocol
 from marshmallow import fields
@@ -881,10 +882,10 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         """
         return LiteralType(structured_dataset_type=self._get_dataset_type(t))
 
-    def guess_python_type(self, literal_type: LiteralType) -> Type[StructuredDataset]:
+    def guess_python_type(self, literal_type: flyteidl.LiteralType) -> Type[StructuredDataset]:
         # todo: technically we should return the dataframe type specified in the constructor, but to do that,
         #   we'd have to store that, which we don't do today. See possibly #1363
-        if literal_type.structured_dataset_type is not None:
+        if literal_type.type is not None:
             return StructuredDataset
         raise ValueError(f"StructuredDatasetTransformerEngine cannot reverse {literal_type}")
 

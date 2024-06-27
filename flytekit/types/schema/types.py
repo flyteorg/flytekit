@@ -9,6 +9,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Type
 
+import flyteidl_rust as flyteidl
 import numpy as _np
 from dataclasses_json import config
 from marshmallow import fields
@@ -418,8 +419,8 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
             supported_mode=SchemaOpenMode.READ,
         )
 
-    def guess_python_type(self, literal_type: LiteralType) -> Type[FlyteSchema]:
-        if not literal_type.schema:
+    def guess_python_type(self, literal_type: flyteidl.LiteralType) -> Type[FlyteSchema]:
+        if not literal_type.type:
             raise ValueError(f"Cannot reverse {literal_type}")
         columns: typing.Dict[str, Type] = {}
         for literal_column in literal_type.schema.columns:
