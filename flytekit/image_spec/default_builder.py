@@ -17,13 +17,20 @@ from flytekit.image_spec.image_spec import (
 )
 from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
 
-PYTHON_INSTALL_COMMAND_TEMPLATE = Template("""\
+UV_PYTHON_INSTALL_COMMAND_TEMPLATE = Template("""\
 RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/uv,id=uv \
     --mount=from=uv,source=/uv,target=/usr/bin/uv \
-    --mount=type=bind,target=requirements.txt,src=requirements.txt \
+    --mount=type=bind,target=requirements_uv.txt,src=requirements_uv.txt \
     /usr/bin/uv \
     pip install --python /root/micromamba/envs/dev/bin/python $PIP_EXTRA \
-    --requirement requirements.txt
+    --requirement requirements_uv.txt
+""")
+
+PIP_PYTHON_INSTALL_COMMAND_TEMPLATE = Template("""\
+RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/pip,id=pip \
+    --mount=type=bind,target=requirements_pypi.txt,src=requirements_pypi.txt \
+    /root/micromamba/envs/dev/bin/python -m pip install $PIP_EXTRA \
+    --requirement requirements_pypi.txt
 """)
 
 APT_INSTALL_COMMAND_TEMPLATE = Template(
@@ -55,7 +62,8 @@ id=micromamba \
     /usr/bin/micromamba create -n dev -c conda-forge $CONDA_CHANNELS \
     python=$PYTHON_VERSION $CONDA_PACKAGES
 
-$PYTHON_INSTALL_COMMAND
+$UV_PYTHON_INSTALL_COMMAND
+$PIP_PYTHON_INSTALL_COMMAND
 
 # Configure user space
 ENV PATH="/root/micromamba/envs/dev/bin:$$PATH"
@@ -78,6 +86,7 @@ RUN echo "export PATH=$$PATH" >> $$HOME/.profile
 
 
 def get_flytekit_for_pypi():
+    """Get flytekit version on PyPI."""
     from flytekit import __version__
 
     if not __version__ or "dev" in __version__:
@@ -112,11 +121,31 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
     if image_spec.packages:
         requirements.extend(image_spec.packages)
 
-    requirements_path = tmp_dir / "requirements.txt"
-    requirements_path.write_text(os.linesep.join(requirements))
+    uv_requirements = []
+
+    # uv support git + subdirectory well, so we use pip to install them instead
+    pip_requirements = []
+
+    for requirement in requirements:
+        if "git" in requirement and "subdirectory" in requirement:
+            pip_requirements.append(requirement)
+        else:
+            uv_requirements.append(requirement)
+
+    requirements_uv_path = tmp_dir / "requirements_uv.txt"
+    requirements_uv_path.write_text(os.linesep.join(uv_requirements))
 
     pip_extra = f"--index-url {image_spec.pip_index}" if image_spec.pip_index else ""
-    python_install_command = PYTHON_INSTALL_COMMAND_TEMPLATE.substitute(PIP_EXTRA=pip_extra)
+    uv_python_install_command = UV_PYTHON_INSTALL_COMMAND_TEMPLATE.substitute(PIP_EXTRA=pip_extra)
+
+    if pip_requirements:
+        requirements_uv_path = tmp_dir / "requirements_pypi.txt"
+        requirements_uv_path.write_text(os.linesep.join(pip_requirements))
+
+        pip_python_install_command = PIP_PYTHON_INSTALL_COMMAND_TEMPLATE.substitute(PIP_EXTRA=pip_extra)
+    else:
+        pip_python_install_command = ""
+
     env_dict = {"PYTHONPATH": "/root", _F_IMG_ID: image_spec.image_name()}
 
     if image_spec.env:
@@ -124,7 +153,7 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
 
     env = " ".join(f"{k}={v}" for k, v in env_dict.items())
 
-    apt_packages = ["ca-certificates", "bzip2", "curl"]
+    apt_packages = ["ca-certificates"]
     if image_spec.apt_packages:
         apt_packages.extend(image_spec.apt_packages)
 
@@ -169,7 +198,8 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
 
     docker_content = DOCKER_FILE_TEMPLATE.substitute(
         PYTHON_VERSION=python_version,
-        PYTHON_INSTALL_COMMAND=python_install_command,
+        UV_PYTHON_INSTALL_COMMAND=uv_python_install_command,
+        PIP_PYTHON_INSTALL_COMMAND=pip_python_install_command,
         CONDA_PACKAGES=conda_packages_concat,
         CONDA_CHANNELS=conda_channels_concat,
         APT_INSTALL_COMMAND=apt_install_command,
