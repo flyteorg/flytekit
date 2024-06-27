@@ -96,7 +96,8 @@ class comet_ml_init(ClassDecorator):
         if is_local_execution:
             # For local execution, always use the experiment_key. If `self.experiment_key` is `None`, comet_ml
             # will generate it's own key
-            init_kwargs["experiment_key"] = self.experiment_key
+            if self.experiment_key is not None:
+                init_kwargs["experiment_key"] = self.experiment_key
         else:
             # Get api key for remote execution
             if isinstance(self.secret, Secret):

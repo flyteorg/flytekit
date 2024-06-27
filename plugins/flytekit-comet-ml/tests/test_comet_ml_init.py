@@ -4,7 +4,12 @@ import pytest
 
 from flytekit import Secret, task
 from flytekitplugins.comet_ml import comet_ml_init
-from flytekitplugins.comet_ml.tracking import COMET_ML_CUSTOM_TYPE_VALUE, COMET_ML_EXECUTION_TYPE_VALUE, _generate_suffix_with_length_10, _generate_experiment_key
+from flytekitplugins.comet_ml.tracking import (
+    COMET_ML_CUSTOM_TYPE_VALUE,
+    COMET_ML_EXECUTION_TYPE_VALUE,
+    _generate_suffix_with_length_10,
+    _generate_experiment_key,
+)
 
 
 secret = Secret(key="abc", group="xyz")
@@ -50,7 +55,8 @@ def train_model():
 def test_local_execution(comet_ml_mock):
     train_model()
 
-    comet_ml_mock.init.assert_called_with(project_name="abc", workspace="my-workspace", log_code=False, experiment_key=None)
+    comet_ml_mock.init.assert_called_with(
+        project_name="abc", workspace="my-workspace", log_code=False)
 
 
 @task
