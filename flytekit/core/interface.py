@@ -3,7 +3,6 @@ from __future__ import annotations
 import collections
 import copy
 import inspect
-import re
 import typing
 from collections import OrderedDict
 from typing import Any, Dict, Generator, List, Optional, Tuple, Type, TypeVar, Union, cast
