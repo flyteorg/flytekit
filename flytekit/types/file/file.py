@@ -8,6 +8,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from urllib.parse import unquote
 
+import flyteidl_rust as flyteidl
 from dataclasses_json import config
 from marshmallow import fields
 from mashumaro.mixins.json import DataClassJSONMixin
@@ -525,13 +526,13 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
 
         return ff
 
-    def guess_python_type(self, literal_type: LiteralType) -> typing.Type[FlyteFile[typing.Any]]:
+    def guess_python_type(self, literal_type: flyteidl.LiteralType) -> typing.Type[FlyteFile[typing.Any]]:
         if (
-            literal_type.blob is not None
-            and literal_type.blob.dimensionality == BlobType.BlobDimensionality.SINGLE
-            and literal_type.blob.format != FlytePickleTransformer.PYTHON_PICKLE_FORMAT
+            literal_type.type is not None
+            and literal_type.type.dimensionality == BlobType.BlobDimensionality.SINGLE
+            and literal_type.type.format != FlytePickleTransformer.PYTHON_PICKLE_FORMAT
         ):
-            return FlyteFile.__class_getitem__(literal_type.blob.format)
+            return FlyteFile.__class_getitem__(literal_type.type.format)
 
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
 
