@@ -27,6 +27,7 @@ class ArrayNode(object):
         min_successes: Optional[int] = None,
         min_success_ratio: Optional[float] = None,
         bound_inputs: Optional[Set[str]] = None,
+        execution_version: Optional[int] = None,
         metadata: Optional[Union[_workflow_model.NodeMetadata, TaskMetadata]] = None,
     ):
         """
@@ -44,6 +45,7 @@ class ArrayNode(object):
         self._concurrency = concurrency
         self._min_successes = min_successes
         self._min_success_ratio = min_success_ratio
+        self._execution_version = execution_version
         self.id = target.name
 
         n_outputs = len(self.target.python_interface.outputs)
@@ -60,6 +62,10 @@ class ArrayNode(object):
 
         self.metadata = None
         if isinstance(target, LaunchPlan):
+            if self._execution_version is None:
+                self._execution_version = 1
+            if self._execution_version != 1:
+                raise ValueError("Only execution version 1 is supported for LaunchPlans.")
             if metadata:
                 if isinstance(metadata, _workflow_model.NodeMetadata):
                     self.metadata = metadata
@@ -173,6 +179,10 @@ class ArrayNode(object):
     @property
     def concurrency(self) -> Optional[int]:
         return self._concurrency
+
+    @property
+    def execution_version(self) -> Optional[int]:
+        return self._execution_version
 
 
 def mapped_entity(

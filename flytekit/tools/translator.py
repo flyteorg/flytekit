@@ -662,6 +662,7 @@ def get_serializable_array_node(
         parallelism=array_node.concurrency,
         min_successes=array_node.min_successes,
         min_success_ratio=array_node.min_success_ratio,
+        execution_version=array_node.execution_version,
     )
 
 
