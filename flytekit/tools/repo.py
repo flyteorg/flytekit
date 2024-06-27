@@ -6,15 +6,16 @@ import tempfile
 import typing
 from pathlib import Path
 
+import flyteidl_rust as flyteidl
 import click
 
 from flytekit.configuration import FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.loggers import logger
-from flytekit.models import launch_plan, task
-from flytekit.models.core.identifier import Identifier
-from flytekit.remote import FlyteRemote
+from flytekit.models import launch_plan
 from flytekit.remote.remote import RegistrationSkipped, _get_git_repo_url
+
+from flytekit.remote.remote_rs import FlyteRemote
 from flytekit.tools import fast_registration, module_loader
 from flytekit.tools.script_mode import _find_project_root
 from flytekit.tools.serialize_helpers import get_registrable_entities, persist_registrable_entities
@@ -187,7 +188,7 @@ def load_packages_and_modules(
     return registrable_entities
 
 
-def secho(i: Identifier, state: str = "success", reason: str = None, op: str = "Registration"):
+def secho(i: flyteidl.core.Identifier, state: str = "success", reason: str = None, op: str = "Registration"):
     state_ind = "[ ]"
     fg = "white"
     nl = False
@@ -202,7 +203,7 @@ def secho(i: Identifier, state: str = "success", reason: str = None, op: str = "
         nl = True
         reason = "skipped!"
     click.secho(
-        click.style(f"{state_ind}", fg=fg) + f" {op} {i.name} type {i.resource_type_name()} {reason}",
+        click.style(f"{state_ind}", fg=fg) + f" {op} {i.name} type {i} {reason}",
         dim=True,
         nl=nl,
     )
@@ -298,7 +299,7 @@ def register(
         except RegistrationSkipped:
             secho(og_id, "failed")
 
-    async def _register(entities: typing.List[task.TaskSpec]):
+    async def _register(entities: typing.List[flyteidl.admin.TaskSpec]):
         loop = asyncio.get_event_loop()
         tasks = []
         for entity in entities:
@@ -306,11 +307,11 @@ def register(
         await asyncio.gather(*tasks)
         return
 
-    # concurrent register
-    cp_task_entities = list(filter(lambda x: isinstance(x, task.TaskSpec), registrable_entities))
+    # non-blocking register
+    cp_task_entities = list(filter(lambda x: isinstance(x, flyteidl.admin.TaskSpec), registrable_entities))
     asyncio.run(_register(cp_task_entities))
-    # serial register
-    cp_other_entities = list(filter(lambda x: not isinstance(x, task.TaskSpec), registrable_entities))
+    # blocking register
+    cp_other_entities = list(filter(lambda x: not isinstance(x, flyteidl.admin.TaskSpec), registrable_entities))
     for entity in cp_other_entities:
         _raw_register(entity)
 

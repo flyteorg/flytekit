@@ -7,16 +7,16 @@ import pathlib
 import typing
 from typing import cast
 
+import flyteidl_rust as flyteidl
 import rich_click as click
 import yaml
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from pytimeparse import parse
 
-from flytekit import BlobType, FlyteContext, Literal, LiteralType, StructuredDataset
+from flytekit import BlobType, FlyteContext, Literal, StructuredDataset
 from flytekit.core.artifact import ArtifactQuery
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import TypeEngine
-from flytekit.models.types import SimpleType
 from flytekit.remote.remote_fs import FlytePathResolver
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import FlyteFile
@@ -311,28 +311,37 @@ def modify_literal_uris(lit: Literal):
             )
 
 
-SIMPLE_TYPE_CONVERTER: typing.Dict[SimpleType, click.ParamType] = {
-    SimpleType.FLOAT: click.FLOAT,
-    SimpleType.INTEGER: click.INT,
-    SimpleType.STRING: click.STRING,
-    SimpleType.BOOLEAN: click.BOOL,
-    SimpleType.DURATION: DurationParamType(),
-    SimpleType.DATETIME: DateTimeType(),
-}
+# TODO: `flyteidl.core.SimpleType` non-hashable
+# SIMPLE_TYPE_CONVERTER: typing.Dict[flyteidl.core.SimpleType, click.ParamType] = {
+#     # SimpleType.FLOAT: click.FLOAT,
+#     # SimpleType.INTEGER: click.INT,
+#     flyteidl.core.SimpleType.String: click.STRING,
+#     # SimpleType.BOOLEAN: click.BOOL,
+#     # SimpleType.DURATION: DurationParamType(),
+#     # SimpleType.DATETIME: DateTimeType(),
+# }
 
 
-def literal_type_to_click_type(lt: LiteralType, python_type: typing.Type) -> click.ParamType:
+def literal_type_to_click_type(lt: flyteidl.core.LiteralType, python_type: typing.Type) -> click.ParamType:
     """
     Converts a Flyte LiteralType given a python_type to a click.ParamType
     """
-    if lt.simple:
-        if lt.simple == SimpleType.STRUCT:
+    if lt.type:
+        if lt.type == int(flyteidl.core.SimpleType.Struct):
             ct = JsonParamType(python_type)
             ct.name = f"JSON object {python_type.__name__}"
             return ct
-        if lt.simple in SIMPLE_TYPE_CONVERTER:
-            return SIMPLE_TYPE_CONVERTER[lt.simple]
-        raise NotImplementedError(f"Type {lt.simple} is not supported in pyflyte run")
+
+        # TODO: check above, `flyteidl.core.SimpleType` is non-hashable
+        # if lt.type in SIMPLE_TYPE_CONVERTER:
+        #     return SIMPLE_TYPE_CONVERTER[lt.type]
+        if int(str(lt.type)) == int(flyteidl.core.SimpleType.String):
+            return click.STRING
+        if int(str(lt.type)) == int(flyteidl.core.SimpleType.Integer):
+            return click.INT
+        if int(str(lt.type)) == int(flyteidl.core.SimpleType.Float):
+            return click.FLOAT
+        raise NotImplqementedError(f"Type {lt.type} is not supported in pyflyte run")
 
     if lt.enum_type:
         return EnumParamType(python_type)  # type: ignore
@@ -375,7 +384,7 @@ class FlyteLiteralConverter(object):
     def __init__(
         self,
         flyte_ctx: FlyteContext,
-        literal_type: LiteralType,
+        literal_type: flyteidl.core.LiteralType,
         python_type: typing.Type,
         is_remote: bool,
     ):
