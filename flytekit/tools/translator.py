@@ -4,6 +4,7 @@ from collections import OrderedDict
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
+import flyteidl_rust as flyteidl
 from flyteidl.admin import schedule_pb2
 
 from flytekit import ImageSpec, PythonFunctionTask, SourceCode
@@ -168,15 +169,11 @@ def get_serializable_task(
     settings: SerializationSettings,
     entity: FlyteLocalEntity,
     options: Optional[Options] = None,
-) -> TaskSpec:
-    task_id = _identifier_model.Identifier(
-        _identifier_model.ResourceType.TASK,
-        settings.project,
-        settings.domain,
-        entity.name,
-        settings.version,
+    org: str = "",
+) -> flyteidl.admin.TaskSpec:
+    task_id = flyteidl.core.Identifier(
+        int(flyteidl.core.ResourceType.Task), settings.project, settings.domain, entity.name, settings.version, org
     )
-
     if isinstance(entity, PythonFunctionTask) and entity.execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
         for e in context_manager.FlyteEntities.entities:
             if isinstance(e, PythonAutoContainerTask):
@@ -199,19 +196,20 @@ def get_serializable_task(
         if entity.node_dependency_hints is not None:
             for entity_hint in entity.node_dependency_hints:
                 get_serializable(entity_mapping, settings, entity_hint, options)
-
     container = entity.get_container(settings)
+
     # This pod will be incorrect when doing fast serialize
     pod = entity.get_k8s_pod(settings)
 
     if settings.should_fast_serialize():
         # This handles container tasks.
+
         if container and isinstance(entity, (PythonAutoContainerTask, MapPythonTask, ArrayNodeMapTask)):
             # For fast registration, we'll need to muck with the command, but on
             # ly for certain kinds of tasks. Specifically,
             # tasks that rely on user code defined in the container. This should be encapsulated by the auto container
             # parent class
-            container._args = prefix_with_fast_execute(settings, container.args)
+            container.args = [str(ci) for ci in prefix_with_fast_execute(settings, container.args)]
 
         # If the pod spec is not None, we have to get it again, because the one we retrieved above will be incorrect.
         # The reason we have to call get_k8s_pod again, instead of just modifying the command in this file, is because
@@ -233,25 +231,24 @@ def get_serializable_task(
         extra_config = entity.task_function.get_extra_config()
 
     merged_config = {**entity_config, **extra_config}
-
-    tt = TaskTemplate(
+    tt = flyteidl.core.TaskTemplate(
         id=task_id,
         type=entity.task_type,
         metadata=entity.metadata.to_taskmetadata_model(),
         interface=entity.interface,
         custom=entity.get_custom(settings),
-        container=container,
+        target=flyteidl.core.Target.Container(container) or pod or (entity.get_sql(settings) if settings else None),
         task_type_version=entity.task_type_version,
         security_context=entity.security_context,
         config=merged_config,
-        k8s_pod=pod,
-        sql=entity.get_sql(settings),
+        # k8s_pod=pod,
+        # sql=entity.get_sql(settings),
         extended_resources=entity.get_extended_resources(settings),
     )
     if settings.should_fast_serialize() and isinstance(entity, PythonAutoContainerTask):
         entity.reset_command_fn()
 
-    return TaskSpec(template=tt, docs=entity.docs)
+    return flyteidl.admin.TaskSpec(template=tt, description=entity.docs)
 
 
 def get_serializable_workflow(
@@ -793,7 +790,7 @@ def get_serializable(
     else:
         raise Exception(f"Non serializable type found {type(entity)} Entity {entity}")
 
-    if isinstance(entity, TaskSpec) or isinstance(entity, WorkflowSpec):
+    if isinstance(entity, flyteidl.admin.TaskSpec) or isinstance(entity, WorkflowSpec):
         # 1. Check if the size of long description exceeds 16KB
         # 2. Extract the repo URL from the git config, and assign it to the link of the source code of the description entity
         if entity.docs and entity.docs.long_description:

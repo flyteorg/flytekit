@@ -4,6 +4,7 @@ import sys
 import typing
 from collections import OrderedDict
 
+import flyteidl_rust as flyteidl
 import click
 
 from flytekit import LaunchPlan
@@ -11,7 +12,6 @@ from flytekit.core import context_manager as flyte_context
 from flytekit.core.base_task import PythonTask
 from flytekit.core.workflow import WorkflowBase
 from flytekit.models import launch_plan as _launch_plan_models
-from flytekit.models import task as task_models
 from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.models.admin.workflow import WorkflowSpec
 from flytekit.models.task import TaskSpec
@@ -38,7 +38,7 @@ def _should_register_with_admin(entity) -> bool:
     that do not/should not be written to .pb file to send to admin. This function filters them out.
     """
     return isinstance(
-        entity, (task_models.TaskSpec, _launch_plan_models.LaunchPlan, admin_workflow_models.WorkflowSpec)
+        entity, (flyteidl.admin.TaskSpec, _launch_plan_models.LaunchPlan, admin_workflow_models.WorkflowSpec)
     ) and not isinstance(entity, RemoteEntity)
 
 
