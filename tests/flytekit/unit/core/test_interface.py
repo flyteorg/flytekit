@@ -320,6 +320,16 @@ def test_transform_interface_to_typed_interface_with_docstring():
     assert typed_interface.outputs.get("y_int").description == "description for y_int"
 
 
+def test_init_interface_with_invalid_parameters():
+    from flytekit.core.interface import Interface
+
+    with pytest.raises(ValueError, match=r"Input name must be valid Python identifier:"):
+        _ = Interface({"my.input": int}, {})
+
+    with pytest.raises(ValueError, match=r"Type names and field names must be valid identifiers:"):
+        _ = Interface({}, {"my.output": int})
+
+
 def test_parameter_change_to_pickle_type():
     ctx = context_manager.FlyteContext.current_context()
 
