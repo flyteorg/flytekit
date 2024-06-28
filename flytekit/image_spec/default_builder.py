@@ -74,7 +74,7 @@ ENV PATH="$$PATH:/usr/local/nvidia/bin:/usr/local/cuda/bin" \
     LD_LIBRARY_PATH="/usr/local/nvidia/lib64:$$LD_LIBRARY_PATH"
 
 $COPY_COMMAND_RUNTIME
-$RUN_COMMANDS
+RUN $RUN_COMMANDS
 
 WORKDIR /root
 SHELL ["/bin/bash", "-c"]
@@ -133,7 +133,7 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
             uv_requirements.append(requirement)
 
     requirements_uv_path = tmp_dir / "requirements_uv.txt"
-    requirements_uv_path.write_text(os.linesep.join(uv_requirements))
+    requirements_uv_path.write_text("\n".join(uv_requirements))
 
     pip_extra = f"--index-url {image_spec.pip_index}" if image_spec.pip_index else ""
     uv_python_install_command = UV_PYTHON_INSTALL_COMMAND_TEMPLATE.substitute(PIP_EXTRA=pip_extra)
@@ -192,7 +192,7 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
         python_version = f"{sys.version_info.major}.{sys.version_info.minor}"
 
     if image_spec.commands:
-        run_commands = "\n".join(f"RUN {command}" for command in image_spec.commands)
+        run_commands = " && ".join(image_spec.commands)
     else:
         run_commands = ""
 
