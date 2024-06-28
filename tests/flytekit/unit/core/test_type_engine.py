@@ -921,6 +921,30 @@ def test_dataclass_int_preserving():
 
 
 @mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
+def test_dataclass_with_postponed_annotation(mock_put_data):
+    remote_path = "s3://tmp/file"
+    mock_put_data.return_value = remote_path
+
+    @dataclass
+    class Data:
+        a: int
+        f: "FlyteFile"
+
+    ctx = FlyteContext.current_context()
+    tf = DataclassTransformer()
+    t = tf.get_literal_type(Data)
+    assert t.simple == SimpleType.STRUCT
+    with tempfile.TemporaryDirectory() as tmp:
+        test_file = os.path.join(tmp, "abc.txt")
+        with open(test_file, "w") as f:
+            f.write("123")
+
+        pv = Data(a=1, f=FlyteFile(test_file, remote_path=remote_path))
+        lt = tf.to_literal(ctx, pv, Data, t)
+        assert lt.scalar.generic.fields["f"].struct_value.fields["path"].string_value == remote_path
+
+
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
 def test_optional_flytefile_in_dataclass(mock_upload_dir):
     mock_upload_dir.return_value = True
 
@@ -1786,7 +1810,7 @@ def test_union_containers():
     lv = TypeEngine.to_literal(ctx, list_of_maps_of_list_ints, pt, lt)
     assert lv.scalar.union.stored_type.structure.tag == "Typed List"
     lv = TypeEngine.to_literal(ctx, map_of_list_ints, pt, lt)
-    assert lv.scalar.union.stored_type.structure.tag == "Python Dictionary"
+    assert lv.scalar.union.stored_type.structure.tag == "Typed Dict"
 
 
 @pytest.mark.skipif(sys.version_info < (3, 10), reason="PEP604 requires >=3.10.")

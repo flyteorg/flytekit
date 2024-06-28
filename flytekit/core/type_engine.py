@@ -591,10 +591,10 @@ class DataclassTransformer(TypeTransformer[object]):
             else:
                 return python_val
         else:
-            for v in dataclasses.fields(python_type):
-                val = python_val.__getattribute__(v.name)
-                field_type = v.type
-                python_val.__setattr__(v.name, self._serialize_flyte_type(val, field_type))
+            dataclass_attributes = typing.get_type_hints(python_type)
+            for n, t in dataclass_attributes.items():
+                val = python_val.__getattribute__(n)
+                python_val.__setattr__(n, self._serialize_flyte_type(val, t))
             return python_val
 
     def _deserialize_flyte_type(self, python_val: T, expected_python_type: Type) -> Optional[T]:
@@ -1677,7 +1677,7 @@ class DictTransformer(TypeTransformer[dict]):
     """
 
     def __init__(self):
-        super().__init__("Python Dictionary", dict)
+        super().__init__("Typed Dict", dict)
 
     @staticmethod
     def extract_types_or_metadata(t: Optional[Type[dict]]) -> typing.Tuple:

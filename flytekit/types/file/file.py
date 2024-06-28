@@ -440,6 +440,9 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             # Set the remote destination if one was given instead of triggering a random one below
             remote_path = python_val.remote_path or None
 
+            if ctx.execution_state.is_local_execution and python_val.remote_path is None:
+                should_upload = False
+
         elif isinstance(python_val, pathlib.Path) or isinstance(python_val, str):
             source_path = str(python_val)
             if issubclass(python_type, FlyteFile):
@@ -455,6 +458,8 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
                         p = pathlib.Path(python_val)
                         if not p.is_file():
                             raise TypeTransformerFailedError(f"Error converting {python_val} because it's not a file.")
+                        if ctx.execution_state.is_local_execution:
+                            should_upload = False
             # python_type must be os.PathLike - see check at beginning of function
             else:
                 should_upload = False

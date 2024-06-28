@@ -25,7 +25,7 @@ T = typing.TypeVar("T")
 
 def repr_kv(k: str, v: Union[Type, Tuple[Type, Any]]) -> str:
     if isinstance(v, tuple):
-        if v[1]:
+        if v[1] is not None:
             return f"{k}: {v[0]}={v[1]}"
         return f"{k}: {v[0]}"
     return f"{k}: {v}"
@@ -70,6 +70,8 @@ class Interface(object):
         self._inputs: Union[Dict[str, Tuple[Type, Any]], Dict[str, Type]] = {}  # type: ignore
         if inputs:
             for k, v in inputs.items():
+                if not k.isidentifier():
+                    raise ValueError(f"Input name must be valid Python identifier: {k!r}")
                 if type(v) is tuple and len(cast(Tuple, v)) > 1:
                     self._inputs[k] = v  # type: ignore
                 else:

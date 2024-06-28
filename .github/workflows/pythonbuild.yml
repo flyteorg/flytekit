@@ -14,7 +14,7 @@ env:
   FLYTE_SDK_LOGGING_LEVEL: 10 # debug
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
@@ -427,7 +427,7 @@ jobs:
           # TODO: move to protobuf>=5. Github issue: https://github.com/flyteorg/flyte/issues/5448
           uv pip install --system -U $GITHUB_WORKSPACE "protobuf<5"
           # TODO: remove this when numpy v2 in onnx has been resolved
-          if [[ ${{ matrix.plugin-names }} == *"onnx"* || ${{ matrix.plugin-names }} == "flytekit-sqlalchemy" ]]; then
+          if [[ ${{ matrix.plugin-names }} == *"onnx"* || ${{ matrix.plugin-names }} == "flytekit-sqlalchemy" || ${{ matrix.plugin-names }} == "flytekit-pandera" ]]; then
             uv pip install --system "numpy<2.0.0"
           fi
           uv pip freeze

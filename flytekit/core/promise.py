@@ -1202,19 +1202,22 @@ def flyte_entity_call_handler(
     #. Start a local execution - This means that we're not already in a local workflow execution, which means that
        we should expect inputs to be native Python values and that we should return Python native values.
     """
-    # Sanity checks
-    # Only keyword args allowed
-    if len(args) > 0:
-        raise _user_exceptions.FlyteAssertion(
-            f"When calling tasks, only keyword args are supported. "
-            f"Aborting execution as detected {len(args)} positional args {args}"
-        )
     # Make sure arguments are part of interface
     for k, v in kwargs.items():
-        if k not in cast(SupportsNodeCreation, entity).python_interface.inputs:
-            raise AssertionError(
-                f"Received unexpected keyword argument '{k}' in function '{cast(SupportsNodeCreation, entity).name}'"
-            )
+        if k not in entity.python_interface.inputs:
+            raise AssertionError(f"Received unexpected keyword argument '{k}' in function '{entity.name}'")
+
+    # Check if we have more arguments than expected
+    if len(args) > len(entity.python_interface.inputs):
+        raise AssertionError(
+            f"Received more arguments than expected in function '{entity.name}'. Expected {len(entity.python_interface.inputs)} but got {len(args)}"
+        )
+
+    # Convert args to kwargs
+    for arg, input_name in zip(args, entity.python_interface.inputs.keys()):
+        if input_name in kwargs:
+            raise AssertionError(f"Got multiple values for argument '{input_name}' in function '{entity.name}'")
+        kwargs[input_name] = arg
 
     ctx = FlyteContextManager.current_context()
     if ctx.execution_state and (
@@ -1234,15 +1237,12 @@ def flyte_entity_call_handler(
                 child_ctx.execution_state
                 and child_ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED
             ):
-                if (
-                    len(cast(SupportsNodeCreation, entity).python_interface.inputs) > 0
-                    or len(cast(SupportsNodeCreation, entity).python_interface.outputs) > 0
-                ):
-                    output_names = list(cast(SupportsNodeCreation, entity).python_interface.outputs.keys())
+                if len(entity.python_interface.inputs) > 0 or len(entity.python_interface.outputs) > 0:
+                    output_names = list(entity.python_interface.outputs.keys())
                     if len(output_names) == 0:
                         return VoidPromise(entity.name)
                     vals = [Promise(var, None) for var in output_names]
-                    return create_task_output(vals, cast(SupportsNodeCreation, entity).python_interface)
+                    return create_task_output(vals, entity.python_interface)
                 else:
                     return None
             return cast(LocallyExecutable, entity).local_execute(ctx, **kwargs)
@@ -1255,7 +1255,7 @@ def flyte_entity_call_handler(
             cast(ExecutionParameters, child_ctx.user_space_params)._decks = []
             result = cast(LocallyExecutable, entity).local_execute(child_ctx, **kwargs)
 
-        expected_outputs = len(cast(SupportsNodeCreation, entity).python_interface.outputs)
+        expected_outputs = len(entity.python_interface.outputs)
         if expected_outputs == 0:
             if result is None or isinstance(result, VoidPromise):
                 return None
@@ -1268,10 +1268,10 @@ def flyte_entity_call_handler(
         if (1 < expected_outputs == len(cast(Tuple[Promise], result))) or (
             result is not None and expected_outputs == 1
         ):
-            return create_native_named_tuple(ctx, result, cast(SupportsNodeCreation, entity).python_interface)
+            return create_native_named_tuple(ctx, result, entity.python_interface)
 
         raise AssertionError(
             f"Expected outputs and actual outputs do not match."
             f"Result {result}. "
-            f"Python interface: {cast(SupportsNodeCreation, entity).python_interface}"
+            f"Python interface: {entity.python_interface}"
         )
