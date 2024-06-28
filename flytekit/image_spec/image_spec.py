@@ -104,7 +104,7 @@ class ImageSpec:
             return os.environ.get(_F_IMG_ID) == self.image_name()
         return True
 
-    def exist(self) -> bool:
+    def exist(self) -> Optional[bool]:
         """
         Check if the image exists in the registry.
         Return True if the image exists in the registry, False otherwise.
@@ -125,7 +125,6 @@ class ImageSpec:
                 return False
 
             click.secho(f"Failed to check if the image exists with error:\n {e}", fg="red")
-            click.secho(f"Flytekit assumes the image {self.image_name()} already exists.", fg="blue")
             return None
         except ImageNotFound:
             return False
@@ -159,7 +158,6 @@ class ImageSpec:
                 )
 
             click.secho(f"Failed to check if the image exists with error:\n {e}", fg="red")
-            click.secho(f"Flytekit assumes the image {self.image_name()} already exists.", fg="blue")
             return None
 
     def __hash__(self):
@@ -249,13 +247,13 @@ class ImageSpecBuilder:
         if exist is False:
             click.secho(f"Image {img_name} not found. building...", fg="blue")
             return True
-
-        if image_spec._is_force_push:
-            click.secho(f"Overwriting existing image {img_name}.", fg="blue")
-            return True
-
-        if exist is True:
+        elif exist is True:
+            if image_spec._is_force_push:
+                click.secho(f"Overwriting existing image {img_name}.", fg="blue")
+                return True
             click.secho(f"Image {img_name} found. Skip building.", fg="blue")
+        else:
+            click.secho(f"Flytekit assumes the image {img_name} already exists.", fg="blue")
         return False
 
 

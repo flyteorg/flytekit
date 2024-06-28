@@ -80,7 +80,7 @@ def execute_command(command: str):
 
     if p.returncode != 0:
         _, stderr = p.communicate()
-        raise Exception(f"failed to run command {command} with error:\n {stderr.decode()}")
+        raise RuntimeError(f"failed to run command {command} with error:\n {stderr.decode()}")
 
     return result
 
