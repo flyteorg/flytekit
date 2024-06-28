@@ -155,6 +155,7 @@ class SecurityContext(_common.FlyteIdlEntity):
     run_as: Optional[Identity] = None
     secrets: Optional[List[Secret]] = None
     tokens: Optional[List[OAuth2TokenRequest]] = None
+    connection_ref: Optional[str] = None
 
     def __post_init__(self):
         if self.secrets and not isinstance(self.secrets, list):
@@ -163,12 +164,13 @@ class SecurityContext(_common.FlyteIdlEntity):
             self.tokens = [self.tokens]
 
     def to_flyte_idl(self) -> _sec.SecurityContext:
-        if self.run_as is None and self.secrets is None and self.tokens is None:
+        if self.run_as is None and self.secrets is None and self.tokens is None and self.connection_ref is None:
             return None
         return _sec.SecurityContext(
             run_as=self.run_as.to_flyte_idl() if self.run_as else None,
             secrets=[s.to_flyte_idl() for s in self.secrets] if self.secrets else None,
             tokens=[t.to_flyte_idl() for t in self.tokens] if self.tokens else None,
+            connection_ref=self.connection_ref,
         )
 
     @classmethod
@@ -179,4 +181,5 @@ class SecurityContext(_common.FlyteIdlEntity):
             else None,
             secrets=[Secret.from_flyte_idl(s) for s in pb2_object.secrets] if pb2_object.secrets else None,
             tokens=[OAuth2TokenRequest.from_flyte_idl(t) for t in pb2_object.tokens] if pb2_object.tokens else None,
+            connection_ref=pb2_object.connection_ref if pb2_object.connection_ref else None,
         )

@@ -39,6 +39,9 @@ def is_terminal_phase(phase: TaskExecution.Phase) -> bool:
 
 
 def get_agent_secret(secret_key: str) -> str:
+    """
+    Get the secret from the Flyte context.
+    """
     return flytekit.current_context().secrets.get(secret_key)
 
 
