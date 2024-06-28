@@ -566,7 +566,8 @@ class DataclassTransformer(TypeTransformer[object]):
 
         if not dataclasses.is_dataclass(python_type):
             return python_val
-
+        # to json from json add them all to overwrite to_json and from_json
+        # def _serialize_flyte_type
         if inspect.isclass(python_type) and (
             issubclass(python_type, FlyteSchema)
             or issubclass(python_type, FlyteFile)
