@@ -1,5 +1,5 @@
 import typing
-from datetime import timezone as _timezone
+from datetime import datetime, timezone
 
 from flyteidl.admin import launch_plan_pb2 as _launch_plan
 from google.protobuf.any_pb2 import Any
@@ -353,10 +353,7 @@ class LaunchPlanClosure(_common.FlyteIdlEntity):
         return self._expected_outputs
 
     @property
-    def created_at(self):
-        """
-        :rtype: datetime.datetime
-        """
+    def created_at(self) -> typing.Optional[datetime]:
         return self._created_at
 
     def to_flyte_idl(self):
@@ -369,7 +366,7 @@ class LaunchPlanClosure(_common.FlyteIdlEntity):
             expected_outputs=self.expected_outputs.to_flyte_idl(),
         )
         if self.created_at is not None:
-            obj.created_at.FromDatetime(self.created_at.astimezone(_timezone.utc).replace(tzinfo=None))
+            obj.created_at.FromDatetime(self.created_at.astimezone(timezone.utc).replace(tzinfo=None))
         return obj
 
     @classmethod
@@ -382,7 +379,7 @@ class LaunchPlanClosure(_common.FlyteIdlEntity):
             pb2_object.state,
             _interface.ParameterMap.from_flyte_idl(pb2_object.expected_inputs),
             _interface.VariableMap.from_flyte_idl(pb2_object.expected_outputs),
-            created_at=pb2_object.created_at.ToDatetime().replace(tzinfo=_timezone.utc)
+            created_at=pb2_object.created_at.ToDatetime().replace(tzinfo=timezone.utc)
             if pb2_object.HasField("created_at")
             else None,
         )

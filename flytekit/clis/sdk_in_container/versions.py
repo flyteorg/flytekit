@@ -85,13 +85,13 @@ class RemoteEntityVersionGroup(RemoteEntityGroup):
         if self._command_name in [self.LAUNCHPLAN_COMMAND, self.WORKFLOW_COMMAND]:
             return DynamicEntityVersionCommand(
                 name=name,
-                help_msg=f"Display version of a {self._command_name}.",
+                help_msg="",
                 entity_name=name,
                 launcher=DynamicEntityLaunchCommand.LP_LAUNCHER,
             )
         return DynamicEntityVersionCommand(
             name=name,
-            help_msg=f"Display version of a {self._command_name}.",
+            help_msg="",
             entity_name=name,
             launcher=DynamicEntityLaunchCommand.TASK_LAUNCHER,
         )
