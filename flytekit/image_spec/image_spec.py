@@ -76,6 +76,7 @@ class ImageSpec:
         self._is_force_push = os.environ.get(FLYTE_FORCE_PUSH_IMAGE_SPEC, False)  # False by default
         if self.registry:
             self.registry = self.registry.lower()
+        self._prev: ImageSpec = None
 
     def image_name(self) -> str:
         """Full image name with tag."""
@@ -164,46 +165,31 @@ class ImageSpec:
         """
         Builder that returns a new image spec with an additional list of commands that will be executed during the building process.
         """
-        new_image_spec = copy.deepcopy(self)
-        if new_image_spec.commands is None:
-            new_image_spec.commands = []
-
-        if isinstance(commands, List):
-            new_image_spec.commands.extend(commands)
-        else:
-            new_image_spec.commands.append(commands)
-
-        return new_image_spec
+        return ImageSpec(
+            commands=commands if isinstance(commands, List) else [commands],
+            base_image=self,
+            registry=self.registry,
+        )
 
     def with_packages(self, packages: Union[str, List[str]]) -> "ImageSpec":
         """
         Builder that returns a new image speck with additional python packages that will be installed during the building process.
         """
-        new_image_spec = copy.deepcopy(self)
-        if new_image_spec.packages is None:
-            new_image_spec.packages = []
-
-        if isinstance(packages, List):
-            new_image_spec.packages.extend(packages)
-        else:
-            new_image_spec.packages.append(packages)
-
-        return new_image_spec
+        return ImageSpec(
+            packages=packages if isinstance(packages, List) else [packages],
+            base_image=self,
+            registry=self.registry,
+        )
 
     def with_apt_packages(self, apt_packages: Union[str, List[str]]) -> "ImageSpec":
         """
-        Builder that returns a new image spec with additional list of apt packages that will be executed during the building process.
+        Builder that returns a new image spec with an additional list of apt packages that will be executed during the building process.
         """
-        new_image_spec = copy.deepcopy(self)
-        if new_image_spec.apt_packages is None:
-            new_image_spec.apt_packages = []
-
-        if isinstance(apt_packages, List):
-            new_image_spec.apt_packages.extend(apt_packages)
-        else:
-            new_image_spec.apt_packages.append(apt_packages)
-
-        return new_image_spec
+        return ImageSpec(
+            apt_packages=apt_packages if isinstance(apt_packages, List) else [apt_packages],
+            base_image=self,
+            registry=self.registry,
+        )
 
     def force_push(self) -> "ImageSpec":
         """
