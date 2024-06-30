@@ -65,7 +65,7 @@ def test_create_docker_context_with_git_subfolder(tmp_path):
         name="FLYTEKIT",
         python_version="3.12",
         apt_packages=["git"],
-        packages=["git+https://github.com/thomasjpfan/flytekit.git@master#subdirectory=plugins/flytekit-wandb"],
+        packages=["git+https://github.com/flyteorg/flytekit.git@master#subdirectory=plugins/flytekit-wandb"],
     )
 
     create_docker_context(image_spec, docker_context_path)
@@ -75,6 +75,8 @@ def test_create_docker_context_with_git_subfolder(tmp_path):
     dockerfile_content = dockerfile_path.read_text()
 
     assert "--requirement requirements_pip.txt" in dockerfile_content
+    requirements_path = docker_context_path / "requirements_pip.txt"
+    assert requirements_path.exists()
 
 
 def test_create_docker_context_cuda(tmp_path):

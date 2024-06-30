@@ -123,7 +123,7 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
 
     uv_requirements = []
 
-    # uv support git + subdirectory well, so we use pip to install them instead
+    # uv does not support git + subdirectory, so we use pip to install them instead
     pip_requirements = []
 
     for requirement in requirements:
@@ -139,7 +139,7 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
     uv_python_install_command = UV_PYTHON_INSTALL_COMMAND_TEMPLATE.substitute(PIP_EXTRA=pip_extra)
 
     if pip_requirements:
-        requirements_uv_path = tmp_dir / "requirements_pypi.txt"
+        requirements_uv_path = tmp_dir / "requirements_pip.txt"
         requirements_uv_path.write_text(os.linesep.join(pip_requirements))
 
         pip_python_install_command = PIP_PYTHON_INSTALL_COMMAND_TEMPLATE.substitute(PIP_EXTRA=pip_extra)
