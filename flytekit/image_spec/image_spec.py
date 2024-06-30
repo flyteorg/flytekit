@@ -76,7 +76,6 @@ class ImageSpec:
         self._is_force_push = os.environ.get(FLYTE_FORCE_PUSH_IMAGE_SPEC, False)  # False by default
         if self.registry:
             self.registry = self.registry.lower()
-        self._prev: ImageSpec = None
 
     def image_name(self) -> str:
         """Full image name with tag."""
