@@ -39,11 +39,11 @@ def test_create_docker_context(tmp_path):
     assert "curl" in dockerfile_content
     assert "scipy==1.13.0 numpy" in dockerfile_content
     assert "python=3.12" in dockerfile_content
-    assert "--requirement requirements.txt" in dockerfile_content
+    assert "--requirement requirements_uv.txt" in dockerfile_content
     assert "COPY --chown=flytekit ./src /root" in dockerfile_content
     assert "RUN mkdir my_dir" in dockerfile_content
 
-    requirements_path = docker_context_path / "requirements.txt"
+    requirements_path = docker_context_path / "requirements_uv.txt"
     assert requirements_path.exists()
 
     requirements_content = requirements_path.read_text()
@@ -53,6 +53,28 @@ def test_create_docker_context(tmp_path):
     tmp_hello_world = docker_context_path / "src" / "hello_world.txt"
     assert tmp_hello_world.exists()
     assert tmp_hello_world.read_text() == "hello"
+
+
+def test_create_docker_context_with_git_subfolder(tmp_path):
+    # uv's pip install errors with git and subdirectory
+    # In this case, we go back to pip instead
+    docker_context_path = tmp_path / "builder_root"
+    docker_context_path.mkdir()
+
+    image_spec = ImageSpec(
+        name="FLYTEKIT",
+        python_version="3.12",
+        apt_packages=["git"],
+        packages=["git+https://github.com/thomasjpfan/flytekit.git@master#subdirectory=plugins/flytekit-wandb"],
+    )
+
+    create_docker_context(image_spec, docker_context_path)
+
+    dockerfile_path = docker_context_path / "Dockerfile"
+    assert dockerfile_path.exists()
+    dockerfile_content = dockerfile_path.read_text()
+
+    assert "--requirement requirements_pip.txt" in dockerfile_content
 
 
 def test_create_docker_context_cuda(tmp_path):

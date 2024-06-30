@@ -28,9 +28,9 @@ RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/uv,id=uv \
 
 PIP_PYTHON_INSTALL_COMMAND_TEMPLATE = Template("""\
 RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/pip,id=pip \
-    --mount=type=bind,target=requirements_pypi.txt,src=requirements_pypi.txt \
+    --mount=type=bind,target=requirements_pip.txt,src=requirements_pip.txt \
     /root/micromamba/envs/dev/bin/python -m pip install $PIP_EXTRA \
-    --requirement requirements_pypi.txt
+    --requirement requirements_pip.txt
 """)
 
 APT_INSTALL_COMMAND_TEMPLATE = Template(
