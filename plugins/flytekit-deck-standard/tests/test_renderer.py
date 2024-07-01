@@ -12,7 +12,6 @@ from flytekitplugins.deck.renderer import (
     MarkdownRenderer,
     SourceCodeRenderer,
     TableRenderer,
-    px_installed,
 )
 from PIL import Image
 
@@ -45,7 +44,6 @@ def test_markdown_renderer():
     assert renderer.to_html(md_text) == markdown.markdown(md_text)
 
 
-@pytest.mark.skipif(not px_installed, reason="Plotly is not installed")
 def test_box_renderer():
     renderer = BoxRenderer("Name")
     assert "Plotlyconfig = {Mathjaxconfig: 'Local'}" in renderer.to_html(df).title()
@@ -82,7 +80,6 @@ def test_table_renderer():
     assert "Dataframe Table-Class" in renderer.to_html(time_info_df).title()
 
 
-@pytest.mark.skipif(not px_installed, reason="Plotly is not installed")
 def test_gantt_chart_renderer():
     renderer = GanttChartRenderer()
     assert "Plotlyconfig = {Mathjaxconfig: 'Local'}" in renderer.to_html(time_info_df).title()

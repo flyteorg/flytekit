@@ -153,8 +153,6 @@ def generate_time_table(data: dict) -> str:
         "<tbody>",
     ]
 
-    # Add table headers
-
     # Add table rows
     for row in data:
         html.append("<tr>")

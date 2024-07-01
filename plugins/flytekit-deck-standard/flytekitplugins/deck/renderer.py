@@ -12,8 +12,8 @@ if TYPE_CHECKING:
 else:
     pd = lazy_module("pandas")
     markdown = lazy_module("markdown")
-    PIL = lazy_module("PIL")
     px = lazy_module("plotly.express")
+    PIL = lazy_module("PIL")
 
 
 class SourceCodeRenderer:
