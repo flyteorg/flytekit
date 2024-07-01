@@ -467,9 +467,6 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         else:
             raise TypeTransformerFailedError(f"Expected FlyteFile or os.PathLike object, received {type(python_val)}")
 
-        # if ctx.execution_state.is_local_execution():
-        #     should_upload = False
-
         # If we're uploading something, that means that the uri should always point to the upload destination.
         if should_upload:
             headers = self.get_additional_headers(source_path)
