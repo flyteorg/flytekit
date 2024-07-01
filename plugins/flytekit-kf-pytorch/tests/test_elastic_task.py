@@ -201,22 +201,12 @@ def test_run_policy() -> None:
         backoff_limit=None,
     )
 
-    pytorch_tasks = []
-    original_init = PytorchElasticFunctionTask.__init__
+    # nnodes must be > 1 to get pytorchjob spec
+    @task(task_config=Elastic(nnodes=2, nproc_per_node=2, run_policy=run_policy))
+    def test_task():
+        pass
 
-    def mock_init(self, *args, **kwargs) -> None:
-        original_init(self, *args, **kwargs)
-        pytorch_tasks.append(self)
-
-    with mock.patch.object(PytorchElasticFunctionTask, "__init__", mock_init):
-        # nnodes must be > 1 to get pytorchjob spec
-        @task(task_config=Elastic(nnodes=2, nproc_per_node=2, run_policy=run_policy))
-        def test_task():
-            pass
-
-    assert len(pytorch_tasks) == 1
-    function_task = pytorch_tasks[-1]
-    spec = function_task.get_custom(SerializationSettings(image_config=None))
+    spec = test_task.get_custom(SerializationSettings(image_config=None))
 
     assert spec["runPolicy"] == {
         "cleanPodPolicy": "CLEANPOD_POLICY_ALL",
