@@ -548,12 +548,10 @@ class ExecutionState(object):
         )
 
     def is_local_execution(self) -> bool:
-        if self.mode and (
+        return (
             self.mode == ExecutionState.Mode.LOCAL_TASK_EXECUTION
             or self.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
-        ):
-            return True
-        return False
+        )
 
 
 class SerializableToString(typing.Protocol):
