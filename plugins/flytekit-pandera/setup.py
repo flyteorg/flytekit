@@ -4,6 +4,7 @@ PLUGIN_NAME = "pandera"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
+# TODO: remove upper bound. https://github.com/flyteorg/flyte/issues/5531
 plugin_requires = ["flytekit>=1.3.0b2,<2.0.0", "pandera>=0.7.1,<=0.19.3", "pandas"]
 
 __version__ = "0.0.0+develop"
