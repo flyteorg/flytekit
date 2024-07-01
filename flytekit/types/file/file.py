@@ -460,7 +460,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
                         p = pathlib.Path(python_val)
                         if not p.is_file():
                             raise TypeTransformerFailedError(f"Error converting {python_val} because it's not a file.")
-                        if ctx.execution_state.mode != ExecutionState.Mode.TASK_EXECUTION and ctx.execution_state.is_local_execution():
+                        if ctx.execution_state.is_local_execution():
                             should_upload = False
             # python_type must be os.PathLike - see check at beginning of function
             else:
