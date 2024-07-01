@@ -43,6 +43,7 @@ class NIMSecrets:
 class NIM(ModelInferenceTemplate):
     def __init__(
         self,
+        secrets: NIMSecrets,
         image: str = "nvcr.io/nim/meta/llama3-8b-instruct:1.0.0",
         health_endpoint: str = "v1/health/ready",
         port: int = 8000,
@@ -53,7 +54,6 @@ class NIM(ModelInferenceTemplate):
         env: Optional[dict[str, str]] = None,
         hf_repo_ids: Optional[list[str]] = None,
         lora_adapter_mem: Optional[str] = None,
-        secrets: Optional[NIMSecrets] = None,
     ):
         """
         Initialize NIM class for managing a Kubernetes pod template.
@@ -114,7 +114,7 @@ class NIM(ModelInferenceTemplate):
 
         model_server_container = self.pod_template.pod_spec.init_containers[0]
 
-        secret_prefix = get_plugin().secret_prefix
+        secret_prefix = get_plugin().secret_prefix()
         if self._secrets.ngc_secret_group:
             ngc_api_key = f"$({secret_prefix}{self._secrets.ngc_secret_group}_{self._secrets.ngc_secret_key})".upper()
         else:

@@ -1,28 +1,21 @@
-from flytekit.core.inference import NIM
+from flytekit.core.inference import NIM, NIMSecrets
 import pytest
 
-secrets = {
-    "ngc_secret_key": "ngc-key",
-    "ngc_image_secret": "nvcrio-cred",
-}
+secrets = NIMSecrets(ngc_secret_key="ngc-key", ngc_image_secret="nvcrio-cred")
 
 
 def test_nim_init_raises_value_error():
-    with pytest.raises(ValueError):
-        NIM(
-            ngc_image_secret=secrets["ngc_image_secret"],
-        )
+    with pytest.raises(TypeError):
+        NIM(secrets=NIMSecrets(ngc_image_secret=secrets.ngc_image_secret))
 
-    with pytest.raises(ValueError):
-        NIM(
-            ngc_secret_key=secrets["ngc_secret_key"],
-        )
+    with pytest.raises(TypeError):
+        NIM(secrets=NIMSecrets(ngc_secret_key=secrets.ngc_secret_key))
 
 
 def test_nim_secrets():
     nim_instance = NIM(
         image="nvcr.io/nim/meta/llama3-8b-instruct:1.0.0",
-        **secrets,
+        secrets=secrets,
     )
 
     assert (
@@ -30,7 +23,7 @@ def test_nim_secrets():
     )
     secret_obj = nim_instance.pod_template.pod_spec.init_containers[0].env[0]
     assert secret_obj.name == "NGC_API_KEY"
-    assert secret_obj.value == "$(_UNION_NGC-KEY)"
+    assert secret_obj.value == "$(_FSEC_NGC-KEY)"
 
 
 def test_nim_init_valid_params():
@@ -38,7 +31,7 @@ def test_nim_init_valid_params():
         mem="30Gi",
         port=8002,
         image="nvcr.io/nim/meta/llama3-8b-instruct:1.0.0",
-        **secrets,
+        secrets=secrets,
     )
 
     assert (
@@ -58,7 +51,7 @@ def test_nim_init_valid_params():
 
 
 def test_nim_default_params():
-    nim_instance = NIM(**secrets)
+    nim_instance = NIM(secrets=secrets)
 
     assert nim_instance.base_url == "http://localhost:8000"
     assert nim_instance._cpu == 1
@@ -73,7 +66,7 @@ def test_nim_lora():
         ValueError, match="Memory to allocate to download LoRA adapters must be set."
     ):
         NIM(
-            **secrets,
+            secrets=secrets,
             hf_repo_ids=["unionai/Llama-8B"],
             env={"NIM_PEFT_SOURCE": "/home/nvs/loras"},
         )
@@ -82,13 +75,13 @@ def test_nim_lora():
         ValueError, match="NIM_PEFT_SOURCE environment variable must be set."
     ):
         NIM(
-            **secrets,
+            secrets=secrets,
             hf_repo_ids=["unionai/Llama-8B"],
             lora_adapter_mem="500Mi",
         )
 
     nim_instance = NIM(
-        **secrets,
+        secrets=secrets,
         hf_repo_ids=["unionai/Llama-8B", "unionai/Llama-70B"],
         lora_adapter_mem="500Mi",
         env={"NIM_PEFT_SOURCE": "/home/nvs/loras"},
