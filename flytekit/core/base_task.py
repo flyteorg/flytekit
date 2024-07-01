@@ -506,7 +506,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
 
         if disable_deck is not None:
             warnings.warn(
-                "disable_deck was deprecated in 1.10.0, please use enable_deck and decks instead",
+                "disable_deck was deprecated in 1.10.0, please use enable_deck instead",
                 FutureWarning,
             )
 

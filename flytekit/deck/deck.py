@@ -103,22 +103,9 @@ class TimeLineDeck(Deck):
 
     @property
     def html(self) -> str:
-        gantt_dep_installed = False
-        try:
-            from flytekitplugins.deck.renderer import TableRenderer
-        except ImportError:
-            warning_info = "Plugin 'flytekit-deck-standard' is not installed. To display time line, install the plugin in the image."
-            logger.warning(warning_info)
-            return warning_info
-        from flytekitplugins.deck.renderer import GanttChartRenderer, px_installed
-
-        gantt_dep_installed = px_installed
         if len(self.time_info) == 0:
             return ""
 
-        import pandas
-
-        df = pandas.DataFrame(self.time_info)
         note = """
             <p><strong>Note:</strong></p>
             <ol>
@@ -126,16 +113,59 @@ class TimeLineDeck(Deck):
                 <li>For accurate execution time measurements, users should refer to wall time and process time.</li>
             </ol>
         """
-        # set the accuracy to microsecond
-        df["ProcessTime"] = df["ProcessTime"].apply(lambda time: "{:.6f}".format(time))
-        df["WallTime"] = df["WallTime"].apply(lambda time: "{:.6f}".format(time))
 
-        gantt_chart_html = GanttChartRenderer().to_html(df) if gantt_dep_installed else ""
-        time_table_html = TableRenderer().to_html(
-            df[["Name", "WallTime", "ProcessTime"]],
-            header_labels=["Name", "Wall Time(s)", "Process Time(s)"],
-        )
-        return gantt_chart_html + time_table_html + note
+        try:
+            import pandas
+            from flytekitplugins.deck.renderer import GanttChartRenderer, TableRenderer
+
+            df = pandas.DataFrame(self.time_info)
+            # set the accuracy to microsecond
+            df["ProcessTime"] = df["ProcessTime"].apply(lambda time: "{:.6f}".format(time))
+            df["WallTime"] = df["WallTime"].apply(lambda time: "{:.6f}".format(time))
+
+            gantt_chart_html = GanttChartRenderer().to_html(df)
+            time_table_html = TableRenderer().to_html(
+                df[["Name", "WallTime", "ProcessTime"]],
+                header_labels=["Name", "Wall Time(s)", "Process Time(s)"],
+            )
+            return gantt_chart_html + time_table_html + note
+        except ImportError:
+            warning_info = (
+                "<p>To display timeline chart, please install flytekitplugins-deck-standard in the image.</p>"
+            )
+            logger.warning(warning_info)
+
+        return warning_info + generate_time_table(self.time_info) + note
+
+
+def generate_time_table(data: dict) -> str:
+    html = [
+        '<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; width: 100%;">',
+        """
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Wall Time(s)</th>
+                <th>Process Time(s)</th>
+            </tr>
+        </thead>
+        """,
+        "<tbody>",
+    ]
+
+    # Add table headers
+
+    # Add table rows
+    for row in data:
+        html.append("<tr>")
+        html.append(f"<td>{row['Name']}</td>")
+        html.append(f"<td>{row['WallTime']:.6f}</td>")
+        html.append(f"<td>{row['ProcessTime']:.6f}</td>")
+        html.append("</tr>")
+    html.append("</tbody>")
+
+    html.append("</table>")
+    return "".join(html)
 
 
 def _get_deck(

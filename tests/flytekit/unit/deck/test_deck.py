@@ -184,7 +184,7 @@ def test_deck_pandas_dataframe(enable_deck, disable_deck, expected_decks, expect
 
 
 def test_deck_deprecation_warning_disable_deck():
-    warn_msg = "disable_deck was deprecated in 1.10.0, please use enable_deck and decks instead"
+    warn_msg = "disable_deck was deprecated in 1.10.0, please use enable_deck instead"
     with pytest.warns(FutureWarning, match=warn_msg):
 
         @task(disable_deck=False)
