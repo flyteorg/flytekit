@@ -1,6 +1,6 @@
-from flytekit.core.pod_template import PodTemplate
+from kubernetes.client import V1Container, V1EmptyDirVolumeSource, V1PodSpec, V1Volume, V1VolumeMount
 
-from kubernetes.client import V1Container, V1PodSpec, V1Volume, V1VolumeMount, V1EmptyDirVolumeSource
+from flytekit.core.pod_template import PodTemplate
 
 
 def add_shared_mem_volume_to_pod_template(pod_template: PodTemplate) -> None:
