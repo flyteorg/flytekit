@@ -15,12 +15,15 @@ from google.protobuf.json_format import MessageToDict
 import flytekit
 from flytekit import PythonFunctionTask, Resources, lazy_module
 from flytekit.configuration import SerializationSettings
+from flytekit.core.pod_template import PodTemplate
 from flytekit.core.resources import convert_resources_to_resource_model
 from flytekit.exceptions.user import FlyteRecoverableException
 from flytekit.extend import IgnoreOutputs, TaskPlugins
 from flytekit.loggers import logger
 
 from .error_handling import create_recoverable_error_file, is_recoverable_worker_error
+from .pod_template import add_shared_mem_volume_to_pod_template
+
 
 cloudpickle = lazy_module("cloudpickle")
 
@@ -103,6 +106,10 @@ class PyTorch(object):
         worker: Configuration for the worker replica group.
         run_policy: Configuration for the run policy.
         num_workers: [DEPRECATED] This argument is deprecated. Use `worker.replicas` instead.
+        increase_shared_mem (bool): PyTorch uses shared memory to share data between processes. If torch multiprocessing is used
+            (e.g. for multithreaded data loaders) the default shared memory segment size that the container runs with might not be enough
+            and and one might have to increase the shared memory size. This option configures the task's pod template to mount
+            an `emptyDir` volume with medium `Memory` to to `/dev/shm`.
     """
 
     master: Master = field(default_factory=lambda: Master())
@@ -110,6 +117,7 @@ class PyTorch(object):
     run_policy: Optional[RunPolicy] = field(default_factory=lambda: None)
     # Support v0 config for backwards compatibility
     num_workers: Optional[int] = None
+    increase_shared_mem: bool = True
 
 
 @dataclass
@@ -130,6 +138,10 @@ class Elastic(object):
         max_restarts (int): Maximum number of worker group restarts before failing.
         rdzv_configs (Dict[str, Any]): Additional rendezvous configs to pass to torch elastic, e.g. `{"timeout": 1200, "join_timeout": 900}`.
             See `torch.distributed.launcher.api.LaunchConfig` and `torch.distributed.elastic.rendezvous.dynamic_rendezvous.create_handler`.
+        increase_shared_mem (bool): PyTorch uses shared memory to share data between processes. If torch multiprocessing is used
+            (e.g. for multithreaded data loaders) the default shared memory segment size that the container runs with might not be enough
+            and and one might have to increase the shared memory size. This option configures the task's pod template to mount
+            an `emptyDir` volume with medium `Memory` to to `/dev/shm`.
     """
 
     nnodes: Union[int, str] = 1
@@ -138,6 +150,7 @@ class Elastic(object):
     monitor_interval: int = 5
     max_restarts: int = 0
     rdzv_configs: Dict[str, Any] = field(default_factory=dict)
+    increase_shared_mem: bool = True
 
 
 class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
@@ -165,6 +178,10 @@ class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
             task_type_version=1,
             **kwargs,
         )
+        if self.task_config.increase_shared_mem:
+            if self.pod_template is None:
+                self.pod_template = PodTemplate()
+            add_shared_mem_volume_to_pod_template(self.pod_template)
 
     def _convert_replica_spec(
         self, replica_config: Union[Master, Worker]
@@ -298,6 +315,11 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
         Instead, the workers will use the master's address as the rendezvous point.
         """
         self.rdzv_backend = "c10d"
+
+        if self.task_config.increase_shared_mem:
+            if self.pod_template is None:
+                self.pod_template = PodTemplate()
+            add_shared_mem_volume_to_pod_template(self.pod_template)
 
     def _execute(self, **kwargs) -> Any:
         """
