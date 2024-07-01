@@ -547,7 +547,7 @@ class ExecutionState(object):
             user_space_params=user_space_params if user_space_params else self.user_space_params,
         )
 
-    def is_local_execution(self):
+    def is_local_execution(self) -> bool:
         return (
             self.mode == ExecutionState.Mode.LOCAL_TASK_EXECUTION
             or self.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
