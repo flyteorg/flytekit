@@ -182,14 +182,15 @@ class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
             restart_policy=replica_config.restart_policy.value if replica_config.restart_policy else None,
         )
 
-
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         worker = self._convert_replica_spec(self.task_config.worker)
         # support v0 config for backwards compatibility
         if self.task_config.num_workers:
             worker.replicas = self.task_config.num_workers
 
-        run_policy = _convert_run_policy_to_flyte_idl(self.task_config.run_policy) if self.task_config.run_policy else None
+        run_policy = (
+            _convert_run_policy_to_flyte_idl(self.task_config.run_policy) if self.task_config.run_policy else None
+        )
         pytorch_job = pytorch_task.DistributedPyTorchTrainingTask(
             worker_replicas=worker,
             master_replicas=self._convert_replica_spec(self.task_config.master),
@@ -258,12 +259,13 @@ def spawn_helper(
 
 
 def _convert_run_policy_to_flyte_idl(run_policy: RunPolicy) -> kubeflow_common.RunPolicy:
-        return kubeflow_common.RunPolicy(
-            clean_pod_policy=run_policy.clean_pod_policy.value if run_policy.clean_pod_policy else None,
-            ttl_seconds_after_finished=run_policy.ttl_seconds_after_finished,
-            active_deadline_seconds=run_policy.active_deadline_seconds,
-            backoff_limit=run_policy.backoff_limit,
-        )
+    return kubeflow_common.RunPolicy(
+        clean_pod_policy=run_policy.clean_pod_policy.value if run_policy.clean_pod_policy else None,
+        ttl_seconds_after_finished=run_policy.ttl_seconds_after_finished,
+        active_deadline_seconds=run_policy.active_deadline_seconds,
+        backoff_limit=run_policy.backoff_limit,
+    )
+
 
 class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
     """
@@ -447,7 +449,9 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
                 nproc_per_node=self.task_config.nproc_per_node,
                 max_restarts=self.task_config.max_restarts,
             )
-            run_policy = _convert_run_policy_to_flyte_idl(self.task_config.run_policy) if self.task_config.run_policy else None
+            run_policy = (
+                _convert_run_policy_to_flyte_idl(self.task_config.run_policy) if self.task_config.run_policy else None
+            )
             job = pytorch_task.DistributedPyTorchTrainingTask(
                 worker_replicas=pytorch_task.DistributedPyTorchTrainingReplicaSpec(
                     replicas=self.max_nodes,

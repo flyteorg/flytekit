@@ -192,7 +192,6 @@ def test_recoverable_error(recoverable: bool, start_method: str) -> None:
 
 def test_run_policy() -> None:
     """Test that run policy is propagated to custom spec."""
-    from flytekitplugins.kfpytorch.task import PytorchElasticFunctionTask
 
     run_policy = RunPolicy(
         clean_pod_policy=CleanPodPolicy.ALL,
