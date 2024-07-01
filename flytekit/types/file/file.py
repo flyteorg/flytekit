@@ -440,7 +440,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             # Set the remote destination if one was given instead of triggering a random one below
             remote_path = python_val.remote_path or None
 
-            # if ctx.execution_state.is_local_execution and python_val.remote_path is None:
+            # if ctx.execution_state.is_local_execution and python_val.remote_path is False:
             #     should_upload = False
 
         elif isinstance(python_val, pathlib.Path) or isinstance(python_val, str):
@@ -466,6 +466,9 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
 
         else:
             raise TypeTransformerFailedError(f"Expected FlyteFile or os.PathLike object, received {type(python_val)}")
+
+        print("@@@ ctx.execution_state.mode:", ctx.execution_state.mode)
+        print("@@@ ctx.execution_state.is_local_execution", ctx.execution_state.is_local_execution)
 
         # If we're uploading something, that means that the uri should always point to the upload destination.
         if should_upload:
