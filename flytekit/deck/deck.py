@@ -114,28 +114,7 @@ class TimeLineDeck(Deck):
             </ol>
         """
 
-        try:
-            import pandas
-            from flytekitplugins.deck.renderer import GanttChartRenderer, TableRenderer
-
-            df = pandas.DataFrame(self.time_info)
-            # set the accuracy to microsecond
-            df["ProcessTime"] = df["ProcessTime"].apply(lambda time: "{:.6f}".format(time))
-            df["WallTime"] = df["WallTime"].apply(lambda time: "{:.6f}".format(time))
-
-            gantt_chart_html = GanttChartRenderer().to_html(df)
-            time_table_html = TableRenderer().to_html(
-                df[["Name", "WallTime", "ProcessTime"]],
-                header_labels=["Name", "Wall Time(s)", "Process Time(s)"],
-            )
-            return gantt_chart_html + time_table_html + note
-        except ImportError:
-            warning_info = (
-                "<p>To display timeline chart, please install flytekitplugins-deck-standard in the image.</p>"
-            )
-            logger.warning(warning_info)
-
-        return warning_info + generate_time_table(self.time_info) + note
+        return generate_time_table(self.time_info) + note
 
 
 def generate_time_table(data: dict) -> str:
