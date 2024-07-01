@@ -138,6 +138,10 @@ class Elastic(object):
         max_restarts (int): Maximum number of worker group restarts before failing.
         rdzv_configs (Dict[str, Any]): Additional rendezvous configs to pass to torch elastic, e.g. `{"timeout": 1200, "join_timeout": 900}`.
             See `torch.distributed.launcher.api.LaunchConfig` and `torch.distributed.elastic.rendezvous.dynamic_rendezvous.create_handler`.
+
+            Default timeouts are set to 15 minutes to account for the fact that some workers might start faster than others: Some pods might
+            be assigned to a running node which might have the image in its cache while other workers might require a node scale up and image pull.
+
         increase_shared_mem (bool): PyTorch uses shared memory to share data between processes. If torch multiprocessing is used
             (e.g. for multithreaded data loaders) the default shared memory segment size that the container runs with might not be enough
             and and one might have to increase the shared memory size. This option configures the task's pod template to mount
@@ -149,7 +153,7 @@ class Elastic(object):
     start_method: str = "spawn"
     monitor_interval: int = 5
     max_restarts: int = 0
-    rdzv_configs: Dict[str, Any] = field(default_factory=dict)
+    rdzv_configs: Dict[str, Any] = field(default_factory=lambda: {"timeout": 900, "join_timeout": 900})
     increase_shared_mem: bool = True
 
 
