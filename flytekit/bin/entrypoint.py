@@ -75,6 +75,7 @@ def _dispatch_execute(
     inputs_path: str,
     output_prefix: str,
 ):
+    print("@@@ using the Entrypoint")
     """
     Dispatches execute to PythonTask
         Step1: Download inputs and load into a literal map
@@ -90,6 +91,9 @@ def _dispatch_execute(
         # Step1
         local_inputs_file = os.path.join(ctx.execution_state.working_dir, "inputs.pb")
         ctx.file_access.get_data(inputs_path, local_inputs_file)
+        print("@@@ execution_state", ctx.execution_state)
+        if ctx.execution_state:
+            print("@@@ execution_state.mode", ctx.execution_state.mode)
         input_proto = utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
         idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
 

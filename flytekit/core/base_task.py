@@ -409,6 +409,7 @@ class Task(object):
         """
         Call dispatch_execute, in the context of a local sandbox execution. Not invoked during runtime.
         """
+        print("@@@ call sandbox_execute, should not invoked during runtime")
         es = cast(ExecutionState, ctx.execution_state)
         b = cast(ExecutionParameters, es.user_space_params).with_task_sandbox()
         ctx = ctx.current_context().with_execution_state(es.with_params(user_space_params=b.build())).build()
