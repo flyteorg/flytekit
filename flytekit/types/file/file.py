@@ -11,6 +11,7 @@ from urllib.parse import unquote
 from dataclasses_json import config
 from marshmallow import fields
 from mashumaro.mixins.json import DataClassJSONMixin
+from flytekit.models.core import types as _core_types
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError, get_underlying_type
@@ -142,6 +143,30 @@ class FlyteFile(os.PathLike, typing.Generic[T], DataClassJSONMixin):
         def t2() -> flytekit_typing.FlyteFile["csv"]:
             return "/tmp/local_file.csv"
     """
+
+    def to_json(self) -> 'FlyteFile':
+        print("@@@ flytefile to json")
+        lv = FlyteFilePathTransformer().to_literal(FlyteContext.current_context(), self)
+        return FlyteFile(path=lv.scalar.blob.uri)
+
+    def from_json(self) -> 'FlyteFile':
+        print("@@@ flytefile from json")
+        return FlyteFilePathTransformer().to_python_value(
+                FlyteContext.current_context(),
+                Literal(
+                    scalar=Scalar(
+                        blob=Blob(
+                            metadata=BlobMetadata(
+                                type=_core_types.BlobType(
+                                    format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
+                                )
+                            ),
+                            uri=self.path, # uri=cast(FlyteFile, python_val).path,
+                        )
+                    )
+                ),
+                FlyteFile,
+            )
 
     @classmethod
     def extension(cls) -> str:
