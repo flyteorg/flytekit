@@ -57,6 +57,8 @@ async def _start_grpc_server(port: int, worker: int, timeout: int):
 
     _start_http_server()
     click.secho("Starting the agent service...", fg="blue")
+    print_agents_metadata()
+
     server = grpc.aio.server(futures.ThreadPoolExecutor(max_workers=worker))
 
     add_AsyncAgentServiceServicer_to_server(AsyncAgentService(), server)
@@ -96,3 +98,13 @@ def _start_health_check_server(server: grpc.Server, worker: int):
 
     except ImportError as e:
         click.secho(f"Failed to start the health check servicer with error {e}", fg="red")
+
+
+def print_agents_metadata():
+    from flytekit.extend.backend.base_agent import AgentRegistry
+
+    agents = AgentRegistry.list_agents()
+    for agent in agents:
+        name = agent.name
+        metadata = [category.name for category in agent.supported_task_categories]
+        click.secho(f"Starting {name} that supports task categories {metadata}", fg="blue")

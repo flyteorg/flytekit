@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import collections
 import inspect
+import typing
 from copy import deepcopy
 from enum import Enum
-from typing import Any, Coroutine, Dict, List, Optional, Set, Tuple, Union, cast
+from typing import Any, Coroutine, Dict, Hashable, List, Optional, Set, Tuple, Union, cast, get_args
 
 from google.protobuf import struct_pb2 as _struct
-from typing_extensions import Protocol, get_args
+from typing_extensions import Protocol
 
 from flytekit.core import constants as _common_constants
 from flytekit.core import context_manager as _flyte_context
@@ -23,7 +24,13 @@ from flytekit.core.context_manager import (
 )
 from flytekit.core.interface import Interface
 from flytekit.core.node import Node
-from flytekit.core.type_engine import DictTransformer, ListTransformer, TypeEngine, TypeTransformerFailedError
+from flytekit.core.type_engine import (
+    DictTransformer,
+    ListTransformer,
+    TypeEngine,
+    TypeTransformerFailedError,
+    UnionTransformer,
+)
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.exceptions.user import FlytePromiseAttributeResolveException
 from flytekit.loggers import logger
@@ -74,12 +81,12 @@ def translate_inputs_to_literals(
     :param native_types: Map to native Python type.
     """
     if incoming_values is None:
-        raise ValueError("Incoming values cannot be None, must be a dict")
+        raise AssertionError("Incoming values cannot be None, must be a dict")
 
     result = {}  # So as to not overwrite the input_kwargs
     for k, v in incoming_values.items():
         if k not in flyte_interface_types:
-            raise ValueError(f"Received unexpected keyword argument {k}")
+            raise AssertionError(f"Received unexpected keyword argument {k}")
         var = flyte_interface_types[k]
         t = native_types[k]
         try:
@@ -127,7 +134,11 @@ def resolve_attr_path_in_promise(p: Promise) -> Promise:
             break
 
     # If the current value is a dataclass, resolve the dataclass with the remaining path
-    if type(curr_val.value) is _literals_models.Scalar and type(curr_val.value.value) is _struct.Struct:
+    if (
+        len(p.attr_path) > 0
+        and type(curr_val.value) is _literals_models.Scalar
+        and type(curr_val.value.value) is _struct.Struct
+    ):
         st = curr_val.value.value
         new_st = resolve_attr_path_in_pb_struct(st, attr_path=p.attr_path[used:])
         literal_type = TypeEngine.to_literal_type(type(new_st))
@@ -362,12 +373,18 @@ class Promise(object):
 
     # TODO: Currently, NodeOutput we're creating is the slimmer core package Node class, but since only the
     #  id is used, it's okay for now. Let's clean all this up though.
-    def __init__(self, var: str, val: Union[NodeOutput, _literals_models.Literal]):
+    def __init__(
+        self,
+        var: str,
+        val: Union[NodeOutput, _literals_models.Literal],
+        type: typing.Optional[_type_models.LiteralType] = None,
+    ):
         self._var = var
         self._promise_ready = True
         self._val = val
         self._ref = None
         self._attr_path: List[Union[str, int]] = []
+        self._type = type
         if val and isinstance(val, NodeOutput):
             self._ref = val
             self._promise_ready = False
@@ -390,7 +407,9 @@ class Promise(object):
     def is_ready(self) -> bool:
         """
         Returns if the Promise is READY (is not a reference and the val is actually ready)
-        Usage:
+
+        Usage ::
+
            p = Promise(...)
            ...
            if p.is_ready():
@@ -514,7 +533,33 @@ class Promise(object):
         We don't modify the original promise because it might be used in other places as well.
         """
 
+        if self.ref and self._type:
+            if self._type.simple == SimpleType.STRUCT and self._type.metadata is None:
+                raise ValueError(f"Trying to index into a unschematized struct type {self.var}[{key}].")
+        if isinstance(self.val, _literals_models.Literal):
+            if self.val.scalar and self.val.scalar.generic:
+                if self._type and self._type.metadata is None:
+                    raise ValueError(
+                        f"Trying to index into a generic type {self.var}[{key}]."
+                        f" It seems the upstream type is not indexable."
+                        f" Prefer using `typing.Dict[str, ...]` or `@dataclass`"
+                        f" Note: {self.var} is the name of the variable in your workflow function."
+                    )
+                raise ValueError(
+                    f"Trying to index into a struct {self.var}[{key}]. Use {self.var}.{key} instead."
+                    f" Note: {self.var} is the name of the variable in your workflow function."
+                )
         return self._append_attr(key)
+
+    def __iter__(self):
+        """
+        Flyte/kit (as of https://github.com/flyteorg/flyte/issues/3864) supports indexing into a list of promises.
+        But it still doesn't make sense to
+        """
+        raise ValueError(
+            f" {self.var} is a Promise. Promise objects are not iterable - can't range() over a promise."
+            " But you can use [index] or the alpha version of @eager workflows"
+        )
 
     def __getattr__(self, key) -> Promise:
         """
@@ -530,7 +575,15 @@ class Promise(object):
         The attribute keys are appended on the promise and a new promise is returned with the updated attribute path.
         We don't modify the original promise because it might be used in other places as well.
         """
-
+        if isinstance(self.val, _literals_models.Literal):
+            if self.val.scalar and self.val.scalar.generic:
+                if self._type and self._type.metadata is None:
+                    raise ValueError(
+                        f"Trying to index into a generic type {self.var}[{key}]."
+                        f" It seems the upstream type is not indexable."
+                        f" Prefer using `typing.Dict[str, ...]` or `@dataclass`"
+                        f" Note: {self.var} is the name of the variable in your workflow function."
+                    )
         return self._append_attr(key)
 
     def _append_attr(self, key) -> Promise:
@@ -682,6 +735,15 @@ def binding_data_from_python_std(
         )
 
     elif t_value is not None and expected_literal_type.union_type is not None:
+        # If the value is not a container type, then we can directly convert it to a scalar in the Union case.
+        # This pushes the handling of the Union types to the type engine.
+        if not isinstance(t_value, list) and not isinstance(t_value, dict):
+            scalar = TypeEngine.to_literal(ctx, t_value, t_value_type or type(t_value), expected_literal_type).scalar
+            return _literals_models.BindingData(scalar=scalar)
+
+        # If it is a container type, then we need to iterate over the variants in the Union type, try each one. This is
+        # akin to what the Type Engine does when it finds a Union type (see the UnionTransformer), but we can't rely on
+        # that in this case, because of the mix and match of realized values, and Promises.
         for i in range(len(expected_literal_type.union_type.variants)):
             try:
                 lt_type = expected_literal_type.union_type.variants[i]
@@ -718,7 +780,7 @@ def binding_data_from_python_std(
             lit = TypeEngine.to_literal(ctx, t_value, type(t_value), expected_literal_type)
             return _literals_models.BindingData(scalar=lit.scalar)
         else:
-            _, v_type = DictTransformer.get_dict_types(t_value_type)
+            _, v_type = DictTransformer.extract_types_or_metadata(t_value_type)
             m = _literals_models.BindingDataMap(
                 bindings={
                     k: binding_data_from_python_std(
@@ -750,7 +812,13 @@ def binding_from_python_std(
     t_value_type: type,
 ) -> Tuple[_literals_models.Binding, List[Node]]:
     nodes: List[Node] = []
-    binding_data = binding_data_from_python_std(ctx, expected_literal_type, t_value, t_value_type, nodes)
+    binding_data = binding_data_from_python_std(
+        ctx,
+        expected_literal_type,
+        t_value,
+        t_value_type,
+        nodes,
+    )
     return _literals_models.Binding(var=var_name, binding=binding_data), nodes
 
 
@@ -876,28 +944,22 @@ class NodeOutput(type_models.OutputReference):
 
 class SupportsNodeCreation(Protocol):
     @property
-    def name(self) -> str:
-        ...
+    def name(self) -> str: ...
 
     @property
-    def python_interface(self) -> flyte_interface.Interface:
-        ...
+    def python_interface(self) -> flyte_interface.Interface: ...
 
-    def construct_node_metadata(self) -> _workflow_model.NodeMetadata:
-        ...
+    def construct_node_metadata(self) -> _workflow_model.NodeMetadata: ...
 
 
 class HasFlyteInterface(Protocol):
     @property
-    def name(self) -> str:
-        ...
+    def name(self) -> str: ...
 
     @property
-    def interface(self) -> _interface_models.TypedInterface:
-        ...
+    def interface(self) -> _interface_models.TypedInterface: ...
 
-    def construct_node_metadata(self) -> _workflow_model.NodeMetadata:
-        ...
+    def construct_node_metadata(self) -> _workflow_model.NodeMetadata: ...
 
 
 def extract_obj_name(name: str) -> str:
@@ -954,9 +1016,8 @@ def create_and_link_node_from_remote(
     for k in sorted(typed_interface.inputs):
         var = typed_interface.inputs[k]
         if k not in kwargs:
-            if _inputs_not_allowed and _ignorable_inputs:
-                if k in _ignorable_inputs or k in _inputs_not_allowed:
-                    continue
+            if (_ignorable_inputs and k in _ignorable_inputs) or (_inputs_not_allowed and k in _inputs_not_allowed):
+                continue
             # TODO to improve the error message, should we show python equivalent types for var.type?
             raise _user_exceptions.FlyteAssertion("Missing input `{}` type `{}`".format(k, var.type))
         v = kwargs[k]
@@ -1008,7 +1069,9 @@ def create_and_link_node_from_remote(
     # Create a node output object for each output, they should all point to this node of course.
     node_outputs = []
     for output_name, output_var_model in typed_interface.outputs.items():
-        node_outputs.append(Promise(output_name, NodeOutput(node=flytekit_node, var=output_name)))
+        node_outputs.append(
+            Promise(output_name, NodeOutput(node=flytekit_node, var=output_name), type=output_var_model.type)
+        )
 
     return create_task_output(node_outputs)
 
@@ -1043,32 +1106,22 @@ def create_and_link_node(
 
     for k in sorted(interface.inputs):
         var = typed_interface.inputs[k]
+        if var.type.simple == SimpleType.NONE:
+            raise TypeError("Arguments do not have type annotation")
         if k not in kwargs:
-            is_optional = False
-            if var.type.union_type:
-                for variant in var.type.union_type.variants:
-                    if variant.simple == SimpleType.NONE:
-                        val, _default = interface.inputs_with_defaults[k]
-                        if _default is not None:
-                            raise ValueError(
-                                f"The default value for the optional type must be None, but got {_default}"
-                            )
-                        is_optional = True
-            if not is_optional:
-                from flytekit.core.base_task import Task
-
-                error_msg = f"Input {k} of type {interface.inputs[k]} was not specified for function {entity.name}"
-
-                _, _default = interface.inputs_with_defaults[k]
-                if isinstance(entity, Task) and _default is not None:
-                    error_msg += (
-                        ". Flyte workflow syntax is a domain-specific language (DSL) for building execution graphs which "
-                        "supports a subset of Python’s semantics. When calling tasks, all kwargs have to be provided."
-                    )
-
-                raise _user_exceptions.FlyteAssertion(error_msg)
+            # interface.inputs_with_defaults[k][0] is the type of the default argument
+            # interface.inputs_with_defaults[k][1] is the value of the default argument
+            if k in interface.inputs_with_defaults and (
+                interface.inputs_with_defaults[k][1] is not None
+                or UnionTransformer.is_optional_type(interface.inputs_with_defaults[k][0])
+            ):
+                default_val = interface.inputs_with_defaults[k][1]
+                if not isinstance(default_val, Hashable):
+                    raise _user_exceptions.FlyteAssertion("Cannot use non-hashable object as default argument")
+                kwargs[k] = default_val
             else:
-                continue
+                error_msg = f"Input {k} of type {interface.inputs[k]} was not specified for function {entity.name}"
+                raise _user_exceptions.FlyteAssertion(error_msg)
         v = kwargs[k]
         # This check ensures that tuples are not passed into a function, as tuples are not supported by Flyte
         # Usually a Tuple will indicate that multiple outputs from a previous task were accidentally passed
@@ -1118,18 +1171,18 @@ def create_and_link_node(
     # Create a node output object for each output, they should all point to this node of course.
     node_outputs = []
     for output_name, output_var_model in typed_interface.outputs.items():
-        node_outputs.append(Promise(output_name, NodeOutput(node=flytekit_node, var=output_name)))
+        node_outputs.append(
+            Promise(output_name, NodeOutput(node=flytekit_node, var=output_name), output_var_model.type)
+        )
         # Don't print this, it'll crash cuz sdk_node._upstream_node_ids might be None, but idl code will break
 
     return create_task_output(node_outputs, interface)
 
 
 class LocallyExecutable(Protocol):
-    def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, None]:
-        ...
+    def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, None]: ...
 
-    def local_execution_mode(self) -> ExecutionState.Mode:
-        ...
+    def local_execution_mode(self) -> ExecutionState.Mode: ...
 
 
 def flyte_entity_call_handler(
@@ -1149,19 +1202,22 @@ def flyte_entity_call_handler(
     #. Start a local execution - This means that we're not already in a local workflow execution, which means that
        we should expect inputs to be native Python values and that we should return Python native values.
     """
-    # Sanity checks
-    # Only keyword args allowed
-    if len(args) > 0:
-        raise _user_exceptions.FlyteAssertion(
-            f"When calling tasks, only keyword args are supported. "
-            f"Aborting execution as detected {len(args)} positional args {args}"
-        )
     # Make sure arguments are part of interface
     for k, v in kwargs.items():
-        if k not in cast(SupportsNodeCreation, entity).python_interface.inputs:
-            raise ValueError(
-                f"Received unexpected keyword argument '{k}' in function '{cast(SupportsNodeCreation, entity).name}'"
-            )
+        if k not in entity.python_interface.inputs:
+            raise AssertionError(f"Received unexpected keyword argument '{k}' in function '{entity.name}'")
+
+    # Check if we have more arguments than expected
+    if len(args) > len(entity.python_interface.inputs):
+        raise AssertionError(
+            f"Received more arguments than expected in function '{entity.name}'. Expected {len(entity.python_interface.inputs)} but got {len(args)}"
+        )
+
+    # Convert args to kwargs
+    for arg, input_name in zip(args, entity.python_interface.inputs.keys()):
+        if input_name in kwargs:
+            raise AssertionError(f"Got multiple values for argument '{input_name}' in function '{entity.name}'")
+        kwargs[input_name] = arg
 
     ctx = FlyteContextManager.current_context()
     if ctx.execution_state and (
@@ -1181,15 +1237,12 @@ def flyte_entity_call_handler(
                 child_ctx.execution_state
                 and child_ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED
             ):
-                if (
-                    len(cast(SupportsNodeCreation, entity).python_interface.inputs) > 0
-                    or len(cast(SupportsNodeCreation, entity).python_interface.outputs) > 0
-                ):
-                    output_names = list(cast(SupportsNodeCreation, entity).python_interface.outputs.keys())
+                if len(entity.python_interface.inputs) > 0 or len(entity.python_interface.outputs) > 0:
+                    output_names = list(entity.python_interface.outputs.keys())
                     if len(output_names) == 0:
                         return VoidPromise(entity.name)
                     vals = [Promise(var, None) for var in output_names]
-                    return create_task_output(vals, cast(SupportsNodeCreation, entity).python_interface)
+                    return create_task_output(vals, entity.python_interface)
                 else:
                     return None
             return cast(LocallyExecutable, entity).local_execute(ctx, **kwargs)
@@ -1202,7 +1255,7 @@ def flyte_entity_call_handler(
             cast(ExecutionParameters, child_ctx.user_space_params)._decks = []
             result = cast(LocallyExecutable, entity).local_execute(child_ctx, **kwargs)
 
-        expected_outputs = len(cast(SupportsNodeCreation, entity).python_interface.outputs)
+        expected_outputs = len(entity.python_interface.outputs)
         if expected_outputs == 0:
             if result is None or isinstance(result, VoidPromise):
                 return None
@@ -1215,10 +1268,10 @@ def flyte_entity_call_handler(
         if (1 < expected_outputs == len(cast(Tuple[Promise], result))) or (
             result is not None and expected_outputs == 1
         ):
-            return create_native_named_tuple(ctx, result, cast(SupportsNodeCreation, entity).python_interface)
+            return create_native_named_tuple(ctx, result, entity.python_interface)
 
-        raise ValueError(
+        raise AssertionError(
             f"Expected outputs and actual outputs do not match."
             f"Result {result}. "
-            f"Python interface: {cast(SupportsNodeCreation, entity).python_interface}"
+            f"Python interface: {entity.python_interface}"
         )

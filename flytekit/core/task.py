@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import datetime as _datetime
+import datetime
 from functools import update_wrapper
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, TypeVar, Union, overload
 
@@ -95,7 +95,7 @@ def task(
     retries: int = ...,
     interruptible: Optional[bool] = ...,
     deprecated: str = ...,
-    timeout: Union[_datetime.timedelta, int] = ...,
+    timeout: Union[datetime.timedelta, int] = ...,
     container_image: Optional[Union[str, ImageSpec]] = ...,
     environment: Optional[Dict[str, str]] = ...,
     requests: Optional[Resources] = ...,
@@ -119,8 +119,7 @@ def task(
     pod_template: Optional["PodTemplate"] = ...,
     pod_template_name: Optional[str] = ...,
     accelerator: Optional[BaseAccelerator] = ...,
-) -> Callable[[Callable[..., FuncOut]], PythonFunctionTask[T]]:
-    ...
+) -> Callable[[Callable[..., FuncOut]], PythonFunctionTask[T]]: ...
 
 
 @overload
@@ -134,7 +133,7 @@ def task(
     retries: int = ...,
     interruptible: Optional[bool] = ...,
     deprecated: str = ...,
-    timeout: Union[_datetime.timedelta, int] = ...,
+    timeout: Union[datetime.timedelta, int] = ...,
     container_image: Optional[Union[str, ImageSpec]] = ...,
     environment: Optional[Dict[str, str]] = ...,
     requests: Optional[Resources] = ...,
@@ -158,8 +157,7 @@ def task(
     pod_template: Optional["PodTemplate"] = ...,
     pod_template_name: Optional[str] = ...,
     accelerator: Optional[BaseAccelerator] = ...,
-) -> Union[PythonFunctionTask[T], Callable[..., FuncOut]]:
-    ...
+) -> Union[PythonFunctionTask[T], Callable[..., FuncOut]]: ...
 
 
 def task(
@@ -172,7 +170,7 @@ def task(
     retries: int = 0,
     interruptible: Optional[bool] = None,
     deprecated: str = "",
-    timeout: Union[_datetime.timedelta, int] = 0,
+    timeout: Union[datetime.timedelta, int] = 0,
     container_image: Optional[Union[str, ImageSpec]] = None,
     environment: Optional[Dict[str, str]] = None,
     requests: Optional[Resources] = None,

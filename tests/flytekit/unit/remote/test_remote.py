@@ -157,6 +157,28 @@ def test_underscore_execute_uses_launch_plan_attributes(remote, mock_wf_exec):
     )
 
 
+def test_execution_cluster_label_attributes(remote, mock_wf_exec):
+    mock_wf_exec.return_value = True
+    mock_client = MagicMock()
+    remote._client = mock_client
+
+    def local_assertions(*args, **kwargs):
+        execution_spec = args[3]
+        assert execution_spec.execution_cluster_label.value == "label"
+
+    mock_client.create_execution.side_effect = local_assertions
+
+    mock_entity = MagicMock()
+
+    remote._execute(
+        mock_entity,
+        inputs={},
+        project="proj",
+        domain="dev",
+        execution_cluster_label="label",
+    )
+
+
 def test_underscore_execute_fall_back_remote_attributes(remote, mock_wf_exec):
     mock_wf_exec.return_value = True
     mock_client = MagicMock()
@@ -301,6 +323,7 @@ def test_generate_console_http_domain_sandbox_rewrite(mock_client):
         )
         assert remote.generate_console_http_domain() == "https://example.com"
 
+        _, temp_filename = tempfile.mkstemp(suffix=".yaml")
         with open(temp_filename, "w") as f:
             # This string is similar to the relevant configuration emitted by flytectl in the cases of both demo and sandbox.
             flytectl_config_file = """admin:
@@ -315,6 +338,7 @@ def test_generate_console_http_domain_sandbox_rewrite(mock_client):
         )
         assert remote.generate_console_http_domain() == "http://localhost:30081"
 
+        _, temp_filename = tempfile.mkstemp(suffix=".yaml")
         with open(temp_filename, "w") as f:
             # This string is similar to the relevant configuration emitted by flytectl in the cases of both demo and sandbox.
             flytectl_config_file = """admin:
@@ -500,7 +524,7 @@ def test_get_image_names(
     flyte_remote = FlyteRemote(config=Config.auto(), default_project="p1", default_domain="d1")
     flyte_remote.register_script(wf)
 
-    version_from_hash_mock.assert_called_once_with(md5_bytes, mock.ANY, image_spec.image_name())
+    version_from_hash_mock.assert_called_once_with(md5_bytes, mock.ANY, mock.ANY, image_spec.image_name())
     register_workflow_mock.assert_called_once()
 
 

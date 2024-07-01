@@ -25,7 +25,7 @@ T = typing.TypeVar("T")
 
 def repr_kv(k: str, v: Union[Type, Tuple[Type, Any]]) -> str:
     if isinstance(v, tuple):
-        if v[1]:
+        if v[1] is not None:
             return f"{k}: {v[0]}={v[1]}"
         return f"{k}: {v[0]}"
     return f"{k}: {v}"
@@ -70,6 +70,8 @@ class Interface(object):
         self._inputs: Union[Dict[str, Tuple[Type, Any]], Dict[str, Type]] = {}  # type: ignore
         if inputs:
             for k, v in inputs.items():
+                if not k.isidentifier():
+                    raise ValueError(f"Input name must be valid Python identifier: {k!r}")
                 if type(v) is tuple and len(cast(Tuple, v)) > 1:
                     self._inputs[k] = v  # type: ignore
                 else:
@@ -109,8 +111,7 @@ class Interface(object):
                     where runs_before is manually called.
                     """
 
-                def __rshift__(self, *args, **kwargs):
-                    ...  # See runs_before
+                def __rshift__(self, *args, **kwargs): ...  # See runs_before
 
             self._output_tuple_class = Output
         self._docstring = docstring
@@ -225,8 +226,17 @@ def transform_inputs_to_parameters(
             if isinstance(_default, ArtifactQuery):
                 params[k] = _interface_models.Parameter(var=v, required=False, artifact_query=_default.to_flyte_idl())
             elif isinstance(_default, Artifact):
-                artifact_id = _default.concrete_artifact_id  # may raise
-                params[k] = _interface_models.Parameter(var=v, required=False, artifact_id=artifact_id)
+                if not _default.version:
+                    # If the artifact is not versioned, assume it's meant to be a query.
+                    q = _default.query()
+                    if q.bound:
+                        params[k] = _interface_models.Parameter(var=v, required=False, artifact_query=q.to_flyte_idl())
+                    else:
+                        raise FlyteValidationException(f"Cannot use default query with artifact {_default.name}")
+                else:
+                    # If it is versioned, assumed it's intentionally hard-coded
+                    artifact_id = _default.concrete_artifact_id  # may raise
+                    params[k] = _interface_models.Parameter(var=v, required=False, artifact_id=artifact_id)
             else:
                 required = _default is None
                 default_lv = None

@@ -50,6 +50,38 @@ def register():
     assert out.returncode == 0
 
 
+def run(file_name, wf_name, *args):
+    out = subprocess.run(
+        [
+            "pyflyte",
+            "--verbose",
+            "-c",
+            CONFIG,
+            "run",
+            "--remote",
+            "--image",
+            IMAGE,
+            "--project",
+            PROJECT,
+            "--domain",
+            DOMAIN,
+            MODULE_PATH / file_name,
+            wf_name,
+            *args,
+        ]
+    )
+    assert out.returncode == 0
+
+
+def test_remote_run():
+    # child_workflow.parent_wf asynchronously register a parent wf1 with child lp from another wf2.
+    run("child_workflow.py", "parent_wf", "--a", "3")
+
+    # run twice to make sure it will register a new version of the workflow.
+    run("default_lp.py", "my_wf")
+    run("default_lp.py", "my_wf")
+
+
 def test_fetch_execute_launch_plan(register):
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     flyte_launch_plan = remote.fetch_launch_plan(name="basic.hello_world.my_wf", version=VERSION)
@@ -436,3 +468,16 @@ def test_execute_reference_launchplan(register):
     assert execution.spec.envs.envs == {"foo": "bar"}
     assert execution.spec.tags == ["flyte"]
     assert execution.spec.cluster_assignment.cluster_pool == "gpu"
+
+
+def test_execute_workflow_with_maptask(register):
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    d: typing.List[int] = [1, 2, 3]
+    flyte_launch_plan = remote.fetch_launch_plan(name="basic.array_map.workflow_with_maptask", version=VERSION)
+    execution = remote.execute(
+        flyte_launch_plan,
+        inputs={"data": d, "y": 3},
+        version=VERSION,
+        wait=True,
+    )
+    assert execution.outputs["o0"] == [4, 5, 6]

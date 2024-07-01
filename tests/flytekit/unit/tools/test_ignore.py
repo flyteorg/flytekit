@@ -8,7 +8,7 @@ from unittest.mock import patch
 import pytest
 from docker.utils.build import PatternMatcher
 
-from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
+from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore, FlyteIgnore
 
 
 def make_tree(root: Path, tree: Dict):
@@ -99,6 +99,19 @@ def all_ignore(tmp_path):
 
     make_tree(tmp_path, tree)
     subprocess.run(["git", "init", str(tmp_path)])
+    return tmp_path
+
+
+@pytest.fixture
+def simple_flyteignore(tmp_path):
+    tree = {
+        "sub": {"some.bar": ""},
+        "test.foo": "",
+        "keep.foo": "",
+        ".flyteignore": "\n".join(["*.foo", "!keep.foo", "# A comment", "sub"]),
+    }
+
+    make_tree(tmp_path, tree)
     return tmp_path
 
 
@@ -204,7 +217,7 @@ def test_all_ignore(all_ignore):
     ignore = IgnoreGroup(all_ignore, [GitIgnore, DockerIgnore, StandardIgnore])
     assert not ignore.is_ignored("sub")
     assert not ignore.is_ignored("sub/some.bar")
-    assert ignore.is_ignored("sub/__pycache__")
+    assert ignore.is_ignored("sub/__pycache__/")
     assert ignore.is_ignored("sub/__pycache__/some.pyc")
     assert ignore.is_ignored("data")
     assert ignore.is_ignored("data/reallybigfile.bar")
@@ -219,10 +232,10 @@ def test_all_ignore(all_ignore):
 
 def test_all_ignore_tar_filter(all_ignore):
     """Test tar_filter method of all ignores grouped together"""
-    ignore = IgnoreGroup(all_ignore, [GitIgnore, DockerIgnore, StandardIgnore])
+    ignore = IgnoreGroup(all_ignore, [GitIgnore, DockerIgnore, StandardIgnore, FlyteIgnore])
     assert ignore.tar_filter(TarInfo(name="sub")).name == "sub"
     assert ignore.tar_filter(TarInfo(name="sub/some.bar")).name == "sub/some.bar"
-    assert not ignore.tar_filter(TarInfo(name="sub/__pycache__"))
+    assert not ignore.tar_filter(TarInfo(name="sub/__pycache__/"))
     assert not ignore.tar_filter(TarInfo(name="sub/__pycache__/some.pyc"))
     assert not ignore.tar_filter(TarInfo(name="data"))
     assert not ignore.tar_filter(TarInfo(name="data/reallybigfile.bar"))
@@ -232,4 +245,23 @@ def test_all_ignore_tar_filter(all_ignore):
     assert ignore.tar_filter(TarInfo(name="keep.foo")).name == "keep.foo"
     assert ignore.tar_filter(TarInfo(name=".gitignore")).name == ".gitignore"
     assert ignore.tar_filter(TarInfo(name=".dockerignore")).name == ".dockerignore"
+    assert ignore.tar_filter(TarInfo(name=".flyteignore")).name == ".flyteignore"
     assert not ignore.tar_filter(TarInfo(name=".git"))
+
+
+def test_flyteignore_parse(simple_flyteignore):
+    """Test .flyteignore file parsing"""
+    flyteignore = FlyteIgnore(simple_flyteignore)
+    assert flyteignore.pm.matches("whatever.foo")
+    assert not flyteignore.pm.matches("keep.foo")
+    assert flyteignore.pm.matches("sub")
+    assert flyteignore.pm.matches("sub/stuff.txt")
+
+
+def test_simple_flyteignore(simple_flyteignore):
+    flyteignore = FlyteIgnore(simple_flyteignore)
+    assert flyteignore.is_ignored(str(simple_flyteignore / "test.foo"))
+    assert flyteignore.is_ignored(str(simple_flyteignore / "sub"))
+    assert flyteignore.is_ignored(str(simple_flyteignore / "sub" / "some.bar"))
+    assert not flyteignore.is_ignored(str(simple_flyteignore / "keep.foo"))
+    assert not flyteignore.is_ignored(str(simple_flyteignore / ".flyteignore"))

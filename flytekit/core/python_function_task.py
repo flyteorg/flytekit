@@ -6,6 +6,8 @@
 .. currentmodule:: flytekit.core.python_function_task
 
 .. autosummary::
+   :nosignatures:
+   :template: custom.rst
    :toctree: generated/
 
    PythonFunctionTask

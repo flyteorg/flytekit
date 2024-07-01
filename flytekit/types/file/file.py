@@ -6,6 +6,7 @@ import pathlib
 import typing
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from urllib.parse import unquote
 
 from dataclasses_json import config
 from marshmallow import fields
@@ -21,8 +22,7 @@ from flytekit.models.types import LiteralType
 from flytekit.types.pickle.pickle import FlytePickleTransformer
 
 
-def noop():
-    ...
+def noop(): ...
 
 
 T = typing.TypeVar("T")
@@ -153,7 +153,7 @@ class FlyteFile(os.PathLike, typing.Generic[T], DataClassJSONMixin):
         Create a new FlyteFile object with a remote path.
         """
         ctx = FlyteContextManager.current_context()
-        r = ctx.file_access.get_random_string()
+        r = name or ctx.file_access.get_random_string()
         remote_path = ctx.file_access.join(ctx.file_access.raw_output_prefix, r)
         return cls(path=remote_path)
 
@@ -341,7 +341,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
     def get_literal_type(self, t: typing.Union[typing.Type[FlyteFile], os.PathLike]) -> LiteralType:
         return LiteralType(blob=self._blob_type(format=FlyteFilePathTransformer.get_format(t)))
 
-    def get_mime_type_from_extension(self, extension: str) -> str:
+    def get_mime_type_from_extension(self, extension: str) -> typing.Union[str, typing.Sequence[str]]:
         extension_to_mime_type = {
             "hdf5": "text/plain",
             "joblib": "application/octet-stream",
@@ -349,6 +349,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             "ipynb": "application/json",
             "onnx": "application/json",
             "tfrecord": "application/octet-stream",
+            "jsonl": ["application/json", "application/x-ndjson"],
         }
 
         for ext, mimetype in mimetypes.types_map.items():
@@ -389,7 +390,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         if FlyteFilePathTransformer.get_format(python_type):
             real_type = magic.from_file(source_path, mime=True)
             expected_type = self.get_mime_type_from_extension(FlyteFilePathTransformer.get_format(python_type))
-            if real_type != expected_type:
+            if real_type not in expected_type:
                 raise ValueError(f"Incorrect file type, expected {expected_type}, got {real_type}")
 
     def to_literal(
@@ -439,6 +440,9 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             # Set the remote destination if one was given instead of triggering a random one below
             remote_path = python_val.remote_path or None
 
+            if ctx.execution_state.is_local_execution and python_val.remote_path is None:
+                should_upload = False
+
         elif isinstance(python_val, pathlib.Path) or isinstance(python_val, str):
             source_path = str(python_val)
             if issubclass(python_type, FlyteFile):
@@ -454,6 +458,8 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
                         p = pathlib.Path(python_val)
                         if not p.is_file():
                             raise TypeTransformerFailedError(f"Error converting {python_val} because it's not a file.")
+                        if ctx.execution_state.is_local_execution:
+                            should_upload = False
             # python_type must be os.PathLike - see check at beginning of function
             else:
                 should_upload = False
@@ -468,7 +474,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
                 remote_path = ctx.file_access.put_data(source_path, remote_path, is_multipart=False, **headers)
             else:
                 remote_path = ctx.file_access.put_raw_data(source_path, **headers)
-            return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
+            return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=unquote(str(remote_path)))))
         # If not uploading, then we can only take the original source path as the uri.
         else:
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=source_path)))

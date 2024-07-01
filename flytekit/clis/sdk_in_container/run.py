@@ -32,7 +32,7 @@ from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow, WorkflowBase
 from flytekit.exceptions.system import FlyteSystemException
-from flytekit.interaction.click_types import FlyteLiteralConverter, key_value_callback
+from flytekit.interaction.click_types import FlyteLiteralConverter, key_value_callback, labels_callback
 from flytekit.interaction.string_literals import literal_string_repr
 from flytekit.loggers import logger
 from flytekit.models import security
@@ -174,7 +174,7 @@ class RunLevelParams(PyFlyteParams):
             multiple=True,
             type=str,
             show_default=True,
-            callback=key_value_callback,
+            callback=labels_callback,
             help="Labels to be attached to the execution of the format `label_key=label_value`.",
         )
     )
@@ -239,7 +239,7 @@ class RunLevelParams(PyFlyteParams):
     )
     limit: int = make_click_option_field(
         click.Option(
-            param_decls=["--limit", "limit"],
+            param_decls=["--limit"],
             required=False,
             type=int,
             default=50,
@@ -256,6 +256,16 @@ class RunLevelParams(PyFlyteParams):
             help="Assign newly created execution to a given cluster pool",
         )
     )
+    execution_cluster_label: str = make_click_option_field(
+        click.Option(
+            param_decls=["--execution-cluster-label", "--ecl"],
+            required=False,
+            type=str,
+            default="",
+            help="Assign newly created execution to a given execution cluster label",
+        )
+    )
+
     computed_params: RunLevelComputedParams = field(default_factory=RunLevelComputedParams)
     _remote: typing.Optional[FlyteRemote] = None
 
@@ -330,9 +340,13 @@ def get_entities_in_file(filename: pathlib.Path, should_delete: bool) -> Entitie
     Returns a list of flyte workflow names and list of Flyte tasks in a file.
     """
     flyte_ctx = context_manager.FlyteContextManager.current_context().new_builder()
-    module_name = os.path.splitext(os.path.relpath(filename))[0].replace(os.path.sep, ".")
+    if filename.is_relative_to(pathlib.Path.cwd()):
+        additional_path = str(pathlib.Path.cwd())
+    else:
+        additional_path = _find_project_root(filename)
+    module_name = str(filename.relative_to(additional_path).with_suffix("")).replace(os.path.sep, ".")
     with context_manager.FlyteContextManager.with_context(flyte_ctx):
-        with module_loader.add_sys_path(os.getcwd()):
+        with module_loader.add_sys_path(additional_path):
             importlib.import_module(module_name)
 
     workflows = []
@@ -444,6 +458,7 @@ def run_remote(
         envs=run_level_params.envvars,
         tags=run_level_params.tags,
         cluster_pool=run_level_params.cluster_pool,
+        execution_cluster_label=run_level_params.execution_cluster_label,
     )
 
     console_url = remote.generate_console_url(execution)
@@ -494,6 +509,13 @@ def _update_flyte_context(params: RunLevelParams) -> FlyteContext.Builder:
         return ctx_builder.with_file_access(file_access)
 
 
+def is_optional(_type):
+    """
+    Checks if the given type is Optional Type
+    """
+    return typing.get_origin(_type) is typing.Union and type(None) in typing.get_args(_type)
+
+
 def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow, PythonTask]):
     """
     Returns a function that is used to implement WorkflowCommand and execute a flyte workflow.
@@ -506,13 +528,18 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
         # By the time we get to this function, all the loading has already happened
 
         run_level_params: RunLevelParams = ctx.obj
-        logger.info(f"Running {entity.name} with {kwargs} and run_level_params {run_level_params}")
+        logger.debug(f"Running {entity.name} with {kwargs} and run_level_params {run_level_params}")
 
         click.secho(f"Running Execution on {'Remote' if run_level_params.is_remote else 'local'}.", fg="cyan")
         try:
             inputs = {}
-            for input_name, _ in entity.python_interface.inputs.items():
+            for input_name, v in entity.python_interface.inputs_with_defaults.items():
                 processed_click_value = kwargs.get(input_name)
+                optional_v = False
+                if processed_click_value is None and isinstance(v, typing.Tuple):
+                    optional_v = is_optional(v[0])
+                    if len(v) == 2:
+                        processed_click_value = v[1]
                 if isinstance(processed_click_value, ArtifactQuery):
                     if run_level_params.is_remote:
                         click.secho(
@@ -527,7 +554,8 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
                         raise click.UsageError(
                             f"Default for '{input_name}' is a query, which must be specified when running locally."
                         )
-                inputs[input_name] = processed_click_value
+                if processed_click_value is not None or optional_v:
+                    inputs[input_name] = processed_click_value
 
             if not run_level_params.is_remote:
                 with FlyteContextManager.with_context(_update_flyte_context(run_level_params)):
@@ -764,7 +792,7 @@ class WorkflowCommand(click.RichGroup):
         ctx: click.Context,
         entity_name: str,
         run_level_params: RunLevelParams,
-        loaded_entity: typing.Any,
+        loaded_entity: [PythonTask, WorkflowBase],
         is_workflow: bool,
     ):
         """
@@ -809,12 +837,8 @@ class WorkflowCommand(click.RichGroup):
         if self._entities:
             is_workflow = exe_entity in self._entities.workflows
         if not os.path.exists(self._filename):
-            raise ValueError(f"File {self._filename} does not exist")
-        rel_path = os.path.relpath(self._filename)
-        if rel_path.startswith(".."):
-            raise ValueError(
-                f"You must call pyflyte from the same or parent dir, {self._filename} not under {os.getcwd()}"
-            )
+            click.secho(f"File {self._filename} does not exist.", fg="red")
+            exit(1)
 
         project_root = _find_project_root(self._filename)
 

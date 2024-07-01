@@ -1,3 +1,5 @@
+import asyncio
+import functools
 import os
 import tarfile
 import tempfile
@@ -9,7 +11,7 @@ import click
 from flytekit.configuration import FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.loggers import logger
-from flytekit.models import launch_plan
+from flytekit.models import launch_plan, task
 from flytekit.models.core.identifier import Identifier
 from flytekit.remote import FlyteRemote
 from flytekit.remote.remote import RegistrationSkipped, _get_git_repo_url
@@ -269,14 +271,13 @@ def register(
         click.secho("No Flyte entities were detected. Aborting!", fg="red")
         return
 
-    for cp_entity in registrable_entities:
+    def _raw_register(cp_entity: FlyteControlPlaneEntity):
         is_lp = False
         if isinstance(cp_entity, launch_plan.LaunchPlan):
             og_id = cp_entity.id
             is_lp = True
         else:
             og_id = cp_entity.template.id
-        secho(og_id, "")
         try:
             if not dry_run:
                 try:
@@ -296,4 +297,21 @@ def register(
                 secho(og_id, reason="Dry run Mode!")
         except RegistrationSkipped:
             secho(og_id, "failed")
+
+    async def _register(entities: typing.List[task.TaskSpec]):
+        loop = asyncio.get_event_loop()
+        tasks = []
+        for entity in entities:
+            tasks.append(loop.run_in_executor(None, functools.partial(_raw_register, entity)))
+        await asyncio.gather(*tasks)
+        return
+
+    # concurrent register
+    cp_task_entities = list(filter(lambda x: isinstance(x, task.TaskSpec), registrable_entities))
+    asyncio.run(_register(cp_task_entities))
+    # serial register
+    cp_other_entities = list(filter(lambda x: not isinstance(x, task.TaskSpec), registrable_entities))
+    for entity in cp_other_entities:
+        _raw_register(entity)
+
     click.secho(f"Successfully registered {len(registrable_entities)} entities", fg="green")
