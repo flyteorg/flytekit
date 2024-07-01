@@ -19,7 +19,7 @@ from flytekit import PodTemplate, task
         # Test disabling shared memory volume
         (PyTorch(num_workers=3, increase_shared_mem=False), None, False, False),
         (Elastic(nnodes=2, increase_shared_mem=False), None, False, False),
-        # Test that explictly passed pod template does not break adding shm volume
+        # Test that explicitly passed pod template does not break adding shm volume
         (Elastic(nnodes=2, increase_shared_mem=True), PodTemplate(), True, False),
         # Test that pod template with container does not break adding shm volume
         (
