@@ -106,7 +106,7 @@ class PyTorch(object):
 
     master: Master = field(default_factory=lambda: Master())
     worker: Worker = field(default_factory=lambda: Worker())
-    run_policy: Optional[RunPolicy] = Non
+    run_policy: Optional[RunPolicy] = None
     # Support v0 config for backwards compatibility
     num_workers: Optional[int] = None
 
