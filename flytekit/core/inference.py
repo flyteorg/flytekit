@@ -194,3 +194,15 @@ class NIM(ModelInferenceTemplate):
                     ],
                 ),
             )
+
+    @property
+    def models_url(self):
+        return f"{self.base_url}/v1/models"
+
+    @property
+    def completions_url(self):
+        return f"{self.base_url}/completions"
+
+    @property
+    def chat_completions_url(self):
+        return f"{self.base_url}/chat/completions"
