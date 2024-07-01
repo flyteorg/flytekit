@@ -23,7 +23,7 @@ from typing import Optional, Protocol, runtime_checkable
 from click import Group
 from importlib_metadata import entry_points
 
-from flytekit.configuration import Config, get_config_file
+from flytekit.configuration import Config, SecretsConfig, get_config_file
 from flytekit.loggers import logger
 from flytekit.remote import FlyteRemote
 
@@ -89,6 +89,11 @@ class FlytekitPlugin:
     def get_auth_success_html(endpoint: str) -> Optional[str]:
         """Get default success html. Return None to use flytekit's default success html."""
         return None
+
+    @staticmethod
+    def secret_prefix() -> str:
+        """Returns the value of the FLYTE_SECRETS_ENV_PREFIX environment variable."""
+        return SecretsConfig.env_prefix
 
 
 def _get_plugin_from_entrypoint():
