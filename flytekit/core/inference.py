@@ -201,8 +201,8 @@ class NIM(ModelInferenceTemplate):
 
     @property
     def completions_url(self):
-        return f"{self.base_url}/completions"
+        return f"{self.base_url}/v1/completions"
 
     @property
     def chat_completions_url(self):
-        return f"{self.base_url}/chat/completions"
+        return f"{self.base_url}/v1/chat/completions"
