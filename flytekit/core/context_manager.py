@@ -549,8 +549,9 @@ class ExecutionState(object):
 
     def is_local_execution(self) -> bool:
         return (
-            self.mode == ExecutionState.Mode.LOCAL_TASK_EXECUTION
-            or self.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
+            self.mode and
+            (self.mode == ExecutionState.Mode.LOCAL_TASK_EXECUTION
+            or self.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION)
         )
 
 
