@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ast
 import collections
 import copy
 import inspect
@@ -13,11 +12,11 @@ from typing_extensions import get_args, get_type_hints
 
 from flytekit.core import context_manager
 from flytekit.core.artifact import Artifact, ArtifactIDSpecification, ArtifactQuery
-from flytekit.core.constants import SOURCE_CODE
 from flytekit.core.docstring import Docstring
 from flytekit.core.sentinel import DYNAMIC_INPUT_BINDING
 from flytekit.core.type_engine import TypeEngine, UnionTransformer
 from flytekit.exceptions.user import FlyteValidationException
+from flytekit.exceptions.utils import annotate_exception_with_code, get_source_code_from_fn
 from flytekit.loggers import developer_logger, logger
 from flytekit.models import interface as _interface_models
 from flytekit.models.literals import Literal, Scalar, Void
@@ -364,25 +363,6 @@ def transform_interface_to_list_interface(
     return Interface(inputs=map_inputs, outputs=map_outputs)
 
 
-def get_function_param_location(func, param_name):
-    # Get source code of the function
-    source_lines, start_line = inspect.getsourcelines(func)
-    source_code = "".join(source_lines)
-
-    # Parse the source code into an AST
-    module = ast.parse(source_code)
-
-    # Traverse the AST to find the function definition
-    for node in ast.walk(module):
-        if isinstance(node, ast.FunctionDef) and node.name == func.__name__:
-            for i, arg in enumerate(node.args.args):
-                if arg.arg == param_name:
-                    # Calculate the line and column number of the parameter
-                    line_number = start_line + node.lineno - 1
-                    column_offset = arg.col_offset
-                    return line_number, column_offset
-
-
 def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Docstring] = None) -> Interface:
     """
     From the annotations on a task function that the user should have provided, and the output names they want to use
@@ -402,15 +382,9 @@ def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Doc
     for k, v in signature.parameters.items():  # type: ignore
         annotation = type_hints.get(k, None)
         if annotation is None:
-            lines, start_line = inspect.getsourcelines(fn)
-            target_line_no, column_offset = get_function_param_location(fn, "a")
-            line_index = target_line_no - start_line
-            source_code = "".join(f"{start_line+i} {lines[i]}" for i in range(line_index + 1))
-
+            source_code, column_offset = get_source_code_from_fn(fn, k)
             err_msg = f"'{k}' has no type. Please add a type annotation to the input parameter."
-            err = TypeError(err_msg)
-            err.__setattr__(SOURCE_CODE, f"{source_code}{' '*column_offset} # ^ {err_msg}")
-            raise err
+            raise annotate_exception_with_code(TypeError(err_msg), source_code, column_offset)
         default = v.default if v.default is not inspect.Parameter.empty else None
         # Inputs with default values are currently ignored, we may want to look into that in the future
         inputs[k] = (annotation, default)  # type: ignore
