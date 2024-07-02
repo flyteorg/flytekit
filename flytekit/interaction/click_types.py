@@ -80,13 +80,15 @@ class DirParamType(click.ParamType):
     ) -> typing.Any:
         if isinstance(value, ArtifactQuery):
             return value
-        p = pathlib.Path(value)
+
         # set remote_directory to false if running pyflyte run locally. This makes sure that the original
         # directory is used and not a random one.
         remote_directory = None if getattr(ctx.obj, "is_remote", False) else False
-        if p.exists() and p.is_dir():
-            return FlyteDirectory(path=value, remote_directory=remote_directory)
-        raise click.BadParameter(f"parameter should be a valid directory path, {value}")
+        if not FileAccessProvider.is_remote(value):
+            p = pathlib.Path(value)
+            if not p.exists() or not p.is_dir():
+                raise click.BadParameter(f"parameter should be a valid flytedirectory path, {value}")
+        return FlyteDirectory(path=value, remote_directory=remote_directory)
 
 
 class StructuredDatasetParamType(click.ParamType):
