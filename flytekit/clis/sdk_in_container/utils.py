@@ -7,8 +7,11 @@ from types import MappingProxyType
 import grpc
 import rich_click as click
 from rich.console import Console
+from rich.panel import Panel
+from rich.syntax import Syntax
 from rich.traceback import Traceback
 
+from flytekit.core.constants import SOURCE_CODE
 from flytekit.exceptions.base import FlyteException
 from flytekit.exceptions.user import FlyteInvalidInputException
 from flytekit.loggers import get_level_from_cli_verbosity, logger
@@ -103,7 +106,7 @@ def remove_unwanted_traceback_frames(tb, unwanted_module_names: typing.Optional[
     return tb_next
 
 
-def pretty_print_traceback(e: BaseException):
+def pretty_print_traceback(e: Exception, is_verbose: bool = True):
     """
     This method will print the Traceback of an error.
     """
@@ -111,14 +114,23 @@ def pretty_print_traceback(e: BaseException):
     tb = e.__cause__.__traceback__ if e.__cause__ else e.__traceback__
 
     new_tb = remove_unwanted_traceback_frames(tb)
-    console.print(Traceback.from_exception(type(e), e, new_tb))
+    if is_verbose:
+        console.print(Traceback.from_exception(type(e), e, new_tb))
+
+    if hasattr(e, SOURCE_CODE):
+        syntax = Syntax(getattr(e, SOURCE_CODE), "python", background_color="default")
+        panel = Panel(syntax, border_style="red", title=type(e).__name__, title_align="left")
+        console.print(panel)
 
 
-def pretty_print_exception(e: Exception):
+def pretty_print_exception(e: Exception, is_verbose: bool = True):
     """
     This method will print the exception in a nice way. It will also check if the exception is a grpc.RpcError and
     print it in a human-readable way.
     """
+    if is_verbose:
+        click.secho("Verbose mode on")
+
     if isinstance(e, click.exceptions.Exit):
         raise e
 
@@ -148,7 +160,7 @@ def pretty_print_exception(e: Exception):
         click.secho(f"Value Error: {e}", fg="red")
         return
 
-    pretty_print_traceback(e)
+    pretty_print_traceback(e, is_verbose)
 
 
 class ErrorHandlingCommand(click.RichGroup):
@@ -163,11 +175,7 @@ class ErrorHandlingCommand(click.RichGroup):
         try:
             return super().invoke(ctx)
         except Exception as e:
-            # if verbose > 0:
-            #     click.secho("Verbose mode on")
-            #     new_tb = remove_unwanted_traceback_frames(e.__traceback__)
-            #     raise e.with_traceback(new_tb) from None
-            pretty_print_exception(e)
+            pretty_print_exception(e, verbose > 0)
             exit(1)
 
 

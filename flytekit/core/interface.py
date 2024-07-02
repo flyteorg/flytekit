@@ -13,6 +13,7 @@ from typing_extensions import get_args, get_type_hints
 
 from flytekit.core import context_manager
 from flytekit.core.artifact import Artifact, ArtifactIDSpecification, ArtifactQuery
+from flytekit.core.constants import SOURCE_CODE
 from flytekit.core.docstring import Docstring
 from flytekit.core.sentinel import DYNAMIC_INPUT_BINDING
 from flytekit.core.type_engine import TypeEngine, UnionTransformer
@@ -406,11 +407,10 @@ def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Doc
             line_index = target_line_no - start_line
             source_code = "".join(f"{start_line+i} {lines[i]}" for i in range(line_index + 1))
 
-            err_msg = (
-                f"\n{source_code}{' '*column_offset}^ has no type. Please add a type annotation to the input parameter."
-            )
-
-            raise TypeError(err_msg)
+            err_msg = f"'{k}' has no type. Please add a type annotation to the input parameter."
+            err = TypeError(err_msg)
+            err.__setattr__(SOURCE_CODE, f"{source_code}{' '*column_offset} # ^ {err_msg}")
+            raise err
         default = v.default if v.default is not inspect.Parameter.empty else None
         # Inputs with default values are currently ignored, we may want to look into that in the future
         inputs[k] = (annotation, default)  # type: ignore
