@@ -7,7 +7,7 @@ from mock import mock, patch
 
 import flytekit
 from flytekit import Deck, FlyteContextManager, task
-from flytekit.deck import MarkdownRenderer, SourceCodeRenderer, TopFrameRenderer
+from flytekit.deck import DeckField, MarkdownRenderer, SourceCodeRenderer, TopFrameRenderer
 from flytekit.deck.deck import _output_deck
 from flytekit.deck.renderer import PythonDependencyRenderer
 
@@ -40,20 +40,21 @@ def test_timeline_deck():
     )
     ctx = FlyteContextManager.current_context()
     ctx.user_space_params._decks = []
+    ctx.user_space_params._timeline_deck = None
     timeline_deck = ctx.user_space_params.timeline_deck
     timeline_deck.append_time_info(time_info)
     assert timeline_deck.name == "Timeline"
     assert len(timeline_deck.time_info) == 1
     assert timeline_deck.time_info[0] == time_info
-    assert len(ctx.user_space_params.decks) == 1
+    assert len(ctx.user_space_params.decks) == 0
 
 
 @pytest.mark.parametrize(
     "disable_deck,expected_decks",
     [
-        (None, 1),  # time line deck
-        (False, 5),  # time line deck + source code deck + python dependency deck + input and output decks
-        (True, 1),  # time line deck
+        (None, 0),
+        (False, 5),  # source code + dependency + input + output + timeline decks
+        (True, 0),
     ],
 )
 def test_deck_for_task(disable_deck, expected_decks):
@@ -71,26 +72,80 @@ def test_deck_for_task(disable_deck, expected_decks):
     assert len(ctx.user_space_params.decks) == expected_decks
 
 
+@pytest.mark.parametrize(
+    "deck_fields,enable_deck,expected_decks",
+    [
+        ((), True, 0),
+        ((DeckField.INPUT.value), False, 0),
+        (
+            (DeckField.OUTPUT.value, DeckField.INPUT.value, DeckField.TIMELINE.value, DeckField.DEPENDENCIES.value),
+            True,
+            4,  # time line deck + dependency + input and output decks
+        ),
+        (None, True, 5),  # source code + dependency + input + output + timeline decks
+    ],
+)
+@mock.patch("flytekit.deck.deck._output_deck")
+def test_additional_deck_for_task(_output_deck, deck_fields, enable_deck, expected_decks):
+    ctx = FlyteContextManager.current_context()
+
+    kwargs = {}
+    if deck_fields is not None:
+        kwargs["deck_fields"] = deck_fields
+    if enable_deck is not None:
+        kwargs["enable_deck"] = enable_deck
+
+    @task(**kwargs)
+    def t1(a: int) -> str:
+        return str(a)
+
+    t1(a=3)
+    assert len(ctx.user_space_params.decks) == expected_decks
+
+
+@pytest.mark.parametrize(
+    "deck_fields,enable_deck,disable_deck",
+    [
+        (None, True, False),
+        (("WrongDeck", DeckField.INPUT.value, DeckField.OUTPUT.value), True, None),  # WrongDeck is not a valid field
+    ],
+)
+def test_invalid_deck_params(deck_fields, enable_deck, disable_deck):
+    kwargs = {}
+    if deck_fields is not None:
+        kwargs["deck_fields"] = deck_fields
+    if enable_deck is not None:
+        kwargs["enable_deck"] = enable_deck
+    if disable_deck is not None:
+        kwargs["disable_deck"] = disable_deck
+
+    with pytest.raises(ValueError):
+
+        @task(**kwargs)
+        def t1(a: int) -> str:
+            return str(a)
+
+
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 @pytest.mark.filterwarnings("ignore:disable_deck was deprecated")
 @pytest.mark.parametrize(
     "enable_deck,disable_deck, expected_decks, expect_error",
     [
-        (None, None, 2, False),  # default deck and time line deck
+        (None, None, 1, False),  # default deck
         (
             None,
             False,
             6,
             False,
-        ),  # default deck and time line deck + source code deck + python dependency deck + input and output decks
-        (None, True, 2, False),  # default deck and time line deck
+        ),  # default deck + source code + dependency + input + output + timeline decks
+        (None, True, 1, False),  # default deck
         (
             True,
             None,
             6,
             False,
-        ),  # default deck and time line deck + source code deck + python dependency deck + input and output decks
-        (False, None, 2, False),  # default deck and time line deck
+        ),  # default deck + source code + dependency + input + output + timeline decks
+        (False, None, 1, False),  # default deck
         (True, True, -1, True),  # Set both disable_deck and enable_deck to True and confirm that it fails
         (False, False, -1, True),  # Set both disable_deck and enable_deck to False and confirm that it fails
     ],
