@@ -28,9 +28,9 @@ def noop(): ...
 
 T = typing.TypeVar("T")
 
-
+from mashumaro.types import SerializableType
 @dataclass
-class FlyteFile(os.PathLike, typing.Generic[T], DataClassJSONMixin):
+class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONMixin):
     path: typing.Union[str, os.PathLike] = field(default=None, metadata=config(mm_field=fields.String()))  # type: ignore
     """
     Since there is no native Python implementation of files and directories for the Flyte Blob type, (like how int
@@ -143,6 +143,49 @@ class FlyteFile(os.PathLike, typing.Generic[T], DataClassJSONMixin):
         def t2() -> flytekit_typing.FlyteFile["csv"]:
             return "/tmp/local_file.csv"
     """
+
+    def _serialize(self):
+        lv = FlyteFilePathTransformer().to_literal(FlyteContext.current_context(), self, FlyteFile, None)
+        
+        return {"path": lv.scalar.blob.uri}
+        return FlyteFile(path=lv.scalar.blob.uri)
+        # return [self.code, self.city]
+
+    @classmethod
+    def _deserialize(cls, value):
+        path = value["path"]
+
+        if path is None:
+            raise ValueError("path is None")
+        # return Literal(
+        #             scalar=Scalar(
+        #                 blob=Blob(
+        #                     metadata=BlobMetadata(
+        #                         type=_core_types.BlobType(
+        #                             format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
+        #                         )
+        #                     ),
+        #                     uri=path, # uri=cast(FlyteFile, python_val).path,
+        #                 )
+        #             )
+        #         )
+        return FlyteFilePathTransformer().to_python_value(
+                FlyteContext.current_context(),
+                Literal(
+                    scalar=Scalar(
+                        blob=Blob(
+                            metadata=BlobMetadata(
+                                type=_core_types.BlobType(
+                                    format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
+                                )
+                            ),
+                            uri=path, # uri=cast(FlyteFile, python_val).path,
+                        )
+                    )
+                ),
+                FlyteFile,
+            )
+
 
     def to_json(self) -> 'FlyteFile':
         print("@@@ flytefile to json")
