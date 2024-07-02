@@ -183,11 +183,6 @@ class FlyteSchema(DataClassJSONMixin):
     """
     This is the main schema class that users should use.
     """
-    # def to_json(self):
-    #     pass
-    #
-    # def from_json(self):
-    #     pass
 
     @classmethod
     def columns(cls) -> typing.Dict[str, typing.Type]:

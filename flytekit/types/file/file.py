@@ -173,31 +173,6 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
                 FlyteFile,
             )
 
-
-    # def to_json(self) -> 'FlyteFile':
-    #     print("@@@ flytefile to json")
-    #     lv = FlyteFilePathTransformer().to_literal(FlyteContext.current_context(), self)
-    #     return FlyteFile(path=lv.scalar.blob.uri)
-
-    # def from_json(self) -> 'FlyteFile':
-    #     print("@@@ flytefile from json")
-    #     return FlyteFilePathTransformer().to_python_value(
-    #             FlyteContext.current_context(),
-    #             Literal(
-    #                 scalar=Scalar(
-    #                     blob=Blob(
-    #                         metadata=BlobMetadata(
-    #                             type=_core_types.BlobType(
-    #                                 format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
-    #                             )
-    #                         ),
-    #                         uri=self.path, # uri=cast(FlyteFile, python_val).path,
-    #                     )
-    #                 )
-    #             ),
-    #             FlyteFile,
-    #         )
-
     @classmethod
     def extension(cls) -> str:
         return ""

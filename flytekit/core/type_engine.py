@@ -482,7 +482,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"user defined datatypes in Flytekit"
             )
 
-        # self._serialize_flyte_type(python_val, python_type)
+        self._serialize_flyte_type(python_val, python_type)
 
         # The `to_json` function is integrated through either the `dataclasses_json` decorator or by inheriting from `DataClassJsonMixin`.
         # It serializes a data class into a JSON string.
@@ -545,8 +545,6 @@ class DataclassTransformer(TypeTransformer[object]):
         """
         If any field inside the dataclass is flyte type, we should use flyte type transformer for that field.
         """
-        from flytekit.types.directory.types import FlyteDirectory
-        from flytekit.types.file import FlyteFile
         from flytekit.types.schema.types import FlyteSchema
         from flytekit.types.structured.structured_dataset import StructuredDataset
 
