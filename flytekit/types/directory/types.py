@@ -30,9 +30,9 @@ PathType = typing.Union[str, os.PathLike]
 
 def noop(): ...
 
-
+from mashumaro.types import SerializableType
 @dataclass
-class FlyteDirectory(DataClassJsonMixin, os.PathLike, typing.Generic[T]):
+class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.Generic[T]):
     path: PathType = field(default=None, metadata=config(mm_field=fields.String()))  # type: ignore
     """
     .. warning::
@@ -119,6 +119,35 @@ class FlyteDirectory(DataClassJsonMixin, os.PathLike, typing.Generic[T]):
     the Blob type has the format field. The difference in the type field is represented in the ``dimensionality``
     field in the ``BlobType``.
     """
+
+    def _serialize(self):
+        lv = FlyteDirToMultipartBlobTransformer().to_literal(FlyteContext.current_context(), self, FlyteDirectory, None)
+
+        return {"path": lv.scalar.blob.uri}
+
+    @classmethod
+    def _deserialize(cls, value):
+        path = value.get("path", None)
+
+        if path is None:
+            raise ValueError("path is None")
+
+        return FlyteDirToMultipartBlobTransformer().to_python_value(
+            FlyteContext.current_context(),
+            Literal(
+                scalar=Scalar(
+                    blob=Blob(
+                        metadata=BlobMetadata(
+                            type=_core_types.BlobType(
+                                format="", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
+                            )
+                        ),
+                        uri=path,  # uri=cast(FlyteFile, python_val).path,
+                    )
+                )
+            ),
+            FlyteDirectory,
+        )
 
     def __init__(
         self,

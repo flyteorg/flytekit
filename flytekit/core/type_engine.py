@@ -570,7 +570,6 @@ class DataclassTransformer(TypeTransformer[object]):
         # def _serialize_flyte_type
         if inspect.isclass(python_type) and (
             issubclass(python_type, FlyteSchema)
-            or issubclass(python_type, FlyteDirectory)
             or issubclass(python_type, StructuredDataset)
         ):
             lv = TypeEngine.to_literal(FlyteContext.current_context(), python_val, python_type, None)
@@ -582,9 +581,7 @@ class DataclassTransformer(TypeTransformer[object]):
             # set, then the real uri in the literal should be the remote source, not the path (which may be an
             # auto-generated random local path). To be sure we're writing the right path to the json, use the uri
             # as determined by the transformer.
-            if issubclass(python_type, FlyteDirectory):
-                return python_type(path=lv.scalar.blob.uri)
-            elif issubclass(python_type, StructuredDataset):
+            if issubclass(python_type, StructuredDataset):
                 sd = python_type(uri=lv.scalar.structured_dataset.uri)
                 sd.file_format = lv.scalar.structured_dataset.metadata.structured_dataset_type.format
                 return sd
