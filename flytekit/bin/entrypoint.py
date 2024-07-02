@@ -1,3 +1,4 @@
+
 import asyncio
 import contextlib
 import datetime
@@ -9,9 +10,10 @@ import subprocess
 import tempfile
 import traceback
 from sys import exit
-from typing import List, Optional
+from typing import List, Optional, BinaryIO, Tuple
 
 import click
+from flyteidl.core import literals_pb2, errors_pb2, dynamic_job_pb2
 from flyteidl.core import literals_pb2 as _literals_pb2
 
 from flytekit.configuration import (
@@ -20,6 +22,7 @@ from flytekit.configuration import (
     SerializationSettings,
     StatsConfig,
 )
+from flytekit.deck.deck import _get_deck
 from flytekit.core import constants as _constants
 from flytekit.core import utils
 from flytekit.core.base_task import IgnoreOutputs, PythonTask
@@ -36,6 +39,7 @@ from flytekit.core.promise import VoidPromise
 from flytekit.deck.deck import _output_deck
 from flytekit.exceptions import scopes as _scoped_exceptions
 from flytekit.exceptions import scopes as _scopes
+from flytekit.exceptions.user import FlyteRecoverableException, FlyteUserException
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
 from flytekit.loggers import logger, user_space_logger
 from flytekit.models import dynamic_job as _dynamic_job
@@ -317,16 +321,212 @@ def setup_execution(
         yield ctx
 
 
-def _handle_annotated_task(
-    ctx: FlyteContext,
-    task_def: PythonTask,
-    inputs: str,
-    output_prefix: str,
+@contextlib.contextmanager
+def new_setup_execution(
+        user_workspace_dir: str,
+        local_sandbox_dir: str,
+        raw_output_data_prefix: str,
+        output_metadata_prefix: Optional[str] = None,
+        checkpoint_path: Optional[str] = None,
+        prev_checkpoint: Optional[str] = None,
+        dynamic_addl_distro: Optional[str] = None,
+        dynamic_dest_dir: Optional[str] = None,
 ):
-    """
-    Entrypoint for all PythonTask extensions
-    """
-    _dispatch_execute(ctx, task_def, inputs, output_prefix)
+    ctx = FlyteContextManager.current_context()
+
+    exe_project = get_one_of("FLYTE_INTERNAL_EXECUTION_PROJECT", "_F_PRJ")
+    exe_domain = get_one_of("FLYTE_INTERNAL_EXECUTION_DOMAIN", "_F_DM")
+    exe_name = get_one_of("FLYTE_INTERNAL_EXECUTION_ID", "_F_NM")
+    exe_wf = get_one_of("FLYTE_INTERNAL_EXECUTION_WORKFLOW", "_F_WF")
+    exe_lp = get_one_of("FLYTE_INTERNAL_EXECUTION_LAUNCHPLAN", "_F_LP")
+
+    tk_project = get_one_of("FLYTE_INTERNAL_TASK_PROJECT", "_F_TK_PRJ")
+    tk_domain = get_one_of("FLYTE_INTERNAL_TASK_DOMAIN", "_F_TK_DM")
+    tk_name = get_one_of("FLYTE_INTERNAL_TASK_NAME", "_F_TK_NM")
+    tk_version = get_one_of("FLYTE_INTERNAL_TASK_VERSION", "_F_TK_V")
+
+    compressed_serialization_settings = os.environ.get(SERIALIZED_CONTEXT_ENV_VAR, "")
+
+    from flytekit import __version__ as _api_version
+
+    checkpointer = None
+    if checkpoint_path is not None:
+        checkpointer = SyncCheckpoint(checkpoint_dest=checkpoint_path, checkpoint_src=prev_checkpoint)
+        logger.debug(f"Checkpointer created with source {prev_checkpoint} and dest {checkpoint_path}")
+
+    execution_parameters = ExecutionParameters(
+        execution_id=_identifier.WorkflowExecutionIdentifier(
+            project=exe_project,
+            domain=exe_domain,
+            name=exe_name,
+        ),
+        execution_date=datetime.datetime.now(datetime.timezone.utc),
+        stats=_get_stats(
+            cfg=StatsConfig.auto(),
+            # Stats metric path will be:
+            # registration_project.registration_domain.app.module.task_name.user_stats
+            # and it will be tagged with execution-level values for project/domain/wf/lp
+            prefix=f"{tk_project}.{tk_domain}.{tk_name}.user_stats",
+            tags={
+                "exec_project": exe_project,
+                "exec_domain": exe_domain,
+                "exec_workflow": exe_wf,
+                "exec_launchplan": exe_lp,
+                "api_version": _api_version,
+            },
+        ),
+        logging=user_space_logger,
+        tmp_dir=user_workspace_dir,
+        raw_output_prefix=raw_output_data_prefix,
+        output_metadata_prefix=output_metadata_prefix,
+        checkpoint=checkpointer,
+        task_id=_identifier.Identifier(_identifier.ResourceType.TASK, tk_project, tk_domain, tk_name, tk_version),
+    )
+
+    metadata = {
+        "flyte-execution-project": exe_project,
+        "flyte-execution-domain": exe_domain,
+        "flyte-execution-launchplan": exe_lp,
+        "flyte-execution-workflow": exe_wf,
+        "flyte-execution-name": exe_name,
+    }
+    try:
+        file_access = FileAccessProvider(
+            local_sandbox_dir=local_sandbox_dir,
+            raw_output_prefix=raw_output_data_prefix,
+            execution_metadata=metadata,
+        )
+    except TypeError:  # would be thrown from DataPersistencePlugins.find_plugin
+        logger.error(f"No data plugin found for raw output prefix {raw_output_data_prefix}")
+        raise
+
+    ctx = ctx.new_builder().with_file_access(file_access).build()
+
+    es = ctx.new_execution_state().with_params(
+        mode=ExecutionState.Mode.TASK_EXECUTION,
+        user_space_params=execution_parameters,
+    )
+    # create new output metadata tracker
+    omt = OutputMetadataTracker()
+    cb = ctx.new_builder().with_execution_state(es).with_output_metadata_tracker(omt)
+
+    if compressed_serialization_settings:
+        ss = SerializationSettings.from_transport(compressed_serialization_settings)
+        ssb = ss.new_builder()
+        ssb.project = ssb.project or exe_project
+        ssb.domain = ssb.domain or exe_domain
+        ssb.version = tk_version
+        if dynamic_addl_distro:
+            ssb.fast_serialization_settings = FastSerializationSettings(
+                enabled=True,
+                destination_dir=dynamic_dest_dir,
+                distribution_location=dynamic_addl_distro,
+            )
+        cb = cb.with_serialization_settings(ssb.build())
+
+    with FlyteContextManager.with_context(cb) as ctx:
+        yield ctx
+
+
+def new_setup_and_execute_task(
+        user_workspace_dir: str,
+        local_sandbox_dir: str,
+        raw_output_data_prefix: str,
+        resolver: str,
+        resolver_args: List[str],
+        input_lm_bytes: BinaryIO,
+        output_metadata_prefix: Optional[str] = None,
+        checkpoint_path: Optional[str] = None,
+        prev_checkpoint: Optional[str] = None,
+        dynamic_addl_distro: Optional[str] = None,
+        dynamic_dest_dir: Optional[str] = None,
+) -> Tuple[Optional[literals_pb2.LiteralMap], Optional[dynamic_job_pb2.DynamicJobSpec], Optional[errors_pb2.ErrorDocument], Optional[str]]:
+
+    with new_setup_execution(
+            user_workspace_dir,
+            local_sandbox_dir,
+            raw_output_data_prefix,
+            output_metadata_prefix,
+            checkpoint_path,
+            prev_checkpoint,
+            dynamic_addl_distro,
+            dynamic_dest_dir,
+    ) as ctx:
+        if len(resolver_args) < 1:
+            raise Exception("cannot be <1")
+
+        resolver_obj = load_object_from_module(resolver)
+        # Use the resolver to load the actual task object
+        task_def = resolver_obj.load_task(loader_args=resolver_args)
+
+        logger.debug(f"Starting _dispatch_execute for {task_def.name}")
+        try:
+            # Step2
+            input_proto = utils.load_proto_from_file(_literals_pb2.LiteralMap, input_lm_bytes.read())
+            idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
+            outputs = task_def.dispatch_execute(ctx, idl_input_literals)
+            if inspect.iscoroutine(outputs):
+                # Handle eager-mode (async) tasks
+                logger.info("Output is a coroutine")
+                outputs = asyncio.run(outputs)
+
+            # Categorize what was returned by the task
+            lm: Optional[literals_pb2.LiteralMap] = None
+            dj: Optional[dynamic_job_pb2.DynamicJobSpec] = None
+            err: Optional[errors_pb2.ErrorDocument] = None
+            if isinstance(outputs, VoidPromise):
+                logger.warning("Task produces no outputs")
+                lm = _literal_models.LiteralMap(literals={}).to_flyte_idl()
+            elif isinstance(outputs, _literal_models.LiteralMap):
+                lm = outputs.to_flyte_idl()
+            elif isinstance(outputs, _dynamic_job.DynamicJobSpec):
+                dj = outputs.to_flyte_idl()
+            else:
+                logger.error(f"SystemError: received unknown outputs from task {outputs}")
+                error_doc = _error_models.ErrorDocument(
+                    _error_models.ContainerError(
+                        "UNKNOWN_OUTPUT",
+                        f"Type of output received not handled {type(outputs)} outputs: {outputs}",
+                        _error_models.ContainerError.Kind.RECOVERABLE,
+                        _execution_models.ExecutionError.ErrorKind.SYSTEM,
+                    )
+                )
+                err = error_doc.to_flyte_idl()
+
+        except Exception as e:
+            # If it's a special exception, then we don't upload anything.
+            # todo::flyrs: Need to trace to make sure this is indeed the raw exception, not wrapped in anything.
+            if isinstance(e, IgnoreOutputs):
+                logger.warning(f"IgnoreOutputs received! Nothing will be uploaded. reason {e}!!")
+                return None, None, None
+
+            # Otherwise, detect and handle exception types correctly.
+            if isinstance(e, FlyteRecoverableException):
+                error_doc = _error_models.ErrorDocument(
+                    _error_models.ContainerError(
+                        e._ERROR_CODE, str(e), errors_pb2.ContainerError.RECOVERABLE, _execution_models.ExecutionError.ErrorKind.USER
+                    )
+                )
+            elif isinstance(e, FlyteUserException):
+                error_doc = _error_models.ErrorDocument(
+                    _error_models.ContainerError(
+                        e._ERROR_CODE, str(e), errors_pb2.ContainerError.NON_RECOVERABLE, _execution_models.ExecutionError.ErrorKind.USER
+                    )
+                )
+            else:
+                error_doc = _error_models.ErrorDocument(
+                    _error_models.ContainerError(
+                        "USER_ERROR_CODE", str(e), errors_pb2.ContainerError.NON_RECOVERABLE, _execution_models.ExecutionError.ErrorKind.USER
+                    )
+                )
+            err = error_doc.to_flyte_idl()
+
+        if not getattr(task_def, "disable_deck", True):
+            d = _get_deck(ctx.user_space_params, True)
+        else:
+            d = None
+
+        return lm, dj, err, str(d)
 
 
 @_scopes.system_entry_point
@@ -384,7 +584,7 @@ def _execute_task(
                 f"Test detected, returning. Args were {inputs} {output_prefix} {raw_output_data_prefix} {resolver} {resolver_args}"
             )
             return
-        _handle_annotated_task(ctx, _task_def, inputs, output_prefix)
+        _dispatch_execute(ctx, _task_def, inputs, output_prefix)
 
 
 @_scopes.system_entry_point
@@ -441,7 +641,7 @@ def _execute_map_task(
             )
             return
 
-        _handle_annotated_task(ctx, map_task, inputs, output_prefix)
+        _dispatch_execute(ctx, map_task, inputs, output_prefix)
 
 
 def normalize_inputs(
@@ -492,31 +692,65 @@ def execute_task_cmd(
     resolver,
     resolver_args,
 ):
+    # Move to flyrs (and wrap with exception handling) - START
     logger.info(get_version_message())
     # We get weird errors if there are no click echo messages at all, so emit an empty string so that unit tests pass.
     click.echo("")
-    raw_output_data_prefix, checkpoint_path, prev_checkpoint = normalize_inputs(
-        raw_output_data_prefix, checkpoint_path, prev_checkpoint
-    )
-
-    # For new API tasks (as of 0.16.x), we need to call a different function.
-    # Use the presence of the resolver to differentiate between old API tasks and new API tasks
-    # The addition of a new top-level command seemed out of scope at the time of this writing to pursue given how
-    # pervasive this top level command already (plugins mostly).
 
     logger.debug(f"Running task execution with resolver {resolver}...")
-    _execute_task(
-        inputs=inputs,
-        output_prefix=output_prefix,
-        raw_output_data_prefix=raw_output_data_prefix,
-        test=test,
-        resolver=resolver,
-        resolver_args=resolver_args,
-        dynamic_addl_distro=dynamic_addl_distro,
-        dynamic_dest_dir=dynamic_dest_dir,
-        checkpoint_path=checkpoint_path,
-        prev_checkpoint=prev_checkpoint,
+
+    ctx = FlyteContextManager.current_context()
+    user_workspace_dir = ctx.file_access.get_random_local_directory()
+    pathlib.Path(user_workspace_dir).mkdir(parents=True, exist_ok=True)
+    logger.info(f"Using user directory {user_workspace_dir}")
+
+    local_sandbox_dir = tempfile.mkdtemp(prefix="flyte")
+    logger.info(f"Using local sandbox directory {local_sandbox_dir}")
+
+    local_inputs_file = os.path.join(ctx.execution_state.working_dir, "inputs.pb")
+    ctx.file_access.get_data(inputs, local_inputs_file)
+    input_lm_bytes: BinaryIO = open(local_inputs_file, "rb")
+    # Move to flyrs - END
+
+    # Everything in here is interpreted to be a user error.
+    # This cannot raise exceptions (unless an exception is thrown in the handling of exceptions).
+    output_lm, dj_spec, error_doc, deck_str = new_setup_and_execute_task(
+        user_workspace_dir,
+        local_sandbox_dir,
+        raw_output_data_prefix,
+        resolver,
+        resolver_args,
+        input_lm_bytes,
+        output_prefix,
+        checkpoint_path,
+        prev_checkpoint,
+        dynamic_addl_distro,
+        dynamic_dest_dir,
     )
+
+    # Move to flyrs (and wrap with exception handling) - here to end
+    if output_lm:
+        utils.write_proto_to_file(output_lm, os.path.join(ctx.execution_state.engine_dir, _constants.OUTPUT_FILE_NAME))
+    elif dj_spec:
+        utils.write_proto_to_file(dj_spec, os.path.join(ctx.execution_state.engine_dir, _constants.FUTURES_FILE_NAME))
+    elif error_doc:
+        utils.write_proto_to_file(error_doc, os.path.join(ctx.execution_state.engine_dir, _constants.ERROR_FILE_NAME))
+    else:
+        logger.error("No output was generated by the task")
+
+    ctx.file_access.put_data(ctx.execution_state.engine_dir, output_prefix, is_multipart=True)
+    logger.info(f"Engine folder written successfully to the output prefix {output_prefix}")
+
+    if deck_str:
+        _output_deck(ctx.user_space_params, deck_str)
+
+    logger.debug("Finished _dispatch_execute")
+
+    if os.environ.get("FLYTE_FAIL_ON_ERROR", "").lower() == "true" and error_doc:
+        # This env is set by the flytepropeller
+        # AWS batch job get the status from the exit code, so once we catch the error,
+        # we should return the error code here
+        exit(1)
 
 
 @_pass_through.command("pyflyte-fast-execute")
