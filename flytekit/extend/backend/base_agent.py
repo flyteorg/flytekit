@@ -18,7 +18,7 @@ from flyteidl.core.execution_pb2 import TaskExecution, TaskLog
 from rich.logging import RichHandler
 from rich.progress import Progress
 
-from flytekit import FlyteContext, PythonFunctionTask, logger
+from flytekit import FlyteContext, PythonFunctionTask
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core import utils
 from flytekit.core.base_task import PythonTask
@@ -210,8 +210,6 @@ class AgentRegistry(object):
             )
             AgentRegistry._METADATA[agent.name] = agent_metadata
 
-        logger.info(f"Registering {agent.name} for task type: {agent.task_category}")
-
     @staticmethod
     def get_agent(task_type_name: str, task_type_version: int = 0) -> Union[SyncAgentBase, AsyncAgentBase]:
         task_category = TaskCategory(name=task_type_name, version=task_type_version)
@@ -272,8 +270,8 @@ class SyncAgentExecutorMixin:
             return await mirror_async_methods(
                 agent.do, task_template=template, inputs=literal_map, output_prefix=output_prefix
             )
-        except Exception as error_message:
-            raise FlyteUserException(f"Failed to run the task {self.name} with error: {error_message}")
+        except Exception as e:
+            raise FlyteUserException(f"Failed to run the task {self.name} with error: {e}") from None
 
 
 class AsyncAgentExecutorMixin:
