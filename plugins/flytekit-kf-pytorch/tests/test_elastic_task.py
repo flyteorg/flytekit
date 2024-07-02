@@ -187,3 +187,12 @@ def test_recoverable_error(recoverable: bool, start_method: str) -> None:
     else:
         with pytest.raises(RuntimeError):
             wf(recoverable=recoverable)
+
+
+def test_default_timeouts():
+    """Test that default timeouts are set for the elastic task."""
+    @task(task_config=Elastic(nnodes=1))
+    def test_task():
+        pass
+
+    assert test_task.task_config.rdzv_configs == {"join_timeout": 900, "timeout": 900}
