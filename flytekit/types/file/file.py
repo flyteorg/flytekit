@@ -167,7 +167,7 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
                                 format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
                             )
                         ),
-                        uri=path,  # uri=cast(FlyteFile, python_val).path,
+                        uri=path,
                     )
                 )
             ),

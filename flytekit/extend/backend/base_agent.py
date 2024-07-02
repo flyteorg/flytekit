@@ -241,7 +241,6 @@ class SyncAgentExecutorMixin:
         from flytekit.tools.translator import get_serializable
 
         ctx = FlyteContext.current_context()
-
         ss = ctx.serialization_settings or SerializationSettings(ImageConfig())
         task_template = get_serializable(OrderedDict(), ss, self).template
         output_prefix = ctx.file_access.get_random_remote_directory()

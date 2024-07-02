@@ -590,7 +590,12 @@ class DataclassTransformer(TypeTransformer[object]):
             return python_val
 
     def _deserialize_flyte_type(self, python_val: T, expected_python_type: Type) -> Optional[T]:
+        """
+        This method maintains backward compatibility for deserializing Flyte types.
+        For example, it ensures compatibility with upstream outputs that use Flyte types from older Flytekit versions.
+        """
         from flytekit.types.directory.types import FlyteDirectory, FlyteDirToMultipartBlobTransformer
+        from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
         from flytekit.types.schema.types import FlyteSchema, FlyteSchemaTransformer
         from flytekit.types.structured.structured_dataset import StructuredDataset, StructuredDatasetTransformerEngine
 
@@ -617,6 +622,23 @@ class DataclassTransformer(TypeTransformer[object]):
                     scalar=Scalar(
                         schema=Schema(
                             cast(FlyteSchema, python_val).remote_path, t._get_schema_type(expected_python_type)
+                        )
+                    )
+                ),
+                expected_python_type,
+            )
+        elif issubclass(expected_python_type, FlyteFile):
+            return FlyteFilePathTransformer().to_python_value(
+                FlyteContext.current_context(),
+                Literal(
+                    scalar=Scalar(
+                        blob=Blob(
+                            metadata=BlobMetadata(
+                                type=_core_types.BlobType(
+                                    format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
+                                )
+                            ),
+                            uri=cast(FlyteFile, python_val).path,
                         )
                     )
                 ),

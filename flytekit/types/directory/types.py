@@ -143,7 +143,7 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
                                 format="", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
                             )
                         ),
-                        uri=path,  # uri=cast(FlyteFile, python_val).path,
+                        uri=path,
                     )
                 )
             ),
