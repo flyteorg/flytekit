@@ -119,6 +119,7 @@ def task(
     pod_template: Optional["PodTemplate"] = ...,
     pod_template_name: Optional[str] = ...,
     accelerator: Optional[BaseAccelerator] = ...,
+    unsafe: bool = ...,
 ) -> Callable[[Callable[..., FuncOut]], PythonFunctionTask[T]]: ...
 
 
@@ -157,6 +158,7 @@ def task(
     pod_template: Optional["PodTemplate"] = ...,
     pod_template_name: Optional[str] = ...,
     accelerator: Optional[BaseAccelerator] = ...,
+    unsafe: bool = ...,
 ) -> Union[PythonFunctionTask[T], Callable[..., FuncOut]]: ...
 
 
@@ -200,6 +202,7 @@ def task(
     pod_template: Optional["PodTemplate"] = None,
     pod_template_name: Optional[str] = None,
     accelerator: Optional[BaseAccelerator] = None,
+    unsafe: bool = False,
 ) -> Union[
     Callable[[Callable[..., FuncOut]], PythonFunctionTask[T]],
     PythonFunctionTask[T],
@@ -322,6 +325,7 @@ def task(
     :param pod_template: Custom PodTemplate for this task.
     :param pod_template_name: The name of the existing PodTemplate resource which will be used in this task.
     :param accelerator: The accelerator to use for this task.
+    :param unsafe: Boolean that indicates if the task allows unspecified data types.
     """
 
     def wrapper(fn: Callable[..., Any]) -> PythonFunctionTask[T]:
@@ -355,6 +359,7 @@ def task(
             pod_template=pod_template,
             pod_template_name=pod_template_name,
             accelerator=accelerator,
+            unsafe=unsafe,
         )
         update_wrapper(task_instance, fn)
         return task_instance
