@@ -1,5 +1,6 @@
 import asyncio
 import functools
+import json as _json
 import os
 import shutil
 import tempfile
@@ -11,11 +12,21 @@ import grpc
 import mock
 import pytest
 import sky
+from fastapi.testclient import TestClient
 from flyteidl.core.execution_pb2 import TaskExecution
 from flytekitplugins.skypilot import SkyPilot, SkyPilotAgent
-from flytekitplugins.skypilot.agent import SkyTaskTracker
+from flytekitplugins.skypilot.sky_server import _hostname, app, cluster_registry
 from flytekitplugins.skypilot.task_utils import ContainerRunType, get_sky_task_config
-from flytekitplugins.skypilot.utils import BaseSkyTask, ClusterManager, SkyPathSetting, TaskStatus
+from flytekitplugins.skypilot.utils import (
+    BaseSkyTask,
+    ClusterManager,
+    ClusterStatus,
+    MinimalRemoteSetting,
+    SkyPathSetting,
+    TaskRemotePathSetting,
+    TaskStatus,
+)
+from requests import Response
 
 from flytekit import Resources, task
 from flytekit.configuration import DefaultImages, ImageConfig, SerializationSettings
@@ -32,6 +43,8 @@ MOCK_TASK = "mock_task"
 MOCK_CLUSTER = "mock_cluster"
 CORO_INTERVAL = 0.2
 TIME_BUFFER = 2
+
+test_client = TestClient(app)
 
 
 @pytest.mark.parametrize("container_run_type", [(ContainerRunType.APP), (ContainerRunType.RUNTIME)])
@@ -88,22 +101,12 @@ def test_skypilot_task(container_run_type):
             == textwrap.dedent(
                 f"""\
             {task_config.setup}
-            python -m pip uninstall flytekit -y
-            python -m pip install -e /flytekit
             """
             ).strip()
         )
         assert sky_task.run.startswith("export PYTHONPATH")
 
     assert container.args[0] in sky_task.run
-
-
-def queue_mock(*args, **kwargs):
-    return {"job_name": "sky_task.mock_task", "status": sky.JobStatus.RUNNING, "job_id": 0}
-
-
-def managed_queue_mock(*args, **kwargs):
-    return {"job_name": "sky_task.mock_task", "status": sky.jobs.ManagedJobStatus.RUNNING, "job_id": 0}
 
 
 def mock_launch(sleep_time=SLEEP_TIME):
@@ -113,12 +116,18 @@ def mock_launch(sleep_time=SLEEP_TIME):
     return wrapper
 
 
-def mock_fail(sleep_time=SLEEP_TIME):
-    def wrapper(*args, **kwargs):
-        time.sleep(sleep_time)
-        raise Exception("Mock Failure")
+async def condition_with_timeout(condition_wrapper: callable, max_allowed_time: float, error_msg: str):
+    time_counter = 0
+    while not condition_wrapper():
+        await asyncio.sleep(0.1)
+        time_counter += 0.1
+        if time_counter >= max_allowed_time:
+            raise Exception(error_msg)
 
-    return wrapper
+
+def mock_fail(sleep_time=SLEEP_TIME):
+    time.sleep(sleep_time)
+    raise Exception("Mock Failure")
 
 
 def mock_exec(sleep_time=SLEEP_TIME):
@@ -137,35 +146,38 @@ def mock_queue(sleep_time=SLEEP_TIME):
 
 
 async def stop_sky_path():
-    SkyTaskTracker._zip_coro.cancel()
-    try:
-        await SkyTaskTracker._zip_coro
-    except asyncio.exceptions.CancelledError:
-        pass
+    await asyncio.sleep(0.1)
+    await cluster_registry.clear()
 
 
 async def stop_and_wait(remote_cluster: ClusterManager, remote_task: BaseSkyTask):
-    max_allowed_time, time_counter = 2 * (CORO_INTERVAL) + TIME_BUFFER, 0
-    while not remote_task._task_event_handler.is_terminal() or not remote_task._cluster_event_handler.is_terminal():
-        await asyncio.sleep(0.1)
-        time_counter += 0.1
-        if time_counter >= max_allowed_time:
-            raise Exception("Task did not enter terminal state")
+    max_allowed_time = 2 * (CORO_INTERVAL) + TIME_BUFFER
 
-    max_allowed_time, time_counter = AUTO_DOWN + STOP_TIMEOUT + TIME_BUFFER, 0
-    while not remote_cluster._cluster_coroutine.done():
-        await asyncio.sleep(0.1)
-        time_counter += 0.1
-        if time_counter >= max_allowed_time:
-            raise Exception("Cluster did not finish")
+    def condition_wrapper() -> bool:
+        return remote_task._task_event_handler.is_terminal() and remote_task._cluster_event_handler.is_terminal()
+
+    await condition_with_timeout(condition_wrapper, max_allowed_time, "Task did not enter terminal state")
+
+    max_allowed_time = AUTO_DOWN + STOP_TIMEOUT + TIME_BUFFER
+
+    def condition_wrapper() -> bool:
+        return remote_cluster._cluster_coroutine.done()
+
+    await condition_with_timeout(condition_wrapper, max_allowed_time, "Cluster did not finish")
 
 
+@pytest.fixture
 def mock_sky_queues():
-    sky.status = mock.MagicMock(return_value=[{"status": sky.ClusterStatus.INIT}])
-    sky.stop = mock.MagicMock()
-    sky.down = mock.MagicMock()
-    sky.cancel = mock.MagicMock(side_effect=mock_launch(sleep_time=0))
-    sky.jobs.cancel = mock.MagicMock(side_effect=mock_launch(sleep_time=0))
+    with mock.patch("flytekitplugins.skypilot.utils.NormalClusterManager.get_cluster_stopper") as mock_stop, mock.patch(
+        "flytekitplugins.skypilot.utils.get_sky_autostop"
+    ) as mock_autostop, mock.patch("flytekitplugins.skypilot.utils.sky.cancel") as mock_cancel, mock.patch(
+        "flytekitplugins.skypilot.agent.sky.jobs.cancel"
+    ) as mock_job_cancel:
+        mock_stop.return_value = functools.partial(mock_exec, STOP_TIMEOUT / 2)
+        mock_autostop.return_value = functools.partial(mock_exec, EXEC_TIME)
+        mock_cancel.side_effect = mock_launch(sleep_time=0)
+        mock_job_cancel.side_effect = mock_launch(sleep_time=0)
+        yield mock_stop, mock_autostop, mock_cancel, mock_job_cancel
 
 
 @pytest.fixture
@@ -202,11 +214,11 @@ def say_hello0(name: str) -> str:
 
 
 @task(
-    task_config=hello1_config,
+    task_config=hello0_config,
     container_image=DefaultImages.default_image(),
 )
 def say_hello1(name: str) -> str:
-    return f"Hello, {name}."
+    return f"Hello, Flyte1 {name}."
 
 
 def get_container_args(mock_fs):
@@ -237,6 +249,22 @@ def get_container_args(mock_fs):
     ]
 
 
+def mock_fastapi(url, json):
+    if "launch" in url:
+        json_setting = MinimalRemoteSetting(**json["setting"])
+        asyncio.create_task(
+            cluster_registry.create(
+                sky.Task.from_yaml_config(json["task"]), TaskRemotePathSetting.from_minimal_setting(json_setting)
+            )
+        )
+
+    # return a dummy response
+    raw_resp = Response()
+    raw_resp.status_code = 200
+    raw_resp._content = _json.dumps({"hostname": _hostname}).encode("utf-8")
+    return raw_resp
+
+
 @pytest.fixture
 def mock_provider(mock_fs):
     with mock.patch(
@@ -246,7 +274,7 @@ def mock_provider(mock_fs):
     ) as mock_path, mock.patch(
         "flytekitplugins.skypilot.utils.NormalClusterManager.dummy_task_launcher",
         autospec=True,
-        return_value=(functools.partial(mock_dummy, EXEC_TIME)),
+        return_value=(functools.partial(mock_dummy, DUMMY_TIME)),
     ) as dummy_launch, mock.patch(
         "flytekitplugins.skypilot.utils.NormalTask.get_launch_handler",
         autospec=True,
@@ -267,11 +295,13 @@ def mock_provider(mock_fs):
         "flytekitplugins.skypilot.utils.timeout_handler",
         autospec=True,
         side_effect=(mock_launch()),
-    ) as mock_timeout:
+    ) as mock_timeout, mock.patch(
+        "flytekitplugins.skypilot.agent.requests.post", side_effect=test_client.post
+    ), mock.patch("flytekitplugins.skypilot.agent.requests.get", side_effect=test_client.get):
         yield (mock_path, dummy_launch, normal_launch, managed_launch, mock_timeout)
-        sky_path_fs = SkyTaskTracker._sky_path_setting.file_access.raw_output_fs
-        sky_path_fs.rm(sky_path_fs._parent(SkyTaskTracker._sky_path_setting.working_dir), recursive=True)
-        SkyTaskTracker._CLUSTER_REGISTRY.clear()
+        sky_path_fs = mock_path.return_value.file_access.raw_output_fs
+        sky_path_fs.rm(sky_path_fs._parent(mock_path.return_value.working_dir), recursive=True)
+        # cluster_registry.clear()
 
 
 @pytest.fixture
@@ -293,9 +323,8 @@ def get_task_spec(task):
 
 
 @pytest.fixture
-def mock_agent():
+def mock_agent(mock_sky_queues):
     context = mock.MagicMock(spec=grpc.ServicerContext)
-    mock_sky_queues()
     task_spec = get_task_spec(say_hello0)
     agent = AgentRegistry.get_agent(task_spec.template.type)
     assert isinstance(agent, SkyPilotAgent)
@@ -311,13 +340,15 @@ async def test_async_agent_cancel_on_cluster_up(mock_agent, timeout_const_mock, 
     agent, task_spec, context = mock_agent
     assert isinstance(agent, SkyPilotAgent)
     task_spec.template.container._args = get_container_args(mock_fs)
-    create_task_response = await agent.create(
-        context=context, task_template=task_spec.template, output_prefix=mock_fs.raw_output_prefix
-    )
+    with mock.patch("flytekitplugins.skypilot.agent.requests.post", side_effect=mock_fastapi):
+        create_task_response = await agent.create(
+            context=context, task_template=task_spec.template, output_prefix=mock_fs.raw_output_prefix
+        )
+
+        await asyncio.sleep(DUMMY_TIME / 2)
     resource_meta = create_task_response
     # let cluster enter up transition
-    await asyncio.sleep(DUMMY_TIME / 2)
-    remote_cluster = SkyTaskTracker._CLUSTER_REGISTRY._clusters[resource_meta.cluster_name]
+    remote_cluster = cluster_registry._clusters[resource_meta.cluster_name]
     remote_task = remote_cluster.tasks.get(resource_meta.job_name)
     get_task_response = await agent.get(context=context, resource_meta=resource_meta)
     phase = get_task_response.phase
@@ -338,20 +369,23 @@ async def test_async_agent_cancel_on_cluster_submit(
     assert isinstance(agent, SkyPilotAgent)
     task_spec.template.container._args = get_container_args(mock_fs)
     task_spec.template.custom["job_launch_type"] = job_launch_type
-    create_task_response = await agent.create(
-        context=context, task_template=task_spec.template, output_prefix=mock_fs.raw_output_prefix
-    )
-    resource_meta = create_task_response
-    remote_cluster = SkyTaskTracker._CLUSTER_REGISTRY._clusters[resource_meta.cluster_name]
+    with mock.patch("flytekitplugins.skypilot.agent.requests.post", side_effect=mock_fastapi):
+        create_task_response = await agent.create(
+            context=context, task_template=task_spec.template, output_prefix=mock_fs.raw_output_prefix
+        )
+
+        await asyncio.sleep(DUMMY_TIME / 2)
+        resource_meta = create_task_response
+        remote_cluster = cluster_registry._clusters[resource_meta.cluster_name]
+
     remote_task = remote_cluster.tasks.get(resource_meta.job_name)
-    max_allowed_time, time_counter = 2 * (dummy_time) + TIME_BUFFER, 0
+    max_allowed_time = 2 * (dummy_time) + TIME_BUFFER
+
     # let cluster enter submit transition
-    while not remote_task._task_status == TaskStatus.CLUSTER_UP:
-        await asyncio.sleep(0.1)
-        time_counter += 0.1
-        if time_counter >= max_allowed_time:
-            raise Exception("Task did not enter cluster up state")
-    # cancel the task
+    def condition_wrapper() -> bool:
+        return remote_task._task_status == TaskStatus.CLUSTER_UP
+
+    await condition_with_timeout(condition_wrapper, max_allowed_time, "Task did not enter cluster up state")
     await agent.delete(context=context, resource_meta=resource_meta)
     # let loop detect the task deletion
     await stop_and_wait(remote_cluster, remote_task)
@@ -367,21 +401,21 @@ async def test_async_agent_cancel_on_cluster_exec(
     assert isinstance(agent, SkyPilotAgent)
     task_spec.template.container._args = get_container_args(mock_fs)
     task_spec.template.custom["job_launch_type"] = job_launch_type
-    create_task_response = await agent.create(
-        context=context, task_template=task_spec.template, output_prefix=mock_fs.raw_output_prefix
-    )
+    with mock.patch("flytekitplugins.skypilot.agent.requests.post", side_effect=mock_fastapi):
+        create_task_response = await agent.create(
+            context=context, task_template=task_spec.template, output_prefix=mock_fs.raw_output_prefix
+        )
     resource_meta = create_task_response
+    await asyncio.sleep(DUMMY_TIME / 2)
     # let cluster enter submitted state
-    remote_cluster = SkyTaskTracker._CLUSTER_REGISTRY._clusters[resource_meta.cluster_name]
+    remote_cluster = cluster_registry._clusters[resource_meta.cluster_name]
     remote_task = remote_cluster.tasks.get(resource_meta.job_name)
     max_allowed_time = 2 * (dummy_time + EXEC_TIME + TIME_BUFFER)
-    time_counter = 0
-    while not remote_task._task_status == TaskStatus.TASK_SUBMITTED:
-        await asyncio.sleep(0.1)
-        time_counter += 0.1
-        if time_counter >= max_allowed_time:
-            raise Exception("Task did not enter submitted state")
-    # cancel the task
+
+    def condition_wrapper() -> bool:
+        return remote_task._task_status == TaskStatus.TASK_SUBMITTED
+
+    await condition_with_timeout(condition_wrapper, max_allowed_time, "Task did not enter submitted state")
     await agent.delete(context=context, resource_meta=resource_meta)
     # let loop detect the task deletion
     await stop_and_wait(remote_cluster, remote_task)
@@ -395,17 +429,19 @@ async def test_async_agent_task_launch_fail(
 ):
     (mock_path, dummy_launch, normal_launch, managed_launch, mock_timeout) = mock_provider
     agent, task_spec, context = mock_agent
-    normal_launch.side_effect = mock_fail(sleep_time=EXEC_TIME)
-    managed_launch.side_effect = mock_fail(sleep_time=EXEC_TIME)
+    normal_launch.return_value = functools.partial(mock_fail, sleep_time=EXEC_TIME)
+    managed_launch.return_value = functools.partial(mock_fail, sleep_time=EXEC_TIME)
     assert isinstance(agent, SkyPilotAgent)
     task_spec.template.container._args = get_container_args(mock_fs)
     task_spec.template.custom["job_launch_type"] = job_launch_type
-    create_task_response = await agent.create(
-        context=context, task_template=task_spec.template, output_prefix=mock_fs.raw_output_prefix
-    )
+    with mock.patch("flytekitplugins.skypilot.agent.requests.post", side_effect=mock_fastapi):
+        create_task_response = await agent.create(
+            context=context, task_template=task_spec.template, output_prefix=mock_fs.raw_output_prefix
+        )
+        await asyncio.sleep(DUMMY_TIME / 2)
     resource_meta = create_task_response
     # let cluster enter submitted state
-    remote_cluster = SkyTaskTracker._CLUSTER_REGISTRY._clusters[resource_meta.cluster_name]
+    remote_cluster = cluster_registry._clusters[resource_meta.cluster_name]
     remote_task = remote_cluster.tasks.get(resource_meta.job_name)
     max_allowed_time = 2 * (dummy_time + EXEC_TIME + TIME_BUFFER)
     await asyncio.sleep(max_allowed_time)
@@ -418,15 +454,17 @@ async def test_async_agent_task_launch_fail(
 async def test_async_agent_cluster_launch_fail(mock_agent, timeout_const_mock, mock_provider, mock_fs):
     (mock_path, dummy_launch, normal_launch, managed_launch, mock_timeout) = mock_provider
     agent, task_spec, context = mock_agent
-    dummy_launch.side_effect = mock_fail(sleep_time=DUMMY_TIME)
     assert isinstance(agent, SkyPilotAgent)
     task_spec.template.container._args = get_container_args(mock_fs)
-    create_task_response = await agent.create(
-        context=context, task_template=task_spec.template, output_prefix=mock_fs.raw_output_prefix
-    )
+    with mock.patch("flytekitplugins.skypilot.agent.requests.post", side_effect=mock_fastapi):
+        dummy_launch.return_value = functools.partial(mock_fail, sleep_time=EXEC_TIME)
+        create_task_response = await agent.create(
+            context=context, task_template=task_spec.template, output_prefix=mock_fs.raw_output_prefix
+        )
+        await asyncio.sleep(DUMMY_TIME / 2)
     resource_meta = create_task_response
     # let cluster enter submitted state
-    remote_cluster = SkyTaskTracker._CLUSTER_REGISTRY._clusters[resource_meta.cluster_name]
+    remote_cluster = cluster_registry._clusters[resource_meta.cluster_name]
     remote_task = remote_cluster.tasks.get(resource_meta.job_name)
     max_allowed_time = 2 * (DUMMY_TIME) + TIME_BUFFER
     await asyncio.sleep(max_allowed_time)
@@ -435,96 +473,133 @@ async def test_async_agent_cluster_launch_fail(mock_agent, timeout_const_mock, m
     await stop_sky_path()
 
 
-@pytest.mark.parametrize("job_launch_type, dummy_time", [(0, DUMMY_TIME), (1, 0)])
 @pytest.mark.asyncio
-async def test_async_agent_remote_fail_task(
-    job_launch_type, dummy_time, mock_agent, timeout_const_mock, mock_provider, mock_fs
-):
+async def test_cluster_launch_fail_double_submit(mock_agent, timeout_const_mock, mock_provider, mock_fs):
     (mock_path, dummy_launch, normal_launch, managed_launch, mock_timeout) = mock_provider
     agent, task_spec, context = mock_agent
     assert isinstance(agent, SkyPilotAgent)
     task_spec.template.container._args = get_container_args(mock_fs)
-    task_spec.template.custom["job_launch_type"] = job_launch_type
-    create_task_response = await agent.create(
-        context=context, task_template=task_spec.template, output_prefix=mock_fs.raw_output_prefix
-    )
-    resource_meta = create_task_response
-    # let cluster enter submitted state
-    remote_cluster = SkyTaskTracker._CLUSTER_REGISTRY._clusters[resource_meta.cluster_name]
-    remote_task = remote_cluster.tasks.get(resource_meta.job_name)
-    remote_task._sky_path_setting.put_error_log(ValueError("Mock Error"))
-    await asyncio.sleep(CORO_INTERVAL + TIME_BUFFER)
-    get_task_response = await agent.get(context=context, resource_meta=resource_meta)
-    phase = get_task_response.phase
-    assert phase == TaskExecution.FAILED
-    await agent.delete(context=context, resource_meta=resource_meta)
-    # let loop detect the task deletion
-    await stop_and_wait(remote_cluster, remote_task)
-    await stop_sky_path()
-
-
-@mock.patch(
-    "flytekitplugins.skypilot.agent.skylet_constants.CONTROLLER_IDLE_MINUTES_TO_AUTOSTOP", CORO_INTERVAL * 3 / 60
-)
-@pytest.mark.asyncio
-async def test_async_agent_remote_down(mock_agent, timeout_const_mock, mock_provider, mock_fs):
-    (mock_path, dummy_launch, normal_launch, managed_launch, mock_timeout) = mock_provider
-    agent, task_spec, context = mock_agent
-    assert isinstance(agent, SkyPilotAgent)
-    task_spec.template.container._args = get_container_args(mock_fs)
-    create_task_response = await agent.create(
-        context=context, task_template=task_spec.template, output_prefix=mock_fs.raw_output_prefix
-    )
-    resource_meta = create_task_response
-    # let cluster enter submitted state
-    remote_cluster = SkyTaskTracker._CLUSTER_REGISTRY._clusters[resource_meta.cluster_name]
-    remote_task = remote_cluster.tasks.get(resource_meta.job_name)
-    # let skytasktracker put
-    await asyncio.sleep(CORO_INTERVAL * 2)
-    SkyTaskTracker._zip_coro.cancel()
-    await asyncio.sleep(CORO_INTERVAL * 3 + TIME_BUFFER)
-    get_task_response = await agent.get(context=context, resource_meta=resource_meta)
-    phase = get_task_response.phase
-    assert phase == TaskExecution.FAILED
-    # await agent.delete(context=context, resource_meta=resource_meta)
-    # let loop detect the task deletion
-    await stop_and_wait(remote_cluster, remote_task)
-    await stop_sky_path()
-
-
-@pytest.mark.parametrize("new_task, cycle_call_count", [(say_hello1, 2), (say_hello0, 1)])
-@pytest.mark.asyncio
-async def test_async_agent_different_setup(
-    new_task, cycle_call_count, mock_agent, timeout_const_mock, mock_provider, mock_fs
-):
-    (mock_path, dummy_launch, normal_launch, managed_launch, mock_timeout) = mock_provider
-    agent, task_spec, context = mock_agent
-    assert isinstance(agent, SkyPilotAgent)
-    task_spec.template.container._args = get_container_args(mock_fs)
-    # task_spec.template.custom["job_launch_type"] = job_launch_type
-    with mock.patch(
-        "flytekitplugins.skypilot.utils.NormalClusterManager.reset",
-    ) as mock_lifecycle:
+    with mock.patch("flytekitplugins.skypilot.agent.requests.post", side_effect=mock_fastapi):
+        dummy_launch.return_value = functools.partial(mock_fail, sleep_time=EXEC_TIME)
         create_task_response = await agent.create(
             context=context, task_template=task_spec.template, output_prefix=mock_fs.raw_output_prefix
         )
-        new_setup_task_spec = get_task_spec(new_task)
-        new_setup_task_spec.template.container._args = get_container_args(mock_fs)
-        # new_setup_task_spec.template.custom["job_launch_type"] = job_launch_type
-        resource_meta = create_task_response
-        # let cluster enter submitted state
-        remote_cluster = SkyTaskTracker._CLUSTER_REGISTRY._clusters[resource_meta.cluster_name]
-        remote_task = remote_cluster.tasks.get(resource_meta.job_name)
+        await asyncio.sleep(DUMMY_TIME / 2)
+    resource_meta = create_task_response
+    # let cluster enter submitted state
+    remote_cluster = cluster_registry._clusters[resource_meta.cluster_name]
+    max_allowed_time = 2 * (DUMMY_TIME) + TIME_BUFFER
+    old_cluster_coro = remote_cluster._cluster_coroutine
+    new_setup_task_spec = get_task_spec(say_hello1)
+    new_setup_task_spec.template.container._args = get_container_args(mock_fs)
 
-        await asyncio.sleep(CORO_INTERVAL)
-        remote_task._task_event_handler.finished_event.set()
+    def condition_wrapper() -> bool:
+        return remote_cluster._cluster_status == ClusterStatus.STOPPING
+
+    await condition_with_timeout(condition_wrapper, max_allowed_time, "Cluster did not enter stopping state")
+    with mock.patch("flytekitplugins.skypilot.agent.requests.post", side_effect=mock_fastapi):
+        dummy_launch.return_value = functools.partial(mock_exec, sleep_time=EXEC_TIME)
         new_task_response = await agent.create(
             context=context, task_template=new_setup_task_spec.template, output_prefix=mock_fs.raw_output_prefix + "_1"
         )
-        await asyncio.sleep(CORO_INTERVAL)
-        assert mock_lifecycle.call_count == cycle_call_count
-        await agent.delete(context=context, resource_meta=resource_meta)
-        await agent.delete(context=context, resource_meta=new_task_response)
-        # let loop detect the task deletion
-        await stop_and_wait(remote_cluster, remote_task)
-        await stop_sky_path()
+        await asyncio.sleep(DUMMY_TIME / 2)
+    new_resource_meta = new_task_response
+    assert remote_cluster._cluster_coroutine != old_cluster_coro
+    new_remote_task = remote_cluster.tasks.get(new_resource_meta.job_name)
+
+    def condition_wrapper() -> bool:
+        return new_remote_task._task_status == TaskStatus.TASK_SUBMITTED
+
+    await condition_with_timeout(condition_wrapper, max_allowed_time, "Task did not enter submitted state")
+    await agent.delete(context=context, resource_meta=new_resource_meta)
+    # let loop detect the task deletion
+    await stop_and_wait(remote_cluster, new_remote_task)
+    await stop_sky_path()
+
+
+@pytest.mark.asyncio
+async def test_cluster_dummy_double_submit(mock_agent, timeout_const_mock, mock_provider, mock_fs):
+    agent, task_spec, context = mock_agent
+    assert isinstance(agent, SkyPilotAgent)
+    task_spec.template.container._args = get_container_args(mock_fs)
+    with mock.patch("flytekitplugins.skypilot.agent.requests.post", side_effect=mock_fastapi):
+        create_task_response = await agent.create(
+            context=context, task_template=task_spec.template, output_prefix=mock_fs.raw_output_prefix
+        )
+        await asyncio.sleep(DUMMY_TIME / 2)
+    resource_meta = create_task_response
+    # let cluster enter submitted state
+    remote_cluster = cluster_registry._clusters[resource_meta.cluster_name]
+    remote_task = remote_cluster.tasks.get(resource_meta.job_name)
+    max_allowed_time = 2 * (DUMMY_TIME) + TIME_BUFFER
+    old_cluster_coro = remote_cluster._cluster_coroutine
+    new_setup_task_spec = get_task_spec(say_hello1)
+    new_setup_task_spec.template.container._args = get_container_args(mock_fs)
+
+    def condition_wrapper() -> bool:
+        return remote_cluster._cluster_status == ClusterStatus.DUMMY_LAUNCHING
+
+    await condition_with_timeout(condition_wrapper, max_allowed_time, "Cluster did not enter dummy state")
+    with mock.patch("flytekitplugins.skypilot.agent.requests.post", side_effect=mock_fastapi):
+        new_task_response = await agent.create(
+            context=context, task_template=new_setup_task_spec.template, output_prefix=mock_fs.raw_output_prefix + "_1"
+        )
+        await asyncio.sleep(DUMMY_TIME / 2)
+    new_resource_meta = new_task_response
+    assert remote_cluster._cluster_coroutine == old_cluster_coro
+    new_remote_task = remote_cluster.tasks.get(new_resource_meta.job_name)
+
+    def condition_wrapper() -> bool:
+        return new_remote_task._task_status == TaskStatus.CLUSTER_UP
+
+    await condition_with_timeout(condition_wrapper, max_allowed_time, "Task did not enter submitted state")
+    await agent.delete(context=context, resource_meta=resource_meta)
+    await agent.delete(context=context, resource_meta=new_resource_meta)
+    # let loop detect the task deletion
+    await stop_and_wait(remote_cluster, remote_task)
+    await stop_and_wait(remote_cluster, new_remote_task)
+    await stop_sky_path()
+
+
+@pytest.mark.asyncio
+async def test_cluster_dummy_cancel_submit(mock_agent, timeout_const_mock, mock_provider, mock_fs):
+    agent, task_spec, context = mock_agent
+    assert isinstance(agent, SkyPilotAgent)
+    task_spec.template.container._args = get_container_args(mock_fs)
+    with mock.patch("flytekitplugins.skypilot.agent.requests.post", side_effect=mock_fastapi):
+        create_task_response = await agent.create(
+            context=context, task_template=task_spec.template, output_prefix=mock_fs.raw_output_prefix
+        )
+        await asyncio.sleep(DUMMY_TIME / 2)
+    resource_meta = create_task_response
+    # let cluster enter submitted state
+    remote_cluster = cluster_registry._clusters[resource_meta.cluster_name]
+    remote_task = remote_cluster.tasks.get(resource_meta.job_name)
+    max_allowed_time = 2 * (DUMMY_TIME) + TIME_BUFFER
+    old_cluster_coro = remote_cluster._cluster_coroutine
+    await agent.delete(context=context, resource_meta=resource_meta)
+    new_setup_task_spec = get_task_spec(say_hello1)
+    new_setup_task_spec.template.container._args = get_container_args(mock_fs)
+
+    def condition_wrapper() -> bool:
+        return remote_cluster._cluster_status == ClusterStatus.STOPPING
+
+    await condition_with_timeout(condition_wrapper, max_allowed_time, "Cluster did not enter dummy state")
+    with mock.patch("flytekitplugins.skypilot.agent.requests.post", side_effect=mock_fastapi):
+        new_task_response = await agent.create(
+            context=context, task_template=new_setup_task_spec.template, output_prefix=mock_fs.raw_output_prefix + "_1"
+        )
+        await asyncio.sleep(DUMMY_TIME / 2)
+    new_resource_meta = new_task_response
+    assert remote_cluster._cluster_coroutine != old_cluster_coro
+    new_remote_task = remote_cluster.tasks.get(new_resource_meta.job_name)
+
+    def condition_wrapper() -> bool:
+        return new_remote_task._task_status == TaskStatus.CLUSTER_UP
+
+    await condition_with_timeout(condition_wrapper, max_allowed_time, "Task did not enter submitted state")
+    await agent.delete(context=context, resource_meta=new_resource_meta)
+    # let loop detect the task deletion
+    await stop_and_wait(remote_cluster, remote_task)
+    await stop_and_wait(remote_cluster, new_remote_task)
+    await stop_sky_path()

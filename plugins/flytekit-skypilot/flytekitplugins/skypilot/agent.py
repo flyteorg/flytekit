@@ -1,19 +1,18 @@
 import asyncio
-import functools
 import os
 from datetime import datetime, timezone
 from typing import Dict, Optional, Tuple, Union
 
+import requests
 import sky
 import sky.core
 import sky.exceptions
 import sky.resources
 from flytekitplugins.skypilot.metadata import JobLaunchType, SkyPilotMetadata
-from flytekitplugins.skypilot.task_utils import get_sky_task_config
+from flytekitplugins.skypilot.task_utils import get_cluster_suffix, get_sky_task_config
 from flytekitplugins.skypilot.utils import (
     LAUNCH_TYPE_TO_SKY_STATUS,
     BlockingProcessHandler,
-    ClusterRegistry,
     SkyPathSetting,
     TaskCreationIdentifier,
     TaskRemotePathSetting,
@@ -31,17 +30,20 @@ TASK_TYPE = "skypilot"
 
 
 class SkyTaskFuture(object):
-    _task_kwargs: TaskTemplate = None
+    _task_template: TaskTemplate = None
     _sky_path_setting: TaskRemotePathSetting = None
     _task_name: str = None
     _cluster_name: str = None
+    _task_config: Dict = None
 
     def __init__(self, task_template: TaskTemplate, task_identifier: TaskCreationIdentifier):
-        self._task_kwargs = task_template
+        self._task_template = task_template
+        sky_resources = get_sky_task_config(self.task_template)
+        cluster_suffix = get_cluster_suffix(sky_resources)
         if self.task_template.custom["job_launch_type"] == JobLaunchType.MANAGED:
             self._cluster_name = sky.jobs.utils.JOB_CONTROLLER_NAME
         else:
-            self._cluster_name = self.task_template.custom["cluster_name"]
+            self._cluster_name = f"{self.task_template.custom['cluster_name']}-{cluster_suffix}"
 
         self._sky_path_setting = TaskRemotePathSetting(
             file_access=FileAccessProvider(local_sandbox_dir="/tmp", raw_output_prefix=task_identifier.output_prefix),
@@ -50,17 +52,12 @@ class SkyTaskFuture(object):
             unique_id=task_identifier.task_id,
         ).from_task_prefix(task_template.custom["task_name"])
         self._task_name = self.sky_path_setting.task_name
-
-    def get_task(self):
-        cluster_name: str = self.task_template.custom["cluster_name"]
-        sky_resources = get_sky_task_config(self.task_template)
         sky_resources.update(
             {
                 "name": self.task_name,
             }
         )
-        task = sky.Task.from_yaml_config(sky_resources)
-        return task, cluster_name
+        self._task_config = sky_resources
 
     @property
     def sky_path_setting(self) -> TaskRemotePathSetting:
@@ -68,7 +65,7 @@ class SkyTaskFuture(object):
 
     @property
     def task_template(self) -> TaskTemplate:
-        return self._task_kwargs
+        return self._task_template
 
     @property
     def task_name(self) -> str:
@@ -78,29 +75,21 @@ class SkyTaskFuture(object):
     def cluster_name(self) -> str:
         return self._cluster_name
 
+    @property
+    def task_config(self) -> Dict:
+        return self._task_config
+
 
 class SkyTaskTracker(object):
     _JOB_RESIGTRY: Dict[str, BlockingProcessHandler] = {}
     _zip_coro: asyncio.Task = None
-    _sky_path_setting: SkyPathSetting = None
     _hostname: str = sky.utils.common_utils.get_user_hash()
-    _CLUSTER_REGISTRY: ClusterRegistry = ClusterRegistry()
-
-    @classmethod
-    def try_first_register(cls, task_template: TaskTemplate, task_identifier: TaskCreationIdentifier):
-        """
-        sets up coroutine for sky.zip upload
-        """
-        if not cls._CLUSTER_REGISTRY.empty():
-            return
-        file_access = FileAccessProvider(local_sandbox_dir="/tmp", raw_output_prefix=task_identifier.output_prefix)
-
-        cls._sky_path_setting = SkyPathSetting(task_level_prefix=file_access.raw_output_prefix, unique_id=cls._hostname)
-        cls._zip_coro = asyncio.create_task(cls._sky_path_setting.zip_and_upload())
-        cls._zip_coro.add_done_callback(cls.zip_failed_callback)
 
     @classmethod
     def zip_failed_callback(self, task: asyncio.Task):
+        """
+        deprecated
+        """
         try:
             if task.exception() is not None:
                 logger.error(f"Failed to zip and upload the task.\nCause: \n{task.exception()}")
@@ -109,28 +98,26 @@ class SkyTaskTracker(object):
             pass
 
     @classmethod
-    def register_sky_task(cls, task_template: TaskTemplate, task_identifier: TaskCreationIdentifier):
-        cls.try_first_register(task_template, task_identifier)
+    def register_sky_task(
+        cls, task_template: TaskTemplate, task_identifier: TaskCreationIdentifier
+    ) -> tuple[SkyTaskFuture, str]:
         new_task = SkyTaskFuture(task_template, task_identifier)
-        started = cls._sky_path_setting.remote_path_setting.task_exists(new_task.sky_path_setting.unique_id)
-        if started:
-            logger.warning(f"{new_task.task_name} task has already been created.")
-            return new_task
-
-        cls._sky_path_setting.remote_path_setting.touch_task(new_task.sky_path_setting.unique_id)
-        task, _ = new_task.get_task()
-        cls._CLUSTER_REGISTRY.create(task, new_task.sky_path_setting)
-        return new_task
+        task_config = new_task.task_config
+        launch_payload = {
+            "task": task_config,
+            "setting": new_task.sky_path_setting.to_minimal_setting().model_dump(),
+        }
+        api_resp = requests.post("http://localhost:8787/launch", json=launch_payload)
+        if api_resp.status_code != 200:
+            raise RuntimeError(f"Failed to launch the task. {new_task.task_name}")
+        hostname = api_resp.json()["hostname"]
+        return new_task, hostname
 
     @classmethod
     def agent_health_check(cls, resource_meta: SkyPilotMetadata):
         # filter out the job that is done
         cls._JOB_RESIGTRY = {k: v for k, v in cls._JOB_RESIGTRY.items() if v._process.exitcode is None}
-        if not check_remote_agent_alive(resource_meta):
-            down_process = BlockingProcessHandler(
-                functools.partial(remote_setup, resource_meta, remote_down, cluster_name=resource_meta.cluster_name)
-            )
-            cls._JOB_RESIGTRY[resource_meta.job_name] = down_process
+        if not check_api_server_health(resource_meta):
             sky_path_setting = TaskRemotePathSetting(
                 file_access=FileAccessProvider(
                     local_sandbox_dir="/tmp", raw_output_prefix=resource_meta.task_metadata_prefix
@@ -139,17 +126,18 @@ class SkyTaskTracker(object):
                 cluster_name=resource_meta.cluster_name,
                 task_name=resource_meta.job_name,
             )
-            sky_path_setting.put_error_log("Agent is down, job is stopped.")
+            payload = sky_path_setting.to_minimal_setting().model_dump()
+            stop_request = requests.post("http://localhost:8787/stop_cluster", json=payload)
+            if stop_request.status_code != 200:
+                raise RuntimeError(f"Failed to stop the task. {resource_meta.job_name}")
+            sky_path_setting.put_error_log("Server is down, job is stopped.")
         return
 
 
-def remote_down(cluster_name: str):
-    status = sky.status(cluster_name, refresh=True)
-    if status:
-        sky.down(cluster_name)
-
-
 def remote_setup(remote_meta: SkyPilotMetadata, wrapped, **kwargs):
+    """
+    deprecated
+    """
     sky_path_setting = SkyPathSetting(
         task_level_prefix=remote_meta.task_metadata_prefix, unique_id=remote_meta.tracker_hostname
     )
@@ -196,6 +184,9 @@ def query_job_status(
 
 
 def check_remote_agent_alive(resource_meta: SkyPilotMetadata):
+    """
+    deprecated
+    """
     sky_path_setting = SkyPathSetting(
         task_level_prefix=resource_meta.task_metadata_prefix, unique_id=resource_meta.tracker_hostname
     )
@@ -206,6 +197,16 @@ def check_remote_agent_alive(resource_meta: SkyPilotMetadata):
         if time_diff.total_seconds() > skylet_constants.CONTROLLER_IDLE_MINUTES_TO_AUTOSTOP * 60:
             return False
 
+    return True
+
+
+def check_api_server_health(resource_meta: SkyPilotMetadata):
+    api_resp = requests.get("http://localhost:8787/hostname")
+    if api_resp.status_code != 200:
+        raise RuntimeError("Failed to get the hostname.")
+    hostname = api_resp.json()["hostname"]
+    if hostname != resource_meta.tracker_hostname:
+        return False
     return True
 
 
@@ -236,13 +237,13 @@ class SkyPilotAgent(AsyncAgentBase):
         **kwargs,
     ) -> SkyPilotMetadata:
         task_identifier = TaskCreationIdentifier(output_prefix, task_execution_metadata)
-        task = SkyTaskTracker.register_sky_task(task_template=task_template, task_identifier=task_identifier)
+        task, hostname = SkyTaskTracker.register_sky_task(task_template=task_template, task_identifier=task_identifier)
         logger.warning(f"Created SkyPilot {task.task_name}")
         meta = SkyPilotMetadata(
             job_name=task.task_name,
             cluster_name=task.cluster_name,
             task_metadata_prefix=task.sky_path_setting.file_access.raw_output_prefix,
-            tracker_hostname=SkyTaskTracker._hostname,
+            tracker_hostname=hostname,
             job_launch_type=task_template.custom["job_launch_type"],
         )
         # pdb.set_trace()

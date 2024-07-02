@@ -1,6 +1,8 @@
+import copy
 import enum
+import hashlib
+import json
 import shlex
-import textwrap
 from typing import Any, Dict
 
 import sky
@@ -43,12 +45,7 @@ class SetupCommand(object):
             self.docker_pull = f"docker pull {task_template.container.image}"
         else:
             # HACK, change back to normal flytekit
-            self.flytekit_pip = textwrap.dedent(
-                """\
-                python -m pip uninstall flytekit -y
-                python -m pip install -e /flytekit
-            """
-            )
+            self.flytekit_pip = ""
 
         self.full_setup = "\n".join(filter(None, [task_setup, self.docker_pull, self.flytekit_pip])).strip()
 
@@ -103,3 +100,17 @@ def get_sky_task_config(task_template: TaskTemplate) -> Dict[str, Any]:
         }
     )
     return sky_task_config
+
+
+def get_cluster_suffix(task_config: Dict, hash_length=16):
+    # copy the input dict
+    new_config = copy.deepcopy(task_config)
+    new_config.pop("run", None)
+    # Convert dict to a sorted JSON string
+    json_str = json.dumps(new_config, sort_keys=True)
+
+    # Create SHA-256 hash
+    hash_obj = hashlib.sha256(json_str.encode())
+
+    # Return first 'hash_length' characters of the hexadecimal digest
+    return hash_obj.hexdigest()[:hash_length]
