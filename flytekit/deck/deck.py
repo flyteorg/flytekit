@@ -131,15 +131,13 @@ def _get_deck(
     deck_map = {deck.name: deck.html for deck in new_user_params.decks}
     raw_html = get_deck_template().render(metadata=deck_map)
     if not ignore_jupyter and ipython_check():
-        try:
-            from IPython.core.display import HTML
-        except ImportError:
-            ...
+        from IPython.core.display import HTML
+
         return HTML(raw_html)
     return raw_html
 
 
-def _output_deck(new_user_params: ExecutionParameters, deck_str):
+def _output_deck(new_user_params: ExecutionParameters, deck_str: str):
     ctx = FlyteContext.current_context()
     local_dir = ctx.file_access.get_random_local_directory()
     local_path = f"{local_dir}{os.sep}{DECK_FILE_NAME}"

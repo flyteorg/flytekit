@@ -3,6 +3,7 @@ from datetime import timezone as _timezone
 from typing import Dict, Optional
 
 from flyteidl.core import literals_pb2 as _literals_pb2
+from flyteidl.core.literals_pb2 import LiteralMap
 from google.protobuf.struct_pb2 import Struct
 
 from flytekit.exceptions import user as _user_exceptions
@@ -692,7 +693,7 @@ class LiteralMap(_common.FlyteIdlEntity):
         return _literals_pb2.LiteralMap(literals={k: v.to_flyte_idl() for k, v in self.literals.items()})
 
     @classmethod
-    def from_flyte_idl(cls, pb2_object):
+    def from_flyte_idl(cls, pb2_object: LiteralMap) -> "Literal":
         """
         :param flyteidl.core.literals_pb2.LiteralMap pb2_object:
         :rtype: LiteralMap

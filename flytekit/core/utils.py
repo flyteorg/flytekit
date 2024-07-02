@@ -195,15 +195,20 @@ def _serialize_pod_spec(
     return ApiClient().sanitize_for_serialization(cast(PodTemplate, pod_template).pod_spec)
 
 
-def load_proto_from_file(pb2_type, proto: BinaryIO):
-    # TODO: read from s3
+def load_proto_from_file(pb2_type, path):
+    with open(path, "rb") as reader:
+        out = pb2_type()
+        out.ParseFromString(reader.read())
+        return out
+
+
+def load_proto_from_bytes(pb2_type, proto: BinaryIO):
     out = pb2_type()
     out.ParseFromString(proto)
     return out
 
 
 def write_proto_to_file(proto, path):
-    # TODO: write to s3
     Path(os.path.dirname(path)).mkdir(parents=True, exist_ok=True)
     with open(path, "wb") as writer:
         writer.write(proto.SerializeToString())

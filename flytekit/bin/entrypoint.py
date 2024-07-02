@@ -90,13 +90,13 @@ def _dispatch_execute(
     output_file_dict = {}
     logger.debug(f"Starting _dispatch_execute for {task_def.name}")
     try:
-        # Step1
+        # Step 1
         local_inputs_file = os.path.join(ctx.execution_state.working_dir, "inputs.pb")
         ctx.file_access.get_data(inputs_path, local_inputs_file)
         input_proto = utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
         idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
 
-        # Step2
+        # Step 2
         # Decorate the dispatch execute function before calling it, this wraps all exceptions into one
         # of the FlyteScopedExceptions
         outputs = _scoped_exceptions.system_entry_point(task_def.dispatch_execute)(ctx, idl_input_literals)
@@ -105,7 +105,7 @@ def _dispatch_execute(
             logger.info("Output is a coroutine")
             outputs = asyncio.run(outputs)
 
-        # Step3a
+        # Step 3a
         if isinstance(outputs, VoidPromise):
             logger.warning("Task produces no outputs")
             output_file_dict = {_constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(literals={})}
@@ -467,7 +467,7 @@ def new_setup_and_execute_task(
         try:
             # Step2
             ic("load proto from file")
-            input_proto = utils.load_proto_from_file(_literals_pb2.LiteralMap, input_lm_bytes.read())
+            input_proto = utils.load_proto_from_bytes(_literals_pb2.LiteralMap, input_lm_bytes.read())
             ic("load proto from file done")
             idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
             ic("dispatch execute")
@@ -505,7 +505,6 @@ def new_setup_and_execute_task(
                 err = error_doc.to_flyte_idl()
 
         except Exception as e:
-            breakpoint()
             # If it's a special exception, then we don't upload anything.
             # todo::flyrs: Need to trace to make sure this is indeed the raw exception, not wrapped in anything.
             if isinstance(e, IgnoreOutputs):
@@ -542,7 +541,7 @@ def new_setup_and_execute_task(
                 )
             err = error_doc.to_flyte_idl()
 
-        if not getattr(task_def, "disable_deck", True):
+        if not getattr(task_def, "disable_deck", True) or getattr(task_def, "enable_deck", True):
             d = _get_deck(ctx.user_space_params, True)
         else:
             d = None
@@ -768,7 +767,6 @@ def execute_task_cmd(
 
     logger.debug("Finished _dispatch_execute")
 
-    # TODO: aws batch plugin should check if error.pb exists
     if os.environ.get("FLYTE_FAIL_ON_ERROR", "").lower() == "true" and error_doc:
         # This env is set by the flytepropeller
         # AWS batch job get the status from the exit code, so once we catch the error,
