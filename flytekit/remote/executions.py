@@ -26,13 +26,11 @@ class RemoteExecutionBase(object):
 
     @property
     @abstractmethod
-    def error(self) -> core_execution_models.ExecutionError:
-        ...
+    def error(self) -> core_execution_models.ExecutionError: ...
 
     @property
     @abstractmethod
-    def is_done(self) -> bool:
-        ...
+    def is_done(self) -> bool: ...
 
     @property
     def outputs(self) -> Optional[LiteralsResolver]:

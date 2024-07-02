@@ -35,8 +35,7 @@ class ClientConfigStore(object):
     """
 
     @abstractmethod
-    def get_client_config(self) -> ClientConfig:
-        ...
+    def get_client_config(self) -> ClientConfig: ...
 
 
 class StaticClientConfigStore(ClientConfigStore):
@@ -81,8 +80,7 @@ class Authenticator(object):
         return None
 
     @abstractmethod
-    def refresh_credentials(self):
-        ...
+    def refresh_credentials(self): ...
 
 
 class PKCEAuthenticator(Authenticator):

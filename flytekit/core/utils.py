@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 from functools import wraps
 from hashlib import sha224 as _sha224
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, BinaryIO, Callable, Dict, List, Optional, Union, cast
 
 from flyteidl.core import tasks_pb2 as _core_task
 
@@ -200,6 +200,12 @@ def load_proto_from_file(pb2_type, path):
         out = pb2_type()
         out.ParseFromString(reader.read())
         return out
+
+
+def load_proto_from_bytes(pb2_type, proto: BinaryIO):
+    out = pb2_type()
+    out.ParseFromString(proto)
+    return out
 
 
 def write_proto_to_file(proto, path):
