@@ -148,12 +148,10 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
         lv = FlyteFilePathTransformer().to_literal(FlyteContext.current_context(), self, FlyteFile, None)
         
         return {"path": lv.scalar.blob.uri}
-        return FlyteFile(path=lv.scalar.blob.uri)
-        # return [self.code, self.city]
 
     @classmethod
     def _deserialize(cls, value):
-        path = value["path"]
+        path = value.get("path", None)
 
         if path is None:
             raise ValueError("path is None")

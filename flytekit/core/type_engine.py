@@ -570,7 +570,6 @@ class DataclassTransformer(TypeTransformer[object]):
         # def _serialize_flyte_type
         if inspect.isclass(python_type) and (
             issubclass(python_type, FlyteSchema)
-            or issubclass(python_type, FlyteFile)
             or issubclass(python_type, FlyteDirectory)
             or issubclass(python_type, StructuredDataset)
         ):
@@ -583,7 +582,7 @@ class DataclassTransformer(TypeTransformer[object]):
             # set, then the real uri in the literal should be the remote source, not the path (which may be an
             # auto-generated random local path). To be sure we're writing the right path to the json, use the uri
             # as determined by the transformer.
-            if issubclass(python_type, FlyteFile) or issubclass(python_type, FlyteDirectory):
+            if issubclass(python_type, FlyteDirectory):
                 return python_type(path=lv.scalar.blob.uri)
             elif issubclass(python_type, StructuredDataset):
                 sd = python_type(uri=lv.scalar.structured_dataset.uri)
@@ -627,23 +626,6 @@ class DataclassTransformer(TypeTransformer[object]):
                     scalar=Scalar(
                         schema=Schema(
                             cast(FlyteSchema, python_val).remote_path, t._get_schema_type(expected_python_type)
-                        )
-                    )
-                ),
-                expected_python_type,
-            )
-        elif issubclass(expected_python_type, FlyteFile):
-            return FlyteFilePathTransformer().to_python_value(
-                FlyteContext.current_context(),
-                Literal(
-                    scalar=Scalar(
-                        blob=Blob(
-                            metadata=BlobMetadata(
-                                type=_core_types.BlobType(
-                                    format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
-                                )
-                            ),
-                            uri=cast(FlyteFile, python_val).path,
                         )
                     )
                 ),
@@ -762,7 +744,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 self._decoder[expected_python_type] = decoder
 
             dc = decoder.decode(json_str)
-        return dc
+
         dc = self._fix_structured_dataset_type(expected_python_type, dc)
         return self._fix_dataclass_int(expected_python_type, self._deserialize_flyte_type(dc, expected_python_type))
 
