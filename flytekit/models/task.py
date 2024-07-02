@@ -1,5 +1,6 @@
 import json as _json
 import typing
+from datetime import datetime, timezone
 
 from flyteidl.admin import agent_pb2 as _admin_agent
 from flyteidl.admin import task_pb2 as _admin_task
@@ -706,11 +707,13 @@ class Task(_common.FlyteIdlEntity):
 
 
 class TaskClosure(_common.FlyteIdlEntity):
-    def __init__(self, compiled_task):
+    def __init__(self, compiled_task, created_at: datetime = None):
         """
         :param CompiledTask compiled_task:
+        :param datetime.datetime created_at:
         """
         self._compiled_task = compiled_task
+        self._created_at = created_at
 
     @property
     def compiled_task(self):
@@ -719,11 +722,20 @@ class TaskClosure(_common.FlyteIdlEntity):
         """
         return self._compiled_task
 
+    @property
+    def created_at(self) -> typing.Optional[datetime]:
+        return self._created_at
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.task_pb2.TaskClosure
         """
-        return _admin_task.TaskClosure(compiled_task=self.compiled_task.to_flyte_idl())
+        obj = _admin_task.TaskClosure(
+            compiled_task=self.compiled_task.to_flyte_idl(),
+        )
+        if self.created_at is not None:
+            obj.created_at.FromDatetime(self.created_at.astimezone(timezone.utc).replace(tzinfo=None))
+        return obj
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -731,7 +743,12 @@ class TaskClosure(_common.FlyteIdlEntity):
         :param flyteidl.admin.task_pb2.TaskClosure pb2_object:
         :rtype: TaskClosure
         """
-        return cls(compiled_task=CompiledTask.from_flyte_idl(pb2_object.compiled_task))
+        return cls(
+            compiled_task=CompiledTask.from_flyte_idl(pb2_object.compiled_task),
+            created_at=pb2_object.created_at.ToDatetime().replace(tzinfo=timezone.utc)
+            if pb2_object.HasField("created_at")
+            else None,
+        )
 
 
 class CompiledTask(_common.FlyteIdlEntity):
