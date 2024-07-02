@@ -16,7 +16,7 @@ from flytekit.core.docstring import Docstring
 from flytekit.core.sentinel import DYNAMIC_INPUT_BINDING
 from flytekit.core.type_engine import TypeEngine, UnionTransformer
 from flytekit.exceptions.user import FlyteValidationException
-from flytekit.exceptions.utils import annotate_exception_with_code, get_source_code_from_fn
+from flytekit.exceptions.utils import annotate_exception_with_code
 from flytekit.loggers import developer_logger, logger
 from flytekit.models import interface as _interface_models
 from flytekit.models.literals import Literal, Scalar, Void
@@ -382,9 +382,8 @@ def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Doc
     for k, v in signature.parameters.items():  # type: ignore
         annotation = type_hints.get(k, None)
         if annotation is None:
-            source_code, column_offset = get_source_code_from_fn(fn, k)
             err_msg = f"'{k}' has no type. Please add a type annotation to the input parameter."
-            raise annotate_exception_with_code(TypeError(err_msg), source_code, column_offset)
+            raise annotate_exception_with_code(TypeError(err_msg), fn, k)
         default = v.default if v.default is not inspect.Parameter.empty else None
         # Inputs with default values are currently ignored, we may want to look into that in the future
         inputs[k] = (annotation, default)  # type: ignore

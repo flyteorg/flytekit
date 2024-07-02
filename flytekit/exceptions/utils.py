@@ -38,12 +38,19 @@ def get_source_code_from_fn(fn: typing.Callable, param_name: str) -> (str, int):
     return source_code, column_offset
 
 
-def annotate_exception_with_code(exception: Exception, source_code: str, column_offset: int) -> Exception:
+def annotate_exception_with_code(exception: Exception, fn: typing.Callable, param_name: str) -> Exception:
     """
     Annotate the exception with the source code, and will be printed in the rich panel.
     @param exception: The exception to be annotated.
-    @param source_code: The source code of the function.
-    @param column_offset: The column offset of the parameter defined in the input signature.
+    @param fn: The function where the parameter is defined.
+    @param param_name: The name of the parameter in the function signature.
     """
-    exception.__setattr__(SOURCE_CODE, f"{source_code}{' '*column_offset} # ^ {str(exception)}")
-    return exception
+    try:
+        source_code, column_offset = get_source_code_from_fn(fn, param_name)
+        exception.__setattr__(SOURCE_CODE, f"{source_code}{' '*column_offset} # ^ {str(exception)}")
+    except Exception as e:
+        from flytekit.loggers import logger
+
+        logger.error(f"Failed to annotate exception with source code: {e}")
+    finally:
+        return exception
