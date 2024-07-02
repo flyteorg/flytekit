@@ -14,7 +14,6 @@ from typing import BinaryIO, List, Optional, Tuple
 import click
 from flyteidl.core import dynamic_job_pb2, errors_pb2, literals_pb2
 from flyteidl.core import literals_pb2 as _literals_pb2
-from icecream import ic
 
 from flytekit.configuration import (
     SERIALIZED_CONTEXT_ENV_VAR,
@@ -462,19 +461,11 @@ def new_setup_and_execute_task(
         # Use the resolver to load the actual task object
         task_def = resolver_obj.load_task(loader_args=resolver_args)
 
-        ic(task_def.name)
-        logger.debug(f"Starting _dispatch_execute for {task_def.name}")
         try:
             # Step2
-            ic("load proto from file")
             input_proto = utils.load_proto_from_bytes(_literals_pb2.LiteralMap, input_lm_bytes.read())
-            ic("load proto from file done")
             idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
-            ic("dispatch execute")
-            ic("inputs", idl_input_literals)
             outputs = task_def.dispatch_execute(ctx, idl_input_literals)
-            ic("outputs", outputs)
-            ic("dispatch execute done")
             # TODO: Move it to dispatch_execute
             if inspect.iscoroutine(outputs):
                 # Handle eager-mode (async) tasks
@@ -541,7 +532,7 @@ def new_setup_and_execute_task(
                 )
             err = error_doc.to_flyte_idl()
 
-        if not getattr(task_def, "disable_deck", True) or getattr(task_def, "enable_deck", True):
+        if not getattr(task_def, "disable_deck", True):
             d = _get_deck(ctx.user_space_params, True)
         else:
             d = None
