@@ -59,6 +59,7 @@ class ContainerTask(PythonTask):
         secret_requests: Optional[List[Secret]] = None,
         pod_template: Optional["PodTemplate"] = None,
         pod_template_name: Optional[str] = None,
+        local_logs: bool = False,
         **kwargs,
     ):
         sec_ctx = None
@@ -93,6 +94,7 @@ class ContainerTask(PythonTask):
             requests=requests if requests else Resources(), limits=limits if limits else Resources()
         )
         self.pod_template = pod_template
+        self.local_logs = local_logs
 
     @property
     def resources(self) -> ResourceSpec:
@@ -249,6 +251,11 @@ class ContainerTask(PythonTask):
         )
         # Wait for the container to finish the task
         # TODO: Add a 'timeout' parameter to control the max wait time for the container to finish the task.
+
+        if self.local_logs:
+            for log in container.logs(stream=True):
+                print(f"[Local Container] {log.strip()}")
+                
         container.wait()
 
         output_dict = self._get_output_dict(output_directory)
