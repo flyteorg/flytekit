@@ -403,18 +403,14 @@ def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Doc
         if annotation is None:
             lines, start_line = inspect.getsourcelines(fn)
             target_line_no, column_offset = get_function_param_location(fn, "a")
-            print(target_line_no, column_offset)
             line_index = target_line_no - start_line
-            source_code = "".join(lines[i] for i in range(line_index + 1))
-            # print(source_code, end="")
-            # print(f"{' '*column_offset}^ has no type. Please add a type annotation to the input parameter.")
+            source_code = "".join(f"{start_line+i} {lines[i]}" for i in range(line_index + 1))
 
             err_msg = (
                 f"\n{source_code}{' '*column_offset}^ has no type. Please add a type annotation to the input parameter."
             )
 
             raise TypeError(err_msg)
-        print("annotation", annotation)
         default = v.default if v.default is not inspect.Parameter.empty else None
         # Inputs with default values are currently ignored, we may want to look into that in the future
         inputs[k] = (annotation, default)  # type: ignore
