@@ -11,12 +11,13 @@ from urllib.parse import unquote
 from dataclasses_json import config
 from marshmallow import fields
 from mashumaro.mixins.json import DataClassJSONMixin
-from flytekit.models.core import types as _core_types
+from mashumaro.types import SerializableType
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError, get_underlying_type
 from flytekit.exceptions.user import FlyteAssertion
 from flytekit.loggers import logger
+from flytekit.models.core import types as _core_types
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
@@ -28,7 +29,7 @@ def noop(): ...
 
 T = typing.TypeVar("T")
 
-from mashumaro.types import SerializableType
+
 @dataclass
 class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONMixin):
     path: typing.Union[str, os.PathLike] = field(default=None, metadata=config(mm_field=fields.String()))  # type: ignore
@@ -146,7 +147,7 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
 
     def _serialize(self):
         lv = FlyteFilePathTransformer().to_literal(FlyteContext.current_context(), self, FlyteFile, None)
-        
+
         return {"path": lv.scalar.blob.uri}
 
     @classmethod
@@ -157,21 +158,21 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
             raise ValueError("path is None")
 
         return FlyteFilePathTransformer().to_python_value(
-                FlyteContext.current_context(),
-                Literal(
-                    scalar=Scalar(
-                        blob=Blob(
-                            metadata=BlobMetadata(
-                                type=_core_types.BlobType(
-                                    format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
-                                )
-                            ),
-                            uri=path, # uri=cast(FlyteFile, python_val).path,
-                        )
+            FlyteContext.current_context(),
+            Literal(
+                scalar=Scalar(
+                    blob=Blob(
+                        metadata=BlobMetadata(
+                            type=_core_types.BlobType(
+                                format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
+                            )
+                        ),
+                        uri=path,  # uri=cast(FlyteFile, python_val).path,
                     )
-                ),
-                FlyteFile,
-            )
+                )
+            ),
+            FlyteFile,
+        )
 
     @classmethod
     def extension(cls) -> str:

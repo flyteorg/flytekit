@@ -13,6 +13,7 @@ import fsspec
 from dataclasses_json import DataClassJsonMixin, config
 from fsspec.utils import get_protocol
 from marshmallow import fields
+from mashumaro.types import SerializableType
 
 from flytekit import BlobType
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
@@ -30,7 +31,7 @@ PathType = typing.Union[str, os.PathLike]
 
 def noop(): ...
 
-from mashumaro.types import SerializableType
+
 @dataclass
 class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.Generic[T]):
     path: PathType = field(default=None, metadata=config(mm_field=fields.String()))  # type: ignore

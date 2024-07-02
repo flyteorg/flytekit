@@ -564,11 +564,8 @@ class DataclassTransformer(TypeTransformer[object]):
 
         if not dataclasses.is_dataclass(python_type):
             return python_val
-        # to json from json add them all to overwrite to_json and from_json
-        # def _serialize_flyte_type
         if inspect.isclass(python_type) and (
-            issubclass(python_type, FlyteSchema)
-            or issubclass(python_type, StructuredDataset)
+            issubclass(python_type, FlyteSchema) or issubclass(python_type, StructuredDataset)
         ):
             lv = TypeEngine.to_literal(FlyteContext.current_context(), python_val, python_type, None)
             # dataclasses_json package will extract the "path" from FlyteFile, FlyteDirectory, and write it to a
@@ -594,7 +591,6 @@ class DataclassTransformer(TypeTransformer[object]):
 
     def _deserialize_flyte_type(self, python_val: T, expected_python_type: Type) -> Optional[T]:
         from flytekit.types.directory.types import FlyteDirectory, FlyteDirToMultipartBlobTransformer
-        from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
         from flytekit.types.schema.types import FlyteSchema, FlyteSchemaTransformer
         from flytekit.types.structured.structured_dataset import StructuredDataset, StructuredDatasetTransformerEngine
 
