@@ -146,8 +146,10 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
     """
 
     def _serialize(self):
+        print("@@@ go to serialize")
         lv = FlyteFilePathTransformer().to_literal(FlyteContext.current_context(), self, FlyteFile, None)
-        return {"path": lv.scalar.blob.uri}
+        uri = lv.scalar.blob.uri
+        return {"path": uri}
 
     @classmethod
     def _deserialize(cls, value):
