@@ -84,7 +84,9 @@ def pretty_print_grpc_error(e: grpc.RpcError):
     return
 
 
-def remove_unwanted_traceback_frames(tb, unwanted_module_names: typing.Optional[typing.List[str]] = None):
+def remove_unwanted_traceback_frames(
+    tb: types.TracebackType, unwanted_module_names: typing.Optional[typing.List[str]] = None
+) -> types.TracebackType:
     """
     Custom function to remove certain frames from the traceback.
     """
@@ -109,6 +111,7 @@ def remove_unwanted_traceback_frames(tb, unwanted_module_names: typing.Optional[
 def pretty_print_traceback(e: Exception, is_verbose: bool = True):
     """
     This method will print the Traceback of an error.
+    Print the traceback in a nice formatted way if verbose is set to True.
     """
     console = Console()
     tb = e.__cause__.__traceback__ if e.__cause__ else e.__traceback__
@@ -116,6 +119,8 @@ def pretty_print_traceback(e: Exception, is_verbose: bool = True):
     new_tb = remove_unwanted_traceback_frames(tb)
     if is_verbose:
         console.print(Traceback.from_exception(type(e), e, new_tb))
+    else:
+        console.print(Traceback.from_exception(type(e), e, None))
 
     if hasattr(e, SOURCE_CODE):
         syntax = Syntax(getattr(e, SOURCE_CODE), "python", background_color="default")

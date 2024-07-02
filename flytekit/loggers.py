@@ -131,26 +131,15 @@ def is_rich_logging_enabled() -> bool:
     return os.environ.get(LOGGING_RICH_FMT_ENV_VAR) != "0"
 
 
-class PackageFilter(logging.Filter):
-    def __init__(self, *packages):
-        super().__init__()
-        self.packages = packages
-
-    def filter(self, record):
-        # Suppress logging for the specified packages
-        return not any(record.name.startswith(package) for package in self.packages)
-
-
 def upgrade_to_rich_logging(log_level: typing.Optional[int] = logging.WARNING):
     import click
-    import rich_click
     from rich.console import Console
     from rich.logging import RichHandler
 
     import flytekit
 
     handler = RichHandler(
-        tracebacks_suppress=[click, rich_click, flytekit],
+        tracebacks_suppress=[click, flytekit],
         rich_tracebacks=True,
         omit_repeated_times=False,
         show_path=False,
