@@ -81,7 +81,12 @@ def pretty_print_grpc_error(e: grpc.RpcError):
     return
 
 
-def remove_unwanted_traceback_frames(tb, unwanted_module_names):
+def remove_unwanted_traceback_frames(tb, unwanted_module_names: typing.Optional[typing.List[str]] = None):
+    """
+    Custom function to remove certain frames from the traceback.
+    """
+    if unwanted_module_names is None:
+        unwanted_module_names = ["importlib", "click", "rich_click"]
     frames = []
     while tb is not None:
         frame = tb.tb_frame
@@ -105,8 +110,7 @@ def pretty_print_traceback(e: BaseException):
     console = Console()
     tb = e.__cause__.__traceback__ if e.__cause__ else e.__traceback__
 
-    unwanted_modules = ["importlib", "click"]
-    new_tb = remove_unwanted_traceback_frames(tb, unwanted_modules)
+    new_tb = remove_unwanted_traceback_frames(tb)
     console.print(Traceback.from_exception(type(e), e, new_tb))
 
 
@@ -159,6 +163,10 @@ class ErrorHandlingCommand(click.RichGroup):
         try:
             return super().invoke(ctx)
         except Exception as e:
+            # if verbose > 0:
+            #     click.secho("Verbose mode on")
+            #     new_tb = remove_unwanted_traceback_frames(e.__traceback__)
+            #     raise e.with_traceback(new_tb) from None
             pretty_print_exception(e)
             exit(1)
 
