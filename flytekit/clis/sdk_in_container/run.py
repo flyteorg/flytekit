@@ -4,6 +4,7 @@ import inspect
 import json
 import os
 import pathlib
+import sys
 import tempfile
 import typing
 from dataclasses import dataclass, field, fields
@@ -29,6 +30,7 @@ from flytekit.core import context_manager
 from flytekit.core.artifact import ArtifactQuery
 from flytekit.core.base_task import PythonTask
 from flytekit.core.data_persistence import FileAccessProvider
+from flytekit.core.interface import Interface
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow, WorkflowBase
 from flytekit.exceptions.system import FlyteSystemException
@@ -364,6 +366,14 @@ def get_entities_in_file(filename: pathlib.Path, should_delete: bool) -> Entitie
     return Entities(workflows, tasks)
 
 
+class FlyteAwareOption(click.Option):
+    def handle_parse_result(self, ctx, opts, args):
+        # Check if --flyte-inputs is in the parsed options
+        if "flyte_inputs" in opts or not sys.stdin.isatty():
+            self.required = False
+        return super().handle_parse_result(ctx, opts, args)
+
+
 def to_click_option(
     ctx: click.Context,
     flyte_ctx: FlyteContext,
@@ -372,7 +382,7 @@ def to_click_option(
     python_type: typing.Type,
     default_val: typing.Any,
     required: bool,
-) -> click.Option:
+) -> FlyteAwareOption:
     """
     This handles converting workflow input types to supported click parameters with callbacks to initialize
     the input values to their expected types.
@@ -402,7 +412,7 @@ def to_click_option(
     # If a query has been specified, the input is never strictly required at this layer
     required = False if default_val and isinstance(default_val, ArtifactQuery) else required
 
-    return click.Option(
+    return FlyteAwareOption(
         param_decls=[f"--{input_name}"],
         type=literal_converter.click_type,
         is_flag=literal_converter.is_bool(),
@@ -516,6 +526,66 @@ def is_optional(_type):
     return typing.get_origin(_type) is typing.Union and type(None) in typing.get_args(_type)
 
 
+def convert_inputs(
+    ctx: click.Context, interface: Interface, raw_inputs: typing.Dict[str, typing.Any]
+) -> typing.Dict[str, typing.Any]:
+    converted_inputs = {}
+    # Convert the inputs to the expected types
+    for input_name, expected_type in interface.inputs_with_defaults.items():
+        if input_name in raw_inputs.keys():
+            literal_type = TypeEngine.to_literal_type(interface.inputs.get(input_name))
+            literal_converter = FlyteLiteralConverter(
+                ctx,
+                literal_type=literal_type,
+                python_type=expected_type[0],
+                is_remote=False,
+            )
+            try:
+                converted_inputs[input_name] = literal_converter.click_type.convert(raw_inputs[input_name], None, ctx)
+            except Exception as e:
+                raise click.ClickException(f"Failed to parse input '{input_name}'. Reason: {e}")
+    return converted_inputs
+
+
+def extract_inputs_from_file(ctx: click.Context, interface: Interface, input_file: str) -> typing.Dict[str, typing.Any]:
+    """
+    Extracts inputs from the input JSON/YAML file
+    """
+    raw_inputs = {}
+    if not os.path.exists(input_file):
+        raise click.UsageError(f"Input file {input_file} does not exist.")
+    elif input_file.endswith(".json"):
+        with open(input_file, "r") as f:
+            raw_inputs = json.load(f)
+    elif input_file.endswith(".yaml") or input_file.endswith(".yml"):
+        import yaml
+
+        with open(input_file, "r") as f:
+            raw_inputs = yaml.safe_load(f)
+    else:
+        raise click.UsageError(f"Input file {input_file} is not in a supported file format.")
+
+    return convert_inputs(ctx, interface, raw_inputs)
+
+
+def parse_stdin_to_dict(ctx: click.Context, interface: Interface, content: str) -> typing.Dict[str, typing.Any]:
+    """
+    Parses the user input from stdin and converts it to a dictionary.
+    """
+    raw_inputs = {}
+    try:
+        raw_inputs = json.loads(content)
+    except json.JSONDecodeError:
+        try:
+            import yaml
+
+            raw_inputs = yaml.safe_load(content)
+        except yaml.YAMLError as e:
+            raise click.ClickException(f"Failed to parse input: {e}")
+
+    return convert_inputs(ctx, interface, raw_inputs)
+
+
 def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow, PythonTask]):
     """
     Returns a function that is used to implement WorkflowCommand and execute a flyte workflow.
@@ -533,6 +603,13 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
         click.secho(f"Running Execution on {'Remote' if run_level_params.is_remote else 'local'}.", fg="cyan")
         try:
             inputs = {}
+            if kwargs.get("flyte_inputs", None):
+                inputs.update(extract_inputs_from_file(ctx, entity.python_interface, kwargs.get("flyte_inputs")))
+            elif not sys.stdin.isatty():
+                piped_input = sys.stdin.read().strip()
+                if piped_input:
+                    inputs.update(parse_stdin_to_dict(ctx, entity.python_interface, piped_input))
+
             for input_name, v in entity.python_interface.inputs_with_defaults.items():
                 processed_click_value = kwargs.get(input_name)
                 optional_v = False
@@ -554,7 +631,7 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
                         raise click.UsageError(
                             f"Default for '{input_name}' is a query, which must be specified when running locally."
                         )
-                if processed_click_value is not None or optional_v:
+                if processed_click_value is not None or (optional_v and input_name not in inputs):
                     inputs[input_name] = processed_click_value
 
             if not run_level_params.is_remote:
@@ -805,6 +882,14 @@ class WorkflowCommand(click.RichGroup):
 
         # Add options for each of the workflow inputs
         params = []
+        params.append(
+            click.Option(
+                param_decls=["--flyte-inputs"],
+                type=str,
+                required=False,
+                help="Path to the file containing inputs for execution",
+            )
+        )
         for input_name, input_type_val in loaded_entity.python_interface.inputs_with_defaults.items():
             literal_var = loaded_entity.interface.inputs.get(input_name)
             python_type, default_val = input_type_val
