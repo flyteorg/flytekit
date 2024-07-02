@@ -205,7 +205,7 @@ def test_file_handling_remote_default_wf_input():
     assert sample_lp.parameters.parameters["fname"].default.scalar.blob.uri == SAMPLE_DATA
 
 
-def test_file_handling_local_file_gets_copied():
+def test_file_handling_local_file_does_not_get_copied():
     @task
     def t1() -> FlyteFile:
         # Use this test file itself, since we know it exists.
@@ -223,12 +223,7 @@ def test_file_handling_local_file_gets_copied():
         assert len(top_level_files) == 1  # the flytekit_local folder
 
         x = my_wf()
-
-        # After running, this test file should've been copied to the mock remote location.
-        mock_remote_files = os.listdir(os.path.join(random_dir, "mock_remote"))
-        assert len(mock_remote_files) == 1  # the file
-        # File should've been copied to the mock remote folder
-        assert x.path.startswith(random_dir)
+        assert x.path == __file__
 
 
 def test_file_handling_local_file_gets_force_no_copy():
@@ -570,6 +565,24 @@ def test_flyte_file_in_dyn():
 
     assert flyte_tmp_dir in wf(path="s3://somewhere").path
 
+def test_flyte_file_name_with_special_chars():
+    temp_dir = tempfile.TemporaryDirectory()
+    file_path = os.path.join(temp_dir.name, "foo bar")
+    try:
+        with open(file_path, "w") as tmp:
+            tmp.write("hello world")
+
+        @task
+        def get_file_path(f: FlyteFile) -> FlyteFile:
+            return f.path
+
+        @workflow
+        def wf(f: FlyteFile) -> FlyteFile:
+            return get_file_path(f=f)
+
+        wf(f=file_path)
+    finally:
+        temp_dir.cleanup()
 
 def test_flyte_file_annotated_hashmethod(local_dummy_file):
     def calc_hash(ff: FlyteFile) -> str:
@@ -660,3 +673,9 @@ def test_join():
 def test_headers():
     assert FlyteFilePathTransformer.get_additional_headers("xyz") == {}
     assert len(FlyteFilePathTransformer.get_additional_headers(".gz")) == 1
+
+
+def test_new_remote_file():
+    nf = FlyteFile.new_remote_file(name="foo.txt")
+    assert isinstance(nf, FlyteFile)
+    assert nf.path.endswith('foo.txt')

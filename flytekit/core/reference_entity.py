@@ -37,8 +37,7 @@ class Reference(ABC):
 
     @property
     @abstractmethod
-    def resource_type(self) -> int:
-        ...
+    def resource_type(self) -> int: ...
 
 
 @dataclass

@@ -87,6 +87,27 @@ class DockerIgnore(Ignore):
         return self.pm.matches(path)
 
 
+class FlyteIgnore(Ignore):
+    """Uses a .flyteignore file to determine ignored files."""
+
+    def __init__(self, root: Path):
+        super().__init__(root)
+        self.pm = self._parse()
+
+    def _parse(self) -> PatternMatcher:
+        patterns = []
+        flyteignore = os.path.join(self.root, ".flyteignore")
+        if os.path.isfile(flyteignore):
+            with open(flyteignore, "r") as f:
+                patterns = [l.strip() for l in f.readlines() if l and not l.startswith("#")]
+        else:
+            logger.info(f"No .flyteignore found in {self.root}, not applying any filters")
+        return PatternMatcher(patterns)
+
+    def _is_ignored(self, path: str) -> bool:
+        return self.pm.matches(path)
+
+
 class StandardIgnore(Ignore):
     """Retains the standard ignore functionality that previously existed. Could in theory
     by fed with custom ignore patterns from cli."""

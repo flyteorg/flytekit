@@ -157,6 +157,28 @@ def test_underscore_execute_uses_launch_plan_attributes(remote, mock_wf_exec):
     )
 
 
+def test_execution_cluster_label_attributes(remote, mock_wf_exec):
+    mock_wf_exec.return_value = True
+    mock_client = MagicMock()
+    remote._client = mock_client
+
+    def local_assertions(*args, **kwargs):
+        execution_spec = args[3]
+        assert execution_spec.execution_cluster_label.value == "label"
+
+    mock_client.create_execution.side_effect = local_assertions
+
+    mock_entity = MagicMock()
+
+    remote._execute(
+        mock_entity,
+        inputs={},
+        project="proj",
+        domain="dev",
+        execution_cluster_label="label",
+    )
+
+
 def test_underscore_execute_fall_back_remote_attributes(remote, mock_wf_exec):
     mock_wf_exec.return_value = True
     mock_client = MagicMock()

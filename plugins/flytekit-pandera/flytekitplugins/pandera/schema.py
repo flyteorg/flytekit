@@ -16,9 +16,9 @@ T = typing.TypeVar("T")
 
 
 class PanderaTransformer(TypeTransformer[pandera.typing.DataFrame]):
-    _SUPPORTED_TYPES: typing.Dict[
-        type, SchemaType.SchemaColumn.SchemaColumnType
-    ] = FlyteSchemaTransformer._SUPPORTED_TYPES
+    _SUPPORTED_TYPES: typing.Dict[type, SchemaType.SchemaColumn.SchemaColumnType] = (
+        FlyteSchemaTransformer._SUPPORTED_TYPES
+    )
 
     def __init__(self):
         super().__init__("Pandera Transformer", pandera.typing.DataFrame)  # type: ignore

@@ -12,7 +12,6 @@ Flytekit StructuredDataset
    StructuredDatasetDecoder
 """
 
-
 from flytekit.deck.renderer import ArrowRenderer, TopFrameRenderer
 from flytekit.loggers import logger
 

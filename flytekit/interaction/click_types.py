@@ -7,13 +7,12 @@ import pathlib
 import typing
 from typing import cast
 
-import cloudpickle
 import rich_click as click
 import yaml
-from dataclasses_json import DataClassJsonMixin
+from dataclasses_json import DataClassJsonMixin, dataclass_json
 from pytimeparse import parse
 
-from flytekit import BlobType, FlyteContext, FlyteContextManager, Literal, LiteralType, StructuredDataset
+from flytekit import BlobType, FlyteContext, Literal, LiteralType, StructuredDataset
 from flytekit.core.artifact import ArtifactQuery
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import TypeEngine
@@ -54,6 +53,22 @@ def key_value_callback(_: typing.Any, param: str, values: typing.List[str]) -> t
             raise click.BadParameter(f"Expected key-value pair of the form key=value, got {v}")
         k, v = v.split("=", 1)
         result[k.strip()] = v.strip()
+    return result
+
+
+def labels_callback(_: typing.Any, param: str, values: typing.List[str]) -> typing.Optional[typing.Dict[str, str]]:
+    """
+    Callback for click to parse labels.
+    """
+    if not values:
+        return None
+    result = {}
+    for v in values:
+        if "=" not in v:
+            result[v.strip()] = ""
+        else:
+            k, v = v.split("=", 1)
+            result[k.strip()] = v.strip()
     return result
 
 
@@ -117,17 +132,7 @@ class PickleParamType(click.ParamType):
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
-        if isinstance(value, ArtifactQuery):
-            return value
-        # set remote_directory to false if running pyflyte run locally. This makes sure that the original
-        # file is used and not a random one.
-        remote_path = None if getattr(ctx.obj, "is_remote", None) else False
-        if os.path.isfile(value):
-            return FlyteFile(path=value, remote_path=remote_path)
-        uri = FlyteContextManager.current_context().file_access.get_random_local_path()
-        with open(uri, "w+b") as outfile:
-            cloudpickle.dump(value, outfile)
-        return FlyteFile(path=str(pathlib.Path(uri).resolve()), remote_path=remote_path)
+        return value
 
 
 class JSONIteratorParamType(click.ParamType):
@@ -273,6 +278,11 @@ class JsonParamType(click.ParamType):
 
         if is_pydantic_basemodel(self._python_type):
             return self._python_type.parse_raw(json.dumps(parsed_value))  # type: ignore
+
+        # Ensure that the python type has `from_json` function
+        if not hasattr(self._python_type, "from_json"):
+            self._python_type = dataclass_json(self._python_type)
+
         return cast(DataClassJsonMixin, self._python_type).from_json(json.dumps(parsed_value))
 
 

@@ -121,8 +121,7 @@ def modify_literal_uris(lit: Literal):
             )
 
 
-class TypeTransformerFailedError(TypeError, AssertionError, ValueError):
-    ...
+class TypeTransformerFailedError(TypeError, AssertionError, ValueError): ...
 
 
 class TypeTransformer(typing.Generic[T]):
@@ -592,10 +591,10 @@ class DataclassTransformer(TypeTransformer[object]):
             else:
                 return python_val
         else:
-            for v in dataclasses.fields(python_type):
-                val = python_val.__getattribute__(v.name)
-                field_type = v.type
-                python_val.__setattr__(v.name, self._serialize_flyte_type(val, field_type))
+            dataclass_attributes = typing.get_type_hints(python_type)
+            for n, t in dataclass_attributes.items():
+                val = python_val.__getattribute__(n)
+                python_val.__setattr__(n, self._serialize_flyte_type(val, t))
             return python_val
 
     def _deserialize_flyte_type(self, python_val: T, expected_python_type: Type) -> Optional[T]:
@@ -1555,7 +1554,7 @@ class UnionTransformer(TypeTransformer[T]):
         super().__init__("Typed Union", typing.Union)
 
     @staticmethod
-    def is_optional_type(t: Type[T]) -> bool:
+    def is_optional_type(t: Type) -> bool:
         """Return True if `t` is a Union or Optional type."""
         return _is_union_type(t) or type(None) in get_args(t)
 
@@ -1678,7 +1677,7 @@ class DictTransformer(TypeTransformer[dict]):
     """
 
     def __init__(self):
-        super().__init__("Python Dictionary", dict)
+        super().__init__("Typed Dict", dict)
 
     @staticmethod
     def extract_types_or_metadata(t: Optional[Type[dict]]) -> typing.Tuple:
@@ -1699,7 +1698,7 @@ class DictTransformer(TypeTransformer[dict]):
         return None, None
 
     @staticmethod
-    def dict_to_generic_literal(v: dict, allow_pickle: bool) -> Literal:
+    def dict_to_generic_literal(ctx: FlyteContext, v: dict, allow_pickle: bool) -> Literal:
         """
         Creates a flyte-specific ``Literal`` value from a native python dictionary.
         """
@@ -1712,7 +1711,7 @@ class DictTransformer(TypeTransformer[dict]):
             )
         except TypeError as e:
             if allow_pickle:
-                remote_path = FlytePickle.to_pickle(v)
+                remote_path = FlytePickle.to_pickle(ctx, v)
                 return Literal(
                     scalar=Scalar(
                         generic=_json_format.Parse(json.dumps({"pickle_file": remote_path}), _struct.Struct())
@@ -1770,7 +1769,7 @@ class DictTransformer(TypeTransformer[dict]):
             allow_pickle, base_type = DictTransformer.is_pickle(python_type)
 
         if expected and expected.simple and expected.simple == SimpleType.STRUCT:
-            return self.dict_to_generic_literal(python_val, allow_pickle)
+            return self.dict_to_generic_literal(ctx, python_val, allow_pickle)
 
         lit_map = {}
         for k, v in python_val.items():
@@ -1806,16 +1805,16 @@ class DictTransformer(TypeTransformer[dict]):
         # for empty generic we have to explicitly test for lv.scalar.generic is not None as empty dict
         # evaluates to false
         if lv and lv.scalar and lv.scalar.generic is not None:
-            if lv.metadata["format"] == "json":
-                try:
-                    return json.loads(_json_format.MessageToJson(lv.scalar.generic))
-                except TypeError:
-                    raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
-            elif lv.metadata["format"] == "pickle":
+            if lv.metadata and lv.metadata.get("format", None) == "pickle":
                 from flytekit.types.pickle import FlytePickle
 
                 uri = json.loads(_json_format.MessageToJson(lv.scalar.generic)).get("pickle_file")
                 return FlytePickle.from_pickle(uri)
+
+            try:
+                return json.loads(_json_format.MessageToJson(lv.scalar.generic))
+            except TypeError:
+                raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
 
         raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
 
