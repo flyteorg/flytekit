@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import collections
 import copy
 import inspect
@@ -362,6 +363,25 @@ def transform_interface_to_list_interface(
     return Interface(inputs=map_inputs, outputs=map_outputs)
 
 
+def get_function_param_location(func, param_name):
+    # Get source code of the function
+    source_lines, start_line = inspect.getsourcelines(func)
+    source_code = "".join(source_lines)
+
+    # Parse the source code into an AST
+    module = ast.parse(source_code)
+
+    # Traverse the AST to find the function definition
+    for node in ast.walk(module):
+        if isinstance(node, ast.FunctionDef) and node.name == func.__name__:
+            for i, arg in enumerate(node.args.args):
+                if arg.arg == param_name:
+                    # Calculate the line and column number of the parameter
+                    line_number = start_line + node.lineno - 1
+                    column_offset = arg.col_offset
+                    return line_number, column_offset
+
+
 def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Docstring] = None) -> Interface:
     """
     From the annotations on a task function that the user should have provided, and the output names they want to use
@@ -380,6 +400,21 @@ def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Doc
     inputs: Dict[str, Tuple[Type, Any]] = OrderedDict()
     for k, v in signature.parameters.items():  # type: ignore
         annotation = type_hints.get(k, None)
+        if annotation is None:
+            lines, start_line = inspect.getsourcelines(fn)
+            target_line_no, column_offset = get_function_param_location(fn, "a")
+            print(target_line_no, column_offset)
+            line_index = target_line_no - start_line
+            source_code = "".join(lines[i] for i in range(line_index + 1))
+            # print(source_code, end="")
+            # print(f"{' '*column_offset}^ has no type. Please add a type annotation to the input parameter.")
+
+            err_msg = (
+                f"\n{source_code}{' '*column_offset}^ has no type. Please add a type annotation to the input parameter."
+            )
+
+            raise TypeError(err_msg)
+        print("annotation", annotation)
         default = v.default if v.default is not inspect.Parameter.empty else None
         # Inputs with default values are currently ignored, we may want to look into that in the future
         inputs[k] = (annotation, default)  # type: ignore

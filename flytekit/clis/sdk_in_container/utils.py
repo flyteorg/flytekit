@@ -1,11 +1,13 @@
 import os
-import traceback
+import types
 import typing
 from dataclasses import Field, dataclass, field
 from types import MappingProxyType
 
 import grpc
 import rich_click as click
+from rich.console import Console
+from rich.traceback import Traceback
 
 from flytekit.exceptions.base import FlyteException
 from flytekit.exceptions.user import FlyteInvalidInputException
@@ -79,15 +81,33 @@ def pretty_print_grpc_error(e: grpc.RpcError):
     return
 
 
-def pretty_print_traceback(e):
+def remove_unwanted_traceback_frames(tb, unwanted_module_names):
+    frames = []
+    while tb is not None:
+        frame = tb.tb_frame
+        frame_info = (frame.f_code.co_filename, frame.f_code.co_name, frame.f_lineno)
+        if not any(module_name in frame_info[0] for module_name in unwanted_module_names):
+            frames.append((frame, tb.tb_lasti, tb.tb_lineno))
+        tb = tb.tb_next
+
+    # Recreate the traceback without unwanted frames
+    tb_next = None
+    for frame, tb_lasti, tb_lineno in reversed(frames):
+        tb_next = types.TracebackType(tb_next, frame, tb_lasti, tb_lineno)
+
+    return tb_next
+
+
+def pretty_print_traceback(e: BaseException):
     """
     This method will print the Traceback of an error.
     """
-    if e.__traceback__:
-        stack_list = traceback.format_list(traceback.extract_tb(e.__traceback__))
-        click.secho("Traceback:", fg="red")
-        for i in stack_list:
-            click.secho(f"{i}", fg="red")
+    console = Console()
+    tb = e.__cause__.__traceback__ if e.__cause__ else e.__traceback__
+
+    unwanted_modules = ["importlib", "click"]
+    new_tb = remove_unwanted_traceback_frames(tb, unwanted_modules)
+    console.print(Traceback.from_exception(type(e), e, new_tb))
 
 
 def pretty_print_exception(e: Exception):
@@ -109,7 +129,7 @@ def pretty_print_exception(e: Exception):
             if isinstance(cause, grpc.RpcError):
                 pretty_print_grpc_error(cause)
             else:
-                pretty_print_traceback(cause)
+                pretty_print_traceback(e)
         return
 
     if isinstance(e, grpc.RpcError):
@@ -124,9 +144,7 @@ def pretty_print_exception(e: Exception):
         click.secho(f"Value Error: {e}", fg="red")
         return
 
-    click.secho(f"Failed with Exception {type(e)} Reason:\n{e}", fg="red")  # noqa
-    if e.__cause__:
-        pretty_print_traceback(e.__cause__)
+    pretty_print_traceback(e)
 
 
 class ErrorHandlingCommand(click.RichGroup):
@@ -141,11 +159,6 @@ class ErrorHandlingCommand(click.RichGroup):
         try:
             return super().invoke(ctx)
         except Exception as e:
-            if verbose > 0:
-                click.secho("Verbose mode on")
-                if isinstance(e, FlyteException):
-                    raise e.with_traceback(None)
-                raise e
             pretty_print_exception(e)
             exit(1)
 
