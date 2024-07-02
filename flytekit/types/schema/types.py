@@ -1,18 +1,19 @@
 from __future__ import annotations
 
 import datetime
+import json
 import os
 import typing
 from abc import abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Type
+from typing import Type, Any
 
 import numpy as _np
 from dataclasses_json import config
 from marshmallow import fields
-from mashumaro.mixins.json import DataClassJSONMixin
+from mashumaro.mixins.json import DataClassJSONMixin, EncodedData, Decoder
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
@@ -182,6 +183,11 @@ class FlyteSchema(DataClassJSONMixin):
     """
     This is the main schema class that users should use.
     """
+    # def to_json(self):
+    #     pass
+    #
+    # def from_json(self):
+    #     pass
 
     @classmethod
     def columns(cls) -> typing.Dict[str, typing.Type]:
