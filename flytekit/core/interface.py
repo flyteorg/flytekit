@@ -408,6 +408,8 @@ def transform_variable_map(
     descriptions = descriptions or {}
     if variable_map:
         for k, v in variable_map.items():
+            if v is None:
+                raise TypeError(f"Variable {k} has no type")
             res[k] = transform_type(v, descriptions.get(k, k))
     return res
 
