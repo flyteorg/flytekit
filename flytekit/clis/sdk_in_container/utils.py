@@ -150,7 +150,7 @@ def pretty_print_exception(e: Exception, is_verbose: bool = True):
             if isinstance(cause, grpc.RpcError):
                 pretty_print_grpc_error(cause)
             else:
-                pretty_print_traceback(e)
+                pretty_print_traceback(e, is_verbose)
         return
 
     if isinstance(e, grpc.RpcError):
