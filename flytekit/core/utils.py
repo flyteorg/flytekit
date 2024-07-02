@@ -335,13 +335,7 @@ class timeit:
             )
         )
 
-        logger.info(
-            "{}. [Wall Time: {}s, Process Time: {}s]".format(
-                self._name,
-                end_wall_time - self._start_wall_time,
-                end_process_time - self._start_process_time,
-            )
-        )
+        logger.info(f"{self._name}. [Time: {end_wall_time - self._start_wall_time:.6f}s]")
 
 
 class ClassDecorator(ABC):
