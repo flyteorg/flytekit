@@ -43,6 +43,7 @@ def test_extra_config(experiment_key):
         assert comet_decorator.COMET_ML_URL_SUFFIX_KEY not in extra_config
 
     assert extra_config[comet_decorator.COMET_ML_WORKSPACE_KEY] == workspace
+    assert extra_config[comet_decorator.COMET_ML_HOST_KEY] == "https://www.comet.com"
 
 
 @task

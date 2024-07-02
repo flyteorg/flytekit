@@ -40,6 +40,7 @@ class comet_ml_init(ClassDecorator):
     COMET_ML_WORKSPACE_KEY = "workspace"
     COMET_ML_EXPERIMENT_KEY_KEY = "experiment_key"
     COMET_ML_URL_SUFFIX_KEY = "link_suffix"
+    COMET_ML_HOST_KEY = "host"
 
     def __init__(
         self,
@@ -48,6 +49,7 @@ class comet_ml_init(ClassDecorator):
         workspace: Optional[str] = None,
         experiment_key: Optional[str] = None,
         secret: Optional[Union[Secret, Callable]] = None,
+        host: str = "https://www.comet.com",
         **init_kwargs: dict,
     ):
         """Comet plugin.
@@ -58,6 +60,7 @@ class comet_ml_init(ClassDecorator):
             experiment_key (str): Experiment key.
             secret (Secret or Callable): Secret with your `COMET_API_KEY` or a callable that returns the API key.
                 The callable takes no arguments and returns a string. (Required)
+            host (str): URL to your Comet service. Defaults to "https://www.comet.com"
             **init_kwargs (dict): The rest of the arguments are passed directly to `comet_ml.init`.
         """
         if project_name is None:
@@ -71,6 +74,7 @@ class comet_ml_init(ClassDecorator):
         self.workspace = workspace
         self.experiment_key = experiment_key
         self.secret = secret
+        self.host = host
         self.init_kwargs = init_kwargs
 
         super().__init__(
@@ -79,6 +83,7 @@ class comet_ml_init(ClassDecorator):
             workspace=workspace,
             experiment_key=experiment_key,
             secret=secret,
+            host=host,
             **init_kwargs,
         )
 
@@ -126,6 +131,7 @@ class comet_ml_init(ClassDecorator):
         extra_config = {
             self.COMET_ML_PROJECT_NAME_KEY: self.project_name,
             self.COMET_ML_WORKSPACE_KEY: self.workspace,
+            self.COMET_ML_HOST_KEY: self.host,
         }
 
         if self.experiment_key is None:
