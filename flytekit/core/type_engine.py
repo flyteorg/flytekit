@@ -43,8 +43,6 @@ from flytekit.models import types as _type_models
 from flytekit.models.annotation import TypeAnnotation as TypeAnnotationModel
 from flytekit.models.core import types as _core_types
 from flytekit.models.literals import (
-    Blob,
-    BlobMetadata,
     Literal,
     LiteralCollection,
     LiteralMap,
@@ -594,8 +592,6 @@ class DataclassTransformer(TypeTransformer[object]):
         This method maintains backward compatibility for deserializing Flyte types.
         For example, it ensures compatibility with upstream outputs that use Flyte types from older Flytekit versions.
         """
-        from flytekit.types.directory.types import FlyteDirectory, FlyteDirToMultipartBlobTransformer
-        from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
         from flytekit.types.schema.types import FlyteSchema, FlyteSchemaTransformer
         from flytekit.types.structured.structured_dataset import StructuredDataset, StructuredDatasetTransformerEngine
 
@@ -627,40 +623,40 @@ class DataclassTransformer(TypeTransformer[object]):
                 ),
                 expected_python_type,
             )
-        elif issubclass(expected_python_type, FlyteFile):
-            return FlyteFilePathTransformer().to_python_value(
-                FlyteContext.current_context(),
-                Literal(
-                    scalar=Scalar(
-                        blob=Blob(
-                            metadata=BlobMetadata(
-                                type=_core_types.BlobType(
-                                    format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
-                                )
-                            ),
-                            uri=cast(FlyteFile, python_val).path,
-                        )
-                    )
-                ),
-                expected_python_type,
-            )
-        elif issubclass(expected_python_type, FlyteDirectory):
-            return FlyteDirToMultipartBlobTransformer().to_python_value(
-                FlyteContext.current_context(),
-                Literal(
-                    scalar=Scalar(
-                        blob=Blob(
-                            metadata=BlobMetadata(
-                                type=_core_types.BlobType(
-                                    format="", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
-                                )
-                            ),
-                            uri=cast(FlyteDirectory, python_val).path,
-                        )
-                    )
-                ),
-                expected_python_type,
-            )
+        # elif issubclass(expected_python_type, FlyteFile):
+        #     return FlyteFilePathTransformer().to_python_value(
+        #         FlyteContext.current_context(),
+        #         Literal(
+        #             scalar=Scalar(
+        #                 blob=Blob(
+        #                     metadata=BlobMetadata(
+        #                         type=_core_types.BlobType(
+        #                             format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
+        #                         )
+        #                     ),
+        #                     uri=cast(FlyteFile, python_val).path,
+        #                 )
+        #             )
+        #         ),
+        #         expected_python_type,
+        #     )
+        # elif issubclass(expected_python_type, FlyteDirectory):
+        #     return FlyteDirToMultipartBlobTransformer().to_python_value(
+        #         FlyteContext.current_context(),
+        #         Literal(
+        #             scalar=Scalar(
+        #                 blob=Blob(
+        #                     metadata=BlobMetadata(
+        #                         type=_core_types.BlobType(
+        #                             format="", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
+        #                         )
+        #                     ),
+        #                     uri=cast(FlyteDirectory, python_val).path,
+        #                 )
+        #             )
+        #         ),
+        #         expected_python_type,
+        #     )
         elif issubclass(expected_python_type, StructuredDataset):
             return StructuredDatasetTransformerEngine().to_python_value(
                 FlyteContext.current_context(),
@@ -757,7 +753,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 self._decoder[expected_python_type] = decoder
 
             dc = decoder.decode(json_str)
-
+        print("@@@ dc to_python_value:", dc)
         dc = self._fix_structured_dataset_type(expected_python_type, dc)
         return self._fix_dataclass_int(expected_python_type, self._deserialize_flyte_type(dc, expected_python_type))
 
