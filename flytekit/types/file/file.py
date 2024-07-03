@@ -6,6 +6,7 @@ import pathlib
 import typing
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from urllib.parse import unquote
 
 from dataclasses_json import config
 from marshmallow import fields
@@ -21,8 +22,7 @@ from flytekit.models.types import LiteralType
 from flytekit.types.pickle.pickle import FlytePickleTransformer
 
 
-def noop():
-    ...
+def noop(): ...
 
 
 T = typing.TypeVar("T")
@@ -153,7 +153,7 @@ class FlyteFile(os.PathLike, typing.Generic[T], DataClassJSONMixin):
         Create a new FlyteFile object with a remote path.
         """
         ctx = FlyteContextManager.current_context()
-        r = ctx.file_access.get_random_string()
+        r = name or ctx.file_access.get_random_string()
         remote_path = ctx.file_access.join(ctx.file_access.raw_output_prefix, r)
         return cls(path=remote_path)
 
@@ -440,6 +440,9 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             # Set the remote destination if one was given instead of triggering a random one below
             remote_path = python_val.remote_path or None
 
+            if ctx.execution_state.is_local_execution() and python_val.remote_path is None:
+                should_upload = False
+
         elif isinstance(python_val, pathlib.Path) or isinstance(python_val, str):
             source_path = str(python_val)
             if issubclass(python_type, FlyteFile):
@@ -455,6 +458,8 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
                         p = pathlib.Path(python_val)
                         if not p.is_file():
                             raise TypeTransformerFailedError(f"Error converting {python_val} because it's not a file.")
+                        if ctx.execution_state.is_local_execution():
+                            should_upload = False
             # python_type must be os.PathLike - see check at beginning of function
             else:
                 should_upload = False
@@ -469,7 +474,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
                 remote_path = ctx.file_access.put_data(source_path, remote_path, is_multipart=False, **headers)
             else:
                 remote_path = ctx.file_access.put_raw_data(source_path, **headers)
-            return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
+            return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=unquote(str(remote_path)))))
         # If not uploading, then we can only take the original source path as the uri.
         else:
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=source_path)))

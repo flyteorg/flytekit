@@ -104,10 +104,11 @@ class ImageSpec:
             return os.environ.get(_F_IMG_ID) == self.image_name()
         return True
 
-    @lru_cache
-    def exist(self) -> bool:
+    def exist(self) -> Optional[bool]:
         """
         Check if the image exists in the registry.
+        Return True if the image exists in the registry, False otherwise.
+        Return None if failed to check if the image exists due to the permission issue or other reasons.
         """
         import docker
         from docker.errors import APIError, ImageNotFound
@@ -122,15 +123,21 @@ class ImageSpec:
         except APIError as e:
             if e.response.status_code == 404:
                 return False
-            return True
+
+            click.secho(f"Failed to check if the image exists with error:\n {e}", fg="red")
+            return None
         except ImageNotFound:
             return False
         except Exception as e:
             tag = calculate_hash_from_image_spec(self)
-            # if docker engine is not running locally
-            container_registry = DOCKER_HUB
-            if self.registry and "/" in self.registry:
+            # if docker engine is not running locally, use requests to check if the image exists.
+            if "localhost:" in self.registry:
+                container_registry = self.registry
+            elif self.registry and "/" in self.registry:
                 container_registry = self.registry.split("/")[0]
+            else:
+                # Assume the image is in docker hub if users don't specify a registry, such as ghcr.io, docker.io.
+                container_registry = DOCKER_HUB
             if container_registry == DOCKER_HUB:
                 url = f"https://hub.docker.com/v2/repositories/{self.registry}/{self.name}/tags/{tag}"
                 response = requests.get(url)
@@ -140,9 +147,18 @@ class ImageSpec:
                 if response.status_code == 404 and "not found" in str(response.content):
                     return False
 
-            click.secho(f"Failed to check if the image exists with error : {e}", fg="red")
-            click.secho("Flytekit assumes that the image already exists.", fg="blue")
-            return True
+            if "Not supported URL scheme http+docker" in str(e):
+                raise RuntimeError(
+                    f"{str(e)}\n"
+                    f"Error: Incompatible Docker package version.\n"
+                    f"Current version: {docker.__version__}\n"
+                    f"Please upgrade the Docker package to version 7.1.0 or higher.\n"
+                    f"You can upgrade the package by running:\n"
+                    f"    pip install --upgrade docker"
+                )
+
+            click.secho(f"Failed to check if the image exists with error:\n {e}", fg="red")
+            return None
 
     def __hash__(self):
         return hash(asdict(self).__str__())
@@ -216,6 +232,30 @@ class ImageSpecBuilder:
         """
         raise NotImplementedError("This method is not implemented in the base class.")
 
+    def should_build(self, image_spec: ImageSpec) -> bool:
+        """
+        Whether or not the builder should build the ImageSpec.
+
+        Args:
+            image_spec: image spec of the task.
+
+        Returns:
+            True if the image should be built, otherwise it returns False.
+        """
+        img_name = image_spec.image_name()
+        exist = image_spec.exist()
+        if exist is False:
+            click.secho(f"Image {img_name} not found. building...", fg="blue")
+            return True
+        elif exist is True:
+            if image_spec._is_force_push:
+                click.secho(f"Overwriting existing image {img_name}.", fg="blue")
+                return True
+            click.secho(f"Image {img_name} found. Skip building.", fg="blue")
+        else:
+            click.secho(f"Flytekit assumes the image {img_name} already exists.", fg="blue")
+        return False
+
 
 class ImageBuildEngine:
     """
@@ -252,20 +292,15 @@ class ImageBuildEngine:
             builder = image_spec.builder
 
         img_name = image_spec.image_name()
-        if image_spec.exist():
-            if image_spec._is_force_push:
-                click.secho(f"Image {img_name} found. but overwriting existing image.", fg="blue")
-                cls._build_image(builder, image_spec, img_name)
-            else:
-                click.secho(f"Image {img_name} found. Skip building.", fg="blue")
-        else:
-            click.secho(f"Image {img_name} not found. building...", fg="blue")
+        if cls._get_builder(builder).should_build(image_spec):
             cls._build_image(builder, image_spec, img_name)
 
     @classmethod
-    def _build_image(cls, builder, image_spec, img_name):
+    def _get_builder(cls, builder: str) -> ImageSpecBuilder:
+        if builder is None:
+            raise AssertionError("There is no image builder registered.")
         if builder not in cls._REGISTRY:
-            raise Exception(f"Builder {builder} is not registered.")
+            raise AssertionError(f"Image builder {builder} is not registered.")
         if builder == "envd":
             envd_version = metadata.version("envd")
             # flytekit v1.10.2+ copies the workflow code to the WorkDir specified in the Dockerfile. However, envd<0.3.39
@@ -275,7 +310,11 @@ class ImageBuildEngine:
                     f"envd version {envd_version} is not compatible with flytekit>v1.10.2."
                     f" Please upgrade envd to v0.3.39+."
                 )
-        fully_qualified_image_name = cls._REGISTRY[builder][0].build_image(image_spec)
+        return cls._REGISTRY[builder][0]
+
+    @classmethod
+    def _build_image(cls, builder: str, image_spec: ImageSpec, img_name: str):
+        fully_qualified_image_name = cls._get_builder(builder).build_image(image_spec)
         if fully_qualified_image_name is not None:
             cls._IMAGE_NAME_TO_REAL_NAME[img_name] = fully_qualified_image_name
 

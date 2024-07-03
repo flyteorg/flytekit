@@ -28,6 +28,14 @@ from flytekit.interaction.click_types import (
 
 dummy_param = click.Option(["--dummy"], type=click.STRING, default="dummy")
 
+def test_dir_param():
+    import os
+    m = mock.MagicMock()
+    current_file_directory = os.path.dirname(os.path.abspath(__file__))
+    l = DirParamType().convert(current_file_directory, m, m)
+    assert l.path == current_file_directory
+    r = DirParamType().convert("https://tmp/dir", m, m)
+    assert r.path == "https://tmp/dir"
 
 def test_file_param():
     m = mock.MagicMock()

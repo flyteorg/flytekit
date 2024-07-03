@@ -66,7 +66,7 @@ def test_image_spec(mock_image_spec_builder):
 
     assert "dummy" in ImageBuildEngine._REGISTRY
     assert calculate_hash_from_image_spec(image_spec) == tag
-    assert image_spec.exist() is True
+    assert image_spec.exist() is None
 
     # Remove the dummy builder, and build the image again
     # The image has already been built, so it shouldn't fail.
@@ -104,14 +104,14 @@ def test_image_spec_engine_priority():
 
 
 def test_build_existing_image_with_force_push():
-    image_spec = Mock()
-    image_spec.exist.return_value = True
-    image_spec._is_force_push = True
+    image_spec = ImageSpec(name="hello", builder="test").force_push()
 
-    ImageBuildEngine._build_image = Mock()
+    builder = Mock()
+    builder.build_image.return_value = "new_image_name"
+    ImageBuildEngine.register("test", builder)
 
     ImageBuildEngine.build(image_spec)
-    ImageBuildEngine._build_image.assert_called_once()
+    builder.build_image.assert_called_once()
 
 
 def test_custom_tag():

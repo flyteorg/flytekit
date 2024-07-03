@@ -16,7 +16,7 @@ from flytekit.core.docstring import Docstring
 from flytekit.core.sentinel import DYNAMIC_INPUT_BINDING
 from flytekit.core.type_engine import TypeEngine, UnionTransformer
 from flytekit.exceptions.user import FlyteValidationException
-from flytekit.loggers import logger
+from flytekit.loggers import developer_logger, logger
 from flytekit.models import interface as _interface_models
 from flytekit.models.literals import Literal, Scalar, Void
 
@@ -25,7 +25,7 @@ T = typing.TypeVar("T")
 
 def repr_kv(k: str, v: Union[Type, Tuple[Type, Any]]) -> str:
     if isinstance(v, tuple):
-        if v[1]:
+        if v[1] is not None:
             return f"{k}: {v[0]}={v[1]}"
         return f"{k}: {v[0]}"
     return f"{k}: {v}"
@@ -70,6 +70,8 @@ class Interface(object):
         self._inputs: Union[Dict[str, Tuple[Type, Any]], Dict[str, Type]] = {}  # type: ignore
         if inputs:
             for k, v in inputs.items():
+                if not k.isidentifier():
+                    raise ValueError(f"Input name must be valid Python identifier: {k!r}")
                 if type(v) is tuple and len(cast(Tuple, v)) > 1:
                     self._inputs[k] = v  # type: ignore
                 else:
@@ -109,8 +111,7 @@ class Interface(object):
                     where runs_before is manually called.
                     """
 
-                def __rshift__(self, *args, **kwargs):
-                    ...  # See runs_before
+                def __rshift__(self, *args, **kwargs): ...  # See runs_before
 
             self._output_tuple_class = Output
         self._docstring = docstring
@@ -511,7 +512,7 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple, None]) -> Di
 
     else:
         # Handle all other single return types
-        logger.debug(f"Task returns unnamed native tuple {return_annotation}")
+        developer_logger.debug(f"Task returns unnamed native tuple {return_annotation}")
         return {default_output_name(): cast(Type, return_annotation)}
 
 
