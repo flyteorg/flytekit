@@ -742,7 +742,6 @@ class DataclassTransformer(TypeTransformer[object]):
 
         json_str = _json_format.MessageToJson(lv.scalar.generic)
 
-
         # The function looks up or creates a JSONDecoder specifically designed for the object's type.
         # This decoder is then used to convert a JSON string into a data class.
         try:
