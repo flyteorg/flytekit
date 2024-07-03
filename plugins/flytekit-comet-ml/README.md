@@ -8,12 +8,6 @@ To install the plugin, run:
 pip install flytekitplugins-comet-ml
 ```
 
-Here is an example of running Comet with PyTorch Lightning:
-
-```python
-from flytekit
-```
-
 Comet requires an API key to authenticate with their platform. In the above example, a secret is created using
 [Flyte's Secrets manager](https://docs.flyte.org/en/latest/user_guide/productionizing/secrets.html).
 
