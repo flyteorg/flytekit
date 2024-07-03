@@ -484,20 +484,15 @@ class DataclassTransformer(TypeTransformer[object]):
 
         self._serialize_flyte_type(python_val, python_type)
 
-        # The `to_json` function is integrated through either the `dataclasses_json` decorator or by inheriting from `DataClassJsonMixin`.
-        # It serializes a data class into a JSON string.
-        if hasattr(python_val, "to_json"):
-            json_str = python_val.to_json()
-        else:
-            # The function looks up or creates a JSONEncoder specifically designed for the object's type.
-            # This encoder is then used to convert a data class into a JSON string.
-            try:
-                encoder = self._encoder[python_type]
-            except KeyError:
-                encoder = JSONEncoder(python_type)
-                self._encoder[python_type] = encoder
+        # The function looks up or creates a JSONEncoder specifically designed for the object's type.
+        # This encoder is then used to convert a data class into a JSON string.
+        try:
+            encoder = self._encoder[python_type]
+        except KeyError:
+            encoder = JSONEncoder(python_type)
+            self._encoder[python_type] = encoder
 
-            json_str = encoder.encode(python_val)
+        json_str = encoder.encode(python_val)
 
         return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))  # type: ignore
 
@@ -747,21 +742,16 @@ class DataclassTransformer(TypeTransformer[object]):
 
         json_str = _json_format.MessageToJson(lv.scalar.generic)
 
-        # The `from_json` function is integrated through either the `dataclasses_json` decorator or by inheriting from `DataClassJsonMixin`.
-        # It deserializes a JSON string into a data class.
-        if hasattr(expected_python_type, "from_json"):
-            dc = expected_python_type.from_json(json_str)  # type: ignore
-        else:
-            # The function looks up or creates a JSONDecoder specifically designed for the object's type.
-            # This decoder is then used to convert a JSON string into a data class.
-            try:
-                decoder = self._decoder[expected_python_type]
-            except KeyError:
-                decoder = JSONDecoder(expected_python_type)
-                self._decoder[expected_python_type] = decoder
 
-            dc = decoder.decode(json_str)
+        # The function looks up or creates a JSONDecoder specifically designed for the object's type.
+        # This decoder is then used to convert a JSON string into a data class.
+        try:
+            decoder = self._decoder[expected_python_type]
+        except KeyError:
+            decoder = JSONDecoder(expected_python_type)
+            self._decoder[expected_python_type] = decoder
 
+        dc = decoder.decode(json_str)
         dc = self._fix_structured_dataset_type(expected_python_type, dc)
         return self._fix_dataclass_int(expected_python_type, self._deserialize_flyte_type(dc, expected_python_type))
 
