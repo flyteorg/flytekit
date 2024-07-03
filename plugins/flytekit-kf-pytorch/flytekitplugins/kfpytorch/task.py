@@ -109,6 +109,7 @@ class PyTorch(object):
             (e.g. for multithreaded data loaders) the default shared memory segment size that the container runs with might not be enough
             and and one might have to increase the shared memory size. This option configures the task's pod template to mount
             an `emptyDir` volume with medium `Memory` to to `/dev/shm`.
+            The shared memory size upper limit is the sum of the memory limits of the containers in the pod.
     """
 
     master: Master = field(default_factory=lambda: Master())
@@ -145,6 +146,7 @@ class Elastic(object):
             (e.g. for multithreaded data loaders) the default shared memory segment size that the container runs with might not be enough
             and and one might have to increase the shared memory size. This option configures the task's pod template to mount
             an `emptyDir` volume with medium `Memory` to to `/dev/shm`.
+            The shared memory size upper limit is the sum of the memory limits of the containers in the pod.
     """
 
     nnodes: Union[int, str] = 1
