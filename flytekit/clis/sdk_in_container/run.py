@@ -30,7 +30,6 @@ from flytekit.core import context_manager
 from flytekit.core.artifact import ArtifactQuery
 from flytekit.core.base_task import PythonTask
 from flytekit.core.data_persistence import FileAccessProvider
-from flytekit.core.interface import Interface
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow, WorkflowBase
 from flytekit.exceptions.system import FlyteSystemException
@@ -527,27 +526,32 @@ def is_optional(_type):
 
 
 def convert_inputs(
-    ctx: click.Context, interface: Interface, raw_inputs: typing.Dict[str, typing.Any]
+    ctx: click.Context, entity: typing.Union[PythonTask, WorkflowBase], raw_inputs: typing.Dict[str, typing.Any]
 ) -> typing.Dict[str, typing.Any]:
     converted_inputs = {}
     # Convert the inputs to the expected types
-    for input_name, expected_type in interface.inputs_with_defaults.items():
+    for input_name, expected_type in entity.python_interface.inputs_with_defaults.items():
         if input_name in raw_inputs.keys():
-            literal_type = TypeEngine.to_literal_type(interface.inputs.get(input_name))
-            literal_converter = FlyteLiteralConverter(
-                ctx,
-                literal_type=literal_type,
-                python_type=expected_type[0],
-                is_remote=False,
-            )
             try:
+                literal_var = entity.interface.inputs.get(input_name)
+                literal_converter = FlyteLiteralConverter(
+                    ctx.obj.remote_instance().context,
+                    literal_type=literal_var.type,
+                    python_type=expected_type[0],
+                    is_remote=ctx.obj.is_remote,
+                )
+                # Prevent false conversion of float to integer
+                if type(raw_inputs[input_name]) == float:
+                    raw_inputs[input_name] = str(raw_inputs[input_name])
                 converted_inputs[input_name] = literal_converter.click_type.convert(raw_inputs[input_name], None, ctx)
             except Exception as e:
                 raise click.ClickException(f"Failed to parse input '{input_name}'. Reason: {e}")
     return converted_inputs
 
 
-def extract_inputs_from_file(ctx: click.Context, interface: Interface, input_file: str) -> typing.Dict[str, typing.Any]:
+def extract_inputs_from_file(
+    ctx: click.Context, entity: typing.Union[PythonTask, WorkflowBase], input_file: str
+) -> typing.Dict[str, typing.Any]:
     """
     Extracts inputs from the input JSON/YAML file
     """
@@ -565,10 +569,12 @@ def extract_inputs_from_file(ctx: click.Context, interface: Interface, input_fil
     else:
         raise click.UsageError(f"Input file {input_file} is not in a supported file format.")
 
-    return convert_inputs(ctx, interface, raw_inputs)
+    return convert_inputs(ctx, entity, raw_inputs)
 
 
-def parse_stdin_to_dict(ctx: click.Context, interface: Interface, content: str) -> typing.Dict[str, typing.Any]:
+def parse_stdin_to_dict(
+    ctx: click.Context, entity: typing.Union[PythonTask, WorkflowBase], content: str
+) -> typing.Dict[str, typing.Any]:
     """
     Parses the user input from stdin and converts it to a dictionary.
     """
@@ -580,10 +586,25 @@ def parse_stdin_to_dict(ctx: click.Context, interface: Interface, content: str) 
             import yaml
 
             raw_inputs = yaml.safe_load(content)
-        except yaml.YAMLError as e:
-            raise click.ClickException(f"Failed to parse input: {e}")
+        except Exception as e:
+            raise click.ClickException(f"Failed to parse input from pipe, Reason: {e}")
 
-    return convert_inputs(ctx, interface, raw_inputs)
+    return convert_inputs(ctx, entity, raw_inputs)
+
+
+def check_params(entity: typing.Union[PythonFunctionWorkflow, PythonTask], inputs: typing.Dict[str, typing.Any]):
+    """
+    Checks if all required inputs are provided.
+    """
+    for input_name, v in entity.python_interface.inputs_with_defaults.items():
+        processed_click_value = inputs.get(input_name)
+        optional_v = False
+        if processed_click_value is None and isinstance(v, typing.Tuple):
+            optional_v = is_optional(v[0])
+            if len(v) == 2:
+                processed_click_value = v[1]
+        if processed_click_value is None and not optional_v:
+            raise click.UsageError(f"Required input '{input_name}' not passed.")
 
 
 def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow, PythonTask]):
@@ -605,11 +626,13 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
         try:
             inputs = {}
             if kwargs.get("flyte_inputs", None):
-                inputs.update(extract_inputs_from_file(ctx, entity.python_interface, kwargs.get("flyte_inputs")))
+                inputs.update(extract_inputs_from_file(ctx, entity, kwargs.get("flyte_inputs")))
+                check_params(entity, inputs)
             elif not sys.stdin.isatty():
                 piped_input = sys.stdin.read().strip()
                 if piped_input:
-                    inputs.update(parse_stdin_to_dict(ctx, entity.python_interface, piped_input))
+                    inputs.update(parse_stdin_to_dict(ctx, entity, piped_input))
+                    check_params(entity, inputs)
 
             for input_name, v in entity.python_interface.inputs_with_defaults.items():
                 processed_click_value = kwargs.get(input_name)
