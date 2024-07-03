@@ -718,8 +718,8 @@ class DataclassTransformer(TypeTransformer[object]):
             decoder = JSONDecoder(expected_python_type)
             self._decoder[expected_python_type] = decoder
 
-            dc = decoder.decode(json_str)
-        print("@@@ dc to_python_value:", dc)
+        dc = decoder.decode(json_str)
+
         dc = self._fix_structured_dataset_type(expected_python_type, dc)
         return self._fix_dataclass_int(expected_python_type, self._deserialize_flyte_type(dc, expected_python_type))
 

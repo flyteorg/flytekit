@@ -146,18 +146,14 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
     """
 
     def _serialize(self):
-        print("@@@ _serialize -> go to serialize")
-        # if self._remote_source:
-        #     return {"path": self._remote_source}
         lv = FlyteFilePathTransformer().to_literal(FlyteContext.current_context(), self, FlyteFile, None)
         uri = lv.scalar.blob.uri
         return {"path": uri}
 
     @classmethod
     def _deserialize(cls, value):
-        print("@@@ _deserialize -> go to deserialize")
         path = value.get("path", None)
-        print("@@@ deserialize path:", path)
+
         if path is None:
             raise ValueError("path is None")
 
@@ -528,10 +524,6 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         except AttributeError:
             raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
 
-        print("@@@ to_python_value uri:", uri)
-        print("@@@ ctx.file_access.is_remote(uri):", ctx.file_access.is_remote(uri))
-        print("@@@ os.path.isfile(uri):", os.path.isfile(uri))
-
         if lv.scalar.blob.metadata.type.dimensionality != BlobType.BlobDimensionality.SINGLE:
             raise TypeTransformerFailedError(f"{lv.scalar.blob.uri} is not a file.")
 
@@ -566,8 +558,6 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         expected_format = FlyteFilePathTransformer.get_format(expected_python_type)
         ff = FlyteFile.__class_getitem__(expected_format)(local_path, _downloader)
         ff._remote_source = uri
-        print("@@@ ff._remote_source:", ff._remote_source)
-        print("@@@ ff.path", ff.path)
         return ff
 
     def guess_python_type(self, literal_type: LiteralType) -> typing.Type[FlyteFile[typing.Any]]:
