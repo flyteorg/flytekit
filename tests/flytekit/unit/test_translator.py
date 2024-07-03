@@ -166,3 +166,4 @@ def test_launch_plan_with_fixed_input():
     assert len(task_spec.template.interface.outputs) == 1
     assert len(task_spec.template.nodes) == 1
     assert len(task_spec.template.nodes[0].inputs) == 2
+
