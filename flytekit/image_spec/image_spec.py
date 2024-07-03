@@ -68,6 +68,7 @@ class ImageSpec:
     pip_index: Optional[str] = None
     pip_extra_index_url: Optional[List[str]] = None
     registry_config: Optional[str] = None
+    entrypoint: Optional[List[str]] = None
     commands: Optional[List[str]] = None
     tag_format: Optional[str] = None
 
