@@ -623,40 +623,6 @@ class DataclassTransformer(TypeTransformer[object]):
                 ),
                 expected_python_type,
             )
-        # elif issubclass(expected_python_type, FlyteFile):
-        #     return FlyteFilePathTransformer().to_python_value(
-        #         FlyteContext.current_context(),
-        #         Literal(
-        #             scalar=Scalar(
-        #                 blob=Blob(
-        #                     metadata=BlobMetadata(
-        #                         type=_core_types.BlobType(
-        #                             format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
-        #                         )
-        #                     ),
-        #                     uri=cast(FlyteFile, python_val).path,
-        #                 )
-        #             )
-        #         ),
-        #         expected_python_type,
-        #     )
-        # elif issubclass(expected_python_type, FlyteDirectory):
-        #     return FlyteDirToMultipartBlobTransformer().to_python_value(
-        #         FlyteContext.current_context(),
-        #         Literal(
-        #             scalar=Scalar(
-        #                 blob=Blob(
-        #                     metadata=BlobMetadata(
-        #                         type=_core_types.BlobType(
-        #                             format="", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
-        #                         )
-        #                     ),
-        #                     uri=cast(FlyteDirectory, python_val).path,
-        #                 )
-        #             )
-        #         ),
-        #         expected_python_type,
-        #     )
         elif issubclass(expected_python_type, StructuredDataset):
             return StructuredDatasetTransformerEngine().to_python_value(
                 FlyteContext.current_context(),
