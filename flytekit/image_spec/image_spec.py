@@ -45,6 +45,7 @@ class ImageSpec:
         pip_index: Specify the custom pip index url
         pip_extra_index_url: Specify one or more pip index urls as a list
         registry_config: Specify the path to a JSON registry config file
+        entrypoint: List of strings to overwrite the entrypoint of the base image with, set to [] to remove the entrypoint.
         commands: Command to run during the building process
         tag_format: Custom string format for image tag. The ImageSpec hash passed in as `spec_hash`. For example,
             to add a "dev" suffix to the image tag, set `tag_format="{spec_hash}-dev"`
@@ -68,6 +69,7 @@ class ImageSpec:
     pip_index: Optional[str] = None
     pip_extra_index_url: Optional[List[str]] = None
     registry_config: Optional[str] = None
+    entrypoint: Optional[List[str]] = None
     commands: Optional[List[str]] = None
     tag_format: Optional[str] = None
 
