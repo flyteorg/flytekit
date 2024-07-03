@@ -106,7 +106,7 @@ class PyTorch(object):
         run_policy: Configuration for the run policy.
         num_workers: [DEPRECATED] This argument is deprecated. Use `worker.replicas` instead.
         increase_shared_mem (bool): PyTorch uses shared memory to share data between processes. If torch multiprocessing is used
-            (e.g. for multithreaded data loaders) the default shared memory segment size that the container runs with might not be enough
+            (e.g. for multi-processed data loaders) the default shared memory segment size that the container runs with might not be enough
             and and one might have to increase the shared memory size. This option configures the task's pod template to mount
             an `emptyDir` volume with medium `Memory` to to `/dev/shm`.
             The shared memory size upper limit is the sum of the memory limits of the containers in the pod.
@@ -143,7 +143,7 @@ class Elastic(object):
             be assigned to a running node which might have the image in its cache while other workers might require a node scale up and image pull.
 
         increase_shared_mem (bool): PyTorch uses shared memory to share data between processes. If torch multiprocessing is used
-            (e.g. for multithreaded data loaders) the default shared memory segment size that the container runs with might not be enough
+            (e.g. for multi-processed data loaders) the default shared memory segment size that the container runs with might not be enough
             and and one might have to increase the shared memory size. This option configures the task's pod template to mount
             an `emptyDir` volume with medium `Memory` to to `/dev/shm`.
             The shared memory size upper limit is the sum of the memory limits of the containers in the pod.
