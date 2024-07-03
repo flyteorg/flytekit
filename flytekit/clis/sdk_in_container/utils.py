@@ -123,7 +123,7 @@ def pretty_print_traceback(e: Exception, is_verbose: bool = True):
         console.print(Traceback.from_exception(type(e), e, None))
 
     if hasattr(e, SOURCE_CODE):
-        # breakpoint()
+        # TODO: Use other way to check if the background is light or dark
         theme = "emacs" if "LIGHT_BACKGROUND" in os.environ else "monokai"
         syntax = Syntax(getattr(e, SOURCE_CODE), "python", theme=theme, background_color="default")
         panel = Panel(syntax, border_style="red", title=type(e).__name__, title_align="left")
