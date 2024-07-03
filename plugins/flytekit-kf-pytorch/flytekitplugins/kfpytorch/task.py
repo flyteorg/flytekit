@@ -107,7 +107,7 @@ class PyTorch(object):
 
     master: Master = field(default_factory=lambda: Master())
     worker: Worker = field(default_factory=lambda: Worker())
-    run_policy: Optional[RunPolicy] = field(default_factory=lambda: None)
+    run_policy: Optional[RunPolicy] = None
     # Support v0 config for backwards compatibility
     num_workers: Optional[int] = None
 
@@ -130,6 +130,7 @@ class Elastic(object):
         max_restarts (int): Maximum number of worker group restarts before failing.
         rdzv_configs (Dict[str, Any]): Additional rendezvous configs to pass to torch elastic, e.g. `{"timeout": 1200, "join_timeout": 900}`.
             See `torch.distributed.launcher.api.LaunchConfig` and `torch.distributed.elastic.rendezvous.dynamic_rendezvous.create_handler`.
+        run_policy: Configuration for the run policy.
     """
 
     nnodes: Union[int, str] = 1
@@ -138,6 +139,7 @@ class Elastic(object):
     monitor_interval: int = 5
     max_restarts: int = 0
     rdzv_configs: Dict[str, Any] = field(default_factory=dict)
+    run_policy: Optional[RunPolicy] = None
 
 
 class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
@@ -181,21 +183,15 @@ class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
             restart_policy=replica_config.restart_policy.value if replica_config.restart_policy else None,
         )
 
-    def _convert_run_policy(self, run_policy: RunPolicy) -> kubeflow_common.RunPolicy:
-        return kubeflow_common.RunPolicy(
-            clean_pod_policy=run_policy.clean_pod_policy.value if run_policy.clean_pod_policy else None,
-            ttl_seconds_after_finished=run_policy.ttl_seconds_after_finished,
-            active_deadline_seconds=run_policy.active_deadline_seconds,
-            backoff_limit=run_policy.backoff_limit,
-        )
-
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         worker = self._convert_replica_spec(self.task_config.worker)
         # support v0 config for backwards compatibility
         if self.task_config.num_workers:
             worker.replicas = self.task_config.num_workers
 
-        run_policy = self._convert_run_policy(self.task_config.run_policy) if self.task_config.run_policy else None
+        run_policy = (
+            _convert_run_policy_to_flyte_idl(self.task_config.run_policy) if self.task_config.run_policy else None
+        )
         pytorch_job = pytorch_task.DistributedPyTorchTrainingTask(
             worker_replicas=worker,
             master_replicas=self._convert_replica_spec(self.task_config.master),
@@ -261,6 +257,15 @@ def spawn_helper(
                 create_recoverable_error_file()
             raise
         return ElasticWorkerResult(return_value=return_val, decks=flytekit.current_context().decks)
+
+
+def _convert_run_policy_to_flyte_idl(run_policy: RunPolicy) -> kubeflow_common.RunPolicy:
+    return kubeflow_common.RunPolicy(
+        clean_pod_policy=run_policy.clean_pod_policy.value if run_policy.clean_pod_policy else None,
+        ttl_seconds_after_finished=run_policy.ttl_seconds_after_finished,
+        active_deadline_seconds=run_policy.active_deadline_seconds,
+        backoff_limit=run_policy.backoff_limit,
+    )
 
 
 class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
@@ -445,11 +450,15 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
                 nproc_per_node=self.task_config.nproc_per_node,
                 max_restarts=self.task_config.max_restarts,
             )
+            run_policy = (
+                _convert_run_policy_to_flyte_idl(self.task_config.run_policy) if self.task_config.run_policy else None
+            )
             job = pytorch_task.DistributedPyTorchTrainingTask(
                 worker_replicas=pytorch_task.DistributedPyTorchTrainingReplicaSpec(
                     replicas=self.max_nodes,
                 ),
                 elastic_config=elastic_config,
+                run_policy=run_policy,
             )
             return MessageToDict(job)
 
