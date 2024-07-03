@@ -81,6 +81,24 @@ def test_create_docker_context_with_git_subfolder(tmp_path):
     assert requirements_path.exists()
 
 
+def test_create_docker_context_with_null_entrypoint(tmp_path):
+    docker_context_path = tmp_path / "builder_root"
+    docker_context_path.mkdir()
+
+    image_spec = ImageSpec(
+        name="FLYTEKIT",
+        python_version="3.12",
+        entrypoint=[],
+    )
+
+    create_docker_context(image_spec, docker_context_path)
+
+    dockerfile_path = docker_context_path / "Dockerfile"
+    assert dockerfile_path.exists()
+    dockerfile_content = dockerfile_path.read_text()
+    assert "ENTRYPOINT []" in dockerfile_content
+
+
 def test_create_docker_context_cuda(tmp_path):
     docker_context_path = tmp_path / "builder_root"
     docker_context_path.mkdir()
