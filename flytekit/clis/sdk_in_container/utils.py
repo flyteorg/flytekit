@@ -123,7 +123,7 @@ def pretty_print_traceback(e: Exception, is_verbose: bool = True):
         console.print(Traceback.from_exception(type(e), e, None))
 
     if hasattr(e, SOURCE_CODE):
-        syntax = Syntax(getattr(e, SOURCE_CODE), "python", background_color="default")
+        syntax = Syntax(getattr(e, SOURCE_CODE), "python", theme="ansi_dark", background_color="default")
         panel = Panel(syntax, border_style="red", title=type(e).__name__, title_align="left")
         console.print(panel)
 
