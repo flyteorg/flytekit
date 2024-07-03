@@ -1,5 +1,6 @@
 import asyncio
 import inspect
+import os
 import signal
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
@@ -382,6 +383,7 @@ def eager(
     timeout: Optional[timedelta] = None,
     poll_interval: Optional[timedelta] = None,
     local_entrypoint: bool = False,
+    bind_secret_to_env_var: Optional[str] = None,
     **kwargs,
 ):
     """Eager workflow decorator.
@@ -396,6 +398,7 @@ def eager(
     :param local_entrypoint: If True, the eager workflow will can be executed locally but use the provided
         :py:func:`~flytekit.remote.FlyteRemote` object to create task/workflow executions. This is useful for local
         testing against a remote Flyte cluster.
+    :param bind_secret_to_env_var: if specified, binds the client secret to the specified environment variable.
     :param kwargs: keyword-arguments forwarded to :py:func:`~flytekit.task`.
 
     This type of workflow will execute all flyte entities within it eagerly, meaning that all python constructs can be
@@ -488,7 +491,10 @@ def eager(
             remote=remote,
             client_secret_group=client_secret_group,
             client_secret_key=client_secret_key,
+            timeout=timeout,
+            poll_interval=poll_interval,
             local_entrypoint=local_entrypoint,
+            bind_secret_to_env_var=bind_secret_to_env_var
             **kwargs,
         )
 
@@ -510,7 +516,7 @@ def eager(
             execution_id = exec_params.execution_id
 
         async_stack = AsyncStack(task_id, execution_id)
-        _remote = _prepare_remote(_remote, ctx, client_secret_group, client_secret_key, local_entrypoint)
+        _remote = _prepare_remote(_remote, ctx, client_secret_group, client_secret_key, local_entrypoint, bind_secret_to_env_var)
 
         # make sure sub-nodes as cleaned up on termination signal
         loop = asyncio.get_event_loop()
@@ -533,8 +539,7 @@ def eager(
                 await cleanup_fn()
 
     secret_requests = kwargs.pop("secret_requests", None) or []
-    if client_secret_group is not None and client_secret_key is not None:
-        secret_requests.append(Secret(group=client_secret_group, key=client_secret_key))
+    secret_requests.append(Secret(group=client_secret_group, key=client_secret_key))
 
     return task(
         wrapper,
@@ -551,6 +556,7 @@ def _prepare_remote(
     client_secret_group: Optional[str] = None,
     client_secret_key: Optional[str] = None,
     local_entrypoint: bool = False,
+    bind_secret_to_env_var: Optional[str] = None,
 ) -> Optional[FlyteRemote]:
     """Prepare FlyteRemote object for accessing Flyte cluster in a task running on the same cluster."""
 
@@ -576,7 +582,7 @@ def _prepare_remote(
     if remote.config.platform.endpoint.startswith("localhost"):
         # replace sandbox endpoints with internal dns, since localhost won't exist within the Flyte cluster
         return _internal_demo_remote(remote)
-    return _internal_remote(remote, client_secret_group, client_secret_key)
+    return _internal_remote(remote, client_secret_group, client_secret_key, bind_secret_to_env_var)
 
 
 def _internal_demo_remote(remote: FlyteRemote) -> FlyteRemote:
@@ -605,16 +611,20 @@ def _internal_demo_remote(remote: FlyteRemote) -> FlyteRemote:
 
 def _internal_remote(
     remote: FlyteRemote,
-    client_secret_group: str,
-    client_secret_key: str,
+    client_secret_group: Optional[str],
+    client_secret_key: Optional[str],
+    bind_secret_to_env_var: Optional[str],
 ) -> FlyteRemote:
     """Derives a FlyteRemote object from a yaml configuration file, modifying parts to make it work internally."""
-    assert client_secret_group is not None, "secret_group must be defined when using a remote cluster"
-    assert client_secret_key is not None, "secret_key must be defined a remote cluster"
     secrets_manager = current_context().secrets
     client_secret = secrets_manager.get(client_secret_group, client_secret_key)
     # get the raw output prefix from the context that's set from the pyflyte-execute entrypoint
     # (see flytekit/bin/entrypoint.py)
+
+    if bind_secret_to_env_var is not None:
+        os.environ[bind_secret_to_env_var] = client_secret
+        return type(remote)()
+
     ctx = FlyteContextManager.current_context()
     return FlyteRemote(
         config=remote.config.with_params(
