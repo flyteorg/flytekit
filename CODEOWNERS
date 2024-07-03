@@ -1,3 +1,4 @@
 # These owners will be the default owners for everything in
 # the repo. Unless a later match takes precedence.
 *       @wild-endeavor @kumare3 @eapolinario @pingsutw @cosmicBboy @samhita-alla @thomasjpfan @future-outlier
+plugins/flytekit-kf-pytorch @fg91 @wild-endeavor @kumare3 @eapolinario @pingsutw @cosmicBboy @samhita-alla @thomasjpfan @future-outlier
