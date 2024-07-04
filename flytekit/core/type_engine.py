@@ -49,11 +49,10 @@ from flytekit.models.literals import (
     Primitive,
     Scalar,
     Schema,
-    StructuredDatasetMetadata,
     Union,
     Void,
 )
-from flytekit.models.types import LiteralType, SimpleType, StructuredDatasetType, TypeStructure, UnionType
+from flytekit.models.types import LiteralType, SimpleType, TypeStructure, UnionType
 
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
@@ -539,8 +538,6 @@ class DataclassTransformer(TypeTransformer[object]):
         """
         from flytekit.types.directory import FlyteDirectory
         from flytekit.types.file import FlyteFile
-        from flytekit.types.schema.types import FlyteSchema
-        from flytekit.types.structured.structured_dataset import StructuredDataset
 
         # Handle Optional
         if UnionTransformer.is_optional_type(python_type):
@@ -559,6 +556,7 @@ class DataclassTransformer(TypeTransformer[object]):
         if not dataclasses.is_dataclass(python_type):
             return python_val
 
+        # transform to FlyteFile or FlyteDirectory so that we can serialize it by mashumaro
         if inspect.isclass(python_type) and (
             issubclass(python_type, FlyteFile) or issubclass(python_type, FlyteDirectory)
         ):
@@ -566,30 +564,11 @@ class DataclassTransformer(TypeTransformer[object]):
                 return python_type(python_val)
             return python_val
 
-        if inspect.isclass(python_type) and (
-            issubclass(python_type, FlyteSchema) or issubclass(python_type, StructuredDataset)
-        ):
-            lv = TypeEngine.to_literal(FlyteContext.current_context(), python_val, python_type, None)
-            # dataclasses_json package will extract the "path" from FlyteFile, FlyteDirectory, and write it to a
-            # JSON which will be stored in IDL. The path here should always be a remote path, but sometimes the
-            # path in FlyteFile and FlyteDirectory could be a local path. Therefore, reset the python value here,
-            # so that dataclasses_json can always get a remote path.
-            # In other words, the file transformer has special code that handles the fact that if remote_source is
-            # set, then the real uri in the literal should be the remote source, not the path (which may be an
-            # auto-generated random local path). To be sure we're writing the right path to the json, use the uri
-            # as determined by the transformer.
-            if issubclass(python_type, StructuredDataset):
-                sd = python_type(uri=lv.scalar.structured_dataset.uri)
-                sd.file_format = lv.scalar.structured_dataset.metadata.structured_dataset_type.format
-                return sd
-            else:
-                return python_val
-        else:
-            dataclass_attributes = typing.get_type_hints(python_type)
-            for n, t in dataclass_attributes.items():
-                val = python_val.__getattribute__(n)
-                python_val.__setattr__(n, self._serialize_flyte_type(val, t))
-            return python_val
+        dataclass_attributes = typing.get_type_hints(python_type)
+        for n, t in dataclass_attributes.items():
+            val = python_val.__getattribute__(n)
+            python_val.__setattr__(n, self._serialize_flyte_type(val, t))
+        return python_val
 
     def _deserialize_flyte_type(self, python_val: T, expected_python_type: Type) -> Optional[T]:
         """
@@ -597,7 +576,6 @@ class DataclassTransformer(TypeTransformer[object]):
         For example, it ensures compatibility with upstream outputs that use Flyte types from older Flytekit versions.
         """
         from flytekit.types.schema.types import FlyteSchema, FlyteSchemaTransformer
-        from flytekit.types.structured.structured_dataset import StructuredDataset, StructuredDatasetTransformerEngine
 
         # Handle Optional
         if UnionTransformer.is_optional_type(expected_python_type):
@@ -622,23 +600,6 @@ class DataclassTransformer(TypeTransformer[object]):
                     scalar=Scalar(
                         schema=Schema(
                             cast(FlyteSchema, python_val).remote_path, t._get_schema_type(expected_python_type)
-                        )
-                    )
-                ),
-                expected_python_type,
-            )
-        elif issubclass(expected_python_type, StructuredDataset):
-            return StructuredDatasetTransformerEngine().to_python_value(
-                FlyteContext.current_context(),
-                Literal(
-                    scalar=Scalar(
-                        structured_dataset=StructuredDataset(
-                            metadata=StructuredDatasetMetadata(
-                                structured_dataset_type=StructuredDatasetType(
-                                    format=cast(StructuredDataset, python_val).file_format
-                                )
-                            ),
-                            uri=cast(StructuredDataset, python_val).uri,
                         )
                     )
                 ),

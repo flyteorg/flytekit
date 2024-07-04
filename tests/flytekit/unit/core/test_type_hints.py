@@ -490,11 +490,11 @@ def test_structured_dataset_in_dataclass():
     df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
 
     @dataclass
-    class InnerDatasetStruct(DataClassJsonMixin):
+    class InnerDatasetStruct:
         a: StructuredDataset
 
     @dataclass
-    class DatasetStruct(DataClassJsonMixin):
+    class DatasetStruct:
         a: StructuredDataset
         b: InnerDatasetStruct
 
