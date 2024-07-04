@@ -14,10 +14,17 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetTransformerEngine,
 )
 
-pd = lazy_module("pandas")
-pl = lazy_module("polars")
-fsspec_utils = lazy_module("fsspec.utils")
+if typing.TYPE_CHECKING:
+    import polars as pl
+    import fsspec.utils as fsspec_utils
+else:
+    pl = lazy_module("polars")
+    fsspec_utils = lazy_module("fsspec.utils")
 
+
+############################
+# Polars DataFrame classes #
+############################
 
 class PolarsDataFrameRenderer:
     """
@@ -27,7 +34,9 @@ class PolarsDataFrameRenderer:
     def to_html(self, df: pl.DataFrame) -> str:
         assert isinstance(df, pl.DataFrame)
         describe_df = df.describe()
-        return pd.DataFrame(describe_df.transpose(), columns=describe_df.columns).to_html(index=False)
+        columns = describe_df.select("describe")
+        html_repr = describe_df.drop("describe").transpose(column_names=columns)._repr_html_()
+        return html_repr
 
 
 class PolarsDataFrameToParquetEncodingHandler(StructuredDatasetEncoder):
@@ -80,8 +89,86 @@ class ParquetToPolarsDataFrameDecodingHandler(StructuredDatasetDecoder):
             columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
             return pl.read_parquet(uri, columns=columns, use_pyarrow=True, storage_options=kwargs)
         return pl.read_parquet(uri, use_pyarrow=True, storage_options=kwargs)
+    
+
+############################
+# Polars LazyFrame classes #
+############################
+
+class PolarsLazyFrameRenderer:
+    """
+    The Polars DataFrame summary statistics are rendered as an HTML table.
+    """
+
+    def to_html(self, lf: pl.LazyFrame) -> str:
+        assert isinstance(lf, pl.LazyFrame)
+        describe_df = lf.collect().describe()
+        columns = describe_df.select("describe")
+        html_repr = describe_df.drop("describe").transpose(column_names=columns)._repr_html_()
+        return html_repr
 
 
+class PolarsLazyFrameToParquetEncodingHandler(StructuredDatasetEncoder):
+    def __init__(self):
+        super().__init__(pl.LazyFrame, None, PARQUET)
+
+    def encode(
+        self,
+        ctx: FlyteContext,
+        structured_dataset: StructuredDataset,
+        structured_dataset_type: StructuredDatasetType,
+    ) -> literals.StructuredDataset:
+        lf = typing.cast(pl.LazyFrame, structured_dataset.dataframe)
+
+        output_bytes = io.BytesIO()
+        # The pl.LazyFrame.sink_parquet method uses streaming mode, which is currently considered unstable. Until it is
+        # stable, we collect the dataframe and write it to a BytesIO buffer.
+        df = lf.collect()
+        # Polars 0.13.12 deprecated to_parquet in favor of write_parquet
+        if hasattr(df, "write_parquet"):
+            df.write_parquet(output_bytes)
+        else:
+            df.to_parquet(output_bytes)
+
+        if structured_dataset.uri is not None:
+            fs = ctx.file_access.get_filesystem_for_path(path=structured_dataset.uri)
+            with fs.open(structured_dataset.uri, "wb") as s:
+                s.write(output_bytes)
+            output_uri = structured_dataset.uri
+        else:
+            remote_fn = "00000"  # 00000 is our default unnamed parquet filename
+            output_uri = ctx.file_access.put_raw_data(output_bytes, file_name=remote_fn)
+        return literals.StructuredDataset(uri=output_uri, metadata=StructuredDatasetMetadata(structured_dataset_type))
+
+
+class ParquetToPolarsLazyFrameDecodingHandler(StructuredDatasetDecoder):
+    def __init__(self):
+        super().__init__(pl.LazyFrame, None, PARQUET)
+
+    def decode(
+        self,
+        ctx: FlyteContext,
+        flyte_value: literals.StructuredDataset,
+        current_task_metadata: StructuredDatasetMetadata,
+    ) -> pl.LazyFrame:
+        uri = flyte_value.uri
+
+        kwargs = get_fsspec_storage_options(
+            protocol=fsspec_utils.get_protocol(uri),
+            data_config=ctx.file_access.data_config,
+        )
+        if current_task_metadata.structured_dataset_type and current_task_metadata.structured_dataset_type.columns:
+            columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
+            return pl.scan_parquet(uri, storage_options=kwargs).select(columns)
+        return pl.scan_parquet(uri, storage_options=kwargs).select(columns)
+
+
+# Register the Polars DataFrame handlers
 StructuredDatasetTransformerEngine.register(PolarsDataFrameToParquetEncodingHandler())
 StructuredDatasetTransformerEngine.register(ParquetToPolarsDataFrameDecodingHandler())
 StructuredDatasetTransformerEngine.register_renderer(pl.DataFrame, PolarsDataFrameRenderer())
+
+# Register the Polars LazyFrame handlers
+StructuredDatasetTransformerEngine.register(PolarsLazyFrameToParquetEncodingHandler())
+StructuredDatasetTransformerEngine.register(ParquetToPolarsLazyFrameDecodingHandler())
+StructuredDatasetTransformerEngine.register_renderer(pl.LazyFrame, PolarsLazyFrameRenderer())
