@@ -145,34 +145,6 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
             return "/tmp/local_file.csv"
     """
 
-    def _serialize(self):
-        lv = FlyteFilePathTransformer().to_literal(FlyteContext.current_context(), self, FlyteFile, None)
-        uri = lv.scalar.blob.uri
-        return {"path": uri}
-
-    @classmethod
-    def _deserialize(cls, value):
-        path = value.get("path", None)
-
-        if path is None:
-            raise ValueError("path is None")
-
-        return FlyteFilePathTransformer().to_python_value(
-            FlyteContext.current_context(),
-            Literal(
-                scalar=Scalar(
-                    blob=Blob(
-                        metadata=BlobMetadata(
-                            type=_core_types.BlobType(
-                                format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
-                            )
-                        ),
-                        uri=path,
-                    )
-                )
-            ),
-            FlyteFile,
-        )
 
     @classmethod
     def extension(cls) -> str:
@@ -267,6 +239,34 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
             )
         else:
             return self.path == other
+
+    def _serialize(self):
+        lv = FlyteFilePathTransformer().to_literal(FlyteContext.current_context(), self, FlyteFile, None)
+        return {"path": lv.scalar.blob.uri}
+
+    @classmethod
+    def _deserialize(cls, value):
+        path = value.get("path", None)
+
+        if path is None:
+            raise ValueError("FlyteFile's path should not be None")
+
+        return FlyteFilePathTransformer().to_python_value(
+            FlyteContext.current_context(),
+            Literal(
+                scalar=Scalar(
+                    blob=Blob(
+                        metadata=BlobMetadata(
+                            type=_core_types.BlobType(
+                                format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
+                            )
+                        ),
+                        uri=path,
+                    )
+                )
+            ),
+            FlyteFile,
+        )
 
     @property
     def downloaded(self) -> bool:

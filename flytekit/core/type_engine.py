@@ -482,19 +482,14 @@ class DataclassTransformer(TypeTransformer[object]):
 
         self._serialize_flyte_type(python_val, python_type)
 
-        # The `to_json` function is integrated through either the `dataclasses_json` decorator or by inheriting from `DataClassJsonMixin`.
-        # It serializes a data class into a JSON string.
-        # if hasattr(python_val, "to_json"):
-        #     json_str = python_val.to_json()
-        # else:
-            # The function looks up or creates a JSONEncoder specifically designed for the object's type.
-            # This encoder is then used to convert a data class into a JSON string.
+        # The function looks up or creates a JSONEncoder specifically designed for the object's type.
+        # This encoder is then used to convert a data class into a JSON string.
         try:
             encoder = self._encoder[python_type]
         except KeyError:
             encoder = JSONEncoder(python_type)
             self._encoder[python_type] = encoder
-
+        print("@@@ python_val", python_val)
         json_str = encoder.encode(python_val)
 
         return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))  # type: ignore
@@ -545,6 +540,8 @@ class DataclassTransformer(TypeTransformer[object]):
         """
         from flytekit.types.schema.types import FlyteSchema
         from flytekit.types.structured.structured_dataset import StructuredDataset
+        from flytekit.types.file import FlyteFile
+        from flytekit.types.directory import FlyteDirectory
 
         # Handle Optional
         if UnionTransformer.is_optional_type(python_type):
@@ -562,6 +559,7 @@ class DataclassTransformer(TypeTransformer[object]):
 
         if not dataclasses.is_dataclass(python_type):
             return python_val
+
         if inspect.isclass(python_type) and (
             issubclass(python_type, FlyteSchema) or issubclass(python_type, StructuredDataset)
         ):
@@ -582,8 +580,13 @@ class DataclassTransformer(TypeTransformer[object]):
                 return python_val
         else:
             dataclass_attributes = typing.get_type_hints(python_type)
+            print("@@@ dataclass attributes", dataclass_attributes)
             for n, t in dataclass_attributes.items():
+                print("@@@ n:", n)
+                print("@@@ t:", t)
+                # breakpoint()
                 val = python_val.__getattribute__(n)
+                print("@@@ val:", val)
                 python_val.__setattr__(n, self._serialize_flyte_type(val, t))
             return python_val
 
@@ -705,13 +708,8 @@ class DataclassTransformer(TypeTransformer[object]):
 
         json_str = _json_format.MessageToJson(lv.scalar.generic)
 
-        # The `from_json` function is integrated through either the `dataclasses_json` decorator or by inheriting from `DataClassJsonMixin`.
-        # It deserializes a JSON string into a data class.
-        # if hasattr(expected_python_type, "from_json"):
-        #     dc = expected_python_type.from_json(json_str)  # type: ignore
-        # else:
-        #     # The function looks up or creates a JSONDecoder specifically designed for the object's type.
-        #     # This decoder is then used to convert a JSON string into a data class.
+        # The function looks up or creates a JSONDecoder specifically designed for the object's type.
+        # This decoder is then used to convert a JSON string into a data class.
         try:
             decoder = self._decoder[expected_python_type]
         except KeyError:
