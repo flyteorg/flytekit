@@ -241,7 +241,7 @@ class FlyteRemote(object):
     def client(self) -> SynchronousFlyteClient:
         """Return a SynchronousFlyteClient for additional operations."""
         if not self._client_initialized:
-            self._client = SynchronousFlyteClient(self.config.platform, **self._kwargs)
+            self._client = SynchronousFlyteClient(self.config.platform.endpoint, **self._kwargs)
             self._client_initialized = True
         return self._client
 
@@ -351,6 +351,8 @@ class FlyteRemote(object):
             version,
         )
         admin_task = self.client.get_task(task_id)
+        admin_task = self.client.get_task(task_id)
+
         flyte_task = FlyteTask.promote_from_model(admin_task.closure.compiled_task.template)
         flyte_task.template._id = task_id
         return flyte_task

@@ -1,3 +1,4 @@
+import flyteidl_rust as flyteidl
 from flyteidl.admin import matchable_resource_pb2 as _matchable_resource
 
 from flytekit.models import common as _common
@@ -143,7 +144,7 @@ class ExecutionClusterLabel(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.matchable_resource_pb2.ExecutionClusterLabel
         """
-        return _matchable_resource.ExecutionClusterLabel(
+        return flyteidl.admin.ExecutionClusterLabel(
             value=self.value,
         )
 
