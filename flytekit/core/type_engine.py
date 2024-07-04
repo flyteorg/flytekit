@@ -1650,7 +1650,7 @@ class UnionTransformer(TypeTransformer[T]):
                 res_tag = trans.name
                 found_res = True
             except Exception as e:
-                logger.debug(f"Failed to convert from {lv} to {v}", e)
+                logger.debug(f"Failed to convert from {lv} to {v} with error: {e}")
 
         if is_ambiguous:
             raise TypeError(
