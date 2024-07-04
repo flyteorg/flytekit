@@ -95,6 +95,43 @@ def test_dynamic_local():
     assert res == ["fast-2", "fast-3", "fast-4", "fast-5", "fast-6"]
 
 
+@pytest.mark.parametrize(
+    "input_val,output_val",
+    [
+        (4, 0),
+        (5, 5),
+    ],
+)
+def test_dynamic_local_default_args_task(input_val, output_val):
+    @task
+    def t1(a: int = 0) -> int:
+        return a
+
+    @dynamic
+    def dt(a: int) -> int:
+        if a % 2 == 0:
+            return t1()
+        return t1(a=a)
+
+    assert dt(a=input_val) == output_val
+
+    with context_manager.FlyteContextManager.with_context(
+        context_manager.FlyteContextManager.current_context().with_serialization_settings(settings)
+    ) as ctx:
+        with context_manager.FlyteContextManager.with_context(
+            ctx.with_execution_state(
+                ctx.execution_state.with_params(
+                    mode=ExecutionState.Mode.TASK_EXECUTION,
+                )
+            )
+        ) as ctx:
+            input_literal_map = TypeEngine.dict_to_literal_map(ctx, {"a": input_val})
+            dynamic_job_spec = dt.dispatch_execute(ctx, input_literal_map)
+            assert len(dynamic_job_spec.nodes) == 1
+            assert len(dynamic_job_spec.tasks) == 1
+            assert dynamic_job_spec.nodes[0].inputs[0].binding.scalar.primitive is not None
+
+
 def test_nested_dynamic_local():
     @task
     def t1(a: int) -> str:

@@ -289,13 +289,15 @@ def setup_execution(
         logger.error(f"No data plugin found for raw output prefix {raw_output_data_prefix}")
         raise
 
+    ctx = ctx.new_builder().with_file_access(file_access).build()
+
     es = ctx.new_execution_state().with_params(
         mode=ExecutionState.Mode.TASK_EXECUTION,
         user_space_params=execution_parameters,
     )
     # create new output metadata tracker
     omt = OutputMetadataTracker()
-    cb = ctx.new_builder().with_file_access(file_access).with_execution_state(es).with_output_metadata_tracker(omt)
+    cb = ctx.new_builder().with_execution_state(es).with_output_metadata_tracker(omt)
 
     if compressed_serialization_settings:
         ss = SerializationSettings.from_transport(compressed_serialization_settings)

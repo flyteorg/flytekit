@@ -28,6 +28,14 @@ from flytekit.interaction.click_types import (
 
 dummy_param = click.Option(["--dummy"], type=click.STRING, default="dummy")
 
+def test_dir_param():
+    import os
+    m = mock.MagicMock()
+    current_file_directory = os.path.dirname(os.path.abspath(__file__))
+    l = DirParamType().convert(current_file_directory, m, m)
+    assert l.path == current_file_directory
+    r = DirParamType().convert("https://tmp/dir", m, m)
+    assert r.path == "https://tmp/dir"
 
 def test_file_param():
     m = mock.MagicMock()
@@ -206,3 +214,23 @@ def test_query_passing(param_type: click.ParamType):
     query = a.query()
 
     assert param_type.convert(value=query, param=None, ctx=None) is query
+
+
+def test_dataclass_type():
+    from dataclasses import dataclass
+
+    @dataclass
+    class Datum:
+        x: int
+        y: str
+        z: dict[int, str]
+        w: list[int]
+
+    t = JsonParamType(Datum)
+    value = '{ "x": 1, "y": "2", "z": { "1": "one", "2": "two" }, "w": [1, 2, 3] }'
+    v = t.convert(value=value, param=None, ctx=None)
+
+    assert v.x == 1
+    assert v.y == "2"
+    assert v.z == {1: "one", 2: "two"}
+    assert v.w == [1, 2, 3]

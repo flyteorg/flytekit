@@ -2,6 +2,7 @@
 This Plugin adds the capability of running distributed MPI training to Flyte using backend plugins, natively on
 Kubernetes. It leverages `MPI Job <https://github.com/kubeflow/mpi-operator>`_ Plugin from kubeflow.
 """
+
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Union

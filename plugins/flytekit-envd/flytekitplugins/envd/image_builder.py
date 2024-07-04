@@ -2,10 +2,13 @@ import os
 import pathlib
 import shutil
 import subprocess
+from dataclasses import asdict
 from importlib import metadata
 
 import click
 from packaging.version import Version
+from rich import print
+from rich.pretty import Pretty
 
 from flytekit.configuration import DefaultImages
 from flytekit.core import context_manager
@@ -14,6 +17,7 @@ from flytekit.image_spec.image_spec import _F_IMG_ID, ImageBuildEngine, ImageSpe
 from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
 
 FLYTE_LOCAL_REGISTRY = "localhost:30000"
+FLYTE_ENVD_CONTEXT = "FLYTE_ENVD_CONTEXT"
 
 
 class EnvdImageSpecBuilder(ImageSpecBuilder):
@@ -34,10 +38,22 @@ class EnvdImageSpecBuilder(ImageSpecBuilder):
         else:
             build_command += f" --tag {image_spec.image_name()}"
         envd_context_switch(image_spec.registry)
-        execute_command(build_command)
+        try:
+            execute_command(build_command)
+        except Exception as e:
+            click.secho("❌ Failed to build image spec:", fg="red")
+            print(
+                Pretty(
+                    asdict(image_spec, dict_factory=lambda x: {k: v for (k, v) in x if v is not None}), indent_size=2
+                )
+            )
+            raise e from None
 
 
 def envd_context_switch(registry: str):
+    if os.getenv(FLYTE_ENVD_CONTEXT):
+        execute_command(f"envd context use --name {os.getenv(FLYTE_ENVD_CONTEXT)}")
+        return
     if registry == FLYTE_LOCAL_REGISTRY:
         # Assume buildkit daemon is running within the sandbox and exposed on port 30003
         command = "envd context create --name flyte-sandbox --builder tcp --builder-address localhost:30003 --use"
@@ -68,7 +84,7 @@ def execute_command(command: str):
 
     if p.returncode != 0:
         _, stderr = p.communicate()
-        raise Exception(f"failed to run command {command} with error {stderr}")
+        raise RuntimeError(f"failed to run command {command} with error:\n {stderr.decode()}")
 
     return result
 
@@ -91,7 +107,7 @@ def create_envd_config(image_spec: ImageSpec) -> str:
     run_commands = _create_str_from_package_list(image_spec.commands)
     conda_channels = _create_str_from_package_list(image_spec.conda_channels)
     apt_packages = _create_str_from_package_list(image_spec.apt_packages)
-    env = {"PYTHONPATH": "/root", _F_IMG_ID: image_spec.image_name()}
+    env = {"PYTHONPATH": "/root:", _F_IMG_ID: image_spec.image_name()}
 
     if image_spec.env:
         env.update(image_spec.env)

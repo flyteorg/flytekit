@@ -1,3 +1,4 @@
+import enum
 import os
 import typing
 from typing import Optional
@@ -8,6 +9,18 @@ from flytekit.tools.interactive import ipython_check
 
 OUTPUT_DIR_JUPYTER_PREFIX = "jupyter"
 DECK_FILE_NAME = "deck.html"
+
+
+class DeckField(str, enum.Enum):
+    """
+    DeckField is used to specify the fields that will be rendered in the deck.
+    """
+
+    INPUT = "Input"
+    OUTPUT = "Output"
+    SOURCE_CODE = "Source Code"
+    TIMELINE = "Timeline"
+    DEPENDENCIES = "Dependencies"
 
 
 class Deck:
@@ -52,10 +65,11 @@ class Deck:
             return iris_df
     """
 
-    def __init__(self, name: str, html: Optional[str] = ""):
+    def __init__(self, name: str, html: Optional[str] = "", auto_add_to_deck: bool = True):
         self._name = name
         self._html = html
-        FlyteContextManager.current_context().user_space_params.decks.append(self)
+        if auto_add_to_deck:
+            FlyteContextManager.current_context().user_space_params.decks.append(self)
 
     def append(self, html: str) -> "Deck":
         assert isinstance(html, str)
@@ -79,8 +93,8 @@ class TimeLineDeck(Deck):
     Instead, the complete data set is used to create a comprehensive visualization of the execution time of each part of the task.
     """
 
-    def __init__(self, name: str, html: Optional[str] = ""):
-        super().__init__(name, html)
+    def __init__(self, name: str, html: Optional[str] = "", auto_add_to_deck: bool = True):
+        super().__init__(name, html, auto_add_to_deck)
         self.time_info = []
 
     def append_time_info(self, info: dict):
@@ -89,19 +103,9 @@ class TimeLineDeck(Deck):
 
     @property
     def html(self) -> str:
-        try:
-            from flytekitplugins.deck.renderer import GanttChartRenderer, TableRenderer
-        except ImportError:
-            warning_info = "Plugin 'flytekit-deck-standard' is not installed. To display time line, install the plugin in the image."
-            logger.warning(warning_info)
-            return warning_info
-
         if len(self.time_info) == 0:
             return ""
 
-        import pandas
-
-        df = pandas.DataFrame(self.time_info)
         note = """
             <p><strong>Note:</strong></p>
             <ol>
@@ -109,16 +113,36 @@ class TimeLineDeck(Deck):
                 <li>For accurate execution time measurements, users should refer to wall time and process time.</li>
             </ol>
         """
-        # set the accuracy to microsecond
-        df["ProcessTime"] = df["ProcessTime"].apply(lambda time: "{:.6f}".format(time))
-        df["WallTime"] = df["WallTime"].apply(lambda time: "{:.6f}".format(time))
 
-        gantt_chart_html = GanttChartRenderer().to_html(df)
-        time_table_html = TableRenderer().to_html(
-            df[["Name", "WallTime", "ProcessTime"]],
-            header_labels=["Name", "Wall Time(s)", "Process Time(s)"],
-        )
-        return gantt_chart_html + time_table_html + note
+        return generate_time_table(self.time_info) + note
+
+
+def generate_time_table(data: dict) -> str:
+    html = [
+        '<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; width: 100%;">',
+        """
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Wall Time(s)</th>
+                <th>Process Time(s)</th>
+            </tr>
+        </thead>
+        """,
+        "<tbody>",
+    ]
+
+    # Add table rows
+    for row in data:
+        html.append("<tr>")
+        html.append(f"<td>{row['Name']}</td>")
+        html.append(f"<td>{row['WallTime']:.6f}</td>")
+        html.append(f"<td>{row['ProcessTime']:.6f}</td>")
+        html.append("</tr>")
+    html.append("</tbody>")
+
+    html.append("</table>")
+    return "".join(html)
 
 
 def _get_deck(
@@ -129,6 +153,7 @@ def _get_deck(
     If ignore_jupyter is set to True, then it will return a str even in a jupyter environment.
     """
     deck_map = {deck.name: deck.html for deck in new_user_params.decks}
+
     raw_html = get_deck_template().render(metadata=deck_map)
     if not ignore_jupyter and ipython_check():
         try:

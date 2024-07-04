@@ -9,7 +9,7 @@ import rich_click as click
 
 from flytekit.exceptions.base import FlyteException
 from flytekit.exceptions.user import FlyteInvalidInputException
-from flytekit.loggers import get_level_from_cli_verbosity, logger, upgrade_to_rich_logging
+from flytekit.loggers import get_level_from_cli_verbosity, logger
 
 project_option = click.Option(
     param_decls=["-p", "--project"],
@@ -116,8 +116,17 @@ def pretty_print_exception(e: Exception):
         pretty_print_grpc_error(e)
         return
 
-    click.secho(f"Failed with Unknown Exception {type(e)} Reason: {e}", fg="red")  # noqa
-    pretty_print_traceback(e)
+    if isinstance(e, AssertionError):
+        click.secho(f"Assertion Error: {e}", fg="red")
+        return
+
+    if isinstance(e, ValueError):
+        click.secho(f"Value Error: {e}", fg="red")
+        return
+
+    click.secho(f"Failed with Exception {type(e)} Reason:\n{e}", fg="red")  # noqa
+    if e.__cause__:
+        pretty_print_traceback(e.__cause__)
 
 
 class ErrorHandlingCommand(click.RichGroup):
@@ -128,7 +137,7 @@ class ErrorHandlingCommand(click.RichGroup):
     def invoke(self, ctx: click.Context) -> typing.Any:
         verbose = ctx.params["verbose"]
         log_level = get_level_from_cli_verbosity(verbose)
-        upgrade_to_rich_logging(log_level=log_level)
+        logger.setLevel(log_level)
         try:
             return super().invoke(ctx)
         except Exception as e:
