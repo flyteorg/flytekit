@@ -153,7 +153,6 @@ def test_str_input(folders_and_files_setup):
 
     # Intentionally passing in the wrong type
     my_input = MyInput(
-        # main_product=FlyteFile(folders_and_files_setup[0]),  # noqa
         main_product=folders_and_files_setup[0],  # noqa
         apriori_config=MyAprioriConfiguration(
             static_data_dir=FlyteDirectory("gs://my-bucket/one"),

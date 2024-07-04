@@ -489,9 +489,8 @@ class DataclassTransformer(TypeTransformer[object]):
         except KeyError:
             encoder = JSONEncoder(python_type)
             self._encoder[python_type] = encoder
-        print("@@@ python_val", python_val)
-        json_str = encoder.encode(python_val)
 
+        json_str = encoder.encode(python_val)
         return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))  # type: ignore
 
     def _get_origin_type_in_annotation(self, python_type: Type[T]) -> Type[T]:
@@ -538,10 +537,10 @@ class DataclassTransformer(TypeTransformer[object]):
         """
         If any field inside the dataclass is flyte type, we should use flyte type transformer for that field.
         """
+        from flytekit.types.directory import FlyteDirectory
+        from flytekit.types.file import FlyteFile
         from flytekit.types.schema.types import FlyteSchema
         from flytekit.types.structured.structured_dataset import StructuredDataset
-        from flytekit.types.file import FlyteFile
-        from flytekit.types.directory import FlyteDirectory
 
         # Handle Optional
         if UnionTransformer.is_optional_type(python_type):
@@ -558,6 +557,13 @@ class DataclassTransformer(TypeTransformer[object]):
             }
 
         if not dataclasses.is_dataclass(python_type):
+            return python_val
+
+        if inspect.isclass(python_type) and (
+            issubclass(python_type, FlyteFile) or issubclass(python_type, FlyteDirectory)
+        ):
+            if type(python_val) == str:
+                return python_type(python_val)
             return python_val
 
         if inspect.isclass(python_type) and (
@@ -580,13 +586,8 @@ class DataclassTransformer(TypeTransformer[object]):
                 return python_val
         else:
             dataclass_attributes = typing.get_type_hints(python_type)
-            print("@@@ dataclass attributes", dataclass_attributes)
             for n, t in dataclass_attributes.items():
-                print("@@@ n:", n)
-                print("@@@ t:", t)
-                # breakpoint()
                 val = python_val.__getattribute__(n)
-                print("@@@ val:", val)
                 python_val.__setattr__(n, self._serialize_flyte_type(val, t))
             return python_val
 

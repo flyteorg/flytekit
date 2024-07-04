@@ -145,7 +145,6 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
             return "/tmp/local_file.csv"
     """
 
-
     @classmethod
     def extension(cls) -> str:
         return ""
