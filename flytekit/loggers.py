@@ -140,13 +140,19 @@ def upgrade_to_rich_logging(log_level: typing.Optional[int] = logging.WARNING):
 
     import flytekit
 
+    try:
+        width = os.get_terminal_size().columns
+    except Exception as e:
+        logger.debug(f"Failed to get terminal size: {e}")
+        width = 80
+
     handler = RichHandler(
         tracebacks_suppress=[click, flytekit],
         rich_tracebacks=True,
         omit_repeated_times=False,
         show_path=False,
         log_time_format="%H:%M:%S.%f",
-        console=Console(width=os.get_terminal_size().columns),
+        console=Console(width=width),
     )
 
     formatter = logging.Formatter(fmt="%(filename)s:%(lineno)d - %(message)s")
