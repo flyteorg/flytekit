@@ -180,7 +180,7 @@ class AsyncEntity:
 
         poll_interval = self._poll_interval or timedelta(seconds=30)
         time_to_give_up = (
-            (datetime.max - timedelta(days=2)).astimezone(timezone.utc)
+            (datetime.max.replace(tzinfo=timezone.utc))
             if self._timeout is None
             else datetime.now(timezone.utc) + self._timeout
         )
@@ -213,7 +213,7 @@ class AsyncEntity:
 
             poll_interval = self._poll_interval or timedelta(seconds=6)
             time_to_give_up = (
-                (datetime.max - timedelta(days=2)).astimezone(timezone.utc)
+                (datetime.max.replace(tzinfo=timezone.utc))
                 if self._timeout is None
                 else datetime.now(timezone.utc) + self._timeout
             )
