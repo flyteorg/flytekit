@@ -362,12 +362,12 @@ def literal_type_to_click_type(lt: LiteralType, python_type: typing.Type) -> cli
     Converts a Flyte LiteralType given a python_type to a click.ParamType
     """
     if lt.simple:
-        if lt.simple == SimpleType.STRUCT:
+        if int(str(lt.simple)) == SimpleType.STRUCT:
             ct = JsonParamType(python_type)
             ct.name = f"JSON object {python_type.__name__}"
             return ct
-        if lt.simple in SIMPLE_TYPE_CONVERTER:
-            return SIMPLE_TYPE_CONVERTER[lt.simple]
+        if int(str(lt.simple)) in SIMPLE_TYPE_CONVERTER:
+            return SIMPLE_TYPE_CONVERTER[int(str(lt.simple))]
         raise NotImplementedError(f"Type {lt.simple} is not supported in pyflyte run")
 
     if lt.enum_type:

@@ -1,5 +1,6 @@
 import typing
 
+import flyteidl_rust as flyteidl
 from flyteidl.core import artifact_id_pb2 as art_id
 from flyteidl.core import interface_pb2 as _interface_pb2
 
@@ -57,7 +58,7 @@ class Variable(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.interface_pb2.Variable
         """
-        return _interface_pb2.Variable(
+        return flyteidl.core.Variable(
             type=self.type.to_flyte_idl(),
             description=self.description,
             artifact_partial_id=self.artifact_partial_id,
@@ -65,17 +66,15 @@ class Variable(_common.FlyteIdlEntity):
         )
 
     @classmethod
-    def from_flyte_idl(cls, variable_proto) -> _interface_pb2.Variable:
+    def from_flyte_idl(cls, variable_proto) -> flyteidl.core.Variable:
         """
         :param flyteidl.core.interface_pb2.Variable variable_proto:
         """
         return cls(
             type=_types.LiteralType.from_flyte_idl(variable_proto.type),
             description=variable_proto.description,
-            artifact_partial_id=variable_proto.artifact_partial_id
-            if variable_proto.HasField("artifact_partial_id")
-            else None,
-            artifact_tag=variable_proto.artifact_tag if variable_proto.HasField("artifact_tag") else None,
+            artifact_partial_id=variable_proto.artifact_partial_id or None,
+            artifact_tag=variable_proto.artifact_tag or None,
         )
 
 
@@ -130,10 +129,10 @@ class TypedInterface(_common.FlyteIdlEntity):
     def outputs(self) -> typing.Dict[str, Variable]:
         return self._outputs
 
-    def to_flyte_idl(self) -> _interface_pb2.TypedInterface:
-        return _interface_pb2.TypedInterface(
-            inputs=_interface_pb2.VariableMap(variables={k: v.to_flyte_idl() for k, v in self.inputs.items()}),
-            outputs=_interface_pb2.VariableMap(variables={k: v.to_flyte_idl() for k, v in self.outputs.items()}),
+    def to_flyte_idl(self) -> flyteidl.core.TypedInterface:
+        return flyteidl.core.TypedInterface(
+            inputs=flyteidl.core.VariableMap(variables={k: v.to_flyte_idl() for k, v in self.inputs.items()}),
+            outputs=flyteidl.core.VariableMap(variables={k: v.to_flyte_idl() for k, v in self.outputs.items()}),
         )
 
     @classmethod
