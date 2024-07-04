@@ -1,13 +1,14 @@
+import flyteidl_rust as flyteidl
 from flyteidl.core import identifier_pb2 as identifier_pb2
 
 from flytekit.models import common as _common_models
 
 
 class ResourceType(object):
-    UNSPECIFIED = identifier_pb2.UNSPECIFIED
-    TASK = identifier_pb2.TASK
-    WORKFLOW = identifier_pb2.WORKFLOW
-    LAUNCH_PLAN = identifier_pb2.LAUNCH_PLAN
+    UNSPECIFIED = int(flyteidl.core.ResourceType.Unspecified)
+    TASK = int(flyteidl.core.ResourceType.Task)
+    WORKFLOW = int(flyteidl.core.ResourceType.Workflow)
+    LAUNCH_PLAN = int(flyteidl.core.ResourceType.LaunchPlan)
 
 
 class Identifier(_common_models.FlyteIdlEntity):
@@ -24,6 +25,7 @@ class Identifier(_common_models.FlyteIdlEntity):
         self._domain = domain
         self._name = name
         self._version = version
+        self._org = ""
 
     @property
     def resource_type(self):
@@ -64,16 +66,24 @@ class Identifier(_common_models.FlyteIdlEntity):
         """
         return self._version
 
+    @property
+    def org(self):
+        """
+        :rtype: Text
+        """
+        return self._org
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.identifier_pb2.Identifier
         """
-        return identifier_pb2.Identifier(
+        return flyteidl.core.Identifier(
             resource_type=self.resource_type,
             project=self.project,
             domain=self.domain,
             name=self.name,
             version=self.version,
+            org=self.org,
         )
 
     @classmethod
@@ -107,6 +117,7 @@ class WorkflowExecutionIdentifier(_common_models.FlyteIdlEntity):
         self._project = project
         self._domain = domain
         self._name = name
+        self._org = ""
 
     @property
     def project(self):
@@ -129,14 +140,22 @@ class WorkflowExecutionIdentifier(_common_models.FlyteIdlEntity):
         """
         return self._name
 
+    @property
+    def org(self):
+        """
+        :rtype: Text
+        """
+        return self._org
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.identifier_pb2.WorkflowExecutionIdentifier
         """
-        return identifier_pb2.WorkflowExecutionIdentifier(
+        return flyteidl.core.WorkflowExecutionIdentifier(
             project=self.project,
             domain=self.domain,
             name=self.name,
+            org=self.org,
         )
 
     @classmethod
@@ -179,7 +198,7 @@ class NodeExecutionIdentifier(_common_models.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.identifier_pb2.NodeExecutionIdentifier
         """
-        return identifier_pb2.NodeExecutionIdentifier(
+        return flyteidl.core.NodeExecutionIdentifier(
             node_id=self.node_id,
             execution_id=self.execution_id.to_flyte_idl(),
         )

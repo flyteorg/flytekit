@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import List, Optional
 
+import flyteidl_rust as flyteidl
 from flyteidl.core import security_pb2 as _sec
 
 from flytekit.models import common as _common
@@ -162,21 +163,22 @@ class SecurityContext(_common.FlyteIdlEntity):
         if self.tokens and not isinstance(self.tokens, list):
             self.tokens = [self.tokens]
 
-    def to_flyte_idl(self) -> _sec.SecurityContext:
+    def to_flyte_idl(self) -> flyteidl.core.SecurityContext:
         if self.run_as is None and self.secrets is None and self.tokens is None:
             return None
-        return _sec.SecurityContext(
+        return flyteidl.core.SecurityContext(
             run_as=self.run_as.to_flyte_idl() if self.run_as else None,
             secrets=[s.to_flyte_idl() for s in self.secrets] if self.secrets else None,
             tokens=[t.to_flyte_idl() for t in self.tokens] if self.tokens else None,
         )
 
     @classmethod
-    def from_flyte_idl(cls, pb2_object: _sec.SecurityContext) -> "SecurityContext":
+    def from_flyte_idl(cls, pb2_object: flyteidl.core.SecurityContext) -> "flyteidl.core.SecurityContext":
+        # TODO:
         return cls(
-            run_as=Identity.from_flyte_idl(pb2_object.run_as)
-            if pb2_object.run_as and pb2_object.run_as.ByteSize() > 0
-            else None,
-            secrets=[Secret.from_flyte_idl(s) for s in pb2_object.secrets] if pb2_object.secrets else None,
-            tokens=[OAuth2TokenRequest.from_flyte_idl(t) for t in pb2_object.tokens] if pb2_object.tokens else None,
+            run_as=None,  # Identity.from_flyte_idl(pb2_object.run_as)
+            # if pb2_object.run_as and pb2_object.run_as.ByteSize() > 0
+            # else None,
+            secrets=[],  # [Secret.from_flyte_idl(s) for s in pb2_object.secrets] if pb2_object.secrets else None,
+            tokens=[],  # [OAuth2TokenRequest.from_flyte_idl(t) for t in pb2_object.tokens] if pb2_object.tokens else None,
         )

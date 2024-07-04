@@ -3,8 +3,8 @@ import json
 import re
 from typing import Dict
 
+import flyteidl_rust as flytedidl
 from flyteidl.admin import common_pb2 as _common_pb2
-from flyteidl.core import literals_pb2 as _literals_pb2
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 
@@ -302,11 +302,20 @@ class Notification(FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.common_pb2.Notification
         """
-        return _common_pb2.Notification(
+        _type = None
+        if self.email:
+            _type = flytedidl.notification.Type.Email(self.email)
+        elif self.pager_duty:
+            _type = flytedidl.notification.Type.PagerDuty(self.pager_duty)
+        elif self.slack:
+            _type = flytedidl.notification.Type.Slack(self.slack)
+
+        return flytedidl.notification.Type(
             phases=self.phases,
-            email=self.email.to_flyte_idl() if self.email else None,
-            pager_duty=self.pager_duty.to_flyte_idl() if self.pager_duty else None,
-            slack=self.slack.to_flyte_idl() if self.slack else None,
+            type=_type,
+            # email=self.email.to_flyte_idl() if self.email else None,
+            # pager_duty=self.pager_duty.to_flyte_idl() if self.pager_duty else None,
+            # slack=self.slack.to_flyte_idl() if self.slack else None,
         )
 
     @classmethod
@@ -340,7 +349,7 @@ class Labels(FlyteIdlEntity):
         """
         :rtype: dict[Text, Text]
         """
-        return _common_pb2.Labels(values={k: v for k, v in self.values.items()})
+        return flytedidl.admin.Labels(values={k: v for k, v in self.values.items()})
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -368,7 +377,7 @@ class Annotations(FlyteIdlEntity):
         """
         :rtype: _common_pb2.Annotations
         """
-        return _common_pb2.Annotations(values={k: v for k, v in self.values.items()})
+        return flytedidl.admin.Annotations(values={k: v for k, v in self.values.items()})
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -451,9 +460,9 @@ class AuthRole(FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.launch_plan_pb2.Auth
         """
-        return _common_pb2.AuthRole(
-            assumable_iam_role=self.assumable_iam_role if self.assumable_iam_role else None,
-            kubernetes_service_account=self.kubernetes_service_account if self.kubernetes_service_account else None,
+        return flytedidl.admin.AuthRole(
+            assumable_iam_role=self.assumable_iam_role or "",
+            kubernetes_service_account=self.kubernetes_service_account or "",
         )
 
     @classmethod
@@ -483,7 +492,7 @@ class RawOutputDataConfig(FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.common_pb2.Auth
         """
-        return _common_pb2.RawOutputDataConfig(output_location_prefix=self.output_location_prefix)
+        return flytedidl.admin.RawOutputDataConfig(output_location_prefix=self.output_location_prefix)
 
     @classmethod
     def from_flyte_idl(cls, pb2):
@@ -498,8 +507,8 @@ class Envs(FlyteIdlEntity):
     def envs(self) -> Dict[str, str]:
         return self._envs
 
-    def to_flyte_idl(self) -> _common_pb2.Envs:
-        return _common_pb2.Envs(values=[_literals_pb2.KeyValuePair(key=k, value=v) for k, v in self.envs.items()])
+    def to_flyte_idl(self) -> flytedidl.admin.Envs:
+        return flytedidl.admin.Envs(values=[flytedidl.core.KeyValuePair(key=k, value=v) for k, v in self.envs.items()])
 
     @classmethod
     def from_flyte_idl(cls, pb2: _common_pb2.Envs) -> _common_pb2.Envs:

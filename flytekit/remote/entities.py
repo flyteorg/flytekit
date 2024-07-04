@@ -174,7 +174,7 @@ class FlyteTask(hash_mixin.HashOnReferenceMixin, RemoteEntity, TaskSpec):
             task_type_version=base_model.task_type_version,
         )
         # Override the newly generated name if one exists in the base model
-        if not base_model.id.is_empty:
+        if len(str(base_model.id)) > 0:  # not is_empty
             t._id = base_model.id
 
         return t
