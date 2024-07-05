@@ -167,8 +167,8 @@ class FlyteFS(HTTPFileSystem):
             else:
                 break
 
-        fs = fsspec.filesystem(get_protocol(native_urls[0]))
-        sep = fs.sep
+        fs_class = fsspec.get_filesystem_class(get_protocol(native_urls[0]))
+        sep = fs_class.sep
         # split the common prefix on the last separator so we don't get any trailing characters.
         common_prefix = common_prefix.rsplit(sep, 1)[0]
         logger.debug(f"Returning {common_prefix} from {native_urls}")
