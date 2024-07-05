@@ -93,6 +93,7 @@ def test_create_docker_context_with_null_entrypoint(tmp_path):
     )
 
     create_docker_context(image_spec, docker_context_path)
+
     dockerfile_path = docker_context_path / "Dockerfile"
     assert dockerfile_path.exists()
     dockerfile_content = dockerfile_path.read_text()
