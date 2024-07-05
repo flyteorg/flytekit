@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -98,11 +99,23 @@ def get_flytekit_for_pypi():
         return f"flytekit=={__version__}"
 
 
+_PACKAGE_NAME_RE = re.compile(r"^[\w-]+")
+
+
+def _is_flytekit(package: str) -> bool:
+    """Return True if `package` is flytekit."""
+    m = _PACKAGE_NAME_RE.match(package)
+    if not m:
+        return False
+    name = m.group()
+    return name == "flytekit"
+
+
 def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
     """Populate tmp_dir with Dockerfile as specified by the `image_spec`."""
     base_image = image_spec.base_image or "debian:bookworm-slim"
 
-    requirements = [get_flytekit_for_pypi()]
+    requirements = []
 
     if image_spec.cuda is not None or image_spec.cudnn is not None:
         msg = (
@@ -123,6 +136,10 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
 
     if image_spec.packages:
         requirements.extend(image_spec.packages)
+
+    # Adds flytekit if if it is not specified
+    if not any(_is_flytekit(package) for package in requirements):
+        requirements.append(get_flytekit_for_pypi())
 
     uv_requirements = []
 
