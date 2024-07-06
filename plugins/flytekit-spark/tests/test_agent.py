@@ -31,6 +31,7 @@ async def test_databricks_agent():
         "This is deprecated!",
         True,
         "A",
+        (),
     )
     task_config = {
         "sparkConf": {
@@ -108,7 +109,11 @@ async def test_databricks_agent():
     )
 
     mock_create_response = {"run_id": "123"}
-    mock_get_response = {"job_id": "1", "run_id": "123", "state": {"result_state": "SUCCESS", "state_message": "OK"}}
+    mock_get_response = {
+        "job_id": "1",
+        "run_id": "123",
+        "state": {"life_cycle_state": "TERMINATED", "result_state": "SUCCESS", "state_message": "OK"},
+    }
     mock_delete_response = {}
     create_url = f"https://test-account.cloud.databricks.com{DATABRICKS_API_ENDPOINT}/runs/submit"
     get_url = f"https://test-account.cloud.databricks.com{DATABRICKS_API_ENDPOINT}/runs/get?run_id=123"

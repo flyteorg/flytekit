@@ -54,21 +54,25 @@ def can_import(module_name) -> bool:
 
 
 def test_file_type_in_workflow_with_bad_format():
-    @task
-    def t1() -> FlyteFile[typing.TypeVar("txt")]:
-        fname = "/tmp/flytekit_test"
-        with open(fname, "w") as fh:
-            fh.write("Hello World\n")
-        return fname
+    fd, path = tempfile.mkstemp()
+    try:
 
-    @workflow
-    def my_wf() -> FlyteFile[typing.TypeVar("txt")]:
-        f = t1()
-        return f
+        @task
+        def t1() -> FlyteFile[typing.TypeVar("txt")]:
+            with os.fdopen(fd, "w") as f:
+                f.write("Hello World\n")
+            return path
 
-    res = my_wf()
-    with open(res, "r") as fh:
-        assert fh.read() == "Hello World\n"
+        @workflow
+        def my_wf() -> FlyteFile[typing.TypeVar("txt")]:
+            f = t1()
+            return f
+
+        res = my_wf()
+        with open(res, "r") as fh:
+            assert fh.read() == "Hello World\n"
+    finally:
+        os.remove(path)
 
 
 def test_matching_file_types_in_workflow(local_dummy_txt_file):
@@ -201,7 +205,7 @@ def test_file_handling_remote_default_wf_input():
     assert sample_lp.parameters.parameters["fname"].default.scalar.blob.uri == SAMPLE_DATA
 
 
-def test_file_handling_local_file_gets_copied():
+def test_file_handling_local_file_does_not_get_copied():
     @task
     def t1() -> FlyteFile:
         # Use this test file itself, since we know it exists.
@@ -219,12 +223,7 @@ def test_file_handling_local_file_gets_copied():
         assert len(top_level_files) == 1  # the flytekit_local folder
 
         x = my_wf()
-
-        # After running, this test file should've been copied to the mock remote location.
-        mock_remote_files = os.listdir(os.path.join(random_dir, "mock_remote"))
-        assert len(mock_remote_files) == 1  # the file
-        # File should've been copied to the mock remote folder
-        assert x.path.startswith(random_dir)
+        assert x.path == __file__
 
 
 def test_file_handling_local_file_gets_force_no_copy():
@@ -566,6 +565,24 @@ def test_flyte_file_in_dyn():
 
     assert flyte_tmp_dir in wf(path="s3://somewhere").path
 
+def test_flyte_file_name_with_special_chars():
+    temp_dir = tempfile.TemporaryDirectory()
+    file_path = os.path.join(temp_dir.name, "foo bar")
+    try:
+        with open(file_path, "w") as tmp:
+            tmp.write("hello world")
+
+        @task
+        def get_file_path(f: FlyteFile) -> FlyteFile:
+            return f.path
+
+        @workflow
+        def wf(f: FlyteFile) -> FlyteFile:
+            return get_file_path(f=f)
+
+        wf(f=file_path)
+    finally:
+        temp_dir.cleanup()
 
 def test_flyte_file_annotated_hashmethod(local_dummy_file):
     def calc_hash(ff: FlyteFile) -> str:
@@ -587,6 +604,17 @@ def test_flyte_file_annotated_hashmethod(local_dummy_file):
         t2(ff=ff)
 
     wf(path=local_dummy_file)
+
+
+def test_for_downloading():
+    ff = FlyteFile.from_source(source="s3://sample-path/file")
+    assert ff.path
+    assert ff._downloader is not None
+    assert not ff.downloaded
+
+    if os.name != "nt":
+        fl = FlyteFile.from_source(source=__file__)
+        assert fl.path == __file__
 
 
 @pytest.mark.sandbox_test
@@ -640,3 +668,14 @@ def test_join():
     fs = ctx.file_access.get_filesystem("s3")
     f = ctx.file_access.join("s3://a", "b", "c", fs=fs)
     assert f == fs.sep.join(["s3://a", "b", "c"])
+
+
+def test_headers():
+    assert FlyteFilePathTransformer.get_additional_headers("xyz") == {}
+    assert len(FlyteFilePathTransformer.get_additional_headers(".gz")) == 1
+
+
+def test_new_remote_file():
+    nf = FlyteFile.new_remote_file(name="foo.txt")
+    assert isinstance(nf, FlyteFile)
+    assert nf.path.endswith('foo.txt')

@@ -12,6 +12,7 @@ manually written workflow that has 5000 nodes for instance, but you can easily g
 dynamic workflows to under fifty tasks. For large-scale identical runs, we recommend the upcoming map task.
 
 """
+
 import functools
 
 from flytekit.core import task

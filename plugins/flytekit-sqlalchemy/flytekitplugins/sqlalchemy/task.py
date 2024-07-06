@@ -25,6 +25,7 @@ class SQLAlchemyDefaultImages(DefaultImages):
         PythonVersion.PYTHON_3_9: "cr.flyte.org/flyteorg/flytekit:py3.9-sqlalchemy-",
         PythonVersion.PYTHON_3_10: "cr.flyte.org/flyteorg/flytekit:py3.10-sqlalchemy-",
         PythonVersion.PYTHON_3_11: "cr.flyte.org/flyteorg/flytekit:py3.11-sqlalchemy-",
+        PythonVersion.PYTHON_3_12: "cr.flyte.org/flyteorg/flytekit:py3.12-sqlalchemy-",
     }
 
 

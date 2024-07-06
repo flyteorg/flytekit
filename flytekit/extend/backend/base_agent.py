@@ -15,9 +15,10 @@ from flyteidl.admin.agent_pb2 import Agent
 from flyteidl.admin.agent_pb2 import TaskCategory as _TaskCategory
 from flyteidl.core import literals_pb2
 from flyteidl.core.execution_pb2 import TaskExecution, TaskLog
+from rich.logging import RichHandler
 from rich.progress import Progress
 
-from flytekit import FlyteContext, PythonFunctionTask, logger
+from flytekit import FlyteContext, PythonFunctionTask
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core import utils
 from flytekit.core.base_task import PythonTask
@@ -25,8 +26,9 @@ from flytekit.core.type_engine import TypeEngine, dataclass_from_dict
 from flytekit.exceptions.system import FlyteAgentNotFound
 from flytekit.exceptions.user import FlyteUserException
 from flytekit.extend.backend.utils import is_terminal_phase, mirror_async_methods, render_task_template
+from flytekit.loggers import set_flytekit_log_properties
 from flytekit.models.literals import LiteralMap
-from flytekit.models.task import TaskTemplate
+from flytekit.models.task import TaskExecutionMetadata, TaskTemplate
 
 
 class TaskCategory:
@@ -90,9 +92,6 @@ class Resource:
     outputs: Optional[Union[LiteralMap, typing.Dict[str, Any]]] = None
 
 
-T = typing.TypeVar("T", bound=ResourceMeta)
-
-
 class AgentBase(ABC):
     name = "Base Agent"
 
@@ -120,14 +119,16 @@ class SyncAgentBase(AgentBase):
     name = "Base Sync Agent"
 
     @abstractmethod
-    def do(self, task_template: TaskTemplate, inputs: Optional[LiteralMap], **kwargs) -> Resource:
+    def do(
+        self, task_template: TaskTemplate, output_prefix: str, inputs: Optional[LiteralMap] = None, **kwargs
+    ) -> Resource:
         """
         This is the method that the agent will run.
         """
         raise NotImplementedError
 
 
-class AsyncAgentBase(AgentBase, typing.Generic[T]):
+class AsyncAgentBase(AgentBase):
     """
     This is the base class for all async agents. It defines the interface that all agents must implement.
     The agent service is responsible for invoking agents. The propeller will communicate with the agent service
@@ -139,7 +140,7 @@ class AsyncAgentBase(AgentBase, typing.Generic[T]):
 
     name = "Base Async Agent"
 
-    def __init__(self, metadata_type: typing.Type[T], **kwargs):
+    def __init__(self, metadata_type: ResourceMeta, **kwargs):
         super().__init__(**kwargs)
         self._metadata_type = metadata_type
 
@@ -148,14 +149,21 @@ class AsyncAgentBase(AgentBase, typing.Generic[T]):
         return self._metadata_type
 
     @abstractmethod
-    def create(self, task_template: TaskTemplate, inputs: Optional[LiteralMap], **kwargs) -> T:
+    def create(
+        self,
+        task_template: TaskTemplate,
+        output_prefix: str,
+        inputs: Optional[LiteralMap],
+        task_execution_metadata: Optional[TaskExecutionMetadata],
+        **kwargs,
+    ) -> ResourceMeta:
         """
         Return a resource meta that can be used to get the status of the task.
         """
         raise NotImplementedError
 
     @abstractmethod
-    def get(self, resource_meta: T, **kwargs) -> Resource:
+    def get(self, resource_meta: ResourceMeta, **kwargs) -> Resource:
         """
         Return the status of the task, and return the outputs in some cases. For example, bigquery job
         can't write the structured dataset to the output location, so it returns the output literals to the propeller,
@@ -164,7 +172,7 @@ class AsyncAgentBase(AgentBase, typing.Generic[T]):
         raise NotImplementedError
 
     @abstractmethod
-    def delete(self, resource_meta: T, **kwargs):
+    def delete(self, resource_meta: ResourceMeta, **kwargs):
         """
         Delete the task. This call should be idempotent. It should raise an error if fails to delete the task.
         """
@@ -202,8 +210,6 @@ class AgentRegistry(object):
             )
             AgentRegistry._METADATA[agent.name] = agent_metadata
 
-        logger.info(f"Registering {agent.name} for task type: {agent.task_category}")
-
     @staticmethod
     def get_agent(task_type_name: str, task_type_version: int = 0) -> Union[SyncAgentBase, AsyncAgentBase]:
         task_category = TaskCategory(name=task_type_name, version=task_type_version)
@@ -231,18 +237,19 @@ class SyncAgentExecutorMixin:
     Sending a prompt to ChatGPT and getting a response, or retrieving some metadata from a backend system.
     """
 
-    T = typing.TypeVar("T", "SyncAgentExecutorMixin", PythonTask)
-
-    def execute(self: T, **kwargs) -> LiteralMap:
+    def execute(self: PythonTask, **kwargs) -> LiteralMap:
         from flytekit.tools.translator import get_serializable
 
         ctx = FlyteContext.current_context()
         ss = ctx.serialization_settings or SerializationSettings(ImageConfig())
         task_template = get_serializable(OrderedDict(), ss, self).template
+        output_prefix = ctx.file_access.get_random_remote_directory()
 
         agent = AgentRegistry.get_agent(task_template.type, task_template.task_type_version)
 
-        resource = asyncio.run(self._do(agent, task_template, kwargs))
+        resource = asyncio.run(
+            self._do(agent=agent, template=task_template, output_prefix=output_prefix, inputs=kwargs)
+        )
         if resource.phase != TaskExecution.SUCCEEDED:
             raise FlyteUserException(f"Failed to run the task {self.name} with error: {resource.message}")
 
@@ -250,10 +257,21 @@ class SyncAgentExecutorMixin:
             return TypeEngine.dict_to_literal_map(ctx, resource.outputs)
         return resource.outputs
 
-    async def _do(self: T, agent: SyncAgentBase, template: TaskTemplate, inputs: Dict[str, Any] = None) -> Resource:
-        ctx = FlyteContext.current_context()
-        literal_map = TypeEngine.dict_to_literal_map(ctx, inputs or {}, self.get_input_types())
-        return await mirror_async_methods(agent.do, task_template=template, inputs=literal_map)
+    async def _do(
+        self: PythonTask,
+        agent: SyncAgentBase,
+        template: TaskTemplate,
+        output_prefix: str,
+        inputs: Dict[str, Any] = None,
+    ) -> Resource:
+        try:
+            ctx = FlyteContext.current_context()
+            literal_map = TypeEngine.dict_to_literal_map(ctx, inputs or {}, self.get_input_types())
+            return await mirror_async_methods(
+                agent.do, task_template=template, inputs=literal_map, output_prefix=output_prefix
+            )
+        except Exception as e:
+            raise FlyteUserException(f"Failed to run the task {self.name} with error: {e}") from None
 
 
 class AsyncAgentExecutorMixin:
@@ -264,12 +282,10 @@ class AsyncAgentExecutorMixin:
     Asynchronous tasks are tasks that take a long time to complete, such as running a query.
     """
 
-    T = typing.TypeVar("T", "AsyncAgentExecutorMixin", PythonTask)
-
     _clean_up_task: coroutine = None
     _agent: AsyncAgentBase = None
 
-    def execute(self: T, **kwargs) -> LiteralMap:
+    def execute(self: PythonTask, **kwargs) -> LiteralMap:
         ctx = FlyteContext.current_context()
         ss = ctx.serialization_settings or SerializationSettings(ImageConfig())
         output_prefix = ctx.file_access.get_random_remote_directory()
@@ -279,7 +295,9 @@ class AsyncAgentExecutorMixin:
         task_template = get_serializable(OrderedDict(), ss, self).template
         self._agent = AgentRegistry.get_agent(task_template.type, task_template.task_type_version)
 
-        resource_mata = asyncio.run(self._create(task_template, output_prefix, kwargs))
+        resource_mata = asyncio.run(
+            self._create(task_template=task_template, output_prefix=output_prefix, inputs=kwargs)
+        )
         resource = asyncio.run(self._get(resource_meta=resource_mata))
 
         if resource.phase != TaskExecution.SUCCEEDED:
@@ -298,7 +316,7 @@ class AsyncAgentExecutorMixin:
         return resource.outputs
 
     async def _create(
-        self: T, task_template: TaskTemplate, output_prefix: str, inputs: Dict[str, Any] = None
+        self: PythonTask, task_template: TaskTemplate, output_prefix: str, inputs: Dict[str, Any] = None
     ) -> ResourceMeta:
         ctx = FlyteContext.current_context()
 
@@ -314,15 +332,17 @@ class AsyncAgentExecutorMixin:
             self._agent.create,
             task_template=task_template,
             inputs=literal_map,
+            output_prefix=output_prefix,
         )
 
         signal.signal(signal.SIGINT, partial(self.signal_handler, resource_meta))  # type: ignore
         return resource_meta
 
-    async def _get(self: T, resource_meta: ResourceMeta) -> Resource:
+    async def _get(self: PythonTask, resource_meta: ResourceMeta) -> Resource:
         phase = TaskExecution.RUNNING
 
         progress = Progress(transient=True)
+        set_flytekit_log_properties(RichHandler(log_time_format="%H:%M:%S.%f"), None, None)
         task = progress.add_task(f"[cyan]Running Task {self.name}...", total=None)
         task_phase = progress.add_task("[cyan]Task phase: RUNNING, Phase message: ", total=None, visible=False)
         task_log_links = progress.add_task("[cyan]Log Links: ", total=None, visible=False)

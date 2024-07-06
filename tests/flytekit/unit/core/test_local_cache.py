@@ -1,4 +1,5 @@
 import datetime
+import re
 import sys
 import typing
 from dataclasses import dataclass
@@ -528,7 +529,7 @@ def test_stable_cache_key():
         }
     )
     key = _calculate_cache_key("task_name_1", "31415", lm)
-    assert key == "task_name_1-31415-404b45f8556276183621d4bf37f50049"
+    assert key == "task_name_1-31415-189e755a8f41c006889c291fcaedb4eb"
 
 
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
@@ -597,3 +598,32 @@ def t2(n: int) -> int:
 @pytest.mark.serial
 def test_checkpoint_cached_task():
     assert t2(n=5) == 6
+
+
+@pytest.mark.serial
+def test_cache_ignore_input_vars():
+    @task(cache=True, cache_version="v1", cache_ignore_input_vars=["a"])
+    def add(a: int, b: int) -> int:
+        return a + b
+
+    @workflow
+    def add_wf(a: int, b: int) -> int:
+        return add(a=a, b=b)
+
+    assert add_wf(a=10, b=5) == 15
+    assert add_wf(a=20, b=5) == 15  # since a is ignored, this line will hit cache of a=10, b=5
+    assert add_wf(a=20, b=8) == 28
+
+
+@pytest.mark.serial
+def test_set_cache_ignore_input_vars_without_set_cache():
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            "Cache ignore input vars are specified ``cache_ignore_input_vars=['a']`` but ``cache`` is not enabled."
+        ),
+    ):
+
+        @task(cache_ignore_input_vars=["a"])
+        def add(a: int, b: int) -> int:
+            return a + b

@@ -4,24 +4,41 @@ import gzip
 import hashlib
 import os
 import posixpath
-import subprocess as _subprocess
+import subprocess
 import tarfile
 import tempfile
 import typing
+from dataclasses import dataclass
 from typing import Optional
 
 import click
 
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.utils import timeit
-from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
+from flytekit.loggers import logger
+from flytekit.tools.ignore import DockerIgnore, FlyteIgnore, GitIgnore, Ignore, IgnoreGroup, StandardIgnore
 from flytekit.tools.script_mode import tar_strip_file_attributes
 
 FAST_PREFIX = "fast"
 FAST_FILEENDING = ".tar.gz"
 
 
-def fast_package(source: os.PathLike, output_dir: os.PathLike, deref_symlinks: bool = False) -> os.PathLike:
+@dataclass(frozen=True)
+class FastPackageOptions:
+    """
+    FastPackageOptions is used to set configuration options when packaging files.
+    """
+
+    ignores: list[Ignore]
+    keep_default_ignores: bool = True
+
+
+def fast_package(
+    source: os.PathLike,
+    output_dir: os.PathLike,
+    deref_symlinks: bool = False,
+    options: Optional[FastPackageOptions] = None,
+) -> os.PathLike:
     """
     Takes a source directory and packages everything not covered by common ignores into a tarball
     named after a hexdigest of the included files.
@@ -30,7 +47,16 @@ def fast_package(source: os.PathLike, output_dir: os.PathLike, deref_symlinks: b
     :param bool deref_symlinks: Enables dereferencing symlinks when packaging directory
     :return os.PathLike:
     """
-    ignore = IgnoreGroup(source, [GitIgnore, DockerIgnore, StandardIgnore])
+    default_ignores = [GitIgnore, DockerIgnore, StandardIgnore, FlyteIgnore]
+    if options is not None:
+        if options.keep_default_ignores:
+            ignores = options.ignores + default_ignores
+        else:
+            ignores = options.ignores
+    else:
+        ignores = default_ignores
+    ignore = IgnoreGroup(source, ignores)
+
     digest = compute_digest(source, ignore.is_ignored)
     archive_fname = f"{FAST_PREFIX}{digest}{FAST_FILEENDING}"
 
@@ -61,7 +87,7 @@ def compute_digest(source: os.PathLike, filter: Optional[callable] = None) -> st
     """
     Walks the entirety of the source dir to compute a deterministic md5 hex digest of the dir contents.
     :param os.PathLike source:
-    :param Ignore ignore:
+    :param callable filter:
     :return Text:
     """
     hasher = hashlib.md5()
@@ -70,6 +96,10 @@ def compute_digest(source: os.PathLike, filter: Optional[callable] = None) -> st
 
         for fname in files:
             abspath = os.path.join(root, fname)
+            # Only consider files that exist (e.g. disregard symlinks that point to non-existent files)
+            if not os.path.exists(abspath):
+                logger.info(f"Skipping non-existent file {abspath}")
+                continue
             relpath = os.path.relpath(abspath, source)
             if filter:
                 if filter(relpath):
@@ -122,8 +152,8 @@ def download_distribution(additional_distribution: str, destination: str):
         raise RuntimeError("Unrecognized additional distribution format for {}".format(additional_distribution))
 
     # This will overwrite the existing user flyte workflow code in the current working code dir.
-    result = _subprocess.run(
+    result = subprocess.run(
         ["tar", "-xvf", os.path.join(destination, tarfile_name), "-C", destination],
-        stdout=_subprocess.PIPE,
+        stdout=subprocess.PIPE,
     )
     result.check_returncode()

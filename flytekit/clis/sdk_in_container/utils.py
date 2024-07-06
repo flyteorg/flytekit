@@ -6,11 +6,10 @@ from types import MappingProxyType
 
 import grpc
 import rich_click as click
-from google.protobuf.json_format import MessageToJson
 
 from flytekit.exceptions.base import FlyteException
 from flytekit.exceptions.user import FlyteInvalidInputException
-from flytekit.loggers import get_level_from_cli_verbosity, logger, upgrade_to_rich_logging
+from flytekit.loggers import get_level_from_cli_verbosity, logger
 
 project_option = click.Option(
     param_decls=["-p", "--project"],
@@ -77,7 +76,6 @@ def pretty_print_grpc_error(e: grpc.RpcError):
     if isinstance(e, grpc._channel._InactiveRpcError):  # noqa
         click.secho(f"RPC Failed, with Status: {e.code()}", fg="red", bold=True)
         click.secho(f"\tdetails: {e.details()}", fg="magenta", bold=True)
-        click.secho(f"\tDebug string {e.debug_error_string()}", dim=True)
     return
 
 
@@ -101,15 +99,11 @@ def pretty_print_exception(e: Exception):
         raise e
 
     if isinstance(e, click.ClickException):
-        click.secho(e.message, fg="red")
         raise e
 
     if isinstance(e, FlyteException):
-        click.secho(f"Failed with Exception Code: {e._ERROR_CODE}", fg="red")  # noqa
         if isinstance(e, FlyteInvalidInputException):
             click.secho("Request rejected by the API, due to Invalid input.", fg="red")
-            click.secho(f"\tInput Request: {MessageToJson(e.request)}", dim=True)
-
         cause = e.__cause__
         if cause:
             if isinstance(cause, grpc.RpcError):
@@ -122,8 +116,17 @@ def pretty_print_exception(e: Exception):
         pretty_print_grpc_error(e)
         return
 
-    click.secho(f"Failed with Unknown Exception {type(e)} Reason: {e}", fg="red")  # noqa
-    pretty_print_traceback(e)
+    if isinstance(e, AssertionError):
+        click.secho(f"Assertion Error: {e}", fg="red")
+        return
+
+    if isinstance(e, ValueError):
+        click.secho(f"Value Error: {e}", fg="red")
+        return
+
+    click.secho(f"Failed with Exception {type(e)} Reason:\n{e}", fg="red")  # noqa
+    if e.__cause__:
+        pretty_print_traceback(e.__cause__)
 
 
 class ErrorHandlingCommand(click.RichGroup):
@@ -134,7 +137,7 @@ class ErrorHandlingCommand(click.RichGroup):
     def invoke(self, ctx: click.Context) -> typing.Any:
         verbose = ctx.params["verbose"]
         log_level = get_level_from_cli_verbosity(verbose)
-        upgrade_to_rich_logging(log_level=log_level)
+        logger.setLevel(log_level)
         try:
             return super().invoke(ctx)
         except Exception as e:
@@ -144,7 +147,7 @@ class ErrorHandlingCommand(click.RichGroup):
                     raise e.with_traceback(None)
                 raise e
             pretty_print_exception(e)
-            raise SystemExit(e) from e
+            exit(1)
 
 
 def make_click_option_field(o: click.Option) -> Field:

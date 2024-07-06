@@ -7,10 +7,11 @@ import pytest
 import torch
 import torch.distributed as dist
 from dataclasses_json import DataClassJsonMixin
-from flytekitplugins.kfpytorch.task import Elastic
+from flytekitplugins.kfpytorch.task import CleanPodPolicy, Elastic, RunPolicy
 
 import flytekit
 from flytekit import task, workflow
+from flytekit.configuration import SerializationSettings
 from flytekit.exceptions.user import FlyteRecoverableException
 
 
@@ -140,7 +141,7 @@ def test_deck(start_method: str) -> None:
 
     ctx = flytekit.current_context()
 
-    expected_deck_names = {"timeline", "default", "test-deck"}
+    expected_deck_names = {"Timeline", "default", "test-deck"}
     found_deck_names = set(d.name for d in ctx.decks)
 
     assert expected_deck_names.issubset(found_deck_names)
@@ -187,3 +188,27 @@ def test_recoverable_error(recoverable: bool, start_method: str) -> None:
     else:
         with pytest.raises(RuntimeError):
             wf(recoverable=recoverable)
+
+
+def test_run_policy() -> None:
+    """Test that run policy is propagated to custom spec."""
+
+    run_policy = RunPolicy(
+        clean_pod_policy=CleanPodPolicy.ALL,
+        ttl_seconds_after_finished=10 * 60,
+        active_deadline_seconds=36000,
+        backoff_limit=None,
+    )
+
+    # nnodes must be > 1 to get pytorchjob spec
+    @task(task_config=Elastic(nnodes=2, nproc_per_node=2, run_policy=run_policy))
+    def test_task():
+        pass
+
+    spec = test_task.get_custom(SerializationSettings(image_config=None))
+
+    assert spec["runPolicy"] == {
+        "cleanPodPolicy": "CLEANPOD_POLICY_ALL",
+        "ttlSecondsAfterFinished": 600,
+        "activeDeadlineSeconds": 36000,
+    }

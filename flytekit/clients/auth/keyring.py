@@ -2,7 +2,7 @@ import logging
 import typing
 from dataclasses import dataclass
 
-import keyring as _keyring
+import keyring
 from keyring.errors import NoKeyringError, PasswordDeleteError
 
 
@@ -32,18 +32,18 @@ class KeyringStore:
     def store(credentials: Credentials) -> Credentials:
         try:
             if credentials.refresh_token:
-                _keyring.set_password(
+                keyring.set_password(
                     credentials.for_endpoint,
                     KeyringStore._refresh_token_key,
                     credentials.refresh_token,
                 )
-            _keyring.set_password(
+            keyring.set_password(
                 credentials.for_endpoint,
                 KeyringStore._access_token_key,
                 credentials.access_token,
             )
             if credentials.id_token:
-                _keyring.set_password(
+                keyring.set_password(
                     credentials.for_endpoint,
                     KeyringStore._id_token_key,
                     credentials.id_token,
@@ -55,9 +55,9 @@ class KeyringStore:
     @staticmethod
     def retrieve(for_endpoint: str) -> typing.Optional[Credentials]:
         try:
-            refresh_token = _keyring.get_password(for_endpoint, KeyringStore._refresh_token_key)
-            access_token = _keyring.get_password(for_endpoint, KeyringStore._access_token_key)
-            id_token = _keyring.get_password(for_endpoint, KeyringStore._id_token_key)
+            refresh_token = keyring.get_password(for_endpoint, KeyringStore._refresh_token_key)
+            access_token = keyring.get_password(for_endpoint, KeyringStore._access_token_key)
+            id_token = keyring.get_password(for_endpoint, KeyringStore._id_token_key)
         except NoKeyringError as e:
             logging.debug(f"KeyRing not available, tokens will not be cached. Error: {e}")
             return None
@@ -70,7 +70,7 @@ class KeyringStore:
     def delete(for_endpoint: str):
         def _delete_key(key):
             try:
-                _keyring.delete_password(for_endpoint, key)
+                keyring.delete_password(for_endpoint, key)
             except PasswordDeleteError as e:
                 logging.debug(f"Key {key} not found in key store, Ignoring. Error: {e}")
             except NoKeyringError as e:

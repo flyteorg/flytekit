@@ -24,6 +24,8 @@ from flytekit.exceptions import user as user_exceptions
 from flytekit.models import common as common_models
 from flytekit.models import security
 from flytekit.models.admin.workflow import Workflow, WorkflowClosure
+from flytekit.models.core import condition as _condition
+from flytekit.models.core import workflow as _workflow
 from flytekit.models.core.compiler import CompiledWorkflowClosure
 from flytekit.models.core.identifier import Identifier, ResourceType, WorkflowExecutionIdentifier
 from flytekit.models.execution import Execution
@@ -51,6 +53,52 @@ ENTITY_TYPE_TEXT = {
     ResourceType.TASK: "Task",
     ResourceType.LAUNCH_PLAN: "Launch Plan",
 }
+
+
+obj = _workflow.Node(
+    id="some:node:id",
+    metadata="1",
+    inputs=[],
+    upstream_node_ids=[],
+    output_aliases=[],
+    workflow_node=_workflow.WorkflowNode(launchplan_ref="LAUNCH_PLAN"),
+)
+node1 = _workflow.Node(
+    id="some:node:id",
+    metadata="1",
+    inputs=[],
+    upstream_node_ids=[],
+    output_aliases=[],
+    branch_node=_workflow.BranchNode(
+        _workflow.IfElseBlock(
+            case=_workflow.IfBlock(
+                condition=_condition.BooleanExpression(),
+                then_node=obj,
+            )
+        )
+    ),
+)
+nodes = [node1]
+
+obj2 = _workflow.Node(id="some:node:id", metadata="1", inputs=[], upstream_node_ids=[], output_aliases=[])
+
+node2 = node1 = _workflow.Node(
+    id="some:node:id",
+    metadata="1",
+    inputs=[],
+    upstream_node_ids=[],
+    output_aliases=[],
+    branch_node=_workflow.BranchNode(
+        _workflow.IfElseBlock(
+            case=_workflow.IfBlock(
+                condition=_condition.BooleanExpression(),
+                then_node=obj2,
+            ),
+            else_node=node1,
+        )
+    ),
+)
+nodes2 = [node2]
 
 
 @pytest.fixture
@@ -106,6 +154,28 @@ def test_underscore_execute_uses_launch_plan_attributes(remote, mock_wf_exec):
         project="proj",
         domain="dev",
         options=options,
+    )
+
+
+def test_execution_cluster_label_attributes(remote, mock_wf_exec):
+    mock_wf_exec.return_value = True
+    mock_client = MagicMock()
+    remote._client = mock_client
+
+    def local_assertions(*args, **kwargs):
+        execution_spec = args[3]
+        assert execution_spec.execution_cluster_label.value == "label"
+
+    mock_client.create_execution.side_effect = local_assertions
+
+    mock_entity = MagicMock()
+
+    remote._execute(
+        mock_entity,
+        inputs={},
+        project="proj",
+        domain="dev",
+        execution_cluster_label="label",
     )
 
 
@@ -253,6 +323,7 @@ def test_generate_console_http_domain_sandbox_rewrite(mock_client):
         )
         assert remote.generate_console_http_domain() == "https://example.com"
 
+        _, temp_filename = tempfile.mkstemp(suffix=".yaml")
         with open(temp_filename, "w") as f:
             # This string is similar to the relevant configuration emitted by flytectl in the cases of both demo and sandbox.
             flytectl_config_file = """admin:
@@ -267,6 +338,7 @@ def test_generate_console_http_domain_sandbox_rewrite(mock_client):
         )
         assert remote.generate_console_http_domain() == "http://localhost:30081"
 
+        _, temp_filename = tempfile.mkstemp(suffix=".yaml")
         with open(temp_filename, "w") as f:
             # This string is similar to the relevant configuration emitted by flytectl in the cases of both demo and sandbox.
             flytectl_config_file = """admin:
@@ -387,6 +459,41 @@ def test_launch_backfill(remote):
     assert wf.workflow_metadata.on_failure == WorkflowFailurePolicy.FAIL_IMMEDIATELY
 
 
+@patch("flytekit.remote.entities.FlyteWorkflow.get_non_system_nodes", return_value=nodes)
+@patch("flytekit.remote.entities.FlyteWorkflow.promote_from_closure")
+def test_fetch_workflow_with_branch(mock_promote, mock_workflow, remote):
+    mock_client = remote._client
+    mock_client.get_workflow.return_value = Workflow(
+        id=Identifier(ResourceType.TASK, "p", "d", "n", "v"),
+        closure=WorkflowClosure(compiled_workflow=MagicMock()),
+    )
+
+    admin_launch_plan = MagicMock()
+    admin_launch_plan.spec = {"workflow_id": 123}
+    mock_client.get_launch_plan.return_value = admin_launch_plan
+    node_launch_plans = {"LAUNCH_PLAN": {"workflow_id": 123}}
+
+    remote.fetch_workflow(name="n", version="v")
+    mock_promote.assert_called_with(ANY, node_launch_plans)
+
+
+@patch("flytekit.remote.entities.FlyteWorkflow.get_non_system_nodes", return_value=nodes2)
+@patch("flytekit.remote.entities.FlyteWorkflow.promote_from_closure")
+def test_fetch_workflow_with_nested_branch(mock_promote, mock_workflow, remote):
+    mock_client = remote._client
+    mock_client.get_workflow.return_value = Workflow(
+        id=Identifier(ResourceType.TASK, "p", "d", "n", "v"),
+        closure=WorkflowClosure(compiled_workflow=MagicMock()),
+    )
+    admin_launch_plan = MagicMock()
+    admin_launch_plan.spec = {"workflow_id": 123}
+    mock_client.get_launch_plan.return_value = admin_launch_plan
+    node_launch_plans = {"LAUNCH_PLAN": {"workflow_id": 123}}
+
+    remote.fetch_workflow(name="n", version="v")
+    mock_promote.assert_called_with(ANY, node_launch_plans)
+
+
 @mock.patch("pathlib.Path.read_bytes")
 @mock.patch("flytekit.remote.remote.FlyteRemote._version_from_hash")
 @mock.patch("flytekit.remote.remote.FlyteRemote.register_workflow")
@@ -417,7 +524,7 @@ def test_get_image_names(
     flyte_remote = FlyteRemote(config=Config.auto(), default_project="p1", default_domain="d1")
     flyte_remote.register_script(wf)
 
-    version_from_hash_mock.assert_called_once_with(md5_bytes, mock.ANY, image_spec.image_name())
+    version_from_hash_mock.assert_called_once_with(md5_bytes, mock.ANY, mock.ANY, image_spec.image_name())
     register_workflow_mock.assert_called_once()
 
 

@@ -1,4 +1,5 @@
 import os
+import sys
 import typing
 from typing import Dict, List
 
@@ -156,6 +157,7 @@ def test_file_types():
     assert return_type["o0"].extension() == FlyteFile[typing.TypeVar("svg")].extension()
 
 
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="PEP604 requires >=3.10.")
 def test_parameters_and_defaults():
     ctx = context_manager.FlyteContext.current_context()
 
@@ -202,6 +204,18 @@ def test_parameters_and_defaults():
     def z(
         a: typing.Optional[int] = None, b: typing.Optional[str] = None, c: typing.Union[typing.List[int], None] = None
     ) -> typing.Tuple[int, str]:
+        ...
+
+    our_interface = transform_function_to_interface(z)
+    params = transform_inputs_to_parameters(ctx, our_interface)
+    assert not params.parameters["a"].required
+    assert params.parameters["a"].default.scalar.none_type == Void()
+    assert not params.parameters["b"].required
+    assert params.parameters["b"].default.scalar.none_type == Void()
+    assert not params.parameters["c"].required
+    assert params.parameters["c"].default.scalar.none_type == Void()
+
+    def z(a: int | None = None, b: str | None = None, c: typing.List[int] | None = None) -> typing.Tuple[int, str]:
         ...
 
     our_interface = transform_function_to_interface(z)
@@ -304,6 +318,16 @@ def test_transform_interface_to_typed_interface_with_docstring():
     assert typed_interface.inputs.get("b").description == "bar"
     assert typed_interface.outputs.get("x_str").description == "description for x_str"
     assert typed_interface.outputs.get("y_int").description == "description for y_int"
+
+
+def test_init_interface_with_invalid_parameters():
+    from flytekit.core.interface import Interface
+
+    with pytest.raises(ValueError, match=r"Input name must be valid Python identifier:"):
+        _ = Interface({"my.input": int}, {})
+
+    with pytest.raises(ValueError, match=r"Type names and field names must be valid identifiers:"):
+        _ = Interface({}, {"my.output": int})
 
 
 def test_parameter_change_to_pickle_type():

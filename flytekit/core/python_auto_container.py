@@ -16,7 +16,7 @@ from flytekit.core.tracked_abc import FlyteTrackedABC
 from flytekit.core.tracker import TrackedInstance, extract_task_module
 from flytekit.core.utils import _get_container_definition, _serialize_pod_spec, timeit
 from flytekit.extras.accelerators import BaseAccelerator
-from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec
+from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec, _calculate_deduped_hash_from_image_spec
 from flytekit.loggers import logger
 from flytekit.models import task as _task_model
 from flytekit.models.security import Secret, SecurityContext
@@ -87,19 +87,28 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         kwargs["metadata"] = kwargs["metadata"] if "metadata" in kwargs else TaskMetadata()
         kwargs["metadata"].pod_template_name = pod_template_name
 
-        super().__init__(
-            task_type=task_type,
-            name=name,
-            task_config=task_config,
-            security_ctx=sec_ctx,
-            **kwargs,
-        )
         self._container_image = container_image
         # TODO(katrogan): Implement resource overrides
         self._resources = ResourceSpec(
             requests=requests if requests else Resources(), limits=limits if limits else Resources()
         )
-        self._environment = environment or {}
+
+        # The serialization of the other tasks (Task -> protobuf), as well as the initialization of the current task, may occur simultaneously.
+        # We should make sure super().__init__ is being called after setting _container_image because PythonAutoContainerTask
+        # is added to the FlyteEntities in super().__init__, and the translator will iterate over
+        # FlyteEntities and call entity.container_image().
+        # Therefore, we need to ensure the _container_image attribute is set
+        # before appending the task to FlyteEntities.
+        # https://github.com/flyteorg/flytekit/blob/876877abd8d6f4f54dec2738a0ca07a12e9115b1/flytekit/tools/translator.py#L181
+
+        super().__init__(
+            task_type=task_type,
+            name=name,
+            task_config=task_config,
+            security_ctx=sec_ctx,
+            environment=environment,
+            **kwargs,
+        )
 
         compilation_state = FlyteContextManager.current_context().compilation_state
         if compilation_state and compilation_state.task_resolver:
@@ -175,6 +184,13 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         """
         return self._get_command_fn(settings)
 
+    def get_image(self, settings: SerializationSettings) -> str:
+        if settings.fast_serialization_settings is None or not settings.fast_serialization_settings.enabled:
+            if isinstance(self.container_image, ImageSpec):
+                # Set the source root for the image spec if it's non-fast registration
+                self.container_image.source_root = settings.source_root
+        return get_registerable_container_image(self.container_image, settings.image_config)
+
     def get_container(self, settings: SerializationSettings) -> _task_model.Container:
         # if pod_template is not None, return None here but in get_k8s_pod, return pod_template merged with container
         if self.pod_template is not None:
@@ -187,11 +203,8 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         for elem in (settings.env, self.environment):
             if elem:
                 env.update(elem)
-        if settings.fast_serialization_settings is None or not settings.fast_serialization_settings.enabled:
-            if isinstance(self.container_image, ImageSpec):
-                self.container_image.source_root = settings.source_root
         return _get_container_definition(
-            image=get_registerable_container_image(self.container_image, settings.image_config),
+            image=self.get_image(settings),
             command=[],
             args=self.get_command(settings=settings),
             data_loading_config=None,
@@ -272,8 +285,12 @@ def get_registerable_container_image(img: Optional[Union[str, ImageSpec]], cfg: 
     :return:
     """
     if isinstance(img, ImageSpec):
-        ImageBuildEngine.build(img)
-        return img.image_name()
+        image = cfg.find_image(_calculate_deduped_hash_from_image_spec(img))
+        image_name = image.full if image else None
+        if not image_name:
+            ImageBuildEngine.build(img)
+            image_name = img.image_name()
+        return image_name
 
     if img is not None and img != "":
         matches = _IMAGE_REPLACE_REGEX.findall(img)
@@ -292,10 +309,10 @@ def get_registerable_container_image(img: Optional[Union[str, ImageSpec]], cfg: 
             if img_cfg is None:
                 raise AssertionError(f"Image Config with name {name} not found in the configuration")
             if attr == "version":
-                if img_cfg.tag is not None:
-                    img = img.replace(replace_group, img_cfg.tag)
+                if img_cfg.version is not None:
+                    img = img.replace(replace_group, img_cfg.version)
                 else:
-                    img = img.replace(replace_group, cfg.default_image.tag)
+                    img = img.replace(replace_group, cfg.default_image.version)
             elif attr == "fqn":
                 img = img.replace(replace_group, img_cfg.fqn)
             elif attr == "":
@@ -305,7 +322,7 @@ def get_registerable_container_image(img: Optional[Union[str, ImageSpec]], cfg: 
         return img
     if cfg.default_image is None:
         raise ValueError("An image is required for PythonAutoContainer tasks")
-    return f"{cfg.default_image.fqn}:{cfg.default_image.tag}"
+    return cfg.default_image.full
 
 
 # Matches {{.image.<name>.<attr>}}. A name can be either 'default' indicating the default image passed during

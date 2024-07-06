@@ -30,7 +30,7 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions.system import FlyteAgentNotFound
 from flytekit.extend.backend.base_agent import AgentRegistry, SyncAgentBase, mirror_async_methods
 from flytekit.models.literals import LiteralMap
-from flytekit.models.task import TaskTemplate
+from flytekit.models.task import TaskExecutionMetadata, TaskTemplate
 
 metric_prefix = "flyte_agent_"
 create_operation = "create"
@@ -115,9 +115,16 @@ class AsyncAgentService(AsyncAgentServiceServicer):
         template = TaskTemplate.from_flyte_idl(request.template)
         inputs = LiteralMap.from_flyte_idl(request.inputs) if request.inputs else None
         agent = AgentRegistry.get_agent(template.type, template.task_type_version)
+        task_execution_metadata = TaskExecutionMetadata.from_flyte_idl(request.task_execution_metadata)
 
         logger.info(f"{agent.name} start creating the job")
-        resource_mata = await mirror_async_methods(agent.create, task_template=template, inputs=inputs)
+        resource_mata = await mirror_async_methods(
+            agent.create,
+            task_template=template,
+            inputs=inputs,
+            output_prefix=request.output_prefix,
+            task_execution_metadata=task_execution_metadata,
+        )
         return CreateTaskResponse(resource_meta=resource_mata.encode())
 
     @record_agent_metrics
@@ -147,7 +154,8 @@ class AsyncAgentService(AsyncAgentServiceServicer):
         else:
             agent = AgentRegistry.get_agent(request.task_type)
         logger.info(f"{agent.name} start deleting the job")
-        return await mirror_async_methods(agent.delete, resource_meta=agent.metadata_type.decode(request.resource_meta))
+        await mirror_async_methods(agent.delete, resource_meta=agent.metadata_type.decode(request.resource_meta))
+        return DeleteTaskResponse()
 
 
 class SyncAgentService(SyncAgentServiceServicer):
@@ -156,6 +164,7 @@ class SyncAgentService(SyncAgentServiceServicer):
     ) -> typing.AsyncIterator[ExecuteTaskSyncResponse]:
         request = await request_iterator.__anext__()
         template = TaskTemplate.from_flyte_idl(request.header.template)
+        output_prefix = request.header.output_prefix
         task_type = template.type
         try:
             with request_latency.labels(task_type=task_type, operation=do_operation).time():
@@ -165,7 +174,9 @@ class SyncAgentService(SyncAgentServiceServicer):
 
                 request = await request_iterator.__anext__()
                 literal_map = LiteralMap.from_flyte_idl(request.inputs) if request.inputs else None
-                res = await mirror_async_methods(agent.do, task_template=template, inputs=literal_map)
+                res = await mirror_async_methods(
+                    agent.do, task_template=template, inputs=literal_map, output_prefix=output_prefix
+                )
 
                 if res.outputs is None:
                     outputs = None

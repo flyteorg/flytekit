@@ -1,3 +1,4 @@
+import warnings
 from typing import TYPE_CHECKING, List, Optional, Union
 
 from flytekit import lazy_module
@@ -22,6 +23,10 @@ class SourceCodeRenderer:
 
     def __init__(self, title: str = "Source Code"):
         self._title = title
+        msg = (
+            "flytekitplugins.deck.SourceCodeRenderer is deprecated. Please use flytekit.deck.SourceCodeRenderer instead"
+        )
+        warnings.warn(msg, FutureWarning)
 
     def to_html(self, source_code: str) -> str:
         """
@@ -68,6 +73,10 @@ class MarkdownRenderer:
     basic use case.  It initializes an instance of Markdown, loads the
     necessary extensions and runs the parser on the given text.
     """
+
+    def __init__(self):
+        msg = "flytekitplugins.deck.MarkdownRenderer is deprecated. Please use flytekit.deck.MarkdownRenderer instead"
+        warnings.warn(msg, FutureWarning)
 
     def to_html(self, text: str) -> str:
         return markdown.markdown(text)

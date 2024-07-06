@@ -1,6 +1,6 @@
 import os
 import subprocess
-import tarfile as _tarfile
+import tarfile
 from abc import ABC, abstractmethod
 from fnmatch import fnmatch
 from pathlib import Path
@@ -11,7 +11,7 @@ from docker.utils.build import PatternMatcher
 
 from flytekit.loggers import logger
 
-STANDARD_IGNORE_PATTERNS = ["*.pyc", ".cache", ".cache/*", "__pycache__", "**/__pycache__"]
+STANDARD_IGNORE_PATTERNS = ["*.pyc", ".cache", ".cache/*", "__pycache__/*", "**/__pycache__/*"]
 
 
 class Ignore(ABC):
@@ -25,7 +25,7 @@ class Ignore(ABC):
             path = os.path.relpath(path, self.root)
         return self._is_ignored(path)
 
-    def tar_filter(self, tarinfo: _tarfile.TarInfo) -> Optional[_tarfile.TarInfo]:
+    def tar_filter(self, tarinfo: tarfile.TarInfo) -> Optional[tarfile.TarInfo]:
         if self.is_ignored(tarinfo.name):
             return None
         return tarinfo
@@ -79,7 +79,29 @@ class DockerIgnore(Ignore):
         if os.path.isfile(dockerignore):
             with open(dockerignore, "r") as f:
                 patterns = [l.strip() for l in f.readlines() if l and not l.startswith("#")]
-        logger.info(f"No .dockerignore found in {self.root}, not applying any filters")
+        else:
+            logger.info(f"No .dockerignore found in {self.root}, not applying any filters")
+        return PatternMatcher(patterns)
+
+    def _is_ignored(self, path: str) -> bool:
+        return self.pm.matches(path)
+
+
+class FlyteIgnore(Ignore):
+    """Uses a .flyteignore file to determine ignored files."""
+
+    def __init__(self, root: Path):
+        super().__init__(root)
+        self.pm = self._parse()
+
+    def _parse(self) -> PatternMatcher:
+        patterns = []
+        flyteignore = os.path.join(self.root, ".flyteignore")
+        if os.path.isfile(flyteignore):
+            with open(flyteignore, "r") as f:
+                patterns = [l.strip() for l in f.readlines() if l and not l.startswith("#")]
+        else:
+            logger.info(f"No .flyteignore found in {self.root}, not applying any filters")
         return PatternMatcher(patterns)
 
     def _is_ignored(self, path: str) -> bool:

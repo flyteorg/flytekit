@@ -8,14 +8,15 @@ from collections import OrderedDict
 from typing import Any, Dict, Generator, List, Optional, Tuple, Type, TypeVar, Union, cast
 
 from flyteidl.core import artifact_id_pb2 as art_id
-from typing_extensions import get_args, get_origin, get_type_hints
+from typing_extensions import get_args, get_type_hints
 
 from flytekit.core import context_manager
 from flytekit.core.artifact import Artifact, ArtifactIDSpecification, ArtifactQuery
 from flytekit.core.docstring import Docstring
-from flytekit.core.type_engine import TypeEngine
+from flytekit.core.sentinel import DYNAMIC_INPUT_BINDING
+from flytekit.core.type_engine import TypeEngine, UnionTransformer
 from flytekit.exceptions.user import FlyteValidationException
-from flytekit.loggers import logger
+from flytekit.loggers import developer_logger, logger
 from flytekit.models import interface as _interface_models
 from flytekit.models.literals import Literal, Scalar, Void
 
@@ -24,7 +25,7 @@ T = typing.TypeVar("T")
 
 def repr_kv(k: str, v: Union[Type, Tuple[Type, Any]]) -> str:
     if isinstance(v, tuple):
-        if v[1]:
+        if v[1] is not None:
             return f"{k}: {v[0]}={v[1]}"
         return f"{k}: {v[0]}"
     return f"{k}: {v}"
@@ -69,6 +70,8 @@ class Interface(object):
         self._inputs: Union[Dict[str, Tuple[Type, Any]], Dict[str, Type]] = {}  # type: ignore
         if inputs:
             for k, v in inputs.items():
+                if not k.isidentifier():
+                    raise ValueError(f"Input name must be valid Python identifier: {k!r}")
                 if type(v) is tuple and len(cast(Tuple, v)) > 1:
                     self._inputs[k] = v  # type: ignore
                 else:
@@ -108,8 +111,7 @@ class Interface(object):
                     where runs_before is manually called.
                     """
 
-                def __rshift__(self, *args, **kwargs):
-                    ...  # See runs_before
+                def __rshift__(self, *args, **kwargs): ...  # See runs_before
 
             self._output_tuple_class = Output
         self._docstring = docstring
@@ -217,15 +219,24 @@ def transform_inputs_to_parameters(
     inputs_with_def = interface.inputs_with_defaults
     for k, v in inputs_vars.items():
         val, _default = inputs_with_def[k]
-        if _default is None and get_origin(val) is typing.Union and type(None) in get_args(val):
+        if _default is None and UnionTransformer.is_optional_type(val):
             literal = Literal(scalar=Scalar(none_type=Void()))
             params[k] = _interface_models.Parameter(var=v, default=literal, required=False)
         else:
             if isinstance(_default, ArtifactQuery):
                 params[k] = _interface_models.Parameter(var=v, required=False, artifact_query=_default.to_flyte_idl())
             elif isinstance(_default, Artifact):
-                artifact_id = _default.concrete_artifact_id  # may raise
-                params[k] = _interface_models.Parameter(var=v, required=False, artifact_id=artifact_id)
+                if not _default.version:
+                    # If the artifact is not versioned, assume it's meant to be a query.
+                    q = _default.query()
+                    if q.bound:
+                        params[k] = _interface_models.Parameter(var=v, required=False, artifact_query=q.to_flyte_idl())
+                    else:
+                        raise FlyteValidationException(f"Cannot use default query with artifact {_default.name}")
+                else:
+                    # If it is versioned, assumed it's intentionally hard-coded
+                    artifact_id = _default.concrete_artifact_id  # may raise
+                    params[k] = _interface_models.Parameter(var=v, required=False, artifact_id=artifact_id)
             else:
                 required = _default is None
                 default_lv = None
@@ -237,6 +248,7 @@ def transform_inputs_to_parameters(
 
 def transform_interface_to_typed_interface(
     interface: typing.Optional[Interface],
+    allow_partial_artifact_id_binding: bool = False,
 ) -> typing.Optional[_interface_models.TypedInterface]:
     """
     Transform the given simple python native interface to FlyteIDL's interface
@@ -253,11 +265,15 @@ def transform_interface_to_typed_interface(
 
     inputs_map = transform_variable_map(interface.inputs, input_descriptions)
     outputs_map = transform_variable_map(interface.outputs, output_descriptions)
-    verify_outputs_artifact_bindings(interface.inputs, outputs_map)
+    verify_outputs_artifact_bindings(interface.inputs, outputs_map, allow_partial_artifact_id_binding)
     return _interface_models.TypedInterface(inputs_map, outputs_map)
 
 
-def verify_outputs_artifact_bindings(inputs: Dict[str, type], outputs: Dict[str, _interface_models.Variable]):
+def verify_outputs_artifact_bindings(
+    inputs: Dict[str, type],
+    outputs: Dict[str, _interface_models.Variable],
+    allow_partial_artifact_id_binding: bool = False,
+):
     # collect Artifacts
     for k, v in outputs.items():
         # Iterate through output partition values if any and verify that if they're bound to an input, that that input
@@ -268,6 +284,13 @@ def verify_outputs_artifact_bindings(inputs: Dict[str, type], outputs: Dict[str,
             and v.artifact_partial_id.partitions.value
         ):
             for pk, pv in v.artifact_partial_id.partitions.value.items():
+                if pv == DYNAMIC_INPUT_BINDING:
+                    if not allow_partial_artifact_id_binding:
+                        raise FlyteValidationException(
+                            f"Binding a partition {pk}'s value dynamically is not allowed for workflows"
+                        )
+                    else:
+                        continue
                 if pv.HasField("input_binding"):
                     input_name = pv.input_binding.var
                     if input_name not in inputs:
@@ -275,6 +298,14 @@ def verify_outputs_artifact_bindings(inputs: Dict[str, type], outputs: Dict[str,
                             f"Output partition {k} is bound to input {input_name} which does not exist in the interface"
                         )
             if v.artifact_partial_id.HasField("time_partition"):
+                if (
+                    v.artifact_partial_id.time_partition.value == DYNAMIC_INPUT_BINDING
+                    and not allow_partial_artifact_id_binding
+                ):
+                    raise FlyteValidationException(
+                        "Binding a time partition's value dynamically is not allowed for workflows"
+                    )
+
                 if v.artifact_partial_id.time_partition.value.HasField("input_binding"):
                     input_name = v.artifact_partial_id.time_partition.value.input_binding.var
                     if input_name not in inputs:
@@ -481,7 +512,7 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple, None]) -> Di
 
     else:
         # Handle all other single return types
-        logger.debug(f"Task returns unnamed native tuple {return_annotation}")
+        developer_logger.debug(f"Task returns unnamed native tuple {return_annotation}")
         return {default_output_name(): cast(Type, return_annotation)}
 
 
