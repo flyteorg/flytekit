@@ -23,7 +23,7 @@ class TypeAnnotation:
         :rtype: flyteidl.core.types_pb2.TypeAnnotation
         """
         if self._annotations is not None:
-            annotations = _json_format.Parse(json.dumps(self.annotations), flyteidl.wkt.Struct())
+            annotations = _json_format.Parse(json.dumps(self.annotations), flyteidl.protobuf.Struct())
         else:
             annotations = None
 

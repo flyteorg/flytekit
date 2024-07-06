@@ -145,7 +145,9 @@ class ExecutionMetadata(_common_models.FlyteIdlEntity):
         )
 
         if self.scheduled_at is not None:
-            p.scheduled_at = flyteidl.wkt.Timestamp(seconds=self.scheduled_at.seconds, nanos=self.scheduled_at.nanos)
+            p.scheduled_at = flyteidl.protobuf.Timestamp(
+                seconds=self.scheduled_at.seconds, nanos=self.scheduled_at.nanos
+            )
         return p
 
     @classmethod

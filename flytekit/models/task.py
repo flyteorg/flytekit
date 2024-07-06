@@ -487,7 +487,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
             type=self.type,
             metadata=self.metadata.to_flyte_idl(),
             interface=self.interface.to_flyte_idl(),
-            custom=_json_format.Parse(_json.dumps(self.custom), flyteidl.wkt.Struct()) if self.custom else None,
+            custom=_json_format.Parse(_json.dumps(self.custom), flyteidl.protobuf.Struct()) if self.custom else None,
             task_type_version=self.task_type_version,
             security_context=self.security_context.to_flyte_idl() if self.security_context else None,
             extended_resources=self.extended_resources,

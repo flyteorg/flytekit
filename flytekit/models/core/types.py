@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import typing
 
+import flyteidl_rust as flyteidl
 from flyteidl.core import types_pb2 as _types_pb2
 
 from flytekit.models import common as _common
@@ -35,8 +36,9 @@ class BlobType(_common.FlyteIdlEntity):
     """
 
     class BlobDimensionality(object):
-        SINGLE = _types_pb2.BlobType.SINGLE
-        MULTIPART = _types_pb2.BlobType.MULTIPART
+        breakpoint()
+        SINGLE = int(flyteidl.blob_type.BlobDimensionality.Single)
+        MULTIPART = int(flyteidl.blob_type.BlobDimensionality.Multipart)
 
     def __init__(self, format, dimensionality):
         """
@@ -66,7 +68,7 @@ class BlobType(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.types_pb2.BlobType
         """
-        return _types_pb2.BlobType(format=self.format, dimensionality=self.dimensionality)
+        return flyteidl.core.BlobType(format=self.format, dimensionality=self.dimensionality)
 
     @classmethod
     def from_flyte_idl(cls, proto):

@@ -25,12 +25,12 @@ class SimpleType(object):
 class SchemaType(_common.FlyteIdlEntity):
     class SchemaColumn(_common.FlyteIdlEntity):
         class SchemaColumnType(object):
-            INTEGER = _types_pb2.SchemaType.SchemaColumn.INTEGER
-            FLOAT = _types_pb2.SchemaType.SchemaColumn.FLOAT
-            STRING = _types_pb2.SchemaType.SchemaColumn.STRING
-            DATETIME = _types_pb2.SchemaType.SchemaColumn.DATETIME
-            DURATION = _types_pb2.SchemaType.SchemaColumn.DURATION
-            BOOLEAN = _types_pb2.SchemaType.SchemaColumn.BOOLEAN
+            INTEGER = int(flyteidl.schema_column.SchemaColumnType.Integer)
+            FLOAT = int(flyteidl.schema_column.SchemaColumnType.Float)
+            STRING = int(flyteidl.schema_column.SchemaColumnType.String)
+            DATETIME = int(flyteidl.schema_column.SchemaColumnType.Datetime)
+            DURATION = int(flyteidl.schema_column.SchemaColumnType.Duration)
+            BOOLEAN = int(flyteidl.schema_column.SchemaColumnType.Boolean)
 
         def __init__(self, name, type):
             """
@@ -60,7 +60,7 @@ class SchemaType(_common.FlyteIdlEntity):
             """
             :rtype: flyteidl.core.types_pb2.SchemaType.SchemaColumn
             """
-            return _types_pb2.SchemaType.SchemaColumn(name=self.name, type=self.type)
+            return flyteidl.schema_type.SchemaColumn(name=self.name, type=self.type)
 
         @classmethod
         def from_flyte_idl(cls, proto):
@@ -88,7 +88,7 @@ class SchemaType(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.types_pb2.SchemaType
         """
-        return _types_pb2.SchemaType(columns=[c.to_flyte_idl() for c in self.columns])
+        return flyteidl.core.SchemaType(columns=[c.to_flyte_idl() for c in self.columns])
 
     @classmethod
     def from_flyte_idl(cls, proto):
@@ -176,15 +176,15 @@ class StructuredDatasetType(_common.FlyteIdlEntity):
             """
             return self._literal_type
 
-        def to_flyte_idl(self) -> _types_pb2.StructuredDatasetType.DatasetColumn:
-            return _types_pb2.StructuredDatasetType.DatasetColumn(
+        def to_flyte_idl(self) -> flyteidl.structured_dataset_type.DatasetColumn:
+            return flyteidl.structured_dataset_type.DatasetColumn(
                 name=self.name, literal_type=self.literal_type.to_flyte_idl()
             )
 
         @classmethod
         def from_flyte_idl(
-            cls, proto: _types_pb2.StructuredDatasetType.DatasetColumn
-        ) -> _types_pb2.StructuredDatasetType.DatasetColumn:
+            cls, proto: flyteidl.structured_dataset_type.DatasetColumn
+        ) -> flyteidl.structured_dataset_type.DatasetColumn:
             return cls(name=proto.name, literal_type=LiteralType.from_flyte_idl(proto.literal_type))
 
     def __init__(
@@ -382,23 +382,26 @@ class LiteralType(_common.FlyteIdlEntity):
         :rtype: flyteidl.core.types_pb2.LiteralType
         """
 
-        # if self.metadata is not None:
-        #     metadata = _json_format.Parse(json.dumps(self.metadata), flyteidl.wkt.Struct())
-        # else:
-        #     metadata = None
-
+        type = None
+        if self.simple:
+            type = flyteidl.literal_type.Type.Simple(int(str(self.simple)))
+        elif self.schema is not None:
+            type = flyteidl.literal_type.Type.SchemaType(self.schema.to_flyte_idl())
+        elif self.collection_type is not None:
+            type = flyteidl.literal_type.Type.CollectionType(self.collection_type.to_flyte_idl())
+        elif self.map_value_type is not None:
+            type = flyteidl.literal_type.Type.MapValueType(self.map_value_type.to_flyte_idl())
+        elif self.blob is not None:
+            breakpoint()
+            type = flyteidl.literal_type.Type.Blob(self.blob.to_flyte_idl())
+        elif self.enum_type is not None:
+            type = flyteidl.literal_type.Type.EnumType(self.enum_type.to_flyte_idl())
+        elif self.union_type is not None:
+            type = flyteidl.literal_type.Type.UnionType(self.union_type.to_flyte_idl())
+        elif self.structured_dataset_type is not None:
+            type = flyteidl.literal_type.Type.StructuredDatasetType(self.structured_dataset_type.to_flyte_idl())
         t = flyteidl.core.LiteralType(
-            type=flyteidl.literal_type.Type.Simple(int(str(self.simple))) if self.simple else None,
-            # simple=self.simple if self.simple is not None else None,
-            # schema=self.schema.to_flyte_idl() if self.schema is not None else None,
-            # collection_type=self.collection_type.to_flyte_idl() if self.collection_type is not None else None,
-            # map_value_type=self.map_value_type.to_flyte_idl() if self.map_value_type is not None else None,
-            # blob=self.blob.to_flyte_idl() if self.blob is not None else None,
-            # enum_type=self.enum_type.to_flyte_idl() if self.enum_type else None,
-            # union_type=self.union_type.to_flyte_idl() if self.union_type else None,
-            # structured_dataset_type=self.structured_dataset_type.to_flyte_idl()
-            # if self.structured_dataset_type
-            # else None,
+            type=type,
             metadata=self.metadata,
             annotation=self.annotation.to_flyte_idl() if self.annotation else None,
             structure=self.structure.to_flyte_idl() if self.structure else None,
@@ -411,26 +414,35 @@ class LiteralType(_common.FlyteIdlEntity):
         :param flyteidl.core.types_pb2.LiteralType proto:
         :rtype: LiteralType
         """
+        breakpoint()
         collection_type = None
         map_value_type = None
-        if isinstance(proto, flyteidl.literal_type.Type.CollectionType):
-            collection_type = cls.from_flyte_idl(proto.collection_type)
-        if isinstance(proto, flyteidl.literal_type.Type.MapValueType):
-            map_value_type = cls.from_flyte_idl(proto.map_value_type)
+        if isinstance(proto.type, flyteidl.literal_type.Type.CollectionType):
+            collection_type = cls.from_flyte_idl(proto.type[0])
+        if isinstance(proto.type, flyteidl.literal_type.Type.MapValueType):
+            map_value_type = cls.from_flyte_idl(proto.type[0])
         return cls(
-            simple=proto.type if isinstance(proto.type, flyteidl.literal_type.Type.Simple) else None,
-            # schema=SchemaType.from_flyte_idl(proto.schema) if proto.HasField("schema") else None,
+            simple=proto.type[0] if isinstance(proto.type, flyteidl.literal_type.Type.Simple) else None,
+            schema=SchemaType.from_flyte_idl(proto.type[0])
+            if isinstance(proto.type, flyteidl.literal_type.Type.Schema)
+            else None,
             collection_type=collection_type or None,
             map_value_type=map_value_type or None,
-            # blob=_core_types.BlobType.from_flyte_idl(proto.blob) if proto.HasField("blob") else None,
-            # enum_type=_core_types.EnumType.from_flyte_idl(proto.enum_type) if proto.HasField("enum_type") else None,
-            # union_type=UnionType.from_flyte_idl(proto.union_type) if proto.HasField("union_type") else None,
-            # structured_dataset_type=StructuredDatasetType.from_flyte_idl(proto.structured_dataset_type)
-            # if proto.HasField("structured_dataset_type")
-            # else None,
+            blob=_core_types.BlobType.from_flyte_idl(proto.type[0])
+            if isinstance(proto.type, flyteidl.literal_type.Type.Blob)
+            else None,
+            enum_type=_core_types.EnumType.from_flyte_idl(proto.type)[0]
+            if isinstance(proto.type, flyteidl.literal_type.Type.EnumType)
+            else None,
+            union_type=UnionType.from_flyte_idl(proto.type[0])
+            if isinstance(proto.type, flyteidl.literal_type.Type.UnionType)
+            else None,
+            structured_dataset_type=StructuredDatasetType.from_flyte_idl(proto.type[0])
+            if isinstance(proto.type, flyteidl.literal_type.Type.StructuredDatasetType)
+            else None,
             metadata=proto.metadata if proto.metadata else None,  # _json_format.MessageToDict(proto.metadata) or None,
-            structure=TypeStructure.from_flyte_idl(proto.structure) if proto.structure else None,
-            annotation=TypeAnnotationModel.from_flyte_idl(proto.annotation) if proto.annotation else None,
+            structure=TypeStructure.from_flyte_idl(proto.structure[0]) if proto.structure else None,
+            annotation=TypeAnnotationModel.from_flyte_idl(proto.annotation[0]) if proto.annotation else None,
         )
 
 
@@ -518,14 +530,14 @@ class Error(_common.FlyteIdlEntity):
     def failed_node_id(self) -> str:
         return self._failed_node_id
 
-    def to_flyte_idl(self) -> _types_pb2.Error:
-        return _types_pb2.Error(
+    def to_flyte_idl(self) -> flyteidl.core.Error:
+        return flyteidl.core.Error(
             message=self._message,
             failed_node_id=self._failed_node_id,
         )
 
     @classmethod
-    def from_flyte_idl(cls, pb2_object: _types_pb2.Error) -> "Error":
+    def from_flyte_idl(cls, pb2_object: flyteidl.core.Error) -> "Error":
         """
         :param flyteidl.core.types.Error pb2_object:
         :rtype: Error
