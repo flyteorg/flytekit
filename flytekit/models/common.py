@@ -150,7 +150,7 @@ class NamedEntityIdentifier(FlyteIdlEntity):
         """
 
         # We use the kwarg constructor of the protobuf and setting name=None is equivalent to not setting it at all
-        return _common_pb2.NamedEntityIdentifier(project=self.project, domain=self.domain, name=self.name)
+        return flytedidl.admin.NamedEntityIdentifier(project=self.project, domain=self.domain, name=self.name)
 
     @classmethod
     def from_flyte_idl(cls, idl_object):

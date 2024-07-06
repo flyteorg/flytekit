@@ -11,7 +11,6 @@ from flyteidl.admin import project_domain_attributes_pb2 as _project_domain_attr
 from flyteidl.admin import project_pb2 as _project_pb2
 from flyteidl.admin import task_execution_pb2 as _task_execution_pb2
 from flyteidl.admin import workflow_attributes_pb2 as _workflow_attributes_pb2
-from flyteidl.admin import workflow_pb2 as _workflow_pb2
 from flyteidl.service import dataproxy_pb2 as _data_proxy_pb2
 from google.protobuf.duration_pb2 import Duration
 
@@ -201,7 +200,7 @@ class SynchronousFlyteClient(flyteidl.RawSynchronousFlyteClient):
         :raises grpc.RpcError:
         """
         super(SynchronousFlyteClient, self).create_workflow(
-            _workflow_pb2.WorkflowCreateRequest(
+            flyteidl.admin.WorkflowCreateRequest(
                 id=workflow_identifier.to_flyte_idl(), spec=workflow_spec.to_flyte_idl()
             )
         )
@@ -233,8 +232,8 @@ class SynchronousFlyteClient(flyteidl.RawSynchronousFlyteClient):
         :raises: TODO
         :rtype: list[flytekit.models.common.NamedEntityIdentifier], Text
         """
-        identifier_list = super(SynchronousFlyteClient, self).list_workflow_ids_paginated(
-            _common_pb2.NamedEntityIdentifierListRequest(
+        identifier_list = super(SynchronousFlyteClient, self).list_workflow_ids(
+            flyteidl.admin.NamedEntityIdentifierListRequest(
                 project=project,
                 domain=domain,
                 limit=limit,
@@ -275,8 +274,8 @@ class SynchronousFlyteClient(flyteidl.RawSynchronousFlyteClient):
         :raises: TODO
         :rtype: list[flytekit.models.admin.workflow.Workflow], Text
         """
-        wf_list = super(SynchronousFlyteClient, self).list_workflows_paginated(
-            resource_list_request=_common_pb2.ResourceListRequest(
+        wf_list = super(SynchronousFlyteClient, self).list_workflows(
+            resource_list_request=flyteidl.admin.ResourceListRequest(
                 id=identifier.to_flyte_idl(),
                 limit=limit,
                 token=token,
@@ -286,7 +285,7 @@ class SynchronousFlyteClient(flyteidl.RawSynchronousFlyteClient):
         )
         # TODO: tmp workaround
         for pb in wf_list.workflows:
-            pb.id.resource_type = _identifier.ResourceType.WORKFLOW
+            pb.id.resource_type = flyteidl.core.ResourceType.Workflow
         return (
             [_workflow.Workflow.from_flyte_idl(wf_pb2) for wf_pb2 in wf_list.workflows],
             str(wf_list.token),
@@ -301,7 +300,7 @@ class SynchronousFlyteClient(flyteidl.RawSynchronousFlyteClient):
         :rtype: flytekit.models.admin.workflow.Workflow
         """
         return _workflow.Workflow.from_flyte_idl(
-            super(SynchronousFlyteClient, self).get_workflow(_common_pb2.ObjectGetRequest(id=id.to_flyte_idl()))
+            super(SynchronousFlyteClient, self).get_workflow(flyteidl.admin.ObjectGetRequest(id=id.to_flyte_idl()))
         )
 
     ####################################################################################################################
