@@ -144,7 +144,9 @@ class ExecutionMetadata(_common_models.FlyteIdlEntity):
         )
 
         if self.scheduled_at is not None:
-            p.scheduled_at = flyteidl.wkt.Timestamp(seconds=self.scheduled_at.seconds, nanos=self.scheduled_at.nanos)
+            p.scheduled_at = flyteidl.protobuf.Timestamp(
+                seconds=self.scheduled_at.seconds, nanos=self.scheduled_at.nanos
+            )
         return p
 
     @classmethod
@@ -224,7 +226,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         self._envs = envs
         self._tags = tags
         self._cluster_assignment = cluster_assignment
-        breakpoint()
+
         self._execution_cluster_label = execution_cluster_label
 
     @property

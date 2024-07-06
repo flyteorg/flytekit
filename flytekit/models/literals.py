@@ -151,13 +151,8 @@ class Primitive(_common.FlyteIdlEntity):
             value = flyteidl.primitive.Value.FloatValue(self.float_value)
         elif self.boolean:
             value = flyteidl.primitive.Value.Boolean(self.string_value)
-        primitive = flyteidl.core.Primitive(
-            value
-            # integer=self.integer,
-            # float_value=self.float_value,
-            # string_value=self.string_value,
-            # boolean=self.boolean,
-        )
+
+        primitive = flyteidl.core.Primitive(value)
         if self.datetime is not None:
             # Convert to UTC and remove timezone so protobuf behaves.
             primitive.datetime.FromDatetime(self.datetime.astimezone(_timezone.utc).replace(tzinfo=None))
@@ -208,7 +203,7 @@ class Binary(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.literals_pb2.Binary
         """
-        return _literals_pb2.Binary(value=self.value, tag=self.tag)
+        return flyteidl.core.Binary(value=self.value, tag=self.tag)
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -241,7 +236,7 @@ class BlobMetadata(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.literals_pb2.BlobMetadata
         """
-        return _literals_pb2.BlobMetadata(type=self.type.to_flyte_idl())
+        return flyteidl.core.BlobMetadata(type=self.type.to_flyte_idl())
 
     @classmethod
     def from_flyte_idl(cls, proto):
@@ -282,7 +277,7 @@ class Blob(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.literals_pb2.Blob
         """
-        return _literals_pb2.Blob(metadata=self.metadata.to_flyte_idl(), uri=self.uri)
+        return flyteidl.core.Blob(metadata=self.metadata.to_flyte_idl(), uri=self.uri)
 
     @classmethod
     def from_flyte_idl(cls, proto):
@@ -298,7 +293,7 @@ class Void(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.literals_pb2.Void
         """
-        return _literals_pb2.Void()
+        return flyteidl.core.Void()
 
     @classmethod
     def from_flyte_idl(cls, proto):
@@ -551,7 +546,7 @@ class Schema(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.literals_pb2.Schema
         """
-        return _literals_pb2.Schema(uri=self.uri, type=self.type.to_flyte_idl())
+        return flyteidl.core.Schema(uri=self.uri, type=self.type.to_flyte_idl())
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -591,7 +586,7 @@ class Union(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.literals_pb2.Union
         """
-        return _literals_pb2.Union(value=self.value.to_flyte_idl(), type=self._type.to_flyte_idl())
+        return flyteidl.core.Union(value=self.value.to_flyte_idl(), type=self._type.to_flyte_idl())
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -612,15 +607,15 @@ class StructuredDatasetMetadata(_common.FlyteIdlEntity):
     def structured_dataset_type(self) -> StructuredDatasetType:
         return self._structured_dataset_type
 
-    def to_flyte_idl(self) -> _literals_pb2.StructuredDatasetMetadata:
-        return _literals_pb2.StructuredDatasetMetadata(
+    def to_flyte_idl(self) -> flyteidl.core.StructuredDatasetMetadata:
+        return flyteidl.core.StructuredDatasetMetadata(
             structured_dataset_type=self.structured_dataset_type.to_flyte_idl()
             if self._structured_dataset_type
             else None,
         )
 
     @classmethod
-    def from_flyte_idl(cls, pb2_object: _literals_pb2.StructuredDatasetMetadata) -> "StructuredDatasetMetadata":
+    def from_flyte_idl(cls, pb2_object: flyteidl.core.StructuredDatasetMetadata) -> "StructuredDatasetMetadata":
         return cls(
             structured_dataset_type=StructuredDatasetType.from_flyte_idl(pb2_object.structured_dataset_type),
         )
@@ -642,13 +637,13 @@ class StructuredDataset(_common.FlyteIdlEntity):
     def metadata(self) -> Optional[StructuredDatasetMetadata]:
         return self._metadata
 
-    def to_flyte_idl(self) -> _literals_pb2.StructuredDataset:
-        return _literals_pb2.StructuredDataset(
+    def to_flyte_idl(self) -> flyteidl.core.StructuredDataset:
+        return flyteidl.core.StructuredDataset(
             uri=self.uri, metadata=self.metadata.to_flyte_idl() if self.metadata else None
         )
 
     @classmethod
-    def from_flyte_idl(cls, pb2_object: _literals_pb2.StructuredDataset) -> "StructuredDataset":
+    def from_flyte_idl(cls, pb2_object: flyteidl.core.StructuredDataset) -> "StructuredDataset":
         return cls(uri=pb2_object.uri, metadata=StructuredDatasetMetadata.from_flyte_idl(pb2_object.metadata))
 
 
@@ -829,23 +824,27 @@ class Scalar(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.literals_pb2.Scalar
         """
-        return flyteidl.literal.Value.Scalar(
-            flyteidl.core.Scalar(
-                flyteidl.scalar.Value.Primitive(
-                    self.primitive.to_flyte_idl() if self.primitive is not None else None,
-                    # TODO:
-                    # primitive=self.primitive.to_flyte_idl() if self.primitive is not None else None,
-                    # blob=self.blob.to_flyte_idl() if self.blob is not None else None,
-                    # binary=self.binary.to_flyte_idl() if self.binary is not None else None,
-                    # schema=self.schema.to_flyte_idl() if self.schema is not None else None,
-                    # union=self.union.to_flyte_idl() if self.union is not None else None,
-                    # none_type=self.none_type.to_flyte_idl() if self.none_type is not None else None,
-                    # error=self.error.to_flyte_idl() if self.error is not None else None,
-                    # generic=self.generic,
-                    # structured_dataset=self.structured_dataset.to_flyte_idl() if self.structured_dataset is not None else None,
-                )
-            )
-        )
+
+        value = None
+        if self.primitive is not None:
+            value = flyteidl.scalar.Value.Primitive(self.primitive.to_flyte_idl())
+        elif self.blob is not None:
+            value = flyteidl.scalar.Value.Blob(self.blob.to_flyte_idl())
+        elif self.binary is not None:
+            value = flyteidl.scalar.Value.Binary(self.binary.to_flyte_idl())
+        elif self.schema is not None:
+            value = flyteidl.scalar.Value.Schema(self.schema.to_flyte_idl())
+        elif self.union is not None:
+            value = flyteidl.scalar.Value.Union(self.union.to_flyte_idl())
+        elif self.none_type is not None:
+            value = flyteidl.scalar.Value.NoneType(self.none_type.to_flyte_idl())
+        elif self.error is not None:
+            value = flyteidl.scalar.Value.Error(self.error.to_flyte_idl())
+        elif self.generic is not None:
+            value = flyteidl.scalar.Value.Generic(self.generic.to_flyte_idl())
+        elif self.structured_dataset is not None:
+            value = flyteidl.scalar.Value.StructuredDataset(self.structured_dataset.to_flyte_idl())
+        return flyteidl.literal.Value.Scalar(flyteidl.core.Scalar(value))
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -855,16 +854,28 @@ class Scalar(_common.FlyteIdlEntity):
         """
         return cls(
             # TODO:
-            primitive=Primitive.from_flyte_idl(pb2_object.primitive) if pb2_object.primitive else None,
-            blob=Blob.from_flyte_idl(pb2_object.blob) if pb2_object.HasField("blob") else None,
-            binary=Binary.from_flyte_idl(pb2_object.binary) if pb2_object.HasField("binary") else None,
-            schema=Schema.from_flyte_idl(pb2_object.schema) if pb2_object.HasField("schema") else None,
-            union=Union.from_flyte_idl(pb2_object.union) if pb2_object.HasField("union") else None,
-            none_type=Void.from_flyte_idl(pb2_object.none_type) if pb2_object.HasField("none_type") else None,
-            error=pb2_object.error if pb2_object.HasField("error") else None,
-            generic=pb2_object.generic if pb2_object.HasField("generic") else None,
-            structured_dataset=StructuredDataset.from_flyte_idl(pb2_object.structured_dataset)
-            if pb2_object.HasField("structured_dataset")
+            primitive=Primitive.from_flyte_idl(pb2_object.value)
+            if isinstance(pb2_object.value, flyteidl.scalar.Value.Primitive)
+            else None,
+            blob=Blob.from_flyte_idl(pb2_object.value)
+            if isinstance(pb2_object.value, flyteidl.scalar.Value.Blob)
+            else None,
+            binary=Binary.from_flyte_idl(pb2_object.value)
+            if isinstance(pb2_object.value, flyteidl.scalar.Value.Binary)
+            else None,
+            schema=Schema.from_flyte_idl(pb2_object.value)
+            if isinstance(pb2_object.value, flyteidl.scalar.Value.Schema)
+            else None,
+            union=Union.from_flyte_idl(pb2_object.value)
+            if isinstance(pb2_object.value, flyteidl.scalar.Value.Union)
+            else None,
+            none_type=Void.from_flyte_idl(pb2_object.value)
+            if isinstance(pb2_object.value, flyteidl.scalar.Value.NoneType)
+            else None,
+            error=pb2_object.value if isinstance(pb2_object.value, flyteidl.scalar.Value.Error) else None,
+            generic=pb2_object.value if isinstance(pb2_object.value, flyteidl.scalar.Value.Generic) else None,
+            structured_dataset=StructuredDataset.from_flyte_idl(pb2_object.value)
+            if isinstance(pb2_object.value, flyteidl.scalar.Value.StructuredDataset)
             else None,
         )
 
