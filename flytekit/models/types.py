@@ -392,7 +392,6 @@ class LiteralType(_common.FlyteIdlEntity):
         elif self.map_value_type is not None:
             type = flyteidl.literal_type.Type.MapValueType(self.map_value_type.to_flyte_idl())
         elif self.blob is not None:
-            breakpoint()
             type = flyteidl.literal_type.Type.Blob(self.blob.to_flyte_idl())
         elif self.enum_type is not None:
             type = flyteidl.literal_type.Type.EnumType(self.enum_type.to_flyte_idl())
@@ -414,7 +413,7 @@ class LiteralType(_common.FlyteIdlEntity):
         :param flyteidl.core.types_pb2.LiteralType proto:
         :rtype: LiteralType
         """
-        breakpoint()
+
         collection_type = None
         map_value_type = None
         if isinstance(proto.type, flyteidl.literal_type.Type.CollectionType):

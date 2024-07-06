@@ -36,7 +36,6 @@ class BlobType(_common.FlyteIdlEntity):
     """
 
     class BlobDimensionality(object):
-        breakpoint()
         SINGLE = int(flyteidl.blob_type.BlobDimensionality.Single)
         MULTIPART = int(flyteidl.blob_type.BlobDimensionality.Multipart)
 
