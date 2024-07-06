@@ -96,7 +96,7 @@ norecursedirs = ["common", "workflows", "spark", "fsspec"]
 log_cli = true
 log_cli_level = 20
 markers = [
-    "sandbox_test: fake integration tests",           # unit tests that are really integration tests that run on a sandbox environment
+    "sandbox_test: fake integration tests", # unit tests that are really integration tests that run on a sandbox environment
     "serial: tests to avoid using with pytest-xdist",
     "hypothesis: tests that use they hypothesis library",
 ]
@@ -146,5 +146,5 @@ extend-exclude = [
 ]
 
 [tool.codespell]
-ignore-words-list = "ot,te,raison,fo,lits"
-skip = "./docs/build,./.git,*.txt"
+ignore-words-list="ot,te,raison,fo,lits"
+skip="./docs/build,./.git,*.txt"
