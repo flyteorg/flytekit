@@ -9,7 +9,6 @@ from dataclasses import dataclass, field, is_dataclass
 from typing import Dict, Generator, Optional, Type, Union
 
 from fsspec.utils import get_protocol
-from marshmallow import fields
 from mashumaro.mixins.json import DataClassJSONMixin
 from typing_extensions import Annotated, TypeAlias, get_args, get_origin
 

@@ -142,8 +142,8 @@ from dataclasses import dataclass, field
 from io import BytesIO
 from typing import Dict, List, Optional
 
-from mashumaro.codecs.json import JSONEncoder
-from mashumaro.codecs.json import JSONDecoder
+from mashumaro.codecs.json import JSONDecoder, JSONEncoder
+
 from flytekit.configuration import internal as _internal
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.configuration.file import ConfigEntry, ConfigFile, get_config_file, read_file_if_exists, set_if_exists
@@ -857,7 +857,6 @@ class SerializationSettings:
     def from_transport(s: str) -> SerializationSettings:
         compressed_val = base64.b64decode(s.encode("utf-8"))
         json_str = gzip.decompress(compressed_val).decode("utf-8")
-        
 
         decoder = JSONDecoder(SerializationSettings)
         return decoder.decode(json_str)

@@ -4,7 +4,6 @@ import shutil
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Type, Union
 
-
 from flytekit import PythonInstanceTask, lazy_module
 from flytekit.core.context_manager import FlyteContext
 from flytekit.extend import Interface

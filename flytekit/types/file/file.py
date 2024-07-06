@@ -5,9 +5,8 @@ import os
 import pathlib
 import typing
 from contextlib import contextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from urllib.parse import unquote
-
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError, get_underlying_type

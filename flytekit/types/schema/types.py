@@ -4,13 +4,12 @@ import datetime
 import os
 import typing
 from abc import abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Type
 
 import numpy as _np
-from marshmallow import fields
 from mashumaro.mixins.json import DataClassJSONMixin
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
