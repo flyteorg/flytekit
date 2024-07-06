@@ -957,11 +957,15 @@ class Literal(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.literals_pb2.Literal
         """
-        return flyteidl.core.Literal(
-            value=self.scalar.to_flyte_idl() if self.scalar is not None else None,
-            # scalar=self.scalar.to_flyte_idl() if self.scalar is not None else None,
-            # collection=self.collection.to_flyte_idl() if self.collection is not None else None,
-            # map=self.map.to_flyte_idl() if self.map is not None else None,
+        value = None
+        if self.scalar:
+            value = self.scalar.to_flyte_idl()
+        elif self.collection:
+            value = self.collection.to_flyte_idl()
+        elif self.map:
+            value = self.map.to_flyte_idl()
+        return flyteidl.collection.Literal(
+            value=value,
             hash=self.hash or "",
             metadata=self.metadata or {},
         )
