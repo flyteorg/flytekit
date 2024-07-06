@@ -2,6 +2,8 @@ import json
 from dataclasses import dataclass
 from typing import List, Optional
 
+from mashumaro.mixins.json import DataClassJSONMixin
+
 
 @dataclass
 class BaseDBTInput:
@@ -74,7 +76,7 @@ class BaseDBTInput:
 
 
 @dataclass
-class BaseDBTOutput(DataClassJsonMixin):
+class BaseDBTOutput(DataClassJSONMixin):
     """
     Base class for output of DBT task.
 

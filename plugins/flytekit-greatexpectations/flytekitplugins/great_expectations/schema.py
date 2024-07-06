@@ -4,6 +4,8 @@ import typing
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
+from mashumaro.mixins.json import DataClassJSONMixin
+
 from flytekit import FlyteContext, lazy_module
 from flytekit.extend import TypeEngine, TypeTransformer
 from flytekit.loggers import logger
@@ -19,7 +21,7 @@ ge = lazy_module("great_expectations")
 
 
 @dataclass
-class GreatExpectationsFlyteConfig:
+class GreatExpectationsFlyteConfig(DataClassJSONMixin):
     """
     Use this configuration to configure GreatExpectations Plugin.
 

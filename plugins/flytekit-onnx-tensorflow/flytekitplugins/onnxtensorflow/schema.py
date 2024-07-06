@@ -46,7 +46,7 @@ class TensorFlow2ONNXConfig:
 
 
 @dataclass
-class TensorFlow2ONNX(DataClassJsonMixin):
+class TensorFlow2ONNX:
     model: tf.keras.Model = field(default=None)
 
 
