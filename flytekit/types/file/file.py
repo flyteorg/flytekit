@@ -8,9 +8,6 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from urllib.parse import unquote
 
-from dataclasses_json import config
-from marshmallow import fields
-from mashumaro.mixins.json import DataClassJSONMixin
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError, get_underlying_type
@@ -29,8 +26,8 @@ T = typing.TypeVar("T")
 
 
 @dataclass
-class FlyteFile(os.PathLike, typing.Generic[T], DataClassJSONMixin):
-    path: typing.Union[str, os.PathLike] = field(default=None, metadata=config(mm_field=fields.String()))  # type: ignore
+class FlyteFile(os.PathLike, typing.Generic[T]):
+    path: typing.Union[str, os.PathLike]
     """
     Since there is no native Python implementation of files and directories for the Flyte Blob type, (like how int
     exists for Flyte's Integer type) we need to create one so that users can express that their tasks take

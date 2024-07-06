@@ -2,11 +2,10 @@ import json
 from dataclasses import dataclass
 from typing import List, Optional
 
-from dataclasses_json import DataClassJsonMixin
 
 
 @dataclass
-class BaseDBTInput(DataClassJsonMixin):
+class BaseDBTInput:
     """
     Base class for DBT Task Input.
 

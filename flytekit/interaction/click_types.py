@@ -5,11 +5,10 @@ import logging
 import os
 import pathlib
 import typing
-from typing import cast
 
 import rich_click as click
 import yaml
-from dataclasses_json import DataClassJsonMixin, dataclass_json
+from mashumaro.codecs.json import JSONDecoder
 from pytimeparse import parse
 
 from flytekit import BlobType, FlyteContext, Literal, LiteralType, StructuredDataset
@@ -281,11 +280,8 @@ class JsonParamType(click.ParamType):
         if is_pydantic_basemodel(self._python_type):
             return self._python_type.parse_raw(json.dumps(parsed_value))  # type: ignore
 
-        # Ensure that the python type has `from_json` function
-        if not hasattr(self._python_type, "from_json"):
-            self._python_type = dataclass_json(self._python_type)
-
-        return cast(DataClassJsonMixin, self._python_type).from_json(json.dumps(parsed_value))
+        decoder = JSONDecoder(self._python_type)
+        return decoder.decode(json.dumps(parsed_value))
 
 
 def modify_literal_uris(lit: Literal):

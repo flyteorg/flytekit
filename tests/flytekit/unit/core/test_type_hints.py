@@ -12,7 +12,6 @@ from dataclasses import dataclass
 from enum import Enum
 
 import pytest
-from dataclasses_json import DataClassJsonMixin
 from google.protobuf.struct_pb2 import Struct
 from typing_extensions import Annotated, get_origin
 
@@ -403,12 +402,12 @@ def test_wf1_with_sql_with_patch():
 
 def test_flyte_file_in_dataclass():
     @dataclass
-    class InnerFileStruct(DataClassJsonMixin):
+    class InnerFileStruct:
         a: FlyteFile
         b: FlyteFile
 
     @dataclass
-    class FileStruct(DataClassJsonMixin):
+    class FileStruct:
         a: FlyteFile
         b: InnerFileStruct
 
@@ -455,12 +454,12 @@ def test_flyte_file_in_dataclass():
 
 def test_flyte_directory_in_dataclass():
     @dataclass
-    class InnerFileStruct(DataClassJsonMixin):
+    class InnerFileStruct:
         a: FlyteDirectory
         b: TensorboardLogs
 
     @dataclass
-    class FileStruct(DataClassJsonMixin):
+    class FileStruct:
         a: FlyteDirectory
         b: InnerFileStruct
 
@@ -490,11 +489,11 @@ def test_structured_dataset_in_dataclass():
     df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
 
     @dataclass
-    class InnerDatasetStruct(DataClassJsonMixin):
+    class InnerDatasetStruct:
         a: StructuredDataset
 
     @dataclass
-    class DatasetStruct(DataClassJsonMixin):
+    class DatasetStruct:
         a: StructuredDataset
         b: InnerDatasetStruct
 
@@ -1104,7 +1103,7 @@ def test_wf_with_catching_no_return():
 
 def test_wf_custom_types():
     @dataclass
-    class MyCustomType(DataClassJsonMixin):
+    class MyCustomType:
         x: int
         y: str
 
@@ -1153,7 +1152,7 @@ def test_arbit_class():
 
 def test_dataclass_more():
     @dataclass
-    class Datum(DataClassJsonMixin):
+    class Datum:
         x: int
         y: str
         z: typing.Dict[int, str]
@@ -1181,7 +1180,7 @@ def test_enum_in_dataclass():
         BLUE = "blue"
 
     @dataclass
-    class Datum(DataClassJsonMixin):
+    class Datum:
         x: int
         y: Color
 
@@ -1200,12 +1199,12 @@ def test_flyte_schema_dataclass():
     TestSchema = FlyteSchema[kwtypes(some_str=str)]
 
     @dataclass
-    class InnerResult(DataClassJsonMixin):
+    class InnerResult:
         number: int
         schema: TestSchema
 
     @dataclass
-    class Result(DataClassJsonMixin):
+    class Result:
         result: InnerResult
         schema: TestSchema
 
@@ -1520,46 +1519,6 @@ def test_guess_dict3():
     output_lm = t2.dispatch_execute(ctx, _literal_models.LiteralMap(literals={}))
     expected_struct = Struct()
     expected_struct.update({"k1": "v1", "k2": 3, "4": {"one": [1, "two", [3]]}})
-    assert output_lm.literals["o0"].scalar.generic == expected_struct
-
-
-def test_guess_dict4():
-    @dataclass
-    class Foo(DataClassJsonMixin):
-        x: int
-        y: str
-        z: typing.Dict[str, str]
-
-    @dataclass
-    class Bar(DataClassJsonMixin):
-        x: int
-        y: dict
-        z: Foo
-
-    @task
-    def t1() -> Foo:
-        return Foo(x=1, y="foo", z={"hello": "world"})
-
-    task_spec = get_serializable(OrderedDict(), serialization_settings, t1)
-    pt_map = TypeEngine.guess_python_types(task_spec.template.interface.outputs)
-    assert dataclasses.is_dataclass(pt_map["o0"])
-
-    ctx = context_manager.FlyteContextManager.current_context()
-    output_lm = t1.dispatch_execute(ctx, _literal_models.LiteralMap(literals={}))
-    expected_struct = Struct()
-    expected_struct.update({"x": 1, "y": "foo", "z": {"hello": "world"}})
-    assert output_lm.literals["o0"].scalar.generic == expected_struct
-
-    @task
-    def t2() -> Bar:
-        return Bar(x=1, y={"hello": "world"}, z=Foo(x=1, y="foo", z={"hello": "world"}))
-
-    task_spec = get_serializable(OrderedDict(), serialization_settings, t2)
-    pt_map = TypeEngine.guess_python_types(task_spec.template.interface.outputs)
-    assert dataclasses.is_dataclass(pt_map["o0"])
-
-    output_lm = t2.dispatch_execute(ctx, _literal_models.LiteralMap(literals={}))
-    expected_struct.update({"x": 1, "y": {"hello": "world"}, "z": {"x": 1, "y": "foo", "z": {"hello": "world"}}})
     assert output_lm.literals["o0"].scalar.generic == expected_struct
 
 

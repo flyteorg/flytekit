@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional
 
-from dataclasses_json import DataClassJsonMixin
 from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Struct
 
@@ -11,7 +10,7 @@ from flytekit.extend import TaskPlugins
 
 
 @dataclass
-class AWSBatchConfig(DataClassJsonMixin):
+class AWSBatchConfig:
     """
     Use this to configure SubmitJobInput for a AWS batch job. Task's marked with this will automatically execute
     natively onto AWS batch service.

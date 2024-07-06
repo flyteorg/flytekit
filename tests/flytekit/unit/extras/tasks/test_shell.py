@@ -6,7 +6,6 @@ import typing
 from dataclasses import dataclass
 
 import pytest
-from dataclasses_json import DataClassJsonMixin
 
 import flytekit
 from flytekit import kwtypes
@@ -247,7 +246,7 @@ def test_reuse_variables_for_both_inputs_and_outputs():
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_can_use_complex_types_for_inputs_to_f_string_template():
     @dataclass
-    class InputArgs(DataClassJsonMixin):
+    class InputArgs:
         in_file: CSVFile
 
     t = ShellTask(

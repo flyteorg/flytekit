@@ -5,7 +5,6 @@ import pytest
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from dataclasses_json import DataClassJsonMixin
 
 from flytekit import task, workflow
 from flytekit.core.type_engine import TypeTransformerFailedError
@@ -13,7 +12,7 @@ from flytekit.extras.pytorch import PyTorchCheckpoint
 
 
 @dataclass
-class Hyperparameters(DataClassJsonMixin):
+class Hyperparameters:
     epochs: int
     loss: float
 

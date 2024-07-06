@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Type
 
 import dolt_integrations.core as dolt_int
-from dataclasses_json import DataClassJsonMixin
+
 from google.protobuf.json_format import MessageToDict
 from google.protobuf.struct_pb2 import Struct
 
@@ -20,7 +20,7 @@ pandas = lazy_module("pandas")
 
 
 @dataclass
-class DoltConfig(DataClassJsonMixin):
+class DoltConfig:
     db_path: str
     tablename: typing.Optional[str] = None
     sql: typing.Optional[str] = None

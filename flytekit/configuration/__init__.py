@@ -142,9 +142,8 @@ from dataclasses import dataclass, field
 from io import BytesIO
 from typing import Dict, List, Optional
 
-import yaml
-from dataclasses_json import DataClassJsonMixin
-
+from mashumaro.codecs.json import JSONEncoder
+from mashumaro.codecs.json import JSONDecoder
 from flytekit.configuration import internal as _internal
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.configuration.file import ConfigEntry, ConfigFile, get_config_file, read_file_if_exists, set_if_exists
@@ -164,7 +163,7 @@ SERIALIZED_CONTEXT_ENV_VAR = "_F_SS_C"
 
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
-class Image(DataClassJsonMixin):
+class Image:
     """
     Image is a structured wrapper for task container images used in object serialization.
 
@@ -254,7 +253,7 @@ def _parse_image_identifier(image_identifier: str) -> typing.Tuple[str, Optional
 
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
-class ImageConfig(DataClassJsonMixin):
+class ImageConfig:
     """
     We recommend you to use ImageConfig.auto(img_name=None) to create an ImageConfig.
     For example, ImageConfig.auto(img_name=""ghcr.io/flyteorg/flytecookbook:v1.0.0"") will create an ImageConfig.
@@ -781,7 +780,7 @@ class Config(object):
 
 
 @dataclass
-class EntrypointSettings(DataClassJsonMixin):
+class EntrypointSettings:
     """
     This object carries information about the path of the entrypoint command that will be invoked at runtime.
     This is where `pyflyte-execute` code can be found. This is useful for cases like pyspark execution.
@@ -791,7 +790,7 @@ class EntrypointSettings(DataClassJsonMixin):
 
 
 @dataclass
-class FastSerializationSettings(DataClassJsonMixin):
+class FastSerializationSettings:
     """
     This object hold information about settings necessary to serialize an object so that it can be fast-registered.
     """
@@ -806,7 +805,7 @@ class FastSerializationSettings(DataClassJsonMixin):
 
 # TODO: ImageConfig, python_interpreter, venv_root, fast_serialization_settings.destination_dir should be combined.
 @dataclass
-class SerializationSettings(DataClassJsonMixin):
+class SerializationSettings:
     """
     These settings are provided while serializing a workflow and task, before registration. This is required to get
     runtime information at serialization time, as well as some defaults.
@@ -854,11 +853,14 @@ class SerializationSettings(DataClassJsonMixin):
             )
         )
 
-    @classmethod
-    def from_transport(cls, s: str) -> SerializationSettings:
+    @staticmethod
+    def from_transport(s: str) -> SerializationSettings:
         compressed_val = base64.b64decode(s.encode("utf-8"))
         json_str = gzip.decompress(compressed_val).decode("utf-8")
-        return cls.from_json(json_str)
+        
+
+        decoder = JSONDecoder(SerializationSettings)
+        return decoder.decode(json_str)
 
     @classmethod
     def for_image(
@@ -932,7 +934,9 @@ class SerializationSettings(DataClassJsonMixin):
         """
         if self._has_serialized_context():
             return self.env[SERIALIZED_CONTEXT_ENV_VAR]
-        json_str = self.to_json()
+
+        encoder = JSONEncoder(SerializationSettings)
+        json_str = encoder.encode(self)
         buf = BytesIO()
         with gzip.GzipFile(mode="wb", fileobj=buf, mtime=0) as f:
             f.write(json_str.encode("utf-8"))

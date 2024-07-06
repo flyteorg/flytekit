@@ -8,7 +8,6 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field, is_dataclass
 from typing import Dict, Generator, Optional, Type, Union
 
-from dataclasses_json import config
 from fsspec.utils import get_protocol
 from marshmallow import fields
 from mashumaro.mixins.json import DataClassJSONMixin
@@ -51,8 +50,8 @@ class StructuredDataset(DataClassJSONMixin):
     class (that is just a model, a Python class representation of the protobuf).
     """
 
-    uri: typing.Optional[str] = field(default=None, metadata=config(mm_field=fields.String()))
-    file_format: typing.Optional[str] = field(default=GENERIC_FORMAT, metadata=config(mm_field=fields.String()))
+    uri: typing.Optional[str] = field(default=None)
+    file_format: typing.Optional[str] = field(default=GENERIC_FORMAT)
 
     @classmethod
     def columns(cls) -> typing.Dict[str, typing.Type]:

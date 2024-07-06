@@ -3,7 +3,6 @@ from dataclasses import dataclass
 from typing import Optional, Tuple, Type, Union
 
 import tensorflow as tf
-from dataclasses_json import DataClassJsonMixin
 from tensorflow.python.data.ops.readers import TFRecordDatasetV2
 from typing_extensions import Annotated, get_args, get_origin
 
@@ -17,7 +16,7 @@ from flytekit.types.file import TFRecordFile
 
 
 @dataclass
-class TFRecordDatasetConfig(DataClassJsonMixin):
+class TFRecordDatasetConfig:
     """
     TFRecordDatasetConfig can be used while creating tf.data.TFRecordDataset comprising
     record of one or more TFRecord files.

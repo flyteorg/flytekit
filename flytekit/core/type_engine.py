@@ -16,7 +16,6 @@ from collections import OrderedDict
 from functools import lru_cache
 from typing import Dict, List, NamedTuple, Optional, Type, cast
 
-from dataclasses_json import DataClassJsonMixin, dataclass_json
 from flyteidl.core import literals_pb2
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
@@ -24,7 +23,6 @@ from google.protobuf.json_format import MessageToDict as _MessageToDict
 from google.protobuf.json_format import ParseDict as _ParseDict
 from google.protobuf.message import Message
 from google.protobuf.struct_pb2 import Struct
-from marshmallow_enum import EnumField, LoadDumpOptions
 from mashumaro.codecs.json import JSONDecoder, JSONEncoder
 from mashumaro.mixins.json import DataClassJSONMixin
 from typing_extensions import Annotated, get_args, get_origin
@@ -330,7 +328,7 @@ class DataclassTransformer(TypeTransformer[object]):
         self._encoder: Dict[Type, JSONEncoder] = {}
         self._decoder: Dict[Type, JSONDecoder] = {}
 
-    def assert_type(self, expected_type: Type[DataClassJsonMixin], v: T):
+    def assert_type(self, expected_type: Type, v: T):
         # Skip iterating all attributes in the dataclass if the type of v already matches the expected_type
         if type(v) == expected_type:
             return
@@ -430,21 +428,9 @@ class DataclassTransformer(TypeTransformer[object]):
 
         schema = None
         try:
-            if issubclass(t, DataClassJsonMixin):
-                s = cast(DataClassJsonMixin, self._get_origin_type_in_annotation(t)).schema()
-                for _, v in s.fields.items():
-                    # marshmallow-jsonschema only supports enums loaded by name.
-                    # https://github.com/fuhrysteve/marshmallow-jsonschema/blob/81eada1a0c42ff67de216923968af0a6b54e5dcb/marshmallow_jsonschema/base.py#L228
-                    if isinstance(v, EnumField):
-                        v.load_by = LoadDumpOptions.name
-                # check if DataClass mixin
-                from marshmallow_jsonschema import JSONSchema
+            from mashumaro.jsonschema import build_json_schema
 
-                schema = JSONSchema().dump(s)
-            else:  # DataClassJSONMixin
-                from mashumaro.jsonschema import build_json_schema
-
-                schema = build_json_schema(cast(DataClassJSONMixin, self._get_origin_type_in_annotation(t))).to_dict()
+            schema = build_json_schema(cast(DataClassJSONMixin, self._get_origin_type_in_annotation(t))).to_dict()
         except Exception as e:
             # https://github.com/lovasoa/marshmallow_dataclass/issues/13
             logger.warning(
@@ -1918,7 +1904,7 @@ def convert_marshmallow_json_schema_to_python_class(
     """
 
     attribute_list = generate_attribute_list_from_dataclass_json(schema, schema_name)
-    return dataclass_json(dataclasses.make_dataclass(schema_name, attribute_list))
+    return dataclasses.make_dataclass(schema_name, attribute_list)
 
 
 def convert_mashumaro_json_schema_to_python_class(
@@ -1931,7 +1917,7 @@ def convert_mashumaro_json_schema_to_python_class(
     """
 
     attribute_list = generate_attribute_list_from_dataclass_json_mixin(schema, schema_name)
-    return dataclass_json(dataclasses.make_dataclass(schema_name, attribute_list))
+    return dataclasses.make_dataclass(schema_name, attribute_list)
 
 
 def _get_element_type(element_property: typing.Dict[str, str]) -> Type:

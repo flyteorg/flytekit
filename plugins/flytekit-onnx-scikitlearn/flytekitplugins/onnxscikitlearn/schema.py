@@ -4,7 +4,6 @@ import inspect
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union
 
-from dataclasses_json import DataClassJsonMixin
 from typing_extensions import Annotated, get_args, get_origin
 
 from flytekit import FlyteContext, lazy_module
@@ -20,7 +19,7 @@ skl2onnx_data_types = lazy_module("skl2onnx.common.data_types")
 
 
 @dataclass
-class ScikitLearn2ONNXConfig(DataClassJsonMixin):
+class ScikitLearn2ONNXConfig:
     """
     ScikitLearn2ONNXConfig is the config used during the scikitlearn to ONNX conversion.
 
@@ -72,7 +71,7 @@ class ScikitLearn2ONNXConfig(DataClassJsonMixin):
 
 
 @dataclass
-class ScikitLearn2ONNX(DataClassJsonMixin):
+class ScikitLearn2ONNX:
     model: sklearn.base.BaseEstimator = field(default=None)
 
 
