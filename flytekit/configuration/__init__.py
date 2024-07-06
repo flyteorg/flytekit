@@ -142,6 +142,7 @@ from dataclasses import dataclass, field
 from io import BytesIO
 from typing import Dict, List, Optional
 
+import yaml
 from mashumaro.codecs.json import JSONDecoder, JSONEncoder
 
 from flytekit.configuration import internal as _internal
