@@ -17,6 +17,7 @@
    SageMakerInvokeEndpointTask
    create_sagemaker_deployment
    delete_sagemaker_deployment
+   is_endpoint_exists
 """
 
 from .agent import SageMakerEndpointAgent
@@ -31,7 +32,11 @@ from .task import (
     SageMakerInvokeEndpointTask,
     SageMakerModelTask,
 )
-from .workflow import create_sagemaker_deployment, delete_sagemaker_deployment
+from .workflow import (
+    create_sagemaker_deployment,
+    delete_sagemaker_deployment,
+    is_endpoint_exists,
+)
 
 
 def triton_image_uri(version: str = "23.12"):
