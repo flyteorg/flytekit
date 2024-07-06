@@ -103,7 +103,9 @@ _PACKAGE_NAME_RE = re.compile(r"^[\w-]+")
 
 
 def _is_flytekit(package: str) -> bool:
-    """Return True if `package` is flytekit."""
+    """Return True if `package` is flytekit. `package` is expected to be a valid version
+    spec. i.e. `flytekit==1.12.3`, `flytekit`, `flytekit~=1.12.3`.
+    """
     m = _PACKAGE_NAME_RE.match(package)
     if not m:
         return False
@@ -137,7 +139,7 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
     if image_spec.packages:
         requirements.extend(image_spec.packages)
 
-    # Adds flytekit if if it is not specified
+    # Adds flytekit if it is not specified
     if not any(_is_flytekit(package) for package in requirements):
         requirements.append(get_flytekit_for_pypi())
 
