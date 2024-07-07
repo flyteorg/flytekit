@@ -3,7 +3,7 @@ import tempfile
 import typing
 from abc import abstractmethod
 from pathlib import Path
-
+import concurrent.futures as cf
 
 class Checkpoint(object):
     """
@@ -156,3 +156,108 @@ class SyncCheckpoint(Checkpoint):
         p = io.BytesIO(b)
         f = typing.cast(io.BufferedReader, p)
         self.save(f)
+
+
+class TorchAsyncCheckpoint(Checkpoint):
+    """
+    This class is NOT THREAD-SAFE!
+    Sync Checkpoint, will synchronously checkpoint a user given file or folder.
+    It will also synchronously download / restore previous checkpoints, when restore is invoked.
+
+    TODO: Implement an async checkpoint system
+    """
+
+    SRC_LOCAL_FOLDER = "prev_cp"
+    TMP_DST_PATH = "_dst_cp"
+
+    def __init__(self, checkpoint_dest: str, checkpoint_src: typing.Optional[str] = None):
+        """
+        Args:
+            checkpoint_src: If a previous checkpoint should exist, this path should be set to the folder that contains the checkpoint information
+            checkpoint_dest: Location where the new checkpoint should be copied to
+        """
+        self._checkpoint_dest = checkpoint_dest
+        self._checkpoint_src = checkpoint_src if checkpoint_src and checkpoint_src != "" else None
+        self._td = tempfile.TemporaryDirectory()
+        self._prev_download_path: typing.Optional[Path] = None
+        self._async_checkpoint: cf.Future = None
+        self._async_upload: cf.Future = None
+
+    def __del__(self):
+        self._td.cleanup()
+
+    def prev_exists(self) -> bool:
+        return self._checkpoint_src is not None
+
+    def restore(self, path: typing.Optional[typing.Union[Path, str]] = None) -> typing.Optional[Path]:
+        # We have to lazy load, until we fix the imports
+        from flytekit.core.context_manager import FlyteContextManager
+
+        if self._checkpoint_src is None or self._checkpoint_src == "":
+            return None
+
+        if self._prev_download_path:
+            return self._prev_download_path
+
+        if path is None:
+            p = Path(self._td.name)
+            path = p / self.SRC_LOCAL_FOLDER
+            path.mkdir(exist_ok=True)
+        elif isinstance(path, str):
+            path = Path(path)
+
+        if not path.is_dir():
+            raise ValueError("Checkpoints can be restored to a directory only.")
+
+        FlyteContextManager.current_context().file_access.download_directory(self._checkpoint_src, str(path))
+        self._prev_download_path = path
+        return self._prev_download_path
+
+    def _async_save_done_callback(self, future: cf.Future, cp: typing.Union[Path, str]):
+        if future.exception():
+            raise future.exception()
+        assert self._async_upload is None or self._async_upload.done()
+        executor = cf.ThreadPoolExecutor(max_workers=1)
+        executor.submit(self._on_local_saved, cp)
+
+    def _on_local_saved(self, cp: typing.Union[Path, str]):
+        # We have to lazy load, until we fix the imports
+        from flytekit.core.context_manager import FlyteContextManager
+
+        fa = FlyteContextManager.current_context().file_access
+        if isinstance(cp, str):
+            cp = Path(cp)
+        if cp.is_dir():
+            fa.upload_directory(str(cp), self._checkpoint_dest)
+        return
+    
+    def save(self, cp: typing.Union[Path, str], future: cf.Future=None):
+        # We have to lazy load, until we fix the imports
+        from flytekit.core.context_manager import FlyteContextManager
+
+        if future:
+            self.wait_for_save()
+            self._async_checkpoint = future
+            future.add_done_callback(lambda f: self._async_save_done_callback(f, cp))
+            return
+
+    def wait_for_save(self):
+        if self._async_checkpoint and not self._async_checkpoint.done():
+            self._async_checkpoint.result()
+        if self._async_upload and not self._async_upload.done():
+            self._async_upload.result()
+
+    def read(self) -> typing.Optional[bytes]:
+        p = self.restore()
+        if p is None:
+            return None
+        files = list(p.iterdir())
+        if len(files) == 0:
+            return None
+        if len(files) > 1:
+            raise ValueError(f"Expected exactly one checkpoint - found {len(files)}")
+        f = files[0]
+        return f.read_bytes()
+
+    def write(self, b: bytes):
+        raise NotImplementedError("This class is async, use save instead")
