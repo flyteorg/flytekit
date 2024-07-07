@@ -34,7 +34,7 @@ def lazy_module(fullname):
         return sys.modules[fullname]
     # https://docs.python.org/3/library/importlib.html#implementing-lazy-imports
     spec = importlib.util.find_spec(fullname)
-    if spec is None or spec.loader is None:
+    if spec is None or spec.loader is None or not hasattr(spec.loader, 'exec_module'):
         # Return a lazy module if the module is not found in the python environment,
         # so that we can raise a proper error when the user tries to access an attribute in the module.
         return LazyModule(fullname)
