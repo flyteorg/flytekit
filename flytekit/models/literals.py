@@ -357,7 +357,7 @@ class BindingDataCollection(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.literals_pb2.BindingDataCollection
         """
-        return _literals_pb2.BindingDataCollection(bindings=[b.to_flyte_idl() for b in self.bindings])
+        return flyteidl.core.BindingDataCollection(bindings=[b.to_flyte_idl() for b in self.bindings])
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -429,12 +429,16 @@ class BindingData(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.literals_pb2.BindingData
         """
-        return _literals_pb2.BindingData(
-            scalar=self.scalar.to_flyte_idl() if self.scalar is not None else None,
-            collection=self.collection.to_flyte_idl() if self.collection is not None else None,
-            promise=self.promise.to_flyte_idl() if self.promise is not None else None,
-            map=self.map.to_flyte_idl() if self.map is not None else None,
-        )
+        value = None
+        if self.scalar:
+            value = flyteidl.binding_data.Value.Scalar(self.scalar.to_flyte_idl())
+        if self.collection:
+            value = flyteidl.binding_data.Value.Collection(self.collection.to_flyte_idl())
+        if self.promise:
+            value = flyteidl.binding_data.Value.Promise(self.promise.to_flyte_idl())
+        if self.map:
+            value = flyteidl.binding_data.Value.Map(self.map.to_flyte_idl())
+        return flyteidl.core.BindingData(value=value)
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -442,13 +446,20 @@ class BindingData(_common.FlyteIdlEntity):
         :param flyteidl.core.literals_pb2.BindingData pb2_object:
         :return: BindingData
         """
+
         return cls(
-            scalar=Scalar.from_flyte_idl(pb2_object.scalar) if pb2_object.HasField("scalar") else None,
-            collection=BindingDataCollection.from_flyte_idl(pb2_object.collection)
-            if pb2_object.HasField("collection")
+            scalar=Scalar.from_flyte_idl(pb2_object.value[0])
+            if isinstance(pb2_object, flyteidl.binding_data.Value.Scalar)
             else None,
-            promise=_OutputReference.from_flyte_idl(pb2_object.promise) if pb2_object.HasField("promise") else None,
-            map=BindingDataMap.from_flyte_idl(pb2_object.map) if pb2_object.HasField("map") else None,
+            collection=BindingDataCollection.from_flyte_idl(pb2_object.collection)
+            if isinstance(pb2_object, flyteidl.binding_data.Value.Collection)
+            else None,
+            promise=_OutputReference.from_flyte_idl(pb2_object.value[0])
+            if isinstance(pb2_object, flyteidl.binding_data.Value.Promise)
+            else None,
+            map=BindingDataMap.from_flyte_idl(pb2_object.value[0])
+            if isinstance(pb2_object, flyteidl.binding_data.Value.Map)
+            else None,
         )
 
     def to_literal_model(self):
@@ -506,7 +517,7 @@ class Binding(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.literals_pb2.Binding
         """
-        return _literals_pb2.Binding(var=self.var, binding=self.binding.to_flyte_idl())
+        return flyteidl.core.Binding(var=self.var, binding=self.binding.to_flyte_idl())
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):

@@ -1,6 +1,7 @@
 import datetime
 import typing
 
+import flyteidl_rust as flyteidl
 from flyteidl.core import tasks_pb2
 from flyteidl.core import workflow_pb2 as _core_workflow
 
@@ -44,7 +45,7 @@ class IfBlock(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.workflow_pb2.IfBlock
         """
-        return _core_workflow.IfBlock(condition=self.condition.to_flyte_idl(), then_node=self.then_node.to_flyte_idl())
+        return flyteidl.core.IfBlock(condition=self.condition.to_flyte_idl(), then_node=self.then_node.to_flyte_idl())
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -114,7 +115,7 @@ class IfElseBlock(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.workflow_pb2.IfElseBlock
         """
-        return _core_workflow.IfElseBlock(
+        return flyteidl.core.IfElseBlock(
             case=self.case.to_flyte_idl(),
             other=[a.to_flyte_idl() for a in self.other] if self.other else None,
             else_node=self.else_node.to_flyte_idl() if self.else_node else None,
@@ -154,7 +155,7 @@ class BranchNode(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.workflow_pb2.BranchNode
         """
-        return _core_workflow.BranchNode(if_else=self.if_else.to_flyte_idl())
+        return flyteidl.core.BranchNode(if_else=self.if_else.to_flyte_idl())
 
     @classmethod
     def from_flyte_idl(cls, pb2_objct):
@@ -232,13 +233,13 @@ class NodeMetadata(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.workflow_pb2.NodeMetadata
         """
-        node_metadata = _core_workflow.NodeMetadata(
+        node_metadata = flyteidl.core.NodeMetadata(
             name=self.name,
             retries=self.retries.to_flyte_idl(),
-            interruptible=self.interruptible,
-            cacheable=self.cacheable,
-            cache_version=self.cache_version,
-            cache_serializable=self.cache_serializable,
+            interruptible_value=self.interruptible,
+            cacheable_value=self.cacheable,
+            cache_version_value=self.cache_version,
+            cache_serializable_value=self.cache_serializable,
         )
         if self.timeout:
             node_metadata.timeout.FromTimedelta(self.timeout)
@@ -250,10 +251,10 @@ class NodeMetadata(_common.FlyteIdlEntity):
             pb2_object.name,
             pb2_object.timeout.ToTimedelta(),
             _RetryStrategy.from_flyte_idl(pb2_object.retries),
-            pb2_object.interruptible if pb2_object.HasField("interruptible") else None,
-            pb2_object.cacheable if pb2_object.HasField("cacheable") else None,
-            pb2_object.cache_version if pb2_object.HasField("cache_version") else None,
-            pb2_object.cache_serializable if pb2_object.HasField("cache_serializable") else None,
+            pb2_object.interruptible if pb2_object.interruptible_value else None,
+            pb2_object.cacheable if pb2_object.cacheable_value else None,
+            pb2_object.cache_version if pb2_object.cache_version_value else None,
+            pb2_object.cache_serializable if pb2_object.cache_serializable_value else None,
         )
 
 
@@ -281,13 +282,13 @@ class SignalCondition(_common.FlyteIdlEntity):
     def output_variable_name(self) -> str:
         return self._output_variable_name
 
-    def to_flyte_idl(self) -> _core_workflow.SignalCondition:
-        return _core_workflow.SignalCondition(
+    def to_flyte_idl(self) -> flyteidl.core.SignalCondition:
+        return flyteidl.core.SignalCondition(
             signal_id=self.signal_id, type=self.type.to_flyte_idl(), output_variable_name=self.output_variable_name
         )
 
     @classmethod
-    def from_flyte_idl(cls, pb2_object: _core_workflow.SignalCondition):
+    def from_flyte_idl(cls, pb2_object: flyteidl.core.SignalCondition):
         return cls(
             signal_id=pb2_object.signal_id,
             type=type_models.LiteralType.from_flyte_idl(pb2_object.type),
@@ -308,11 +309,11 @@ class ApproveCondition(_common.FlyteIdlEntity):
     def signal_id(self) -> str:
         return self._signal_id
 
-    def to_flyte_idl(self) -> _core_workflow.ApproveCondition:
-        return _core_workflow.ApproveCondition(signal_id=self.signal_id)
+    def to_flyte_idl(self) -> flyteidl.core.ApproveCondition:
+        return flyteidl.core.ApproveCondition(signal_id=self.signal_id)
 
     @classmethod
-    def from_flyte_idl(cls, pb2_object: _core_workflow.ApproveCondition):
+    def from_flyte_idl(cls, pb2_object: flyteidl.core.ApproveCondition):
         return cls(signal_id=pb2_object.signal_id)
 
 
@@ -327,13 +328,13 @@ class SleepCondition(_common.FlyteIdlEntity):
     def duration(self) -> datetime.timedelta:
         return self._duration
 
-    def to_flyte_idl(self) -> _core_workflow.SleepCondition:
-        sc = _core_workflow.SleepCondition()
+    def to_flyte_idl(self) -> flyteidl.core.SleepCondition:
+        sc = flyteidl.core.SleepCondition()
         sc.duration.FromTimedelta(self.duration)
         return sc
 
     @classmethod
-    def from_flyte_idl(cls, pb2_object: _core_workflow.SignalCondition) -> "SleepCondition":
+    def from_flyte_idl(cls, pb2_object: flyteidl.core.SignalCondition) -> "SleepCondition":
         return cls(duration=pb2_object.duration.ToTimedelta())
 
 
@@ -364,19 +365,27 @@ class GateNode(_common.FlyteIdlEntity):
     def condition(self) -> typing.Union[SignalCondition, SleepCondition, ApproveCondition]:
         return self.signal or self.sleep or self.approve
 
-    def to_flyte_idl(self) -> _core_workflow.GateNode:
-        return _core_workflow.GateNode(
+    def to_flyte_idl(self) -> flyteidl.core.GateNode:
+        condition = None
+        if self.signal:
+            condition = flyteidl.gate_node.Condition.Signal(self.signal.to_flyte_idl())
+        elif self.sleep:
+            condition = flyteidl.gate_node.Condition.Sleep(self.signal.to_flyte_idl())
+        elif self.approve:
+            condition = flyteidl.gate_node.Condition.Approve(self.signal.to_flyte_idl())
+        return flyteidl.core.GateNode(
+            condition=condition,
             signal=self.signal.to_flyte_idl() if self.signal else None,
             sleep=self.sleep.to_flyte_idl() if self.sleep else None,
             approve=self.approve.to_flyte_idl() if self.approve else None,
         )
 
     @classmethod
-    def from_flyte_idl(cls, pb2_object: _core_workflow.GateNode) -> "GateNode":
+    def from_flyte_idl(cls, pb2_object: flyteidl.core.GateNode) -> "GateNode":
         return cls(
-            signal=SignalCondition.from_flyte_idl(pb2_object.signal) if pb2_object.HasField("signal") else None,
-            sleep=SleepCondition.from_flyte_idl(pb2_object.sleep) if pb2_object.HasField("sleep") else None,
-            approve=ApproveCondition.from_flyte_idl(pb2_object.approve) if pb2_object.HasField("approve") else None,
+            signal=SignalCondition.from_flyte_idl(pb2_object.signal) if pb2_object.condition else None,
+            sleep=SleepCondition.from_flyte_idl(pb2_object.sleep) if pb2_object.condition else None,
+            approve=ApproveCondition.from_flyte_idl(pb2_object.approve) if pb2_object.condition else None,
         )
 
 
@@ -560,17 +569,25 @@ class Node(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.workflow_pb2.Node
         """
-        return _core_workflow.Node(
+
+        target_node = None
+        if self.task_node:
+            target_node = flyteidl.node.Target.TaskNode(self.task_node.to_flyte_idl())
+        elif self.workflow_node:
+            target_node = flyteidl.node.Target.WorkflowNode(self.workflow_node.to_flyte_idl())
+        if self.branch_node:
+            target_node = flyteidl.node.Target.BranchNode(self.branch_node.to_flyte_idl())
+        elif self.gate_node:
+            target_node = flyteidl.node.Target.GateNode(self.gate_node.to_flyte_idl())
+        elif self.array_node:
+            target_node = flyteidl.node.Target.ArrayNode(self.array_node.to_flyte_idl())
+        return flyteidl.core.Node(
             id=self.id,
             metadata=self.metadata.to_flyte_idl() if self.metadata is not None else None,
             inputs=[i.to_flyte_idl() for i in self.inputs],
             upstream_node_ids=self.upstream_node_ids,
             output_aliases=[a.to_flyte_idl() for a in self.output_aliases],
-            task_node=self.task_node.to_flyte_idl() if self.task_node is not None else None,
-            workflow_node=self.workflow_node.to_flyte_idl() if self.workflow_node is not None else None,
-            branch_node=self.branch_node.to_flyte_idl() if self.branch_node is not None else None,
-            gate_node=self.gate_node.to_flyte_idl() if self.gate_node else None,
-            array_node=self.array_node.to_flyte_idl() if self.array_node else None,
+            target=target_node,
         )
 
     @classmethod
@@ -586,12 +603,8 @@ class Node(_common.FlyteIdlEntity):
             upstream_node_ids=pb2_object.upstream_node_ids,
             output_aliases=[Alias.from_flyte_idl(a) for a in pb2_object.output_aliases],
             task_node=TaskNode.from_flyte_idl(pb2_object.task_node) if pb2_object.HasField("task_node") else None,
-            workflow_node=WorkflowNode.from_flyte_idl(pb2_object.workflow_node)
-            if pb2_object.HasField("workflow_node")
-            else None,
-            branch_node=BranchNode.from_flyte_idl(pb2_object.branch_node)
-            if pb2_object.HasField("branch_node")
-            else None,
+            workflow_node=WorkflowNode.from_flyte_idl(pb2_object.workflow_node) if pb2_object.workflow_node else None,
+            branch_node=BranchNode.from_flyte_idl(pb2_object.branch_node) if pb2_object.branch_node else None,
             gate_node=GateNode.from_flyte_idl(pb2_object.gate_node) if pb2_object.HasField("gate_node") else None,
             array_node=ArrayNode.from_flyte_idl(pb2_object.array_node) if pb2_object.HasField("array_node") else None,
         )
@@ -621,16 +634,16 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
         return self._container_image
 
     def to_flyte_idl(self):
-        return _core_workflow.TaskNodeOverrides(
+        return flyteidl.core.TaskNodeOverrides(
             resources=self.resources.to_flyte_idl() if self.resources is not None else None,
             extended_resources=self.extended_resources,
-            container_image=self.container_image,
+            container_image=self.container_image or "",
         )
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
         resources = Resources.from_flyte_idl(pb2_object.resources)
-        extended_resources = pb2_object.extended_resources if pb2_object.HasField("extended_resources") else None
+        extended_resources = pb2_object.extended_resources if pb2_object.extended_resources else None
         container_image = pb2_object.container_image if len(pb2_object.container_image) > 0 else None
         if bool(resources.requests) or bool(resources.limits):
             return cls(resources=resources, extended_resources=extended_resources, container_image=container_image)
@@ -667,8 +680,9 @@ class TaskNode(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.workflow_pb2.TaskNode
         """
-        return _core_workflow.TaskNode(
-            reference_id=self.reference_id.to_flyte_idl(),
+
+        return flyteidl.core.TaskNode(
+            reference=flyteidl.task_node.Reference.ReferenceId(self.reference_id.to_flyte_idl()),
             overrides=self.overrides.to_flyte_idl() if self.overrides is not None else None,
         )
 
@@ -729,7 +743,13 @@ class WorkflowNode(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.workflow_pb2.WorkflowNode
         """
-        return _core_workflow.WorkflowNode(
+        reference = None
+        if self.launchplan_ref:
+            reference = flyteidl.workflow_node.Reference.LaunchplanRef(self.launchplan_ref.to_flyte_idl())
+        if self.sub_workflow_ref:
+            reference = flyteidl.workflow_node.Reference.SubWorkflowRef(self.sub_workflow_ref.to_flyte_idl())
+        return flyteidl.core.WorkflowNode(
+            reference=reference,
             launchplan_ref=self.launchplan_ref.to_flyte_idl() if self.launchplan_ref else None,
             sub_workflow_ref=self.sub_workflow_ref.to_flyte_idl() if self.sub_workflow_ref else None,
         )
@@ -764,16 +784,19 @@ class WorkflowMetadata(_common.FlyteIdlEntity):
                                                     the workflow execution as failed.
         """
 
-        FAIL_IMMEDIATELY = _core_workflow.WorkflowMetadata.FAIL_IMMEDIATELY
-        FAIL_AFTER_EXECUTABLE_NODES_COMPLETE = _core_workflow.WorkflowMetadata.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE
+        FAIL_IMMEDIATELY = int(flyteidl.workflow_metadata.OnFailurePolicy.FailImmediately)
+        FAIL_AFTER_EXECUTABLE_NODES_COMPLETE = int(
+            flyteidl.workflow_metadata.OnFailurePolicy.FailAfterExecutableNodesComplete
+        )
 
-    def __init__(self, on_failure=None):
+    def __init__(self, on_failure=None, tags=None):
         """
         Metadata for the workflow.
 
         :param on_failure flytekit.models.core.workflow.WorkflowMetadata.OnFailurePolicy: [Optional] The execution policy when the workflow detects a failure.
         """
         self._on_failure = on_failure
+        self._tags = tags
 
     @property
     def on_failure(self):
@@ -782,13 +805,19 @@ class WorkflowMetadata(_common.FlyteIdlEntity):
         """
         return self._on_failure
 
+    @property
+    def tags(self):
+        """
+        :rtype: flytekit.models.core.workflow.WorkflowMetadata.Tags
+        """
+        return self._tags
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.workflow_pb2.WorkflowMetadata
         """
-        workflow_metadata = _core_workflow.WorkflowMetadata()
-        if self.on_failure:
-            workflow_metadata.on_failure = self.on_failure
+
+        workflow_metadata = flyteidl.core.WorkflowMetadata(self.on_failure or 0, self.tags or {})
         return workflow_metadata
 
     @classmethod
@@ -820,7 +849,7 @@ class WorkflowMetadataDefaults(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.workflow_pb2.WorkflowMetadataDefaults
         """
-        return _core_workflow.WorkflowMetadataDefaults(interruptible=self._interruptible)
+        return flyteidl.core.WorkflowMetadataDefaults(interruptible=self._interruptible)
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -947,7 +976,7 @@ class WorkflowTemplate(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.workflow_pb2.WorkflowTemplate
         """
-        return _core_workflow.WorkflowTemplate(
+        return flyteidl.core.WorkflowTemplate(
             id=self.id.to_flyte_idl(),
             metadata=self.metadata.to_flyte_idl(),
             metadata_defaults=self.metadata_defaults.to_flyte_idl(),
@@ -1008,7 +1037,7 @@ class Alias(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.workflow_pb2.Alias
         """
-        return _core_workflow.Alias(var=self.var, alias=self.alias)
+        return flyteidl.core.Alias(var=self.var, alias=self.alias)
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):

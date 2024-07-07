@@ -491,13 +491,18 @@ class OutputReference(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.types.OutputReference
         """
-        return _types_pb2.OutputReference(
+        return flyteidl.core.OutputReference(
             node_id=self.node_id,
             var=self.var,
             attr_path=[
-                _types_pb2.PromiseAttribute(
-                    string_value=p if type(p) == str else None,
-                    int_value=p if type(p) == int else None,
+                flyteidl.core.PromiseAttribute(
+                    value=flyteidl.promise_attribute.Value.StringValue(p)
+                    if type(p) == str
+                    else flyteidl.promise_attribute.Value.IntValue(p)
+                    if type(p) == int
+                    else None,
+                    # string_value=p if type(p) == str else None,
+                    # int_value=p if type(p) == int else None,
                 )
                 for p in self._attr_path
             ],
@@ -512,7 +517,7 @@ class OutputReference(_common.FlyteIdlEntity):
         return cls(
             node_id=pb2_object.node_id,
             var=pb2_object.var,
-            attr_path=[p.string_value or p.int_value for p in pb2_object.attr_path],
+            attr_path=[p.value[0] for p in pb2_object.attr_path],
         )
 
 

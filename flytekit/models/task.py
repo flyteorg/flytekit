@@ -16,11 +16,11 @@ from flytekit.models.documentation import Documentation
 
 class Resources(_common.FlyteIdlEntity):
     class ResourceName(object):
-        UNKNOWN = _core_task.Resources.UNKNOWN
-        CPU = _core_task.Resources.CPU
-        GPU = _core_task.Resources.GPU
-        MEMORY = _core_task.Resources.MEMORY
-        EPHEMERAL_STORAGE = _core_task.Resources.EPHEMERAL_STORAGE
+        UNKNOWN = flyteidl.resources.ResourceName.Unknown
+        CPU = flyteidl.resources.ResourceName.Cpu
+        GPU = flyteidl.resources.ResourceName.Gpu
+        MEMORY = flyteidl.resources.ResourceName.Memory
+        EPHEMERAL_STORAGE = flyteidl.resources.ResourceName.EphemeralStorage
 
     class ResourceEntry(_common.FlyteIdlEntity):
         def __init__(self, name, value):
