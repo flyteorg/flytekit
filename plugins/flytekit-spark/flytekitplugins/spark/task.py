@@ -100,7 +100,7 @@ def new_spark_session(name: str, conf: Dict[str, str] = None):
     # sess.stop()
 
 
-class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
+class PysparkFunctionTask(PythonFunctionTask[Spark]):
     """
     Actual Plugin that transforms the local python code for execution within a spark context
     """
@@ -135,13 +135,6 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
             **kwargs,
         )
 
-    def get_image(self, settings: SerializationSettings) -> str:
-        if isinstance(self.container_image, ImageSpec):
-            # Ensure that the code is always copied into the image, even during fast-registration.
-            self.container_image.source_root = settings.source_root
-
-        return get_registerable_container_image(self.container_image, settings.image_config)
-
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         job = SparkJob(
             spark_conf=self.task_config.spark_conf,
@@ -151,10 +144,6 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
             main_class="",
             spark_type=SparkType.PYTHON,
         )
-        if isinstance(self.task_config, Databricks):
-            cfg = cast(Databricks, self.task_config)
-            job._databricks_conf = cfg.databricks_conf
-            job._databricks_instance = cfg.databricks_instance
 
         return MessageToDict(job.to_flyte_idl())
 
@@ -180,21 +169,54 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
         self.sess = sess_builder.getOrCreate()
         return user_params.builder().add_attr("SPARK_SESSION", self.sess).build()
 
+
+class DatabricksFunctionTask(AsyncAgentExecutorMixin, PysparkFunctionTask):
+    _DATABRICKS_TASK_TYPE = "databricks"
+
+    def __init__(
+        self,
+        task_config: Spark,
+        task_function: Callable,
+        container_image: Optional[Union[str, ImageSpec]] = None,
+        **kwargs,
+    ):
+        super(AsyncAgentExecutorMixin, self).__init__(
+            task_config=task_config,
+            task_function=task_function,
+            container_image=container_image,
+            **kwargs,
+        )
+        self._task_type = self._DATABRICKS_TASK_TYPE
+
+    def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
+        job = SparkJob(
+            spark_conf=self.task_config.spark_conf,
+            hadoop_conf=self.task_config.hadoop_conf,
+            application_file=self._default_applications_path or "local://" + settings.entrypoint_settings.path,
+            executor_path=self._default_executor_path or settings.python_interpreter,
+            main_class="",
+            spark_type=SparkType.PYTHON,
+        )
+        cfg = cast(Databricks, self.task_config)
+        job._databricks_conf = cfg.databricks_conf
+        job._databricks_instance = cfg.databricks_instance
+
+        return MessageToDict(job.to_flyte_idl())
+
     def execute(self, **kwargs) -> Any:
-        if isinstance(self.task_config, Databricks):
-            # Use the Databricks agent to run it by default.
-            try:
-                ctx = FlyteContextManager.current_context()
-                if not ctx.file_access.is_remote(ctx.file_access.raw_output_prefix):
-                    raise ValueError(
-                        "To submit a Databricks job locally,"
-                        " please set --raw-output-data-prefix to a remote path. e.g. s3://, gcs//, etc."
-                    )
-                if ctx.execution_state and ctx.execution_state.is_local_execution():
-                    return AsyncAgentExecutorMixin.execute(self, **kwargs)
-            except Exception as e:
-                logger.error(f"Agent failed to run the task with error: {e}")
-                logger.info("Falling back to local execution")
+        # Use the Databricks agent to run it by default.
+        try:
+            ctx = FlyteContextManager.current_context()
+            if not ctx.file_access.is_remote(ctx.file_access.raw_output_prefix):
+                raise ValueError(
+                    "To submit a Databricks job locally,"
+                    " please set --raw-output-data-prefix to a remote path. e.g. s3://, gcs//, etc."
+                )
+            if ctx.execution_state and ctx.execution_state.is_local_execution():
+                return AsyncAgentExecutorMixin.execute(self, **kwargs)
+        except Exception as e:
+            logger.error(f"Agent failed to run the task with error: {e}")
+            logger.info("Falling back to local execution")
         return PythonFunctionTask.execute(self, **kwargs)
 
 

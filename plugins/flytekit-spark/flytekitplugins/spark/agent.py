@@ -28,7 +28,7 @@ class DatabricksAgent(AsyncAgentBase):
     name = "Databricks Agent"
 
     def __init__(self):
-        super().__init__(task_type_name="spark", metadata_type=DatabricksJobMetadata)
+        super().__init__(task_type_name="databricks", metadata_type=DatabricksJobMetadata)
 
     async def create(
         self, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs
@@ -113,6 +113,16 @@ class DatabricksAgent(AsyncAgentBase):
                 await resp.json()
 
 
+# Databricks task's type was 'spark', and it has been changed to 'databricks' since flytekit > 1.13.0.
+# To make it backward compatible, we need to register two agents that
+# support 'spark' and 'databricks' task types respectively.
+class LegacyDatabricksAgent(DatabricksAgent):
+    name = "Legacy Databricks Agent"
+
+    def __init__(self):
+        super(AsyncAgentBase, self).__init__(task_type_name="spark", metadata_type=DatabricksJobMetadata)
+
+
 def get_header() -> typing.Dict[str, str]:
     token = get_agent_secret("FLYTE_DATABRICKS_ACCESS_TOKEN")
     return {"Authorization": f"Bearer {token}", "content-type": "application/json"}
@@ -123,3 +133,4 @@ def result_state_is_available(life_cycle_state: str) -> bool:
 
 
 AgentRegistry.register(DatabricksAgent())
+AgentRegistry.register(LegacyDatabricksAgent())
