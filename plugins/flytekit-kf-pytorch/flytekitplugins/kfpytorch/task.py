@@ -332,6 +332,22 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
                 )
             )
 
+        # If OMP_NUM_THREADS is not set, set it to 1 to avoid overloading the system.
+        # Doing so to copy the default behavior of torchrun.
+        # See https://github.com/pytorch/pytorch/blob/eea4ece256d74c6f25c1f4eab37b3f2f4aeefd4d/torch/distributed/run.py#L791
+        if "OMP_NUM_THREADS" not in os.environ and self.task_config.nproc_per_node > 1:
+            omp_num_threads = 1
+            logger.warning(
+                "\n*****************************************\n"
+                "Setting OMP_NUM_THREADS environment variable for each process to be "
+                "%s in default, to avoid your system being overloaded, "
+                "please further tune the variable for optimal performance in "
+                "your application as needed. \n"
+                "*****************************************",
+                omp_num_threads,
+            )
+            os.environ["OMP_NUM_THREADS"] = str(omp_num_threads)
+
         config = LaunchConfig(
             run_id=flytekit.current_context().execution_id.name,
             min_nodes=self.min_nodes,
