@@ -10,7 +10,8 @@ if TYPE_CHECKING:
     import pandas
     import pyarrow
 else:
-    pandas = lazy_module("pandas")
+    import pandas
+    # pandas = lazy_module("pandas")
     pyarrow = lazy_module("pyarrow")
 
 
