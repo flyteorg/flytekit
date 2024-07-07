@@ -199,6 +199,7 @@ class SynchronousFlyteClient(flyteidl.RawSynchronousFlyteClient):
             identical workflow is already registered.
         :raises grpc.RpcError:
         """
+
         super(SynchronousFlyteClient, self).create_workflow(
             flyteidl.admin.WorkflowCreateRequest(
                 id=workflow_identifier.to_flyte_idl(), spec=workflow_spec.to_flyte_idl()

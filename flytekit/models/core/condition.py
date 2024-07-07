@@ -224,7 +224,7 @@ class BooleanExpression(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.condition_pb2.BooleanExpression
         """
-        return _condition.BooleanExpression(
+        return flyteidl.core.BooleanExpression(
             conjunction=self.conjunction.to_flyte_idl() if self.conjunction else None,
             comparison=self.comparison.to_flyte_idl() if self.comparison else None,
         )
@@ -233,9 +233,7 @@ class BooleanExpression(_common.FlyteIdlEntity):
     def from_flyte_idl(cls, pb2_object):
         return cls(
             conjunction=ConjunctionExpression.from_flyte_idl(pb2_object.conjunction)
-            if pb2_object.HasField("conjunction")
+            if pb2_object.conjunction
             else None,
-            comparison=ComparisonExpression.from_flyte_idl(pb2_object.comparison)
-            if pb2_object.HasField("comparison")
-            else None,
+            comparison=ComparisonExpression.from_flyte_idl(pb2_object.comparison) if pb2_object.comparison else None,
         )
