@@ -1,4 +1,3 @@
-import os
 import pytest
 from flytekitplugins.kfpytorch.task import CleanPodPolicy, Master, PyTorch, RestartPolicy, RunPolicy, Worker
 
@@ -17,6 +16,7 @@ def serialization_settings() -> SerializationSettings:
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
     return settings
+
 
 def test_pytorch_task(serialization_settings: SerializationSettings):
     @task(
