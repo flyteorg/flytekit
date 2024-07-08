@@ -466,6 +466,7 @@ class Artifact(object):
                 ...
                 return RideCountData.create_from(df, time_partition=datetime.datetime.now())
         """
+        logger.warning(f"ARTF: Create from called {self.name} Args: {args} kwargs: {kwargs}")
         omt = FlyteContextManager.current_context().output_metadata_tracker
         additional = [card]
         additional.extend(args)
