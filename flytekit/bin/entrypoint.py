@@ -218,6 +218,7 @@ def setup_execution(
     :param dynamic_dest_dir: See above.
     :return:
     """
+    logger.warning(f"ARTF: setup-execution:: 1")
     exe_project = get_one_of("FLYTE_INTERNAL_EXECUTION_PROJECT", "_F_PRJ")
     exe_domain = get_one_of("FLYTE_INTERNAL_EXECUTION_DOMAIN", "_F_DM")
     exe_name = get_one_of("FLYTE_INTERNAL_EXECUTION_ID", "_F_NM")
@@ -272,6 +273,7 @@ def setup_execution(
         task_id=_identifier.Identifier(_identifier.ResourceType.TASK, tk_project, tk_domain, tk_name, tk_version),
     )
 
+    logger.warning(f"ARTF: setup-execution:: 2")
     metadata = {
         "flyte-execution-project": exe_project,
         "flyte-execution-domain": exe_domain,
@@ -298,6 +300,7 @@ def setup_execution(
     # create new output metadata tracker
     omt = OutputMetadataTracker()
     cb = ctx.new_builder().with_execution_state(es).with_output_metadata_tracker(omt)
+    logger.warning(f"ARTF: setup-execution:: 3")
 
     if compressed_serialization_settings:
         ss = SerializationSettings.from_transport(compressed_serialization_settings)
@@ -311,10 +314,13 @@ def setup_execution(
                 destination_dir=dynamic_dest_dir,
                 distribution_location=dynamic_addl_distro,
             )
+        logger.warning(f"ARTF: setup-execution:: 4")
         cb = cb.with_serialization_settings(ssb.build())
 
+    logger.warning(f"ARTF: setup-execution:: 5")
     with FlyteContextManager.with_context(cb) as ctx:
         yield ctx
+    logger.warning(f"ARTF: setup-execution:: 6")
 
 
 def _handle_annotated_task(
@@ -377,6 +383,7 @@ def _execute_task(
         dynamic_addl_distro,
         dynamic_dest_dir,
     ) as ctx:
+        logger.warning(f"ARTF: execute-start:: post setup")
         resolver_obj = load_object_from_module(resolver)
         # Use the resolver to load the actual task object
         _task_def = resolver_obj.load_task(loader_args=resolver_args)
