@@ -119,8 +119,8 @@ def create_sagemaker_deployment(
     wf.add_workflow_output(
         "wf_output",
         {
-            "ModelArn": nodes[0].outputs["result"].get("ModelArn"),
-            "EndpointConfigArn": nodes[1].outputs["result"].get("EndpointConfigArn"),
+            "Model": nodes[0].outputs["result"],
+            "EndpointConfig": nodes[1].outputs["result"],
             "EndpointArn": nodes[2].outputs["result"].get("EndpointArn"),
         },
         dict,
