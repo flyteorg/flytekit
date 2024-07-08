@@ -122,6 +122,10 @@ class Elastic(object):
     Single-node elastic training is executed in a k8s pod when `nnodes` is set to 1.
     Multi-node training is executed otherwise using a `Pytorch Job <https://github.com/kubeflow/training-operator>`_.
 
+    Like `torchrun`, this plugin sets the environment variable `OMP_NUM_THREADS` to 1 if it is not set.
+    Please see https://pytorch.org/tutorials/recipes/recipes/tuning_guide.html for potential performance improvements.
+    To change `OMP_NUM_THREADS`, specify it in the environment dict of the flytekit task decorator or via `pyflyte run --env`.
+
     Args:
         nnodes (Union[int, str]): Number of nodes, or the range of nodes in form <minimum_nodes>:<maximum_nodes>.
         nproc_per_node (str): Number of workers per node.
