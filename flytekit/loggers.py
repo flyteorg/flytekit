@@ -136,7 +136,7 @@ def initialize_global_loggers():
 
     set_flytekit_log_properties(handler, None, _get_env_logging_level())
     set_user_logger_properties(handler, None, logging.INFO)
-    set_developer_properties(handler, None, logging.INFO)
+    set_developer_properties(handler, None, _get_dev_env_logging_level())
 
 
 def is_rich_logging_enabled() -> bool:
