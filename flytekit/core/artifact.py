@@ -466,14 +466,16 @@ class Artifact(object):
                 ...
                 return RideCountData.create_from(df, time_partition=datetime.datetime.now())
         """
-        logger.warning(f"ARTF: Create from called {self.name} Args: {args} kwargs: {kwargs}")
+        logger.warning(f"ARTF: Create from called {self.name} type: {type(o)} card?: {card is None}:{type(card)} Args: {args} kwargs: {kwargs}")
         omt = FlyteContextManager.current_context().output_metadata_tracker
         additional = [card]
         additional.extend(args)
         filtered_additional: typing.List[SerializableToString] = [a for a in additional if a is not None]
+        logger.warning(f"ARTF: Create from marker 1")
         if not omt:
             logger.debug(f"Output metadata tracker not found, not annotating {o}")
         else:
+            logger.warning(f"ARTF: Create from marker 2")
             partition_vals = {}
             time_partition = None
             for k, v in kwargs.items():
@@ -490,6 +492,7 @@ class Artifact(object):
                     additional_items=filtered_additional if filtered_additional else None,
                 ),
             )
+            logger.warning(f"ARTF: Create from marker 3")
         return o
 
     def query(
