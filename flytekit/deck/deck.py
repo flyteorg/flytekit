@@ -162,7 +162,7 @@ def _get_deck(
         nav_htmls.append(f'<li onclick="handleLinkClick(this)">{escape(key)}</li>')
         # Can not escape here because this is HTML. Escaping it will present the HTML as text.
         # The renderer must ensure that the HTML is safe.
-        body_htmls.append(f'<div>{value}</div>')
+        body_htmls.append(f"<div>{value}</div>")
 
     raw_html = get_deck_template().substitute(NAV_HTML="".join(nav_htmls), BODY_HTML="".join(body_htmls))
     if not ignore_jupyter and ipython_check():
