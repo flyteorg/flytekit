@@ -7,7 +7,7 @@ Perian Job Platform is still in closed beta. Contact support@perian.io if you ar
 To install the plugin, run the following command:
 
 ```bash
-pip install flytekitplugins-perian
+pip install flytekitplugins-perian-job
 ```
 
 ## Getting Started
@@ -52,7 +52,7 @@ image_spec = ImageSpec(
     python_version="3.11",
     apt_packages=["wget", "curl", "git"],
     packages=[
-        "flytekitplugins-perian",
+        "flytekitplugins-perian-job",
     ],
 )
 
