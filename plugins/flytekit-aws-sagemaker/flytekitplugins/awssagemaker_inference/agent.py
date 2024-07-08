@@ -1,6 +1,4 @@
-import json
 from dataclasses import dataclass
-from datetime import datetime
 from typing import Any, Dict, Optional
 
 import cloudpickle
@@ -37,14 +35,6 @@ states = {
     "InService": "Success",
     "Failed": "Failed",
 }
-
-
-class DateTimeEncoder(json.JSONEncoder):
-    def default(self, o):
-        if isinstance(o, datetime):
-            return o.isoformat()
-
-        return json.JSONEncoder.default(self, o)
 
 
 class SageMakerEndpointAgent(Boto3AgentMixin, AsyncAgentBase):
@@ -92,7 +82,7 @@ class SageMakerEndpointAgent(Boto3AgentMixin, AsyncAgentBase):
 
         res = None
         if current_state == "InService":
-            res = {"result": json.dumps(endpoint_status, cls=DateTimeEncoder)}
+            res = {"result": {"EndpointArn": endpoint_status.get("EndpointArn")}}
 
         return Resource(phase=flyte_phase, outputs=res, message=message)
 

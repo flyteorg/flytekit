@@ -1,6 +1,6 @@
 from typing import Any, Dict, Optional, Tuple, Type
 
-from flytekit import Workflow, kwtypes, task
+from flytekit import Workflow, kwtypes
 
 from .task import (
     SageMakerDeleteEndpointConfigTask,
@@ -8,57 +8,8 @@ from .task import (
     SageMakerDeleteModelTask,
     SageMakerEndpointConfigTask,
     SageMakerEndpointTask,
-    SageMakerListEndpointsTask,
     SageMakerModelTask,
-    SageMakerUpdateEndpointTask,
 )
-
-
-@task
-def is_params_exist(
-    endpoints: dict,
-    endpoint_name: str,
-) -> bool:
-    return any(endpoint["EndpointName"] == endpoint_name for endpoint in endpoints["Endpoints"])
-
-
-def is_endpoint_exists(
-    name: str,
-    region: Optional[str] = None,
-    region_at_runtime: bool = False,
-):
-    if not any((region, region_at_runtime)):
-        raise ValueError("Region parameter is required.")
-
-    wf = Workflow(name=f"sagemaker-check-if-endpoint-exists-{name}")
-
-    if region_at_runtime:
-        wf.add_workflow_input("region", str)
-
-    wf.add_workflow_input("endpoint_name", str)
-
-    task_inputs = {"endpoint_name": str}
-    if region_at_runtime:
-        task_inputs["region"] = str
-
-    list_endpoints_task = SageMakerListEndpointsTask(
-        name=f"sagemaker-list-endpoints-{name}",
-        config={"NameContains": "{inputs.endpoint_name}"},
-        region=region,
-        inputs=kwtypes(**task_inputs),
-    )
-
-    node = wf.add_entity(list_endpoints_task, **{key: wf.inputs[key] for key in task_inputs.keys()})
-
-    node = wf.add_entity(
-        is_params_exist,
-        endpoints=node.outputs["result"],
-        endpoint_name=wf.inputs["endpoint_name"],
-    )
-
-    wf.add_workflow_output("wf_output", node.outputs["o0"], bool)
-
-    return wf
 
 
 def create_deployment_task(
@@ -76,7 +27,13 @@ def create_deployment_task(
         else:
             inputs = kwtypes(region=str)
     return (
-        task_type(name=name, config=config, region=region, inputs=inputs, images=images),
+        task_type(
+            name=name,
+            config=config,
+            region=region,
+            inputs=inputs,
+            images=images,
+        ),
         inputs,
     )
 
@@ -92,7 +49,6 @@ def create_sagemaker_deployment(
     endpoint_input_types: Optional[Dict[str, Type]] = None,
     region: Optional[str] = None,
     region_at_runtime: bool = False,
-    is_override: bool = False,
 ) -> Workflow:
     """
     Creates SageMaker model, endpoint config and endpoint.
@@ -106,7 +62,6 @@ def create_sagemaker_deployment(
     :param endpoint_input_types: Mapping of SageMaker endpoint inputs to their types.
     :param region: The region for SageMaker API calls.
     :param region_at_runtime: Set this to True if you want to provide the region at runtime.
-    :param is_override: Set this to True if you want to override the existing deployment.
     """
     if not any((region, region_at_runtime)):
         raise ValueError("Region parameter is required.")
@@ -115,40 +70,6 @@ def create_sagemaker_deployment(
 
     if region_at_runtime:
         wf.add_workflow_input("region", str)
-
-    if is_override:
-        for param, t in endpoint_config_input_types.items():
-            if param not in wf.inputs.keys():
-                wf.add_workflow_input(param, t)
-        for param, t in endpoint_input_types.items():
-            if param not in wf.inputs.keys():
-                wf.add_workflow_input(param, t)
-
-        node_1 = wf.add_entity(
-            SageMakerEndpointConfigTask(
-                name=f"sagemaker-endpoint-config-{name}",
-                config=endpoint_config_config,
-                region=region,
-                inputs=endpoint_config_input_types,
-            ),
-            **{input_type: wf.inputs[input_type] for input_type in endpoint_config_input_types},
-        )
-        node_2 = wf.add_entity(
-            SageMakerUpdateEndpointTask(
-                name=f"sagemaker-update-endpoint-{name}",
-                config={
-                    "EndpointName": endpoint_config["EndpointName"],
-                    "EndpointConfigName": endpoint_config["EndpointConfigName"],
-                },
-                region=region,
-                inputs=endpoint_input_types,
-            ),
-            **{input_type: wf.inputs[input_type] for input_type in endpoint_input_types},
-        )
-        node_1 >> node_2
-
-        wf.add_workflow_output("wf_output", node_2.outputs["result"], str)
-        return wf
 
     inputs = {
         SageMakerModelTask: {
@@ -195,7 +116,15 @@ def create_sagemaker_deployment(
             nodes[-1] >> node
         nodes.append(node)
 
-    wf.add_workflow_output("wf_output", nodes[2].outputs["result"], str)
+    wf.add_workflow_output(
+        "wf_output",
+        {
+            "ModelArn": nodes[0].outputs["result"].get("ModelArn"),
+            "EndpointConfigArn": nodes[1].outputs["result"].get("EndpointConfigArn"),
+            "EndpointArn": nodes[2].outputs["result"].get("EndpointArn"),
+        },
+        dict,
+    )
     return wf
 
 

@@ -1,3 +1,5 @@
+import hashlib
+import re
 from typing import Any, Dict, Optional
 
 import aioboto3
@@ -31,7 +33,11 @@ account_id_map = {
 }
 
 
-def update_dict_fn(original_dict: Any, update_dict: Dict[str, Any]) -> Any:
+def update_dict_fn(
+    original_dict: Any,
+    update_dict: Dict[str, Any],
+    idempotence_token: Optional[str] = None,
+) -> Any:
     """
     Recursively update a dictionary with values from another dictionary.
     For example, if original_dict is {"EndpointConfigName": "{endpoint_config_name}"},
@@ -40,6 +46,7 @@ def update_dict_fn(original_dict: Any, update_dict: Dict[str, Any]) -> Any:
 
     :param original_dict: The dictionary to update (in place)
     :param update_dict: The dictionary to use for updating
+    :param idempotence_token: Hash of config -- this is to ensure the execution ID is deterministic
     :return: The updated dictionary
     """
     if original_dict is None:
@@ -48,34 +55,34 @@ def update_dict_fn(original_dict: Any, update_dict: Dict[str, Any]) -> Any:
     # If the original value is a string and contains placeholder curly braces
     if isinstance(original_dict, str):
         if "{" in original_dict and "}" in original_dict:
-            # Check if there are nested keys
-            if "." in original_dict:
-                # Create a copy of update_dict
-                update_dict_copy = update_dict.copy()
+            matches = re.findall(r"\{([^}]+)\}", original_dict)
+            for match in matches:
+                # Check if there are nested keys
+                if "." in match:
+                    # Create a copy of update_dict
+                    update_dict_copy = update_dict.copy()
 
-                # Fetch keys from the original_dict
-                keys = original_dict.strip("{}").split(".")
+                    # Fetch keys from the original_dict
+                    keys = match.split(".")
 
-                # Get value from the nested dictionary
-                for key in keys:
-                    try:
-                        update_dict_copy = update_dict_copy[key]
-                    except Exception:
-                        raise ValueError(f"Could not find the key {key} in {update_dict_copy}.")
+                    # Get value from the nested dictionary
+                    for key in keys:
+                        try:
+                            update_dict_copy = update_dict_copy[key]
+                        except Exception:
+                            raise ValueError(f"Could not find the key {key} in {update_dict_copy}.")
 
-                return update_dict_copy
+                    if len(matches) > 1:
+                        # Replace the placeholder in the original_dict
+                        original_dict = original_dict.replace(f"{{{match}}}", update_dict_copy)
+                    else:
+                        # If there's only one match, it needn't always be a string, so not replacing the original dict.
+                        return update_dict_copy
 
-            # Retrieve the original value using the key without curly braces
-            original_value = update_dict.get(original_dict.strip("{}"))
+                elif match == "idempotence_token" and idempotence_token:
+                    original_dict = original_dict.replace(f"{{{match}}}", idempotence_token)
 
-            # Check if original_value exists; if so, return it,
-            # otherwise, raise a ValueError indicating that the value for the key original_dict could not be found.
-            if original_value:
-                return original_value
-            else:
-                raise ValueError(f"Could not find value for {original_dict}.")
-
-        # If the string does not contain placeholders, return it as is
+        # If the string does not contain placeholders or if there are multiple placeholders, return the original dict.
         return original_dict
 
     # If the original value is a list, recursively update each element in the list
@@ -161,6 +168,14 @@ class Boto3AgentMixin:
             args["images"] = images
 
         updated_config = update_dict_fn(config, args)
+
+        if "idempotence_token" in updated_config:
+            # compute hash of the config
+            h = hashlib.md5()
+            h.update(updated_config)
+            hash = h.hexdigest()
+
+            updated_config = update_dict_fn(updated_config, args, idempotence_token=hash)
 
         # Asynchronous Boto3 session
         session = aioboto3.Session()
