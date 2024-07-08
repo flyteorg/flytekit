@@ -28,7 +28,6 @@ dependencies = [
     "grpcio-status",
     "importlib-metadata",
     "isodate",
-    "jinja2",
     "joblib",
     "jsonlines",
     "jsonpickle",
