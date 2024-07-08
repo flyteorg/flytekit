@@ -121,7 +121,7 @@ def create_sagemaker_deployment(
         {
             "Model": nodes[0].outputs["result"],
             "EndpointConfig": nodes[1].outputs["result"],
-            "EndpointArn": nodes[2].outputs["result"].get("EndpointArn"),
+            "EndpointArn": nodes[2].outputs["result"],
         },
         dict,
     )
