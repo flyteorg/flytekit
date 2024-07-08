@@ -14,6 +14,12 @@ from flytekit import task, workflow
 from flytekit.configuration import SerializationSettings
 from flytekit.exceptions.user import FlyteRecoverableException
 
+@pytest.fixture(autouse=True, scope="function")
+def restore_env():
+    original_env = os.environ.copy()
+    yield
+    os.environ.clear()
+    os.environ.update(original_env)
 
 @dataclass
 class Config(DataClassJsonMixin):
@@ -212,3 +218,21 @@ def test_run_policy() -> None:
         "ttlSecondsAfterFinished": 600,
         "activeDeadlineSeconds": 36000,
     }
+
+@pytest.mark.parametrize("start_method", ["spawn", "fork"])
+def test_omp_num_threads(start_method: str) -> None:
+    """Test that the env var OMP_NUM_THREADS is set by default and not overwritten if set."""
+
+    @task(task_config=Elastic(nnodes=1, nproc_per_node=2, start_method=start_method))
+    def test_task_omp_default():
+        assert os.environ["OMP_NUM_THREADS"] == "1"
+
+    test_task_omp_default()
+
+    os.environ["OMP_NUM_THREADS"] = "42"
+
+    @task(task_config=Elastic(nnodes=1, nproc_per_node=2, start_method=start_method))
+    def test_task_omp_set():
+        assert os.environ["OMP_NUM_THREADS"] == "42"
+
+    test_task_omp_set()
