@@ -86,6 +86,7 @@ def set_developer_properties(
     :param filter: logging.Filter to add to the user_space_logger
     :param level: logging level to set the user_space_logger to
     """
+    print(f"++++++++++++++++++++++ HERE +++++++++++++++ {level} {handler=}")
     global developer_logger
     if handler is not None:
         developer_logger.addHandler(handler)
