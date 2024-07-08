@@ -368,6 +368,7 @@ def _execute_task(
     if len(resolver_args) < 1:
         raise Exception("cannot be <1")
 
+    logger.warning(f"ARTF: execute-start")
     with setup_execution(
         raw_output_data_prefix,
         output_prefix,
@@ -385,6 +386,7 @@ def _execute_task(
             )
             return
         _handle_annotated_task(ctx, _task_def, inputs, output_prefix)
+    logger.warning(f"ARTF: execute-end")
 
 
 @_scopes.system_entry_point
