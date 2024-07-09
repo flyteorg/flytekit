@@ -129,9 +129,9 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
                 )
 
         if isinstance(task_config, Databricks):
-            task_type = self._SPARK_TASK_TYPE
-        else:
             task_type = "databricks"
+        else:
+            task_type = self._SPARK_TASK_TYPE
 
         super(PysparkFunctionTask, self).__init__(
             task_config=task_config,
