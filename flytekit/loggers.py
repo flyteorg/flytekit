@@ -179,7 +179,7 @@ def get_level_from_cli_verbosity(verbosity: int) -> int:
     :return: logging level
     """
     if verbosity == 0:
-        return logging.CRITICAL
+        return int(os.getenv(LOGGING_ENV_VAR, logging.CRITICAL))
     elif verbosity == 1:
         return logging.WARNING
     elif verbosity == 2:

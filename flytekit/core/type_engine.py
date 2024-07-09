@@ -563,7 +563,8 @@ class DataclassTransformer(TypeTransformer[object]):
 
         if hasattr(python_type, "__origin__") and get_origin(python_type) is dict:
             return {
-                k: self._make_dataclass_serializable(v, get_args(python_type)[1]) for k, v in cast(dict, python_val).items()
+                k: self._make_dataclass_serializable(v, get_args(python_type)[1])
+                for k, v in cast(dict, python_val).items()
             }
 
         if not dataclasses.is_dataclass(python_type):
