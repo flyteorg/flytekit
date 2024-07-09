@@ -7,10 +7,9 @@ import pathlib
 import tempfile
 import typing
 from dataclasses import dataclass, field, fields
-from typing import cast, get_args
-
+from typing import get_args
+from mashumaro.codecs.json import JSONEncoder
 import rich_click as click
-from dataclasses_json import DataClassJsonMixin
 from rich.progress import Progress
 
 from flytekit import Annotations, FlyteContext, FlyteContextManager, Labels, Literal
@@ -395,7 +394,8 @@ def to_click_option(
             if type(default_val) == dict or type(default_val) == list:
                 default_val = json.dumps(default_val)
             else:
-                default_val = cast(DataClassJsonMixin, default_val).to_json()
+                encoder = JSONEncoder(python_type)
+                default_val = encoder.encode(default_val)
         if literal_var.type.metadata:
             description_extra = f": {json.dumps(literal_var.type.metadata)}"
 
