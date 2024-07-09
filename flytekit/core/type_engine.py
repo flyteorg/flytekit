@@ -284,13 +284,22 @@ class DataclassTransformer(TypeTransformer[object]):
     """
     The Dataclass Transformer provides a type transformer for dataclasses.
 
-    The Dataclass is converted to and from JSON string by mashumaro library
+    The dataclass is converted to and from a JSON string by the mashumaro library
     and is transported between tasks using the proto.Structpb representation.
     Also, the type declaration will try to extract the JSON Schema for the
-    object if possible and pass it with the definition.
+    object, if possible, and pass it with the definition.
 
-    The lifecycle of the dataclass in the flyte type system is as follows:
-    1. Serialization: The dataclass is 
+    The lifecycle of the dataclass in the Flyte type system is as follows:
+
+    1. Serialization: The dataclass transformer converts the dataclass to a JSON string.
+        (1) Handle dataclass attributes to make them serializable with mashumaro.
+        (2) Use the mashumaro API to serialize the dataclass to a JSON string.
+        (3) Use the JSON string to create a Flyte Literal.
+        (4) Serialize the Flyte Literal to a protobuf.
+
+    2. Deserialization: The dataclass transformer converts the JSON string back to a dataclass.
+        (1) Convert the JSON string to a dataclass using mashumaro.
+        (2) Handle dataclass attributes to ensure they are of the correct types.
 
     For Json Schema, we use https://github.com/fuhrysteve/marshmallow-jsonschema library.
 
