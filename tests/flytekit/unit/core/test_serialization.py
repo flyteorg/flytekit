@@ -727,22 +727,18 @@ def test_default_args_task_optional_int_type_default_int():
 
 
 def test_default_args_task_no_type_hint():
-    @task
-    def t1(a=0) -> int:
-        return a
+    with pytest.raises(TypeError, match="'a' has no type. Please add a type annotation to the input parameter"):
+        @task
+        def t1(a=0) -> int:
+            return a
 
-    @workflow
-    def wf_no_input() -> int:
-        return t1()
+        @workflow
+        def wf_no_input() -> int:
+            return t1()
 
-    @workflow
-    def wf_with_input() -> int:
-        return t1(a=100)
-
-    with pytest.raises(TypeError, match="Arguments do not have type annotation"):
-        get_serializable(OrderedDict(), serialization_settings, wf_no_input)
-    with pytest.raises(TypeError, match="Arguments do not have type annotation"):
-        get_serializable(OrderedDict(), serialization_settings, wf_with_input)
+        @workflow
+        def wf_with_input() -> int:
+            return t1(a=100)
 
 
 def test_default_args_task_mismatch_type():
