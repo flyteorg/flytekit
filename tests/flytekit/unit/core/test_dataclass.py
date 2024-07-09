@@ -1,21 +1,29 @@
 import pytest
 from dataclasses_json import DataClassJsonMixin
 from mashumaro.mixins.json import DataClassJSONMixin
+import os
+import tempfile
+import random
+import string
+from dataclasses import dataclass
+from typing import Annotated, List, Dict, Optional
+
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.type_engine import DataclassTransformer
-import os
-from dataclasses import dataclass
-from typing import Annotated, List, Dict, Optional
 from flytekit import task, workflow
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import FlyteFile
 from flytekit.types.structured import StructuredDataset
-import tempfile
+
+
+def generate_random_string(length: int) -> str:
+    letters = string.ascii_letters + string.digits  # You can include punctuation if needed: string.punctuation
+    return ''.join(random.choice(letters) for _ in range(length))
 
 @pytest.fixture
 def local_dummy_txt_file():
-    fd, path = tempfile.mkstemp(suffix=".txt")
+    fd, path = tempfile.mkstemp(prefix=generate_random_string(10),suffix=".txt")
     try:
         with os.fdopen(fd, "w") as tmp:
             tmp.write("Hello World")
@@ -25,7 +33,7 @@ def local_dummy_txt_file():
 
 @pytest.fixture
 def local_dummy_directory():
-    temp_dir = tempfile.TemporaryDirectory()
+    temp_dir = tempfile.TemporaryDirectory(prefix=generate_random_string(10))
     try:
         with open(os.path.join(temp_dir.name, "file"), "w") as tmp:
             tmp.write("Hello world")
