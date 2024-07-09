@@ -644,7 +644,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 # literal
                 if omt is not None:
                     om = omt.get(v)
-                    logger.warning(f"ARTF: 1 {om=} for {k}")
+                    logger.warning(f"ARTF: 1 {om=} for {k} v is {v}")
                     if om:
                         metadata = {}
                         if om.additional_items:

@@ -597,9 +597,11 @@ class OutputMetadataTracker(object):
     output_metadata: typing.Dict[typing.Any, OutputMetadata] = field(default_factory=dict)
 
     def add(self, obj: typing.Any, metadata: OutputMetadata):
+        print(f"ARTF: Adding metadata {metadata} to object {obj} with {id(obj)}")
         self.output_metadata[id(obj)] = metadata
 
     def get(self, obj: typing.Any) -> Optional[OutputMetadata]:
+        print(f"ARTF: Getting metadata for object {obj} with {id(obj)}")
         return self.output_metadata.get(id(obj))
 
     def with_params(
