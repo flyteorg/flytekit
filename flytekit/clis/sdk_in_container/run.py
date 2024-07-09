@@ -8,8 +8,9 @@ import tempfile
 import typing
 from dataclasses import dataclass, field, fields
 from typing import get_args
-from mashumaro.codecs.json import JSONEncoder
+
 import rich_click as click
+from mashumaro.codecs.json import JSONEncoder
 from rich.progress import Progress
 
 from flytekit import Annotations, FlyteContext, FlyteContextManager, Labels, Literal
