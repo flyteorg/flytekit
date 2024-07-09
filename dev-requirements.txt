@@ -183,7 +183,6 @@ ipython==8.25.0
 isodate==0.6.1
     # via
     #   azure-storage-blob
-    #   flytekit
 jaraco-classes==3.4.0
     # via
     #   keyring
