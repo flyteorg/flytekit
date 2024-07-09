@@ -394,7 +394,6 @@ def get_serializable_launch_plan(
             raise ValueError("Please continue to use the schedule arg, the trigger arg is not implemented yet")
     else:
         lc = None
-
     lps = _launch_plan_models.LaunchPlanSpec(
         workflow_id=wf_id,
         entity_metadata=_launch_plan_models.LaunchPlanMetadata(
@@ -412,7 +411,6 @@ def get_serializable_launch_plan(
         security_context=options.security_context or entity.security_context,
         overwrite_cache=options.overwrite_cache or entity.overwrite_cache,
     )
-
     lp_id = _identifier_model.Identifier(
         resource_type=_identifier_model.ResourceType.LAUNCH_PLAN,
         project=settings.project,

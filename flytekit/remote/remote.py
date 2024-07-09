@@ -721,7 +721,6 @@ class FlyteRemote(object):
                 except FlyteEntityAlreadyExistsException:
                     logger.debug(f" {lp_entity.id} Already Exists!")
             return ident
-
         if isinstance(cp_entity, launch_plan_models.LaunchPlan):
             ident = self._resolve_identifier(ResourceType.LAUNCH_PLAN, cp_entity.id.name, version, settings)
             try:
