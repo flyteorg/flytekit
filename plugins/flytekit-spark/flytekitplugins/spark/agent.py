@@ -28,7 +28,7 @@ class DatabricksAgent(AsyncAgentBase):
     name = "Databricks Agent"
 
     def __init__(self):
-        super().__init__(task_type_name="spark", metadata_type=DatabricksJobMetadata)
+        super().__init__(task_type_name="databricks", metadata_type=DatabricksJobMetadata)
 
     async def create(
         self, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs
