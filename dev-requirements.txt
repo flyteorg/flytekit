@@ -195,10 +195,6 @@ jaraco-functools==4.0.1
     # via keyring
 jedi==0.19.1
     # via ipython
-jinja2==3.1.4
-    # via
-    #   -r dev-requirements.in
-    #   flytekit
 jmespath==1.0.1
     # via botocore
 joblib==1.4.2
@@ -220,8 +216,6 @@ markdown-it-py==3.0.0
     # via
     #   flytekit
     #   rich
-markupsafe==2.1.5
-    # via jinja2
 marshmallow==3.21.2
     # via
     #   dataclasses-json
