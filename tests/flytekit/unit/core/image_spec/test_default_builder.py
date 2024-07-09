@@ -2,6 +2,7 @@ import os
 
 import pytest
 
+import flytekit
 from flytekit.image_spec import ImageSpec
 from flytekit.image_spec.default_builder import DefaultImageBuilder, create_docker_context
 
@@ -28,6 +29,7 @@ def test_create_docker_context(tmp_path):
         requirements=os.fspath(other_requirements_path),
         source_root=os.fspath(source_root),
         commands=["mkdir my_dir"],
+        entrypoint=["/bin/bash"],
     )
 
     create_docker_context(image_spec, docker_context_path)
@@ -42,6 +44,8 @@ def test_create_docker_context(tmp_path):
     assert "--requirement requirements_uv.txt" in dockerfile_content
     assert "COPY --chown=flytekit ./src /root" in dockerfile_content
     assert "RUN mkdir my_dir" in dockerfile_content
+    assert "ENTRYPOINT [\"/bin/bash\"]" in dockerfile_content
+    assert "mkdir -p $HOME" in dockerfile_content
 
     requirements_path = docker_context_path / "requirements_uv.txt"
     assert requirements_path.exists()
@@ -77,6 +81,59 @@ def test_create_docker_context_with_git_subfolder(tmp_path):
     assert "--requirement requirements_pip.txt" in dockerfile_content
     requirements_path = docker_context_path / "requirements_pip.txt"
     assert requirements_path.exists()
+
+
+def test_create_docker_context_with_null_entrypoint(tmp_path):
+    docker_context_path = tmp_path / "builder_root"
+    docker_context_path.mkdir()
+
+    image_spec = ImageSpec(
+        name="FLYTEKIT",
+        python_version="3.12",
+        entrypoint=[],
+    )
+
+    create_docker_context(image_spec, docker_context_path)
+
+    dockerfile_path = docker_context_path / "Dockerfile"
+    assert dockerfile_path.exists()
+    dockerfile_content = dockerfile_path.read_text()
+    assert "ENTRYPOINT []" in dockerfile_content
+
+
+@pytest.mark.parametrize("flytekit_spec", [None, "flytekit>=1.12.3", "flytekit==1.12.3"])
+def test_create_docker_context_with_flytekit(tmp_path, flytekit_spec, monkeypatch):
+
+    # pretend version is 1.13.0
+    mock_version = "1.13.0"
+    monkeypatch.setattr(flytekit, "__version__", mock_version)
+
+    docker_context_path = tmp_path / "builder_root"
+    docker_context_path.mkdir()
+
+    if flytekit_spec:
+        packages = [flytekit_spec]
+    else:
+        packages = []
+
+    image_spec = ImageSpec(
+        name="FLYTEKIT", packages=packages
+    )
+
+    create_docker_context(image_spec, docker_context_path)
+
+    dockerfile_path = docker_context_path / "Dockerfile"
+    assert dockerfile_path.exists()
+
+    requirements_path = docker_context_path / "requirements_uv.txt"
+    assert requirements_path.exists()
+
+    requirements_content = requirements_path.read_text()
+    if flytekit_spec:
+        flytekit_spec in requirements_content
+        assert f"flytekit=={mock_version}" not in requirements_content
+    else:
+        assert f"flytekit=={mock_version}" in requirements_content
 
 
 def test_create_docker_context_cuda(tmp_path):

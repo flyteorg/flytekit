@@ -1,6 +1,8 @@
 import enum
 import os
 import typing
+from html import escape
+from string import Template
 from typing import Optional
 
 from flytekit.core.context_manager import ExecutionParameters, ExecutionState, FlyteContext, FlyteContextManager
@@ -153,8 +155,16 @@ def _get_deck(
     If ignore_jupyter is set to True, then it will return a str even in a jupyter environment.
     """
     deck_map = {deck.name: deck.html for deck in new_user_params.decks}
+    nav_htmls = []
+    body_htmls = []
 
-    raw_html = get_deck_template().render(metadata=deck_map)
+    for key, value in deck_map.items():
+        nav_htmls.append(f'<li onclick="handleLinkClick(this)">{escape(key)}</li>')
+        # Can not escape here because this is HTML. Escaping it will present the HTML as text.
+        # The renderer must ensure that the HTML is safe.
+        body_htmls.append(f"<div>{value}</div>")
+
+    raw_html = get_deck_template().substitute(NAV_HTML="".join(nav_htmls), BODY_HTML="".join(body_htmls))
     if not ignore_jupyter and ipython_check():
         try:
             from IPython.core.display import HTML
@@ -184,18 +194,9 @@ def _output_deck(task_name: str, new_user_params: ExecutionParameters):
         logger.error(f"Failed to write flyte deck html with error {e}.")
 
 
-def get_deck_template() -> "Template":
-    from jinja2 import Environment, FileSystemLoader, select_autoescape
-
+def get_deck_template() -> Template:
     root = os.path.dirname(os.path.abspath(__file__))
-    templates_dir = os.path.join(root, "html")
-    env = Environment(
-        loader=FileSystemLoader(templates_dir),
-        # 🔥 include autoescaping for security purposes
-        # sources:
-        # - https://jinja.palletsprojects.com/en/3.0.x/api/#autoescaping
-        # - https://stackoverflow.com/a/38642558/8474894 (see in comments)
-        # - https://stackoverflow.com/a/68826578/8474894
-        autoescape=select_autoescape(enabled_extensions=("html",)),
-    )
-    return env.get_template("template.html")
+    templates_dir = os.path.join(root, "html", "template.html")
+    with open(templates_dir, "r") as f:
+        template_content = f.read()
+    return Template(template_content)

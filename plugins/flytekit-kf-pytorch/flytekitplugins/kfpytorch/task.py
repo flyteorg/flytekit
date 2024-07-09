@@ -107,7 +107,7 @@ class PyTorch(object):
 
     master: Master = field(default_factory=lambda: Master())
     worker: Worker = field(default_factory=lambda: Worker())
-    run_policy: Optional[RunPolicy] = field(default_factory=lambda: None)
+    run_policy: Optional[RunPolicy] = None
     # Support v0 config for backwards compatibility
     num_workers: Optional[int] = None
 
@@ -122,6 +122,10 @@ class Elastic(object):
     Single-node elastic training is executed in a k8s pod when `nnodes` is set to 1.
     Multi-node training is executed otherwise using a `Pytorch Job <https://github.com/kubeflow/training-operator>`_.
 
+    Like `torchrun`, this plugin sets the environment variable `OMP_NUM_THREADS` to 1 if it is not set.
+    Please see https://pytorch.org/tutorials/recipes/recipes/tuning_guide.html for potential performance improvements.
+    To change `OMP_NUM_THREADS`, specify it in the environment dict of the flytekit task decorator or via `pyflyte run --env`.
+
     Args:
         nnodes (Union[int, str]): Number of nodes, or the range of nodes in form <minimum_nodes>:<maximum_nodes>.
         nproc_per_node (str): Number of workers per node.
@@ -130,6 +134,7 @@ class Elastic(object):
         max_restarts (int): Maximum number of worker group restarts before failing.
         rdzv_configs (Dict[str, Any]): Additional rendezvous configs to pass to torch elastic, e.g. `{"timeout": 1200, "join_timeout": 900}`.
             See `torch.distributed.launcher.api.LaunchConfig` and `torch.distributed.elastic.rendezvous.dynamic_rendezvous.create_handler`.
+        run_policy: Configuration for the run policy.
     """
 
     nnodes: Union[int, str] = 1
@@ -138,6 +143,7 @@ class Elastic(object):
     monitor_interval: int = 5
     max_restarts: int = 0
     rdzv_configs: Dict[str, Any] = field(default_factory=dict)
+    run_policy: Optional[RunPolicy] = None
 
 
 class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
@@ -181,21 +187,15 @@ class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
             restart_policy=replica_config.restart_policy.value if replica_config.restart_policy else None,
         )
 
-    def _convert_run_policy(self, run_policy: RunPolicy) -> kubeflow_common.RunPolicy:
-        return kubeflow_common.RunPolicy(
-            clean_pod_policy=run_policy.clean_pod_policy.value if run_policy.clean_pod_policy else None,
-            ttl_seconds_after_finished=run_policy.ttl_seconds_after_finished,
-            active_deadline_seconds=run_policy.active_deadline_seconds,
-            backoff_limit=run_policy.backoff_limit,
-        )
-
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         worker = self._convert_replica_spec(self.task_config.worker)
         # support v0 config for backwards compatibility
         if self.task_config.num_workers:
             worker.replicas = self.task_config.num_workers
 
-        run_policy = self._convert_run_policy(self.task_config.run_policy) if self.task_config.run_policy else None
+        run_policy = (
+            _convert_run_policy_to_flyte_idl(self.task_config.run_policy) if self.task_config.run_policy else None
+        )
         pytorch_job = pytorch_task.DistributedPyTorchTrainingTask(
             worker_replicas=worker,
             master_replicas=self._convert_replica_spec(self.task_config.master),
@@ -263,6 +263,15 @@ def spawn_helper(
         return ElasticWorkerResult(return_value=return_val, decks=flytekit.current_context().decks)
 
 
+def _convert_run_policy_to_flyte_idl(run_policy: RunPolicy) -> kubeflow_common.RunPolicy:
+    return kubeflow_common.RunPolicy(
+        clean_pod_policy=run_policy.clean_pod_policy.value if run_policy.clean_pod_policy else None,
+        ttl_seconds_after_finished=run_policy.ttl_seconds_after_finished,
+        active_deadline_seconds=run_policy.active_deadline_seconds,
+        backoff_limit=run_policy.backoff_limit,
+    )
+
+
 class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
     """
     Plugin for distributed training with torch elastic/torchrun (see
@@ -326,6 +335,22 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
                     "to not run in a `PyTorchJob`. Rendezvous might timeout."
                 )
             )
+
+        # If OMP_NUM_THREADS is not set, set it to 1 to avoid overloading the system.
+        # Doing so to copy the default behavior of torchrun.
+        # See https://github.com/pytorch/pytorch/blob/eea4ece256d74c6f25c1f4eab37b3f2f4aeefd4d/torch/distributed/run.py#L791
+        if "OMP_NUM_THREADS" not in os.environ and self.task_config.nproc_per_node > 1:
+            omp_num_threads = 1
+            logger.warning(
+                "\n*****************************************\n"
+                "Setting OMP_NUM_THREADS environment variable for each process to be "
+                "%s in default, to avoid your system being overloaded, "
+                "please further tune the variable for optimal performance in "
+                "your application as needed. \n"
+                "*****************************************",
+                omp_num_threads,
+            )
+            os.environ["OMP_NUM_THREADS"] = str(omp_num_threads)
 
         config = LaunchConfig(
             run_id=flytekit.current_context().execution_id.name,
@@ -445,11 +470,15 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
                 nproc_per_node=self.task_config.nproc_per_node,
                 max_restarts=self.task_config.max_restarts,
             )
+            run_policy = (
+                _convert_run_policy_to_flyte_idl(self.task_config.run_policy) if self.task_config.run_policy else None
+            )
             job = pytorch_task.DistributedPyTorchTrainingTask(
                 worker_replicas=pytorch_task.DistributedPyTorchTrainingReplicaSpec(
                     replicas=self.max_nodes,
                 ),
                 elastic_config=elastic_config,
+                run_policy=run_policy,
             )
             return MessageToDict(job)
 
