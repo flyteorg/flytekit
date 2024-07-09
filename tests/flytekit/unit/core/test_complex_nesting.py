@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import List
 
 import pytest
+from dataclasses_json import DataClassJsonMixin
 
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.context_manager import ExecutionState, FlyteContextManager
@@ -14,26 +15,26 @@ from flytekit.types.file import FlyteFile
 
 
 @dataclass
-class MyProxyConfiguration:
+class MyProxyConfiguration(DataClassJsonMixin):
     # File and directory paths kept as 'str' so Flyte doesn't manage these static resources
     splat_data_dir: str
     apriori_file: str
 
 
 @dataclass
-class MyProxyParameters:
+class MyProxyParameters(DataClassJsonMixin):
     id: str
     job_i_step: int
 
 
 @dataclass
-class MyAprioriConfiguration:
+class MyAprioriConfiguration(DataClassJsonMixin):
     static_data_dir: FlyteDirectory
     external_data_dir: FlyteDirectory
 
 
 @dataclass
-class MyInput:
+class MyInput(DataClassJsonMixin):
     main_product: FlyteFile
     apriori_config: MyAprioriConfiguration
     proxy_config: MyProxyConfiguration

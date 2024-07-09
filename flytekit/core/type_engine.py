@@ -557,6 +557,8 @@ class DataclassTransformer(TypeTransformer[object]):
             return python_val
 
         # transform to FlyteFile or FlyteDirectory so that we can serialize it by mashumaro
+        # for example, return s3://my-s3-bucket/a/example.txt instead of FlyteFile(path="s3://my-s3-bucket/a/example.txt")
+        # so that we can use the serialize method implemented in FlyteFile
         if inspect.isclass(python_type) and (
             issubclass(python_type, FlyteFile) or issubclass(python_type, FlyteDirectory)
         ):
