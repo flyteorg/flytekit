@@ -3,7 +3,10 @@ from typing import Any, Dict, Optional
 
 import aioboto3
 import xxhash
+from botocore.exceptions import ClientError
+from flyteidl.core.execution_pb2 import TaskExecution
 
+from flytekit.extend.backend.base_agent import Resource
 from flytekit.interaction.string_literals import literal_map_string_repr
 from flytekit.models.literals import LiteralMap
 
@@ -178,7 +181,6 @@ class Boto3AgentMixin:
         if "idempotence_token" in str(updated_config):
             # compute hash of the config
             hash = xxhash.xxh64(str(updated_config)).hexdigest()
-
             updated_config = update_dict_fn(updated_config, args, idempotence_token=hash)
 
         # Asynchronous Boto3 session
@@ -189,7 +191,30 @@ class Boto3AgentMixin:
         ) as client:
             try:
                 result = await getattr(client, method)(**updated_config)
-            except Exception as e:
-                raise e
+            except ClientError as e:
+                error_code = e.response["Error"]["Code"]
+                error_message = e.response["Error"]["Message"]
+
+                if error_code == "ValidationException" and "Cannot create already existing" in error_message:
+                    arn = re.search(r"arn:aws:sagemaker:[^ ]+", error_message).group(0)
+                    if arn:
+                        return Resource(
+                            phase=TaskExecution.SUCCEEDED,
+                            outputs={
+                                "result": f"Entity already exists: {arn}",
+                                "idempotence_token": hash,
+                            },
+                        )
+                    else:
+                        return Resource(
+                            phase=TaskExecution.SUCCEEDED,
+                            outputs={
+                                "result": "Entity already exists.",
+                                "idempotence_token": hash,
+                            },
+                        )
+                else:
+                    # Re-raise the exception if it's not the specific error we're handling
+                    raise e
 
         return result, hash

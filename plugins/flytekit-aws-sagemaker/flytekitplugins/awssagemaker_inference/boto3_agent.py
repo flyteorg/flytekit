@@ -1,7 +1,5 @@
-import re
 from typing import Optional
 
-from botocore.exceptions import ClientError
 from flyteidl.core.execution_pb2 import TaskExecution
 from typing_extensions import Annotated
 
@@ -60,32 +58,12 @@ class BotoAgent(SyncAgentBase):
 
         boto3_object = Boto3AgentMixin(service=service, region=region)
 
-        try:
-            result, idempotence_token = await boto3_object._call(
-                method=method,
-                config=config,
-                images=images,
-                inputs=inputs,
-            )
-        except ClientError as e:
-            error_code = e.response["Error"]["Code"]
-            error_message = e.response["Error"]["Message"]
-
-            if error_code == "ValidationException" and "Cannot create already existing" in error_message:
-                arn = re.search(r"arn:aws:sagemaker:[^ ]+", error_message).group(0)
-                if arn:
-                    return Resource(
-                        phase=TaskExecution.SUCCEEDED,
-                        outputs={"result": {"result": f"Entity already exists: {arn}"}},
-                    )
-                else:
-                    return Resource(
-                        phase=TaskExecution.SUCCEEDED,
-                        outputs={"result": {"result": "Entity already exists."}},
-                    )
-            else:
-                # Re-raise the exception if it's not the specific error we're handling
-                raise e
+        result, idempotence_token = await boto3_object._call(
+            method=method,
+            config=config,
+            images=images,
+            inputs=inputs,
+        )
 
         outputs = {"result": {"result": None}}
         if result:
