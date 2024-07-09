@@ -1437,8 +1437,10 @@ class ListTransformer(TypeTransformer[T]):
         raise ValueError(f"List transformer cannot reverse {literal_type}")
 
 
-@lru_cache
 def display_pickle_warning(python_type: str):
+    import traceback
+    stack_lines = "".join(traceback.format_stack())
+    logger.info(f"Python type {python_type} Stack trace: {stack_lines}")
     # This is a warning that is only displayed once per python type
     logger.warning(
         f"Unsupported Type {python_type} found, Flyte will default to use PickleFile as the transport. "
