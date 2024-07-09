@@ -95,6 +95,10 @@ def create_sagemaker_deployment(
     nodes = []
     for key, value in inputs.items():
         input_types = value["input_types"]
+        if len(nodes) > 0:
+            if "idempotence_token" not in input_types:
+                input_types["idempotence_token"] = str
+
         obj, new_input_types = create_deployment_task(
             name=f"{value['name']}-{name}",
             task_type=key,
@@ -111,19 +115,27 @@ def create_sagemaker_deployment(
                 if param not in wf.inputs.keys():
                     wf.add_workflow_input(param, t)
                 input_dict[param] = wf.inputs[param]
-        node = wf.add_entity(obj, **input_dict)
+        if len(nodes) == 0:
+            node = wf.add_entity(obj, **input_dict)
+        else:
+            node = wf.add_entity(
+                obj,
+                **input_dict,
+                idempotence_token=nodes[-1].outputs["idempotence_token"],
+            )
+
         if len(nodes) > 0:
             nodes[-1] >> node
         nodes.append(node)
 
     wf.add_workflow_output(
         "wf_output",
-        {
-            "Model": nodes[0].outputs["result"],
-            "EndpointConfig": nodes[1].outputs["result"],
-            "EndpointArn": nodes[2].outputs["result"],
-        },
-        dict,
+        [
+            nodes[0].outputs["result"],
+            nodes[1].outputs["result"],
+            nodes[2].outputs["result"],
+        ],
+        list[dict],
     )
     return wf
 

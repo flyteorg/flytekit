@@ -1,8 +1,8 @@
-import hashlib
 import re
 from typing import Any, Dict, Optional
 
 import aioboto3
+import xxhash
 
 from flytekit.interaction.string_literals import literal_map_string_repr
 from flytekit.models.literals import LiteralMap
@@ -78,21 +78,27 @@ def update_dict_fn(
                     else:
                         # If there's only one match, it needn't always be a string, so not replacing the original dict.
                         return update_dict_copy
-
                 elif match == "idempotence_token" and idempotence_token:
-                    original_dict = original_dict.replace(f"{{{match}}}", idempotence_token)
+                    temp_dict = original_dict.replace(f"{{{match}}}", idempotence_token)
+                    if len(temp_dict) > 63:
+                        truncated_idempotence_token = idempotence_token[
+                            : (63 - len(original_dict.replace("{idempotence_token}", "")))
+                        ]
+                        original_dict = original_dict.replace(f"{{{match}}}", truncated_idempotence_token)
+                    else:
+                        original_dict = temp_dict
 
         # If the string does not contain placeholders or if there are multiple placeholders, return the original dict.
         return original_dict
 
     # If the original value is a list, recursively update each element in the list
     if isinstance(original_dict, list):
-        return [update_dict_fn(item, update_dict) for item in original_dict]
+        return [update_dict_fn(item, update_dict, idempotence_token) for item in original_dict]
 
     # If the original value is a dictionary, recursively update each key-value pair
     if isinstance(original_dict, dict):
         for key, value in original_dict.items():
-            original_dict[key] = update_dict_fn(value, update_dict)
+            original_dict[key] = update_dict_fn(value, update_dict, idempotence_token)
 
     # Return the updated original dict
     return original_dict
@@ -123,7 +129,7 @@ class Boto3AgentMixin:
         images: Optional[Dict[str, str]] = None,
         inputs: Optional[LiteralMap] = None,
         region: Optional[str] = None,
-    ) -> Any:
+    ) -> tuple[Any, str]:
         """
         Utilize this method to invoke any boto3 method (AWS service method).
 
@@ -169,11 +175,9 @@ class Boto3AgentMixin:
 
         updated_config = update_dict_fn(config, args)
 
-        if "idempotence_token" in updated_config:
+        if "idempotence_token" in str(updated_config):
             # compute hash of the config
-            h = hashlib.md5()
-            h.update(updated_config)
-            hash = h.hexdigest()
+            hash = xxhash.xxh64(str(updated_config)).hexdigest()
 
             updated_config = update_dict_fn(updated_config, args, idempotence_token=hash)
 
@@ -188,4 +192,4 @@ class Boto3AgentMixin:
             except Exception as e:
                 raise e
 
-        return result
+        return result, hash

@@ -61,7 +61,7 @@ class BotoAgent(SyncAgentBase):
         boto3_object = Boto3AgentMixin(service=service, region=region)
 
         try:
-            result = await boto3_object._call(
+            result, idempotence_token = await boto3_object._call(
                 method=method,
                 config=config,
                 images=images,
@@ -105,7 +105,8 @@ class BotoAgent(SyncAgentBase):
                             result,
                             Annotated[dict, kwtypes(allow_pickle=True)],
                             TypeEngine.to_literal_type(dict),
-                        )
+                        ),
+                        "idempotence_token": idempotence_token,
                     }
                 )
 

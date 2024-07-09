@@ -95,7 +95,7 @@ class SageMakerEndpointTask(AsyncAgentExecutorMixin, PythonTask):
         super().__init__(
             name=name,
             task_type=self._TASK_TYPE,
-            interface=Interface(inputs=inputs, outputs=kwtypes(result=dict)),
+            interface=Interface(inputs=inputs, outputs=kwtypes(result=dict, idempotence_token=str)),
             **kwargs,
         )
         self._config = config

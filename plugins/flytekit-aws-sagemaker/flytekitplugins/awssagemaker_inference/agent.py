@@ -66,7 +66,7 @@ class SageMakerEndpointAgent(Boto3AgentMixin, AsyncAgentBase):
         return SageMakerEndpointMetadata(config=config, region=region, inputs=inputs)
 
     async def get(self, resource_meta: SageMakerEndpointMetadata, **kwargs) -> Resource:
-        endpoint_status = await self._call(
+        endpoint_status, idempotence_token = await self._call(
             method="describe_endpoint",
             config={"EndpointName": resource_meta.config.get("EndpointName")},
             inputs=resource_meta.inputs,
@@ -82,7 +82,10 @@ class SageMakerEndpointAgent(Boto3AgentMixin, AsyncAgentBase):
 
         res = None
         if current_state == "InService":
-            res = {"result": {"EndpointArn": endpoint_status.get("EndpointArn")}}
+            res = {
+                "result": {"EndpointArn": endpoint_status.get("EndpointArn")},
+                "idempotence_token": idempotence_token,
+            }
 
         return Resource(phase=flyte_phase, outputs=res, message=message)
 
