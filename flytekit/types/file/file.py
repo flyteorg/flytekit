@@ -146,7 +146,7 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
     """
 
     def _serialize(self) -> typing.Dict[str, str]:
-        lv = FlyteFilePathTransformer().to_literal(FlyteContext.current_context(), self, FlyteFile, None)
+        lv = FlyteFilePathTransformer().to_literal(FlyteContextManager.current_context(), self, FlyteFile, None)
         return {"path": lv.scalar.blob.uri}
 
     @classmethod
@@ -157,7 +157,7 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
             raise ValueError("FlyteFile's path should not be None")
 
         return FlyteFilePathTransformer().to_python_value(
-            FlyteContext.current_context(),
+            FlyteContextManager.current_context(),
             Literal(
                 scalar=Scalar(
                     blob=Blob(

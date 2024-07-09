@@ -55,9 +55,9 @@ class StructuredDataset(SerializableType, DataClassJSONMixin):
     uri: typing.Optional[str] = field(default=None, metadata=config(mm_field=fields.String()))
     file_format: typing.Optional[str] = field(default=GENERIC_FORMAT, metadata=config(mm_field=fields.String()))
 
-    def _serialize(self):
+    def _serialize(self) -> Dict[str, Optional[str]]:
         lv = StructuredDatasetTransformerEngine().to_literal(
-            FlyteContext.current_context(), self, StructuredDataset, None
+            FlyteContextManager.current_context(), self, StructuredDataset, None
         )
         sd = StructuredDataset(uri=lv.scalar.structured_dataset.uri)
         sd.file_format = lv.scalar.structured_dataset.metadata.structured_dataset_type.format
@@ -67,7 +67,7 @@ class StructuredDataset(SerializableType, DataClassJSONMixin):
         }
 
     @classmethod
-    def _deserialize(cls, value):
+    def _deserialize(cls, value) -> "StructuredDataset":
         uri = value.get("uri", None)
         file_format = value.get("file_format", None)
 
@@ -75,7 +75,7 @@ class StructuredDataset(SerializableType, DataClassJSONMixin):
             raise ValueError("StructuredDataset's uri and file format should not be None")
 
         return StructuredDatasetTransformerEngine().to_python_value(
-            FlyteContext.current_context(),
+            FlyteContextManager.current_context(),
             Literal(
                 scalar=Scalar(
                     structured_dataset=StructuredDataset(
