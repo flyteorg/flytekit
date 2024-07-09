@@ -4,11 +4,16 @@ from typing import Any, Dict, Optional
 import aioboto3
 import xxhash
 from botocore.exceptions import ClientError
-from flyteidl.core.execution_pb2 import TaskExecution
 
-from flytekit.extend.backend.base_agent import Resource
 from flytekit.interaction.string_literals import literal_map_string_repr
 from flytekit.models.literals import LiteralMap
+
+
+class IdempotenceTokenException(Exception):
+    def __init__(self, message, idempotence_token):
+        super().__init__(message)
+        self.idempotence_token = idempotence_token
+
 
 account_id_map = {
     "us-east-1": "785573368785",
@@ -192,29 +197,6 @@ class Boto3AgentMixin:
             try:
                 result = await getattr(client, method)(**updated_config)
             except ClientError as e:
-                error_code = e.response["Error"]["Code"]
-                error_message = e.response["Error"]["Message"]
-
-                if error_code == "ValidationException" and "Cannot create already existing" in error_message:
-                    arn = re.search(r"arn:aws:sagemaker:[^ ]+", error_message).group(0)
-                    if arn:
-                        return Resource(
-                            phase=TaskExecution.SUCCEEDED,
-                            outputs={
-                                "result": f"Entity already exists: {arn}",
-                                "idempotence_token": hash,
-                            },
-                        )
-                    else:
-                        return Resource(
-                            phase=TaskExecution.SUCCEEDED,
-                            outputs={
-                                "result": "Entity already exists.",
-                                "idempotence_token": hash,
-                            },
-                        )
-                else:
-                    # Re-raise the exception if it's not the specific error we're handling
-                    raise e
+                raise IdempotenceTokenException(f"An error occurred: {e}", hash) from e
 
         return result, hash
