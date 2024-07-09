@@ -8,6 +8,7 @@ from flyteidl.core import workflow_pb2 as _core_workflow
 from flytekit.models import common as _common
 from flytekit.models import interface as _interface
 from flytekit.models import types as type_models
+from flytekit.models import utils
 from flytekit.models.core import condition as _condition
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.literals import Binding as _Binding
@@ -248,8 +249,10 @@ class NodeMetadata(_common.FlyteIdlEntity):
     @classmethod
     def from_flyte_idl(cls, pb2_object):
         return cls(
-            pb2_object.name,
-            pb2_object.timeout.ToTimedelta(),
+            pb2_object.name or "",
+            utils.convert_to_datetime(pb2_object.timeout.seconds, pb2_object.timeout.nanos)
+            if pb2_object.timeout
+            else None,
             _RetryStrategy.from_flyte_idl(pb2_object.retries),
             pb2_object.interruptible if pb2_object.interruptible_value else None,
             pb2_object.cacheable if pb2_object.cacheable_value else None,
@@ -596,17 +599,28 @@ class Node(_common.FlyteIdlEntity):
         :param flyteidl.core.workflow_pb2.Node pb2_object:
         :rtype: Node
         """
+
         return cls(
             id=pb2_object.id,
-            metadata=NodeMetadata.from_flyte_idl(pb2_object.metadata),
+            metadata=NodeMetadata.from_flyte_idl(pb2_object.metadata) if pb2_object.metadata else None,
             inputs=[_Binding.from_flyte_idl(b) for b in pb2_object.inputs],
             upstream_node_ids=pb2_object.upstream_node_ids,
             output_aliases=[Alias.from_flyte_idl(a) for a in pb2_object.output_aliases],
-            task_node=TaskNode.from_flyte_idl(pb2_object.task_node) if pb2_object.HasField("task_node") else None,
-            workflow_node=WorkflowNode.from_flyte_idl(pb2_object.workflow_node) if pb2_object.workflow_node else None,
-            branch_node=BranchNode.from_flyte_idl(pb2_object.branch_node) if pb2_object.branch_node else None,
-            gate_node=GateNode.from_flyte_idl(pb2_object.gate_node) if pb2_object.HasField("gate_node") else None,
-            array_node=ArrayNode.from_flyte_idl(pb2_object.array_node) if pb2_object.HasField("array_node") else None,
+            task_node=TaskNode.from_flyte_idl(pb2_object.target[0])
+            if isinstance(pb2_object.target, flyteidl.node.Target.TaskNode)
+            else None,
+            workflow_node=WorkflowNode.from_flyte_idl(pb2_object.target[0])
+            if isinstance(pb2_object.target, flyteidl.node.Target.WorkflowNode)
+            else None,
+            branch_node=BranchNode.from_flyte_idl(pb2_object.target[0])
+            if isinstance(pb2_object.target, flyteidl.node.Target.BranchNode)
+            else None,
+            gate_node=GateNode.from_flyte_idl(pb2_object.target[0])
+            if isinstance(pb2_object.target, flyteidl.node.Target.GateNode)
+            else None,
+            array_node=ArrayNode.from_flyte_idl(pb2_object.target[0])
+            if isinstance(pb2_object.target, flyteidl.node.Target.ArrayNode)
+            else None,
         )
 
 
@@ -642,10 +656,10 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
-        resources = Resources.from_flyte_idl(pb2_object.resources)
+        resources = Resources.from_flyte_idl(pb2_object.resources) if pb2_object.resources else None
         extended_resources = pb2_object.extended_resources if pb2_object.extended_resources else None
         container_image = pb2_object.container_image if len(pb2_object.container_image) > 0 else None
-        if bool(resources.requests) or bool(resources.limits):
+        if resources is not None and (bool(resources.requests) or bool(resources.limits)):
             return cls(resources=resources, extended_resources=extended_resources, container_image=container_image)
         return cls(resources=None, extended_resources=extended_resources, container_image=container_image)
 
@@ -692,11 +706,12 @@ class TaskNode(_common.FlyteIdlEntity):
         :param flyteidl.core.workflow_pb2.TaskNode pb2_object:
         :rtype: TaskNode
         """
-        overrides = TaskNodeOverrides.from_flyte_idl(pb2_object.overrides)
-        if overrides.resources is None:
-            overrides = None
+        overrides = TaskNodeOverrides.from_flyte_idl(pb2_object.overrides) if pb2_object.overrides else None
+        # if overrides.resources is None:
+        #     overrides = None
+
         return cls(
-            reference_id=_identifier.Identifier.from_flyte_idl(pb2_object.reference_id),
+            reference_id=_identifier.Identifier.from_flyte_idl(pb2_object.reference[0]),
             overrides=overrides,
         )
 
@@ -1000,7 +1015,7 @@ class WorkflowTemplate(_common.FlyteIdlEntity):
             interface=_interface.TypedInterface.from_flyte_idl(pb2_object.interface),
             nodes=[Node.from_flyte_idl(n) for n in pb2_object.nodes],
             outputs=[_Binding.from_flyte_idl(b) for b in pb2_object.outputs],
-            failure_node=Node.from_flyte_idl(pb2_object.failure_node) if pb2_object.HasField("failure_node") else None,
+            failure_node=Node.from_flyte_idl(pb2_object.failure_node) if pb2_object.failure_node else None,
         )
 
 

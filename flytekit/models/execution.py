@@ -11,18 +11,11 @@ import flyteidl_rust as flyteidl
 import flytekit
 from flytekit.models import common as _common_models
 from flytekit.models import literals as _literals_models
-from flytekit.models import matchable_resource, security
+from flytekit.models import matchable_resource, security, utils
 from flytekit.models.core import execution as _core_execution
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.matchable_resource import ExecutionClusterLabel
 from flytekit.models.node_execution import DynamicWorkflowNodeMetadata
-
-
-# A helping function for `from_flyte_idl()`
-def convert_to_datetime(seconds: int, nanos: int) -> datetime.datetime:
-    total_microseconds = (seconds * 1_000_000) + (nanos // 1_000)
-    dt = (datetime.datetime(1970, 1, 1) + timedelta(microseconds=total_microseconds)).replace(tzinfo=_timezone.utc)
-    return dt
 
 
 class SystemMetadata(_common_models.FlyteIdlEntity):
@@ -160,11 +153,9 @@ class ExecutionMetadata(_common_models.FlyteIdlEntity):
             mode=pb2_object.mode,
             principal=pb2_object.principal,
             nesting=pb2_object.nesting,
-            scheduled_at=convert_to_datetime(pb2_object.scheduled_at.seconds, pb2_object.scheduled_at.nanos)
+            scheduled_at=utils.convert_to_datetime(pb2_object.scheduled_at.seconds, pb2_object.scheduled_at.nanos)
             if pb2_object.scheduled_at
-            else convert_to_datetime(
-                0, 0
-            ),  # pb2_object.scheduled_at.ToDatetime() if pb2_object.HasField("scheduled_at") else None,
+            else utils.convert_to_datetime(0, 0),
             parent_node_execution=_identifier.NodeExecutionIdentifier.from_flyte_idl(pb2_object.parent_node_execution)
             if pb2_object.parent_node_execution
             else None,
@@ -636,7 +627,7 @@ class ExecutionClosure(_common_models.FlyteIdlEntity):
             outputs=outputs,
             phase=pb2_object.phase,
             # started_at=pb2_object.started_at.ToDatetime().replace(tzinfo=_timezone.utc),
-            started_at=convert_to_datetime(pb2_object.started_at.seconds, pb2_object.started_at.nanos)
+            started_at=utils.convert_to_datetime(pb2_object.started_at.seconds, pb2_object.started_at.nanos)
             if pb2_object.started_at
             else None,
             # duration=pb2_object.duration.ToTimedelta(),
@@ -647,11 +638,11 @@ class ExecutionClosure(_common_models.FlyteIdlEntity):
             else None,
             abort_metadata=abort_metadata,
             # created_at=pb2_object.created_at.ToDatetime().replace(tzinfo=_timezone.utc)
-            created_at=convert_to_datetime(pb2_object.created_at.seconds, pb2_object.created_at.nanos)
+            created_at=utils.convert_to_datetime(pb2_object.created_at.seconds, pb2_object.created_at.nanos)
             if pb2_object.created_at
             else None,
             # updated_at=pb2_object.updated_at.ToDatetime().replace(tzinfo=_timezone.utc)
-            updated_at=convert_to_datetime(pb2_object.updated_at.seconds, pb2_object.updated_at.nanos)
+            updated_at=utils.convert_to_datetime(pb2_object.updated_at.seconds, pb2_object.updated_at.nanos)
             if pb2_object.updated_at
             else None,
         )

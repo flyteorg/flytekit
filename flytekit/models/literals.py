@@ -975,7 +975,7 @@ class Literal(_common.FlyteIdlEntity):
             value = self.collection.to_flyte_idl()
         elif self.map:
             value = self.map.to_flyte_idl()
-        return flyteidl.collection.Literal(
+        return flyteidl.core.Literal(
             value=value,
             hash=self.hash or "",
             metadata=self.metadata or {},
