@@ -214,12 +214,18 @@ class Parameter(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.interface_pb2.Parameter
         """
-        return _interface_pb2.Parameter(
+        behavior = None
+        if self.default:
+            behavior = flyteidl.parameter.Behavior.Default(self.default.to_flyte_idl())
+        if self.required:
+            behavior = flyteidl.parameter.Behavior.Required(self.required)
+        if self.artifact_query:
+            behavior = flyteidl.parameter.Behavior.Required(self.artifact_query)
+        if self.artifact_id:
+            behavior = flyteidl.parameter.Behavior.Required(self.artifact_id)
+        return flyteidl.core.Parameter(
             var=self.var.to_flyte_idl(),
-            default=self.default.to_flyte_idl() if self.default is not None else None,
-            required=self.required if self.default is None and self.artifact_query is None else None,
-            artifact_query=self.artifact_query if self.artifact_query else None,
-            artifact_id=self.artifact_id if self.artifact_id else None,
+            behavior=behavior,
         )
 
     @classmethod
@@ -256,7 +262,7 @@ class ParameterMap(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.interface_pb2.ParameterMap
         """
-        return _interface_pb2.ParameterMap(
+        return flyteidl.core.ParameterMap(
             parameters={k: v.to_flyte_idl() for k, v in self.parameters.items()},
         )
 

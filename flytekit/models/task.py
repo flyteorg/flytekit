@@ -51,7 +51,7 @@ class Resources(_common.FlyteIdlEntity):
             """
             :rtype: flyteidl.core.tasks_pb2.ResourceEntry
             """
-            return flyteidl.core.ResourceEntry(name=self.name, value=self.value)
+            return flyteidl.resources.ResourceEntry(name=self.name, value=self.value)
 
         @classmethod
         def from_flyte_idl(cls, pb2_object):
