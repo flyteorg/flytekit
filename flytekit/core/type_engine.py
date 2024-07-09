@@ -492,7 +492,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"user defined datatypes in Flytekit"
             )
 
-        self._convert_flyte_type_serializable(python_val, python_type)
+        self._make_flyte_type_serializable(python_val, python_type)
 
         # The function looks up or creates a JSONEncoder specifically designed for the object's type.
         # This encoder is then used to convert a data class into a JSON string.
@@ -545,7 +545,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 python_val.__setattr__(field.name, self._fix_structured_dataset_type(field.type, val))
         return python_val
 
-    def _convert_flyte_type_serializable(self, python_val: T, python_type: Type[T]) -> typing.Any:
+    def _make_flyte_type_serializable(self, python_val: T, python_type: Type[T]) -> typing.Any:
         """
         If any field inside the dataclass is flyte type, we should use flyte type transformer for that field.
         """
@@ -556,14 +556,14 @@ class DataclassTransformer(TypeTransformer[object]):
         if UnionTransformer.is_optional_type(python_type):
             if python_val is None:
                 return None
-            return self._convert_flyte_type_serializable(python_val, get_args(python_type)[0])
+            return self._make_flyte_type_serializable(python_val, get_args(python_type)[0])
 
         if hasattr(python_type, "__origin__") and get_origin(python_type) is list:
-            return [self._convert_flyte_type_serializable(v, get_args(python_type)[0]) for v in cast(list, python_val)]
+            return [self._make_flyte_type_serializable(v, get_args(python_type)[0]) for v in cast(list, python_val)]
 
         if hasattr(python_type, "__origin__") and get_origin(python_type) is dict:
             return {
-                k: self._convert_flyte_type_serializable(v, get_args(python_type)[1]) for k, v in cast(dict, python_val).items()
+                k: self._make_flyte_type_serializable(v, get_args(python_type)[1]) for k, v in cast(dict, python_val).items()
             }
 
         if not dataclasses.is_dataclass(python_type):
@@ -582,7 +582,7 @@ class DataclassTransformer(TypeTransformer[object]):
         dataclass_attributes = typing.get_type_hints(python_type)
         for n, t in dataclass_attributes.items():
             val = python_val.__getattribute__(n)
-            python_val.__setattr__(n, self._convert_flyte_type_serializable(val, t))
+            python_val.__setattr__(n, self._make_flyte_type_serializable(val, t))
         return python_val
 
     def _revert_to_flyte_type(self, python_val: T, expected_python_type: Type) -> Optional[T]:
