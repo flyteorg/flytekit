@@ -502,7 +502,15 @@ class DataclassTransformer(TypeTransformer[object]):
             encoder = JSONEncoder(python_type)
             self._encoder[python_type] = encoder
 
-        json_str = encoder.encode(python_val)
+        try:
+            json_str = encoder.encode(python_val)
+        except NotImplementedError:
+            # you can refer FlyteFile, FlyteDirectory and StructuredDataset to see how flyte types can be implemented.
+            raise NotImplementedError(
+                f"Flyte Types in {python_type} should inherit from mashumaro SerializableType"
+                f" and  implement _serialize and _deserialize methods."
+            )
+
         return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))  # type: ignore
 
     def _get_origin_type_in_annotation(self, python_type: Type[T]) -> Type[T]:

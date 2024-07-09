@@ -1,7 +1,7 @@
 import pytest
 from dataclasses_json import DataClassJsonMixin
 from mashumaro.mixins.json import DataClassJSONMixin
-
+from flytekit.core.type_engine import TypeEngine
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.type_engine import DataclassTransformer
 import os
@@ -138,13 +138,13 @@ def test_pure_dataclasses_with_python_types_get_literal_type_and_to_python_value
         list_dict_dc: Optional[List[Dict[str, DC]]] = None
 
     ctx = FlyteContextManager.current_context()
-    tf = DataclassTransformer()
+
 
     o = DCWithOptional()
-    lt = tf.get_literal_type(DCWithOptional)
-    lv = tf.to_literal(ctx, o, DCWithOptional, lt)
+    lt = TypeEngine.to_literal_type(DCWithOptional)
+    lv = TypeEngine.to_literal(ctx, o, DCWithOptional, lt)
     assert lv is not None
-    pv = tf.to_python_value(ctx, lv, DCWithOptional)
+    pv = TypeEngine.to_python_value(ctx, lv, DCWithOptional)
     assert isinstance(pv, DCWithOptional)
     DataclassTransformer().assert_type(DCWithOptional, pv)
 
@@ -157,10 +157,10 @@ def test_pure_dataclasses_with_python_types_get_literal_type_and_to_python_value
                       dict_dict_dc={"s": {"t": DC(string="u"), "v": DC(string="w")}},
                       dict_list_dc={"x": [DC(string="y"), DC(string="z")],
                                     "aa": [DC(string="bb"), DC(string="cc")]})
-    lt = tf.get_literal_type(DCWithOptional)
-    lv = tf.to_literal(ctx, o, DCWithOptional, lt)
+    lt = TypeEngine.to_literal_type(DCWithOptional)
+    lv = TypeEngine.to_literal(ctx, o, DCWithOptional, lt)
     assert lv is not None
-    pv = tf.to_python_value(ctx, lv, DCWithOptional)
+    pv = TypeEngine.to_python_value(ctx, lv, DCWithOptional)
     assert isinstance(pv, DCWithOptional)
     DataclassTransformer().assert_type(DCWithOptional, pv)
 
@@ -286,11 +286,11 @@ def test_pure_dataclasses_with_flyte_types_get_literal_type_and_to_python_value(
     ctx = FlyteContextManager.current_context()
 
     o = NestedFlyteTypes()
-    tf = DataclassTransformer()
-    lt = tf.get_literal_type(NestedFlyteTypes)
-    lv = tf.to_literal(ctx, o, NestedFlyteTypes, lt)
+
+    lt = TypeEngine.to_literal_type(NestedFlyteTypes)
+    lv = TypeEngine.to_literal(ctx, o, NestedFlyteTypes, lt)
     assert lv is not None
-    pv = tf.to_python_value(ctx, lv, NestedFlyteTypes)
+    pv = TypeEngine.to_python_value(ctx, lv, NestedFlyteTypes)
     assert isinstance(pv, NestedFlyteTypes)
     DataclassTransformer().assert_type(NestedFlyteTypes, pv)
 
@@ -328,10 +328,10 @@ def test_pure_dataclasses_with_flyte_types_get_literal_type_and_to_python_value(
         ),
     )
 
-    lt = tf.get_literal_type(NestedFlyteTypes)
-    lv = tf.to_literal(ctx, o, NestedFlyteTypes, lt)
+    lt = TypeEngine.to_literal_type(NestedFlyteTypes)
+    lv = TypeEngine.to_literal(ctx, o, NestedFlyteTypes, lt)
     assert lv is not None
-    pv = tf.to_python_value(ctx, lv, NestedFlyteTypes)
+    pv = TypeEngine.to_python_value(ctx, lv, NestedFlyteTypes)
     assert isinstance(pv, NestedFlyteTypes)
     DataclassTransformer().assert_type(NestedFlyteTypes, pv)
 
@@ -412,13 +412,13 @@ def test_dataclasses_json_mixin__with_python_types_get_literal_type_and_to_pytho
         list_dict_dc: Optional[List[Dict[str, DC]]] = None
 
     ctx = FlyteContextManager.current_context()
-    tf = DataclassTransformer()
+
 
     o = DCWithOptional()
-    lt = tf.get_literal_type(DCWithOptional)
-    lv = tf.to_literal(ctx, o, DCWithOptional, lt)
+    lt = TypeEngine.to_literal_type(DCWithOptional)
+    lv = TypeEngine.to_literal(ctx, o, DCWithOptional, lt)
     assert lv is not None
-    pv = tf.to_python_value(ctx, lv, DCWithOptional)
+    pv = TypeEngine.to_python_value(ctx, lv, DCWithOptional)
     assert isinstance(pv, DCWithOptional)
     DataclassTransformer().assert_type(DCWithOptional, pv)
 
@@ -431,10 +431,10 @@ def test_dataclasses_json_mixin__with_python_types_get_literal_type_and_to_pytho
                       dict_dict_dc={"s": {"t": DC(string="u"), "v": DC(string="w")}},
                       dict_list_dc={"x": [DC(string="y"), DC(string="z")],
                                     "aa": [DC(string="bb"), DC(string="cc")]})
-    lt = tf.get_literal_type(DCWithOptional)
-    lv = tf.to_literal(ctx, o, DCWithOptional, lt)
+    lt = TypeEngine.to_literal_type(DCWithOptional)
+    lv = TypeEngine.to_literal(ctx, o, DCWithOptional, lt)
     assert lv is not None
-    pv = tf.to_python_value(ctx, lv, DCWithOptional)
+    pv = TypeEngine.to_python_value(ctx, lv, DCWithOptional)
     assert isinstance(pv, DCWithOptional)
     DataclassTransformer().assert_type(DCWithOptional, pv)
 
@@ -560,11 +560,11 @@ def test_dataclasses_json_mixin_with_flyte_types_get_literal_type_and_to_python_
     ctx = FlyteContextManager.current_context()
 
     o = NestedFlyteTypes()
-    tf = DataclassTransformer()
-    lt = tf.get_literal_type(NestedFlyteTypes)
-    lv = tf.to_literal(ctx, o, NestedFlyteTypes, lt)
+
+    lt = TypeEngine.to_literal_type(NestedFlyteTypes)
+    lv = TypeEngine.to_literal(ctx, o, NestedFlyteTypes, lt)
     assert lv is not None
-    pv = tf.to_python_value(ctx, lv, NestedFlyteTypes)
+    pv = TypeEngine.to_python_value(ctx, lv, NestedFlyteTypes)
     assert isinstance(pv, NestedFlyteTypes)
     DataclassTransformer().assert_type(NestedFlyteTypes, pv)
 
@@ -602,10 +602,10 @@ def test_dataclasses_json_mixin_with_flyte_types_get_literal_type_and_to_python_
         ),
     )
 
-    lt = tf.get_literal_type(NestedFlyteTypes)
-    lv = tf.to_literal(ctx, o, NestedFlyteTypes, lt)
+    lt = TypeEngine.to_literal_type(NestedFlyteTypes)
+    lv = TypeEngine.to_literal(ctx, o, NestedFlyteTypes, lt)
     assert lv is not None
-    pv = tf.to_python_value(ctx, lv, NestedFlyteTypes)
+    pv = TypeEngine.to_python_value(ctx, lv, NestedFlyteTypes)
     assert isinstance(pv, NestedFlyteTypes)
     DataclassTransformer().assert_type(NestedFlyteTypes, pv)
 
@@ -686,13 +686,13 @@ def test_mashumaro_dataclasses_json_mixin_with_python_types_get_literal_type_and
         list_dict_dc: Optional[List[Dict[str, DC]]] = None
 
     ctx = FlyteContextManager.current_context()
-    tf = DataclassTransformer()
+
 
     o = DCWithOptional()
-    lt = tf.get_literal_type(DCWithOptional)
-    lv = tf.to_literal(ctx, o, DCWithOptional, lt)
+    lt = TypeEngine.to_literal_type(DCWithOptional)
+    lv = TypeEngine.to_literal(ctx, o, DCWithOptional, lt)
     assert lv is not None
-    pv = tf.to_python_value(ctx, lv, DCWithOptional)
+    pv = TypeEngine.to_python_value(ctx, lv, DCWithOptional)
     assert isinstance(pv, DCWithOptional)
     DataclassTransformer().assert_type(DCWithOptional, pv)
 
@@ -705,10 +705,10 @@ def test_mashumaro_dataclasses_json_mixin_with_python_types_get_literal_type_and
                       dict_dict_dc={"s": {"t": DC(string="u"), "v": DC(string="w")}},
                       dict_list_dc={"x": [DC(string="y"), DC(string="z")],
                                     "aa": [DC(string="bb"), DC(string="cc")]})
-    lt = tf.get_literal_type(DCWithOptional)
-    lv = tf.to_literal(ctx, o, DCWithOptional, lt)
+    lt = TypeEngine.to_literal_type(DCWithOptional)
+    lv = TypeEngine.to_literal(ctx, o, DCWithOptional, lt)
     assert lv is not None
-    pv = tf.to_python_value(ctx, lv, DCWithOptional)
+    pv = TypeEngine.to_python_value(ctx, lv, DCWithOptional)
     assert isinstance(pv, DCWithOptional)
     DataclassTransformer().assert_type(DCWithOptional, pv)
 
@@ -834,11 +834,11 @@ def test_mashumaro_dataclasses_json_mixin_with_flyte_types_get_literal_type_and_
     ctx = FlyteContextManager.current_context()
 
     o = NestedFlyteTypes()
-    tf = DataclassTransformer()
-    lt = tf.get_literal_type(NestedFlyteTypes)
-    lv = tf.to_literal(ctx, o, NestedFlyteTypes, lt)
+
+    lt = TypeEngine.to_literal_type(NestedFlyteTypes)
+    lv = TypeEngine.to_literal(ctx, o, NestedFlyteTypes, lt)
     assert lv is not None
-    pv = tf.to_python_value(ctx, lv, NestedFlyteTypes)
+    pv = TypeEngine.to_python_value(ctx, lv, NestedFlyteTypes)
     assert isinstance(pv, NestedFlyteTypes)
     DataclassTransformer().assert_type(NestedFlyteTypes, pv)
 
@@ -876,9 +876,9 @@ def test_mashumaro_dataclasses_json_mixin_with_flyte_types_get_literal_type_and_
         ),
     )
 
-    lt = tf.get_literal_type(NestedFlyteTypes)
-    lv = tf.to_literal(ctx, o, NestedFlyteTypes, lt)
+    lt = TypeEngine.to_literal_type(NestedFlyteTypes)
+    lv = TypeEngine.to_literal(ctx, o, NestedFlyteTypes, lt)
     assert lv is not None
-    pv = tf.to_python_value(ctx, lv, NestedFlyteTypes)
+    pv = TypeEngine.to_python_value(ctx, lv, NestedFlyteTypes)
     assert isinstance(pv, NestedFlyteTypes)
     DataclassTransformer().assert_type(NestedFlyteTypes, pv)
