@@ -3,9 +3,9 @@ from datetime import datetime, timedelta
 
 import rich_click as click
 
-from flytekit import WorkflowFailurePolicy
 from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_click_context
 from flytekit.clis.sdk_in_container.utils import domain_option_dec, project_option_dec
+from flytekit.core.workflow import WorkflowFailurePolicy
 from flytekit.interaction.click_types import DateTimeType, DurationParamType
 
 _backfill_help = """

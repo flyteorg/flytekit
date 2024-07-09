@@ -116,9 +116,7 @@ def initialize_global_loggers():
     Initializes the global loggers to the default configuration.
     """
     # Use Rich logging while running in the local execution or jupyter notebook.
-    if (
-        os.environ.get("FLYTE_INTERNAL_EXECUTION_ID", None) is None or interactive.ipython_check()
-    ) and is_rich_logging_enabled():
+    if (os.getenv("FLYTE_INTERNAL_EXECUTION_ID") is None or interactive.ipython_check()) and is_rich_logging_enabled():
         try:
             upgrade_to_rich_logging()
             return
