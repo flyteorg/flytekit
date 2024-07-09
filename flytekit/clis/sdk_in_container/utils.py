@@ -125,8 +125,10 @@ def pretty_print_traceback(e: Exception, verbosity: int = 1):
         )
         new_tb = remove_unwanted_traceback_frames(tb, unwanted_module_names)
         console.print(Traceback.from_exception(type(e), e, new_tb))
-    else:
+    elif verbosity >= 2:
         console.print(Traceback.from_exception(type(e), e, tb))
+    else:
+        raise ValueError(f"Verbosity level must be between 0 and 2. Got {verbosity}")
 
     if hasattr(e, SOURCE_CODE):
         # TODO: Use other way to check if the background is light or dark
