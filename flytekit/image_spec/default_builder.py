@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 import subprocess
@@ -73,6 +74,8 @@ ENV FLYTE_SDK_RICH_TRACEBACKS=0 SSL_CERT_DIR=/etc/ssl/certs $ENV
 ENV PATH="$$PATH:/usr/local/nvidia/bin:/usr/local/cuda/bin" \
     LD_LIBRARY_PATH="/usr/local/nvidia/lib64:$$LD_LIBRARY_PATH"
 
+$ENTRYPOINT
+
 $COPY_COMMAND_RUNTIME
 RUN $RUN_COMMANDS
 
@@ -80,7 +83,8 @@ WORKDIR /root
 SHELL ["/bin/bash", "-c"]
 
 USER flytekit
-RUN echo "export PATH=$$PATH" >> $$HOME/.profile
+RUN mkdir -p $$HOME && \
+    echo "export PATH=$$PATH" >> $$HOME/.profile
 """
 )
 
@@ -191,6 +195,11 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
     else:
         python_version = f"{sys.version_info.major}.{sys.version_info.minor}"
 
+    if image_spec.entrypoint is None:
+        entrypoint = ""
+    else:
+        entrypoint = f"ENTRYPOINT {json.dumps(image_spec.entrypoint)}"
+
     if image_spec.commands:
         run_commands = " && ".join(image_spec.commands)
     else:
@@ -206,6 +215,7 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
         BASE_IMAGE=base_image,
         ENV=env,
         COPY_COMMAND_RUNTIME=copy_command_runtime,
+        ENTRYPOINT=entrypoint,
         RUN_COMMANDS=run_commands,
     )
 

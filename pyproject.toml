@@ -27,7 +27,6 @@ dependencies = [
     "grpcio",
     "grpcio-status",
     "importlib-metadata",
-    "isodate",
     "jinja2",
     "joblib",
     "jsonlines",
