@@ -9,10 +9,11 @@ from flytekit.interaction.string_literals import literal_map_string_repr
 from flytekit.models.literals import LiteralMap
 
 
-class IdempotenceTokenException(Exception):
-    def __init__(self, message, idempotence_token):
+class CustomException(Exception):
+    def __init__(self, message, idempotence_token, original_exception):
         super().__init__(message)
         self.idempotence_token = idempotence_token
+        self.original_exception = original_exception
 
 
 account_id_map = {
@@ -183,6 +184,7 @@ class Boto3AgentMixin:
 
         updated_config = update_dict_fn(config, args)
 
+        hash = ""
         if "idempotence_token" in str(updated_config):
             # compute hash of the config
             hash = xxhash.xxh64(str(updated_config)).hexdigest()
@@ -197,6 +199,6 @@ class Boto3AgentMixin:
             try:
                 result = await getattr(client, method)(**updated_config)
             except ClientError as e:
-                raise IdempotenceTokenException(f"An error occurred: {e}", hash) from e
+                raise CustomException(f"An error occurred: {e}", hash, e) from e
 
         return result, hash

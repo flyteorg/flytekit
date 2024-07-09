@@ -16,7 +16,7 @@ from flytekit.extend.backend.base_agent import (
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
-from .boto3_mixin import Boto3AgentMixin, IdempotenceTokenException
+from .boto3_mixin import Boto3AgentMixin, CustomException
 
 
 # https://github.com/flyteorg/flyte/issues/4505
@@ -66,9 +66,10 @@ class BotoAgent(SyncAgentBase):
                 images=images,
                 inputs=inputs,
             )
-        except IdempotenceTokenException as e:
-            error_code = e.response["Error"]["Code"]
-            error_message = e.response["Error"]["Message"]
+        except CustomException as e:
+            original_exception = e.original_exception
+            error_code = original_exception.response["Error"]["Code"]
+            error_message = original_exception.response["Error"]["Message"]
 
             if error_code == "ValidationException" and "Cannot create already existing" in error_message:
                 arn = re.search(r"arn:aws:sagemaker:[^ ]+", error_message).group(0)
@@ -76,23 +77,23 @@ class BotoAgent(SyncAgentBase):
                     return Resource(
                         phase=TaskExecution.SUCCEEDED,
                         outputs={
-                            "result": f"Entity already exists: {arn}",
-                            "idempotence_token": "",
+                            "result": {"result": f"Entity already exists: {arn}"},
+                            "idempotence_token": e.idempotence_token,
                         },
                     )
                 else:
                     return Resource(
                         phase=TaskExecution.SUCCEEDED,
                         outputs={
-                            "result": "Entity already exists.",
-                            "idempotence_token": "",
+                            "result": {"result": "Entity already exists."},
+                            "idempotence_token": e.idempotence_token,
                         },
                     )
             else:
                 # Re-raise the exception if it's not the specific error we're handling
-                print(f"An unexpected error occurred: {e}")
+                raise e
         except Exception as e:
-            print(f"An unexpected error occurred: {e}")
+            raise e
 
         outputs = {"result": {"result": None}}
         if result:
@@ -113,7 +114,12 @@ class BotoAgent(SyncAgentBase):
                             Annotated[dict, kwtypes(allow_pickle=True)],
                             TypeEngine.to_literal_type(dict),
                         ),
-                        "idempotence_token": idempotence_token,
+                        "idempotence_token": TypeEngine.to_literal(
+                            new_ctx,
+                            idempotence_token,
+                            str,
+                            TypeEngine.to_literal_type(str),
+                        ),
                     }
                 )
 

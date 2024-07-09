@@ -1,9 +1,7 @@
-import re
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
 import cloudpickle
-from flyteidl.core.execution_pb2 import TaskExecution
 
 from flytekit.extend.backend.base_agent import (
     AgentRegistry,
@@ -15,7 +13,7 @@ from flytekit.extend.backend.utils import convert_to_flyte_phase
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
-from .boto3_mixin import Boto3AgentMixin, IdempotenceTokenException
+from .boto3_mixin import Boto3AgentMixin, CustomException
 
 
 @dataclass
@@ -58,12 +56,28 @@ class SageMakerEndpointAgent(Boto3AgentMixin, AsyncAgentBase):
         config = custom.get("config")
         region = custom.get("region")
 
-        await self._call(
-            method="create_endpoint",
-            config=config,
-            inputs=inputs,
-            region=region,
-        )
+        try:
+            await self._call(
+                method="create_endpoint",
+                config=config,
+                inputs=inputs,
+                region=region,
+            )
+        except CustomException as e:
+            original_exception = e.original_exception
+            error_code = original_exception.response["Error"]["Code"]
+            error_message = original_exception.response["Error"]["Message"]
+
+            if error_code == "ValidationException" and "Cannot create already existing" in error_message:
+                return SageMakerEndpointMetadata(config=config, region=region, inputs=inputs)
+            elif (
+                error_code == "ResourceLimitExceeded"
+                and "Please use AWS Service Quotas to request an increase for this quota." in error_message
+            ):
+                return SageMakerEndpointMetadata(config=config, region=region, inputs=inputs)
+            raise e
+        except Exception as e:
+            raise e
 
         return SageMakerEndpointMetadata(config=config, region=region, inputs=inputs)
 
@@ -75,33 +89,15 @@ class SageMakerEndpointAgent(Boto3AgentMixin, AsyncAgentBase):
                 inputs=resource_meta.inputs,
                 region=resource_meta.region,
             )
-        except IdempotenceTokenException as e:
-            error_code = e.response["Error"]["Code"]
-            error_message = e.response["Error"]["Message"]
+        except CustomException as e:
+            original_exception = e.original_exception
+            error_code = original_exception.response["Error"]["Code"]
+            error_message = original_exception.response["Error"]["Message"]
 
-            if error_code == "ValidationException" and "Cannot create already existing" in error_message:
-                arn = re.search(r"arn:aws:sagemaker:[^ ]+", error_message).group(0)
-                if arn:
-                    return Resource(
-                        phase=TaskExecution.SUCCEEDED,
-                        outputs={
-                            "result": f"Entity already exists: {arn}",
-                            "idempotence_token": "",
-                        },
-                    )
-                else:
-                    return Resource(
-                        phase=TaskExecution.SUCCEEDED,
-                        outputs={
-                            "result": "Entity already exists.",
-                            "idempotence_token": "",
-                        },
-                    )
-            else:
-                # Re-raise the exception if it's not the specific error we're handling
-                print(f"An unexpected error occurred: {e}")
-        except Exception as e:
-            print(f"An unexpected error occurred: {e}")
+            if error_code == "ValidationException" and "Could not find endpoint" in error_message:
+                raise Exception(
+                    "This might be due to resource limits being exceeded, preventing the creation of a new endpoint. Please check your resource usage and limits."
+                ) from e
 
         current_state = endpoint_status.get("EndpointStatus")
         flyte_phase = convert_to_flyte_phase(states[current_state])
