@@ -145,12 +145,12 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
             return "/tmp/local_file.csv"
     """
 
-    def _serialize(self):
+    def _serialize(self) -> typing.Dict[str, str]:
         lv = FlyteFilePathTransformer().to_literal(FlyteContext.current_context(), self, FlyteFile, None)
         return {"path": lv.scalar.blob.uri}
 
     @classmethod
-    def _deserialize(cls, value):
+    def _deserialize(cls, value) -> "FlyteFile":
         path = value.get("path", None)
 
         if path is None:
