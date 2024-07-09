@@ -330,7 +330,7 @@ class SynchronousFlyteClient(flyteidl.RawSynchronousFlyteClient):
         :raises grpc.RpcError:
         """
         super(SynchronousFlyteClient, self).create_launch_plan(
-            _launch_plan_pb2.LaunchPlanCreateRequest(
+            flyteidl.admin.LaunchPlanCreateRequest(
                 id=launch_plan_identifer.to_flyte_idl(),
                 spec=launch_plan_spec.to_flyte_idl(),
             )
@@ -344,7 +344,7 @@ class SynchronousFlyteClient(flyteidl.RawSynchronousFlyteClient):
         :rtype: flytekit.models.launch_plan.LaunchPlan
         """
         return _launch_plan.LaunchPlan.from_flyte_idl(
-            super(SynchronousFlyteClient, self).get_launch_plan(_common_pb2.ObjectGetRequest(id=id.to_flyte_idl()))
+            super(SynchronousFlyteClient, self).get_launch_plan(flyteidl.admin.ObjectGetRequest(id=id.to_flyte_idl()))
         )
 
     def get_active_launch_plan(self, identifier):
