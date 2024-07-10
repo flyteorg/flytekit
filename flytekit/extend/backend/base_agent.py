@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from flyteidl.admin.agent_pb2 import Agent
 from flyteidl.admin.agent_pb2 import TaskCategory as _TaskCategory
-from flyteidl.core import literals_pb2
+from flyteidl.core import literals_pb2, security_pb2
 from flyteidl.core.execution_pb2 import TaskExecution, TaskLog
 from rich.logging import RichHandler
 from rich.progress import Progress
@@ -52,6 +52,22 @@ class TaskCategory:
 
     def __str__(self):
         return f"{self._name}_v{self._version}"
+
+
+@dataclass
+class Connection:
+    """
+    This is the connection object that the agent can use to connect to the external services.
+    """
+
+    @classmethod
+    def decode(cls, connection: security_pb2.Connection) -> "Connection":
+        """
+        Decode the resource meta from bytes.
+        """
+        data = {k: v for k, v in connection.secrets.items()}
+        data.update({k: v for k, v in connection.configs.items()})
+        return dataclass_from_dict(cls, data)
 
 
 @dataclass
@@ -118,9 +134,22 @@ class SyncAgentBase(AgentBase):
 
     name = "Base Sync Agent"
 
+    def __init__(self, connection_type: Optional[Connection] = None, **kwargs):
+        super().__init__(**kwargs)
+        self._connection_type = connection_type
+
+    @property
+    def connection_type(self) -> Connection:
+        return self._connection_type
+
     @abstractmethod
     def do(
-        self, task_template: TaskTemplate, output_prefix: str, inputs: Optional[LiteralMap] = None, **kwargs
+        self,
+        task_template: TaskTemplate,
+        inputs: Optional[LiteralMap],
+        output_prefix: str,
+        connection: Optional[Connection] = None,
+        **kwargs,
     ) -> Resource:
         """
         This is the method that the agent will run.
@@ -140,13 +169,18 @@ class AsyncAgentBase(AgentBase):
 
     name = "Base Async Agent"
 
-    def __init__(self, metadata_type: ResourceMeta, **kwargs):
+    def __init__(self, metadata_type: ResourceMeta, connection_type: Optional[Connection] = None, **kwargs):
         super().__init__(**kwargs)
         self._metadata_type = metadata_type
+        self._connection_type = connection_type
 
     @property
     def metadata_type(self) -> ResourceMeta:
         return self._metadata_type
+
+    @property
+    def connection_type(self) -> Connection:
+        return self._connection_type
 
     @abstractmethod
     def create(
@@ -155,6 +189,7 @@ class AsyncAgentBase(AgentBase):
         output_prefix: str,
         inputs: Optional[LiteralMap],
         task_execution_metadata: Optional[TaskExecutionMetadata],
+        connection: Optional[Connection] = None,
         **kwargs,
     ) -> ResourceMeta:
         """
@@ -163,7 +198,7 @@ class AsyncAgentBase(AgentBase):
         raise NotImplementedError
 
     @abstractmethod
-    def get(self, resource_meta: ResourceMeta, **kwargs) -> Resource:
+    def get(self, resource_meta: ResourceMeta, connection: Optional[Connection] = None, **kwargs) -> Resource:
         """
         Return the status of the task, and return the outputs in some cases. For example, bigquery job
         can't write the structured dataset to the output location, so it returns the output literals to the propeller,
@@ -172,9 +207,9 @@ class AsyncAgentBase(AgentBase):
         raise NotImplementedError
 
     @abstractmethod
-    def delete(self, resource_meta: ResourceMeta, **kwargs):
+    def delete(self, resource_meta: ResourceMeta, connection: Optional[Connection] = None, **kwargs):
         """
-        Delete the task. This call should be idempotent. It should raise an error if fails to delete the task.
+        Delete the task. This call should be idempotent. It should raise an error if it fails to delete the task.
         """
         raise NotImplementedError
 
@@ -237,7 +272,9 @@ class SyncAgentExecutorMixin:
     Sending a prompt to ChatGPT and getting a response, or retrieving some metadata from a backend system.
     """
 
-    def execute(self: PythonTask, **kwargs) -> LiteralMap:
+    T = typing.TypeVar("T", "SyncAgentExecutorMixin", PythonTask)
+
+    def execute(self: T, **kwargs) -> LiteralMap:
         from flytekit.tools.translator import get_serializable
 
         ctx = FlyteContext.current_context()
@@ -282,10 +319,12 @@ class AsyncAgentExecutorMixin:
     Asynchronous tasks are tasks that take a long time to complete, such as running a query.
     """
 
+    T = typing.TypeVar("T", "AsyncAgentExecutorMixin", PythonTask)
+
     _clean_up_task: coroutine = None
     _agent: AsyncAgentBase = None
 
-    def execute(self: PythonTask, **kwargs) -> LiteralMap:
+    def execute(self: T, **kwargs) -> LiteralMap:
         ctx = FlyteContext.current_context()
         ss = ctx.serialization_settings or SerializationSettings(ImageConfig())
         output_prefix = ctx.file_access.get_random_remote_directory()
@@ -316,7 +355,11 @@ class AsyncAgentExecutorMixin:
         return resource.outputs
 
     async def _create(
-        self: PythonTask, task_template: TaskTemplate, output_prefix: str, inputs: Dict[str, Any] = None
+        self: T,
+        task_template: TaskTemplate,
+        output_prefix: str,
+        inputs: Dict[str, Any] = None,
+        connection: Optional[Connection] = None,
     ) -> ResourceMeta:
         ctx = FlyteContext.current_context()
 
@@ -338,7 +381,7 @@ class AsyncAgentExecutorMixin:
         signal.signal(signal.SIGINT, partial(self.signal_handler, resource_meta))  # type: ignore
         return resource_meta
 
-    async def _get(self: PythonTask, resource_meta: ResourceMeta) -> Resource:
+    async def _get(self: T, resource_meta: ResourceMeta) -> Resource:
         phase = TaskExecution.RUNNING
 
         progress = Progress(transient=True)

@@ -78,6 +78,11 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         """
         sec_ctx = None
         if secret_requests:
+            if not isinstance(secret_requests, list):
+                if isinstance(secret_requests, Secret):
+                    secret_requests = [secret_requests]
+                else:
+                    raise AssertionError(f"Secret {secret_requests} should be of type flytekit.Secret.")
             for s in secret_requests:
                 if not isinstance(s, Secret):
                     raise AssertionError(f"Secret {s} should be of type flytekit.Secret, received {type(s)}")

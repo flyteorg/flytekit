@@ -1,13 +1,12 @@
 import http
 import json
-import typing
 from dataclasses import dataclass
-from typing import Optional
+from typing import Dict, Optional
 
 from flyteidl.core.execution_pb2 import TaskExecution
 
 from flytekit import lazy_module
-from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource, ResourceMeta
+from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Connection, Resource, ResourceMeta
 from flytekit.extend.backend.utils import convert_to_flyte_phase, get_agent_secret
 from flytekit.models.core.execution import TaskLog
 from flytekit.models.literals import LiteralMap
@@ -16,6 +15,12 @@ from flytekit.models.task import TaskTemplate
 aiohttp = lazy_module("aiohttp")
 
 DATABRICKS_API_ENDPOINT = "/api/2.1/jobs"
+
+
+@dataclass
+class DatabricksConnection(Connection):
+    access_token: str
+    databricks_instance: str
 
 
 @dataclass
@@ -28,10 +33,16 @@ class DatabricksAgent(AsyncAgentBase):
     name = "Databricks Agent"
 
     def __init__(self):
-        super().__init__(task_type_name="spark", metadata_type=DatabricksJobMetadata)
+        super().__init__(
+            task_type_name="spark", metadata_type=DatabricksJobMetadata, connection_type=DatabricksConnection
+        )
 
     async def create(
-        self, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs
+        self,
+        task_template: TaskTemplate,
+        inputs: Optional[LiteralMap] = None,
+        connection: Optional[DatabricksConnection] = None,
+        **kwargs,
     ) -> DatabricksJobMetadata:
         custom = task_template.custom
         container = task_template.container
@@ -57,26 +68,28 @@ class DatabricksAgent(AsyncAgentBase):
             "git_commit": "aff8a9f2adbf5deda81d36d59a0b8fa3b1fc3679",
         }
 
-        databricks_instance = custom["databricksInstance"]
+        databricks_instance = connection.databricks_instance or custom["databricksInstance"]
         databricks_url = f"https://{databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/submit"
         data = json.dumps(databricks_job)
 
         async with aiohttp.ClientSession() as session:
-            async with session.post(databricks_url, headers=get_header(), data=data) as resp:
+            async with session.post(databricks_url, headers=get_header(connection), data=data) as resp:
                 response = await resp.json()
                 if resp.status != http.HTTPStatus.OK:
                     raise Exception(f"Failed to create databricks job with error: {response}")
 
         return DatabricksJobMetadata(databricks_instance=databricks_instance, run_id=str(response["run_id"]))
 
-    async def get(self, resource_meta: DatabricksJobMetadata, **kwargs) -> Resource:
+    async def get(
+        self, resource_meta: DatabricksJobMetadata, connection: Optional[DatabricksConnection] = None, **kwargs
+    ) -> Resource:
         databricks_instance = resource_meta.databricks_instance
         databricks_url = (
             f"https://{databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/get?run_id={resource_meta.run_id}"
         )
 
         async with aiohttp.ClientSession() as session:
-            async with session.get(databricks_url, headers=get_header()) as resp:
+            async with session.get(databricks_url, headers=get_header(connection)) as resp:
                 if resp.status != http.HTTPStatus.OK:
                     raise Exception(f"Failed to get databricks job {resource_meta.run_id} with error: {resp.reason}")
                 response = await resp.json()
@@ -102,20 +115,25 @@ class DatabricksAgent(AsyncAgentBase):
 
         return Resource(phase=cur_phase, message=message, log_links=log_links)
 
-    async def delete(self, resource_meta: DatabricksJobMetadata, **kwargs):
+    async def delete(
+        self, resource_meta: DatabricksJobMetadata, connection: Optional[DatabricksConnection] = None, **kwargs
+    ):
         databricks_url = f"https://{resource_meta.databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/cancel"
         data = json.dumps({"run_id": resource_meta.run_id})
 
         async with aiohttp.ClientSession() as session:
-            async with session.post(databricks_url, headers=get_header(), data=data) as resp:
+            async with session.post(databricks_url, headers=get_header(connection), data=data) as resp:
                 if resp.status != http.HTTPStatus.OK:
                     raise Exception(f"Failed to cancel databricks job {resource_meta.run_id} with error: {resp.reason}")
                 await resp.json()
 
 
-def get_header() -> typing.Dict[str, str]:
-    token = get_agent_secret("FLYTE_DATABRICKS_ACCESS_TOKEN")
-    return {"Authorization": f"Bearer {token}", "content-type": "application/json"}
+def get_header(connection: Optional[DatabricksConnection] = None) -> Dict[str, str]:
+    if connection:
+        access_token = connection.access_token
+    else:
+        access_token = get_agent_secret(secret_key="FLYTE_DATABRICKS_ACCESS_TOKEN")
+    return {"Authorization": f"Bearer {access_token}", "content-type": "application/json"}
 
 
 def result_state_is_available(life_cycle_state: str) -> bool:
