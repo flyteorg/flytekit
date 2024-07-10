@@ -13,6 +13,7 @@ from .tools import interactive
 # For now, assume this is the environment variable whose usage will remain unchanged and controls output for all
 # loggers defined in this file.
 LOGGING_ENV_VAR = "FLYTE_SDK_LOGGING_LEVEL"
+# The environment variable controls the logging level for the developer logger.
 LOGGING_DEV_ENV_VAR = "FLYTE_SDK_DEV_LOGGING_LEVEL"
 LOGGING_FMT_ENV_VAR = "FLYTE_SDK_LOGGING_FORMAT"
 LOGGING_RICH_FMT_ENV_VAR = "FLYTE_SDK_RICH_TRACEBACKS"
@@ -102,14 +103,20 @@ def _get_env_logging_level(default_level: int = logging.WARNING) -> int:
     return int(os.getenv(LOGGING_ENV_VAR, default_level))
 
 
+def _get_dev_env_logging_level(default_level: int = logging.INFO) -> int:
+    """
+    Returns the logging level set in the environment variable, or logging.INFO if the environment variable is not
+    set.
+    """
+    return int(os.getenv(LOGGING_DEV_ENV_VAR, default_level))
+
+
 def initialize_global_loggers():
     """
     Initializes the global loggers to the default configuration.
     """
     # Use Rich logging while running in the local execution or jupyter notebook.
-    if (
-        os.environ.get("FLYTE_INTERNAL_EXECUTION_ID", None) is None or interactive.ipython_check()
-    ) and is_rich_logging_enabled():
+    if (os.getenv("FLYTE_INTERNAL_EXECUTION_ID") is None or interactive.ipython_check()) and is_rich_logging_enabled():
         try:
             upgrade_to_rich_logging()
             return
@@ -126,7 +133,7 @@ def initialize_global_loggers():
 
     set_flytekit_log_properties(handler, None, _get_env_logging_level())
     set_user_logger_properties(handler, None, logging.INFO)
-    set_developer_properties(handler, None, logging.INFO)
+    set_developer_properties(handler, None, _get_dev_env_logging_level())
 
 
 def is_rich_logging_enabled() -> bool:
@@ -159,7 +166,7 @@ def upgrade_to_rich_logging(log_level: typing.Optional[int] = logging.WARNING):
     handler.setFormatter(formatter)
     set_flytekit_log_properties(handler, None, _get_env_logging_level(default_level=log_level))
     set_user_logger_properties(handler, None, logging.INFO)
-    set_developer_properties(handler, None, logging.INFO)
+    set_developer_properties(handler, None, _get_dev_env_logging_level())
 
 
 def get_level_from_cli_verbosity(verbosity: int) -> int:

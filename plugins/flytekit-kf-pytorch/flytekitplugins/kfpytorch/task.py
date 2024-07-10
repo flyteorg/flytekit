@@ -122,6 +122,10 @@ class Elastic(object):
     Single-node elastic training is executed in a k8s pod when `nnodes` is set to 1.
     Multi-node training is executed otherwise using a `Pytorch Job <https://github.com/kubeflow/training-operator>`_.
 
+    Like `torchrun`, this plugin sets the environment variable `OMP_NUM_THREADS` to 1 if it is not set.
+    Please see https://pytorch.org/tutorials/recipes/recipes/tuning_guide.html for potential performance improvements.
+    To change `OMP_NUM_THREADS`, specify it in the environment dict of the flytekit task decorator or via `pyflyte run --env`.
+
     Args:
         nnodes (Union[int, str]): Number of nodes, or the range of nodes in form <minimum_nodes>:<maximum_nodes>.
         nproc_per_node (str): Number of workers per node.
@@ -331,6 +335,22 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
                     "to not run in a `PyTorchJob`. Rendezvous might timeout."
                 )
             )
+
+        # If OMP_NUM_THREADS is not set, set it to 1 to avoid overloading the system.
+        # Doing so to copy the default behavior of torchrun.
+        # See https://github.com/pytorch/pytorch/blob/eea4ece256d74c6f25c1f4eab37b3f2f4aeefd4d/torch/distributed/run.py#L791
+        if "OMP_NUM_THREADS" not in os.environ and self.task_config.nproc_per_node > 1:
+            omp_num_threads = 1
+            logger.warning(
+                "\n*****************************************\n"
+                "Setting OMP_NUM_THREADS environment variable for each process to be "
+                "%s in default, to avoid your system being overloaded, "
+                "please further tune the variable for optimal performance in "
+                "your application as needed. \n"
+                "*****************************************",
+                omp_num_threads,
+            )
+            os.environ["OMP_NUM_THREADS"] = str(omp_num_threads)
 
         config = LaunchConfig(
             run_id=flytekit.current_context().execution_id.name,

@@ -27,8 +27,6 @@ dependencies = [
     "grpcio",
     "grpcio-status",
     "importlib-metadata",
-    "isodate",
-    "jinja2",
     "joblib",
     "jsonlines",
     "jsonpickle",
@@ -42,7 +40,7 @@ dependencies = [
     "pygments",
     "python-json-logger>=2.0.0",
     "pytimeparse>=1.1.8",
-    "pyyaml!=6.0.0,!=5.4.0,!=5.4.1", # pyyaml is broken with cython 3: https://github.com/yaml/pyyaml/issues/601
+    "pyyaml!=6.0.0,!=5.4.0,!=5.4.1",   # pyyaml is broken with cython 3: https://github.com/yaml/pyyaml/issues/601
     "requests>=2.18.4",
     "rich",
     "rich_click",
@@ -97,7 +95,7 @@ norecursedirs = ["common", "workflows", "spark", "fsspec"]
 log_cli = true
 log_cli_level = 20
 markers = [
-    "sandbox_test: fake integration tests", # unit tests that are really integration tests that run on a sandbox environment
+    "sandbox_test: fake integration tests",               # unit tests that are really integration tests that run on a sandbox environment
     "serial: tests to avoid using with pytest-xdist",
     "hypothesis: tests that use they hypothesis library",
 ]
@@ -135,10 +133,7 @@ lint.ignore = [
     # Do not assign a lambda expression, use a def
     "E731",
 ]
-extend-exclude = [
-  "tests/",
-  "**/tests/**",
-]
+extend-exclude = ["tests/", "**/tests/**"]
 
 [tool.ruff.lint.extend-per-file-ignores]
 "*/__init__.py" = [
@@ -147,5 +142,5 @@ extend-exclude = [
 ]
 
 [tool.codespell]
-ignore-words-list="ot,te,raison,fo,lits"
-skip="./docs/build,./.git,*.txt"
+ignore-words-list = "ot,te,raison,fo,lits"
+skip = "./docs/build,./.git,*.txt"
