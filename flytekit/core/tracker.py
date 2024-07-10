@@ -274,7 +274,7 @@ class _ModuleSanitizer(object):
             return basename
 
         # If we have reached a directory with no __init__, ignore
-        if "__init__.py" not in os.listdir(dirname):
+        if not os.path.exists(dirname) or "__init__.py" not in os.listdir(dirname):
             return basename
 
         # Now recurse down such that we can extract the absolute module path

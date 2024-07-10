@@ -97,3 +97,4 @@ from flytekit.remote.entities import (
 )
 from flytekit.remote.executions import FlyteNodeExecution, FlyteTaskExecution, FlyteWorkflowExecution
 from flytekit.remote.remote import FlyteRemote
+from flytekit.remote.remote_task import RemoteTask

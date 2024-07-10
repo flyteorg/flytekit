@@ -802,9 +802,16 @@ class FlyteRemote(object):
                 domain=self.default_domain,
             )
 
-        ident = asyncio.run(
-            self._serialize_and_register(entity=entity, settings=serialization_settings, version=version)
-        )
+        if asyncio.get_event_loop().is_running():  # if in ipykernel, couldn't use asyncio.run()
+            import nest_asyncio
+            nest_asyncio.apply()
+            ident = asyncio.run(
+                self._serialize_and_register(entity=entity, settings=serialization_settings, version=version)
+            )
+        else:
+            ident = asyncio.run(
+                self._serialize_and_register(entity=entity, settings=serialization_settings, version=version)
+            )
 
         ft = self.fetch_task(
             ident.project,
