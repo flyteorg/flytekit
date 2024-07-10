@@ -22,6 +22,7 @@ from flytekit import FlyteContext, PythonFunctionTask
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core import utils
 from flytekit.core.base_task import PythonTask
+from flytekit.core.context_manager import ExecutionState, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, dataclass_from_dict
 from flytekit.exceptions.system import FlyteAgentNotFound
 from flytekit.exceptions.user import FlyteUserException
@@ -319,8 +320,11 @@ class AsyncAgentExecutorMixin:
         self: PythonTask, task_template: TaskTemplate, output_prefix: str, inputs: Dict[str, Any] = None
     ) -> ResourceMeta:
         ctx = FlyteContext.current_context()
+        es = ctx.new_execution_state().with_params(mode=ExecutionState.Mode.TASK_EXECUTION)
+        cb = ctx.new_builder().with_execution_state(es)
 
-        literal_map = TypeEngine.dict_to_literal_map(ctx, inputs or {}, self.get_input_types())
+        with FlyteContextManager.with_context(cb) as ctx:
+            literal_map = TypeEngine.dict_to_literal_map(ctx, inputs or {}, self.get_input_types())
         if isinstance(self, PythonFunctionTask):
             # Write the inputs to a remote file, so that the remote task can read the inputs from this file.
             path = ctx.file_access.get_random_local_path()

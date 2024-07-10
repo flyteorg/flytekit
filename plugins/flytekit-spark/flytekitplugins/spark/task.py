@@ -2,9 +2,10 @@ import os
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional, Union, cast
 
+import click
 from google.protobuf.json_format import MessageToDict
 
-from flytekit import FlyteContextManager, PythonFunctionTask, lazy_module, logger
+from flytekit import FlyteContextManager, PythonFunctionTask, lazy_module
 from flytekit.configuration import DefaultImages, SerializationSettings
 from flytekit.core.context_manager import ExecutionParameters
 from flytekit.core.python_auto_container import get_registerable_container_image
@@ -199,8 +200,8 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
                 if ctx.execution_state and ctx.execution_state.is_local_execution():
                     return AsyncAgentExecutorMixin.execute(self, **kwargs)
             except Exception as e:
-                logger.critical(f"Agent failed to run the task with error: {e}")
-                logger.info("Falling back to local execution")
+                click.secho(f"❌ Agent failed to run the task with error: {e}", fg="red")
+                click.secho("Falling back to local execution", fg="red")
         return PythonFunctionTask.execute(self, **kwargs)
 
 

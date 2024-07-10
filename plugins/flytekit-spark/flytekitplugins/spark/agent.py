@@ -28,7 +28,7 @@ class DatabricksAgent(AsyncAgentBase):
     name = "Databricks Agent"
 
     def __init__(self):
-        super().__init__(task_type_name="databricks", metadata_type=DatabricksJobMetadata)
+        super().__init__(task_type_name="spark", metadata_type=DatabricksJobMetadata)
 
     async def create(
         self, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs
@@ -39,7 +39,7 @@ class DatabricksAgent(AsyncAgentBase):
         if databricks_job.get("existing_cluster_id") is None:
             new_cluster = databricks_job.get("new_cluster")
             if new_cluster is None:
-                raise Exception("Either existing_cluster_id or new_cluster must be specified")
+                raise ValueError("Either existing_cluster_id or new_cluster must be specified")
             if not new_cluster.get("docker_image"):
                 new_cluster["docker_image"] = {"url": container.image}
             if not new_cluster.get("spark_conf"):
@@ -53,7 +53,7 @@ class DatabricksAgent(AsyncAgentBase):
         databricks_job["git_source"] = {
             "git_url": "https://github.com/flyteorg/flytetools",
             "git_provider": "gitHub",
-            # https://github.com/flyteorg/flytetools/commit/e35c4b43f01390ad4c30b90c4bf96ce44a766f28
+            # https://github.com/flyteorg/flytetools/commit/e5f383f737b58612fadc0d8e9667adc301f56bc0
             "git_commit": "e5f383f737b58612fadc0d8e9667adc301f56bc0",
         }
 
@@ -65,7 +65,7 @@ class DatabricksAgent(AsyncAgentBase):
             async with session.post(databricks_url, headers=get_header(), data=data) as resp:
                 response = await resp.json()
                 if resp.status != http.HTTPStatus.OK:
-                    raise Exception(f"Failed to create databricks job with error: {response}")
+                    raise RuntimeError(f"Failed to create databricks job with error: {response}")
 
         return DatabricksJobMetadata(databricks_instance=databricks_instance, run_id=str(response["run_id"]))
 
@@ -78,14 +78,15 @@ class DatabricksAgent(AsyncAgentBase):
         async with aiohttp.ClientSession() as session:
             async with session.get(databricks_url, headers=get_header()) as resp:
                 if resp.status != http.HTTPStatus.OK:
-                    raise Exception(f"Failed to get databricks job {resource_meta.run_id} with error: {resp.reason}")
+                    raise RuntimeError(f"Failed to get databricks job {resource_meta.run_id} with error: {resp.reason}")
                 response = await resp.json()
 
         cur_phase = TaskExecution.UNDEFINED
         message = ""
         state = response.get("state")
 
-        # The databricks job's state is determined by life_cycle_state and result_state. https://docs.databricks.com/en/workflows/jobs/jobs-2.0-api.html#runresultstate
+        # The databricks job's state is determined by life_cycle_state and result_state.
+        # https://docs.databricks.com/en/workflows/jobs/jobs-2.0-api.html#runresultstate
         if state:
             life_cycle_state = state.get("life_cycle_state")
             if result_state_is_available(life_cycle_state):
@@ -109,8 +110,23 @@ class DatabricksAgent(AsyncAgentBase):
         async with aiohttp.ClientSession() as session:
             async with session.post(databricks_url, headers=get_header(), data=data) as resp:
                 if resp.status != http.HTTPStatus.OK:
-                    raise Exception(f"Failed to cancel databricks job {resource_meta.run_id} with error: {resp.reason}")
+                    raise RuntimeError(
+                        f"Failed to cancel databricks job {resource_meta.run_id} with error: {resp.reason}"
+                    )
                 await resp.json()
+
+
+class DatabricksAgentV2(DatabricksAgent):
+    """
+    Add DatabricksAgentV2 to support running the k8s spark and databricks spark together in the same workflow.
+    That's because one task type can only be handled by one backend plugin.
+
+    spark -> k8s spark plugin
+    databricks -> databricks agent
+    """
+
+    def __init__(self):
+        super(AsyncAgentBase, self).__init__(task_type_name="databricks", metadata_type=DatabricksJobMetadata)
 
 
 def get_header() -> typing.Dict[str, str]:
@@ -123,3 +139,4 @@ def result_state_is_available(life_cycle_state: str) -> bool:
 
 
 AgentRegistry.register(DatabricksAgent())
+AgentRegistry.register(DatabricksAgentV2())
