@@ -256,11 +256,9 @@ def spawn_helper(
         try:
             return_val = fn(**kwargs)
             omt = ctx.output_metadata_tracker
-            logger.warning(f"ARTFELASTIC: 1 {omt}")
             om = None
             if omt:
                 om = omt.get(return_val)
-                logger.warning(f"ARTFELASTIC: 2 {om=}")
         except Exception as e:
             # See explanation in `create_recoverable_error_file` why we check
             # for recoverable errors here in the worker processes.
@@ -445,9 +443,7 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
             for deck in out[0].decks:
                 if not isinstance(deck, flytekit.deck.deck.TimeLineDeck):
                     ctx.decks.append(deck)
-            logger.warning(f"ARTFELASTIC: 3 {out[0]}")
             if out[0].om:
-                logger.warning(f"ARTFELASTIC: 4 Adding back {out[0].om}")
                 ctx.output_metadata_tracker.add(out[0].return_value, out[0].om)
 
             return out[0].return_value
