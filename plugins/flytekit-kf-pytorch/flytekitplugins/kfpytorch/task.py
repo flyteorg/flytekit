@@ -13,7 +13,7 @@ from flyteidl.plugins.kubeflow import pytorch_pb2 as pytorch_task
 from google.protobuf.json_format import MessageToDict
 
 import flytekit
-from flytekit.core.context_manager import OutputMetadata
+from flytekit.core.context_manager import OutputMetadata, FlyteContextManager
 from flytekit import PythonFunctionTask, Resources, lazy_module
 from flytekit.configuration import SerializationSettings
 from flytekit.core.resources import convert_resources_to_resource_model
@@ -441,7 +441,7 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
         # Rank 0 returns the result of the task function
         if 0 in out:
             # For rank 0, we transfer the decks created in the worker process to the parent process
-            ctx = flytekit.current_context()
+            ctx = FlyteContextManager.current_context()
             for deck in out[0].decks:
                 if not isinstance(deck, flytekit.deck.deck.TimeLineDeck):
                     ctx.decks.append(deck)
