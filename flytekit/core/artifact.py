@@ -467,7 +467,6 @@ class Artifact(object):
                 return RideCountData.create_from(df, time_partition=datetime.datetime.now())
         """
         omt = FlyteContextManager.current_context().output_metadata_tracker
-        logger.warning(f"ARTF: Create From called! ID {id(o)} card {card=} Args: {args} kwargs: {kwargs} obj {o}")
         additional = [card]
         additional.extend(args)
         filtered_additional: typing.List[SerializableToString] = [a for a in additional if a is not None]

@@ -624,7 +624,6 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         with timeit("Translate the output to literals"):
             literals = {}
             omt = ctx.output_metadata_tracker
-            logger.warning(f"ARTF: 0 {omt=}")
             for i, (k, v) in enumerate(native_outputs_as_map.items()):
                 literal_type = self._outputs_interface[k].type
                 py_type = self.get_type_for_output_var(k, v)
@@ -644,14 +643,11 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 # literal
                 if omt is not None:
                     om = omt.get(v)
-                    logger.warning(f"ARTF: 1 {om=} for {k} v is {v} id is {id(v)}")
                     if om:
                         metadata = {}
                         if om.additional_items:
-                            logger.warning(f"ARTF: 2 additional items {om.additional_items}")
                             for ii in om.additional_items:
                                 md_key, md_val = ii.serialize_to_string(ctx, k)
-                                logger.warning(f"ARTF: 3 {ii} {md_key} {md_val}")
                                 metadata[md_key] = md_val
                             logger.info(f"Adding {om.additional_items} additional metadata items {metadata} for {k}")
                         if om.dynamic_partitions or om.time_partition:
@@ -665,7 +661,6 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                             encoded = b64encode(s).decode("utf-8")
                             metadata[DYNAMIC_PARTITIONS] = encoded
                         if metadata:
-                            logger.warning(f"ARTF: 4 {metadata}")
                             lit.set_metadata(metadata)
 
         return _literal_models.LiteralMap(literals=literals), native_outputs_as_map
