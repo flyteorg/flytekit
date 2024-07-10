@@ -30,6 +30,8 @@ def noop(): ...
 
 T = typing.TypeVar("T")
 
+from pydantic_core import core_schema
+from pydantic import BaseModel, GetCoreSchemaHandler, ValidationInfo
 
 @dataclass
 class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONMixin):
@@ -351,11 +353,26 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
         yield f
         f.close()
 
+
+
     def __repr__(self):
-        return self.path
+        return str(self.path)
 
     def __str__(self):
-        return self.path
+        return str(self.path)
+
+    @classmethod
+    def validate(cls, value: str, info: ValidationInfo):
+        return cls(value, info.field_name)
+
+    @classmethod
+    def __get_pydantic_core_schema__(
+            cls, source_type: typing.Any, handler: GetCoreSchemaHandler
+    ) -> core_schema.CoreSchema:
+        return core_schema.with_info_after_validator_function(
+            cls.validate, handler(source_type), field_name=handler.field_name
+        )
+
 
 
 class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
