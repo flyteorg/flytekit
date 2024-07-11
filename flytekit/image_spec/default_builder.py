@@ -24,7 +24,7 @@ RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/uv,id=uv \
     --mount=from=uv,source=/uv,target=/usr/bin/uv \
     --mount=type=bind,target=requirements_uv.txt,src=requirements_uv.txt \
     /usr/bin/uv \
-    pip install --python /root/micromamba/envs/dev/bin/python $PIP_EXTRA \
+    pip install --python /opt/micromamba/envs/dev/bin/python $PIP_EXTRA \
     --requirement requirements_uv.txt
 """)
 
@@ -58,17 +58,18 @@ RUN update-ca-certificates
 RUN id -u flytekit || useradd --create-home --shell /bin/bash flytekit
 RUN chown -R flytekit /root && chown -R flytekit /home
 
-RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/micromamba/pkgs,\
+RUN --mount=type=cache,sharing=locked,mode=0777,target=/opt/micromamba/pkgs,\
 id=micromamba \
     --mount=from=micromamba,source=/usr/bin/micromamba,target=/usr/bin/micromamba \
-    /usr/bin/micromamba create -n dev -c conda-forge $CONDA_CHANNELS \
+    /usr/bin/micromamba create -n dev --root-prefix /opt/micromamba \
+    -c conda-forge $CONDA_CHANNELS \
     python=$PYTHON_VERSION $CONDA_PACKAGES
 
 $UV_PYTHON_INSTALL_COMMAND
 $PIP_PYTHON_INSTALL_COMMAND
 
 # Configure user space
-ENV PATH="/root/micromamba/envs/dev/bin:$$PATH"
+ENV PATH="/opt/micromamba/envs/dev/bin:$$PATH"
 ENV FLYTE_SDK_RICH_TRACEBACKS=0 SSL_CERT_DIR=/etc/ssl/certs $ENV
 
 # Adds nvidia just in case it exists
