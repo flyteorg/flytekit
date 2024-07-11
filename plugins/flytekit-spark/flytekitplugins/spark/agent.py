@@ -119,7 +119,7 @@ class DatabricksAgent(AsyncAgentBase):
 class DatabricksAgentV2(DatabricksAgent):
     """
     Add DatabricksAgentV2 to support running the k8s spark and databricks spark together in the same workflow.
-    That's because one task type can only be handled by one backend plugin.
+    This is necessary because one task type can only be handled by a single backend plugin.
 
     spark -> k8s spark plugin
     databricks -> databricks agent
