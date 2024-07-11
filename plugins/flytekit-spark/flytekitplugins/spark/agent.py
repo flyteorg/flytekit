@@ -53,8 +53,8 @@ class DatabricksAgent(AsyncAgentBase):
         databricks_job["git_source"] = {
             "git_url": "https://github.com/flyteorg/flytetools",
             "git_provider": "gitHub",
-            # https://github.com/flyteorg/flytetools/commit/0f20927f00f934c7d5e90454174bc51a96b5981c
-            "git_commit": "0f20927f00f934c7d5e90454174bc51a96b5981c",
+            # https://github.com/flyteorg/flytetools/commit/572298df1f971fb58c258398bd70a6372f811c96
+            "git_commit": "572298df1f971fb58c258398bd70a6372f811c96",
         }
 
         databricks_instance = custom["databricksInstance"]
