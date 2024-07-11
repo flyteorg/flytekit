@@ -22,3 +22,4 @@ from .pyspark_transformers import PySparkPipelineModelTransformer
 from .schema import SparkDataFrameSchemaReader, SparkDataFrameSchemaWriter, SparkDataFrameTransformer  # noqa
 from .sd_transformers import ParquetToSparkDecodingHandler, SparkToParquetEncodingHandler
 from .task import Databricks, Spark, new_spark_session  # noqa
+from .task import DatabricksV2
