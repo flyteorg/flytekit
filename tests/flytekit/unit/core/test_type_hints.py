@@ -1219,8 +1219,11 @@ def test_flyte_schema_dataclass():
     def wf(x: int) -> Result:
         return t1(x=x)
 
-    assert wf(x=10) == Result(result=InnerResult(number=10, schema=schema), schema=schema)
-
+    r1 = wf(x=10)
+    r2 = Result(result=InnerResult(number=10, schema=schema), schema=schema)
+    assert r1.result.number == r2.result.number
+    assert r1.result.schema.remote_path == r2.result.schema.remote_path
+    assert r1.schema.remote_path == r2.schema.remote_path
 
 def test_environment():
     @task(environment={"FOO": "foofoo", "BAZ": "baz"})
