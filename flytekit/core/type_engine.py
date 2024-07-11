@@ -48,7 +48,6 @@ from flytekit.models.literals import (
     LiteralMap,
     Primitive,
     Scalar,
-    Schema,
     Union,
     Void,
 )
@@ -507,8 +506,8 @@ class DataclassTransformer(TypeTransformer[object]):
         except NotImplementedError:
             # you can refer FlyteFile, FlyteDirectory and StructuredDataset to see how flyte types can be implemented.
             raise NotImplementedError(
-                f"Flyte Types in {python_type} should inherit from mashumaro SerializableType"
-                f" and  implement _serialize and _deserialize methods."
+                f"{python_type} should inherit from mashumaro.types.SerializableType"
+                f" and implement _serialize and _deserialize methods."
             )
 
         return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))  # type: ignore
@@ -578,18 +577,18 @@ class DataclassTransformer(TypeTransformer[object]):
         if not dataclasses.is_dataclass(python_type):
             return python_val
 
-        # Transform str to FlyteFile or FlyteDirectory so that we can serialize it by mashumaro.
+        # Transform str to FlyteFile or FlyteDirectory so that mashumaro can serialize the path.
         # For example, if you return s3://my-s3-bucket/a/example.txt,
-        # we will return FlyteFile(path="s3://my-s3-bucket/a/example.txt")
-        # so that we can use the serialize method implemented in FlyteFile.
+        # flytekit will convert the path to FlyteFile(path="s3://my-s3-bucket/a/example.txt")
+        # so that mashumaro can use the serialize method implemented in FlyteFile.
         if inspect.isclass(python_type) and (
             issubclass(python_type, FlyteFile) or issubclass(python_type, FlyteDirectory)
         ):
             if type(python_val) == str:
-                logger.info(
+                logger.warning(
                     f"Converting string '{python_val}' to {python_type.__name__}.\n"
-                    f"Directly using a string to define {python_type.__name__} is not recommended.\n"
-                    f"Please ensure '{python_val}' is a valid path that {python_type.__name__} can handle."
+                    f"Directly using a string instead of {python_type.__name__} is not recommended.\n"
+                    f"flytekit will not support it in the future."
                 )
                 return python_type(python_val)
             return python_val
@@ -599,53 +598,6 @@ class DataclassTransformer(TypeTransformer[object]):
             val = python_val.__getattribute__(n)
             python_val.__setattr__(n, self._make_dataclass_serializable(val, t))
         return python_val
-
-    def _revert_to_dataclass(self, python_val: T, expected_python_type: Type) -> Optional[T]:
-        """
-        This method maintains backward compatibility for converting back to a dataclass.
-        For example, it ensures compatibility with upstream outputs that use Flyte types from older Flytekit versions.
-        """
-        from flytekit.types.schema.types import FlyteSchema, FlyteSchemaTransformer
-
-        # Handle Optional
-        if UnionTransformer.is_optional_type(expected_python_type):
-            if python_val is None:
-                return None
-            return self._revert_to_dataclass(python_val, get_args(expected_python_type)[0])
-
-        if hasattr(expected_python_type, "__origin__") and expected_python_type.__origin__ is list:
-            return [self._revert_to_dataclass(v, expected_python_type.__args__[0]) for v in python_val]  # type: ignore
-
-        if hasattr(expected_python_type, "__origin__") and expected_python_type.__origin__ is dict:
-            return {k: self._revert_to_dataclass(v, expected_python_type.__args__[1]) for k, v in python_val.items()}  # type: ignore
-
-        if not dataclasses.is_dataclass(expected_python_type):
-            return python_val
-
-        if issubclass(expected_python_type, FlyteSchema):
-            t = FlyteSchemaTransformer()
-            return t.to_python_value(
-                FlyteContext.current_context(),
-                Literal(
-                    scalar=Scalar(
-                        schema=Schema(
-                            cast(FlyteSchema, python_val).remote_path, t._get_schema_type(expected_python_type)
-                        )
-                    )
-                ),
-                expected_python_type,
-            )
-        else:
-            for f in dataclasses.fields(expected_python_type):
-                value = python_val.__getattribute__(f.name)
-                if hasattr(f.type, "__origin__") and f.type.__origin__ is list:
-                    value = [self._revert_to_dataclass(v, f.type.__args__[0]) for v in value]
-                elif hasattr(f.type, "__origin__") and f.type.__origin__ is dict:
-                    value = {k: self._revert_to_dataclass(v, f.type.__args__[1]) for k, v in value.items()}
-                else:
-                    value = self._revert_to_dataclass(value, f.type)
-                python_val.__setattr__(f.name, value)
-            return python_val
 
     def _fix_val_int(self, t: typing.Type, val: typing.Any) -> typing.Any:
         if val is None:
@@ -711,7 +663,7 @@ class DataclassTransformer(TypeTransformer[object]):
         dc = decoder.decode(json_str)
 
         dc = self._fix_structured_dataset_type(expected_python_type, dc)
-        return self._fix_dataclass_int(expected_python_type, self._revert_to_dataclass(dc, expected_python_type))
+        return self._fix_dataclass_int(expected_python_type, dc)
 
     # This ensures that calls with the same literal type returns the same dataclass. For example, `pyflyte run``
     # command needs to call guess_python_type to get the TypeEngine-derived dataclass. Without caching here, separate

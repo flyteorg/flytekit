@@ -13,6 +13,7 @@ import numpy as _np
 from dataclasses_json import config
 from marshmallow import fields
 from mashumaro.mixins.json import DataClassJSONMixin
+from mashumaro.types import SerializableType
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
@@ -177,11 +178,30 @@ class SchemaEngine(object):
 
 
 @dataclass
-class FlyteSchema(DataClassJSONMixin):
+class FlyteSchema(SerializableType, DataClassJSONMixin):
+    # class FlyteSchema(DataClassJSONMixin):
     remote_path: typing.Optional[str] = field(default=None, metadata=config(mm_field=fields.String()))
     """
     This is the main schema class that users should use.
     """
+
+    def _serialize(self) -> typing.Dict[str, typing.Any]:
+        TypeEngine.to_literal(FlyteContextManager.current_context(), self, FlyteSchema, None)
+        return {"remote_path": self.remote_path}
+
+    @classmethod
+    def _deserialize(cls, value) -> "FlyteSchema":
+        remote_path = value.get("remote_path", None)
+
+        if remote_path is None:
+            raise ValueError("FlyteSchema's path should not be None")
+
+        t = FlyteSchemaTransformer()
+        return t.to_python_value(
+            FlyteContextManager.current_context(),
+            Literal(scalar=Scalar(schema=Schema(remote_path, t._get_schema_type(FlyteSchema)))),
+            FlyteSchema,
+        )
 
     @classmethod
     def columns(cls) -> typing.Dict[str, typing.Type]:

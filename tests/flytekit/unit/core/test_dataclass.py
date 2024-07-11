@@ -239,7 +239,6 @@ def test_pure_dataclasses_with_flyte_types(local_dummy_txt_file, local_dummy_dir
         local_file_by_str = create_local_file_with_str(path=txt_path)
         local_dir_by_str = create_local_dir_by_str(path=dir_path)
         sd = generate_sd()
-        # current branch -> current branch
         nested_flyte_types = generate_nested_flyte_types(
             local_file=local_file,
             local_dir=local_dir,
@@ -247,9 +246,7 @@ def test_pure_dataclasses_with_flyte_types(local_dummy_txt_file, local_dummy_dir
             local_dir_by_str=local_dir_by_str,
             sd=sd
         )
-        # current branch -> ghcr.io/flyteorg/flytekit:py3.9-1.13.0
-        old_flyte_types = pass_and_return_flyte_types(nested_flyte_types=nested_flyte_types).with_overrides(container_image="ghcr.io/flyteorg/flytekit:py3.9-1.13.0")
-        # ghcr.io/flyteorg/flytekit:py3.9-1.13.0 -> current branch
+        old_flyte_types = pass_and_return_flyte_types(nested_flyte_types=nested_flyte_types)
         return pass_and_return_flyte_types(nested_flyte_types=old_flyte_types)
 
     @task
@@ -521,9 +518,7 @@ def test_dataclasses_json_mixin_with_flyte_types(local_dummy_txt_file, local_dum
             local_dir_by_str=local_dir_by_str,
             sd=sd
         )
-        # current branch -> ghcr.io/flyteorg/flytekit:py3.9-1.13.0
-        old_flyte_types = pass_and_return_flyte_types(nested_flyte_types=nested_flyte_types).with_overrides(container_image="ghcr.io/flyteorg/flytekit:py3.9-1.13.0")
-        # ghcr.io/flyteorg/flytekit:py3.9-1.13.0 -> current branch
+        old_flyte_types = pass_and_return_flyte_types(nested_flyte_types=nested_flyte_types)
         return pass_and_return_flyte_types(nested_flyte_types=old_flyte_types)
 
     @task
@@ -787,7 +782,6 @@ def test_mashumaro_dataclasses_json_mixin_with_flyte_types(local_dummy_txt_file,
         local_file_by_str = create_local_file_with_str(path=txt_path)
         local_dir_by_str = create_local_dir_by_str(path=dir_path)
         sd = generate_sd()
-        # current branch -> current branch
         nested_flyte_types = generate_nested_flyte_types(
             local_file=local_file,
             local_dir=local_dir,
@@ -795,9 +789,7 @@ def test_mashumaro_dataclasses_json_mixin_with_flyte_types(local_dummy_txt_file,
             local_dir_by_str=local_dir_by_str,
             sd=sd
         )
-        # current branch -> ghcr.io/flyteorg/flytekit:py3.9-1.13.0
-        old_flyte_types = pass_and_return_flyte_types(nested_flyte_types=nested_flyte_types).with_overrides(container_image="ghcr.io/flyteorg/flytekit:py3.9-1.13.0")
-        # ghcr.io/flyteorg/flytekit:py3.9-1.13.0 -> current branch
+        old_flyte_types = pass_and_return_flyte_types(nested_flyte_types=nested_flyte_types)
         return pass_and_return_flyte_types(nested_flyte_types=old_flyte_types)
 
     @task
