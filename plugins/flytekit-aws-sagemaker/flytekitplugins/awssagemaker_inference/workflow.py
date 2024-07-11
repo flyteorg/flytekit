@@ -96,8 +96,9 @@ def create_sagemaker_deployment(
     for key, value in inputs.items():
         input_types = value["input_types"]
         if len(nodes) > 0:
-            if "idempotence_token" not in input_types:
-                input_types["idempotence_token"] = str
+            if not input_types:
+                input_types = {}
+            input_types["idempotence_token"] = str
 
         obj, new_input_types = create_deployment_task(
             name=f"{value['name']}-{name}",

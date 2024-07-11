@@ -98,6 +98,7 @@ class SageMakerEndpointAgent(Boto3AgentMixin, AsyncAgentBase):
                 raise Exception(
                     "This might be due to resource limits being exceeded, preventing the creation of a new endpoint. Please check your resource usage and limits."
                 ) from e
+            raise e
 
         current_state = endpoint_status.get("EndpointStatus")
         flyte_phase = convert_to_flyte_phase(states[current_state])

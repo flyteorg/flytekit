@@ -72,7 +72,10 @@ class BotoAgent(SyncAgentBase):
             error_message = original_exception.response["Error"]["Message"]
 
             if error_code == "ValidationException" and "Cannot create already existing" in error_message:
-                arn = re.search(r"arn:aws:sagemaker:[^ ]+", error_message).group(0)
+                arn = re.search(
+                    r"arn:aws:[a-zA-Z0-9\-]+:[a-zA-Z0-9\-]+:\d+:[a-zA-Z0-9\-\/]+",
+                    error_message,
+                ).group(0)
                 if arn:
                     return Resource(
                         phase=TaskExecution.SUCCEEDED,
