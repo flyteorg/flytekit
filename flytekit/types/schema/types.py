@@ -179,13 +179,12 @@ class SchemaEngine(object):
 
 @dataclass
 class FlyteSchema(SerializableType, DataClassJSONMixin):
-    # class FlyteSchema(DataClassJSONMixin):
     remote_path: typing.Optional[str] = field(default=None, metadata=config(mm_field=fields.String()))
     """
     This is the main schema class that users should use.
     """
 
-    def _serialize(self) -> typing.Dict[str, typing.Any]:
+    def _serialize(self) -> typing.Dict[str, typing.Optional[str]]:
         TypeEngine.to_literal(FlyteContextManager.current_context(), self, FlyteSchema, None)
         return {"remote_path": self.remote_path}
 
