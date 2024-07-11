@@ -56,7 +56,6 @@ class PerianAgent(AsyncAgentBase):
         **kwargs,
     ) -> PerianMetadata:
         logger.info("Creating new Perian job")
-        logger.debug("Task template: %s", task_template.__dict__)
 
         config = Configuration(host=PERIAN_API_URL)
         job_request = self._build_create_job_request(task_template)
