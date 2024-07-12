@@ -609,7 +609,9 @@ def check_params(entity: typing.Union[PythonFunctionWorkflow, PythonTask], input
             if len(v) == 2:
                 processed_click_value = v[1]
         if processed_click_value is None and not optional_v:
-            raise click.UsageError(f"Required input '{input_name}' not passed.")
+            raise click.UsageError(
+                f"Missing input parameter '{input_name}'. (Should specify in the input file or stdin)"
+            )
 
 
 def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow, PythonTask]):
@@ -911,20 +913,19 @@ class WorkflowCommand(click.RichGroup):
 
         # Add options for each of the workflow inputs
         params = []
-        params.append(
-            click.Option(
-                param_decls=["--flyte-inputs"],
-                type=str,
-                required=False,
-                help="Path to the file containing inputs for execution",
-            )
-        )
         for input_name, input_type_val in loaded_entity.python_interface.inputs_with_defaults.items():
             literal_var = loaded_entity.interface.inputs.get(input_name)
             python_type, default_val = input_type_val
             required = type(None) not in get_args(python_type) and default_val is None
             params.append(to_click_option(ctx, flyte_ctx, input_name, literal_var, python_type, default_val, required))
-
+        params.append(
+            click.Option(
+                param_decls=["--flyte-inputs"],
+                type=str,
+                required=False,
+                help="Path to the JSON/YAML file containing inputs for execution (all required inputs should be present).",
+            )
+        )
         entity_type = "Workflow" if is_workflow else "Task"
         h = f"{click.style(entity_type, bold=True)} ({run_level_params.computed_params.module}.{entity_name})"
         if loaded_entity.__doc__:
