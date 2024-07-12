@@ -75,7 +75,9 @@ class RunLevelComputedParams:
 
     project_root: typing.Optional[str] = None
     module: typing.Optional[str] = None
-    temp_file_name: typing.Optional[str] = None  # Used to store the temporary location of the file downloaded
+    temp_file_name: typing.Optional[str] = (
+        None  # Used to store the temporary location of the file downloaded
+    )
 
 
 @dataclass
@@ -286,7 +288,9 @@ class RunLevelParams(PyFlyteParams):
         )
     )
 
-    computed_params: RunLevelComputedParams = field(default_factory=RunLevelComputedParams)
+    computed_params: RunLevelComputedParams = field(
+        default_factory=RunLevelComputedParams
+    )
     _remote: typing.Optional[FlyteRemote] = None
 
     def remote_instance(self) -> FlyteRemote:
@@ -294,7 +298,9 @@ class RunLevelParams(PyFlyteParams):
             data_upload_location = None
             if self.is_remote:
                 data_upload_location = remote_fs.REMOTE_PLACEHOLDER
-            self._remote = get_plugin().get_remote(self.config_file, self.project, self.domain, data_upload_location)
+            self._remote = get_plugin().get_remote(
+                self.config_file, self.project, self.domain, data_upload_location
+            )
         return self._remote
 
     @property
@@ -313,19 +319,25 @@ class RunLevelParams(PyFlyteParams):
         return [get_option_from_metadata(f.metadata) for f in fields(cls) if f.metadata]
 
 
-def load_naive_entity(module_name: str, entity_name: str, project_root: str) -> typing.Union[WorkflowBase, PythonTask]:
+def load_naive_entity(
+    module_name: str, entity_name: str, project_root: str
+) -> typing.Union[WorkflowBase, PythonTask]:
     """
     Load the workflow of a script file.
     N.B.: it assumes that the file is self-contained, in other words, there are no relative imports.
     """
-    flyte_ctx_builder = context_manager.FlyteContextManager.current_context().new_builder()
+    flyte_ctx_builder = (
+        context_manager.FlyteContextManager.current_context().new_builder()
+    )
     with context_manager.FlyteContextManager.with_context(flyte_ctx_builder):
         with module_loader.add_sys_path(project_root):
             importlib.import_module(module_name)
     return module_loader.load_object_from_module(f"{module_name}.{entity_name}")
 
 
-def dump_flyte_remote_snippet(execution: FlyteWorkflowExecution, project: str, domain: str):
+def dump_flyte_remote_snippet(
+    execution: FlyteWorkflowExecution, project: str, domain: str
+):
     click.secho(
         f"""
 In order to have programmatic access to the execution, use the following snippet:
@@ -364,7 +376,9 @@ def get_entities_in_file(filename: pathlib.Path, should_delete: bool) -> Entitie
         additional_path = str(pathlib.Path.cwd())
     else:
         additional_path = _find_project_root(filename)
-    module_name = str(filename.relative_to(additional_path).with_suffix("")).replace(os.path.sep, ".")
+    module_name = str(filename.relative_to(additional_path).with_suffix("")).replace(
+        os.path.sep, "."
+    )
     with context_manager.FlyteContextManager.with_context(flyte_ctx):
         with module_loader.add_sys_path(additional_path):
             importlib.import_module(module_name)
@@ -421,7 +435,9 @@ def to_click_option(
             description_extra = f": {json.dumps(literal_var.type.metadata)}"
 
     # If a query has been specified, the input is never strictly required at this layer
-    required = False if default_val and isinstance(default_val, ArtifactQuery) else required
+    required = (
+        False if default_val and isinstance(default_val, ArtifactQuery) else required
+    )
 
     return click.Option(
         param_decls=[f"--{input_name}"],
@@ -438,16 +454,26 @@ def to_click_option(
 def options_from_run_params(run_level_params: RunLevelParams) -> Options:
     return Options(
         labels=Labels(run_level_params.labels) if run_level_params.labels else None,
-        annotations=(Annotations(run_level_params.annotations) if run_level_params.annotations else None),
+        annotations=(
+            Annotations(run_level_params.annotations)
+            if run_level_params.annotations
+            else None
+        ),
         raw_output_data_config=(
-            RawOutputDataConfig(output_location_prefix=run_level_params.raw_output_data_prefix)
+            RawOutputDataConfig(
+                output_location_prefix=run_level_params.raw_output_data_prefix
+            )
             if run_level_params.raw_output_data_prefix
             else None
         ),
         max_parallelism=run_level_params.max_parallelism,
         disable_notifications=run_level_params.disable_notifications,
         security_context=(
-            security.SecurityContext(run_as=security.Identity(k8s_service_account=run_level_params.service_account))
+            security.SecurityContext(
+                run_as=security.Identity(
+                    k8s_service_account=run_level_params.service_account
+                )
+            )
             if run_level_params.service_account
             else None
         ),
@@ -541,10 +567,14 @@ def is_optional(_type):
     """
     Checks if the given type is Optional Type
     """
-    return typing.get_origin(_type) is typing.Union and type(None) in typing.get_args(_type)
+    return typing.get_origin(_type) is typing.Union and type(None) in typing.get_args(
+        _type
+    )
 
 
-def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow, PythonTask]):
+def run_command(
+    ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow, PythonTask]
+):
     """
     Returns a function that is used to implement WorkflowCommand and execute a flyte workflow.
     """
@@ -556,7 +586,9 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
         # By the time we get to this function, all the loading has already happened
 
         run_level_params: RunLevelParams = ctx.obj
-        entity_type = "workflow" if isinstance(entity, PythonFunctionWorkflow) else "task"
+        entity_type = (
+            "workflow" if isinstance(entity, PythonFunctionWorkflow) else "task"
+        )
         logger.debug(f"Running {entity_type} {entity.name} with input {kwargs}")
 
         click.secho(
@@ -573,10 +605,17 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
                 if processed_click_value is None and isinstance(v, typing.Tuple):
                     if entity_type == "workflow" and hasattr(v[0], "__args__"):
                         origin_base_type = get_origin(v[0])
-                        if inspect.isclass(origin_base_type) and issubclass(origin_base_type, Iterator):  # Iterator
+                        if inspect.isclass(origin_base_type) and issubclass(
+                            origin_base_type, Iterator
+                        ):  # Iterator
                             args = getattr(v[0], "__args__")
-                            if isinstance(args, tuple) and get_origin(args[0]) is typing.Union:  # Iterator[JSON]
-                                logger.debug(f"Detected Iterator[JSON] in {entity.name} input annotations...")
+                            if (
+                                isinstance(args, tuple)
+                                and get_origin(args[0]) is typing.Union
+                            ):  # Iterator[JSON]
+                                logger.debug(
+                                    f"Detected Iterator[JSON] in {entity.name} input annotations..."
+                                )
                                 skip_default_value_selection = True
 
                     if not skip_default_value_selection:
@@ -603,7 +642,9 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
                     inputs[input_name] = False
 
             if not run_level_params.is_remote:
-                with FlyteContextManager.with_context(_update_flyte_context(run_level_params)):
+                with FlyteContextManager.with_context(
+                    _update_flyte_context(run_level_params)
+                ):
                     if run_level_params.envvars:
                         for env_var, value in run_level_params.envvars.items():
                             os.environ[env_var] = value
@@ -622,7 +663,9 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
             image_config = run_level_params.image_config
             image_config = patch_image_config(config_file, image_config)
 
-            with context_manager.FlyteContextManager.with_context(remote.context.new_builder()):
+            with context_manager.FlyteContextManager.with_context(
+                remote.context.new_builder()
+            ):
                 remote_entity = remote.register_script(
                     entity,
                     project=run_level_params.project,
@@ -665,15 +708,21 @@ class DynamicEntityLaunchCommand(click.RichCommand):
         self._launcher = launcher
         self._entity = None
 
-    def _fetch_entity(self, ctx: click.Context) -> typing.Union[FlyteLaunchPlan, FlyteTask]:
+    def _fetch_entity(
+        self, ctx: click.Context
+    ) -> typing.Union[FlyteLaunchPlan, FlyteTask]:
         if self._entity:
             return self._entity
         run_level_params: RunLevelParams = ctx.obj
         r = run_level_params.remote_instance()
         if self._launcher == self.LP_LAUNCHER:
-            entity = r.fetch_launch_plan(run_level_params.project, run_level_params.domain, self._entity_name)
+            entity = r.fetch_launch_plan(
+                run_level_params.project, run_level_params.domain, self._entity_name
+            )
         else:
-            entity = r.fetch_task(run_level_params.project, run_level_params.domain, self._entity_name)
+            entity = r.fetch_task(
+                run_level_params.project, run_level_params.domain, self._entity_name
+            )
         self._entity = entity
         return entity
 
@@ -695,7 +744,11 @@ class DynamicEntityLaunchCommand(click.RichCommand):
             if defaults and name in defaults:
                 if not defaults[name].required:
                     required = False
-                    default_val = literal_string_repr(defaults[name].default) if defaults[name].default else None
+                    default_val = (
+                        literal_string_repr(defaults[name].default)
+                        if defaults[name].default
+                        else None
+                    )
             params.append(
                 to_click_option(
                     ctx,
@@ -726,7 +779,9 @@ class DynamicEntityLaunchCommand(click.RichCommand):
                             entity.default_inputs.parameters,
                         )
                     else:
-                        self.params = self._get_params(ctx, entity.interface.inputs, types)
+                        self.params = self._get_params(
+                            ctx, entity.interface.inputs, types
+                        )
 
         return super().get_params(ctx)
 
@@ -745,7 +800,9 @@ class DynamicEntityLaunchCommand(click.RichCommand):
             run_level_params.domain,
             ctx.params,
             run_level_params,
-            type_hints=(entity.python_interface.inputs if entity.python_interface else None),
+            type_hints=(
+                entity.python_interface.inputs if entity.python_interface else None
+            ),
         )
 
 
@@ -766,18 +823,26 @@ class RemoteEntityGroup(click.RichGroup):
         self._command_name = command_name
         self._entities = []
 
-    def _get_entities(self, r: FlyteRemote, project: str, domain: str, limit: int) -> typing.List[str]:
+    def _get_entities(
+        self, r: FlyteRemote, project: str, domain: str, limit: int
+    ) -> typing.List[str]:
         """
         Retreieves the right entities from the remote flyte instance.
         """
         if self._command_name == self.LAUNCHPLAN_COMMAND:
-            lps = r.client.list_launch_plan_ids_paginated(project=project, domain=domain, limit=limit)
+            lps = r.client.list_launch_plan_ids_paginated(
+                project=project, domain=domain, limit=limit
+            )
             return [l.name for l in lps[0]]
         elif self._command_name == self.WORKFLOW_COMMAND:
-            wfs = r.client.list_workflow_ids_paginated(project=project, domain=domain, limit=limit)
+            wfs = r.client.list_workflow_ids_paginated(
+                project=project, domain=domain, limit=limit
+            )
             return [w.name for w in wfs[0]]
         elif self._command_name == self.TASK_COMMAND:
-            tasks = r.client.list_task_ids_paginated(project=project, domain=domain, limit=limit)
+            tasks = r.client.list_task_ids_paginated(
+                project=project, domain=domain, limit=limit
+            )
             return [t.name for t in tasks[0]]
         return []
 
@@ -1003,7 +1068,9 @@ class WorkflowCommand(click.RichGroup):
 
         entity = load_naive_entity(module, exe_entity, project_root)
 
-        return self._create_command(ctx, exe_entity, run_level_params, entity, is_workflow)
+        return self._create_command(
+            ctx, exe_entity, run_level_params, entity, is_workflow
+        )
 
 
 class RunCommand(click.RichGroup):
@@ -1023,7 +1090,9 @@ class RunCommand(click.RichGroup):
     def list_commands(self, ctx, add_remote: bool = True):
         if self._files:
             return self._files
-        self._files = [str(p) for p in pathlib.Path(".").glob("*.py") if str(p) != "__init__.py"]
+        self._files = [
+            str(p) for p in pathlib.Path(".").glob("*.py") if str(p) != "__init__.py"
+        ]
         self._files = sorted(self._files)
         if add_remote:
             self._files = self._files + [
@@ -1047,7 +1116,9 @@ class RunCommand(click.RichGroup):
             return RemoteEntityGroup(RemoteEntityGroup.WORKFLOW_COMMAND)
         elif filename == RemoteEntityGroup.TASK_COMMAND:
             return RemoteEntityGroup(RemoteEntityGroup.TASK_COMMAND)
-        return WorkflowCommand(filename, name=filename, help=f"Run a [workflow|task] from {filename}")
+        return WorkflowCommand(
+            filename, name=filename, help=f"Run a [workflow|task] from {filename}"
+        )
 
 
 _run_help = """
