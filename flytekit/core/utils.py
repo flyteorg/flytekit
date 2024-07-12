@@ -402,6 +402,16 @@ class ModelInferenceTemplate:
             dict[str, str]
         ] = None,  # https://docs.nvidia.com/nim/large-language-models/latest/configuration.html#environment-variables
     ):
+        from kubernetes.client.models import (
+            V1Container,
+            V1ContainerPort,
+            V1EnvVar,
+            V1HTTPGetAction,
+            V1PodSpec,
+            V1Probe,
+            V1ResourceRequirements,
+        )
+
         self._image = image
         self._health_endpoint = health_endpoint
         self._port = port
@@ -414,19 +424,6 @@ class ModelInferenceTemplate:
 
         if env and not isinstance(env, dict):
             raise ValueError("env must be a dict.")
-
-        self.update_pod_template()
-
-    def update_pod_template(self):
-        from kubernetes.client.models import (
-            V1Container,
-            V1ContainerPort,
-            V1EnvVar,
-            V1HTTPGetAction,
-            V1PodSpec,
-            V1Probe,
-            V1ResourceRequirements,
-        )
 
         self._pod_template.pod_spec = V1PodSpec(
             containers=[],
@@ -451,8 +448,6 @@ class ModelInferenceTemplate:
                     env=([V1EnvVar(name=k, value=v) for k, v in self._env.items()] if self._env else None),
                     startup_probe=V1Probe(
                         http_get=V1HTTPGetAction(path=self._health_endpoint, port=self._port),
-                        failure_threshold=100,
-                        period_seconds=10,
                     ),
                 ),
             ],
