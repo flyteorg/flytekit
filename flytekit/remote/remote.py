@@ -1734,7 +1734,28 @@ class FlyteRemote(object):
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
         resolved_identifiers_dict = asdict(resolved_identifiers)
         try:
-            flyte_task: FlyteTask = self.fetch_task(**resolved_identifiers_dict)
+            if ipython_check():
+                print("Interactive mode!!")
+                import gzip
+                import cloudpickle
+                with tempfile.TemporaryDirectory() as tmp_dir:
+                    dest = pathlib.Path(os.path.join(tmp_dir, "pkl.gz"))
+                    with gzip.GzipFile(filename=dest, mode="wb", mtime=0) as gzipped:
+                        cloudpickle.dump(entity, gzipped)
+                    md5_bytes, upload_native_url = self._upload_file(
+                        dest, project or self.default_project, domain or self.default_domain
+                    )
+                    ss = SerializationSettings(
+                        image_config=image_config or ImageConfig.auto_default_image(),
+                        project=project or self.default_project,
+                        domain=domain or self._default_domain,
+                        version=version,
+                        fast_serialization_settings=FastSerializationSettings(
+                            enabled=True, pickled=True, distribution_location=upload_native_url),
+                    )
+                    flyte_task: FlyteTask = self.register_task(entity, ss)
+            else:
+                flyte_task: FlyteTask = self.fetch_task(**resolved_identifiers_dict)
         except FlyteEntityNotExistException:
             if isinstance(entity, PythonAutoContainerTask):
                 if not image_config:
