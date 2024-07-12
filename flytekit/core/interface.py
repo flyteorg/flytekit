@@ -376,7 +376,7 @@ def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Doc
     signature = inspect.signature(fn)
     return_annotation = type_hints.get("return", None)
 
-    if return_annotation and has_return_statement(fn) is False:
+    if return_annotation and return_annotation is not type(None) and has_return_statement(fn) is False:
         raise annotate_exception_with_code(
             ValueError(
                 f"{fn.__name__} function must return a value. Please add a return statement at the end of the function."
@@ -516,7 +516,8 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple, None]) -> Di
                 "Tuples should be used to indicate multiple return values, found only one return variable."
             )
         return OrderedDict(
-            zip(list(output_name_generator(len(return_annotation.__args__))), return_annotation.__args__)  # type: ignore
+            zip(list(output_name_generator(len(return_annotation.__args__))), return_annotation.__args__)
+            # type: ignore
         )
     elif isinstance(return_annotation, tuple):
         if len(return_annotation) == 1:
