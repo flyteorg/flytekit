@@ -602,6 +602,7 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
                     inputs[input_name] = False
 
             if not run_level_params.is_remote:
+                
                 with FlyteContextManager.with_context(_update_flyte_context(run_level_params)):
                     if run_level_params.envvars:
                         for env_var, value in run_level_params.envvars.items():
