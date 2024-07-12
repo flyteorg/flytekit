@@ -171,10 +171,6 @@ def pretty_print_exception(e: Exception, verbosity: int = 1):
         click.secho(f"Assertion Error: {e}", fg="red")
         return
 
-    if isinstance(e, ValueError):
-        click.secho(f"Value Error: {e}", fg="red")
-        return
-
     pretty_print_traceback(e, verbosity)
 
 
