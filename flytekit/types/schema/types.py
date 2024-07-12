@@ -198,8 +198,8 @@ class FlyteSchema(SerializableType, DataClassJSONMixin):
         t = FlyteSchemaTransformer()
         return t.to_python_value(
             FlyteContextManager.current_context(),
-            Literal(scalar=Scalar(schema=Schema(remote_path, t._get_schema_type(FlyteSchema)))),
-            FlyteSchema,
+            Literal(scalar=Scalar(schema=Schema(remote_path, t._get_schema_type(cls)))),
+            cls,
         )
 
     @classmethod
@@ -235,9 +235,6 @@ class FlyteSchema(SerializableType, DataClassJSONMixin):
             )
 
         class _TypedSchema(FlyteSchema):
-            # Get the type engine to see this as kind of a generic
-            __origin__ = FlyteSchema
-
             @classmethod
             def columns(cls) -> typing.Dict[str, typing.Type]:
                 return columns
