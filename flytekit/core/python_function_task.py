@@ -194,6 +194,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         This method will be invoked to execute the task. If you do decide to override this method you must also
         handle dynamic tasks or you will no longer be able to use the task as a dynamic task generator.
         """
+        breakpoint()
         if self.execution_mode == self.ExecutionBehavior.DEFAULT:
             return self._task_function(**kwargs)
         elif self.execution_mode == self.ExecutionBehavior.EAGER:

@@ -490,6 +490,7 @@ class Promise(object):
         return ComparisonExpression(self, ComparisonOps.LE, other)
 
     def __bool__(self):
+        return self._promise_ready
         raise ValueError(
             "Flytekit does not support Unary expressions or performing truth value testing,"
             " This is a limitation in python. For Logical `and\\or` use `&\\|` (bitwise) instead"
@@ -637,6 +638,258 @@ class Promise(object):
 
         return new_promise
 
+class AsyncPromise(object):
+    """
+    This object is a wrapper and exists for three main reasons. Let's assume we're dealing with a task like ::
+
+        @task
+        def t1() -> (int, str): ...
+
+    #. Handling the duality between compilation and local execution - when the task function is run in a local execution
+       mode inside a workflow function, a Python integer and string are produced. When the task is being compiled as
+       part of the workflow, the task call creates a Node instead, and the task returns two Promise objects that
+       point to that Node.
+    #. One needs to be able to call ::
+
+          x = t1().with_overrides(...)
+
+       If the task returns an integer or a ``(int, str)`` tuple like ``t1`` above, calling ``with_overrides`` on the
+       result would throw an error. This Promise object adds that.
+    #. Assorted handling for conditionals.
+    """
+
+    # TODO: Currently, NodeOutput we're creating is the slimmer core package Node class, but since only the
+    #  id is used, it's okay for now. Let's clean all this up though.
+    def __init__(
+        self,
+        var: str,
+        val: Union[NodeOutput, _literals_models.Literal],
+        type: typing.Optional[_type_models.LiteralType] = None,
+    ):
+        self._var = var
+        self._promise_ready = True
+        self._val = val
+        self._ref = None
+        self._attr_path: List[Union[str, int]] = []
+        self._type = type
+        if val and isinstance(val, NodeOutput):
+            self._ref = val
+            self._promise_ready = False
+            self._val = None
+            
+        self._awaited = False
+        self._promise = Promise(var, val, type)
+
+    def __hash__(self):
+        return hash(id(self))
+
+    def __await__(self):
+        if self._awaited:
+            raise RuntimeError("Cannot await an already awaited Promise")
+        self._awaited = True
+        yield
+        return self._promise
+
+    def with_var(self, new_var: str) -> Promise:
+        if self.is_ready:
+            return AsyncPromise(var=new_var, val=self.val)
+        return AsyncPromise(var=new_var, val=self.ref)
+
+    @property
+    def is_ready(self) -> bool:
+        """
+        Returns if the Promise is READY (is not a reference and the val is actually ready)
+
+        Usage ::
+
+           p = Promise(...)
+           ...
+           if p.is_ready():
+                print(p.val)
+           else:
+                print(p.ref)
+        """
+        return self._promise_ready
+
+    @property
+    def val(self) -> _literals_models.Literal:
+        """
+        If the promise is ready then this holds the actual evaluate value in Flyte's type system
+        """
+        return self._val
+
+    @property
+    def ref(self) -> NodeOutput:
+        """
+        If the promise is NOT READY / Incomplete, then it maps to the origin node that owns the promise
+        """
+        return self._ref  # type: ignore
+
+    @property
+    def var(self) -> str:
+        """
+        Name of the variable bound with this promise
+        """
+        return self._var
+
+    @property
+    def attr_path(self) -> List[Union[str, int]]:
+        """
+        The attribute path the promise will be resolved with.
+        :rtype: List[Union[str, int]]
+        """
+        return self._attr_path
+
+    def eval(self) -> Any:
+        if not self._promise_ready or self._val is None:
+            raise ValueError("Cannot Eval with incomplete promises")
+        if self.val.scalar is None or self.val.scalar.primitive is None:
+            raise ValueError("Eval can be invoked for primitive types only")
+        return get_primitive_val(self.val.scalar.primitive)
+
+    def is_(self, v: bool) -> ComparisonExpression:
+        return ComparisonExpression(self, ComparisonOps.EQ, v)
+
+    def is_false(self) -> ComparisonExpression:
+        return self.is_(False)
+
+    def is_true(self) -> ComparisonExpression:
+        return self.is_(True)
+
+    def is_none(self) -> ComparisonExpression:
+        return ComparisonExpression(self, ComparisonOps.EQ, None)
+
+    def __eq__(self, other) -> ComparisonExpression:  # type: ignore
+        return ComparisonExpression(self, ComparisonOps.EQ, other)
+
+    def __ne__(self, other) -> ComparisonExpression:  # type: ignore
+        return ComparisonExpression(self, ComparisonOps.NE, other)
+
+    def __gt__(self, other) -> ComparisonExpression:
+        return ComparisonExpression(self, ComparisonOps.GT, other)
+
+    def __ge__(self, other) -> ComparisonExpression:
+        return ComparisonExpression(self, ComparisonOps.GE, other)
+
+    def __lt__(self, other) -> ComparisonExpression:
+        return ComparisonExpression(self, ComparisonOps.LT, other)
+
+    def __le__(self, other) -> ComparisonExpression:
+        return ComparisonExpression(self, ComparisonOps.LE, other)
+
+    def __bool__(self):
+        return self._promise is not None
+        raise ValueError(
+            "Flytekit does not support Unary expressions or performing truth value testing,"
+            " This is a limitation in python. For Logical `and\\or` use `&\\|` (bitwise) instead"
+        )
+
+    def __and__(self, other):
+        raise ValueError("Cannot perform Logical AND of Promise with other")
+
+    def __or__(self, other):
+        raise ValueError("Cannot perform Logical OR of Promise with other")
+
+    def with_overrides(self, *args, **kwargs):
+        if not self.is_ready:
+            # TODO, this should be forwarded, but right now this results in failure and we want to test this behavior
+            self.ref.node.with_overrides(*args, **kwargs)
+        return self
+
+    def __repr__(self):
+        if self._promise_ready:
+            return f"Resolved({self._var}={self._val})"
+        return f"Promise(node:{self.ref.node_id}.{self._var}.{self.attr_path})"
+
+    def __str__(self):
+        return str(self.__repr__())
+
+    def deepcopy(self) -> Promise:
+        new_promise = AsyncPromise(var=self.var, val=self.val)
+        new_promise._promise_ready = self._promise_ready
+        new_promise._ref = self._ref
+        new_promise._attr_path = deepcopy(self._attr_path)
+        return new_promise
+
+    def __getitem__(self, key) -> Promise:
+        """
+        When we use [] to access the attribute on the promise, for example
+
+        ```
+        @workflow
+        def wf():
+            o = t1()
+            t2(x=o["a"][0])
+        ```
+
+        The attribute keys are appended on the promise and a new promise is returned with the updated attribute path.
+        We don't modify the original promise because it might be used in other places as well.
+        """
+
+        if self.ref and self._type:
+            if self._type.simple == SimpleType.STRUCT and self._type.metadata is None:
+                raise ValueError(f"Trying to index into a unschematized struct type {self.var}[{key}].")
+        if isinstance(self.val, _literals_models.Literal):
+            if self.val.scalar and self.val.scalar.generic:
+                if self._type and self._type.metadata is None:
+                    raise ValueError(
+                        f"Trying to index into a generic type {self.var}[{key}]."
+                        f" It seems the upstream type is not indexable."
+                        f" Prefer using `typing.Dict[str, ...]` or `@dataclass`"
+                        f" Note: {self.var} is the name of the variable in your workflow function."
+                    )
+                raise ValueError(
+                    f"Trying to index into a struct {self.var}[{key}]. Use {self.var}.{key} instead."
+                    f" Note: {self.var} is the name of the variable in your workflow function."
+                )
+        return self._append_attr(key)
+
+    def __iter__(self):
+        """
+        Flyte/kit (as of https://github.com/flyteorg/flyte/issues/3864) supports indexing into a list of promises.
+        But it still doesn't make sense to
+        """
+        raise ValueError(
+            f" {self.var} is a Promise. Promise objects are not iterable - can't range() over a promise."
+            " But you can use [index] or the alpha version of @eager workflows"
+        )
+
+    def __getattr__(self, key) -> Promise:
+        """
+        When we use . to access the attribute on the promise, for example
+
+        ```
+        @workflow
+        def wf():
+            o = t1()
+            t2(o.a.b)
+        ```
+
+        The attribute keys are appended on the promise and a new promise is returned with the updated attribute path.
+        We don't modify the original promise because it might be used in other places as well.
+        """
+        if isinstance(self.val, _literals_models.Literal):
+            if self.val.scalar and self.val.scalar.generic:
+                if self._type and self._type.metadata is None:
+                    raise ValueError(
+                        f"Trying to index into a generic type {self.var}[{key}]."
+                        f" It seems the upstream type is not indexable."
+                        f" Prefer using `typing.Dict[str, ...]` or `@dataclass`"
+                        f" Note: {self.var} is the name of the variable in your workflow function."
+                    )
+        return self._append_attr(key)
+
+    def _append_attr(self, key) -> Promise:
+        new_promise = self.deepcopy()
+
+        # The attr_path on the promise is for local_execute
+        new_promise._attr_path.append(key)
+
+        if new_promise.ref is not None:
+            # The attr_path on the ref node is for remote execute
+            new_promise._ref = new_promise.ref.with_attr(key)
+
+        return new_promise
 
 def create_native_named_tuple(
     ctx: FlyteContext,
@@ -1215,9 +1468,16 @@ def create_and_link_node(
     # Create a node output object for each output, they should all point to this node of course.
     node_outputs = []
     for output_name, output_var_model in typed_interface.outputs.items():
-        node_outputs.append(
-            Promise(output_name, NodeOutput(node=flytekit_node, var=output_name), output_var_model.type)
-        )
+        breakpoint()
+        is_python_task = getattr(entity, "task_function", None) is not None
+        if is_python_task and inspect.iscoroutinefunction(entity.task_function):
+            node_outputs.append(
+                AsyncPromise(output_name, NodeOutput(node=flytekit_node, var=output_name), output_var_model.type)
+            )
+        else:
+            node_outputs.append(
+                Promise(output_name, NodeOutput(node=flytekit_node, var=output_name), output_var_model.type)
+            )
         # Don't print this, it'll crash cuz sdk_node._upstream_node_ids might be None, but idl code will break
 
     return create_task_output(node_outputs, interface)

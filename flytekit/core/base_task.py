@@ -332,6 +332,7 @@ class Task(object):
             # This code should mirror the call to `sandbox_execute` in the above cache case.
             # Code is simpler with duplication and less metaprogramming, but introduces regressions
             # if one is changed and not the other.
+            # breakpoint()
             outputs_literal_map = self.sandbox_execute(ctx, input_literal_map)
 
         if inspect.iscoroutine(outputs_literal_map):
@@ -355,6 +356,7 @@ class Task(object):
         return create_task_output(vals, self.python_interface)
 
     def __call__(self, *args: object, **kwargs: object) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, None]:
+        breakpoint()
         return flyte_entity_call_handler(self, *args, **kwargs)  # type: ignore
 
     def compile(self, ctx: FlyteContext, *args, **kwargs):
@@ -746,23 +748,28 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             if inspect.iscoroutine(native_outputs):
                 # If native outputs is a coroutine, then this is an eager workflow.
                 if exec_ctx.execution_state:
+                    # HACK local workflow
+                    # return native_outputs
                     if exec_ctx.execution_state.mode == ExecutionState.Mode.LOCAL_TASK_EXECUTION:
                         # Just return task outputs as a coroutine if the eager workflow is being executed locally,
                         # outside of a workflow. This preserves the expectation that the eager workflow is an async
                         # function.
                         return native_outputs
                     elif exec_ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
-                        # If executed inside of a workflow being executed locally, then run the coroutine to get the
-                        # actual results.
-                        return asyncio.run(
-                            self._async_execute(
-                                native_inputs,
-                                native_outputs,
-                                ctx,
-                                exec_ctx,
-                                new_user_params,
+                        try:
+                            _ = asyncio.get_running_loop()
+                            return native_outputs
+                        except RuntimeError:
+                            return asyncio.run(
+                                self._async_execute(
+                                    native_inputs,
+                                    native_outputs,
+                                    ctx,
+                                    exec_ctx,
+                                    new_user_params,
+                                )
                             )
-                        )
+                            
 
                 return self._async_execute(native_inputs, native_outputs, ctx, exec_ctx, new_user_params)
 
