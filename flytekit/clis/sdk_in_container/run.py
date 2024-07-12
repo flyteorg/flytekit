@@ -544,6 +544,11 @@ def convert_inputs(
                 if type(raw_inputs[input_name]) == float:
                     raw_inputs[input_name] = str(raw_inputs[input_name])
                 converted_inputs[input_name] = literal_converter.click_type.convert(raw_inputs[input_name], None, ctx)
+                converted_inputs[input_name] = literal_converter.convert(ctx, None, converted_inputs[input_name])
+            except KeyError as e:
+                raise click.ClickException(
+                    f"Failed to convert input '{input_name}'. Reason: Can not find {e} while converting."
+                )
             except Exception as e:
                 raise click.ClickException(f"Failed to parse input '{input_name}'. Reason: {e}")
     return converted_inputs
