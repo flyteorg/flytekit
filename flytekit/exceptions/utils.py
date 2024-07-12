@@ -5,20 +5,6 @@ import typing
 from flytekit.core.constants import SOURCE_CODE
 
 
-def get_source_code_from_fn(fn: typing.Callable, param_name: typing.Optional[str] = None) -> (str, int):
-    """
-    Get the source code of the function and the column offset of the parameter defined in the input signature.
-    """
-    lines, start_line = inspect.getsourcelines(fn)
-    if param_name is None:
-        return "".join(f"{start_line + i} {lines[i]}" for i in range(len(lines))), 0
-
-    target_line_no, column_offset = get_function_param_location(fn, param_name)
-    line_index = target_line_no - start_line
-    source_code = "".join(f"{start_line + i} {lines[i]}" for i in range(line_index + 1))
-    return source_code, column_offset
-
-
 def get_function_param_location(func: typing.Callable, param_name: str) -> (int, int):
     """
     Get the line and column number of the parameter in the source code of the function definition.
@@ -39,6 +25,20 @@ def get_function_param_location(func: typing.Callable, param_name: str) -> (int,
                     line_number = start_line + node.lineno - 1
                     column_offset = arg.col_offset
                     return line_number, column_offset
+
+
+def get_source_code_from_fn(fn: typing.Callable, param_name: typing.Optional[str] = None) -> (str, int):
+    """
+    Get the source code of the function and the column offset of the parameter defined in the input signature.
+    """
+    lines, start_line = inspect.getsourcelines(fn)
+    if param_name is None:
+        return "".join(f"{start_line + i} {lines[i]}" for i in range(len(lines))), 0
+
+    target_line_no, column_offset = get_function_param_location(fn, param_name)
+    line_index = target_line_no - start_line
+    source_code = "".join(f"{start_line + i} {lines[i]}" for i in range(line_index + 1))
+    return source_code, column_offset
 
 
 def annotate_exception_with_code(

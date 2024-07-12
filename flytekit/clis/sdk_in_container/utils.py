@@ -85,13 +85,11 @@ def pretty_print_grpc_error(e: grpc.RpcError):
 
 
 def remove_unwanted_traceback_frames(
-    tb: types.TracebackType, unwanted_module_names: typing.Optional[typing.List[str]] = None
+    tb: types.TracebackType, unwanted_module_names: typing.List[str]
 ) -> types.TracebackType:
     """
     Custom function to remove certain frames from the traceback.
     """
-    if unwanted_module_names is None:
-        unwanted_module_names = ["importlib", "click", "rich_click"]
     frames = []
     while tb is not None:
         frame = tb.tb_frame
@@ -145,7 +143,6 @@ def pretty_print_exception(e: Exception, verbosity: int = 1):
     This method will print the exception in a nice way. It will also check if the exception is a grpc.RpcError and
     print it in a human-readable way.
     """
-
     if verbosity > 0:
         click.secho("Verbose mode on")
 
