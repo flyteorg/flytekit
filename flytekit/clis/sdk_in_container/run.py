@@ -640,30 +640,30 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
                 if piped_input:
                     inputs.update(parse_stdin_to_dict(ctx, entity, piped_input))
                     check_params(entity, inputs)
-
-            for input_name, v in entity.python_interface.inputs_with_defaults.items():
-                processed_click_value = kwargs.get(input_name)
-                optional_v = False
-                if processed_click_value is None and isinstance(v, typing.Tuple):
-                    optional_v = is_optional(v[0])
-                    if len(v) == 2:
-                        processed_click_value = v[1]
-                if isinstance(processed_click_value, ArtifactQuery):
-                    if run_level_params.is_remote:
-                        click.secho(
-                            click.style(
-                                f"Input '{input_name}' not passed, supported backends will query"
-                                f" for {processed_click_value.get_str(**kwargs)}",
-                                bold=True,
+            else:
+                for input_name, v in entity.python_interface.inputs_with_defaults.items():
+                    processed_click_value = kwargs.get(input_name)
+                    optional_v = False
+                    if processed_click_value is None and isinstance(v, typing.Tuple):
+                        optional_v = is_optional(v[0])
+                        if len(v) == 2:
+                            processed_click_value = v[1]
+                    if isinstance(processed_click_value, ArtifactQuery):
+                        if run_level_params.is_remote:
+                            click.secho(
+                                click.style(
+                                    f"Input '{input_name}' not passed, supported backends will query"
+                                    f" for {processed_click_value.get_str(**kwargs)}",
+                                    bold=True,
+                                )
                             )
-                        )
-                        continue
-                    else:
-                        raise click.UsageError(
-                            f"Default for '{input_name}' is a query, which must be specified when running locally."
-                        )
-                if processed_click_value is not None or (optional_v and input_name not in inputs):
-                    inputs[input_name] = processed_click_value
+                            continue
+                        else:
+                            raise click.UsageError(
+                                f"Default for '{input_name}' is a query, which must be specified when running locally."
+                            )
+                    if processed_click_value is not None or optional_v:
+                        inputs[input_name] = processed_click_value
 
             if not run_level_params.is_remote:
                 with FlyteContextManager.with_context(_update_flyte_context(run_level_params)):
