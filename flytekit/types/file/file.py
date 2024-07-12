@@ -6,6 +6,7 @@ import pathlib
 import typing
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from typing import cast, get_origin
 from urllib.parse import unquote
 
 from dataclasses_json import config
@@ -219,10 +220,18 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
         class _SpecificFormatClass(FlyteFile):
             # Get the type engine to see this as kind of a generic
             __origin__ = FlyteFile
-            # Delete it to make mashumaro deserialize FlyteFile correctly
+
+            class AttributeHider(FlyteFile):
+                def __get__(self, instance, owner):
+                    raise AttributeError(
+                        """We have to return false in hasattr(cls, "__class_getitem__") to make mashumaro deserialize FlyteFile correctly."""
+                    )
+
+            # Set __class_getitem__ to AttributeHider to make mashumaro deserialize FlyteFile correctly
+            # https://stackoverflow.com/questions/6057130/python-deleting-a-class-attribute-in-a-subclass/6057409
             # Since mashumaro will use the method __class_getitem__ and __origin__ to construct the dataclass back
             # https://github.com/Fatal1ty/mashumaro/blob/e945ee4319db49da9f7b8ede614e988cc8c8956b/mashumaro/core/meta/helpers.py#L300-L303
-            delattr(cls, "__class_getitem__")
+            __class_getitem__ = AttributeHider(path="")
 
             @classmethod
             def extension(cls) -> str:
@@ -348,7 +357,6 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
     def __str__(self):
         return self.path
 
-from typing import get_origin
 
 class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
     def __init__(self):
@@ -358,7 +366,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
     def get_format(t: typing.Union[typing.Type[FlyteFile], os.PathLike]) -> str:
         if t is os.PathLike:
             return ""
-        return t.extension()
+        return cast(FlyteFile, t).extension()
 
     def _blob_type(self, format: str) -> BlobType:
         return BlobType(format=format, dimensionality=BlobType.BlobDimensionality.SINGLE)
@@ -443,7 +451,9 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
 
         # Correctly handle `Annotated[FlyteFile, ...]` by extracting the origin type
         python_type = get_underlying_type(python_type)
-        if not (python_type is os.PathLike or get_origin(python_type) is FlyteFile or issubclass(python_type, FlyteFile) ):
+        if not (
+            python_type is os.PathLike or get_origin(python_type) is FlyteFile or issubclass(python_type, FlyteFile)
+        ):
             raise ValueError(f"Incorrect type {python_type}, must be either a FlyteFile or os.PathLike")
 
         # information used by all cases
