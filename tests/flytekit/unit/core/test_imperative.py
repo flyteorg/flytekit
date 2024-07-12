@@ -327,7 +327,7 @@ def test_non_function_task_and_df_input():
         dataframe: pd.DataFrame,
         imputation_method: str = "median",
     ) -> pd.DataFrame:
-        ...
+        return dataframe
 
     @reference_task(
         project="flytesnacks",
