@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from typing import Dict, List
 
 import pytest
-from dataclasses_json import DataClassJsonMixin
 from pytest import fixture
 from typing_extensions import Annotated
 
@@ -232,7 +231,7 @@ def test_sql_task():
 @pytest.mark.serial
 def test_wf_custom_types():
     @dataclass
-    class MyCustomType(DataClassJsonMixin):
+    class MyCustomType:
         x: int
         y: str
 

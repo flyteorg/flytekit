@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from typing import Dict, List
 
 import pytest
-from dataclasses_json import DataClassJsonMixin, dataclass_json
 from typing_extensions import Annotated
 
 from flytekit import LaunchPlan, task, workflow
@@ -111,7 +110,7 @@ def test_create_and_link_node_from_remote_ignore():
 
 
 @dataclass
-class MyDataclass(DataClassJsonMixin):
+class MyDataclass:
     i: int
     a: typing.List[str]
 
@@ -185,9 +184,6 @@ def test_promise_with_attr_path():
     from dataclasses import dataclass
     from typing import Dict, List
 
-    from dataclasses_json import dataclass_json
-
-    @dataclass_json
     @dataclass
     class Foo:
         a: str
@@ -217,7 +213,6 @@ def test_promise_with_attr_path():
 
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_resolve_attr_path_in_promise():
-    @dataclass_json
     @dataclass
     class Foo:
         b: str

@@ -4,14 +4,12 @@ import datetime
 import os
 import typing
 from abc import abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Type
 
 import numpy as _np
-from dataclasses_json import config
-from marshmallow import fields
 from mashumaro.mixins.json import DataClassJSONMixin
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
@@ -178,7 +176,7 @@ class SchemaEngine(object):
 
 @dataclass
 class FlyteSchema(DataClassJSONMixin):
-    remote_path: typing.Optional[str] = field(default=None, metadata=config(mm_field=fields.String()))
+    remote_path: typing.Optional[str] = None
     """
     This is the main schema class that users should use.
     """

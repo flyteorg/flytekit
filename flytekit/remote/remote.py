@@ -29,6 +29,7 @@ import fsspec
 import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
 from flyteidl.core import literals_pb2
+from mashumaro.codecs.json import JSONEncoder
 
 from flytekit import ImageSpec
 from flytekit.clients.friendly import SynchronousFlyteClient
@@ -950,7 +951,9 @@ class FlyteRemote(object):
         additional_context = additional_context or []
 
         h = hashlib.md5(md5_bytes)
-        h.update(bytes(serialization_settings.to_json(), "utf-8"))
+        encoder = JSONEncoder(SerializationSettings)
+        json_str = encoder.encode(serialization_settings)
+        h.update(bytes(json_str, "utf-8"))
         h.update(bytes(__version__, "utf-8"))
 
         for s in additional_context:

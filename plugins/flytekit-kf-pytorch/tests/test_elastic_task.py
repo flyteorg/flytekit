@@ -6,7 +6,7 @@ from unittest import mock
 import pytest
 import torch
 import torch.distributed as dist
-from dataclasses_json import DataClassJsonMixin
+
 from flytekitplugins.kfpytorch.task import CleanPodPolicy, Elastic, RunPolicy
 
 import flytekit
@@ -22,7 +22,7 @@ def restore_env():
     os.environ.update(original_env)
 
 @dataclass
-class Config(DataClassJsonMixin):
+class Config:
     lr: float = 1e-5
     bs: int = 64
     name: str = "foo"

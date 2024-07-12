@@ -1,12 +1,10 @@
 from dataclasses import dataclass
 
-from dataclasses_json import DataClassJsonMixin
-
 from flytekit import task, workflow
 
 
 @dataclass
-class DataclassA(DataClassJsonMixin):
+class DataclassA:
     a: str
     b: int
 

@@ -4,7 +4,7 @@ import shutil
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Type, Union
 
-from dataclasses_json import DataClassJsonMixin
+from mashumaro.mixins.json import DataClassJSONMixin
 
 from flytekit import PythonInstanceTask, lazy_module
 from flytekit.core.context_manager import FlyteContext
@@ -17,7 +17,7 @@ ge = lazy_module("great_expectations")
 
 
 @dataclass
-class BatchRequestConfig(DataClassJsonMixin):
+class BatchRequestConfig(DataClassJSONMixin):
     """
     Use this configuration to configure Batch Request. A BatchRequest can either be
     a simple BatchRequest or a RuntimeBatchRequest.

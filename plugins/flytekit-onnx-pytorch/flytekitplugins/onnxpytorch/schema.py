@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple, Type, Union
 
-from dataclasses_json import DataClassJsonMixin
 from typing_extensions import Annotated, get_args, get_origin
 
 from flytekit import FlyteContext, lazy_module
@@ -17,7 +16,7 @@ torch = lazy_module("torch")
 
 
 @dataclass
-class PyTorch2ONNXConfig(DataClassJsonMixin):
+class PyTorch2ONNXConfig:
     """
     PyTorch2ONNXConfig is the config used during the pytorch to ONNX conversion.
 
@@ -53,7 +52,7 @@ class PyTorch2ONNXConfig(DataClassJsonMixin):
 
 
 @dataclass
-class PyTorch2ONNX(DataClassJsonMixin):
+class PyTorch2ONNX:
     model: Union[torch.nn.Module, torch.jit.ScriptModule, torch.jit.ScriptFunction] = field(default=None)
 
 

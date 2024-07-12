@@ -1,7 +1,6 @@
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
-from dataclasses_json import DataClassJsonMixin
 from typing_extensions import Annotated, get_args, get_origin
 
 from flytekit import FlyteContext, lazy_module
@@ -17,7 +16,7 @@ tf2onnx = lazy_module("tf2onnx")
 
 
 @dataclass
-class TensorFlow2ONNXConfig(DataClassJsonMixin):
+class TensorFlow2ONNXConfig:
     """
     TensorFlow2ONNXConfig is the config used during the tensorflow to ONNX conversion.
 
@@ -47,7 +46,7 @@ class TensorFlow2ONNXConfig(DataClassJsonMixin):
 
 
 @dataclass
-class TensorFlow2ONNX(DataClassJsonMixin):
+class TensorFlow2ONNX:
     model: tf.keras.Model = field(default=None)
 
 

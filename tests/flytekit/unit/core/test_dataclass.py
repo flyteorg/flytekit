@@ -3,7 +3,6 @@ from dataclasses import dataclass
 from typing import List
 
 import pytest
-from dataclasses_json import DataClassJsonMixin
 from mashumaro.mixins.json import DataClassJSONMixin
 from typing_extensions import Annotated
 
@@ -15,7 +14,7 @@ from flytekit.core.workflow import workflow
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_dataclass():
     @dataclass
-    class AppParams(DataClassJsonMixin):
+    class AppParams:
         snapshotDate: str
         region: str
         preprocess: bool
@@ -36,7 +35,7 @@ def test_dataclass():
 
 def test_dataclass_assert_works_for_annotated():
     @dataclass
-    class MyDC(DataClassJSONMixin):
+    class MyDC:
         my_str: str
 
     d = Annotated[MyDC, "tag"]

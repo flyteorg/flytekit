@@ -4,15 +4,13 @@ import os
 import pathlib
 import random
 import typing
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Generator, Tuple
 from uuid import UUID
 
 import fsspec
-from dataclasses_json import DataClassJsonMixin, config
 from fsspec.utils import get_protocol
-from marshmallow import fields
 
 from flytekit import BlobType
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
@@ -32,8 +30,8 @@ def noop(): ...
 
 
 @dataclass
-class FlyteDirectory(DataClassJsonMixin, os.PathLike, typing.Generic[T]):
-    path: PathType = field(default=None, metadata=config(mm_field=fields.String()))  # type: ignore
+class FlyteDirectory(os.PathLike, typing.Generic[T]):
+    path: PathType
     """
     .. warning::
 
