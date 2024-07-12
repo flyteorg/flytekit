@@ -12,6 +12,7 @@ from typing_extensions import get_args, get_type_hints
 
 from flytekit.core import context_manager
 from flytekit.core.artifact import Artifact, ArtifactIDSpecification, ArtifactQuery
+from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.docstring import Docstring
 from flytekit.core.sentinel import DYNAMIC_INPUT_BINDING
 from flytekit.core.type_engine import TypeEngine, UnionTransformer
@@ -376,7 +377,14 @@ def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Doc
     signature = inspect.signature(fn)
     return_annotation = type_hints.get("return", None)
 
-    if return_annotation and return_annotation is not type(None) and has_return_statement(fn) is False:
+    ctx = FlyteContextManager.current_context()
+    # Only check if the task/workflow has a return statement at compile time locally.
+    if (
+        ctx.execution_state.mode is None
+        and return_annotation
+        and return_annotation is not type(None)
+        and has_return_statement(fn) is False
+    ):
         raise annotate_exception_with_code(
             ValueError(
                 f"{fn.__name__} function must return a value. Please add a return statement at the end of the function."
@@ -516,8 +524,7 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple, None]) -> Di
                 "Tuples should be used to indicate multiple return values, found only one return variable."
             )
         return OrderedDict(
-            zip(list(output_name_generator(len(return_annotation.__args__))), return_annotation.__args__)
-            # type: ignore
+            zip(list(output_name_generator(len(return_annotation.__args__))), return_annotation.__args__)  # type: ignore
         )
     elif isinstance(return_annotation, tuple):
         if len(return_annotation) == 1:

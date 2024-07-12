@@ -419,10 +419,10 @@ def test_ref_lp_from_decorator():
 
 
 def test_ref_lp_from_decorator_with_named_outputs():
-    RefLPOutput = typing.NamedTuple("RefLPOutput", o1=int, o2=str)
+    nt = typing.NamedTuple("RefLPOutput", [("o1", int), ("o2", str)])
     @reference_launch_plan(project="project", domain="domain", name="name", version="version")
-    def ref_lp1(p1: str, p2: str) -> RefLPOutput:
-        return RefLPOutput(o1=1, o2="2")
+    def ref_lp1(p1: str, p2: str) -> nt:
+        return nt(o1=1, o2="2")
 
     assert ref_lp1.python_interface.outputs == {"o1": int, "o2": str}
 

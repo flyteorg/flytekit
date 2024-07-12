@@ -390,4 +390,6 @@ def has_return_statement(func: typing.Callable) -> bool:
     for line in source_lines:
         if "return" in line.strip():
             return True
+        if "yield" in line.strip():
+            return True
     return False
