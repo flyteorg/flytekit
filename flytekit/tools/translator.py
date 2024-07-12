@@ -133,7 +133,7 @@ def to_serializable_cases(
 
 
 def get_command_prefix_for_fast_execute(settings: SerializationSettings) -> List[str]:
-    return [
+    prefix = [
         "pyflyte-fast-execute",
         "--additional-distribution",
         settings.fast_serialization_settings.distribution_location
@@ -143,8 +143,12 @@ def get_command_prefix_for_fast_execute(settings: SerializationSettings) -> List
         settings.fast_serialization_settings.destination_dir
         if settings.fast_serialization_settings and settings.fast_serialization_settings.destination_dir
         else "{{ .dest_dir }}",
-        "--",
     ]
+    # If pickling is enalbed, we will add a pickled bit
+    if settings.fast_serialization_settings and settings.fast_serialization_settings.pickled:
+        prefix = prefix + ["--pickled"]
+
+    return prefix + ["--"]
 
 
 def prefix_with_fast_execute(settings: SerializationSettings, cmd: typing.List[str]) -> List[str]:
