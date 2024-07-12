@@ -380,8 +380,10 @@ def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Doc
     ctx = FlyteContextManager.current_context()
     # Only check if the task/workflow has a return statement at compile time locally.
     if (
-        ctx.execution_state.mode is None
+        ctx.execution_state
+        and ctx.execution_state.mode is None
         and return_annotation
+        and type(None) not in get_args(return_annotation)
         and return_annotation is not type(None)
         and has_return_statement(fn) is False
     ):
