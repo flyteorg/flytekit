@@ -148,7 +148,7 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
                     )
                 )
             ),
-            FlyteDirectory,
+            cls,
         )
 
     def __init__(
@@ -212,6 +212,10 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
         class _SpecificFormatDirectoryClass(FlyteDirectory):
             # Get the type engine to see this as kind of a generic
             __origin__ = FlyteDirectory
+            # Delete it to make mashumaro deserialize FlyteDirectory correctly
+            # Since mashumaro will use the method __class_getitem__ and __origin__ to construct the dataclass back
+            # https://github.com/Fatal1ty/mashumaro/blob/e945ee4319db49da9f7b8ede614e988cc8c8956b/mashumaro/core/meta/helpers.py#L300-L303
+            delattr(cls, "__class_getitem__")
 
             @classmethod
             def extension(cls) -> str:

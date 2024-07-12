@@ -86,7 +86,7 @@ class StructuredDataset(SerializableType, DataClassJSONMixin):
                     )
                 )
             ),
-            StructuredDataset,
+            cls,
         )
 
     @classmethod
