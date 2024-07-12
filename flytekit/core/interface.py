@@ -388,7 +388,7 @@ def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Doc
         and has_return_statement(fn) is False
     ):
         raise annotate_exception_with_code(
-            ValueError(
+            AssertionError(
                 f"{fn.__name__} function must return a value. Please add a return statement at the end of the function."
             ),
             fn,

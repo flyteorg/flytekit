@@ -237,7 +237,7 @@ def test_unexpected_outputs():
         no_outputs_wf()
 
     # Should raise an exception because it doesn't return something when it should
-    with pytest.raises(ValueError):
+    with pytest.raises(AssertionError):
 
         @workflow
         def one_output_wf() -> int:  # type: ignore

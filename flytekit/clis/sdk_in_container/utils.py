@@ -167,10 +167,6 @@ def pretty_print_exception(e: Exception, verbosity: int = 1):
         pretty_print_grpc_error(e)
         return
 
-    if isinstance(e, AssertionError):
-        click.secho(f"Assertion Error: {e}", fg="red")
-        return
-
     pretty_print_traceback(e, verbosity)
 
 
