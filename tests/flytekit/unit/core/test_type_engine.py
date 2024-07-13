@@ -2575,6 +2575,7 @@ def test_union_in_dataclass():
     lv = tf.to_literal(ctx, o, pt, lt)
     ot = tf.to_python_value(ctx, lv=lv, expected_python_type=pt)
 
+    return o == ot
     assert o.result.schema.remote_path == ot.result.schema.remote_path
     assert o.result.number == ot.result.number
     assert o.schema.remote_path == ot.schema.remote_path
@@ -2606,6 +2607,7 @@ def test_schema_in_dataclassjsonmixin():
     lv = tf.to_literal(ctx, o, Result, lt)
     ot = tf.to_python_value(ctx, lv=lv, expected_python_type=Result)
 
+    assert o == ot
     assert o.result.schema.remote_path == ot.result.schema.remote_path
     assert o.result.number == ot.result.number
     assert o.schema.remote_path == ot.schema.remote_path
