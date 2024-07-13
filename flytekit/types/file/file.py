@@ -6,7 +6,7 @@ import pathlib
 import typing
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import cast, get_origin
+from typing import cast
 from urllib.parse import unquote
 
 from dataclasses_json import config
@@ -451,9 +451,8 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
 
         # Correctly handle `Annotated[FlyteFile, ...]` by extracting the origin type
         python_type = get_underlying_type(python_type)
-        if not (
-            python_type is os.PathLike or get_origin(python_type) is FlyteFile or issubclass(python_type, FlyteFile)
-        ):
+
+        if not (python_type is os.PathLike or issubclass(python_type, FlyteFile)):
             raise ValueError(f"Incorrect type {python_type}, must be either a FlyteFile or os.PathLike")
 
         # information used by all cases
@@ -489,7 +488,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
 
         elif isinstance(python_val, pathlib.Path) or isinstance(python_val, str):
             source_path = str(python_val)
-            if get_origin(python_type) is FlyteFile or issubclass(python_type, FlyteFile):
+            if issubclass(python_type, FlyteFile):
                 self.validate_file_type(python_type, source_path)
                 if ctx.file_access.is_remote(source_path):
                     should_upload = False
@@ -554,7 +553,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         expected_python_type = get_underlying_type(expected_python_type)
 
         # The rest of the logic is only for FlyteFile types.
-        if get_origin(expected_python_type) is not FlyteFile and not issubclass(expected_python_type, FlyteFile):  # type: ignore
+        if not issubclass(expected_python_type, FlyteFile):  # type: ignore
             raise TypeError(f"Neither os.PathLike nor FlyteFile specified {expected_python_type}")
 
         # This is a local file path, like /usr/local/my_file, don't mess with it. Certainly, downloading it doesn't
@@ -571,6 +570,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         expected_format = FlyteFilePathTransformer.get_format(expected_python_type)
         ff = FlyteFile.__class_getitem__(expected_format)(local_path, _downloader)
         ff._remote_source = uri
+
         return ff
 
     def guess_python_type(self, literal_type: LiteralType) -> typing.Type[FlyteFile[typing.Any]]:
