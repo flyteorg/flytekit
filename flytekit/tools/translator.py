@@ -1,4 +1,6 @@
+import pathlib
 import sys
+import tempfile
 import typing
 from collections import OrderedDict
 from dataclasses import dataclass
@@ -144,7 +146,7 @@ def get_command_prefix_for_fast_execute(settings: SerializationSettings) -> List
         if settings.fast_serialization_settings and settings.fast_serialization_settings.destination_dir
         else "{{ .dest_dir }}",
     ]
-    # If pickling is enalbed, we will add a pickled bit
+    # If pickling is enabled, we will add a pickled bit
     if settings.fast_serialization_settings and settings.fast_serialization_settings.pickled:
         prefix = prefix + ["--pickled"]
 
@@ -167,6 +169,36 @@ def _fast_serialize_command_fn(
         return prefix_with_fast_execute(settings, default_command)
 
     return fn
+
+
+def _update_serialization_settings_for_ipython(
+    entity: FlyteLocalEntity, serialization_settings: SerializationSettings
+) -> SerializationSettings:
+    from flytekit.tools.interactive import ipython_check
+
+    if ipython_check():
+        print("Interactive mode!!")
+        import gzip
+
+        import cloudpickle
+
+        from flytekit.configuration import FastSerializationSettings
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            dest = pathlib.Path(tmp_dir, "pkl.gz")
+            with gzip.GzipFile(filename=dest, mode="wb", mtime=0) as gzipped:
+                cloudpickle.dump(entity, gzipped)
+            print("Uploading task to remote storage...")
+            md5_bytes, native_url = serialization_settings.upload_file(dest)
+            return (
+                serialization_settings.new_builder()
+                .with_fast_serialization_settings(
+                    FastSerializationSettings(enabled=True, pickled=True, distribution_location=native_url),
+                )
+                .build()
+            )
+    print("Not in interactive mode")
+    return serialization_settings
 
 
 def get_serializable_task(
@@ -206,11 +238,16 @@ def get_serializable_task(
             for entity_hint in entity.node_dependency_hints:
                 get_serializable(entity_mapping, settings, entity_hint, options)
 
+    # Try update the serialization settings for ipython / jupyter notebook / interactive mode
+    settings = _update_serialization_settings_for_ipython(entity, settings)
+    print(f"[ketan debug] Settings: {settings.to_dict()}")
+
     container = entity.get_container(settings)
     # This pod will be incorrect when doing fast serialize
     pod = entity.get_k8s_pod(settings)
 
     if settings.should_fast_serialize():
+        print("[ketan debug] Fast serialization enabled")
         # This handles container tasks.
         if container and isinstance(entity, (PythonAutoContainerTask, MapPythonTask, ArrayNodeMapTask)):
             # For fast registration, we'll need to muck with the command, but on
@@ -218,6 +255,7 @@ def get_serializable_task(
             # tasks that rely on user code defined in the container. This should be encapsulated by the auto container
             # parent class
             container._args = prefix_with_fast_execute(settings, container.args)
+            print(f"[ketan debug] updated container args: {container.args}")
 
         # If the pod spec is not None, we have to get it again, because the one we retrieved above will be incorrect.
         # The reason we have to call get_k8s_pod again, instead of just modifying the command in this file, is because
