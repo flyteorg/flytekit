@@ -384,7 +384,9 @@ def _execute_task(
     ) as ctx:
         if pickled:
             import gzip
+
             import cloudpickle
+
             with gzip.open(pkl_file, "r") as f:
                 _task_def = cloudpickle.load(f)
         else:
@@ -412,6 +414,8 @@ def _execute_map_task(
     prev_checkpoint: Optional[str] = None,
     dynamic_addl_distro: Optional[str] = None,
     dynamic_dest_dir: Optional[str] = None,
+    pickled: bool = False,
+    pkl_file: Optional[str] = None,
 ):
     """
     This function should be called by map task and aws-batch task
@@ -437,8 +441,17 @@ def _execute_map_task(
         raw_output_data_prefix, checkpoint_path, prev_checkpoint, dynamic_addl_distro, dynamic_dest_dir
     ) as ctx:
         task_index = _compute_array_job_index()
-        mtr = load_object_from_module(resolver)()
-        map_task = mtr.load_task(loader_args=resolver_args, max_concurrency=max_concurrency)
+
+        if pickled:
+            import gzip
+
+            import cloudpickle
+
+            with gzip.open(pkl_file, "r") as f:
+                map_task = cloudpickle.load(f)
+        else:
+            mtr = load_object_from_module(resolver)()
+            map_task = mtr.load_task(loader_args=resolver_args, max_concurrency=max_concurrency)
 
         # Special case for the map task resolver, we need to append the task index to the output prefix.
         # TODO: (https://github.com/flyteorg/flyte/issues/5011) Remove legacy map task
@@ -590,6 +603,8 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, pickled: 
 @click.option("--resolver", required=True)
 @click.option("--checkpoint-path", required=False)
 @click.option("--prev-checkpoint", required=False)
+@click.option("--pickled", is_flag=True, default=False, help="Use this to mark if the distribution is pickled.")
+@click.option("--pkl-file", required=False, help="Location where pickled file can be found.")
 @click.argument(
     "resolver-args",
     type=click.UNPROCESSED,
@@ -607,6 +622,8 @@ def map_execute_task_cmd(
     resolver_args,
     prev_checkpoint,
     checkpoint_path,
+    pickled,
+    pkl_file,
 ):
     logger.info(get_version_message())
 
