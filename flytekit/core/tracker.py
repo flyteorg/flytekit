@@ -337,6 +337,10 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
 
 
 def get_full_module_path(mod: ModuleType, mod_name: str) -> str:
+    from flytekit.tools.interactive import ipython_check
+
+    if ipython_check():
+        return ""
     if FeatureFlags.FLYTE_PYTHON_PACKAGE_ROOT != ".":
         package_root = (
             FeatureFlags.FLYTE_PYTHON_PACKAGE_ROOT if FeatureFlags.FLYTE_PYTHON_PACKAGE_ROOT != "auto" else None
