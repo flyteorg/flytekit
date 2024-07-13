@@ -4,6 +4,7 @@ import pandas as pd
 import polars as pl
 from flytekitplugins.polars.sd_transformers import PolarsDataFrameRenderer
 from typing_extensions import Annotated
+from packaging import version
 
 from flytekit import kwtypes, task, workflow
 from flytekit.types.structured.structured_dataset import PARQUET, StructuredDataset
@@ -11,6 +12,7 @@ from flytekit.types.structured.structured_dataset import PARQUET, StructuredData
 subset_schema = Annotated[StructuredDataset, kwtypes(col2=str), PARQUET]
 full_schema = Annotated[StructuredDataset, PARQUET]
 
+polars_version = pl.__version__
 
 def test_polars_workflow_subset():
     @task
@@ -80,7 +82,10 @@ def test_parquet_to_polars():
 
     sd = create_sd()
     polars_df = sd.open(pl.DataFrame).all()
-    assert pl.DataFrame(data).frame_equal(polars_df)
+    if version.parse(polars_version) >= version.parse("0.19.16"):
+        assert pl.DataFrame(data).equals(polars_df)
+    else:
+        assert pl.DataFrame(data).frame_equal(polars_df)
 
     tmp = tempfile.mktemp()
     pl.DataFrame(data).write_parquet(tmp)
@@ -90,11 +95,19 @@ def test_parquet_to_polars():
         return sd.open(pl.DataFrame).all()
 
     sd = StructuredDataset(uri=tmp)
-    assert t1(sd=sd).frame_equal(polars_df)
+
+    if version.parse(polars_version) >= version.parse("0.19.16"):
+        assert t1(sd=sd).equals(polars_df)
+    else:
+        assert t1(sd=sd).frame_equal(polars_df)
 
     @task
     def t2(sd: StructuredDataset) -> StructuredDataset:
         return StructuredDataset(dataframe=sd.open(pl.DataFrame).all())
 
     sd = StructuredDataset(uri=tmp)
-    assert t2(sd=sd).open(pl.DataFrame).all().frame_equal(polars_df)
+    
+    if version.parse(polars_version) >= version.parse("0.19.16"):
+        assert t2(sd=sd).open(pl.DataFrame).all().equals(polars_df)
+    else:
+        assert t2(sd=sd).open(pl.DataFrame).all().frame_equal(polars_df)
