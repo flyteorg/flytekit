@@ -755,7 +755,8 @@ class FlyteRemote(object):
         if serialization_settings.version is None:
             serialization_settings.version = version
 
-        serialization_settings = serialization_settings.with_file_uploader(self.upload_file)
+        if serialization_settings.upload_file is None:
+            serialization_settings = serialization_settings.with_file_uploader(self.upload_file)
 
         _ = get_serializable(m, settings=serialization_settings, entity=entity, options=options)
         # concurrent register
