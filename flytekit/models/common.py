@@ -54,7 +54,7 @@ class FlyteIdlEntity(object, metaclass=FlyteType):
         return self.verbose_string()
 
     def __hash__(self):
-        return hash(bytes(self.to_flyte_idl().SerializeToString()))  # deterministic=True
+        return hash(self.to_flyte_idl().SerializeToString())  # deterministic=True
 
     def short_string(self):
         """
