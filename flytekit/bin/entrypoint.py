@@ -444,7 +444,6 @@ def _execute_map_task(
 
         if pickled:
             import gzip
-
             import cloudpickle
 
             with gzip.open(pkl_file, "r") as f:
@@ -452,11 +451,10 @@ def _execute_map_task(
         else:
             mtr = load_object_from_module(resolver)()
             map_task = mtr.load_task(loader_args=resolver_args, max_concurrency=max_concurrency)
-
-        # Special case for the map task resolver, we need to append the task index to the output prefix.
-        # TODO: (https://github.com/flyteorg/flyte/issues/5011) Remove legacy map task
-        if mtr.name() == "flytekit.core.legacy_map_task.MapTaskResolver":
-            output_prefix = os.path.join(output_prefix, str(task_index))
+            # Special case for the map task resolver, we need to append the task index to the output prefix.
+            # TODO: (https://github.com/flyteorg/flyte/issues/5011) Remove legacy map task
+            if mtr.name() == "flytekit.core.legacy_map_task.MapTaskResolver":
+                output_prefix = os.path.join(output_prefix, str(task_index))
 
         if test:
             logger.info(
