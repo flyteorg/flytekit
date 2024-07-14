@@ -444,6 +444,7 @@ def _execute_map_task(
 
         if pickled:
             import gzip
+
             import cloudpickle
 
             with gzip.open(pkl_file, "r") as f:
