@@ -1,4 +1,4 @@
-from flyteidl.core import catalog_pb2
+import flyteidl_rust as flyteidl
 
 from flytekit.models import common as _common_models
 from flytekit.models.core import identifier as _identifier
@@ -17,11 +17,11 @@ class CatalogArtifactTag(_common_models.FlyteIdlEntity):
     def name(self) -> str:
         return self._name
 
-    def to_flyte_idl(self) -> catalog_pb2.CatalogArtifactTag:
-        return catalog_pb2.CatalogArtifactTag(artifact_id=self.artifact_id, name=self.name)
+    def to_flyte_idl(self) -> flyteidl.core.CatalogArtifactTag:
+        return flyteidl.core.CatalogArtifactTag(artifact_id=self.artifact_id, name=self.name)
 
     @classmethod
-    def from_flyte_idl(cls, p: catalog_pb2.CatalogArtifactTag) -> "CatalogArtifactTag":
+    def from_flyte_idl(cls, p: flyteidl.core.CatalogArtifactTag) -> "CatalogArtifactTag":
         return cls(
             artifact_id=p.artifact_id,
             name=p.name,
@@ -58,18 +58,18 @@ class CatalogMetadata(_common_models.FlyteIdlEntity):
         """
         return self._source_task_execution
 
-    def to_flyte_idl(self) -> catalog_pb2.CatalogMetadata:
-        return catalog_pb2.CatalogMetadata(
+    def to_flyte_idl(self) -> flyteidl.core.CatalogMetadata:
+        return flyteidl.core.CatalogMetadata(
             dataset_id=self.dataset_id.to_flyte_idl(),
             artifact_tag=self.artifact_tag.to_flyte_idl(),
             source_task_execution=self.source_task_execution.to_flyte_idl(),
         )
 
     @classmethod
-    def from_flyte_idl(cls, pb: catalog_pb2.CatalogMetadata) -> "CatalogMetadata":
+    def from_flyte_idl(cls, pb: flyteidl.core.CatalogMetadata) -> "CatalogMetadata":
         return cls(
-            dataset_id=_identifier.Identifier.from_flyte_idl(pb.dataset_id),
-            artifact_tag=CatalogArtifactTag.from_flyte_idl(pb.artifact_tag),
+            dataset_id=_identifier.Identifier.from_flyte_idl(pb.dataset_id) if pb.dataset_id else None,
+            artifact_tag=CatalogArtifactTag.from_flyte_idl(pb.artifact_tag) if pb.artifact_tag else None,
             # Add HasField check if more things are ever added to the one of
             source_task_execution=_identifier.TaskExecutionIdentifier.from_flyte_idl(pb.source_task_execution),
         )

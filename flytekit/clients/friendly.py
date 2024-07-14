@@ -9,7 +9,6 @@ from flyteidl.admin import matchable_resource_pb2 as _matchable_resource_pb2
 from flyteidl.admin import node_execution_pb2 as _node_execution_pb2
 from flyteidl.admin import project_domain_attributes_pb2 as _project_domain_attributes_pb2
 from flyteidl.admin import project_pb2 as _project_pb2
-from flyteidl.admin import task_execution_pb2 as _task_execution_pb2
 from flyteidl.admin import workflow_attributes_pb2 as _workflow_attributes_pb2
 from flyteidl.service import dataproxy_pb2 as _data_proxy_pb2
 from google.protobuf.duration_pb2 import Duration
@@ -714,14 +713,14 @@ class SynchronousFlyteClient(flyteidl.RawSynchronousFlyteClient):
         :param unique_parent_id: If specified, returns the node executions for the ``unique_parent_id`` node id.
         :rtype: list[flytekit.models.node_execution.NodeExecution], Text
         """
-        exec_list = super(SynchronousFlyteClient, self).list_node_executions_paginated(
+        exec_list = super(SynchronousFlyteClient, self).list_node_executions(
             flyteidl.admin.NodeExecutionListRequest(
                 workflow_execution_id=workflow_execution_identifier.to_flyte_idl(),
                 limit=limit,
                 token=token,
                 filters=_filters.FilterList(filters or []).to_flyte_idl(),
                 sort_by=None if sort_by is None else sort_by.to_flyte_idl(),
-                unique_parent_id=unique_parent_id,
+                unique_parent_id=unique_parent_id or "",
             )
         )
         return (
@@ -810,8 +809,8 @@ class SynchronousFlyteClient(flyteidl.RawSynchronousFlyteClient):
         :param flytekit.models.admin.common.Sort sort_by: [Optional] If provided, the results will be sorted.
         :rtype: (list[flytekit.models.admin.task_execution.TaskExecution], Text)
         """
-        exec_list = super(SynchronousFlyteClient, self).list_task_executions_paginated(
-            _task_execution_pb2.TaskExecutionListRequest(
+        exec_list = super(SynchronousFlyteClient, self).list_task_executions(
+            flyteidl.admin.TaskExecutionListRequest(
                 node_execution_id=node_execution_identifier.to_flyte_idl(),
                 limit=limit,
                 token=token,

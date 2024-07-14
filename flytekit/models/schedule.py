@@ -1,13 +1,13 @@
-from flyteidl.admin import schedule_pb2
+import flyteidl_rust as flyteidl
 
 from flytekit.models import common
 
 
 class Schedule(common.FlyteIdlEntity):
     class FixedRateUnit(object):
-        MINUTE = schedule_pb2.MINUTE
-        HOUR = schedule_pb2.HOUR
-        DAY = schedule_pb2.DAY
+        MINUTE = int(flyteidl.admin.FixedRateUnit.Minute)
+        HOUR = int(flyteidl.admin.FixedRateUnit.Hour)
+        DAY = int(flyteidl.admin.FixedRateUnit.Day)
 
         @classmethod
         def enum_to_string(cls, int_value):
@@ -51,7 +51,7 @@ class Schedule(common.FlyteIdlEntity):
             """
             :rtype: flyteidl.admin.schedule_pb2.FixedRate
             """
-            return schedule_pb2.FixedRate(value=self.value, unit=self.unit)
+            return flyteidl.admin.FixedRate(value=self.value, unit=self.unit)
 
         @classmethod
         def from_flyte_idl(cls, pb2_object):
@@ -88,7 +88,7 @@ class Schedule(common.FlyteIdlEntity):
             """
             :rtype: flyteidl.admin.schedule_pb2.FixedRate
             """
-            return schedule_pb2.CronSchedule(schedule=self.schedule, offset=self.offset)
+            return flyteidl.admin.CronSchedule(schedule=self.schedule, offset=self.offset)
 
         @classmethod
         def from_flyte_idl(cls, pb2_object):
@@ -145,11 +145,17 @@ class Schedule(common.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.schedule_pb2.Schedule
         """
-        return schedule_pb2.Schedule(
+        schedule_expression = None
+        if self.cron_expression:
+            schedule_expression = flyteidl.schedule.ScheduleExpression(self.cron_expression)
+        elif self.rate:
+            schedule_expression = flyteidl.schedule.ScheduleExpression(self.rate.to_flyte_idl())
+        elif self.cron_schedule:
+            schedule_expression = flyteidl.schedule.ScheduleExpression(self.cron_schedule.to_flyte_idl())
+
+        return flyteidl.admin.Schedule(
             kickoff_time_input_arg=self.kickoff_time_input_arg,
-            cron_expression=self.cron_expression,
-            rate=self.rate.to_flyte_idl() if self.rate is not None else None,
-            cron_schedule=self.cron_schedule.to_flyte_idl() if self.cron_schedule is not None else None,
+            schedule_expression=schedule_expression,
         )
 
     @classmethod
