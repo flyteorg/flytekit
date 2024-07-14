@@ -1,7 +1,7 @@
 import datetime
-import typing
 from datetime import timedelta
 from datetime import timezone as _timezone
+
 
 # A helping function for `from_flyte_idl()` to convert to Python `datetime`.
 def convert_to_datetime(seconds: int, nanos: int) -> datetime.datetime:

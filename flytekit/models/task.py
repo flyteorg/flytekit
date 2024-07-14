@@ -1,4 +1,3 @@
-import json as _json
 import typing
 
 import flyteidl_rust as flyteidl
@@ -482,20 +481,26 @@ class TaskTemplate(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.tasks_pb2.TaskTemplate
         """
+        target = None
+        if self.container:
+            target = flyteidl.task_template.Target.Container(self.container.to_flyte_idl())
+        elif self.k8s_pod:
+            target = flyteidl.task_template.Target.K8sPod(self.k8s_pod.to_flyte_idl())
+        elif self.sql:
+            target = flyteidl.task_template.Target.Sql(self.sql.to_flyte_idl())
+        import json
+
         task_template = flyteidl.core.TaskTemplate(
             id=self.id.to_flyte_idl(),
             type=self.type,
             metadata=self.metadata.to_flyte_idl(),
             interface=self.interface.to_flyte_idl(),
-            custom=_json_format.Parse(_json.dumps(self.custom), flyteidl.protobuf.Struct()) if self.custom else None,
+            custom=flyteidl.ParseStruct(json.dumps(self.custom)) if self.custom else None,
             task_type_version=self.task_type_version,
             security_context=self.security_context.to_flyte_idl() if self.security_context else None,
             extended_resources=self.extended_resources,
-            config={k: v for k, v in self.config.items()} if self.config is not None else None,
-            target=flyteidl.task_template.Target.Container(self.container.to_flyte_idl() or None),
-            # container=self.container.to_flyte_idl() if self.container else None,
-            # k8s_pod=self.k8s_pod.to_flyte_idl() if self.k8s_pod else None,
-            # sql=self.sql.to_flyte_idl() if self.sql else None,
+            config={k: v for k, v in self.config.items()} if self.config is not None else {},
+            target=target,
         )
         return task_template
 

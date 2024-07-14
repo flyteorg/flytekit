@@ -572,7 +572,6 @@ class Node(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.workflow_pb2.Node
         """
-
         target_node = None
         if self.task_node:
             target_node = flyteidl.node.Target.TaskNode(self.task_node.to_flyte_idl())
@@ -588,7 +587,7 @@ class Node(_common.FlyteIdlEntity):
             id=self.id,
             metadata=self.metadata.to_flyte_idl() if self.metadata is not None else None,
             inputs=[i.to_flyte_idl() for i in self.inputs],
-            upstream_node_ids=self.upstream_node_ids,
+            upstream_node_ids=self.upstream_node_ids or [],
             output_aliases=[a.to_flyte_idl() for a in self.output_aliases],
             target=target_node,
         )

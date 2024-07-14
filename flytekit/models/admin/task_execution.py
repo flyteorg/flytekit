@@ -1,6 +1,8 @@
+import flyteidl_rust as flyteidl
 from flyteidl.admin import task_execution_pb2 as _task_execution_pb2
 
 from flytekit.models import common as _common
+from flytekit.models import utils
 from flytekit.models.core import execution as _execution
 from flytekit.models.core import identifier as _identifier
 
@@ -99,11 +101,12 @@ class TaskExecutionClosure(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.task_execution_pb2.TaskExecutionClosure
         """
-        p = _task_execution_pb2.TaskExecutionClosure(
+        p = flyteidl.admin.TaskExecutionClosure(
             phase=self.phase,
             logs=[l.to_flyte_idl() for l in self.logs],
-            output_uri=self.output_uri,
-            error=self.error.to_flyte_idl() if self.error is not None else None,
+            output_result=flyteidl.execution_closure.OutputResult.OutputUri(self.output_uri)
+            if self.output_uri
+            else (flyteidl.execution_closure.OutputResult.Error(self.error.to_flyte_idl()) if self.error else None),
         )
         p.started_at.FromDatetime(self.started_at)
         p.created_at.FromDatetime(self.created_at)
@@ -120,12 +123,23 @@ class TaskExecutionClosure(_common.FlyteIdlEntity):
         return cls(
             phase=p.phase,
             logs=[_execution.TaskLog.from_flyte_idl(l) for l in p.logs],
-            output_uri=p.output_uri if p.HasField("output_uri") else None,
-            error=_execution.ExecutionError.from_flyte_idl(p.error) if p.HasField("error") else None,
-            started_at=p.started_at.ToDatetime(),
-            created_at=p.created_at.ToDatetime(),
-            updated_at=p.updated_at.ToDatetime(),
-            duration=p.duration.ToTimedelta(),
+            output_uri=p.output_result[0]
+            if isinstance(p.output_result, flyteidl.task_execution_closure.OutputResult.OutputUri)
+            else None,
+            error=_execution.ExecutionError.from_flyte_idl(p.error[0])
+            if isinstance(p.output_result, flyteidl.task_execution_closure.OutputResult.Error)
+            else None,
+            started_at=utils.convert_to_datetime(seconds=p.started_at.seconds, nanos=p.started_at.nanos)
+            if p.started_at
+            else None,
+            created_at=utils.convert_to_datetime(seconds=p.created_at.seconds, nanos=p.created_at.nanos)
+            if p.created_at
+            else None,
+            updated_at=utils.convert_to_datetime(seconds=p.updated_at.seconds, nanos=p.updated_at.nanos)
+            if p.updated_at
+            else None,
+            duration=None,
+            # duration=utils.convert_to_datetime(p.duration), # TODO
         )
 
 

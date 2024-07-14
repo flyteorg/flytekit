@@ -311,13 +311,12 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.execution_pb2.ExecutionSpec
         """
-
         return flyteidl.admin.ExecutionSpec(
             launch_plan=self.launch_plan.to_flyte_idl(),
             metadata=self.metadata.to_flyte_idl(),
             notification_overrides=self.notifications.to_flyte_idl()
             if isinstance(self.notifications, flyteidl.execution_spec.NotificationOverrides.Notifications)
-            else flyteidl.execution_spec.NotificationOverrides.DisableAll(self.disable_all),
+            else flyteidl.execution_spec.NotificationOverrides.DisableAll(self.disable_all or False),
             labels=self.labels.to_flyte_idl(),
             annotations=self.annotations.to_flyte_idl(),
             auth_role=self._auth_role.to_flyte_idl() if self.auth_role else None,
@@ -326,7 +325,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             else None,
             max_parallelism=self.max_parallelism or 0,
             security_context=self.security_context.to_flyte_idl() if self.security_context else None,
-            overwrite_cache=self.overwrite_cache,
+            overwrite_cache=self.overwrite_cache or False,
             envs=self.envs.to_flyte_idl() if self.envs else None,
             tags=self.tags or [],
             cluster_assignment=self._cluster_assignment.to_flyte_idl() if self._cluster_assignment else None,
@@ -797,7 +796,7 @@ class NodeExecutionGetDataResponse(_CommonDataResponse):
             full_inputs=_literals_models.LiteralMap.from_flyte_idl(pb2_object.full_inputs),
             full_outputs=_literals_models.LiteralMap.from_flyte_idl(pb2_object.full_outputs),
             dynamic_workflow=DynamicWorkflowNodeMetadata.from_flyte_idl(pb2_object.dynamic_workflow)
-            if pb2_object.HasField("dynamic_workflow")
+            if pb2_object.dynamic_workflow
             else None,
         )
 

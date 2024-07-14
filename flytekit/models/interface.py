@@ -98,7 +98,7 @@ class VariableMap(_common.FlyteIdlEntity):
         """
         :rtype: dict[Text, Variable]
         """
-        return _interface_pb2.VariableMap(variables={k: v.to_flyte_idl() for k, v in self.variables.items()})
+        return flyteidl.core.VariableMap(variables={k: v.to_flyte_idl() for k, v in self.variables.items()})
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -220,9 +220,9 @@ class Parameter(_common.FlyteIdlEntity):
         if self.required:
             behavior = flyteidl.parameter.Behavior.Required(self.required)
         if self.artifact_query:
-            behavior = flyteidl.parameter.Behavior.Required(self.artifact_query)
+            behavior = flyteidl.parameter.Behavior.ArtifactQuery(self.artifact_query)
         if self.artifact_id:
-            behavior = flyteidl.parameter.Behavior.Required(self.artifact_id)
+            behavior = flyteidl.parameter.Behavior.ArtifactId(self.artifact_id)
         return flyteidl.core.Parameter(
             var=self.var.to_flyte_idl(),
             behavior=behavior,
@@ -236,10 +236,16 @@ class Parameter(_common.FlyteIdlEntity):
         """
         return cls(
             Variable.from_flyte_idl(pb2_object.var),
-            _literals.Literal.from_flyte_idl(pb2_object.default) if pb2_object.HasField("default") else None,
-            pb2_object.required if pb2_object.HasField("required") else None,
-            artifact_query=pb2_object.artifact_query if pb2_object.HasField("artifact_query") else None,
-            artifact_id=pb2_object.artifact_id if pb2_object.HasField("artifact_id") else None,
+            _literals.Literal.from_flyte_idl(pb2_object.behavior)
+            if isinstance(pb2_object.behavior, flyteidl.parameter.Behavior.Default)
+            else None,
+            pb2_object.behavior if isinstance(pb2_object.behavior, flyteidl.parameter.Behavior.Required) else None,
+            artifact_query=pb2_object.behavior
+            if isinstance(pb2_object.behavior, flyteidl.parameter.Behavior.ArtifactQuery)
+            else None,
+            artifact_id=pb2_object.behavior
+            if isinstance(pb2_object.behavior, flyteidl.parameter.Behavior.ArtifactId)
+            else None,
         )
 
 

@@ -27,6 +27,14 @@ class Identifier(_common_models.FlyteIdlEntity):
         self._version = version
         self._org = ""
 
+    def __hash__(self):
+        return hash(str(self))
+
+    def __eq__(self, other):
+        if isinstance(other, Identifier):
+            return str(self) == str(other)
+        return False  # Not a Identifier object, so not equal
+
     @property
     def resource_type(self):
         """
@@ -36,7 +44,17 @@ class Identifier(_common_models.FlyteIdlEntity):
         return self._resource_type
 
     def resource_type_name(self) -> str:
-        return identifier_pb2.ResourceType.Name(self.resource_type)
+        if int(self.resource_type) == int(flyteidl.core.ResourceType.Unspecified):
+            return "UNSPECIFIED"
+        elif int(self.resource_type) == int(flyteidl.core.ResourceType.Task):
+            return "TASK"
+        elif int(self.resource_type) == int(flyteidl.core.ResourceType.Workflow):
+            return "WORKFLOW"
+        elif int(self.resource_type) == int(flyteidl.core.ResourceType.LaunchPlan):
+            return "LAUNCH_PLAN"
+        elif int(self.resource_type) == int(flyteidl.core.ResourceType.Dataset):
+            return "DATASET"
+        return ""
 
     @property
     def project(self):
@@ -251,7 +269,7 @@ class TaskExecutionIdentifier(_common_models.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.identifier_pb2.TaskExecutionIdentifier
         """
-        return identifier_pb2.TaskExecutionIdentifier(
+        return flyteidl.core.TaskExecutionIdentifier(
             task_id=self.task_id.to_flyte_idl(),
             node_execution_id=self.node_execution_id.to_flyte_idl(),
             retry_attempt=self.retry_attempt,

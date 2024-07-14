@@ -68,11 +68,9 @@ class LaunchPlanMetadata(_common.FlyteIdlEntity):
         :rtype: LaunchPlanMetadata
         """
         return cls(
-            schedule=_schedule.Schedule.from_flyte_idl(pb2_object.schedule)
-            if pb2_object.HasField("schedule")
-            else None,
+            schedule=_schedule.Schedule.from_flyte_idl(pb2_object.schedule) if pb2_object.schedule else None,
             notifications=[_common.Notification.from_flyte_idl(n) for n in pb2_object.notifications],
-            launch_conditions=pb2_object.launch_conditions if pb2_object.HasField("launch_conditions") else None,
+            launch_conditions=pb2_object.launch_conditions if pb2_object.launch_conditions else None,
         )
 
 

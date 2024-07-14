@@ -3,8 +3,10 @@ import typing
 from datetime import timezone as _timezone
 
 import flyteidl.admin.node_execution_pb2 as admin_node_execution_pb2
+import flyteidl_rust as flyteidl
 
 from flytekit.models import common as _common_models
+from flytekit.models import utils
 from flytekit.models.core import catalog as catalog_models
 from flytekit.models.core import compiler as core_compiler_models
 from flytekit.models.core import execution as _core_execution
@@ -82,7 +84,7 @@ class TaskNodeMetadata(_common_models.FlyteIdlEntity):
     def from_flyte_idl(cls, p: admin_node_execution_pb2.TaskNodeMetadata) -> "TaskNodeMetadata":
         return cls(
             cache_status=p.cache_status,
-            catalog_key=catalog_models.CatalogMetadata.from_flyte_idl(p.catalog_key),
+            catalog_key=catalog_models.CatalogMetadata.from_flyte_idl(p.catalog_key) if p.catalog_key else None,
         )
 
 
@@ -185,18 +187,23 @@ class NodeExecutionClosure(_common_models.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.node_execution_pb2.NodeExecutionClosure
         """
-        obj = admin_node_execution_pb2.NodeExecutionClosure(
-            phase=self.phase,
-            output_uri=self.output_uri,
+        obj = flyteidl.admin.NodeExecutionClosure(
+            phase=flyteidl.task_execution.Phase(self.phase),
+            output_result=flyteidl.node_execution_closure.OutputResult.OutputUri(self.output_uri)
+            if self.output_uri
+            else flyteidl.node_execution_closure.OutputResult.Error(self.error.to_flyte_idl()),
             deck_uri=self.deck_uri,
-            error=self.error.to_flyte_idl() if self.error is not None else None,
-            workflow_node_metadata=self.workflow_node_metadata.to_flyte_idl()
-            if self.workflow_node_metadata is not None
-            else None,
-            task_node_metadata=self.task_node_metadata.to_flyte_idl() if self.task_node_metadata is not None else None,
+            # error=self.error.to_flyte_idl() if self.error is not None else None,
+            target_metadata=flyteidl.node_execution_closure.TargetMetadata.TaskNodeMetadata(
+                self.task_node_metadata.to_flyte_idl()
+            )
+            if self.task_node_metadata
+            else flyteidl.node_execution_closure.TargetMetadata.WorkflowNodeMetadata(
+                self.workflow_node_metadata.to_flyte_idl()
+            ),
         )
-        obj.started_at.FromDatetime(self.started_at.astimezone(_timezone.utc).replace(tzinfo=None))
-        obj.duration.FromTimedelta(self.duration)
+        # obj.started_at.FromDatetime(self.started_at.astimezone(_timezone.utc).replace(tzinfo=None))
+        # obj.duration.FromTimedelta(self.duration)
         if self.created_at:
             obj.created_at.FromDatetime(self.created_at.astimezone(_timezone.utc).replace(tzinfo=None))
         if self.updated_at:
@@ -209,21 +216,39 @@ class NodeExecutionClosure(_common_models.FlyteIdlEntity):
         :param flyteidl.admin.node_execution_pb2.NodeExecutionClosure p:
         :rtype: NodeExecutionClosure
         """
+        print(p.output_result)
         return cls(
             phase=p.phase,
-            output_uri=p.output_uri if p.HasField("output_uri") else None,
+            output_uri=p.output_result[0]
+            if isinstance(p.output_result, flyteidl.node_execution_closure.OutputResult.OutputUri)
+            else "",
             deck_uri=p.deck_uri,
-            error=_core_execution.ExecutionError.from_flyte_idl(p.error) if p.HasField("error") else None,
-            started_at=p.started_at.ToDatetime().replace(tzinfo=_timezone.utc),
-            duration=p.duration.ToTimedelta(),
-            workflow_node_metadata=WorkflowNodeMetadata.from_flyte_idl(p.workflow_node_metadata)
-            if p.HasField("workflow_node_metadata")
+            error=_core_execution.ExecutionError.from_flyte_idl(p.output_result[0])
+            if isinstance(p.output_result, flyteidl.node_execution_closure.OutputResult.Error)
             else None,
-            task_node_metadata=TaskNodeMetadata.from_flyte_idl(p.task_node_metadata)
-            if p.HasField("task_node_metadata")
+            started_at=utils.convert_to_datetime(seconds=p.started_at.seconds, nanos=p.started_at.nanos).replace(
+                tzinfo=_timezone.utc
+            )
+            if p.started_at
             else None,
-            created_at=p.created_at.ToDatetime().replace(tzinfo=_timezone.utc) if p.HasField("created_at") else None,
-            updated_at=p.updated_at.ToDatetime().replace(tzinfo=_timezone.utc) if p.HasField("updated_at") else None,
+            duration=None,
+            # duration=p.duration.ToTimedelta(), #TODO
+            workflow_node_metadata=WorkflowNodeMetadata.from_flyte_idl(p.target_metadata[0])
+            if isinstance(p.target_metadata, flyteidl.node_execution_closure.TargetMetadata.WorkflowNodeMetadata)
+            else None,
+            task_node_metadata=TaskNodeMetadata.from_flyte_idl(p.target_metadata[0])
+            if isinstance(p.target_metadata, flyteidl.node_execution_closure.TargetMetadata.TaskNodeMetadata)
+            else None,
+            created_at=utils.convert_to_datetime(seconds=p.created_at.seconds, nanos=p.created_at.nanos).replace(
+                tzinfo=_timezone.utc
+            )
+            if p.created_at
+            else None,
+            updated_at=utils.convert_to_datetime(seconds=p.updated_at.seconds, nanos=p.updated_at.nanos).replace(
+                tzinfo=_timezone.utc
+            )
+            if p.updated_at
+            else None,
         )
 
 

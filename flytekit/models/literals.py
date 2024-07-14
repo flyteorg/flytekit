@@ -8,6 +8,7 @@ from google.protobuf.struct_pb2 import Struct
 
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.models import common as _common
+from flytekit.models import utils
 from flytekit.models.core import types as _core_types
 from flytekit.models.types import Error, StructuredDatasetType
 from flytekit.models.types import LiteralType as _LiteralType
@@ -151,14 +152,12 @@ class Primitive(_common.FlyteIdlEntity):
             value = flyteidl.primitive.Value.FloatValue(self.float_value)
         elif self.boolean:
             value = flyteidl.primitive.Value.Boolean(self.string_value)
-
-        primitive = flyteidl.core.Primitive(value)
-        if self.datetime is not None:
+        elif self.datetime:
             # Convert to UTC and remove timezone so protobuf behaves.
-            primitive.datetime.FromDatetime(self.datetime.astimezone(_timezone.utc).replace(tzinfo=None))
+            value = flyteidl.primitive.Value.Datetime(self.datetime)
         if self.duration is not None:
-            primitive.duration.FromTimedelta(self.duration)
-        return primitive
+            value = flyteidl.primitive.Value.Duration(self.duration)
+        return flyteidl.core.Primitive(value)
 
     @classmethod
     def from_flyte_idl(cls, proto):
@@ -167,12 +166,16 @@ class Primitive(_common.FlyteIdlEntity):
         :rtype: Primitive
         """
         return cls(
-            integer=proto.integer if proto.HasField("integer") else None,
-            float_value=proto.float_value if proto.HasField("float_value") else None,
-            string_value=proto.string_value if proto.HasField("string_value") else None,
-            boolean=proto.boolean if proto.HasField("boolean") else None,
-            datetime=proto.datetime.ToDatetime().replace(tzinfo=_timezone.utc) if proto.HasField("datetime") else None,
-            duration=proto.duration.ToTimedelta() if proto.HasField("duration") else None,
+            integer=proto.value[0] if isinstance(proto.value, flyteidl.primitive.Value.Integer) else None,
+            float_value=proto.value[0] if isinstance(proto.value, flyteidl.primitive.Value.FloatValue) else None,
+            string_value=proto.value[0] if isinstance(proto.value, flyteidl.primitive.Value.StringValue) else None,
+            boolean=proto.value[0] if isinstance(proto.value, flyteidl.primitive.Value.Boolean) else None,
+            datetime=utils.convert_to_datetime(proto.value[0])
+            if isinstance(proto.value, flyteidl.primitive.Value.Datetime)
+            else None,
+            duration=utils.convert_to_datetime(proto.value[0])
+            if isinstance(proto.value, flyteidl.primitive.Value.Duration)
+            else None,
         )
 
 
@@ -865,27 +868,27 @@ class Scalar(_common.FlyteIdlEntity):
         """
         return cls(
             # TODO:
-            primitive=Primitive.from_flyte_idl(pb2_object.value)
+            primitive=Primitive.from_flyte_idl(pb2_object.value[0])
             if isinstance(pb2_object.value, flyteidl.scalar.Value.Primitive)
             else None,
-            blob=Blob.from_flyte_idl(pb2_object.value)
+            blob=Blob.from_flyte_idl(pb2_object.value[0])
             if isinstance(pb2_object.value, flyteidl.scalar.Value.Blob)
             else None,
-            binary=Binary.from_flyte_idl(pb2_object.value)
+            binary=Binary.from_flyte_idl(pb2_object.value[0])
             if isinstance(pb2_object.value, flyteidl.scalar.Value.Binary)
             else None,
-            schema=Schema.from_flyte_idl(pb2_object.value)
+            schema=Schema.from_flyte_idl(pb2_object.value[0])
             if isinstance(pb2_object.value, flyteidl.scalar.Value.Schema)
             else None,
-            union=Union.from_flyte_idl(pb2_object.value)
+            union=Union.from_flyte_idl(pb2_object.value[0])
             if isinstance(pb2_object.value, flyteidl.scalar.Value.Union)
             else None,
-            none_type=Void.from_flyte_idl(pb2_object.value)
+            none_type=Void.from_flyte_idl(pb2_object.value[0])
             if isinstance(pb2_object.value, flyteidl.scalar.Value.NoneType)
             else None,
-            error=pb2_object.value if isinstance(pb2_object.value, flyteidl.scalar.Value.Error) else None,
-            generic=pb2_object.value if isinstance(pb2_object.value, flyteidl.scalar.Value.Generic) else None,
-            structured_dataset=StructuredDataset.from_flyte_idl(pb2_object.value)
+            error=pb2_object.value[0] if isinstance(pb2_object.value, flyteidl.scalar.Value.Error) else None,
+            generic=pb2_object.value[0] if isinstance(pb2_object.value, flyteidl.scalar.Value.Generic) else None,
+            structured_dataset=StructuredDataset.from_flyte_idl(pb2_object.value[0])
             if isinstance(pb2_object.value, flyteidl.scalar.Value.StructuredDataset)
             else None,
         )
@@ -988,13 +991,17 @@ class Literal(_common.FlyteIdlEntity):
         :rtype: Literal
         """
         collection = None
-        if pb2_object.HasField("collection"):
-            collection = LiteralCollection.from_flyte_idl(pb2_object.collection)
+        if isinstance(pb2_object.value, flyteidl.literal.Value.Collection):
+            collection = LiteralCollection.from_flyte_idl(pb2_object.value[0])
 
         return cls(
-            scalar=Scalar.from_flyte_idl(pb2_object.scalar) if pb2_object.HasField("scalar") else None,
+            scalar=Scalar.from_flyte_idl(pb2_object.value[0])
+            if isinstance(pb2_object.value, flyteidl.literal.Value.Scalar)
+            else None,
             collection=collection,
-            map=LiteralMap.from_flyte_idl(pb2_object.map) if pb2_object.HasField("map") else None,
+            map=LiteralMap.from_flyte_idl(pb2_object.value[0])
+            if isinstance(pb2_object.value, flyteidl.literal.Value.Map)
+            else None,
             hash=pb2_object.hash if pb2_object.hash else None,
             metadata={k: v for k, v in pb2_object.metadata.items()} if pb2_object.metadata else None,
         )
