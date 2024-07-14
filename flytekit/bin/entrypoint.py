@@ -643,6 +643,8 @@ def map_execute_task_cmd(
         resolver_args=resolver_args,
         checkpoint_path=checkpoint_path,
         prev_checkpoint=prev_checkpoint,
+        pickled=pickled,
+        pkl_file=pkl_file,
     )
 
 
