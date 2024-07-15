@@ -390,14 +390,16 @@ def test_fetch_not_exist_launch_plan(register):
 
 
 def test_execute_reference_task(register):
+    nt = typing.NamedTuple("OutputsBC", [("t1_int_output", int), ("c", str)])
+
     @reference_task(
         project=PROJECT,
         domain=DOMAIN,
         name="basic.basic_workflow.t1",
         version=VERSION,
     )
-    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
-        ...
+    def t1(a: int) -> nt:
+        return nt(t1_int_output=a + 2, c="world")
 
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     execution = remote.execute(
@@ -424,7 +426,7 @@ def test_execute_reference_workflow(register):
         version=VERSION,
     )
     def my_wf(a: int, b: str) -> (int, str):
-        ...
+        return a + 2, b + "world"
 
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     execution = remote.execute(
@@ -451,7 +453,7 @@ def test_execute_reference_launchplan(register):
         version=VERSION,
     )
     def my_wf(a: int, b: str) -> (int, str):
-        ...
+        return 3, "world"
 
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     execution = remote.execute(

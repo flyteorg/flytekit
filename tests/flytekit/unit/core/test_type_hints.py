@@ -1351,7 +1351,7 @@ def test_secrets():
 
         @task(secret_requests=["test"])
         def foo() -> str:
-            pass
+            return "hello"
 
 
 def test_nested_dynamic():
@@ -1615,6 +1615,7 @@ def test_failure_node():
     @task
     def fail(a: int, b: str) -> typing.Tuple[int, str]:
         raise ValueError("Fail!")
+        return a + 1, b
 
     @task
     def failure_handler(a: int, b: str, err: typing.Optional[FlyteError]) -> typing.Tuple[int, str]:
