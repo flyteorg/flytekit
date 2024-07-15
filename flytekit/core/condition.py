@@ -111,8 +111,8 @@ class ConditionalSection:
             return self._compute_outputs(n)
         return self._condition
 
-    def if_(self, expr: Union[ComparisonExpression, ConjunctionExpression]) -> Case:
-        return self._condition._if(expr)
+    def if_(self, expr: Union[ComparisonExpression, ConjunctionExpression], last_case=False) -> Case:
+        return self._condition._if(expr, last_case)
 
     def compute_output_vars(self) -> typing.Optional[typing.List[str]]:
         """
@@ -329,10 +329,10 @@ class Condition(object):
     def __init__(self, cs: ConditionalSection):
         self._cs = cs
 
-    def _if(self, expr: Union[ComparisonExpression, ConjunctionExpression]) -> Case:
+    def _if(self, expr: Union[ComparisonExpression, ConjunctionExpression], last_case=False) -> Case:
         if expr is None:
             raise AssertionError(f"Required an expression received None for condition:{self._cs.name}.if_(...)")
-        return self._cs.start_branch(Case(cs=self._cs, expr=expr, stmt="if_"))
+        return self._cs.start_branch(Case(cs=self._cs, expr=expr, stmt="if_"), last_case)
 
     def elif_(self, expr: Union[ComparisonExpression, ConjunctionExpression]) -> Case:
         if expr is None:
@@ -447,8 +447,6 @@ def to_case_block(c: Case) -> Tuple[Union[_core_wf.IfBlock], typing.List[Promise
 def to_ifelse_block(node_id: str, cs: ConditionalSection) -> Tuple[_core_wf.IfElseBlock, typing.List[Binding]]:
     if len(cs.cases) == 0:
         raise AssertionError("Illegal Condition block, with no if-else cases")
-    if len(cs.cases) < 2:
-        raise AssertionError("At least an if/else is required. Dangling If is not allowed")
     all_promises: typing.List[Promise] = []
     first_case, promises = to_case_block(cs.cases[0])
     all_promises.extend(promises)
