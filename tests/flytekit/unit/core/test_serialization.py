@@ -12,7 +12,7 @@ from flytekit.core.condition import conditional
 from flytekit.core.python_auto_container import get_registerable_container_image
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
-from flytekit.exceptions.user import FlyteAssertion
+from flytekit.exceptions.user import FlyteAssertion, FlyteMissingTypeException
 from flytekit.image_spec.image_spec import ImageBuildEngine, _calculate_deduped_hash_from_image_spec
 from flytekit.models.admin.workflow import WorkflowSpec
 from flytekit.models.literals import (
@@ -727,7 +727,7 @@ def test_default_args_task_optional_int_type_default_int():
 
 
 def test_default_args_task_no_type_hint():
-    with pytest.raises(TypeError, match="'a' has no type. Please add a type annotation to the input parameter"):
+    with pytest.raises(FlyteMissingTypeException, match="'a' has no type. Please add a type annotation to the input parameter"):
         @task
         def t1(a=0) -> int:
             return a

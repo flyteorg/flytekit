@@ -115,7 +115,7 @@ class FlyteMissingTypeException(FlyteCompilationException):
 
 
 class FlyteMissingReturnValueException(FlyteCompilationException):
-    _ERROR_CODE = "USER:MissingReturnValue"
+    _ERROR_CODE = "USER:MissingReturnValueError"
 
     def __str__(self):
         return f"{self.fn.__name__} function must return a value. Please add a return statement at the end of the function."
