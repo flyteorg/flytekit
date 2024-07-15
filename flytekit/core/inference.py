@@ -29,6 +29,7 @@ class NIMSecrets:
     :param ngc_secret_key: The key name for the NGC API key.
     :param hf_token_group: The group name for the HuggingFace token.
     :param hf_token_key: The key name for the HuggingFace token.
+    :param secrets_prefix: The secrets prefix that Flyte appends to all mounted secrets. Default value is _UNION_.
     """
 
     ngc_image_secret: str  # kubernetes secret
