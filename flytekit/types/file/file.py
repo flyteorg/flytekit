@@ -30,6 +30,7 @@ def noop(): ...
 
 T = typing.TypeVar("T")
 
+
 @dataclass
 class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONMixin):
     path: typing.Union[str, os.PathLike] = field(default=None, metadata=config(mm_field=fields.String()))  # type: ignore
@@ -350,27 +351,11 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
         yield f
         f.close()
 
-
-
     def __repr__(self):
         return self.path
-        # return str(self.path)
 
     def __str__(self):
         return self.path
-        # return str(self.path)
-
-    # @classmethod
-    # def validate(cls, value: str, info: ValidationInfo):
-    #     return cls(value, info.field_name)
-    #
-    # @classmethod
-    # def __get_pydantic_core_schema__(
-    #         cls, source_type: typing.Any, handler: GetCoreSchemaHandler
-    # ) -> core_schema.CoreSchema:
-    #     return core_schema.with_info_after_validator_function(
-    #         cls.validate, handler(source_type), field_name=handler.field_name
-    #     )
 
 
 class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
@@ -381,7 +366,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
     def get_format(t: typing.Union[typing.Type[FlyteFile], os.PathLike]) -> str:
         if t is os.PathLike:
             return ""
-        return typing.cast(FlyteFile, t).extension()
+        return cast(FlyteFile, t).extension()
 
     def _blob_type(self, format: str) -> BlobType:
         return BlobType(format=format, dimensionality=BlobType.BlobDimensionality.SINGLE)
