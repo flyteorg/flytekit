@@ -30,9 +30,6 @@ def noop(): ...
 
 T = typing.TypeVar("T")
 
-# from pydantic_core import core_schema
-# from pydantic import BaseModel, GetCoreSchemaHandler, ValidationInfo
-
 @dataclass
 class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONMixin):
     path: typing.Union[str, os.PathLike] = field(default=None, metadata=config(mm_field=fields.String()))  # type: ignore
@@ -384,7 +381,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
     def get_format(t: typing.Union[typing.Type[FlyteFile], os.PathLike]) -> str:
         if t is os.PathLike:
             return ""
-        return cast(FlyteFile, t).extension()
+        return typing.cast(FlyteFile, t).extension()
 
     def _blob_type(self, format: str) -> BlobType:
         return BlobType(format=format, dimensionality=BlobType.BlobDimensionality.SINGLE)
