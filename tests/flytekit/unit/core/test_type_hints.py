@@ -14,6 +14,7 @@ from enum import Enum
 import pytest
 from dataclasses_json import DataClassJsonMixin
 from google.protobuf.struct_pb2 import Struct
+from mashumaro.codecs.json import JSONEncoder, JSONDecoder
 from typing_extensions import Annotated, get_origin
 
 import flytekit
@@ -1219,7 +1220,9 @@ def test_flyte_schema_dataclass():
     def wf(x: int) -> Result:
         return t1(x=x)
 
-    assert wf(x=10) == Result(result=InnerResult(number=10, schema=schema), schema=schema)
+    r1 = wf(x=10)
+    r2 = Result(result=InnerResult(number=10, schema=schema), schema=schema)
+    assert r1 == r2
 
 
 def test_environment():

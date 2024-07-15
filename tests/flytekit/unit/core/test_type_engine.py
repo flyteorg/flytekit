@@ -1012,17 +1012,17 @@ def test_optional_flytefile_in_dataclass(mock_upload_dir):
 
         ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestFileStruct)
 
-        assert o.a.path == ot.a.remote_source
-        assert o.b.path == ot.b.remote_source
+        assert o.a.remote_path == ot.a.remote_source
+        assert o.b.remote_path == ot.b.remote_source
         assert ot.b_prime is None
-        assert o.c.path == ot.c.remote_source
-        assert o.d[0].path == ot.d[0].remote_source
-        assert o.e[0].path == ot.e[0].remote_source
+        assert o.c.remote_path == ot.c.remote_source
+        assert o.d[0].remote_path == ot.d[0].remote_source
+        assert o.e[0].remote_path == ot.e[0].remote_source
         assert o.e_prime == [None]
-        assert o.f["a"].path == ot.f["a"].remote_source
-        assert o.g["a"].path == ot.g["a"].remote_source
+        assert o.f["a"].remote_path == ot.f["a"].remote_source
+        assert o.g["a"].remote_path == ot.g["a"].remote_source
         assert o.g_prime == {"a": None}
-        assert o.h.path == ot.h.remote_source
+        assert o.h.remote_path == ot.h.remote_source
         assert ot.h_prime is None
         assert o.i == ot.i
         assert o.i_prime == A(a=99)
@@ -1094,17 +1094,17 @@ def test_optional_flytefile_in_dataclassjsonmixin(mock_upload_dir):
 
         ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestFileStruct_optional_flytefile)
 
-        assert o.a.path == ot.a.remote_source
-        assert o.b.path == ot.b.remote_source
+        assert o.a.remote_path == ot.a.remote_source
+        assert o.b.remote_path == ot.b.remote_source
         assert ot.b_prime is None
-        assert o.c.path == ot.c.remote_source
-        assert o.d[0].path == ot.d[0].remote_source
-        assert o.e[0].path == ot.e[0].remote_source
+        assert o.c.remote_path == ot.c.remote_source
+        assert o.d[0].remote_path == ot.d[0].remote_source
+        assert o.e[0].remote_path == ot.e[0].remote_source
         assert o.e_prime == [None]
-        assert o.f["a"].path == ot.f["a"].remote_source
-        assert o.g["a"].path == ot.g["a"].remote_source
+        assert o.f["a"].remote_path == ot.f["a"].remote_source
+        assert o.g["a"].remote_path == ot.g["a"].remote_source
         assert o.g_prime == {"a": None}
-        assert o.h.path == ot.h.remote_source
+        assert o.h.remote_path == ot.h.remote_source
         assert ot.h_prime is None
         assert o.i == ot.i
         assert o.i_prime == A_optional_flytefile(a=99)
@@ -2556,6 +2556,9 @@ def test_schema_in_dataclass():
     ot = tf.to_python_value(ctx, lv=lv, expected_python_type=Result)
 
     assert o == ot
+    assert o.result.schema.remote_path == ot.result.schema.remote_path
+    assert o.result.number == ot.result.number
+    assert o.schema.remote_path == ot.schema.remote_path
 
 
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
@@ -2572,7 +2575,11 @@ def test_union_in_dataclass():
     lt = tf.get_literal_type(pt)
     lv = tf.to_literal(ctx, o, pt, lt)
     ot = tf.to_python_value(ctx, lv=lv, expected_python_type=pt)
+
     return o == ot
+    assert o.result.schema.remote_path == ot.result.schema.remote_path
+    assert o.result.number == ot.result.number
+    assert o.schema.remote_path == ot.schema.remote_path
 
 
 @dataclass
@@ -2602,6 +2609,9 @@ def test_schema_in_dataclassjsonmixin():
     ot = tf.to_python_value(ctx, lv=lv, expected_python_type=Result)
 
     assert o == ot
+    assert o.result.schema.remote_path == ot.result.schema.remote_path
+    assert o.result.number == ot.result.number
+    assert o.schema.remote_path == ot.schema.remote_path
 
 
 def test_guess_of_dataclass():
