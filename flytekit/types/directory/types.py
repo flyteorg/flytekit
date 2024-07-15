@@ -122,6 +122,7 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
     """
 
     def _serialize(self) -> typing.Dict[str, str]:
+        # upload data to remote blob storage
         lv = FlyteDirToMultipartBlobTransformer().to_literal(
             FlyteContextManager.current_context(), self, FlyteDirectory, None
         )
@@ -129,6 +130,7 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
 
     @classmethod
     def _deserialize(cls, value) -> "FlyteDirectory":
+        # download data to remote blob storage
         path = value.get("path", None)
 
         if path is None:

@@ -147,11 +147,13 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
     """
 
     def _serialize(self) -> typing.Dict[str, str]:
+        # upload data to remote blob storage
         lv = FlyteFilePathTransformer().to_literal(FlyteContextManager.current_context(), self, FlyteFile, None)
         return {"path": lv.scalar.blob.uri}
 
     @classmethod
     def _deserialize(cls, value) -> "FlyteFile":
+        # download data from remote blob storage
         path = value.get("path", None)
 
         if path is None:

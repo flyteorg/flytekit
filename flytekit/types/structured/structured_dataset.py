@@ -56,6 +56,7 @@ class StructuredDataset(SerializableType, DataClassJSONMixin):
     file_format: typing.Optional[str] = field(default=GENERIC_FORMAT, metadata=config(mm_field=fields.String()))
 
     def _serialize(self) -> Dict[str, Optional[str]]:
+        # upload data to remote blob storage
         lv = StructuredDatasetTransformerEngine().to_literal(
             FlyteContextManager.current_context(), self, StructuredDataset, None
         )
@@ -68,6 +69,7 @@ class StructuredDataset(SerializableType, DataClassJSONMixin):
 
     @classmethod
     def _deserialize(cls, value) -> "StructuredDataset":
+        # download data from remote blob storage
         uri = value.get("uri", None)
         file_format = value.get("file_format", None)
 
