@@ -1,4 +1,7 @@
-from flytekitplugins.awssagemaker_inference import create_sagemaker_deployment, delete_sagemaker_deployment
+from flytekitplugins.awssagemaker_inference import (
+    create_sagemaker_deployment,
+    delete_sagemaker_deployment,
+)
 
 from flytekit import kwtypes
 
@@ -17,7 +20,7 @@ def test_sagemaker_deployment_workflow():
         },
         endpoint_config_input_types=kwtypes(instance_type=str),
         endpoint_config_config={
-            "EndpointConfigName": "sagemaker-xgboost-endpoint-config",
+            "EndpointConfigName": "sagemaker-xgboost",
             "ProductionVariants": [
                 {
                     "VariantName": "variant-name-1",
@@ -27,14 +30,18 @@ def test_sagemaker_deployment_workflow():
                 },
             ],
             "AsyncInferenceConfig": {
-                "OutputConfig": {"S3OutputPath": "s3://sagemaker-agent-xgboost/inference-output/output"}
+                "OutputConfig": {
+                    "S3OutputPath": "s3://sagemaker-agent-xgboost/inference-output/output"
+                }
             },
         },
         endpoint_config={
-            "EndpointName": "sagemaker-xgboost-endpoint",
-            "EndpointConfigName": "sagemaker-xgboost-endpoint-config",
+            "EndpointName": "sagemaker-xgboost",
+            "EndpointConfigName": "sagemaker-xgboost",
         },
-        images={"primary_container_image": "1234567890.dkr.ecr.us-east-2.amazonaws.com/sagemaker-xgboost"},
+        images={
+            "primary_container_image": "1234567890.dkr.ecr.us-east-2.amazonaws.com/sagemaker-xgboost"
+        },
         region="us-east-2",
     )
 
@@ -57,7 +64,7 @@ def test_sagemaker_deployment_workflow_with_region_at_runtime():
         },
         endpoint_config_input_types=kwtypes(instance_type=str),
         endpoint_config_config={
-            "EndpointConfigName": "sagemaker-xgboost-endpoint-config",
+            "EndpointConfigName": "sagemaker-xgboost",
             "ProductionVariants": [
                 {
                     "VariantName": "variant-name-1",
@@ -67,14 +74,18 @@ def test_sagemaker_deployment_workflow_with_region_at_runtime():
                 },
             ],
             "AsyncInferenceConfig": {
-                "OutputConfig": {"S3OutputPath": "s3://sagemaker-agent-xgboost/inference-output/output"}
+                "OutputConfig": {
+                    "S3OutputPath": "s3://sagemaker-agent-xgboost/inference-output/output"
+                }
             },
         },
         endpoint_config={
-            "EndpointName": "sagemaker-xgboost-endpoint",
-            "EndpointConfigName": "sagemaker-xgboost-endpoint-config",
+            "EndpointName": "sagemaker-xgboost",
+            "EndpointConfigName": "sagemaker-xgboost",
         },
-        images={"primary_container_image": "1234567890.dkr.ecr.us-east-2.amazonaws.com/sagemaker-xgboost"},
+        images={
+            "primary_container_image": "1234567890.dkr.ecr.us-east-2.amazonaws.com/sagemaker-xgboost"
+        },
         region_at_runtime=True,
     )
 
