@@ -3,6 +3,7 @@ import typing
 
 from flytekit._ast.parser import get_function_param_location
 from flytekit.core.constants import SOURCE_CODE
+from flytekit.exceptions.user import FlyteUserException
 
 
 def get_source_code_from_fn(fn: typing.Callable, param_name: typing.Optional[str] = None) -> (str, int):
@@ -20,8 +21,8 @@ def get_source_code_from_fn(fn: typing.Callable, param_name: typing.Optional[str
 
 
 def annotate_exception_with_code(
-    exception: Exception, fn: typing.Callable, param_name: typing.Optional[str] = None
-) -> Exception:
+    exception: FlyteUserException, fn: typing.Callable, param_name: typing.Optional[str] = None
+) -> FlyteUserException:
     """
     Annotate the exception with the source code, and will be printed in the rich panel.
     @param exception: The exception to be annotated.
