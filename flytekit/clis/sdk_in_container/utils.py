@@ -133,11 +133,12 @@ def pretty_print_traceback(e: Exception, verbosity: int = 1):
 
     if isinstance(e, FlyteCompilationException):
         e = annotate_exception_with_code(e, e.fn, e.param_name)
-        # TODO: Use other way to check if the background is light or dark
-        theme = "emacs" if "LIGHT_BACKGROUND" in os.environ else "monokai"
-        syntax = Syntax(getattr(e, SOURCE_CODE), "python", theme=theme, background_color="default")
-        panel = Panel(syntax, border_style="red", title=e._ERROR_CODE, title_align="left")
-        console.print(panel, no_wrap=False)
+        if hasattr(e, SOURCE_CODE):
+            # TODO: Use other way to check if the background is light or dark
+            theme = "emacs" if "LIGHT_BACKGROUND" in os.environ else "monokai"
+            syntax = Syntax(getattr(e, SOURCE_CODE), "python", theme=theme, background_color="default")
+            panel = Panel(syntax, border_style="red", title=e._ERROR_CODE, title_align="left")
+            console.print(panel, no_wrap=False)
 
 
 def pretty_print_exception(e: Exception, verbosity: int = 1):
