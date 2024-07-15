@@ -17,7 +17,7 @@ from flytekit.core.docstring import Docstring
 from flytekit.core.sentinel import DYNAMIC_INPUT_BINDING
 from flytekit.core.type_engine import TypeEngine, UnionTransformer
 from flytekit.core.utils import has_return_statement
-from flytekit.exceptions.user import FlyteValidationException
+from flytekit.exceptions.user import FlyteMissingReturnValueException, FlyteValidationException
 from flytekit.exceptions.utils import annotate_exception_with_code
 from flytekit.loggers import developer_logger, logger
 from flytekit.models import interface as _interface_models
@@ -387,12 +387,7 @@ def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Doc
         and return_annotation is not type(None)
         and has_return_statement(fn) is False
     ):
-        raise annotate_exception_with_code(
-            AssertionError(
-                f"{fn.__name__} function must return a value. Please add a return statement at the end of the function."
-            ),
-            fn,
-        )
+        raise FlyteMissingReturnValueException(fn=fn)
 
     outputs = extract_return_annotation(return_annotation)
     for k, v in outputs.items():

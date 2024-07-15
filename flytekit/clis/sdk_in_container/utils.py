@@ -13,7 +13,8 @@ from rich.traceback import Traceback
 
 from flytekit.core.constants import SOURCE_CODE
 from flytekit.exceptions.base import FlyteException
-from flytekit.exceptions.user import FlyteInvalidInputException
+from flytekit.exceptions.user import FlyteCompilationException, FlyteInvalidInputException
+from flytekit.exceptions.utils import annotate_exception_with_code
 from flytekit.loggers import get_level_from_cli_verbosity, logger
 
 project_option = click.Option(
@@ -151,6 +152,10 @@ def pretty_print_exception(e: Exception, verbosity: int = 1):
 
     if isinstance(e, click.ClickException):
         raise e
+
+    if isinstance(e, FlyteCompilationException):
+        pretty_print_traceback(annotate_exception_with_code(e, e.fn, e.param_name), verbosity)
+        return
 
     if isinstance(e, FlyteException):
         if isinstance(e, FlyteInvalidInputException):
