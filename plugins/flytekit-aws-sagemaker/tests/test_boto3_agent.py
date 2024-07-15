@@ -12,6 +12,11 @@ from flytekit.models import literals
 from flytekit.models.core.identifier import ResourceType
 from flytekit.models.task import RuntimeMetadata, TaskMetadata, TaskTemplate
 
+from flytekitplugins.awssagemaker_inference.boto3_mixin import CustomException
+from botocore.exceptions import ClientError
+
+idempotence_token = "74443947857331f7"
+
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
@@ -31,7 +36,8 @@ from flytekit.models.task import RuntimeMetadata, TaskMetadata, TaskTemplate
                     },
                 },
                 "EndpointConfigArn": "arn:aws:sagemaker:us-east-2:000000000:endpoint-config/sagemaker-xgboost-endpoint-config",
-            }
+            },
+            idempotence_token,
         ),
         (
             {
@@ -48,9 +54,25 @@ from flytekit.models.task import RuntimeMetadata, TaskMetadata, TaskTemplate
                 },
                 "pickle_check": datetime(2024, 5, 5),
                 "EndpointConfigArn": "arn:aws:sagemaker:us-east-2:000000000:endpoint-config/sagemaker-xgboost-endpoint-config",
-            }
+            },
+            idempotence_token,
         ),
-        (None),
+        (None, idempotence_token),
+        (
+            CustomException(
+                message="An error occurred",
+                idempotence_token=idempotence_token,
+                original_exception=ClientError(
+                    error_response={
+                        "Error": {
+                            "Code": "ValidationException",
+                            "Message": "Cannot create already existing endpoint 'arn:aws:sagemaker:us-east-2:123456789:endpoint/stable-diffusion-endpoint-non-finetuned-06716dbe4b2c68e7'",
+                        }
+                    },
+                    operation_name="DescribeEndpoint",
+                ),
+            )
+        ),
     ],
 )
 @mock.patch(
@@ -79,7 +101,9 @@ async def test_agent(mock_boto_call, mock_return_value):
                     "InstanceType": "ml.m4.xlarge",
                 },
             ],
-            "AsyncInferenceConfig": {"OutputConfig": {"S3OutputPath": "{inputs.s3_output_path}"}},
+            "AsyncInferenceConfig": {
+                "OutputConfig": {"S3OutputPath": "{inputs.s3_output_path}"}
+            },
         },
         "region": "us-east-2",
         "method": "create_endpoint_config",
@@ -87,7 +111,9 @@ async def test_agent(mock_boto_call, mock_return_value):
     }
     task_metadata = TaskMetadata(
         discoverable=True,
-        runtime=RuntimeMetadata(RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0", "python"),
+        runtime=RuntimeMetadata(
+            RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0", "python"
+        ),
         timeout=timedelta(days=1),
         retries=literals.RetryStrategy(3),
         interruptible=True,
@@ -108,28 +134,50 @@ async def test_agent(mock_boto_call, mock_return_value):
     task_inputs = literals.LiteralMap(
         {
             "model_name": literals.Literal(
-                scalar=literals.Scalar(primitive=literals.Primitive(string_value="sagemaker-model"))
+                scalar=literals.Scalar(
+                    primitive=literals.Primitive(string_value="sagemaker-model")
+                )
             ),
             "s3_output_path": literals.Literal(
-                scalar=literals.Scalar(primitive=literals.Primitive(string_value="s3-output-path"))
+                scalar=literals.Scalar(
+                    primitive=literals.Primitive(string_value="s3-output-path")
+                )
             ),
         },
     )
 
     ctx = FlyteContext.current_context()
     output_prefix = ctx.file_access.get_random_remote_directory()
-    resource = await agent.do(task_template=task_template, inputs=task_inputs, output_prefix=output_prefix)
+
+    if isinstance(mock_return_value, Exception):
+        mock_boto_call.side_effect = mock_return_value
+
+        resource = await agent.do(
+            task_template=task_template,
+            inputs=task_inputs,
+            output_prefix=output_prefix,
+        )
+        assert resource.outputs["result"] == {
+            "result": f"Entity already exists: arn:aws:sagemaker:us-east-2:123456789:endpoint/stable-diffusion-endpoint-non-finetuned-06716dbe4b2c68e7"
+        }
+        assert resource.outputs["idempotence_token"] == idempotence_token
+        return
+
+    resource = await agent.do(
+        task_template=task_template, inputs=task_inputs, output_prefix=output_prefix
+    )
 
     assert resource.phase == TaskExecution.SUCCEEDED
 
-    if mock_return_value:
+    if mock_return_value[0]:
         outputs = literal_map_string_repr(resource.outputs)
-        if "pickle_check" in mock_return_value:
+        if "pickle_check" in mock_return_value[0]:
             assert "pickle_file" in outputs["result"]
         else:
             assert (
                 outputs["result"]["EndpointConfigArn"]
                 == "arn:aws:sagemaker:us-east-2:000000000:endpoint-config/sagemaker-xgboost-endpoint-config"
             )
-    elif mock_return_value is None:
+            assert outputs["idempotence_token"] == "74443947857331f7"
+    elif mock_return_value[0] is None:
         assert resource.outputs["result"] == {"result": None}
