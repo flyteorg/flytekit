@@ -95,29 +95,23 @@ def test_pure_dataclasses_with_python_types():
     def t2() -> DCWithOptional:
         return DCWithOptional()
 
+    output = DCWithOptional(string="a", dc=DC(string="b"),
+                            list_dc=[DC(string="c"), DC(string="d")],
+                            list_list_dc=[[DC(string="e"), DC(string="f")]],
+                            list_dict_dc=[{"g": DC(string="h"), "i": DC(string="j")},
+                                          {"k": DC(string="l"), "m": DC(string="n")}],
+                            dict_dc={"o": DC(string="p"), "q": DC(string="r")},
+                            dict_dict_dc={"s": {"t": DC(string="u"), "v": DC(string="w")}},
+                            dict_list_dc={"x": [DC(string="y"), DC(string="z")],
+                                          "aa": [DC(string="bb"), DC(string="cc")]}, )
+
     dc1 = t1()
     dc2 = t2()
-    assert dc1.string == "a"
-    assert dc1.dc.string == "b"
-    assert dc1.list_dc[0].string == "c"
-    assert dc1.list_dc[1].string == "d"
-    assert dc1.list_list_dc[0][0].string == "e"
-    assert dc1.list_list_dc[0][1].string == "f"
-    assert dc1.list_dict_dc[0]["g"].string == "h"
-    assert dc1.list_dict_dc[0]["i"].string == "j"
-    assert dc1.list_dict_dc[1]["k"].string == "l"
-    assert dc1.list_dict_dc[1]["m"].string == "n"
-    assert dc1.dict_dc["o"].string == "p"
-    assert dc1.dict_dc["q"].string == "r"
-    assert dc1.dict_dict_dc["s"]["t"].string == "u"
-    assert dc1.dict_dict_dc["s"]["v"].string == "w"
-    assert dc1.dict_list_dc["x"][0].string == "y"
-    assert dc1.dict_list_dc["x"][1].string == "z"
-    assert dc1.dict_list_dc["aa"][0].string == "bb"
-    assert dc1.dict_list_dc["aa"][1].string == "cc"
 
+    assert dc1 == output
     assert dc2.string is None
     assert dc2.dc is None
+
     DataclassTransformer().assert_type(DCWithOptional, dc1)
     DataclassTransformer().assert_type(DCWithOptional, dc2)
 
@@ -366,29 +360,23 @@ def test_dataclasses_json_mixin_with_python_types():
     def t2() -> DCWithOptional:
         return DCWithOptional()
 
+    output = DCWithOptional(string="a", dc=DC(string="b"),
+                            list_dc=[DC(string="c"), DC(string="d")],
+                            list_list_dc=[[DC(string="e"), DC(string="f")]],
+                            list_dict_dc=[{"g": DC(string="h"), "i": DC(string="j")},
+                                          {"k": DC(string="l"), "m": DC(string="n")}],
+                            dict_dc={"o": DC(string="p"), "q": DC(string="r")},
+                            dict_dict_dc={"s": {"t": DC(string="u"), "v": DC(string="w")}},
+                            dict_list_dc={"x": [DC(string="y"), DC(string="z")],
+                                          "aa": [DC(string="bb"), DC(string="cc")]}, )
+
     dc1 = t1()
     dc2 = t2()
-    assert dc1.string == "a"
-    assert dc1.dc.string == "b"
-    assert dc1.list_dc[0].string == "c"
-    assert dc1.list_dc[1].string == "d"
-    assert dc1.list_list_dc[0][0].string == "e"
-    assert dc1.list_list_dc[0][1].string == "f"
-    assert dc1.list_dict_dc[0]["g"].string == "h"
-    assert dc1.list_dict_dc[0]["i"].string == "j"
-    assert dc1.list_dict_dc[1]["k"].string == "l"
-    assert dc1.list_dict_dc[1]["m"].string == "n"
-    assert dc1.dict_dc["o"].string == "p"
-    assert dc1.dict_dc["q"].string == "r"
-    assert dc1.dict_dict_dc["s"]["t"].string == "u"
-    assert dc1.dict_dict_dc["s"]["v"].string == "w"
-    assert dc1.dict_list_dc["x"][0].string == "y"
-    assert dc1.dict_list_dc["x"][1].string == "z"
-    assert dc1.dict_list_dc["aa"][0].string == "bb"
-    assert dc1.dict_list_dc["aa"][1].string == "cc"
 
+    assert dc1 == output
     assert dc2.string is None
     assert dc2.dc is None
+
     DataclassTransformer().assert_type(DCWithOptional, dc1)
     DataclassTransformer().assert_type(DCWithOptional, dc2)
 
@@ -638,29 +626,23 @@ def test_mashumaro_dataclasses_json_mixin_with_python_types():
     def t2() -> DCWithOptional:
         return DCWithOptional()
 
+    output = DCWithOptional(string="a", dc=DC(string="b"),
+                   list_dc=[DC(string="c"), DC(string="d")],
+                   list_list_dc=[[DC(string="e"), DC(string="f")]],
+                   list_dict_dc=[{"g": DC(string="h"), "i": DC(string="j")},
+                                 {"k": DC(string="l"), "m": DC(string="n")}],
+                   dict_dc={"o": DC(string="p"), "q": DC(string="r")},
+                   dict_dict_dc={"s": {"t": DC(string="u"), "v": DC(string="w")}},
+                   dict_list_dc={"x": [DC(string="y"), DC(string="z")],
+                                 "aa": [DC(string="bb"), DC(string="cc")]}, )
+
     dc1 = t1()
     dc2 = t2()
-    assert dc1.string == "a"
-    assert dc1.dc.string == "b"
-    assert dc1.list_dc[0].string == "c"
-    assert dc1.list_dc[1].string == "d"
-    assert dc1.list_list_dc[0][0].string == "e"
-    assert dc1.list_list_dc[0][1].string == "f"
-    assert dc1.list_dict_dc[0]["g"].string == "h"
-    assert dc1.list_dict_dc[0]["i"].string == "j"
-    assert dc1.list_dict_dc[1]["k"].string == "l"
-    assert dc1.list_dict_dc[1]["m"].string == "n"
-    assert dc1.dict_dc["o"].string == "p"
-    assert dc1.dict_dc["q"].string == "r"
-    assert dc1.dict_dict_dc["s"]["t"].string == "u"
-    assert dc1.dict_dict_dc["s"]["v"].string == "w"
-    assert dc1.dict_list_dc["x"][0].string == "y"
-    assert dc1.dict_list_dc["x"][1].string == "z"
-    assert dc1.dict_list_dc["aa"][0].string == "bb"
-    assert dc1.dict_list_dc["aa"][1].string == "cc"
 
+    assert dc1 == output
     assert dc2.string is None
     assert dc2.dc is None
+
     DataclassTransformer().assert_type(DCWithOptional, dc1)
     DataclassTransformer().assert_type(DCWithOptional, dc2)
 
