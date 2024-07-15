@@ -221,7 +221,7 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
             # Get the type engine to see this as kind of a generic
             __origin__ = FlyteFile
 
-            class AttributeHider(FlyteFile):
+            class AttributeHider:
                 def __get__(self, instance, owner):
                     raise AttributeError(
                         """We have to return false in hasattr(cls, "__class_getitem__") to make mashumaro deserialize FlyteFile correctly."""
@@ -231,7 +231,7 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
             # https://stackoverflow.com/questions/6057130/python-deleting-a-class-attribute-in-a-subclass/6057409
             # Since mashumaro will use the method __class_getitem__ and __origin__ to construct the dataclass back
             # https://github.com/Fatal1ty/mashumaro/blob/e945ee4319db49da9f7b8ede614e988cc8c8956b/mashumaro/core/meta/helpers.py#L300-L303
-            __class_getitem__ = AttributeHider(path="")
+            __class_getitem__ = AttributeHider()  # type: ignore
 
             @classmethod
             def extension(cls) -> str:
