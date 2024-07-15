@@ -18,8 +18,6 @@ This module includes inference subclasses that extend the `ModelInferenceTemplat
 from dataclasses import dataclass
 from typing import Optional
 
-from flytekit.configuration.plugin import get_plugin
-
 from .utils import ModelInferenceTemplate
 
 
@@ -114,11 +112,10 @@ class NIM(ModelInferenceTemplate):
 
         model_server_container = self.pod_template.pod_spec.init_containers[0]
 
-        secret_prefix = get_plugin().secret_prefix()
         if self._secrets.ngc_secret_group:
-            ngc_api_key = f"$({secret_prefix}{self._secrets.ngc_secret_group}_{self._secrets.ngc_secret_key})".upper()
+            ngc_api_key = f"$(_UNION_{self._secrets.ngc_secret_group}_{self._secrets.ngc_secret_key})".upper()
         else:
-            ngc_api_key = f"$({secret_prefix}{self._secrets.ngc_secret_key})".upper()
+            ngc_api_key = f"$(_UNION_{self._secrets.ngc_secret_key})".upper()
 
         if model_server_container.env:
             model_server_container.env.append(V1EnvVar(name="NGC_API_KEY", value=ngc_api_key))
@@ -166,7 +163,7 @@ class NIM(ModelInferenceTemplate):
             export LOCAL_PEFT_DIRECTORY={mount_path}
             mkdir -p $LOCAL_PEFT_DIRECTORY
 
-            TOKEN_VAR_NAME={secret_prefix}{hf_key}
+            TOKEN_VAR_NAME=_UNION_{hf_key}
 
             # Check if HF token is provided and login if so
             if [ -n "$(printenv $TOKEN_VAR_NAME)" ]; then
