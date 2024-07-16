@@ -93,6 +93,9 @@ class Options(object):
     notifications: typing.Optional[typing.List[common_models.Notification]] = None
     disable_notifications: typing.Optional[bool] = None
     overwrite_cache: typing.Optional[bool] = None
+    file_uploader: Optional[Callable] = (
+        None  # This is used by the translator to upload task files, like pickled code etc
+    )
 
     @classmethod
     def default_from(
@@ -172,7 +175,9 @@ def _fast_serialize_command_fn(
 
 
 def _update_serialization_settings_for_ipython(
-    entity: FlyteLocalEntity, serialization_settings: SerializationSettings
+    entity: FlyteLocalEntity,
+    serialization_settings: SerializationSettings,
+    options: Optional[Options] = None,
 ) -> SerializationSettings:
     from flytekit.tools.interactive import ipython_check
 
@@ -186,12 +191,14 @@ def _update_serialization_settings_for_ipython(
 
         from flytekit.configuration import FastSerializationSettings
 
+        if options is None or options.file_uploader is None:
+            raise AssertionError("To work interactively with Flyte, a code transporter/uploader should be configured.")
         with tempfile.TemporaryDirectory() as tmp_dir:
             dest = pathlib.Path(tmp_dir, "pkl.gz")
             with gzip.GzipFile(filename=dest, mode="wb", mtime=0) as gzipped:
                 cloudpickle.dump(entity, gzipped)
             rich.get_console().print("[yellow]Uploading Pickled representation of Task to remote storage...[/ yellow]")
-            md5_bytes, native_url = serialization_settings.upload_file(dest)
+            md5_bytes, native_url = options.file_uploader(dest)
             return (
                 serialization_settings.new_builder()
                 .with_fast_serialization_settings(
@@ -240,7 +247,7 @@ def get_serializable_task(
                 get_serializable(entity_mapping, settings, entity_hint, options)
 
     # Try update the serialization settings for ipython / jupyter notebook / interactive mode
-    settings = _update_serialization_settings_for_ipython(entity, settings)
+    settings = _update_serialization_settings_for_ipython(entity, settings, options)
 
     container = entity.get_container(settings)
     # This pod will be incorrect when doing fast serialize
@@ -826,7 +833,7 @@ def get_serializable(
         cp_entity = get_reference_spec(entity_mapping, settings, entity)
 
     elif isinstance(entity, PythonTask):
-        cp_entity = get_serializable_task(entity_mapping, settings, entity)
+        cp_entity = get_serializable_task(entity_mapping, settings, entity, options)
 
     elif isinstance(entity, WorkflowBase):
         cp_entity = get_serializable_workflow(entity_mapping, settings, entity, options)
