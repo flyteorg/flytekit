@@ -50,7 +50,7 @@ def deserialize_flyte_dir(self):
                 blob=Blob(
                     metadata=BlobMetadata(
                         type=_core_types.BlobType(
-                            format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
+                            format="", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
                         )
                     ),
                     uri=self.path,
