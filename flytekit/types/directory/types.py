@@ -124,7 +124,7 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
     def _serialize(self) -> typing.Dict[str, str]:
         # upload data to remote blob storage
         lv = FlyteDirToMultipartBlobTransformer().to_literal(
-            FlyteContextManager.current_context(), self, FlyteDirectory, None
+            FlyteContextManager.current_context(), self, type(self), None
         )
         return {"path": lv.scalar.blob.uri}
 
@@ -470,9 +470,6 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
                 or ctx.file_access.is_remote(source_path)
                 or ctx.execution_state.is_local_execution()
             ):
-                print("@@@ python_val.remote_directory is False:", (python_val.remote_directory is False))
-                print("@@@ ctx.file_access.is_remote(source_path):", ctx.file_access.is_remote(source_path))
-                print("@@@ ctx.execution_state.is_local_execution():", ctx.execution_state.is_local_execution())
                 should_upload = False
 
             # Set the remote destination if one was given instead of triggering a random one below
@@ -491,7 +488,6 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
         else:
             raise AssertionError(f"Expected FlyteDirectory or os.PathLike object, received {type(python_val)}")
 
-        print("@@@ upload FlyteDirectory from local path:", should_upload)
         # If we're uploading something, that means that the uri should always point to the upload destination.
         if should_upload:
             if remote_directory is None:

@@ -185,6 +185,7 @@ class FlyteSchema(SerializableType, DataClassJSONMixin):
     """
 
     def _serialize(self) -> typing.Dict[str, typing.Optional[str]]:
+        FlyteSchemaTransformer().to_literal(FlyteContextManager.current_context(), self, type(self), None)
         return {"remote_path": self.remote_path}
 
     @classmethod

@@ -58,7 +58,7 @@ class StructuredDataset(SerializableType, DataClassJSONMixin):
     def _serialize(self) -> Dict[str, Optional[str]]:
         # upload data to remote blob storage
         lv = StructuredDatasetTransformerEngine().to_literal(
-            FlyteContextManager.current_context(), self, StructuredDataset, None
+            FlyteContextManager.current_context(), self, type(self), None
         )
         sd = StructuredDataset(uri=lv.scalar.structured_dataset.uri)
         sd.file_format = lv.scalar.structured_dataset.metadata.structured_dataset_type.format
