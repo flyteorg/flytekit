@@ -18,7 +18,7 @@ def serialize_flyte_file(self) -> Dict[str, str]:
 
 @model_validator(mode="after")
 def deserialize_flyte_file(self) -> FlyteFile:
-    return FlyteFilePathTransformer().to_python_value(
+    pv = FlyteFilePathTransformer().to_python_value(
         FlyteContextManager.current_context(),
         Literal(
             scalar=Scalar(
@@ -34,6 +34,8 @@ def deserialize_flyte_file(self) -> FlyteFile:
         ),
         type(self),
     )
+    pv._remote_path = None
+    return pv
 
 
 @model_serializer
