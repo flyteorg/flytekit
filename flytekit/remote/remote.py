@@ -756,8 +756,10 @@ class FlyteRemote(object):
         if serialization_settings.version is None:
             serialization_settings.version = version
 
-        if serialization_settings.upload_file is None:
-            serialization_settings = serialization_settings.with_file_uploader(self.upload_file)
+        if options is None:
+            options = Options()
+        if options.file_uploader is None:
+            options.file_uploader = self.upload_file
 
         _ = get_serializable(m, settings=serialization_settings, entity=entity, options=options)
         # concurrent register
@@ -1773,7 +1775,10 @@ class FlyteRemote(object):
                 domain=domain or self._default_domain,
                 version=version,
             )
-            flyte_task: FlyteTask = self.register_task(entity, ss)
+            try:
+                flyte_task: FlyteTask = self.register_task(entity, ss)
+            except Exception as e:
+                raise e
 
         return self.execute(
             flyte_task,

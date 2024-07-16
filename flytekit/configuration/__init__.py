@@ -842,7 +842,6 @@ class SerializationSettings(DataClassJsonMixin):
     flytekit_virtualenv_root: Optional[str] = None
     fast_serialization_settings: Optional[FastSerializationSettings] = None
     source_root: Optional[str] = None
-    upload_file: Optional[Callable] = field(metadata=config(exclude=Exclude.ALWAYS), default=None)
 
     def __post_init__(self):
         if self.flytekit_virtualenv_root is None:
@@ -956,16 +955,6 @@ class SerializationSettings(DataClassJsonMixin):
         b.env[SERIALIZED_CONTEXT_ENV_VAR] = self.serialized_context
         return b.build()
 
-    def with_file_uploader(self, upload_file: Callable) -> SerializationSettings:
-        """
-        Use this method to create a new SerializationSettings that has a file uploader set. This is useful in transporting
-        a file uploader to serialized and registered tasks. The setting will be available in the `upload_file` field.
-        :return: A newly constructed SerializationSettings, or self, if it already has the file uploader
-        """
-        b = self.new_builder()
-        b.upload_file = upload_file
-        return b.build()
-
     @dataclass
     class Builder(object):
         project: str
@@ -978,7 +967,6 @@ class SerializationSettings(DataClassJsonMixin):
         python_interpreter: Optional[str] = None
         fast_serialization_settings: Optional[FastSerializationSettings] = None
         source_root: Optional[str] = None
-        upload_file: Optional[Callable] = None
 
         def with_fast_serialization_settings(self, fss: fast_serialization_settings) -> SerializationSettings.Builder:
             self.fast_serialization_settings = fss
@@ -996,5 +984,4 @@ class SerializationSettings(DataClassJsonMixin):
                 python_interpreter=self.python_interpreter,
                 fast_serialization_settings=self.fast_serialization_settings,
                 source_root=self.source_root,
-                upload_file=self.upload_file,
             )
