@@ -44,7 +44,7 @@ def serialize_flyte_dir(self) -> Dict[str, str]:
 
 @model_validator(mode="after")
 def deserialize_flyte_dir(self) -> FlyteDirectory:
-    return FlyteDirToMultipartBlobTransformer().to_python_value(
+    pv = FlyteDirToMultipartBlobTransformer().to_python_value(
         FlyteContextManager.current_context(),
         Literal(
             scalar=Scalar(
@@ -60,6 +60,8 @@ def deserialize_flyte_dir(self) -> FlyteDirectory:
         ),
         type(self),
     )
+    pv._remote_directory = None
+    return pv
 
 
 @model_serializer
@@ -71,6 +73,9 @@ def serialize_flyte_schema(self) -> Dict[str, str]:
 
 @model_validator(mode="after")
 def deserialize_flyte_schema(self) -> FlyteSchema:
+    # If we call the method to_python_value, FlyteSchemaTransformer will overwrite the local_path,
+    # which will lose our data.
+    # If this data is from an existed FlyteSchema, local path will be None.
     if hasattr(self, "_local_path"):
         return self
 

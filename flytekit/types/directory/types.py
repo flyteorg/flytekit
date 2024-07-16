@@ -516,7 +516,7 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
         # make any sense.
         # Turn to true for pydantic plugin
         if not ctx.file_access.is_remote(uri):
-            return expected_python_type(uri)
+            return expected_python_type(uri, remote_directory=False)
 
         # For the remote case, return a FlyteDirectory object that can download
         local_folder = ctx.file_access.get_random_local_directory()
