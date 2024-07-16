@@ -73,6 +73,7 @@ def serialize_flyte_schema(self) -> Dict[str, str]:
     assert lv.scalar.schema.uri == self.remote_path
     return {"remote_path": self.remote_path}
 
+
 @model_validator(mode="after")
 def deserialize_flyte_schema(self) -> FlyteSchema:
     # If we call the method to_python_value, FlyteSchemaTransformer will overwrite the local_path,
