@@ -6,10 +6,12 @@ import os
 import pathlib
 import tempfile
 import typing
+import typing as t
 from dataclasses import dataclass, field, fields
 from typing import get_args
 
 import rich_click as click
+from click import Context
 from mashumaro.codecs.json import JSONEncoder
 from rich.progress import Progress
 
@@ -196,10 +198,10 @@ class RunLevelParams(PyFlyteParams):
             type=str,
             show_default=True,
             help="File Path prefix to store raw output data."
-            " Examples are file://, s3://, gs:// etc as supported by fsspec."
-            " If not specified, raw data will be stored in default configured location in remote of locally"
-            " to temp file system."
-            + click.style(
+                 " Examples are file://, s3://, gs:// etc as supported by fsspec."
+                 " If not specified, raw data will be stored in default configured location in remote of locally"
+                 " to temp file system."
+                 + click.style(
                 "Note, this is not metadata, but only the raw data location "
                 "used to store Flytefile, Flytedirectory, Structuredataset,"
                 " dataframes"
@@ -213,7 +215,7 @@ class RunLevelParams(PyFlyteParams):
             type=int,
             show_default=True,
             help="Number of nodes of a workflow that can be executed in parallel. If not specified,"
-            " project/domain defaults are used. If 0 then it is unlimited.",
+                 " project/domain defaults are used. If 0 then it is unlimited.",
         )
     )
     disable_notifications: bool = make_click_option_field(
@@ -365,13 +367,13 @@ def get_entities_in_file(filename: pathlib.Path, should_delete: bool) -> Entitie
 
 
 def to_click_option(
-    ctx: click.Context,
-    flyte_ctx: FlyteContext,
-    input_name: str,
-    literal_var: Variable,
-    python_type: typing.Type,
-    default_val: typing.Any,
-    required: bool,
+        ctx: click.Context,
+        flyte_ctx: FlyteContext,
+        input_name: str,
+        literal_var: Variable,
+        python_type: typing.Type,
+        default_val: typing.Any,
+        required: bool,
 ) -> click.Option:
     """
     This handles converting workflow input types to supported click parameters with callbacks to initialize
@@ -434,13 +436,13 @@ def options_from_run_params(run_level_params: RunLevelParams) -> Options:
 
 
 def run_remote(
-    remote: FlyteRemote,
-    entity: typing.Union[FlyteWorkflow, FlyteTask, FlyteLaunchPlan],
-    project: str,
-    domain: str,
-    inputs: typing.Dict[str, typing.Any],
-    run_level_params: RunLevelParams,
-    type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
+        remote: FlyteRemote,
+        entity: typing.Union[FlyteWorkflow, FlyteTask, FlyteLaunchPlan],
+        project: str,
+        domain: str,
+        inputs: typing.Dict[str, typing.Any],
+        run_level_params: RunLevelParams,
+        type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
 ):
     """
     Helper method that executes the given remote FlyteLaunchplan, FlyteWorkflow or FlyteTask
@@ -464,10 +466,10 @@ def run_remote(
 
     console_url = remote.generate_console_url(execution)
     s = (
-        click.style("\n[✔] ", fg="green")
-        + "Go to "
-        + click.style(console_url, fg="cyan")
-        + " to see execution in the console."
+            click.style("\n[✔] ", fg="green")
+            + "Go to "
+            + click.style(console_url, fg="cyan")
+            + " to see execution in the console."
     )
     click.echo(s)
 
@@ -635,12 +637,12 @@ class DynamicEntityLaunchCommand(click.RichCommand):
         return entity
 
     def _get_params(
-        self,
-        ctx: click.Context,
-        inputs: typing.Dict[str, Variable],
-        native_inputs: typing.Dict[str, type],
-        fixed: typing.Optional[typing.Dict[str, Literal]] = None,
-        defaults: typing.Optional[typing.Dict[str, Parameter]] = None,
+            self,
+            ctx: click.Context,
+            inputs: typing.Dict[str, Variable],
+            native_inputs: typing.Dict[str, type],
+            fixed: typing.Optional[typing.Dict[str, Literal]] = None,
+            defaults: typing.Optional[typing.Dict[str, Parameter]] = None,
     ) -> typing.List["click.Parameter"]:
         params = []
         flyte_ctx = ctx.obj.remote_instance().context
@@ -763,6 +765,48 @@ class RemoteEntityGroup(click.RichGroup):
         )
 
 
+class YamlFileReadingCommand(click.RichCommand):
+    def __init__(self, name: str, params: typing.List[click.Option], help: str, callback: typing.Callable = None):
+        params.append(
+            click.Option(
+                ["--flyte-inputs-file"],
+                required=False,
+                type=click.Path(exists=True, dir_okay=False, resolve_path=True),
+                help="Path to a YAML | JSON file containing inputs for the workflow.",
+            )
+        )
+        super().__init__(name=name, params=params, callback=callback, help=help)
+
+    def parse_args(self, ctx: Context, args: t.List[str]) -> t.List[str]:
+        print("parse_args")
+        if "--flyte-inputs-file" in args:
+            print("flyte-inputs-file")
+            idx = args.index("--flyte-inputs-file")
+            args.pop(idx)
+            f = args.pop(idx)
+            with open(f, "r") as f:
+                import yaml
+                try:
+                    inputs = yaml.safe_load(f)
+                except yaml.YAMLError as e:
+                    inputs = json.load(f)
+            new_args = []
+            for k, v in inputs.items():
+                if isinstance(v, str):
+                    v = v
+                    new_args.extend([f"--{k}", v])
+                elif isinstance(v, bool):
+                    if v:
+                        new_args.append(f"--{k}")
+                else:
+                    v = json.dumps(v)
+                    new_args.extend([f"--{k}", v])
+            new_args.extend(args)
+            args = new_args
+        print(args)
+        return super().parse_args(ctx, args)
+
+
 class WorkflowCommand(click.RichGroup):
     """
     click multicommand at the python file layer, subcommands should be all the workflows in the file.
@@ -790,12 +834,12 @@ class WorkflowCommand(click.RichGroup):
         return entities.all()
 
     def _create_command(
-        self,
-        ctx: click.Context,
-        entity_name: str,
-        run_level_params: RunLevelParams,
-        loaded_entity: [PythonTask, WorkflowBase],
-        is_workflow: bool,
+            self,
+            ctx: click.Context,
+            entity_name: str,
+            run_level_params: RunLevelParams,
+            loaded_entity: [PythonTask, WorkflowBase],
+            is_workflow: bool,
     ):
         """
         Delegate that creates the command for a given entity.
@@ -817,11 +861,11 @@ class WorkflowCommand(click.RichGroup):
         h = f"{click.style(entity_type, bold=True)} ({run_level_params.computed_params.module}.{entity_name})"
         if loaded_entity.__doc__:
             h = h + click.style(f"{loaded_entity.__doc__}", dim=True)
-        cmd = click.RichCommand(
+        cmd = YamlFileReadingCommand(
             name=entity_name,
             params=params,
-            callback=run_command(ctx, loaded_entity),
             help=h,
+            callback=run_command(ctx, loaded_entity),
         )
         return cmd
 
