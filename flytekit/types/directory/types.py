@@ -488,6 +488,7 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
         else:
             raise AssertionError(f"Expected FlyteDirectory or os.PathLike object, received {type(python_val)}")
 
+        print("@@@ upload FlyteDirectory from local path")
         # If we're uploading something, that means that the uri should always point to the upload destination.
         if should_upload:
             if remote_directory is None:
