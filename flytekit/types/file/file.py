@@ -560,6 +560,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
 
         # This is a local file path, like /usr/local/my_file, don't mess with it. Certainly, downloading it doesn't
         # make any sense.
+        # Turn to true for pydantic plugin
         if not ctx.file_access.is_remote(uri):
             return expected_python_type(uri)  # type: ignore
 

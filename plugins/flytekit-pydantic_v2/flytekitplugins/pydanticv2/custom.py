@@ -5,7 +5,7 @@ from pydantic import model_serializer, model_validator
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
-from flytekit.types.directory import FlyteDirToMultipartBlobTransformer
+from flytekit.types.directory import FlyteDirToMultipartBlobTransformer, FlyteDirectory
 from flytekit.types.file import FlyteFilePathTransformer
 
 
@@ -37,7 +37,8 @@ def deserialize_flyte_file(self):
 
 @model_serializer
 def serialize_flyte_dir(self) -> Dict[str, Any]:
-    lv = FlyteDirToMultipartBlobTransformer().to_literal(FlyteContextManager.current_context(), self, type(self), None)
+    lv = FlyteDirToMultipartBlobTransformer().to_literal(FlyteContextManager.current_context(), self, self, None)
+
     return {"path": lv.scalar.blob.uri}
 
 
