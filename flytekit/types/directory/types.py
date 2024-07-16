@@ -470,6 +470,9 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
                 or ctx.file_access.is_remote(source_path)
                 or ctx.execution_state.is_local_execution()
             ):
+                print("@@@ python_val.remote_directory is False:", (python_val.remote_directory is False))
+                print("@@@ ctx.file_access.is_remote(source_path):", ctx.file_access.is_remote(source_path))
+                print("@@@ ctx.execution_state.is_local_execution():", ctx.execution_state.is_local_execution())
                 should_upload = False
 
             # Set the remote destination if one was given instead of triggering a random one below
