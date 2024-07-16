@@ -59,7 +59,7 @@ class SageMakerEndpointAgent(Boto3AgentMixin, AsyncAgentBase):
         try:
             await self._call(
                 method="create_endpoint",
-                config=config,
+                config=config.copy(),
                 inputs=inputs,
                 region=region,
             )
