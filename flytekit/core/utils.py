@@ -1,8 +1,10 @@
 import datetime
+import inspect
 import os
 import shutil
 import tempfile
 import time
+import typing
 from abc import ABC, abstractmethod
 from functools import wraps
 from hashlib import sha224 as _sha224
@@ -381,3 +383,13 @@ class ClassDecorator(ABC):
         Get the config of the decorator.
         """
         pass
+
+
+def has_return_statement(func: typing.Callable) -> bool:
+    source_lines = inspect.getsourcelines(func)[0]
+    for line in source_lines:
+        if "return" in line.strip():
+            return True
+        if "yield" in line.strip():
+            return True
+    return False

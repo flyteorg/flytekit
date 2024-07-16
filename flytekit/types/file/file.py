@@ -6,16 +6,19 @@ import pathlib
 import typing
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from typing import cast
 from urllib.parse import unquote
 
 from dataclasses_json import config
 from marshmallow import fields
 from mashumaro.mixins.json import DataClassJSONMixin
+from mashumaro.types import SerializableType
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError, get_underlying_type
 from flytekit.exceptions.user import FlyteAssertion
 from flytekit.loggers import logger
+from flytekit.models.core import types as _core_types
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
@@ -29,7 +32,7 @@ T = typing.TypeVar("T")
 
 
 @dataclass
-class FlyteFile(os.PathLike, typing.Generic[T], DataClassJSONMixin):
+class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONMixin):
     path: typing.Union[str, os.PathLike] = field(default=None, metadata=config(mm_field=fields.String()))  # type: ignore
     """
     Since there is no native Python implementation of files and directories for the Flyte Blob type, (like how int
@@ -143,6 +146,34 @@ class FlyteFile(os.PathLike, typing.Generic[T], DataClassJSONMixin):
             return "/tmp/local_file.csv"
     """
 
+    def _serialize(self) -> typing.Dict[str, str]:
+        lv = FlyteFilePathTransformer().to_literal(FlyteContextManager.current_context(), self, FlyteFile, None)
+        return {"path": lv.scalar.blob.uri}
+
+    @classmethod
+    def _deserialize(cls, value) -> "FlyteFile":
+        path = value.get("path", None)
+
+        if path is None:
+            raise ValueError("FlyteFile's path should not be None")
+
+        return FlyteFilePathTransformer().to_python_value(
+            FlyteContextManager.current_context(),
+            Literal(
+                scalar=Scalar(
+                    blob=Blob(
+                        metadata=BlobMetadata(
+                            type=_core_types.BlobType(
+                                format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
+                            )
+                        ),
+                        uri=path,
+                    )
+                )
+            ),
+            cls,
+        )
+
     @classmethod
     def extension(cls) -> str:
         return ""
@@ -189,6 +220,18 @@ class FlyteFile(os.PathLike, typing.Generic[T], DataClassJSONMixin):
         class _SpecificFormatClass(FlyteFile):
             # Get the type engine to see this as kind of a generic
             __origin__ = FlyteFile
+
+            class AttributeHider:
+                def __get__(self, instance, owner):
+                    raise AttributeError(
+                        """We have to return false in hasattr(cls, "__class_getitem__") to make mashumaro deserialize FlyteFile correctly."""
+                    )
+
+            # Set __class_getitem__ to AttributeHider to make mashumaro deserialize FlyteFile correctly
+            # https://stackoverflow.com/questions/6057130/python-deleting-a-class-attribute-in-a-subclass/6057409
+            # Since mashumaro will use the method __class_getitem__ and __origin__ to construct the dataclass back
+            # https://github.com/Fatal1ty/mashumaro/blob/e945ee4319db49da9f7b8ede614e988cc8c8956b/mashumaro/core/meta/helpers.py#L300-L303
+            __class_getitem__ = AttributeHider()  # type: ignore
 
             @classmethod
             def extension(cls) -> str:
@@ -323,7 +366,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
     def get_format(t: typing.Union[typing.Type[FlyteFile], os.PathLike]) -> str:
         if t is os.PathLike:
             return ""
-        return typing.cast(FlyteFile, t).extension()
+        return cast(FlyteFile, t).extension()
 
     def _blob_type(self, format: str) -> BlobType:
         return BlobType(format=format, dimensionality=BlobType.BlobDimensionality.SINGLE)

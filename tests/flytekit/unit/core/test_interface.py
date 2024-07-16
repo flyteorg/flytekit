@@ -162,7 +162,7 @@ def test_parameters_and_defaults():
     ctx = context_manager.FlyteContext.current_context()
 
     def z(a: int, b: str) -> typing.Tuple[int, str]:
-        ...
+        return 1, "hello world"
 
     our_interface = transform_function_to_interface(z)
     params = transform_inputs_to_parameters(ctx, our_interface)
@@ -172,7 +172,7 @@ def test_parameters_and_defaults():
     assert params.parameters["b"].default is None
 
     def z(a: int, b: str = "hello") -> typing.Tuple[int, str]:
-        ...
+        return 1, "hello world"
 
     our_interface = transform_function_to_interface(z)
     params = transform_inputs_to_parameters(ctx, our_interface)
@@ -182,7 +182,7 @@ def test_parameters_and_defaults():
     assert params.parameters["b"].default.scalar.primitive.string_value == "hello"
 
     def z(a: int = 7, b: str = "eleven") -> typing.Tuple[int, str]:
-        ...
+        return 1, "hello world"
 
     our_interface = transform_function_to_interface(z)
     params = transform_inputs_to_parameters(ctx, our_interface)
@@ -204,7 +204,7 @@ def test_parameters_and_defaults():
     def z(
         a: typing.Optional[int] = None, b: typing.Optional[str] = None, c: typing.Union[typing.List[int], None] = None
     ) -> typing.Tuple[int, str]:
-        ...
+        return 1, "hello world"
 
     our_interface = transform_function_to_interface(z)
     params = transform_inputs_to_parameters(ctx, our_interface)
@@ -216,7 +216,7 @@ def test_parameters_and_defaults():
     assert params.parameters["c"].default.scalar.none_type == Void()
 
     def z(a: int | None = None, b: str | None = None, c: typing.List[int] | None = None) -> typing.Tuple[int, str]:
-        ...
+        return 1, "hello world"
 
     our_interface = transform_function_to_interface(z)
     params = transform_inputs_to_parameters(ctx, our_interface)
@@ -257,7 +257,7 @@ def test_transform_interface_to_typed_interface_with_docstring():
         :param b: bar
         :return: ramen
         """
-        ...
+        return 1, "hello world"
 
     our_interface = transform_function_to_interface(z, Docstring(callable_=z))
     typed_interface = transform_interface_to_typed_interface(our_interface)
@@ -282,7 +282,7 @@ def test_transform_interface_to_typed_interface_with_docstring():
         out1, out2 : tuple
             ramen
         """
-        ...
+        return 1, "hello world"
 
     our_interface = transform_function_to_interface(z, Docstring(callable_=z))
     typed_interface = transform_interface_to_typed_interface(our_interface)
@@ -310,7 +310,7 @@ def test_transform_interface_to_typed_interface_with_docstring():
         y_int : int
             description for y_int
         """
-        ...
+        return 1, "hello world"
 
     our_interface = transform_function_to_interface(z, Docstring(callable_=z))
     typed_interface = transform_interface_to_typed_interface(our_interface)
@@ -338,7 +338,7 @@ def test_parameter_change_to_pickle_type():
             self.name = name
 
     def z(a: Foo) -> Foo:
-        ...
+        return a
 
     our_interface = transform_function_to_interface(z)
     params = transform_inputs_to_parameters(ctx, our_interface)
@@ -375,7 +375,7 @@ def test_doc_string():
 def test_transform_interface_to_list_interface(optional_outputs, expected_type):
     @task
     def t() -> int:
-        ...
+        return 123
 
     list_interface = transform_interface_to_list_interface(t.python_interface, set(), optional_outputs=optional_outputs)
     assert list_interface.outputs["o0"] == typing.List[expected_type]
@@ -395,7 +395,7 @@ def test_transform_interface_to_list_interface(optional_outputs, expected_type):
 def test_map_task_interface(min_success_ratio, expected_type):
     @task
     def t() -> str:
-        ...
+        return "hello"
 
     mt = map_task(t, min_success_ratio=min_success_ratio)
 

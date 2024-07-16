@@ -34,7 +34,7 @@ class BotoTask(SyncAgentExecutorMixin, PythonTask[BotoConfig]):
             task_type=self._TASK_TYPE,
             interface=Interface(
                 inputs=inputs,
-                outputs=kwtypes(result=dict),
+                outputs=kwtypes(result=dict, idempotence_token=str),
             ),
             **kwargs,
         )

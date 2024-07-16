@@ -13,6 +13,7 @@ import numpy as _np
 from dataclasses_json import config
 from marshmallow import fields
 from mashumaro.mixins.json import DataClassJSONMixin
+from mashumaro.types import SerializableType
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
@@ -177,11 +178,28 @@ class SchemaEngine(object):
 
 
 @dataclass
-class FlyteSchema(DataClassJSONMixin):
+class FlyteSchema(SerializableType, DataClassJSONMixin):
     remote_path: typing.Optional[str] = field(default=None, metadata=config(mm_field=fields.String()))
     """
     This is the main schema class that users should use.
     """
+
+    def _serialize(self) -> typing.Dict[str, typing.Optional[str]]:
+        return {"remote_path": self.remote_path}
+
+    @classmethod
+    def _deserialize(cls, value) -> "FlyteSchema":
+        remote_path = value.get("remote_path", None)
+
+        if remote_path is None:
+            raise ValueError("FlyteSchema's path should not be None")
+
+        t = FlyteSchemaTransformer()
+        return t.to_python_value(
+            FlyteContextManager.current_context(),
+            Literal(scalar=Scalar(schema=Schema(remote_path, t._get_schema_type(cls)))),
+            cls,
+        )
 
     @classmethod
     def columns(cls) -> typing.Dict[str, typing.Type]:
@@ -218,6 +236,18 @@ class FlyteSchema(DataClassJSONMixin):
         class _TypedSchema(FlyteSchema):
             # Get the type engine to see this as kind of a generic
             __origin__ = FlyteSchema
+
+            class AttributeHider:
+                def __get__(self, instance, owner):
+                    raise AttributeError(
+                        """We have to return false in hasattr(cls, "__class_getitem__") to make mashumaro deserialize FlyteSchema correctly."""
+                    )
+
+            # Set __class_getitem__ to AttributeHider to make mashumaro deserialize FlyteSchema correctly
+            # https://stackoverflow.com/questions/6057130/python-deleting-a-class-attribute-in-a-subclass/6057409
+            # Since mashumaro will use the method __class_getitem__ and __origin__ to construct the dataclass back
+            # https://github.com/Fatal1ty/mashumaro/blob/e945ee4319db49da9f7b8ede614e988cc8c8956b/mashumaro/core/meta/helpers.py#L300-L303
+            __class_getitem__ = AttributeHider()  # type: ignore
 
             @classmethod
             def columns(cls) -> typing.Dict[str, typing.Type]:
