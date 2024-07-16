@@ -73,7 +73,7 @@ class StructuredDataset(SerializableType, DataClassJSONMixin):
         uri = value.get("uri", None)
         file_format = value.get("file_format", None)
 
-        if uri is None:
+        if uri is None or file_format is None:
             raise ValueError("StructuredDataset's uri and file format should not be None")
 
         return StructuredDatasetTransformerEngine().to_python_value(

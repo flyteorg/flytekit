@@ -8,7 +8,7 @@ from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar, Schema
 from flytekit.types.directory import FlyteDirectory, FlyteDirToMultipartBlobTransformer
 from flytekit.types.file import FlyteFile, FlyteFilePathTransformer
 from flytekit.types.schema import FlyteSchema, FlyteSchemaTransformer
-
+from flytekit.types.structured import StructuredDataset, StructuredDatasetTransformerEngine, StructuredDatasetMetadata, StructuredDatasetType
 
 @model_serializer
 def serialize_flyte_file(self) -> Dict[str, str]:
@@ -40,7 +40,7 @@ def deserialize_flyte_file(self) -> FlyteFile:
 
 @model_serializer
 def serialize_flyte_dir(self) -> Dict[str, str]:
-    lv = FlyteDirToMultipartBlobTransformer().to_literal(FlyteContextManager.current_context(), self, self, None)
+    lv = FlyteDirToMultipartBlobTransformer().to_literal(FlyteContextManager.current_context(), self, type(self), None)
     return {"path": lv.scalar.blob.uri}
 
 
@@ -86,3 +86,45 @@ def deserialize_flyte_schema(self) -> FlyteSchema:
         Literal(scalar=Scalar(schema=Schema(self.remote_path, t._get_schema_type(type(self))))),
         type(self),
     )
+
+@model_serializer
+def serialize_structured_dataset(self) -> Dict[str, str]:
+    lv = StructuredDatasetTransformerEngine().to_literal(
+        FlyteContextManager.current_context(), self, type(self), None
+    )
+    sd = StructuredDataset(uri=lv.scalar.structured_dataset.uri)
+    sd.file_format = lv.scalar.structured_dataset.metadata.structured_dataset_type.format
+    return {
+        "uri": sd.uri,
+        "file_format": sd.file_format,
+    }
+
+
+@model_validator(mode="after")
+def deserialize_structured_dataset(self) -> StructuredDataset:
+    # # If we call the method to_python_value, FlyteSchemaTransformer will overwrite the local_path,
+    # # which will lose our data.
+    # # If this data is from an existed FlyteSchema, local path will be None.
+    # if hasattr(self, "_local_path"):
+    #     return self
+    if hasattr(self, "dataframe"):
+        return self
+
+    pv = StructuredDatasetTransformerEngine().to_python_value(
+        FlyteContextManager.current_context(),
+        Literal(
+            scalar=Scalar(
+                structured_dataset=StructuredDataset(
+                    metadata=StructuredDatasetMetadata(
+                        structured_dataset_type=StructuredDatasetType(format=self.file_format)
+                    ),
+                    uri=self.uri,
+                )
+            )
+        ),
+        type(self),
+    )
+
+    return pv
+
+
