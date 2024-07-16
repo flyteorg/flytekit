@@ -412,12 +412,12 @@ def reference_task(
     return wrapper
 
 
-class Noop(PythonTask):
+class Echo(PythonTask):
     """
-    This is the simplest form of a ChatGPT Task, you can define the model and the input you want.
+    A task that simply echoes the inputs back to the user.
     """
 
-    _TASK_TYPE = "noop"
+    _TASK_TYPE = "echo"
 
     def __init__(
         self, name: str, inputs: Optional[Dict[str, Type]] = None, outputs: Optional[Dict[str, Type]] = None, **kwargs
@@ -430,3 +430,8 @@ class Noop(PythonTask):
             interface=Interface(inputs=inputs, outputs=outputs),
             **kwargs,
         )
+
+    def execute(self, **kwargs) -> Any:
+        for k, v in kwargs.items():
+            print(f"{k} = {v}")
+        return kwargs["a"]
