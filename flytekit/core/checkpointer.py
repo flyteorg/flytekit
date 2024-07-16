@@ -82,6 +82,7 @@ class SyncCheckpoint(Checkpoint):
         self._checkpoint_src = checkpoint_src if checkpoint_src and checkpoint_src != "" else None
         self._td = tempfile.TemporaryDirectory()
         self._prev_download_path: typing.Optional[Path] = None
+        self._torch_checkpoint: TorchAsyncCheckpoint = TorchAsyncCheckpoint(checkpoint_dest, checkpoint_src)
 
     def __del__(self):
         self._td.cleanup()
@@ -113,8 +114,12 @@ class SyncCheckpoint(Checkpoint):
         self._prev_download_path = path
         return self._prev_download_path
 
-    def save(self, cp: typing.Union[Path, str, io.BufferedReader]):
+    def save(self, cp: typing.Union[Path, str, io.BufferedReader], future: cf.Future=None):
         # We have to lazy load, until we fix the imports
+        if future is not None:
+            self._torch_checkpoint.save(cp, future)
+            return
+
         from flytekit.core.context_manager import FlyteContextManager
 
         fa = FlyteContextManager.current_context().file_access
@@ -180,7 +185,6 @@ class TorchAsyncCheckpoint(Checkpoint):
         self._checkpoint_src = checkpoint_src if checkpoint_src and checkpoint_src != "" else None
         self._td = tempfile.TemporaryDirectory()
         self._prev_download_path: typing.Optional[Path] = None
-        self._async_checkpoint: cf.Future = None
         self._async_upload: cf.Future = None
 
     def __del__(self):
@@ -212,18 +216,13 @@ class TorchAsyncCheckpoint(Checkpoint):
         FlyteContextManager.current_context().file_access.download_directory(self._checkpoint_src, str(path))
         self._prev_download_path = path
         return self._prev_download_path
-
-    def _async_save_done_callback(self, future: cf.Future, cp: typing.Union[Path, str]):
-        if future.exception():
-            raise future.exception()
-        assert self._async_upload is None or self._async_upload.done()
-        executor = cf.ThreadPoolExecutor(max_workers=1)
-        executor.submit(self._on_local_saved, cp)
-
-    def _on_local_saved(self, cp: typing.Union[Path, str]):
+    
+    def _on_local_saved(self, cp: typing.Union[Path, str], fut: cf.Future):
         # We have to lazy load, until we fix the imports
         from flytekit.core.context_manager import FlyteContextManager
-
+        # wait for the checkpoint to be saved
+        fut.result()
+        print("local saved")
         fa = FlyteContextManager.current_context().file_access
         if isinstance(cp, str):
             cp = Path(cp)
@@ -231,21 +230,16 @@ class TorchAsyncCheckpoint(Checkpoint):
             fa.upload_directory(str(cp), self._checkpoint_dest)
         return
     
-    def save(self, cp: typing.Union[Path, str], future: cf.Future=None):
+    def save(self, cp: typing.Union[Path, str], future: cf.Future):
         # We have to lazy load, until we fix the imports
         from flytekit.core.context_manager import FlyteContextManager
 
-        if future:
-            self.wait_for_save()
-            self._async_checkpoint = future
-            future.add_done_callback(lambda f: self._async_save_done_callback(f, cp))
-            return
-
-    def wait_for_save(self):
-        if self._async_checkpoint and not self._async_checkpoint.done():
-            self._async_checkpoint.result()
-        if self._async_upload and not self._async_upload.done():
+        if self._async_upload:
             self._async_upload.result()
+            print("remote saved")
+        executor = cf.ThreadPoolExecutor(max_workers=1)
+        self._async_upload = executor.submit(self._on_local_saved, cp, future)
+        return
 
     def read(self) -> typing.Optional[bytes]:
         p = self.restore()
