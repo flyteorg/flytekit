@@ -316,6 +316,7 @@ jobs:
           - flytekit-aws-batch
           - flytekit-aws-sagemaker
           - flytekit-bigquery
+          - flytekit-comet-ml
           - flytekit-dask
           - flytekit-data-fsspec
           - flytekit-dbt
