@@ -61,29 +61,22 @@
         }
 
         #flyte-frame-container > div.active {
-            display: Block;
-            padding: 2rem 4rem;
-            width: 100%;
+            display: block;
+            padding: 2rem 2rem;
         }
 
     </style>
 
 </head>
 <body>
-    <!---{#% autoescape true %#}--->
     <nav id="flyte-frame-nav">
         <ul id="flyte-frame-tabs">
-            {% for key, value in metadata.items() %}
-                <li onclick="handleLinkClick(this)">{{ key | safe }}</li>
-            {% endfor %}
+            $NAV_HTML
         </ul>
     </nav>
     <div id="flyte-frame-container">
-        {% for key, value in metadata.items() %}
-            <div>{{ value | safe }}</div>
-        {% endfor %}
+        $BODY_HTML
     </div>
-    <!---{#% autoescape %#}--->
 </body>
 <script>
     const setTabs = index => {

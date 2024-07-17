@@ -370,3 +370,17 @@ def test_subproc_execute_with_shell():
         subproc_execute(cmd, shell=True)
         cont = open(opth).read()
         assert "hello" in cont
+
+
+def test_subproc_execute_missing_dep():
+    cmd = ["non-existent", "blah"]
+    with pytest.raises(Exception) as e:
+        subproc_execute(cmd)
+    assert "executable could not be found" in str(e.value)
+
+
+def test_subproc_execute_error():
+    cmd = ["ls", "--banana"]
+    with pytest.raises(Exception) as e:
+        subproc_execute(cmd)
+    assert "Failed with return code" in str(e.value)

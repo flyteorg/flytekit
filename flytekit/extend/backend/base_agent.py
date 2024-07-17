@@ -18,10 +18,11 @@ from flyteidl.core.execution_pb2 import TaskExecution, TaskLog
 from rich.logging import RichHandler
 from rich.progress import Progress
 
-from flytekit import FlyteContext, PythonFunctionTask, logger
+from flytekit import FlyteContext, PythonFunctionTask
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core import utils
 from flytekit.core.base_task import PythonTask
+from flytekit.core.context_manager import ExecutionState, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, dataclass_from_dict
 from flytekit.exceptions.system import FlyteAgentNotFound
 from flytekit.exceptions.user import FlyteUserException
@@ -210,8 +211,6 @@ class AgentRegistry(object):
             )
             AgentRegistry._METADATA[agent.name] = agent_metadata
 
-        logger.info(f"Registering {agent.name} for task type: {agent.task_category}")
-
     @staticmethod
     def get_agent(task_type_name: str, task_type_version: int = 0) -> Union[SyncAgentBase, AsyncAgentBase]:
         task_category = TaskCategory(name=task_type_name, version=task_type_version)
@@ -272,8 +271,8 @@ class SyncAgentExecutorMixin:
             return await mirror_async_methods(
                 agent.do, task_template=template, inputs=literal_map, output_prefix=output_prefix
             )
-        except Exception as error_message:
-            raise FlyteUserException(f"Failed to run the task {self.name} with error: {error_message}")
+        except Exception as e:
+            raise FlyteUserException(f"Failed to run the task {self.name} with error: {e}") from None
 
 
 class AsyncAgentExecutorMixin:
@@ -321,14 +320,19 @@ class AsyncAgentExecutorMixin:
         self: PythonTask, task_template: TaskTemplate, output_prefix: str, inputs: Dict[str, Any] = None
     ) -> ResourceMeta:
         ctx = FlyteContext.current_context()
-
-        literal_map = TypeEngine.dict_to_literal_map(ctx, inputs or {}, self.get_input_types())
         if isinstance(self, PythonFunctionTask):
-            # Write the inputs to a remote file, so that the remote task can read the inputs from this file.
-            path = ctx.file_access.get_random_local_path()
-            utils.write_proto_to_file(literal_map.to_flyte_idl(), path)
-            ctx.file_access.put_data(path, f"{output_prefix}/inputs.pb")
-            task_template = render_task_template(task_template, output_prefix)
+            es = ctx.new_execution_state().with_params(mode=ExecutionState.Mode.TASK_EXECUTION)
+            cb = ctx.new_builder().with_execution_state(es)
+
+            with FlyteContextManager.with_context(cb) as ctx:
+                # Write the inputs to a remote file, so that the remote task can read the inputs from this file.
+                literal_map = TypeEngine.dict_to_literal_map(ctx, inputs or {}, self.get_input_types())
+                path = ctx.file_access.get_random_local_path()
+                utils.write_proto_to_file(literal_map.to_flyte_idl(), path)
+                ctx.file_access.put_data(path, f"{output_prefix}/inputs.pb")
+                task_template = render_task_template(task_template, output_prefix)
+        else:
+            literal_map = TypeEngine.dict_to_literal_map(ctx, inputs or {}, self.get_input_types())
 
         resource_meta = await mirror_async_methods(
             self._agent.create,

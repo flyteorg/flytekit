@@ -101,7 +101,7 @@ async def test_call(mock_session):
         {"model_name": str, "region": str},
     )
 
-    result = await mixin._call(
+    result, idempotence_token = await mixin._call(
         method="create_model",
         config=config,
         inputs=inputs,
@@ -117,3 +117,4 @@ async def test_call(mock_session):
     )
 
     assert result == mock_method.return_value
+    assert idempotence_token == ""
