@@ -65,6 +65,17 @@ class RayFunctionTask(PythonFunctionTask):
 
     def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
         ray.init(address=self._task_config.address)
+        # This is where the hacky stuff begins
+        import os
+
+        root_dir = "/root"
+
+        os.system(f"touch `find {root_dir} -type f`")
+
+        ray.init(
+            address=self._task_config.address,
+            runtime_env={"working_dir": root_dir},
+        )
         return user_params
 
     def get_custom(self, settings: SerializationSettings) -> Optional[Dict[str, Any]]:
