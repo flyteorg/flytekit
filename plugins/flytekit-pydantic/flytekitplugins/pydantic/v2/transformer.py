@@ -40,8 +40,12 @@ class PydanticTransformer(TypeTransformer[BaseModel]):
         return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))  # type: ignore
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[BaseModel]) -> BaseModel:
+        # del_validators_on_supported_flyte_types()
         json_str = _json_format.MessageToJson(lv.scalar.generic)
-        return expected_python_type.model_validate_json(json_str)
+        res = expected_python_type.model_validate_json(json_str)
+
+        # set_validators_on_supported_flyte_types()
+        return res
 
 
 TypeEngine.register(PydanticTransformer())

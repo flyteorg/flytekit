@@ -10,7 +10,6 @@ from flytekit.core import type_engine
 from flytekit.models import literals, types
 
 from . import deserialization, serialization
-from .deserialization import set_validators_on_supported_flyte_types, del_validators_on_supported_flyte_types
 
 try:
     # TODO: Use pydantic v2 to serialize/deserialize data

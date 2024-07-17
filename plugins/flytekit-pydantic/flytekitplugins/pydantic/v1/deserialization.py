@@ -1,6 +1,8 @@
 import contextlib
 from typing import Any, Callable, Dict, Generator, Iterator, List, Optional, Type, TypeVar, Union, cast
 
+from flytekit import StructuredDataset, FlyteContextManager
+from flytekit.types.schema import FlyteSchema, SchemaOpenMode
 from flytekitplugins.pydantic.v1 import commons, serialization
 
 from flytekit.core import context_manager, type_engine
@@ -104,8 +106,13 @@ def add_flyte_validators_for_type(
         getattr(flyte_obj_type, PYDANTIC_VALIDATOR_METHOD_NAME, lambda *_: [])(),
     )
 
-    def validator(object_uid_maybe: Union[commons.LiteralObjID, Any]) -> Union[type_engine.T, Any]:
+    def validator(object_uid_maybe: Union[commons.LiteralObjID, Any], self_instance = None) -> Union[type_engine.T, Any]:
         """Partial of deserialize_flyte_literal with the object_type fixed"""
+        # breakpoint()
+        # print("args", args)
+        # print("type(args)", type(args))
+        # if isinstance(self_instance, FlyteFile):
+        #     return deserialize_flyte_file(self_instance)
         if not PydanticDeserializationLiteralStore.is_attached():
             return object_uid_maybe  # this validator should only trigger when we are deserializeing
         if not isinstance(object_uid_maybe, str):
@@ -114,7 +121,7 @@ def add_flyte_validators_for_type(
             return object_uid_maybe  # final safety check to make sure that the object uid is in the literal map
         return PydanticDeserializationLiteralStore.get_python_object(object_uid_maybe, flyte_obj_type)
 
-    def validator_generator(*args, **kwags) -> Iterator[Callable[[Any], type_engine.T]]:
+    def validator_generator(*args, **kwargs) -> Iterator[Callable[[Any], type_engine.T]]:
         """Generator that returns validators."""
         yield validator
         yield from previous_validators
@@ -123,29 +130,63 @@ def add_flyte_validators_for_type(
     return validator_generator
 
 
-def validate_flytefile(flytefile: Union[str, file.FlyteFile]) -> file.FlyteFile:
+def validate_flyteschema(flyteschema: Union[str, FlyteSchema], *args, **kwargs) -> file.FlyteFile:
+    """Validate a flytefile (i.e. deserialize)."""
+    if isinstance(flyteschema, FlyteSchema):
+        return flyteschema
+    if isinstance(flyteschema, str):  # when e.g. initializing from config
+        return FlyteSchema(flyteschema)
+    if isinstance(flyteschema, dict):
+        ctx = FlyteContextManager.current_context()
+
+        def downloader(x, y):
+            ctx.file_access.get_data(x, y, is_multipart=False)
+        return FlyteSchema(**flyteschema, downloader=downloader, supported_mode=SchemaOpenMode.READ)
+    else:
+        raise ValueError(f"Invalid type for flyteschema: {type(FlyteSchema)}")
+
+
+def validate_flytefile(flytefile: Union[str, file.FlyteFile], *args, **kwargs) -> file.FlyteFile:
     """Validate a flytefile (i.e. deserialize)."""
     if isinstance(flytefile, file.FlyteFile):
         return flytefile
     if isinstance(flytefile, str):  # when e.g. initializing from config
         return file.FlyteFile(flytefile)
+    if isinstance(flytefile, dict):
+        return file.FlyteFile(**flytefile)
     else:
         raise ValueError(f"Invalid type for flytefile: {type(flytefile)}")
 
 
-def validate_flytedir(flytedir: Union[str, directory.FlyteDirectory]) -> directory.FlyteDirectory:
+def validate_flytedir(flytedir: Union[str, directory.FlyteDirectory], *args, **kwargs) -> directory.FlyteDirectory:
     """Validate a flytedir (i.e. deserialize)."""
     if isinstance(flytedir, directory.FlyteDirectory):
         return flytedir
     if isinstance(flytedir, str):  # when e.g. initializing from config
         return directory.FlyteDirectory(flytedir)
+    if isinstance(flytedir, dict):
+        return directory.FlyteDirectory(**flytedir)
     else:
         raise ValueError(f"Invalid type for flytedir: {type(flytedir)}")
+
+
+def validate_structuredDataset(structured_dataset: Union[str, StructuredDataset], *args, **kwargs) -> file.FlyteFile:
+    """Validate a flytefile (i.e. deserialize)."""
+    if isinstance(structured_dataset, StructuredDataset):
+        return structured_dataset
+    if isinstance(structured_dataset, str):  # when e.g. initializing from config
+        return StructuredDataset(structured_dataset)
+    if isinstance(structured_dataset, dict):
+        return StructuredDataset(**structured_dataset)
+    else:
+        raise ValueError(f"Invalid type for sd: {type(structured_dataset)}")
 
 
 ADDITIONAL_FLYTETYPE_VALIDATORS: Dict[Type, List[Callable[[Any], Any]]] = {
     file.FlyteFile: [validate_flytefile],
     directory.FlyteDirectory: [validate_flytedir],
+    FlyteSchema: [validate_flyteschema],
+    StructuredDataset: [validate_structuredDataset]
 }
 
 

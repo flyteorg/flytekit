@@ -10,6 +10,7 @@ from flytekit.types.file import FlyteFile, FlyteFilePathTransformer
 from flytekit.types.schema import FlyteSchema, FlyteSchemaTransformer
 from flytekit.types.structured import StructuredDataset, StructuredDatasetTransformerEngine, StructuredDatasetMetadata, StructuredDatasetType
 
+
 @model_serializer
 def serialize_flyte_file(self) -> Dict[str, str]:
     lv = FlyteFilePathTransformer().to_literal(FlyteContextManager.current_context(), self, type(self), None)
