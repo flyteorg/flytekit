@@ -13,7 +13,7 @@ class ChatGPTTask(SyncAgentExecutorMixin, PythonTask):
 
     _TASK_TYPE = "chatgpt"
 
-    def __init__(self, name: str, chatgpt_config: Dict[str, Any], openai_organization: Optional[str] = "", **kwargs):
+    def __init__(self, name: str, chatgpt_config: Dict[str, Any], openai_organization: Optional[str] = None, **kwargs):
         """
         Args:
             name: Name of this task, should be unique in the project
