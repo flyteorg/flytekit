@@ -54,9 +54,7 @@ class BaseModelTransformer(type_engine.TypeTransformer[pydantic.BaseModel]):
             FutureWarning,
         )
 
-        set_validators_on_supported_flyte_types()
         lv = serialization.serialize_basemodel(python_val)
-        # del_validators_on_supported_flyte_types()
         return lv
 
     def to_python_value(
@@ -66,15 +64,12 @@ class BaseModelTransformer(type_engine.TypeTransformer[pydantic.BaseModel]):
         expected_python_type: Type[pydantic.BaseModel],
     ) -> pydantic.BaseModel:
         """Re-hydrate the pydantic BaseModel object from Flyte Literal value."""
-        set_validators_on_supported_flyte_types()
         basemodel_literals: BaseModelLiterals = lv.map.literals
         basemodel_json_w_placeholders = read_basemodel_json_from_literalmap(basemodel_literals)
         with deserialization.PydanticDeserializationLiteralStore.attach(
             basemodel_literals[serialization.OBJECTS_KEY].map
         ):
             pv = expected_python_type.parse_raw(basemodel_json_w_placeholders)
-
-        # del_validators_on_supported_flyte_types()
         return pv
 
 def read_basemodel_json_from_literalmap(lv: BaseModelLiterals) -> serialization.SerializedBaseModel:
