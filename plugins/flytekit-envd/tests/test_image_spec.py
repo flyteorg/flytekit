@@ -11,7 +11,7 @@ from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec
 @pytest.fixture(scope="module", autouse=True)
 def register_envd_higher_priority():
     # Register a new envd platform with the highest priority so the test in this file uses envd
-    highest_priority_builder = max(ImageBuildEngine._REGISTRY, key=ImageBuildEngine._REGISTRY.get)
+    highest_priority_builder = max(ImageBuildEngine._REGISTRY, key=lambda name: ImageBuildEngine._REGISTRY[name][1])
     highest_priority = ImageBuildEngine._REGISTRY[highest_priority_builder][1]
     yield ImageBuildEngine.register(
         "envd_high_priority",
@@ -101,7 +101,7 @@ def test_image_spec_conda():
 
 def test_image_spec_extra_index_url():
     image_spec = ImageSpec(
-        packages=["-U --pre pandas", "torch", "torchvision"],
+        packages=["-U pandas", "torch", "torchvision"],
         base_image="cr.flyte.org/flyteorg/flytekit:py3.9-latest",
         pip_extra_index_url=[
             "https://download.pytorch.org/whl/cpu",
@@ -120,7 +120,7 @@ def test_image_spec_extra_index_url():
     def build():
         base(image="cr.flyte.org/flyteorg/flytekit:py3.9-latest", dev=False)
         run(commands=[])
-        install.python_packages(name=["-U --pre pandas", "torch", "torchvision"])
+        install.python_packages(name=["-U pandas", "torch", "torchvision"])
         install.apt_packages(name=[])
         runtime.environ(env={{'PYTHONPATH': '/root:', '_F_IMG_ID': '{image_name}'}}, extra_path=['/root'])
         config.pip_index(url="https://pypi.org/simple", extra_url="https://download.pytorch.org/whl/cpu https://pypi.anaconda.org/scientific-python-nightly-wheels/simple")

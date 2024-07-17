@@ -39,7 +39,7 @@ def t2(a: int) -> str:
 
 @task(cache=True, cache_version="1")
 def t3(a: int, b: str, c: float) -> str:
-    pass
+    return "hello"
 
 
 # This test is for documentation.

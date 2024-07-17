@@ -52,7 +52,7 @@ from flytekit.exceptions.user import (
     FlyteEntityNotExistException,
     FlyteValueException,
 )
-from flytekit.loggers import logger
+from flytekit.loggers import developer_logger, logger
 from flytekit.models import common as common_models
 from flytekit.models import filters as filter_models
 from flytekit.models import launch_plan as launch_plan_models
@@ -153,12 +153,12 @@ def _get_entity_identifier(
     )
 
 
-def _get_git_repo_url(source_path):
+def _get_git_repo_url(source_path: str):
     """
     Get git repo URL from remote.origin.url
     """
     try:
-        git_config = source_path / ".git" / "config"
+        git_config = pathlib.Path(source_path) / ".git" / "config"
         if not git_config.exists():
             raise ValueError(f"{source_path} is not a git repo")
 
@@ -182,7 +182,7 @@ def _get_git_repo_url(source_path):
             raise ValueError("Unable to parse url")
 
     except Exception as e:
-        logger.debug(str(e))
+        logger.debug(f"unable to find the git config in {source_path} with error: {str(e)}")
         return ""
 
 
@@ -576,12 +576,14 @@ class FlyteRemote(object):
         project: typing.Optional[str] = None,
         domain: typing.Optional[str] = None,
         limit: typing.Optional[int] = 100,
+        filters: typing.Optional[typing.List[filter_models.Filter]] = None,
     ) -> typing.List[FlyteWorkflowExecution]:
         # Ignore token for now
         exec_models, _ = self.client.list_executions_paginated(
             project or self.default_project,
             domain or self.default_domain,
             limit,
+            filters=filters,
             sort_by=MOST_RECENT_FIRST,
         )
         return [FlyteWorkflowExecution.promote_from_model(e) for e in exec_models]
@@ -667,7 +669,6 @@ class FlyteRemote(object):
                 workflow_model.TaskNode,
             ),
         ):
-            logger.debug("Ignoring nodes for registration.")
             return None
 
         elif isinstance(cp_entity, ReferenceSpec):
@@ -681,7 +682,7 @@ class FlyteRemote(object):
             try:
                 self.client.create_task(task_identifer=ident, task_spec=cp_entity)
             except FlyteEntityAlreadyExistsException:
-                logger.info(f" {ident} Already Exists!")
+                logger.debug(f" {ident} Already Exists!")
             return ident
 
         if isinstance(cp_entity, admin_workflow_models.WorkflowSpec):
@@ -691,7 +692,7 @@ class FlyteRemote(object):
             try:
                 self.client.create_workflow(workflow_identifier=ident, workflow_spec=cp_entity)
             except FlyteEntityAlreadyExistsException:
-                logger.info(f" {ident} Already Exists!")
+                logger.debug(f" {ident} Already Exists!")
 
             if create_default_launchplan:
                 if not og_entity:
@@ -715,7 +716,7 @@ class FlyteRemote(object):
                 try:
                     self.client.create_launch_plan(lp_entity.id, lp_entity.spec)
                 except FlyteEntityAlreadyExistsException:
-                    logger.info(f" {lp_entity.id} Already Exists!")
+                    logger.debug(f" {lp_entity.id} Already Exists!")
             return ident
 
         if isinstance(cp_entity, launch_plan_models.LaunchPlan):
@@ -723,7 +724,7 @@ class FlyteRemote(object):
             try:
                 self.client.create_launch_plan(launch_plan_identifer=ident, launch_plan_spec=cp_entity.spec)
             except FlyteEntityAlreadyExistsException:
-                logger.info(f" {ident} Already Exists!")
+                logger.debug(f" {ident} Already Exists!")
             return ident
 
         raise AssertionError(f"Unknown entity of type {type(cp_entity)}")
@@ -887,7 +888,6 @@ class FlyteRemote(object):
         if not to_upload.is_file():
             raise ValueError(f"{to_upload} is not a single file, upload arg must be a single file.")
         md5_bytes, str_digest, _ = hash_file(to_upload)
-        logger.debug(f"Text hash of file to upload is {str_digest}")
 
         upload_location = self.client.get_upload_signed_url(
             project=project or self.default_project,
@@ -921,7 +921,9 @@ class FlyteRemote(object):
                     f"Request to send data {upload_location.signed_url} failed.\nResponse: {rsp.text}",
                 )
 
-        logger.debug(f"Uploading {to_upload} to {upload_location.signed_url} native url {upload_location.native_url}")
+        developer_logger.debug(
+            f"Uploading {to_upload} to {upload_location.signed_url} native url {upload_location.native_url}"
+        )
 
         return md5_bytes, upload_location.native_url
 
@@ -1614,7 +1616,7 @@ class FlyteRemote(object):
         try:
             flyte_lp = self.fetch_launch_plan(**resolved_identifiers_dict)
         except FlyteEntityNotExistException:
-            remote_logger.info("Try to register default launch plan because it wasn't found in Flyte Admin!")
+            logger.info("Try to register default launch plan because it wasn't found in Flyte Admin!")
             default_lp = LaunchPlan.get_default_launch_plan(self.context, entity)
             self.register_launch_plan(
                 default_lp,

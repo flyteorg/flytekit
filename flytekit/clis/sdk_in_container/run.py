@@ -7,10 +7,10 @@ import pathlib
 import tempfile
 import typing
 from dataclasses import dataclass, field, fields
-from typing import cast, get_args
+from typing import get_args
 
 import rich_click as click
-from dataclasses_json import DataClassJsonMixin
+from mashumaro.codecs.json import JSONEncoder
 from rich.progress import Progress
 
 from flytekit import Annotations, FlyteContext, FlyteContextManager, Labels, Literal
@@ -395,7 +395,8 @@ def to_click_option(
             if type(default_val) == dict or type(default_val) == list:
                 default_val = json.dumps(default_val)
             else:
-                default_val = cast(DataClassJsonMixin, default_val).to_json()
+                encoder = JSONEncoder(python_type)
+                default_val = encoder.encode(default_val)
         if literal_var.type.metadata:
             description_extra = f": {json.dumps(literal_var.type.metadata)}"
 
@@ -509,6 +510,13 @@ def _update_flyte_context(params: RunLevelParams) -> FlyteContext.Builder:
         return ctx_builder.with_file_access(file_access)
 
 
+def is_optional(_type):
+    """
+    Checks if the given type is Optional Type
+    """
+    return typing.get_origin(_type) is typing.Union and type(None) in typing.get_args(_type)
+
+
 def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow, PythonTask]):
     """
     Returns a function that is used to implement WorkflowCommand and execute a flyte workflow.
@@ -521,13 +529,19 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
         # By the time we get to this function, all the loading has already happened
 
         run_level_params: RunLevelParams = ctx.obj
-        logger.debug(f"Running {entity.name} with {kwargs} and run_level_params {run_level_params}")
+        entity_type = "workflow" if isinstance(entity, PythonFunctionWorkflow) else "task"
+        logger.debug(f"Running {entity_type} {entity.name} with input {kwargs}")
 
         click.secho(f"Running Execution on {'Remote' if run_level_params.is_remote else 'local'}.", fg="cyan")
         try:
             inputs = {}
-            for input_name, _ in entity.python_interface.inputs.items():
+            for input_name, v in entity.python_interface.inputs_with_defaults.items():
                 processed_click_value = kwargs.get(input_name)
+                optional_v = False
+                if processed_click_value is None and isinstance(v, typing.Tuple):
+                    optional_v = is_optional(v[0])
+                    if len(v) == 2:
+                        processed_click_value = v[1]
                 if isinstance(processed_click_value, ArtifactQuery):
                     if run_level_params.is_remote:
                         click.secho(
@@ -542,7 +556,7 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
                         raise click.UsageError(
                             f"Default for '{input_name}' is a query, which must be specified when running locally."
                         )
-                if processed_click_value is not None:
+                if processed_click_value is not None or optional_v:
                     inputs[input_name] = processed_click_value
 
             if not run_level_params.is_remote:
@@ -780,7 +794,7 @@ class WorkflowCommand(click.RichGroup):
         ctx: click.Context,
         entity_name: str,
         run_level_params: RunLevelParams,
-        loaded_entity: typing.Any,
+        loaded_entity: [PythonTask, WorkflowBase],
         is_workflow: bool,
     ):
         """

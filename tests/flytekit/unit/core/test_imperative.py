@@ -327,7 +327,7 @@ def test_non_function_task_and_df_input():
         dataframe: pd.DataFrame,
         imputation_method: str = "median",
     ) -> pd.DataFrame:
-        ...
+        return dataframe
 
     @reference_task(
         project="flytesnacks",
@@ -340,7 +340,7 @@ def test_non_function_task_and_df_input():
         split_mask: int,
         num_features: int,
     ) -> pd.DataFrame:
-        ...
+        return dataframe
 
     wb = ImperativeWorkflow(name="core.feature_engineering.workflow.fe_wf")
     wb.add_workflow_input("sqlite_archive", FlyteFile[typing.TypeVar("sqlite")])

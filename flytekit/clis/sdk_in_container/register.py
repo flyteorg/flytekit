@@ -179,24 +179,21 @@ def register(
     # Create and save FlyteRemote,
     remote = get_and_save_remote_with_click_context(ctx, project, domain, data_upload_location="flyte://data")
     click.secho(f"Registering against {remote.config.platform.endpoint}")
-    try:
-        repo.register(
-            project,
-            domain,
-            image_config,
-            output,
-            destination_dir,
-            service_account,
-            raw_data_prefix,
-            version,
-            deref_symlinks,
-            fast=not non_fast,
-            package_or_module=package_or_module,
-            remote=remote,
-            env=env,
-            dry_run=dry_run,
-            activate_launchplans=activate_launchplans,
-            skip_errors=skip_errors,
-        )
-    except Exception as e:
-        raise e
+    repo.register(
+        project,
+        domain,
+        image_config,
+        output,
+        destination_dir,
+        service_account,
+        raw_data_prefix,
+        version,
+        deref_symlinks,
+        fast=not non_fast,
+        package_or_module=package_or_module,
+        remote=remote,
+        env=env,
+        dry_run=dry_run,
+        activate_launchplans=activate_launchplans,
+        skip_errors=skip_errors,
+    )
