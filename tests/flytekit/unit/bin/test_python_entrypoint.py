@@ -198,6 +198,7 @@ def test_dispatch_execute_user_error_non_recov(mock_write_to_file, mock_upload_d
     def t1(a: int) -> str:
         # Should be interpreted as a non-recoverable user error
         raise ValueError(f"some exception {a}")
+        return "hello"
 
     ctx = context_manager.FlyteContext.current_context()
     with context_manager.FlyteContextManager.with_context(
@@ -242,6 +243,7 @@ def test_dispatch_execute_user_error_recoverable(mock_write_to_file, mock_upload
     def my_subwf(a: int) -> typing.List[str]:
         # This also tests the dynamic/compile path
         raise user_exceptions.FlyteRecoverableException(f"recoverable {a}")
+        return ["1", "2"]
 
     ctx = context_manager.FlyteContext.current_context()
     with context_manager.FlyteContextManager.with_context(

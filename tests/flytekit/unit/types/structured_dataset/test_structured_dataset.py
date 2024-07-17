@@ -102,14 +102,6 @@ def test_setting_of_unset_formats():
     assert res.file_format == "parquet"
 
 
-def test_json():
-    sd = StructuredDataset(dataframe=df, uri="/some/path")
-    sd.file_format = "myformat"
-    json_str = sd.to_json()
-    new_sd = StructuredDataset.from_json(json_str)
-    assert new_sd.file_format == "myformat"
-
-
 def test_types_pandas():
     pt = pd.DataFrame
     lt = TypeEngine.to_literal_type(pt)

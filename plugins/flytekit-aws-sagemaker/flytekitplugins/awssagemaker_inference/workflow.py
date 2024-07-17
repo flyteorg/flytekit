@@ -27,7 +27,13 @@ def create_deployment_task(
         else:
             inputs = kwtypes(region=str)
     return (
-        task_type(name=name, config=config, region=region, inputs=inputs, images=images),
+        task_type(
+            name=name,
+            config=config,
+            region=region,
+            inputs=inputs,
+            images=images,
+        ),
         inputs,
     )
 
@@ -89,6 +95,11 @@ def create_sagemaker_deployment(
     nodes = []
     for key, value in inputs.items():
         input_types = value["input_types"]
+        if len(nodes) > 0:
+            if not input_types:
+                input_types = {}
+            input_types["idempotence_token"] = str
+
         obj, new_input_types = create_deployment_task(
             name=f"{value['name']}-{name}",
             task_type=key,
@@ -101,16 +112,29 @@ def create_sagemaker_deployment(
         input_dict = {}
         if isinstance(new_input_types, dict):
             for param, t in new_input_types.items():
-                # Handles the scenario when the same input is present during different API calls.
-                if param not in wf.inputs.keys():
-                    wf.add_workflow_input(param, t)
-                input_dict[param] = wf.inputs[param]
+                if param != "idempotence_token":
+                    # Handles the scenario when the same input is present during different API calls.
+                    if param not in wf.inputs.keys():
+                        wf.add_workflow_input(param, t)
+                    input_dict[param] = wf.inputs[param]
+                else:
+                    input_dict["idempotence_token"] = nodes[-1].outputs["idempotence_token"]
+
         node = wf.add_entity(obj, **input_dict)
+
         if len(nodes) > 0:
             nodes[-1] >> node
         nodes.append(node)
 
-    wf.add_workflow_output("wf_output", nodes[2].outputs["result"], str)
+    wf.add_workflow_output(
+        "wf_output",
+        [
+            nodes[0].outputs["result"],
+            nodes[1].outputs["result"],
+            nodes[2].outputs["result"],
+        ],
+        list[dict],
+    )
     return wf
 
 

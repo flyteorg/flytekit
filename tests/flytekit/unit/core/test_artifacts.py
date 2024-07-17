@@ -332,7 +332,7 @@ def test_basic_option_a3():
 
     @task
     def t3(b_value: str) -> Annotated[pd.DataFrame, a3]:
-        ...
+        return pd.DataFrame({"a": [1, 2, 3], "b": [b_value, b_value, b_value]})
 
     entities = OrderedDict()
     t3_s = get_serializable(entities, serialization_settings, t3)

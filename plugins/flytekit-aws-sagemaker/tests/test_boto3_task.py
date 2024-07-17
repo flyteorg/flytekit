@@ -13,20 +13,21 @@ def test_boto_task_and_config():
             config={
                 "ModelName": "{inputs.model_name}",
                 "PrimaryContainer": {
-                    "Image": "{container.image}",
+                    "Image": "{images.deployment_image}",
                     "ModelDataUrl": "{inputs.model_data_url}",
                 },
                 "ExecutionRoleArn": "{inputs.execution_role_arn}",
             },
             region="us-east-2",
+            images={
+                "deployment_image": "1234567890.dkr.ecr.us-east-2.amazonaws.com/sagemaker-xgboost"
+            },
         ),
         inputs=kwtypes(model_name=str, model_data_url=str, execution_role_arn=str),
-        outputs=kwtypes(result=dict),
-        container_image="1234567890.dkr.ecr.us-east-2.amazonaws.com/sagemaker-xgboost",
     )
 
     assert len(boto_task.interface.inputs) == 3
-    assert len(boto_task.interface.outputs) == 1
+    assert len(boto_task.interface.outputs) == 2
 
     default_img = Image(name="default", fqn="test", tag="tag")
     serialization_settings = SerializationSettings(
@@ -43,10 +44,14 @@ def test_boto_task_and_config():
     assert retrieved_setttings["config"] == {
         "ModelName": "{inputs.model_name}",
         "PrimaryContainer": {
-            "Image": "{container.image}",
+            "Image": "{images.deployment_image}",
             "ModelDataUrl": "{inputs.model_data_url}",
         },
         "ExecutionRoleArn": "{inputs.execution_role_arn}",
     }
     assert retrieved_setttings["region"] == "us-east-2"
     assert retrieved_setttings["method"] == "create_model"
+    assert (
+        retrieved_setttings["images"]["deployment_image"]
+        == "1234567890.dkr.ecr.us-east-2.amazonaws.com/sagemaker-xgboost"
+    )
