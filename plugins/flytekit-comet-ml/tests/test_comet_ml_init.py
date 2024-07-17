@@ -27,23 +27,27 @@ def test_extra_config(experiment_key):
         secret=secret
     )
 
-    assert comet_decorator.secret is secret
-    extra_config = comet_decorator.get_extra_config()
+    @comet_decorator
+    def task():
+        pass
+
+    assert task.secret is secret
+    extra_config = task.get_extra_config()
 
     if experiment_key is None:
-        assert extra_config[comet_decorator.LINK_TYPE_KEY] == COMET_ML_EXECUTION_TYPE_VALUE
-        assert comet_decorator.COMET_ML_EXPERIMENT_KEY_KEY not in extra_config
+        assert extra_config[task.LINK_TYPE_KEY] == COMET_ML_EXECUTION_TYPE_VALUE
+        assert task.COMET_ML_EXPERIMENT_KEY_KEY not in extra_config
 
         suffix = _generate_suffix_with_length_10(project_name=project_name, workspace=workspace)
-        assert extra_config[comet_decorator.COMET_ML_URL_SUFFIX_KEY] == suffix
+        assert extra_config[task.COMET_ML_URL_SUFFIX_KEY] == suffix
 
     else:
-        assert extra_config[comet_decorator.LINK_TYPE_KEY] == COMET_ML_CUSTOM_TYPE_VALUE
-        assert extra_config[comet_decorator.COMET_ML_EXPERIMENT_KEY_KEY] == experiment_key
-        assert comet_decorator.COMET_ML_URL_SUFFIX_KEY not in extra_config
+        assert extra_config[task.LINK_TYPE_KEY] == COMET_ML_CUSTOM_TYPE_VALUE
+        assert extra_config[task.COMET_ML_EXPERIMENT_KEY_KEY] == experiment_key
+        assert task.COMET_ML_URL_SUFFIX_KEY not in extra_config
 
-    assert extra_config[comet_decorator.COMET_ML_WORKSPACE_KEY] == workspace
-    assert extra_config[comet_decorator.COMET_ML_HOST_KEY] == "https://www.comet.com"
+    assert extra_config[task.COMET_ML_WORKSPACE_KEY] == workspace
+    assert extra_config[task.COMET_ML_HOST_KEY] == "https://www.comet.com"
 
 
 @task
@@ -56,7 +60,7 @@ def train_model():
 def test_local_execution(comet_ml_mock):
     train_model()
 
-    comet_ml_mock.init.assert_called_with(
+    comet_ml_mock.login.assert_called_with(
         project_name="abc", workspace="my-workspace", log_code=False)
 
 
@@ -75,7 +79,7 @@ def train_model_with_experiment_key():
 def test_local_execution_with_experiment_key(comet_ml_mock):
     train_model_with_experiment_key()
 
-    comet_ml_mock.init.assert_called_with(
+    comet_ml_mock.login.assert_called_with(
         project_name="xyz",
         workspace="another-workspace",
         experiment_key="my-previous-experiment-key",
@@ -107,7 +111,7 @@ def test_remote_execution(comet_ml_mock, manager_mock, os_mock):
 
     train_model()
 
-    comet_ml_mock.init.assert_called_with(
+    comet_ml_mock.login.assert_called_with(
         project_name="abc",
         workspace="my-workspace",
         api_key="this_is_the_secret",
@@ -141,20 +145,9 @@ def test_remote_execution_with_callable_secret(comet_ml_mock, manager_mock, os_m
 
     train_model_with_callable_secret()
 
-    comet_ml_mock.init.assert_called_with(
+    comet_ml_mock.login.assert_called_with(
         project_name="my_project",
         api_key="my-comet-ml-api-key",
         workspace="my_workspace",
         experiment_key=_generate_experiment_key(hostname, "my_project", "my_workspace")
     )
-
-
-def test_errors():
-    with pytest.raises(ValueError, match="project_name must be set"):
-        comet_ml_login()
-
-    with pytest.raises(ValueError, match="workspace must be set"):
-        comet_ml_login(project_name="abc")
-
-    with pytest.raises(ValueError, match="secret must be set"):
-        comet_ml_login(project_name="abc", workspace="xyz")

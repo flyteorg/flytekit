@@ -1,4 +1,5 @@
 import os
+from functools import partial
 from hashlib import shake_256
 from typing import Callable, Optional, Union
 
@@ -35,7 +36,36 @@ def _generate_experiment_key(hostname: str, project_name: str, workspace: str) -
     return f"{hostname}{suffix}"
 
 
-class comet_ml_login(ClassDecorator):
+def comet_ml_login(
+    project_name: str,
+    workspace: str,
+    secret: Union[Secret, Callable],
+    experiment_key: Optional[str] = None,
+    host: str = "https://www.comet.com",
+    **login_kwargs: dict,
+):
+    """Comet plugin.
+    Args:
+        project_name (str): Send your experiment to a specific project. (Required)
+        workspace (str): Attach an experiment to a project that belongs to this workspace. (Required)
+        secret (Secret or Callable): Secret with your `COMET_API_KEY` or a callable that returns the API key.
+            The callable takes no arguments and returns a string. (Required)
+        experiment_key (str): Experiment key.
+        host (str): URL to your Comet service. Defaults to "https://www.comet.com"
+        **login_kwargs (dict): The rest of the arguments are passed directly to `comet_ml.login`.
+    """
+    return partial(
+        _comet_ml_login_class,
+        project_name=project_name,
+        workspace=workspace,
+        secret=secret,
+        experiment_key=experiment_key,
+        host=host,
+        **login_kwargs,
+    )
+
+
+class _comet_ml_login_class(ClassDecorator):
     COMET_ML_PROJECT_NAME_KEY = "project_name"
     COMET_ML_WORKSPACE_KEY = "workspace"
     COMET_ML_EXPERIMENT_KEY_KEY = "experiment_key"
@@ -44,31 +74,24 @@ class comet_ml_login(ClassDecorator):
 
     def __init__(
         self,
-        task_function: Optional[Callable] = None,
-        project_name: Optional[str] = None,
-        workspace: Optional[str] = None,
+        task_function: Callable,
+        project_name: str,
+        workspace: str,
+        secret: Union[Secret, Callable],
         experiment_key: Optional[str] = None,
-        secret: Optional[Union[Secret, Callable]] = None,
         host: str = "https://www.comet.com",
         **login_kwargs: dict,
     ):
         """Comet plugin.
         Args:
-            task_function (function, optional): The user function to be decorated. Defaults to None.
             project_name (str): Send your experiment to a specific project. (Required)
             workspace (str): Attach an experiment to a project that belongs to this workspace. (Required)
-            experiment_key (str): Experiment key.
             secret (Secret or Callable): Secret with your `COMET_API_KEY` or a callable that returns the API key.
                 The callable takes no arguments and returns a string. (Required)
+            experiment_key (str): Experiment key.
             host (str): URL to your Comet service. Defaults to "https://www.comet.com"
             **login_kwargs (dict): The rest of the arguments are passed directly to `comet_ml.login`.
         """
-        if project_name is None:
-            raise ValueError("project_name must be set")
-        if workspace is None:
-            raise ValueError("workspace must be set")
-        if secret is None:
-            raise ValueError("secret must be set")
 
         self.project_name = project_name
         self.workspace = workspace
