@@ -3,7 +3,7 @@ from unittest.mock import patch, Mock
 import pytest
 
 from flytekit import Secret, task
-from flytekitplugins.comet_ml import comet_ml_init
+from flytekitplugins.comet_ml import comet_ml_login
 from flytekitplugins.comet_ml.tracking import (
     COMET_ML_CUSTOM_TYPE_VALUE,
     COMET_ML_EXECUTION_TYPE_VALUE,
@@ -20,7 +20,7 @@ def test_extra_config(experiment_key):
     project_name = "abc"
     workspace = "my_workspace"
 
-    comet_decorator = comet_ml_init(
+    comet_decorator = comet_ml_login(
         project_name=project_name,
         workspace=workspace,
         experiment_key=experiment_key,
@@ -47,7 +47,7 @@ def test_extra_config(experiment_key):
 
 
 @task
-@comet_ml_init(project_name="abc", workspace="my-workspace", secret=secret, log_code=False)
+@comet_ml_login(project_name="abc", workspace="my-workspace", secret=secret, log_code=False)
 def train_model():
     pass
 
@@ -61,7 +61,7 @@ def test_local_execution(comet_ml_mock):
 
 
 @task
-@comet_ml_init(
+@comet_ml_login(
     project_name="xyz",
     workspace="another-workspace",
     secret=secret,
@@ -122,7 +122,7 @@ def get_secret():
 
 
 @task
-@comet_ml_init(project_name="my_project", workspace="my_workspace", secret=get_secret)
+@comet_ml_login(project_name="my_project", workspace="my_workspace", secret=get_secret)
 def train_model_with_callable_secret():
     pass
 
@@ -151,10 +151,10 @@ def test_remote_execution_with_callable_secret(comet_ml_mock, manager_mock, os_m
 
 def test_errors():
     with pytest.raises(ValueError, match="project_name must be set"):
-        comet_ml_init()
+        comet_ml_login()
 
     with pytest.raises(ValueError, match="workspace must be set"):
-        comet_ml_init(project_name="abc")
+        comet_ml_login(project_name="abc")
 
     with pytest.raises(ValueError, match="secret must be set"):
-        comet_ml_init(project_name="abc", workspace="xyz")
+        comet_ml_login(project_name="abc", workspace="xyz")

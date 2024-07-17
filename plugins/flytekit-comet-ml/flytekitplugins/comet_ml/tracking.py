@@ -35,7 +35,7 @@ def _generate_experiment_key(hostname: str, project_name: str, workspace: str) -
     return f"{hostname}{suffix}"
 
 
-class comet_ml_init(ClassDecorator):
+class comet_ml_login(ClassDecorator):
     COMET_ML_PROJECT_NAME_KEY = "project_name"
     COMET_ML_WORKSPACE_KEY = "workspace"
     COMET_ML_EXPERIMENT_KEY_KEY = "experiment_key"
@@ -50,7 +50,7 @@ class comet_ml_init(ClassDecorator):
         experiment_key: Optional[str] = None,
         secret: Optional[Union[Secret, Callable]] = None,
         host: str = "https://www.comet.com",
-        **init_kwargs: dict,
+        **login_kwargs: dict,
     ):
         """Comet plugin.
         Args:
@@ -61,7 +61,7 @@ class comet_ml_init(ClassDecorator):
             secret (Secret or Callable): Secret with your `COMET_API_KEY` or a callable that returns the API key.
                 The callable takes no arguments and returns a string. (Required)
             host (str): URL to your Comet service. Defaults to "https://www.comet.com"
-            **init_kwargs (dict): The rest of the arguments are passed directly to `comet_ml.init`.
+            **login_kwargs (dict): The rest of the arguments are passed directly to `comet_ml.login`.
         """
         if project_name is None:
             raise ValueError("project_name must be set")
@@ -75,7 +75,7 @@ class comet_ml_init(ClassDecorator):
         self.experiment_key = experiment_key
         self.secret = secret
         self.host = host
-        self.init_kwargs = init_kwargs
+        self.login_kwargs = login_kwargs
 
         super().__init__(
             task_function,
@@ -84,15 +84,15 @@ class comet_ml_init(ClassDecorator):
             experiment_key=experiment_key,
             secret=secret,
             host=host,
-            **init_kwargs,
+            **login_kwargs,
         )
 
     def execute(self, *args, **kwargs):
         ctx = FlyteContextManager.current_context()
         is_local_execution = ctx.execution_state.is_local_execution()
 
-        default_kwargs = self.init_kwargs
-        init_kwargs = {
+        default_kwargs = self.login_kwargs
+        login_kwargs = {
             "project_name": self.project_name,
             "workspace": self.workspace,
             **default_kwargs,
@@ -102,7 +102,7 @@ class comet_ml_init(ClassDecorator):
             # For local execution, always use the experiment_key. If `self.experiment_key` is `None`, comet_ml
             # will generate it's own key
             if self.experiment_key is not None:
-                init_kwargs["experiment_key"] = self.experiment_key
+                login_kwargs["experiment_key"] = self.experiment_key
         else:
             # Get api key for remote execution
             if isinstance(self.secret, Secret):
@@ -111,7 +111,7 @@ class comet_ml_init(ClassDecorator):
             else:
                 comet_ml_api_key = self.secret()
 
-            init_kwargs["api_key"] = comet_ml_api_key
+            login_kwargs["api_key"] = comet_ml_api_key
 
             if self.experiment_key is None:
                 # The HOSTNAME is set to {.executionName}-{.nodeID}-{.taskRetryAttempt}
@@ -121,9 +121,13 @@ class comet_ml_init(ClassDecorator):
             else:
                 experiment_key = self.experiment_key
 
-            init_kwargs["experiment_key"] = experiment_key
+            login_kwargs["experiment_key"] = experiment_key
 
-        comet_ml.init(**init_kwargs)
+        if hasattr(comet_ml, "login"):
+            comet_ml.login(**login_kwargs)
+        else:
+            comet_ml.init(**login_kwargs)
+
         output = self.task_function(*args, **kwargs)
         return output
 
