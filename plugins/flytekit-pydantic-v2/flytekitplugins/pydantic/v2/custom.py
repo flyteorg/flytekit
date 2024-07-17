@@ -8,7 +8,13 @@ from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar, Schema
 from flytekit.types.directory import FlyteDirectory, FlyteDirToMultipartBlobTransformer
 from flytekit.types.file import FlyteFile, FlyteFilePathTransformer
 from flytekit.types.schema import FlyteSchema, FlyteSchemaTransformer
-from flytekit.types.structured import StructuredDataset, StructuredDatasetTransformerEngine, StructuredDatasetMetadata, StructuredDatasetType
+from flytekit.types.structured import (
+    StructuredDataset,
+    StructuredDatasetMetadata,
+    StructuredDatasetTransformerEngine,
+    StructuredDatasetType,
+)
+
 
 @model_serializer
 def serialize_flyte_file(self) -> Dict[str, str]:
@@ -87,11 +93,10 @@ def deserialize_flyte_schema(self) -> FlyteSchema:
         type(self),
     )
 
+
 @model_serializer
 def serialize_structured_dataset(self) -> Dict[str, str]:
-    lv = StructuredDatasetTransformerEngine().to_literal(
-        FlyteContextManager.current_context(), self, type(self), None
-    )
+    lv = StructuredDatasetTransformerEngine().to_literal(FlyteContextManager.current_context(), self, type(self), None)
     sd = StructuredDataset(uri=lv.scalar.structured_dataset.uri)
     sd.file_format = lv.scalar.structured_dataset.metadata.structured_dataset_type.format
     return {
@@ -126,5 +131,3 @@ def deserialize_structured_dataset(self) -> StructuredDataset:
     )
 
     return pv
-
-

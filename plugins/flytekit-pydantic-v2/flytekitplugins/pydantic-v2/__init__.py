@@ -7,11 +7,11 @@ from .custom import (
     deserialize_flyte_dir,
     deserialize_flyte_file,
     deserialize_flyte_schema,
+    deserialize_structured_dataset,
     serialize_flyte_dir,
     serialize_flyte_file,
     serialize_flyte_schema,
     serialize_structured_dataset,
-    deserialize_structured_dataset,
 )
 
 setattr(FlyteFile, "serialize_flyte_file", serialize_flyte_file)

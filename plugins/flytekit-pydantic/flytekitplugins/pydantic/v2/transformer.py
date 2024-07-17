@@ -2,7 +2,6 @@ from typing import Any, Dict, Type
 
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
-from pydantic import BaseModel, model_serializer
 
 from flytekit import FlyteContext
 from flytekit.core.context_manager import FlyteContextManager
@@ -11,6 +10,7 @@ from flytekit.models import types
 from flytekit.models.literals import Literal, Scalar
 from flytekit.models.types import LiteralType
 from flytekit.types.file import FlyteFile, FlyteFilePathTransformer
+from pydantic import BaseModel, model_serializer
 
 
 @model_serializer

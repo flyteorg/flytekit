@@ -19,8 +19,8 @@ from .structured_dataset import (
     StructuredDataset,
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
-    StructuredDatasetTransformerEngine,
     StructuredDatasetMetadata,
+    StructuredDatasetTransformerEngine,
     StructuredDatasetType,
 )
 

@@ -71,6 +71,7 @@ class BaseModelTransformer(type_engine.TypeTransformer[pydantic.BaseModel]):
             pv = expected_python_type.parse_raw(basemodel_json_w_placeholders)
         return pv
 
+
 def read_basemodel_json_from_literalmap(lv: BaseModelLiterals) -> serialization.SerializedBaseModel:
     basemodel_literal: literals.Literal = lv[serialization.BASEMODEL_JSON_KEY]
     basemodel_json_w_placeholders = json_format.MessageToJson(basemodel_literal.scalar.generic)

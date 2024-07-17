@@ -1,13 +1,13 @@
 import contextlib
 from typing import Any, Callable, Dict, Generator, Iterator, List, Optional, Type, TypeVar, Union, cast
 
-from flytekit import StructuredDataset, FlyteContextManager
-from flytekit.types.schema import FlyteSchema, SchemaOpenMode
 from flytekitplugins.pydantic.v1 import commons, serialization
 
+from flytekit import FlyteContextManager, StructuredDataset
 from flytekit.core import context_manager, type_engine
 from flytekit.models import literals
 from flytekit.types import directory, file
+from flytekit.types.schema import FlyteSchema, SchemaOpenMode
 
 try:
     # TODO: Use pydantic v2 to serialize/deserialize data
@@ -94,6 +94,7 @@ def del_validators_on_supported_flyte_types() -> None:
     for flyte_type in commons.PYDANTIC_SUPPORTED_FLYTE_TYPES:
         delattr(flyte_type, PYDANTIC_VALIDATOR_METHOD_NAME)
 
+
 def add_flyte_validators_for_type(
     flyte_obj_type: Type[type_engine.T],
 ) -> Callable[[Any], Iterator[Callable[[Any], type_engine.T]]]:
@@ -106,7 +107,7 @@ def add_flyte_validators_for_type(
         getattr(flyte_obj_type, PYDANTIC_VALIDATOR_METHOD_NAME, lambda *_: [])(),
     )
 
-    def validator(object_uid_maybe: Union[commons.LiteralObjID, Any], self_instance = None) -> Union[type_engine.T, Any]:
+    def validator(object_uid_maybe: Union[commons.LiteralObjID, Any], self_instance=None) -> Union[type_engine.T, Any]:
         """Partial of deserialize_flyte_literal with the object_type fixed"""
         # breakpoint()
         # print("args", args)
@@ -130,7 +131,7 @@ def add_flyte_validators_for_type(
     return validator_generator
 
 
-def validate_flyteschema(flyteschema: Union[str, FlyteSchema], *args, **kwargs) -> file.FlyteFile:
+def validate_flyteschema(flyteschema: Union[str, FlyteSchema], *args) -> file.FlyteFile:
     """Validate a flytefile (i.e. deserialize)."""
     if isinstance(flyteschema, FlyteSchema):
         return flyteschema
@@ -141,12 +142,13 @@ def validate_flyteschema(flyteschema: Union[str, FlyteSchema], *args, **kwargs) 
 
         def downloader(x, y):
             ctx.file_access.get_data(x, y, is_multipart=False)
+
         return FlyteSchema(**flyteschema, downloader=downloader, supported_mode=SchemaOpenMode.READ)
     else:
         raise ValueError(f"Invalid type for flyteschema: {type(FlyteSchema)}")
 
 
-def validate_flytefile(flytefile: Union[str, file.FlyteFile], *args, **kwargs) -> file.FlyteFile:
+def validate_flytefile(flytefile: Union[str, file.FlyteFile], *args) -> file.FlyteFile:
     """Validate a flytefile (i.e. deserialize)."""
     if isinstance(flytefile, file.FlyteFile):
         return flytefile
@@ -185,8 +187,8 @@ def validate_structuredDataset(structured_dataset: Union[str, StructuredDataset]
 ADDITIONAL_FLYTETYPE_VALIDATORS: Dict[Type, List[Callable[[Any], Any]]] = {
     file.FlyteFile: [validate_flytefile],
     directory.FlyteDirectory: [validate_flytedir],
-    FlyteSchema: [validate_flyteschema],
-    StructuredDataset: [validate_structuredDataset]
+    # FlyteSchema: [validate_flyteschema],
+    # StructuredDataset: [validate_structuredDataset]
 }
 
 
