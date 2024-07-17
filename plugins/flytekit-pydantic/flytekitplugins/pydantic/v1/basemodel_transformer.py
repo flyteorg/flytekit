@@ -10,6 +10,7 @@ from flytekit.core import type_engine
 from flytekit.models import literals, types
 
 from . import deserialization, serialization
+from .deserialization import set_validators_on_supported_flyte_types, del_validators_on_supported_flyte_types
 
 try:
     # TODO: Use pydantic v2 to serialize/deserialize data
@@ -52,7 +53,11 @@ class BaseModelTransformer(type_engine.TypeTransformer[pydantic.BaseModel]):
             "If you are using Pydantic version 2.0 or later, please import BaseModel using `from pydantic.v1 import BaseModel`.",
             FutureWarning,
         )
-        return serialization.serialize_basemodel(python_val)
+
+        set_validators_on_supported_flyte_types()
+        lv = serialization.serialize_basemodel(python_val)
+        # del_validators_on_supported_flyte_types()
+        return lv
 
     def to_python_value(
         self,
@@ -61,13 +66,16 @@ class BaseModelTransformer(type_engine.TypeTransformer[pydantic.BaseModel]):
         expected_python_type: Type[pydantic.BaseModel],
     ) -> pydantic.BaseModel:
         """Re-hydrate the pydantic BaseModel object from Flyte Literal value."""
+        set_validators_on_supported_flyte_types()
         basemodel_literals: BaseModelLiterals = lv.map.literals
         basemodel_json_w_placeholders = read_basemodel_json_from_literalmap(basemodel_literals)
         with deserialization.PydanticDeserializationLiteralStore.attach(
             basemodel_literals[serialization.OBJECTS_KEY].map
         ):
-            return expected_python_type.parse_raw(basemodel_json_w_placeholders)
+            pv = expected_python_type.parse_raw(basemodel_json_w_placeholders)
 
+        # del_validators_on_supported_flyte_types()
+        return pv
 
 def read_basemodel_json_from_literalmap(lv: BaseModelLiterals) -> serialization.SerializedBaseModel:
     basemodel_literal: literals.Literal = lv[serialization.BASEMODEL_JSON_KEY]

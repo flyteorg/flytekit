@@ -1,8 +1,8 @@
 from setuptools import setup
 
-PLUGIN_NAME = "pydanticv2"
+PLUGIN_NAME = "pydantic"
 
-microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
+microlib_name = f"flytekitplugins-{PLUGIN_NAME}-v2"
 
 plugin_requires = ["flytekit>=1.13.0", "pydantic>=2.8"]
 
@@ -14,11 +14,11 @@ setup(
     author="flyteorg",
     author_email="admin@flyte.org",
     description="Plugin adding type support for Pydantic models",
-    url="https://github.com/flyteorg/flytekit/tree/master/plugins/flytekit-pydantic",
+    url="https://github.com/flyteorg/flytekit/tree/master/plugins/flytekitplugins-pydantic-v2",
     # long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
     namespace_packages=["flytekitplugins"],
-    packages=[f"flytekitplugins.{PLUGIN_NAME}"],
+    packages=[f"flytekitplugins.{PLUGIN_NAME}.v2"],
     install_requires=plugin_requires,
     license="apache2",
     python_requires=">=3.8",
@@ -36,5 +36,5 @@ setup(
         "Topic :: Software Development :: Libraries",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
-    entry_points={"flytekit.plugins": [f"{PLUGIN_NAME}=flytekitplugins.{PLUGIN_NAME}"]},
+    entry_points={"flytekit.plugins": [f"{PLUGIN_NAME}.v2=flytekitplugins.{PLUGIN_NAME}.v2"]},
 )

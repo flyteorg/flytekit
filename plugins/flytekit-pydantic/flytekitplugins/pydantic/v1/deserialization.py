@@ -1,7 +1,7 @@
 import contextlib
 from typing import Any, Callable, Dict, Generator, Iterator, List, Optional, Type, TypeVar, Union, cast
 
-from flytekitplugins.pydantic import commons, serialization
+from flytekitplugins.pydantic.v1 import commons, serialization
 
 from flytekit.core import context_manager, type_engine
 from flytekit.models import literals
@@ -84,6 +84,13 @@ def set_validators_on_supported_flyte_types() -> None:
     for flyte_type in commons.PYDANTIC_SUPPORTED_FLYTE_TYPES:
         setattr(flyte_type, PYDANTIC_VALIDATOR_METHOD_NAME, add_flyte_validators_for_type(flyte_type))
 
+
+def del_validators_on_supported_flyte_types() -> None:
+    """
+    Remove pydantic validator for the flyte types supported by this plugin.
+    """
+    for flyte_type in commons.PYDANTIC_SUPPORTED_FLYTE_TYPES:
+        delattr(flyte_type, PYDANTIC_VALIDATOR_METHOD_NAME)
 
 def add_flyte_validators_for_type(
     flyte_obj_type: Type[type_engine.T],
