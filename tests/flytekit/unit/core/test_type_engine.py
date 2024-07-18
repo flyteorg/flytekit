@@ -19,11 +19,9 @@ from dataclasses_json import DataClassJsonMixin, dataclass_json
 from flyteidl.core import errors_pb2
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
-from marshmallow_enum import LoadDumpOptions
 from marshmallow_jsonschema import JSONSchema
 from mashumaro.mixins.json import DataClassJSONMixin
 from mashumaro.mixins.orjson import DataClassORJSONMixin
-from sympy import false
 from typing_extensions import Annotated, get_args, get_origin
 
 from flytekit import dynamic, kwtypes, task, workflow
@@ -1557,7 +1555,7 @@ def test_assert_dataclass_type():
     pv = Bar(x=3)
     with pytest.raises(
         TypeTransformerFailedError,
-        match="Type of Val '<class 'int'>' is not an instance of <class 'types.Args'>",
+        match="Type of Val '<class 'int'>' is not an instance of <class 'flytekit.core.type_engine.Args'>",
     ):
         DataclassTransformer().assert_type(gt, pv)
 

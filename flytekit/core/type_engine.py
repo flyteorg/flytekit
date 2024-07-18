@@ -24,7 +24,6 @@ from google.protobuf.json_format import MessageToDict as _MessageToDict
 from google.protobuf.json_format import ParseDict as _ParseDict
 from google.protobuf.message import Message
 from google.protobuf.struct_pb2 import Struct
-from marshmallow_enum import EnumField, LoadDumpOptions
 from mashumaro.codecs.json import JSONDecoder, JSONEncoder
 from mashumaro.mixins.json import DataClassJSONMixin
 from typing_extensions import Annotated, get_args, get_origin
@@ -443,8 +442,10 @@ class DataclassTransformer(TypeTransformer[object]):
         try:
             schema = build_json_schema(cast(DataClassJSONMixin, self._get_origin_type_in_annotation(t))).to_dict()
         except Exception as e:
-            logger.error(f"Failed to extract schema for object {t}, error: {e}\n"
-                         f"Please remove `DataClassJsonMixin` and `dataclass_json` decorator from the dataclass definition")
+            logger.error(
+                f"Failed to extract schema for object {t}, error: {e}\n"
+                f"Please remove `DataClassJsonMixin` and `dataclass_json` decorator from the dataclass definition"
+            )
 
         # Recursively construct the dataclass_type which contains the literal type of each field
         literal_type = {}
