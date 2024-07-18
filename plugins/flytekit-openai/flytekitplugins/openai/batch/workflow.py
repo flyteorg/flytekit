@@ -16,8 +16,8 @@ from .task import (
 
 def create_batch(
     name: str,
-    openai_organization: str,
     secret: Secret,
+    openai_organization: Optional[str] = None,
     config: Optional[Dict[str, Any]] = None,
     is_json_iterator: bool = True,
     file_upload_mem: str = "700Mi",

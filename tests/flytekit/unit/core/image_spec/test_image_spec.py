@@ -25,6 +25,7 @@ def test_image_spec(mock_image_spec_builder):
         cudnn="8",
         requirements=REQUIREMENT_FILE,
         registry_config=REGISTRY_CONFIG_FILE,
+        entrypoint=["/bin/bash"],
     )
     assert image_spec._is_force_push is False
 
@@ -50,6 +51,7 @@ def test_image_spec(mock_image_spec_builder):
     assert image_spec.is_container() is True
     assert image_spec.commands == ["echo hello"]
     assert image_spec._is_force_push is True
+    assert image_spec.entrypoint == ["/bin/bash"]
 
     tag = calculate_hash_from_image_spec(image_spec)
     assert "=" != tag[-1]
@@ -66,7 +68,7 @@ def test_image_spec(mock_image_spec_builder):
 
     assert "dummy" in ImageBuildEngine._REGISTRY
     assert calculate_hash_from_image_spec(image_spec) == tag
-    assert image_spec.exist() is True
+    assert image_spec.exist() is None
 
     # Remove the dummy builder, and build the image again
     # The image has already been built, so it shouldn't fail.

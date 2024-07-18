@@ -7,10 +7,10 @@ import pathlib
 import tempfile
 import typing
 from dataclasses import dataclass, field, fields
-from typing import cast, get_args
+from typing import get_args
 
 import rich_click as click
-from dataclasses_json import DataClassJsonMixin
+from mashumaro.codecs.json import JSONEncoder
 from rich.progress import Progress
 
 from flytekit import Annotations, FlyteContext, FlyteContextManager, Labels, Literal
@@ -395,7 +395,8 @@ def to_click_option(
             if type(default_val) == dict or type(default_val) == list:
                 default_val = json.dumps(default_val)
             else:
-                default_val = cast(DataClassJsonMixin, default_val).to_json()
+                encoder = JSONEncoder(python_type)
+                default_val = encoder.encode(default_val)
         if literal_var.type.metadata:
             description_extra = f": {json.dumps(literal_var.type.metadata)}"
 
@@ -528,7 +529,8 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
         # By the time we get to this function, all the loading has already happened
 
         run_level_params: RunLevelParams = ctx.obj
-        logger.debug(f"Running {entity.name} with {kwargs} and run_level_params {run_level_params}")
+        entity_type = "workflow" if isinstance(entity, PythonFunctionWorkflow) else "task"
+        logger.debug(f"Running {entity_type} {entity.name} with input {kwargs}")
 
         click.secho(f"Running Execution on {'Remote' if run_level_params.is_remote else 'local'}.", fg="cyan")
         try:

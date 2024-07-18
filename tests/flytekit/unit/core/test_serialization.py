@@ -12,7 +12,7 @@ from flytekit.core.condition import conditional
 from flytekit.core.python_auto_container import get_registerable_container_image
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
-from flytekit.exceptions.user import FlyteAssertion
+from flytekit.exceptions.user import FlyteAssertion, FlyteMissingTypeException
 from flytekit.image_spec.image_spec import ImageBuildEngine, _calculate_deduped_hash_from_image_spec
 from flytekit.models.admin.workflow import WorkflowSpec
 from flytekit.models.literals import (
@@ -727,22 +727,18 @@ def test_default_args_task_optional_int_type_default_int():
 
 
 def test_default_args_task_no_type_hint():
-    @task
-    def t1(a=0) -> int:
-        return a
+    with pytest.raises(FlyteMissingTypeException, match="'a' has no type. Please add a type annotation to the input parameter"):
+        @task
+        def t1(a=0) -> int:
+            return a
 
-    @workflow
-    def wf_no_input() -> int:
-        return t1()
+        @workflow
+        def wf_no_input() -> int:
+            return t1()
 
-    @workflow
-    def wf_with_input() -> int:
-        return t1(a=100)
-
-    with pytest.raises(TypeError, match="Arguments do not have type annotation"):
-        get_serializable(OrderedDict(), serialization_settings, wf_no_input)
-    with pytest.raises(TypeError, match="Arguments do not have type annotation"):
-        get_serializable(OrderedDict(), serialization_settings, wf_with_input)
+        @workflow
+        def wf_with_input() -> int:
+            return t1(a=100)
 
 
 def test_default_args_task_mismatch_type():
