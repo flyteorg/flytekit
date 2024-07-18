@@ -437,30 +437,8 @@ class DataclassTransformer(TypeTransformer[object]):
             # Drop all annotations and handle only the dataclass type passed in.
             t = args[0]
 
-        schema = None
-        try:
-            if issubclass(t, DataClassJsonMixin):
-                s = cast(DataClassJsonMixin, self._get_origin_type_in_annotation(t)).schema()
-                for _, v in s.fields.items():
-                    # marshmallow-jsonschema only supports enums loaded by name.
-                    # https://github.com/fuhrysteve/marshmallow-jsonschema/blob/81eada1a0c42ff67de216923968af0a6b54e5dcb/marshmallow_jsonschema/base.py#L228
-                    if isinstance(v, EnumField):
-                        v.load_by = LoadDumpOptions.name
-                # check if DataClass mixin
-                from marshmallow_jsonschema import JSONSchema
-
-                schema = JSONSchema().dump(s)
-            else:  # DataClassJSONMixin
-                from mashumaro.jsonschema import build_json_schema
-
-                schema = build_json_schema(cast(DataClassJSONMixin, self._get_origin_type_in_annotation(t))).to_dict()
-        except Exception as e:
-            # https://github.com/lovasoa/marshmallow_dataclass/issues/13
-            logger.warning(
-                f"Failed to extract schema for object {t}, (will run schemaless) error: {e}"
-                f"If you have postponed annotations turned on (PEP 563) turn it off please. Postponed"
-                f"evaluation doesn't work with json dataclasses"
-            )
+        from mashumaro.jsonschema import build_json_schema
+        schema = build_json_schema(cast(DataClassJSONMixin, self._get_origin_type_in_annotation(t))).to_dict()
 
         # Recursively construct the dataclass_type which contains the literal type of each field
         literal_type = {}
