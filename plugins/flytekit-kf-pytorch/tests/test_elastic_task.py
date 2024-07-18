@@ -204,7 +204,7 @@ def test_default_timeouts():
 
     assert test_task.task_config.rdzv_configs == {"join_timeout": 900, "timeout": 900}
 
-    
+
 def test_run_policy() -> None:
     """Test that run policy is propagated to custom spec."""
 
