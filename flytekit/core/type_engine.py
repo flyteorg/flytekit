@@ -425,6 +425,8 @@ class DataclassTransformer(TypeTransformer[object]):
         Extracts the Literal type definition for a Dataclass and returns a type Struct.
         If possible also extracts the JSONSchema for the dataclass.
         """
+        from mashumaro.jsonschema import build_json_schema
+
         if is_annotated(t):
             args = get_args(t)
             for x in args[1:]:
@@ -437,8 +439,12 @@ class DataclassTransformer(TypeTransformer[object]):
             # Drop all annotations and handle only the dataclass type passed in.
             t = args[0]
 
-        from mashumaro.jsonschema import build_json_schema
-        schema = build_json_schema(cast(DataClassJSONMixin, self._get_origin_type_in_annotation(t))).to_dict()
+        schema = None
+        try:
+            schema = build_json_schema(cast(DataClassJSONMixin, self._get_origin_type_in_annotation(t))).to_dict()
+        except Exception as e:
+            logger.error(f"Failed to extract schema for object {t}, error: {e}\n"
+                         f"Please remove `DataClassJsonMixin` and `dataclass_json` decorator from the dataclass definition")
 
         # Recursively construct the dataclass_type which contains the literal type of each field
         literal_type = {}
