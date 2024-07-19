@@ -81,19 +81,19 @@ def create_sagemaker_deployment(
         wf.add_workflow_input("region", str)
 
     if idempotence_token:
-        append_token(model_config, "ModelName", idempotence_token, name)
-        append_token(endpoint_config_config, "EndpointConfigName", idempotence_token, name)
+        append_token(model_config, "ModelName", "idempotence_token", name)
+        append_token(endpoint_config_config, "EndpointConfigName", "idempotence_token", name)
 
         if "ProductionVariants" in endpoint_config_config and endpoint_config_config["ProductionVariants"]:
             append_token(
                 endpoint_config_config["ProductionVariants"][0],
                 "ModelName",
-                inputs.idempotence_token,
+                "inputs.idempotence_token",
                 name,
             )
 
-        append_token(endpoint_config, "EndpointName", idempotence_token, name)
-        append_token(endpoint_config, "EndpointConfigName", inputs.idempotence_token, name)
+        append_token(endpoint_config, "EndpointName", "idempotence_token", name)
+        append_token(endpoint_config, "EndpointConfigName", "inputs.idempotence_token", name)
 
     inputs = {
         SageMakerModelTask: {
