@@ -230,6 +230,7 @@ def setup_execution(
     tk_version = get_one_of("FLYTE_INTERNAL_TASK_VERSION", "_F_TK_V")
 
     compressed_serialization_settings = os.environ.get(SERIALIZED_CONTEXT_ENV_VAR, "")
+    print("compressed_serialization_settings", compressed_serialization_settings)
 
     ctx = FlyteContextManager.current_context()
     # Create directories
