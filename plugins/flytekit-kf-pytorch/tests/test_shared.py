@@ -72,6 +72,20 @@ from flytekit import PodTemplate, task
             True,
             False,
         ),
+        # Test that we raise if the user explicitly configured a shared memory volume and still configures the task config to add it
+        (
+            Elastic(nnodes=2, increase_shared_mem=True),
+            PodTemplate(
+                pod_spec=V1PodSpec(
+                    containers=[
+                        V1Container(name="primary", volume_mounts=[V1VolumeMount(name="shm", mount_path="/dev/shm")]),
+                    ],
+                    volumes=[V1Volume(name="shm", empty_dir=V1EmptyDirVolumeSource(medium="Memory"))],
+                ),
+            ),
+            True,
+            True,
+        ),
     ],
 )
 def test_task_shared_memory(
