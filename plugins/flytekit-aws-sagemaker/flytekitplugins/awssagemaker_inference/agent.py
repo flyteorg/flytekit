@@ -109,10 +109,7 @@ class SageMakerEndpointAgent(Boto3AgentMixin, AsyncAgentBase):
 
         res = None
         if current_state == "InService":
-            res = {
-                "result": {"EndpointArn": endpoint_status.get("EndpointArn")},
-                "idempotence_token": idempotence_token,
-            }
+            res = {"result": {"EndpointArn": endpoint_status.get("EndpointArn")}}
 
         return Resource(phase=flyte_phase, outputs=res, message=message)
 
