@@ -19,6 +19,7 @@ from dataclasses_json import DataClassJsonMixin, dataclass_json
 from flyteidl.core import errors_pb2
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
+from marshmallow_enum import LoadDumpOptions
 from marshmallow_jsonschema import JSONSchema
 from mashumaro.mixins.json import DataClassJSONMixin
 from mashumaro.mixins.orjson import DataClassORJSONMixin
@@ -706,30 +707,30 @@ def test_zero_floats():
 
 def test_dataclass_transformer():
     @dataclass
-    class InnerStruct:
+    class InnerStruct(DataClassJsonMixin):
         a: int
         b: typing.Optional[str]
         c: typing.List[int]
 
     @dataclass
-    class TestStruct:
+    class TestStruct(DataClassJsonMixin):
         s: InnerStruct
         m: typing.Dict[str, str]
 
     @dataclass
-    class TestStructB:
+    class TestStructB(DataClassJsonMixin):
         s: InnerStruct
         m: typing.Dict[int, str]
         n: typing.Optional[typing.List[typing.List[int]]] = None
         o: typing.Optional[typing.Dict[int, typing.Dict[int, int]]] = None
 
     @dataclass
-    class TestStructC:
+    class TestStructC(DataClassJsonMixin):
         s: InnerStruct
         m: typing.Dict[str, int]
 
     @dataclass
-    class TestStructD:
+    class TestStructD(DataClassJsonMixin):
         s: InnerStruct
         m: typing.Dict[str, typing.List[int]]
 
@@ -738,43 +739,45 @@ def test_dataclass_transformer():
             self._a = "Hello"
 
     @dataclass
-    class UnsupportedNestedStruct:
+    class UnsupportedNestedStruct(DataClassJsonMixin):
         a: int
         s: UnsupportedSchemaType
 
     schema = {
-        "type": "object",
-        "title": "TestStruct",
-        "properties": {
-            "s": {
-                "type": "object",
-                "title": "InnerStruct",
-                "properties": {
-                    "a": {"type": "integer"},
-                    "b": {
-                        "anyOf": [
-                            {"type": "string"},
-                            {"type": "null"}
-                        ]
-                    },
-                    "c": {
-                        "type": "array",
-                        "items": {"type": "integer"}
-                    }
-                },
+        "$ref": "#/definitions/TeststructSchema",
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+            "InnerstructSchema": {
                 "additionalProperties": False,
-                "required": ["a", "b", "c"]
-            },
-            "m": {
+                "properties": {
+                    "a": {"title": "a", "type": "integer"},
+                    "b": {"default": None, "title": "b", "type": ["string", "null"]},
+                    "c": {
+                        "items": {"title": "c", "type": "integer"},
+                        "title": "c",
+                        "type": "array",
+                    },
+                },
                 "type": "object",
-                "additionalProperties": {"type": "string"},
-                "propertyNames": {"type": "string"}
-            }
+            },
+            "TeststructSchema": {
+                "additionalProperties": False,
+                "properties": {
+                    "m": {
+                        "additionalProperties": {"title": "m", "type": "string"},
+                        "title": "m",
+                        "type": "object",
+                    },
+                    "s": {
+                        "$ref": "#/definitions/InnerstructSchema",
+                        "field_many": False,
+                        "type": "object",
+                    },
+                },
+                "type": "object",
+            },
         },
-        "additionalProperties": False,
-        "required": ["s", "m"]
     }
-
     tf = DataclassTransformer()
     t = tf.get_literal_type(TestStruct)
     assert t is not None
@@ -1533,12 +1536,12 @@ def test_union_type():
 
 def test_assert_dataclass_type():
     @dataclass
-    class Args:
+    class Args(DataClassJsonMixin):
         x: int
         y: typing.Optional[str]
 
     @dataclass
-    class Schema:
+    class Schema(DataClassJsonMixin):
         x: typing.Optional[Args] = None
 
     pt = Schema
@@ -1549,13 +1552,13 @@ def test_assert_dataclass_type():
     DataclassTransformer().assert_type(Schema, pv)
 
     @dataclass
-    class Bar:
+    class Bar(DataClassJsonMixin):
         x: int
 
     pv = Bar(x=3)
     with pytest.raises(
         TypeTransformerFailedError,
-        match="Type of Val '<class 'int'>' is not an instance of <class 'flytekit.core.type_engine.Args'>",
+        match="Type of Val '<class 'int'>' is not an instance of <class '.*.ArgsSchema'>",
     ):
         DataclassTransformer().assert_type(gt, pv)
 
@@ -2070,11 +2073,15 @@ def test_pickle_type():
 
 def test_enum_in_dataclass():
     @dataclass
-    class Datum(DataClassJSONMixin):
+    class Datum(DataClassJsonMixin):
         x: int
         y: Color
 
     lt = TypeEngine.to_literal_type(Datum)
+    schema = Datum.schema()
+    schema.fields["y"].load_by = LoadDumpOptions.name
+    assert lt.metadata == JSONSchema().dump(schema)
+
     transformer = DataclassTransformer()
     ctx = FlyteContext.current_context()
     datum = Datum(5, Color.RED)
@@ -2370,13 +2377,13 @@ TestSchema = FlyteSchema[kwtypes(some_str=str)]  # type: ignore
 
 
 @dataclass
-class InnerResult:
+class InnerResult(DataClassJsonMixin):
     number: int
     schema: TestSchema  # type: ignore
 
 
 @dataclass
-class Result:
+class Result(DataClassJsonMixin):
     result: InnerResult
     schema: TestSchema  # type: ignore
 
@@ -2399,13 +2406,13 @@ def test_unsupported_complex_literals(t):
 
 
 @dataclass
-class DataclassTest:
+class DataclassTest(DataClassJsonMixin):
     a: int
     b: str
 
 
 @dataclass
-class AnnotatedDataclassTest:
+class AnnotatedDataclassTest(DataClassJsonMixin):
     a: int
     b: Annotated[str, "str tag"]
 
@@ -2450,18 +2457,18 @@ class AnnotatedDataclassTest:
             LiteralType(
                 simple=SimpleType.STRUCT,
                 metadata={
-                    "type": "object",
-                    "title": "DataclassTest",
-                    "required": ["a", "b"],
-                    "properties": {
-                        "b": {
-                            "type": "string"
-                        },
-                        "a": {
-                            "type": "integer"
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "definitions": {
+                        "DataclasstestSchema": {
+                            "properties": {
+                                "a": {"title": "a", "type": "integer"},
+                                "b": {"title": "b", "type": "string"},
+                            },
+                            "type": "object",
+                            "additionalProperties": False,
                         }
                     },
-                    "additionalProperties": False
+                    "$ref": "#/definitions/DataclasstestSchema",
                 },
                 structure=TypeStructure(
                     tag="",
@@ -2478,18 +2485,18 @@ class AnnotatedDataclassTest:
             LiteralType(
                 simple=SimpleType.STRUCT,
                 metadata={
-                    "type": "object",
-                    "title": "DataclassTest",
-                    "required": ["a", "b"],
-                    "properties": {
-                        "b": {
-                            "type": "string"
-                        },
-                        "a": {
-                            "type": "integer"
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "definitions": {
+                        "DataclasstestSchema": {
+                            "properties": {
+                                "a": {"title": "a", "type": "integer"},
+                                "b": {"title": "b", "type": "string"},
+                            },
+                            "type": "object",
+                            "additionalProperties": False,
                         }
                     },
-                    "additionalProperties": False
+                    "$ref": "#/definitions/DataclasstestSchema",
                 },
                 structure=TypeStructure(
                     tag="",
@@ -2506,18 +2513,18 @@ class AnnotatedDataclassTest:
             LiteralType(
                 simple=SimpleType.STRUCT,
                 metadata={
-                    "type": "object",
-                    "title": "AnnotatedDataclassTest",
-                    "required": ["a", "b"],
-                    "properties": {
-                        "b": {
-                            "type": "string"
-                        },
-                        "a": {
-                            "type": "integer"
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "definitions": {
+                        "AnnotateddataclasstestSchema": {
+                            "properties": {
+                                "a": {"title": "a", "type": "integer"},
+                                "b": {"title": "b", "type": "string"},
+                            },
+                            "type": "object",
+                            "additionalProperties": False,
                         }
                     },
-                    "additionalProperties": False
+                    "$ref": "#/definitions/AnnotateddataclasstestSchema",
                 },
                 structure=TypeStructure(
                     tag="",

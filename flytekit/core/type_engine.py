@@ -424,7 +424,6 @@ class DataclassTransformer(TypeTransformer[object]):
         Extracts the Literal type definition for a Dataclass and returns a type Struct.
         If possible also extracts the JSONSchema for the dataclass.
         """
-        from mashumaro.jsonschema import build_json_schema
 
         if is_annotated(t):
             args = get_args(t)
@@ -440,12 +439,37 @@ class DataclassTransformer(TypeTransformer[object]):
 
         schema = None
         try:
-            schema = build_json_schema(cast(DataClassJSONMixin, self._get_origin_type_in_annotation(t))).to_dict()
+            from marshmallow_enum import EnumField, LoadDumpOptions
+
+            if issubclass(t, DataClassJsonMixin):
+                s = cast(DataClassJsonMixin, self._get_origin_type_in_annotation(t)).schema()
+                for _, v in s.fields.items():
+                    # marshmallow-jsonschema only supports enums loaded by name.
+                    # https://github.com/fuhrysteve/marshmallow-jsonschema/blob/81eada1a0c42ff67de216923968af0a6b54e5dcb/marshmallow_jsonschema/base.py#L228
+                    if isinstance(v, EnumField):
+                        v.load_by = LoadDumpOptions.name
+                # check if DataClass mixin
+                from marshmallow_jsonschema import JSONSchema
+
+                schema = JSONSchema().dump(s)
         except Exception as e:
-            logger.error(
-                f"Failed to extract schema for object {t}, error: {e}\n"
-                f"Please remove `DataClassJsonMixin` and `dataclass_json` decorator from the dataclass definition"
+            # https://github.com/lovasoa/marshmallow_dataclass/issues/13
+            logger.warning(
+                f"Failed to extract schema for object {t}, (will run schemaless) error: {e}"
+                f"If you have postponed annotations turned on (PEP 563) turn it off please. Postponed"
+                f"evaluation doesn't work with json dataclasses"
             )
+
+        if schema is None:
+            try:
+                from mashumaro.jsonschema import build_json_schema
+
+                schema = build_json_schema(cast(DataClassJSONMixin, self._get_origin_type_in_annotation(t))).to_dict()
+            except Exception as e:
+                logger.error(
+                    f"Failed to extract schema for object {t}, error: {e}\n"
+                    f"Please remove `DataClassJsonMixin` and `dataclass_json` decorator from the dataclass definition"
+                )
 
         # Recursively construct the dataclass_type which contains the literal type of each field
         literal_type = {}
