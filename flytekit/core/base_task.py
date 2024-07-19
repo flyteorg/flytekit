@@ -56,6 +56,7 @@ from flytekit.core.context_manager import (
     FlyteContextManager,
     FlyteEntities,
 )
+from flytekit.core.future import FlyteFuture
 from flytekit.core.interface import Interface, transform_interface_to_typed_interface
 from flytekit.core.local_cache import LocalTaskCache
 from flytekit.core.promise import (
@@ -794,6 +795,9 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         This method will be invoked to execute the task.
         """
         pass
+
+    def remote(self, **kwargs) -> FlyteFuture:
+        return FlyteFuture(self, **kwargs)
 
     def post_execute(self, user_params: Optional[ExecutionParameters], rval: Any) -> Any:
         """
