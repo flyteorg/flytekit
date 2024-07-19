@@ -22,35 +22,44 @@ idempotence_token = "74443947857331f7"
 @pytest.mark.parametrize(
     "mock_return_value",
     [
-        ((
-            {
-                "EndpointConfigArn": "arn:aws:sagemaker:us-east-2:000000000:endpoint-config/sagemaker-xgboost-endpoint-config",
-            },
-            idempotence_token,
-        ), "create_endpoint_config"),
-        ((
-            {
-                "pickle_check": datetime(2024, 5, 5),
-                "Location": "http://examplebucket.s3.amazonaws.com/",
-            },
-            idempotence_token,
-        ), "create_bucket"),
+        (
+            (
+                {
+                    "EndpointConfigArn": "arn:aws:sagemaker:us-east-2:000000000:endpoint-config/sagemaker-xgboost-endpoint-config",
+                },
+                idempotence_token,
+            ),
+            "create_endpoint_config",
+        ),
+        (
+            (
+                {
+                    "pickle_check": datetime(2024, 5, 5),
+                    "Location": "http://examplebucket.s3.amazonaws.com/",
+                },
+                idempotence_token,
+            ),
+            "create_bucket",
+        ),
         ((None, idempotence_token), "create_endpoint_config"),
-        ((
-            CustomException(
-                message="An error occurred",
-                idempotence_token=idempotence_token,
-                original_exception=ClientError(
-                    error_response={
-                        "Error": {
-                            "Code": "ValidationException",
-                            "Message": "Cannot create already existing endpoint 'arn:aws:sagemaker:us-east-2:123456789:endpoint/stable-diffusion-endpoint-non-finetuned-06716dbe4b2c68e7'",
-                        }
-                    },
-                    operation_name="DescribeEndpoint",
-                ),
-            )
-        ), "create_endpoint_config"),
+        (
+            (
+                CustomException(
+                    message="An error occurred",
+                    idempotence_token=idempotence_token,
+                    original_exception=ClientError(
+                        error_response={
+                            "Error": {
+                                "Code": "ValidationException",
+                                "Message": "Cannot create already existing endpoint 'arn:aws:sagemaker:us-east-2:123456789:endpoint/stable-diffusion-endpoint-non-finetuned-06716dbe4b2c68e7'",
+                            }
+                        },
+                        operation_name="DescribeEndpoint",
+                    ),
+                )
+            ),
+            "create_endpoint_config",
+        ),
     ],
 )
 @mock.patch(
