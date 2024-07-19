@@ -58,6 +58,20 @@ from flytekit import PodTemplate, task
             True,
             True,
         ),
+        # Test that explicitly configured pod template with shared memory volume is not removed if `increase_shared_mem=False`
+        (
+            Elastic(nnodes=2, increase_shared_mem=False),
+            PodTemplate(
+                pod_spec=V1PodSpec(
+                    containers=[
+                        V1Container(name="primary", volume_mounts=[V1VolumeMount(name="shm", mount_path="/dev/shm")]),
+                    ],
+                    volumes=[V1Volume(name="shm", empty_dir=V1EmptyDirVolumeSource(medium="Memory"))],
+                ),
+            ),
+            True,
+            False,
+        ),
     ],
 )
 def test_task_shared_memory(
@@ -90,6 +104,7 @@ def test_task_shared_memory(
             )
 
         else:
+            # Check that the shared memory volume + volume mount is not added
             no_pod_template = test_task.pod_template is None
             no_pod_spec = no_pod_template or test_task.pod_template.pod_spec is None
             no_volumes = no_pod_spec or test_task.pod_template.pod_spec.volumes is None
