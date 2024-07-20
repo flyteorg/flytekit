@@ -241,17 +241,4 @@ class TorchAsyncCheckpoint(Checkpoint):
         self._async_upload = executor.submit(self._on_local_saved, cp, future)
         return
 
-    def read(self) -> typing.Optional[bytes]:
-        p = self.restore()
-        if p is None:
-            return None
-        files = list(p.iterdir())
-        if len(files) == 0:
-            return None
-        if len(files) > 1:
-            raise ValueError(f"Expected exactly one checkpoint - found {len(files)}")
-        f = files[0]
-        return f.read_bytes()
 
-    def write(self, b: bytes):
-        raise NotImplementedError("This class is async, use save instead")
