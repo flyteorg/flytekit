@@ -321,10 +321,11 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
             **kwargs,
         )
         try:
-            from torch.distributed import run
+            pass
+            # from torch.distributed import run
         except ImportError:
             raise ImportError(TORCH_IMPORT_ERROR_MESSAGE)
-        self.min_nodes, self.max_nodes = run.parse_min_max_nnodes(str(self.task_config.nnodes))
+        self.min_nodes, self.max_nodes = parse_min_max_nnodes(str(self.task_config.nnodes))
 
         """
         c10d is the backend recommended by torch elastic.
