@@ -34,8 +34,8 @@ async def launch(request: LaunchModel, background_tasks: BackgroundTasks):
     task: sky.Task = sky.Task.from_yaml_config(request.task)
     task_setting = TaskRemotePathSetting.from_minimal_setting(request.setting)
     new_loop = asyncio.get_event_loop()
-    asyncio.run_coroutine_threadsafe(cluster_registry.create(task, task_setting), new_loop)
-    # background_tasks.add_task(cluster_registry.create, task, task_setting)
+    # asyncio.run_coroutine_threadsafe(cluster_registry.create(task, task_setting), new_loop)
+    background_tasks.add_task(cluster_registry.create, task, task_setting)
     return {"hostname": _hostname}
     
 @app.post("/stop_cluster")
