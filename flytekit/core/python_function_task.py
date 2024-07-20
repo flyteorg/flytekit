@@ -235,7 +235,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
 
         with FlyteContextManager.with_context(updated_ctx):
             # TODO: Resolve circular import
-            from flytekit.tools.translator import get_serializable
+            from flytekit.tools.translator import Options, get_serializable
 
             self._create_and_cache_dynamic_workflow()
             cast(PythonFunctionWorkflow, self._wf).compile(**kwargs)
@@ -245,8 +245,20 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
             # See comment on reference entity checking a bit down below in this function.
             # This is the only circular dependency between the translator.py module and the rest of the flytekit
             # authoring experience.
+
+            # If during runtime we are execution a dynamic function that is pickled, all subsequent sub-tasks in dynamic
+            # should also be pickled. As this is not possible to do during static compilation, we will have to upload
+            # the pickled file to the metadata store directly during runtime.
+            # If at runtime we are in dynamic task, we will automatically have the fast_register_file_uploader set,
+            # so we can use that to pass the file uploader to the translator.
+            options = None
+            if ctx.fast_register_file_uploader:
+                options = Options(file_uploader=ctx.fast_register_file_uploader)
             workflow_spec: admin_workflow_models.WorkflowSpec = get_serializable(
-                model_entities, ctx.serialization_settings, wf
+                model_entities,
+                ctx.serialization_settings,
+                wf,
+                options=options,
             )
 
             # If no nodes were produced, let's just return the strict outputs
