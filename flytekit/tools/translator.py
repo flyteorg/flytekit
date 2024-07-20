@@ -243,6 +243,9 @@ def get_serializable_task(
         settings.version,
     )
 
+    # Try update the serialization settings for ipython / jupyter notebook / interactive mode
+    settings = _update_serialization_settings_for_ipython(entity, settings, options)
+
     if isinstance(entity, PythonFunctionTask) and entity.execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
         for e in context_manager.FlyteEntities.entities:
             if isinstance(e, PythonAutoContainerTask):
@@ -265,9 +268,6 @@ def get_serializable_task(
         if entity.node_dependency_hints is not None:
             for entity_hint in entity.node_dependency_hints:
                 get_serializable(entity_mapping, settings, entity_hint, options)
-
-    # Try update the serialization settings for ipython / jupyter notebook / interactive mode
-    settings = _update_serialization_settings_for_ipython(entity, settings, options)
 
     container = entity.get_container(settings)
     # This pod will be incorrect when doing fast serialize
