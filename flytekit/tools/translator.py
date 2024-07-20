@@ -1,3 +1,4 @@
+import hashlib
 import pathlib
 import sys
 import tempfile
@@ -26,6 +27,7 @@ from flytekit.core.reference_entity import ReferenceEntity, ReferenceSpec, Refer
 from flytekit.core.task import ReferenceTask
 from flytekit.core.utils import ClassDecorator, _dnsify
 from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase
+from flytekit.exceptions.user import FlyteAssertion
 from flytekit.image_spec.image_spec import _calculate_deduped_hash_from_image_spec
 from flytekit.models import common as _common_models
 from flytekit.models import common as common_models
@@ -179,33 +181,53 @@ def _update_serialization_settings_for_ipython(
     serialization_settings: SerializationSettings,
     options: Optional[Options] = None,
 ) -> SerializationSettings:
+    # If the entity is not a PythonAutoContainerTask, we don't need to do anything, as only Tasks with container |
+    # user code in container need to be serialized as pickled objects.
+    if not isinstance(entity, PythonAutoContainerTask):
+        return serialization_settings
+
     from flytekit.tools.interactive import ipython_check
 
+    # Let's check if we are in an interactive environment like Jupyter notebook
     if ipython_check():
-        import rich
-
-        rich.get_console().print("[bold red]Jupyter notebook and interactive task support is still alpha.[/bold red]")
+        # We are in an interactive environment, let's check if the task is a PythonFunctionTask and the task function
+        # is defined in the main module. If so, we will serialize the task as a pickled object and upload it to remote
+        # storage. The main module check is to ensure that the task function is not defined in a notebook cell.
+        if isinstance(entity, PythonFunctionTask):
+            if not entity.task_function.__module__ == "__main__":
+                raise FlyteAssertion(
+                    "Task function should be defined in the main module | jupyter cell for"
+                    " interactive mode. Task function defined in imported modules is not supported."
+                    f" Task function {entity.task_function.__name__} is defined in an imported module"
+                )
         import gzip
 
         import cloudpickle
+        import rich
+
+        rich.get_console().print("[bold red]Jupyter notebook and interactive task support is still alpha.[/bold red]")
 
         from flytekit.configuration import FastSerializationSettings
 
         if options is None or options.file_uploader is None:
-            raise AssertionError("To work interactively with Flyte, a code transporter/uploader should be configured.")
+            raise FlyteAssertion("To work interactively with Flyte, a code transporter/uploader should be configured.")
+
         with tempfile.TemporaryDirectory() as tmp_dir:
             dest = pathlib.Path(tmp_dir, "pkl.gz")
             with gzip.GzipFile(filename=dest, mode="wb", mtime=0) as gzipped:
                 cloudpickle.dump(entity, gzipped)
             rich.get_console().print("[yellow]Uploading Pickled representation of Task to remote storage...[/ yellow]")
             md5_bytes, native_url = options.file_uploader(dest)
-            return (
-                serialization_settings.new_builder()
-                .with_fast_serialization_settings(
-                    FastSerializationSettings(enabled=True, pickled=True, distribution_location=native_url),
-                )
-                .build()
-            )
+            b = serialization_settings.new_builder()
+            if not serialization_settings.version and md5_bytes:
+                import base64
+
+                h = hashlib.md5(md5_bytes)
+                base64.urlsafe_b64encode(h.digest()).decode("ascii").rstrip("=")
+                b.version = md5_bytes
+            return b.with_fast_serialization_settings(
+                FastSerializationSettings(enabled=True, pickled=True, distribution_location=native_url),
+            ).build()
     return serialization_settings
 
 
