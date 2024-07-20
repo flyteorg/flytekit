@@ -198,6 +198,17 @@ def get_one_of(*args) -> str:
     return ""
 
 
+def _fast_register_file_uploader(file_access: FileAccessProvider, dest: str, src: str):
+    """
+    This function can be used during dynamic task execution, where the downstream task needs to be pickled and uploaded
+
+    :param file_access: The file access provider
+    :param src: The source file to upload
+    """
+    # return md5_bytes and path
+    return "", file_access.put_data(src, dest)
+
+
 @contextlib.contextmanager
 def setup_execution(
     raw_output_data_prefix: str,
@@ -290,7 +301,7 @@ def setup_execution(
         logger.error(f"No data plugin found for raw output prefix {raw_output_data_prefix}")
         raise
 
-    ctx = ctx.new_builder().with_file_access(file_access).build()
+    ctx = ctx.new_builder().with_file_access(file_access).with_fast_register_file_uploader().build()
 
     es = ctx.new_execution_state().with_params(
         mode=ExecutionState.Mode.TASK_EXECUTION,
