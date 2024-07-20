@@ -1,6 +1,7 @@
 import asyncio
 import contextlib
 import datetime
+import functools
 import inspect
 import os
 import pathlib
@@ -301,7 +302,7 @@ def setup_execution(
         logger.error(f"No data plugin found for raw output prefix {raw_output_data_prefix}")
         raise
 
-    ctx = ctx.new_builder().with_file_access(file_access).with_fast_register_file_uploader().build()
+    ctx = ctx.new_builder().with_file_access(file_access).build()
 
     es = ctx.new_execution_state().with_params(
         mode=ExecutionState.Mode.TASK_EXECUTION,
@@ -325,6 +326,8 @@ def setup_execution(
                 pickled=pickled,
             )
         cb = cb.with_serialization_settings(ssb.build())
+        _uploader = functools.partial(_fast_register_file_uploader, file_access)
+        cb.with_fast_register_file_uploader(_uploader)
 
     with FlyteContextManager.with_context(cb) as ctx:
         yield ctx
