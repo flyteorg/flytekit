@@ -42,6 +42,7 @@ DIR_NAME = os.path.dirname(os.path.realpath(__file__))
 
 monkeypatch = pytest.MonkeyPatch()
 
+
 class WorkflowFileLocation(enum.Enum):
     NORMAL = enum.auto()
     TEMP_DIR = enum.auto()
@@ -231,9 +232,12 @@ def test_union_type1(input):
     )
     assert result.exit_code == 0
 
+
 @pytest.mark.parametrize(
     "input",
-    [os.path.join(os.path.dirname(os.path.realpath(__file__)), "my_wf_input.json"),],
+    [
+        os.path.join(os.path.dirname(os.path.realpath(__file__)), "my_wf_input.json"),
+    ],
 )
 def test_all_types_with_json_input(input):
     runner = CliRunner()
@@ -260,20 +264,26 @@ def test_all_types_with_yaml_input(input):
 
     result = runner.invoke(
         pyflyte.main,
-        [
-            "run",
-            os.path.join(DIR_NAME, "workflow.py"),
-            "my_wf",
-            "--inputs-file",
-            input
-        ],
+        ["run", os.path.join(DIR_NAME, "workflow.py"), "my_wf", "--inputs-file", input],
         catch_exceptions=False,
     )
     assert result.exit_code == 0, result.stdout
 
+
 @pytest.mark.parametrize(
-        "input",
-        [str(json.load(open(os.path.join(os.path.dirname(os.path.realpath(__file__)), "my_wf_input.json"), "r")))]
+    "input",
+    [
+        str(
+            json.load(
+                open(
+                    os.path.join(
+                        os.path.dirname(os.path.realpath(__file__)), "my_wf_input.json"
+                    ),
+                    "r",
+                )
+            )
+        )
+    ],
 )
 def test_all_types_with_pipe_input(monkeypatch, input):
     runner = CliRunner()
@@ -290,9 +300,25 @@ def test_all_types_with_pipe_input(monkeypatch, input):
     )
     assert result.exit_code == 0, result.stdout
 
+
 @pytest.mark.parametrize(
-        "pipe_input, option_input",
-        [(str(json.load(open(os.path.join(os.path.dirname(os.path.realpath(__file__)), "my_wf_input.json"), "r"))), 'GREEN')],
+    "pipe_input, option_input",
+    [
+        (
+            str(
+                json.load(
+                    open(
+                        os.path.join(
+                            os.path.dirname(os.path.realpath(__file__)),
+                            "my_wf_input.json",
+                        ),
+                        "r",
+                    )
+                )
+            ),
+            "GREEN",
+        )
+    ],
 )
 def test_replace_file_inputs(monkeypatch, pipe_input, option_input):
     runner = CliRunner()
@@ -304,7 +330,9 @@ def test_replace_file_inputs(monkeypatch, pipe_input, option_input):
             os.path.join(DIR_NAME, "workflow.py"),
             "my_wf",
             "--inputs-file",
-            os.path.join(os.path.dirname(os.path.realpath(__file__)), "my_wf_input.json"),
+            os.path.join(
+                os.path.dirname(os.path.realpath(__file__)), "my_wf_input.json"
+            ),
             "--k",
             option_input,
         ],
@@ -313,7 +341,6 @@ def test_replace_file_inputs(monkeypatch, pipe_input, option_input):
 
     assert result.exit_code == 0
     assert option_input in result.output
-
 
 
 @pytest.mark.parametrize(
@@ -362,7 +389,9 @@ def test_union_type_with_invalid_input():
     assert result.exit_code == 2
 
 
-@pytest.mark.skipif(sys.version_info < (3, 9), reason="listing entities requires python>=3.9")
+@pytest.mark.skipif(
+    sys.version_info < (3, 9), reason="listing entities requires python>=3.9"
+)
 @pytest.mark.parametrize(
     "workflow_file",
     [
