@@ -126,7 +126,7 @@ class DatabricksAgentV2(DatabricksAgent):
     """
 
     def __init__(self):
-        super(AsyncAgentBase, self).__init__(task_type_name="databricks", metadata_type=DatabricksJobMetadata)
+        super(DatabricksAgent, self).__init__(task_type_name="databricks", metadata_type=DatabricksJobMetadata)
 
 
 def get_header() -> typing.Dict[str, str]:
