@@ -42,7 +42,6 @@ class EnvdImageSpecBuilder(ImageSpecBuilder):
             execute_command(build_command)
         except Exception as e:
             click.secho("❌ Failed to build image spec:", fg="red")
-            breakpoint()
             print(
                 Pretty(
                     asdict(image_spec, dict_factory=lambda x: {k: v for (k, v) in x if v is not None}), indent_size=2

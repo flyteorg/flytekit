@@ -89,9 +89,7 @@ class ImageSpec:
 
     def _image_name(self) -> str:
         """Construct full image name with tag."""
-        print("before", self)
         tag = calculate_hash_from_image_spec(self)
-        print("after", self)
         if self.tag_format:
             tag = self.tag_format.format(spec_hash=tag)
 
