@@ -361,7 +361,7 @@ def calculate_hash_from_image_spec(image_spec: ImageSpec):
         spec.source_root = digest
 
     if spec.requirements:
-        spec.requirements = hashlib.sha1(pathlib.Path(spec.requirements).read_bytes()).hexdigest()
+        spec.requirements = hashlib.sha1(pathlib.Path(spec.requirements).read_bytes().strip()).hexdigest()
     # won't rebuild the image if we change the registry_config path
     spec.registry_config = None
     # replace "-" with "_" to make it a valid tag

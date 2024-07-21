@@ -54,7 +54,7 @@ def test_image_spec(mock_image_spec_builder):
     assert image_spec.commands == ["echo hello"]
     assert image_spec._is_force_push is True
     assert image_spec.entrypoint == ["/bin/bash"]
-    # assert image_spec.id == "gOzuhdIROMEgn4PfSuTnlg"
+    assert image_spec.id == "ecKCdqK3JssAygEGQsH1MQ"
 
     assert image_spec.image_name() == f"localhost:30001/flytekit:gOzuhdIROMEgn4PfSuTnlg"
     ctx = context_manager.FlyteContext.current_context()
