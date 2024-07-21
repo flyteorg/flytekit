@@ -79,6 +79,22 @@ class ImageSpec:
         if self.registry:
             self.registry = self.registry.lower()
 
+    @property
+    def id(self) -> str:
+        """
+        Calculate a unique hash as the ID for the ImageSpec, and it will be used to
+        1. Identify the imageSpec in the ImageConfig in the serialization context.
+        2. Check if the current container is built from this image spec in `is_container()`.
+
+        ImageConfig:
+        - deduced abc: flyteorg/flytekit:123
+        - deduced xyz: flyteorg/flytekit:456
+        """
+        # Only get the non-None values from the ImageSpec to ensure the hash is consistent across different Flytekit versions.
+        image_spec_dict = asdict(self, dict_factory=lambda x: {k: v for (k, v) in x if v is not None})
+        image_spec_bytes = image_spec_dict.__str__().encode("utf-8")
+        return base64.urlsafe_b64encode(hashlib.md5(image_spec_bytes).digest()).decode("ascii").rstrip("=")
+
     def image_name(self) -> str:
         """Full image name with tag."""
         image_name = self._image_name()
@@ -163,7 +179,7 @@ class ImageSpec:
             return None
 
     def __hash__(self):
-        return _calculate_deduped_hash_from_image_spec(self)
+        return hash(self.id)
 
     def with_commands(self, commands: Union[str, List[str]]) -> "ImageSpec":
         """
@@ -319,21 +335,6 @@ class ImageBuildEngine:
         fully_qualified_image_name = cls._get_builder(builder).build_image(image_spec)
         if fully_qualified_image_name is not None:
             cls._IMAGE_NAME_TO_REAL_NAME[img_name] = fully_qualified_image_name
-
-
-def _calculate_deduped_hash_from_image_spec(image_spec: ImageSpec):
-    """
-    Calculate this special hash from the image spec,
-    and it used to identify the imageSpec in the ImageConfig in the serialization context.
-
-    ImageConfig:
-    - deduced abc: flyteorg/flytekit:123
-    - deduced xyz: flyteorg/flytekit:456
-    """
-    # Only get the non-None values from the ImageSpec to ensure the hash is consistent across different Flytekit versions.
-    image_spec_dict = asdict(image_spec, dict_factory=lambda x: {k: v for (k, v) in x if v is not None})
-    image_spec_bytes = image_spec_dict.__str__().encode("utf-8")
-    return base64.urlsafe_b64encode(hashlib.md5(image_spec_bytes).digest()).decode("ascii").rstrip("=")
 
 
 @lru_cache
