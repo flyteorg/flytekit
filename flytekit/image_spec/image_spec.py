@@ -84,13 +84,13 @@ class ImageSpec:
         """
         Calculate a unique hash as the ID for the ImageSpec, and it will be used to
         1. Identify the imageSpec in the ImageConfig in the serialization context.
-        2. Check if the current container is built from this image spec in `is_container()`.
+        2. Check if the current container image in the pod is built from this image spec in `is_container()`.
 
         ImageConfig:
         - deduced abc: flyteorg/flytekit:123
         - deduced xyz: flyteorg/flytekit:456
         """
-        # Only get the non-None values from the ImageSpec to ensure the hash is consistent across different Flytekit versions.
+        # Only get the non-None values in the ImageSpec to ensure the hash is consistent across different Flytekit versions.
         image_spec_dict = asdict(self, dict_factory=lambda x: {k: v for (k, v) in x if v is not None})
         image_spec_bytes = image_spec_dict.__str__().encode("utf-8")
         return base64.urlsafe_b64encode(hashlib.md5(image_spec_bytes).digest()).decode("ascii").rstrip("=")

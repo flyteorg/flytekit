@@ -37,7 +37,7 @@ def test_image_spec():
         apt_packages=["git"],
         python_version="3.8",
         base_image=base_image,
-        pip_index="https://private-pip-index/simple",
+        pip_index="https://pypi.org/simple",
         source_root=os.path.dirname(os.path.realpath(__file__)),
     )
 
@@ -58,7 +58,7 @@ def build():
     install.python_packages(name=["pandas"])
     install.apt_packages(name=["git"])
     runtime.environ(env={{'PYTHONPATH': '/root:', '_F_IMG_ID': '{image_name}'}}, extra_path=['/root'])
-    config.pip_index(url="https://private-pip-index/simple")
+    config.pip_index(url="https://pypi.org/simple")
     install.python(version="3.8")
     io.copy(source="./", target="/root")
 """
