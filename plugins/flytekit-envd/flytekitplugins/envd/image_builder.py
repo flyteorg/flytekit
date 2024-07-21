@@ -109,7 +109,7 @@ def create_envd_config(image_spec: ImageSpec) -> str:
     run_commands = _create_str_from_package_list(image_spec.commands)
     conda_channels = _create_str_from_package_list(image_spec.conda_channels)
     apt_packages = _create_str_from_package_list(image_spec.apt_packages)
-    env = {"PYTHONPATH": "/root:", _F_IMG_ID: image_spec.image_name()}
+    env = {"PYTHONPATH": "/root:", _F_IMG_ID: image_spec.id}
 
     if image_spec.env:
         env.update(image_spec.env)

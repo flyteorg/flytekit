@@ -172,7 +172,7 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
     else:
         pip_python_install_command = ""
 
-    env_dict = {"PYTHONPATH": "/root", _F_IMG_ID: image_spec.image_name()}
+    env_dict = {"PYTHONPATH": "/root", _F_IMG_ID: image_spec.id}
 
     if image_spec.env:
         env_dict.update(image_spec.env)
