@@ -13,6 +13,8 @@ REGISTRY_CONFIG_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)),
 
 
 def test_image_spec(mock_image_spec_builder):
+    base_image = ImageSpec(name="base", builder="dummy", base_image="base_image")
+
     image_spec = ImageSpec(
         name="FLYTEKIT",
         builder="dummy",
@@ -20,7 +22,7 @@ def test_image_spec(mock_image_spec_builder):
         apt_packages=["git"],
         python_version="3.8",
         registry="localhost:30001",
-        base_image="cr.flyte.org/flyteorg/flytekit:py3.8-latest",
+        base_image=base_image,
         cuda="11.2.2",
         cudnn="8",
         requirements=REQUIREMENT_FILE,
@@ -35,7 +37,7 @@ def test_image_spec(mock_image_spec_builder):
     image_spec = image_spec.force_push()
 
     assert image_spec.python_version == "3.8"
-    assert image_spec.base_image == "cr.flyte.org/flyteorg/flytekit:py3.8-latest"
+    assert image_spec.base_image == base_image
     assert image_spec.packages == ["pandas", "numpy"]
     assert image_spec.apt_packages == ["git", "wget"]
     assert image_spec.registry == "localhost:30001"
@@ -52,6 +54,7 @@ def test_image_spec(mock_image_spec_builder):
     assert image_spec.commands == ["echo hello"]
     assert image_spec._is_force_push is True
     assert image_spec.entrypoint == ["/bin/bash"]
+    assert image_spec.id == "4TkuwnZioaQAP-6BGM7YcQ"
 
     tag = calculate_hash_from_image_spec(image_spec)
     assert "=" != tag[-1]

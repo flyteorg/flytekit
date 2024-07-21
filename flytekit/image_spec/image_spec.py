@@ -302,7 +302,6 @@ class ImageBuildEngine:
 
         if isinstance(image_spec.base_image, ImageSpec):
             cls.build(image_spec.base_image)
-            image_spec.base_image = image_spec.base_image.image_name()
 
         if image_spec.builder is None and cls._REGISTRY:
             builder = max(cls._REGISTRY, key=lambda name: cls._REGISTRY[name][1])
