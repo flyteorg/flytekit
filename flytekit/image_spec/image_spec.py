@@ -360,7 +360,7 @@ def calculate_hash_from_image_spec(image_spec: ImageSpec):
         spec.requirements = hashlib.sha1(pathlib.Path(spec.requirements).read_bytes()).hexdigest()
     # won't rebuild the image if we change the registry_config path
     spec.registry_config = None
-    image_spec_dict = asdict(image_spec, dict_factory=lambda x: {k: v for (k, v) in x if v is not None})
+    image_spec_dict = asdict(spec, dict_factory=lambda x: {k: v for (k, v) in x if v is not None})
     image_spec_bytes = image_spec_dict.__str__().encode("utf-8")
     tag = base64.urlsafe_b64encode(hashlib.md5(image_spec_bytes).digest()).decode("ascii").rstrip("=")
     # replace "-" with "_" to make it a valid tag
