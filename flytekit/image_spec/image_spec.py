@@ -89,7 +89,9 @@ class ImageSpec:
 
     def _image_name(self) -> str:
         """Construct full image name with tag."""
+        print("before", self)
         tag = calculate_hash_from_image_spec(self)
+        print("after", self)
         if self.tag_format:
             tag = self.tag_format.format(spec_hash=tag)
 
@@ -163,7 +165,7 @@ class ImageSpec:
             return None
 
     def __hash__(self):
-        return hash(asdict(self).__str__())
+        return _calculate_deduped_hash_from_image_spec(self)
 
     def with_commands(self, commands: Union[str, List[str]]) -> "ImageSpec":
         """
@@ -321,25 +323,27 @@ class ImageBuildEngine:
             cls._IMAGE_NAME_TO_REAL_NAME[img_name] = fully_qualified_image_name
 
 
-@lru_cache
 def _calculate_deduped_hash_from_image_spec(image_spec: ImageSpec):
     """
     Calculate this special hash from the image spec,
     and it used to identify the imageSpec in the ImageConfig in the serialization context.
 
     ImageConfig:
-    - deduced hash 1: flyteorg/flytekit: 123
-    - deduced hash 2: flyteorg/flytekit: 456
+    - deduced abc: flyteorg/flytekit:123
+    - deduced xyz: flyteorg/flytekit:456
     """
-    image_spec_bytes = asdict(image_spec).__str__().encode("utf-8")
-    # copy the image spec to avoid modifying the original image spec. otherwise, the hash will be different.
+    # Only get the non-None values from the ImageSpec to ensure the hash is consistent across different Flytekit versions.
+    image_spec_dict = asdict(image_spec, dict_factory=lambda x: {k: v for (k, v) in x if v is not None})
+    image_spec_bytes = image_spec_dict.__str__().encode("utf-8")
     return base64.urlsafe_b64encode(hashlib.md5(image_spec_bytes).digest()).decode("ascii").rstrip("=")
 
 
 @lru_cache
 def calculate_hash_from_image_spec(image_spec: ImageSpec):
     """
-    Calculate the hash from the image spec.
+    Calculate the hash from the image spec. The hash will be the tag of the image.
+    This method will also read the content of the requirement file and the source root to calculate the hash.
+    Therefore, it will generate different hash if new dependencies are added or the source code is changed.
     """
     # copy the image spec to avoid modifying the original image spec. otherwise, the hash will be different.
     spec = copy.deepcopy(image_spec)
@@ -358,7 +362,8 @@ def calculate_hash_from_image_spec(image_spec: ImageSpec):
         spec.requirements = hashlib.sha1(pathlib.Path(spec.requirements).read_bytes()).hexdigest()
     # won't rebuild the image if we change the registry_config path
     spec.registry_config = None
-    image_spec_bytes = asdict(spec).__str__().encode("utf-8")
+    image_spec_dict = asdict(image_spec, dict_factory=lambda x: {k: v for (k, v) in x if v is not None})
+    image_spec_bytes = image_spec_dict.__str__().encode("utf-8")
     tag = base64.urlsafe_b64encode(hashlib.md5(image_spec_bytes).digest()).decode("ascii").rstrip("=")
     # replace "-" with "_" to make it a valid tag
     return tag.replace("-", "_")
