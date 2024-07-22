@@ -8,6 +8,8 @@ import typing
 from contextlib import contextmanager
 from typing import Any, Dict, List, Optional, Set, Union, cast
 
+from flyteidl.core import tasks_pb2
+
 from flytekit.configuration import SerializationSettings
 from flytekit.core import tracker
 from flytekit.core.base_task import PythonTask, TaskResolverMixin
@@ -151,6 +153,9 @@ class ArrayNodeMapTask(PythonTask):
     @property
     def bound_inputs(self) -> Set[str]:
         return self._bound_inputs
+
+    def get_extended_resources(self, settings: SerializationSettings) -> Optional[tasks_pb2.ExtendedResources]:
+        return self.python_function_task.get_extended_resources(settings)
 
     @contextmanager
     def prepare_target(self):
