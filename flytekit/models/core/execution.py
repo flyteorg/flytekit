@@ -1,6 +1,7 @@
 import datetime
 import typing
 
+import flyteidl_rust as flyteidl
 from flyteidl.core import execution_pb2 as _execution_pb2
 
 from flytekit.models import common as _common
@@ -84,9 +85,9 @@ class TaskExecutionPhase(object):
 
 class ExecutionError(_common.FlyteIdlEntity):
     class ErrorKind(object):
-        UNKNOWN = _execution_pb2.ExecutionError.ErrorKind.UNKNOWN
-        USER = _execution_pb2.ExecutionError.ErrorKind.USER
-        SYSTEM = _execution_pb2.ExecutionError.ErrorKind.SYSTEM
+        UNKNOWN = flyteidl.execution_error.ErrorKind.Unknown
+        USER = flyteidl.execution_error.ErrorKind.User
+        SYSTEM = flyteidl.execution_error.ErrorKind.System
 
     def __init__(self, code: str, message: str, error_uri: str, kind: int):
         """
@@ -132,7 +133,7 @@ class ExecutionError(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.execution_pb2.ExecutionError
         """
-        return _execution_pb2.ExecutionError(
+        return flyteidl.core.ExecutionError(
             code=self.code,
             message=self.message,
             error_uri=self.error_uri,

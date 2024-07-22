@@ -21,15 +21,15 @@ class WorkflowNodeMetadata(_common_models.FlyteIdlEntity):
     def execution_id(self) -> _identifier.WorkflowExecutionIdentifier:
         return self._execution_id
 
-    def to_flyte_idl(self) -> admin_node_execution_pb2.WorkflowNodeMetadata:
-        return admin_node_execution_pb2.WorkflowNodeMetadata(
-            executionId=self.execution_id.to_flyte_idl(),
+    def to_flyte_idl(self) -> flyteidl.admin.WorkflowNodeMetadata:
+        return flyteidl.admin.WorkflowNodeMetadata(
+            execution_id=self.execution_id.to_flyte_idl(),
         )
 
     @classmethod
-    def from_flyte_idl(cls, p: admin_node_execution_pb2.WorkflowNodeMetadata) -> "WorkflowNodeMetadata":
+    def from_flyte_idl(cls, p: flyteidl.admin.WorkflowNodeMetadata) -> "WorkflowNodeMetadata":
         return cls(
-            execution_id=_identifier.WorkflowExecutionIdentifier.from_flyte_idl(p.executionId),
+            execution_id=_identifier.WorkflowExecutionIdentifier.from_flyte_idl(p.execution_id),
         )
 
 
@@ -216,7 +216,6 @@ class NodeExecutionClosure(_common_models.FlyteIdlEntity):
         :param flyteidl.admin.node_execution_pb2.NodeExecutionClosure p:
         :rtype: NodeExecutionClosure
         """
-        print(p.output_result)
         return cls(
             phase=p.phase,
             output_uri=p.output_result[0]

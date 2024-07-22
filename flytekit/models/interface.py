@@ -236,7 +236,7 @@ class Parameter(_common.FlyteIdlEntity):
         """
         return cls(
             Variable.from_flyte_idl(pb2_object.var),
-            _literals.Literal.from_flyte_idl(pb2_object.behavior)
+            _literals.Literal.from_flyte_idl(pb2_object.behavior[0])
             if isinstance(pb2_object.behavior, flyteidl.parameter.Behavior.Default)
             else None,
             pb2_object.behavior if isinstance(pb2_object.behavior, flyteidl.parameter.Behavior.Required) else None,

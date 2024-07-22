@@ -646,7 +646,7 @@ class SynchronousFlyteClient(flyteidl.RawSynchronousFlyteClient):
         :param Text cause:
         """
         super(SynchronousFlyteClient, self).terminate_execution(
-            _execution_pb2.ExecutionTerminateRequest(id=id.to_flyte_idl(), cause=cause)
+            flyteidl.admin.ExecutionTerminateRequest(id=id.to_flyte_idl(), cause=cause)
         )
 
     def relaunch_execution(self, id, name=None):

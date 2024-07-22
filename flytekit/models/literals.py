@@ -154,7 +154,9 @@ class Primitive(_common.FlyteIdlEntity):
             value = flyteidl.primitive.Value.Boolean(self.string_value)
         elif self.datetime:
             # Convert to UTC and remove timezone so protobuf behaves.
-            value = flyteidl.primitive.Value.Datetime(self.datetime)
+            value = flyteidl.primitive.Value.Datetime(
+                flyteidl.protobuf.Timestamp(seconds=self.datetime.second, nanos=0)
+            )
         if self.duration is not None:
             value = flyteidl.primitive.Value.Duration(self.duration)
         return flyteidl.core.Primitive(value)
@@ -170,10 +172,10 @@ class Primitive(_common.FlyteIdlEntity):
             float_value=proto.value[0] if isinstance(proto.value, flyteidl.primitive.Value.FloatValue) else None,
             string_value=proto.value[0] if isinstance(proto.value, flyteidl.primitive.Value.StringValue) else None,
             boolean=proto.value[0] if isinstance(proto.value, flyteidl.primitive.Value.Boolean) else None,
-            datetime=utils.convert_to_datetime(proto.value[0])
+            datetime=utils.convert_to_datetime(seconds=proto.value[0].seconds, nanos=proto.value[0].nanos)
             if isinstance(proto.value, flyteidl.primitive.Value.Datetime)
             else None,
-            duration=utils.convert_to_datetime(proto.value[0])
+            duration=utils.convert_to_datetime(proto.value[0])  # TODO
             if isinstance(proto.value, flyteidl.primitive.Value.Duration)
             else None,
         )
@@ -679,7 +681,7 @@ class LiteralCollection(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.literals_pb2.LiteralCollection
         """
-        return _literals_pb2.LiteralCollection(literals=[l.to_flyte_idl() for l in self.literals])
+        return flyteidl.core.LiteralCollection(literals=[l.to_flyte_idl() for l in self.literals])
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -858,7 +860,7 @@ class Scalar(_common.FlyteIdlEntity):
             value = flyteidl.scalar.Value.Generic(self.generic.to_flyte_idl())
         elif self.structured_dataset is not None:
             value = flyteidl.scalar.Value.StructuredDataset(self.structured_dataset.to_flyte_idl())
-        return flyteidl.literal.Value.Scalar(flyteidl.core.Scalar(value))
+        return flyteidl.core.Scalar(value)
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -973,11 +975,11 @@ class Literal(_common.FlyteIdlEntity):
         """
         value = None
         if self.scalar:
-            value = self.scalar.to_flyte_idl()
+            value = flyteidl.literal.Value.Scalar(self.scalar.to_flyte_idl())
         elif self.collection:
-            value = self.collection.to_flyte_idl()
+            value = flyteidl.literal.Value.Collection(self.collection.to_flyte_idl())
         elif self.map:
-            value = self.map.to_flyte_idl()
+            value = flyteidl.literal.Value.Map(self.map.to_flyte_idl())
         return flyteidl.core.Literal(
             value=value,
             hash=self.hash or "",

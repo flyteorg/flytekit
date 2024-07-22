@@ -352,7 +352,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             else None,
             labels=_common_models.Labels.from_flyte_idl(p.labels),
             annotations=_common_models.Annotations.from_flyte_idl(p.annotations),
-            auth_role=_common_models.AuthRole.from_flyte_idl(p.auth_role),
+            auth_role=_common_models.AuthRole.from_flyte_idl(p.auth_role) if p.auth_role else None,
             raw_output_data_config=_common_models.RawOutputDataConfig.from_flyte_idl(p.raw_output_data_config)
             if p.raw_output_data_config
             else None,

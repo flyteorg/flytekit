@@ -3,7 +3,6 @@ import typing
 
 import flyteidl_rust as flyteidl
 from flyteidl.core import tasks_pb2
-from flyteidl.core import workflow_pb2 as _core_workflow
 
 from flytekit.models import common as _common
 from flytekit.models import interface as _interface
@@ -237,7 +236,7 @@ class NodeMetadata(_common.FlyteIdlEntity):
         node_metadata = flyteidl.core.NodeMetadata(
             name=self.name,
             retries=self.retries.to_flyte_idl(),
-            interruptible_value=self.interruptible,
+            interruptible_value=flyteidl.node_metadata.InterruptibleValue.Interruptible(self.interruptible or False),
             cacheable_value=self.cacheable,
             cache_version_value=self.cache_version,
             cache_serializable_value=self.cache_serializable,
@@ -254,7 +253,7 @@ class NodeMetadata(_common.FlyteIdlEntity):
             if pb2_object.timeout
             else None,
             _RetryStrategy.from_flyte_idl(pb2_object.retries),
-            pb2_object.interruptible if pb2_object.interruptible_value else None,
+            pb2_object.interruptible_value[0] if pb2_object.interruptible_value else None,
             pb2_object.cacheable if pb2_object.cacheable_value else None,
             pb2_object.cache_version if pb2_object.cache_version_value else None,
             pb2_object.cache_serializable if pb2_object.cache_serializable_value else None,
@@ -410,22 +409,30 @@ class ArrayNode(_common.FlyteIdlEntity):
     def node(self) -> "Node":
         return self._node
 
-    def to_flyte_idl(self) -> _core_workflow.ArrayNode:
-        return _core_workflow.ArrayNode(
+    def to_flyte_idl(self) -> flyteidl.core.ArrayNode:
+        return flyteidl.core.ArrayNode(
             node=self._node.to_flyte_idl() if self._node is not None else None,
-            parallelism=self._parallelism,
-            min_successes=self._min_successes,
-            min_success_ratio=self._min_success_ratio,
-            execution_mode=self._execution_mode,
+            parallelism_option=flyteidl.array_node.ParallelismOption.Parallelism(self._parallelism)
+            if self._parallelism
+            else None,
+            success_criteria=flyteidl.array_node.SuccessCriteria.MinSuccesses(self._min_successes)
+            if self._min_successes
+            else flyteidl.array_node.SuccessCriteria.MinSuccessRatio(self._min_success_ratio)
+            if self._min_success_ratio
+            else None,
         )
 
     @classmethod
     def from_flyte_idl(cls, pb2_object) -> "ArrayNode":
         return cls(
             Node.from_flyte_idl(pb2_object.node),
-            pb2_object.parallelism,
-            pb2_object.min_successes,
-            pb2_object.min_success_ratio,
+            pb2_object.parallelism_option,
+            min_successes=pb2_object.success_criteria[0]
+            if isinstance(pb2_object.success_criteria, flyteidl.array_node.SuccessCriteria.MinSuccesses)
+            else None,
+            min_success_ratio=pb2_object.success_criteria[0]
+            if isinstance(pb2_object.success_criteria, flyteidl.array_node.SuccessCriteria.MinSuccessRatio)
+            else None,
         )
 
 
@@ -764,8 +771,6 @@ class WorkflowNode(_common.FlyteIdlEntity):
             reference = flyteidl.workflow_node.Reference.SubWorkflowRef(self.sub_workflow_ref.to_flyte_idl())
         return flyteidl.core.WorkflowNode(
             reference=reference,
-            launchplan_ref=self.launchplan_ref.to_flyte_idl() if self.launchplan_ref else None,
-            sub_workflow_ref=self.sub_workflow_ref.to_flyte_idl() if self.sub_workflow_ref else None,
         )
 
     @classmethod
@@ -775,10 +780,10 @@ class WorkflowNode(_common.FlyteIdlEntity):
 
         :rtype: WorkflowNode
         """
-        if pb2_object.HasField("launchplan_ref"):
-            return cls(launchplan_ref=_identifier.Identifier.from_flyte_idl(pb2_object.launchplan_ref))
-        else:
-            return cls(sub_workflow_ref=_identifier.Identifier.from_flyte_idl(pb2_object.sub_workflow_ref))
+        if isinstance(pb2_object.reference, flyteidl.workflow_node.Reference.LaunchplanRef):
+            return cls(launchplan_ref=_identifier.Identifier.from_flyte_idl(pb2_object.reference[0]))
+        if isinstance(pb2_object.reference, flyteidl.workflow_node.Reference.SubWorkflowRef):
+            return cls(sub_workflow_ref=_identifier.Identifier.from_flyte_idl(pb2_object.reference[0]))
 
 
 class WorkflowMetadata(_common.FlyteIdlEntity):
