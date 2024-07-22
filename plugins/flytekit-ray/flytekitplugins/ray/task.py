@@ -3,7 +3,11 @@ import json
 import typing
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional
+<<<<<<< HEAD
 
+=======
+import os
+>>>>>>> 6ae6970cd (wip)
 import yaml
 from flytekitplugins.ray.models import (
     HeadGroupSpec,
@@ -14,6 +18,7 @@ from flytekitplugins.ray.models import (
 from google.protobuf.json_format import MessageToDict
 
 from flytekit import lazy_module
+from flytekit.core.context_manager import FlyteContextManager
 from flytekit.configuration import SerializationSettings
 from flytekit.core.context_manager import ExecutionParameters
 from flytekit.core.python_function_task import PythonFunctionTask
@@ -64,18 +69,19 @@ class RayFunctionTask(PythonFunctionTask):
         self._task_config = task_config
 
     def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
-        ray.init(address=self._task_config.address)
-        # This is where the hacky stuff begins
-        import os
+        
+        init_params = {"address": self._task_config.address}
 
-        root_dir = "/root"
+        ctx = FlyteContextManager.current_context()
+        if not ctx.execution_state.is_local_execution():
+            working_dir = ctx.execution_state.user_space_params.working_directory
+            init_params["working_dir"] = working_dir
 
-        os.system(f"touch `find {root_dir} -type f`")
+            # fast register data with timestamp mtime=0 will be zipped and uploaded to ray gcs
+            # zip does not support timestamps before 1980 -> hacky workaround of touching all the files
+            os.system(f"touch `find {working_dir} -type f`")
 
-        ray.init(
-            address=self._task_config.address,
-            runtime_env={"working_dir": root_dir},
-        )
+        ray.init(**init_params)
         return user_params
 
     def get_custom(self, settings: SerializationSettings) -> Optional[Dict[str, Any]]:
