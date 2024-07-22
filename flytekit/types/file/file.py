@@ -179,13 +179,21 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
         return ""
 
     @classmethod
-    def new_remote_file(cls, name: typing.Optional[str] = None) -> FlyteFile:
+    def new_remote_file(cls, alt: typing.Optional[str] = None, name: typing.Optional[str] = None) -> FlyteFile:
         """
         Create a new FlyteFile object with a remote path.
+
+        :param alt: If you want to specify a different prefix head than the default one, you can specify it here.
+        :param name: If you want to specify a different name for the file, you can specify it here.
         """
         ctx = FlyteContextManager.current_context()
         r = name or ctx.file_access.get_random_string()
-        remote_path = ctx.file_access.join(ctx.file_access.raw_output_prefix, r)
+        pref = ctx.file_access.raw_output_prefix
+        if alt:
+            s_pref = pref.split("/")
+            s_pref[2] = alt
+            pref = "/".join(s_pref)
+        remote_path = ctx.file_access.join(pref, r)
         return cls(path=remote_path)
 
     @classmethod
