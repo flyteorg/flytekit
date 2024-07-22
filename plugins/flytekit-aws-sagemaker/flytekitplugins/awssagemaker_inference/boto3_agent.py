@@ -78,15 +78,16 @@ class BotoAgent(SyncAgentBase):
                     error_message,
                 ).group(0)
                 if arn:
+                    arn_result = None
                     if method == "create_model":
-                        result = {"ModelArn": arn}
+                        arn_result = {"ModelArn": arn}
                     elif method == "create_endpoint_config":
-                        result = {"EndpointConfigArn": arn}
+                        arn_result = {"EndpointConfigArn": arn}
 
                     return Resource(
                         phase=TaskExecution.SUCCEEDED,
                         outputs={
-                            "result": result,
+                            "result": arn_result if arn_result else {"result": f"Entity already exists {arn}."},
                             "idempotence_token": e.idempotence_token,
                         },
                     )
