@@ -139,15 +139,48 @@ def test_duration_type():
         t.convert(None, None, None)
 
 
+# write a helper function that calls convert and checks the result
+def _datetime_helper(t: click.ParamType, value: str, expected: datetime):
+    v = t.convert(value, None, None)
+    assert v.day == expected.day
+    assert v.month == expected.month
+
+
 def test_datetime_type():
     t = DateTimeType()
 
     assert t.convert("2020-01-01", None, None) == datetime(2020, 1, 1)
 
     now = datetime.now()
-    v = t.convert("now", None, None)
-    assert v.day == now.day
-    assert v.month == now.month
+    _datetime_helper(t, "now", now)
+
+    today = datetime.today()
+    _datetime_helper(t, "today", today)
+
+    add = datetime.now() + timedelta(days=1)
+    _datetime_helper(t, "now + 1d", add)
+
+    sub = datetime.now() - timedelta(days=1)
+    _datetime_helper(t, "now - 1d", sub)
+
+    fmt_v = "2020-01-01T10:10:00"
+    d = t.convert(fmt_v, None, None)
+    _datetime_helper(t, fmt_v, d)
+
+    _datetime_helper(t, f"{fmt_v} + 1d", d + timedelta(days=1))
+
+    with pytest.raises(click.BadParameter):
+        t.convert("now-1d", None, None)
+
+    with pytest.raises(click.BadParameter):
+        t.convert("now + 1", None, None)
+
+    with pytest.raises(click.BadParameter):
+        t.convert("now + 1abc", None, None)
+
+    with pytest.raises(click.BadParameter):
+        t.convert("aaa + 1d", None, None)
+
 
 
 def test_json_type():

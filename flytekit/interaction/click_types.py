@@ -148,21 +148,53 @@ class JSONIteratorParamType(click.ParamType):
 
 class DateTimeType(click.DateTime):
     _NOW_FMT = "now"
-    _ADDITONAL_FORMATS = [_NOW_FMT]
+    _TODAY_FMT = "today"
+    _FIXED_FORMATS = [_NOW_FMT, _TODAY_FMT]
+    _FLOATING_FORMATS = ["<FORMAT> - <ISO8601 duration>"]
+    _ADDITONAL_FORMATS = _FIXED_FORMATS + _FLOATING_FORMATS
+    _FLOATING_FORMAT_PATTERN = r"(.+)\s+([-+])\s+(.+)"
 
     def __init__(self):
         super().__init__()
         self.formats.extend(self._ADDITONAL_FORMATS)
+
+    def _datetime_from_format(
+        self, value: str, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
+    ) -> datetime.datetime:
+        if value in self._FIXED_FORMATS:
+            if value == self._NOW_FMT:
+                return datetime.datetime.now()
+            if value == self._TODAY_FMT:
+                n = datetime.datetime.now()
+                return datetime.datetime(n.year, n.month, n.day)
+        return super().convert(value, param, ctx)
 
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
         if isinstance(value, ArtifactQuery):
             return value
-        if value in self._ADDITONAL_FORMATS:
-            if value == self._NOW_FMT:
-                return datetime.datetime.now()
-        return super().convert(value, param, ctx)
+
+        if " " in value:
+            import re
+
+            m = re.match(self._FLOATING_FORMAT_PATTERN, value)
+            if m:
+                parts = m.groups()
+                if len(parts) != 3:
+                    raise click.BadParameter(f"Expected format <FORMAT> - <ISO8601 duration>, got {value}")
+                dt = self._datetime_from_format(parts[0], param, ctx)
+                try:
+                    delta = datetime.timedelta(seconds=parse(parts[2]))
+                except Exception as e:
+                    raise click.BadParameter(
+                        f"Matched format {self._FLOATING_FORMATS}, but failed to parse duration {parts[2]}, error: {e}"
+                    )
+                if parts[1] == "-":
+                    return dt - delta
+                return dt + delta
+            raise click.BadParameter(f"Expected format {self.formats}, got {value}")
+        return self._datetime_from_format(value, param, ctx)
 
 
 class DurationParamType(click.ParamType):
