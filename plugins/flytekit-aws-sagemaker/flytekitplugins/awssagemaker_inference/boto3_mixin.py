@@ -21,7 +21,7 @@ def sorted_dict_str(d):
     if isinstance(d, dict):
         return "{" + ", ".join(f"{sorted_dict_str(k)}: {sorted_dict_str(v)}" for k, v in sorted(d.items())) + "}"
     elif isinstance(d, list):
-        return "[" + ", ".join(sorted_dict_str(i) for i in sorted(d, key=str)) + "]"
+        return "[" + ", ".join(sorted_dict_str(i) for i in sorted(d, key=lambda x: str(x))) + "]"
     else:
         return str(d)
 
