@@ -1,5 +1,7 @@
 import typing
 
+from flyteidl_rust import FlyteUserException as _FlyteUserException
+
 from flytekit.exceptions.base import FlyteException as _FlyteException
 from flytekit.exceptions.base import FlyteRecoverableException as _Recoverable
 
@@ -55,12 +57,16 @@ class FlyteValueException(FlyteUserException, ValueError):
         super(FlyteValueException, self).__init__(self._create_verbose_message(received_value, error_message))
 
 
+<<<<<<< HEAD
 class FlyteDataNotFoundException(FlyteValueException):
     def __init__(self, path: str):
         super(FlyteDataNotFoundException, self).__init__(path, "File not found")
 
 
 class FlyteAssertion(FlyteUserException, AssertionError):
+=======
+class FlyteAssertion(_FlyteUserException, AssertionError):
+>>>>>>> 6493d73a7 (add custom errors from rust binding)
     _ERROR_CODE = "USER:AssertionError"
 
 

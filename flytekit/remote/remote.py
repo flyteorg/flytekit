@@ -29,6 +29,7 @@ import fsspec
 import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
 from flyteidl.core import literals_pb2
+from flyteidl_rust import FlyteEntityAlreadyExistsException, FlyteEntityNotExistException
 
 from flytekit import ImageSpec
 from flytekit.clients.friendly import SynchronousFlyteClient
@@ -48,8 +49,6 @@ from flytekit.core.type_engine import LiteralsResolver, TypeEngine
 from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase, WorkflowFailurePolicy
 from flytekit.exceptions import user as user_exceptions
 from flytekit.exceptions.user import (
-    FlyteEntityAlreadyExistsException,
-    FlyteEntityNotExistException,
     FlyteValueException,
 )
 from flytekit.loggers import developer_logger, logger
@@ -350,7 +349,6 @@ class FlyteRemote(object):
             name,
             version,
         )
-        admin_task = self.client.get_task(task_id)
         admin_task = self.client.get_task(task_id)
 
         flyte_task = FlyteTask.promote_from_model(admin_task.closure.compiled_task.template)
