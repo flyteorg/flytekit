@@ -98,7 +98,7 @@ def test_extract_only():
 
     VST = TypeVar("VST")
 
-    def t(a: int, b: str) -> VST:
+    def t(a: int, b: str) -> VST:  # type: ignore
         ...
 
     return_type = extract_return_annotation(typing.get_type_hints(t).get("return", None))
