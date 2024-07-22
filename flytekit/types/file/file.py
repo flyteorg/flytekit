@@ -32,8 +32,8 @@ def noop(): ...
 T = typing.TypeVar("T")
 
 
-def _default_downloader(ctx: FlyteContext, remote_path: str, local_path: str) -> None:
-    return ctx.file_access.get_data(remote_path, local_path, is_multipart=False)
+def _default_downloader(ctx: FlyteContext, remote_path: str, local_path: str):
+    ctx.file_access.get_data(remote_path, local_path, is_multipart=False)
 
 
 @dataclass
