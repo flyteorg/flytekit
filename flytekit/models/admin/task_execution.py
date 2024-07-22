@@ -126,7 +126,7 @@ class TaskExecutionClosure(_common.FlyteIdlEntity):
             output_uri=p.output_result[0]
             if isinstance(p.output_result, flyteidl.task_execution_closure.OutputResult.OutputUri)
             else None,
-            error=_execution.ExecutionError.from_flyte_idl(p.error[0])
+            error=_execution.ExecutionError.from_flyte_idl(p.output_result[0])
             if isinstance(p.output_result, flyteidl.task_execution_closure.OutputResult.Error)
             else None,
             started_at=utils.convert_to_datetime(seconds=p.started_at.seconds, nanos=p.started_at.nanos)
