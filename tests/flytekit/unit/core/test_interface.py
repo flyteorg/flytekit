@@ -4,7 +4,7 @@ import typing
 from typing import Dict, List
 
 import pytest
-from typing_extensions import Annotated  # type: ignore
+from typing_extensions import Annotated, TypeVar  # type: ignore
 
 from flytekit import map_task, task
 from flytekit.core import context_manager
@@ -95,6 +95,15 @@ def test_extract_only():
     return_type = extract_return_annotation(typing.get_type_hints(t).get("return", None))
     assert len(return_type) == 1
     assert return_type["o0"] == Dict[str, int]
+
+    VST = TypeVar("VST")
+
+    def t(a: int, b: str) -> VST:
+        ...
+
+    return_type = extract_return_annotation(typing.get_type_hints(t).get("return", None))
+    assert len(return_type) == 1
+    assert return_type["o0"] == VST
 
 
 def test_named_tuples():
