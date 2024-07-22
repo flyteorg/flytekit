@@ -81,12 +81,12 @@ def update_dict_fn(
                         except Exception:
                             raise ValueError(f"Could not find the key {key} in {update_dict_copy}.")
 
-                    if len(matches) > 1:
-                        # Replace the placeholder in the original_dict
-                        original_dict = original_dict.replace(f"{{{match}}}", update_dict_copy)
-                    else:
+                    if f"{{{match}}}" == original_dict:
                         # If there's only one match, it needn't always be a string, so not replacing the original dict.
                         return update_dict_copy
+                    else:
+                        # Replace the placeholder in the original_dict
+                        original_dict = original_dict.replace(f"{{{match}}}", update_dict_copy)
                 elif match == "idempotence_token" and idempotence_token:
                     temp_dict = original_dict.replace(f"{{{match}}}", idempotence_token)
                     if len(temp_dict) > 63:

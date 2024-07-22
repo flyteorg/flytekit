@@ -73,7 +73,7 @@ from flytekit.configuration import Image, ImageConfig, SerializationSettings
             kwtypes(endpoint_name=str, endpoint_config_name=str),
             None,
             2,
-            2,
+            1,
             "us-east-2",
             SageMakerEndpointTask,
         ),
