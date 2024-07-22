@@ -507,7 +507,9 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple, None]) -> Di
 
     # This statement results in true for typing.Namedtuple, single and void return types, so this
     # handles Options 1, 2. Even though NamedTuple for us is multi-valued, it's a single value for Python
-    if isinstance(return_annotation, Type) or isinstance(return_annotation, TypeVar):  # type: ignore
+    if hasattr(return_annotation, "__bases__") and (
+        isinstance(return_annotation, Type) or isinstance(return_annotation, TypeVar)
+    ):  # type: ignore
         # isinstance / issubclass does not work for Namedtuple.
         # Options 1 and 2
         bases = return_annotation.__bases__  # type: ignore
