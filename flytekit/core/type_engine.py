@@ -1621,6 +1621,26 @@ class DictTransformer(TypeTransformer[dict]):
             raise e
 
     @staticmethod
+    def dict_to_json_literal(ctx: FlyteContext, v: dict, allow_pickle: bool) -> Literal:
+        """
+        Creates a flyte-specific ``Literal`` value from a native python dictionary.
+        """
+        from flytekit.types.pickle import FlytePickle
+        from flytekit.models.literals import Json
+
+        try:
+            json_str = json.dumps(v)
+            json_bytes = json_str.encode("utf-8")
+            return Literal(scalar=Scalar(json=Json(value=json_bytes)), metadata={"format": "json"})
+        except TypeError as e:
+            if allow_pickle:
+                remote_path = FlytePickle.to_pickle(ctx, v)
+                json_str = json.dumps({"pickle_file": remote_path})
+                json_bytes = json_str.encode("utf-8")
+                Literal(scalar=Scalar(json=Json(value=json_bytes)), metadata={"format": "pickle"})
+            raise e
+
+    @staticmethod
     def is_pickle(python_type: Type[dict]) -> typing.Tuple[bool, Type]:
         base_type, *metadata = DictTransformer.extract_types_or_metadata(python_type)
 
@@ -1654,7 +1674,7 @@ class DictTransformer(TypeTransformer[dict]):
                     return _type_models.LiteralType(map_value_type=sub_type)
                 except Exception as e:
                     raise ValueError(f"Type of Generic List type is not supported, {e}")
-        return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT)
+        return _type_models.LiteralType(simple=_type_models.SimpleType.JSON)
 
     def to_literal(
         self, ctx: FlyteContext, python_val: typing.Any, python_type: Type[dict], expected: LiteralType
@@ -1668,8 +1688,11 @@ class DictTransformer(TypeTransformer[dict]):
         if get_origin(python_type) is Annotated:
             allow_pickle, base_type = DictTransformer.is_pickle(python_type)
 
-        if expected and expected.simple and expected.simple == SimpleType.STRUCT:
-            return self.dict_to_generic_literal(ctx, python_val, allow_pickle)
+        if expected and expected.simple:
+            if expected.simple == SimpleType.STRUCT:
+                return self.dict_to_generic_literal(ctx, python_val, allow_pickle)
+            elif expected.simple == SimpleType.JSON:
+                return self.dict_to_json_literal(ctx, python_val, allow_pickle)
 
         lit_map = {}
         for k, v in python_val.items():
@@ -1704,17 +1727,22 @@ class DictTransformer(TypeTransformer[dict]):
 
         # for empty generic we have to explicitly test for lv.scalar.generic is not None as empty dict
         # evaluates to false
-        if lv and lv.scalar and lv.scalar.generic is not None:
-            if lv.metadata and lv.metadata.get("format", None) == "pickle":
-                from flytekit.types.pickle import FlytePickle
+        if lv and lv.scalar:
+            if lv.scalar.generic is not None:
+                if lv.metadata and lv.metadata.get("format", None) == "pickle":
+                    from flytekit.types.pickle import FlytePickle
 
-                uri = json.loads(_json_format.MessageToJson(lv.scalar.generic)).get("pickle_file")
-                return FlytePickle.from_pickle(uri)
+                    uri = json.loads(_json_format.MessageToJson(lv.scalar.generic)).get("pickle_file")
+                    return FlytePickle.from_pickle(uri)
 
-            try:
-                return json.loads(_json_format.MessageToJson(lv.scalar.generic))
-            except TypeError:
-                raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
+                try:
+                    return json.loads(_json_format.MessageToJson(lv.scalar.generic))
+                except TypeError:
+                    raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
+            elif lv.scalar.json is not None:
+                # TODO: Implement Json deserialization
+                pass
+                # return json.loads(lv.scalar.json.value.decode("utf-8"))
 
         raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
 
