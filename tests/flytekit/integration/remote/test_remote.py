@@ -20,14 +20,15 @@ from flytekit.configuration import Config, ImageConfig, SerializationSettings
 from flytekit.core.launch_plan import reference_launch_plan
 from flytekit.core.task import reference_task
 from flytekit.core.workflow import reference_workflow
-from flytekit.exceptions.user import FlyteAssertion, FlyteEntityNotExistException
+from flytekit.exceptions.user import FlyteAssertion
+from flyteidl_rust import FlyteEntityNotExistException
 from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
 from flytekit.remote.remote import FlyteRemote
 from flytekit.types.schema import FlyteSchema
 
 MODULE_PATH = pathlib.Path(__file__).parent / "workflows/basic"
 CONFIG = os.environ.get("FLYTECTL_CONFIG", str(pathlib.Path.home() / ".flyte" / "config-sandbox.yaml"))
-IMAGE = os.environ.get("FLYTEKIT_IMAGE", "localhost:30000/flytekit:dev")
+IMAGE = os.environ.get("FLYTEKIT_IMAGE", "ghcr.io/flyteorg/flytekit:py3.12-1.12.0")
 PROJECT = "flytesnacks"
 DOMAIN = "development"
 VERSION = f"v{os.getpid()}"
@@ -375,7 +376,7 @@ def test_execute_with_default_launch_plan(register):
 
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     execution = remote.execute(
-        parent_wf, inputs={"a": 101}, version=VERSION, wait=True, image_config=ImageConfig.auto(img_name=IMAGE)
+        parent_wf, inputs={"a": 101}, name="basic.subworkflows.parent_wf", version=VERSION, wait=True, image_config=ImageConfig.auto(img_name=IMAGE)
     )
     # check node execution inputs and outputs
     assert execution.node_executions["n0"].inputs == {"a": 101}
