@@ -5,7 +5,7 @@ import os
 import tempfile
 from dataclasses import dataclass
 from typing import Annotated, List, Dict, Optional
-
+from flytekit.types.schema import FlyteSchema
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.type_engine import DataclassTransformer
@@ -857,3 +857,28 @@ def test_mashumaro_dataclasses_json_mixin_with_flyte_types_get_literal_type_and_
     pv = TypeEngine.to_python_value(ctx, lv, NestedFlyteTypes)
     assert isinstance(pv, NestedFlyteTypes)
     DataclassTransformer().assert_type(NestedFlyteTypes, pv)
+
+def test_get_literal_type_data_class_json_fail_but_mashumaro_works():
+    @dataclass
+    class FlyteTypesWithDataClassJson(DataClassJsonMixin):
+        flytefile: FlyteFile
+        flytedir: FlyteDirectory
+        structured_dataset: StructuredDataset
+        fs: FlyteSchema
+
+    @dataclass
+    class NestedFlyteTypesWithDataClassJson(DataClassJsonMixin):
+        flytefile: FlyteFile
+        flytedir: FlyteDirectory
+        structured_dataset: StructuredDataset
+        flyte_types: FlyteTypesWithDataClassJson
+        fs: FlyteSchema
+        flyte_types: FlyteTypesWithDataClassJson
+        list_flyte_types: List[FlyteTypesWithDataClassJson]
+        dict_flyte_types: Dict[str, FlyteTypesWithDataClassJson]
+        flyte_types: FlyteTypesWithDataClassJson
+        optional_flyte_types: Optional[FlyteTypesWithDataClassJson] = None
+
+    transformer = DataclassTransformer()
+    lt = transformer.get_literal_type(NestedFlyteTypesWithDataClassJson)
+    assert lt.metadata is not None
