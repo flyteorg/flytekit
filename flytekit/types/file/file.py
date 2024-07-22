@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 import mimetypes
 import os
 import pathlib
@@ -29,6 +30,10 @@ def noop(): ...
 
 
 T = typing.TypeVar("T")
+
+
+def _default_downloader(ctx: FlyteContext, remote_path: str, local_path: str) -> None:
+    return ctx.file_access.get_data(remote_path, local_path, is_multipart=False)
 
 
 @dataclass
@@ -564,11 +569,10 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         # For the remote case, return an FlyteFile object that can download
         local_path = ctx.file_access.get_random_local_path(uri)
 
-        def _downloader():
-            return ctx.file_access.get_data(uri, local_path, is_multipart=False)
-
         expected_format = FlyteFilePathTransformer.get_format(expected_python_type)
-        ff = FlyteFile.__class_getitem__(expected_format)(local_path, _downloader)
+        ff = FlyteFile.__class_getitem__(expected_format)(
+            local_path, functools.partial(_default_downloader, ctx, uri, local_path)
+        )
         ff._remote_source = uri
 
         return ff
