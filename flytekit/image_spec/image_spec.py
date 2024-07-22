@@ -1,5 +1,6 @@
 import base64
 import copy
+import functools
 import hashlib
 import os
 import pathlib
@@ -79,7 +80,7 @@ class ImageSpec:
         if self.registry:
             self.registry = self.registry.lower()
 
-    @property
+    @functools.cached_property
     def id(self) -> str:
         """
         Calculate a unique hash as the ID for the ImageSpec, and it will be used to
