@@ -7,12 +7,19 @@ import pytest
 import torch
 import torch.distributed as dist
 from dataclasses_json import DataClassJsonMixin
-from flytekitplugins.kfpytorch.task import Elastic
+from flytekitplugins.kfpytorch.task import CleanPodPolicy, Elastic, RunPolicy
 
 import flytekit
 from flytekit import task, workflow
+from flytekit.configuration import SerializationSettings
 from flytekit.exceptions.user import FlyteRecoverableException
 
+@pytest.fixture(autouse=True, scope="function")
+def restore_env():
+    original_env = os.environ.copy()
+    yield
+    os.environ.clear()
+    os.environ.update(original_env)
 
 @dataclass
 class Config(DataClassJsonMixin):
@@ -187,3 +194,54 @@ def test_recoverable_error(recoverable: bool, start_method: str) -> None:
     else:
         with pytest.raises(RuntimeError):
             wf(recoverable=recoverable)
+
+
+def test_default_timeouts():
+    """Test that default timeouts are set for the elastic task."""
+    @task(task_config=Elastic(nnodes=1))
+    def test_task():
+        pass
+
+    assert test_task.task_config.rdzv_configs == {"join_timeout": 900, "timeout": 900}
+
+
+def test_run_policy() -> None:
+    """Test that run policy is propagated to custom spec."""
+
+    run_policy = RunPolicy(
+        clean_pod_policy=CleanPodPolicy.ALL,
+        ttl_seconds_after_finished=10 * 60,
+        active_deadline_seconds=36000,
+        backoff_limit=None,
+    )
+
+    # nnodes must be > 1 to get pytorchjob spec
+    @task(task_config=Elastic(nnodes=2, nproc_per_node=2, run_policy=run_policy))
+    def test_task():
+        pass
+
+    spec = test_task.get_custom(SerializationSettings(image_config=None))
+
+    assert spec["runPolicy"] == {
+        "cleanPodPolicy": "CLEANPOD_POLICY_ALL",
+        "ttlSecondsAfterFinished": 600,
+        "activeDeadlineSeconds": 36000,
+    }
+
+@pytest.mark.parametrize("start_method", ["spawn", "fork"])
+def test_omp_num_threads(start_method: str) -> None:
+    """Test that the env var OMP_NUM_THREADS is set by default and not overwritten if set."""
+
+    @task(task_config=Elastic(nnodes=1, nproc_per_node=2, start_method=start_method))
+    def test_task_omp_default():
+        assert os.environ["OMP_NUM_THREADS"] == "1"
+
+    test_task_omp_default()
+
+    os.environ["OMP_NUM_THREADS"] = "42"
+
+    @task(task_config=Elastic(nnodes=1, nproc_per_node=2, start_method=start_method))
+    def test_task_omp_set():
+        assert os.environ["OMP_NUM_THREADS"] == "42"
+
+    test_task_omp_set()

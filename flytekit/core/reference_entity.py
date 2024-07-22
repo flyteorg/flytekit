@@ -124,7 +124,6 @@ class ReferenceEntity(object):
         except Exception as e:
             logger.exception(f"Exception when executing {e}")
             raise e
-        logger.debug("Task executed successfully in user level")
 
         expected_output_names = list(self.python_interface.outputs.keys())
         if len(expected_output_names) == 1:

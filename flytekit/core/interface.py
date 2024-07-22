@@ -12,11 +12,17 @@ from typing_extensions import get_args, get_type_hints
 
 from flytekit.core import context_manager
 from flytekit.core.artifact import Artifact, ArtifactIDSpecification, ArtifactQuery
+from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.docstring import Docstring
 from flytekit.core.sentinel import DYNAMIC_INPUT_BINDING
 from flytekit.core.type_engine import TypeEngine, UnionTransformer
-from flytekit.exceptions.user import FlyteValidationException
-from flytekit.loggers import logger
+from flytekit.core.utils import has_return_statement
+from flytekit.exceptions.user import (
+    FlyteMissingReturnValueException,
+    FlyteMissingTypeException,
+    FlyteValidationException,
+)
+from flytekit.loggers import developer_logger, logger
 from flytekit.models import interface as _interface_models
 from flytekit.models.literals import Literal, Scalar, Void
 
@@ -25,7 +31,7 @@ T = typing.TypeVar("T")
 
 def repr_kv(k: str, v: Union[Type, Tuple[Type, Any]]) -> str:
     if isinstance(v, tuple):
-        if v[1]:
+        if v[1] is not None:
             return f"{k}: {v[0]}={v[1]}"
         return f"{k}: {v[0]}"
     return f"{k}: {v}"
@@ -70,6 +76,8 @@ class Interface(object):
         self._inputs: Union[Dict[str, Tuple[Type, Any]], Dict[str, Type]] = {}  # type: ignore
         if inputs:
             for k, v in inputs.items():
+                if not k.isidentifier():
+                    raise ValueError(f"Input name must be valid Python identifier: {k!r}")
                 if type(v) is tuple and len(cast(Tuple, v)) > 1:
                     self._inputs[k] = v  # type: ignore
                 else:
@@ -372,12 +380,26 @@ def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Doc
     signature = inspect.signature(fn)
     return_annotation = type_hints.get("return", None)
 
+    ctx = FlyteContextManager.current_context()
+    # Only check if the task/workflow has a return statement at compile time locally.
+    if (
+        ctx.execution_state
+        and ctx.execution_state.mode is None
+        and return_annotation
+        and type(None) not in get_args(return_annotation)
+        and return_annotation is not type(None)
+        and has_return_statement(fn) is False
+    ):
+        raise FlyteMissingReturnValueException(fn=fn)
+
     outputs = extract_return_annotation(return_annotation)
     for k, v in outputs.items():
         outputs[k] = v  # type: ignore
     inputs: Dict[str, Tuple[Type, Any]] = OrderedDict()
     for k, v in signature.parameters.items():  # type: ignore
         annotation = type_hints.get(k, None)
+        if annotation is None:
+            raise FlyteMissingTypeException(fn=fn, param_name=k)
         default = v.default if v.default is not inspect.Parameter.empty else None
         # Inputs with default values are currently ignored, we may want to look into that in the future
         inputs[k] = (annotation, default)  # type: ignore
@@ -510,7 +532,7 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple, None]) -> Di
 
     else:
         # Handle all other single return types
-        logger.debug(f"Task returns unnamed native tuple {return_annotation}")
+        developer_logger.debug(f"Task returns unnamed native tuple {return_annotation}")
         return {default_output_name(): cast(Type, return_annotation)}
 
 

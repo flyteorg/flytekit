@@ -14,7 +14,7 @@ from flytekit.core import context_manager
 from flytekit.core.condition import conditional
 from flytekit.core.task import task
 from flytekit.core.workflow import WorkflowFailurePolicy, WorkflowMetadata, WorkflowMetadataDefaults, workflow
-from flytekit.exceptions.user import FlyteValidationException, FlyteValueException
+from flytekit.exceptions.user import FlyteValidationException, FlyteValueException, FlyteMissingReturnValueException
 from flytekit.tools.translator import get_serializable
 from flytekit.types.error.error import FlyteError
 
@@ -237,7 +237,7 @@ def test_unexpected_outputs():
         no_outputs_wf()
 
     # Should raise an exception because it doesn't return something when it should
-    with pytest.raises(AssertionError):
+    with pytest.raises(FlyteMissingReturnValueException):
 
         @workflow
         def one_output_wf() -> int:  # type: ignore

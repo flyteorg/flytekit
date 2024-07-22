@@ -15,7 +15,8 @@ import click
 
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.utils import timeit
-from flytekit.tools.ignore import DockerIgnore, GitIgnore, Ignore, IgnoreGroup, StandardIgnore
+from flytekit.loggers import logger
+from flytekit.tools.ignore import DockerIgnore, FlyteIgnore, GitIgnore, Ignore, IgnoreGroup, StandardIgnore
 from flytekit.tools.script_mode import tar_strip_file_attributes
 
 FAST_PREFIX = "fast"
@@ -46,7 +47,7 @@ def fast_package(
     :param bool deref_symlinks: Enables dereferencing symlinks when packaging directory
     :return os.PathLike:
     """
-    default_ignores = [GitIgnore, DockerIgnore, StandardIgnore]
+    default_ignores = [GitIgnore, DockerIgnore, StandardIgnore, FlyteIgnore]
     if options is not None:
         if options.keep_default_ignores:
             ignores = options.ignores + default_ignores
@@ -95,6 +96,10 @@ def compute_digest(source: os.PathLike, filter: Optional[callable] = None) -> st
 
         for fname in files:
             abspath = os.path.join(root, fname)
+            # Only consider files that exist (e.g. disregard symlinks that point to non-existent files)
+            if not os.path.exists(abspath):
+                logger.info(f"Skipping non-existent file {abspath}")
+                continue
             relpath = os.path.relpath(abspath, source)
             if filter:
                 if filter(relpath):

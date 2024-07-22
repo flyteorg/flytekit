@@ -45,6 +45,7 @@ class ImageSpec:
         pip_index: Specify the custom pip index url
         pip_extra_index_url: Specify one or more pip index urls as a list
         registry_config: Specify the path to a JSON registry config file
+        entrypoint: List of strings to overwrite the entrypoint of the base image with, set to [] to remove the entrypoint.
         commands: Command to run during the building process
         tag_format: Custom string format for image tag. The ImageSpec hash passed in as `spec_hash`. For example,
             to add a "dev" suffix to the image tag, set `tag_format="{spec_hash}-dev"`
@@ -68,6 +69,7 @@ class ImageSpec:
     pip_index: Optional[str] = None
     pip_extra_index_url: Optional[List[str]] = None
     registry_config: Optional[str] = None
+    entrypoint: Optional[List[str]] = None
     commands: Optional[List[str]] = None
     tag_format: Optional[str] = None
 
@@ -104,9 +106,11 @@ class ImageSpec:
             return os.environ.get(_F_IMG_ID) == self.image_name()
         return True
 
-    def exist(self) -> bool:
+    def exist(self) -> Optional[bool]:
         """
         Check if the image exists in the registry.
+        Return True if the image exists in the registry, False otherwise.
+        Return None if failed to check if the image exists due to the permission issue or other reasons.
         """
         import docker
         from docker.errors import APIError, ImageNotFound
@@ -121,7 +125,9 @@ class ImageSpec:
         except APIError as e:
             if e.response.status_code == 404:
                 return False
-            return True
+
+            click.secho(f"Failed to check if the image exists with error:\n {e}", fg="red")
+            return None
         except ImageNotFound:
             return False
         except Exception as e:
@@ -143,9 +149,18 @@ class ImageSpec:
                 if response.status_code == 404 and "not found" in str(response.content):
                     return False
 
-            click.secho(f"Failed to check if the image exists with error : {e}", fg="red")
-            click.secho("Flytekit assumes that the image already exists.", fg="blue")
-            return True
+            if "Not supported URL scheme http+docker" in str(e):
+                raise RuntimeError(
+                    f"{str(e)}\n"
+                    f"Error: Incompatible Docker package version.\n"
+                    f"Current version: {docker.__version__}\n"
+                    f"Please upgrade the Docker package to version 7.1.0 or higher.\n"
+                    f"You can upgrade the package by running:\n"
+                    f"    pip install --upgrade docker"
+                )
+
+            click.secho(f"Failed to check if the image exists with error:\n {e}", fg="red")
+            return None
 
     def __hash__(self):
         return hash(asdict(self).__str__())
@@ -230,14 +245,17 @@ class ImageSpecBuilder:
             True if the image should be built, otherwise it returns False.
         """
         img_name = image_spec.image_name()
-        if not image_spec.exist():
+        exist = image_spec.exist()
+        if exist is False:
             click.secho(f"Image {img_name} not found. building...", fg="blue")
             return True
-        if image_spec._is_force_push:
-            click.secho(f"Image {img_name} found but overwriting existing image.", fg="blue")
-            return True
-
-        click.secho(f"Image {img_name} found. Skip building.", fg="blue")
+        elif exist is True:
+            if image_spec._is_force_push:
+                click.secho(f"Overwriting existing image {img_name}.", fg="blue")
+                return True
+            click.secho(f"Image {img_name} found. Skip building.", fg="blue")
+        else:
+            click.secho(f"Flytekit assumes the image {img_name} already exists.", fg="blue")
         return False
 
 

@@ -13,6 +13,7 @@ import fsspec
 from dataclasses_json import DataClassJsonMixin, config
 from fsspec.utils import get_protocol
 from marshmallow import fields
+from mashumaro.types import SerializableType
 
 from flytekit import BlobType
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
@@ -32,7 +33,7 @@ def noop(): ...
 
 
 @dataclass
-class FlyteDirectory(DataClassJsonMixin, os.PathLike, typing.Generic[T]):
+class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.Generic[T]):
     path: PathType = field(default=None, metadata=config(mm_field=fields.String()))  # type: ignore
     """
     .. warning::
@@ -120,6 +121,36 @@ class FlyteDirectory(DataClassJsonMixin, os.PathLike, typing.Generic[T]):
     field in the ``BlobType``.
     """
 
+    def _serialize(self) -> typing.Dict[str, str]:
+        lv = FlyteDirToMultipartBlobTransformer().to_literal(
+            FlyteContextManager.current_context(), self, FlyteDirectory, None
+        )
+        return {"path": lv.scalar.blob.uri}
+
+    @classmethod
+    def _deserialize(cls, value) -> "FlyteDirectory":
+        path = value.get("path", None)
+
+        if path is None:
+            raise ValueError("FlyteDirectory's path should not be None")
+
+        return FlyteDirToMultipartBlobTransformer().to_python_value(
+            FlyteContextManager.current_context(),
+            Literal(
+                scalar=Scalar(
+                    blob=Blob(
+                        metadata=BlobMetadata(
+                            type=_core_types.BlobType(
+                                format="", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
+                            )
+                        ),
+                        uri=path,
+                    )
+                )
+            ),
+            cls,
+        )
+
     def __init__(
         self,
         path: typing.Union[str, os.PathLike],
@@ -181,6 +212,18 @@ class FlyteDirectory(DataClassJsonMixin, os.PathLike, typing.Generic[T]):
         class _SpecificFormatDirectoryClass(FlyteDirectory):
             # Get the type engine to see this as kind of a generic
             __origin__ = FlyteDirectory
+
+            class AttributeHider:
+                def __get__(self, instance, owner):
+                    raise AttributeError(
+                        """We have to return false in hasattr(cls, "__class_getitem__") to make mashumaro deserialize FlyteDirectory correctly."""
+                    )
+
+            # Set __class_getitem__ to AttributeHider to make mashumaro deserialize FlyteDirectory correctly
+            # https://stackoverflow.com/questions/6057130/python-deleting-a-class-attribute-in-a-subclass/6057409
+            # Since mashumaro will use the method __class_getitem__ and __origin__ to construct the dataclass back
+            # https://github.com/Fatal1ty/mashumaro/blob/e945ee4319db49da9f7b8ede614e988cc8c8956b/mashumaro/core/meta/helpers.py#L300-L303
+            __class_getitem__ = AttributeHider()  # type: ignore
 
             @classmethod
             def extension(cls) -> str:
