@@ -113,11 +113,10 @@ class ArrayNode(object):
                 if isinstance(v, list) and len(v) > 0 and isinstance(v[0], self.target.python_interface.inputs[k]):
                     mapped_entity_count = len(v)
                     break
-                # TODO pvditt - should we error here?
-                # else:
-                #     raise ValueError(
-                #         f"Expected a list of {self.target.python_interface.inputs[k]} but got {type(v)} instead."
-                #     )
+                else:
+                    raise ValueError(
+                        f"Expected a list of {self.target.python_interface.inputs[k]} but got {type(v)} instead."
+                    )
 
         failed_count = 0
         min_successes = mapped_entity_count
@@ -130,8 +129,6 @@ class ArrayNode(object):
         for i in range(mapped_entity_count):
             single_instance_inputs = {}
             for k in self.python_interface.inputs.keys():
-                v = kwargs[k]
-                # TODO - pvditt do we have to check if v is a list? shouldn't it have to be a list if not bound?
                 if k not in self._bound_inputs:
                     single_instance_inputs[k] = kwargs[k][i]
                 else:
