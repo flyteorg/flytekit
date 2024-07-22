@@ -1,5 +1,7 @@
 import typing
 
+from flyteidl_rust import FlyteUserException as _FlyteUserException
+
 from flytekit.exceptions.base import FlyteException as _FlyteException
 from flytekit.exceptions.base import FlyteRecoverableException as _Recoverable
 
@@ -55,7 +57,7 @@ class FlyteValueException(FlyteUserException, ValueError):
         super(FlyteValueException, self).__init__(self._create_verbose_message(received_value, error_message))
 
 
-class FlyteAssertion(FlyteUserException, AssertionError):
+class FlyteAssertion(_FlyteUserException, AssertionError):
     _ERROR_CODE = "USER:AssertionError"
 
 
