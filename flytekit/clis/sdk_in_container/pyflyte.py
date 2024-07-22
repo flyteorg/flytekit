@@ -18,7 +18,8 @@ from flytekit.clis.sdk_in_container.package import package
 from flytekit.clis.sdk_in_container.register import register
 from flytekit.clis.sdk_in_container.run import run
 from flytekit.clis.sdk_in_container.serialize import serialize
-from flytekit.clis.sdk_in_container.serve import serve
+
+# from flytekit.clis.sdk_in_container.serve import serve
 from flytekit.clis.sdk_in_container.utils import ErrorHandlingCommand, validate_package
 from flytekit.clis.version import info
 from flytekit.configuration.file import FLYTECTL_CONFIG_ENV_VAR, FLYTECTL_CONFIG_ENV_VAR_OVERRIDE
@@ -88,7 +89,7 @@ main.add_command(init)
 main.add_command(run)
 main.add_command(register)
 main.add_command(backfill)
-main.add_command(serve)
+# main.add_command(serve)
 main.add_command(build)
 main.add_command(metrics)
 main.add_command(launchplan)
