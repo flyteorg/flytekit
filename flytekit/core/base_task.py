@@ -336,7 +336,7 @@ class Task(object):
             # breakpoint()
             outputs_literal_map = self.sandbox_execute(ctx, input_literal_map)
 
-        if inspect.isawaitable(outputs_literal_map):
+        if inspect.iscoroutine(outputs_literal_map):
             return outputs_literal_map
 
         outputs_literals = outputs_literal_map.literals
@@ -739,7 +739,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             with timeit("Execute user level code"):
                 native_outputs = self.execute(**native_inputs)
 
-            if inspect.isawaitable(native_outputs):
+            if inspect.iscoroutine(native_outputs):
                 # If native outputs is a coroutine, then this is an eager workflow.
                 if exec_ctx.execution_state:
                     # HACK local workflow
