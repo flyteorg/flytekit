@@ -69,8 +69,9 @@ class RayFunctionTask(PythonFunctionTask):
 
         ctx = FlyteContextManager.current_context()
         if not ctx.execution_state.is_local_execution():
-            # working_dir = ctx.execution_state.user_space_params.working_directory
-            working_dir = "/root"
+            working_dir = ctx.execution_state.working_directory
+            print(working_dir)
+            # working_dir = "/root"
             init_params["runtime_env"] = {"working_dir": working_dir}
 
             # fast register data with timestamp mtime=0 will be zipped and uploaded to ray gcs
