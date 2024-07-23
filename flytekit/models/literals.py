@@ -307,7 +307,7 @@ class Json(_common.FlyteIdlEntity):
         """
         :rtype: bytes
         """
-        return self.value
+        return self._value
 
     def to_flyte_idl(self):
         """
