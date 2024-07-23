@@ -737,11 +737,15 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             input_kwargs = construct_input_promises([k for k in self.interface.inputs.keys()])
             input_kwargs.update(kwargs)
             from functools import wraps as _wraps
+
             @_wraps(self._workflow_function)
             def _wrapped_function(**kwargs):
                 loop = asyncio.get_event_loop()
                 return loop.run_until_complete(self._workflow_function(**kwargs))
-            user_func = _wrapped_function if inspect.iscoroutinefunction(self._workflow_function) else self._workflow_function
+
+            user_func = (
+                _wrapped_function if inspect.iscoroutinefunction(self._workflow_function) else self._workflow_function
+            )
             workflow_outputs = exception_scopes.user_entry_point(user_func)(**input_kwargs)
             all_nodes.extend(comp_ctx.compilation_state.nodes)
 

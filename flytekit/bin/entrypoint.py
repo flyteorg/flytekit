@@ -93,7 +93,6 @@ def _dispatch_execute(
         ctx.file_access.get_data(inputs_path, local_inputs_file)
         input_proto = utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
         idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
-        # breakpoint()
         # Step2
         # Decorate the dispatch execute function before calling it, this wraps all exceptions into one
         # of the FlyteScopedExceptions
