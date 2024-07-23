@@ -328,7 +328,7 @@ def literal_type_to_click_type(lt: LiteralType, python_type: typing.Type) -> cli
     Converts a Flyte LiteralType given a python_type to a click.ParamType
     """
     if lt.simple:
-        if lt.simple == SimpleType.STRUCT:
+        if lt.simple == SimpleType.STRUCT or lt.simple == SimpleType.JSON:
             ct = JsonParamType(python_type)
             ct.name = f"JSON object {python_type.__name__}"
             return ct
