@@ -1,7 +1,9 @@
 from flytekit.core.inference import NIM, NIMSecrets
 import pytest
 
-secrets = NIMSecrets(ngc_secret_key="ngc-key", ngc_image_secret="nvcrio-cred")
+secrets = NIMSecrets(
+    ngc_secret_key="ngc-key", ngc_image_secret="nvcrio-cred", secrets_prefix="_FSEC_"
+)
 
 
 def test_nim_init_raises_value_error():
@@ -10,6 +12,14 @@ def test_nim_init_raises_value_error():
 
     with pytest.raises(TypeError):
         NIM(secrets=NIMSecrets(ngc_secret_key=secrets.ngc_secret_key))
+
+    with pytest.raises(TypeError):
+        NIM(
+            secrets=NIMSecrets(
+                ngc_image_secret=secrets.ngc_image_secret,
+                ngc_secret_key=secrets.ngc_secret_key,
+            )
+        )
 
 
 def test_nim_secrets():
@@ -23,7 +33,7 @@ def test_nim_secrets():
     )
     secret_obj = nim_instance.pod_template.pod_spec.init_containers[0].env[0]
     assert secret_obj.name == "NGC_API_KEY"
-    assert secret_obj.value == "$(_UNION_NGC-KEY)"
+    assert secret_obj.value == "$(_FSEC_NGC-KEY)"
 
 
 def test_nim_init_valid_params():

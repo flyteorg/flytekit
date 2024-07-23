@@ -25,20 +25,19 @@ from .utils import ModelInferenceTemplate
 class NIMSecrets:
     """
     :param ngc_image_secret: The name of the Kubernetes secret containing the NGC image pull credentials.
-    :param ngc_secret_group: The group name for the NGC API key.
     :param ngc_secret_key: The key name for the NGC API key.
+    :param secrets_prefix: The secrets prefix that Flyte appends to all mounted secrets.
+    :param ngc_secret_group: The group name for the NGC API key.
     :param hf_token_group: The group name for the HuggingFace token.
     :param hf_token_key: The key name for the HuggingFace token.
-    :param secrets_prefix: The secrets prefix that Flyte appends to all mounted secrets. Default value is _UNION_.
     """
 
     ngc_image_secret: str  # kubernetes secret
     ngc_secret_key: str
+    secrets_prefix: str  # _UNION_ or _FSEC_
     ngc_secret_group: Optional[str] = None
     hf_token_group: Optional[str] = None
     hf_token_key: Optional[str] = None
-
-    secrets_prefix: str = "_UNION_"
 
 
 class NIM(ModelInferenceTemplate):
@@ -75,6 +74,8 @@ class NIM(ModelInferenceTemplate):
             raise ValueError("NGC image pull secret must be provided.")
         if secrets.ngc_secret_key is None:
             raise ValueError("NGC secret key must be provided.")
+        if secrets.secrets_prefix is None:
+            raise ValueError("Secrets prefix must be provided.")
 
         self._shm_size = shm_size
         self._hf_repo_ids = hf_repo_ids
