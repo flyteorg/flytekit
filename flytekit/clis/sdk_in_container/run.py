@@ -558,9 +558,8 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
                         )
                 if processed_click_value is not None or optional_v:
                     inputs[input_name] = processed_click_value
-            breakpoint()
+            # breakpoint()
             if not run_level_params.is_remote:
-                
                 with FlyteContextManager.with_context(_update_flyte_context(run_level_params)):
                     if run_level_params.envvars:
                         for env_var, value in run_level_params.envvars.items():
