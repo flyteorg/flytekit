@@ -68,7 +68,6 @@ def replace_placeholder(
     original_dict: str,
     placeholder: str,
     replacement: str,
-    idempotence_token: Optional[str],
 ) -> str:
     """
     Replace a placeholder in the original string and handle the specific logic for the sagemaker service and idempotence token.
@@ -79,7 +78,7 @@ def replace_placeholder(
         "idempotence_token",
     ]:
         if len(temp_dict) > 63:
-            truncated_token = idempotence_token[: 63 - len(original_dict.replace(f"{{{placeholder}}}", ""))]
+            truncated_token = replacement[: 63 - len(original_dict.replace(f"{{{placeholder}}}", ""))]
             return original_dict.replace(f"{{{placeholder}}}", truncated_token)
         else:
             return temp_dict
@@ -115,9 +114,9 @@ def update_dict_fn(
                 if f"{{{match}}}" == original_dict:
                     return nested_value
                 else:
-                    original_dict = replace_placeholder(service, original_dict, match, nested_value, idempotence_token)
+                    original_dict = replace_placeholder(service, original_dict, match, nested_value)
             elif match == "idempotence_token" and idempotence_token:
-                original_dict = replace_placeholder(service, original_dict, match, idempotence_token, idempotence_token)
+                original_dict = replace_placeholder(service, original_dict, match, idempotence_token)
         return original_dict
 
     if isinstance(original_dict, list):
