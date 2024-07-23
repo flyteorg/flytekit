@@ -358,7 +358,9 @@ class ArrayNodeMapTask(PythonTask):
         all_coroutines = all(inspect.iscoroutine(o) for o in outputs)
         if any_coroutines != all_coroutines:
             raise ValueError("Cannot mix coroutines and non-coroutines in a map task")
-        return outputs if not any_coroutines else asyncio.gather(*outputs)
+        async def gather_wrapper():
+            return await asyncio.gather(*outputs)
+        return outputs if not any_coroutines else gather_wrapper()
 
 
 def map_task(
