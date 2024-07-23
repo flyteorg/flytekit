@@ -1625,8 +1625,8 @@ class DictTransformer(TypeTransformer[dict]):
         """
         Creates a flyte-specific ``Literal`` value from a native python dictionary.
         """
-        from flytekit.types.pickle import FlytePickle
         from flytekit.models.literals import Json
+        from flytekit.types.pickle import FlytePickle
 
         try:
             json_str = json.dumps(v)

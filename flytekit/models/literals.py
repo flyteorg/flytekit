@@ -323,6 +323,7 @@ class Json(_common.FlyteIdlEntity):
         """
         return cls(value=proto.value)
 
+
 class BindingDataMap(_common.FlyteIdlEntity):
     def __init__(self, bindings):
         """
