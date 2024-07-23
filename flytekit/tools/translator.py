@@ -6,7 +6,7 @@ from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from flyteidl.admin import schedule_pb2
 
-from flytekit import ImageSpec, PythonFunctionTask, PythonInstanceTask, SourceCode
+from flytekit import ImageSpec, PythonFunctionTask, SourceCode
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core import constants as _common_constants
 from flytekit.core import context_manager
@@ -634,31 +634,8 @@ def get_serializable_array_node(
     options: Optional[Options] = None,
 ) -> ArrayNodeModel:
     array_node = node.flyte_entity
-    target = array_node.target
-
-    if isinstance(target, PythonFunctionTask) or isinstance(target, PythonInstanceTask):
-        task_spec = get_serializable(entity_mapping, settings, target, options)
-        task_node = workflow_model.TaskNode(
-            reference_id=task_spec.template.id,
-            overrides=TaskNodeOverrides(
-                resources=node._resources,
-                extended_resources=node._extended_resources,
-                container_image=node._container_image,
-            ),
-        )
-        subnode = workflow_model.Node(
-            id=target.name,
-            metadata=array_node.construct_node_metadata(),
-            inputs=node.bindings,
-            upstream_node_ids=[],
-            output_aliases=[],
-            task_node=task_node,
-        )
-    else:
-        subnode = get_serializable_node(entity_mapping, settings, array_node, options=options)
-
     return ArrayNodeModel(
-        node=subnode,
+        node=get_serializable_node(entity_mapping, settings, array_node, options=options),
         parallelism=array_node.concurrency,
         min_successes=array_node.min_successes,
         min_success_ratio=array_node.min_success_ratio,
