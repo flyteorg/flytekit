@@ -7,11 +7,12 @@ import pathlib
 import tempfile
 import typing
 from dataclasses import dataclass, field, fields
-from typing import get_args
+from typing import Iterator, get_args
 
 import rich_click as click
 from mashumaro.codecs.json import JSONEncoder
 from rich.progress import Progress
+from typing_extensions import get_origin
 
 from flytekit import Annotations, FlyteContext, FlyteContextManager, Labels, Literal
 from flytekit.clis.sdk_in_container.helpers import patch_image_config
@@ -538,10 +539,20 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
             for input_name, v in entity.python_interface.inputs_with_defaults.items():
                 processed_click_value = kwargs.get(input_name)
                 optional_v = False
+
+                skip_default_value_selection = False
                 if processed_click_value is None and isinstance(v, typing.Tuple):
-                    optional_v = is_optional(v[0])
-                    if len(v) == 2:
-                        processed_click_value = v[1]
+                    if entity_type == "workflow" and hasattr(v[0], "__args__"):
+                        origin_base_type = get_origin(v[0])
+                        if issubclass(origin_base_type, Iterator):  # Iterator
+                            args = getattr(v[0], "__args__")
+                            if isinstance(args, tuple) and get_origin(args[0]) is typing.Union:  # Iterator[JSON]
+                                skip_default_value_selection = True
+
+                    if not skip_default_value_selection:
+                        optional_v = is_optional(v[0])
+                        if len(v) == 2:
+                            processed_click_value = v[1]
                 if isinstance(processed_click_value, ArtifactQuery):
                     if run_level_params.is_remote:
                         click.secho(
