@@ -299,7 +299,7 @@ class Void(_common.FlyteIdlEntity):
 
 
 class Json(_common.FlyteIdlEntity):
-    def __init__(self, value):
+    def __init__(self, value: bytes):
         self._value = value
 
     @property
@@ -861,6 +861,7 @@ class Scalar(_common.FlyteIdlEntity):
             error=self.error.to_flyte_idl() if self.error is not None else None,
             generic=self.generic,
             structured_dataset=self.structured_dataset.to_flyte_idl() if self.structured_dataset is not None else None,
+            json=self.json.to_flyte_idl() if self.json is not None else None,
         )
 
     @classmethod
