@@ -9,6 +9,7 @@ import mock
 import pytest
 import yaml
 from click.testing import CliRunner
+from flytekit.loggers import logging, logger
 
 from flytekit.clis.sdk_in_container import pyflyte
 from flytekit.clis.sdk_in_container.run import RunLevelParams, get_entities_in_file, run_command
@@ -17,6 +18,10 @@ from flytekit.core.task import task
 from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec, calculate_hash_from_image_spec
 from flytekit.interaction.click_types import DirParamType, FileParamType
 from flytekit.remote import FlyteRemote
+from typing import Iterator
+from flytekit.types.iterator import JSON
+from flytekit import workflow
+
 
 pytest.importorskip("pandas")
 
@@ -427,6 +432,100 @@ def test_pyflyte_run_run(
     mock_remote.register_script.side_effect = check_image
 
     run_command(mock_click_ctx, tk)()
+
+
+def jsons():
+    for x in [
+        {
+            "custom_id": "request-1",
+            "method": "POST",
+            "url": "/v1/chat/completions",
+            "body": {
+                "model": "gpt-3.5-turbo",
+                "messages": [
+                    {"role": "system", "content": "You are a helpful assistant."},
+                    {"role": "user", "content": "What is 2+2?"},
+                ],
+            },
+        },
+    ]:
+        yield x
+
+
+@mock.patch("flytekit.configuration.default_images.DefaultImages.default_image")
+def test_pyflyte_run_with_iterator_json_type(mock_image, mock_image_spec_builder, caplog):
+    mock_image.return_value = "cr.flyte.org/flyteorg/flytekit:py3.9-latest"
+    ImageBuildEngine.register("test", mock_image_spec_builder, )
+
+    @task
+    def t1(x: Iterator[JSON]) -> Iterator[JSON]:
+        return x
+
+    @workflow
+    def tk(x: Iterator[JSON] = jsons()) -> Iterator[JSON]:
+        return t1(x=x)
+
+    @task
+    def t2(x: list[int]) -> list[int]:
+        return x
+
+    @workflow
+    def tk_list(x: list[int] = [1,2,3]) -> list[int]:
+        return t2(x=x)
+
+    @task
+    def t3(x: Iterator[int]) -> Iterator[int]:
+        return x
+
+    @workflow
+    def tk_simple_iterator(x: Iterator[int] = iter([1,2,3])) -> Iterator[int]:
+        return t3(x=x)
+
+
+    mock_click_ctx = mock.MagicMock()
+    mock_remote = mock.MagicMock()
+    image_tuple = ("ghcr.io/flyteorg/mydefault:py3.9-latest",)
+    image_config = ImageConfig.validate_image(None, "", image_tuple)
+
+    pp = pathlib.Path(__file__).parent.parent.parent / "configuration" / "configs" / "no_images.yaml"
+
+    obj = RunLevelParams(
+        project="p",
+        domain="d",
+        image_config=image_config,
+        remote=True,
+        config_file=str(pp),
+    )
+    obj._remote = mock_remote
+    mock_click_ctx.obj = obj
+
+    def check_image(*args, **kwargs):
+        assert kwargs["image_config"] == ic_result_1
+
+    mock_remote.register_script.side_effect = check_image
+
+    logger.propagate = True
+    with caplog.at_level(logging.DEBUG, logger="flytekit"):
+        run_command(mock_click_ctx, tk)()
+        assert any("Detected Iterator[JSON] in pyflyte.test_run.tk input annotations..." in message[2] for message in caplog.record_tuples)
+
+    caplog.clear()
+
+    with caplog.at_level(logging.DEBUG, logger="flytekit"):
+        run_command(mock_click_ctx, tk_list)()
+        assert not any("Detected Iterator[JSON] in pyflyte.test_run.tk_list input annotations..." in message[2] for message in caplog.record_tuples)
+
+    caplog.clear()
+
+    with caplog.at_level(logging.DEBUG, logger="flytekit"):
+        run_command(mock_click_ctx, t1)()
+        assert not any("Detected Iterator[JSON] in pyflyte.test_run.t1 input annotations..." in message[2] for message in caplog.record_tuples)
+
+    caplog.clear()
+
+    with caplog.at_level(logging.DEBUG, logger="flytekit"):
+        run_command(mock_click_ctx, tk_simple_iterator)()
+        assert not any("Detected Iterator[JSON] in pyflyte.test_run.tk_simple_iterator input annotations..." in message[2] for message in caplog.record_tuples)
 
 
 def test_file_param():

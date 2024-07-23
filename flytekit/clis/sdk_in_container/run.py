@@ -547,6 +547,7 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
                         if issubclass(origin_base_type, Iterator):  # Iterator
                             args = getattr(v[0], "__args__")
                             if isinstance(args, tuple) and get_origin(args[0]) is typing.Union:  # Iterator[JSON]
+                                logger.debug(f"Detected Iterator[JSON] in {entity.name} input annotations...")
                                 skip_default_value_selection = True
 
                     if not skip_default_value_selection:
