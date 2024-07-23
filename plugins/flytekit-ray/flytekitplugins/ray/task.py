@@ -70,7 +70,8 @@ class RayFunctionTask(PythonFunctionTask):
         ctx = FlyteContextManager.current_context()
         if not ctx.execution_state.is_local_execution():
             working_dir = ctx.execution_state.user_space_params.working_directory
-            init_params["working_dir"] = working_dir
+
+            init_params["runtime_env"] = {"working_dir": working_dir}
 
             # fast register data with timestamp mtime=0 will be zipped and uploaded to ray gcs
             # zip does not support timestamps before 1980 -> hacky workaround of touching all the files
@@ -83,14 +84,20 @@ class RayFunctionTask(PythonFunctionTask):
         cfg = self._task_config
 
         # Deprecated: runtime_env is removed KubeRay >= 1.1.0. It is replaced by runtime_env_yaml
-        runtime_env = base64.b64encode(json.dumps(cfg.runtime_env).encode()).decode() if cfg.runtime_env else None
+        runtime_env = (
+            base64.b64encode(json.dumps(cfg.runtime_env).encode()).decode()
+            if cfg.runtime_env
+            else None
+        )
 
         runtime_env_yaml = yaml.dump(cfg.runtime_env) if cfg.runtime_env else None
 
         ray_job = RayJob(
             ray_cluster=RayCluster(
                 head_group_spec=(
-                    HeadGroupSpec(cfg.head_node_config.ray_start_params) if cfg.head_node_config else None
+                    HeadGroupSpec(cfg.head_node_config.ray_start_params)
+                    if cfg.head_node_config
+                    else None
                 ),
                 worker_group_spec=[
                     WorkerGroupSpec(
@@ -102,7 +109,9 @@ class RayFunctionTask(PythonFunctionTask):
                     )
                     for c in cfg.worker_node_config
                 ],
-                enable_autoscaling=(cfg.enable_autoscaling if cfg.enable_autoscaling else False),
+                enable_autoscaling=(
+                    cfg.enable_autoscaling if cfg.enable_autoscaling else False
+                ),
             ),
             runtime_env=runtime_env,
             runtime_env_yaml=runtime_env_yaml,
