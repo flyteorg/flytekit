@@ -360,14 +360,17 @@ class DataclassTransformer(TypeTransformer[object]):
 
         expected_type = get_underlying_type(expected_type)
         expected_fields_dict = {}
+        default_value_dict = {}
+        
         for f in dataclasses.fields(expected_type):
             expected_fields_dict[f.name] = f.type
+            default_value_dict[f.name] = f.default
 
         if isinstance(v, dict):
             original_dict = v
 
             # Find the Optional keys in expected_fields_dict
-            optional_keys = {k for k, t in expected_fields_dict.items() if UnionTransformer.is_optional_type(t)}
+            optional_keys = {k for k, t in expected_fields_dict.items() if UnionTransformer.is_optional_type(t) or default_value_dict[k] != dataclasses.MISSING}
 
             # Remove the Optional keys from the keys of original_dict
             original_key = set(original_dict.keys()) - optional_keys
