@@ -16,6 +16,16 @@ class CustomException(Exception):
         self.original_exception = original_exception
 
 
+def sorted_dict_str(d):
+    """Recursively convert a dictionary to a sorted string representation."""
+    if isinstance(d, dict):
+        return "{" + ", ".join(f"{sorted_dict_str(k)}: {sorted_dict_str(v)}" for k, v in sorted(d.items())) + "}"
+    elif isinstance(d, list):
+        return "[" + ", ".join(sorted_dict_str(i) for i in sorted(d, key=lambda x: str(x))) + "]"
+    else:
+        return str(d)
+
+
 account_id_map = {
     "us-east-1": "785573368785",
     "us-east-2": "007439368137",
@@ -187,7 +197,7 @@ class Boto3AgentMixin:
         hash = ""
         if "idempotence_token" in str(updated_config):
             # compute hash of the config
-            hash = xxhash.xxh64(str(updated_config)).hexdigest()
+            hash = xxhash.xxh64(sorted_dict_str(updated_config)).hexdigest()
             updated_config = update_dict_fn(updated_config, args, idempotence_token=hash)
 
         # Asynchronous Boto3 session
