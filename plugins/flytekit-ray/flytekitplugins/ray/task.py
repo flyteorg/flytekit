@@ -72,9 +72,6 @@ class RayFunctionTask(PythonFunctionTask):
         if not ctx.execution_state.is_local_execution():
             working_dir = os.getcwd()
             init_params["runtime_env"] = {"working_dir": working_dir}
-            init_params["runtime_env"] = {
-                "excludes": [os.getenv("excludes_working_dir")]
-            }
 
             # cfg = self._task_config
             # if cfg.excludes_working_dir:
