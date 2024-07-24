@@ -71,20 +71,11 @@ class RayFunctionTask(PythonFunctionTask):
         ctx = FlyteContextManager.current_context()
         if not ctx.execution_state.is_local_execution():
             working_dir = os.getcwd()
-            # excludes_working_dir = self.task_config.excludes_working_dir
-            # init_params["runtime_env"] = {
-            #     "working_dir": working_dir,
-            #     "excludes": [os.getenv("excludes_working_dir")],
-            # }
-
-            # /subdir/
+            init_params["runtime_env"] = {"working_dir": working_dir}
 
             cfg = self._task_config
             if cfg.excludes_working_dir:
-                init_params["runtime_env"] = {
-                    "working_dir": working_dir,
-                    "excludes": cfg.excludes_working_dir,
-                }
+                init_params["runtime_env"]["excludes"] = cfg.excludes_working_dir
 
             # fast register data with timestamp mtime=0 will be zipped and uploaded to ray gcs
             # zip does not support timestamps before 1980 -> hacky workaround of touching all the files
