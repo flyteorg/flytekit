@@ -69,7 +69,7 @@ class RayFunctionTask(PythonFunctionTask):
 
         ctx = FlyteContextManager.current_context()
         if not ctx.execution_state.is_local_execution():
-            working_dir = ctx.execution_state.working_dir
+            working_dir = os.getcwd()
             print(working_dir)
             # working_dir = "/root"
             init_params["runtime_env"] = {"working_dir": working_dir}
