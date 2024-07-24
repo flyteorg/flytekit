@@ -19,7 +19,7 @@ from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.literals import Literal, LiteralCollection, Scalar
 
 
-class ArrayNode(object):
+class ArrayNode:
     def __init__(
         self,
         target: LaunchPlan,
