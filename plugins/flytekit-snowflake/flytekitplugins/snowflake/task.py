@@ -12,7 +12,6 @@ _ACCOUNT_FIELD = "account"
 _DATABASE_FIELD = "database"
 _SCHEMA_FIELD = "schema"
 _WAREHOUSE_FIELD = "warehouse"
-_TABLE_FIELD = "table"
 
 
 @dataclass
@@ -31,8 +30,6 @@ class SnowflakeConfig(object):
     schema: Optional[str] = None
     # The optional warehouse to set for the given Snowflake query
     warehouse: Optional[str] = None
-    # The optional table to set for the given Snowflake query
-    table: Optional[str] = None
 
 
 class SnowflakeTask(AsyncAgentExecutorMixin, SQLTask[SnowflakeConfig]):
@@ -88,7 +85,6 @@ class SnowflakeTask(AsyncAgentExecutorMixin, SQLTask[SnowflakeConfig]):
             _DATABASE_FIELD: self.task_config.database,
             _SCHEMA_FIELD: self.task_config.schema,
             _WAREHOUSE_FIELD: self.task_config.warehouse,
-            _TABLE_FIELD: self.task_config.table,
         }
 
     def get_sql(self, settings: SerializationSettings) -> Optional[_task_model.Sql]:

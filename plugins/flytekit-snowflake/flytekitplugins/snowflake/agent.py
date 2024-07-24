@@ -11,8 +11,7 @@ from flytekit.models import literals
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 from flytekit.models.types import LiteralType, StructuredDatasetType
-
-snowflake_connector = lazy_module("snowflake.connector")
+from snowflake import connector as sc
 
 TASK_TYPE = "snowflake"
 SNOWFLAKE_PRIVATE_KEY = "snowflake_private_key"
@@ -25,7 +24,6 @@ class SnowflakeJobMetadata(ResourceMeta):
     database: str
     schema: str
     warehouse: str
-    table: str
     query_id: str
 
 
@@ -47,8 +45,8 @@ def get_private_key():
     return pkb
 
 
-def get_connection(metadata: SnowflakeJobMetadata) -> snowflake_connector:
-    return snowflake_connector.connect(
+def get_connection(metadata: SnowflakeJobMetadata) -> sc:
+    return sc.connect(
         user=metadata.user,
         account=metadata.account,
         private_key=get_private_key(),
@@ -69,10 +67,11 @@ class SnowflakeAgent(AsyncAgentBase):
     ) -> SnowflakeJobMetadata:
         ctx = FlyteContextManager.current_context()
         literal_types = task_template.interface.inputs
-        params = TypeEngine.literal_map_to_kwargs(ctx, inputs, literal_types=literal_types) if inputs else None
+
+        params = TypeEngine.literal_map_to_kwargs(ctx, inputs, literal_types=literal_types) if inputs.literals else None
 
         config = task_template.config
-        conn = snowflake_connector.connect(
+        conn = sc.connect(
             user=config["user"],
             account=config["account"],
             private_key=get_private_key(),
@@ -90,7 +89,7 @@ class SnowflakeAgent(AsyncAgentBase):
             database=config["database"],
             schema=config["schema"],
             warehouse=config["warehouse"],
-            table=config["table"],
+            # table=config["table"],
             query_id=str(cs.sfqid),
         )
 
@@ -98,25 +97,28 @@ class SnowflakeAgent(AsyncAgentBase):
         conn = get_connection(resource_meta)
         try:
             query_status = conn.get_query_status_throw_if_error(resource_meta.query_id)
-        except snowflake_connector.ProgrammingError as err:
+        except sc.ProgrammingError as err:
             logger.error("Failed to get snowflake job status with error:", err.msg)
             return Resource(phase=TaskExecution.FAILED)
+
+        # The snowflake job's state is determined by query status.
+        # https://github.com/snowflakedb/snowflake-connector-python/blob/main/src/snowflake/connector/constants.py#L373
         cur_phase = convert_to_flyte_phase(str(query_status.name))
         res = None
 
         if cur_phase == TaskExecution.SUCCEEDED:
             ctx = FlyteContextManager.current_context()
-            output_metadata = f"snowflake://{resource_meta.user}:{resource_meta.account}/{resource_meta.warehouse}/{resource_meta.database}/{resource_meta.schema}/{resource_meta.table}"
+            uri = f"snowflake://{resource_meta.user}:{resource_meta.account}/{resource_meta.warehouse}/{resource_meta.database}/{resource_meta.schema}"
             res = literals.LiteralMap(
                 {
                     "results": TypeEngine.to_literal(
                         ctx,
-                        StructuredDataset(uri=output_metadata),
+                        StructuredDataset(uri=uri),
                         StructuredDataset,
                         LiteralType(structured_dataset_type=StructuredDatasetType(format="")),
                     )
                 }
-            ).to_flyte_idl()
+            )
 
         return Resource(phase=cur_phase, outputs=res)
 
