@@ -22,6 +22,9 @@ def test_new_remote_dir():
     fd = FlyteDirectory.new_remote()
     assert FlyteContext.current_context().file_access.raw_output_prefix in fd.path
 
+# def test_new_remote_dir_alt():
+#     fd = FlyteDirectory.new_remote(alt_bucket="my-alt-bucket")
+#     assert "s3://my-alt-bucket" in fd.path
 
 @mock.patch("flytekit.types.directory.types.os.name", "nt")
 def test_sep_nt():

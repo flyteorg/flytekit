@@ -136,6 +136,18 @@ def test_write_known_location():
         assert f.read() == arbitrary_text.encode("utf-8")
 
 
+def test_get_new_path():
+    """
+    Test that a new path given alternate bucket and name is generated correctly
+    """
+    random_dir = tempfile.mkdtemp()
+    raw = os.path.join(random_dir, "raw")
+    fs = FileAccessProvider(local_sandbox_dir=random_dir, raw_output_prefix=raw)
+    np = fs.get_new_path(alt="foo", stem="bar.txt")
+    assert "foo" in np
+    assert np.endswith("bar.txt")
+
+
 def test_initialise_azure_file_provider_with_account_key():
     with mock.patch.dict(
         os.environ,

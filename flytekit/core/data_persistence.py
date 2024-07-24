@@ -454,6 +454,27 @@ class FileAccessProvider(object):
             f = fs.unstrip_protocol(f)
         return f
 
+    def get_new_path(
+        self,
+        fs: typing.Optional[fsspec.AbstractFileSystem] = None,
+        alt: typing.Optional[str] = None,
+        stem: typing.Optional[str] = None,
+        unstrip: bool = False,
+    ) -> str:
+        fs = fs or self.raw_output_fs
+        pref = self.raw_output_prefix
+        s_pref = pref.split(fs.sep)
+        if alt:
+            s_pref[2] = alt
+        if stem:
+            s_pref.append(stem)
+        else:
+            s_pref.append(self.get_random_string())
+        p = fs.sep.join(s_pref)
+        if unstrip:
+            p = fs.unstrip_protocol(p)
+        return p
+
     def get_random_local_path(self, file_path_or_file_name: typing.Optional[str] = None) -> str:
         """
         Use file_path_or_file_name, when you want a random directory, but want to preserve the leaf file name
