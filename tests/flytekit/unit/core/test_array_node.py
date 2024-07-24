@@ -5,7 +5,7 @@ import pytest
 
 from flytekit import LaunchPlan, current_context, task, workflow
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
-from flytekit.core.array_node import mapped_entity
+from flytekit.core.array_node import array_node
 from flytekit.models.core import identifier as identifier_models
 from flytekit.tools.translator import get_serializable
 
@@ -37,7 +37,7 @@ lp = LaunchPlan.get_default_launch_plan(current_context(), parent_wf)
 
 @workflow
 def grandparent_wf() -> list[int]:
-    return mapped_entity(lp, concurrency=10, min_success_ratio=0.9)(a=[1, 3, 5], b=[2, 4, 6])
+    return array_node(lp, concurrency=10, min_success_ratio=0.9)(a=[1, 3, 5], b=[2, 4, 6])
 
 
 def test_lp_serialization(serialization_settings):
@@ -65,7 +65,7 @@ def test_local_exec_lp():
 def test_local_exec_lp_min_successes():
     @workflow
     def grandparent_wf_1() -> list[int]:
-        return mapped_entity(lp, concurrency=10, min_successes=2)(a=[1, 3, 5], b=[2, 4, 6])
+        return array_node(lp, concurrency=10, min_successes=2)(a=[1, 3, 5], b=[2, 4, 6])
 
     a = grandparent_wf_1()
     assert a == [2, 12, 30]
@@ -95,7 +95,7 @@ def test_local_exec_lp_min_success_ratio(min_success_ratio, should_raise_error):
 
     @workflow
     def grandparent_ex_wf() -> list[typing.Optional[int]]:
-        return mapped_entity(ex_lp, min_success_ratio=min_success_ratio)(val=[1, 2, 3, 4])
+        return array_node(ex_lp, min_success_ratio=min_success_ratio)(val=[1, 2, 3, 4])
 
     if should_raise_error:
         with pytest.raises(Exception):

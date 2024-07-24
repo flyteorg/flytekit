@@ -12,7 +12,7 @@ from flyteidl.core import tasks_pb2
 
 from flytekit.configuration import SerializationSettings
 from flytekit.core import tracker
-from flytekit.core.array_node import mapped_entity
+from flytekit.core.array_node import array_node
 from flytekit.core.base_task import PythonTask, TaskResolverMixin
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.interface import transform_interface_to_list_interface
@@ -369,7 +369,7 @@ def map_task(
         successfully before terminating this task and marking it successful.
     """
     if isinstance(target, LaunchPlan):
-        return mapped_entity(target, concurrency=concurrency, min_success_ratio=min_success_ratio, **kwargs)
+        return array_node(target, concurrency=concurrency, min_success_ratio=min_success_ratio, **kwargs)
     return array_node_map_task(
         task_function=target, concurrency=concurrency, min_success_ratio=min_success_ratio, **kwargs
     )

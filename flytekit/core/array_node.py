@@ -182,7 +182,7 @@ class ArrayNode:
         return self._execution_version
 
 
-def mapped_entity(
+def array_node(
     target: Union[LaunchPlan],
     concurrency: Optional[int] = None,
     min_success_ratio: Optional[float] = None,
