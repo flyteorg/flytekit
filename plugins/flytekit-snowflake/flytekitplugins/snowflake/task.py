@@ -12,7 +12,7 @@ _ACCOUNT_FIELD = "account"
 _DATABASE_FIELD = "database"
 _SCHEMA_FIELD = "schema"
 _WAREHOUSE_FIELD = "warehouse"
-
+_TABLE_FIELD = "table"
 
 @dataclass
 class SnowflakeConfig(object):
@@ -20,16 +20,12 @@ class SnowflakeConfig(object):
     SnowflakeConfig should be used to configure a Snowflake Task.
     """
 
-    # The user to query against
-    user: Optional[str] = None
-    # The account to query against
-    account: Optional[str] = None
-    # The database to query against
-    database: Optional[str] = None
-    # The optional schema to separate query execution.
-    schema: Optional[str] = None
-    # The optional warehouse to set for the given Snowflake query
-    warehouse: Optional[str] = None
+    user: str
+    account: str
+    database: str
+    schema: str
+    warehouse: str
+    table: str
 
 
 class SnowflakeTask(AsyncAgentExecutorMixin, SQLTask[SnowflakeConfig]):
@@ -85,6 +81,7 @@ class SnowflakeTask(AsyncAgentExecutorMixin, SQLTask[SnowflakeConfig]):
             _DATABASE_FIELD: self.task_config.database,
             _SCHEMA_FIELD: self.task_config.schema,
             _WAREHOUSE_FIELD: self.task_config.warehouse,
+            _TABLE_FIELD: self.task_config.table,
         }
 
     def get_sql(self, settings: SerializationSettings) -> Optional[_task_model.Sql]:

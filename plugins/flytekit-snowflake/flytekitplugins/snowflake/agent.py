@@ -24,6 +24,7 @@ class SnowflakeJobMetadata(ResourceMeta):
     database: str
     schema: str
     warehouse: str
+    table: str
     query_id: str
 
 
@@ -89,7 +90,7 @@ class SnowflakeAgent(AsyncAgentBase):
             database=config["database"],
             schema=config["schema"],
             warehouse=config["warehouse"],
-            # table=config["table"],
+            table=config["table"],
             query_id=str(cs.sfqid),
         )
 
@@ -108,7 +109,7 @@ class SnowflakeAgent(AsyncAgentBase):
 
         if cur_phase == TaskExecution.SUCCEEDED:
             ctx = FlyteContextManager.current_context()
-            uri = f"snowflake://{resource_meta.user}:{resource_meta.account}/{resource_meta.warehouse}/{resource_meta.database}/{resource_meta.schema}"
+            uri = f"snowflake://{resource_meta.user}:{resource_meta.account}/{resource_meta.warehouse}/{resource_meta.database}/{resource_meta.schema}/{resource_meta.table}"
             res = literals.LiteralMap(
                 {
                     "results": TypeEngine.to_literal(
