@@ -189,8 +189,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
         :param datetime.timedelta timeout: The amount of time to wait before timing out.  This includes queuing and
             scheduler latency.
         :param bool interruptible: Whether or not the task is interruptible.
-        :param flytekit.models.literals.RetryStrategy retries: Retry strategy for this task.  0 retries means only
-            try once.
+        :param flytekit.models.literals.RetryStrategy retries: Retry strategy for this task.
         :param Text discovery_version: This is the version used to create a logical version for data in the cache.
             This is only used when `discoverable` is true.  Data is considered discoverable if: the inputs to a given
             task are the same and the discovery_version is also the same.
@@ -231,7 +230,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
     @property
     def retries(self):
         """
-        Retry strategy for this task.  0 retries means only try once.
+        Retry strategy for this task.
         :rtype: flytekit.models.literals.RetryStrategy
         """
         return self._retries

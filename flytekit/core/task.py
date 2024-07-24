@@ -93,6 +93,7 @@ def task(
     cache_version: str = ...,
     cache_ignore_input_vars: Tuple[str, ...] = ...,
     retries: int = ...,
+    retry_delay: Union[_datetime.timedelta, int] = ...,
     interruptible: Optional[bool] = ...,
     deprecated: str = ...,
     timeout: Union[datetime.timedelta, int] = ...,
@@ -131,6 +132,7 @@ def task(
     cache_version: str = ...,
     cache_ignore_input_vars: Tuple[str, ...] = ...,
     retries: int = ...,
+    retry_delay: Union[_datetime.timedelta, int] = ...,
     interruptible: Optional[bool] = ...,
     deprecated: str = ...,
     timeout: Union[datetime.timedelta, int] = ...,
@@ -168,6 +170,7 @@ def task(
     cache_version: str = "",
     cache_ignore_input_vars: Tuple[str, ...] = (),
     retries: int = 0,
+    retry_delay: Union[_datetime.timedelta, int] = 0,
     interruptible: Optional[bool] = None,
     deprecated: str = "",
     timeout: Union[datetime.timedelta, int] = 0,
@@ -247,6 +250,7 @@ def task(
            this version if the function body/business logic has changed, but the signature hasn't.
     :param cache_ignore_input_vars: Input variables that should not be included when calculating hash for cache.
     :param retries: Number of times to retry this task during a workflow execution.
+    :param retry_delay: specifies the delay in between retries of this task execution (approximately).
     :param interruptible: [Optional] Boolean that indicates that this task can be interrupted and/or scheduled on nodes
                           with lower QoS guarantees. This will directly reduce the `$`/`execution cost` associated,
                           at the cost of performance penalties due to potential interruptions. Requires additional
@@ -331,6 +335,7 @@ def task(
             cache_version=cache_version,
             cache_ignore_input_vars=cache_ignore_input_vars,
             retries=retries,
+            retry_delay=retry_delay,
             interruptible=interruptible,
             deprecated=deprecated,
             timeout=timeout,

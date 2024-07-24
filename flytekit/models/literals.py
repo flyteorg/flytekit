@@ -15,12 +15,15 @@ from flytekit.models.types import SchemaType as _SchemaType
 
 
 class RetryStrategy(_common.FlyteIdlEntity):
-    def __init__(self, retries):
+    def __init__(self, retries, retry_delay):
         """
         :param int retries: Number of retries to attempt on recoverable failures.  If retries is 0, then
             only one attempt will be made.
+        :param retry_delay: The delay in between retries of this task execution. If it is 0, then
+            the task will be retried immediately.
         """
         self._retries = retries
+        self._retry_delay = retry_delay
 
     @property
     def retries(self):
@@ -30,11 +33,19 @@ class RetryStrategy(_common.FlyteIdlEntity):
         """
         return self._retries
 
+    @property
+    def retry_delay(self):
+        """
+        The delay in between retries of this task execution. If it is 0, then the task will be retried immediately.
+        :rtype: Union[datetime.timedelta, int]
+        """
+        return self._retries
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.literals_pb2.RetryStrategy
         """
-        return _literals_pb2.RetryStrategy(retries=self.retries)
+        return _literals_pb2.RetryStrategy(retries=self.retries, retry_delay=self.retry_delay)
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -42,7 +53,7 @@ class RetryStrategy(_common.FlyteIdlEntity):
         :param flyteidl.core.literals_pb2.RetryStrategy pb2_object:
         :rtype: RetryStrategy
         """
-        return cls(retries=pb2_object.retries)
+        return cls(retries=pb2_object.retries, retry_delay=pb2_object.retry_delay)
 
 
 class Primitive(_common.FlyteIdlEntity):
