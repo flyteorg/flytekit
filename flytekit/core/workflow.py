@@ -210,7 +210,7 @@ class WorkflowBase(object):
                         Documentation, self._docs
                     ).short_description = self._python_interface.docstring.short_description
                 if self._python_interface.docstring.long_description:
-                    self._docs = Description(value=self._python_interface.docstring.long_description)
+                    self._docs.long_description = Description(value=self._python_interface.docstring.long_description)
 
         FlyteEntities.entities.append(self)
         super().__init__(**kwargs)
