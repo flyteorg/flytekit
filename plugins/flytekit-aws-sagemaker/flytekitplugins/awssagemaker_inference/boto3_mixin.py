@@ -97,6 +97,7 @@ def update_dict_fn(
     and update_dict is {"endpoint_config_name": "my-endpoint-config"},
     then the result will be {"EndpointConfigName": "my-endpoint-config"}.
 
+    :param service: The AWS service to use
     :param original_dict: The dictionary to update (in place)
     :param update_dict: The dictionary to use for updating
     :param idempotence_token: Hash of config -- this is to ensure the execution ID is deterministic
