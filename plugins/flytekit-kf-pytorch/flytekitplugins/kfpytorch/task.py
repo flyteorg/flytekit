@@ -288,6 +288,7 @@ def spawn_helper(
             raise
         return ElasticWorkerResult(return_value=return_val, decks=flytekit.current_context().decks, om=om)
 
+<<<<<<< HEAD
 
 def _convert_run_policy_to_flyte_idl(
     run_policy: RunPolicy,
@@ -300,6 +301,8 @@ def _convert_run_policy_to_flyte_idl(
     )
 
 
+=======
+>>>>>>> 7ed344614 (add torch dep back and simplify torchSyncCkpt)
 class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
     """
     Plugin for distributed training with torch elastic/torchrun (see
@@ -321,11 +324,10 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
             **kwargs,
         )
         try:
-            pass
-            # from torch.distributed import run
+            from torch.distributed import run
         except ImportError:
             raise ImportError(TORCH_IMPORT_ERROR_MESSAGE)
-        self.min_nodes, self.max_nodes = parse_min_max_nnodes(str(self.task_config.nnodes))
+        self.min_nodes, self.max_nodes = run.parse_min_max_nnodes(str(self.task_config.nnodes))
 
         """
         c10d is the backend recommended by torch elastic.
