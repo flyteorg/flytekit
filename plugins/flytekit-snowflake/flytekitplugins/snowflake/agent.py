@@ -27,7 +27,7 @@ class SnowflakeJobMetadata(ResourceMeta):
     warehouse: str
     table: str
     query_id: str
-    output: bool
+    has_output: bool
 
 
 def get_private_key():
@@ -94,7 +94,7 @@ class SnowflakeAgent(AsyncAgentBase):
             warehouse=config["warehouse"],
             table=config["table"],
             query_id=cs.sfqid,
-            output=task_template.interface.outputs and len(task_template.interface.outputs) > 0,
+            has_output=task_template.interface.outputs is not None and len(task_template.interface.outputs) > 0,
         )
 
     async def get(self, resource_meta: SnowflakeJobMetadata, **kwargs) -> Resource:
