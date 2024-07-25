@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional
 
-from flyteidl.core.execution_pb2 import TaskExecution
+from flyteidl.core.execution_pb2 import TaskExecution, TaskLog
 
 import flytekit
 from flytekit import FlyteContextManager, StructuredDataset, logger
@@ -105,6 +105,10 @@ class SnowflakeAgent(AsyncAgentBase):
             logger.error("Failed to get snowflake job status with error:", err.msg)
             return Resource(phase=TaskExecution.FAILED)
 
+        log_link = TaskLog(
+            uri=construct_query_link(resource_meta=resource_meta),
+            name="Snowflake Query Details",
+        )
         # The snowflake job's state is determined by query status.
         # https://github.com/snowflakedb/snowflake-connector-python/blob/main/src/snowflake/connector/constants.py#L373
         cur_phase = convert_to_flyte_phase(str(query_status.name))
@@ -123,7 +127,8 @@ class SnowflakeAgent(AsyncAgentBase):
                     )
                 }
             )
-        return Resource(phase=cur_phase, outputs=res)
+
+        return Resource(phase=cur_phase, outputs=res, log_links=[log_link])
 
     async def delete(self, resource_meta: SnowflakeJobMetadata, **kwargs):
         conn = get_connection(resource_meta)
@@ -134,6 +139,18 @@ class SnowflakeAgent(AsyncAgentBase):
         finally:
             cs.close()
             conn.close()
+
+def construct_query_link(resource_meta: SnowflakeJobMetadata) -> str:
+    base_url = "https://app.snowflake.com"
+
+    # Extract the account and region (assuming the format is account-region, you might need to adjust this based on your actual account format)
+    account_parts = resource_meta.account.split('-')
+    account = account_parts[0]
+    region = account_parts[1] if len(account_parts) > 1 else ""
+
+    url = f"{base_url}/{region}/{account}/#/compute/history/queries/{resource_meta.query_id}/detail"
+
+    return url
 
 
 AgentRegistry.register(SnowflakeAgent())
