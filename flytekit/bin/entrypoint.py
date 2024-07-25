@@ -84,9 +84,10 @@ def _dispatch_execute(
             b: OR if IgnoreOutputs is raised, then ignore uploading outputs
             c: OR if an unhandled exception is retrieved - record it as an errors.pb
     """
-    error_file_name = task_def.get_error_file_name()
-    if error_file_name is None:
-        error_file_name = _constants.ERROR_FILE_NAME
+    error_file_name = _constants.ERROR_FILE_NAME
+    error_file_name_suffix = task_def.get_error_file_name_suffix()
+    if error_file_name_suffix is not None:
+        error_file_name += f"-{error_file_name_suffix}"
 
     output_file_dict = {}
     logger.debug(f"Starting _dispatch_execute for {task_def.name}")

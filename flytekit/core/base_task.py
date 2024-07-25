@@ -559,11 +559,11 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         """
         return self._task_config
 
-    def get_error_file_name(self) -> Optional[str]:
+    def get_error_file_name_suffix(self) -> Optional[str]:
         """
-        Returns the error file name for the task. Typically used for customizing the default behavior
-        of using a fixed file name; such as for elastic tasks where multiple sub-tasks can generate 
-        errors that need to be mapped back to an error for the top level task. Such scenarios require 
+        Returns the error file name suffix for the task. Typically used for customizing the default behavior
+        of using a fixed file name; such as for elastic tasks where multiple sub-tasks can generate
+        errors that need to be mapped back to an error for the top level task. Such scenarios require
         customization of the error file name, so that the earliest error can be picked as the final result.
         """
         return None
