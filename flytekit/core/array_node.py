@@ -25,7 +25,7 @@ class ArrayNode:
     def __init__(
         self,
         target: LaunchPlan,
-        execution_mode: _core_workflow.ArrayNode.ExecutionMode,
+        execution_mode: _core_workflow.ArrayNode.ExecutionMode = _core_workflow.ArrayNode.FULL_STATE,
         concurrency: Optional[int] = None,
         min_successes: Optional[int] = None,
         min_success_ratio: Optional[float] = None,
@@ -211,7 +211,6 @@ def array_node(
 
     node = ArrayNode(
         target=target,
-        execution_mode=_core_workflow.ArrayNode.FULL_STATE,
         concurrency=concurrency,
         min_successes=min_successes,
         min_success_ratio=min_success_ratio,
