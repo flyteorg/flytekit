@@ -188,10 +188,9 @@ class TorchAsyncCheckpoint(Checkpoint):
         self._async_upload: cf.Future = None
 
     def __del__(self):
-        self._td.cleanup()
-
-    def prev_exists(self) -> bool:
-        return self._checkpoint_src is not None
+        super().__del__()
+        if self._async_upload:
+            self._async_upload.cancel()
 
     def restore(self, path: typing.Optional[typing.Union[Path, str]] = None) -> typing.Optional[Path]:
         # We have to lazy load, until we fix the imports
