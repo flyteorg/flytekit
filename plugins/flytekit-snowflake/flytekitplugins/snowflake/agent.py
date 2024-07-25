@@ -3,7 +3,8 @@ from typing import Optional
 
 from flyteidl.core.execution_pb2 import TaskExecution
 
-from flytekit import FlyteContextManager, StructuredDataset, lazy_module, logger
+import flytekit
+from flytekit import FlyteContextManager, StructuredDataset, logger
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource, ResourceMeta
 from flytekit.extend.backend.utils import convert_to_flyte_phase
@@ -26,15 +27,16 @@ class SnowflakeJobMetadata(ResourceMeta):
     warehouse: str
     table: str
     query_id: str
+    output: bool
 
 
 def get_private_key():
     from cryptography.hazmat.backends import default_backend
     from cryptography.hazmat.primitives import serialization
 
-    import flytekit
-
-    pk_string = flytekit.current_context().secrets.get(SNOWFLAKE_PRIVATE_KEY, encode_mode="rb")
+    pk_string = flytekit.current_context().secrets.get(SNOWFLAKE_PRIVATE_KEY, encode_mode="r")
+    # cryptography needs str to be stripped and converted to bytes
+    pk_string = pk_string.strip().encode()
     p_key = serialization.load_pem_private_key(pk_string, password=None, backend=default_backend())
 
     pkb = p_key.private_bytes(
@@ -82,7 +84,7 @@ class SnowflakeAgent(AsyncAgentBase):
         )
 
         cs = conn.cursor()
-        cs.execute_async(task_template.sql.statement, params=params)
+        cs.execute_async(task_template.sql.statement, params)
 
         return SnowflakeJobMetadata(
             user=config["user"],
@@ -92,6 +94,7 @@ class SnowflakeAgent(AsyncAgentBase):
             warehouse=config["warehouse"],
             table=config["table"],
             query_id=cs.sfqid,
+            output=len(task_template.interface.outputs) > 0,
         )
 
     async def get(self, resource_meta: SnowflakeJobMetadata, **kwargs) -> Resource:
@@ -107,7 +110,7 @@ class SnowflakeAgent(AsyncAgentBase):
         cur_phase = convert_to_flyte_phase(str(query_status.name))
         res = None
 
-        if cur_phase == TaskExecution.SUCCEEDED:
+        if cur_phase == TaskExecution.SUCCEEDED and resource_meta.output:
             ctx = FlyteContextManager.current_context()
             uri = f"snowflake://{resource_meta.user}:{resource_meta.account}/{resource_meta.warehouse}/{resource_meta.database}/{resource_meta.schema}/{resource_meta.query_id}"
             res = literals.LiteralMap(
@@ -120,7 +123,6 @@ class SnowflakeAgent(AsyncAgentBase):
                     )
                 }
             )
-
         return Resource(phase=cur_phase, outputs=res)
 
     async def delete(self, resource_meta: SnowflakeJobMetadata, **kwargs):

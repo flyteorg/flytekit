@@ -14,6 +14,7 @@ _SCHEMA_FIELD = "schema"
 _WAREHOUSE_FIELD = "warehouse"
 _TABLE_FIELD = "table"
 
+
 @dataclass
 class SnowflakeConfig(object):
     """
@@ -56,13 +57,16 @@ class SnowflakeTask(AsyncAgentExecutorMixin, SQLTask[SnowflakeConfig]):
         :param output_schema_type: If some data is produced by this query, then you can specify the output schema type
         :param kwargs: All other args required by Parent type - SQLTask
         """
+
         outputs = None
         if output_schema_type is not None:
             outputs = {
                 "results": output_schema_type,
             }
+
         if task_config is None:
             task_config = SnowflakeConfig()
+
         super().__init__(
             name=name,
             task_config=task_config,

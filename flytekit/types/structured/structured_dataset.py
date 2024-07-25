@@ -1,11 +1,12 @@
 from __future__ import annotations
+
 import _datetime
 import collections
 import types
 import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field, is_dataclass
-from typing import Dict, Generator, Optional, Type, Union, List
+from typing import Dict, Generator, List, Optional, Type, Union
 
 from dataclasses_json import config
 from fsspec.utils import get_protocol
@@ -221,7 +222,13 @@ def extract_cols_and_format(
 
 
 class StructuredDatasetEncoder(ABC):
-    def __init__(self, python_type: Type[T], protocol: Optional[str] = None, supported_format: Optional[str] = None, additional_protocols: Optional[List[str]] = None):
+    def __init__(
+        self,
+        python_type: Type[T],
+        protocol: Optional[str] = None,
+        supported_format: Optional[str] = None,
+        additional_protocols: Optional[List[str]] = None,
+    ):
         """
         Extend this abstract class, implement the encode function, and register your concrete class with the
         StructuredDatasetTransformerEngine class in order for the core flytekit type engine to handle
@@ -293,7 +300,13 @@ class StructuredDatasetEncoder(ABC):
 
 
 class StructuredDatasetDecoder(ABC):
-    def __init__(self, python_type: Type[DF], protocol: Optional[str] = None, supported_format: Optional[str] = None, additional_protocols: Optional[List[str]] = None):
+    def __init__(
+        self,
+        python_type: Type[DF],
+        protocol: Optional[str] = None,
+        supported_format: Optional[str] = None,
+        additional_protocols: Optional[List[str]] = None,
+    ):
         """
         Extend this abstract class, implement the decode function, and register your concrete class with the
         StructuredDatasetTransformerEngine class in order for the core flytekit type engine to handle

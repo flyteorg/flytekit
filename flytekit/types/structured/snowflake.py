@@ -4,6 +4,7 @@ import typing
 import pandas as pd
 import snowflake.connector
 from snowflake.connector.pandas_tools import write_pandas
+
 import flytekit
 from flytekit import FlyteContext
 from flytekit.models import literals
@@ -23,6 +24,7 @@ def get_private_key():
     from cryptography.hazmat.primitives import serialization
 
     pk_string = flytekit.current_context().secrets.get("snowflake", "private_key", encode_mode="r")
+    # cryptography needs str to be stripped and converted to bytes
     pk_string = pk_string.strip().encode()
     p_key = serialization.load_pem_private_key(pk_string, password=None, backend=default_backend())
 
@@ -60,8 +62,13 @@ def _read_from_sf(
     _, user, account, warehouse, database, schema, query_id = re.split("\\/|://|:", uri)
 
     conn = snowflake.connector.connect(
-        user=user, account=account, private_key=get_private_key(), database=database, schema=schema, warehouse=warehouse,
-        table="FLYTEAGENT.PUBLIC.TEST"
+        user=user,
+        account=account,
+        private_key=get_private_key(),
+        database=database,
+        schema=schema,
+        warehouse=warehouse,
+        table="FLYTEAGENT.PUBLIC.TEST",
     )
 
     cs = conn.cursor()

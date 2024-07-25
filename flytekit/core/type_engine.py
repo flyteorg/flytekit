@@ -1022,7 +1022,6 @@ class TypeEngine(typing.Generic[T]):
             except DuplicateHandlerError:
                 logger.debug("Transformer for snowflake is already registered.")
 
-
     @classmethod
     def to_literal_type(cls, python_type: Type) -> LiteralType:
         """
