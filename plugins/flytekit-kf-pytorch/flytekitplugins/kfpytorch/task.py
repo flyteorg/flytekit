@@ -4,6 +4,7 @@ Kubernetes. It leverages `Pytorch Job <https://github.com/kubeflow/pytorch-opera
 """
 
 import os
+import uuid
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Dict, List, NamedTuple, Optional, Union
@@ -336,22 +337,9 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
 
     def get_error_file_name_suffix(self) -> Optional[str]:
         """
-        Returns error file name suffix that represents the replica index.
+        Returns error file name suffix for the task worker.
         """
-        # This is fragile, as it assumes hostname == podname, which is not the case if
-        # pod spec specifies host networking. It also relies on the naming convention
-        # used by the training operator, which appends -worker-{replica_index} to the
-        # pod name.
-        #
-        # The ideal way to get the replica index is to use K8 Downward API to expose
-        # metadata.labels."training.kubeflow.org/replica-index" as an environment
-        # variable in the pod spec. This is a change needed in the training operator.
-        pod_name = os.environ["HOSTNAME"]
-        search_text = "worker-"
-        search_index = pod_name.rfind(search_text)
-        assert search_index != -1
-        replica_index = pod_name[search_index + len(search_text) :]
-        return replica_index
+        return uuid.uuid4().hex
 
     def _execute(self, **kwargs) -> Any:
         """
