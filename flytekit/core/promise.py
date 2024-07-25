@@ -669,14 +669,13 @@ class AsyncPromise(Promise):
         super().__init__(var, val, type)
 
         self._awaited = False
-        self._promise = Promise(var, val, type)
 
     def __await__(self):
         if self._awaited:
             raise RuntimeError("Cannot await an already awaited Promise")
         self._awaited = True
         yield
-        return self._promise
+        return self
 
     def with_var(self, new_var: str) -> AsyncPromise:
         if self.is_ready:
