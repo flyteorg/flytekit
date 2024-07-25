@@ -12,9 +12,11 @@ The NIM plugin allows you to serve optimized model containers that can include
 NVIDIA CUDA software, NVIDIA Triton Inference SErver and NVIDIA TensorRT-LLM software.
 
 ```python
-from flytekit import ImageSpec, Resources, task
-from flytekitplugins.inference import NIM
+from flytekit import ImageSpec, Secret, task, Resources
+from flytekit.core.inference import NIM, NIMSecrets
+from flytekit.extras.accelerators import A10G
 from openai import OpenAI
+
 
 image = ImageSpec(
     name="nim",
@@ -24,17 +26,24 @@ image = ImageSpec(
 
 nim_instance = NIM(
     image="nvcr.io/nim/meta/llama3-8b-instruct:1.0.0",
-    node_selector={"k8s.amazonaws.com/accelerator": "nvidia-tesla-l4"},
-    ngc_secret_group="ngc-credentials",
-    ngc_secret_key="api_key",
-    ngc_image_secret="nvcrio-cred",
+    secrets=NIMSecrets(
+        ngc_image_secret="nvcrio-cred",
+        ngc_secret_key=NGC_KEY,
+        secrets_prefix="_FSEC_",
+    ),
 )
 
 
 @task(
     container_image=image,
-    requests=Resources(cpu="1", gpu="0", mem="1Gi"),
     pod_template=nim_instance.pod_template,
+    accelerator=A10G,
+    secret_requests=[
+        Secret(
+            key="ngc_api_key", mount_requirement=Secret.MountType.ENV_VAR
+        )  # must be mounted as an env var
+    ],
+    requests=Resources(gpu="0"),
 )
 def model_serving() -> str:
     client = OpenAI(
