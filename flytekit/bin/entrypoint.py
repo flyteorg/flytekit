@@ -69,7 +69,7 @@ def _compute_array_job_index():
     return offset
 
 
-def _build_error_file_name(error_file_name_suffix: Optional[str]) -> None:
+def _build_error_file_name(error_file_name_suffix: Optional[str]) -> str:
     if error_file_name_suffix is None:
         return _constants.ERROR_FILE_NAME
     error_file_name_base, error_file_name_extension = os.path.splitext(_constants.ERROR_FILE_NAME)
