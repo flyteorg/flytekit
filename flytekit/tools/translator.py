@@ -200,6 +200,11 @@ def _update_serialization_settings_for_ipython(
                     " interactive mode. Task function defined in imported modules is not supported."
                     f" Task function {entity.task_function.__name__} is defined in an imported module"
                 )
+            if entity.execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
+                raise FlyteAssertion(
+                    f"Dynamic tasks are not supported in interactive mode. {entity.name} is a dynamic task."
+                )
+
         import gzip
 
         import cloudpickle
