@@ -19,7 +19,7 @@ from flytekit.types.structured.structured_dataset import (
 SNOWFLAKE = "snowflake"
 
 
-def get_private_key():
+def get_private_key() -> bytes:
     from cryptography.hazmat.backends import default_backend
     from cryptography.hazmat.primitives import serialization
 
@@ -78,7 +78,7 @@ def _read_from_sf(
 
 class PandasToSnowflakeEncodingHandlers(StructuredDatasetEncoder):
     def __init__(self):
-        super().__init__(pd.DataFrame, SNOWFLAKE, supported_format="", additional_protocols=["sf"])
+        super().__init__(python_type=pd.DataFrame, protocol=SNOWFLAKE, supported_format="")
 
     def encode(
         self,
@@ -94,7 +94,7 @@ class PandasToSnowflakeEncodingHandlers(StructuredDatasetEncoder):
 
 class SnowflakeToPandasDecodingHandler(StructuredDatasetDecoder):
     def __init__(self):
-        super().__init__(pd.DataFrame, SNOWFLAKE, supported_format="", additional_protocols=["sf"])
+        super().__init__(pd.DataFrame, protocol=SNOWFLAKE, supported_format="")
 
     def decode(
         self,

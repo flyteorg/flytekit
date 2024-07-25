@@ -227,7 +227,6 @@ class StructuredDatasetEncoder(ABC):
         python_type: Type[T],
         protocol: Optional[str] = None,
         supported_format: Optional[str] = None,
-        additional_protocols: Optional[List[str]] = None,
     ):
         """
         Extend this abstract class, implement the encode function, and register your concrete class with the
@@ -244,15 +243,9 @@ class StructuredDatasetEncoder(ABC):
         :param supported_format: Arbitrary string representing the format. If not supplied then an empty string
           will be used. An empty string implies that the encoder works with any format. If the format being asked
           for does not exist, the transformer engine will look for the "" encoder instead and write a warning.
-        :param additional_protocols: Support many protocols to let user is able to connect to the service with various options.
         """
         self._python_type = python_type
         self._protocol = protocol.replace("://", "") if protocol else None
-        self._additional_protocols = (
-            [additional_protocol.replace("://", "") for additional_protocol in additional_protocols]
-            if additional_protocols
-            else None
-        )
         self._supported_format = supported_format or ""
 
     @property
@@ -262,10 +255,6 @@ class StructuredDatasetEncoder(ABC):
     @property
     def protocol(self) -> Optional[str]:
         return self._protocol
-
-    @property
-    def additional_protocols(self) -> Optional[List[str]]:
-        return self._additional_protocols
 
     @property
     def supported_format(self) -> str:
@@ -321,15 +310,9 @@ class StructuredDatasetDecoder(ABC):
         :param supported_format: Arbitrary string representing the format. If not supplied then an empty string
           will be used. An empty string implies that the decoder works with any format. If the format being asked
           for does not exist, the transformer enginer will look for the "" decoder instead and write a warning.
-        :param additional_protocols: Support many protocols to let user is able to connect to the service with various options.
         """
         self._python_type = python_type
         self._protocol = protocol.replace("://", "") if protocol else None
-        self._additional_protocols = (
-            [additional_protocol.replace("://", "") for additional_protocol in additional_protocols]
-            if additional_protocols
-            else None
-        )
         self._supported_format = supported_format or ""
 
     @property
@@ -339,10 +322,6 @@ class StructuredDatasetDecoder(ABC):
     @property
     def protocol(self) -> Optional[str]:
         return self._protocol
-
-    @property
-    def additional_protocols(self) -> Optional[List[str]]:
-        return self._additional_protocols
 
     @property
     def supported_format(self) -> str:
@@ -560,17 +539,6 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             cls.register_for_protocol(
                 h, h.protocol, default_for_type, override, default_format_for_type, default_storage_for_type
             )
-
-        if h.additional_protocols is not None:
-            for additional_protocol in h.additional_protocols:
-                cls.register_for_protocol(
-                    h,
-                    additional_protocol,
-                    default_for_type,
-                    override,
-                    default_format_for_type,
-                    default_storage_for_type,
-                )
 
     @classmethod
     def register_for_protocol(
