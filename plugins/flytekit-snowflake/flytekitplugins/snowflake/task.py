@@ -41,7 +41,7 @@ class SnowflakeTask(AsyncAgentExecutorMixin, SQLTask[SnowflakeConfig]):
         self,
         name: str,
         query_template: str,
-        task_config: Optional[SnowflakeConfig] = None,
+        task_config: SnowflakeConfig,
         inputs: Optional[Dict[str, Type]] = None,
         output_schema_type: Optional[Type[StructuredDataset]] = None,
         **kwargs,
@@ -63,9 +63,6 @@ class SnowflakeTask(AsyncAgentExecutorMixin, SQLTask[SnowflakeConfig]):
             outputs = {
                 "results": output_schema_type,
             }
-
-        if task_config is None:
-            task_config = SnowflakeConfig()
 
         super().__init__(
             name=name,
