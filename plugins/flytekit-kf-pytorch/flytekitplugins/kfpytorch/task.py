@@ -283,7 +283,6 @@ def spawn_helper(
             raise
         return ElasticWorkerResult(return_value=return_val, decks=flytekit.current_context().decks)
 
-<<<<<<< HEAD
 
 def _convert_run_policy_to_flyte_idl(run_policy: RunPolicy) -> kubeflow_common.RunPolicy:
     return kubeflow_common.RunPolicy(
@@ -294,8 +293,6 @@ def _convert_run_policy_to_flyte_idl(run_policy: RunPolicy) -> kubeflow_common.R
     )
 
 
-=======
->>>>>>> 7ed344614 (add torch dep back and simplify torchSyncCkpt)
 class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
     """
     Plugin for distributed training with torch elastic/torchrun (see
