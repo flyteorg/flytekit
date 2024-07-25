@@ -69,6 +69,14 @@ def _compute_array_job_index():
     return offset
 
 
+def _build_error_file_name(error_file_name_suffix: Optional[str]) -> None:
+    if error_file_name_suffix is None:
+        return _constants.ERROR_FILE_NAME
+    error_file_name_base, error_file_name_extension = os.path.splitext(_constants.ERROR_FILE_NAME)
+    error_file_name_base += f"-{error_file_name_suffix}"
+    return f"{error_file_name_base}.{error_file_name_extension}"
+
+
 def _dispatch_execute(
     ctx: FlyteContext,
     task_def: PythonTask,
@@ -84,10 +92,7 @@ def _dispatch_execute(
             b: OR if IgnoreOutputs is raised, then ignore uploading outputs
             c: OR if an unhandled exception is retrieved - record it as an errors.pb
     """
-    error_file_name = _constants.ERROR_FILE_NAME
-    error_file_name_suffix = task_def.get_error_file_name_suffix()
-    if error_file_name_suffix is not None:
-        error_file_name += f"-{error_file_name_suffix}"
+    error_file_name = _build_error_file_name(task_def.get_error_file_name_suffix())
 
     output_file_dict = {}
     logger.debug(f"Starting _dispatch_execute for {task_def.name}")
