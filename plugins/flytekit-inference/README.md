@@ -13,7 +13,7 @@ NVIDIA CUDA software, NVIDIA Triton Inference SErver and NVIDIA TensorRT-LLM sof
 
 ```python
 from flytekit import ImageSpec, Secret, task, Resources
-from flytekit.core.inference import NIM, NIMSecrets
+from flytekitplugins.inference import NIM, NIMSecrets
 from flytekit.extras.accelerators import A10G
 from openai import OpenAI
 
