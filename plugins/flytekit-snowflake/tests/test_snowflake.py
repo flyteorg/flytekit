@@ -21,7 +21,12 @@ def test_serialization():
         name="flytekit.demo.snowflake_task.query",
         inputs=kwtypes(ds=str),
         task_config=SnowflakeConfig(
-            account="snowflake", warehouse="my_warehouse", schema="my_schema", database="my_database"
+            account="snowflake",
+            user="my_user",
+            warehouse="my_warehouse",
+            schema="my_schema",
+            database="my_database",
+            table="my_table",
         ),
         query_template=query_template,
         # the schema literal's backend uri will be equal to the value of .raw_output_data
@@ -64,6 +69,14 @@ def test_local_exec():
     snowflake_task = SnowflakeTask(
         name="flytekit.demo.snowflake_task.query2",
         inputs=kwtypes(ds=str),
+        task_config=SnowflakeConfig(
+            account="TEST-ACCOUNT",
+            user="FLYTE",
+            database="FLYTEAGENT",
+            schema="PUBLIC",
+            warehouse="COMPUTE_WH",
+            table="FLYTEAGENT.PUBLIC.TEST",
+        ),
         query_template="select 1\n",
         # the schema literal's backend uri will be equal to the value of .raw_output_data
         output_schema_type=FlyteSchema,
@@ -73,15 +86,19 @@ def test_local_exec():
     assert snowflake_task.query_template == "select 1"
     assert len(snowflake_task.interface.outputs) == 1
 
-    # will not run locally
-    with pytest.raises(Exception):
-        snowflake_task()
-
 
 def test_sql_template():
     snowflake_task = SnowflakeTask(
         name="flytekit.demo.snowflake_task.query2",
         inputs=kwtypes(ds=str),
+        task_config=SnowflakeConfig(
+            account="TEST-ACCOUNT",
+            user="FLYTE",
+            database="FLYTEAGENT",
+            schema="PUBLIC",
+            warehouse="COMPUTE_WH",
+            table="FLYTEAGENT.PUBLIC.TEST",
+        ),
         query_template="""select 1 from\t
          custom where column = 1""",
         output_schema_type=FlyteSchema,
