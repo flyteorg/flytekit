@@ -1756,9 +1756,13 @@ class FlyteRemote(object):
         """
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
         resolved_identifiers_dict = asdict(resolved_identifiers)
+        not_found = False
         try:
             flyte_task: FlyteTask = self.fetch_task(**resolved_identifiers_dict)
         except FlyteEntityNotExistException:
+            not_found = True
+
+        if not_found:
             ss = SerializationSettings(
                 image_config=image_config or ImageConfig.auto_default_image(),
                 project=project or self.default_project,
