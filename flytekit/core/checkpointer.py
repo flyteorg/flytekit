@@ -191,30 +191,6 @@ class TorchAsyncCheckpoint(Checkpoint):
         super().__del__()
         if self._async_upload:
             self._async_upload.cancel()
-
-    def restore(self, path: typing.Optional[typing.Union[Path, str]] = None) -> typing.Optional[Path]:
-        # We have to lazy load, until we fix the imports
-        from flytekit.core.context_manager import FlyteContextManager
-
-        if self._checkpoint_src is None or self._checkpoint_src == "":
-            return None
-
-        if self._prev_download_path:
-            return self._prev_download_path
-
-        if path is None:
-            p = Path(self._td.name)
-            path = p / self.SRC_LOCAL_FOLDER
-            path.mkdir(exist_ok=True)
-        elif isinstance(path, str):
-            path = Path(path)
-
-        if not path.is_dir():
-            raise ValueError("Checkpoints can be restored to a directory only.")
-
-        FlyteContextManager.current_context().file_access.download_directory(self._checkpoint_src, str(path))
-        self._prev_download_path = path
-        return self._prev_download_path
     
     def _on_local_saved(self, cp: typing.Union[Path, str], fut: cf.Future):
         # We have to lazy load, until we fix the imports
