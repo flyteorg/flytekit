@@ -1,6 +1,8 @@
 import math
 from typing import Any, List, Optional, Set, Tuple, Union
 
+from flyteidl.core import workflow_pb2 as _core_workflow
+
 from flytekit.core import interface as flyte_interface
 from flytekit.core.context_manager import ExecutionState, FlyteContext
 from flytekit.core.interface import transform_interface_to_list_interface, transform_interface_to_typed_interface
@@ -23,11 +25,11 @@ class ArrayNode:
     def __init__(
         self,
         target: LaunchPlan,
+        execution_mode: _core_workflow.ArrayNode.ExecutionMode,
         concurrency: Optional[int] = None,
         min_successes: Optional[int] = None,
         min_success_ratio: Optional[float] = None,
         bound_inputs: Optional[Set[str]] = None,
-        execution_version: Optional[int] = None,
         metadata: Optional[Union[_workflow_model.NodeMetadata, TaskMetadata]] = None,
     ):
         """
@@ -41,14 +43,14 @@ class ArrayNode:
         :param min_success_ratio: If specified, this determines the minimum fraction of total jobs which can complete
             successfully before terminating this task and marking it successful.
         :param bound_inputs: The set of inputs that should be bound to the map task
-        :param execution_version: The execution version for propeller to use when handling ArrayNode
+        :param execution_mode: The execution mode for propeller to use when handling ArrayNode
         :param metadata: The metadata for the underlying entity
         """
         self.target = target
         self._concurrency = concurrency
         self._min_successes = min_successes
         self._min_success_ratio = min_success_ratio
-        self._execution_version = execution_version
+        self._execution_mode = execution_mode
         self.id = target.name
 
         n_outputs = len(self.target.python_interface.outputs)
@@ -65,9 +67,7 @@ class ArrayNode:
 
         self.metadata = None
         if isinstance(target, LaunchPlan):
-            if self._execution_version is None:
-                self._execution_version = 1
-            if self._execution_version != 1:
+            if self._execution_mode != _core_workflow.ArrayNode.FULL_STATE:
                 raise ValueError("Only execution version 1 is supported for LaunchPlans.")
             if metadata:
                 if isinstance(metadata, _workflow_model.NodeMetadata):
@@ -182,8 +182,8 @@ class ArrayNode:
         return self._concurrency
 
     @property
-    def execution_version(self) -> Optional[int]:
-        return self._execution_version
+    def execution_mode(self) -> _core_workflow.ArrayNode.ExecutionMode:
+        return self._execution_mode
 
 
 def array_node(
@@ -209,7 +209,13 @@ def array_node(
     if not isinstance(target, LaunchPlan):
         raise ValueError("Only LaunchPlans are supported for now.")
 
-    node = ArrayNode(target, concurrency, min_successes, min_success_ratio)
+    node = ArrayNode(
+        target=target,
+        execution_mode=_core_workflow.ArrayNode.FULL_STATE,
+        concurrency=concurrency,
+        min_successes=min_successes,
+        min_success_ratio=min_success_ratio,
+    )
 
     def callable_entity(**inner_kwargs):
         combined_kwargs = {**kwargs, **inner_kwargs}
