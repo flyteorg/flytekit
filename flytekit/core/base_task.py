@@ -797,6 +797,12 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         pass
 
     def remote(self, **kwargs) -> FlyteFuture:
+        """
+        This method will be invoked to execute the task remotely. This will return a FlyteFuture object that can be
+        used to track the progress of the task execution.
+
+        This method should be executed after specifying the remote configuration via `flytekit.remote.init_remote()`.
+        """
         return FlyteFuture(self, **kwargs)
 
     def post_execute(self, user_params: Optional[ExecutionParameters], rval: Any) -> Any:
