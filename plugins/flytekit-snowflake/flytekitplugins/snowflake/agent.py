@@ -94,7 +94,7 @@ class SnowflakeAgent(AsyncAgentBase):
             warehouse=config["warehouse"],
             table=config["table"],
             query_id=cs.sfqid,
-            output=len(task_template.interface.outputs) > 0,
+            output=task_template.interface.outputs and len(task_template.interface.outputs) > 0,
         )
 
     async def get(self, resource_meta: SnowflakeJobMetadata, **kwargs) -> Resource:
