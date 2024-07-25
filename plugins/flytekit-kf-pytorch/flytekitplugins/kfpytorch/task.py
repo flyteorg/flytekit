@@ -477,9 +477,9 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
         except Exception as e:
             logger.exception(f"Elastic launch agent process terminating: {e}")
             # An unexpected exception from elastic agent should be treated as
-            # a recoverable user error from the perspective of Flyte. If not, then 
-            # task level retries won't happen, as this would be treated as a 
-            # non-recoverable user error, which is almost always not what the user 
+            # a recoverable user error from the perspective of Flyte. If not, then
+            # task level retries won't happen, as this would be treated as a
+            # non-recoverable user error, which is almost always not what the user
             # has intended when they specified task level retries.
             raise FlyteRecoverableException(f"{e}") from e
 
