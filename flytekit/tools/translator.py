@@ -241,17 +241,15 @@ def _update_serialization_settings_for_ipython(
                 cloudpickle.dump(entity, gzipped)
             rich.get_console().print("[yellow]Uploading Pickled representation of Task to remote storage...[/ yellow]")
             md5_bytes, native_url = options.file_uploader(dest)
-            b = serialization_settings.new_builder()
             if not serialization_settings.version and md5_bytes:
                 import base64
 
                 h = hashlib.md5(md5_bytes)
-                base64.urlsafe_b64encode(h.digest()).decode("ascii").rstrip("=")
-                b.version = md5_bytes
-            return b.with_fast_serialization_settings(
-                FastSerializationSettings(enabled=True, pickled=True, distribution_location=native_url),
-            ).build()
-    return serialization_settings
+                version = base64.urlsafe_b64encode(h.digest()).decode("ascii").rstrip("=")
+                serialization_settings.version = version
+            serialization_settings.fast_serialization_settings = FastSerializationSettings(
+                enabled=True, pickled=True, distribution_location=native_url
+            )
 
 
 def get_serializable_task(
@@ -269,7 +267,7 @@ def get_serializable_task(
     )
 
     # Try update the serialization settings for ipython / jupyter notebook / interactive mode
-    settings = _update_serialization_settings_for_ipython(entity, settings, options)
+    _update_serialization_settings_for_ipython(entity, settings, options)
 
     if isinstance(entity, PythonFunctionTask) and entity.execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
         for e in context_manager.FlyteEntities.entities:
