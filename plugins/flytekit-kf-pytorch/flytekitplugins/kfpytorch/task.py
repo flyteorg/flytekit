@@ -15,6 +15,7 @@ from google.protobuf.json_format import MessageToDict
 import flytekit
 from flytekit import PythonFunctionTask, Resources, lazy_module
 from flytekit.configuration import SerializationSettings
+from flytekit.core import constants as _constants
 from flytekit.core.pod_template import PodTemplate
 from flytekit.core.resources import convert_resources_to_resource_model
 from flytekit.exceptions.user import FlyteRecoverableException
@@ -334,6 +335,25 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
                 self.pod_template = PodTemplate()
             add_shared_mem_volume_to_pod_template(self.pod_template)
 
+    def get_error_file_name(self) -> Optional[str]:
+        """
+        Returns error file name using a posfix that represents the replica index.
+        """
+        # This is fragile, as it assumes hostname == podname, which is not the case if
+        # pod spec specifies host networking. It also relies on the naming convention
+        # used by the training operator, which appends -worker-{replica_index} to the 
+        # pod name.
+        #
+        # The ideal way to get the replica index is to use K8 Downward API to expose 
+        # metadata.labels."training.kubeflow.org/replica-index" as an environment
+        # variable in the pod spec. This is a change needed in the training operator.
+        pod_name = os.environ["HOSTNAME"]
+        search_text = "worker-"
+        search_index = pod_name.rfind(search_text)
+        assert search_index != -1
+        replica_index = pod_name[search_index + len(search_text):]
+        return f"{_constants.ERROR_FILE_NAME}-{replica_index}"
+
     def _execute(self, **kwargs) -> Any:
         """
         Execute the task function using torch distributed's `elastic_launch`.
@@ -455,6 +475,14 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
         except SignalException as e:
             logger.exception(f"Elastic launch agent process terminating: {e}")
             raise IgnoreOutputs()
+        except Exception as e:
+            logger.exception(f"Elastic launch agent process terminating: {e}")
+            # An unexpected exception from elastic agent should be treated as 
+            # a user error from the perspective of Flyte. If not, then task level
+            # retries won't happen, as this would be treated as a non-recoverable
+            # user error, which is almost always not what the user has intented
+            # when they specified task level retries.
+            raise FlyteRecoverableException(f"{e}") from e
 
         # `out` is a dictionary of rank (not local rank) -> result
         # Rank 0 returns the result of the task function
