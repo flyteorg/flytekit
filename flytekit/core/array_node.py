@@ -36,10 +36,13 @@ class ArrayNode:
             size. If the size of the input exceeds the concurrency value, then multiple batches will be run serially until
             all inputs are processed. If set to 0, this means unbounded concurrency. If left unspecified, this means the
             array node will inherit parallelism from the workflow
-        :param min_success_ratio: If specified, this determines the minimum fraction of total jobs which can complete
-            successfully before terminating this task and marking it successful.
         :param min_successes: If specified, an absolute number of the minimum number of successful completions of subtasks.
             As soon as the criteria is met, the array job will be marked as successful and outputs will be computed.
+        :param min_success_ratio: If specified, this determines the minimum fraction of total jobs which can complete
+            successfully before terminating this task and marking it successful.
+        :param bound_inputs: The set of inputs that should be bound to the map task
+        :param execution_version: The execution version for propeller to use when handling ArrayNode
+        :param metadata: The metadata for the underlying entity
         """
         self.target = target
         self._concurrency = concurrency
@@ -91,10 +94,12 @@ class ArrayNode:
 
     @property
     def bindings(self) -> List[_literal_models.Binding]:
+        # Required in get_serializable_node
         return []
 
     @property
     def upstream_nodes(self) -> List[Node]:
+        # Required in get_serializable_node
         return []
 
     @property
@@ -148,14 +153,13 @@ class ArrayNode:
                 output = self.target.__call__(**kwargs_literals)
                 if outputs_expected:
                     literals.append(output.val)
-
             except Exception as exc:
                 if outputs_expected:
                     literal_with_none = Literal(scalar=Scalar(none_type=_literal_models.Void()))
                     literals.append(literal_with_none)
                     failed_count += 1
                     if mapped_entity_count - failed_count < min_successes:
-                        logger.error("The number of successful tasks is lower than the minimum ratio")
+                        logger.error("The number of successful tasks is lower than the minimum")
                         raise exc
 
         if outputs_expected:
