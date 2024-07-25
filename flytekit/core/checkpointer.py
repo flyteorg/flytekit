@@ -82,7 +82,7 @@ class SyncCheckpoint(Checkpoint):
         self._checkpoint_src = checkpoint_src if checkpoint_src and checkpoint_src != "" else None
         self._td = tempfile.TemporaryDirectory()
         self._prev_download_path: typing.Optional[Path] = None
-        self._torch_checkpoint: TorchAsyncCheckpoint = TorchAsyncCheckpoint(checkpoint_dest, checkpoint_src)
+        self._torch_checkpoint: TorchAsyncCheckpoint = None
 
     def __del__(self):
         self._td.cleanup()
@@ -117,6 +117,8 @@ class SyncCheckpoint(Checkpoint):
     def save(self, cp: typing.Union[Path, str, io.BufferedReader], future: cf.Future=None):
         # We have to lazy load, until we fix the imports
         if future is not None:
+            if self._torch_checkpoint is None:
+                self._torch_checkpoint = TorchAsyncCheckpoint(self._checkpoint_dest, self._checkpoint_src)
             self._torch_checkpoint.save(cp, future)
             return
 
@@ -181,10 +183,7 @@ class TorchAsyncCheckpoint(Checkpoint):
             checkpoint_src: If a previous checkpoint should exist, this path should be set to the folder that contains the checkpoint information
             checkpoint_dest: Location where the new checkpoint should be copied to
         """
-        self._checkpoint_dest = checkpoint_dest
-        self._checkpoint_src = checkpoint_src if checkpoint_src and checkpoint_src != "" else None
-        self._td = tempfile.TemporaryDirectory()
-        self._prev_download_path: typing.Optional[Path] = None
+        super().__init__(checkpoint_dest, checkpoint_src)
         self._async_upload: cf.Future = None
 
     def __del__(self):
