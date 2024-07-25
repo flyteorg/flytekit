@@ -58,15 +58,15 @@ def _read_from_sf(
         raise ValueError("structured_dataset.uri cannot be None.")
 
     uri = flyte_value.uri
-    _, user, account, warehouse, database, schema, table = re.split("\\/|://|:", uri)
+    _, user, account, warehouse, database, schema, query_id = re.split("\\/|://|:", uri)
 
     conn = snowflake.connector.connect(
-        user=user, account=account, private_key=get_private_key(), database=database, schema=schema, warehouse=warehouse
+        user=user, account=account, private_key=get_private_key(), database=database, schema=schema, warehouse=warehouse,
+        table="FLYTEAGENT.PUBLIC.TEST"
     )
 
     cs = conn.cursor()
-    cs.execute(f"select * from {table}")
-
+    cs.get_results_from_sfqid(query_id)
     return cs.fetch_pandas_all()
 
 

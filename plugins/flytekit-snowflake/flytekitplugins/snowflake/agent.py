@@ -91,7 +91,7 @@ class SnowflakeAgent(AsyncAgentBase):
             schema=config["schema"],
             warehouse=config["warehouse"],
             table=config["table"],
-            query_id=str(cs.sfqid),
+            query_id=cs.sfqid,
         )
 
     async def get(self, resource_meta: SnowflakeJobMetadata, **kwargs) -> Resource:
@@ -109,7 +109,7 @@ class SnowflakeAgent(AsyncAgentBase):
 
         if cur_phase == TaskExecution.SUCCEEDED:
             ctx = FlyteContextManager.current_context()
-            uri = f"snowflake://{resource_meta.user}:{resource_meta.account}/{resource_meta.warehouse}/{resource_meta.database}/{resource_meta.schema}/{resource_meta.table}"
+            uri = f"snowflake://{resource_meta.user}:{resource_meta.account}/{resource_meta.warehouse}/{resource_meta.database}/{resource_meta.schema}/{resource_meta.query_id}"
             res = literals.LiteralMap(
                 {
                     "results": TypeEngine.to_literal(
