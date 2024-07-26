@@ -82,5 +82,19 @@ class RayFunctionTask(PythonFunctionTask):
         return MessageToDict(ray_job.to_flyte_idl())
 
 
+class AnyscaleFunctionTask(PythonFunctionTask):
+    _TASK_TYPE = "anyscale"
+
+    def __init__(self, task_config: RayJobConfig, task_function: Callable, **kwargs):
+        super().__init__(task_config=task_config, task_type=self._TASK_TYPE, task_function=task_function, **kwargs)
+        self._task_config = task_config
+
+
 # Inject the Ray plugin into flytekits dynamic plugin loading system
 TaskPlugins.register_pythontask_plugin(RayJobConfig, RayFunctionTask)
+try:
+    from anyscale.job.models import JobConfig
+
+    TaskPlugins.register_pythontask_plugin(AnyscaleFunctionTask, JobConfig)
+except ImportError:
+    pass
