@@ -544,7 +544,7 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
                 if processed_click_value is None and isinstance(v, typing.Tuple):
                     if entity_type == "workflow" and hasattr(v[0], "__args__"):
                         origin_base_type = get_origin(v[0])
-                        if issubclass(origin_base_type, Iterator):  # Iterator
+                        if inspect.isclass(origin_base_type) and issubclass(origin_base_type, Iterator):  # Iterator
                             args = getattr(v[0], "__args__")
                             if isinstance(args, tuple) and get_origin(args[0]) is typing.Union:  # Iterator[JSON]
                                 logger.debug(f"Detected Iterator[JSON] in {entity.name} input annotations...")
