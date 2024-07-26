@@ -69,6 +69,14 @@ def _compute_array_job_index():
     return offset
 
 
+def _build_error_file_name(error_file_name_suffix: Optional[str]) -> str:
+    if error_file_name_suffix is None:
+        return _constants.ERROR_FILE_NAME
+    error_file_name_base, error_file_name_extension = os.path.splitext(_constants.ERROR_FILE_NAME)
+    error_file_name_base += f"-{error_file_name_suffix}"
+    return f"{error_file_name_base}.{error_file_name_extension}"
+
+
 def _dispatch_execute(
     ctx: FlyteContext,
     task_def: PythonTask,
@@ -84,6 +92,8 @@ def _dispatch_execute(
             b: OR if IgnoreOutputs is raised, then ignore uploading outputs
             c: OR if an unhandled exception is retrieved - record it as an errors.pb
     """
+    error_file_name = _build_error_file_name(task_def.get_error_file_name_suffix())
+
     output_file_dict = {}
     logger.debug(f"Starting _dispatch_execute for {task_def.name}")
     try:
@@ -112,7 +122,7 @@ def _dispatch_execute(
             output_file_dict = {_constants.FUTURES_FILE_NAME: outputs}
         else:
             logger.error(f"SystemError: received unknown outputs from task {outputs}")
-            output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
+            output_file_dict[error_file_name] = _error_models.ErrorDocument(
                 _error_models.ContainerError(
                     "UNKNOWN_OUTPUT",
                     f"Type of output received not handled {type(outputs)} outputs: {outputs}",
@@ -126,7 +136,7 @@ def _dispatch_execute(
         if isinstance(e.value, IgnoreOutputs):
             logger.warning(f"User-scoped IgnoreOutputs received! Outputs.pb will not be uploaded. reason {e}!!")
             return
-        output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
+        output_file_dict[error_file_name] = _error_models.ErrorDocument(
             _error_models.ContainerError(
                 e.error_code, e.verbose_message, e.kind, _execution_models.ExecutionError.ErrorKind.USER
             )
@@ -140,7 +150,7 @@ def _dispatch_execute(
         if isinstance(e.value, IgnoreOutputs):
             logger.warning(f"System-scoped IgnoreOutputs received! Outputs.pb will not be uploaded. reason {e}!!")
             return
-        output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
+        output_file_dict[error_file_name] = _error_models.ErrorDocument(
             _error_models.ContainerError(
                 e.error_code, e.verbose_message, e.kind, _execution_models.ExecutionError.ErrorKind.SYSTEM
             )
@@ -154,7 +164,7 @@ def _dispatch_execute(
     except Exception as e:
         # Step 3c
         exc_str = traceback.format_exc()
-        output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
+        output_file_dict[error_file_name] = _error_models.ErrorDocument(
             _error_models.ContainerError(
                 "SYSTEM:Unknown",
                 exc_str,
@@ -178,7 +188,7 @@ def _dispatch_execute(
 
     logger.debug("Finished _dispatch_execute")
 
-    if os.environ.get("FLYTE_FAIL_ON_ERROR", "").lower() == "true" and _constants.ERROR_FILE_NAME in output_file_dict:
+    if os.environ.get("FLYTE_FAIL_ON_ERROR", "").lower() == "true" and error_file_name in output_file_dict:
         # This env is set by the flytepropeller
         # AWS batch job get the status from the exit code, so once we catch the error,
         # we should return the error code here
