@@ -8,13 +8,12 @@ import yaml
 from flytekitplugins.ray.models import HeadGroupSpec, RayCluster, RayJob, WorkerGroupSpec
 from google.protobuf.json_format import MessageToDict
 
-from flytekit import lazy_module
+from flytekit import ImageSpec
 from flytekit.configuration import SerializationSettings
 from flytekit.core.context_manager import ExecutionParameters
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.extend import TaskPlugins
-
-ray = lazy_module("ray")
+from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 
 
 @dataclass
@@ -54,6 +53,8 @@ class RayFunctionTask(PythonFunctionTask):
         self._task_config = task_config
 
     def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
+        import ray
+
         ray.init(address=self._task_config.address)
         return user_params
 
@@ -82,19 +83,34 @@ class RayFunctionTask(PythonFunctionTask):
         return MessageToDict(ray_job.to_flyte_idl())
 
 
-class AnyscaleFunctionTask(PythonFunctionTask):
+@dataclass
+class AnyscaleConfig:
+    ray_start_params: typing.Optional[typing.Dict[str, str]] = None
+
+
+class AnyscaleFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask):
     _TASK_TYPE = "anyscale"
 
-    def __init__(self, task_config: RayJobConfig, task_function: Callable, **kwargs):
-        super().__init__(task_config=task_config, task_type=self._TASK_TYPE, task_function=task_function, **kwargs)
-        self._task_config = task_config
+    def __init__(
+        self,
+        task_config: AnyscaleConfig,
+        task_function: Callable,
+        container_image: Optional[typing.Union[str, ImageSpec]] = None,
+        **kwargs,
+    ):
+        super(AnyscaleFunctionTask, self).__init__(
+            task_config=task_config,
+            task_type=self._TASK_TYPE,
+            task_function=task_function,
+            container_image=container_image,
+            **kwargs,
+        )
+
+    def execute(self, **kwargs) -> Any:
+        print("Executing Anyscale Task")
+        return AsyncAgentExecutorMixin.execute(self, **kwargs)
 
 
 # Inject the Ray plugin into flytekits dynamic plugin loading system
 TaskPlugins.register_pythontask_plugin(RayJobConfig, RayFunctionTask)
-try:
-    from anyscale.job.models import JobConfig
-
-    TaskPlugins.register_pythontask_plugin(AnyscaleFunctionTask, JobConfig)
-except ImportError:
-    pass
+TaskPlugins.register_pythontask_plugin(AnyscaleConfig, AnyscaleFunctionTask)

@@ -1,12 +1,13 @@
 from dataclasses import dataclass
 from typing import Optional
 
-from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource, ResourceMeta
-from flytekit.extend.backend.utils import convert_to_flyte_phase, get_agent_secret
-from flytekit.models.literals import LiteralMap
-from flytekit.models.task import TaskTemplate
 import anyscale
 from anyscale.job.models import JobConfig
+
+from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource, ResourceMeta
+from flytekit.extend.backend.utils import convert_to_flyte_phase
+from flytekit.models.literals import LiteralMap
+from flytekit.models.task import TaskTemplate
 
 
 @dataclass
@@ -24,12 +25,13 @@ class AnyscaleAgent(AsyncAgentBase):
         self, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs
     ) -> AnyscaleJobMetadata:
         print("task_template", task_template)
+        container = task_template.container
         config = JobConfig(
             name="flyte-rag",
-            entrypoint="sleep 30",
-            working_dir=".",
+            entrypoint=" ".join(container.args),
+            working_dir="/Users/kevin/git/flytekit/flyte-example/anyscale_union",
             max_retries=1,
-            compute_config="flyte-rag"
+            compute_config="flyte-rag",
         )
 
         job_id = anyscale.job.submit(config)
@@ -37,7 +39,7 @@ class AnyscaleAgent(AsyncAgentBase):
         return AnyscaleJobMetadata(job_id=job_id)
 
     async def get(self, resource_meta: AnyscaleJobMetadata, **kwargs) -> Resource:
-        cur_phase = convert_to_flyte_phase(anyscale.job.status(id=resource_meta.job_id))
+        cur_phase = convert_to_flyte_phase(anyscale.job.status(id=resource_meta.job_id).state.value)
 
         return Resource(phase=cur_phase, message=None, log_links=None)
 

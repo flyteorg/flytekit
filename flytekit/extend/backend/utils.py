@@ -24,7 +24,7 @@ def convert_to_flyte_phase(state: str) -> TaskExecution.Phase:
         return TaskExecution.FAILED
     elif state in ["done", "succeeded", "success"]:
         return TaskExecution.SUCCEEDED
-    elif state in ["running", "terminating"]:
+    elif state in ["running", "terminating", "starting"]:
         return TaskExecution.RUNNING
     elif state in ["pending"]:
         return TaskExecution.INITIALIZING
