@@ -1,5 +1,7 @@
 # Inference Plugins
 
+Serve models natively in Flyte tasks using inference providers like NIM, Ollama, and others.
+
 To install the plugin, run the following command:
 
 ```bash
