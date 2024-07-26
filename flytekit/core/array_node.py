@@ -28,7 +28,7 @@ class ArrayNode:
         execution_mode: _core_workflow.ArrayNode.ExecutionMode = _core_workflow.ArrayNode.FULL_STATE,
         concurrency: Optional[int] = None,
         min_successes: Optional[int] = None,
-        min_success_ratio: Optional[float] = None,
+        min_success_ratio: float = 1.0,
         bound_inputs: Optional[Set[str]] = None,
         metadata: Optional[Union[_workflow_model.NodeMetadata, TaskMetadata]] = None,
     ):
@@ -38,10 +38,9 @@ class ArrayNode:
             size. If the size of the input exceeds the concurrency value, then multiple batches will be run serially until
             all inputs are processed. If set to 0, this means unbounded concurrency. If left unspecified, this means the
             array node will inherit parallelism from the workflow
-        :param min_successes: If specified, an absolute number of the minimum number of successful completions of subtasks.
-            As soon as the criteria is met, the array job will be marked as successful and outputs will be computed.
-        :param min_success_ratio: If specified, this determines the minimum fraction of total jobs which can complete
-            successfully before terminating this task and marking it successful.
+        :param min_successes: The minimum number of successful executions. If set, this takes precedence over
+            min_success_ratio
+        :param min_success_ratio: The minimum ratio of successful executions.
         :param bound_inputs: The set of inputs that should be bound to the map task
         :param execution_mode: The execution mode for propeller to use when handling ArrayNode
         :param metadata: The metadata for the underlying entity
@@ -189,7 +188,7 @@ class ArrayNode:
 def array_node(
     target: Union[LaunchPlan],
     concurrency: Optional[int] = None,
-    min_success_ratio: Optional[float] = None,
+    min_success_ratio: float = 1.0,
     min_successes: Optional[int] = None,
     **kwargs,
 ):
@@ -201,10 +200,9 @@ def array_node(
         size. If the size of the input exceeds the concurrency value, then multiple batches will be run serially until
         all inputs are processed. If set to 0, this means unbounded concurrency. If left unspecified, this means the
         array node will inherit parallelism from the workflow
-    :param min_success_ratio: If specified, this determines the minimum fraction of total jobs which can complete
-        successfully before terminating this task and marking it successful.
-    :param min_successes: If specified, an absolute number of the minimum number of successful completions of subtasks.
-        As soon as the criteria is met, the array job will be marked as successful and outputs will be computed.
+    :param min_successes: The minimum number of successful executions. If set, this takes precedence over
+        min_success_ratio
+    :param min_success_ratio: The minimum ratio of successful executions
     """
     if not isinstance(target, LaunchPlan):
         raise ValueError("Only LaunchPlans are supported for now.")

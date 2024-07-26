@@ -351,8 +351,7 @@ class ArrayNodeMapTask(PythonTask):
 def map_task(
     target: Union[LaunchPlan, PythonFunctionTask],
     concurrency: Optional[int] = None,
-    # TODO - why no min_successes?
-    # min_successes: Optional[int] = None,
+    min_successes: Optional[int] = None,
     min_success_ratio: float = 1.0,
     **kwargs,
 ):
@@ -365,11 +364,18 @@ def map_task(
         size. If the size of the input exceeds the concurrency value, then multiple batches will be run serially until
         all inputs are processed. If set to 0, this means unbounded concurrency. If left unspecified, this means the
         array node will inherit parallelism from the workflow
-        min_success_ratio: If specified, this determines the minimum fraction of total jobs which can complete
+        min_successes: The minimum number of successful executions
+        min_success_ratio: The minimum ratio of successful executions
         successfully before terminating this task and marking it successful.
     """
     if isinstance(target, LaunchPlan):
-        return array_node(target, concurrency=concurrency, min_success_ratio=min_success_ratio, **kwargs)
+        return array_node(
+            target=target,
+            concurrency=concurrency,
+            min_successes=min_successes,
+            min_success_ratio=min_success_ratio,
+            **kwargs,
+        )
     return array_node_map_task(
         task_function=target, concurrency=concurrency, min_success_ratio=min_success_ratio, **kwargs
     )

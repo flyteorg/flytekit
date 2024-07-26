@@ -62,25 +62,22 @@ def test_local_exec_lp():
     assert a == [2, 12, 30]
 
 
-def test_local_exec_lp_min_successes():
-    @workflow
-    def grandparent_wf_1() -> list[int]:
-        return array_node(lp, concurrency=10, min_successes=2)(a=[1, 3, 5], b=[2, 4, 6])
-
-    a = grandparent_wf_1()
-    assert a == [2, 12, 30]
-
-
 @pytest.mark.parametrize(
-    "min_success_ratio, should_raise_error",
+    "min_successes, min_success_ratio, should_raise_error",
     [
-        (None, True),
-        (1, True),
-        (0.75, False),
-        (0.5, False),
+        (None, None, True),
+        (None, 1, True),
+        (None, 0.75, False),
+        (None, 0.5, False),
+        (1, None, False),
+        (3, None, False),
+        (4, None, True),
+        # Test min_successes takes precedence over min_success_ratio
+        (1, 1.0, False),
+        (4, 0.1, True),
     ],
 )
-def test_local_exec_lp_min_success_ratio(min_success_ratio, should_raise_error):
+def test_local_exec_lp_min_successes(min_successes, min_success_ratio, should_raise_error):
     @task
     def ex_task(val: int) -> int:
         if val == 1:
@@ -95,11 +92,10 @@ def test_local_exec_lp_min_success_ratio(min_success_ratio, should_raise_error):
 
     @workflow
     def grandparent_ex_wf() -> list[typing.Optional[int]]:
-        return array_node(ex_lp, min_success_ratio=min_success_ratio)(val=[1, 2, 3, 4])
+        return array_node(ex_lp, min_successes=min_successes, min_success_ratio=min_success_ratio)(val=[1, 2, 3, 4])
 
     if should_raise_error:
         with pytest.raises(Exception):
             grandparent_ex_wf()
     else:
-        a = grandparent_ex_wf()
         assert grandparent_ex_wf() == [None, 2, 3, 4]
