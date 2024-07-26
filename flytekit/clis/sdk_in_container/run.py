@@ -841,13 +841,12 @@ class YamlFileReadingCommand(click.RichCommand):
                     try:
                         inputs = json.load(f)
                     except json.JSONDecodeError as e:
-                        click.secho(
-                            "Could not load the inputs file. Please make sure it is a valid JSON or YAML file."
+                        raise click.BadParameter(
+                            message=f"Could not load the inputs file. Please make sure it is a valid JSON or YAML file."
                             f"\n json error: {e},"
                             f"\n yaml error: {yaml_e}",
-                            fg="yellow",
+                            param_hint="--inputs-file",
                         )
-                        exit(1)
 
             new_args = []
             for k, v in inputs.items():
@@ -871,13 +870,12 @@ class YamlFileReadingCommand(click.RichCommand):
                     try:
                         inputs = json.loads(f)
                     except json.JSONDecodeError as e:
-                        click.secho(
-                            "Could not load the inputs file. Please make sure it is a valid JSON or YAML file."
+                        raise click.BadParameter(
+                            message=f"Could not load the inputs file. Please make sure it is a valid JSON or YAML file."
                             f"\n json error: {e},"
                             f"\n yaml error: {yaml_e}",
-                            fg="yellow",
+                            param_hint="--inputs-file",
                         )
-                        exit(1)
                 new_args = []
                 for k, v in inputs.items():
                     if isinstance(v, str):
