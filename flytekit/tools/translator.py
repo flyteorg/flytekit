@@ -497,6 +497,7 @@ def get_serializable_node(
                     resources=entity._resources,
                     extended_resources=entity._extended_resources,
                     container_image=entity._container_image,
+                    override_security_context=entity._override_security_context,
                 ),
             ),
         )
@@ -578,6 +579,7 @@ def get_serializable_node(
                     resources=entity._resources,
                     extended_resources=entity._extended_resources,
                     container_image=entity._container_image,
+                    override_security_context=entity._override_security_context,
                 ),
             ),
         )
@@ -631,6 +633,7 @@ def get_serializable_array_node(
             resources=node._resources,
             extended_resources=node._extended_resources,
             container_image=node._container_image,
+            override_security_context=node._override_security_context,
         ),
     )
     node = workflow_model.Node(
