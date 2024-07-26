@@ -10,7 +10,7 @@ from google.protobuf.json_format import MessageToDict
 
 from flytekit import ImageSpec
 from flytekit.configuration import SerializationSettings
-from flytekit.core.context_manager import ExecutionParameters
+from flytekit.core.context_manager import ExecutionParameters, FlyteContextManager, ExecutionState
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.extend import TaskPlugins
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
@@ -108,6 +108,9 @@ class AnyscaleFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask):
 
     def execute(self, **kwargs) -> Any:
         print("Executing Anyscale Task")
+        ctx = FlyteContextManager.current_context()
+        if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
+            return PythonFunctionTask.execute(self, **kwargs)
         return AsyncAgentExecutorMixin.execute(self, **kwargs)
 
 
