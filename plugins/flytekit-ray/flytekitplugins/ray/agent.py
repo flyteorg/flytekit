@@ -28,9 +28,15 @@ class AnyscaleAgent(AsyncAgentBase):
         container = task_template.container
         config = JobConfig(
             name="flyte-rag",
+            image_uri=container.image,
+            env_vars={
+                "AWS_ACCESS_KEY_ID": "ASIAVGCH4VK2EDGW7EFL",
+                "AWS_SECRET_ACCESS_KEY": "DBYxPrcl35t2s9aI/mBzITWVldbPJk6xkYBpk122",
+                "AWS_SESSION_TOKEN": "IQoJb3JpZ2luX2VjEAQaCXVzLWVhc3QtMiJHMEUCIDDNx0KpOeCMwjM1Hi"
+            },
             entrypoint=" ".join(container.args),
-            working_dir="/Users/kevin/git/flytekit/flyte-example/anyscale_union",
-            max_retries=1,
+            # working_dir="/Users/kevin/git/flytekit/flyte-example/anyscale_union",
+            max_retries=0,
             compute_config="flyte-rag",
         )
 

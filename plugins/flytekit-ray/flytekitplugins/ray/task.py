@@ -85,7 +85,7 @@ class RayFunctionTask(PythonFunctionTask):
 
 @dataclass
 class AnyscaleConfig:
-    ray_start_params: typing.Optional[typing.Dict[str, str]] = None
+    compute_config: typing.Optional[str] = None
 
 
 class AnyscaleFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask):
