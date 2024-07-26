@@ -2998,6 +2998,35 @@ def test_DataclassTransformer_guess_python_type():
     assert datum_mashumaro_orjson.z.isoformat() == pv.z
 
 
+def test_DataclassTransformer_for_list_attributes():
+    dataclass_bases = [DataClassJSONMixin, DataClassJsonMixin, object]
+    for dataclass_base in dataclass_bases:
+        @dataclass(kw_only=True)
+        class DataclassWithList(dataclass_base):
+            some_strings: list[str]
+
+        @task
+        def create_dataclass_with_list(
+            some_strings: list[str],
+        ) -> DataclassWithList:
+            return DataclassWithList(
+                some_strings=some_strings,
+            )
+
+        @workflow
+        def convert_list_workflow(
+            inputs: DataclassWithList,
+        ) -> DataclassWithList:
+            result_list = create_dataclass_with_list(some_strings=inputs.some_strings)
+            return result_list
+
+        workflow_input = DataclassWithList(
+            some_strings=["hello", "world"],
+        )
+        output = convert_list_workflow(workflow_input)
+        assert output.some_strings == ["hello", "world"]
+
+
 def test_dataclass_encoder_and_decoder_registry():
     iterations = 10
 
