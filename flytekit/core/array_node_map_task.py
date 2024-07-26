@@ -377,7 +377,11 @@ def map_task(
             **kwargs,
         )
     return array_node_map_task(
-        task_function=target, concurrency=concurrency, min_success_ratio=min_success_ratio, **kwargs
+        task_function=target,
+        concurrency=concurrency,
+        min_successes=min_successes,
+        min_success_ratio=min_success_ratio,
+        **kwargs,
     )
 
 
