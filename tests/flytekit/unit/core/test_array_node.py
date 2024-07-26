@@ -6,6 +6,7 @@ import pytest
 from flytekit import LaunchPlan, current_context, task, workflow
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.array_node import array_node
+from flytekit.core.array_node_map_task import map_task
 from flytekit.models.core import identifier as identifier_models
 from flytekit.tools.translator import get_serializable
 
@@ -56,12 +57,6 @@ def test_lp_serialization(serialization_settings):
     assert wf_spec.template.nodes[0].array_node._parallelism == 10
 
 
-def test_local_exec_lp():
-
-    a = grandparent_wf()
-    assert a == [2, 12, 30]
-
-
 @pytest.mark.parametrize(
     "min_successes, min_success_ratio, should_raise_error",
     [
@@ -99,3 +94,11 @@ def test_local_exec_lp_min_successes(min_successes, min_success_ratio, should_ra
             grandparent_ex_wf()
     else:
         assert grandparent_ex_wf() == [None, 2, 3, 4]
+
+
+def test_map_task_wrapper():
+    mapped_task = map_task(multiply)(val=[1, 3, 5], val1=[2, 4, 6])
+    assert mapped_task == [2, 12, 30]
+
+    mapped_lp = map_task(lp)(a=[1, 3, 5], b=[2, 4, 6])
+    assert mapped_lp == [2, 12, 30]
