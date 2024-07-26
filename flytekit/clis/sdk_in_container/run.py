@@ -820,7 +820,7 @@ class YamlFileReadingCommand(click.RichCommand):
     ):
         params.append(
             click.Option(
-                ["--flyte-inputs-file"],
+                ["--inputs-file"],
                 required=False,
                 type=click.Path(exists=True, dir_okay=False, resolve_path=True),
                 help="Path to a YAML | JSON file containing inputs for the workflow.",
@@ -829,8 +829,8 @@ class YamlFileReadingCommand(click.RichCommand):
         super().__init__(name=name, params=params, callback=callback, help=help)
 
     def parse_args(self, ctx: Context, args: t.List[str]) -> t.List[str]:
-        if "--flyte-inputs-file" in args:
-            idx = args.index("--flyte-inputs-file")
+        if "--inputs-file" in args:
+            idx = args.index("--inputs-file")
             args.pop(idx)
             f = args.pop(idx)
             with open(f, "r") as f:

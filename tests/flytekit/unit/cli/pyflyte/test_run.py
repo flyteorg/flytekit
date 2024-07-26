@@ -229,7 +229,7 @@ def test_replace_file_inputs(monkeypatch, pipe_input, option_input):
             "run",
             os.path.join(DIR_NAME, "workflow.py"),
             "my_wf",
-            "--flyte-inputs-file",
+            "--inputs-file",
             os.path.join(os.path.dirname(os.path.realpath(__file__)), "my_wf_input.json"),
             "--k",
             option_input,
