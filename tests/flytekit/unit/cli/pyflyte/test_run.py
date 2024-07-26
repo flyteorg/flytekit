@@ -196,10 +196,50 @@ def test_union_type1(input):
     assert result.exit_code == 0
 
 @pytest.mark.parametrize(
+    "input",
+    [os.path.join(os.path.dirname(os.path.realpath(__file__)), "my_wf_input.json"),],
+)
+def test_all_types_with_json_input(input):
+    runner = CliRunner()
+    result = runner.invoke(
+        pyflyte.main,
+        [
+            "run",
+            os.path.join(DIR_NAME, "workflow.py"),
+            "my_wf",
+            "--inputs-file",
+            input,
+        ],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0, result.stdout
+
+
+@pytest.mark.parametrize(
+    "input",
+    [os.path.join(os.path.dirname(os.path.realpath(__file__)), "my_wf_input.yaml")],
+)
+def test_all_types_with_yaml_input(input):
+    runner = CliRunner()
+
+    result = runner.invoke(
+        pyflyte.main,
+        [
+            "run",
+            os.path.join(DIR_NAME, "workflow.py"),
+            "my_wf",
+            "--inputs-file",
+            input
+        ],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0, result.stdout
+
+@pytest.mark.parametrize(
         "input",
         [str(json.load(open(os.path.join(os.path.dirname(os.path.realpath(__file__)), "my_wf_input.json"), "r")))]
 )
-def test_all_types_with_file_input(monkeypatch, input):
+def test_all_types_with_pipe_input(monkeypatch, input):
     runner = CliRunner()
     monkeypatch.setattr("sys.stdin", io.StringIO(input))
     result = runner.invoke(
@@ -208,8 +248,6 @@ def test_all_types_with_file_input(monkeypatch, input):
             "run",
             os.path.join(DIR_NAME, "workflow.py"),
             "my_wf",
-            # "--flyte-inputs-file",
-            # os.path.join(os.path.dirname(os.path.realpath(__file__)), "my_wf_input.json"),
         ],
         input=input,
         catch_exceptions=False,
