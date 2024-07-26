@@ -193,8 +193,7 @@ def array_node(
     **kwargs,
 ):
     """
-    Map tasks that maps over tasks and other Flyte entities
-    Args:
+    ArrayNode implementation that maps over tasks and other Flyte entities
     :param target: The target Flyte entity to map over
     :param concurrency: If specified, this limits the number of mapped tasks than can run in parallel to the given batch
         size. If the size of the input exceeds the concurrency value, then multiple batches will be run serially until
@@ -203,6 +202,8 @@ def array_node(
     :param min_successes: The minimum number of successful executions. If set, this takes precedence over
         min_success_ratio
     :param min_success_ratio: The minimum ratio of successful executions
+    :return: A callable function that takes in keyword arguments and returns a Promise created by
+        flyte_entity_call_handler
     """
     if not isinstance(target, LaunchPlan):
         raise ValueError("Only LaunchPlans are supported for now.")

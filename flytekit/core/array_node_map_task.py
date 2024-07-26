@@ -356,17 +356,15 @@ def map_task(
     **kwargs,
 ):
     """
-    Wrapper that creates a map task utilizing either the existing array_node_map_task
+    Wrapper that creates a map task utilizing either the existing ArrayNodeMapTask
     or the drop in replacement ArrayNode implementation
-    Args:
-        target: The argument is a Flyte entity of which will be mapped over
-        concurrency: If specified, this limits the number of mapped tasks than can run in parallel to the given batch
+    :param target: The Flyte entity of which will be mapped over
+    :param concurrency: If specified, this limits the number of mapped tasks than can run in parallel to the given batch
         size. If the size of the input exceeds the concurrency value, then multiple batches will be run serially until
         all inputs are processed. If set to 0, this means unbounded concurrency. If left unspecified, this means the
         array node will inherit parallelism from the workflow
-        min_successes: The minimum number of successful executions
-        min_success_ratio: The minimum ratio of successful executions
-        successfully before terminating this task and marking it successful.
+    :param min_successes: The minimum number of successful executions
+    :param min_success_ratio: The minimum ratio of successful executions
     """
     if isinstance(target, LaunchPlan):
         return array_node(
