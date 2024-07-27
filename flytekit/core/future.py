@@ -3,6 +3,12 @@ from __future__ import annotations
 import typing
 from datetime import timedelta
 from typing import TYPE_CHECKING
+import cloudpickle
+import tempfile
+import pathlib
+import gzip
+import hashlib
+import base64
 
 if TYPE_CHECKING:
     from flytekit.core.base_task import PythonTask
@@ -22,6 +28,7 @@ class FlyteFuture:
         can be initialized by calling `flytekit.remote.init_remote()`.
         """
         from flytekit.remote.init_remote import REMOTE_ENTRY
+        from flytekit.tools.script_mode import hash_file
 
         if REMOTE_ENTRY is None:
             raise Exception(
@@ -29,19 +36,11 @@ class FlyteFuture:
             )
         self._remote_entry = REMOTE_ENTRY
 
-        # TODO: remove workflow file uploading
-        import cloudpickle
-        import tempfile
-        import pathlib
-        import gzip
-        import hashlib
-        import base64
-
         with tempfile.TemporaryDirectory() as tmp_dir:
             dest = pathlib.Path(tmp_dir, "pkl.gz")
             with gzip.GzipFile(filename=dest, mode="wb", mtime=0) as gzipped:
                 cloudpickle.dump(entity, gzipped)
-            md5_bytes, native_url = self._remote_entry.upload_file(dest)
+            md5_bytes, _, _ = hash_file(dest)
 
             h = hashlib.md5(md5_bytes)
             version = base64.urlsafe_b64encode(h.digest()).decode("ascii").rstrip("=")
