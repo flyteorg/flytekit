@@ -241,12 +241,12 @@ def _update_serialization_settings_for_ipython(
                 cloudpickle.dump(entity, gzipped)
             rich.get_console().print("[yellow]Uploading Pickled representation of Task to remote storage...[/ yellow]")
             md5_bytes, native_url = options.file_uploader(dest)
-            if not serialization_settings.version and md5_bytes:
-                import base64
+            # if not serialization_settings.version and md5_bytes:
+            #     import base64
 
-                h = hashlib.md5(md5_bytes)
-                version = base64.urlsafe_b64encode(h.digest()).decode("ascii").rstrip("=")
-                serialization_settings.version = version
+            #     h = hashlib.md5(md5_bytes)
+            #     version = base64.urlsafe_b64encode(h.digest()).decode("ascii").rstrip("=")
+            #     serialization_settings.version = version
             serialization_settings.fast_serialization_settings = FastSerializationSettings(
                 enabled=True, pickled=True, distribution_location=native_url
             )
