@@ -164,7 +164,7 @@ def test_execute_python_maptask(mock_ipython_check):
     mock_ipython_check.return_value = True
     init_remote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     from .workflows.basic.array_map import map_fn
-    
+
     d: typing.List[int] = [1, 2, 3]
     y: typing.List[int] = [3, 3, 3]
     future = map_fn.remote(x = d, y = y)
