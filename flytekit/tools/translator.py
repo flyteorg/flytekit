@@ -211,12 +211,12 @@ def _update_serialization_settings_for_ipython(
         # is defined in the main module. If so, we will serialize the task as a pickled object and upload it to remote
         # storage. The main module check is to ensure that the task function is not defined in a notebook cell.
         if isinstance(entity, PythonFunctionTask):
-            if not entity.task_function.__module__ == "__main__":
-                raise FlyteAssertion(
-                    "Task function should be defined in the main module | jupyter cell for"
-                    " interactive mode. Task function defined in imported modules is not supported."
-                    f" Task function {entity.task_function.__name__} is defined in an imported module"
-                )
+            # if not entity.task_function.__module__ == "__main__":
+            #     raise FlyteAssertion(
+            #         "Task function should be defined in the main module | jupyter cell for"
+            #         " interactive mode. Task function defined in imported modules is not supported."
+            #         f" Task function {entity.task_function.__name__} is defined in an imported module"
+            #     )
             if entity.execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
                 raise FlyteAssertion(
                     f"Dynamic tasks are not supported in interactive mode. {entity.name} is a dynamic task."
