@@ -1,3 +1,4 @@
+from dataclasses import field
 import json
 import tempfile
 import typing
@@ -267,3 +268,69 @@ def test_dataclass_type():
     assert v.y == "2"
     assert v.z == {1: "one", 2: "two"}
     assert v.w == [1, 2, 3]
+
+
+def test_nested_dataclass_type():
+    from dataclasses import dataclass
+
+    @dataclass
+    class Datum:
+        w: int
+        x: str = "default"
+        y: typing.Dict[str, str] = field(default_factory=lambda: {"key": "value"})
+        z: typing.List[int] = field(default_factory=lambda: [1, 2, 3])
+
+    @dataclass
+    class NestedDatum:
+        w: typing.List[typing.List[Datum]]
+        x: typing.Dict[str, typing.List[Datum]] = field(default_factory=lambda: {"key": [Datum(1)]})
+
+    value = '[{ "w": 1 }]'
+    t = JsonParamType(typing.List[Datum])
+    v = t.convert(value=value, param=None, ctx=None)
+
+    ctx = FlyteContextManager.current_context()
+    lt = TypeEngine.to_literal_type(typing.List[Datum])
+    literal_converter = FlyteLiteralConverter(
+        ctx, literal_type=lt, python_type=typing.List[Datum], is_remote=False
+    )
+    v = literal_converter.convert(ctx, None, v)
+
+    assert v[0].w == 1
+    assert v[0].x == "default"
+    assert v[0].y == {"key": "value"}
+    assert v[0].z == [1, 2, 3]
+
+    value = '[{ "w": [[{ "w": 1 }]] }]'
+    t = JsonParamType(typing.List[NestedDatum])
+    v = t.convert(value=value, param=None, ctx=None)
+    ctx = FlyteContextManager.current_context()
+    lt = TypeEngine.to_literal_type(typing.List[NestedDatum])
+    literal_converter = FlyteLiteralConverter(
+        ctx, literal_type=lt, python_type=typing.List[NestedDatum], is_remote=False
+    )
+    v = literal_converter.convert(ctx, None, v)
+
+    assert v[0].w[0][0].w == 1
+    assert v[0].w[0][0].x == "default"
+    assert v[0].w[0][0].y == {"key": "value"}
+    assert v[0].w[0][0].z == [1, 2, 3]
+    assert v[0].x["key"][0].w == 1
+    assert v[0].x["key"][0].x == "default"
+    assert v[0].x["key"][0].y == {"key": "value"}
+    assert v[0].x["key"][0].z == [1, 2, 3]
+
+    value = '[[{ "w": 1 }]]'
+    t = JsonParamType(typing.List[typing.List[Datum]])
+    v = t.convert(value=value, param=None, ctx=None)
+    ctx = FlyteContextManager.current_context()
+    lt = TypeEngine.to_literal_type(typing.List[typing.List[Datum]])
+    literal_converter = FlyteLiteralConverter(
+        ctx, literal_type=lt, python_type=typing.List[typing.List[Datum]], is_remote=False
+    )
+    v = literal_converter.convert(ctx, None, v)
+
+    assert v[0][0].w == 1
+    assert v[0][0].x == "default"
+    assert v[0][0].y == {"key": "value"}
+    assert v[0][0].z == [1, 2, 3]
