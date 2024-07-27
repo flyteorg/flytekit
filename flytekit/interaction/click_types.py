@@ -1,3 +1,4 @@
+import dataclasses
 import datetime
 import enum
 import json
@@ -5,7 +6,7 @@ import logging
 import os
 import pathlib
 import typing
-from typing import cast
+from typing import cast, get_args
 
 import rich_click as click
 import yaml
@@ -305,9 +306,27 @@ class JsonParamType(click.ParamType):
 
         parsed_value = self._parse(value, param)
 
+        def has_nested_dataclass(t: typing.Type) -> bool:
+            if dataclasses.is_dataclass(t):
+                return True
+            if get_args(t):
+                for a in get_args(t):
+                    if has_nested_dataclass(a):
+                        return True
+            return False
+
         # We compare the origin type because the json parsed value for list or dict is always a list or dict without
         # the covariant type information.
         if type(parsed_value) == typing.get_origin(self._python_type) or type(parsed_value) == self._python_type:
+            if get_args(self._python_type) == ():
+                return parsed_value
+            elif isinstance(parsed_value, list) and has_nested_dataclass(get_args(self._python_type)[0]):
+                j = JsonParamType(get_args(self._python_type)[0])
+                return [j.convert(v, param, ctx) for v in parsed_value]
+            elif isinstance(parsed_value, dict) and has_nested_dataclass(get_args(self._python_type)[1]):
+                j = JsonParamType(get_args(self._python_type)[1])
+                return {k: j.convert(v, param, ctx) for k, v in parsed_value.items()}
+            
             return parsed_value
 
         if is_pydantic_basemodel(self._python_type):
