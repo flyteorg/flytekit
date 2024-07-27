@@ -183,7 +183,7 @@ def _update_serialization_settings_for_ipython(
 ) -> SerializationSettings:
     # If the entity is not a PythonAutoContainerTask, we don't need to do anything, as only Tasks with container |
     # user code in container need to be serialized as pickled objects.
-    if not isinstance(entity, PythonAutoContainerTask):
+    if not isinstance(entity, (PythonAutoContainerTask, ArrayNodeMapTask)):
         return serialization_settings
 
     from flytekit.tools.interactive import ipython_check
