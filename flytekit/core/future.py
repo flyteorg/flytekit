@@ -1,14 +1,15 @@
 from __future__ import annotations
 
+import base64
+import gzip
+import hashlib
+import pathlib
+import tempfile
 import typing
 from datetime import timedelta
 from typing import TYPE_CHECKING
+
 import cloudpickle
-import tempfile
-import pathlib
-import gzip
-import hashlib
-import base64
 
 if TYPE_CHECKING:
     from flytekit.core.base_task import PythonTask

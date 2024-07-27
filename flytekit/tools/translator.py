@@ -1,4 +1,3 @@
-import hashlib
 import pathlib
 import sys
 import tempfile
