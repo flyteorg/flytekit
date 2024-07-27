@@ -360,11 +360,9 @@ class DataclassTransformer(TypeTransformer[object]):
 
         expected_type = get_underlying_type(expected_type)
         expected_fields_dict = {}
-        default_value_dict = {}
 
         for f in dataclasses.fields(expected_type):
             expected_fields_dict[f.name] = f.type
-            default_value_dict[f.name] = f.default
 
         if isinstance(v, dict):
             original_dict = v
@@ -373,7 +371,7 @@ class DataclassTransformer(TypeTransformer[object]):
             optional_keys = {
                 k
                 for k, t in expected_fields_dict.items()
-                if UnionTransformer.is_optional_type(t) or default_value_dict[k] != dataclasses.MISSING
+                if UnionTransformer.is_optional_type(t)
             }
 
             # Remove the Optional keys from the keys of original_dict
@@ -550,7 +548,8 @@ class DataclassTransformer(TypeTransformer[object]):
         # In python 3.7, 3.8, DataclassJson will deserialize Annotated[StructuredDataset, kwtypes(..)] to a dict,
         # so here we convert it back to the Structured Dataset.
         from flytekit.types.structured import StructuredDataset
-
+        if python_val is None:
+            return python_val
         if python_type == StructuredDataset and type(python_val) == dict:
             return StructuredDataset(**python_val)
         elif get_origin(python_type) is list:
@@ -585,6 +584,8 @@ class DataclassTransformer(TypeTransformer[object]):
             return [self._make_dataclass_serializable(v, get_args(python_type)[0]) for v in cast(list, python_val)]
 
         if hasattr(python_type, "__origin__") and get_origin(python_type) is dict:
+            if python_val is None:
+                return None
             return {
                 k: self._make_dataclass_serializable(v, get_args(python_type)[1])
                 for k, v in cast(dict, python_val).items()
