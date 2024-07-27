@@ -37,15 +37,17 @@ class FlyteFuture:
             )
         self._remote_entry = REMOTE_ENTRY
 
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            dest = pathlib.Path(tmp_dir, "pkl.gz")
-            with gzip.GzipFile(filename=dest, mode="wb", mtime=0) as gzipped:
-                cloudpickle.dump(entity, gzipped)
-            md5_bytes, _, _ = hash_file(dest)
+        if version is None:
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                dest = pathlib.Path(tmp_dir, "pkl.gz")
+                with gzip.GzipFile(filename=dest, mode="wb", mtime=0) as gzipped:
+                    cloudpickle.dump(entity, gzipped)
+                md5_bytes, _, _ = hash_file(dest)
 
-            h = hashlib.md5(md5_bytes)
-            version = base64.urlsafe_b64encode(h.digest()).decode("ascii").rstrip("=")
+                h = hashlib.md5(md5_bytes)
+                version = base64.urlsafe_b64encode(h.digest()).decode("ascii").rstrip("=")
 
+        self._version = version
         self._exe = self._remote_entry.execute(entity, version=version, inputs=kwargs)
 
     def wait(
@@ -60,3 +62,7 @@ class FlyteFuture:
             poll_interval=poll_interval,
             sync_nodes=sync_nodes,
         )
+
+    @property
+    def version(self) -> str:
+        return self._version
