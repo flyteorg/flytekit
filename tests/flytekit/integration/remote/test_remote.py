@@ -91,7 +91,7 @@ def test_fetch_execute_launch_plan(register):
 
 def test_fetch_execute_launch_plan_with_args(register):
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
-    flyte_launch_plan = remote.fetch_launch_plan(name="basic.basic_workflow.my_wf", version=VERSION)
+    flyte_launch_plan = remote.fetch_launch_plan(name="basic.basic_workflow.my_basic_wf", version=VERSION)
     execution = remote.execute(flyte_launch_plan, inputs={"a": 10, "b": "foobar"}, wait=True)
     assert execution.node_executions["n0"].inputs == {"a": 10}
     assert execution.node_executions["n0"].outputs == {"t1_int_output": 12, "c": "world"}
@@ -224,18 +224,18 @@ def test_execute_python_task(register):
 
 def test_execute_python_workflow_and_launch_plan(register):
     """Test execution of a @workflow-decorated python function and launchplan that are already registered."""
-    from .workflows.basic.basic_workflow import my_wf
+    from .workflows.basic.basic_workflow import my_basic_wf
 
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     execution = remote.execute(
-        my_wf, name="basic.basic_workflow.my_wf", inputs={"a": 10, "b": "xyz"}, version=VERSION, wait=True
+        my_basic_wf, name="basic.basic_workflow.my_basic_wf", inputs={"a": 10, "b": "xyz"}, version=VERSION, wait=True
     )
     assert execution.outputs["o0"] == 12
     assert execution.outputs["o1"] == "xyzworld"
 
-    launch_plan = LaunchPlan.get_or_create(workflow=my_wf, name=my_wf.name)
+    launch_plan = LaunchPlan.get_or_create(workflow=my_basic_wf, name=my_basic_wf.name)
     execution = remote.execute(
-        launch_plan, name="basic.basic_workflow.my_wf", inputs={"a": 14, "b": "foobar"}, version=VERSION, wait=True
+        launch_plan, name="basic.basic_workflow.my_basic_wf", inputs={"a": 14, "b": "foobar"}, version=VERSION, wait=True
     )
     assert execution.outputs["o0"] == 16
     assert execution.outputs["o1"] == "foobarworld"
@@ -247,7 +247,7 @@ def test_execute_python_workflow_and_launch_plan(register):
 
 def test_fetch_execute_launch_plan_list_of_floats(register):
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
-    flyte_launch_plan = remote.fetch_launch_plan(name="basic.list_float_wf.my_wf", version=VERSION)
+    flyte_launch_plan = remote.fetch_launch_plan(name="basic.list_float_wf.my_list_float_wf", version=VERSION)
     xs: typing.List[float] = [42.24, 999.1, 0.0001]
     execution = remote.execute(flyte_launch_plan, inputs={"xs": xs}, wait=True)
     assert execution.outputs["o0"] == "[42.24, 999.1, 0.0001]"
@@ -272,23 +272,23 @@ def test_fetch_execute_task_convert_dict(register):
 
 def test_execute_python_workflow_dict_of_string_to_string(register):
     """Test execution of a @workflow-decorated python function and launchplan that are already registered."""
-    from .workflows.basic.dict_str_wf import my_wf
+    from .workflows.basic.dict_str_wf import my_dict_str_wf
 
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     d: typing.Dict[str, str] = {"k1": "v1", "k2": "v2"}
     execution = remote.execute(
-        my_wf,
-        name="basic.dict_str_wf.my_wf",
+        my_dict_str_wf,
+        name="basic.dict_str_wf.my_dict_str_wf",
         inputs={"d": d},
         version=VERSION,
         wait=True,
     )
     assert json.loads(execution.outputs["o0"]) == {"k1": "v1", "k2": "v2"}
 
-    launch_plan = LaunchPlan.get_or_create(workflow=my_wf, name=my_wf.name)
+    launch_plan = LaunchPlan.get_or_create(workflow=my_dict_str_wf, name=my_dict_str_wf.name)
     execution = remote.execute(
         launch_plan,
-        name="basic.dict_str_wf.my_wf",
+        name="basic.dict_str_wf.my_dict_str_wf",
         inputs={"d": {"k2": "vvvv", "abc": "def"}},
         version=VERSION,
         wait=True,
@@ -298,24 +298,24 @@ def test_execute_python_workflow_dict_of_string_to_string(register):
 
 def test_execute_python_workflow_list_of_floats(register):
     """Test execution of a @workflow-decorated python function and launchplan that are already registered."""
-    from .workflows.basic.list_float_wf import my_wf
+    from .workflows.basic.list_float_wf import my_list_float_wf
 
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
 
     xs: typing.List[float] = [42.24, 999.1, 0.0001]
     execution = remote.execute(
-        my_wf,
-        name="basic.list_float_wf.my_wf",
+        my_list_float_wf,
+        name="basic.list_float_wf.my_list_float_wf",
         inputs={"xs": xs},
         version=VERSION,
         wait=True,
     )
     assert execution.outputs["o0"] == "[42.24, 999.1, 0.0001]"
 
-    launch_plan = LaunchPlan.get_or_create(workflow=my_wf, name=my_wf.name)
+    launch_plan = LaunchPlan.get_or_create(workflow=my_list_float_wf, name=my_list_float_wf.name)
     execution = remote.execute(
         launch_plan,
-        name="basic.list_float_wf.my_wf",
+        name="basic.list_float_wf.my_list_float_wf",
         inputs={"xs": [-1.1, 0.12345]},
         version=VERSION,
         wait=True,
@@ -422,15 +422,15 @@ def test_execute_reference_workflow(register):
     @reference_workflow(
         project=PROJECT,
         domain=DOMAIN,
-        name="basic.basic_workflow.my_wf",
+        name="basic.basic_workflow.my_basic_wf",
         version=VERSION,
     )
-    def my_wf(a: int, b: str) -> (int, str):
+    def my_basic_wf(a: int, b: str) -> (int, str):
         return a + 2, b + "world"
 
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     execution = remote.execute(
-        my_wf,
+        my_basic_wf,
         inputs={"a": 10, "b": "xyz"},
         wait=True,
         overwrite_cache=True,
@@ -449,15 +449,15 @@ def test_execute_reference_launchplan(register):
     @reference_launch_plan(
         project=PROJECT,
         domain=DOMAIN,
-        name="basic.basic_workflow.my_wf",
+        name="basic.basic_workflow.my_basic_wf",
         version=VERSION,
     )
-    def my_wf(a: int, b: str) -> (int, str):
+    def my_basic_wf(a: int, b: str) -> (int, str):
         return 3, "world"
 
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     execution = remote.execute(
-        my_wf,
+        my_basic_wf,
         inputs={"a": 10, "b": "xyz"},
         wait=True,
         overwrite_cache=True,
