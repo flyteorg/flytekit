@@ -1,9 +1,12 @@
 import typing
+import threading
 
 from flytekit.configuration import Config
 from flytekit.remote.remote import FlyteRemote
+from flytekit.tools.translator import Options
 
 REMOTE_ENTRY = None
+REMOTE_ENTRY_LOCK = threading.Lock()
 
 
 def init_remote(
@@ -11,6 +14,7 @@ def init_remote(
     default_project: typing.Optional[str] = None,
     default_domain: typing.Optional[str] = None,
     data_upload_location: str = "flyte://my-s3-bucket/",
+    default_options: typing.Optional[Options] = None,
     **kwargs,
 ):
     """
@@ -23,10 +27,11 @@ def init_remote(
     :return:
     """
     global REMOTE_ENTRY
-    REMOTE_ENTRY = FlyteRemote(
-        config=config,
-        default_project=default_project,
-        default_domain=default_domain,
-        data_upload_location=data_upload_location,
-        **kwargs,
-    )
+    with REMOTE_ENTRY_LOCK:
+        REMOTE_ENTRY = FlyteRemote(
+            config=config,
+            default_project=default_project,
+            default_domain=default_domain,
+            data_upload_location=data_upload_location,
+            **kwargs,
+        )
