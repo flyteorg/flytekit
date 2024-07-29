@@ -181,6 +181,9 @@ def test_datetime_type():
     with pytest.raises(click.BadParameter):
         t.convert("aaa + 1d", None, None)
 
+    fmt_v = "2024-07-29 13:47:07.643004+00:00"
+    d = t.convert(fmt_v, None, None)
+    _datetime_helper(t, fmt_v, d)
 
 
 def test_json_type():
