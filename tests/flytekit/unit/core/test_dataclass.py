@@ -904,7 +904,7 @@ def test_numpy_import_issue_from_flyte_schema_in_dataclass():
 
     @task
     def my_flyte_task(inputs: list[MyDataClass | None]) -> bool:
-        return inputs and inputs[0] is not None
+        return inputs and (inputs[0] is not None) # type: ignore
 
     @workflow
     def main_flyte_workflow(b: bool = False) -> bool:
