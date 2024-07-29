@@ -78,7 +78,7 @@ class RayFunctionTask(PythonFunctionTask):
 
             cfg = self._task_config
             if cfg.excludes_working_dir:
-                init_params["runtime_env"]["excludes"].append(cfg.excludes_working_dir)
+                init_params["runtime_env"]["excludes"].extend(cfg.excludes_working_dir)
 
             # fast register data with timestamp mtime=0 will be zipped and uploaded to ray gcs
             # zip does not support timestamps before 1980 -> hacky workaround of touching all the files
