@@ -1503,6 +1503,7 @@ class UnionTransformer(TypeTransformer[T]):
         is_ambiguous = False
         res = None
         res_type = None
+        t = None
         for i in range(len(get_args(python_type))):
             try:
                 t = get_args(python_type)[i]
@@ -1512,8 +1513,8 @@ class UnionTransformer(TypeTransformer[T]):
                 if found_res:
                     is_ambiguous = True
                 found_res = True
-            except Exception:
-                logger.debug(f"Failed to convert from {python_val} to {t}", exc_info=True)
+            except Exception as e:
+                logger.debug(f"Failed to convert from {python_val} to {t} with error: {e}", exc_info=True)
                 continue
 
         if is_ambiguous:

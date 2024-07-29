@@ -2,6 +2,7 @@ import pytest
 from dataclasses_json import DataClassJsonMixin
 from mashumaro.mixins.json import DataClassJSONMixin
 import os
+import sys
 import tempfile
 from dataclasses import dataclass
 from typing import Annotated, List, Dict, Optional
@@ -882,3 +883,33 @@ def test_get_literal_type_data_class_json_fail_but_mashumaro_works():
     transformer = DataclassTransformer()
     lt = transformer.get_literal_type(NestedFlyteTypesWithDataClassJson)
     assert lt.metadata is not None
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="Requires Python 3.10 or higher")
+def test_numpy_import_issue_from_flyte_schema_in_dataclass():
+    from dataclasses import dataclass
+
+    from flytekit import task, workflow
+    from flytekit.types.directory import FlyteDirectory
+    from flytekit.types.file import FlyteFile
+
+    @dataclass
+    class MyDataClass:
+        output_file: FlyteFile
+        output_directory: FlyteDirectory
+
+    @task
+    def my_flyte_workflow(b: bool) -> list[MyDataClass | None]:
+        if b:
+            return [MyDataClass(__file__, ".")]
+        return [None]
+
+    @task
+    def my_flyte_task(inputs: list[MyDataClass | None]) -> bool:
+        return inputs and (inputs[0] is not None) # type: ignore
+
+    @workflow
+    def main_flyte_workflow(b: bool = False) -> bool:
+        inputs = my_flyte_workflow(b=b)
+        return my_flyte_task(inputs=inputs)
+
+    assert main_flyte_workflow(b=True) == True
+    assert main_flyte_workflow(b=False) == False

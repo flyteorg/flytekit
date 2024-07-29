@@ -176,7 +176,7 @@ class DateTimeType(click.DateTime):
         if isinstance(value, ArtifactQuery):
             return value
 
-        if " " in value:
+        if isinstance(value, str) and " " in value:
             import re
 
             m = re.match(self._FLOATING_FORMAT_PATTERN, value)
@@ -194,7 +194,9 @@ class DateTimeType(click.DateTime):
                 if parts[1] == "-":
                     return dt - delta
                 return dt + delta
-            raise click.BadParameter(f"Expected format {self.formats}, got {value}")
+            else:
+                value = datetime.datetime.fromisoformat(value)
+
         return self._datetime_from_format(value, param, ctx)
 
 
