@@ -241,7 +241,7 @@ class ElasticWorkerResult(NamedTuple):
 
     return_value: Any
     decks: List[flytekit.Deck]
-    om: Optional[OutputMetadata]
+    om: Optional[OutputMetadata] = None
 
 
 def spawn_helper(
