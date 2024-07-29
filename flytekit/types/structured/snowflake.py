@@ -7,7 +7,6 @@ from snowflake.connector.pandas_tools import write_pandas
 
 import flytekit
 from flytekit import FlyteContext
-from flytekit.configuration.plugin import get_plugin
 from flytekit.models import literals
 from flytekit.models.types import StructuredDatasetType
 from flytekit.types.structured.structured_dataset import (
@@ -24,10 +23,7 @@ def get_private_key() -> bytes:
     from cryptography.hazmat.backends import default_backend
     from cryptography.hazmat.primitives import serialization
 
-    if get_plugin().secret_requires_group():
-        pk_string = flytekit.current_context().secrets.get("private_key", "snowflake", encode_mode="r")
-    else:
-        pk_string = flytekit.current_context().secrets.get(None, "snowflake", encode_mode="r")
+    pk_string = flytekit.current_context().secrets.get(None, "snowflake", encode_mode="r")
     # cryptography needs str to be stripped and converted to bytes
     pk_string = pk_string.strip().encode()
     p_key = serialization.load_pem_private_key(pk_string, password=None, backend=default_backend())
