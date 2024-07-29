@@ -255,7 +255,7 @@ class ContainerTask(PythonTask):
         if self.local_logs:
             for log in container.logs(stream=True):
                 print(f"[Local Container] {log.strip()}")
-                
+
         container.wait()
 
         output_dict = self._get_output_dict(output_directory)
