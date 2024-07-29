@@ -199,6 +199,7 @@ class FlyteRemote(object):
         default_project: typing.Optional[str] = None,
         default_domain: typing.Optional[str] = None,
         data_upload_location: str = "flyte://my-s3-bucket/",
+        interactive_mode_enabled: bool = False,
         **kwargs,
     ):
         """Initialize a FlyteRemote object.
@@ -209,6 +210,7 @@ class FlyteRemote(object):
         :param default_domain: default domain to use when fetching or executing flyte entities.
         :param data_upload_location: this is where all the default data will be uploaded when providing inputs.
             The default location - `s3://my-s3-bucket/data` works for sandbox/demo environment. Please override this for non-sandbox cases.
+        :param interactive_mode_enabled: If set to True, the FlyteRemote will pickle the task/workflow objects if not found
         """
         if config is None or config.platform is None or config.platform.endpoint is None:
             raise user_exceptions.FlyteAssertion("Flyte endpoint should be provided.")
@@ -231,7 +233,12 @@ class FlyteRemote(object):
         )
 
         # Save the file access object locally, build a context for it and save that as well.
-        self._ctx = FlyteContextManager.current_context().with_file_access(self._file_access).build()
+        self._ctx = (
+            FlyteContextManager.current_context()
+            .with_file_access(self._file_access)
+            .build()
+        )
+        self._interactive_mode_enabled = interactive_mode_enabled
 
     @property
     def context(self) -> FlyteContext:
@@ -264,6 +271,11 @@ class FlyteRemote(object):
     def file_access(self) -> FileAccessProvider:
         """File access provider to use for offloading non-literal inputs/outputs."""
         return self._file_access
+
+    @property
+    def interactive_mode_enabled(self) -> bool:
+        """If set to True, the FlyteRemote will pickle the task/workflow objects if not found."""
+        return self._interactive_mode_enabled
 
     def get(
         self, flyte_uri: typing.Optional[str] = None
@@ -313,6 +325,12 @@ class FlyteRemote(object):
         """Context manager with remote-specific configuration."""
         return FlyteContextManager.with_context(
             FlyteContextManager.current_context().with_file_access(self.file_access)
+        )
+
+    def interactive_context(self):
+        """Context manager with interactive-specific configuration."""
+        return FlyteContextManager.with_context(
+            FlyteContextManager.current_context().with_interactive_mode_enabled(self.interactive_mode_enabled)
         )
 
     def fetch_task_lazy(
@@ -761,7 +779,11 @@ class FlyteRemote(object):
         if options.file_uploader is None:
             options.file_uploader = self.upload_file
 
-        _ = get_serializable(m, settings=serialization_settings, entity=entity, options=options)
+        if self.interactive_mode_enabled:
+            with self.interactive_context():
+                _ = get_serializable(m, settings=serialization_settings, entity=entity, options=options)
+        else:
+            _ = get_serializable(m, settings=serialization_settings, entity=entity, options=options)
         # concurrent register
         cp_task_entity_map = OrderedDict(filter(lambda x: isinstance(x[1], task_models.TaskSpec), m.items()))
         tasks = []
