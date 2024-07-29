@@ -318,6 +318,9 @@ class Partitions(object):
                 p.reference_artifact = artifact
 
     def __getattr__(self, item):
+        if item == "partitions" or item == "_partitions":
+            print("PARTITIONS: I'm in an uninitialized state!!!!!!!!!!!!", flush=True)
+            raise AttributeError("Partitions in an uninitialized state, skipping partitions")
         if self.partitions and item in self.partitions:
             return self.partitions[item]
         raise AttributeError(f"Partition {item} not found in {self}")
@@ -466,6 +469,7 @@ class Artifact(object):
                 ...
                 return RideCountData.create_from(df, time_partition=datetime.datetime.now())
         """
+        print(f"ARTFOMT: 1", flush=True)
         omt = FlyteContextManager.current_context().output_metadata_tracker
         additional = [card]
         additional.extend(args)
@@ -489,6 +493,7 @@ class Artifact(object):
                     additional_items=filtered_additional if filtered_additional else None,
                 ),
             )
+            print(f"OMT: ")
         return o
 
     def query(
