@@ -447,12 +447,10 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
         from torch.distributed.elastic.multiprocessing.errors import ChildFailedError
 
         try:
-            print("Here+++++++++++++++++++++++++ 1")
             out = elastic_launch(
                 config=config,
                 entrypoint=launcher_target_func,
             )(*launcher_args)
-            print("Here+++++++++++++++++++++++++ 2")
         except ChildFailedError as e:
             _, first_failure = e.get_first_failure()
             if is_recoverable_worker_error(first_failure):
