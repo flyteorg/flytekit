@@ -91,7 +91,7 @@ async def test_snowflake_agent(mock_get_private_key):
         schema="dummy_schema",
         warehouse="dummy_warehouse",
         query_id="dummy_id",
-        output=False,
+        has_output=False,
     )
 
     metadata = await agent.create(dummy_template, task_inputs)

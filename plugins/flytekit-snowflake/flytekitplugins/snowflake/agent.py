@@ -140,11 +140,12 @@ class SnowflakeAgent(AsyncAgentBase):
             cs.close()
             conn.close()
 
+
 def construct_query_link(resource_meta: SnowflakeJobMetadata) -> str:
     base_url = "https://app.snowflake.com"
 
     # Extract the account and region (assuming the format is account-region, you might need to adjust this based on your actual account format)
-    account_parts = resource_meta.account.split('-')
+    account_parts = resource_meta.account.split("-")
     account = account_parts[0]
     region = account_parts[1] if len(account_parts) > 1 else ""
 
