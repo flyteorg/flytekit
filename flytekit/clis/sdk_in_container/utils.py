@@ -13,7 +13,8 @@ from rich.traceback import Traceback
 
 from flytekit.core.constants import SOURCE_CODE
 from flytekit.exceptions.base import FlyteException
-from flytekit.exceptions.user import FlyteInvalidInputException
+from flytekit.exceptions.user import FlyteCompilationException, FlyteInvalidInputException
+from flytekit.exceptions.utils import annotate_exception_with_code
 from flytekit.loggers import get_level_from_cli_verbosity, logger
 
 project_option = click.Option(
@@ -130,12 +131,14 @@ def pretty_print_traceback(e: Exception, verbosity: int = 1):
     else:
         raise ValueError(f"Verbosity level must be between 0 and 2. Got {verbosity}")
 
-    if hasattr(e, SOURCE_CODE):
-        # TODO: Use other way to check if the background is light or dark
-        theme = "emacs" if "LIGHT_BACKGROUND" in os.environ else "monokai"
-        syntax = Syntax(getattr(e, SOURCE_CODE), "python", theme=theme, background_color="default")
-        panel = Panel(syntax, border_style="red", title=type(e).__name__, title_align="left")
-        console.print(panel, no_wrap=False)
+    if isinstance(e, FlyteCompilationException):
+        e = annotate_exception_with_code(e, e.fn, e.param_name)
+        if hasattr(e, SOURCE_CODE):
+            # TODO: Use other way to check if the background is light or dark
+            theme = "emacs" if "LIGHT_BACKGROUND" in os.environ else "monokai"
+            syntax = Syntax(getattr(e, SOURCE_CODE), "python", theme=theme, background_color="default")
+            panel = Panel(syntax, border_style="red", title=e._ERROR_CODE, title_align="left")
+            console.print(panel, no_wrap=False)
 
 
 def pretty_print_exception(e: Exception, verbosity: int = 1):
@@ -161,18 +164,12 @@ def pretty_print_exception(e: Exception, verbosity: int = 1):
                 pretty_print_grpc_error(cause)
             else:
                 pretty_print_traceback(e, verbosity)
+        else:
+            pretty_print_traceback(e, verbosity)
         return
 
     if isinstance(e, grpc.RpcError):
         pretty_print_grpc_error(e)
-        return
-
-    if isinstance(e, AssertionError):
-        click.secho(f"Assertion Error: {e}", fg="red")
-        return
-
-    if isinstance(e, ValueError):
-        click.secho(f"Value Error: {e}", fg="red")
         return
 
     pretty_print_traceback(e, verbosity)

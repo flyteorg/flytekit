@@ -97,3 +97,25 @@ class FlyteInvalidInputException(FlyteUserException):
 
 class FlytePromiseAttributeResolveException(FlyteAssertion):
     _ERROR_CODE = "USER:PromiseAttributeResolveError"
+
+
+class FlyteCompilationException(FlyteUserException):
+    _ERROR_CODE = "USER:CompileError"
+
+    def __init__(self, fn: typing.Callable, param_name: typing.Optional[str] = None):
+        self.fn = fn
+        self.param_name = param_name
+
+
+class FlyteMissingTypeException(FlyteCompilationException):
+    _ERROR_CODE = "USER:MissingTypeError"
+
+    def __str__(self):
+        return f"'{self.param_name}' has no type. Please add a type annotation to the input parameter."
+
+
+class FlyteMissingReturnValueException(FlyteCompilationException):
+    _ERROR_CODE = "USER:MissingReturnValueError"
+
+    def __str__(self):
+        return f"{self.fn.__name__} function must return a value. Please add a return statement at the end of the function."

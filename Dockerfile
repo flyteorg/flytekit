@@ -23,7 +23,7 @@ ARG DOCKER_IMAGE
 RUN apt-get update && apt-get install build-essential -y \
     && pip install uv \
     && uv pip install --system --no-cache-dir -U flytekit==$VERSION \
-        flytekitplugins-deck-standard==$VERSION \
+        kubernetes \
     && apt-get clean autoclean \
     && apt-get autoremove --yes \
     && rm -rf /var/lib/{apt,dpkg,cache,log}/ \

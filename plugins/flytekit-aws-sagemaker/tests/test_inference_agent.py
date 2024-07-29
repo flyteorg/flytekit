@@ -12,50 +12,82 @@ from flytekit.models import literals
 from flytekit.models.core.identifier import ResourceType
 from flytekit.models.task import RuntimeMetadata, TaskMetadata, TaskTemplate
 
+from flytekitplugins.awssagemaker_inference.boto3_mixin import CustomException
+from botocore.exceptions import ClientError
+
+idempotence_token = "74443947857331f7"
+
 
 @pytest.mark.asyncio
-@mock.patch(
-    "flytekitplugins.awssagemaker_inference.agent.Boto3AgentMixin._call",
-    return_value={
-        "EndpointName": "sagemaker-xgboost-endpoint",
-        "EndpointArn": "arn:aws:sagemaker:us-east-2:1234567890:endpoint/sagemaker-xgboost-endpoint",
-        "EndpointConfigName": "sagemaker-xgboost-endpoint-config",
-        "ProductionVariants": [
+@pytest.mark.parametrize(
+    "mock_return_value",
+    [
+        (
             {
-                "VariantName": "variant-name-1",
-                "DeployedImages": [
+                "EndpointName": "sagemaker-xgboost-endpoint",
+                "EndpointArn": "arn:aws:sagemaker:us-east-2:1234567890:endpoint/sagemaker-xgboost-endpoint",
+                "EndpointConfigName": "sagemaker-xgboost-endpoint-config",
+                "ProductionVariants": [
                     {
-                        "SpecifiedImage": "1234567890.dkr.ecr.us-east-2.amazonaws.com/sagemaker-xgboost:iL3_jIEY3lQPB4wnlS7HKA..",
-                        "ResolvedImage": "1234567890.dkr.ecr.us-east-2.amazonaws.com/sagemaker-xgboost@sha256:0725042bf15f384c46e93bbf7b22c0502859981fc8830fd3aea4127469e8cf1e",
-                        "ResolutionTime": "2024-01-31T22:14:07.193000+05:30",
+                        "VariantName": "variant-name-1",
+                        "DeployedImages": [
+                            {
+                                "SpecifiedImage": "1234567890.dkr.ecr.us-east-2.amazonaws.com/sagemaker-xgboost:iL3_jIEY3lQPB4wnlS7HKA..",
+                                "ResolvedImage": "1234567890.dkr.ecr.us-east-2.amazonaws.com/sagemaker-xgboost@sha256:0725042bf15f384c46e93bbf7b22c0502859981fc8830fd3aea4127469e8cf1e",
+                                "ResolutionTime": "2024-01-31T22:14:07.193000+05:30",
+                            }
+                        ],
+                        "CurrentWeight": 1.0,
+                        "DesiredWeight": 1.0,
+                        "CurrentInstanceCount": 1,
+                        "DesiredInstanceCount": 1,
                     }
                 ],
-                "CurrentWeight": 1.0,
-                "DesiredWeight": 1.0,
-                "CurrentInstanceCount": 1,
-                "DesiredInstanceCount": 1,
-            }
-        ],
-        "EndpointStatus": "InService",
-        "CreationTime": "2024-01-31T22:14:06.553000+05:30",
-        "LastModifiedTime": "2024-01-31T22:16:37.001000+05:30",
-        "AsyncInferenceConfig": {
-            "OutputConfig": {"S3OutputPath": "s3://sagemaker-agent-xgboost/inference-output/output"}
-        },
-        "ResponseMetadata": {
-            "RequestId": "50d8bfa7-d84-4bd9-bf11-992832f42793",
-            "HTTPStatusCode": 200,
-            "HTTPHeaders": {
-                "x-amzn-requestid": "50d8bfa7-d840-4bd9-bf11-992832f42793",
-                "content-type": "application/x-amz-json-1.1",
-                "content-length": "865",
-                "date": "Wed, 31 Jan 2024 16:46:38 GMT",
+                "EndpointStatus": "InService",
+                "CreationTime": "2024-01-31T22:14:06.553000+05:30",
+                "LastModifiedTime": "2024-01-31T22:16:37.001000+05:30",
+                "AsyncInferenceConfig": {
+                    "OutputConfig": {
+                        "S3OutputPath": "s3://sagemaker-agent-xgboost/inference-output/output"
+                    }
+                },
+                "ResponseMetadata": {
+                    "RequestId": "50d8bfa7-d84-4bd9-bf11-992832f42793",
+                    "HTTPStatusCode": 200,
+                    "HTTPHeaders": {
+                        "x-amzn-requestid": "50d8bfa7-d840-4bd9-bf11-992832f42793",
+                        "content-type": "application/x-amz-json-1.1",
+                        "content-length": "865",
+                        "date": "Wed, 31 Jan 2024 16:46:38 GMT",
+                    },
+                    "RetryAttempts": 0,
+                },
             },
-            "RetryAttempts": 0,
-        },
-    },
+            idempotence_token,
+        ),
+        (
+            CustomException(
+                message="An error occurred",
+                idempotence_token=idempotence_token,
+                original_exception=ClientError(
+                    error_response={
+                        "Error": {
+                            "Code": "ValidationException",
+                            "Message": "Cannot create already existing endpoint 'arn:aws:sagemaker:us-east-2:123456789:endpoint/stable-diffusion-endpoint-non-finetuned-06716dbe4b2c68e7'",
+                        }
+                    },
+                    operation_name="CreateEndpoint",
+                ),
+            )
+        ),
+    ],
 )
-async def test_agent(mock_boto_call):
+@mock.patch(
+    "flytekitplugins.awssagemaker_inference.agent.Boto3AgentMixin._call",
+)
+async def test_agent(mock_boto_call, mock_return_value):
+    mock_boto_call.return_value = mock_return_value
+
     agent = AgentRegistry.get_agent("sagemaker-endpoint")
     task_id = Identifier(
         resource_type=ResourceType.TASK,
@@ -67,7 +99,7 @@ async def test_agent(mock_boto_call):
     task_config = {
         "service": "sagemaker",
         "config": {
-            "EndpointName": "sagemaker-endpoint",
+            "EndpointName": "sagemaker-endpoint-{idempotence_token}",
             "EndpointConfigName": "sagemaker-endpoint-config",
         },
         "region": "us-east-2",
@@ -75,7 +107,9 @@ async def test_agent(mock_boto_call):
     }
     task_metadata = TaskMetadata(
         discoverable=True,
-        runtime=RuntimeMetadata(RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0", "python"),
+        runtime=RuntimeMetadata(
+            RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0", "python"
+        ),
         timeout=timedelta(days=1),
         retries=literals.RetryStrategy(3),
         interruptible=True,
@@ -94,14 +128,38 @@ async def test_agent(mock_boto_call):
         type="sagemaker-endpoint",
     )
 
-    # CREATE
     metadata = SageMakerEndpointMetadata(
         config={
-            "EndpointName": "sagemaker-endpoint",
+            "EndpointName": "sagemaker-endpoint-{idempotence_token}",
             "EndpointConfigName": "sagemaker-endpoint-config",
         },
         region="us-east-2",
     )
+
+    # Exception check
+    if isinstance(mock_return_value, Exception):
+        response = await agent.create(task_template)
+        assert response == metadata
+
+        mock_boto_call.side_effect = CustomException(
+            message="An error occurred",
+            idempotence_token=idempotence_token,
+            original_exception=ClientError(
+                error_response={
+                    "Error": {
+                        "Code": "ValidationException",
+                        "Message": "Could not find endpoint 'arn:aws:sagemaker:us-east-2:123456789:endpoint/stable-diffusion-endpoint-non-finetuned-06716dbe4b2c68e7'",
+                    }
+                },
+                operation_name="DescribeEndpoint",
+            ),
+        )
+
+        with pytest.raises(Exception, match="resource limits being exceeded"):
+            resource = await agent.get(metadata)
+        return
+
+    # CREATE
     response = await agent.create(task_template)
     assert response == metadata
 
@@ -109,9 +167,10 @@ async def test_agent(mock_boto_call):
     resource = await agent.get(metadata)
     assert resource.phase == TaskExecution.SUCCEEDED
 
-    from_json = json.loads(resource.outputs["result"])
-    assert from_json["EndpointName"] == "sagemaker-xgboost-endpoint"
-    assert from_json["EndpointArn"] == "arn:aws:sagemaker:us-east-2:1234567890:endpoint/sagemaker-xgboost-endpoint"
+    assert (
+        resource.outputs["result"]["EndpointArn"]
+        == "arn:aws:sagemaker:us-east-2:1234567890:endpoint/sagemaker-xgboost-endpoint"
+    )
 
     # DELETE
     delete_response = await agent.delete(metadata)

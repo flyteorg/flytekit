@@ -12,11 +12,16 @@ from typing_extensions import get_args, get_type_hints
 
 from flytekit.core import context_manager
 from flytekit.core.artifact import Artifact, ArtifactIDSpecification, ArtifactQuery
+from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.docstring import Docstring
 from flytekit.core.sentinel import DYNAMIC_INPUT_BINDING
 from flytekit.core.type_engine import TypeEngine, UnionTransformer
-from flytekit.exceptions.user import FlyteValidationException
-from flytekit.exceptions.utils import annotate_exception_with_code
+from flytekit.core.utils import has_return_statement
+from flytekit.exceptions.user import (
+    FlyteMissingReturnValueException,
+    FlyteMissingTypeException,
+    FlyteValidationException,
+)
 from flytekit.loggers import developer_logger, logger
 from flytekit.models import interface as _interface_models
 from flytekit.models.literals import Literal, Scalar, Void
@@ -375,6 +380,18 @@ def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Doc
     signature = inspect.signature(fn)
     return_annotation = type_hints.get("return", None)
 
+    ctx = FlyteContextManager.current_context()
+    # Only check if the task/workflow has a return statement at compile time locally.
+    if (
+        ctx.execution_state
+        and ctx.execution_state.mode is None
+        and return_annotation
+        and type(None) not in get_args(return_annotation)
+        and return_annotation is not type(None)
+        and has_return_statement(fn) is False
+    ):
+        raise FlyteMissingReturnValueException(fn=fn)
+
     outputs = extract_return_annotation(return_annotation)
     for k, v in outputs.items():
         outputs[k] = v  # type: ignore
@@ -382,8 +399,7 @@ def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Doc
     for k, v in signature.parameters.items():  # type: ignore
         annotation = type_hints.get(k, None)
         if annotation is None:
-            err_msg = f"'{k}' has no type. Please add a type annotation to the input parameter."
-            raise annotate_exception_with_code(TypeError(err_msg), fn, k)
+            raise FlyteMissingTypeException(fn=fn, param_name=k)
         default = v.default if v.default is not inspect.Parameter.empty else None
         # Inputs with default values are currently ignored, we may want to look into that in the future
         inputs[k] = (annotation, default)  # type: ignore
@@ -491,7 +507,9 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple, None]) -> Di
 
     # This statement results in true for typing.Namedtuple, single and void return types, so this
     # handles Options 1, 2. Even though NamedTuple for us is multi-valued, it's a single value for Python
-    if isinstance(return_annotation, Type) or isinstance(return_annotation, TypeVar):  # type: ignore
+    if hasattr(return_annotation, "__bases__") and (
+        isinstance(return_annotation, Type) or isinstance(return_annotation, TypeVar)  # type: ignore
+    ):
         # isinstance / issubclass does not work for Namedtuple.
         # Options 1 and 2
         bases = return_annotation.__bases__  # type: ignore

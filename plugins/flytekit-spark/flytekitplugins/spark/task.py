@@ -2,6 +2,7 @@ import os
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional, Union, cast
 
+import click
 from google.protobuf.json_format import MessageToDict
 
 from flytekit import FlyteContextManager, PythonFunctionTask, lazy_module, logger
@@ -46,6 +47,22 @@ class Spark(object):
 
 @dataclass
 class Databricks(Spark):
+    """
+    Deprecated. Use DatabricksV2 instead.
+    """
+
+    databricks_conf: Optional[Dict[str, Union[str, dict]]] = None
+    databricks_instance: Optional[str] = None
+
+    def __post_init__(self):
+        logger.warn(
+            "Databricks is deprecated. Use 'from flytekitplugins.spark import Databricks' instead,"
+            "and make sure to upgrade the version of flyteagent deployment to >v1.13.0.",
+        )
+
+
+@dataclass
+class DatabricksV2(Spark):
     """
     Use this to configure a Databricks task. Task's marked with this will automatically execute
     natively onto databricks platform as a distributed execution of spark
@@ -127,9 +144,15 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
                 self._default_applications_path = (
                     self._default_applications_path or "local:///usr/local/bin/entrypoint.py"
                 )
+
+        if isinstance(task_config, DatabricksV2):
+            task_type = "databricks"
+        else:
+            task_type = "spark"
+
         super(PysparkFunctionTask, self).__init__(
             task_config=task_config,
-            task_type=self._SPARK_TASK_TYPE,
+            task_type=task_type,
             task_function=task_function,
             container_image=container_image,
             **kwargs,
@@ -151,8 +174,8 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
             main_class="",
             spark_type=SparkType.PYTHON,
         )
-        if isinstance(self.task_config, Databricks):
-            cfg = cast(Databricks, self.task_config)
+        if isinstance(self.task_config, (Databricks, DatabricksV2)):
+            cfg = cast(DatabricksV2, self.task_config)
             job._databricks_conf = cfg.databricks_conf
             job._databricks_instance = cfg.databricks_instance
 
@@ -181,7 +204,7 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
         return user_params.builder().add_attr("SPARK_SESSION", self.sess).build()
 
     def execute(self, **kwargs) -> Any:
-        if isinstance(self.task_config, Databricks):
+        if isinstance(self.task_config, (Databricks, DatabricksV2)):
             # Use the Databricks agent to run it by default.
             try:
                 ctx = FlyteContextManager.current_context()
@@ -193,11 +216,12 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
                 if ctx.execution_state and ctx.execution_state.is_local_execution():
                     return AsyncAgentExecutorMixin.execute(self, **kwargs)
             except Exception as e:
-                logger.error(f"Agent failed to run the task with error: {e}")
-                logger.info("Falling back to local execution")
+                click.secho(f"❌ Agent failed to run the task with error: {e}", fg="red")
+                click.secho("Falling back to local execution", fg="red")
         return PythonFunctionTask.execute(self, **kwargs)
 
 
 # Inject the Spark plugin into flytekits dynamic plugin loading system
 TaskPlugins.register_pythontask_plugin(Spark, PysparkFunctionTask)
 TaskPlugins.register_pythontask_plugin(Databricks, PysparkFunctionTask)
+TaskPlugins.register_pythontask_plugin(DatabricksV2, PysparkFunctionTask)

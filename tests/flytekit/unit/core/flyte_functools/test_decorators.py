@@ -76,10 +76,10 @@ def test_unwrapped_task():
     error = completed_process.stderr
     error_str = ""
     for line in error.strip().split("\n"):
-        if line.startswith("TypeError"):
+        if line.startswith("FlyteMissingTypeException"):
             error_str += line
     assert error_str != ""
-    assert error_str.startswith("TypeError: 'args' has no type. Please add a type annotation to the input")
+    assert "'args' has no type. Please add a type annotation" in error_str
 
 
 @pytest.mark.parametrize("script", ["nested_function.py", "nested_wrapped_function.py"])
