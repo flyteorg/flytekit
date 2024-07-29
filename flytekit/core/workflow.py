@@ -6,7 +6,7 @@ import typing
 from dataclasses import dataclass
 from enum import Enum
 from functools import update_wrapper
-from typing import Any, Callable, Coroutine, Dict, List, Optional, Tuple, Type, Union, cast, overload
+from typing import TYPE_CHECKING, Any, Callable, Coroutine, Dict, List, Optional, Tuple, Type, Union, cast, overload
 
 try:
     from typing import ParamSpec
@@ -55,6 +55,9 @@ from flytekit.models import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.documentation import Description, Documentation
 from flytekit.types.error import FlyteError
+
+if TYPE_CHECKING:
+    from flytekit.tools.translator import Options
 
 GLOBAL_START_NODE = Node(
     id=_common_constants.GLOBAL_INPUT_NODE_ID,
@@ -303,8 +306,21 @@ class WorkflowBase(object):
     def execute(self, **kwargs):
         raise Exception("Should not be called")
 
-    def remote(self, **kwargs) -> FlyteFuture:
-        return FlyteFuture(self, **kwargs)
+    def remote(self, version: Optional[str] = None, options: Optional[Options] = None, **kwargs) -> FlyteFuture:
+        """
+        This method will be invoked to execute the workflow remotely. This will return a FlyteFuture object that can be
+        used to track the progress of the workflow execution.
+
+        This method should be executed after specifying the remote configuration via `flytekit.remote.init_remote()`.
+
+        :param version: an optional version string to fetch or register the workflow. If not specified, it will randomly
+                generate a version string.
+        :param options: an optional options that can be used to override the default options of the workflow. If not
+                specified, the default options provided by `init_remote()` will be used.
+        :param kwargs: Dict[str, Any] the inputs to the workflow. The inputs should match the signature of the workflow.
+        :return: FlyteFuture
+        """
+        return FlyteFuture(self, version=version, options=options, **kwargs)
 
     def compile(self, **kwargs):
         pass
