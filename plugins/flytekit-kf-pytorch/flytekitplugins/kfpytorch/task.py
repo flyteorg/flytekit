@@ -241,7 +241,7 @@ class ElasticWorkerResult(NamedTuple):
 
     return_value: Any
     decks: List[flytekit.Deck]
-    om: OutputMetadata
+    om: Optional[OutputMetadata] = None
 
 
 def spawn_helper(
@@ -435,7 +435,7 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
                     if isinstance(e, FlyteRecoverableException):
                         create_recoverable_error_file()
                     raise
-                return ElasticWorkerResult(return_value=return_val, decks=flytekit.current_context().decks)
+                return ElasticWorkerResult(return_value=return_val, decks=flytekit.current_context().decks, om=None)
 
             launcher_target_func = fn_partial
             launcher_args = ()
