@@ -36,7 +36,6 @@ dependencies = [
     "marshmallow-jsonschema>=0.12.0",
     "mashumaro>=3.11",
     "protobuf!=4.25.0",
-    "pyarrow",
     "pygments",
     "python-json-logger>=2.0.0",
     "pytimeparse>=1.1.8",
