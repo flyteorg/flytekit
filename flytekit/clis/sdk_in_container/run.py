@@ -829,6 +829,7 @@ class YamlFileReadingCommand(click.RichCommand):
         super().__init__(name=name, params=params, callback=callback, help=help)
 
     def parse_args(self, ctx: Context, args: t.List[str]) -> t.List[str]:
+        inputs = {}
         if "--inputs-file" in args:
             idx = args.index("--inputs-file")
             args.pop(idx)
@@ -847,19 +848,6 @@ class YamlFileReadingCommand(click.RichCommand):
                             f"\n yaml error: {yaml_e}",
                             param_hint="--inputs-file",
                         )
-
-            new_args = []
-            for k, v in inputs.items():
-                if isinstance(v, str):
-                    new_args.extend([f"--{k}", v])
-                elif isinstance(v, bool):
-                    if v:
-                        new_args.append(f"--{k}")
-                else:
-                    v = json.dumps(v)
-                    new_args.extend([f"--{k}", v])
-            new_args.extend(args)
-            args = new_args
         elif not sys.stdin.isatty():
             f = sys.stdin.read()
             if f != "":
@@ -876,18 +864,19 @@ class YamlFileReadingCommand(click.RichCommand):
                             f"\n yaml error: {yaml_e}",
                             param_hint="--inputs-file",
                         )
-                new_args = []
-                for k, v in inputs.items():
-                    if isinstance(v, str):
-                        new_args.extend([f"--{k}", v])
-                    elif isinstance(v, bool):
-                        if v:
-                            new_args.append(f"--{k}")
-                    else:
-                        v = json.dumps(v)
-                        new_args.extend([f"--{k}", v])
-                new_args.extend(args)
-                args = new_args
+        new_args = []
+        for k, v in inputs.items():
+            if isinstance(v, str):
+                new_args.extend([f"--{k}", v])
+            elif isinstance(v, bool):
+                if v:
+                    new_args.append(f"--{k}")
+            else:
+                v = json.dumps(v)
+                new_args.extend([f"--{k}", v])
+        new_args.extend(args)
+        args = new_args
+
         return super().parse_args(ctx, args)
 
 
