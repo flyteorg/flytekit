@@ -203,10 +203,11 @@ def _update_serialization_settings_for_ipython(
     if not isinstance(entity, (PythonAutoContainerTask, ArrayNodeMapTask)):
         return serialization_settings
 
-    from flytekit.tools.interactive import ipython_check
+    # If the context is not interactive, we don't need to do anything
+    ctx = context_manager.FlyteContextManager.current_context()
 
-    # Let's check if we are in an interactive environment like Jupyter notebook
-    if ipython_check():
+    # # Let's check if we are in an interactive environment like Jupyter notebook
+    if ctx.interactive_mode_enabled:
         # We are in an interactive environment, let's check if the task is a PythonFunctionTask and the task function
         # is defined in the main module. If so, we will serialize the task as a pickled object and upload it to remote
         # storage. The main module check is to ensure that the task function is not defined in a notebook cell.

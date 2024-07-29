@@ -643,6 +643,7 @@ class FlyteContext(object):
     origin_stackframe: Optional[traceback.FrameSummary] = None
     output_metadata_tracker: Optional[OutputMetadataTracker] = None
     fast_register_file_uploader: Optional[typing.Callable] = None
+    interactive_mode_enabled: bool = False
 
     @property
     def user_space_params(self) -> Optional[ExecutionParameters]:
@@ -669,6 +670,7 @@ class FlyteContext(object):
             execution_state=self.execution_state,
             in_a_condition=self.in_a_condition,
             output_metadata_tracker=self.output_metadata_tracker,
+            interactive_mode_enabled=self.interactive_mode_enabled,
         )
 
     def enter_conditional_section(self) -> Builder:
@@ -695,6 +697,9 @@ class FlyteContext(object):
 
     def with_fast_register_file_uploader(self, f: typing.Callable) -> Builder:
         return self.new_builder().with_fast_register_file_uploader(f)
+
+    def with_interactive_mode_enabled(self, i: bool) -> Builder:
+        return self.new_builder().with_interactive_mode_enabled(i)
 
     def new_compilation_state(self, prefix: str = "") -> CompilationState:
         """
@@ -758,6 +763,7 @@ class FlyteContext(object):
         in_a_condition: bool = False
         output_metadata_tracker: Optional[OutputMetadataTracker] = None
         fast_register_file_uploader: Optional[typing.Callable] = None
+        interactive_mode_enabled: bool = False
 
         def build(self) -> FlyteContext:
             return FlyteContext(
@@ -770,6 +776,7 @@ class FlyteContext(object):
                 in_a_condition=self.in_a_condition,
                 output_metadata_tracker=self.output_metadata_tracker,
                 fast_register_file_uploader=self.fast_register_file_uploader,
+                interactive_mode_enabled=self.interactive_mode_enabled,
             )
 
         def enter_conditional_section(self) -> FlyteContext.Builder:
@@ -816,6 +823,10 @@ class FlyteContext(object):
 
         def with_output_metadata_tracker(self, t: OutputMetadataTracker) -> FlyteContext.Builder:
             self.output_metadata_tracker = t
+            return self
+
+        def with_interactive_mode_enabled(self, i: bool) -> FlyteContext.Builder:
+            self.interactive_mode_enabled = i
             return self
 
         def new_compilation_state(self, prefix: str = "") -> CompilationState:

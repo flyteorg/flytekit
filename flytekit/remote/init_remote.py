@@ -37,6 +37,7 @@ def init_remote(
                 default_project=default_project,
                 default_domain=default_domain,
                 data_upload_location=data_upload_location,
+                interactive_mode_enabled=True,
                 **kwargs,
             )
             # TODO: This should be merged into the FlyteRemote in the future
