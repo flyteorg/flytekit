@@ -59,7 +59,7 @@ jobs:
         run: |
           pip install uv
           make setup-global-uv
-          uv pip uninstall --system pandas
+          uv pip uninstall --system pandas pyarrow
           uv pip freeze
       - name: Test with coverage
         run: |
@@ -98,7 +98,7 @@ jobs:
         run: |
           pip install uv
           make setup-global-uv
-          uv pip uninstall --system pandas
+          uv pip uninstall --system pandas pyarrow
           uv pip freeze
       - name: Run extras unit tests with coverage
         # Skip this step if running on python 3.12 due to https://github.com/tensorflow/tensorflow/issues/62003
