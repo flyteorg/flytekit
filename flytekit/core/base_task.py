@@ -18,6 +18,8 @@
 
 """
 
+from __future__ import annotations
+
 import asyncio
 import collections
 import datetime
@@ -27,6 +29,7 @@ from abc import abstractmethod
 from base64 import b64encode
 from dataclasses import dataclass
 from typing import (
+    TYPE_CHECKING,
     Any,
     Coroutine,
     Dict,
@@ -81,6 +84,9 @@ from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.documentation import Description, Documentation
 from flytekit.models.interface import Variable
 from flytekit.models.security import SecurityContext
+
+if TYPE_CHECKING:
+    from flytekit.tools.translator import Options
 
 DYNAMIC_PARTITIONS = "_uap"
 MODEL_CARD = "_ucm"
@@ -796,14 +802,21 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         """
         pass
 
-    def remote(self, version=None, **kwargs) -> FlyteFuture:
+    def remote(self, version: Optional[str] = None, options: Optional[Options] = None, **kwargs) -> FlyteFuture:
         """
         This method will be invoked to execute the task remotely. This will return a FlyteFuture object that can be
         used to track the progress of the task execution.
 
         This method should be executed after specifying the remote configuration via `flytekit.remote.init_remote()`.
+
+        :param version: an optional version string to fetch or register the task. If not specified, it will randomly
+                generate a version string.
+        :param options: an optional options that can be used to override the default options of the task. If not
+                specified, the default options provided by `init_remote()` will be used.
+        :param kwargs: Dict[str, Any] the inputs to the task. The inputs should match the signature of the task.
+        :return: FlyteFuture
         """
-        return FlyteFuture(self, version=version, **kwargs)
+        return FlyteFuture(self, version=version, options=options, **kwargs)
 
     def post_execute(self, user_params: Optional[ExecutionParameters], rval: Any) -> Any:
         """

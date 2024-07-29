@@ -14,6 +14,8 @@ import cloudpickle
 if TYPE_CHECKING:
     from flytekit.core.base_task import PythonTask
     from flytekit.core.workflow import WorkflowBase
+    from flytekit.remote.executions import FlyteWorkflowExecution
+    from flytekit.tools.translator import Options
 
 
 class FlyteFuture:
@@ -21,14 +23,15 @@ class FlyteFuture:
         self,
         entity: typing.Union[PythonTask, WorkflowBase],
         version: typing.Optional[str] = None,
+        options: typing.Optional[Options] = None,
         **kwargs,
     ):
-        """A Future object that represents a Flyte task or workflow execution.
+        """A Future object that handling a Flyte task or workflow execution.
 
         This object requires the FlyteRemote client to be initialized before it can be used. The FlyteRemote client
         can be initialized by calling `flytekit.remote.init_remote()`.
         """
-        from flytekit.remote.init_remote import REMOTE_ENTRY
+        from flytekit.remote.init_remote import REMOTE_DEFAULT_OPTIONS, REMOTE_ENTRY
         from flytekit.tools.script_mode import hash_file
 
         if REMOTE_ENTRY is None:
@@ -47,15 +50,18 @@ class FlyteFuture:
                 h = hashlib.md5(md5_bytes)
                 version = base64.urlsafe_b64encode(h.digest()).decode("ascii").rstrip("=")
 
+        if options is None:
+            options = REMOTE_DEFAULT_OPTIONS
+
         self._version = version
-        self._exe = self._remote_entry.execute(entity, version=version, inputs=kwargs)
+        self._exe = self._remote_entry.execute(entity, version=version, inputs=kwargs, options=options)
 
     def wait(
         self,
         timeout: typing.Optional[timedelta] = None,
         poll_interval: typing.Optional[timedelta] = None,
         sync_nodes: bool = True,
-    ):
+    ) -> FlyteWorkflowExecution:
         return self._remote_entry.wait(
             self._exe,
             timeout=timeout,
@@ -66,3 +72,7 @@ class FlyteFuture:
     @property
     def version(self) -> str:
         return self._version
+
+    @property
+    def exe(self) -> FlyteWorkflowExecution:
+        return self._exe
