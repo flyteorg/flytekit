@@ -193,7 +193,9 @@ class DateTimeType(click.DateTime):
                 if parts[1] == "-":
                     return dt - delta
                 return dt + delta
-            raise click.BadParameter(f"Expected format {self.formats}, got {value}")
+            else:
+                value = datetime.datetime.fromisoformat(value)
+
         return self._datetime_from_format(value, param, ctx)
 
 
