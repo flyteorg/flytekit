@@ -1627,15 +1627,17 @@ class DictTransformer(TypeTransformer[dict]):
         """
         from flytekit.models.literals import Json
         from flytekit.types.pickle import FlytePickle
+        import msgpack
 
         try:
-            json_str = json.dumps(v)
-            json_bytes = json_str.encode("utf-8")
+            json_bytes = msgpack.dumps(v)
+            # json_str = json.dumps(v)
+            # json_bytes = json_str.encode("utf-8")
             return Literal(scalar=Scalar(json=Json(json_bytes)), metadata={"format": "json"})
         except TypeError as e:
             if allow_pickle:
                 remote_path = FlytePickle.to_pickle(ctx, v)
-                json_str = json.dumps({"pickle_file": remote_path})
+                json_str = msgpack.dumps({"pickle_file": remote_path})
                 json_bytes = json_str.encode("utf-8")
                 Literal(scalar=Scalar(json=Json(value=json_bytes)), metadata={"format": "pickle"})
             raise e
@@ -1740,6 +1742,7 @@ class DictTransformer(TypeTransformer[dict]):
                 except TypeError:
                     raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
             elif lv.scalar.json is not None:
+                import msgpack
                 # TODO: Implement Json deserialization
                 # if lv.metadata and lv.metadata.get("format", None) == "pickle":
                 #     from flytekit.types.pickle import FlytePickle
@@ -1750,8 +1753,8 @@ class DictTransformer(TypeTransformer[dict]):
 
                 try:
                     json_bytes = lv.scalar.json.value
-                    json_str = json_bytes.decode("utf-8")
-                    return json.loads(json_str)
+                    # json_str = json_bytes.decode("utf-8")
+                    return msgpack.loads(json_bytes)
                 except TypeError:
                     raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
 
