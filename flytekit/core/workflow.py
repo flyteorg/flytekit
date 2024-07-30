@@ -8,6 +8,11 @@ from enum import Enum
 from functools import update_wrapper
 from typing import Any, Callable, Coroutine, Dict, List, Optional, Tuple, Type, Union, cast, overload
 
+try:
+    from typing import ParamSpec
+except ImportError:
+    from typing_extensions import ParamSpec  # type: ignore
+
 from flytekit.core import constants as _common_constants
 from flytekit.core import launch_plan as _annotated_launch_plan
 from flytekit.core.base_task import PythonTask, Task
@@ -58,6 +63,7 @@ GLOBAL_START_NODE = Node(
     flyte_entity=None,
 )
 
+P = ParamSpec("P")
 T = typing.TypeVar("T")
 FuncOut = typing.TypeVar("FuncOut")
 
@@ -809,21 +815,21 @@ def workflow(
 
 @overload
 def workflow(
-    _workflow_function: Callable[..., FuncOut],
+    _workflow_function: Callable[P, FuncOut],
     failure_policy: Optional[WorkflowFailurePolicy] = ...,
     interruptible: bool = ...,
     on_failure: Optional[Union[WorkflowBase, Task]] = ...,
     docs: Optional[Documentation] = ...,
-) -> Union[PythonFunctionWorkflow, Callable[..., FuncOut]]: ...
+) -> Union[Callable[P, FuncOut], PythonFunctionWorkflow]: ...
 
 
 def workflow(
-    _workflow_function: Optional[Callable[..., Any]] = None,
+    _workflow_function: Optional[Callable[P, FuncOut]] = None,
     failure_policy: Optional[WorkflowFailurePolicy] = None,
     interruptible: bool = False,
     on_failure: Optional[Union[WorkflowBase, Task]] = None,
     docs: Optional[Documentation] = None,
-) -> Union[Callable[[Callable[..., FuncOut]], PythonFunctionWorkflow], PythonFunctionWorkflow, Callable[..., FuncOut]]:
+) -> Union[Callable[P, FuncOut], Callable[[Callable[P, FuncOut]], PythonFunctionWorkflow], PythonFunctionWorkflow]:
     """
     This decorator declares a function to be a Flyte workflow. Workflows are declarative entities that construct a DAG
     of tasks using the data flow between tasks.
@@ -856,7 +862,7 @@ def workflow(
     :param docs: Description entity for the workflow
     """
 
-    def wrapper(fn: Callable[..., Any]) -> PythonFunctionWorkflow:
+    def wrapper(fn: Callable[P, FuncOut]) -> PythonFunctionWorkflow:
         workflow_metadata = WorkflowMetadata(on_failure=failure_policy or WorkflowFailurePolicy.FAIL_IMMEDIATELY)
 
         workflow_metadata_defaults = WorkflowMetadataDefaults(interruptible)
