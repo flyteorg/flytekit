@@ -26,7 +26,7 @@ def get_private_key() -> bytes:
 
     """
     The first method is for Union Products, the second is for Open Source.
-    The second method to get the secret is not recommended. 
+    The second method to get the secret is not recommended.
     It will be removed once we complete the Flyte connection, which provides a new way to get the secret.
     Note: This is discussed with Ketan Umare, the creator of Flyte.
     """
