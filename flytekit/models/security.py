@@ -47,6 +47,8 @@ class Secret(_common.FlyteIdlEntity):
         # Only check for the groups during registration.
         execution = FlyteContextManager.current_context().execution_state
         in_registration_context = execution.mode is None
+        if get_plugin().secret_requires_group() is False:
+            self.group = None
         if in_registration_context and get_plugin().secret_requires_group() and self.group is None:
             raise ValueError("Group is a required parameter")
 
