@@ -358,6 +358,7 @@ def map_task(
     """
     Wrapper that creates a map task utilizing either the existing ArrayNodeMapTask
     or the drop in replacement ArrayNode implementation
+
     :param target: The Flyte entity of which will be mapped over
     :param concurrency: If specified, this limits the number of mapped tasks than can run in parallel to the given batch
         size. If the size of the input exceeds the concurrency value, then multiple batches will be run serially until
