@@ -24,8 +24,6 @@ def get_private_key() -> bytes:
     from cryptography.hazmat.backends import default_backend
     from cryptography.hazmat.primitives import serialization
 
-    from flytekit.configuration.plugin import get_plugin
-
     pk_string = flytekit.current_context().secrets.get("private_key", "snowflake", encode_mode="r")
 
     # Cryptography needs the string to be stripped and converted to bytes
