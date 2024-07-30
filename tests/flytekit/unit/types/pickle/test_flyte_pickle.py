@@ -1,7 +1,7 @@
 import sys
 from collections import OrderedDict
 from collections.abc import Sequence
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Union, Tuple
 
 import numpy as np
 import pytest
@@ -146,7 +146,7 @@ def test_default_args_task():
         return t1(a=input_val)
 
     @workflow
-    def wf_with_sub_wf() -> tuple[Any, Any]:
+    def wf_with_sub_wf() -> Tuple[Any, Any]:
         return (wf_no_input(), wf_with_input())
 
     wf_no_input_spec = get_serializable(OrderedDict(), serialization_settings, wf_no_input)
