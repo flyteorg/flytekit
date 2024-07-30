@@ -186,7 +186,7 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
         return ""
 
     @classmethod
-    def new_remote(cls) -> FlyteDirectory:
+    def new_remote(cls, stem: typing.Optional[str] = None, alt: typing.Optional[str] = None) -> FlyteDirectory:
         """
         Create a new FlyteDirectory object using the currently configured default remote in the context (i.e.
         the raw_output_prefix configured in the current FileAccessProvider object in the context).
@@ -195,9 +195,10 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
         and let flytekit handle the uploading.
         """
         ctx = FlyteContextManager.current_context()
-        r = ctx.file_access.get_random_string()
-        d = ctx.file_access.join(ctx.file_access.raw_output_prefix, r)
-        return FlyteDirectory(path=d)
+        if stem and Path(stem).suffix:
+            raise ValueError("Stem should not have a file extension.")
+        remote_path = ctx.file_access.get_new_path(alt=alt, stem=stem)
+        return FlyteDirectory(path=remote_path)
 
     def __class_getitem__(cls, item: typing.Union[typing.Type, str]) -> typing.Type[FlyteDirectory]:
         if item is None:
