@@ -28,7 +28,7 @@ jobs:
           if [[ ${{ github.event_name }} == "schedule" ]]; then
             echo "python_versions=[\"3.8\",\"3.9\",\"3.10\",\"3.11\",\"3.12\"]" >> $GITHUB_ENV
           else
-            echo "python_versions=[\"3.8\", \"3.12\"]" >> $GITHUB_ENV
+            echo "python_versions=[\"3.9\", \"3.12\"]" >> $GITHUB_ENV
           fi
 
   build:
@@ -358,6 +358,10 @@ jobs:
           - flytekit-vaex
           - flytekit-whylogs
         exclude:
+          - python-version: 3.8
+            plugin-names: "flytekit-aws-sagemaker"
+          - python-version: 3.9
+            plugin-names: "flytekit-aws-sagemaker"
           # flytekit-modin depends on ray which does not have a 3.11 wheel yet.
           # Issue tracked in https://github.com/ray-project/ray/issues/27881
           - python-version: 3.11
