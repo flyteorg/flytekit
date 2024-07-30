@@ -318,6 +318,8 @@ class Partitions(object):
                 p.reference_artifact = artifact
 
     def __getattr__(self, item):
+        if item == "partitions" or item == "_partitions":
+            raise AttributeError("Partitions in an uninitialized state, skipping partitions")
         if self.partitions and item in self.partitions:
             return self.partitions[item]
         raise AttributeError(f"Partition {item} not found in {self}")
