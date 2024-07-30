@@ -26,7 +26,6 @@ def test_serialization():
             warehouse="my_warehouse",
             schema="my_schema",
             database="my_database",
-            table="my_table",
         ),
         query_template=query_template,
         # the schema literal's backend uri will be equal to the value of .raw_output_data
@@ -75,7 +74,6 @@ def test_local_exec():
             database="FLYTEAGENT",
             schema="PUBLIC",
             warehouse="COMPUTE_WH",
-            table="FLYTEAGENT.PUBLIC.TEST",
         ),
         query_template="select 1\n",
         # the schema literal's backend uri will be equal to the value of .raw_output_data
@@ -97,7 +95,6 @@ def test_sql_template():
             database="FLYTEAGENT",
             schema="PUBLIC",
             warehouse="COMPUTE_WH",
-            table="FLYTEAGENT.PUBLIC.TEST",
         ),
         query_template="""select 1 from\t
          custom where column = 1""",

@@ -55,7 +55,6 @@ async def test_snowflake_agent(mock_get_private_key):
         "database": "dummy_database",
         "schema": "dummy_schema",
         "warehouse": "dummy_warehouse",
-        "table": "dummy_table",
     }
 
     int_type = types.LiteralType(types.SimpleType.INTEGER)
@@ -86,7 +85,6 @@ async def test_snowflake_agent(mock_get_private_key):
     snowflake_metadata = SnowflakeJobMetadata(
         user="dummy_user",
         account="dummy_account",
-        table="dummy_table",
         database="dummy_database",
         schema="dummy_schema",
         warehouse="dummy_warehouse",
