@@ -69,20 +69,11 @@ class ListConfigTransformer(TypeTransformer[ListConfig]):
                 node_type, type_name = extract_node_type(python_val, idx)
                 type_list.append(type_name)
 
-                transformation_logs = ""
                 transformer = TypeEngine.get_transformer(node_type)
                 literal_type = transformer.get_literal_type(node_type)
                 value_list.append(
                     MessageToDict(transformer.to_literal(ctx, python_val[idx], node_type, literal_type).to_flyte_idl())
                 )
-
-                if len(type_list) != len(value_list):
-                    raise ValueError(
-                        f"Could not identify matching transformer for object {python_val[idx]} of type "
-                        f"{type(python_val[idx])}. This may either indicate that no such transformer "
-                        "exists or the appropriate transformer cannot serialise this object. Attempted the following "
-                        f"transformers:\n{transformation_logs}"
-                    )
 
         wrapper = Struct()
         wrapper.update({"types": type_list, "values": value_list})
@@ -105,17 +96,8 @@ class ListConfigTransformer(TypeTransformer[ListConfig]):
 
                     value_literal = Literal.from_flyte_idl(ParseDict(value_list[i], PB_Literal()))
 
-                    transformation_logs = ""
                     transformer = TypeEngine.get_transformer(node_type)
                     cfg_literal.append(transformer.to_python_value(ctx, value_literal, node_type))
-
-                    if len(cfg_literal) != i + 1:
-                        raise ValueError(
-                            f"Could not identify matching transformer for object {value_literal[i]} of proposed type "
-                            f"{node_type}. This may either indicate that no such transformer exists or the appropriate "
-                            f"transformer cannot deserialise this object. Attempted the following "
-                            f"transformers:\n{transformation_logs}"
-                        )
 
             return OmegaConf.create(cfg_literal)
         raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")

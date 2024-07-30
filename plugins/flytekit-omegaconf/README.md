@@ -67,13 +67,3 @@ SharedConfig.set_mode(OmegaConfTransformerMode.DictConfig)
 Since the DictConfig is flattened and keys transformed into dot notation, the keys of the DictConfig must not contain
 dots.
 ```
-
-```note
-Warning: This plugin overwrites the default serializer for Enum-objects to also allow for non-string-valued enum definitions.
-Please check carefully if existing workflows are compatible with the new version.
-```
-
-```note
-Warning: This plugin attempts serialisation of objects with different transformers. In the process exceptions during
-serialisation are suppressed.
-```

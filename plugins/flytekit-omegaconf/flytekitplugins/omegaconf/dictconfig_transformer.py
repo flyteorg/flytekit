@@ -91,21 +91,12 @@ class DictConfigTransformer(TypeTransformer[DictConfig]):
                 node_type, type_name = extract_node_type(python_val, key)
                 type_map[key] = type_name
 
-                transformation_logs = ""
                 transformer = TypeEngine.get_transformer(node_type)
                 literal_type = transformer.get_literal_type(node_type)
 
                 value_map[key] = MessageToDict(
                     transformer.to_literal(ctx, python_val[key], node_type, literal_type).to_flyte_idl()
                 )
-
-                if key not in value_map.keys():
-                    raise ValueError(
-                        f"Could not identify matching transformer for object {python_val[key]} of type "
-                        f"{type(python_val[key])}. This may either indicate that no such transformer "
-                        "exists or the appropriate transformer cannot serialise this object. Attempted the following "
-                        f"transformers:\n{transformation_logs}"
-                    )
 
         wrapper = Struct()
         wrapper.update(
@@ -145,18 +136,10 @@ class DictConfigTransformer(TypeTransformer[DictConfig]):
                         module_name, class_name = type_desc.rsplit(".", 1)
                         node_type = importlib.import_module(module_name).__getattribute__(class_name)
 
-                    transformation_logs = ""
                     transformer = TypeEngine.get_transformer(node_type)
                     value_literal = Literal.from_flyte_idl(ParseDict(nested_dict["values"][key], PB_Literal()))
                     cfg_dict[key] = transformer.to_python_value(ctx, value_literal, node_type)
 
-                    if key not in cfg_dict.keys():
-                        raise ValueError(
-                            f"Could not identify matching transformer for object {nested_dict['values'][key]} of "
-                            f"proposed type {node_type}. This may either indicate that no such transformer "
-                            "exists or the appropriate transformer cannot deserialise this object. Attempted the "
-                            f"following transformers:\n{transformation_logs}"
-                        )
             if nested_dict["base_dataclass"] != "builtins.dict" and self.mode != OmegaConfTransformerMode.DictConfig:
                 # Explicitly instantiate dataclass and create DictConfig from there in order to have typing information
                 module_name, class_name = nested_dict["base_dataclass"].rsplit(".", 1)
