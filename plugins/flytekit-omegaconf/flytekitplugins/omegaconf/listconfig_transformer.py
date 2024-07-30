@@ -1,8 +1,7 @@
 import importlib
-from typing import Optional, Type, TypeVar
+from typing import Type, TypeVar
 
 from flyteidl.core.literals_pb2 import Literal as PB_Literal
-from flytekitplugins.omegaconf.config import OmegaConfTransformerMode, SharedConfig
 from flytekitplugins.omegaconf.type_information import extract_node_type
 from google.protobuf.json_format import MessageToDict, ParseDict
 from google.protobuf.struct_pb2 import Struct
@@ -19,20 +18,9 @@ T = TypeVar("T")
 
 
 class ListConfigTransformer(TypeTransformer[ListConfig]):
-    def __init__(self, mode: Optional[OmegaConfTransformerMode] = None):
+    def __init__(self):
         """Construct ListConfigTransformer."""
         super().__init__(name="OmegaConf ListConfig", t=ListConfig)
-        self.mode = mode
-
-    @property
-    def mode(self) -> OmegaConfTransformerMode:
-        """Serialisation mode for omegaconf objects defined in shared config."""
-        return SharedConfig.get_mode()
-
-    @mode.setter
-    def mode(self, new_mode: OmegaConfTransformerMode) -> None:
-        """Updates the central shared config with a new serialisation mode."""
-        SharedConfig.set_mode(new_mode)
 
     def get_literal_type(self, t: Type[ListConfig]) -> LiteralType:
         """

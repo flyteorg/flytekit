@@ -3,8 +3,8 @@ from typing import Any
 import flytekitplugins.omegaconf  # noqa
 import pytest
 from flyteidl.core.literals_pb2 import Literal, Scalar
-from flytekitplugins.omegaconf import DictConfigTransformer
-from flytekitplugins.omegaconf.config import OmegaConfTransformerMode, SharedConfig
+from flytekitplugins.omegaconf.config import OmegaConfTransformerMode
+from flytekitplugins.omegaconf.dictconfig_transformer import DictConfigTransformer
 from google.protobuf.struct_pb2 import Struct
 from omegaconf import MISSING, DictConfig, ListConfig, OmegaConf, ValidationError
 from pytest import mark, param
@@ -107,17 +107,18 @@ def test_plugin_mode() -> None:
     ctx = FlyteContext.current_context()
     expected = TypeEngine.to_literal_type(DictConfig)
 
-    transformer = DictConfigTransformer(mode=OmegaConfTransformerMode.DictConfig)
-    literal_slim = transformer.to_literal(ctx, obj, DictConfig, expected)
-    reconstructed_slim = transformer.to_python_value(ctx, literal_slim, DictConfig)
+    with flytekitplugins.omegaconf.local_transformer_mode(OmegaConfTransformerMode.DictConfig):
+        transformer = DictConfigTransformer()
+        literal_slim = transformer.to_literal(ctx, obj, DictConfig, expected)
+        reconstructed_slim = transformer.to_python_value(ctx, literal_slim, DictConfig)
 
-    SharedConfig.set_mode(OmegaConfTransformerMode.DataClass)
-    literal_full = transformer.to_literal(ctx, obj, DictConfig, expected)
-    reconstructed_full = transformer.to_python_value(ctx, literal_full, DictConfig)
+    with flytekitplugins.omegaconf.local_transformer_mode(OmegaConfTransformerMode.DataClass):
+        literal_full = transformer.to_literal(ctx, obj, DictConfig, expected)
+        reconstructed_full = transformer.to_python_value(ctx, literal_full, DictConfig)
 
-    SharedConfig.set_mode(OmegaConfTransformerMode.Auto)
-    literal_semi = transformer.to_literal(ctx, obj, DictConfig, expected)
-    reconstructed_semi = transformer.to_python_value(ctx, literal_semi, DictConfig)
+    with flytekitplugins.omegaconf.local_transformer_mode(OmegaConfTransformerMode.Auto):
+        literal_semi = transformer.to_literal(ctx, obj, DictConfig, expected)
+        reconstructed_semi = transformer.to_python_value(ctx, literal_semi, DictConfig)
 
     assert literal_slim == literal_full == literal_semi
     assert reconstructed_slim == reconstructed_full == reconstructed_semi  # comparison by value should pass
@@ -177,8 +178,9 @@ def test_fallback() -> None:
     literal2 = Literal(scalar=Scalar(generic=struct2))
 
     ctx = FlyteContext.current_context()
-    transformer = DictConfigTransformer(mode=OmegaConfTransformerMode.DictConfig)
-    SharedConfig.set_mode(OmegaConfTransformerMode.Auto)
+    flytekitplugins.omegaconf.set_transformer_mode(OmegaConfTransformerMode.DictConfig)
+    transformer = DictConfigTransformer()
+    flytekitplugins.omegaconf.set_transformer_mode(OmegaConfTransformerMode.Auto)
 
     reconstructed = transformer.to_python_value(ctx, literal, DictConfig)
     assert obj == reconstructed

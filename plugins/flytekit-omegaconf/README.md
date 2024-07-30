@@ -53,14 +53,10 @@ dataclass definition is not available. This is the default mode.
 To set the mode either initialise the transformer with the `mode` argument or set the mode of the config directly:
 
 ```python
-from flytekitplugins.omegaconf.config import SharedConfig, OmegaConfTransformerMode
-from flytekitplugins.omegaconf import DictConfigTransformer
+from flytekitplugins.omegaconf import set_transformer_mode, OmegaConfTransformerMode
 
-# Set the mode directly on the transformer
-transformer_slim = DictConfigTransformer(mode=OmegaConfTransformerMode.DictConfig)
-
-# Set the mode directly in the config
-SharedConfig.set_mode(OmegaConfTransformerMode.DictConfig)
+# Set the mode using the new function
+set_transformer_mode(OmegaConfTransformerMode.DictConfig)
 ```
 
 ```note

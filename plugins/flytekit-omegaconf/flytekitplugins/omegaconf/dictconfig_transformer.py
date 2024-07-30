@@ -1,11 +1,11 @@
 import importlib
 import re
-import typing
 from typing import Type, TypeVar
 
 import flatten_dict
+import flytekitplugins.omegaconf
 from flyteidl.core.literals_pb2 import Literal as PB_Literal
-from flytekitplugins.omegaconf.config import OmegaConfTransformerMode, SharedConfig
+from flytekitplugins.omegaconf.config import OmegaConfTransformerMode
 from flytekitplugins.omegaconf.type_information import extract_node_type
 from google.protobuf.json_format import MessageToDict, ParseDict
 from google.protobuf.struct_pb2 import Struct
@@ -38,20 +38,9 @@ def is_flattenable(d: DictConfig) -> bool:
 
 
 class DictConfigTransformer(TypeTransformer[DictConfig]):
-    def __init__(self, mode: typing.Optional[OmegaConfTransformerMode] = None):
+    def __init__(self):
         """Construct DictConfigTransformer."""
         super().__init__(name="OmegaConf DictConfig", t=DictConfig)
-        self.mode = mode
-
-    @property
-    def mode(self) -> OmegaConfTransformerMode:
-        """Serialisation mode for omegaconf objects defined in shared config."""
-        return SharedConfig.get_mode()
-
-    @mode.setter
-    def mode(self, new_mode: OmegaConfTransformerMode) -> None:
-        """Updates the central shared config with a new serialisation mode."""
-        SharedConfig.set_mode(new_mode)
 
     def get_literal_type(self, t: Type[DictConfig]) -> LiteralType:
         """
@@ -138,7 +127,10 @@ class DictConfigTransformer(TypeTransformer[DictConfig]):
                     value_literal = Literal.from_flyte_idl(ParseDict(nested_dict["values"][key], PB_Literal()))
                     cfg_dict[key] = transformer.to_python_value(ctx, value_literal, node_type)
 
-            if nested_dict["base_dataclass"] != "builtins.dict" and self.mode != OmegaConfTransformerMode.DictConfig:
+            if (
+                nested_dict["base_dataclass"] != "builtins.dict"
+                and flytekitplugins.omegaconf.get_transformer_mode() != OmegaConfTransformerMode.DictConfig
+            ):
                 # Explicitly instantiate dataclass and create DictConfig from there in order to have typing information
                 module_name, class_name = nested_dict["base_dataclass"].rsplit(".", 1)
                 try:
@@ -150,7 +142,7 @@ class DictConfigTransformer(TypeTransformer[DictConfig]):
                         f"Could not import module {module_name}. If you want to deserialise to DictConfig, "
                         f"set the mode to DictConfigTransformerMode.DictConfig."
                     )
-                    if self.mode == OmegaConfTransformerMode.DataClass:
+                    if flytekitplugins.omegaconf.get_transformer_mode() == OmegaConfTransformerMode.DataClass:
                         raise e
             return OmegaConf.create(cfg_dict)
         raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")

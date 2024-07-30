@@ -13,18 +13,3 @@ class OmegaConfTransformerMode(Enum):
     DictConfig = "DictConfig"
     DataClass = "DataClass"
     Auto = "Auto"
-
-
-class SharedConfig:
-    _mode: OmegaConfTransformerMode = OmegaConfTransformerMode.Auto
-
-    @classmethod
-    def get_mode(cls) -> OmegaConfTransformerMode:
-        """Get the current mode for serialising omegaconf objects."""
-        return cls._mode
-
-    @classmethod
-    def set_mode(cls, new_mode: OmegaConfTransformerMode) -> None:
-        """Set the current mode for serialising omegaconf objects."""
-        if isinstance(new_mode, OmegaConfTransformerMode):
-            cls._mode = new_mode
