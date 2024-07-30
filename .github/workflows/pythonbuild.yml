@@ -59,7 +59,7 @@ jobs:
         run: |
           pip install uv
           make setup-global-uv
-          uv pip uninstall --system pandas
+          uv pip uninstall --system pandas pyarrow
           uv pip freeze
       - name: Test with coverage
         run: |
@@ -98,7 +98,7 @@ jobs:
         run: |
           pip install uv
           make setup-global-uv
-          uv pip uninstall --system pandas
+          uv pip uninstall --system pandas pyarrow
           uv pip freeze
       - name: Run extras unit tests with coverage
         # Skip this step if running on python 3.12 due to https://github.com/tensorflow/tensorflow/issues/62003
@@ -426,7 +426,7 @@ jobs:
           uv pip install --system .
           if [ -f dev-requirements.in ]; then uv pip install --system -r dev-requirements.in; fi
           # TODO: move to protobuf>=5. Github issue: https://github.com/flyteorg/flyte/issues/5448
-          uv pip install --system -U $GITHUB_WORKSPACE "protobuf<5"
+          uv pip install --system -U $GITHUB_WORKSPACE "protobuf<5" "git+https://github.com/flyteorg/flyte.git@master#subdirectory=flyteidl"
           # TODO: remove this when numpy v2 in onnx has been resolved
           if [[ ${{ matrix.plugin-names }} == *"onnx"* || ${{ matrix.plugin-names }} == "flytekit-sqlalchemy" || ${{ matrix.plugin-names }} == "flytekit-pandera" ]]; then
             uv pip install --system "numpy<2.0.0"

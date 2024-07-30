@@ -1,12 +1,12 @@
 from dataclasses import dataclass
 
-import pyarrow as pa
 import pytest
 from typing_extensions import Annotated
 
 from flytekit import FlyteContextManager, StructuredDataset, kwtypes, task, workflow
 
 pd = pytest.importorskip("pandas")
+pa = pytest.importorskip("pyarrow")
 
 PANDAS_PATH = FlyteContextManager.current_context().file_access.get_random_local_directory()
 NUMPY_PATH = FlyteContextManager.current_context().file_access.get_random_local_directory()
