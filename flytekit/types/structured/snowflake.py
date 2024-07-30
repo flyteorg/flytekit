@@ -24,17 +24,7 @@ def get_private_key() -> bytes:
     from cryptography.hazmat.backends import default_backend
     from cryptography.hazmat.primitives import serialization
 
-    """
-    The first method is for Union Products, the second is for Open Source.
-    The second method to get the secret is not recommended.
-    It will be removed once we complete the Flyte connection, which provides a new way to get the secret.
-    Note: This is discussed with Ketan Umare, the creator of Flyte.
-    """
-    try:
-        pk_string = flytekit.current_context().secrets.get(None, "snowflake", encode_mode="r")
-    except Exception as e:
-        logger.info(f"Failed to get private key from secrets manager: {e}")
-        pk_string = flytekit.current_context().secrets.get("private_key", "snowflake", encode_mode="r")
+    pk_string = flytekit.current_context().secrets.get("private_key", "snowflake", encode_mode="r")
 
     # Cryptography needs the string to be stripped and converted to bytes
     pk_string = pk_string.strip().encode()
