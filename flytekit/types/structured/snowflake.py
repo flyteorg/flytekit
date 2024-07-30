@@ -26,10 +26,7 @@ def get_private_key() -> bytes:
 
     from flytekit.configuration.plugin import get_plugin
 
-    if get_plugin().secret_requires_group():
-        pk_string = flytekit.current_context().secrets.get("private_key", "snowflake", encode_mode="r")
-    else:
-        pk_string = flytekit.current_context().secrets.get(None, "snowflake", encode_mode="r")
+    pk_string = flytekit.current_context().secrets.get("private_key", "snowflake", encode_mode="r")
 
     # Cryptography needs the string to be stripped and converted to bytes
     pk_string = pk_string.strip().encode()

@@ -1,0 +1,52 @@
+{
+  "name": "msgpack5",
+  "version": "6.0.2",
+  "description": "A msgpack v5 implementation for node.js and the browser, with extension points",
+  "main": "index.js",
+  "scripts": {
+    "test": "standard && tape test/* | tap-mocha-reporter dot",
+    "build": "npm run browserify && npm run dist",
+    "browserify": "browserify index.js -o dist/msgpack5.js -s msgpack5",
+    "dist": "uglifyjs dist/msgpack5.js -o dist/msgpack5.min.js"
+  },
+  "pre-commit": [
+    "test"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/mcollina/msgpack5.git"
+  },
+  "keywords": [
+    "msgpack",
+    "extension",
+    "v5",
+    "MessagePack",
+    "ext"
+  ],
+  "author": "Matteo collina <hello@matteocollina.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/mcollina/msgpack5/issues"
+  },
+  "homepage": "https://github.com/mcollina/msgpack5",
+  "devDependencies": {
+    "browserify": "^17.0.0",
+    "memdb": "^1.3.1",
+    "pre-commit": "^1.2.2",
+    "standard": "^16.0.0",
+    "tap-mocha-reporter": "^5.0.0",
+    "tape": "^5.0.0",
+    "uglify-js": "^3.4.9"
+  },
+  "standard": {
+    "ignore": [
+      "dist/"
+    ]
+  },
+  "dependencies": {
+    "bl": "^5.0.0",
+    "inherits": "^2.0.3",
+    "readable-stream": "^3.0.0",
+    "safe-buffer": "^5.1.2"
+  }
+}
