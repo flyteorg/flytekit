@@ -134,8 +134,8 @@ def test_plugin_mode() -> None:
         reconstructed_full.my_attr.my_attr = (1,)
 
 
-def test_fallback() -> None:
-    """Test if fallback mode recovers basic information if the specified type cannot be found."""
+def test_auto_transformer_mode() -> None:
+    """Test if auto transformer mode recovers basic information if the specified type cannot be found."""
     obj = OmegaConf.structured(MyConf(my_attr=MySubConf()))
 
     struct = Struct()
@@ -178,9 +178,8 @@ def test_fallback() -> None:
     literal2 = Literal(scalar=Scalar(generic=struct2))
 
     ctx = FlyteContext.current_context()
-    flytekitplugins.omegaconf.set_transformer_mode(OmegaConfTransformerMode.DictConfig)
-    transformer = DictConfigTransformer()
     flytekitplugins.omegaconf.set_transformer_mode(OmegaConfTransformerMode.Auto)
+    transformer = DictConfigTransformer()
 
     reconstructed = transformer.to_python_value(ctx, literal, DictConfig)
     assert obj == reconstructed
