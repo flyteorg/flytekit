@@ -25,7 +25,6 @@ class SnowflakeJobMetadata(ResourceMeta):
     database: str
     schema: str
     warehouse: str
-    table: str
     query_id: str
     has_output: bool
 
@@ -92,7 +91,6 @@ class SnowflakeAgent(AsyncAgentBase):
             database=config["database"],
             schema=config["schema"],
             warehouse=config["warehouse"],
-            table=config["table"],
             query_id=cs.sfqid,
             has_output=task_template.interface.outputs is not None and len(task_template.interface.outputs) > 0,
         )

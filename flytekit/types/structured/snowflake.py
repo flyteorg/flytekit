@@ -6,7 +6,7 @@ import snowflake.connector
 from snowflake.connector.pandas_tools import write_pandas
 
 import flytekit
-from flytekit import FlyteContext
+from flytekit import FlyteContext, logger
 from flytekit.models import literals
 from flytekit.models.types import StructuredDatasetType
 from flytekit.types.structured.structured_dataset import (
@@ -17,13 +17,19 @@ from flytekit.types.structured.structured_dataset import (
 )
 
 SNOWFLAKE = "snowflake"
+PROTOCOL_SEP = "\\/|://|:"
 
 
 def get_private_key() -> bytes:
     from cryptography.hazmat.backends import default_backend
     from cryptography.hazmat.primitives import serialization
 
-    pk_string = flytekit.current_context().secrets.get(None, "snowflake", encode_mode="r")
+    try:
+        pk_string = flytekit.current_context().secrets.get(None, "snowflake", encode_mode="r")
+    except Exception as e:
+        logger.info(f"Failed to get private key from secrets manager: {e}")
+        pk_string = flytekit.current_context().secrets.get("private_key", "snowflake", encode_mode="r")
+
     # cryptography needs str to be stripped and converted to bytes
     pk_string = pk_string.strip().encode()
     p_key = serialization.load_pem_private_key(pk_string, password=None, backend=default_backend())
@@ -42,7 +48,7 @@ def _write_to_sf(structured_dataset: StructuredDataset):
         raise ValueError("structured_dataset.uri cannot be None.")
 
     uri = structured_dataset.uri
-    _, user, account, warehouse, database, schema, table = re.split("\\/|://|:", uri)
+    _, user, account, warehouse, database, schema, table = re.split(PROTOCOL_SEP, uri)
     df = structured_dataset.dataframe
 
     conn = snowflake.connector.connect(
@@ -59,7 +65,7 @@ def _read_from_sf(
         raise ValueError("structured_dataset.uri cannot be None.")
 
     uri = flyte_value.uri
-    _, user, account, warehouse, database, schema, query_id = re.split("\\/|://|:", uri)
+    _, user, account, warehouse, database, schema, query_id = re.split(PROTOCOL_SEP, uri)
 
     conn = snowflake.connector.connect(
         user=user,
@@ -68,7 +74,6 @@ def _read_from_sf(
         database=database,
         schema=schema,
         warehouse=warehouse,
-        table="FLYTEAGENT.PUBLIC.TEST",
     )
 
     cs = conn.cursor()
