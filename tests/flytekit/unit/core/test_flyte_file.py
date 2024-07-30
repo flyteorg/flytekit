@@ -716,7 +716,7 @@ def test_pickle_flyte_file():
         scalar=Scalar(
             blob=Blob(
                 metadata=BlobMetadata(type=BlobType(format="", dimensionality=0)),
-                uri=local_file,
+                uri="s3://bucket",
             )
         )
     )
