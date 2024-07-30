@@ -4,11 +4,10 @@ import hashlib
 import logging
 import math
 import os  # TODO: use flytekit logger
-import typing
 from contextlib import contextmanager
 from typing import Any, Dict, List, Optional, Set, Union, cast
-import typing_extensions
 
+import typing_extensions
 from flyteidl.core import tasks_pb2
 
 from flytekit.configuration import SerializationSettings
