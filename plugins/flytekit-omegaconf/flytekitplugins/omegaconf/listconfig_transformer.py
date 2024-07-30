@@ -1,5 +1,4 @@
 import importlib
-import logging
 from typing import Optional, Type, TypeVar
 
 from flyteidl.core.literals_pb2 import Literal as PB_Literal
@@ -17,7 +16,6 @@ from flytekit.models.types import LiteralType, SimpleType
 from omegaconf import ListConfig, OmegaConf
 
 T = TypeVar("T")
-logger = logging.getLogger("flytekit")
 
 
 class ListConfigTransformer(TypeTransformer[ListConfig]):

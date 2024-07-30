@@ -1,5 +1,4 @@
 import importlib
-import logging
 import re
 import typing
 from typing import Type, TypeVar
@@ -15,11 +14,10 @@ import omegaconf
 from flytekit import FlyteContext
 from flytekit.core.type_engine import TypeTransformerFailedError
 from flytekit.extend import TypeEngine, TypeTransformer
+from flytekit.loggers import logger
 from flytekit.models.literals import Literal, Scalar
 from flytekit.models.types import LiteralType, SimpleType
 from omegaconf import DictConfig, OmegaConf
-
-logger = logging.getLogger("flytekit")
 
 T = TypeVar("T")
 NoneType = type(None)

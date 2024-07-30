@@ -1,13 +1,11 @@
 import dataclasses
-import logging
 import typing
 from collections import ChainMap
 
 from dataclasses_json import DataClassJsonMixin
 
+from flytekit.loggers import logger
 from omegaconf import DictConfig, ListConfig, OmegaConf
-
-logger = logging.getLogger("flytekit")
 
 NoneType = type(None)
 
