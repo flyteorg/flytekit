@@ -1,6 +1,6 @@
 from typing import Any
 
-import flytekitplugins.omegaconf  # noqa
+import flytekitplugins.omegaconf
 import pytest
 from flyteidl.core.literals_pb2 import Literal, Scalar
 from flytekitplugins.omegaconf.config import OmegaConfTransformerMode

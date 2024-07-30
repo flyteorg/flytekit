@@ -50,13 +50,17 @@ structured configs is only required during the initial serialization for this mo
 `Auto` - This mode will try to deserialize according to the Dataclass mode and fall back to the DictConfig mode if the
 dataclass definition is not available. This is the default mode.
 
-To set the mode either initialise the transformer with the `mode` argument or set the mode of the config directly:
-
+You can set the transformer mode globally or for the current context only the following ways:
 ```python
-from flytekitplugins.omegaconf import set_transformer_mode, OmegaConfTransformerMode
+from flytekitplugins.omegaconf import set_transformer_mode, set_local_transformer_mode, OmegaConfTransformerMode
 
-# Set the mode using the new function
+# Set the global transformer mode using the new function
 set_transformer_mode(OmegaConfTransformerMode.DictConfig)
+
+# You can also the mode for the current context only
+with set_local_transformer_mode(OmegaConfTransformerMode.Dataclass):
+    # This will use the Dataclass mode
+    pass
 ```
 
 ```note
