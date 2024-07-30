@@ -634,16 +634,10 @@ def get_serializable_array_node(
     options: Optional[Options] = None,
 ) -> ArrayNodeModel:
     array_node = node.flyte_entity
-    if array_node.min_successes is not None:
-        return ArrayNodeModel(
-            node=get_serializable_node(entity_mapping, settings, array_node, options=options),
-            parallelism=array_node.concurrency,
-            min_successes=array_node.min_successes,
-            execution_mode=array_node.execution_mode,
-        )
     return ArrayNodeModel(
         node=get_serializable_node(entity_mapping, settings, array_node, options=options),
         parallelism=array_node.concurrency,
+        min_successes=array_node.min_successes,
         min_success_ratio=array_node.min_success_ratio,
         execution_mode=array_node.execution_mode,
     )

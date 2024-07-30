@@ -28,7 +28,7 @@ class ArrayNode:
         execution_mode: _core_workflow.ArrayNode.ExecutionMode = _core_workflow.ArrayNode.FULL_STATE,
         concurrency: Optional[int] = None,
         min_successes: Optional[int] = None,
-        min_success_ratio: float = 1.0,
+        min_success_ratio: Optional[float] = None,
         bound_inputs: Optional[Set[str]] = None,
         metadata: Optional[Union[_workflow_model.NodeMetadata, TaskMetadata]] = None,
     ):
@@ -47,10 +47,15 @@ class ArrayNode:
         """
         self.target = target
         self._concurrency = concurrency
-        self._min_successes = min_successes
-        self._min_success_ratio = min_success_ratio
         self._execution_mode = execution_mode
         self.id = target.name
+
+        if min_successes is not None:
+            self._min_successes = min_successes
+            self._min_success_ratio = None
+        else:
+            self._min_success_ratio = min_success_ratio if min_success_ratio is not None else 1.0
+            self._min_successes = None
 
         n_outputs = len(self.target.python_interface.outputs)
         if n_outputs > 1:
@@ -188,7 +193,7 @@ class ArrayNode:
 def array_node(
     target: Union[LaunchPlan],
     concurrency: Optional[int] = None,
-    min_success_ratio: float = 1.0,
+    min_success_ratio: Optional[float] = None,
     min_successes: Optional[int] = None,
     **kwargs,
 ):
