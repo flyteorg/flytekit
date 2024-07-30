@@ -14,13 +14,9 @@ def substitute_types(t: typing.Type) -> typing.Type:
     """
     Provides a substitute type hint to use when selecting transformers for serialisation.
 
-    Args:
-        t: Original type
-
-    Returns:
-        A corrected typehint
+    :param t: Original type
+    :return: A corrected typehint
     """
-
     if hasattr(t, "__origin__"):
         # Only encode generic type and let appropriate transformer handle the rest
         if t.__origin__ in [dict, typing.Dict]:
@@ -46,15 +42,11 @@ def extract_node_type(
     """
     Provides typing information about DictConfig nodes
 
-    Args:
-        python_val: A DictConfig
-        key: Key of the node to analyze
-        mode: The mode in which to serialize type information
-
-    Returns:
-        Type - The extracted type
-        str - String representation for (de-)serialisation
-
+    :param python_val: A DictConfig
+    :param key: Key of the node to analyze
+    :return:
+        - Type - The extracted type
+        - str - String representation for (de-)serialisation
     """
     assert isinstance(python_val, DictConfig) or isinstance(
         python_val, ListConfig
