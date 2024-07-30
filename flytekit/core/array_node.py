@@ -55,7 +55,7 @@ class ArrayNode:
             self._min_success_ratio = None
         else:
             self._min_success_ratio = min_success_ratio if min_success_ratio is not None else 1.0
-            self._min_successes = None
+            self._min_successes = 0
 
         n_outputs = len(self.target.python_interface.outputs)
         if n_outputs > 1:
