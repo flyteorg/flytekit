@@ -28,7 +28,7 @@ jobs:
           if [[ ${{ github.event_name }} == "schedule" ]]; then
             echo "python_versions=[\"3.8\",\"3.9\",\"3.10\",\"3.11\",\"3.12\"]" >> $GITHUB_ENV
           else
-            echo "python_versions=[\"3.12\"]" >> $GITHUB_ENV
+            echo "python_versions=[\"3.8\", \"3.12\"]" >> $GITHUB_ENV
           fi
 
   build:
