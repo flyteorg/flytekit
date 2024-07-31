@@ -135,7 +135,7 @@ class BranchNode(_common.FlyteIdlEntity):
     def __init__(self, if_else: IfElseBlock):
         """
         BranchNode is a special node that alter the flow of the workflow graph. It allows the control flow to branch at
-        runtime based on a series of conditions that get evaluated on various parameters (e.g. inputs, primtives).
+        runtime based on a series of conditions that get evaluated on various parameters (e.g. inputs, primitives).
 
         :param IfElseBlock if_else:
         """
