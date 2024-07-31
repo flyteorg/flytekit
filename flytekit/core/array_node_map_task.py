@@ -4,10 +4,10 @@ import hashlib
 import logging
 import math
 import os  # TODO: use flytekit logger
-import typing
 from contextlib import contextmanager
 from typing import Any, Dict, List, Optional, Set, Union, cast
 
+import typing_extensions
 from flyteidl.core import tasks_pb2
 
 from flytekit.configuration import SerializationSettings
@@ -72,7 +72,7 @@ class ArrayNodeMapTask(PythonTask):
             transformer = TypeEngine.get_transformer(v)
             if isinstance(transformer, FlytePickleTransformer):
                 if is_annotated(v):
-                    for annotation in typing.get_args(v)[1:]:
+                    for annotation in typing_extensions.get_args(v)[1:]:
                         if isinstance(annotation, pickle.BatchSize):
                             raise ValueError("Choosing a BatchSize for map tasks inputs is not supported.")
 

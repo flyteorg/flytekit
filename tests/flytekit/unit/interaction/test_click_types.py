@@ -260,8 +260,8 @@ def test_dataclass_type():
     class Datum:
         x: int
         y: str
-        z: dict[int, str]
-        w: list[int]
+        z: typing.Dict[int, str]
+        w: typing.List[int]
 
     t = JsonParamType(Datum)
     value = '{ "x": 1, "y": "2", "z": { "1": "one", "2": "two" }, "w": [1, 2, 3] }'

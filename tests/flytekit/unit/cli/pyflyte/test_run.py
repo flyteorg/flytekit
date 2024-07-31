@@ -26,7 +26,7 @@ from flytekit.image_spec.image_spec import (
 )
 from flytekit.interaction.click_types import DirParamType, FileParamType
 from flytekit.remote import FlyteRemote
-from typing import Iterator
+from typing import Iterator, List
 from flytekit.types.iterator import JSON
 from flytekit import workflow
 
@@ -276,6 +276,7 @@ def test_union_type_with_invalid_input():
     assert result.exit_code == 2
 
 
+@pytest.mark.skipif(sys.version_info < (3, 9), reason="listing entities requires python>=3.9")
 @pytest.mark.parametrize(
     "workflow_file",
     [
@@ -521,11 +522,11 @@ def test_pyflyte_run_with_iterator_json_type(
         return t1(x=x)
 
     @task
-    def t2(x: list[int]) -> list[int]:
+    def t2(x: List[int]) -> List[int]:
         return x
 
     @workflow
-    def tk_list(x: list[int] = [1, 2, 3]) -> list[int]:
+    def tk_list(x: List[int] = [1, 2, 3]) -> List[int]:
         return t2(x=x)
 
     @task

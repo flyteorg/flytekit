@@ -5,7 +5,8 @@ import os
 import sys
 import tempfile
 from dataclasses import dataclass
-from typing import Annotated, List, Dict, Optional
+from typing import List, Dict, Optional
+from typing_extensions import Annotated
 from flytekit.types.schema import FlyteSchema
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.context_manager import FlyteContextManager
