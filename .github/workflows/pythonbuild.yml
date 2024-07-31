@@ -69,11 +69,13 @@ jobs:
           make setup-global-uv
           uv pip uninstall --system pandas pyarrow
           uv pip freeze
-      - name: Build wheels - x86_64
-        uses: PyO3/maturin-action@v1
+      - name: Prepare to Build wheels - x86_64
         working-directory: ${{ github.workspace }}/flyte
         run: |
           chmod +x ./scripts/add_pyo3_subclass.sh && ./scripts/add_pyo3_subclass.sh
+      - name: Build wheels - x86_64
+        uses: PyO3/maturin-action@v1
+        working-directory: ${{ github.workspace }}/flyte
         with:
           target: x86_64
           command: build
