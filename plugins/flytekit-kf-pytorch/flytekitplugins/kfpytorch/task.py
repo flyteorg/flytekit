@@ -15,7 +15,7 @@ from google.protobuf.json_format import MessageToDict
 import flytekit
 from flytekit import PythonFunctionTask, Resources, lazy_module
 from flytekit.configuration import SerializationSettings
-from flytekit.core.context_manager import FlyteContextManager, OutputMetadata
+from flytekit.core.context_manager import OutputMetadata
 from flytekit.core.pod_template import PodTemplate
 from flytekit.core.resources import convert_resources_to_resource_model
 from flytekit.exceptions.user import FlyteRecoverableException
