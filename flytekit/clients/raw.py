@@ -48,7 +48,7 @@ class RawSynchronousFlyteClient(object):
         # Set the value here to match the limit in Admin, otherwise the client will cut off and the user gets a
         # StreamRemoved exception.
         # https://github.com/flyteorg/flyte/blob/e8588f3a04995a420559327e78c3f95fbf64dc01/flyteadmin/pkg/common/constants.go#L14
-        options = (("grpc.max_metadata_size", 32000),)
+        options = (("grpc.max_metadata_size", 32000), ("grpc.max_receive_message_length", 22000000))
         self._cfg = cfg
         self._channel = wrap_exceptions_channel(
             cfg,
