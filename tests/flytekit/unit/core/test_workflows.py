@@ -246,6 +246,29 @@ def test_unexpected_outputs():
         one_output_wf()
 
 
+def test_custom_wrapper():
+    def our_task(
+            _task_function: typing.Optional[typing.Callable] = None,
+            **kwargs,
+    ):
+        def wrapped(_func: typing.Callable):
+            return task(_task_function=_func)
+
+        if _task_function:
+            return wrapped(_task_function)
+        else:
+            return wrapped
+
+    @our_task(
+        foo={
+            "bar1": lambda x: print(x),
+            "bar2": lambda x: print(x),
+        },
+    )
+    def missing_func_body() -> str:
+        return "foo"
+
+
 def test_wf_no_output():
     @task
     def t1(a: int) -> int:
