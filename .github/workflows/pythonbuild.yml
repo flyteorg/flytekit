@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - master
+      - austin362667/flyrs-v2
   workflow_dispatch:
   pull_request:
   schedule:
