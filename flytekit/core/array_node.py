@@ -189,13 +189,15 @@ class ArrayNode:
     def execution_mode(self) -> _core_workflow.ArrayNode.ExecutionMode:
         return self._execution_mode
 
+    def __call__(self, *args, **kwargs):
+        return flyte_entity_call_handler(self, *args, **kwargs)
+
 
 def array_node(
     target: Union[LaunchPlan],
     concurrency: Optional[int] = None,
     min_success_ratio: Optional[float] = None,
     min_successes: Optional[int] = None,
-    **kwargs,
 ):
     """
     ArrayNode implementation that maps over tasks and other Flyte entities
@@ -221,8 +223,4 @@ def array_node(
         min_success_ratio=min_success_ratio,
     )
 
-    def callable_entity(**inner_kwargs):
-        combined_kwargs = {**kwargs, **inner_kwargs}
-        return flyte_entity_call_handler(node, **combined_kwargs)
-
-    return callable_entity
+    return node
