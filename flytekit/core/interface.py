@@ -386,8 +386,8 @@ def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Doc
         ctx.execution_state
         # Only check if the task/workflow has a return statement at compile time locally.
         and ctx.execution_state.mode is None
-        # inspec module does not work correctly with Python <3.10. https://github.com/flyteorg/flyte/issues/5608
-        and sys.version_info >= (3, 10)
+        # inspect module does not work correctly with Python <3.10.10. https://github.com/flyteorg/flyte/issues/5608
+        and sys.version_info >= (3, 10, 10)
         and return_annotation
         and type(None) not in get_args(return_annotation)
         and return_annotation is not type(None)
