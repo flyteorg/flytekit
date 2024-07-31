@@ -140,6 +140,3 @@ extend-exclude = ["tests/", "**/tests/**"]
     "F401",
 ]
 
-[tool.codespell]
-ignore-words-list = "ot,te,raison,fo,lits"
-skip = "./docs/build,./.git,*.txt"

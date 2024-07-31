@@ -50,8 +50,8 @@ lint: ## Run linters
 
 .PHONY: spellcheck
 spellcheck:  ## Runs a spellchecker over all code and documentation
-	# Configuration is in pyproject.toml
-	codespell
+	# This pressuposes that you have act installed
+	act pull_request -W .github/workflows/codespell.yml
 
 .PHONY: test
 test: lint unit_test
