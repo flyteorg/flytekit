@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - master
+  workflow_dispatch:
   pull_request:
   schedule:
     - cron: "0 13 * * *" # This schedule runs at 1pm UTC every day
@@ -55,12 +56,32 @@ jobs:
           path: ~/.cache/pip
           # Look to see if there is a cache hit for the corresponding requirements files
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
+      - name: Fetch flyte code
+        uses: actions/checkout@v4
+        with:
+          repository: austin362667/flyte
+          fetch-depth: 0  # Fetch all history for submodules
+          ref: flyrs
+          path: "${{ github.workspace }}/flyte"
       - name: Install dependencies
         run: |
           pip install uv
           make setup-global-uv
           uv pip uninstall --system pandas pyarrow
           uv pip freeze
+      - name: Build wheels - x86_64
+        uses: PyO3/maturin-action@v1
+        working-directory: ${{ github.workspace }}/flyte
+        run: |
+          chmod +x ./scripts/add_pyo3_subclass.sh && ./scripts/add_pyo3_subclass.sh
+        with:
+          target: x86_64
+          command: build
+          args: --release --out dist --sdist -m flyteidl/Cargo.toml
+      - name: Install built wheel - x86_64
+        run: |
+          uv pip install --system flyteidl-rust --no-index --find-links dist --force-reinstall
+          python -c "import flyteidl_rust"
       - name: Test with coverage
         run: |
           make unit_test_codecov
