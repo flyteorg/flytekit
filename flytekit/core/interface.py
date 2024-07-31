@@ -3,6 +3,7 @@ from __future__ import annotations
 import collections
 import copy
 import inspect
+import sys
 import typing
 from collections import OrderedDict
 from typing import Any, Dict, Generator, List, Optional, Tuple, Type, TypeVar, Union, cast
@@ -381,10 +382,12 @@ def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Doc
     return_annotation = type_hints.get("return", None)
 
     ctx = FlyteContextManager.current_context()
-    # Only check if the task/workflow has a return statement at compile time locally.
     if (
         ctx.execution_state
+        # Only check if the task/workflow has a return statement at compile time locally.
         and ctx.execution_state.mode is None
+        # inspect module does not work correctly with Python <3.10.10. https://github.com/flyteorg/flyte/issues/5608
+        and sys.version_info >= (3, 10, 10)
         and return_annotation
         and type(None) not in get_args(return_annotation)
         and return_annotation is not type(None)
