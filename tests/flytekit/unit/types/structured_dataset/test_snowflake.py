@@ -5,14 +5,10 @@ import sys
 
 from flytekit import StructuredDataset, kwtypes, task, workflow
 
-
-
-
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 @mock.patch("flytekit.types.structured.snowflake.get_private_key", return_value="pb")
 @mock.patch("snowflake.connector.connect")
-@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
-@pytest.mark.asyncio
-async def test_sf_wf(mock_connect, mock_get_private_key):
+def test_sf_wf(mock_connect, mock_get_private_key):
     import pandas as pd
     pd_df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
     my_cols = kwtypes(Name=str, Age=int)
@@ -25,7 +21,7 @@ async def test_sf_wf(mock_connect, mock_get_private_key):
     def t1(df: pd.DataFrame) -> Annotated[StructuredDataset, my_cols]:
         return StructuredDataset(
             dataframe=df,
-            uri="snowflake://dummy_user:dummy_account/dummy_warehouse/dummy_database/dummy_schema/dummy_table"
+            uri="snowflake://dummy_user/dummy_account/COMPUTE_WH/FLYTEAGENT/PUBLIC/TEST"
         )
 
     @task
