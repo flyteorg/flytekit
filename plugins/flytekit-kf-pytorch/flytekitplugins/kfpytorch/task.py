@@ -15,7 +15,7 @@ from google.protobuf.json_format import MessageToDict
 import flytekit
 from flytekit import PythonFunctionTask, Resources, lazy_module
 from flytekit.configuration import SerializationSettings
-from flytekit.core.context_manager import FlyteContextManager, OutputMetadata
+from flytekit.core.context_manager import OutputMetadata
 from flytekit.core.pod_template import PodTemplate
 from flytekit.core.resources import convert_resources_to_resource_model
 from flytekit.exceptions.user import FlyteRecoverableException
@@ -465,7 +465,7 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
         # Rank 0 returns the result of the task function
         if 0 in out:
             # For rank 0, we transfer the decks created in the worker process to the parent process
-            ctx = FlyteContextManager.current_context()
+            ctx = flytekit.current_context()
             for deck in out[0].decks:
                 if not isinstance(deck, flytekit.deck.deck.TimeLineDeck):
                     ctx.decks.append(deck)
