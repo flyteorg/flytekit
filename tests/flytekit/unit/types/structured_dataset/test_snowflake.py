@@ -1,10 +1,10 @@
 import mock
-import pandas as pd
 import pytest
 from typing_extensions import Annotated
+import sys
 
 from flytekit import StructuredDataset, kwtypes, task, workflow
-import sys
+
 
 
 
@@ -13,6 +13,7 @@ import sys
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 @pytest.mark.asyncio
 async def test_sf_wf(mock_connect, mock_get_private_key):
+    import pandas as pd
     pd_df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
     my_cols = kwtypes(Name=str, Age=int)
 
