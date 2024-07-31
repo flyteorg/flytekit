@@ -136,16 +136,14 @@ def test_write_known_location():
         assert f.read() == arbitrary_text.encode("utf-8")
 
 
-def test_get_new_path():
+def test_generate_new_custom_path():
     """
     Test that a new path given alternate bucket and name is generated correctly
     """
     random_dir = tempfile.mkdtemp()
     fs = FileAccessProvider(local_sandbox_dir=random_dir, raw_output_prefix="s3://my-default-bucket/my-default-prefix/")
-    np = fs.get_new_path(alt="foo-bucket", stem="bar.txt")
-    assert "s3://foo-bucket" in np
-    assert "default-bucket" not in np
-    assert np.endswith("bar.txt")
+    np = fs.generate_new_custom_path(alt="foo-bucket", stem="bar.txt")
+    assert np == "s3://foo-bucket/my-default-prefix/bar.txt"
 
 
 def test_initialise_azure_file_provider_with_account_key():

@@ -187,7 +187,7 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
         :param alt: If you want to specify a different prefix head than the default one, you can specify it here.
         """
         ctx = FlyteContextManager.current_context()
-        remote_path = ctx.file_access.get_new_path(alt=alt, stem=name)
+        remote_path = ctx.file_access.generate_new_custom_path(alt=alt, stem=name)
         return cls(path=remote_path)
 
     @classmethod
