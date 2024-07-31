@@ -273,6 +273,24 @@ class TimePartition(object):
         self.reference_artifact: Optional[Artifact] = None
         self.granularity = granularity
 
+    def __rich_repr__(self):
+        if self.value:
+            if isinstance(self.value, art_id.LabelValue):
+                if self.value.HasField("time_value"):
+                    yield "Time Partition", str(self.value.time_value.ToDatetime())
+                elif self.value.HasField("input_binding"):
+                    yield "Time Partition (bound to)", self.value.input_binding.var
+                else:
+                    yield "Time Partition", "unspecified"
+        else:
+            yield "Time Partition", "unspecified"
+
+    def _repr_html_(self):
+        """
+        Jupyter notebook rendering.
+        """
+        return "".join([str(x) for x in self.__rich_repr__()])
+
     def __add__(self, other: timedelta) -> TimePartition:
         tp = TimePartition(self.value, op=Op.PLUS, other=other, granularity=self.granularity)
         tp.reference_artifact = self.reference_artifact
@@ -293,6 +311,15 @@ class Partition(object):
         self.value = value
         self.reference_artifact: Optional[Artifact] = None
 
+    def __rich_repr__(self):
+        yield self.name, self.value
+
+    def _repr_html_(self):
+        """
+        Jupyter notebook rendering.
+        """
+        return "".join([f"{x[0]}: {x[1]}" for x in self.__rich_repr__()])
+
 
 class Partitions(object):
     def __init__(self, partitions: Optional[typing.Mapping[str, Union[str, art_id.InputBindingData, Partition]]]):
@@ -306,6 +333,19 @@ class Partitions(object):
                 else:
                     self._partitions[k] = Partition(art_id.LabelValue(static_value=v), name=k)
         self.reference_artifact: Optional[Artifact] = None
+
+    def __rich_repr__(self):
+        if self.partitions:
+            ps = [str(next(v.__rich_repr__())) for k, v in self.partitions.items()]
+            yield "Partitions", ", ".join(ps)
+        else:
+            yield ""
+
+    def _repr_html_(self):
+        """
+        Jupyter notebook rendering.
+        """
+        return ", ".join([str(x) for x in self.__rich_repr__()])
 
     @property
     def partitions(self) -> Optional[typing.Dict[str, Partition]]:
@@ -562,7 +602,8 @@ class Artifact(object):
         op: Optional[Op] = None,
     ) -> art_id.ArtifactQuery:
         """
-        This should only be called in the context of a Trigger
+        This should only be called in the context of a Trigger. The type of query this returns is different from the
+        query() function. This type of query is used to reference the triggering artifact, rather than running a query.
         :param partition: Can embed a time partition
         :param bind_to_time_partition: Set to true if you want to bind to a time partition
         :param expr: Only valid if there's a time partition.
