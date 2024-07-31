@@ -1,0 +1,15 @@
+artifact_uri: file:///Users/future-outlier/code/dev/flytekit/plugins/flytekit-mlflow/tests/mlruns/939648731100355921/7d0c7b5175bc4e2f87ceb2f9c7b11a3c/artifacts
+end_time: 1722400575202
+entry_point_name: ''
+experiment_id: '939648731100355921'
+lifecycle_stage: active
+run_id: 7d0c7b5175bc4e2f87ceb2f9c7b11a3c
+run_name: handsome-shoat-681
+run_uuid: 7d0c7b5175bc4e2f87ceb2f9c7b11a3c
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1722400570407
+status: 3
+tags: []
+user_id: future-outlier

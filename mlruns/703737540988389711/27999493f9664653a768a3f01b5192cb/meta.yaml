@@ -1,0 +1,15 @@
+artifact_uri: file:///Users/future-outlier/code/dev/flytekit/mlruns/703737540988389711/27999493f9664653a768a3f01b5192cb/artifacts
+end_time: 1722400659418
+entry_point_name: ''
+experiment_id: '703737540988389711'
+lifecycle_stage: active
+run_id: 27999493f9664653a768a3f01b5192cb
+run_name: clean-cow-25
+run_uuid: 27999493f9664653a768a3f01b5192cb
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1722400654536
+status: 3
+tags: []
+user_id: future-outlier

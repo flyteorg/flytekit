@@ -1,0 +1,15 @@
+artifact_uri: file:///Users/future-outlier/code/dev/flytekit/plugins/flytekit-mlflow/tests/mlruns/939648731100355921/8e5d56b8734944a5bf7118ccae44660d/artifacts
+end_time: 1722399995772
+entry_point_name: ''
+experiment_id: '939648731100355921'
+lifecycle_stage: active
+run_id: 8e5d56b8734944a5bf7118ccae44660d
+run_name: redolent-moose-540
+run_uuid: 8e5d56b8734944a5bf7118ccae44660d
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1722399987923
+status: 3
+tags: []
+user_id: future-outlier

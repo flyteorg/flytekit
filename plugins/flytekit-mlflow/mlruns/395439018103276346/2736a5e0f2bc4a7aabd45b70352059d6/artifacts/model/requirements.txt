@@ -1,0 +1,5 @@
+mlflow==2.15.0
+cloudpickle==3.0.0
+numpy==1.24.3
+tensorflow-macos==2.15.0
+tensorflow==2.15.1

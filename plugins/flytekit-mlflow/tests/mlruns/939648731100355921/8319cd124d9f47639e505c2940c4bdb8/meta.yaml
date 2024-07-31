@@ -1,0 +1,15 @@
+artifact_uri: file:///Users/future-outlier/code/dev/flytekit/plugins/flytekit-mlflow/tests/mlruns/939648731100355921/8319cd124d9f47639e505c2940c4bdb8/artifacts
+end_time: 1722402051754
+entry_point_name: ''
+experiment_id: '939648731100355921'
+lifecycle_stage: active
+run_id: 8319cd124d9f47639e505c2940c4bdb8
+run_name: bright-dog-822
+run_uuid: 8319cd124d9f47639e505c2940c4bdb8
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1722402046767
+status: 3
+tags: []
+user_id: future-outlier
