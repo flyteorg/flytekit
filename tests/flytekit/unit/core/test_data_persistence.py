@@ -141,7 +141,10 @@ def test_generate_new_custom_path():
     Test that a new path given alternate bucket and name is generated correctly
     """
     random_dir = tempfile.mkdtemp()
-    fs = FileAccessProvider(local_sandbox_dir=random_dir, raw_output_prefix="s3://my-default-bucket/my-default-prefix/")
+    fs = FileAccessProvider(
+        local_sandbox_dir=random_dir,
+        raw_output_prefix="s3://my-default-bucket/my-default-prefix/"
+        )
     np = fs.generate_new_custom_path(alt="foo-bucket", stem="bar.txt")
     assert np == "s3://foo-bucket/my-default-prefix/bar.txt"
 

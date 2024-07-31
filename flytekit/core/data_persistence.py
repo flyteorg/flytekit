@@ -461,12 +461,14 @@ class FileAccessProvider(object):
         stem: typing.Optional[str] = None,
     ) -> str:
         """
-        Generates a new path with the raw output prefix and a random string appended to it. Optionally, you can provide
-        an alternate prefix and a stem. If stem is provided, it will be appended to the path instead of a random string. If alt is provided, it
-        will replace the first part of the output prefix, e.g. the S3 or GCS bucket.
+        Generates a new path with the raw output prefix and a random string appended to it.
+        Optionally, you can provide an alternate prefix and a stem. If stem is provided, it
+        will be appended to the path instead of a random string. If alt is provided, it will
+        replace the first part of the output prefix, e.g. the S3 or GCS bucket.
 
-        If wanting to write to a non-random prefix in a non-default S3 bucket, this can be called with
-        alt="my-alt-bucket" and stem="my-stem" to generate a path like s3://my-alt-bucket/default-prefix-part/my-stem
+        If wanting to write to a non-random prefix in a non-default S3 bucket, this can be
+        called with alt="my-alt-bucket" and stem="my-stem" to generate a path like
+        s3://my-alt-bucket/default-prefix-part/my-stem
 
         :param fs: The filesystem to use. If None, the context's raw output filesystem is used.
         :param alt: An alternate first member of the prefix to use instead of the default.
