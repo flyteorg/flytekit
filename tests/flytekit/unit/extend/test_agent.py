@@ -22,11 +22,20 @@ from flyteidl.core.identifier_pb2 import ResourceType
 
 from flytekit import PythonFunctionTask, task
 from flytekit.clis.sdk_in_container.serve import print_agents_metadata
-from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SerializationSettings
+from flytekit.configuration import (
+    FastSerializationSettings,
+    Image,
+    ImageConfig,
+    SerializationSettings,
+)
 from flytekit.core.base_task import PythonTask, kwtypes
 from flytekit.core.interface import Interface
 from flytekit.exceptions.system import FlyteAgentNotFound
-from flytekit.extend.backend.agent_service import AgentMetadataService, AsyncAgentService, SyncAgentService
+from flytekit.extend.backend.agent_service import (
+    AgentMetadataService,
+    AsyncAgentService,
+    SyncAgentService,
+)
 from flytekit.extend.backend.base_agent import (
     AgentRegistry,
     AsyncAgentBase,
@@ -71,7 +80,11 @@ class DummyAgent(AsyncAgentBase):
         return DummyMetadata(job_id=dummy_id)
 
     def get(self, resource_meta: DummyMetadata, **kwargs) -> Resource:
-        return Resource(phase=TaskExecution.SUCCEEDED, log_links=[TaskLog(name="console", uri="localhost:3000")])
+        return Resource(
+            phase=TaskExecution.SUCCEEDED,
+            log_links=[TaskLog(name="console", uri="localhost:3000")],
+            custom_info={"custom": "info", "num": 1},
+        )
 
     def delete(self, resource_meta: DummyMetadata, **kwargs):
         ...
@@ -96,7 +109,11 @@ class AsyncDummyAgent(AsyncAgentBase):
         return DummyMetadata(job_id=dummy_id, output_path=output_path, task_name=task_name)
 
     async def get(self, resource_meta: DummyMetadata, **kwargs) -> Resource:
-        return Resource(phase=TaskExecution.SUCCEEDED, log_links=[TaskLog(name="console", uri="localhost:3000")])
+        return Resource(
+            phase=TaskExecution.SUCCEEDED,
+            log_links=[TaskLog(name="console", uri="localhost:3000")],
+            custom_info={"custom": "info", "num": 1},
+        )
 
     async def delete(self, resource_meta: DummyMetadata, **kwargs):
         ...
@@ -108,7 +125,12 @@ class MockOpenAIAgent(SyncAgentBase):
     def __init__(self):
         super().__init__(task_type_name="openai")
 
-    def do(self, task_template: TaskTemplate, inputs: typing.Optional[LiteralMap] = None, **kwargs) -> Resource:
+    def do(
+        self,
+        task_template: TaskTemplate,
+        inputs: typing.Optional[LiteralMap] = None,
+        **kwargs,
+    ) -> Resource:
         assert inputs.literals["a"].scalar.primitive.integer == 1
         return Resource(phase=TaskExecution.SUCCEEDED, outputs={"o0": 1})
 
@@ -174,6 +196,8 @@ def test_dummy_agent():
     assert resource.phase == TaskExecution.SUCCEEDED
     assert resource.log_links[0].name == "console"
     assert resource.log_links[0].uri == "localhost:3000"
+    assert resource.custom_info["custom"] == "info"
+    assert resource.custom_info["num"] == 1
     assert agent.delete(metadata) is None
 
     class DummyTask(AsyncAgentExecutorMixin, PythonFunctionTask):
@@ -189,7 +213,9 @@ def test_dummy_agent():
 
 
 @pytest.mark.parametrize(
-    "agent,consume_metadata", [(DummyAgent(), False), (AsyncDummyAgent(), True)], ids=["sync", "async"]
+    "agent,consume_metadata",
+    [(DummyAgent(), False), (AsyncDummyAgent(), True)],
+    ids=["sync", "async"],
 )
 @pytest.mark.asyncio
 async def test_async_agent_service(agent, consume_metadata):
@@ -222,7 +248,10 @@ async def test_async_agent_service(agent, consume_metadata):
     assert res.resource_meta == metadata_bytes
     res = await service.GetTask(GetTaskRequest(task_category=task_category, resource_meta=metadata_bytes), ctx)
     assert res.resource.phase == TaskExecution.SUCCEEDED
-    res = await service.DeleteTask(DeleteTaskRequest(task_category=task_category, resource_meta=metadata_bytes), ctx)
+    res = await service.DeleteTask(
+        DeleteTaskRequest(task_category=task_category, resource_meta=metadata_bytes),
+        ctx,
+    )
     assert res is None
 
     agent_metadata = AgentRegistry.get_agent_metadata(agent.name)
@@ -269,7 +298,9 @@ def test_openai_agent():
     class OpenAITask(SyncAgentExecutorMixin, PythonTask):
         def __init__(self, **kwargs):
             super().__init__(
-                task_type="openai", interface=Interface(inputs=kwtypes(a=int), outputs=kwtypes(o0=int)), **kwargs
+                task_type="openai",
+                interface=Interface(inputs=kwtypes(a=int), outputs=kwtypes(o0=int)),
+                **kwargs,
             )
 
     t = OpenAITask(task_config={}, name="openai task")
@@ -393,10 +424,14 @@ def test_render_task_template():
 @pytest.fixture
 def sample_agents():
     async_agent = Agent(
-        name="Sensor", is_sync=False, supported_task_categories=[TaskCategory(name="sensor", version=0)]
+        name="Sensor",
+        is_sync=False,
+        supported_task_categories=[TaskCategory(name="sensor", version=0)],
     )
     sync_agent = Agent(
-        name="ChatGPT Agent", is_sync=True, supported_task_categories=[TaskCategory(name="chatgpt", version=0)]
+        name="ChatGPT Agent",
+        is_sync=True,
+        supported_task_categories=[TaskCategory(name="chatgpt", version=0)],
     )
     return [async_agent, sync_agent]
 
@@ -408,7 +443,51 @@ def test_print_agents_metadata_output(list_agents_mock, mock_secho, sample_agent
     print_agents_metadata()
     expected_calls = [
         (("Starting Sensor that supports task categories ['sensor']",), {"fg": "blue"}),
-        (("Starting ChatGPT Agent that supports task categories ['chatgpt']",), {"fg": "blue"}),
+        (
+            ("Starting ChatGPT Agent that supports task categories ['chatgpt']",),
+            {"fg": "blue"},
+        ),
     ]
     mock_secho.assert_has_calls(expected_calls, any_order=True)
     assert mock_secho.call_count == len(expected_calls)
+
+
+def test_resource_type():
+    o = Resource(
+        phase=TaskExecution.SUCCEEDED,
+    )
+    v = o.to_flyte_idl()
+    assert v
+    assert v.phase == TaskExecution.SUCCEEDED
+    assert len(v.log_links) == 0
+    assert v.message == ""
+    assert len(v.outputs.literals) == 0
+    assert len(v.custom_info) == 0
+
+    o2 = Resource.from_flyte_idl(v)
+    assert o2
+
+    o = Resource(
+        phase=TaskExecution.SUCCEEDED,
+        log_links=[TaskLog(name="console", uri="localhost:3000")],
+        message="foo",
+        outputs={"o0": 1},
+        custom_info={"custom": "info", "num": 1},
+    )
+    v = o.to_flyte_idl()
+    assert v
+    assert v.phase == TaskExecution.SUCCEEDED
+    assert v.log_links[0].name == "console"
+    assert v.log_links[0].uri == "localhost:3000"
+    assert v.message == "foo"
+    assert v.outputs.literals["o0"].scalar.primitive.integer == 1
+    assert v.custom_info["custom"] == "info"
+    assert v.custom_info["num"] == 1
+
+    o2 = Resource.from_flyte_idl(v)
+    assert o2.phase == o.phase
+    assert o2.log_links == o.log_links
+    assert o2.message == o.message
+    # round-tripping creates a literal map out of outputs
+    assert o2.outputs.literals["o0"].scalar.primitive.integer == 1
+    assert o2.custom_info == o.custom_info
