@@ -987,7 +987,7 @@ class SynchronousFlyteClient(flyteidl.RawSynchronousFlyteClient):
         expires_in: typing.Optional[datetime.timedelta] = None,
         filename_root: typing.Optional[str] = None,
         add_content_md5_metadata: bool = True,
-    ) -> _data_proxy_pb2.CreateUploadLocationResponse:
+    ) -> flyteidl.service.CreateUploadLocationResponse:
         """
         Get a signed url to be used during fast registration
 
