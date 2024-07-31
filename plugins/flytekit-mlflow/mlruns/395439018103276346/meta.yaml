@@ -1,6 +1,0 @@
-artifact_location: file:///Users/future-outlier/code/dev/flytekit/plugins/flytekit-mlflow/mlruns/395439018103276346
-creation_time: 1722403788848
-experiment_id: '395439018103276346'
-last_update_time: 1722403788848
-lifecycle_stage: active
-name: local workflow
