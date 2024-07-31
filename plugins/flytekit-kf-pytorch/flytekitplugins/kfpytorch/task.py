@@ -429,13 +429,17 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
                 """Closure of the task function with kwargs already bound."""
                 try:
                     return_val = self._task_function(**kwargs)
+                    omt = ctx.output_metadata_tracker
+                    om = None
+                    if omt:
+                        om = omt.get(return_val)
                 except Exception as e:
                     # See explanation in `create_recoverable_error_file` why we check
                     # for recoverable errors here in the worker processes.
                     if isinstance(e, FlyteRecoverableException):
                         create_recoverable_error_file()
                     raise
-                return ElasticWorkerResult(return_value=return_val, decks=flytekit.current_context().decks, om=None)
+                return ElasticWorkerResult(return_value=return_val, decks=flytekit.current_context().decks, om=om)
 
             launcher_target_func = fn_partial
             launcher_args = ()
