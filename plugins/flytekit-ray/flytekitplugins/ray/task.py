@@ -46,7 +46,6 @@ class RayJobConfig:
     address: typing.Optional[str] = None
     shutdown_after_job_finishes: bool = False
     ttl_seconds_after_finished: typing.Optional[int] = None
-    excludes_working_dir: typing.Optional[typing.List[str]] = None
 
 
 class RayFunctionTask(PythonFunctionTask):
@@ -75,10 +74,6 @@ class RayFunctionTask(PythonFunctionTask):
                 "working_dir": working_dir,
                 "excludes": ["script_mode.tar.gz", "fast*.tar.gz"],
             }
-
-            cfg = self._task_config
-            if cfg.excludes_working_dir:
-                init_params["runtime_env"]["excludes"].extend(cfg.excludes_working_dir)
 
         ray.init(**init_params)
         return user_params
