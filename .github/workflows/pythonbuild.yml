@@ -40,7 +40,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [macos-latest]
         python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
     steps:
       - uses: actions/checkout@v4
@@ -70,17 +70,18 @@ jobs:
           make setup-global-uv
           uv pip uninstall --system pandas pyarrow
           uv pip freeze
-      - name: Prepare to Build wheels - x86_64
-        working-directory: ${{ github.workspace }}/flyte
+      - name: Prepare to Build wheels
+        working-directory: ${{ github.workspace }}/flyte/flyteidl
         run: |
           chmod +x ./scripts/add_pyo3_subclass.sh && ./scripts/add_pyo3_subclass.sh
-      - name: Build wheels - x86_64
+      - name: Build wheels - universal2
         uses: PyO3/maturin-action@v1
         with:
-          target: x86_64
+          if: matrix.os == 'macos-latest'
+          target: universal2-apple-darwin
           command: build
           args: --release --out dist --sdist -m flyte/flyteidl/Cargo.toml
-      - name: Install built wheel - x86_64
+      - name: Install built wheel
         run: |
           uv pip install --system flyteidl-rust --no-index --find-links dist --force-reinstall
           python -c "import flyteidl_rust"
