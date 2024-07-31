@@ -251,7 +251,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: 'Clear action cache'
-        uses: ./.github/actions/clear-action-cache
+        uses: ./.github/actions/clear-action-cache  # sandbox has disk pressure, so we need to clear the cache to get more disk space.
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
