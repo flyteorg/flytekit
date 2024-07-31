@@ -4,7 +4,6 @@ import base64
 import hashlib
 import http.server as _BaseHTTPServer
 import logging
-import multiprocessing
 import os
 import re
 import typing
@@ -12,9 +11,8 @@ import urllib.parse as _urlparse
 import webbrowser
 from dataclasses import dataclass
 from http import HTTPStatus as _StatusCodes
-from multiprocessing import get_context
-from urllib.parse import urlencode as _urlencode
 from queue import Queue
+from urllib.parse import urlencode as _urlencode
 
 import click
 import requests
