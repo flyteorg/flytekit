@@ -12,9 +12,11 @@ from flyteidl.core import tasks_pb2
 
 from flytekit.configuration import SerializationSettings
 from flytekit.core import tracker
+from flytekit.core.array_node import array_node
 from flytekit.core.base_task import PythonTask, TaskResolverMixin
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.interface import transform_interface_to_list_interface
+from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanceTask
 from flytekit.core.type_engine import TypeEngine, is_annotated
 from flytekit.core.utils import timeit
@@ -347,6 +349,41 @@ class ArrayNodeMapTask(PythonTask):
 
 
 def map_task(
+    target: Union[LaunchPlan, PythonFunctionTask],
+    concurrency: Optional[int] = None,
+    min_successes: Optional[int] = None,
+    min_success_ratio: float = 1.0,
+    **kwargs,
+):
+    """
+    Wrapper that creates a map task utilizing either the existing ArrayNodeMapTask
+    or the drop in replacement ArrayNode implementation
+
+    :param target: The Flyte entity of which will be mapped over
+    :param concurrency: If specified, this limits the number of mapped tasks than can run in parallel to the given batch
+        size. If the size of the input exceeds the concurrency value, then multiple batches will be run serially until
+        all inputs are processed. If set to 0, this means unbounded concurrency. If left unspecified, this means the
+        array node will inherit parallelism from the workflow
+    :param min_successes: The minimum number of successful executions
+    :param min_success_ratio: The minimum ratio of successful executions
+    """
+    if isinstance(target, LaunchPlan):
+        return array_node(
+            target=target,
+            concurrency=concurrency,
+            min_successes=min_successes,
+            min_success_ratio=min_success_ratio,
+        )
+    return array_node_map_task(
+        task_function=target,
+        concurrency=concurrency,
+        min_successes=min_successes,
+        min_success_ratio=min_success_ratio,
+        **kwargs,
+    )
+
+
+def array_node_map_task(
     task_function: PythonFunctionTask,
     concurrency: Optional[int] = None,
     # TODO why no min_successes?
