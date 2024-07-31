@@ -415,7 +415,7 @@ jobs:
           # This path is specific to Ubuntu
           path: ~/.cache/pip
           # Look to see if there is a cache hit for the corresponding requirements files
-          key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.txt', format('plugins/{0}/requirements.txt', matrix.plugin-names ))) }}
+          key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', format('plugins/{0}/requirements.txt', matrix.plugin-names ))) }}
       - name: Install dependencies
         run: |
           pip install uv
