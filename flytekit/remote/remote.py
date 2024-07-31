@@ -667,6 +667,7 @@ class FlyteRemote(object):
                 workflow_model.WorkflowNode,
                 workflow_model.BranchNode,
                 workflow_model.TaskNode,
+                workflow_model.ArrayNode,
             ),
         ):
             return None

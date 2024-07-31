@@ -1,10 +1,10 @@
 from setuptools import setup
 
-PLUGIN_NAME = "kfpytorch"
+PLUGIN_NAME = "inference"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["cloudpickle", "flyteidl>=1.5.1", "flytekit>=1.6.1", "kubernetes"]
+plugin_requires = ["flytekit>=1.13.0,<2.0.0", "kubernetes", "openai"]
 
 __version__ = "0.0.0+develop"
 
@@ -13,13 +13,10 @@ setup(
     version=__version__,
     author="flyteorg",
     author_email="admin@flyte.org",
-    description="K8s based Pytorch plugin for Flytekit",
+    description="This package enables seamless use of model inference sidecar services within Flyte",
     namespace_packages=["flytekitplugins"],
-    packages=[f"flytekitplugins.{PLUGIN_NAME}"],
+    packages=[f"flytekitplugins.{PLUGIN_NAME}", f"flytekitplugins.{PLUGIN_NAME}.nim"],
     install_requires=plugin_requires,
-    extras_require={
-        "elastic": ["torch>=1.9.0"],
-    },
     license="apache2",
     python_requires=">=3.8",
     classifiers=[
@@ -29,10 +26,13 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
         "Topic :: Scientific/Engineering",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Software Development",
         "Topic :: Software Development :: Libraries",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
+    entry_points={"flytekit.plugins": [f"{PLUGIN_NAME}=flytekitplugins.{PLUGIN_NAME}"]},
 )

@@ -2,10 +2,11 @@ import pytest
 from dataclasses_json import DataClassJsonMixin
 from mashumaro.mixins.json import DataClassJSONMixin
 import os
+import sys
 import tempfile
 from dataclasses import dataclass
 from typing import Annotated, List, Dict, Optional
-
+from flytekit.types.schema import FlyteSchema
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.type_engine import DataclassTransformer
@@ -857,3 +858,58 @@ def test_mashumaro_dataclasses_json_mixin_with_flyte_types_get_literal_type_and_
     pv = TypeEngine.to_python_value(ctx, lv, NestedFlyteTypes)
     assert isinstance(pv, NestedFlyteTypes)
     DataclassTransformer().assert_type(NestedFlyteTypes, pv)
+
+def test_get_literal_type_data_class_json_fail_but_mashumaro_works():
+    @dataclass
+    class FlyteTypesWithDataClassJson(DataClassJsonMixin):
+        flytefile: FlyteFile
+        flytedir: FlyteDirectory
+        structured_dataset: StructuredDataset
+        fs: FlyteSchema
+
+    @dataclass
+    class NestedFlyteTypesWithDataClassJson(DataClassJsonMixin):
+        flytefile: FlyteFile
+        flytedir: FlyteDirectory
+        structured_dataset: StructuredDataset
+        flyte_types: FlyteTypesWithDataClassJson
+        fs: FlyteSchema
+        flyte_types: FlyteTypesWithDataClassJson
+        list_flyte_types: List[FlyteTypesWithDataClassJson]
+        dict_flyte_types: Dict[str, FlyteTypesWithDataClassJson]
+        flyte_types: FlyteTypesWithDataClassJson
+        optional_flyte_types: Optional[FlyteTypesWithDataClassJson] = None
+
+    transformer = DataclassTransformer()
+    lt = transformer.get_literal_type(NestedFlyteTypesWithDataClassJson)
+    assert lt.metadata is not None
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="Requires Python 3.10 or higher")
+def test_numpy_import_issue_from_flyte_schema_in_dataclass():
+    from dataclasses import dataclass
+
+    from flytekit import task, workflow
+    from flytekit.types.directory import FlyteDirectory
+    from flytekit.types.file import FlyteFile
+
+    @dataclass
+    class MyDataClass:
+        output_file: FlyteFile
+        output_directory: FlyteDirectory
+
+    @task
+    def my_flyte_workflow(b: bool) -> list[MyDataClass | None]:
+        if b:
+            return [MyDataClass(__file__, ".")]
+        return [None]
+
+    @task
+    def my_flyte_task(inputs: list[MyDataClass | None]) -> bool:
+        return inputs and (inputs[0] is not None) # type: ignore
+
+    @workflow
+    def main_flyte_workflow(b: bool = False) -> bool:
+        inputs = my_flyte_workflow(b=b)
+        return my_flyte_task(inputs=inputs)
+
+    assert main_flyte_workflow(b=True) == True
+    assert main_flyte_workflow(b=False) == False

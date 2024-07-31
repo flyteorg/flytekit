@@ -38,6 +38,13 @@ def create_deployment_task(
     )
 
 
+def append_token(config, key, token, name):
+    if key in config:
+        config[key] += f"-{{{token}}}"
+    else:
+        config[key] = f"{name}-{{{token}}}"
+
+
 def create_sagemaker_deployment(
     name: str,
     model_config: Dict[str, Any],
@@ -49,6 +56,7 @@ def create_sagemaker_deployment(
     endpoint_input_types: Optional[Dict[str, Type]] = None,
     region: Optional[str] = None,
     region_at_runtime: bool = False,
+    idempotence_token: bool = True,
 ) -> Workflow:
     """
     Creates SageMaker model, endpoint config and endpoint.
@@ -62,6 +70,7 @@ def create_sagemaker_deployment(
     :param endpoint_input_types: Mapping of SageMaker endpoint inputs to their types.
     :param region: The region for SageMaker API calls.
     :param region_at_runtime: Set this to True if you want to provide the region at runtime.
+    :param idempotence_token: Set this to False if you don't want the agent to automatically append a token/hash to the deployment names.
     """
     if not any((region, region_at_runtime)):
         raise ValueError("Region parameter is required.")
@@ -70,6 +79,21 @@ def create_sagemaker_deployment(
 
     if region_at_runtime:
         wf.add_workflow_input("region", str)
+
+    if idempotence_token:
+        append_token(model_config, "ModelName", "idempotence_token", name)
+        append_token(endpoint_config_config, "EndpointConfigName", "idempotence_token", name)
+
+        if "ProductionVariants" in endpoint_config_config and endpoint_config_config["ProductionVariants"]:
+            append_token(
+                endpoint_config_config["ProductionVariants"][0],
+                "ModelName",
+                "inputs.idempotence_token",
+                name,
+            )
+
+        append_token(endpoint_config, "EndpointName", "idempotence_token", name)
+        append_token(endpoint_config, "EndpointConfigName", "inputs.idempotence_token", name)
 
     inputs = {
         SageMakerModelTask: {
