@@ -2389,9 +2389,15 @@ class Result(DataClassJsonMixin):
     schema: TestSchema  # type: ignore
 
 
-@pytest.mark.parametrize(
-    "t",
-    [
+def get_unsupported_complex_literals_tests():
+    if sys.version_info < (3, 9):
+        return [
+        typing_extensions.Annotated[typing.Dict[int, str], FlyteAnnotation({"foo": "bar"})],
+        typing_extensions.Annotated[typing.Dict[str, str], FlyteAnnotation({"foo": "bar"})],
+        typing_extensions.Annotated[Color, FlyteAnnotation({"foo": "bar"})],
+        typing_extensions.Annotated[Result, FlyteAnnotation({"foo": "bar"})],
+    ]
+    return [
         typing_extensions.Annotated[dict, FlyteAnnotation({"foo": "bar"})],
         typing_extensions.Annotated[dict[int, str], FlyteAnnotation({"foo": "bar"})],
         typing_extensions.Annotated[typing.Dict[int, str], FlyteAnnotation({"foo": "bar"})],
@@ -2399,7 +2405,12 @@ class Result(DataClassJsonMixin):
         typing_extensions.Annotated[typing.Dict[str, str], FlyteAnnotation({"foo": "bar"})],
         typing_extensions.Annotated[Color, FlyteAnnotation({"foo": "bar"})],
         typing_extensions.Annotated[Result, FlyteAnnotation({"foo": "bar"})],
-    ],
+    ]
+
+
+@pytest.mark.parametrize(
+    "t",
+    get_unsupported_complex_literals_tests(),
 )
 def test_unsupported_complex_literals(t):
     with pytest.raises(ValueError):
@@ -3006,7 +3017,7 @@ def test_dataclass_encoder_and_decoder_registry():
     class Datum:
         x: int
         y: str
-        z: dict[int, int]
+        z: typing.Dict[int, int]
         w: List[int]
 
     @task
