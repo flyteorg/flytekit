@@ -24,6 +24,9 @@ skip_if_wrong_numpy_version = pytest.mark.skipif(
 @mock.patch("snowflake.connector.connect")
 def test_sf_wf(mock_connect, mock_get_private_key):
     import pandas as pd
+    from snowflake import connector as sc
+    import flytekit
+
     pd_df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
     my_cols = kwtypes(Name=str, Age=int)
 
