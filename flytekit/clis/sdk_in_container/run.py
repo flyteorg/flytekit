@@ -472,16 +472,26 @@ def to_click_option(
 def options_from_run_params(run_level_params: RunLevelParams) -> Options:
     return Options(
         labels=Labels(run_level_params.labels) if run_level_params.labels else None,
-        annotations=(Annotations(run_level_params.annotations) if run_level_params.annotations else None),
+        annotations=(
+            Annotations(run_level_params.annotations)
+            if run_level_params.annotations
+            else None
+        ),
         raw_output_data_config=(
-            RawOutputDataConfig(output_location_prefix=run_level_params.raw_output_data_prefix)
+            RawOutputDataConfig(
+                output_location_prefix=run_level_params.raw_output_data_prefix
+            )
             if run_level_params.raw_output_data_prefix
             else None
         ),
         max_parallelism=run_level_params.max_parallelism,
         disable_notifications=run_level_params.disable_notifications,
         security_context=(
-            security.SecurityContext(run_as=security.Identity(k8s_service_account=run_level_params.service_account))
+            security.SecurityContext(
+                run_as=security.Identity(
+                    k8s_service_account=run_level_params.service_account
+                )
+            )
             if run_level_params.service_account
             else None
         ),
@@ -763,7 +773,11 @@ class DynamicEntityLaunchCommand(click.RichCommand):
             if defaults and name in defaults:
                 if not defaults[name].required:
                     required = False
-                    default_val = literal_string_repr(defaults[name].default) if defaults[name].default else None
+                    default_val = (
+                        literal_string_repr(defaults[name].default)
+                        if defaults[name].default
+                        else None
+                    )
             params.append(
                 to_click_option(
                     ctx,
@@ -815,7 +829,9 @@ class DynamicEntityLaunchCommand(click.RichCommand):
             run_level_params.domain,
             ctx.params,
             run_level_params,
-            type_hints=(entity.python_interface.inputs if entity.python_interface else None),
+            type_hints=(
+                entity.python_interface.inputs if entity.python_interface else None
+            ),
         )
 
 
@@ -1016,10 +1032,6 @@ class WorkflowCommand(click.RichGroup):
 
         # Add options for each of the workflow inputs
         params = []
-        for (
-            input_name,
-            input_type_val,
-        ) in loaded_entity.python_interface.inputs_with_defaults.items():
         for (
             input_name,
             input_type_val,
