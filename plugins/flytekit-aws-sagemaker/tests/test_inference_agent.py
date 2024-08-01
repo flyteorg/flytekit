@@ -171,7 +171,6 @@ async def test_agent(mock_boto_call, mock_return_value):
         resource.outputs["result"]["EndpointArn"]
         == "arn:aws:sagemaker:us-east-2:1234567890:endpoint/sagemaker-xgboost-endpoint"
     )
-    assert resource.outputs["idempotence_token"] == idempotence_token
 
     # DELETE
     delete_response = await agent.delete(metadata)

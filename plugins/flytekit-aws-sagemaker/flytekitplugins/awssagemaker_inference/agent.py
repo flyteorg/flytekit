@@ -83,7 +83,7 @@ class SageMakerEndpointAgent(Boto3AgentMixin, AsyncAgentBase):
 
     async def get(self, resource_meta: SageMakerEndpointMetadata, **kwargs) -> Resource:
         try:
-            endpoint_status, idempotence_token = await self._call(
+            endpoint_status, _ = await self._call(
                 method="describe_endpoint",
                 config={"EndpointName": resource_meta.config.get("EndpointName")},
                 inputs=resource_meta.inputs,
@@ -97,7 +97,7 @@ class SageMakerEndpointAgent(Boto3AgentMixin, AsyncAgentBase):
             if error_code == "ValidationException" and "Could not find endpoint" in error_message:
                 raise Exception(
                     "This might be due to resource limits being exceeded, preventing the creation of a new endpoint. Please check your resource usage and limits."
-                ) from e
+                )
             raise e
 
         current_state = endpoint_status.get("EndpointStatus")
@@ -109,10 +109,7 @@ class SageMakerEndpointAgent(Boto3AgentMixin, AsyncAgentBase):
 
         res = None
         if current_state == "InService":
-            res = {
-                "result": {"EndpointArn": endpoint_status.get("EndpointArn")},
-                "idempotence_token": idempotence_token,
-            }
+            res = {"result": {"EndpointArn": endpoint_status.get("EndpointArn")}}
 
         return Resource(phase=flyte_phase, outputs=res, message=message)
 

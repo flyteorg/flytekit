@@ -75,6 +75,7 @@ async def test_airflow_agent():
         "This is deprecated!",
         True,
         "A",
+        None
     )
 
     interfaces = interface_models.TypedInterface(inputs={}, outputs={})

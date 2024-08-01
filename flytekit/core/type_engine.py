@@ -24,7 +24,6 @@ from google.protobuf.json_format import MessageToDict as _MessageToDict
 from google.protobuf.json_format import ParseDict as _ParseDict
 from google.protobuf.message import Message
 from google.protobuf.struct_pb2 import Struct
-from marshmallow_enum import EnumField, LoadDumpOptions
 from mashumaro.codecs.json import JSONDecoder, JSONEncoder
 from mashumaro.mixins.json import DataClassJSONMixin
 from typing_extensions import Annotated, get_args, get_origin
@@ -425,6 +424,7 @@ class DataclassTransformer(TypeTransformer[object]):
         Extracts the Literal type definition for a Dataclass and returns a type Struct.
         If possible also extracts the JSONSchema for the dataclass.
         """
+
         if is_annotated(t):
             args = get_args(t)
             for x in args[1:]:
@@ -439,6 +439,8 @@ class DataclassTransformer(TypeTransformer[object]):
 
         schema = None
         try:
+            from marshmallow_enum import EnumField, LoadDumpOptions
+
             if issubclass(t, DataClassJsonMixin):
                 s = cast(DataClassJsonMixin, self._get_origin_type_in_annotation(t)).schema()
                 for _, v in s.fields.items():
@@ -450,10 +452,6 @@ class DataclassTransformer(TypeTransformer[object]):
                 from marshmallow_jsonschema import JSONSchema
 
                 schema = JSONSchema().dump(s)
-            else:  # DataClassJSONMixin
-                from mashumaro.jsonschema import build_json_schema
-
-                schema = build_json_schema(cast(DataClassJSONMixin, self._get_origin_type_in_annotation(t))).to_dict()
         except Exception as e:
             # https://github.com/lovasoa/marshmallow_dataclass/issues/13
             logger.warning(
@@ -461,6 +459,17 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"If you have postponed annotations turned on (PEP 563) turn it off please. Postponed"
                 f"evaluation doesn't work with json dataclasses"
             )
+
+        if schema is None:
+            try:
+                from mashumaro.jsonschema import build_json_schema
+
+                schema = build_json_schema(cast(DataClassJSONMixin, self._get_origin_type_in_annotation(t))).to_dict()
+            except Exception as e:
+                logger.error(
+                    f"Failed to extract schema for object {t}, error: {e}\n"
+                    f"Please remove `DataClassJsonMixin` and `dataclass_json` decorator from the dataclass definition"
+                )
 
         # Recursively construct the dataclass_type which contains the literal type of each field
         literal_type = {}
@@ -974,6 +983,7 @@ class TypeEngine(typing.Generic[T]):
             register_arrow_handlers,
             register_bigquery_handlers,
             register_pandas_handlers,
+            register_snowflake_handlers,
         )
         from flytekit.types.structured.structured_dataset import DuplicateHandlerError
 
@@ -1006,6 +1016,11 @@ class TypeEngine(typing.Generic[T]):
             from flytekit.types import numpy  # noqa: F401
         if is_imported("PIL"):
             from flytekit.types.file import image  # noqa: F401
+        if is_imported("snowflake.connector"):
+            try:
+                register_snowflake_handlers()
+            except DuplicateHandlerError:
+                logger.debug("Transformer for snowflake is already registered.")
 
     @classmethod
     def to_literal_type(cls, python_type: Type) -> LiteralType:
@@ -1486,6 +1501,7 @@ class UnionTransformer(TypeTransformer[T]):
         is_ambiguous = False
         res = None
         res_type = None
+        t = None
         for i in range(len(get_args(python_type))):
             try:
                 t = get_args(python_type)[i]
@@ -1495,8 +1511,8 @@ class UnionTransformer(TypeTransformer[T]):
                 if found_res:
                     is_ambiguous = True
                 found_res = True
-            except Exception:
-                logger.debug(f"Failed to convert from {python_val} to {t}", exc_info=True)
+            except Exception as e:
+                logger.debug(f"Failed to convert from {python_val} to {t} with error: {e}", exc_info=True)
                 continue
 
         if is_ambiguous:
@@ -2013,8 +2029,6 @@ class LiteralsResolver(collections.UserDict):
     LiteralsResolver is a helper class meant primarily for use with the FlyteRemote experience or any other situation
     where you might be working with LiteralMaps. This object allows the caller to specify the Python type that should
     correspond to an element of the map.
-
-    TODO: Consider inheriting from collections.UserDict instead of manually having the _native_values cache
     """
 
     def __init__(
