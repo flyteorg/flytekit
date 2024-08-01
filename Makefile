@@ -119,5 +119,6 @@ build-dev: export PLATFORM ?= linux/arm64
 build-dev: export REGISTRY ?= localhost:30000
 build-dev: export PYTHON_VERSION ?= 3.12
 build-dev: export PSEUDO_VERSION ?= $(shell python -m setuptools_scm)
+build-dev: export TAG ?= dev
 build-dev:
 	docker build --platform ${PLATFORM} --push . -f Dockerfile.dev -t ${REGISTRY}/flytekit:${TAG} --build-arg PYTHON_VERSION=${PYTHON_VERSION} --build-arg PSEUDO_VERSION=${PSEUDO_VERSION}

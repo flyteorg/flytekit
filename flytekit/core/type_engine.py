@@ -983,6 +983,7 @@ class TypeEngine(typing.Generic[T]):
             register_arrow_handlers,
             register_bigquery_handlers,
             register_pandas_handlers,
+            register_snowflake_handlers,
         )
         from flytekit.types.structured.structured_dataset import DuplicateHandlerError
 
@@ -1015,6 +1016,11 @@ class TypeEngine(typing.Generic[T]):
             from flytekit.types import numpy  # noqa: F401
         if is_imported("PIL"):
             from flytekit.types.file import image  # noqa: F401
+        if is_imported("snowflake.connector"):
+            try:
+                register_snowflake_handlers()
+            except DuplicateHandlerError:
+                logger.debug("Transformer for snowflake is already registered.")
 
     @classmethod
     def to_literal_type(cls, python_type: Type) -> LiteralType:
@@ -2023,8 +2029,6 @@ class LiteralsResolver(collections.UserDict):
     LiteralsResolver is a helper class meant primarily for use with the FlyteRemote experience or any other situation
     where you might be working with LiteralMaps. This object allows the caller to specify the Python type that should
     correspond to an element of the map.
-
-    TODO: Consider inheriting from collections.UserDict instead of manually having the _native_values cache
     """
 
     def __init__(

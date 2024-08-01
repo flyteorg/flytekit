@@ -454,6 +454,39 @@ class FileAccessProvider(object):
             f = fs.unstrip_protocol(f)
         return f
 
+    def generate_new_custom_path(
+        self,
+        fs: typing.Optional[fsspec.AbstractFileSystem] = None,
+        alt: typing.Optional[str] = None,
+        stem: typing.Optional[str] = None,
+    ) -> str:
+        """
+        Generates a new path with the raw output prefix and a random string appended to it.
+        Optionally, you can provide an alternate prefix and a stem. If stem is provided, it
+        will be appended to the path instead of a random string. If alt is provided, it will
+        replace the first part of the output prefix, e.g. the S3 or GCS bucket.
+
+        If wanting to write to a non-random prefix in a non-default S3 bucket, this can be
+        called with alt="my-alt-bucket" and stem="my-stem" to generate a path like
+        s3://my-alt-bucket/default-prefix-part/my-stem
+
+        :param fs: The filesystem to use. If None, the context's raw output filesystem is used.
+        :param alt: An alternate first member of the prefix to use instead of the default.
+        :param stem: A stem to append to the path.
+        :return: The new path.
+        """
+        fs = fs or self.raw_output_fs
+        pref = self.raw_output_prefix
+        s_pref = pref.split(fs.sep)[:-1]
+        if alt:
+            s_pref[2] = alt
+        if stem:
+            s_pref.append(stem)
+        else:
+            s_pref.append(self.get_random_string())
+        p = fs.sep.join(s_pref)
+        return p
+
     def get_random_local_path(self, file_path_or_file_name: typing.Optional[str] = None) -> str:
         """
         Use file_path_or_file_name, when you want a random directory, but want to preserve the leaf file name

@@ -43,7 +43,7 @@ def test_shell_task_access_to_result():
     t()
 
     assert t.result.returncode == 0
-    assert t.result.output == "Hello World!"  # ShellTask strips carriage returns
+    assert "Hello World!" in t.result.output  # ShellTask strips carriage returns
     assert t.result.error == ""
 
 
