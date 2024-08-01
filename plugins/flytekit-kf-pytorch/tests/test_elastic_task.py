@@ -2,6 +2,10 @@ import os
 import typing
 from dataclasses import dataclass
 from unittest import mock
+from typing_extensions import Annotated, cast
+from flytekitplugins.kfpytorch.task import Elastic
+
+from flytekit import Artifact
 
 import pytest
 import torch
@@ -11,6 +15,7 @@ from flytekitplugins.kfpytorch.task import CleanPodPolicy, Elastic, RunPolicy
 
 import flytekit
 from flytekit import task, workflow
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager, ExecutionState, ExecutionParameters, OutputMetadataTracker
 from flytekit.configuration import SerializationSettings
 from flytekit.exceptions.user import FlyteRecoverableException
 
@@ -157,6 +162,41 @@ def test_deck(start_method: str) -> None:
 
     test_deck = [d for d in ctx.decks if d.name == "test-deck"][0]
     assert "Hello Flyte Deck viewer from worker process 0" in test_deck.html
+
+
+class Card(object):
+    def __init__(self, text: str):
+        self.text = text
+
+    def serialize_to_string(self, ctx: FlyteContext, variable_name: str):
+        print(f"In serialize_to_string: {id(ctx)}")
+        return "card", "card"
+
+
+@pytest.mark.parametrize("start_method", ["spawn", "fork"])
+def test_output_metadata_passing(start_method: str) -> None:
+    ea = Artifact(name="elastic-artf")
+
+    @task(
+        task_config=Elastic(start_method=start_method),
+    )
+    def train2() -> Annotated[str, ea]:
+        return ea.create_from("hello flyte", Card("## card"))
+
+    @workflow
+    def wf():
+        train2()
+
+    ctx = FlyteContext.current_context()
+    omt = OutputMetadataTracker()
+    with FlyteContextManager.with_context(
+            ctx.with_execution_state(ctx.new_execution_state().with_params(mode=ExecutionState.Mode.LOCAL_TASK_EXECUTION)).with_output_metadata_tracker(omt)
+    ) as child_ctx:
+        cast(ExecutionParameters, child_ctx.user_space_params)._decks = []
+        # call execute directly so as to be able to get at the same FlyteContext object.
+        res = train2.execute()
+        om = child_ctx.output_metadata_tracker.get(res)
+        assert len(om.additional_items) == 1
 
 
 @pytest.mark.parametrize(
