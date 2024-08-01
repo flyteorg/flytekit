@@ -35,11 +35,13 @@ from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.core import constants, utils
+from flytekit.core.array_node import ArrayNode
 from flytekit.core.artifact import Artifact
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
+from flytekit.core.node import Node as FlytekitNode
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceSpec
 from flytekit.core.task import ReferenceTask
@@ -94,6 +96,7 @@ from flytekit.tools.translator import (
     Options,
     get_serializable,
     get_serializable_launch_plan,
+    get_serializable_node,
 )
 
 if typing.TYPE_CHECKING:
@@ -354,6 +357,23 @@ class FlyteRemote(object):
         flyte_task = FlyteTask.promote_from_model(admin_task.closure.compiled_task.template)
         flyte_task.template._id = task_id
         return flyte_task
+
+    def fetch_node_launch_plan(
+        self, node_entity: ArrayNode, project: str = None, domain: str = None, name: str = None, version: str = None
+    ) -> FlyteLaunchPlan:
+        """ """
+        if name is None:
+            raise user_exceptions.FlyteAssertion("the 'name' argument must be specified.")
+        lp_id = _get_entity_identifier(
+            self.client.list_tasks_paginated,
+            ResourceType.LAUNCH_PLAN,
+            project or self.default_project,
+            domain or self.default_domain,
+            name,
+            version,
+        )
+        admin_launch_plan = self.client.get_launch_plan_node(node_entity, lp_id)
+        return admin_launch_plan
 
     def fetch_workflow_lazy(
         self, project: str = None, domain: str = None, name: str = None, version: str = None
@@ -1475,6 +1495,24 @@ class FlyteRemote(object):
                 cluster_pool=cluster_pool,
                 execution_cluster_label=execution_cluster_label,
             )
+        if isinstance(entity, ArrayNode):
+            return self.execute_node(
+                entity=entity,
+                inputs=inputs,
+                project=project,
+                domain=domain,
+                name=name,
+                version=version,
+                execution_name=execution_name,
+                execution_name_prefix=execution_name_prefix,
+                image_config=image_config,
+                wait=wait,
+                overwrite_cache=overwrite_cache,
+                envs=envs,
+                tags=tags,
+                cluster_pool=cluster_pool,
+                execution_cluster_label=execution_cluster_label,
+            )
         raise NotImplementedError(f"entity type {type(entity)} not recognized for execution")
 
     # Flyte Remote Entities
@@ -1943,6 +1981,51 @@ class FlyteRemote(object):
             cluster_pool=cluster_pool,
             execution_cluster_label=execution_cluster_label,
         )
+
+    def execute_node(
+        self,
+        entity: Node,
+        inputs: typing.Dict[str, typing.Any],
+        project: str = None,
+        domain: str = None,
+        name: str = None,
+        version: str = None,
+        execution_name: typing.Optional[str] = None,
+        execution_name_prefix: typing.Optional[str] = None,
+        image_config: typing.Optional[ImageConfig] = None,
+        wait: bool = False,
+        overwrite_cache: typing.Optional[bool] = None,
+        envs: typing.Optional[typing.Dict[str, str]] = None,
+        tags: typing.Optional[typing.List[str]] = None,
+        cluster_pool: typing.Optional[str] = None,
+        execution_cluster_label: typing.Optional[str] = None,
+    ) -> FlyteWorkflowExecution:
+        """ """
+        resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
+        resolved_identifiers_dict = asdict(resolved_identifiers)
+
+        m = OrderedDict()
+        serialization_settings = SerializationSettings(
+            image_config=ImageConfig(),
+            project=project or self.default_project,
+            domain=domain or self.default_domain,
+            version=version,
+        )
+
+        options = Options()
+        options.file_uploader = self.upload_file
+
+        node = FlytekitNode(
+            id=f"{entity.id.name}-node",
+            metadata=entity.metadata,
+            bindings=[],
+            upstream_nodes=[],
+            flyte_entity=entity,
+        )
+
+        serializable_node = get_serializable_node(m, settings=serialization_settings, entity=node, options=options)
+        lp = self.fetch_node_launch_plan(serializable_node, **resolved_identifiers_dict)
+        print(lp)
 
     ###################################
     # Wait for Executions to Complete #

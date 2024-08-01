@@ -159,6 +159,10 @@ class RawSynchronousFlyteClient(object):
         """
         return self._stub.GetTask(get_object_request, metadata=self._metadata)
 
+    def get_launch_plan_node(self, create_launch_plan_node_request):
+        """ """
+        return self._stub.CreateLaunchPlanFromNodeSpec(create_launch_plan_node_request, metadata=self._metadata)
+
     def set_signal(self, signal_set_request: SignalSetRequest) -> SignalSetResponse:
         """
         This sets a signal
