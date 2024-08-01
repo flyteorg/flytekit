@@ -236,6 +236,14 @@ def test_unexpected_outputs():
     with pytest.raises(FlyteValueException):
         no_outputs_wf()
 
+
+@pytest.mark.skipif(sys.version_info < (3, 10, 10), reason="inspect module does not work correctly with Python <3.10.10. https://github.com/python/cpython/issues/102647#issuecomment-1466868212")
+def test_missing_return_value():
+    @task
+    def t1(a: int) -> int:
+        a = a + 5
+        return a
+
     # Should raise an exception because it doesn't return something when it should
     with pytest.raises(FlyteMissingReturnValueException):
 
