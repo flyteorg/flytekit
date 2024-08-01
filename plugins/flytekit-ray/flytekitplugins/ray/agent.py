@@ -38,7 +38,7 @@ class AnyscaleAgent(AsyncAgentBase):
             },
             entrypoint=" ".join(container.args),
             # working_dir="/Users/kevin/git/flytekit/flyte-example/anyscale_union",
-            max_retries=0,
+            max_retries=1,
             compute_config="flyte-rag",
         )
 
