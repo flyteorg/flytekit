@@ -2,6 +2,7 @@ import os
 import sys
 import typing
 from collections import OrderedDict
+from unittest.mock import patch
 
 import pytest
 from typing_extensions import Annotated  # type: ignore
@@ -13,8 +14,9 @@ from flytekit.core import context_manager
 from flytekit.core.condition import conditional
 from flytekit.core.task import task
 from flytekit.core.workflow import WorkflowFailurePolicy, WorkflowMetadata, WorkflowMetadataDefaults, workflow
-from flytekit.exceptions.user import FlyteValidationException, FlyteValueException
+from flytekit.exceptions.user import FlyteValidationException, FlyteValueException, FlyteMissingReturnValueException
 from flytekit.tools.translator import get_serializable
+from flytekit.types.error.error import FlyteError
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = flytekit.configuration.SerializationSettings(
@@ -51,7 +53,7 @@ def test_workflow_values():
     @workflow(interruptible=True, failure_policy=WorkflowFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE)
     def wf(a: int) -> typing.Tuple[str, str]:
         x, y = t1(a=a)
-        u, v = t1(a=x)
+        _, v = t1(a=x)
         return y, v
 
     wf_spec = get_serializable(OrderedDict(), serialization_settings, wf)
@@ -234,14 +236,45 @@ def test_unexpected_outputs():
     with pytest.raises(FlyteValueException):
         no_outputs_wf()
 
+
+@pytest.mark.skipif(sys.version_info < (3, 10, 10), reason="inspect module does not work correctly with Python <3.10.10. https://github.com/python/cpython/issues/102647#issuecomment-1466868212")
+def test_missing_return_value():
+    @task
+    def t1(a: int) -> int:
+        a = a + 5
+        return a
+
     # Should raise an exception because it doesn't return something when it should
-    with pytest.raises(AssertionError):
+    with pytest.raises(FlyteMissingReturnValueException):
 
         @workflow
         def one_output_wf() -> int:  # type: ignore
             t1(a=3)
 
         one_output_wf()
+
+
+def test_custom_wrapper():
+    def our_task(
+            _task_function: typing.Optional[typing.Callable] = None,
+            **kwargs,
+    ):
+        def wrapped(_func: typing.Callable):
+            return task(_task_function=_func)
+
+        if _task_function:
+            return wrapped(_task_function)
+        else:
+            return wrapped
+
+    @our_task(
+        foo={
+            "bar1": lambda x: print(x),
+            "bar2": lambda x: print(x),
+        },
+    )
+    def missing_func_body() -> str:
+        return "foo"
 
 
 def test_wf_no_output():
@@ -435,3 +468,47 @@ def test_compile_wf_at_compile_time():
             t4()
 
         assert ctx.compilation_state is None
+
+
+@patch("builtins.print")
+def test_failure_node_local_execution(mock_print):
+    @task
+    def clean_up(name: str, err: typing.Optional[FlyteError] = None):
+        print(f"Deleting cluster {name} due to {err}")
+        print("This is err:", str(err))
+
+    @task
+    def create_cluster(name: str):
+        print(f"Creating cluster: {name}")
+
+    @task
+    def delete_cluster(name: str, err: typing.Optional[FlyteError] = None):
+        print(f"Deleting cluster {name}")
+        print(err)
+
+    @task
+    def t1(a: int, b: str):
+        print(f"{a} {b}")
+        raise ValueError("Fail!")
+
+    @workflow(on_failure=clean_up)
+    def wf(name: str = "flyteorg"):
+        c = create_cluster(name=name)
+        t = t1(a=1, b="2")
+        d = delete_cluster(name=name)
+        c >> t >> d
+
+    with pytest.raises(ValueError):
+        wf()
+
+    # Adjusted the error message to match the one in the failure
+    expected_error_message = str(
+        FlyteError(message="Error encountered while executing 'wf':\n  Fail!", failed_node_id="fn0")
+    )
+
+    assert mock_print.call_count > 0
+
+    mock_print.assert_any_call("Creating cluster: flyteorg")
+    mock_print.assert_any_call("1 2")
+    mock_print.assert_any_call(f"Deleting cluster flyteorg due to {expected_error_message}")
+    mock_print.assert_any_call("This is err:", expected_error_message)

@@ -1,4 +1,4 @@
-import json as _json
+import json
 import typing
 from typing import Dict
 
@@ -283,11 +283,37 @@ class LiteralType(_common.FlyteIdlEntity):
         self._enum_type = enum_type
         self._union_type = union_type
         self._structured_dataset_type = structured_dataset_type
-        self._metadata = metadata
         self._structure = structure
         self._structured_dataset_type = structured_dataset_type
         self._metadata = metadata
         self._annotation = annotation
+
+    def __rich_repr__(self):
+        if self.simple:
+            yield "Simple"
+        elif self.schema:
+            yield "Schema"
+        elif self.collection_type:
+            sub = next(self.collection_type.__rich_repr__())
+            yield f"List[{sub}]"
+        elif self.map_value_type:
+            sub = next(self.map_value_type.__rich_repr__())
+            yield f"Dict[str, {sub}]"
+        elif self.blob:
+            if self.blob.dimensionality == _types_pb2.BlobType.BlobDimensionality.SINGLE:
+                yield "File"
+            elif self.blob.dimensionality == _types_pb2.BlobType.BlobDimensionality.MULTIPART:
+                yield "Directory"
+            else:
+                yield "Unknown Blob Type"
+        elif self.enum_type:
+            yield "Enum"
+        elif self.union_type:
+            yield "Union"
+        elif self.structured_dataset_type:
+            yield f"StructuredDataset(format={self.structured_dataset_type.format})"
+        else:
+            yield "Unknown Type"
 
     @property
     def simple(self) -> SimpleType:
@@ -359,7 +385,7 @@ class LiteralType(_common.FlyteIdlEntity):
         """
 
         if self.metadata is not None:
-            metadata = _json_format.Parse(_json.dumps(self.metadata), _struct.Struct())
+            metadata = _json_format.Parse(json.dumps(self.metadata), _struct.Struct())
         else:
             metadata = None
 

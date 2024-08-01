@@ -14,6 +14,7 @@ from enum import Enum
 import pytest
 from dataclasses_json import DataClassJsonMixin
 from google.protobuf.struct_pb2 import Struct
+from mashumaro.codecs.json import JSONEncoder, JSONDecoder
 from typing_extensions import Annotated, get_origin
 
 import flytekit
@@ -1102,18 +1103,6 @@ def test_wf_with_catching_no_return():
         wf()
 
 
-def test_wf_custom_types_missing_dataclass_json():
-    with pytest.raises(AssertionError):
-
-        @dataclass
-        class MyCustomType(object):
-            pass
-
-        @task
-        def t1(a: int) -> MyCustomType:
-            return MyCustomType()
-
-
 def test_wf_custom_types():
     @dataclass
     class MyCustomType(DataClassJsonMixin):
@@ -1231,7 +1220,9 @@ def test_flyte_schema_dataclass():
     def wf(x: int) -> Result:
         return t1(x=x)
 
-    assert wf(x=10) == Result(result=InnerResult(number=10, schema=schema), schema=schema)
+    r1 = wf(x=10)
+    r2 = Result(result=InnerResult(number=10, schema=schema), schema=schema)
+    assert r1 == r2
 
 
 def test_environment():
@@ -1363,7 +1354,7 @@ def test_secrets():
 
         @task(secret_requests=["test"])
         def foo() -> str:
-            pass
+            return "hello"
 
 
 def test_nested_dynamic():
@@ -1535,6 +1526,7 @@ def test_guess_dict3():
     assert output_lm.literals["o0"].scalar.generic == expected_struct
 
 
+@pytest.mark.skipif(sys.version_info < (3, 9), reason="Use of dict hints is only supported in Python 3.9+")
 def test_guess_dict4():
     @dataclass
     class Foo(DataClassJsonMixin):
@@ -1627,6 +1619,7 @@ def test_failure_node():
     @task
     def fail(a: int, b: str) -> typing.Tuple[int, str]:
         raise ValueError("Fail!")
+        return a + 1, b
 
     @task
     def failure_handler(a: int, b: str, err: typing.Optional[FlyteError]) -> typing.Tuple[int, str]:
@@ -1713,8 +1706,8 @@ def test_union_type():
         match=re.escape(
             "Error encountered while executing 'wf2':\n"
             f"  Failed to convert inputs of task '{prefix}tests.flytekit.unit.core.test_type_hints.t2':\n"
-            '  Cannot convert from <FlyteLiteral scalar { union { value { scalar { primitive { string_value: "2" } } } '
-            'type { simple: STRING structure { tag: "str" } } } }> to typing.Union[float, dict] (using tag str)'
+            '  Cannot convert from [Flyte Serialized object: Type: <Literal> Value: <scalar { union { value { scalar { primitive { string_value: "2" } } } '
+            'type { simple: STRING structure { tag: "str" } } } }>] to typing.Union[float, dict] (using tag str)'
         ),
     ):
         assert wf2(a="2") == "2"
@@ -1995,7 +1988,7 @@ def test_promise_illegal_resources():
 
     @workflow
     def my_wf(a: int) -> int:
-        return t1(a=a).with_overrides(requests=Resources(cpu=1))  # type: ignore
+        return t1(a=a).with_overrides(requests=Resources(cpu=1, mem=1.1))  # type: ignore
 
     with pytest.raises(AssertionError):
         my_wf(a=1)

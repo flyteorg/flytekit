@@ -1,4 +1,4 @@
-import pytest as _pytest
+import pytest
 
 from flytekit.models.admin import common as _common
 
@@ -23,8 +23,8 @@ def test_sort_parse():
     assert o.key == "mykey"
     assert o.direction == _common.Sort.Direction.DESCENDING
 
-    with _pytest.raises(ValueError):
+    with pytest.raises(ValueError):
         _common.Sort.from_python_std("asc(abc")
 
-    with _pytest.raises(ValueError):
+    with pytest.raises(ValueError):
         _common.Sort.from_python_std("asce(abc)")

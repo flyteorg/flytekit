@@ -9,18 +9,14 @@ from typing import Callable, Optional, Tuple, Union
 
 from flytekit.configuration.feature_flags import FeatureFlags
 from flytekit.exceptions import system as _system_exceptions
-from flytekit.loggers import logger
+from flytekit.loggers import developer_logger, logger
 
 
 def import_module_from_file(module_name, file):
     try:
         spec = importlib.util.spec_from_file_location(module_name, file)
         module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
         return module
-    except AssertionError:
-        # handle where we can't determine the module of functions within the module
-        return importlib.import_module(module_name)
     except Exception as exc:
         raise ModuleNotFoundError(f"Module from file {file} cannot be loaded") from exc
 
@@ -129,12 +125,12 @@ class TrackedInstance(metaclass=InstanceTrackingMeta):
         if self._instantiated_in is None or self._instantiated_in == "":
             raise _system_exceptions.FlyteSystemException(f"Object {self} does not have an _instantiated in")
 
-        logger.debug(f"Looking for LHS for {self} from {self._instantiated_in}")
+        developer_logger.debug(f"Looking for LHS for {self} from {self._instantiated_in}")
         m = importlib.import_module(self._instantiated_in)
         for k in dir(m):
             try:
                 if getattr(m, k) is self:
-                    logger.debug(f"Found LHS for {self}, {k}")
+                    developer_logger.debug(f"Found LHS for {self}, {k}")
                     self._lhs = k
                     return k
             except ValueError as err:
@@ -330,8 +326,11 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
     if mod_name == "__main__":
         if hasattr(f, "task_function"):
             f = f.task_function
+        # If the module is __main__, we need to find the actual module name based on the file path
         inspect_file = inspect.getfile(f)  # type: ignore
-        return name, "", name, os.path.abspath(inspect_file)
+        file_name, _ = os.path.splitext(os.path.basename(inspect_file))
+        mod_name = get_full_module_path(f, file_name)  # type: ignore
+        return name, mod_name, name, os.path.abspath(inspect_file)
 
     mod_name = get_full_module_path(mod, mod_name)
     return f"{mod_name}.{name}", mod_name, name, os.path.abspath(inspect.getfile(mod))

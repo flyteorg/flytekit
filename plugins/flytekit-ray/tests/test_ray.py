@@ -2,6 +2,7 @@ import base64
 import json
 
 import ray
+import yaml
 from flytekitplugins.ray.models import RayCluster, RayJob, WorkerGroupSpec
 from flytekitplugins.ray.task import RayJobConfig, WorkerNodeConfig
 from google.protobuf.json_format import MessageToDict
@@ -42,6 +43,7 @@ def test_ray_task():
     ray_job_pb = RayJob(
         ray_cluster=RayCluster(worker_group_spec=[WorkerGroupSpec("test_group", 3, 0, 10)], enable_autoscaling=True),
         runtime_env=base64.b64encode(json.dumps({"pip": ["numpy"]}).encode()).decode(),
+        runtime_env_yaml=yaml.dump({"pip": ["numpy"]}),
         shutdown_after_job_finishes=True,
         ttl_seconds_after_finished=20,
     ).to_flyte_idl()
@@ -70,4 +72,4 @@ def test_ray_task():
     ]
 
     assert t1(a=3) == "5"
-    assert not ray.is_initialized()
+    assert ray.is_initialized()

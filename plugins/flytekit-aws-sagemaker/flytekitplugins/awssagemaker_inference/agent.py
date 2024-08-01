@@ -1,32 +1,40 @@
-import json
-from datetime import datetime
-from typing import Optional
+from dataclasses import dataclass
+from typing import Any, Dict, Optional
+
+import cloudpickle
 
 from flytekit.extend.backend.base_agent import (
     AgentRegistry,
     AsyncAgentBase,
     Resource,
+    ResourceMeta,
 )
-from flytekit.extend.backend.utils import convert_to_flyte_phase, get_agent_secret
+from flytekit.extend.backend.utils import convert_to_flyte_phase
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
-from .boto3_mixin import Boto3AgentMixin
-from .task import SageMakerEndpointMetadata
+from .boto3_mixin import Boto3AgentMixin, CustomException
+
+
+@dataclass
+class SageMakerEndpointMetadata(ResourceMeta):
+    config: Dict[str, Any]
+    region: Optional[str] = None
+    inputs: Optional[LiteralMap] = None
+
+    def encode(self) -> bytes:
+        return cloudpickle.dumps(self)
+
+    @classmethod
+    def decode(cls, data: bytes) -> "SageMakerEndpointMetadata":
+        return cloudpickle.loads(data)
+
 
 states = {
     "Creating": "Running",
     "InService": "Success",
     "Failed": "Failed",
 }
-
-
-class DateTimeEncoder(json.JSONEncoder):
-    def default(self, o):
-        if isinstance(o, datetime):
-            return o.isoformat()
-
-        return json.JSONEncoder.default(self, o)
 
 
 class SageMakerEndpointAgent(Boto3AgentMixin, AsyncAgentBase):
@@ -48,28 +56,49 @@ class SageMakerEndpointAgent(Boto3AgentMixin, AsyncAgentBase):
         config = custom.get("config")
         region = custom.get("region")
 
-        await self._call(
-            method="create_endpoint",
-            config=config,
-            inputs=inputs,
-            region=region,
-            aws_access_key_id=get_agent_secret(secret_key="aws-access-key"),
-            aws_secret_access_key=get_agent_secret(secret_key="aws-secret-access-key"),
-            aws_session_token=get_agent_secret(secret_key="aws-session-token"),
-        )
+        try:
+            await self._call(
+                method="create_endpoint",
+                config=config,
+                inputs=inputs,
+                region=region,
+            )
+        except CustomException as e:
+            original_exception = e.original_exception
+            error_code = original_exception.response["Error"]["Code"]
+            error_message = original_exception.response["Error"]["Message"]
+
+            if error_code == "ValidationException" and "Cannot create already existing" in error_message:
+                return SageMakerEndpointMetadata(config=config, region=region, inputs=inputs)
+            elif (
+                error_code == "ResourceLimitExceeded"
+                and "Please use AWS Service Quotas to request an increase for this quota." in error_message
+            ):
+                return SageMakerEndpointMetadata(config=config, region=region, inputs=inputs)
+            raise e
+        except Exception as e:
+            raise e
 
         return SageMakerEndpointMetadata(config=config, region=region, inputs=inputs)
 
     async def get(self, resource_meta: SageMakerEndpointMetadata, **kwargs) -> Resource:
-        endpoint_status = await self._call(
-            method="describe_endpoint",
-            config={"EndpointName": resource_meta.config.get("EndpointName")},
-            inputs=resource_meta.inputs,
-            region=resource_meta.region,
-            aws_access_key_id=get_agent_secret(secret_key="aws-access-key"),
-            aws_secret_access_key=get_agent_secret(secret_key="aws-secret-access-key"),
-            aws_session_token=get_agent_secret(secret_key="aws-session-token"),
-        )
+        try:
+            endpoint_status, _ = await self._call(
+                method="describe_endpoint",
+                config={"EndpointName": resource_meta.config.get("EndpointName")},
+                inputs=resource_meta.inputs,
+                region=resource_meta.region,
+            )
+        except CustomException as e:
+            original_exception = e.original_exception
+            error_code = original_exception.response["Error"]["Code"]
+            error_message = original_exception.response["Error"]["Message"]
+
+            if error_code == "ValidationException" and "Could not find endpoint" in error_message:
+                raise Exception(
+                    "This might be due to resource limits being exceeded, preventing the creation of a new endpoint. Please check your resource usage and limits."
+                )
+            raise e
 
         current_state = endpoint_status.get("EndpointStatus")
         flyte_phase = convert_to_flyte_phase(states[current_state])
@@ -80,7 +109,7 @@ class SageMakerEndpointAgent(Boto3AgentMixin, AsyncAgentBase):
 
         res = None
         if current_state == "InService":
-            res = {"result": json.dumps(endpoint_status, cls=DateTimeEncoder)}
+            res = {"result": {"EndpointArn": endpoint_status.get("EndpointArn")}}
 
         return Resource(phase=flyte_phase, outputs=res, message=message)
 
@@ -90,9 +119,6 @@ class SageMakerEndpointAgent(Boto3AgentMixin, AsyncAgentBase):
             config={"EndpointName": resource_meta.config.get("EndpointName")},
             region=resource_meta.region,
             inputs=resource_meta.inputs,
-            aws_access_key_id=get_agent_secret(secret_key="aws-access-key"),
-            aws_secret_access_key=get_agent_secret(secret_key="aws-secret-access-key"),
-            aws_session_token=get_agent_secret(secret_key="aws-session-token"),
         )
 
 

@@ -15,6 +15,7 @@ from flytekit.core.sentinel import DYNAMIC_INPUT_BINDING
 from flytekit.loggers import logger
 
 TIME_PARTITION_KWARG = "time_partition"
+MAX_PARTITIONS = 10
 
 
 class InputsBase(object):
@@ -135,6 +136,9 @@ class ArtifactIDSpecification(object):
         )
         return artifact_id
 
+    def __repr__(self):
+        return f"ArtifactIDSpecification({self.artifact.name}, {self.artifact.partition_keys}, TP: {self.artifact.time_partitioned})"
+
 
 class ArtifactQuery(object):
     def __init__(
@@ -179,11 +183,71 @@ class ArtifactQuery(object):
         else:
             self.binding = None
 
+    @property
+    def bound(self) -> bool:
+        if self.artifact.time_partitioned and not (self.time_partition and self.time_partition.value):
+            return False
+        if self.artifact.partition_keys:
+            artifact_partitions = set(self.artifact.partition_keys)
+            query_partitions = set()
+            if self.partitions and self.partitions.partitions:
+                pp = self.partitions.partitions
+                query_partitions = set([k for k in pp.keys() if pp[k].value])
+
+            if artifact_partitions != query_partitions:
+                logger.error(
+                    f"Query on {self.artifact.name} missing query params {artifact_partitions - query_partitions}"
+                )
+                return False
+
+        return True
+
     def to_flyte_idl(
         self,
         **kwargs,
     ) -> art_id.ArtifactQuery:
         return Serializer.artifact_query_to_idl(self, **kwargs)
+
+    def get_time_partition_str(self, **kwargs) -> str:
+        tp_str = ""
+        if self.time_partition:
+            tp = self.time_partition.value
+            if tp.HasField("time_value"):
+                tp = tp.time_value.ToDatetime()
+                tp_str += f" Time partition: {tp}"
+            elif tp.HasField("input_binding"):
+                var = tp.input_binding.var
+                if var not in kwargs:
+                    raise ValueError(f"Time partition input binding {var} not found in kwargs")
+                else:
+                    tp_str += f" Time partition from input<{var}>,"
+        return tp_str
+
+    def get_partition_str(self, **kwargs) -> str:
+        p_str = ""
+        if self.partitions and self.partitions.partitions and len(self.partitions.partitions) > 0:
+            p_str = " Partitions: "
+            for k, v in self.partitions.partitions.items():
+                if v.value and v.value.HasField("static_value"):
+                    p_str += f"{k}={v.value.static_value}, "
+                elif v.value and v.value.HasField("input_binding"):
+                    var = v.value.input_binding.var
+                    if var not in kwargs:
+                        raise ValueError(f"Partition input binding {var} not found in kwargs")
+                    else:
+                        p_str += f"{k} from input<{var}>, "
+        return p_str.rstrip("\n\r, ")
+
+    def get_str(self, **kwargs):
+        # Detailed string that explains query a bit more, used in running
+        tp_str = self.get_time_partition_str(**kwargs)
+        p_str = self.get_partition_str(**kwargs)
+
+        return f"'{self.artifact.name}'...{tp_str}{p_str}"
+
+    def __str__(self):
+        # Default string used for printing --help
+        return f"Artifact Query: on {self.artifact.name}"
 
 
 class TimePartition(object):
@@ -209,6 +273,24 @@ class TimePartition(object):
         self.reference_artifact: Optional[Artifact] = None
         self.granularity = granularity
 
+    def __rich_repr__(self):
+        if self.value:
+            if isinstance(self.value, art_id.LabelValue):
+                if self.value.HasField("time_value"):
+                    yield "Time Partition", str(self.value.time_value.ToDatetime())
+                elif self.value.HasField("input_binding"):
+                    yield "Time Partition (bound to)", self.value.input_binding.var
+                else:
+                    yield "Time Partition", "unspecified"
+        else:
+            yield "Time Partition", "unspecified"
+
+    def _repr_html_(self):
+        """
+        Jupyter notebook rendering.
+        """
+        return "".join([str(x) for x in self.__rich_repr__()])
+
     def __add__(self, other: timedelta) -> TimePartition:
         tp = TimePartition(self.value, op=Op.PLUS, other=other, granularity=self.granularity)
         tp.reference_artifact = self.reference_artifact
@@ -229,6 +311,15 @@ class Partition(object):
         self.value = value
         self.reference_artifact: Optional[Artifact] = None
 
+    def __rich_repr__(self):
+        yield self.name, self.value
+
+    def _repr_html_(self):
+        """
+        Jupyter notebook rendering.
+        """
+        return "".join([f"{x[0]}: {x[1]}" for x in self.__rich_repr__()])
+
 
 class Partitions(object):
     def __init__(self, partitions: Optional[typing.Mapping[str, Union[str, art_id.InputBindingData, Partition]]]):
@@ -243,6 +334,19 @@ class Partitions(object):
                     self._partitions[k] = Partition(art_id.LabelValue(static_value=v), name=k)
         self.reference_artifact: Optional[Artifact] = None
 
+    def __rich_repr__(self):
+        if self.partitions:
+            ps = [str(next(v.__rich_repr__())) for k, v in self.partitions.items()]
+            yield "Partitions", ", ".join(ps)
+        else:
+            yield ""
+
+    def _repr_html_(self):
+        """
+        Jupyter notebook rendering.
+        """
+        return ", ".join([str(x) for x in self.__rich_repr__()])
+
     @property
     def partitions(self) -> Optional[typing.Dict[str, Partition]]:
         return self._partitions
@@ -254,6 +358,8 @@ class Partitions(object):
                 p.reference_artifact = artifact
 
     def __getattr__(self, item):
+        if item == "partitions" or item == "_partitions":
+            raise AttributeError("Partitions in an uninitialized state, skipping partitions")
         if self.partitions and item in self.partitions:
             return self.partitions[item]
         raise AttributeError(f"Partition {item} not found in {self}")
@@ -336,6 +442,9 @@ class Artifact(object):
             p = {k: Partition(None, name=k) for k in partition_keys}
             self._partitions = Partitions(p)
             self._partitions.set_reference_artifact(self)
+
+        if self.partition_keys and len(self.partition_keys) > MAX_PARTITIONS:
+            raise ValueError("There is a hard limit of 10 partition keys per artifact currently.")
 
     def __call__(self, *args, **kwargs) -> ArtifactIDSpecification:
         """
@@ -493,7 +602,8 @@ class Artifact(object):
         op: Optional[Op] = None,
     ) -> art_id.ArtifactQuery:
         """
-        This should only be called in the context of a Trigger
+        This should only be called in the context of a Trigger. The type of query this returns is different from the
+        query() function. This type of query is used to reference the triggering artifact, rather than running a query.
         :param partition: Can embed a time partition
         :param bind_to_time_partition: Set to true if you want to bind to a time partition
         :param expr: Only valid if there's a time partition.
@@ -540,14 +650,11 @@ class ArtifactSerializationHandler(typing.Protocol):
     This protocol defines the interface for serializing artifact-related entities down to Flyte IDL.
     """
 
-    def partitions_to_idl(self, p: Optional[Partitions], **kwargs) -> Optional[art_id.Partitions]:
-        ...
+    def partitions_to_idl(self, p: Optional[Partitions], **kwargs) -> Optional[art_id.Partitions]: ...
 
-    def time_partition_to_idl(self, tp: Optional[TimePartition], **kwargs) -> Optional[art_id.TimePartition]:
-        ...
+    def time_partition_to_idl(self, tp: Optional[TimePartition], **kwargs) -> Optional[art_id.TimePartition]: ...
 
-    def artifact_query_to_idl(self, aq: ArtifactQuery, **kwargs) -> art_id.ArtifactQuery:
-        ...
+    def artifact_query_to_idl(self, aq: ArtifactQuery, **kwargs) -> art_id.ArtifactQuery: ...
 
 
 class DefaultArtifactSerializationHandler(ArtifactSerializationHandler):

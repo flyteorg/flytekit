@@ -179,6 +179,16 @@ Task Utilities
 
    HashMethod
 
+Artifacts
+=========
+
+.. autosummary::
+   :nosignatures:
+   :template: custom.rst
+   :toctree: generated/
+
+   Artifact
+
 Documentation
 =============
 
@@ -192,6 +202,7 @@ Documentation
    SourceCode
 
 """
+
 import os
 import sys
 from typing import Generator
@@ -207,6 +218,7 @@ else:
 
 from flytekit._version import __version__
 from flytekit.core.array_node_map_task import map_task
+from flytekit.core.artifact import Artifact
 from flytekit.core.base_sql_task import SQLTask
 from flytekit.core.base_task import SecurityContext, TaskMetadata, kwtypes
 from flytekit.core.checkpointer import Checkpoint

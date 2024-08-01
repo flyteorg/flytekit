@@ -14,7 +14,7 @@ env:
   FLYTE_SDK_LOGGING_LEVEL: 10 # debug
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
@@ -28,7 +28,7 @@ jobs:
           if [[ ${{ github.event_name }} == "schedule" ]]; then
             echo "python_versions=[\"3.8\",\"3.9\",\"3.10\",\"3.11\",\"3.12\"]" >> $GITHUB_ENV
           else
-            echo "python_versions=[\"3.12\"]" >> $GITHUB_ENV
+            echo "python_versions=[\"3.9\", \"3.12\"]" >> $GITHUB_ENV
           fi
 
   build:
@@ -57,9 +57,10 @@ jobs:
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
       - name: Install dependencies
         run: |
-          make setup
-          pip uninstall -y pandas
-          pip freeze
+          pip install uv
+          make setup-global-uv
+          uv pip uninstall --system pandas pyarrow
+          uv pip freeze
       - name: Test with coverage
         run: |
           make unit_test_codecov
@@ -95,9 +96,10 @@ jobs:
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
       - name: Install dependencies
         run: |
-          make setup
-          pip uninstall -y pandas
-          pip freeze
+          pip install uv
+          make setup-global-uv
+          uv pip uninstall --system pandas pyarrow
+          uv pip freeze
       - name: Run extras unit tests with coverage
         # Skip this step if running on python 3.12 due to https://github.com/tensorflow/tensorflow/issues/62003
         # and https://github.com/pytorch/pytorch/issues/110436
@@ -120,6 +122,15 @@ jobs:
         os: [ubuntu-latest]
         python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
         pandas: ["pandas<2.0.0", "pandas>=2.0.0"]
+        numpy: ["numpy<2.0.0", "numpy>=2.0.0"]
+        exclude:
+          - numpy: "numpy>=2.0.0"
+            pandas: "pandas<2.0.0"
+          - numpy: "numpy<2.0.0"
+            pandas: "pandas>=2.0.0"
+          - numpy: "numpy>=2.0.0"
+            python-version: "3.8"
+
     steps:
       - uses: actions/checkout@v4
       - name: 'Clear action cache'
@@ -137,12 +148,51 @@ jobs:
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
       - name: Install dependencies
         run: |
-          make setup
-          pip install --force-reinstall "${{ matrix.pandas }}"
-          pip freeze
+          pip install uv
+          make setup-global-uv
+          uv pip install --system --force-reinstall "${{ matrix.pandas }}" "${{ matrix.numpy }}"
+          uv pip freeze
       - name: Test with coverage
         run: |
           make unit_test_codecov
+      - name: Codecov
+        uses: codecov/codecov-action@v3.1.4
+        with:
+          fail_ci_if_error: false
+          files: coverage.xml
+
+  test-hypothesis:
+    needs:
+      - detect-python-versions
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          # This path is specific to Ubuntu
+          path: ~/.cache/pip
+          # Look to see if there is a cache hit for the corresponding requirements files
+          key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
+      - name: Install dependencies
+        run: |
+          pip install uv
+          make setup-global-uv
+          uv pip freeze
+      - name: Test with coverage
+        env:
+          FLYTEKIT_HYPOTHESIS_PROFILE: ci
+        run: |
+          make unit_test_hypothesis
       - name: Codecov
         uses: codecov/codecov-action@v3.1.4
         with:
@@ -172,7 +222,10 @@ jobs:
           # Look to see if there is a cache hit for the corresponding requirements files
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
       - name: Install dependencies
-        run: make setup && pip freeze
+        run: |
+          pip install uv
+          make setup-global-uv
+          uv pip freeze
       - name: Test with coverage
         run: |
           make test_serialization_codecov
@@ -197,6 +250,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: 'Clear action cache'
+        uses: ./.github/actions/clear-action-cache  # sandbox has disk pressure, so we need to clear the cache to get more disk space.
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
@@ -209,7 +264,10 @@ jobs:
           # Look to see if there is a cache hit for the corresponding requirements files
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
       - name: Install dependencies
-        run: make setup && pip freeze
+        run: |
+          pip install uv
+          make setup-global-uv
+          uv pip freeze
       - name: Install FlyteCTL
         uses: unionai-oss/flytectl-setup-action@master
       - name: Setup Flyte Sandbox
@@ -228,6 +286,7 @@ jobs:
           file: Dockerfile.dev
           build-args: |
             PYTHON_VERSION=${{ matrix.python-version }}
+            PSEUDO_VERSION=1.999.0dev0
           push: true
           tags: localhost:30000/flytekit:dev
           cache-from: type=gha
@@ -237,7 +296,8 @@ jobs:
           FLYTEKIT_IMAGE: localhost:30000/flytekit:dev
           FLYTEKIT_CI: 1
           PYTEST_OPTS: -n2
-        run: make integration_test_codecov
+        run: |
+          make integration_test_codecov
       - name: Codecov
         uses: codecov/codecov-action@v3.1.0
         with:
@@ -260,11 +320,13 @@ jobs:
           - flytekit-aws-batch
           - flytekit-aws-sagemaker
           - flytekit-bigquery
+          - flytekit-comet-ml
           - flytekit-dask
           - flytekit-data-fsspec
           - flytekit-dbt
           - flytekit-deck-standard
-          - flytekit-dolt
+          # TODO: remove dolt plugin - https://github.com/flyteorg/flyte/issues/5350
+          # flytekit-dolt
           - flytekit-duckdb
           - flytekit-envd
           - flytekit-flyteinteractive
@@ -297,6 +359,10 @@ jobs:
           - flytekit-vaex
           - flytekit-whylogs
         exclude:
+          - python-version: 3.8
+            plugin-names: "flytekit-aws-sagemaker"
+          - python-version: 3.9
+            plugin-names: "flytekit-aws-sagemaker"
           # flytekit-modin depends on ray which does not have a 3.11 wheel yet.
           # Issue tracked in https://github.com/ray-project/ray/issues/27881
           - python-version: 3.11
@@ -316,10 +382,6 @@ jobs:
             plugin-names: "flytekit-onnx-scikitlearn"
           - python-version: 3.11
             plugin-names: "flytekit-onnx-tensorflow"
-          # numba, a dependency of mlflow, doesn't support python 3.11
-          # https://github.com/numba/numba/issues/8304
-          - python-version: 3.11
-            plugin-names: "flytekit-mlflow"
           # vaex currently doesn't support python 3.11
           - python-version: 3.11
             plugin-names: "flytekit-vaex"
@@ -365,14 +427,20 @@ jobs:
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.txt', format('plugins/{0}/requirements.txt', matrix.plugin-names ))) }}
       - name: Install dependencies
         run: |
+          pip install uv
           # TODO: double-check if checking out all tags solves the issue
           export SETUPTOOLS_SCM_PRETEND_VERSION="3.0.0"
-          make setup
+          make setup-global-uv
           cd plugins/${{ matrix.plugin-names }}
-          pip install .
-          if [ -f dev-requirements.in ]; then pip install -r dev-requirements.in; fi
-          pip install -U $GITHUB_WORKSPACE
-          pip freeze
+          uv pip install --system .
+          if [ -f dev-requirements.in ]; then uv pip install --system -r dev-requirements.in; fi
+          # TODO: move to protobuf>=5. Github issue: https://github.com/flyteorg/flyte/issues/5448
+          uv pip install --system -U $GITHUB_WORKSPACE "protobuf<5" "git+https://github.com/flyteorg/flyte.git@master#subdirectory=flyteidl"
+          # TODO: remove this when numpy v2 in onnx has been resolved
+          if [[ ${{ matrix.plugin-names }} == *"onnx"* || ${{ matrix.plugin-names }} == "flytekit-sqlalchemy" || ${{ matrix.plugin-names }} == "flytekit-pandera" ]]; then
+            uv pip install --system "numpy<2.0.0"
+          fi
+          uv pip freeze
       - name: Test with coverage
         run: |
           cd plugins/${{ matrix.plugin-names }}
@@ -392,10 +460,10 @@ jobs:
     steps:
       - name: Fetch the code
         uses: actions/checkout@v4
-      - name: Set up Python 3.8
+      - name: Set up Python 3.12
         uses: actions/setup-python@v4
         with:
-          python-version: 3.8
+          python-version: 3.12
       - uses: actions/cache@v3
         with:
           path: ~/.cache/pip
@@ -405,12 +473,9 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          make setup
-          pip freeze
+          pip install uv
+          make setup-global-uv
+          uv pip freeze
       - name: Lint
         run: |
           make lint
-      - name: ShellCheck
-        uses: ludeeus/action-shellcheck@master
-        with:
-          ignore_paths: boilerplate

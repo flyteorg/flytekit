@@ -17,6 +17,7 @@ simple implementation that ships with the core.
    FileAccessProvider
 
 """
+
 import io
 import os
 import pathlib
@@ -132,6 +133,7 @@ class FileAccessProvider(object):
         local_sandbox_dir: Union[str, os.PathLike],
         raw_output_prefix: str,
         data_config: typing.Optional[DataConfig] = None,
+        execution_metadata: typing.Optional[dict] = None,
     ):
         """
         Args:
@@ -148,6 +150,11 @@ class FileAccessProvider(object):
         self._local = fsspec.filesystem(None)
 
         self._data_config = data_config if data_config else DataConfig.auto()
+
+        if self.data_config.generic.attach_execution_metadata:
+            self._execution_metadata = execution_metadata
+        else:
+            self._execution_metadata = None
         self._default_protocol = get_protocol(str(raw_output_prefix))
         self._default_remote = cast(fsspec.AbstractFileSystem, self.get_filesystem(self._default_protocol))
         if os.name == "nt" and raw_output_prefix.startswith("file://"):
@@ -174,7 +181,11 @@ class FileAccessProvider(object):
         return self._default_remote
 
     def get_filesystem(
-        self, protocol: typing.Optional[str] = None, anonymous: bool = False, **kwargs
+        self,
+        protocol: typing.Optional[str] = None,
+        anonymous: bool = False,
+        path: typing.Optional[str] = None,
+        **kwargs,
     ) -> fsspec.AbstractFileSystem:
         if not protocol:
             return self._default_remote
@@ -189,6 +200,9 @@ class FileAccessProvider(object):
             if anonymous:
                 kwargs["token"] = _ANON
             return fsspec.filesystem(protocol, **kwargs)  # type: ignore
+        elif protocol == "ftp":
+            kwargs.update(fsspec.implementations.ftp.FTPFileSystem._get_kwargs_from_urls(path))
+            return fsspec.filesystem(protocol, **kwargs)
 
         storage_options = get_fsspec_storage_options(
             protocol=protocol, anonymous=anonymous, data_config=self._data_config, **kwargs
@@ -198,7 +212,7 @@ class FileAccessProvider(object):
 
     def get_filesystem_for_path(self, path: str = "", anonymous: bool = False, **kwargs) -> fsspec.AbstractFileSystem:
         protocol = get_protocol(path)
-        return self.get_filesystem(protocol, anonymous=anonymous, **kwargs)
+        return self.get_filesystem(protocol, anonymous=anonymous, path=path, **kwargs)
 
     @staticmethod
     def is_remote(path: Union[str, os.PathLike]) -> bool:
@@ -308,6 +322,10 @@ class FileAccessProvider(object):
                     self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True
                 )
             from_path, to_path = self.recursive_paths(from_path, to_path)
+        if self._execution_metadata:
+            if "metadata" not in kwargs:
+                kwargs["metadata"] = {}
+            kwargs["metadata"].update(self._execution_metadata)
         dst = file_system.put(from_path, to_path, recursive=recursive, **kwargs)
         if isinstance(dst, (str, pathlib.Path)):
             return dst
@@ -435,6 +453,39 @@ class FileAccessProvider(object):
         if unstrip:
             f = fs.unstrip_protocol(f)
         return f
+
+    def generate_new_custom_path(
+        self,
+        fs: typing.Optional[fsspec.AbstractFileSystem] = None,
+        alt: typing.Optional[str] = None,
+        stem: typing.Optional[str] = None,
+    ) -> str:
+        """
+        Generates a new path with the raw output prefix and a random string appended to it.
+        Optionally, you can provide an alternate prefix and a stem. If stem is provided, it
+        will be appended to the path instead of a random string. If alt is provided, it will
+        replace the first part of the output prefix, e.g. the S3 or GCS bucket.
+
+        If wanting to write to a non-random prefix in a non-default S3 bucket, this can be
+        called with alt="my-alt-bucket" and stem="my-stem" to generate a path like
+        s3://my-alt-bucket/default-prefix-part/my-stem
+
+        :param fs: The filesystem to use. If None, the context's raw output filesystem is used.
+        :param alt: An alternate first member of the prefix to use instead of the default.
+        :param stem: A stem to append to the path.
+        :return: The new path.
+        """
+        fs = fs or self.raw_output_fs
+        pref = self.raw_output_prefix
+        s_pref = pref.split(fs.sep)[:-1]
+        if alt:
+            s_pref[2] = alt
+        if stem:
+            s_pref.append(stem)
+        else:
+            s_pref.append(self.get_random_string())
+        p = fs.sep.join(s_pref)
+        return p
 
     def get_random_local_path(self, file_path_or_file_name: typing.Optional[str] = None) -> str:
         """

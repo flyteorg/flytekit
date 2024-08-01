@@ -1,9 +1,30 @@
+import re
 from typing import Any, Dict, Optional
 
 import aioboto3
+import xxhash
+from botocore.exceptions import ClientError
 
 from flytekit.interaction.string_literals import literal_map_string_repr
 from flytekit.models.literals import LiteralMap
+
+
+class CustomException(Exception):
+    def __init__(self, message, idempotence_token, original_exception):
+        super().__init__(message)
+        self.idempotence_token = idempotence_token
+        self.original_exception = original_exception
+
+
+def sorted_dict_str(d):
+    """Recursively convert a dictionary to a sorted string representation."""
+    if isinstance(d, dict):
+        return "{" + ", ".join(f"{sorted_dict_str(k)}: {sorted_dict_str(v)}" for k, v in sorted(d.items())) + "}"
+    elif isinstance(d, list):
+        return "[" + ", ".join(sorted_dict_str(i) for i in sorted(d, key=lambda x: str(x))) + "]"
+    else:
+        return str(d)
+
 
 account_id_map = {
     "us-east-1": "785573368785",
@@ -31,63 +52,81 @@ account_id_map = {
 }
 
 
-def update_dict_fn(original_dict: Any, update_dict: Dict[str, Any]) -> Any:
+def get_nested_value(d: Dict[str, Any], keys: list[str]) -> Any:
+    """
+    Retrieve the nested value from a dictionary based on a list of keys.
+    """
+    for key in keys:
+        if key not in d:
+            raise ValueError(f"Could not find the key {key} in {d}.")
+        d = d[key]
+    return d
+
+
+def replace_placeholder(
+    service: str,
+    original_dict: str,
+    placeholder: str,
+    replacement: str,
+) -> str:
+    """
+    Replace a placeholder in the original string and handle the specific logic for the sagemaker service and idempotence token.
+    """
+    temp_dict = original_dict.replace(f"{{{placeholder}}}", replacement)
+    if service == "sagemaker" and placeholder in [
+        "inputs.idempotence_token",
+        "idempotence_token",
+    ]:
+        if len(temp_dict) > 63:
+            truncated_token = replacement[: 63 - len(original_dict.replace(f"{{{placeholder}}}", ""))]
+            return original_dict.replace(f"{{{placeholder}}}", truncated_token)
+        else:
+            return temp_dict
+    return temp_dict
+
+
+def update_dict_fn(
+    service: str,
+    original_dict: Any,
+    update_dict: Dict[str, Any],
+    idempotence_token: Optional[str] = None,
+) -> Any:
     """
     Recursively update a dictionary with values from another dictionary.
     For example, if original_dict is {"EndpointConfigName": "{endpoint_config_name}"},
     and update_dict is {"endpoint_config_name": "my-endpoint-config"},
     then the result will be {"EndpointConfigName": "my-endpoint-config"}.
 
+    :param service: The AWS service to use
     :param original_dict: The dictionary to update (in place)
     :param update_dict: The dictionary to use for updating
+    :param idempotence_token: Hash of config -- this is to ensure the execution ID is deterministic
     :return: The updated dictionary
     """
     if original_dict is None:
         return None
 
-    # If the original value is a string and contains placeholder curly braces
-    if isinstance(original_dict, str):
-        if "{" in original_dict and "}" in original_dict:
-            # Check if there are nested keys
-            if "." in original_dict:
-                # Create a copy of update_dict
-                update_dict_copy = update_dict.copy()
-
-                # Fetch keys from the original_dict
-                keys = original_dict.strip("{}").split(".")
-
-                # Get value from the nested dictionary
-                for key in keys:
-                    try:
-                        update_dict_copy = update_dict_copy[key]
-                    except Exception:
-                        raise ValueError(f"Could not find the key {key} in {update_dict_copy}.")
-
-                return update_dict_copy
-
-            # Retrieve the original value using the key without curly braces
-            original_value = update_dict.get(original_dict.strip("{}"))
-
-            # Check if original_value exists; if so, return it,
-            # otherwise, raise a ValueError indicating that the value for the key original_dict could not be found.
-            if original_value:
-                return original_value
-            else:
-                raise ValueError(f"Could not find value for {original_dict}.")
-
-        # If the string does not contain placeholders, return it as is
+    if isinstance(original_dict, str) and "{" in original_dict and "}" in original_dict:
+        matches = re.findall(r"\{([^}]+)\}", original_dict)
+        for match in matches:
+            if "." in match:
+                keys = match.split(".")
+                nested_value = get_nested_value(update_dict, keys)
+                if f"{{{match}}}" == original_dict:
+                    return nested_value
+                else:
+                    original_dict = replace_placeholder(service, original_dict, match, nested_value)
+            elif match == "idempotence_token" and idempotence_token:
+                original_dict = replace_placeholder(service, original_dict, match, idempotence_token)
         return original_dict
 
-    # If the original value is a list, recursively update each element in the list
     if isinstance(original_dict, list):
-        return [update_dict_fn(item, update_dict) for item in original_dict]
+        return [update_dict_fn(service, item, update_dict, idempotence_token) for item in original_dict]
 
-    # If the original value is a dictionary, recursively update each key-value pair
     if isinstance(original_dict, dict):
         for key, value in original_dict.items():
-            original_dict[key] = update_dict_fn(value, update_dict)
+            original_dict[key] = update_dict_fn(service, value, update_dict, idempotence_token)
 
-    # Return the updated original dict
     return original_dict
 
 
@@ -116,10 +155,7 @@ class Boto3AgentMixin:
         images: Optional[Dict[str, str]] = None,
         inputs: Optional[LiteralMap] = None,
         region: Optional[str] = None,
-        aws_access_key_id: Optional[str] = None,
-        aws_secret_access_key: Optional[str] = None,
-        aws_session_token: Optional[str] = None,
-    ) -> Any:
+    ) -> tuple[Any, str]:
         """
         Utilize this method to invoke any boto3 method (AWS service method).
 
@@ -135,9 +171,6 @@ class Boto3AgentMixin:
         :param images: A dict of Docker images to use, for example, when deploying a model on SageMaker.
         :param inputs: The inputs for the task being created.
         :param region: The region for the boto3 client. If not provided, the region specified in the constructor will be used.
-        :param aws_access_key_id: The access key ID to use to access the AWS resources.
-        :param aws_secret_access_key: The secret access key to use to access the AWS resources
-        :param aws_session_token: An AWS session token used as part of the credentials to authenticate the user.
         """
         args = {}
         input_region = None
@@ -159,27 +192,30 @@ class Boto3AgentMixin:
                         region=final_region,
                         base=base,
                     )
-                    if isinstance(image, str) and "{region}" in image
+                    if isinstance(image, str) and "sagemaker-tritonserver" in image
                     else image
                 )
                 for image_name, image in images.items()
             }
             args["images"] = images
 
-        updated_config = update_dict_fn(config, args)
+        updated_config = update_dict_fn(self._service, config, args)
+
+        hash = ""
+        if "idempotence_token" in str(updated_config):
+            # compute hash of the config
+            hash = xxhash.xxh64(sorted_dict_str(updated_config)).hexdigest()
+            updated_config = update_dict_fn(self._service, updated_config, args, idempotence_token=hash)
 
         # Asynchronous Boto3 session
         session = aioboto3.Session()
         async with session.client(
             service_name=self._service,
             region_name=final_region,
-            aws_access_key_id=aws_access_key_id,
-            aws_secret_access_key=aws_secret_access_key,
-            aws_session_token=aws_session_token,
         ) as client:
             try:
                 result = await getattr(client, method)(**updated_config)
-            except Exception as e:
-                raise e
+            except ClientError as e:
+                raise CustomException(f"An error occurred: {e}", hash, e) from e
 
-        return result
+        return result, hash

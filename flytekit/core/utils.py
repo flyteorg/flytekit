@@ -1,13 +1,15 @@
 import datetime
-import os as _os
-import shutil as _shutil
-import tempfile as _tempfile
-import time as _time
+import inspect
+import os
+import shutil
+import tempfile
+import time
+import typing
 from abc import ABC, abstractmethod
 from functools import wraps
 from hashlib import sha224 as _sha224
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, cast
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union, cast
 
 from flyteidl.core import tasks_pb2 as _core_task
 
@@ -62,14 +64,14 @@ def _get_container_definition(
     command: List[str],
     args: Optional[List[str]] = None,
     data_loading_config: Optional["task_models.DataLoadingConfig"] = None,
-    ephemeral_storage_request: Optional[str] = None,
-    cpu_request: Optional[str] = None,
-    gpu_request: Optional[str] = None,
-    memory_request: Optional[str] = None,
-    ephemeral_storage_limit: Optional[str] = None,
-    cpu_limit: Optional[str] = None,
-    gpu_limit: Optional[str] = None,
-    memory_limit: Optional[str] = None,
+    ephemeral_storage_request: Optional[Union[str, int]] = None,
+    cpu_request: Optional[Union[str, int, float]] = None,
+    gpu_request: Optional[Union[str, int]] = None,
+    memory_request: Optional[Union[str, int]] = None,
+    ephemeral_storage_limit: Optional[Union[str, int]] = None,
+    cpu_limit: Optional[Union[str, int, float]] = None,
+    gpu_limit: Optional[Union[str, int]] = None,
+    memory_limit: Optional[Union[str, int]] = None,
     environment: Optional[Dict[str, str]] = None,
 ) -> "task_models.Container":
     ephemeral_storage_limit = ephemeral_storage_limit
@@ -163,15 +165,12 @@ def _serialize_pod_spec(
         # with the values given to ContainerTask.
         # The attributes include: image, command, args, resource, and env (env is unioned)
 
-        # resolve the image name if it is image spec or placeholder
-        resolved_image = get_registerable_container_image(container.image, settings.image_config)
-
         if container.name == cast(PodTemplate, pod_template).primary_container_name:
             if container.image is None:
                 # Copy the image from primary_container only if the image is not specified in the pod spec.
                 container.image = primary_container.image
             else:
-                container.image = resolved_image
+                container.image = get_registerable_container_image(container.image, settings.image_config)
 
             container.command = primary_container.command
             container.args = primary_container.args
@@ -190,7 +189,7 @@ def _serialize_pod_spec(
                     container.env or []
                 )
         else:
-            container.image = resolved_image
+            container.image = get_registerable_container_image(container.image, settings.image_config)
 
         final_containers.append(container)
     cast(V1PodSpec, pod_template.pod_spec).containers = final_containers
@@ -206,7 +205,7 @@ def load_proto_from_file(pb2_type, path):
 
 
 def write_proto_to_file(proto, path):
-    Path(_os.path.dirname(path)).mkdir(parents=True, exist_ok=True)
+    Path(os.path.dirname(path)).mkdir(parents=True, exist_ok=True)
     with open(path, "wb") as writer:
         writer.write(proto.SerializeToString())
 
@@ -230,7 +229,7 @@ class Directory(object):
         The list of absolute filepaths for all immediate sub-paths
         :rtype: list[Text]
         """
-        return [_os.path.join(self.name, f) for f in _os.listdir(self.name)]
+        return [os.path.join(self.name, f) for f in os.listdir(self.name)]
 
     def __enter__(self):
         pass
@@ -256,16 +255,16 @@ class AutoDeletingTempDir(Directory):
         super(AutoDeletingTempDir, self).__init__(None)
 
     def __enter__(self):
-        self._name = _tempfile.mkdtemp(dir=self._tmp_dir, prefix=self._working_dir_prefix)
+        self._name = tempfile.mkdtemp(dir=self._tmp_dir, prefix=self._working_dir_prefix)
         return self
 
     def get_named_tempfile(self, name):
-        return _os.path.join(self.name, name)
+        return os.path.join(self.name, name)
 
     def _cleanup_dir(self):
         if self.name and self._cleanup:
-            if _os.path.exists(self.name):
-                _shutil.rmtree(self.name)
+            if os.path.exists(self.name):
+                shutil.rmtree(self.name)
             self._name = None
 
     def force_cleanup(self):
@@ -312,8 +311,8 @@ class timeit:
 
     def __enter__(self):
         self.start_time = datetime.datetime.now(datetime.timezone.utc)
-        self._start_wall_time = _time.perf_counter()
-        self._start_process_time = _time.process_time()
+        self._start_wall_time = time.perf_counter()
+        self._start_process_time = time.process_time()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -324,8 +323,8 @@ class timeit:
         from flytekit.core.context_manager import FlyteContextManager
 
         end_time = datetime.datetime.now(datetime.timezone.utc)
-        end_wall_time = _time.perf_counter()
-        end_process_time = _time.process_time()
+        end_wall_time = time.perf_counter()
+        end_process_time = time.process_time()
 
         timeline_deck = FlyteContextManager.current_context().user_space_params.timeline_deck
         timeline_deck.append_time_info(
@@ -338,13 +337,7 @@ class timeit:
             )
         )
 
-        logger.info(
-            "{}. [Wall Time: {}s, Process Time: {}s]".format(
-                self._name,
-                end_wall_time - self._start_wall_time,
-                end_process_time - self._start_process_time,
-            )
-        )
+        logger.info(f"{self._name}. [Time: {end_wall_time - self._start_wall_time:.6f}s]")
 
 
 class ClassDecorator(ABC):
@@ -390,3 +383,13 @@ class ClassDecorator(ABC):
         Get the config of the decorator.
         """
         pass
+
+
+def has_return_statement(func: typing.Callable) -> bool:
+    source_lines = inspect.getsourcelines(func)[0]
+    for line in source_lines:
+        if "return" in line.strip():
+            return True
+        if "yield" in line.strip():
+            return True
+    return False

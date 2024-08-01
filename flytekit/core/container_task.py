@@ -1,6 +1,7 @@
+import os
 import typing
 from enum import Enum
-from typing import Any, Dict, List, Optional, OrderedDict, Type
+from typing import Any, Dict, List, Optional, OrderedDict, Tuple, Type
 
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask, TaskMetadata
@@ -11,10 +12,13 @@ from flytekit.core.python_auto_container import get_registerable_container_image
 from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.utils import _get_container_definition, _serialize_pod_spec
 from flytekit.image_spec.image_spec import ImageSpec
+from flytekit.loggers import logger
 from flytekit.models import task as _task_model
+from flytekit.models.literals import LiteralMap
 from flytekit.models.security import Secret, SecurityContext
 
 _PRIMARY_CONTAINER_NAME_FIELD = "primary_container_name"
+DOCKER_IMPORT_ERROR_MESSAGE = "Docker is not installed. Please install Docker by running `pip install docker`."
 
 
 class ContainerTask(PythonTask):
@@ -55,6 +59,7 @@ class ContainerTask(PythonTask):
         secret_requests: Optional[List[Secret]] = None,
         pod_template: Optional["PodTemplate"] = None,
         pod_template_name: Optional[str] = None,
+        local_logs: bool = False,
         **kwargs,
     ):
         sec_ctx = None
@@ -82,19 +87,180 @@ class ContainerTask(PythonTask):
         self._args = arguments
         self._input_data_dir = input_data_dir
         self._output_data_dir = output_data_dir
+        self._outputs = outputs
         self._md_format = metadata_format
         self._io_strategy = io_strategy
         self._resources = ResourceSpec(
             requests=requests if requests else Resources(), limits=limits if limits else Resources()
         )
         self.pod_template = pod_template
+        self.local_logs = local_logs
 
     @property
     def resources(self) -> ResourceSpec:
         return self._resources
 
-    def local_execute(self, ctx: FlyteContext, **kwargs) -> Any:
-        raise RuntimeError("ContainerTask is not supported in local executions.")
+    def _extract_command_key(self, cmd: str, **kwargs) -> Any:
+        """
+        Extract the key from the command using regex.
+        """
+        import re
+
+        input_regex = r"^\{\{\s*\.inputs\.(.*?)\s*\}\}$"
+        match = re.match(input_regex, cmd)
+        if match:
+            return match.group(1)
+        return None
+
+    def _render_command_and_volume_binding(self, cmd: str, **kwargs) -> Tuple[str, Dict[str, Dict[str, str]]]:
+        """
+        We support template-style references to inputs, e.g., "{{.inputs.infile}}".
+        """
+        from flytekit.types.directory import FlyteDirectory
+        from flytekit.types.file import FlyteFile
+
+        command = ""
+        volume_binding = {}
+        k = self._extract_command_key(cmd)
+
+        if k:
+            input_val = kwargs.get(k)
+            if type(input_val) in [FlyteFile, FlyteDirectory]:
+                local_flyte_file_or_dir_path = str(input_val)
+                remote_flyte_file_or_dir_path = os.path.join(self._input_data_dir, k.replace(".", "/"))  # type: ignore
+                volume_binding[local_flyte_file_or_dir_path] = {
+                    "bind": remote_flyte_file_or_dir_path,
+                    "mode": "rw",
+                }
+                command = remote_flyte_file_or_dir_path
+            else:
+                command = str(input_val)
+        else:
+            command = cmd
+
+        return command, volume_binding
+
+    def _prepare_command_and_volumes(
+        self, cmd_and_args: List[str], **kwargs
+    ) -> Tuple[List[str], Dict[str, Dict[str, str]]]:
+        """
+        Prepares the command and volume bindings for the container based on input arguments and command templates.
+
+        Parameters:
+        - cmd_and_args (List[str]): The command and arguments to prepare.
+        - **kwargs: Keyword arguments representing task inputs.
+
+        Returns:
+        - Tuple[List[str], Dict[str, Dict[str, str]]]: A tuple containing the prepared commands and volume bindings.
+        """
+
+        commands = []
+        volume_bindings = {}
+
+        for cmd in cmd_and_args:
+            command, volume_binding = self._render_command_and_volume_binding(cmd, **kwargs)
+            commands.append(command)
+            volume_bindings.update(volume_binding)
+
+        return commands, volume_bindings
+
+    def _pull_image_if_not_exists(self, client, image: str):
+        try:
+            if not client.images.list(filters={"reference": image}):
+                logger.info(f"Pulling image: {image} for container task: {self.name}")
+                client.images.pull(image)
+        except Exception as e:
+            logger.error(f"Failed to pull image {image}: {str(e)}")
+            raise
+
+    def _string_to_timedelta(self, s: str):
+        import datetime
+        import re
+
+        regex = r"(?:(\d+) days?, )?(?:(\d+):)?(\d+):(\d+)(?:\.(\d+))?"
+        parts = re.match(regex, s)
+        if not parts:
+            raise ValueError("Invalid timedelta string format")
+
+        days = int(parts.group(1)) if parts.group(1) else 0
+        hours = int(parts.group(2)) if parts.group(2) else 0
+        minutes = int(parts.group(3)) if parts.group(3) else 0
+        seconds = int(parts.group(4)) if parts.group(4) else 0
+        microseconds = int(parts.group(5)) if parts.group(5) else 0
+
+        return datetime.timedelta(
+            days=days,
+            hours=hours,
+            minutes=minutes,
+            seconds=seconds,
+            microseconds=microseconds,
+        )
+
+    def _convert_output_val_to_correct_type(self, output_val: Any, output_type: Any) -> Any:
+        import datetime
+
+        if output_type == bool:
+            return output_val.lower() != "false"
+        elif output_type == datetime.datetime:
+            return datetime.datetime.fromisoformat(output_val)
+        elif output_type == datetime.timedelta:
+            return self._string_to_timedelta(output_val)
+        else:
+            return output_type(output_val)
+
+    def _get_output_dict(self, output_directory: str) -> Dict[str, Any]:
+        from flytekit.types.directory import FlyteDirectory
+        from flytekit.types.file import FlyteFile
+
+        output_dict = {}
+        if self._outputs:
+            for k, output_type in self._outputs.items():
+                output_path = os.path.join(output_directory, k)
+                if output_type in [FlyteFile, FlyteDirectory]:
+                    output_dict[k] = output_type(path=output_path)
+                else:
+                    with open(output_path, "r") as f:
+                        output_val = f.read()
+                    output_dict[k] = self._convert_output_val_to_correct_type(output_val, output_type)
+        return output_dict
+
+    def execute(self, **kwargs) -> LiteralMap:
+        try:
+            import docker
+        except ImportError:
+            raise ImportError(DOCKER_IMPORT_ERROR_MESSAGE)
+
+        from flytekit.core.type_engine import TypeEngine
+
+        ctx = FlyteContext.current_context()
+
+        # Normalize the input and output directories
+        self._input_data_dir = os.path.normpath(self._input_data_dir) if self._input_data_dir else ""
+        self._output_data_dir = os.path.normpath(self._output_data_dir) if self._output_data_dir else ""
+
+        output_directory = ctx.file_access.get_random_local_directory()
+        cmd_and_args = (self._cmd or []) + (self._args or [])
+        commands, volume_bindings = self._prepare_command_and_volumes(cmd_and_args, **kwargs)
+        volume_bindings[output_directory] = {"bind": self._output_data_dir, "mode": "rw"}
+
+        client = docker.from_env()
+        self._pull_image_if_not_exists(client, self._image)
+
+        container = client.containers.run(
+            self._image, command=commands, remove=True, volumes=volume_bindings, detach=True
+        )
+        # Wait for the container to finish the task
+        # TODO: Add a 'timeout' parameter to control the max wait time for the container to finish the task.
+
+        if self.local_logs:
+            for log in container.logs(stream=True):
+                print(f"[Local Container] {log.strip()}")
+
+        container.wait()
+
+        output_dict = self._get_output_dict(output_directory)
+        outputs_literal_map = TypeEngine.dict_to_literal_map(ctx, output_dict)
+        return outputs_literal_map
 
     def get_container(self, settings: SerializationSettings) -> _task_model.Container:
         # if pod_template is specified, return None here but in get_k8s_pod, return pod_template merged with container

@@ -5,7 +5,7 @@ INFERENCE_PACKAGE = "awssagemaker_inference"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=1.11.0", "aioboto3>=12.3.0"]
+plugin_requires = ["flytekit>=1.11.0", "aioboto3>=12.3.0", "xxhash"]
 
 __version__ = "0.0.0+develop"
 

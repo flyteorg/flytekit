@@ -13,7 +13,6 @@
 
 from __future__ import annotations
 
-import datetime as _datetime
 import logging as _logging
 import os
 import pathlib
@@ -23,7 +22,7 @@ import typing
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Generator, List, Optional, Union
 
@@ -34,7 +33,7 @@ from flytekit.core.data_persistence import FileAccessProvider, default_local_fil
 from flytekit.core.node import Node
 from flytekit.interfaces.cli_identifiers import WorkflowExecutionIdentifier
 from flytekit.interfaces.stats import taggable
-from flytekit.loggers import logger, user_space_logger
+from flytekit.loggers import developer_logger, user_space_logger
 from flytekit.models.core import identifier as _identifier
 
 if typing.TYPE_CHECKING:
@@ -89,6 +88,7 @@ class ExecutionParameters(object):
         execution_date: typing.Optional[datetime] = None
         logging: Optional[_logging.Logger] = None
         task_id: typing.Optional[_identifier.Identifier] = None
+        output_metadata_prefix: Optional[str] = None
 
         def __init__(self, current: typing.Optional[ExecutionParameters] = None):
             self.stats = current.stats if current else None
@@ -101,6 +101,7 @@ class ExecutionParameters(object):
             self.attrs = current._attrs if current else {}
             self.raw_output_prefix = current.raw_output_prefix if current else None
             self.task_id = current.task_id if current else None
+            self.output_metadata_prefix = current.output_metadata_prefix if current else None
 
         def add_attr(self, key: str, v: typing.Any) -> ExecutionParameters.Builder:
             self.attrs[key] = v
@@ -119,6 +120,7 @@ class ExecutionParameters(object):
                 decks=self.decks,
                 raw_output_prefix=self.raw_output_prefix,
                 task_id=self.task_id,
+                output_metadata_prefix=self.output_metadata_prefix,
                 **self.attrs,
             )
 
@@ -132,7 +134,7 @@ class ExecutionParameters(object):
             prefix = self.working_directory.name
         task_sandbox_dir = tempfile.mkdtemp(prefix=prefix)  # type: ignore
         p = pathlib.Path(task_sandbox_dir)
-        cp_dir = p.joinpath("__cp")
+        cp_dir = p / "__cp"
         cp_dir.mkdir(exist_ok=True)
         cp = SyncCheckpoint(checkpoint_dest=str(cp_dir))
         b = self.new_builder(self)
@@ -182,6 +184,7 @@ class ExecutionParameters(object):
         self._checkpoint = checkpoint
         self._decks = decks
         self._task_id = task_id
+        self._timeline_deck = None
 
     @property
     def stats(self) -> taggable.TaggableStats:
@@ -274,7 +277,7 @@ class ExecutionParameters(object):
 
     @property
     def timeline_deck(self) -> "TimeLineDeck":  # type: ignore
-        from flytekit.deck.deck import TimeLineDeck
+        from flytekit.deck.deck import DeckField, TimeLineDeck
 
         time_line_deck = None
         for deck in self.decks:
@@ -282,8 +285,12 @@ class ExecutionParameters(object):
                 time_line_deck = deck
                 break
         if time_line_deck is None:
-            time_line_deck = TimeLineDeck("Timeline")
+            if self._timeline_deck is not None:
+                time_line_deck = self._timeline_deck
+            else:
+                time_line_deck = TimeLineDeck(DeckField.TIMELINE.value, auto_add_to_deck=False)
 
+        self._timeline_deck = time_line_deck
         return time_line_deck
 
     def __getattr__(self, attr_name: str) -> typing.Any:
@@ -360,7 +367,12 @@ class SecretsManager(object):
         Retrieves a secret using the resolution order -> Env followed by file. If not found raises a ValueError
         param encode_mode, defines the mode to open files, it can either be "r" to read file, or "rb" to read binary file
         """
-        self.check_group_key(group)
+
+        from flytekit.configuration.plugin import get_plugin
+
+        if not get_plugin().secret_requires_group():
+            group, group_version = None, None
+
         env_var = self.get_secrets_env_var(group, key, group_version)
         fpath = self.get_secrets_file(group, key, group_version)
         v = os.environ.get(env_var)
@@ -380,7 +392,6 @@ class SecretsManager(object):
         """
         Returns a string that matches the ENV Variable to look for the secrets
         """
-        self.check_group_key(group)
         l = [k.upper() for k in filter(None, (group, group_version, key))]
         return f"{self._env_prefix}{'_'.join(l)}"
 
@@ -390,17 +401,9 @@ class SecretsManager(object):
         """
         Returns a path that matches the file to look for the secrets
         """
-        self.check_group_key(group)
         l = [k.lower() for k in filter(None, (group, group_version, key))]
         l[-1] = f"{self._file_prefix}{l[-1]}"
         return os.path.join(self._base_dir, *l)
-
-    @staticmethod
-    def check_group_key(group: Optional[str]):
-        from flytekit.configuration.plugin import get_plugin
-
-        if get_plugin().secret_requires_group() and (group is None or group == ""):
-            raise ValueError("secrets group is a mandatory field.")
 
 
 @dataclass(frozen=True)
@@ -558,7 +561,7 @@ class ExecutionState(object):
             user_space_params=user_space_params if user_space_params else self.user_space_params,
         )
 
-    def is_local_execution(self):
+    def is_local_execution(self) -> bool:
         return (
             self.mode == ExecutionState.Mode.LOCAL_TASK_EXECUTION
             or self.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
@@ -571,8 +574,7 @@ class SerializableToString(typing.Protocol):
     and then added to a literal's metadata.
     """
 
-    def serialize_to_string(self, ctx: FlyteContext, variable_name: str) -> typing.Tuple[str, str]:
-        ...
+    def serialize_to_string(self, ctx: FlyteContext, variable_name: str) -> typing.Tuple[str, str]: ...
 
 
 @dataclass
@@ -871,7 +873,7 @@ class FlyteContextManager(object):
         context_list.append(ctx)
         flyte_context_Var.set(context_list)
         t = "\t"
-        logger.debug(
+        developer_logger.debug(
             f"{t * ctx.level}[{len(flyte_context_Var.get())}] Pushing context - {'compile' if ctx.compilation_state else 'execute'}, branch[{ctx.in_a_condition}], {ctx.get_origin_stackframe_repr()}"
         )
         return ctx
@@ -882,7 +884,7 @@ class FlyteContextManager(object):
         ctx = context_list.pop()
         flyte_context_Var.set(context_list)
         t = "\t"
-        logger.debug(
+        developer_logger.debug(
             f"{t * ctx.level}[{len(flyte_context_Var.get()) + 1}] Popping context - {'compile' if ctx.compilation_state else 'execute'}, branch[{ctx.in_a_condition}], {ctx.get_origin_stackframe_repr()}"
         )
         if len(flyte_context_Var.get()) == 0:
@@ -937,7 +939,7 @@ class FlyteContextManager(object):
         default_user_space_params = ExecutionParameters(
             execution_id=WorkflowExecutionIdentifier.promote_from_model(default_execution_id),
             task_id=_identifier.Identifier(_identifier.ResourceType.TASK, "local", "local", "local", "local"),
-            execution_date=_datetime.datetime.now(_datetime.timezone.utc),
+            execution_date=datetime.now(timezone.utc),
             stats=mock_stats.MockStats(),
             logging=user_space_logger,
             tmp_dir=user_space_path,

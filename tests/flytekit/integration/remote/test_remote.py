@@ -11,6 +11,9 @@ import pytest
 
 from flytekit import LaunchPlan, kwtypes
 from flytekit.configuration import Config, ImageConfig, SerializationSettings
+from flytekit.core.launch_plan import reference_launch_plan
+from flytekit.core.task import reference_task
+from flytekit.core.workflow import reference_workflow
 from flytekit.exceptions.user import FlyteAssertion, FlyteEntityNotExistException
 from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
 from flytekit.remote.remote import FlyteRemote
@@ -45,6 +48,38 @@ def register():
         ]
     )
     assert out.returncode == 0
+
+
+def run(file_name, wf_name, *args):
+    out = subprocess.run(
+        [
+            "pyflyte",
+            "--verbose",
+            "-c",
+            CONFIG,
+            "run",
+            "--remote",
+            "--image",
+            IMAGE,
+            "--project",
+            PROJECT,
+            "--domain",
+            DOMAIN,
+            MODULE_PATH / file_name,
+            wf_name,
+            *args,
+        ]
+    )
+    assert out.returncode == 0
+
+
+def test_remote_run():
+    # child_workflow.parent_wf asynchronously register a parent wf1 with child lp from another wf2.
+    run("child_workflow.py", "parent_wf", "--a", "3")
+
+    # run twice to make sure it will register a new version of the workflow.
+    run("default_lp.py", "my_wf")
+    run("default_lp.py", "my_wf")
 
 
 def test_fetch_execute_launch_plan(register):
@@ -352,3 +387,99 @@ def test_fetch_not_exist_launch_plan(register):
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     with pytest.raises(FlyteEntityNotExistException):
         remote.fetch_launch_plan(name="basic.list_float_wf.fake_wf", version=VERSION)
+
+
+def test_execute_reference_task(register):
+    nt = typing.NamedTuple("OutputsBC", [("t1_int_output", int), ("c", str)])
+
+    @reference_task(
+        project=PROJECT,
+        domain=DOMAIN,
+        name="basic.basic_workflow.t1",
+        version=VERSION,
+    )
+    def t1(a: int) -> nt:
+        return nt(t1_int_output=a + 2, c="world")
+
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    execution = remote.execute(
+        t1,
+        inputs={"a": 10},
+        wait=True,
+        overwrite_cache=True,
+        envs={"foo": "bar"},
+        tags=["flyte"],
+        cluster_pool="gpu",
+    )
+    assert execution.outputs["t1_int_output"] == 12
+    assert execution.outputs["c"] == "world"
+    assert execution.spec.envs.envs == {"foo": "bar"}
+    assert execution.spec.tags == ["flyte"]
+    assert execution.spec.cluster_assignment.cluster_pool == "gpu"
+
+
+def test_execute_reference_workflow(register):
+    @reference_workflow(
+        project=PROJECT,
+        domain=DOMAIN,
+        name="basic.basic_workflow.my_wf",
+        version=VERSION,
+    )
+    def my_wf(a: int, b: str) -> (int, str):
+        return a + 2, b + "world"
+
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    execution = remote.execute(
+        my_wf,
+        inputs={"a": 10, "b": "xyz"},
+        wait=True,
+        overwrite_cache=True,
+        envs={"foo": "bar"},
+        tags=["flyte"],
+        cluster_pool="gpu",
+    )
+    assert execution.outputs["o0"] == 12
+    assert execution.outputs["o1"] == "xyzworld"
+    assert execution.spec.envs.envs == {"foo": "bar"}
+    assert execution.spec.tags == ["flyte"]
+    assert execution.spec.cluster_assignment.cluster_pool == "gpu"
+
+
+def test_execute_reference_launchplan(register):
+    @reference_launch_plan(
+        project=PROJECT,
+        domain=DOMAIN,
+        name="basic.basic_workflow.my_wf",
+        version=VERSION,
+    )
+    def my_wf(a: int, b: str) -> (int, str):
+        return 3, "world"
+
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    execution = remote.execute(
+        my_wf,
+        inputs={"a": 10, "b": "xyz"},
+        wait=True,
+        overwrite_cache=True,
+        envs={"foo": "bar"},
+        tags=["flyte"],
+        cluster_pool="gpu",
+    )
+    assert execution.outputs["o0"] == 12
+    assert execution.outputs["o1"] == "xyzworld"
+    assert execution.spec.envs.envs == {"foo": "bar"}
+    assert execution.spec.tags == ["flyte"]
+    assert execution.spec.cluster_assignment.cluster_pool == "gpu"
+
+
+def test_execute_workflow_with_maptask(register):
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    d: typing.List[int] = [1, 2, 3]
+    flyte_launch_plan = remote.fetch_launch_plan(name="basic.array_map.workflow_with_maptask", version=VERSION)
+    execution = remote.execute(
+        flyte_launch_plan,
+        inputs={"data": d, "y": 3},
+        version=VERSION,
+        wait=True,
+    )
+    assert execution.outputs["o0"] == [4, 5, 6]

@@ -21,10 +21,9 @@ ARG DOCKER_IMAGE
 # 3. Clean up the apt cache to reduce image size. Reference: https://gist.github.com/marvell/7c812736565928e602c4
 # 4. Create a non-root user 'flytekit' and set appropriate permissions for directories.
 RUN apt-get update && apt-get install build-essential -y \
-    && pip install --no-cache-dir -U flytekit==$VERSION \
-        flytekitplugins-pod==$VERSION \
-        flytekitplugins-deck-standard==$VERSION \
-        scikit-learn \
+    && pip install uv \
+    && uv pip install --system --no-cache-dir -U flytekit==$VERSION \
+        kubernetes \
     && apt-get clean autoclean \
     && apt-get autoremove --yes \
     && rm -rf /var/lib/{apt,dpkg,cache,log}/ \

@@ -6,6 +6,8 @@
 .. currentmodule:: flytekit.core.python_function_task
 
 .. autosummary::
+   :nosignatures:
+   :template: custom.rst
    :toctree: generated/
 
    PythonFunctionTask
@@ -349,15 +351,23 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         raise ValueError(f"Invalid execution provided, execution state: {ctx.execution_state}")
 
     def _write_decks(self, native_inputs, native_outputs_as_map, ctx, new_user_params):
-        # These errors are raised if the source code can not be retrieved
-        with suppress(OSError, TypeError):
-            source_code = inspect.getsource(self._task_function)
+        if self._disable_deck is False:
+            from flytekit.deck import Deck, DeckField
+            from flytekit.deck.renderer import PythonDependencyRenderer
 
-            from flytekit.deck import Deck
-            from flytekit.deck.renderer import SourceCodeRenderer
+            # These errors are raised if the source code can not be retrieved
+            with suppress(OSError, TypeError):
+                source_code = inspect.getsource(self._task_function)
+                from flytekit.deck.renderer import SourceCodeRenderer
 
-            source_code_deck = Deck("Source Code")
-            renderer = SourceCodeRenderer()
-            source_code_deck.append(renderer.to_html(source_code))
+                if DeckField.SOURCE_CODE in self.deck_fields:
+                    source_code_deck = Deck(DeckField.SOURCE_CODE.value)
+                    renderer = SourceCodeRenderer()
+                    source_code_deck.append(renderer.to_html(source_code))
+
+            if DeckField.DEPENDENCIES in self.deck_fields:
+                python_dependencies_deck = Deck(DeckField.DEPENDENCIES.value)
+                renderer = PythonDependencyRenderer()
+                python_dependencies_deck.append(renderer.to_html())
 
         return super()._write_decks(native_inputs, native_outputs_as_map, ctx, new_user_params)

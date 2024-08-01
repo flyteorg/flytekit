@@ -52,7 +52,7 @@ the root of your project, it finds the first folder that does not have a ``__ini
     required=False,
     type=click.Path(dir_okay=True, file_okay=False, writable=True, resolve_path=True),
     default=None,
-    help="Directory to write the output zip file containing the protobuf definitions",
+    help="Directory to write the output tar file containing the protobuf definitions",
 )
 @click.option(
     "-D",
@@ -179,24 +179,21 @@ def register(
     # Create and save FlyteRemote,
     remote = get_and_save_remote_with_click_context(ctx, project, domain, data_upload_location="flyte://data")
     click.secho(f"Registering against {remote.config.platform.endpoint}")
-    try:
-        repo.register(
-            project,
-            domain,
-            image_config,
-            output,
-            destination_dir,
-            service_account,
-            raw_data_prefix,
-            version,
-            deref_symlinks,
-            fast=not non_fast,
-            package_or_module=package_or_module,
-            remote=remote,
-            env=env,
-            dry_run=dry_run,
-            activate_launchplans=activate_launchplans,
-            skip_errors=skip_errors,
-        )
-    except Exception as e:
-        raise e
+    repo.register(
+        project,
+        domain,
+        image_config,
+        output,
+        destination_dir,
+        service_account,
+        raw_data_prefix,
+        version,
+        deref_symlinks,
+        fast=not non_fast,
+        package_or_module=package_or_module,
+        remote=remote,
+        env=env,
+        dry_run=dry_run,
+        activate_launchplans=activate_launchplans,
+        skip_errors=skip_errors,
+    )

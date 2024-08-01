@@ -7,19 +7,20 @@ import pathlib
 import typing
 from typing import cast
 
-import cloudpickle
 import rich_click as click
 import yaml
-from dataclasses_json import DataClassJsonMixin
+from dataclasses_json import DataClassJsonMixin, dataclass_json
 from pytimeparse import parse
 
-from flytekit import BlobType, FlyteContext, FlyteContextManager, Literal, LiteralType, StructuredDataset
+from flytekit import BlobType, FlyteContext, Literal, LiteralType, StructuredDataset
+from flytekit.core.artifact import ArtifactQuery
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import TypeEngine
 from flytekit.models.types import SimpleType
 from flytekit.remote.remote_fs import FlytePathResolver
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import FlyteFile
+from flytekit.types.iterator.json_iterator import JSONIteratorTransformer
 from flytekit.types.pickle.pickle import FlytePickleTransformer
 
 
@@ -55,19 +56,39 @@ def key_value_callback(_: typing.Any, param: str, values: typing.List[str]) -> t
     return result
 
 
+def labels_callback(_: typing.Any, param: str, values: typing.List[str]) -> typing.Optional[typing.Dict[str, str]]:
+    """
+    Callback for click to parse labels.
+    """
+    if not values:
+        return None
+    result = {}
+    for v in values:
+        if "=" not in v:
+            result[v.strip()] = ""
+        else:
+            k, v = v.split("=", 1)
+            result[k.strip()] = v.strip()
+    return result
+
+
 class DirParamType(click.ParamType):
     name = "directory path"
 
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
-        p = pathlib.Path(value)
+        if isinstance(value, ArtifactQuery):
+            return value
+
         # set remote_directory to false if running pyflyte run locally. This makes sure that the original
         # directory is used and not a random one.
         remote_directory = None if getattr(ctx.obj, "is_remote", False) else False
-        if p.exists() and p.is_dir():
-            return FlyteDirectory(path=value, remote_directory=remote_directory)
-        raise click.BadParameter(f"parameter should be a valid directory path, {value}")
+        if not FileAccessProvider.is_remote(value):
+            p = pathlib.Path(value)
+            if not p.exists() or not p.is_dir():
+                raise click.BadParameter(f"parameter should be a valid flytedirectory path, {value}")
+        return FlyteDirectory(path=value, remote_directory=remote_directory)
 
 
 class StructuredDatasetParamType(click.ParamType):
@@ -80,6 +101,8 @@ class StructuredDatasetParamType(click.ParamType):
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
+        if isinstance(value, ArtifactQuery):
+            return value
         if isinstance(value, str):
             return StructuredDataset(uri=value)
         elif isinstance(value, StructuredDataset):
@@ -93,6 +116,8 @@ class FileParamType(click.ParamType):
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
+        if isinstance(value, ArtifactQuery):
+            return value
         # set remote_directory to false if running pyflyte run locally. This makes sure that the original
         # file is used and not a random one.
         remote_path = None if getattr(ctx.obj, "is_remote", False) else False
@@ -109,32 +134,69 @@ class PickleParamType(click.ParamType):
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
-        # set remote_directory to false if running pyflyte run locally. This makes sure that the original
-        # file is used and not a random one.
-        remote_path = None if getattr(ctx.obj, "is_remote", None) else False
-        if os.path.isfile(value):
-            return FlyteFile(path=value, remote_path=remote_path)
-        uri = FlyteContextManager.current_context().file_access.get_random_local_path()
-        with open(uri, "w+b") as outfile:
-            cloudpickle.dump(value, outfile)
-        return FlyteFile(path=str(pathlib.Path(uri).resolve()), remote_path=remote_path)
+        return value
+
+
+class JSONIteratorParamType(click.ParamType):
+    name = "json iterator"
+
+    def convert(
+        self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
+    ) -> typing.Any:
+        return value
 
 
 class DateTimeType(click.DateTime):
     _NOW_FMT = "now"
-    _ADDITONAL_FORMATS = [_NOW_FMT]
+    _TODAY_FMT = "today"
+    _FIXED_FORMATS = [_NOW_FMT, _TODAY_FMT]
+    _FLOATING_FORMATS = ["<FORMAT> - <ISO8601 duration>"]
+    _ADDITONAL_FORMATS = _FIXED_FORMATS + _FLOATING_FORMATS
+    _FLOATING_FORMAT_PATTERN = r"(.+)\s+([-+])\s+(.+)"
 
     def __init__(self):
         super().__init__()
         self.formats.extend(self._ADDITONAL_FORMATS)
 
+    def _datetime_from_format(
+        self, value: str, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
+    ) -> datetime.datetime:
+        if value in self._FIXED_FORMATS:
+            if value == self._NOW_FMT:
+                return datetime.datetime.now()
+            if value == self._TODAY_FMT:
+                n = datetime.datetime.now()
+                return datetime.datetime(n.year, n.month, n.day)
+        return super().convert(value, param, ctx)
+
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
-        if value in self._ADDITONAL_FORMATS:
-            if value == self._NOW_FMT:
-                return datetime.datetime.now()
-        return super().convert(value, param, ctx)
+        if isinstance(value, ArtifactQuery):
+            return value
+
+        if isinstance(value, str) and " " in value:
+            import re
+
+            m = re.match(self._FLOATING_FORMAT_PATTERN, value)
+            if m:
+                parts = m.groups()
+                if len(parts) != 3:
+                    raise click.BadParameter(f"Expected format <FORMAT> - <ISO8601 duration>, got {value}")
+                dt = self._datetime_from_format(parts[0], param, ctx)
+                try:
+                    delta = datetime.timedelta(seconds=parse(parts[2]))
+                except Exception as e:
+                    raise click.BadParameter(
+                        f"Matched format {self._FLOATING_FORMATS}, but failed to parse duration {parts[2]}, error: {e}"
+                    )
+                if parts[1] == "-":
+                    return dt - delta
+                return dt + delta
+            else:
+                value = datetime.datetime.fromisoformat(value)
+
+        return self._datetime_from_format(value, param, ctx)
 
 
 class DurationParamType(click.ParamType):
@@ -143,6 +205,8 @@ class DurationParamType(click.ParamType):
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
+        if isinstance(value, ArtifactQuery):
+            return value
         if value is None:
             raise click.BadParameter("None value cannot be converted to a Duration type.")
         return datetime.timedelta(seconds=parse(value))
@@ -156,6 +220,8 @@ class EnumParamType(click.Choice):
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> enum.Enum:
+        if isinstance(value, ArtifactQuery):
+            return value
         if isinstance(value, self._enum_type):
             return value
         return self._enum_type(super().convert(value, param, ctx))
@@ -169,6 +235,10 @@ class UnionParamType(click.ParamType):
     def __init__(self, types: typing.List[click.ParamType]):
         super().__init__()
         self._types = self._sort_precedence(types)
+
+    @property
+    def name(self) -> str:
+        return "|".join([t.name for t in self._types])
 
     @staticmethod
     def _sort_precedence(tp: typing.List[click.ParamType]) -> typing.List[click.ParamType]:
@@ -191,6 +261,8 @@ class UnionParamType(click.ParamType):
         Important to implement NoneType / Optional.
         Also could we just determine the click types from the python types
         """
+        if isinstance(value, ArtifactQuery):
+            return value
         for t in self._types:
             try:
                 return t.convert(value, param, ctx)
@@ -228,6 +300,8 @@ class JsonParamType(click.ParamType):
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
+        if isinstance(value, ArtifactQuery):
+            return value
         if value is None:
             raise click.BadParameter("None value cannot be converted to a Json type.")
 
@@ -240,6 +314,11 @@ class JsonParamType(click.ParamType):
 
         if is_pydantic_basemodel(self._python_type):
             return self._python_type.parse_raw(json.dumps(parsed_value))  # type: ignore
+
+        # Ensure that the python type has `from_json` function
+        if not hasattr(self._python_type, "from_json"):
+            self._python_type = dataclass_json(self._python_type)
+
         return cast(DataClassJsonMixin, self._python_type).from_json(json.dumps(parsed_value))
 
 
@@ -274,7 +353,7 @@ SIMPLE_TYPE_CONVERTER: typing.Dict[SimpleType, click.ParamType] = {
     SimpleType.STRING: click.STRING,
     SimpleType.BOOLEAN: click.BOOL,
     SimpleType.DURATION: DurationParamType(),
-    SimpleType.DATETIME: click.DateTime(),
+    SimpleType.DATETIME: DateTimeType(),
 }
 
 
@@ -309,6 +388,8 @@ def literal_type_to_click_type(lt: LiteralType, python_type: typing.Type) -> cli
         if lt.blob.dimensionality == BlobType.BlobDimensionality.SINGLE:
             if lt.blob.format == FlytePickleTransformer.PYTHON_PICKLE_FORMAT:
                 return PickleParamType()
+            elif lt.blob.format == JSONIteratorTransformer.JSON_ITERATOR_FORMAT:
+                return JSONIteratorParamType()
             return FileParamType()
         return DirParamType()
 
@@ -353,11 +434,16 @@ class FlyteLiteralConverter(object):
         """
         Convert the value to a Flyte Literal or a python native type. This is used by click to convert the input.
         """
+        if isinstance(value, ArtifactQuery):
+            return value
         try:
             # If the expected Python type is datetime.date, adjust the value to date
             if self._python_type is datetime.date:
                 # Click produces datetime, so converting to date to avoid type mismatch error
                 value = value.date()
+            # If the input matches the default value in the launch plan, serialization can be skipped.
+            if param and value == param.default:
+                return None
             lit = TypeEngine.to_literal(self._flyte_ctx, value, self._python_type, self._literal_type)
 
             if not self._is_remote:
