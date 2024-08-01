@@ -345,8 +345,10 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
 
         fs = file_access.get_filesystem_for_path(final_path)
         for key in fs.listdir(final_path):
+            print(f"flytekit looking at key {key}")
             remote_path = os.path.join(final_path, key["name"].split(os.sep)[-1])
             if key["type"] == "file":
+                print(f"flytekit looking at file {key}")
                 local_path = file_access.get_random_local_path()
                 os.makedirs(pathlib.Path(local_path).parent, exist_ok=True)
                 downloader = create_downloader(remote_path, local_path, is_multipart=False)
@@ -354,14 +356,17 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
                 flyte_file: FlyteFile = FlyteFile(local_path, downloader=downloader)
                 flyte_file._remote_source = remote_path
                 paths.append(flyte_file)
+                print(f"flytekit appending local path {local_path}, flyte file remote {flyte_file.remote_path} and source {flyte_file.remote_source}")
             else:
+                print(f"flytekit looking at directory {key}")
                 local_folder = file_access.get_random_local_directory()
                 downloader = create_downloader(remote_path, local_folder, is_multipart=True)
 
                 flyte_directory: FlyteDirectory = FlyteDirectory(path=local_folder, downloader=downloader)
                 flyte_directory._remote_source = remote_path
+                print(f"flytekit appending directory with local folder {local_folder}, flyte file remote {flyte_directory.remote_path} and source {flyte_directory.remote_source}")
                 paths.append(flyte_directory)
-
+        print(f"flytekit, returning paths {paths}")
         return paths
 
     def crawl(
