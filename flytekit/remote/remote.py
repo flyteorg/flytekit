@@ -29,6 +29,7 @@ import fsspec
 import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
 from flyteidl.core import literals_pb2
+from requests.exceptions import SSLError
 
 from flytekit import ImageSpec
 from flytekit.clients.friendly import SynchronousFlyteClient
@@ -901,19 +902,36 @@ class FlyteRemote(object):
         extra_headers = self.get_extra_headers_for_protocol(upload_location.native_url)
         extra_headers.update(upload_location.headers)
         encoded_md5 = b64encode(md5_bytes)
+        print("to_upload", to_upload)
         with open(str(to_upload), "+rb") as local_file:
+            from pympler import asizeof
+
             content = local_file.read()
+
+            print("size of ", asizeof.asizeof(content))
             content_length = len(content)
             headers = {"Content-Length": str(content_length), "Content-MD5": encoded_md5}
             headers.update(extra_headers)
-            rsp = requests.put(
-                upload_location.signed_url,
-                data=content,
-                headers=headers,
-                verify=False
-                if self._config.platform.insecure_skip_verify is True
-                else self._config.platform.ca_cert_file_path,
-            )
+            try:
+                rsp = requests.put(
+                    upload_location.signed_url,
+                    data=content,
+                    headers=headers,
+                    verify=False
+                    if self._config.platform.insecure_skip_verify is True
+                    else self._config.platform.ca_cert_file_path,
+                )
+            except SSLError as e:
+                file_size_mb = round(os.path.getsize(to_upload) / (1024**2), 2)
+
+                raise FlyteValueException(
+                    e,
+                    (
+                        f"Failed to upload file: {to_upload.name}\n"
+                        f"File size: {file_size_mb} MB\n"
+                        f"File path: {to_upload}"
+                    ),
+                )
 
             # Check both HTTP 201 and 200, because some storage backends (e.g. Azure) return 201 instead of 200.
             if rsp.status_code not in (requests.codes["OK"], requests.codes["created"]):
