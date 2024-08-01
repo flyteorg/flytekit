@@ -97,6 +97,27 @@ class ImageSpec:
     def id(self) -> str:
         return self._id
 
+    @lru_cache
+    def tag(self) -> str:
+        # copy the image spec to avoid modifying the original image spec. otherwise, the hash will be different.
+        spec = copy.deepcopy(self)
+        if isinstance(spec.base_image, ImageSpec):
+            spec.base_image = spec.base_image.image_name()
+
+        if self.source_root:
+            from flytekit.tools.fast_registration import compute_digest
+            from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
+
+            ignore = IgnoreGroup(self.source_root, [GitIgnore, DockerIgnore, StandardIgnore])
+            digest = compute_digest(self.source_root, ignore.is_ignored)
+            spec.source_root = digest
+
+        if spec.requirements:
+            spec.requirements = hashlib.sha1(pathlib.Path(spec.requirements).read_bytes().strip()).hexdigest()
+        # won't rebuild the image if we change the registry_config path
+        spec.registry_config = None
+        return calculate_hash_from_image_spec(spec)
+
     def image_name(self) -> str:
         """Full image name with tag."""
         image_name = self._image_name()
@@ -347,25 +368,11 @@ def calculate_hash_from_image_spec(image_spec: ImageSpec):
     This method will also read the content of the requirement file and the source root to calculate the hash.
     Therefore, it will generate different hash if new dependencies are added or the source code is changed.
     """
-    # copy the image spec to avoid modifying the original image spec. otherwise, the hash will be different.
-    spec = copy.deepcopy(image_spec)
-    if isinstance(spec.base_image, ImageSpec):
-        spec.base_image = spec.base_image.image_name()
-
-    if image_spec.source_root:
-        from flytekit.tools.fast_registration import compute_digest
-        from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
-
-        ignore = IgnoreGroup(image_spec.source_root, [GitIgnore, DockerIgnore, StandardIgnore])
-        digest = compute_digest(image_spec.source_root, ignore.is_ignored)
-        spec.source_root = digest
-
-    if spec.requirements:
-        spec.requirements = hashlib.sha1(pathlib.Path(spec.requirements).read_bytes().strip()).hexdigest()
-    # won't rebuild the image if we change the registry_config path
-    spec.registry_config = None
+    image_spec_dict = asdict(image_spec, dict_factory=lambda x: {k: v for (k, v) in x if v is not None})
+    image_spec_bytes = image_spec_dict.__str__().encode("utf-8")
+    hash_val = base64.urlsafe_b64encode(hashlib.md5(image_spec_bytes).digest()).decode("ascii").rstrip("=")
     # replace "-" with "_" to make it a valid tag
-    return spec.id.replace("-", "_")
+    return hash_val.replace("-", "_")
 
 
 def hash_directory(path):
