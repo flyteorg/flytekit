@@ -58,6 +58,7 @@ class ImageSpec:
     env: Optional[typing.Dict[str, str]] = None
     registry: Optional[str] = None
     packages: Optional[List[str]] = None
+    package_version_overrides: Optional[List[str]] = None
     conda_packages: Optional[List[str]] = None
     conda_channels: Optional[List[str]] = None
     requirements: Optional[str] = None
@@ -192,6 +193,21 @@ class ImageSpec:
             new_image_spec.packages.extend(packages)
         else:
             new_image_spec.packages.append(packages)
+
+        return new_image_spec
+
+    def with_package_version_overrides(self, package_version_overrides: Union[str, List[str]]) -> "ImageSpec":
+        """
+        Builder that returns a new image speck with additional python packages that will be installed during the building process.
+        """
+        new_image_spec = copy.deepcopy(self)
+        if new_image_spec.package_version_overrides is None:
+            new_image_spec.package_version_overrides = []
+
+        if isinstance(package_version_overrides, List):
+            new_image_spec.package_version_overrides.extend(package_version_overrides)
+        else:
+            new_image_spec.package_version_overrides.append(package_version_overrides)
 
         return new_image_spec
 

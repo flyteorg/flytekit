@@ -23,9 +23,11 @@ UV_PYTHON_INSTALL_COMMAND_TEMPLATE = Template("""\
 RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/uv,id=uv \
     --mount=from=uv,source=/uv,target=/usr/bin/uv \
     --mount=type=bind,target=requirements_uv.txt,src=requirements_uv.txt \
+    --mount=type=bind,target=overrides_uv.txt,src=overrides_uv.txt \
     /usr/bin/uv \
     pip install --python /opt/micromamba/envs/dev/bin/python $PIP_EXTRA \
-    --requirement requirements_uv.txt
+    --requirement requirements_uv.txt \
+    --overrides overrides_uv.txt
 """)
 
 PIP_PYTHON_INSTALL_COMMAND_TEMPLATE = Template("""\
@@ -158,6 +160,9 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
 
     requirements_uv_path = tmp_dir / "requirements_uv.txt"
     requirements_uv_path.write_text("\n".join(uv_requirements))
+
+    overrides_uv_path = tmp_dir / "overrides_uv.txt"
+    overrides_uv_path.write_text("\n".join(image_spec.package_version_overrides))
 
     pip_extra = f"--index-url {image_spec.pip_index}" if image_spec.pip_index else ""
     uv_python_install_command = UV_PYTHON_INSTALL_COMMAND_TEMPLATE.substitute(PIP_EXTRA=pip_extra)
