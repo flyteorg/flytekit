@@ -165,7 +165,7 @@ class SyncCheckpoint(Checkpoint):
         self.save(f)
 
 
-class TorchAsyncCheckpoint(Checkpoint):
+class TorchAsyncCheckpoint(SyncCheckpoint):
     """
     This class is NOT THREAD-SAFE!
     Sync Checkpoint, will synchronously checkpoint a user given file or folder.
