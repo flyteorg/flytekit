@@ -756,6 +756,11 @@ class FlyteRemote(object):
         if serialization_settings.version is None:
             serialization_settings.version = version
 
+        if options is None:
+            options = Options()
+        if options.file_uploader is None:
+            options.file_uploader = self.upload_file
+
         _ = get_serializable(m, settings=serialization_settings, entity=entity, options=options)
         # concurrent register
         cp_task_entity_map = OrderedDict(filter(lambda x: isinstance(x[1], task_models.TaskSpec), m.items()))
@@ -803,9 +808,18 @@ class FlyteRemote(object):
                 domain=self.default_domain,
             )
 
-        ident = asyncio.run(
-            self._serialize_and_register(entity=entity, settings=serialization_settings, version=version)
-        )
+        try:
+            import nest_asyncio
+
+            nest_asyncio.apply()
+            loop = asyncio.get_running_loop()
+            ident = loop.run_until_complete(
+                self._serialize_and_register(entity=entity, settings=serialization_settings, version=version)
+            )
+        except RuntimeError:
+            ident = asyncio.run(
+                self._serialize_and_register(entity=entity, settings=serialization_settings, version=version)
+            )
 
         ft = self.fetch_task(
             ident.project,
@@ -843,9 +857,17 @@ class FlyteRemote(object):
                 domain=self.default_domain,
             )
         self._resolve_identifier(ResourceType.WORKFLOW, entity.name, version, serialization_settings)
-        ident = asyncio.run(
-            self._serialize_and_register(entity, serialization_settings, version, options, default_launch_plan)
-        )
+        try:
+            import nest_asyncio
+
+            nest_asyncio.apply()
+            ident = asyncio.run(
+                self._serialize_and_register(entity, serialization_settings, version, options, default_launch_plan)
+            )
+        except RuntimeError:
+            ident = asyncio.run(
+                self._serialize_and_register(entity, serialization_settings, version, options, default_launch_plan)
+            )
         fwf = self.fetch_workflow(ident.project, ident.domain, ident.name, ident.version)
         fwf._python_interface = entity.python_interface
         return fwf
@@ -1734,19 +1756,23 @@ class FlyteRemote(object):
         """
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
         resolved_identifiers_dict = asdict(resolved_identifiers)
+        not_found = False
         try:
             flyte_task: FlyteTask = self.fetch_task(**resolved_identifiers_dict)
         except FlyteEntityNotExistException:
-            if isinstance(entity, PythonAutoContainerTask):
-                if not image_config:
-                    raise ValueError(f"PythonTask {entity.name} not already registered, but image_config missing")
+            not_found = True
+
+        if not_found:
             ss = SerializationSettings(
-                image_config=image_config,
+                image_config=image_config or ImageConfig.auto_default_image(),
                 project=project or self.default_project,
                 domain=domain or self._default_domain,
                 version=version,
             )
-            flyte_task: FlyteTask = self.register_task(entity, ss)
+            try:
+                flyte_task: FlyteTask = self.register_task(entity, ss)
+            except Exception as e:
+                raise e
 
         return self.execute(
             flyte_task,
@@ -1804,6 +1830,9 @@ class FlyteRemote(object):
         """
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
         resolved_identifiers_dict = asdict(resolved_identifiers)
+        if not image_config:
+            image_config = ImageConfig.auto_default_image()
+
         ss = SerializationSettings(
             image_config=image_config,
             project=resolved_identifiers.project,
@@ -1816,8 +1845,6 @@ class FlyteRemote(object):
             self.fetch_workflow(**resolved_identifiers_dict)
         except FlyteEntityNotExistException:
             logger.info("Registering workflow because it wasn't found in Flyte Admin.")
-            if not image_config:
-                raise ValueError("Need image config since we are registering")
             self.register_workflow(entity, ss, version=version, options=options)
 
         try:
