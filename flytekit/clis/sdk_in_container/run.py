@@ -465,11 +465,15 @@ def run_remote(
     )
 
     console_url = remote.generate_console_url(execution)
+    additional_info_for_execution = get_plugin().get_additional_info_for_execution(
+        remote.generate_console_http_domain(), execution
+    )
     s = (
         click.style("\n[✔] ", fg="green")
         + "Go to "
         + click.style(console_url, fg="cyan")
-        + " to see execution in the console."
+        + " to see the execution in the console."
+        + additional_info_for_execution
     )
     click.echo(s)
 
