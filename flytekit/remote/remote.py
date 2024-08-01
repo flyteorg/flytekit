@@ -2298,7 +2298,9 @@ class FlyteRemote(object):
         This will automatically determine if this is an execution or an entity and change the type automatically
         """
         if isinstance(entity, (FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution)):
-            return f"{self.generate_console_http_domain()}/console/projects/{entity.id.project}/domains/{entity.id.domain}/executions/{entity.id.name}"  # noqa
+            from flytekit.configuration.plugin import get_plugin
+
+            return get_plugin().generate_execution_console_url(self.generate_console_http_domain(), entity)
 
         if not isinstance(entity, (FlyteWorkflow, FlyteTask, FlyteLaunchPlan)):
             raise ValueError(f"Only remote entities can be looked at in the console, got type {type(entity)}")
