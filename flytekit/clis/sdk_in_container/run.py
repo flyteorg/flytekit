@@ -927,41 +927,35 @@ class YamlFileReadingCommand(click.RichCommand):
         super().__init__(name=name, params=params, callback=callback, help=help)
 
     def parse_args(self, ctx: Context, args: t.List[str]) -> t.List[str]:
+        def load_inputs(f: str) -> t.Dict[str, str]:
+            try:
+                inputs = yaml.safe_load(f)
+            except yaml.YAMLError as e:
+                yaml_e = e
+                try:
+                    inputs = json.loads(f)
+                except json.JSONDecodeError as e:
+                    raise click.BadParameter(
+                        message=f"Could not load the inputs file. Please make sure it is a valid JSON or YAML file."
+                        f"\n json error: {e},"
+                        f"\n yaml error: {yaml_e}",
+                        param_hint="--inputs-file",
+                    )
+
+            return inputs
+
         inputs = {}
         if "--inputs-file" in args:
             idx = args.index("--inputs-file")
             args.pop(idx)
             f = args.pop(idx)
             with open(f, "r") as f:
-                try:
-                    inputs = yaml.safe_load(f)
-                except yaml.YAMLError as e:
-                    yaml_e = e
-                    try:
-                        inputs = json.load(f)
-                    except json.JSONDecodeError as e:
-                        raise click.BadParameter(
-                            message=f"Could not load the inputs file. Please make sure it is a valid JSON or YAML file."
-                            f"\n json error: {e},"
-                            f"\n yaml error: {yaml_e}",
-                            param_hint="--inputs-file",
-                        )
+                inputs = load_inputs(f.read())
         elif not sys.stdin.isatty():
             f = sys.stdin.read()
             if f != "":
-                try:
-                    inputs = yaml.safe_load(f)
-                except yaml.YAMLError as e:
-                    yaml_e = e
-                    try:
-                        inputs = json.loads(f)
-                    except json.JSONDecodeError as e:
-                        raise click.BadParameter(
-                            message=f"Could not load the inputs file. Please make sure it is a valid JSON or YAML file."
-                            f"\n json error: {e},"
-                            f"\n yaml error: {yaml_e}",
-                            param_hint="--inputs-file",
-                        )
+                inputs = load_inputs(f)
+
         new_args = []
         for k, v in inputs.items():
             if isinstance(v, str):
