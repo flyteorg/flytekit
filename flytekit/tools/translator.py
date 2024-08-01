@@ -10,6 +10,7 @@ from flytekit import ImageSpec, PythonFunctionTask, SourceCode
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core import constants as _common_constants
 from flytekit.core import context_manager
+from flytekit.core.array_node import ArrayNode
 from flytekit.core.array_node_map_task import ArrayNodeMapTask
 from flytekit.core.base_task import PythonTask
 from flytekit.core.condition import BranchNode
@@ -49,6 +50,7 @@ FlyteLocalEntity = Union[
     ReferenceTask,
     ReferenceLaunchPlan,
     ReferenceEntity,
+    ArrayNode,
 ]
 FlyteControlPlaneEntity = Union[
     TaskSpec,
@@ -471,14 +473,23 @@ def get_serializable_node(
 
     from flytekit.remote import FlyteLaunchPlan, FlyteTask, FlyteWorkflow
 
-    if isinstance(entity.flyte_entity, ArrayNodeMapTask):
+    if isinstance(entity.flyte_entity, ArrayNode):
+        node_model = workflow_model.Node(
+            id=_dnsify(entity.id),
+            metadata=entity.flyte_entity.construct_node_metadata(),
+            inputs=entity.bindings,
+            upstream_node_ids=[n.id for n in upstream_nodes],
+            output_aliases=[],
+            array_node=get_serializable_array_node(entity_mapping, settings, entity, options=options),
+        )
+    elif isinstance(entity.flyte_entity, ArrayNodeMapTask):
         node_model = workflow_model.Node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=entity.bindings,
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
-            array_node=get_serializable_array_node(entity_mapping, settings, entity, options=options),
+            array_node=get_serializable_array_node_map_task(entity_mapping, settings, entity, options=options),
         )
         # TODO: do I need this?
         # if entity._aliases:
@@ -617,6 +628,22 @@ def get_serializable_node(
 
 
 def get_serializable_array_node(
+    entity_mapping: OrderedDict,
+    settings: SerializationSettings,
+    node: FlyteLocalEntity,
+    options: Optional[Options] = None,
+) -> ArrayNodeModel:
+    array_node = node.flyte_entity
+    return ArrayNodeModel(
+        node=get_serializable_node(entity_mapping, settings, array_node, options=options),
+        parallelism=array_node.concurrency,
+        min_successes=array_node.min_successes,
+        min_success_ratio=array_node.min_success_ratio,
+        execution_mode=array_node.execution_mode,
+    )
+
+
+def get_serializable_array_node_map_task(
     entity_mapping: OrderedDict,
     settings: SerializationSettings,
     node: Node,
@@ -789,6 +816,9 @@ def get_serializable(
 
     elif isinstance(entity, FlyteLaunchPlan):
         cp_entity = entity
+
+    elif isinstance(entity, ArrayNode):
+        cp_entity = get_serializable_array_node(entity_mapping, settings, entity, options)
 
     else:
         raise Exception(f"Non serializable type found {type(entity)} Entity {entity}")

@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass
 from typing import Optional
 
@@ -30,9 +31,10 @@ class AnyscaleAgent(AsyncAgentBase):
             name="flyte-rag",
             image_uri=container.image,
             env_vars={
-                "AWS_ACCESS_KEY_ID": "ASIAVGCH4VK2EDGW7EFL",
-                "AWS_SECRET_ACCESS_KEY": "DBYxPrcl35t2s9aI/mBzITWVldbPJk6xkYBpk122",
-                "AWS_SESSION_TOKEN": "IQoJb3JpZ2luX2VjEAQaCXVzLWVhc3QtMiJHMEUCIDDNx0KpOeCMwjM1Hi"
+                "AWS_ACCESS_KEY_ID": os.getenv("AWS_ACCESS_KEY_ID"),
+                "AWS_SECRET_ACCESS_KEY": os.getenv("AWS_SECRET_ACCESS_KEY"),
+                "AWS_SESSION_TOKEN": os.getenv("AWS_SESSION_TOKEN"),
+                "PYTHONPATH": "/root:."
             },
             entrypoint=" ".join(container.args),
             # working_dir="/Users/kevin/git/flytekit/flyte-example/anyscale_union",

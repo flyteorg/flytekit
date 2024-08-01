@@ -38,7 +38,7 @@ class BigQueryTask(AsyncAgentExecutorMixin, SQLTask[BigQueryConfig]):
         self,
         name: str,
         query_template: str,
-        task_config: Optional[BigQueryConfig],
+        task_config: BigQueryConfig,
         inputs: Optional[Dict[str, Type]] = None,
         output_structured_dataset_type: Optional[Type[StructuredDataset]] = None,
         **kwargs,
