@@ -1,5 +1,5 @@
 from flytekit.models import filters
-
+import pytest
 
 def test_eq_filter():
     assert filters.Equal("key", "value").to_flyte_idl() == "eq(key,value)"
@@ -27,6 +27,10 @@ def test_lte_filter():
 
 def test_value_in_filter():
     assert filters.ValueIn("key", ["1", "2", "3"]).to_flyte_idl() == "value_in(key,1;2;3)"
+
+def test_invalid_value_in_filter():
+    with pytest.raises(TypeError, match=r"values must be a list. but got .*"):
+        filters.ValueIn("key", "1")
 
 
 def test_contains_filter():
