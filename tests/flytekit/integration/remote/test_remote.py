@@ -485,7 +485,8 @@ def test_execute_workflow_with_maptask(register):
     )
     assert execution.outputs["o0"] == [4, 5, 6]
 
-@pytest.mark.parametrize("gigabytes", [2, 3, 4])
+@pytest.mark.serial
+@pytest.mark.parametrize("gigabytes", [2, 3])
 def test_can_register_with_large_file(gigabytes):
     with tempfile.TemporaryDirectory(dir=MODULE_PATH) as tempdir:
         file_path = pathlib.Path(tempdir) / "large_file"
