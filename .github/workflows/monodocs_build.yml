@@ -20,6 +20,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: "${{ github.workspace }}/flytekit"
+      - name: 'Clear action cache'
+        uses: ./.github/actions/clear-action-cache
       - name: Fetch flyte code
         uses: actions/checkout@v4
         with:
