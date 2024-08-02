@@ -299,6 +299,7 @@ jobs:
         run: |
           pip install uv
           make setup-global-uv
+          uv pip uninstall --system grpcio grpcio-status
           uv pip freeze
       - name: Prepare build wheels
         working-directory: ${{ github.workspace }}/flyte/flyteidl
@@ -315,9 +316,14 @@ jobs:
         run: |
           uv pip install --system flyteidl-rust --no-index --find-links dist --force-reinstall
           python -c "import flyteidl_rust"
-      - name: After built wheels
+      - name: Cargo clean
+        working-directory: ${{ github.workspace }}/flyte/flyteidl
         run: |
-          rm -rf ${{ github.workspace }}/flyte
+          cargo clean
+      - name: Remove flyte
+        working-directory: ${{ github.workspace }}
+        run: |
+          rm -rf ./flyte
       - name: Install FlyteCTL
         uses: unionai-oss/flytectl-setup-action@master
       - name: Setup Flyte Sandbox
