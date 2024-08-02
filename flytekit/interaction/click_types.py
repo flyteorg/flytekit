@@ -23,6 +23,7 @@ from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import FlyteFile
 from flytekit.types.iterator.json_iterator import JSONIteratorTransformer
 from flytekit.types.pickle.pickle import FlytePickleTransformer
+from flytekit.types.schema.types import FlyteSchema
 
 
 def is_pydantic_basemodel(python_type: typing.Type) -> bool:
@@ -310,7 +311,9 @@ class JsonParamType(click.ParamType):
 
         def has_nested_dataclass(t: typing.Type) -> bool:
             if dataclasses.is_dataclass(t):
-                return True
+                # After supporting dataclass with Flyte types members, we will support Flyte types here. 
+                if t not in [FlyteFile, FlyteDirectory, StructuredDataset, FlyteSchema]:
+                    return True
             if get_args(t):
                 for a in get_args(t):
                     if has_nested_dataclass(a):
@@ -328,7 +331,7 @@ class JsonParamType(click.ParamType):
             elif isinstance(parsed_value, dict) and has_nested_dataclass(get_args(self._python_type)[1]):
                 j = JsonParamType(get_args(self._python_type)[1])
                 return {k: j.convert(v, param, ctx) for k, v in parsed_value.items()}
-            
+
             return parsed_value
 
         if is_pydantic_basemodel(self._python_type):
