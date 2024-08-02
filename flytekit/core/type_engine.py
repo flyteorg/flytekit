@@ -485,14 +485,16 @@ class DataclassTransformer(TypeTransformer[object]):
                     )
                 )
 
-        ts = TypeStructure(tag="", dataclass_type=literal_type)
+        ts = TypeStructure(tag=f"{t.__module__}.{t.__qualname__}", dataclass_type=literal_type)
 
         return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT, metadata=schema, structure=ts)
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
+        metadata = {"dataclass_path": f"{python_type.__module__}.{python_type.__qualname__}"}
+
         if isinstance(python_val, dict):
             json_str = json.dumps(python_val)
-            return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))
+            return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())), metadata=metadata)
 
         if not dataclasses.is_dataclass(python_val):
             raise TypeTransformerFailedError(
@@ -519,7 +521,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 f" and implement _serialize and _deserialize methods."
             )
 
-        return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))  # type: ignore
+        return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())), metadata=metadata)  # type: ignore
 
     def _get_origin_type_in_annotation(self, python_type: Type[T]) -> Type[T]:
         # dataclass will try to hash python type when calling dataclass.schema(), but some types in the annotation is
