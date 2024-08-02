@@ -415,7 +415,7 @@ class UrlBlob(FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.common_pb2.UrlBlob
         """
-        return _common_pb2.UrlBlob(url=self.url, bytes=self.bytes)
+        return flytedidl.admin.UrlBlob(url=self.url, bytes=self.bytes)
 
     @classmethod
     def from_flyte_idl(cls, pb):
