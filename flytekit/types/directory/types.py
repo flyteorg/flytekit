@@ -344,6 +344,7 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
             return lambda: file_access.get_data(_remote_path, _local_path, is_multipart=is_multipart)
 
         fs = file_access.get_filesystem_for_path(final_path)
+        print(f"flytekit found keys from listdir: {fs.listdir(final_path)}")
         for key in fs.listdir(final_path):
             print(f"flytekit looking at key {key}")
             remote_path = os.path.join(final_path, key["name"].split(os.sep)[-1])

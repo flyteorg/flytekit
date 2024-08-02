@@ -258,6 +258,7 @@ class FileAccessProvider(object):
         else:
             f = os.path.join(f, "")
         t = os.path.join(t, "")
+        print(f"flytekit, returning recursive path f {f} and t {t}")
         return f, t
 
     def sep(self, file_system: typing.Optional[fsspec.AbstractFileSystem]) -> str:
@@ -294,6 +295,7 @@ class FileAccessProvider(object):
                 )
             logger.info(f"Getting {from_path} to {to_path}")
             dst = file_system.get(from_path, to_path, recursive=recursive, **kwargs)
+            print(f"flytekit dst {dst}")
             if isinstance(dst, (str, pathlib.Path)):
                 return dst
             return to_path
@@ -556,6 +558,7 @@ class FileAccessProvider(object):
         """
         try:
             pathlib.Path(local_path).parent.mkdir(parents=True, exist_ok=True)
+            print(f"flytekit, getting data for local path {local_path}")
             with timeit(f"Download data to local from {remote_path}"):
                 self.get(remote_path, to_path=local_path, recursive=is_multipart, **kwargs)
         except Exception as ex:
