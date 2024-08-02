@@ -203,11 +203,8 @@ def _update_serialization_settings_for_ipython(
     if not isinstance(entity, (PythonAutoContainerTask, ArrayNodeMapTask)):
         return serialization_settings
 
-    # If the context is not interactive, we don't need to do anything
-    ctx = context_manager.FlyteContextManager.current_context()
-
-    # # Let's check if we are in an interactive environment like Jupyter notebook
-    if ctx.interactive_mode_enabled:
+    # Let's check if we are in an interactive environment like Jupyter notebook
+    if serialization_settings.interactive_mode_enabled is True:
         # We are in an interactive environment, let's check if the task is a PythonFunctionTask and the task function
         # is defined in the main module. If so, we will serialize the task as a pickled object and upload it to remote
         # storage. The main module check is to ensure that the task function is not defined in a notebook cell.
@@ -240,13 +237,8 @@ def _update_serialization_settings_for_ipython(
             with gzip.GzipFile(filename=dest, mode="wb", mtime=0) as gzipped:
                 cloudpickle.dump(entity, gzipped)
             rich.get_console().print("[yellow]Uploading Pickled representation of Task to remote storage...[/ yellow]")
-            md5_bytes, native_url = options.file_uploader(dest)
-            # if not serialization_settings.version and md5_bytes:
-            #     import base64
+            _, native_url = options.file_uploader(dest)
 
-            #     h = hashlib.md5(md5_bytes)
-            #     version = base64.urlsafe_b64encode(h.digest()).decode("ascii").rstrip("=")
-            #     serialization_settings.version = version
             serialization_settings.fast_serialization_settings = FastSerializationSettings(
                 enabled=True, pickled=True, distribution_location=native_url
             )

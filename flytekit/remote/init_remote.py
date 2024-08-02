@@ -4,6 +4,7 @@ import typing
 from flytekit.configuration import Config
 from flytekit.remote.remote import FlyteRemote
 from flytekit.tools.translator import Options
+from flytekit.tools.interactive import ipython_check
 
 REMOTE_ENTRY: typing.Optional[FlyteRemote] = None
 # TODO: This should be merged into the FlyteRemote in the future
@@ -17,6 +18,7 @@ def init_remote(
     default_domain: typing.Optional[str] = None,
     data_upload_location: str = "flyte://my-s3-bucket/",
     default_options: typing.Optional[Options] = None,
+    interactive_mode: bool = ipython_check(),
     **kwargs,
 ):
     """
@@ -37,7 +39,7 @@ def init_remote(
                 default_project=default_project,
                 default_domain=default_domain,
                 data_upload_location=data_upload_location,
-                interactive_mode_enabled=True,
+                interactive_mode_enabled=interactive_mode,
                 **kwargs,
             )
             # TODO: This should be merged into the FlyteRemote in the future

@@ -35,7 +35,7 @@ class FlyteFuture:
         from flytekit.tools.script_mode import hash_file
 
         if REMOTE_ENTRY is None:
-            raise Exception(
+            raise RuntimeError(
                 "Remote Flyte client has not been initialized. Please call flytekit.remote.init_remote() before executing tasks."
             )
         self._remote_entry = REMOTE_ENTRY
