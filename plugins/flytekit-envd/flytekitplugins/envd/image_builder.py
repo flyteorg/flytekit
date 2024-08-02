@@ -97,6 +97,8 @@ def _create_str_from_package_list(packages):
 
 def create_envd_config(image_spec: ImageSpec) -> str:
     base_image = DefaultImages.default_image() if image_spec.base_image is None else image_spec.base_image
+    if isinstance(base_image, ImageSpec):
+        base_image = base_image.image_name()
     if image_spec.cuda:
         if image_spec.python_version is None:
             raise Exception("python_version is required when cuda and cudnn are specified")
@@ -107,7 +109,7 @@ def create_envd_config(image_spec: ImageSpec) -> str:
     run_commands = _create_str_from_package_list(image_spec.commands)
     conda_channels = _create_str_from_package_list(image_spec.conda_channels)
     apt_packages = _create_str_from_package_list(image_spec.apt_packages)
-    env = {"PYTHONPATH": "/root:", _F_IMG_ID: image_spec.image_name()}
+    env = {"PYTHONPATH": "/root:", _F_IMG_ID: image_spec.id}
 
     if image_spec.env:
         env.update(image_spec.env)

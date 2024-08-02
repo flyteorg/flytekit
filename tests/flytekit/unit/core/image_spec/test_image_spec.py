@@ -13,6 +13,8 @@ REGISTRY_CONFIG_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)),
 
 
 def test_image_spec(mock_image_spec_builder):
+    base_image = ImageSpec(name="base", builder="dummy", base_image="base_image")
+
     image_spec = ImageSpec(
         name="FLYTEKIT",
         builder="dummy",
@@ -20,7 +22,7 @@ def test_image_spec(mock_image_spec_builder):
         apt_packages=["git"],
         python_version="3.8",
         registry="localhost:30001",
-        base_image="cr.flyte.org/flyteorg/flytekit:py3.8-latest",
+        base_image=base_image,
         cuda="11.2.2",
         cudnn="8",
         requirements=REQUIREMENT_FILE,
@@ -35,7 +37,7 @@ def test_image_spec(mock_image_spec_builder):
     image_spec = image_spec.force_push()
 
     assert image_spec.python_version == "3.8"
-    assert image_spec.base_image == "cr.flyte.org/flyteorg/flytekit:py3.8-latest"
+    assert image_spec.base_image == base_image
     assert image_spec.packages == ["pandas", "numpy"]
     assert image_spec.apt_packages == ["git", "wget"]
     assert image_spec.registry == "localhost:30001"
@@ -53,21 +55,18 @@ def test_image_spec(mock_image_spec_builder):
     assert image_spec._is_force_push is True
     assert image_spec.entrypoint == ["/bin/bash"]
 
-    tag = calculate_hash_from_image_spec(image_spec)
-    assert "=" != tag[-1]
-    assert image_spec.image_name() == f"localhost:30001/flytekit:{tag}"
+    assert image_spec.image_name() == f"localhost:30001/flytekit:nDg0IzEKso7jtbBnpLWTnw"
     ctx = context_manager.FlyteContext.current_context()
     with context_manager.FlyteContextManager.with_context(
         ctx.with_execution_state(ctx.execution_state.with_params(mode=ExecutionState.Mode.TASK_EXECUTION))
     ):
-        os.environ[_F_IMG_ID] = "localhost:30001/flytekit:123"
-        assert image_spec.is_container() is False
+        os.environ[_F_IMG_ID] = image_spec.id
+        assert image_spec.is_container() is True
 
     ImageBuildEngine.register("dummy", mock_image_spec_builder)
     ImageBuildEngine.build(image_spec)
 
     assert "dummy" in ImageBuildEngine._REGISTRY
-    assert calculate_hash_from_image_spec(image_spec) == tag
     assert image_spec.exist() is None
 
     # Remove the dummy builder, and build the image again

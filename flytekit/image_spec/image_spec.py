@@ -79,6 +79,24 @@ class ImageSpec:
         if self.registry:
             self.registry = self.registry.lower()
 
+        """
+        Calculate a unique hash as the ID for the ImageSpec, and it will be used to
+        1. Identify the imageSpec in the ImageConfig in the serialization context.
+        2. Check if the current container image in the pod is built from this image spec in `is_container()`.
+
+        ImageConfig:
+        - deduced abc: flyteorg/flytekit:123
+        - deduced xyz: flyteorg/flytekit:456
+        """
+        # Only get the non-None values in the ImageSpec to ensure the hash is consistent across different Flytekit versions.
+        image_spec_dict = asdict(self, dict_factory=lambda x: {k: v for (k, v) in x if v is not None})
+        image_spec_bytes = image_spec_dict.__str__().encode("utf-8")
+        self._id = base64.urlsafe_b64encode(hashlib.md5(image_spec_bytes).digest()).decode("ascii").rstrip("=")
+
+    @property
+    def id(self) -> str:
+        return self._id
+
     def image_name(self) -> str:
         """Full image name with tag."""
         image_name = self._image_name()
@@ -103,7 +121,7 @@ class ImageSpec:
 
         state = FlyteContextManager.current_context().execution_state
         if state and state.mode and state.mode != ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
-            return os.environ.get(_F_IMG_ID) == self.image_name()
+            return os.environ.get(_F_IMG_ID) == self.id
         return True
 
     def exist(self) -> Optional[bool]:
@@ -133,9 +151,11 @@ class ImageSpec:
         except Exception as e:
             tag = calculate_hash_from_image_spec(self)
             # if docker engine is not running locally, use requests to check if the image exists.
-            if "localhost:" in self.registry:
+            if self.registry is None:
+                container_registry = None
+            elif "localhost:" in self.registry:
                 container_registry = self.registry
-            elif self.registry and "/" in self.registry:
+            elif "/" in self.registry:
                 container_registry = self.registry.split("/")[0]
             else:
                 # Assume the image is in docker hub if users don't specify a registry, such as ghcr.io, docker.io.
@@ -163,7 +183,7 @@ class ImageSpec:
             return None
 
     def __hash__(self):
-        return hash(asdict(self).__str__())
+        return hash(self.id)
 
     def with_commands(self, commands: Union[str, List[str]]) -> "ImageSpec":
         """
@@ -286,7 +306,6 @@ class ImageBuildEngine:
 
         if isinstance(image_spec.base_image, ImageSpec):
             cls.build(image_spec.base_image)
-            image_spec.base_image = image_spec.base_image.image_name()
 
         if image_spec.builder is None and cls._REGISTRY:
             builder = max(cls._REGISTRY, key=lambda name: cls._REGISTRY[name][1])
@@ -322,24 +341,11 @@ class ImageBuildEngine:
 
 
 @lru_cache
-def _calculate_deduped_hash_from_image_spec(image_spec: ImageSpec):
-    """
-    Calculate this special hash from the image spec,
-    and it used to identify the imageSpec in the ImageConfig in the serialization context.
-
-    ImageConfig:
-    - deduced hash 1: flyteorg/flytekit: 123
-    - deduced hash 2: flyteorg/flytekit: 456
-    """
-    image_spec_bytes = asdict(image_spec).__str__().encode("utf-8")
-    # copy the image spec to avoid modifying the original image spec. otherwise, the hash will be different.
-    return base64.urlsafe_b64encode(hashlib.md5(image_spec_bytes).digest()).decode("ascii").rstrip("=")
-
-
-@lru_cache
 def calculate_hash_from_image_spec(image_spec: ImageSpec):
     """
-    Calculate the hash from the image spec.
+    Calculate the hash from the image spec. The hash will be the tag of the image.
+    This method will also read the content of the requirement file and the source root to calculate the hash.
+    Therefore, it will generate different hash if new dependencies are added or the source code is changed.
     """
     # copy the image spec to avoid modifying the original image spec. otherwise, the hash will be different.
     spec = copy.deepcopy(image_spec)
@@ -355,13 +361,11 @@ def calculate_hash_from_image_spec(image_spec: ImageSpec):
         spec.source_root = digest
 
     if spec.requirements:
-        spec.requirements = hashlib.sha1(pathlib.Path(spec.requirements).read_bytes()).hexdigest()
+        spec.requirements = hashlib.sha1(pathlib.Path(spec.requirements).read_bytes().strip()).hexdigest()
     # won't rebuild the image if we change the registry_config path
     spec.registry_config = None
-    image_spec_bytes = asdict(spec).__str__().encode("utf-8")
-    tag = base64.urlsafe_b64encode(hashlib.md5(image_spec_bytes).digest()).decode("ascii").rstrip("=")
     # replace "-" with "_" to make it a valid tag
-    return tag.replace("-", "_")
+    return spec.id.replace("-", "_")
 
 
 def hash_directory(path):
