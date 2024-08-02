@@ -368,11 +368,7 @@ class DataclassTransformer(TypeTransformer[object]):
             original_dict = v
 
             # Find the Optional keys in expected_fields_dict
-            optional_keys = {
-                k
-                for k, t in expected_fields_dict.items()
-                if UnionTransformer.is_optional_type(t)
-            }
+            optional_keys = {k for k, t in expected_fields_dict.items() if UnionTransformer.is_optional_type(t)}
 
             # Remove the Optional keys from the keys of original_dict
             original_key = set(original_dict.keys()) - optional_keys
@@ -544,10 +540,11 @@ class DataclassTransformer(TypeTransformer[object]):
                 field.type = self._get_origin_type_in_annotation(field.type)
         return python_type
 
-    def _fix_structured_dataset_type(self, python_type: Type[T], python_val: typing.Any) -> T:
+    def _fix_structured_dataset_type(self, python_type: Type[T], python_val: typing.Any) -> T | None:
         # In python 3.7, 3.8, DataclassJson will deserialize Annotated[StructuredDataset, kwtypes(..)] to a dict,
         # so here we convert it back to the Structured Dataset.
         from flytekit.types.structured import StructuredDataset
+
         if python_val is None:
             return python_val
         if python_type == StructuredDataset and type(python_val) == dict:
