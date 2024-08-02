@@ -316,9 +316,8 @@ jobs:
           uv pip install --system flyteidl-rust --no-index --find-links dist --force-reinstall
           python -c "import flyteidl_rust"
       - name: After built wheels
-        working-directory: ${{ github.workspace }}/flyte/flyteidl
         run: |
-          cargo clean
+          rm -rf ${{ github.workspace }}/flyte
       - name: Install FlyteCTL
         uses: unionai-oss/flytectl-setup-action@master
       - name: Setup Flyte Sandbox
