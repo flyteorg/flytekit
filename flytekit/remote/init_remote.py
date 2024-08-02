@@ -18,7 +18,7 @@ def init_remote(
     default_domain: typing.Optional[str] = None,
     data_upload_location: str = "flyte://my-s3-bucket/",
     default_options: typing.Optional[Options] = None,
-    interactive_mode: bool = ipython_check(),
+    interactive_mode_enabled: bool = ipython_check(),
     **kwargs,
 ):
     """
@@ -29,6 +29,7 @@ def init_remote(
     :param data_upload_location: this is where all the default data will be uploaded when providing inputs.
         The default location - `s3://my-s3-bucket/data` works for sandbox/demo environment. Please override this for non-sandbox cases.
     :param default_options: default options to use when executing tasks or workflows remotely.
+    :param interactive_mode_enabled: If True, the client will be configured to work in interactive mode.
     :return:
     """
     global REMOTE_ENTRY, REMOTE_DEFAULT_OPTIONS
@@ -39,7 +40,7 @@ def init_remote(
                 default_project=default_project,
                 default_domain=default_domain,
                 data_upload_location=data_upload_location,
-                interactive_mode_enabled=interactive_mode,
+                interactive_mode_enabled=interactive_mode_enabled,
                 **kwargs,
             )
             # TODO: This should be merged into the FlyteRemote in the future
