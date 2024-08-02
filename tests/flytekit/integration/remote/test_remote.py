@@ -399,7 +399,7 @@ def test_execute_reference_task(register):
         version=VERSION,
     )
     def t1(a: int) -> nt:
-        return nt(t1_int_output=a + 2, c="world")
+        ...
 
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     execution = remote.execute(

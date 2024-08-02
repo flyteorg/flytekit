@@ -81,7 +81,7 @@ def test_ref_task_more():
         version="553018f39e519bdb2597b652639c30ce16b99c79",
     )
     def ref_t1(a: typing.List[str]) -> str:
-        return "hello"
+        ...
 
     @workflow
     def wf1(in1: typing.List[str]) -> str:
@@ -106,7 +106,7 @@ def test_ref_task_more_2():
         version="553018f39e519bdb2597b652639c30ce16b99c79",
     )
     def ref_t1(a: typing.List[str]) -> str:
-        return "hello"
+        ...
 
     @reference_task(
         project="flytesnacks",
@@ -115,7 +115,7 @@ def test_ref_task_more_2():
         version="553018f39e519bdb2597b652639c30ce16b99c79",
     )
     def ref_t2(a: typing.List[str]) -> str:
-        return "hello"
+        ...
 
     @workflow
     def wf1(in1: typing.List[str]) -> str:
@@ -435,7 +435,7 @@ def test_ref_dynamic_task():
         version="553018f39e519bdb2597b652639c30ce16b99c79",
     )
     def ref_t1(a: int) -> str:
-        return "hello"
+        ...
 
     @task
     def t2(a: str, b: str) -> str:
