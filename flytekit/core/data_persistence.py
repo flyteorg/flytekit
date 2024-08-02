@@ -23,6 +23,7 @@ import os
 import pathlib
 import tempfile
 import typing
+from glob import glob
 from time import sleep
 from typing import Any, Dict, Optional, Union, cast
 from uuid import UUID
@@ -295,9 +296,11 @@ class FileAccessProvider(object):
                 )
             logger.info(f"Getting {from_path} to {to_path}")
             dst = file_system.get(from_path, to_path, recursive=recursive, **kwargs)
-            print(f"flytekit dst {dst}")
             if isinstance(dst, (str, pathlib.Path)):
+                print(f"flytekit dst {dst}")
                 return dst
+            for f in glob(to_path):
+                print(f"flytekit downloaded file: {f}")
             return to_path
         except OSError as oe:
             logger.debug(f"Error in getting {from_path} to {to_path} rec {recursive} {oe}")
