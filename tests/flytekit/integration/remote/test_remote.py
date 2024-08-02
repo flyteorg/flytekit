@@ -485,12 +485,32 @@ def test_execute_workflow_with_maptask(register):
     )
     assert execution.outputs["o0"] == [4, 5, 6]
 
-@pytest.mark.parametrize("gigabytes", [1, 2, 3])
-def test_can_register_with_large_file(gigabytes, request):
-    with tempfile.TemporaryDirectory(dir=pathlib.Path(__file__).parent) as tempdir:
+@pytest.mark.parametrize("gigabytes", [2, 3, 4])
+def test_can_register_with_large_file(gigabytes):
+    with tempfile.TemporaryDirectory(dir=MODULE_PATH) as tempdir:
         file_path = pathlib.Path(tempdir) / "large_file"
         with open(file_path, "wb") as f:
-            # Write in chunks of 1gb to keep memory usage low
-            [f.write(os.urandom(int(1e9))) for _ in range(gigabytes)]
-        # Now run registration - this call should just not fail
-        request.getfixturevalue("register")
+            # Write in chunks of 500mb to keep memory usage low during tests
+            for _ in range(gigabytes * 2):
+                f.write(os.urandom(int(1e9 // 2)))
+        # NOTE: Cannot re-use the 'register' fixture given it is scoped to the entire session.
+        # For this test, we just re-register with a different version each time.
+        out = subprocess.run(
+            [
+                "pyflyte",
+                "--verbose",
+                "-c",
+                CONFIG,
+                "register",
+                "--image",
+                IMAGE,
+                "--project",
+                PROJECT,
+                "--domain",
+                DOMAIN,
+                "--version",
+                pathlib.Path(tempdir).name, # tempdirs are mapped to unique names
+                MODULE_PATH,
+            ]
+        )
+    assert out.returncode == 0
