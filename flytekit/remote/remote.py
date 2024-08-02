@@ -904,7 +904,7 @@ class FlyteRemote(object):
         with open(str(to_upload), "+rb") as local_file:
             # Move to the end of the file object to get its length
             local_file.seek(0, os.SEEK_END)
-            content_length = len(local_file.tell())
+            content_length = local_file.tell()
             # Move back to the beginning of the file object to make it ready for reading
             local_file.seek(0)
             headers = {"Content-Length": str(content_length), "Content-MD5": encoded_md5}
