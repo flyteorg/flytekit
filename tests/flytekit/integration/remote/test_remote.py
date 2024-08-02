@@ -493,7 +493,7 @@ def test_can_register_with_large_file(gigabytes):
             # Write in chunks of 500mb to keep memory usage low during tests
             for _ in range(gigabytes * 2):
                 f.write(os.urandom(int(1e9 // 2)))
-        # NOTE: Cannot re-use the 'register' fixture given it is scoped to the entire session.
+        # NOTE: Cannot reuse the 'register' fixture given it is scoped to the entire session.
         # For this test, we just re-register with a different version each time.
         out = subprocess.run(
             [
