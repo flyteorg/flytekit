@@ -318,9 +318,9 @@ jobs:
         run: |
           cargo clean
       - name: Remove flyte
-        working-directory: ${{ github.workspace }}/flyte
+        working-directory: ${{ github.workspace }}
         run: |
-          rm -rf .
+          rm -rf ./flyte
       - name: Install FlyteCTL
         uses: unionai-oss/flytectl-setup-action@master
       - name: Setup Flyte Sandbox
