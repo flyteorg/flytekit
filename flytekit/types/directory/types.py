@@ -364,7 +364,7 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
 
                 flyte_directory: FlyteDirectory = FlyteDirectory(path=local_folder, downloader=downloader)
                 flyte_directory._remote_source = remote_path
-                print(f"flytekit appending directory with local folder {local_folder}, flyte file remote {flyte_directory.remote_path} and source {flyte_directory.remote_source}")
+                print(f"flytekit appending directory with local folder {local_folder}, flyte file remote {remote_path} and source {flyte_directory._remote_source}")
                 paths.append(flyte_directory)
         print(f"flytekit, returning paths {paths}")
         return paths
