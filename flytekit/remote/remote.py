@@ -233,11 +233,7 @@ class FlyteRemote(object):
         )
 
         # Save the file access object locally, build a context for it and save that as well.
-        self._ctx = (
-            FlyteContextManager.current_context()
-            .with_file_access(self._file_access)
-            .build()
-        )
+        self._ctx = FlyteContextManager.current_context().with_file_access(self._file_access).build()
         self._interactive_mode_enabled = interactive_mode_enabled
 
     @property
@@ -325,12 +321,6 @@ class FlyteRemote(object):
         """Context manager with remote-specific configuration."""
         return FlyteContextManager.with_context(
             FlyteContextManager.current_context().with_file_access(self.file_access)
-        )
-
-    def interactive_context(self):
-        """Context manager with interactive-specific configuration."""
-        return FlyteContextManager.with_context(
-            FlyteContextManager.current_context().with_interactive_mode_enabled(self.interactive_mode_enabled)
         )
 
     def fetch_task_lazy(
@@ -773,17 +763,14 @@ class FlyteRemote(object):
             )
         if serialization_settings.version is None:
             serialization_settings.version = version
+        serialization_settings.interactive_mode_enabled = self.interactive_mode_enabled
 
         if options is None:
             options = Options()
         if options.file_uploader is None:
             options.file_uploader = self.upload_file
 
-        if self.interactive_mode_enabled:
-            with self.interactive_context():
-                _ = get_serializable(m, settings=serialization_settings, entity=entity, options=options)
-        else:
-            _ = get_serializable(m, settings=serialization_settings, entity=entity, options=options)
+        _ = get_serializable(m, settings=serialization_settings, entity=entity, options=options)
         # concurrent register
         cp_task_entity_map = OrderedDict(filter(lambda x: isinstance(x[1], task_models.TaskSpec), m.items()))
         tasks = []
