@@ -3,6 +3,7 @@ import json
 import os
 import pathlib
 import subprocess
+import tempfile
 import time
 import typing
 
@@ -483,3 +484,13 @@ def test_execute_workflow_with_maptask(register):
         wait=True,
     )
     assert execution.outputs["o0"] == [4, 5, 6]
+
+@pytest.mark.parametrize("gigabytes", [1, 2, 3])
+def test_can_register_with_large_file(gigabytes, request):
+    with tempfile.TemporaryDirectory(dir=pathlib.Path(__file__).parent) as tempdir:
+        file_path = pathlib.Path(tempdir) / "large_file"
+        with open(file_path, "wb") as f:
+            # Write in chunks of 1gb to keep memory usage low
+            [f.write(os.urandom(int(1e9))) for _ in range(gigabytes)]
+        # Now run registration - this call should just not fail
+        request.getfixturevalue("register")
