@@ -300,7 +300,7 @@ jobs:
           pip install uv
           make setup-global-uv
           uv pip freeze
-      - name: Prepare to Build wheels
+      - name: Prepare build wheels
         working-directory: ${{ github.workspace }}/flyte/flyteidl
         run: |
           chmod +x ./scripts/add_pyo3_subclass.sh && ./scripts/add_pyo3_subclass.sh
@@ -315,6 +315,10 @@ jobs:
         run: |
           uv pip install --system flyteidl-rust --no-index --find-links dist --force-reinstall
           python -c "import flyteidl_rust"
+      - name: After built wheels
+        working-directory: ${{ github.workspace }}/flyte/flyteidl
+        run: |
+          cargo clean
       - name: Install FlyteCTL
         uses: unionai-oss/flytectl-setup-action@master
       - name: Setup Flyte Sandbox
