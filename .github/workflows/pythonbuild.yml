@@ -290,8 +290,8 @@ jobs:
         run: |
           pip install uv
           make setup-global-uv
-          pip uninstall --system grpcio grpcio-status
-          pip install  --system -i https://test.pypi.org/simple/ flyteidl-rust
+          pip uninstall grpcio grpcio-status -y
+          pip install -i https://test.pypi.org/simple/ flyteidl-rust
           pip freeze
           python -c "import flyteidl_rust"
       - name: Install FlyteCTL
