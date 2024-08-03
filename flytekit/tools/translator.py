@@ -565,9 +565,7 @@ def get_serializable_node(
             inputs=entity.bindings,
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
-            array_node=get_serializable_array_node(
-                entity_mapping, settings, entity, options=options
-            ),
+            array_node=get_serializable_array_node(entity_mapping, settings, entity, options=options),
         )
     elif isinstance(entity.flyte_entity, ArrayNodeMapTask):
         node_model = workflow_model.Node(
@@ -576,9 +574,7 @@ def get_serializable_node(
             inputs=entity.bindings,
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
-            array_node=get_serializable_array_node_map_task(
-                entity_mapping, settings, entity, options=options
-            ),
+            array_node=get_serializable_array_node_map_task(entity_mapping, settings, entity, options=options),
         )
         # TODO: do I need this?
         # if entity._aliases:
@@ -726,9 +722,7 @@ def get_serializable_array_node(
 ) -> ArrayNodeModel:
     array_node = node.flyte_entity
     return ArrayNodeModel(
-        node=get_serializable_node(
-            entity_mapping, settings, array_node, options=options
-        ),
+        node=get_serializable_node(entity_mapping, settings, array_node, options=options),
         parallelism=array_node.concurrency,
         min_successes=array_node.min_successes,
         min_success_ratio=array_node.min_success_ratio,
@@ -916,9 +910,7 @@ def get_serializable(
         cp_entity = entity
 
     elif isinstance(entity, ArrayNode):
-        cp_entity = get_serializable_array_node(
-            entity_mapping, settings, entity, options
-        )
+        cp_entity = get_serializable_array_node(entity_mapping, settings, entity, options)
 
     else:
         raise Exception(f"Non serializable type found {type(entity)} Entity {entity}")
