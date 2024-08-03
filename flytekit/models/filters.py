@@ -122,7 +122,6 @@ class SetFilter(Filter):
             raise TypeError(f"values must be a list. but got {type(values)}")
         super(SetFilter, self).__init__(key, ";".join(values))
 
-
     @classmethod
     def _parse_value(cls, value):
         return value.split(";")
