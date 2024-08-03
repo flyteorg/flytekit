@@ -247,7 +247,11 @@ class SimpleTransformer(TypeTransformer[T]):
         else:
             if expected_python_type is int and lv.scalar.primitive.integer is None:
                 raise TypeTransformerFailedError(f"Cannot convert literal {lv} to int")
-            elif expected_python_type is float and lv.scalar.primitive.float_value is None:
+            elif (
+                expected_python_type is float
+                and lv.scalar.primitive.float_value is None
+                and lv.scalar.primitive.integer is None
+            ):
                 raise TypeTransformerFailedError(f"Cannot convert literal {lv} to float")
             elif expected_python_type is bool and lv.scalar.primitive.boolean is None:
                 raise TypeTransformerFailedError(f"Cannot convert literal {lv} to bool")
