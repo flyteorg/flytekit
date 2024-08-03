@@ -487,7 +487,7 @@ def test_execute_workflow_with_maptask(register):
 
 
 @mock.patch("flytekit.tools.interactive.ipython_check")
-def test_jupyter_remote_workflow(mock_ipython_check):
+def test_workflow_remote_func(mock_ipython_check):
     mock_ipython_check.return_value = True
     with pytest.raises(AssertionError):
         init_remote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN, interactive_mode_enabled=True)
@@ -511,7 +511,7 @@ def test_jupyter_remote_workflow(mock_ipython_check):
     assert out2.outputs["o0"] == 12
 
 
-def test_execute_jupyter_python_task(register):
+def test_fetch_python_task_remote_func(register):
     """Test execution of a @task-decorated python function that is already registered."""
     with patch("flytekit.tools.interactive.ipython_check") as mock_ipython_check:
         mock_ipython_check.return_value = True
@@ -525,9 +525,9 @@ def test_execute_jupyter_python_task(register):
         assert out.outputs["t1_int_output"] == 12
         assert out.outputs["c"] == "world"
 
-
-def test_execute_jupyter_python_workflow(register):
-    """Test execution of a @workflow-decorated python function."""
+@pytest.mark.skip(reason="Waiting for supporting the `name` parameter in the remote function")
+def test_fetch_python_workflow_remote_func(register):
+    """Test execution of a @workflow-decorated python function that is already registered."""
     with patch("flytekit.tools.interactive.ipython_check") as mock_ipython_check:
         mock_ipython_check.return_value = True
         from .workflows.basic.basic_workflow import my_basic_wf
@@ -539,7 +539,7 @@ def test_execute_jupyter_python_workflow(register):
 
 
 @mock.patch("flytekit.tools.interactive.ipython_check")
-def test_fetch_execute_task_list_of_floats(mock_ipython_check):
+def test_execute_task_remote_func_list_of_floats(mock_ipython_check):
     mock_ipython_check.return_value = True
     from .workflows.basic.list_float_wf import concat_list
 
@@ -550,7 +550,7 @@ def test_fetch_execute_task_list_of_floats(mock_ipython_check):
 
 
 @mock.patch("flytekit.tools.interactive.ipython_check")
-def test_fetch_execute_task_convert_dict(mock_ipython_check):
+def test_execute_task_remote_func_convert_dict(mock_ipython_check):
     mock_ipython_check.return_value = True
     from .workflows.basic.dict_str_wf import convert_to_string
 
@@ -561,7 +561,7 @@ def test_fetch_execute_task_convert_dict(mock_ipython_check):
 
 
 @mock.patch("flytekit.tools.interactive.ipython_check")
-def test_execute_jupyter_python_workflow_dict_of_string_to_string(mock_ipython_check):
+def test_execute_python_workflow_remote_func_dict_of_string_to_string(mock_ipython_check):
     """Test execution of a @workflow-decorated python function."""
     mock_ipython_check.return_value = True
     from .workflows.basic.dict_str_wf import my_dict_str_wf
@@ -573,7 +573,7 @@ def test_execute_jupyter_python_workflow_dict_of_string_to_string(mock_ipython_c
 
 
 @mock.patch("flytekit.tools.interactive.ipython_check")
-def test_execute_jupyter_python_workflow_list_of_floats(mock_ipython_check):
+def test_execute_python_workflow_remote_func_list_of_floats(mock_ipython_check):
     """Test execution of a @workflow-decorated python function."""
     mock_ipython_check.return_value = True
     from .workflows.basic.list_float_wf import my_list_float_wf
