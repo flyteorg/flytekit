@@ -252,7 +252,7 @@ class NodeExecutionClosure(_common_models.FlyteIdlEntity):
 
 
 class NodeExecution(_common_models.FlyteIdlEntity):
-    def __init__(self, id, input_uri, closure, metadata: admin_node_execution_pb2.NodeExecutionMetaData):
+    def __init__(self, id, input_uri, closure, metadata: flyteidl.admin.NodeExecutionMetaData):
         """
         :param flytekit.models.core.identifier.NodeExecutionIdentifier id:
         :param Text input_uri:
@@ -286,11 +286,11 @@ class NodeExecution(_common_models.FlyteIdlEntity):
         return self._closure
 
     @property
-    def metadata(self) -> admin_node_execution_pb2.NodeExecutionMetaData:
+    def metadata(self) -> flyteidl.admin.NodeExecutionMetaData:
         return self._metadata
 
-    def to_flyte_idl(self) -> admin_node_execution_pb2.NodeExecution:
-        return admin_node_execution_pb2.NodeExecution(
+    def to_flyte_idl(self) -> flyteidl.admin.NodeExecution:
+        return flyteidl.admin.NodeExecution(
             id=self.id.to_flyte_idl(),
             input_uri=self.input_uri,
             closure=self.closure.to_flyte_idl(),
@@ -298,7 +298,7 @@ class NodeExecution(_common_models.FlyteIdlEntity):
         )
 
     @classmethod
-    def from_flyte_idl(cls, p: admin_node_execution_pb2.NodeExecution) -> "NodeExecution":
+    def from_flyte_idl(cls, p: flyteidl.admin.NodeExecution) -> "NodeExecution":
         return cls(
             id=_identifier.NodeExecutionIdentifier.from_flyte_idl(p.id),
             input_uri=p.input_uri,
