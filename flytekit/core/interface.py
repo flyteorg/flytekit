@@ -6,7 +6,18 @@ import inspect
 import sys
 import typing
 from collections import OrderedDict
-from typing import Any, Dict, Generator, List, Optional, Tuple, Type, TypeVar, Union, cast
+from typing import (
+    Any,
+    Dict,
+    Generator,
+    List,
+    Optional,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+)
 
 from flyteidl.core import artifact_id_pb2 as art_id
 from typing_extensions import get_args, get_type_hints
@@ -59,8 +70,12 @@ class Interface(object):
 
     def __init__(
         self,
-        inputs: Union[Optional[Dict[str, Type]], Optional[Dict[str, Tuple[Type, Any]]]] = None,
-        outputs: Union[Optional[Dict[str, Type]], Optional[Dict[str, Optional[Type]]]] = None,
+        inputs: Union[
+            Optional[Dict[str, Type]], Optional[Dict[str, Tuple[Type, Any]]]
+        ] = None,
+        outputs: Union[
+            Optional[Dict[str, Type]], Optional[Dict[str, Optional[Type]]]
+        ] = None,
         output_tuple_name: Optional[str] = None,
         docstring: Optional[Docstring] = None,
     ):
@@ -78,7 +93,9 @@ class Interface(object):
         if inputs:
             for k, v in inputs.items():
                 if not k.isidentifier():
-                    raise ValueError(f"Input name must be valid Python identifier: {k!r}")
+                    raise ValueError(
+                        f"Input name must be valid Python identifier: {k!r}"
+                    )
                 if type(v) is tuple and len(cast(Tuple, v)) > 1:
                     self._inputs[k] = v  # type: ignore
                 else:
@@ -184,7 +201,9 @@ class Interface(object):
         new_inputs = copy.copy(self._inputs)
         for k, v in extra_inputs.items():
             if k in new_inputs:
-                raise ValueError(f"Input {k} cannot be added as it already exists in the interface")
+                raise ValueError(
+                    f"Input {k} cannot be added as it already exists in the interface"
+                )
             cast(Dict[str, Type], new_inputs)[k] = v
         return Interface(new_inputs, self._outputs, docstring=self.docstring)
 
@@ -197,7 +216,9 @@ class Interface(object):
         new_outputs = copy.copy(self._outputs)
         for k, v in extra_outputs.items():
             if k in new_outputs:
-                raise ValueError(f"Output {k} cannot be added as it already exists in the interface")
+                raise ValueError(
+                    f"Output {k} cannot be added as it already exists in the interface"
+                )
             new_outputs[k] = v
         return Interface(self._inputs, new_outputs)
 
@@ -221,35 +242,51 @@ def transform_inputs_to_parameters(
     if interface.docstring is None:
         inputs_vars = transform_variable_map(interface.inputs)
     else:
-        inputs_vars = transform_variable_map(interface.inputs, interface.docstring.input_descriptions)
+        inputs_vars = transform_variable_map(
+            interface.inputs, interface.docstring.input_descriptions
+        )
     params = {}
     inputs_with_def = interface.inputs_with_defaults
     for k, v in inputs_vars.items():
         val, _default = inputs_with_def[k]
         if _default is None and UnionTransformer.is_optional_type(val):
             literal = Literal(scalar=Scalar(none_type=Void()))
-            params[k] = _interface_models.Parameter(var=v, default=literal, required=False)
+            params[k] = _interface_models.Parameter(
+                var=v, default=literal, required=False
+            )
         else:
             if isinstance(_default, ArtifactQuery):
-                params[k] = _interface_models.Parameter(var=v, required=False, artifact_query=_default.to_flyte_idl())
+                params[k] = _interface_models.Parameter(
+                    var=v, required=False, artifact_query=_default.to_flyte_idl()
+                )
             elif isinstance(_default, Artifact):
                 if not _default.version:
                     # If the artifact is not versioned, assume it's meant to be a query.
                     q = _default.query()
                     if q.bound:
-                        params[k] = _interface_models.Parameter(var=v, required=False, artifact_query=q.to_flyte_idl())
+                        params[k] = _interface_models.Parameter(
+                            var=v, required=False, artifact_query=q.to_flyte_idl()
+                        )
                     else:
-                        raise FlyteValidationException(f"Cannot use default query with artifact {_default.name}")
+                        raise FlyteValidationException(
+                            f"Cannot use default query with artifact {_default.name}"
+                        )
                 else:
                     # If it is versioned, assumed it's intentionally hard-coded
                     artifact_id = _default.concrete_artifact_id  # may raise
-                    params[k] = _interface_models.Parameter(var=v, required=False, artifact_id=artifact_id)
+                    params[k] = _interface_models.Parameter(
+                        var=v, required=False, artifact_id=artifact_id
+                    )
             else:
                 required = _default is None
                 default_lv = None
                 if _default is not None:
-                    default_lv = TypeEngine.to_literal(ctx, _default, python_type=interface.inputs[k], expected=v.type)
-                params[k] = _interface_models.Parameter(var=v, default=default_lv, required=required)
+                    default_lv = TypeEngine.to_literal(
+                        ctx, _default, python_type=interface.inputs[k], expected=v.type
+                    )
+                params[k] = _interface_models.Parameter(
+                    var=v, default=default_lv, required=required
+                )
     return _interface_models.ParameterMap(params)
 
 
@@ -272,7 +309,9 @@ def transform_interface_to_typed_interface(
 
     inputs_map = transform_variable_map(interface.inputs, input_descriptions)
     outputs_map = transform_variable_map(interface.outputs, output_descriptions)
-    verify_outputs_artifact_bindings(interface.inputs, outputs_map, allow_partial_artifact_id_binding)
+    verify_outputs_artifact_bindings(
+        interface.inputs, outputs_map, allow_partial_artifact_id_binding
+    )
     return _interface_models.TypedInterface(inputs_map, outputs_map)
 
 
@@ -314,7 +353,9 @@ def verify_outputs_artifact_bindings(
                     )
 
                 if v.artifact_partial_id.time_partition.value.HasField("input_binding"):
-                    input_name = v.artifact_partial_id.time_partition.value.input_binding.var
+                    input_name = (
+                        v.artifact_partial_id.time_partition.value.input_binding.var
+                    )
                     if input_name not in inputs:
                         raise FlyteValidationException(
                             f"Output time partition is bound to input {input_name} which does not exist in the interface"
@@ -364,12 +405,18 @@ def transform_interface_to_list_interface(
     :param bound_inputs: fixed inputs that should not upgraded to a list and will be maintained as scalars.
     """
     map_inputs = transform_types_to_list_of_type(interface.inputs, bound_inputs)
-    map_outputs = transform_types_to_list_of_type(interface.outputs, set(), optional_outputs)
+    map_outputs = transform_types_to_list_of_type(
+        interface.outputs, set(), optional_outputs
+    )
 
     return Interface(inputs=map_inputs, outputs=map_outputs)
 
 
-def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Docstring] = None) -> Interface:
+def transform_function_to_interface(
+    fn: typing.Callable,
+    docstring: Optional[Docstring] = None,
+    is_reference_entity: bool = False,
+) -> Interface:
     """
     From the annotations on a task function that the user should have provided, and the output names they want to use
     for each output parameter, construct the TypedInterface object
@@ -382,9 +429,12 @@ def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Doc
     return_annotation = type_hints.get("return", None)
 
     ctx = FlyteContextManager.current_context()
+
+    # Check if the function has a return statement at compile time locally.
+    # Skip it if the function is a reference task/workflow since it doesn't have a body.
     if (
-        ctx.execution_state
-        # Only check if the task/workflow has a return statement at compile time locally.
+        not is_reference_entity
+        and ctx.execution_state
         and ctx.execution_state.mode is None
         # inspect module does not work correctly with Python <3.10.10. https://github.com/flyteorg/flyte/issues/5608
         and sys.version_info >= (3, 10, 10)
@@ -412,11 +462,20 @@ def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Doc
     custom_name = None
     if hasattr(return_annotation, "__bases__"):
         bases = return_annotation.__bases__
-        if len(bases) == 1 and bases[0] == tuple and hasattr(return_annotation, "_fields"):
-            if hasattr(return_annotation, "__name__") and return_annotation.__name__ != "":
+        if (
+            len(bases) == 1
+            and bases[0] == tuple
+            and hasattr(return_annotation, "_fields")
+        ):
+            if (
+                hasattr(return_annotation, "__name__")
+                and return_annotation.__name__ != ""
+            ):
                 custom_name = return_annotation.__name__
 
-    return Interface(inputs, outputs, output_tuple_name=custom_name, docstring=docstring)
+    return Interface(
+        inputs, outputs, output_tuple_name=custom_name, docstring=docstring
+    )
 
 
 def transform_variable_map(
@@ -453,12 +512,16 @@ def detect_artifact(
     return None
 
 
-def transform_type(x: type, description: Optional[str] = None) -> _interface_models.Variable:
+def transform_type(
+    x: type, description: Optional[str] = None
+) -> _interface_models.Variable:
     artifact_id = detect_artifact(get_args(x))
     if artifact_id:
         logger.debug(f"Found artifact id spec: {artifact_id}")
     return _interface_models.Variable(
-        type=TypeEngine.to_literal_type(x), description=description, artifact_partial_id=artifact_id
+        type=TypeEngine.to_literal_type(x),
+        description=description,
+        artifact_partial_id=artifact_id,
     )
 
 
@@ -471,7 +534,9 @@ def output_name_generator(length: int) -> Generator[str, None, None]:
         yield default_output_name(x)
 
 
-def extract_return_annotation(return_annotation: Union[Type, Tuple, None]) -> Dict[str, Type]:
+def extract_return_annotation(
+    return_annotation: Union[Type, Tuple, None]
+) -> Dict[str, Type]:
     """
     The purpose of this function is to sort out whether a function is returning one thing, or multiple things, and to
     name the outputs accordingly, either by using our default name function, or from a typing.NamedTuple.
@@ -516,9 +581,15 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple, None]) -> Di
         # isinstance / issubclass does not work for Namedtuple.
         # Options 1 and 2
         bases = return_annotation.__bases__  # type: ignore
-        if len(bases) == 1 and bases[0] == tuple and hasattr(return_annotation, "_fields"):
+        if (
+            len(bases) == 1
+            and bases[0] == tuple
+            and hasattr(return_annotation, "_fields")
+        ):
             logger.debug(f"Task returns named tuple {return_annotation}")
-            return dict(get_type_hints(cast(Type, return_annotation), include_extras=True))
+            return dict(
+                get_type_hints(cast(Type, return_annotation), include_extras=True)
+            )
 
     if hasattr(return_annotation, "__origin__") and return_annotation.__origin__ is tuple:  # type: ignore
         # Handle option 3
@@ -532,8 +603,12 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple, None]) -> Di
         )
     elif isinstance(return_annotation, tuple):
         if len(return_annotation) == 1:
-            raise FlyteValidationException("Please don't use a tuple if you're just returning one thing.")
-        return OrderedDict(zip(list(output_name_generator(len(return_annotation))), return_annotation))
+            raise FlyteValidationException(
+                "Please don't use a tuple if you're just returning one thing."
+            )
+        return OrderedDict(
+            zip(list(output_name_generator(len(return_annotation))), return_annotation)
+        )
 
     else:
         # Handle all other single return types
@@ -541,7 +616,9 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple, None]) -> Di
         return {default_output_name(): cast(Type, return_annotation)}
 
 
-def remap_shared_output_descriptions(output_descriptions: Dict[str, str], outputs: Dict[str, Type]) -> Dict[str, str]:
+def remap_shared_output_descriptions(
+    output_descriptions: Dict[str, str], outputs: Dict[str, Type]
+) -> Dict[str, str]:
     """
     Deals with mixed styles of return value descriptions used in docstrings. If the docstring contains a single entry of return value description, that output description is shared by each output variable.
     :param output_descriptions: Dict of output variable names mapping to output description

@@ -19,21 +19,25 @@ from flytekit.image_spec.image_spec import (
 )
 from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
 
-UV_PYTHON_INSTALL_COMMAND_TEMPLATE = Template("""\
+UV_PYTHON_INSTALL_COMMAND_TEMPLATE = Template(
+    """\
 RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/uv,id=uv \
     --mount=from=uv,source=/uv,target=/usr/bin/uv \
     --mount=type=bind,target=requirements_uv.txt,src=requirements_uv.txt \
     /usr/bin/uv \
     pip install --python /opt/micromamba/envs/dev/bin/python $PIP_EXTRA \
     --requirement requirements_uv.txt
-""")
+"""
+)
 
-PIP_PYTHON_INSTALL_COMMAND_TEMPLATE = Template("""\
+PIP_PYTHON_INSTALL_COMMAND_TEMPLATE = Template(
+    """\
 RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/pip,id=pip \
     --mount=type=bind,target=requirements_pip.txt,src=requirements_pip.txt \
     /opt/micromamba/envs/dev/bin/python -m pip install $PIP_EXTRA \
     --requirement requirements_pip.txt
-""")
+"""
+)
 
 APT_INSTALL_COMMAND_TEMPLATE = Template(
     """\
@@ -159,14 +163,27 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
     requirements_uv_path = tmp_dir / "requirements_uv.txt"
     requirements_uv_path.write_text("\n".join(uv_requirements))
 
-    pip_extra = f"--index-url {image_spec.pip_index}" if image_spec.pip_index else ""
-    uv_python_install_command = UV_PYTHON_INSTALL_COMMAND_TEMPLATE.substitute(PIP_EXTRA=pip_extra)
+    pip_extra_args = ""
+
+    if image_spec.pip_index:
+        pip_extra_args += f"--index-url {image_spec.pip_index}"
+    if image_spec.pip_extra_index_url:
+        extra_urls = [
+            f"--extra-index-url {url}" for url in image_spec.pip_extra_index_url
+        ]
+        pip_extra_args += " ".join(extra_urls)
+
+    uv_python_install_command = UV_PYTHON_INSTALL_COMMAND_TEMPLATE.substitute(
+        PIP_EXTRA=pip_extra_args
+    )
 
     if pip_requirements:
         requirements_uv_path = tmp_dir / "requirements_pip.txt"
         requirements_uv_path.write_text(os.linesep.join(pip_requirements))
 
-        pip_python_install_command = PIP_PYTHON_INSTALL_COMMAND_TEMPLATE.substitute(PIP_EXTRA=pip_extra)
+        pip_python_install_command = PIP_PYTHON_INSTALL_COMMAND_TEMPLATE.substitute(
+            PIP_EXTRA=pip_extra_args
+        )
     else:
         pip_python_install_command = ""
 
@@ -181,12 +198,16 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
     if image_spec.apt_packages:
         apt_packages.extend(image_spec.apt_packages)
 
-    apt_install_command = APT_INSTALL_COMMAND_TEMPLATE.substitute(APT_PACKAGES=" ".join(apt_packages))
+    apt_install_command = APT_INSTALL_COMMAND_TEMPLATE.substitute(
+        APT_PACKAGES=" ".join(apt_packages)
+    )
 
     if image_spec.source_root:
         source_path = tmp_dir / "src"
 
-        ignore = IgnoreGroup(image_spec.source_root, [GitIgnore, DockerIgnore, StandardIgnore])
+        ignore = IgnoreGroup(
+            image_spec.source_root, [GitIgnore, DockerIgnore, StandardIgnore]
+        )
         shutil.copytree(
             image_spec.source_root,
             source_path,
@@ -276,10 +297,15 @@ class DefaultImageBuilder(ImageSpecBuilder):
         unsupported_parameters = [
             name
             for name, value in vars(image_spec).items()
-            if value is not None and name not in self._SUPPORTED_IMAGE_SPEC_PARAMETERS and not name.startswith("_")
+            if value is not None
+            and name not in self._SUPPORTED_IMAGE_SPEC_PARAMETERS
+            and not name.startswith("_")
         ]
         if unsupported_parameters:
-            msg = f"The following parameters are unsupported and ignored: " f"{unsupported_parameters}"
+            msg = (
+                f"The following parameters are unsupported and ignored: "
+                f"{unsupported_parameters}"
+            )
             warnings.warn(msg, UserWarning, stacklevel=2)
 
         with tempfile.TemporaryDirectory() as tmp_dir:

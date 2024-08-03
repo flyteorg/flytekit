@@ -10,12 +10,14 @@ import typing
 import typing as t
 from dataclasses import dataclass, field, fields
 from typing import Iterator, get_args
+from typing import Iterator, get_args
 
 import rich_click as click
 import yaml
 from click import Context
 from mashumaro.codecs.json import JSONEncoder
 from rich.progress import Progress
+from typing_extensions import get_origin
 from typing_extensions import get_origin
 
 from flytekit import Annotations, FlyteContext, FlyteContextManager, Labels, Literal
@@ -449,6 +451,8 @@ def to_click_option(
             else:
                 encoder = JSONEncoder(python_type)
                 default_val = encoder.encode(default_val)
+                encoder = JSONEncoder(python_type)
+                default_val = encoder.encode(default_val)
         if literal_var.type.metadata:
             description_extra = f": {json.dumps(literal_var.type.metadata)}"
 
@@ -629,6 +633,8 @@ def run_command(
             for input_name, v in entity.python_interface.inputs_with_defaults.items():
                 processed_click_value = kwargs.get(input_name)
                 optional_v = False
+
+                skip_default_value_selection = False
 
                 skip_default_value_selection = False
                 if processed_click_value is None and isinstance(v, typing.Tuple):
