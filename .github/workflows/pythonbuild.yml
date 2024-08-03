@@ -297,11 +297,11 @@ jobs:
       - name: Install FlyteCTL
         run: |
           curl -sL https://ctl.flyte.org/install | bash
-          ./flytectl upgrade
-          ./flytectl version
+          ./bin/flytectl upgrade
+          ./bin/flytectl version
       - name: Setup Flyte Sandbox
         run: |
-          flytectl demo start
+          ./bin/flytectl demo start
       - name: Integration Test with coverage
         env:
           FLYTEKIT_CI: 1
