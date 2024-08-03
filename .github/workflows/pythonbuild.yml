@@ -296,8 +296,9 @@ jobs:
           python -c "import flyteidl_rust"
       - name: Install FlyteCTL
         run: |
-          curl -sL https://ctl.flyte.org/install | bash
+          brew install flyteorg/homebrew-tap/flytectl
           flytectl upgrade
+          flytectl version
       - name: Setup Flyte Sandbox
         run: |
           flytectl demo start
