@@ -295,16 +295,7 @@ jobs:
           pip freeze
           python -c "import flyteidl_rust"
       - name: Install FlyteCTL
-        run: |
-          sleep 5
-          brew install flyteorg/homebrew-tap/flytectl
-          sleep 5
-          flytectl upgrade
-          flytectl version
-      - name: Set up Docker
-        run: |
-          brew install --cask docker
-          docker ps
+        uses: unionai-oss/flytectl-setup-action@master
       - name: Setup Flyte Sandbox
         run: |
           flytectl demo start
