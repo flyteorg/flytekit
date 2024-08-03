@@ -1,17 +1,5 @@
 # from concurrent import futures
 
-<<<<<<< HEAD
-import grpc
-import rich_click as click
-from flyteidl.service import agent_pb2
-from flyteidl.service.agent_pb2_grpc import (
-    add_AgentMetadataServiceServicer_to_server,
-    add_AsyncAgentServiceServicer_to_server,
-    add_SyncAgentServiceServicer_to_server,
-)
-from rich.console import Console
-from rich.table import Table
-=======
 # import grpc
 # import rich_click as click
 # from flyteidl.service import agent_pb2
@@ -20,7 +8,6 @@ from rich.table import Table
 #     add_AsyncAgentServiceServicer_to_server,
 #     add_SyncAgentServiceServicer_to_server,
 # )
->>>>>>> 78f1fef71 (temporarily comments out grpcio)
 
 
 # @click.group("serve")
@@ -68,15 +55,9 @@ from rich.table import Table
 # async def _start_grpc_server(port: int, worker: int, timeout: int):
 #     from flytekit.extend.backend.agent_service import AgentMetadataService, AsyncAgentService, SyncAgentService
 
-<<<<<<< HEAD
-    click.secho("🚀 Starting the agent service...")
-    _start_http_server()
-    print_agents_metadata()
-=======
 #     _start_http_server()
 #     click.secho("Starting the agent service...", fg="blue")
 #     print_agents_metadata()
->>>>>>> 78f1fef71 (temporarily comments out grpcio)
 
 #     server = grpc.aio.server(futures.ThreadPoolExecutor(max_workers=worker))
 
@@ -94,17 +75,10 @@ from rich.table import Table
 #     try:
 #         from prometheus_client import start_http_server
 
-<<<<<<< HEAD
-        click.secho("Starting up the server to expose the prometheus metrics...")
-        start_http_server(9090)
-    except ImportError as e:
-        click.secho(f"Failed to start the prometheus server with error {e}", fg="red")
-=======
 #         click.secho("Starting up the server to expose the prometheus metrics...", fg="blue")
 #         start_http_server(9090)
 #     except ImportError as e:
 #         click.secho(f"Failed to start the prometheus server with error {e}", fg="red")
->>>>>>> 78f1fef71 (temporarily comments out grpcio)
 
 
 # def _start_health_check_server(server: grpc.Server, worker: int):
@@ -129,26 +103,8 @@ from rich.table import Table
 # def print_agents_metadata():
 #     from flytekit.extend.backend.base_agent import AgentRegistry
 
-<<<<<<< HEAD
-    agents = AgentRegistry.list_agents()
-
-    table = Table(title="Agent Metadata")
-    table.add_column("Agent Name", style="cyan", no_wrap=True)
-    table.add_column("Support Task Types", style="cyan")
-    table.add_column("Is Sync", style="green")
-
-    for a in agents:
-        categories = ""
-        for c in a.supported_task_categories:
-            categories += f"{c.name} (v{c.version}) "
-        table.add_row(a.name, categories, str(a.is_sync))
-
-    console = Console()
-    console.print(table)
-=======
 #     agents = AgentRegistry.list_agents()
 #     for agent in agents:
 #         name = agent.name
 #         metadata = [category.name for category in agent.supported_task_categories]
 #         click.secho(f"Starting {name} that supports task categories {metadata}", fg="blue")
->>>>>>> 78f1fef71 (temporarily comments out grpcio)
