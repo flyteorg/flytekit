@@ -15,16 +15,9 @@ from flytekitplugins.kfpytorch.task import CleanPodPolicy, Elastic, RunPolicy
 
 import flytekit
 from flytekit import task, workflow
-from flytekit.core.context_manager import (
-    FlyteContext,
-    FlyteContextManager,
-    ExecutionState,
-    ExecutionParameters,
-    OutputMetadataTracker,
-)
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager, ExecutionState, ExecutionParameters, OutputMetadataTracker
 from flytekit.configuration import SerializationSettings
 from flytekit.exceptions.user import FlyteRecoverableException
-
 
 @pytest.fixture(autouse=True, scope="function")
 def restore_env():
@@ -32,7 +25,6 @@ def restore_env():
     yield
     os.environ.clear()
     os.environ.update(original_env)
-
 
 @dataclass
 class Config(DataClassJsonMixin):
@@ -70,17 +62,10 @@ def test_end_to_end(start_method: str) -> None:
     """Test that the workflow with elastic task runs end to end."""
     world_size = 2
 
-    train_task = task(
-        train,
-        task_config=Elastic(
-            nnodes=1, nproc_per_node=world_size, start_method=start_method
-        ),
-    )
+    train_task = task(train,task_config=Elastic(nnodes=1, nproc_per_node=world_size, start_method=start_method))
 
     @workflow
-    def wf(
-        config: Config = Config(),
-    ) -> typing.Tuple[str, Config, torch.nn.Module, int]:
+    def wf(config: Config = Config()) -> typing.Tuple[str, Config, torch.nn.Module, int]:
         return train_task(config=config)
 
     r, cfg, m, distributed_result = wf()
@@ -93,9 +78,7 @@ def test_end_to_end(start_method: str) -> None:
     task by performing a `dist.all_reduce` operation. The correct result can
     only be obtained if the distributed process group is initialized correctly.
     """
-    assert distributed_result == sum(
-        [5 + 2 * rank + world_size for rank in range(world_size)]
-    )
+    assert distributed_result == sum([5 + 2 * rank + world_size for rank in range(world_size)])
 
 
 @pytest.mark.parametrize(
@@ -106,12 +89,7 @@ def test_end_to_end(start_method: str) -> None:
         ("fork", "local", False),
     ],
 )
-def test_execution_params(
-    start_method: str,
-    target_exec_id: str,
-    monkeypatch_exec_id_env_var: bool,
-    monkeypatch,
-) -> None:
+def test_execution_params(start_method: str, target_exec_id: str, monkeypatch_exec_id_env_var: bool, monkeypatch) -> None:
     """Test that execution parameters are set in the worker processes."""
     if monkeypatch_exec_id_env_var:
         monkeypatch.setenv("FLYTE_INTERNAL_EXECUTION_ID", target_exec_id)
@@ -137,20 +115,11 @@ def test_rdzv_configs(start_method: str) -> None:
 
     rdzv_configs = {"join_timeout": 10}
 
-    @task(
-        task_config=Elastic(
-            nnodes=1,
-            nproc_per_node=2,
-            start_method=start_method,
-            rdzv_configs=rdzv_configs,
-        )
-    )
+    @task(task_config=Elastic(nnodes=1,nproc_per_node=2,start_method=start_method,rdzv_configs=rdzv_configs))
     def test_task():
         pass
 
-    with mock.patch(
-        "torch.distributed.launcher.api.LaunchConfig", side_effect=LaunchConfig
-    ) as mock_launch_config:
+    with mock.patch("torch.distributed.launcher.api.LaunchConfig", side_effect=LaunchConfig) as mock_launch_config:
         test_task()
         assert mock_launch_config.call_args[1]["rdzv_configs"] == rdzv_configs
 
@@ -160,20 +129,12 @@ def test_deck(start_method: str) -> None:
     """Test that decks created in the main worker process are transferred to the parent process."""
     world_size = 2
 
-    @task(
-        task_config=Elastic(
-            nnodes=1, nproc_per_node=world_size, start_method=start_method
-        ),
-        enable_deck=True,
-    )
+    @task(task_config=Elastic(nnodes=1, nproc_per_node=world_size, start_method=start_method), enable_deck=True)
     def train():
         import os
 
         ctx = flytekit.current_context()
-        deck = flytekit.Deck(
-            "test-deck",
-            f"Hello Flyte Deck viewer from worker process {os.environ.get('RANK')}",
-        )
+        deck = flytekit.Deck("test-deck", f"Hello Flyte Deck viewer from worker process {os.environ.get('RANK')}",)
         ctx.decks.append(deck)
         default_deck = ctx.default_deck
         default_deck.append("Hello from default deck")
@@ -223,13 +184,7 @@ def test_output_metadata_passing(start_method: str) -> None:
 
     ctx = FlyteContext.current_context()
     omt = OutputMetadataTracker()
-    with FlyteContextManager.with_context(
-        ctx.with_execution_state(
-            ctx.new_execution_state().with_params(
-                mode=ExecutionState.Mode.LOCAL_TASK_EXECUTION
-            )
-        ).with_output_metadata_tracker(omt)
-    ) as child_ctx:
+    with FlyteContextManager.with_context(ctx.with_execution_state(ctx.new_execution_state().with_params(mode=ExecutionState.Mode.LOCAL_TASK_EXECUTION)).with_output_metadata_tracker(omt)) as child_ctx:
         cast(ExecutionParameters, child_ctx.user_space_params)._decks = []
         # call execute directly so as to be able to get at the same FlyteContext object.
         res = train2.execute()
@@ -253,11 +208,7 @@ def test_recoverable_error(recoverable: bool, start_method: str) -> None:
     class CustomRecoverableException(FlyteRecoverableException):
         pass
 
-    @task(
-        task_config=Elastic(
-            nnodes=1, nproc_per_node=world_size, start_method=start_method
-        ),
-    )
+    @task(task_config=Elastic(nnodes=1, nproc_per_node=world_size, start_method=start_method))
     def train(recoverable: bool):
         if recoverable:
             raise CustomRecoverableException("Recoverable error")
@@ -278,13 +229,11 @@ def test_recoverable_error(recoverable: bool, start_method: str) -> None:
 
 def test_default_timeouts():
     """Test that default timeouts are set for the elastic task."""
-
     @task(task_config=Elastic(nnodes=1))
     def test_task():
         pass
 
     assert test_task.task_config.rdzv_configs == {"join_timeout": 900, "timeout": 900}
-
 
 def test_run_policy() -> None:
     """Test that run policy is propagated to custom spec."""

@@ -4,10 +4,7 @@ import pytest
 
 import flytekit
 from flytekit.image_spec import ImageSpec
-from flytekit.image_spec.default_builder import (
-    DefaultImageBuilder,
-    create_docker_context,
-)
+from flytekit.image_spec.default_builder import DefaultImageBuilder, create_docker_context
 
 
 def test_create_docker_context(tmp_path):
@@ -33,7 +30,7 @@ def test_create_docker_context(tmp_path):
         source_root=os.fspath(source_root),
         commands=["mkdir my_dir"],
         entrypoint=["/bin/bash"],
-        pip_extra_index_url=["https://extra-url.com"],
+        pip_extra_index_url=["https://extra-url.com"]
     )
 
     create_docker_context(image_spec, docker_context_path)
@@ -49,7 +46,7 @@ def test_create_docker_context(tmp_path):
     assert "--extra-index-url" in dockerfile_content
     assert "COPY --chown=flytekit ./src /root" in dockerfile_content
     assert "RUN mkdir my_dir" in dockerfile_content
-    assert 'ENTRYPOINT ["/bin/bash"]' in dockerfile_content
+    assert "ENTRYPOINT [\"/bin/bash\"]" in dockerfile_content
     assert "mkdir -p $HOME" in dockerfile_content
 
     requirements_path = docker_context_path / "requirements_uv.txt"
@@ -74,9 +71,7 @@ def test_create_docker_context_with_git_subfolder(tmp_path):
         name="FLYTEKIT",
         python_version="3.12",
         apt_packages=["git"],
-        packages=[
-            "git+https://github.com/flyteorg/flytekit.git@master#subdirectory=plugins/flytekit-wandb"
-        ],
+        packages=["git+https://github.com/flyteorg/flytekit.git@master#subdirectory=plugins/flytekit-wandb"],
     )
 
     create_docker_context(image_spec, docker_context_path)
@@ -108,9 +103,7 @@ def test_create_docker_context_with_null_entrypoint(tmp_path):
     assert "ENTRYPOINT []" in dockerfile_content
 
 
-@pytest.mark.parametrize(
-    "flytekit_spec", [None, "flytekit>=1.12.3", "flytekit==1.12.3"]
-)
+@pytest.mark.parametrize("flytekit_spec", [None, "flytekit>=1.12.3", "flytekit==1.12.3"])
 def test_create_docker_context_with_flytekit(tmp_path, flytekit_spec, monkeypatch):
 
     # pretend version is 1.13.0
@@ -125,7 +118,9 @@ def test_create_docker_context_with_flytekit(tmp_path, flytekit_spec, monkeypatc
     else:
         packages = []
 
-    image_spec = ImageSpec(name="FLYTEKIT", packages=packages)
+    image_spec = ImageSpec(
+        name="FLYTEKIT", packages=packages
+    )
 
     create_docker_context(image_spec, docker_context_path)
 
