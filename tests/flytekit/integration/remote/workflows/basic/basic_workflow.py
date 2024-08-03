@@ -22,7 +22,7 @@ import os
 
 from flytekit import task, workflow
 
-IMAGE = os.getenv("FLYTEKIT_IMAGE", "localhost:30000/flytekit:dev")
+IMAGE = os.environ.get("FLYTEKIT_IMAGE", "localhost:30000/flytekit:dev")
 
 
 @task(container_image=IMAGE)

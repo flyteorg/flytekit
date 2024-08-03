@@ -3,8 +3,8 @@ import typing
 
 from flytekit.configuration import Config
 from flytekit.remote.remote import FlyteRemote
-from flytekit.tools.translator import Options
 from flytekit.tools.interactive import ipython_check
+from flytekit.tools.translator import Options
 
 REMOTE_ENTRY: typing.Optional[FlyteRemote] = None
 # TODO: This should be merged into the FlyteRemote in the future
