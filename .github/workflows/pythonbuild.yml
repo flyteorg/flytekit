@@ -303,8 +303,8 @@ jobs:
           flytectl version
       - name: Setup Flyte Sandbox
         run: |
-          sudo chmod 666 /var/run/docker.sock
-          sudo systemctl start docker
+          sleep 15
+          docker
           flytectl demo start
       - name: Integration Test with coverage
         env:
