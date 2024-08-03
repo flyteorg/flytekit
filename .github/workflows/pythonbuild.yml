@@ -296,12 +296,16 @@ jobs:
           python -c "import flyteidl_rust"
       - name: Install FlyteCTL
         run: |
-          curl -sL https://ctl.flyte.org/install | bash
-          ./bin/flytectl upgrade
-          ./bin/flytectl version
+          sleep 5
+          brew install flyteorg/homebrew-tap/flytectl
+          sleep 5
+          flytectl upgrade
+          flytectl version
       - name: Setup Flyte Sandbox
         run: |
-          ./bin/flytectl demo start
+          sudo chmod 666 /var/run/docker.sock
+          sudo systemctl start docker
+          flytectl demo start
       - name: Integration Test with coverage
         env:
           FLYTEKIT_CI: 1
