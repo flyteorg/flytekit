@@ -14,6 +14,7 @@ from enum import Enum
 import pytest
 from dataclasses_json import DataClassJsonMixin
 from google.protobuf.struct_pb2 import Struct
+from mashumaro.codecs.json import JSONEncoder, JSONDecoder
 from typing_extensions import Annotated, get_origin
 
 import flytekit
@@ -1219,7 +1220,9 @@ def test_flyte_schema_dataclass():
     def wf(x: int) -> Result:
         return t1(x=x)
 
-    assert wf(x=10) == Result(result=InnerResult(number=10, schema=schema), schema=schema)
+    r1 = wf(x=10)
+    r2 = Result(result=InnerResult(number=10, schema=schema), schema=schema)
+    assert r1 == r2
 
 
 def test_environment():
@@ -1351,7 +1354,7 @@ def test_secrets():
 
         @task(secret_requests=["test"])
         def foo() -> str:
-            pass
+            return "hello"
 
 
 def test_nested_dynamic():
@@ -1523,6 +1526,7 @@ def test_guess_dict3():
     assert output_lm.literals["o0"].scalar.generic == expected_struct
 
 
+@pytest.mark.skipif(sys.version_info < (3, 9), reason="Use of dict hints is only supported in Python 3.9+")
 def test_guess_dict4():
     @dataclass
     class Foo(DataClassJsonMixin):
@@ -1615,6 +1619,7 @@ def test_failure_node():
     @task
     def fail(a: int, b: str) -> typing.Tuple[int, str]:
         raise ValueError("Fail!")
+        return a + 1, b
 
     @task
     def failure_handler(a: int, b: str, err: typing.Optional[FlyteError]) -> typing.Tuple[int, str]:

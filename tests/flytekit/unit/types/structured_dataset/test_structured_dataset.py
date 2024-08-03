@@ -4,7 +4,6 @@ import typing
 from collections import OrderedDict
 
 import google.cloud.bigquery
-import pyarrow as pa
 import pytest
 from fsspec.utils import get_protocol
 from typing_extensions import Annotated
@@ -34,6 +33,7 @@ from flytekit.types.structured.structured_dataset import (
 )
 
 pd = pytest.importorskip("pandas")
+pa = pytest.importorskip("pyarrow")
 
 my_cols = kwtypes(w=typing.Dict[str, typing.Dict[str, int]], x=typing.List[typing.List[int]], y=int, z=str)
 
@@ -100,14 +100,6 @@ def test_setting_of_unset_formats():
         res = wf(path=fname)
     # Now that it's passed through an encoder however, it should be set.
     assert res.file_format == "parquet"
-
-
-def test_json():
-    sd = StructuredDataset(dataframe=df, uri="/some/path")
-    sd.file_format = "myformat"
-    json_str = sd.to_json()
-    new_sd = StructuredDataset.from_json(json_str)
-    assert new_sd.file_format == "myformat"
 
 
 def test_types_pandas():

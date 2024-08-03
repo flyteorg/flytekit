@@ -16,13 +16,14 @@ pre-commit
 codespell
 google-cloud-bigquery
 google-cloud-bigquery-storage
+snowflake-connector-python
 IPython
 keyrings.alt
 setuptools_scm
 pytest-icdiff
 
 # Tensorflow is not available for python 3.12 yet: https://github.com/tensorflow/tensorflow/issues/62003
-tensorflow; python_version<'3.12'
+tensorflow<=2.15.1; python_version<'3.12'
 # Newer versions of torch bring in nvidia dependencies that are not present in windows, so
 # we put this constraint while we do not have per-environment requirements files
 torch<=1.12.1; python_version<'3.11'
@@ -50,6 +51,7 @@ autoflake
 pillow
 numpy
 pandas
+pyarrow
 scikit-learn
 types-requests
 prometheus-client

@@ -32,6 +32,7 @@ Plugin API reference
 * :ref:`DuckDB <duckdb>` - DuckDB API reference
 * :ref:`SageMaker Inference <awssagemaker_inference>` - SageMaker Inference API reference
 * :ref:`OpenAI <openai>` - OpenAI API reference
+* :ref:`Inference <inference>` - Inference API reference
 
 .. toctree::
    :maxdepth: 2
@@ -65,3 +66,4 @@ Plugin API reference
    DuckDB <duckdb>
    SageMaker Inference <awssagemaker_inference>
    OpenAI <openai>
+   Inference <inference>

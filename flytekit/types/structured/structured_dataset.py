@@ -6,12 +6,13 @@ import types
 import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field, is_dataclass
-from typing import Dict, Generator, Optional, Type, Union
+from typing import Dict, Generator, List, Optional, Type, Union
 
 from dataclasses_json import config
 from fsspec.utils import get_protocol
 from marshmallow import fields
 from mashumaro.mixins.json import DataClassJSONMixin
+from mashumaro.types import SerializableType
 from typing_extensions import Annotated, TypeAlias, get_args, get_origin
 
 from flytekit import lazy_module
@@ -45,7 +46,7 @@ GENERIC_PROTOCOL: str = "generic protocol"
 
 
 @dataclass
-class StructuredDataset(DataClassJSONMixin):
+class StructuredDataset(SerializableType, DataClassJSONMixin):
     """
     This is the user facing StructuredDataset class. Please don't confuse it with the literals.StructuredDataset
     class (that is just a model, a Python class representation of the protobuf).
@@ -53,6 +54,40 @@ class StructuredDataset(DataClassJSONMixin):
 
     uri: typing.Optional[str] = field(default=None, metadata=config(mm_field=fields.String()))
     file_format: typing.Optional[str] = field(default=GENERIC_FORMAT, metadata=config(mm_field=fields.String()))
+
+    def _serialize(self) -> Dict[str, Optional[str]]:
+        lv = StructuredDatasetTransformerEngine().to_literal(
+            FlyteContextManager.current_context(), self, type(self), None
+        )
+        sd = StructuredDataset(uri=lv.scalar.structured_dataset.uri)
+        sd.file_format = lv.scalar.structured_dataset.metadata.structured_dataset_type.format
+        return {
+            "uri": sd.uri,
+            "file_format": sd.file_format,
+        }
+
+    @classmethod
+    def _deserialize(cls, value) -> "StructuredDataset":
+        uri = value.get("uri", None)
+        file_format = value.get("file_format", None)
+
+        if uri is None:
+            raise ValueError("StructuredDataset's uri and file format should not be None")
+
+        return StructuredDatasetTransformerEngine().to_python_value(
+            FlyteContextManager.current_context(),
+            Literal(
+                scalar=Scalar(
+                    structured_dataset=StructuredDataset(
+                        metadata=StructuredDatasetMetadata(
+                            structured_dataset_type=StructuredDatasetType(format=file_format)
+                        ),
+                        uri=uri,
+                    )
+                )
+            ),
+            cls,
+        )
 
     @classmethod
     def columns(cls) -> typing.Dict[str, typing.Type]:
@@ -187,7 +222,12 @@ def extract_cols_and_format(
 
 
 class StructuredDatasetEncoder(ABC):
-    def __init__(self, python_type: Type[T], protocol: Optional[str] = None, supported_format: Optional[str] = None):
+    def __init__(
+        self,
+        python_type: Type[T],
+        protocol: Optional[str] = None,
+        supported_format: Optional[str] = None,
+    ):
         """
         Extend this abstract class, implement the encode function, and register your concrete class with the
         StructuredDatasetTransformerEngine class in order for the core flytekit type engine to handle
@@ -249,7 +289,13 @@ class StructuredDatasetEncoder(ABC):
 
 
 class StructuredDatasetDecoder(ABC):
-    def __init__(self, python_type: Type[DF], protocol: Optional[str] = None, supported_format: Optional[str] = None):
+    def __init__(
+        self,
+        python_type: Type[DF],
+        protocol: Optional[str] = None,
+        supported_format: Optional[str] = None,
+        additional_protocols: Optional[List[str]] = None,
+    ):
         """
         Extend this abstract class, implement the decode function, and register your concrete class with the
         StructuredDatasetTransformerEngine class in order for the core flytekit type engine to handle

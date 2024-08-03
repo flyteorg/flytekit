@@ -24,14 +24,14 @@ RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/uv,id=uv \
     --mount=from=uv,source=/uv,target=/usr/bin/uv \
     --mount=type=bind,target=requirements_uv.txt,src=requirements_uv.txt \
     /usr/bin/uv \
-    pip install --python /root/micromamba/envs/dev/bin/python $PIP_EXTRA \
+    pip install --python /opt/micromamba/envs/dev/bin/python $PIP_EXTRA \
     --requirement requirements_uv.txt
 """)
 
 PIP_PYTHON_INSTALL_COMMAND_TEMPLATE = Template("""\
 RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/pip,id=pip \
     --mount=type=bind,target=requirements_pip.txt,src=requirements_pip.txt \
-    /root/micromamba/envs/dev/bin/python -m pip install $PIP_EXTRA \
+    /opt/micromamba/envs/dev/bin/python -m pip install $PIP_EXTRA \
     --requirement requirements_pip.txt
 """)
 
@@ -58,17 +58,18 @@ RUN update-ca-certificates
 RUN id -u flytekit || useradd --create-home --shell /bin/bash flytekit
 RUN chown -R flytekit /root && chown -R flytekit /home
 
-RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/micromamba/pkgs,\
+RUN --mount=type=cache,sharing=locked,mode=0777,target=/opt/micromamba/pkgs,\
 id=micromamba \
     --mount=from=micromamba,source=/usr/bin/micromamba,target=/usr/bin/micromamba \
-    /usr/bin/micromamba create -n dev -c conda-forge $CONDA_CHANNELS \
+    /usr/bin/micromamba create -n dev --root-prefix /opt/micromamba \
+    -c conda-forge $CONDA_CHANNELS \
     python=$PYTHON_VERSION $CONDA_PACKAGES
 
 $UV_PYTHON_INSTALL_COMMAND
 $PIP_PYTHON_INSTALL_COMMAND
 
 # Configure user space
-ENV PATH="/root/micromamba/envs/dev/bin:$$PATH"
+ENV PATH="/opt/micromamba/envs/dev/bin:$$PATH"
 ENV FLYTE_SDK_RICH_TRACEBACKS=0 SSL_CERT_DIR=/etc/ssl/certs $ENV
 
 # Adds nvidia just in case it exists
@@ -158,14 +159,21 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
     requirements_uv_path = tmp_dir / "requirements_uv.txt"
     requirements_uv_path.write_text("\n".join(uv_requirements))
 
-    pip_extra = f"--index-url {image_spec.pip_index}" if image_spec.pip_index else ""
-    uv_python_install_command = UV_PYTHON_INSTALL_COMMAND_TEMPLATE.substitute(PIP_EXTRA=pip_extra)
+    pip_extra_args = ""
+
+    if image_spec.pip_index:
+        pip_extra_args += f"--index-url {image_spec.pip_index}"
+    if image_spec.pip_extra_index_url:
+        extra_urls = [f"--extra-index-url {url}" for url in image_spec.pip_extra_index_url]
+        pip_extra_args += " ".join(extra_urls)
+
+    uv_python_install_command = UV_PYTHON_INSTALL_COMMAND_TEMPLATE.substitute(PIP_EXTRA=pip_extra_args)
 
     if pip_requirements:
         requirements_uv_path = tmp_dir / "requirements_pip.txt"
         requirements_uv_path.write_text(os.linesep.join(pip_requirements))
 
-        pip_python_install_command = PIP_PYTHON_INSTALL_COMMAND_TEMPLATE.substitute(PIP_EXTRA=pip_extra)
+        pip_python_install_command = PIP_PYTHON_INSTALL_COMMAND_TEMPLATE.substitute(PIP_EXTRA=pip_extra_args)
     else:
         pip_python_install_command = ""
 
