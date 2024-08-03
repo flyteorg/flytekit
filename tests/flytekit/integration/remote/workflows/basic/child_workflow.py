@@ -3,7 +3,8 @@ import os
 from flytekit import LaunchPlan, task, workflow
 from flytekit.models.common import Labels
 
-IMAGE = os.getenv("FLYTEKIT_IMAGE", "localhost:30000/flytekit:dev")
+IMAGE = os.environ.get("FLYTEKIT_IMAGE", "localhost:30000/flytekit:dev")
+
 
 @task(container_image=IMAGE)
 def double(a: int) -> int:
@@ -21,7 +22,9 @@ def my_childwf(a: int = 42) -> int:
     return b
 
 
-child_lp = LaunchPlan.get_or_create(my_childwf, name="my_fixed_child_lp", labels=Labels({"l1": "v1"}))
+child_lp = LaunchPlan.get_or_create(
+    my_childwf, name="my_fixed_child_lp", labels=Labels({"l1": "v1"})
+)
 
 
 @workflow
