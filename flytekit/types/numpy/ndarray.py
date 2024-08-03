@@ -16,11 +16,21 @@ from flytekit.models.types import LiteralType
 def extract_metadata(t: Type[np.ndarray]) -> Tuple[Type[np.ndarray], Dict[str, bool]]:
     metadata = {}
     if get_origin(t) is Annotated:
-        base_type, metadata = get_args(t)
-        if isinstance(metadata, OrderedDict):
-            return base_type, metadata
-        else:
-            raise TypeTransformerFailedError(f"{t}'s metadata needs to be of type kwtypes.")
+        base_type, *annotate_args = get_args(t)
+
+        for aa in annotate_args:
+            if isinstance(aa, OrderedDict):
+                if metadata != "":
+                    raise TypeTransformerFailedError(f"Meta data was already specified {metadata}, cannot use {aa}")
+                metadata = aa
+            elif isinstance(aa, HashMethod):
+                continue
+            else:
+                raise TypeTransformerFailedError(f"{t}'s metadata needs to be of type kwtypes.")
+        
+        return base_type, metadata
+
+    # Return the type itself if no metadata was found.
     return t, metadata
 
 
