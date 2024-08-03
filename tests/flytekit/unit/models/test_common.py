@@ -110,3 +110,11 @@ def test_short_string_raw_output_data_config():
     obj = _common.RawOutputDataConfig("s3://bucket")
     assert "Flyte Serialized object: Type: <RawOutputDataConfig> Value" in obj.short_string()
     assert "Flyte Serialized object: Type: <RawOutputDataConfig> Value" in repr(obj)
+
+
+def test_html_repr_data_config():
+    obj = _common.RawOutputDataConfig("s3://bucket")
+
+    out = obj._repr_html_()
+    assert "output_location_prefix: s3://bucket" in out
+    assert "<h4>RawOutputDataConfig</h4>" in out

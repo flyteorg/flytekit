@@ -47,8 +47,7 @@ class FlyteType(FlyteABCMeta):
 def _repr_idl_yaml_like(idl, indent=0) -> str:
     """Formats an IDL into a YAML-like representation."""
     if not hasattr(idl, "ListFields"):
-        str_repr = shorten(str(idl).strip(), width=80)
-        return str_repr
+        return str(idl)
 
     with closing(StringIO()) as out:
         for descriptor, field in idl.ListFields():
@@ -60,6 +59,7 @@ def _repr_idl_yaml_like(idl, indent=0) -> str:
                     out.write(" " * indent + descriptor.name + ":" + os.linesep)
                     out.write(_repr_idl_yaml_like(field, indent + 2))
             except AttributeError:
+                # No ListFields -> Must be a scalar
                 str_repr = shorten(str(field).strip(), width=80)
                 if str_repr:
                     out.write(" " * indent + descriptor.name + ": " + str_repr + os.linesep)
@@ -106,7 +106,7 @@ class FlyteIdlEntity(object, metaclass=FlyteType):
         type_str = type(self).__name__
         idl = self.to_flyte_idl()
         str_repr = _repr_idl_yaml_like(idl)
-        return f"<h4>Flyte Serialized object of type: {type_str}</h4><pre>{str_repr}</pre>"
+        return f"<h4>{type_str}</h4><pre>{str_repr}</pre>"
 
     @property
     def is_empty(self):
