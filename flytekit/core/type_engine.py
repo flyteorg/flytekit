@@ -240,8 +240,9 @@ class SimpleTransformer(TypeTransformer[T]):
                 f"Cannot convert to type {expected_python_type}, only {self._type} is supported"
             )
 
-        if isinstance(None, expected_python_type) and lv.scalar.none_type is None:
-            raise TypeTransformerFailedError(f"Cannot convert literal {lv} to None")
+        if isinstance(None, expected_python_type):
+            if lv.scalar.none_type is None:
+                raise TypeTransformerFailedError(f"Cannot convert literal {lv} to None")
         elif lv.scalar.primitive is None:
             raise TypeTransformerFailedError(f"Cannot convert literal {lv} to {self._type}")
         else:
