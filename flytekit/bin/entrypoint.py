@@ -10,6 +10,8 @@ import tempfile
 import traceback
 from sys import exit
 from typing import List, Optional
+import gzip
+from cloudpickle import cloudpickle
 
 import click
 from flyteidl.core import literals_pb2 as _literals_pb2
@@ -341,6 +343,8 @@ def _execute_task(
     prev_checkpoint: Optional[str] = None,
     dynamic_addl_distro: Optional[str] = None,
     dynamic_dest_dir: Optional[str] = None,
+    pickled: bool = False,
+    pkl_file: Optional[str] = None,
 ):
     """
     This function should be called for new API tasks (those only available in 0.16 and later that leverage Python
@@ -365,7 +369,7 @@ def _execute_task(
         code archives should be installed in the flyte task container.
     :return:
     """
-    if len(resolver_args) < 1:
+    if not pickled and len(resolver_args) < 1:
         raise Exception("cannot be <1")
 
     with setup_execution(
@@ -376,9 +380,13 @@ def _execute_task(
         dynamic_addl_distro,
         dynamic_dest_dir,
     ) as ctx:
-        resolver_obj = load_object_from_module(resolver)
-        # Use the resolver to load the actual task object
-        _task_def = resolver_obj.load_task(loader_args=resolver_args)
+        if pickled:
+            with gzip.open(pkl_file, "r") as f:
+                _task_def = cloudpickle.load(f)
+        else:
+            resolver_obj = load_object_from_module(resolver)
+            # Use the resolver to load the actual task object
+            _task_def = resolver_obj.load_task(loader_args=resolver_args)
         if test:
             logger.info(
                 f"Test detected, returning. Args were {inputs} {output_prefix} {raw_output_data_prefix} {resolver} {resolver_args}"
@@ -474,6 +482,8 @@ def _pass_through():
 @click.option("--test", is_flag=True)
 @click.option("--dynamic-addl-distro", required=False)
 @click.option("--dynamic-dest-dir", required=False)
+@click.option("--pickled", is_flag=True, default=False, help="Use this to mark if the distribution is pickled.")
+@click.option("--pkl-file", required=False, help="Location where pickled file can be found.")
 @click.option("--resolver", required=False)
 @click.argument(
     "resolver-args",
@@ -491,6 +501,8 @@ def execute_task_cmd(
     dynamic_dest_dir,
     resolver,
     resolver_args,
+    pickled,
+    pkl_file,
 ):
     logger.info(get_version_message())
     # We get weird errors if there are no click echo messages at all, so emit an empty string so that unit tests pass.
@@ -516,28 +528,39 @@ def execute_task_cmd(
         dynamic_dest_dir=dynamic_dest_dir,
         checkpoint_path=checkpoint_path,
         prev_checkpoint=prev_checkpoint,
+        pickled=pickled,
+        pkl_file=pkl_file,
     )
 
 
 @_pass_through.command("pyflyte-fast-execute")
 @click.option("--additional-distribution", required=False)
 @click.option("--dest-dir", required=False)
+@click.option("--pickled", is_flag=True, default=False, help="Use this to mark if the distribution is pickled.")
 @click.argument("task-execute-cmd", nargs=-1, type=click.UNPROCESSED)
-def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_execute_cmd: List[str]):
+def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, pickled: bool, task_execute_cmd: List[str]):
     """
     Downloads a compressed code distribution specified by additional-distribution and then calls the underlying
     task execute command for the updated code.
     """
+    cmd_extend = []
     if additional_distribution is not None:
-        if not dest_dir:
-            dest_dir = os.getcwd()
-        _download_distribution(additional_distribution, dest_dir)
+        if pickled:
+            click.secho("Received pickled object")
+            dest_file = os.path.join(os.getcwd(), "pickled.tar.gz")
+            FlyteContextManager.current_context().file_access.get_data(additional_distribution, dest_file)
+            cmd_extend = ["--pickled", "--pkl-file", dest_file]
+        else:
+            if not dest_dir:
+                dest_dir = os.getcwd()
+            _download_distribution(additional_distribution, dest_dir)
+            cmd_extend = ["--dynamic-addl-distro", additional_distribution, "--dynamic-dest-dir", dest_dir]
 
     # Insert the call to fast before the unbounded resolver args
     cmd = []
     for arg in task_execute_cmd:
         if arg == "--resolver":
-            cmd.extend(["--dynamic-addl-distro", additional_distribution, "--dynamic-dest-dir", dest_dir])
+            cmd.extend(cmd_extend)
         cmd.append(arg)
 
     # Use the commandline to run the task execute command rather than calling it directly in python code

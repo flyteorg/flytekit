@@ -802,6 +802,9 @@ class FastSerializationSettings(DataClassJsonMixin):
 
     # This is the zip file where the new code was uploaded to.
     distribution_location: Optional[str] = None
+    
+    # # # Use this to enabled pickled file loading at runtime
+    pickled: bool = False
 
 
 # TODO: ImageConfig, python_interpreter, venv_root, fast_serialization_settings.destination_dir should be combined.
