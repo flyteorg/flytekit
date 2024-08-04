@@ -901,12 +901,9 @@ class FlyteRemote(object):
         extra_headers = self.get_extra_headers_for_protocol(upload_location.native_url)
         extra_headers.update(upload_location.headers)
         encoded_md5 = b64encode(md5_bytes)
-        with open(str(to_upload), "+rb") as local_file:
-            # Move to the end of the file object to get its length
-            local_file.seek(0, os.SEEK_END)
-            content_length = local_file.tell()
-            # Move back to the beginning of the file object to make it ready for reading
-            local_file.seek(0)
+        local_file_path = str(to_upload)
+        content_length = os.stat(local_file_path).st_size
+        with open(local_file_path, "+rb") as local_file:
             headers = {"Content-Length": str(content_length), "Content-MD5": encoded_md5}
             headers.update(extra_headers)
             rsp = requests.put(
