@@ -4,6 +4,7 @@ import inspect
 import json
 import os
 import pathlib
+import sys
 import tempfile
 import typing
 from dataclasses import dataclass, field, fields
@@ -741,6 +742,8 @@ class RemoteEntityGroup(click.RichGroup):
         return []
 
     def list_commands(self, ctx):
+        if "--help" in sys.argv:
+            return []
         if self._entities or ctx.obj is None:
             return self._entities
 

@@ -11,7 +11,7 @@ except ImportError:
 
 from flytekit.core import launch_plan as _annotated_launchplan
 from flytekit.core import workflow as _annotated_workflow
-from flytekit.core.base_task import TaskMetadata, TaskResolverMixin
+from flytekit.core.base_task import PythonTask, TaskMetadata, TaskResolverMixin
 from flytekit.core.interface import transform_function_to_interface
 from flytekit.core.pod_template import PodTemplate
 from flytekit.core.python_function_task import PythonFunctionTask
@@ -371,7 +371,7 @@ def task(
         return wrapper
 
 
-class ReferenceTask(ReferenceEntity, PythonFunctionTask):  # type: ignore
+class ReferenceTask(ReferenceEntity, PythonTask):  # type: ignore
     """
     This is a reference task, the body of the function passed in through the constructor will never be used, only the
     signature of the function will be. The signature should also match the signature of the task you're referencing,
@@ -412,7 +412,7 @@ def reference_task(
     """
 
     def wrapper(fn) -> ReferenceTask:
-        interface = transform_function_to_interface(fn)
+        interface = transform_function_to_interface(fn, is_reference_entity=True)
         return ReferenceTask(project, domain, name, version, interface.inputs, interface.outputs)
 
     return wrapper
