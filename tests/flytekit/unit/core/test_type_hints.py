@@ -1629,7 +1629,7 @@ def test_error_messages():
         TypeError,
         match=(
             f"Failed to convert outputs of task '{prefix}tests.flytekit.unit.core.test_type_hints.foo4' at position 0.\n"
-            f"Failed to convert type <class '{prefix}tests.flytekit.unit.core.test_type_hints.test_error_messages.<locals>.DC1'> to type <class '{prefix}tests.flytekit.unit.core.test_type_hints.test_error_messages.<locals>.DC2'>.\n"
+            f"Failed to convert type <class 'tests.flytekit.unit.core.test_type_hints.test_error_messages.<locals>.DC1'> to type <class 'tests.flytekit.unit.core.test_type_hints.test_error_messages.<locals>.DC2'>.\n"
             "Error Message: 'DC1' object has no attribute 'c'."
         ),
     ):
