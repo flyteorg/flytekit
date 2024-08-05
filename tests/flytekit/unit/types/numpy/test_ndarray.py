@@ -1,3 +1,4 @@
+import pytest
 import numpy as np
 from typing_extensions import Annotated
 
@@ -103,24 +104,14 @@ def wf():
     t3(array=array_1d)
     t4(array=array_dtype_object)
     t5_annotate_kwtypes_and_hash(array=array_1d)
-    try:
-        t6_annotate_kwtypes_twice(array=array_1d)
-    except TypeTransformerFailedError as err:
-        assert (
-            str(err).split("\n")[-1].strip()
-            == "Metadata OrderedDict([('allow_pickle', True)]) is already specified, cannot use OrderedDict([('allow_pickle', False)])."
-        )
-    try:
-        t7_annotate_with_sth_strange(array=array_1d)
-    except TypeTransformerFailedError as err:
-        assert (
-            str(err).split("\n")[-1].strip()
-            == "The metadata for typing.Annotated[numpy.ndarray, (1, 2, 3)] must be of type kwtypes or HashMethod."
-        )
-    try:
-        generate_numpy_fails()
-    except Exception as e:
-        assert isinstance(e, TypeError)
+
+    if array_1d.is_ready:
+        with pytest.raises(TypeTransformerFailedError, match=r"Metadata OrderedDict.*'allow_pickle'.*True.* is already specified, cannot use OrderedDict.*'allow_pickle'.*False.*\."):
+            t6_annotate_kwtypes_twice(array=array_1d)
+        with pytest.raises(TypeTransformerFailedError, match=r"The metadata for typing.Annotated.*numpy\.ndarray.*1, 2, 3.* must be of type kwtypes or HashMethod\."):
+            t7_annotate_with_sth_strange(array=array_1d)
+        with pytest.raises(TypeError, match=r"The metadata for typing.Annotated.*numpy\.ndarray.*'allow_pickle'.*True.* must be of type kwtypes or HashMethod\."):
+            generate_numpy_fails()
 
 
 @workflow
