@@ -557,7 +557,7 @@ class TestLargeFileTransfers:
                 # Write in chunks of 500mb to keep memory usage low during tests
                 for _ in range(gigabytes * 2):
                     f.write(os.urandom(int(1e9 // 2)))
-            
+
             # Step 2 - Create an ephemeral S3 storage location. This will be wiped
             #  on context exit to not overload the sandbox's storage
             _, ephemeral_filename_root = stack.enter_context(
