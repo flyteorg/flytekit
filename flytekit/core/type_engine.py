@@ -240,35 +240,14 @@ class SimpleTransformer(TypeTransformer[T]):
                 f"Cannot convert to type {expected_python_type}, only {self._type} is supported"
             )
 
-        if isinstance(None, expected_python_type):
-            if lv.scalar.none_type is None:
-                raise TypeTransformerFailedError(f"Cannot convert literal {lv} to None")
-        elif lv.scalar.primitive is None:
+        try:  # todo(maximsmol): this is quite ugly and each transformer should really check their Literal
+            res = self._from_literal_transformer(lv)
+            if type(res) != self._type:
+                raise TypeTransformerFailedError(f"Cannot convert literal {lv} to {self._type}")
+            return res
+        except AttributeError:
+            # Assume that this is because a property on `lv` was None
             raise TypeTransformerFailedError(f"Cannot convert literal {lv} to {self._type}")
-        else:
-            if expected_python_type is int and lv.scalar.primitive.integer is None:
-                raise TypeTransformerFailedError(f"Cannot convert literal {lv} to int")
-            elif (
-                expected_python_type is float
-                and lv.scalar.primitive.float_value is None
-                and lv.scalar.primitive.integer is None
-            ):
-                raise TypeTransformerFailedError(f"Cannot convert literal {lv} to float")
-            elif expected_python_type is bool and lv.scalar.primitive.boolean is None:
-                raise TypeTransformerFailedError(f"Cannot convert literal {lv} to bool")
-            elif expected_python_type is str and lv.scalar.primitive.string_value is None:
-                raise TypeTransformerFailedError(f"Cannot convert literal {lv} to str")
-            elif expected_python_type is datetime.datetime and lv.scalar.primitive.datetime is None:
-                raise TypeTransformerFailedError(f"Cannot convert literal {lv} to datetime")
-            elif expected_python_type is datetime.timedelta and lv.scalar.primitive.duration is None:
-                raise TypeTransformerFailedError(f"Cannot convert literal {lv} to timedelta")
-            elif expected_python_type is datetime.date and lv.scalar.primitive.datetime is None:
-                raise TypeTransformerFailedError(f"Cannot convert literal {lv} to date")
-
-        res = self._from_literal_transformer(lv)
-        if type(res) != self._type:
-            raise TypeTransformerFailedError(f"Cannot convert literal {lv} to {self._type}")
-        return res
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
         if literal_type.simple is not None and literal_type.simple == self._lt.simple:
@@ -1176,7 +1155,7 @@ class TypeEngine(typing.Generic[T]):
             try:
                 kwargs[k] = TypeEngine.to_python_value(ctx, lm.literals[k], python_interface_inputs[k])
             except TypeTransformerFailedError as exc:
-                raise TypeTransformerFailedError(f"Error converting input '{k}' at position {i}:\n  {exc}") from exc
+                raise TypeTransformerFailedError(f"Error converting input '{k}' at position {i}:\n  {exc}") from None
         return kwargs
 
     @classmethod
