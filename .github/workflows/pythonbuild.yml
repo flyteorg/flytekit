@@ -328,7 +328,7 @@ jobs:
           cache-to: type=gha,mode=max
       - name: Integration Test with coverage
         env:
-          FLYTEKIT_IMAGE: localhost:30000/flytekit:dev
+          FLYTEKIT_IMAGE: ghcr.io/flyteorg/flytekit:py3.12-1.12.0
           FLYTEKIT_CI: 1
           PYTEST_OPTS: -n2
         run: |
