@@ -1647,15 +1647,12 @@ class DictTransformer(TypeTransformer[dict]):
 
         try:
             json_bytes = msgpack.dumps(v)
-            # json_str = json.dumps(v)
-            # json_bytes = json_str.encode("utf-8")
-            return Literal(scalar=Scalar(json=Json(json_bytes)), metadata={"format": "json"})
+            return Literal(scalar=Scalar(json=Json(value=json_bytes)), metadata={"format": "json"})
         except TypeError as e:
             if allow_pickle:
                 remote_path = FlytePickle.to_pickle(ctx, v)
-                json_str = msgpack.dumps({"pickle_file": remote_path})
-                json_bytes = json_str.encode("utf-8")
-                Literal(scalar=Scalar(json=Json(value=json_bytes)), metadata={"format": "pickle"})
+                json_bytes = msgpack.dumps({"pickle_file": remote_path})
+                return Literal(scalar=Scalar(json=Json(value=json_bytes)), metadata={"format": "pickle"})
             raise e
 
     @staticmethod
@@ -1760,16 +1757,14 @@ class DictTransformer(TypeTransformer[dict]):
             elif lv.scalar.json is not None:
                 import msgpack
                 # TODO: Implement Json deserialization
-                # if lv.metadata and lv.metadata.get("format", None) == "pickle":
-                #     from flytekit.types.pickle import FlytePickle
-                #     json_bytes = lv.scalar.json.value
-                #     json_str = json_bytes.decode("utf-8")
-                #     uri = json.loads(_json_format.MessageToJson(lv.scalar.generic)).get("pickle_file")
-                #     return FlytePickle.from_pickle(uri)
+                if lv.metadata and lv.metadata.get("format", None) == "pickle":
+                    from flytekit.types.pickle import FlytePickle
+                    json_bytes = lv.scalar.json.value
+                    uri = msgpack.loads(json_bytes).get("pickle_file")
+                    return FlytePickle.from_pickle(uri)
 
                 try:
                     json_bytes = lv.scalar.json.value
-                    # json_str = json_bytes.decode("utf-8")
                     return msgpack.loads(json_bytes)
                 except TypeError:
                     raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
