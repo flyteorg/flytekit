@@ -283,6 +283,7 @@ jobs:
         run: |
           sudo apt update && sudo apt upgrade -y
           sudo apt install -y protobuf-compiler libprotobuf-dev
+          rm -rf ./gen/pb_rust/*
           cargo run --bin gen_flyteidl
       - name: Build wheels
         uses: PyO3/maturin-action@v1
