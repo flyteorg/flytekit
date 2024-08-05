@@ -35,7 +35,6 @@ COPY . /flytekit
 # Use a future version of SETUPTOOLS_SCM_PRETEND_VERSION_FOR_FLYTEIDL such that uv resolution works.
 RUN SETUPTOOLS_SCM_PRETEND_VERSION_FOR_FLYTEKIT=$PSEUDO_VERSION \
     SETUPTOOLS_SCM_PRETEND_VERSION_FOR_FLYTEIDL=3.0.0dev0 \
-        uv pip install --system flyteidl-rust --no-index --find-links dist --force-reinstall \
         uv pip install --system --no-cache-dir -U \
             "git+https://github.com/flyteorg/flyte.git@master#subdirectory=flyteidl" \
             -e /flytekit \
@@ -43,6 +42,7 @@ RUN SETUPTOOLS_SCM_PRETEND_VERSION_FOR_FLYTEKIT=$PSEUDO_VERSION \
             -e /flytekit/plugins/flytekit-deck-standard \
             -e /flytekit/plugins/flytekit-flyteinteractive \
             scikit-learn \
+        && uv pip install --system flyteidl-rust --no-index --find-links /flytekit/dist --force-reinstall \
     && apt-get clean autoclean \
     && apt-get autoremove --yes \
     && rm -rf /var/lib/{apt,dpkg,cache,log}/ \
