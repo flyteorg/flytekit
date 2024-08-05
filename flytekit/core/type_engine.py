@@ -1641,9 +1641,10 @@ class DictTransformer(TypeTransformer[dict]):
         """
         Creates a flyte-specific ``Literal`` value from a native python dictionary.
         """
+        import msgpack
+
         from flytekit.models.literals import Json
         from flytekit.types.pickle import FlytePickle
-        import msgpack
 
         try:
             json_bytes = msgpack.dumps(v)
@@ -1756,9 +1757,10 @@ class DictTransformer(TypeTransformer[dict]):
                     raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
             elif lv.scalar.json is not None:
                 import msgpack
-                # TODO: Implement Json deserialization
+
                 if lv.metadata and lv.metadata.get("format", None) == "pickle":
                     from flytekit.types.pickle import FlytePickle
+
                     json_bytes = lv.scalar.json.value
                     uri = msgpack.loads(json_bytes).get("pickle_file")
                     return FlytePickle.from_pickle(uri)
