@@ -280,6 +280,8 @@ jobs:
       - name: Generate Rust Protobuf
         working-directory: ${{ github.workspace }}/flyte/flyteidl
         run: |
+          apt update && sudo apt upgrade -y
+          apt install -y protobuf-compiler libprotobuf-dev
           cargo run --bin gen_flyteidl
       - name: Build wheels
         uses: PyO3/maturin-action@v1
