@@ -118,6 +118,8 @@ class SetFilter(Filter):
         :param Text key:  The name of the field to compare against
         :param list[Text] values:  A list of textual values to compare.
         """
+        if not isinstance(values, list):
+            raise TypeError(f"values must be a list. but got {type(values)}")
         super(SetFilter, self).__init__(key, ";".join(values))
 
     @classmethod
