@@ -292,7 +292,7 @@ class Task(object):
         except TypeTransformerFailedError as exc:
             msg = f"Failed to convert inputs of task '{self.name}':\n  {exc}"
             logger.error(msg)
-            raise TypeError(msg) from exc
+            raise TypeError(msg) from None
         input_literal_map = _literal_models.LiteralMap(literals=literals)
 
         # if metadata.cache is set, check memoized version
@@ -724,7 +724,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             except Exception as exc:
                 msg = f"Failed to convert inputs of task '{self.name}':\n  {exc}"
                 logger.error(msg)
-                raise type(exc)(msg) from exc
+                raise type(exc)(msg) from None
 
             # TODO: Logger should auto inject the current context information to indicate if the task is running within
             #   a workflow or a subworkflow etc

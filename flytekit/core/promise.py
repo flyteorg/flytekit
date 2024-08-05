@@ -94,7 +94,7 @@ def translate_inputs_to_literals(
                 v = resolve_attr_path_in_promise(v)
             result[k] = TypeEngine.to_literal(ctx, v, t, var.type)
         except TypeTransformerFailedError as exc:
-            raise TypeTransformerFailedError(f"Failed argument '{k}': {exc}") from exc
+            raise TypeTransformerFailedError(f"Failed argument '{k}': {exc}") from None
 
     return result
 

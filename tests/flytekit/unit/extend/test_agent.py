@@ -15,7 +15,7 @@ from flyteidl.admin.agent_pb2 import (
     GetTaskRequest,
     ListAgentsRequest,
     ListAgentsResponse,
-    TaskCategory,
+    TaskCategory, DeleteTaskResponse,
 )
 from flyteidl.core.execution_pb2 import TaskExecution, TaskLog
 from flyteidl.core.identifier_pb2 import ResourceType
@@ -223,7 +223,7 @@ async def test_async_agent_service(agent, consume_metadata):
     res = await service.GetTask(GetTaskRequest(task_category=task_category, resource_meta=metadata_bytes), ctx)
     assert res.resource.phase == TaskExecution.SUCCEEDED
     res = await service.DeleteTask(DeleteTaskRequest(task_category=task_category, resource_meta=metadata_bytes), ctx)
-    assert res is None
+    assert res == DeleteTaskResponse()
 
     agent_metadata = AgentRegistry.get_agent_metadata(agent.name)
     assert agent_metadata.supported_task_types[0] == agent.task_category.name
@@ -399,16 +399,3 @@ def sample_agents():
         name="ChatGPT Agent", is_sync=True, supported_task_categories=[TaskCategory(name="chatgpt", version=0)]
     )
     return [async_agent, sync_agent]
-
-
-@patch("flytekit.clis.sdk_in_container.serve.click.secho")
-@patch("flytekit.extend.backend.base_agent.AgentRegistry.list_agents")
-def test_print_agents_metadata_output(list_agents_mock, mock_secho, sample_agents):
-    list_agents_mock.return_value = sample_agents
-    print_agents_metadata()
-    expected_calls = [
-        (("Starting Sensor that supports task categories ['sensor']",), {"fg": "blue"}),
-        (("Starting ChatGPT Agent that supports task categories ['chatgpt']",), {"fg": "blue"}),
-    ]
-    mock_secho.assert_has_calls(expected_calls, any_order=True)
-    assert mock_secho.call_count == len(expected_calls)

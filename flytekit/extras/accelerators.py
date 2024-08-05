@@ -133,7 +133,11 @@ A10G = GPUAccelerator("nvidia-a10g")
 
 #: use this constant to specify that the task should run on an
 #: `NVIDIA L4 Tensor Core GPU <https://www.nvidia.com/en-us/data-center/l4/>`_
-L4 = GPUAccelerator("nvidia-l4-vws")
+L4 = GPUAccelerator("nvidia-l4")
+
+#: use this constant to specify that the task should run on an
+#: `NVIDIA L4 Tensor Core GPU <https://www.nvidia.com/en-us/data-center/l4/>`_
+L4_VWS = GPUAccelerator("nvidia-l4-vws")
 
 #: use this constant to specify that the task should run on an
 #: `NVIDIA Tesla K80 GPU <https://www.nvidia.com/en-gb/data-center/tesla-k80/>`_

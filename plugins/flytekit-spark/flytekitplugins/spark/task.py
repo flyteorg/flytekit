@@ -145,9 +145,14 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
                     self._default_applications_path or "local:///usr/local/bin/entrypoint.py"
                 )
 
+        if isinstance(task_config, DatabricksV2):
+            task_type = "databricks"
+        else:
+            task_type = "spark"
+
         super(PysparkFunctionTask, self).__init__(
             task_config=task_config,
-            task_type=self._SPARK_TASK_TYPE,
+            task_type=task_type,
             task_function=task_function,
             container_image=container_image,
             **kwargs,
