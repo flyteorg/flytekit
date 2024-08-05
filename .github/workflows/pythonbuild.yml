@@ -6,7 +6,6 @@ on:
   push:
     branches:
       - master
-      - stream-upload-file-flyteremote-forked
   pull_request:
   schedule:
     - cron: "0 13 * * *" # This schedule runs at 1pm UTC every day
