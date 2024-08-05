@@ -3,6 +3,7 @@ name: Build
 # Schedule runs to run twice a day
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - master
