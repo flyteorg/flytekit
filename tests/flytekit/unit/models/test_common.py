@@ -108,8 +108,8 @@ def test_auth_role_empty():
 def test_short_string_raw_output_data_config():
     """"""
     obj = _common.RawOutputDataConfig("s3://bucket")
-    assert "Flyte Serialized object: Type: <RawOutputDataConfig> Value" in obj.short_string()
-    assert "Flyte Serialized object: Type: <RawOutputDataConfig> Value" in repr(obj)
+    assert "RawOutputDataConfig:" in obj.short_string()
+    assert "RawOutputDataConfig:" in repr(obj)
 
 
 def test_html_repr_data_config():

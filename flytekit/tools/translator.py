@@ -250,6 +250,7 @@ def get_serializable_task(
         sql=entity.get_sql(settings),
         extended_resources=entity.get_extended_resources(settings),
     )
+    breakpoint()
     if settings.should_fast_serialize() and isinstance(entity, PythonAutoContainerTask):
         entity.reset_command_fn()
 

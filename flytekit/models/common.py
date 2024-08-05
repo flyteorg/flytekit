@@ -1,7 +1,6 @@
 import abc
 import json
 import os
-import re
 from contextlib import closing
 from io import StringIO
 from textwrap import shorten
@@ -87,9 +86,9 @@ class FlyteIdlEntity(object, metaclass=FlyteType):
         """
         :rtype: Text
         """
-        literal_str = re.sub(r"\s+", " ", str(self.to_flyte_idl())).strip()
+        str_repr = _repr_idl_yaml_like(self.to_flyte_idl(), indent=2).rstrip(os.linesep)
         type_str = type(self).__name__
-        return f"[Flyte Serialized object: Type: <{type_str}> Value: <{literal_str}>]"
+        return f"{type_str}:" + os.linesep + str_repr
 
     def verbose_string(self):
         """
@@ -105,7 +104,7 @@ class FlyteIdlEntity(object, metaclass=FlyteType):
         # `_repr_html_` is used by Jupyter to render objects
         type_str = type(self).__name__
         idl = self.to_flyte_idl()
-        str_repr = _repr_idl_yaml_like(idl)
+        str_repr = _repr_idl_yaml_like(idl).rstrip(os.linesep)
         return f"<h4>{type_str}</h4><pre>{str_repr}</pre>"
 
     @property
