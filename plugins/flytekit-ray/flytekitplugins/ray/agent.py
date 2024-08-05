@@ -38,9 +38,8 @@ class AnyscaleAgent(AsyncAgentBase):
                 "PYTHONPATH": "/root:."
             },
             entrypoint=" ".join(container.args),
-            # working_dir="/Users/kevin/git/flytekit/flyte-example/anyscale_union",
             max_retries=1,
-            compute_config="flyte-rag",
+            compute_config="flyte-rag:2",
         )
 
         job_id = anyscale.job.submit(config)
@@ -49,7 +48,6 @@ class AnyscaleAgent(AsyncAgentBase):
 
     async def get(self, resource_meta: AnyscaleJobMetadata, **kwargs) -> Resource:
         cur_phase = convert_to_flyte_phase(anyscale.job.status(id=resource_meta.job_id).state.value)
-
         return Resource(phase=cur_phase, message=None, log_links=None)
 
     async def delete(self, resource_meta: AnyscaleJobMetadata, **kwargs):
