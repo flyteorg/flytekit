@@ -303,8 +303,6 @@ jobs:
       - name: Remove Flyte
         run: |
           rm -rf ./flyte
-      - name: 'Clear action cache'
-        uses: ./.github/actions/clear-action-cache  # sandbox has disk pressure, so we need to clear the cache to get more disk space.
       - name: Install FlyteCTL
         uses: unionai-oss/flytectl-setup-action@master
       - name: Setup Flyte Sandbox
