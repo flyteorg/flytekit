@@ -15,7 +15,7 @@ from flyteidl.service import dataproxy_pb2
 from mock import ANY, MagicMock, patch
 
 import flytekit.configuration
-from flytekit import CronSchedule, ImageSpec, LaunchPlan, WorkflowFailurePolicy, task, workflow
+from flytekit import CronSchedule, ImageSpec, LaunchPlan, WorkflowFailurePolicy, task, workflow, reference_task
 from flytekit.configuration import Config, DefaultImages, Image, ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContextManager
@@ -526,6 +526,22 @@ def test_get_image_names(
 
     version_from_hash_mock.assert_called_once_with(md5_bytes, mock.ANY, mock.ANY, image_spec.image_name())
     register_workflow_mock.assert_called_once()
+
+    @reference_task(
+        project="flytesnacks",
+        domain="development",
+        name="flytesnacks.examples.basics.basics.workflow.slope",
+        version="v1",
+    )
+    def ref_basic(x: typing.List[int], y: typing.List[int]) -> float:
+        ...
+
+    @workflow
+    def wf1(name: str = "union") -> float:
+        return ref_basic(x=[1, 2, 3], y=[4, 5, 6])
+
+    flyte_remote = FlyteRemote(config=Config.auto(), default_project="p1", default_domain="d1")
+    flyte_remote.register_script(wf1)
 
 
 @mock.patch("flytekit.remote.remote.FlyteRemote.client")

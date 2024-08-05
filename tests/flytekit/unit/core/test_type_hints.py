@@ -1526,6 +1526,7 @@ def test_guess_dict3():
     assert output_lm.literals["o0"].scalar.generic == expected_struct
 
 
+@pytest.mark.skipif(sys.version_info < (3, 9), reason="Use of dict hints is only supported in Python 3.9+")
 def test_guess_dict4():
     @dataclass
     class Foo(DataClassJsonMixin):
