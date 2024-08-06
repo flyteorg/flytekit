@@ -487,12 +487,16 @@ class DataclassTransformer(TypeTransformer[object]):
 
         ts = TypeStructure(tag="", dataclass_type=literal_type)
 
-        return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT, metadata=schema, structure=ts)
+        return _type_models.LiteralType(simple=_type_models.SimpleType.JSON, metadata=schema, structure=ts)
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
+        import msgpack
+        from flytekit.models.literals import Json
+
         if isinstance(python_val, dict):
             json_str = json.dumps(python_val)
-            return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))
+            json_bytes = msgpack.dumps(json_str)
+            return Literal(scalar=Scalar(json=Json(value=json_bytes)))
 
         if not dataclasses.is_dataclass(python_val):
             raise TypeTransformerFailedError(
@@ -519,7 +523,9 @@ class DataclassTransformer(TypeTransformer[object]):
                 f" and implement _serialize and _deserialize methods."
             )
 
-        return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))  # type: ignore
+        json_bytes = msgpack.dumps(json_str)
+        return Literal(scalar=Scalar(json=Json(value=json_bytes)))
+        # return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))  # type: ignore
 
     def _get_origin_type_in_annotation(self, python_type: Type[T]) -> Type[T]:
         # dataclass will try to hash python type when calling dataclass.schema(), but some types in the annotation is
@@ -653,13 +659,21 @@ class DataclassTransformer(TypeTransformer[object]):
         return dc
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
+        import msgpack
+
         if not dataclasses.is_dataclass(expected_python_type):
             raise TypeTransformerFailedError(
                 f"{expected_python_type} is not of type @dataclass, only Dataclasses are supported for "
                 "user defined datatypes in Flytekit"
             )
 
-        json_str = _json_format.MessageToJson(lv.scalar.generic)
+        scalar = lv.scalar
+        json_str = ""
+        if scalar.json:
+            json_bytes = lv.scalar.json.value
+            json_str = msgpack.loads(json_bytes)
+        elif scalar.generic:
+            json_str = _json_format.MessageToJson(scalar.generic)
 
         # The function looks up or creates a JSONDecoder specifically designed for the object's type.
         # This decoder is then used to convert a JSON string into a data class.
