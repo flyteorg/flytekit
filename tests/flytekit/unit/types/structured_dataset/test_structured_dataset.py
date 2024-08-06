@@ -543,10 +543,11 @@ def test_reregister_encoder():
 
 
 def test_default_args_task():
+    default_val = pd.DataFrame({"name": ["Aegon"], "age": [27]})
     input_val = generate_pandas()
 
     @task
-    def t1(a: pd.DataFrame = pd.DataFrame()) -> pd.DataFrame:
+    def t1(a: pd.DataFrame = default_val) -> pd.DataFrame:
         return a
 
     @workflow
@@ -557,11 +558,16 @@ def test_default_args_task():
     def wf_with_input() -> pd.DataFrame:
         return t1(a=input_val)
 
-    with pytest.raises(FlyteAssertion, match="Cannot use non-hashable object as default argument"):
-        get_serializable(OrderedDict(), serialization_settings, wf_no_input)
-
+    wf_no_input_spec = get_serializable(OrderedDict(), serialization_settings, wf_no_input)
     wf_with_input_spec = get_serializable(OrderedDict(), serialization_settings, wf_with_input)
 
+    assert wf_no_input_spec.template.nodes[0].inputs[
+        0
+    ].binding.value.structured_dataset.metadata == StructuredDatasetMetadata(
+        structured_dataset_type=StructuredDatasetType(
+            format="parquet",
+        ),
+    )
     assert wf_with_input_spec.template.nodes[0].inputs[
         0
     ].binding.value.structured_dataset.metadata == StructuredDatasetMetadata(
@@ -570,8 +576,12 @@ def test_default_args_task():
         ),
     )
 
+    assert wf_no_input_spec.template.interface.outputs["o0"].type == LiteralType(
+        structured_dataset_type=StructuredDatasetType()
+    )
     assert wf_with_input_spec.template.interface.outputs["o0"].type == LiteralType(
         structured_dataset_type=StructuredDatasetType()
     )
 
+    pd.testing.assert_frame_equal(wf_no_input(), default_val)
     pd.testing.assert_frame_equal(wf_with_input(), input_val)
