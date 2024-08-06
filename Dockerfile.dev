@@ -42,7 +42,7 @@ RUN SETUPTOOLS_SCM_PRETEND_VERSION_FOR_FLYTEKIT=$PSEUDO_VERSION \
             -e /flytekit/plugins/flytekit-deck-standard \
             -e /flytekit/plugins/flytekit-flyteinteractive \
             scikit-learn \
-        && uv pip install --system flyteidl-rust --no-index --find-links /flytekit/dist --force-reinstall \
+        && uv pip install -i https://test.pypi.org/simple/ flyteidl-rust --force-reinstall \
     && apt-get clean autoclean \
     && apt-get autoremove --yes \
     && rm -rf /var/lib/{apt,dpkg,cache,log}/ \
