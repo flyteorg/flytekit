@@ -525,7 +525,6 @@ class DataclassTransformer(TypeTransformer[object]):
 
         json_bytes = msgpack.dumps(json_str)
         return Literal(scalar=Scalar(json=Json(value=json_bytes)))
-        # return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))  # type: ignore
 
     def _get_origin_type_in_annotation(self, python_type: Type[T]) -> Type[T]:
         # dataclass will try to hash python type when calling dataclass.schema(), but some types in the annotation is
@@ -1167,7 +1166,17 @@ class TypeEngine(typing.Generic[T]):
         kwargs = {}
         for i, k in enumerate(lm.literals):
             try:
-                kwargs[k] = TypeEngine.to_python_value(ctx, lm.literals[k], python_interface_inputs[k])
+
+                lv = lm.literals[k]
+                # print(lv)
+                # if lv.scalar and lv.scalar.json:
+                #     import msgpack
+                #     import json
+                #     json_str = msgpack.loads(lv.scalar.json.value)
+                #     python_value = json.loads(json_str)
+                #     kwargs[k] = TypeEngine.to_python_value(ctx, python_value["a"], python_interface_inputs[k])
+                # else:
+                kwargs[k] = TypeEngine.to_python_value(ctx, lv, python_interface_inputs[k])
             except TypeTransformerFailedError as exc:
                 raise TypeTransformerFailedError(f"Error converting input '{k}' at position {i}:\n  {exc}") from None
         return kwargs
