@@ -615,7 +615,40 @@ def test_tp_math():
     assert tp2 is not tp
 
 
+def test_tp_printing():
+    d = datetime.datetime(2063, 4, 5, 0, 0)
+    pt = Timestamp()
+    pt.FromDatetime(d)
+    tp = TimePartition(value=art_id.LabelValue(time_value=pt), granularity=Granularity.HOUR)
+    txt = "".join([str(x) for x in tp.__rich_repr__()])
+    # should show something like ('Time Partition', '2063-04-05 00:00:00')
+    # just check that we don't accidentally fail to evaluate a generator
+    assert "generator" not in txt
+
+
+def test_partition_printing():
+    a1_b = Artifact(name="my_data", partition_keys=["b"])
+    spec = a1_b(b="my_b_value")
+    ps = spec.partitions
+    txt = "".join([str(x) for x in ps.__rich_repr__()])
+    # should look something like ('Partitions', '(\'b\', static_value: "my_b_value"\n)')
+    # just check that we don't accidentally fail to evaluate a generator
+    assert "generator" not in txt
+
+
 def test_lims():
     # test an artifact with 11 partition keys
     with pytest.raises(ValueError):
         Artifact(name="test artifact", time_partitioned=True, partition_keys=[f"key_{i}" for i in range(11)])
+
+
+def test_cloudpickle():
+    a1_b = Artifact(name="my_data", partition_keys=["b"])
+
+    spec = a1_b(b="my_b_value")
+    import cloudpickle
+
+    d = cloudpickle.dumps(spec)
+    spec2 = cloudpickle.loads(d)
+
+    assert spec2.partitions.b.value.static_value == "my_b_value"

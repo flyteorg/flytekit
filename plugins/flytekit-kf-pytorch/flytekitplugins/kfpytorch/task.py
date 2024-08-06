@@ -15,6 +15,7 @@ from google.protobuf.json_format import MessageToDict
 import flytekit
 from flytekit import PythonFunctionTask, Resources, lazy_module
 from flytekit.configuration import SerializationSettings
+from flytekit.core.context_manager import FlyteContextManager, OutputMetadata
 from flytekit.core.pod_template import PodTemplate
 from flytekit.core.resources import convert_resources_to_resource_model
 from flytekit.exceptions.user import FlyteRecoverableException
@@ -240,6 +241,7 @@ class ElasticWorkerResult(NamedTuple):
 
     return_value: Any
     decks: List[flytekit.Deck]
+    om: Optional[OutputMetadata] = None
 
 
 def spawn_helper(
@@ -270,18 +272,21 @@ def spawn_helper(
         raw_output_data_prefix=raw_output_prefix,
         checkpoint_path=checkpoint_dest,
         prev_checkpoint=checkpoint_src,
-    ):
+    ) as ctx:
         fn = cloudpickle.loads(fn)
-
         try:
             return_val = fn(**kwargs)
+            omt = ctx.output_metadata_tracker
+            om = None
+            if omt:
+                om = omt.get(return_val)
         except Exception as e:
             # See explanation in `create_recoverable_error_file` why we check
             # for recoverable errors here in the worker processes.
             if isinstance(e, FlyteRecoverableException):
                 create_recoverable_error_file()
             raise
-        return ElasticWorkerResult(return_value=return_val, decks=flytekit.current_context().decks)
+        return ElasticWorkerResult(return_value=return_val, decks=flytekit.current_context().decks, om=om)
 
 
 def _convert_run_policy_to_flyte_idl(run_policy: RunPolicy) -> kubeflow_common.RunPolicy:
@@ -424,13 +429,18 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
                 """Closure of the task function with kwargs already bound."""
                 try:
                     return_val = self._task_function(**kwargs)
+                    core_context = FlyteContextManager.current_context()
+                    omt = core_context.output_metadata_tracker
+                    om = None
+                    if omt:
+                        om = omt.get(return_val)
                 except Exception as e:
                     # See explanation in `create_recoverable_error_file` why we check
                     # for recoverable errors here in the worker processes.
                     if isinstance(e, FlyteRecoverableException):
                         create_recoverable_error_file()
                     raise
-                return ElasticWorkerResult(return_value=return_val, decks=flytekit.current_context().decks)
+                return ElasticWorkerResult(return_value=return_val, decks=flytekit.current_context().decks, om=om)
 
             launcher_target_func = fn_partial
             launcher_args = ()
@@ -464,6 +474,9 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
             for deck in out[0].decks:
                 if not isinstance(deck, flytekit.deck.deck.TimeLineDeck):
                     ctx.decks.append(deck)
+            if out[0].om:
+                core_context = FlyteContextManager.current_context()
+                core_context.output_metadata_tracker.add(out[0].return_value, out[0].om)
 
             return out[0].return_value
         else:
