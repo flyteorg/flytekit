@@ -1,12 +1,18 @@
+import botocore.session
+from contextlib import ExitStack, contextmanager
 import datetime
+import hashlib
 import json
 import os
 import pathlib
 import subprocess
+import tempfile
 import time
 import typing
 
 import joblib
+from urllib.parse import urlparse
+import uuid
 import pytest
 
 from flytekit import LaunchPlan, kwtypes
@@ -483,3 +489,92 @@ def test_execute_workflow_with_maptask(register):
         wait=True,
     )
     assert execution.outputs["o0"] == [4, 5, 6]
+
+@pytest.mark.lftransfers
+class TestLargeFileTransfers:
+    """A class to capture tests and helper functions for large file transfers."""
+
+    @staticmethod
+    def _get_minio_s3_client(remote):
+        minio_s3_config = remote.file_access.data_config.s3
+        sess = botocore.session.get_session()
+        return sess.create_client(
+            "s3",
+            endpoint_url=minio_s3_config.endpoint,
+            aws_access_key_id=minio_s3_config.access_key_id,
+            aws_secret_access_key=minio_s3_config.secret_access_key,
+        )
+
+    @staticmethod
+    def _get_s3_file_md5_bytes(s3_client, bucket, key):
+        md5_hash = hashlib.md5()
+        response = s3_client.get_object(Bucket=bucket, Key=key)
+        body = response['Body']
+        # Read the object in chunks and update the hash (this keeps memory usage low)
+        for chunk in iter(lambda: body.read(4096), b''):
+            md5_hash.update(chunk)
+        return md5_hash.digest()
+
+    @staticmethod
+    def _delete_s3_file(s3_client, bucket, key):
+        # Delete the object
+        response = s3_client.delete_object(Bucket=bucket, Key=key)
+        # Ensure the object was deleted - for 'delete_object' 204 is the expected successful response code
+        assert response["ResponseMetadata"]["HTTPStatusCode"] == 204
+
+    @staticmethod
+    @contextmanager
+    def _ephemeral_minio_project_domain_filename_root(s3_client, project, domain):
+        """An ephemeral minio S3 path which is wiped upon the context manager's exit"""
+        # Generate a random path in our Minio s3 bucket, under <BUCKET>/PROJECT/DOMAIN/<UUID>
+        buckets = s3_client.list_buckets()["Buckets"]
+        assert len(buckets) == 1 # We expect just the default sandbox bucket
+        bucket = buckets[0]["Name"]
+        root = str(uuid.uuid4())
+        key = f"{PROJECT}/{DOMAIN}/{root}/"
+        yield ((bucket, key), root)
+        # Teardown everything under bucket/key
+        response = s3_client.list_objects_v2(Bucket=bucket, Prefix=key)
+        if "Contents" in response:
+            for obj in response["Contents"]:
+                TestLargeFileTransfers._delete_s3_file(s3_client, bucket, obj["Key"])
+
+
+    @staticmethod
+    @pytest.mark.parametrize("gigabytes", [2, 3])
+    def test_flyteremote_uploads_large_file(gigabytes):
+        """This test checks whether FlyteRemote can upload large files."""
+        remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+        minio_s3_client = TestLargeFileTransfers._get_minio_s3_client(remote)
+        with ExitStack() as stack:
+            # Step 1 - Create a large local file
+            tempdir = stack.enter_context(tempfile.TemporaryDirectory())
+            file_path = pathlib.Path(tempdir) / "large_file"
+
+            with open(file_path, "wb") as f:
+                # Write in chunks of 500mb to keep memory usage low during tests
+                for _ in range(gigabytes * 2):
+                    f.write(os.urandom(int(1e9 // 2)))
+
+            # Step 2 - Create an ephemeral S3 storage location. This will be wiped
+            #  on context exit to not overload the sandbox's storage
+            _, ephemeral_filename_root = stack.enter_context(
+                TestLargeFileTransfers._ephemeral_minio_project_domain_filename_root(
+                    minio_s3_client,
+                    PROJECT,
+                    DOMAIN
+                )
+            )
+
+            # Step 3 - Upload our large file and check whether the uploaded file's md5 checksum matches our local file's
+            md5_bytes, upload_location = remote.upload_file(
+                to_upload=file_path,
+                project=PROJECT,
+                domain=DOMAIN,
+                filename_root=ephemeral_filename_root
+            )
+
+            url = urlparse(upload_location)
+            bucket, key = url.netloc, url.path.lstrip("/")
+            s3_md5_bytes = TestLargeFileTransfers._get_s3_file_md5_bytes(minio_s3_client, bucket, key)
+            assert s3_md5_bytes == md5_bytes
