@@ -137,13 +137,24 @@ def resolve_attr_path_in_promise(p: Promise) -> Promise:
     if (
         len(p.attr_path) > 0
         and type(curr_val.value) is _literals_models.Scalar
-        and type(curr_val.value.value) is _struct.Struct
     ):
-        st = curr_val.value.value
-        new_st = resolve_attr_path_in_pb_struct(st, attr_path=p.attr_path[used:])
-        literal_type = TypeEngine.to_literal_type(type(new_st))
-        # Reconstruct the resolved result to flyte literal (because the resolved result might not be struct)
-        curr_val = TypeEngine.to_literal(FlyteContextManager.current_context(), new_st, type(new_st), literal_type)
+        from flytekit.models.literals import Json
+        import msgpack
+        import json
+
+        if type(curr_val.value.value) is _struct.Struct:
+            st = curr_val.value.value
+            new_st = resolve_attr_path_in_pb_struct(st, attr_path=p.attr_path[used:])
+            literal_type = TypeEngine.to_literal_type(type(new_st))
+            # Reconstruct the resolved result to flyte literal (because the resolved result might not be struct)
+            curr_val = TypeEngine.to_literal(FlyteContextManager.current_context(), new_st, type(new_st), literal_type)
+        elif type(curr_val.value.value) is Json:
+            json_bytes = curr_val.value.json.value
+            json_str = msgpack.loads(json_bytes)
+            dict_obj = json.loads(json_str)
+            v = dict_obj[attr]
+            literal_type = TypeEngine.to_literal_type(v)
+            curr_val = TypeEngine.to_literal(FlyteContextManager.current_context(), v, type(v), literal_type)
 
     p._val = curr_val
     return p
