@@ -636,7 +636,11 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 except Exception as e:
                     # only show the name of output key if it's user-defined (by default Flyte names these as "o<n>")
                     key = k if k != f"o{i}" else i
-                    msg = f"Failed to convert outputs of task '{self.name}' at position {key}:\n  {e}"
+                    msg = (
+                        f"Failed to convert outputs of task '{self.name}' at position {key}.\n"
+                        f"Failed to convert type {type(native_outputs_as_map[expected_output_names[i]])} to type {py_type}.\n"
+                        f"Error Message: {e}."
+                    )
                     logger.error(msg)
                     raise TypeError(msg) from e
                 # Now check if there is any output metadata associated with this output variable and attach it to the
