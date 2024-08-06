@@ -1,4 +1,4 @@
-import botocore
+import botocore.session
 from contextlib import ExitStack, contextmanager
 import datetime
 import hashlib
@@ -10,8 +10,6 @@ import tempfile
 import time
 import typing
 
-import botocore.client
-import botocore.session
 import joblib
 from urllib.parse import urlparse
 import uuid
