@@ -292,7 +292,7 @@ class Task(object):
         except TypeTransformerFailedError as exc:
             msg = f"Failed to convert inputs of task '{self.name}':\n  {exc}"
             logger.error(msg)
-            raise TypeError(msg) from exc
+            raise TypeError(msg) from None
         input_literal_map = _literal_models.LiteralMap(literals=literals)
 
         # if metadata.cache is set, check memoized version
@@ -636,7 +636,11 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 except Exception as e:
                     # only show the name of output key if it's user-defined (by default Flyte names these as "o<n>")
                     key = k if k != f"o{i}" else i
-                    msg = f"Failed to convert outputs of task '{self.name}' at position {key}:\n  {e}"
+                    msg = (
+                        f"Failed to convert outputs of task '{self.name}' at position {key}.\n"
+                        f"Failed to convert type {type(native_outputs_as_map[expected_output_names[i]])} to type {py_type}.\n"
+                        f"Error Message: {e}."
+                    )
                     logger.error(msg)
                     raise TypeError(msg) from e
                 # Now check if there is any output metadata associated with this output variable and attach it to the
@@ -724,7 +728,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             except Exception as exc:
                 msg = f"Failed to convert inputs of task '{self.name}':\n  {exc}"
                 logger.error(msg)
-                raise type(exc)(msg) from exc
+                raise type(exc)(msg) from None
 
             # TODO: Logger should auto inject the current context information to indicate if the task is running within
             #   a workflow or a subworkflow etc

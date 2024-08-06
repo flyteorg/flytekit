@@ -12,7 +12,6 @@ from enum import Enum, auto
 from typing import List, Optional, Type
 
 import mock
-import pyarrow as pa
 import pytest
 import typing_extensions
 from dataclasses_json import DataClassJsonMixin, dataclass_json
@@ -1408,9 +1407,11 @@ class UnsupportedEnumValues(Enum):
     BLUE = 3
 
 
+@pytest.mark.skipif("polars" not in sys.modules, reason="pyarrow is not installed.")
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_structured_dataset_type():
     import pandas as pd
+    import pyarrow as pa
     from pandas._testing import assert_frame_equal
 
     name = "Name"
@@ -2388,9 +2389,15 @@ class Result(DataClassJsonMixin):
     schema: TestSchema  # type: ignore
 
 
-@pytest.mark.parametrize(
-    "t",
-    [
+def get_unsupported_complex_literals_tests():
+    if sys.version_info < (3, 9):
+        return [
+        typing_extensions.Annotated[typing.Dict[int, str], FlyteAnnotation({"foo": "bar"})],
+        typing_extensions.Annotated[typing.Dict[str, str], FlyteAnnotation({"foo": "bar"})],
+        typing_extensions.Annotated[Color, FlyteAnnotation({"foo": "bar"})],
+        typing_extensions.Annotated[Result, FlyteAnnotation({"foo": "bar"})],
+    ]
+    return [
         typing_extensions.Annotated[dict, FlyteAnnotation({"foo": "bar"})],
         typing_extensions.Annotated[dict[int, str], FlyteAnnotation({"foo": "bar"})],
         typing_extensions.Annotated[typing.Dict[int, str], FlyteAnnotation({"foo": "bar"})],
@@ -2398,7 +2405,12 @@ class Result(DataClassJsonMixin):
         typing_extensions.Annotated[typing.Dict[str, str], FlyteAnnotation({"foo": "bar"})],
         typing_extensions.Annotated[Color, FlyteAnnotation({"foo": "bar"})],
         typing_extensions.Annotated[Result, FlyteAnnotation({"foo": "bar"})],
-    ],
+    ]
+
+
+@pytest.mark.parametrize(
+    "t",
+    get_unsupported_complex_literals_tests(),
 )
 def test_unsupported_complex_literals(t):
     with pytest.raises(ValueError):
@@ -3034,7 +3046,7 @@ def test_dataclass_encoder_and_decoder_registry():
     class Datum:
         x: int
         y: str
-        z: dict[int, int]
+        z: typing.Dict[int, int]
         w: List[int]
 
     @task

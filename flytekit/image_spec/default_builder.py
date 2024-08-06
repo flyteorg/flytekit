@@ -159,14 +159,21 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
     requirements_uv_path = tmp_dir / "requirements_uv.txt"
     requirements_uv_path.write_text("\n".join(uv_requirements))
 
-    pip_extra = f"--index-url {image_spec.pip_index}" if image_spec.pip_index else ""
-    uv_python_install_command = UV_PYTHON_INSTALL_COMMAND_TEMPLATE.substitute(PIP_EXTRA=pip_extra)
+    pip_extra_args = ""
+
+    if image_spec.pip_index:
+        pip_extra_args += f"--index-url {image_spec.pip_index}"
+    if image_spec.pip_extra_index_url:
+        extra_urls = [f"--extra-index-url {url}" for url in image_spec.pip_extra_index_url]
+        pip_extra_args += " ".join(extra_urls)
+
+    uv_python_install_command = UV_PYTHON_INSTALL_COMMAND_TEMPLATE.substitute(PIP_EXTRA=pip_extra_args)
 
     if pip_requirements:
         requirements_uv_path = tmp_dir / "requirements_pip.txt"
         requirements_uv_path.write_text(os.linesep.join(pip_requirements))
 
-        pip_python_install_command = PIP_PYTHON_INSTALL_COMMAND_TEMPLATE.substitute(PIP_EXTRA=pip_extra)
+        pip_python_install_command = PIP_PYTHON_INSTALL_COMMAND_TEMPLATE.substitute(PIP_EXTRA=pip_extra_args)
     else:
         pip_python_install_command = ""
 

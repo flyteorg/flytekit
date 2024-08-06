@@ -9,7 +9,6 @@ from enum import Enum
 from pathlib import Path
 from typing import Type
 
-import numpy as _np
 from dataclasses_json import config
 from marshmallow import fields
 from mashumaro.mixins.json import DataClassJSONMixin
@@ -349,27 +348,39 @@ class FlyteSchema(SerializableType, DataClassJSONMixin):
         return s
 
 
+def _get_numpy_type_mappings() -> typing.Dict[Type, SchemaType.SchemaColumn.SchemaColumnType]:
+    try:
+        import numpy as _np
+
+        return {
+            _np.int32: SchemaType.SchemaColumn.SchemaColumnType.INTEGER,
+            _np.int64: SchemaType.SchemaColumn.SchemaColumnType.INTEGER,
+            _np.uint32: SchemaType.SchemaColumn.SchemaColumnType.INTEGER,
+            _np.uint64: SchemaType.SchemaColumn.SchemaColumnType.INTEGER,
+            _np.float32: SchemaType.SchemaColumn.SchemaColumnType.FLOAT,
+            _np.float64: SchemaType.SchemaColumn.SchemaColumnType.FLOAT,
+            _np.bool_: SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN,  # type: ignore
+            _np.datetime64: SchemaType.SchemaColumn.SchemaColumnType.DATETIME,
+            _np.timedelta64: SchemaType.SchemaColumn.SchemaColumnType.DURATION,
+            _np.bytes_: SchemaType.SchemaColumn.SchemaColumnType.STRING,
+            _np.str_: SchemaType.SchemaColumn.SchemaColumnType.STRING,
+            _np.object_: SchemaType.SchemaColumn.SchemaColumnType.STRING,
+        }
+    except ImportError as e:
+        logger.warning("Numpy not found, skipping numpy type mappings, error: %s", e)
+        return {}
+
+
 class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
     _SUPPORTED_TYPES: typing.Dict[Type, SchemaType.SchemaColumn.SchemaColumnType] = {
-        _np.int32: SchemaType.SchemaColumn.SchemaColumnType.INTEGER,
-        _np.int64: SchemaType.SchemaColumn.SchemaColumnType.INTEGER,
-        _np.uint32: SchemaType.SchemaColumn.SchemaColumnType.INTEGER,
-        _np.uint64: SchemaType.SchemaColumn.SchemaColumnType.INTEGER,
-        int: SchemaType.SchemaColumn.SchemaColumnType.INTEGER,
-        _np.float32: SchemaType.SchemaColumn.SchemaColumnType.FLOAT,
-        _np.float64: SchemaType.SchemaColumn.SchemaColumnType.FLOAT,
         float: SchemaType.SchemaColumn.SchemaColumnType.FLOAT,
-        _np.bool_: SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN,  # type: ignore
+        int: SchemaType.SchemaColumn.SchemaColumnType.INTEGER,
         bool: SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN,
-        _np.datetime64: SchemaType.SchemaColumn.SchemaColumnType.DATETIME,
-        datetime.datetime: SchemaType.SchemaColumn.SchemaColumnType.DATETIME,
-        _np.timedelta64: SchemaType.SchemaColumn.SchemaColumnType.DURATION,
-        datetime.timedelta: SchemaType.SchemaColumn.SchemaColumnType.DURATION,
-        _np.bytes_: SchemaType.SchemaColumn.SchemaColumnType.STRING,
-        _np.str_: SchemaType.SchemaColumn.SchemaColumnType.STRING,
-        _np.object_: SchemaType.SchemaColumn.SchemaColumnType.STRING,
         str: SchemaType.SchemaColumn.SchemaColumnType.STRING,
+        datetime.datetime: SchemaType.SchemaColumn.SchemaColumnType.DATETIME,
+        datetime.timedelta: SchemaType.SchemaColumn.SchemaColumnType.DURATION,
     }
+    _SUPPORTED_TYPES.update(_get_numpy_type_mappings())
 
     def __init__(self):
         super().__init__("FlyteSchema Transformer", FlyteSchema)
