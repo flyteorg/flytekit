@@ -245,7 +245,7 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
         self,
         path: typing.Union[str, os.PathLike],
         downloader: typing.Callable = noop,
-        remote_path: typing.Optional[typing.Union[os.PathLike, bool]] = None,
+        remote_path: typing.Optional[typing.Union[os.PathLike, str, bool]] = None,
     ):
         """
         FlyteFile's init method.
