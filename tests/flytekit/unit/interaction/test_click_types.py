@@ -181,6 +181,9 @@ def test_datetime_type():
     with pytest.raises(click.BadParameter):
         t.convert("aaa + 1d", None, None)
 
+    fmt_v = "2024-07-29 13:47:07.643004+00:00"
+    d = t.convert(fmt_v, None, None)
+    _datetime_helper(t, fmt_v, d)
 
 
 def test_json_type():
@@ -256,8 +259,8 @@ def test_dataclass_type():
     class Datum:
         x: int
         y: str
-        z: dict[int, str]
-        w: list[int]
+        z: typing.Dict[int, str]
+        w: typing.List[int]
 
     t = JsonParamType(Datum)
     value = '{ "x": 1, "y": "2", "z": { "1": "one", "2": "two" }, "w": [1, 2, 3] }'

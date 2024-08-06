@@ -2,6 +2,7 @@ import functools
 import typing
 from collections import OrderedDict
 from typing import List
+from typing_extensions import Annotated
 
 import pytest
 
@@ -78,7 +79,7 @@ def test_remote_execution(serialization_settings):
 
 def test_map_task_with_pickle():
     @task
-    def say_hello(name: typing.Annotated[typing.Any, BatchSize(10)]) -> str:
+    def say_hello(name: Annotated[typing.Any, BatchSize(10)]) -> str:
         return f"hello {name}!"
 
     with pytest.raises(ValueError, match="Choosing a BatchSize for map tasks inputs is not supported."):
