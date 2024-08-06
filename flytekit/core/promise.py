@@ -134,13 +134,12 @@ def resolve_attr_path_in_promise(p: Promise) -> Promise:
             break
 
     # If the current value is a dataclass, resolve the dataclass with the remaining path
-    if (
-        len(p.attr_path) > 0
-        and type(curr_val.value) is _literals_models.Scalar
-    ):
-        from flytekit.models.literals import Json
-        import msgpack
+    if len(p.attr_path) > 0 and type(curr_val.value) is _literals_models.Scalar:
         import json
+
+        import msgpack
+
+        from flytekit.models.literals import Json
 
         if type(curr_val.value.value) is _struct.Struct:
             st = curr_val.value.value
@@ -152,7 +151,7 @@ def resolve_attr_path_in_promise(p: Promise) -> Promise:
             json_bytes = curr_val.value.json.value
             json_str = msgpack.loads(json_bytes)
             dict_obj = json.loads(json_str)
-            v = dict_obj[attr]
+            v = resolve_attr_path_in_dict(dict_obj, attr_path=p.attr_path[used:])
             literal_type = TypeEngine.to_literal_type(v)
             curr_val = TypeEngine.to_literal(FlyteContextManager.current_context(), v, type(v), literal_type)
 
@@ -162,6 +161,17 @@ def resolve_attr_path_in_promise(p: Promise) -> Promise:
 
 def resolve_attr_path_in_pb_struct(st: _struct.Struct, attr_path: List[Union[str, int]]) -> _struct.Struct:
     curr_val = st
+    for attr in attr_path:
+        if attr not in curr_val:
+            raise FlytePromiseAttributeResolveException(
+                f"Failed to resolve attribute path {attr_path} in struct {curr_val}, attribute {attr} not found"
+            )
+        curr_val = curr_val[attr]
+    return curr_val
+
+
+def resolve_attr_path_in_dict(d: dict, attr_path: List[Union[str, int]]) -> Any:
+    curr_val = d
     for attr in attr_path:
         if attr not in curr_val:
             raise FlytePromiseAttributeResolveException(

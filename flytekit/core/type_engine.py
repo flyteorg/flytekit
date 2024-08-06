@@ -491,6 +491,7 @@ class DataclassTransformer(TypeTransformer[object]):
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         import msgpack
+
         from flytekit.models.literals import Json
 
         if isinstance(python_val, dict):
@@ -1166,17 +1167,7 @@ class TypeEngine(typing.Generic[T]):
         kwargs = {}
         for i, k in enumerate(lm.literals):
             try:
-
-                lv = lm.literals[k]
-                # print(lv)
-                # if lv.scalar and lv.scalar.json:
-                #     import msgpack
-                #     import json
-                #     json_str = msgpack.loads(lv.scalar.json.value)
-                #     python_value = json.loads(json_str)
-                #     kwargs[k] = TypeEngine.to_python_value(ctx, python_value["a"], python_interface_inputs[k])
-                # else:
-                kwargs[k] = TypeEngine.to_python_value(ctx, lv, python_interface_inputs[k])
+                kwargs[k] = TypeEngine.to_python_value(ctx, lm.literals[k], python_interface_inputs[k])
             except TypeTransformerFailedError as exc:
                 raise TypeTransformerFailedError(f"Error converting input '{k}' at position {i}:\n  {exc}") from None
         return kwargs
