@@ -1,6 +1,7 @@
 import asyncio
 import contextlib
 import datetime
+import functools
 import inspect
 import os
 import pathlib
@@ -198,6 +199,17 @@ def get_one_of(*args) -> str:
     return ""
 
 
+def _fast_register_file_uploader(file_access: FileAccessProvider, dest: str, src: str):
+    """
+    This function can be used during dynamic task execution, where the downstream task needs to be pickled and uploaded
+
+    :param file_access: The file access provider
+    :param src: The source file to upload
+    """
+    # return md5_bytes and path
+    return "", file_access.put_data(src, dest)
+
+
 @contextlib.contextmanager
 def setup_execution(
     raw_output_data_prefix: str,
@@ -206,6 +218,7 @@ def setup_execution(
     prev_checkpoint: Optional[str] = None,
     dynamic_addl_distro: Optional[str] = None,
     dynamic_dest_dir: Optional[str] = None,
+    pickled: bool = False,
 ):
     """
 
@@ -310,8 +323,11 @@ def setup_execution(
                 enabled=True,
                 destination_dir=dynamic_dest_dir,
                 distribution_location=dynamic_addl_distro,
+                pickled=pickled,
             )
         cb = cb.with_serialization_settings(ssb.build())
+        _uploader = functools.partial(_fast_register_file_uploader, file_access)
+        cb.with_fast_register_file_uploader(_uploader)
 
     with FlyteContextManager.with_context(cb) as ctx:
         yield ctx
@@ -341,6 +357,8 @@ def _execute_task(
     prev_checkpoint: Optional[str] = None,
     dynamic_addl_distro: Optional[str] = None,
     dynamic_dest_dir: Optional[str] = None,
+    pickled: bool = False,
+    pkl_file: Optional[str] = None,
 ):
     """
     This function should be called for new API tasks (those only available in 0.16 and later that leverage Python
@@ -363,9 +381,11 @@ def _execute_task(
         compressed code archive has been uploaded.
     :param dynamic_dest_dir: In the case of parent tasks executed using the 'fast' mode this captures where compressed
         code archives should be installed in the flyte task container.
+    :param pickled: If the inputs are pickled
+    :param pkl_file: The path to the pickled archive
     :return:
     """
-    if len(resolver_args) < 1:
+    if not pickled and len(resolver_args) < 1:
         raise Exception("cannot be <1")
 
     with setup_execution(
@@ -376,9 +396,17 @@ def _execute_task(
         dynamic_addl_distro,
         dynamic_dest_dir,
     ) as ctx:
-        resolver_obj = load_object_from_module(resolver)
-        # Use the resolver to load the actual task object
-        _task_def = resolver_obj.load_task(loader_args=resolver_args)
+        if pickled:
+            import gzip
+
+            import cloudpickle
+
+            with gzip.open(pkl_file, "r") as f:
+                _task_def = cloudpickle.load(f)
+        else:
+            resolver_obj = load_object_from_module(resolver)
+            # Use the resolver to load the actual task object
+            _task_def = resolver_obj.load_task(loader_args=resolver_args)
         if test:
             logger.info(
                 f"Test detected, returning. Args were {inputs} {output_prefix} {raw_output_data_prefix} {resolver} {resolver_args}"
@@ -400,6 +428,8 @@ def _execute_map_task(
     prev_checkpoint: Optional[str] = None,
     dynamic_addl_distro: Optional[str] = None,
     dynamic_dest_dir: Optional[str] = None,
+    pickled: bool = False,
+    pkl_file: Optional[str] = None,
 ):
     """
     This function should be called by map task and aws-batch task
@@ -425,13 +455,21 @@ def _execute_map_task(
         raw_output_data_prefix, checkpoint_path, prev_checkpoint, dynamic_addl_distro, dynamic_dest_dir
     ) as ctx:
         task_index = _compute_array_job_index()
-        mtr = load_object_from_module(resolver)()
-        map_task = mtr.load_task(loader_args=resolver_args, max_concurrency=max_concurrency)
 
-        # Special case for the map task resolver, we need to append the task index to the output prefix.
-        # TODO: (https://github.com/flyteorg/flyte/issues/5011) Remove legacy map task
-        if mtr.name() == "flytekit.core.legacy_map_task.MapTaskResolver":
-            output_prefix = os.path.join(output_prefix, str(task_index))
+        if pickled:
+            import gzip
+
+            import cloudpickle
+
+            with gzip.open(pkl_file, "r") as f:
+                map_task = cloudpickle.load(f)
+        else:
+            mtr = load_object_from_module(resolver)()
+            map_task = mtr.load_task(loader_args=resolver_args, max_concurrency=max_concurrency)
+            # Special case for the map task resolver, we need to append the task index to the output prefix.
+            # TODO: (https://github.com/flyteorg/flyte/issues/5011) Remove legacy map task
+            if mtr.name() == "flytekit.core.legacy_map_task.MapTaskResolver":
+                output_prefix = os.path.join(output_prefix, str(task_index))
 
         if test:
             logger.info(
@@ -475,6 +513,8 @@ def _pass_through():
 @click.option("--dynamic-addl-distro", required=False)
 @click.option("--dynamic-dest-dir", required=False)
 @click.option("--resolver", required=False)
+@click.option("--pickled", is_flag=True, default=False, help="Use this to mark if the distribution is pickled.")
+@click.option("--pkl-file", required=False, help="Location where pickled file can be found.")
 @click.argument(
     "resolver-args",
     type=click.UNPROCESSED,
@@ -491,6 +531,8 @@ def execute_task_cmd(
     dynamic_dest_dir,
     resolver,
     resolver_args,
+    pickled,
+    pkl_file,
 ):
     logger.info(get_version_message())
     # We get weird errors if there are no click echo messages at all, so emit an empty string so that unit tests pass.
@@ -516,28 +558,38 @@ def execute_task_cmd(
         dynamic_dest_dir=dynamic_dest_dir,
         checkpoint_path=checkpoint_path,
         prev_checkpoint=prev_checkpoint,
+        pickled=pickled,
+        pkl_file=pkl_file,
     )
 
 
 @_pass_through.command("pyflyte-fast-execute")
 @click.option("--additional-distribution", required=False)
 @click.option("--dest-dir", required=False)
+@click.option("--pickled", is_flag=True, default=False, help="Use this to mark if the distribution is pickled.")
 @click.argument("task-execute-cmd", nargs=-1, type=click.UNPROCESSED)
-def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_execute_cmd: List[str]):
+def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, pickled: bool, task_execute_cmd: List[str]):
     """
     Downloads a compressed code distribution specified by additional-distribution and then calls the underlying
     task execute command for the updated code.
     """
     if additional_distribution is not None:
-        if not dest_dir:
-            dest_dir = os.getcwd()
-        _download_distribution(additional_distribution, dest_dir)
+        if pickled:
+            click.secho("Received pickled object")
+            dest_file = os.path.join(os.getcwd(), "pickled.tar.gz")
+            FlyteContextManager.current_context().file_access.get_data(additional_distribution, dest_file)
+            cmd_extend = ["--pickled", "--pkl-file", dest_file]
+        else:
+            if not dest_dir:
+                dest_dir = os.getcwd()
+            _download_distribution(additional_distribution, dest_dir)
+            cmd_extend = ["--dynamic-addl-distro", additional_distribution, "--dynamic-dest-dir", dest_dir]
 
     # Insert the call to fast before the unbounded resolver args
     cmd = []
     for arg in task_execute_cmd:
         if arg == "--resolver":
-            cmd.extend(["--dynamic-addl-distro", additional_distribution, "--dynamic-dest-dir", dest_dir])
+            cmd.extend(cmd_extend)
         cmd.append(arg)
 
     # Use the commandline to run the task execute command rather than calling it directly in python code
@@ -564,6 +616,8 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
 @click.option("--resolver", required=True)
 @click.option("--checkpoint-path", required=False)
 @click.option("--prev-checkpoint", required=False)
+@click.option("--pickled", is_flag=True, default=False, help="Use this to mark if the distribution is pickled.")
+@click.option("--pkl-file", required=False, help="Location where pickled file can be found.")
 @click.argument(
     "resolver-args",
     type=click.UNPROCESSED,
@@ -581,6 +635,8 @@ def map_execute_task_cmd(
     resolver_args,
     prev_checkpoint,
     checkpoint_path,
+    pickled,
+    pkl_file,
 ):
     logger.info(get_version_message())
 
@@ -600,6 +656,8 @@ def map_execute_task_cmd(
         resolver_args=resolver_args,
         checkpoint_path=checkpoint_path,
         prev_checkpoint=prev_checkpoint,
+        pickled=pickled,
+        pkl_file=pkl_file,
     )
 
 
