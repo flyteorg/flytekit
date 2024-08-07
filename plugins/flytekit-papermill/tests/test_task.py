@@ -210,6 +210,82 @@ def test_notebook_batch_task():
     ]
 
 
+def test_repro_papermill_overriding_task_resolver_loader_args():
+    serialization_settings = flytekit.configuration.SerializationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env=None,
+        image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+    )
+
+    @task
+    def t1():
+        ...
+
+    assert t1.get_container(serialization_settings).args == [
+        "pyflyte-execute",
+        "--inputs",
+        "{{.input}}",
+        "--output-prefix",
+        "{{.outputPrefix}}",
+        "--raw-output-data-prefix",
+        "{{.rawOutputDataPrefix}}",
+        "--checkpoint-path",
+        "{{.checkpointOutputPrefix}}",
+        "--prev-checkpoint",
+        "{{.prevCheckpointPrefix}}",
+        "--resolver",
+        "flytekit.core.python_auto_container.default_task_resolver",
+        "--",
+        "task-module",
+        "tests.test_task",
+        "task-name",
+        "t1",
+    ]
+
+    assert nb_batch.get_container(serialization_settings).args == [
+        "pyflyte-execute",
+        "--inputs",
+        "{{.input}}",
+        "--output-prefix",
+        "{{.outputPrefix}}/0",
+        "--raw-output-data-prefix",
+        "{{.rawOutputDataPrefix}}",
+        "--resolver",
+        "flytekit.core.python_auto_container.default_task_resolver",
+        "--",
+        "task-module",
+        "tests.test_task",
+        "task-name",
+        "nb_batch",
+    ]
+
+    # Call t1.get_container again and confirm that task-name is now wrong
+    assert t1.get_container(serialization_settings).args == [
+        "pyflyte-execute",
+        "--inputs",
+        "{{.input}}",
+        "--output-prefix",
+        "{{.outputPrefix}}",
+        "--raw-output-data-prefix",
+        "{{.rawOutputDataPrefix}}",
+        "--checkpoint-path",
+        "{{.checkpointOutputPrefix}}",
+        "--prev-checkpoint",
+        "{{.prevCheckpointPrefix}}",
+        "--resolver",
+        "flytekit.core.python_auto_container.default_task_resolver",
+        "--",
+        "task-module",
+        "tests.test_task",
+        "task-name",
+        # Note that the task name is now `nb_batch`
+        "t1",
+    ]
+
+
+
 def test_flyte_types():
     @task
     def create_file() -> FlyteFile:
