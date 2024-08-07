@@ -1176,6 +1176,10 @@ class TypeEngine(typing.Generic[T]):
             # to account for the type erasure that happens in the case of built-in collection containers, such as
             # `list` and `dict`.
             python_type = type_hints.get(k, type(v))
+            if get_origin(python_type) is typing.Union:
+                # If the type is Union, we need to get the actual type from the instance, or the type engine will fail
+                python_type = type(v)
+
             try:
                 literal_map[k] = TypeEngine.to_literal(
                     ctx=ctx,
@@ -1497,6 +1501,7 @@ class UnionTransformer(TypeTransformer[T]):
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         python_type = get_underlying_type(python_type)
 
+
         found_res = False
         is_ambiguous = False
         res = None
@@ -1508,6 +1513,10 @@ class UnionTransformer(TypeTransformer[T]):
                 trans: TypeTransformer[T] = TypeEngine.get_transformer(t)
                 res = trans.to_literal(ctx, python_val, t, expected.union_type.variants[i])
                 res_type = _add_tag_to_type(trans.get_literal_type(t), trans.name)
+                # todo: We can make it faster
+                if t == type(python_val):
+                    return Literal(scalar=Scalar(union=Union(value=res, stored_type=res_type)))
+                
                 if found_res:
                     is_ambiguous = True
                 found_res = True
