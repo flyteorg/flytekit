@@ -323,10 +323,8 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
 
         :param mode: Open mode. For example: 'r', 'w', 'rb', 'rt', 'wb', etc.
         :type mode: str
-        :param cache_type: If caching is to be used, specifies the type.
-            If specified, one of: "blockcache", "bytes", "mmap", "readahead", "first", or "background".
-            See: https://filesystem-spec.readthedocs.io/en/latest/api.html#readbuffering.
-            This is especially useful for large file reads.
+        :param cache_type: Specifies the cache type. Possible values are "blockcache", "bytes", "mmap", "readahead", "first", or "background".
+            This is especially useful for large file reads. See https://filesystem-spec.readthedocs.io/en/latest/api.html#readbuffering.
         :type cache_type: str, optional
         :param cache_options: A Dict corresponding to the parameters for the chosen cache_type.
              Refer to fsspec caching options above.
