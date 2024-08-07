@@ -773,10 +773,10 @@ class FlyteRemote(object):
         identifiers_or_exceptions.extend(await asyncio.gather(*tasks, return_exceptions=True))
         # Check to make sure any exceptions are just registration skipped exceptions
         for ie in identifiers_or_exceptions:
+            if isinstance(ie, RegistrationSkipped):
+                logger.info(f"Skipping registration... {ie}")
+                continue
             if isinstance(ie, Exception):
-                if isinstance(ie, RegistrationSkipped):
-                    logger.info(f"Skipping registration... {ie}")
-                    continue
                 raise ie
         # serial register
         cp_other_entities = OrderedDict(filter(lambda x: not isinstance(x[1], task_models.TaskSpec), m.items()))
