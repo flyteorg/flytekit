@@ -658,7 +658,7 @@ class FlyteRemote(object):
                     raise RegistrationSkipped(f"Remote task/Workflow {cp_entity.name} is not registrable.")
             else:
                 logger.debug(f"Skipping registration of remote entity: {cp_entity.name}")
-                raise RegistrationSkipped(f"Remote task/Workflow {cp_entity.name} is not registrable.")
+                raise RegistrationSkipped(f"Remote entity {cp_entity.name} is not registrable.")
 
         if isinstance(
             cp_entity,
@@ -768,13 +768,23 @@ class FlyteRemote(object):
                     functools.partial(self.raw_register, cp_entity, serialization_settings, version, og_entity=entity),
                 )
             )
-        ident = []
-        ident.extend(await asyncio.gather(*tasks))
+
+        identifiers_or_exceptions = []
+        identifiers_or_exceptions.extend(await asyncio.gather(*tasks, return_exceptions=True))
+        # Check to make sure any exceptions are just registration skipped exceptions
+        for ie in identifiers_or_exceptions:
+            if isinstance(ie, RegistrationSkipped):
+                logger.info(f"Skipping registration... {ie}")
+                continue
+            if isinstance(ie, Exception):
+                raise ie
         # serial register
         cp_other_entities = OrderedDict(filter(lambda x: not isinstance(x[1], task_models.TaskSpec), m.items()))
         for entity, cp_entity in cp_other_entities.items():
-            ident.append(self.raw_register(cp_entity, serialization_settings, version, og_entity=entity))
-        return ident[-1]
+            identifiers_or_exceptions.append(
+                self.raw_register(cp_entity, serialization_settings, version, og_entity=entity)
+            )
+        return identifiers_or_exceptions[-1]
 
     def register_task(
         self,
