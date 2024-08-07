@@ -175,7 +175,7 @@ def resolve_attr_path_in_dict(d: dict, attr_path: List[Union[str, int]]) -> Any:
     for attr in attr_path:
         if attr not in curr_val:
             raise FlytePromiseAttributeResolveException(
-                f"Failed to resolve attribute path {attr_path} in dict {cur｀r_val}, attribute {attr} not found"
+                f"Failed to resolve attribute path {attr_path} in dict {curr_val}, attribute {attr} not found"
             )
         curr_val = curr_val[attr]
     return curr_val
