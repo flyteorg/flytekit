@@ -233,7 +233,7 @@ class HorovodJob(object):
         verbose: Optional flag indicating whether to enable verbose logging (default: False).
         log_level: Optional string specifying the log level (default: "INFO").
         discovery_script_path: Path to the discovery script used for host discovery (default: "/etc/mpi/discover_hosts.sh").
-        elastic_timeout: horovod eslastic timeout in second (default: 1200).
+        elastic_timeout: horovod elastic timeout in second (default: 1200).
         num_launcher_replicas: [DEPRECATED] The number of launcher server replicas to use. This argument is deprecated. Please use launcher.replicas instead.
         num_workers: [DEPRECATED] The number of worker replicas to spawn in the cluster for this job. Please use worker.replicas instead.
     """
