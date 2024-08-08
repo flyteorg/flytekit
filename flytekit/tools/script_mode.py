@@ -165,14 +165,20 @@ def add_imported_modules_from_source(source_path: str, destination: str, modules
                 continue
 
         except ValueError:
-            # ValueError is raised by windows if the paths are not from the sae drive
+            # ValueError is raised by windows if the paths are not from the same drive
             # If the files are not in the same drive, then the mod_file is not
             # in the site-packages or bin directory.
             pass
 
-        common_path = os.path.commonpath([mod_file, source_path])
-        if common_path != source_path:
-            # Do not upload files that do not share a common directory with the source
+        try:
+            common_path = os.path.commonpath([mod_file, source_path])
+            if common_path != source_path:
+                # Do not upload files that do not share a common directory with the source
+                continue
+        except ValueError:
+            # ValueError is raised by windows if the paths are not from the same drive
+            # If they are not in the same directory, then they do not share a common path,
+            # so we do not upload the file.
             continue
 
         relative_path = os.path.relpath(mod_file, start=source_path)
