@@ -155,6 +155,9 @@ def add_imported_modules_from_source(source_path: str, destination: str, modules
         if mod_file is None:
             continue
 
+        # Check to see if mod_file is in site_packages of bin_directory, which are
+        # installed packages & libraries that are not user files. This happens when
+        # there is a virtualenv like `.venv` in the working directory.
         try:
             if os.path.commonpath(site_packages + [mod_file]) in site_packages_set:
                 # Do not upload files from site-packages
@@ -166,7 +169,7 @@ def add_imported_modules_from_source(source_path: str, destination: str, modules
 
         except ValueError:
             # ValueError is raised by windows if the paths are not from the same drive
-            # If the files are not in the same drive, then the mod_file is not
+            # If the files are not in the same drive, then mod_file is not
             # in the site-packages or bin directory.
             pass
 
