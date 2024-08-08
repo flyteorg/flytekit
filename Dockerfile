@@ -27,6 +27,7 @@ RUN apt-get update && apt-get install build-essential -y \
     && apt-get clean autoclean \
     && apt-get autoremove --yes \
     && rm -rf /var/lib/{apt,dpkg,cache,log}/ \
+    && rm -rf /root/.cache/pip \
     && useradd -u 1000 flytekit \
     && chown flytekit: /root \
     && chown flytekit: /home \
