@@ -188,18 +188,23 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
         return ""
 
     @classmethod
-    def new_remote(cls) -> FlyteDirectory:
+    def new_remote(cls, stem: typing.Optional[str] = None, alt: typing.Optional[str] = None) -> FlyteDirectory:
         """
         Create a new FlyteDirectory object using the currently configured default remote in the context (i.e.
         the raw_output_prefix configured in the current FileAccessProvider object in the context).
         This is used if you explicitly have a folder somewhere that you want to create files under.
         If you want to write a whole folder, you can let your task return a FlyteDirectory object,
         and let flytekit handle the uploading.
+
+        :param stem: A stem to append to the path as the final prefix "directory".
+        :param alt: An alternate first member of the prefix to use instead of the default.
+        :return FlyteDirectory: A new FlyteDirectory object that points to a remote location.
         """
         ctx = FlyteContextManager.current_context()
-        r = ctx.file_access.get_random_string()
-        d = ctx.file_access.join(ctx.file_access.raw_output_prefix, r)
-        return FlyteDirectory(path=d)
+        if stem and Path(stem).suffix:
+            raise ValueError("Stem should not have a file extension.")
+        remote_path = ctx.file_access.generate_new_custom_path(alt=alt, stem=stem)
+        return cls(path=remote_path)
 
     def __class_getitem__(cls, item: typing.Union[typing.Type, str]) -> typing.Type[FlyteDirectory]:
         if item is None:

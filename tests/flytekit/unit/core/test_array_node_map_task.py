@@ -2,6 +2,7 @@ import functools
 import typing
 from collections import OrderedDict
 from typing import List
+from typing_extensions import Annotated
 
 import pytest
 
@@ -11,6 +12,7 @@ from flytekit.core import context_manager
 from flytekit.core.array_node_map_task import ArrayNodeMapTask, ArrayNodeMapTaskResolver
 from flytekit.core.task import TaskMetadata
 from flytekit.core.type_engine import TypeEngine
+from flytekit.extras.accelerators import GPUAccelerator
 from flytekit.tools.translator import get_serializable
 from flytekit.types.pickle import BatchSize
 
@@ -77,7 +79,7 @@ def test_remote_execution(serialization_settings):
 
 def test_map_task_with_pickle():
     @task
-    def say_hello(name: typing.Annotated[typing.Any, BatchSize(10)]) -> str:
+    def say_hello(name: Annotated[typing.Any, BatchSize(10)]) -> str:
         return f"hello {name}!"
 
     with pytest.raises(ValueError, match="Choosing a BatchSize for map tasks inputs is not supported."):
@@ -381,3 +383,23 @@ def test_serialization_metadata2(serialization_settings):
     task_spec = od[arraynode_maptask]
     assert task_spec.template.metadata.retries.retries == 2
     assert task_spec.template.metadata.interruptible
+
+
+def test_serialization_extended_resources(serialization_settings):
+    @task(
+        accelerator=GPUAccelerator("test_gpu"),
+    )
+    def t1(a: int) -> int:
+        return a + 1
+
+    arraynode_maptask = map_task(t1)
+
+    @workflow
+    def wf(x: typing.List[int]):
+        return arraynode_maptask(a=x)
+
+    od = OrderedDict()
+    get_serializable(od, serialization_settings, wf)
+    task_spec = od[arraynode_maptask]
+
+    assert task_spec.template.extended_resources.gpu_accelerator.device == "test_gpu"

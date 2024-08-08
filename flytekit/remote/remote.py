@@ -658,7 +658,7 @@ class FlyteRemote(object):
                     raise RegistrationSkipped(f"Remote task/Workflow {cp_entity.name} is not registrable.")
             else:
                 logger.debug(f"Skipping registration of remote entity: {cp_entity.name}")
-                raise RegistrationSkipped(f"Remote task/Workflow {cp_entity.name} is not registrable.")
+                raise RegistrationSkipped(f"Remote entity {cp_entity.name} is not registrable.")
 
         if isinstance(
             cp_entity,
@@ -667,6 +667,7 @@ class FlyteRemote(object):
                 workflow_model.WorkflowNode,
                 workflow_model.BranchNode,
                 workflow_model.TaskNode,
+                workflow_model.ArrayNode,
             ),
         ):
             return None
@@ -767,13 +768,23 @@ class FlyteRemote(object):
                     functools.partial(self.raw_register, cp_entity, serialization_settings, version, og_entity=entity),
                 )
             )
-        ident = []
-        ident.extend(await asyncio.gather(*tasks))
+
+        identifiers_or_exceptions = []
+        identifiers_or_exceptions.extend(await asyncio.gather(*tasks, return_exceptions=True))
+        # Check to make sure any exceptions are just registration skipped exceptions
+        for ie in identifiers_or_exceptions:
+            if isinstance(ie, RegistrationSkipped):
+                logger.info(f"Skipping registration... {ie}")
+                continue
+            if isinstance(ie, Exception):
+                raise ie
         # serial register
         cp_other_entities = OrderedDict(filter(lambda x: not isinstance(x[1], task_models.TaskSpec), m.items()))
         for entity, cp_entity in cp_other_entities.items():
-            ident.append(self.raw_register(cp_entity, serialization_settings, version, og_entity=entity))
-        return ident[-1]
+            identifiers_or_exceptions.append(
+                self.raw_register(cp_entity, serialization_settings, version, og_entity=entity)
+            )
+        return identifiers_or_exceptions[-1]
 
     def register_task(
         self,
@@ -900,14 +911,14 @@ class FlyteRemote(object):
         extra_headers = self.get_extra_headers_for_protocol(upload_location.native_url)
         extra_headers.update(upload_location.headers)
         encoded_md5 = b64encode(md5_bytes)
-        with open(str(to_upload), "+rb") as local_file:
-            content = local_file.read()
-            content_length = len(content)
+        local_file_path = str(to_upload)
+        content_length = os.stat(local_file_path).st_size
+        with open(local_file_path, "+rb") as local_file:
             headers = {"Content-Length": str(content_length), "Content-MD5": encoded_md5}
             headers.update(extra_headers)
             rsp = requests.put(
                 upload_location.signed_url,
-                data=content,
+                data=local_file,  # NOTE: We pass the file object directly to stream our upload.
                 headers=headers,
                 verify=False
                 if self._config.platform.insecure_skip_verify is True
