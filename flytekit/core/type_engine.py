@@ -487,12 +487,17 @@ class DataclassTransformer(TypeTransformer[object]):
 
         ts = TypeStructure(tag="", dataclass_type=literal_type)
 
-        return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT, metadata=schema, structure=ts)
+        return _type_models.LiteralType(simple=_type_models.SimpleType.JSON, metadata=schema, structure=ts)
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
+        import msgpack
+
+        from flytekit.models.literals import Json
+
         if isinstance(python_val, dict):
             json_str = json.dumps(python_val)
-            return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))
+            json_bytes = msgpack.dumps(json_str)
+            return Literal(scalar=Scalar(json=Json(value=json_bytes)))
 
         if not dataclasses.is_dataclass(python_val):
             raise TypeTransformerFailedError(
@@ -519,7 +524,8 @@ class DataclassTransformer(TypeTransformer[object]):
                 f" and implement _serialize and _deserialize methods."
             )
 
-        return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))  # type: ignore
+        json_bytes = msgpack.dumps(json_str)
+        return Literal(scalar=Scalar(json=Json(value=json_bytes)))
 
     def _get_origin_type_in_annotation(self, python_type: Type[T]) -> Type[T]:
         # dataclass will try to hash python type when calling dataclass.schema(), but some types in the annotation is
@@ -653,13 +659,21 @@ class DataclassTransformer(TypeTransformer[object]):
         return dc
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
+        import msgpack
+
         if not dataclasses.is_dataclass(expected_python_type):
             raise TypeTransformerFailedError(
                 f"{expected_python_type} is not of type @dataclass, only Dataclasses are supported for "
                 "user defined datatypes in Flytekit"
             )
 
-        json_str = _json_format.MessageToJson(lv.scalar.generic)
+        scalar = lv.scalar
+        json_str = ""
+        if scalar.json:
+            json_bytes = lv.scalar.json.value
+            json_str = msgpack.loads(json_bytes)
+        elif scalar.generic:
+            json_str = _json_format.MessageToJson(scalar.generic)
 
         # The function looks up or creates a JSONDecoder specifically designed for the object's type.
         # This decoder is then used to convert a JSON string into a data class.
@@ -670,9 +684,12 @@ class DataclassTransformer(TypeTransformer[object]):
             self._decoder[expected_python_type] = decoder
 
         dc = decoder.decode(json_str)
-
         dc = self._fix_structured_dataset_type(expected_python_type, dc)
-        return self._fix_dataclass_int(expected_python_type, dc)
+
+        if scalar.generic:
+            self._fix_dataclass_int(expected_python_type, dc)
+
+        return dc
 
     # This ensures that calls with the same literal type returns the same dataclass. For example, `pyflyte run``
     # command needs to call guess_python_type to get the TypeEngine-derived dataclass. Without caching here, separate
@@ -1637,6 +1654,28 @@ class DictTransformer(TypeTransformer[dict]):
             raise e
 
     @staticmethod
+    def dict_to_json_literal(ctx: FlyteContext, v: dict, allow_pickle: bool) -> Literal:
+        """
+        Creates a flyte-specific ``Literal`` value from a native python dictionary.
+        """
+        import msgpack
+
+        from flytekit.models.literals import Json
+        from flytekit.types.pickle import FlytePickle
+
+        try:
+            json_str = json.dumps(v)
+            json_bytes = msgpack.dumps(json_str)
+            return Literal(scalar=Scalar(json=Json(value=json_bytes)), metadata={"format": "json"})
+        except TypeError as e:
+            if allow_pickle:
+                remote_path = FlytePickle.to_pickle(ctx, v)
+                json_str = json.dumps({"pickle_file": remote_path})
+                json_bytes = msgpack.dumps(json_str)
+                return Literal(scalar=Scalar(json=Json(value=json_bytes)), metadata={"format": "pickle"})
+            raise e
+
+    @staticmethod
     def is_pickle(python_type: Type[dict]) -> typing.Tuple[bool, Type]:
         base_type, *metadata = DictTransformer.extract_types_or_metadata(python_type)
 
@@ -1670,7 +1709,7 @@ class DictTransformer(TypeTransformer[dict]):
                     return _type_models.LiteralType(map_value_type=sub_type)
                 except Exception as e:
                     raise ValueError(f"Type of Generic List type is not supported, {e}")
-        return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT)
+        return _type_models.LiteralType(simple=_type_models.SimpleType.JSON)
 
     def to_literal(
         self, ctx: FlyteContext, python_val: typing.Any, python_type: Type[dict], expected: LiteralType
@@ -1684,8 +1723,11 @@ class DictTransformer(TypeTransformer[dict]):
         if get_origin(python_type) is Annotated:
             allow_pickle, base_type = DictTransformer.is_pickle(python_type)
 
-        if expected and expected.simple and expected.simple == SimpleType.STRUCT:
-            return self.dict_to_generic_literal(ctx, python_val, allow_pickle)
+        if expected and expected.simple:
+            if expected.simple == SimpleType.STRUCT:
+                return self.dict_to_generic_literal(ctx, python_val, allow_pickle)
+            elif expected.simple == SimpleType.JSON:
+                return self.dict_to_json_literal(ctx, python_val, allow_pickle)
 
         lit_map = {}
         for k, v in python_val.items():
@@ -1720,17 +1762,36 @@ class DictTransformer(TypeTransformer[dict]):
 
         # for empty generic we have to explicitly test for lv.scalar.generic is not None as empty dict
         # evaluates to false
-        if lv and lv.scalar and lv.scalar.generic is not None:
-            if lv.metadata and lv.metadata.get("format", None) == "pickle":
-                from flytekit.types.pickle import FlytePickle
+        if lv and lv.scalar:
+            if lv.scalar.generic is not None:
+                if lv.metadata and lv.metadata.get("format", None) == "pickle":
+                    from flytekit.types.pickle import FlytePickle
 
-                uri = json.loads(_json_format.MessageToJson(lv.scalar.generic)).get("pickle_file")
-                return FlytePickle.from_pickle(uri)
+                    uri = json.loads(_json_format.MessageToJson(lv.scalar.generic)).get("pickle_file")
+                    return FlytePickle.from_pickle(uri)
 
-            try:
-                return json.loads(_json_format.MessageToJson(lv.scalar.generic))
-            except TypeError:
-                raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
+                try:
+                    return json.loads(_json_format.MessageToJson(lv.scalar.generic))
+                except TypeError:
+                    raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
+            elif lv.scalar.json is not None:
+                import msgpack
+
+                if lv.metadata and lv.metadata.get("format", None) == "pickle":
+                    from flytekit.types.pickle import FlytePickle
+
+                    json_bytes = lv.scalar.json.value
+                    json_str = msgpack.loads(json_bytes)
+                    uri = json.loads(json_str).get("pickle_file")
+                    return FlytePickle.from_pickle(uri)
+
+                try:
+                    json_bytes = lv.scalar.json.value
+                    json_str = msgpack.loads(json_bytes)
+                    return json.loads(json_str)
+
+                except TypeError:
+                    raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
 
         raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
 

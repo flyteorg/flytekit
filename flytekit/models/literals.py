@@ -298,6 +298,32 @@ class Void(_common.FlyteIdlEntity):
         return cls()
 
 
+class Json(_common.FlyteIdlEntity):
+    def __init__(self, value: bytes):
+        self._value = value
+
+    @property
+    def value(self):
+        """
+        :rtype: bytes
+        """
+        return self._value
+
+    def to_flyte_idl(self):
+        """
+        :rtype: flyteidl.core.literals_pb2.Json
+        """
+        return _literals_pb2.Json(value=self.value)
+
+    @classmethod
+    def from_flyte_idl(cls, proto):
+        """
+        :param flyteidl.core.literals_pb2.Json proto:
+        :rtype: Json
+        """
+        return cls(value=proto.value)
+
+
 class BindingDataMap(_common.FlyteIdlEntity):
     def __init__(self, bindings):
         """
@@ -712,6 +738,7 @@ class Scalar(_common.FlyteIdlEntity):
         error: Error = None,
         generic: Struct = None,
         structured_dataset: StructuredDataset = None,
+        json: Json = None,
     ):
         """
         Scalar wrapper around Flyte types.  Only one can be specified.
@@ -724,6 +751,7 @@ class Scalar(_common.FlyteIdlEntity):
         :param Error error:
         :param google.protobuf.struct_pb2.Struct generic:
         :param StructuredDataset structured_dataset:
+        :param Json json:
         """
 
         self._primitive = primitive
@@ -735,6 +763,7 @@ class Scalar(_common.FlyteIdlEntity):
         self._error = error
         self._generic = generic
         self._structured_dataset = structured_dataset
+        self._json = json
 
     @property
     def primitive(self):
@@ -797,6 +826,10 @@ class Scalar(_common.FlyteIdlEntity):
         return self._structured_dataset
 
     @property
+    def json(self) -> Json:
+        return self._json
+
+    @property
     def value(self):
         """
         Returns whichever value is set
@@ -812,6 +845,7 @@ class Scalar(_common.FlyteIdlEntity):
             or self.error
             or self.generic
             or self.structured_dataset
+            or self.json
         )
 
     def to_flyte_idl(self):
@@ -828,6 +862,7 @@ class Scalar(_common.FlyteIdlEntity):
             error=self.error.to_flyte_idl() if self.error is not None else None,
             generic=self.generic,
             structured_dataset=self.structured_dataset.to_flyte_idl() if self.structured_dataset is not None else None,
+            json=self.json.to_flyte_idl() if self.json is not None else None,
         )
 
     @classmethod
@@ -849,6 +884,7 @@ class Scalar(_common.FlyteIdlEntity):
             structured_dataset=StructuredDataset.from_flyte_idl(pb2_object.structured_dataset)
             if pb2_object.HasField("structured_dataset")
             else None,
+            json=Json.from_flyte_idl(pb2_object.json) if pb2_object.HasField("json") else None,
         )
 
 

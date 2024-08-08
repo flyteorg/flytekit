@@ -448,9 +448,9 @@ def test_dir_with_batch_size():
 def test_dict_transformer():
     d = DictTransformer()
 
-    def assert_struct(lit: LiteralType):
+    def assert_json(lit: LiteralType):
         assert lit is not None
-        assert lit.simple == SimpleType.STRUCT
+        assert lit.simple == SimpleType.JSON
 
     def recursive_assert(
         lit: LiteralType,
@@ -466,9 +466,9 @@ def test_dict_transformer():
         recursive_assert(lit.map_value_type, expected, expected_depth, curr_depth + 1)
 
     # Type inference
-    assert_struct(d.get_literal_type(dict))
-    assert_struct(d.get_literal_type(Annotated[dict, kwtypes(allow_pickle=True)]))
-    assert_struct(d.get_literal_type(typing.Dict[int, int]))
+    assert_json(d.get_literal_type(dict))
+    assert_json(d.get_literal_type(Annotated[dict, kwtypes(allow_pickle=True)]))
+    assert_json(d.get_literal_type(typing.Dict[int, int]))
     recursive_assert(d.get_literal_type(typing.Dict[str, str]), LiteralType(simple=SimpleType.STRING))
     recursive_assert(
         d.get_literal_type(typing.Dict[str, int]),
@@ -488,7 +488,7 @@ def test_dict_transformer():
     )
     recursive_assert(
         d.get_literal_type(typing.Dict[str, dict]),
-        LiteralType(simple=SimpleType.STRUCT),
+        LiteralType(simple=SimpleType.JSON),
     )
     recursive_assert(
         d.get_literal_type(typing.Dict[str, typing.Dict[str, str]]),
@@ -497,7 +497,7 @@ def test_dict_transformer():
     )
     recursive_assert(
         d.get_literal_type(typing.Dict[str, typing.Dict[int, str]]),
-        LiteralType(simple=SimpleType.STRUCT),
+        LiteralType(simple=SimpleType.JSON),
         expected_depth=2,
     )
     recursive_assert(
@@ -507,18 +507,18 @@ def test_dict_transformer():
     )
     recursive_assert(
         d.get_literal_type(typing.Dict[str, typing.Dict[str, typing.Dict[str, dict]]]),
-        LiteralType(simple=SimpleType.STRUCT),
+        LiteralType(simple=SimpleType.JSON),
         expected_depth=3,
     )
     recursive_assert(
         d.get_literal_type(typing.Dict[str, typing.Dict[str, typing.Dict[int, dict]]]),
-        LiteralType(simple=SimpleType.STRUCT),
+        LiteralType(simple=SimpleType.JSON),
         expected_depth=2,
     )
 
     ctx = FlyteContext.current_context()
 
-    lit = d.to_literal(ctx, {}, typing.Dict, LiteralType(SimpleType.STRUCT))
+    lit = d.to_literal(ctx, {}, typing.Dict, LiteralType(simple=SimpleType.STRUCT))
     pv = d.to_python_value(ctx, lit, typing.Dict)
     assert pv == {}
 
@@ -541,14 +541,14 @@ def test_dict_transformer():
             ctx,
             {"x": datetime.datetime(2024, 5, 5)},
             dict,
-            LiteralType(simple=SimpleType.STRUCT),
+            LiteralType(simple=SimpleType.JSON),
         )
 
     lv = d.to_literal(
         ctx,
         {"x": datetime.datetime(2024, 5, 5)},
         Annotated[dict, kwtypes(allow_pickle=True)],
-        LiteralType(simple=SimpleType.STRUCT),
+        LiteralType(simple=SimpleType.JSON),
     )
     assert lv.metadata["format"] == "pickle"
     assert d.to_python_value(ctx, lv, dict) == {"x": datetime.datetime(2024, 5, 5)}
@@ -563,7 +563,7 @@ def test_dict_transformer():
         ctx,
         {"x": "hello"},
         dict,
-        LiteralType(simple=SimpleType.STRUCT),
+        LiteralType(simple=SimpleType.JSON),
     )
 
     lv._metadata = None
