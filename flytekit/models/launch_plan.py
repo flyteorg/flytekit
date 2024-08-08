@@ -1,4 +1,5 @@
 import typing
+from datetime import datetime, timezone
 
 from flyteidl.admin import launch_plan_pb2 as _launch_plan
 from google.protobuf.any_pb2 import Any
@@ -317,16 +318,18 @@ class LaunchPlanState(object):
 
 
 class LaunchPlanClosure(_common.FlyteIdlEntity):
-    def __init__(self, state, expected_inputs, expected_outputs):
+    def __init__(self, state, expected_inputs, expected_outputs, created_at=None):
         """
         :param LaunchPlanState state: Indicate the Launch plan phase
         :param flytekit.models.interface.ParameterMap expected_inputs: Indicates the set of inputs to execute
             the Launch plan
         :param flytekit.models.interface.VariableMap expected_outputs: Indicates the set of outputs from the Launch plan
+        :param datetime.datetime created_at: Indicates the time at which the Launch plan was created
         """
         self._state = state
         self._expected_inputs = expected_inputs
         self._expected_outputs = expected_outputs
+        self._created_at = created_at
 
     @property
     def state(self):
@@ -349,15 +352,22 @@ class LaunchPlanClosure(_common.FlyteIdlEntity):
         """
         return self._expected_outputs
 
+    @property
+    def created_at(self) -> typing.Optional[datetime]:
+        return self._created_at
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.launch_plan_pb2.LaunchPlanClosure
         """
-        return _launch_plan.LaunchPlanClosure(
+        obj = _launch_plan.LaunchPlanClosure(
             state=self.state,
             expected_inputs=self.expected_inputs.to_flyte_idl(),
             expected_outputs=self.expected_outputs.to_flyte_idl(),
         )
+        if self.created_at is not None:
+            obj.created_at.FromDatetime(self.created_at.astimezone(timezone.utc).replace(tzinfo=None))
+        return obj
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -369,6 +379,9 @@ class LaunchPlanClosure(_common.FlyteIdlEntity):
             pb2_object.state,
             _interface.ParameterMap.from_flyte_idl(pb2_object.expected_inputs),
             _interface.VariableMap.from_flyte_idl(pb2_object.expected_outputs),
+            created_at=pb2_object.created_at.ToDatetime().replace(tzinfo=timezone.utc)
+            if pb2_object.HasField("created_at")
+            else None,
         )
 
 

@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from itertools import product
 
 import pytest
@@ -301,6 +301,17 @@ def test_task(task_closure):
     assert obj.id.version == "version"
     assert obj.closure == task_closure
     assert obj == task.Task.from_flyte_idl(obj.to_flyte_idl())
+
+
+@pytest.mark.parametrize("task_template", parameterizers.LIST_OF_TASK_TEMPLATES)
+@pytest.mark.parametrize("created_at_value", [None, datetime(2018, 1, 1, tzinfo=timezone.utc)])
+def test_task_closure(task_template, created_at_value):
+    obj = task.TaskClosure(task.CompiledTask(task_template), created_at=created_at_value)
+    assert obj.created_at == created_at_value
+    obj2 = task.TaskClosure.from_flyte_idl(obj.to_flyte_idl())
+    assert obj2.created_at == created_at_value
+    assert obj.compiled_task == obj2.compiled_task
+    assert obj == obj2
 
 
 @pytest.mark.parametrize("resources", parameterizers.LIST_OF_RESOURCES)
