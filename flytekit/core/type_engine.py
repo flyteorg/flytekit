@@ -683,10 +683,14 @@ class DataclassTransformer(TypeTransformer[object]):
             decoder = JSONDecoder(expected_python_type)
             self._decoder[expected_python_type] = decoder
 
-        dc = decoder.decode(json_str)
 
+        dc = decoder.decode(json_str)
         dc = self._fix_structured_dataset_type(expected_python_type, dc)
-        return self._fix_dataclass_int(expected_python_type, dc)
+
+        if scalar.generic:
+            self._fix_dataclass_int(expected_python_type, dc)
+
+        return dc
 
     # This ensures that calls with the same literal type returns the same dataclass. For example, `pyflyte run``
     # command needs to call guess_python_type to get the TypeEngine-derived dataclass. Without caching here, separate
