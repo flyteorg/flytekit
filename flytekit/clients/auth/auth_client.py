@@ -352,9 +352,11 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
         """
         # In the absence of globally-set token values, initiate the token request flow
         with self._lock:
+            # Clear cache if it's been more than 60 seconds since the last check
             cache_ttl_s = 60
             if self._cached_credentials_ts is not None and self._cached_credentials_ts + cache_ttl_s < time.monotonic():
                 self._cached_credentials = None
+
             if self._cached_credentials is not None:
                 return self._cached_credentials
             q = Queue()
