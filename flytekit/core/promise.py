@@ -378,6 +378,7 @@ class Promise(object):
         var: str,
         val: Union[NodeOutput, _literals_models.Literal],
         type: typing.Optional[_type_models.LiteralType] = None,
+        awaitable: bool = False,
     ):
         self._var = var
         self._promise_ready = True
@@ -389,6 +390,7 @@ class Promise(object):
             self._ref = val
             self._promise_ready = False
             self._val = None
+        self._awaitable = awaitable
 
     def __hash__(self):
         return hash(id(self))
@@ -598,6 +600,151 @@ class Promise(object):
 
         return new_promise
 
+    def __await__(self):
+        if not self._awaitable:
+            raise RuntimeError("Promise is not awaitable or is already awaited")
+        self._awaitable = False
+        yield
+        return self
+
+class AsyncPromise(object):
+    """
+    This object is a wrapper and exists for three main reasons. Let's assume we're dealing with a task like ::
+
+        @task
+        def t1() -> (int, str): ...
+
+    #. Handling the duality between compilation and local execution - when the task function is run in a local execution
+       mode inside a workflow function, a Python integer and string are produced. When the task is being compiled as
+       part of the workflow, the task call creates a Node instead, and the task returns two Promise objects that
+       point to that Node.
+    #. One needs to be able to call ::
+
+          x = t1().with_overrides(...)
+
+       If the task returns an integer or a ``(int, str)`` tuple like ``t1`` above, calling ``with_overrides`` on the
+       result would throw an error. This Promise object adds that.
+    #. Assorted handling for conditionals.
+    """
+
+    # TODO: Currently, NodeOutput we're creating is the slimmer core package Node class, but since only the
+    #  id is used, it's okay for now. Let's clean all this up though.
+    def __init__(
+        self,
+        promise: Union[Promise, VoidPromise]
+    ):
+        self._promise = promise
+        self._awaited = False
+
+    def __await__(self):
+        if self._awaited:
+            raise RuntimeError("Cannot await an already awaited Promise")
+        self._awaited = True
+        yield
+        return self._promise
+
+    def __hash__(self):
+        return self._promise.__hash__()
+
+    def __rshift__(self, other: Union[Promise, VoidPromise]):
+        return self._promise.__rshift__(other)
+
+    def with_var(self, new_var: str) -> Promise:
+        return self._promise.with_var(new_var)
+
+    @property
+    def is_ready(self) -> bool:
+        return self._promise.is_ready
+
+    @property
+    def val(self) -> _literals_models.Literal:
+        return self._promise.val
+
+    @property
+    def ref(self) -> NodeOutput:
+       return self._promise.ref
+
+    @property
+    def var(self) -> str:
+        """
+        Name of the variable bound with this promise
+        """
+        return self._promise.var
+
+    @property
+    def attr_path(self) -> List[Union[str, int]]:
+        """
+        The attribute path the promise will be resolved with.
+        :rtype: List[Union[str, int]]
+        """
+        return self._promise.attr_path
+
+    def eval(self) -> Any:
+        return self._promise.eval()
+
+    def is_(self, v: bool) -> ComparisonExpression:
+        return self._promise.is_(v)
+
+    def is_false(self) -> ComparisonExpression:
+        return self._promise.is_false()
+
+    def is_true(self) -> ComparisonExpression:
+        return self._promise.is_true()
+
+    def is_none(self) -> ComparisonExpression:
+        return self._promise.is_none()
+
+    def __eq__(self, other) -> ComparisonExpression:  # type: ignore
+        return self._promise.__eq__(other)
+
+    def __ne__(self, other) -> ComparisonExpression:  # type: ignore
+        return self._promise.__ne__(other)
+
+    def __gt__(self, other) -> ComparisonExpression:
+        return self._promise.__gt__(other)
+
+    def __ge__(self, other) -> ComparisonExpression:
+        return self._promise.__ge__(other)
+
+    def __lt__(self, other) -> ComparisonExpression:
+        return self._promise.__lt__(other)
+
+    def __le__(self, other) -> ComparisonExpression:
+        return self._promise.__le__(other)
+
+    def __bool__(self):
+        self._promise.__bool__()
+
+    def __and__(self, other):
+        self._promise.__and__(other)
+
+    def __or__(self, other):
+        self._promise.__or__(other)
+
+    def with_overrides(self, *args, **kwargs):
+        return self._promise.with_overrides(*args, **kwargs)
+
+    def __repr__(self):
+        return self._promise.__repr__()
+
+    def __str__(self):
+        return self._promise.__str__()
+
+    def deepcopy(self) -> Promise:
+        return self._promise.deepcopy() 
+
+    def __getitem__(self, key) -> Promise:
+        return self._promise.__getitem__(key)
+
+    def __iter__(self):
+        self._promise.__iter__()
+
+    def __getattr__(self, key) -> Promise:
+        return self._promise.__getattr__(key)
+
+    def _append_attr(self, key) -> Promise:
+        return self._promise._append_attr(key)
+
 
 def create_native_named_tuple(
     ctx: FlyteContext,
@@ -657,7 +804,7 @@ def create_native_named_tuple(
 def create_task_output(
     promises: Optional[Union[List[Promise], Promise]],
     entity_interface: Optional[Interface] = None,
-) -> Optional[Union[Tuple[Promise], Promise]]:
+) -> Optional[Union[Tuple[Promise], Promise, AsyncPromise]]:
     # TODO: Add VoidPromise here to simplify things at call site. Consider returning for [] below as well instead of
     #   raising an exception.
     if promises is None:
@@ -902,6 +1049,12 @@ class VoidPromise(object):
     def __repr__(self):
         raise AssertionError(f"Task {self._task_name} returns nothing, NoneType return cannot be used")
 
+    def __await__(self):
+        if not self._awaitable:
+            raise RuntimeError("Promise is not awaitable or is already awaited")
+        self._awaitable = False
+        yield
+        return self
 
 class NodeOutput(type_models.OutputReference):
     def __init__(self, node: Node, var: str, attr_path: Optional[List[Union[str, int]]] = None):
@@ -1080,7 +1233,7 @@ def create_and_link_node(
     ctx: FlyteContext,
     entity: SupportsNodeCreation,
     **kwargs,
-) -> Optional[Union[Tuple[Promise], Promise, VoidPromise]]:
+) -> Optional[Union[Tuple[Union[Promise]], Promise, VoidPromise]]:
     """
     This method is used to generate a node with bindings within a flytekit workflow. this is useful to traverse the
     workflow using regular python interpreter and generate nodes and promises whenever an execution is encountered
@@ -1169,15 +1322,21 @@ def create_and_link_node(
         flyte_entity=entity,
     )
     ctx.compilation_state.add_node(flytekit_node)
-
+    from flytekit.core.task import PythonFunctionTask
+    from flytekit.core.array_node_map_task import ArrayNodeMapTask
+    python_task = isinstance(entity, PythonFunctionTask) and inspect.iscoroutinefunction(entity.task_function)
+    map_function_task = isinstance(entity, ArrayNodeMapTask) and inspect.iscoroutinefunction(entity._run_task.task_function)
+    awaitable = python_task or map_function_task
     if len(typed_interface.outputs) == 0:
-        return VoidPromise(entity.name, NodeOutput(node=flytekit_node, var="placeholder"))
+        return VoidPromise(entity.name, NodeOutput(node=flytekit_node, var="placeholder"), awaitable=awaitable)
+        # return AsyncPromise(VoidPromise(entity.name, NodeOutput(node=flytekit_node, var="placeholder")))
 
     # Create a node output object for each output, they should all point to this node of course.
-    node_outputs = []
+    node_outputs: List[Union[Promise, AsyncPromise]] = []
     for output_name, output_var_model in typed_interface.outputs.items():
+        
         node_outputs.append(
-            Promise(output_name, NodeOutput(node=flytekit_node, var=output_name), output_var_model.type)
+            Promise(output_name, NodeOutput(node=flytekit_node, var=output_name), output_var_model.type, awaitable=awaitable)
         )
         # Don't print this, it'll crash cuz sdk_node._upstream_node_ids might be None, but idl code will break
 
@@ -1192,7 +1351,7 @@ class LocallyExecutable(Protocol):
 
 def flyte_entity_call_handler(
     entity: SupportsNodeCreation, *args, **kwargs
-) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, Coroutine, None]:
+) -> Union[Tuple[Promise], Promise, VoidPromise, AsyncPromise, Tuple, Coroutine, None]:
     """
     This function is the call handler for tasks, workflows, and launch plans (which redirects to the underlying
     workflow). The logic is the same for all three, but we did not want to create base class, hence this separate
