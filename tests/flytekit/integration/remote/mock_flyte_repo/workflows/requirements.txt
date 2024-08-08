@@ -350,5 +350,5 @@ wrapt==1.15.0
     #   deprecated
 yarl==1.9.3
     # via aiohttp
-zipp==3.16.2
+zipp==3.19.1
     # via importlib-metadata
