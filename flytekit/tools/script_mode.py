@@ -155,13 +155,20 @@ def add_imported_modules_from_source(source_path: str, destination: str, modules
         if mod_file is None:
             continue
 
-        if os.path.commonpath(site_packages + [mod_file]) in site_packages_set:
-            # Do not upload files from site-packages
-            continue
+        try:
+            if os.path.commonpath(site_packages + [mod_file]) in site_packages_set:
+                # Do not upload files from site-packages
+                continue
 
-        if os.path.commonpath([bin_directory, mod_file]) == bin_directory:
-            # Do not upload from the bin directory
-            continue
+            if os.path.commonpath([bin_directory, mod_file]) == bin_directory:
+                # Do not upload from the bin directory
+                continue
+
+        except ValueError:
+            # ValueError is raised by windows if the paths are not from the sae drive
+            # If the files are not in the same drive, then the mod_file is not
+            # in the site-packages or bin directory.
+            pass
 
         common_path = os.path.commonpath([mod_file, source_path])
         if common_path != source_path:
