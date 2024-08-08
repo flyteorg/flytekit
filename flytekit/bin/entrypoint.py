@@ -366,7 +366,7 @@ def _execute_task(
     :return:
     """
     if len(resolver_args) < 1:
-        raise Exception("cannot be <1")
+        raise ValueError("cannot be <1")
 
     with setup_execution(
         raw_output_data_prefix,
@@ -419,7 +419,7 @@ def _execute_map_task(
     :return:
     """
     if len(resolver_args) < 1:
-        raise Exception(f"Resolver args cannot be <1, got {resolver_args}")
+        raise ValueError(f"Resolver args cannot be <1, got {resolver_args}")
 
     with setup_execution(
         raw_output_data_prefix, checkpoint_path, prev_checkpoint, dynamic_addl_distro, dynamic_dest_dir
