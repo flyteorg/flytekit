@@ -4,6 +4,7 @@ import tempfile
 import typing
 from collections import OrderedDict
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from flyteidl.admin import schedule_pb2
@@ -32,6 +33,7 @@ from flytekit.core.utils import ClassDecorator, _dnsify
 from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase
 from flytekit.exceptions.user import FlyteAssertion
 from flytekit.image_spec.image_spec import _calculate_deduped_hash_from_image_spec
+from flytekit.loggers import logger
 from flytekit.models import common as _common_models
 from flytekit.models import common as common_models
 from flytekit.models import interface as interface_models
@@ -193,6 +195,12 @@ def _fast_serialize_command_fn(
     return fn
 
 
+@lru_cache
+def display_ipython_warning(input: str) -> None:
+    # This is a warning that is only displayed once per python type
+    logger.debug(input)
+
+
 def _update_serialization_settings_for_ipython(
     entity: FlyteLocalEntity,
     serialization_settings: SerializationSettings,
@@ -223,9 +231,8 @@ def _update_serialization_settings_for_ipython(
         import gzip
 
         import cloudpickle
-        import rich
 
-        rich.get_console().print("[bold red]Jupyter notebook and interactive task support is still alpha.[/bold red]")
+        display_ipython_warning("Jupyter notebook and interactive task support is still alpha.")
 
         from flytekit.configuration import FastSerializationSettings
 
@@ -236,7 +243,7 @@ def _update_serialization_settings_for_ipython(
             dest = pathlib.Path(tmp_dir, "pkl.gz")
             with gzip.GzipFile(filename=dest, mode="wb", mtime=0) as gzipped:
                 cloudpickle.dump(entity, gzipped)
-            rich.get_console().print("[yellow]Uploading Pickled representation of Task to remote storage...[/ yellow]")
+            display_ipython_warning("Uploading Pickled representation of Task to remote storage...")
             _, native_url = options.file_uploader(dest)
 
             serialization_settings.fast_serialization_settings = FastSerializationSettings(

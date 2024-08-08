@@ -229,6 +229,7 @@ def setup_execution(
     :param dynamic_addl_distro: Works in concert with the other dynamic arg. If present, indicates that if a dynamic
       task were to run, it should set fast serialize to true and use these values in FastSerializationSettings
     :param dynamic_dest_dir: See above.
+    :param pickled: If the inputs are pickled
     :return:
     """
     exe_project = get_one_of("FLYTE_INTERNAL_EXECUTION_PROJECT", "_F_PRJ")
@@ -446,6 +447,8 @@ def _execute_map_task(
     :param resolver: The task resolver to use. This needs to be loadable directly from importlib (and thus cannot be
       nested).
     :param resolver_args: Args that will be passed to the aforementioned resolver's load_task function
+    :param pickled: If the inputs are pickled
+    :param pkl_file: The path to the pickled archive
     :return:
     """
     if len(resolver_args) < 1:

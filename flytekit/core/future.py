@@ -62,6 +62,12 @@ class FlyteFuture:
         poll_interval: typing.Optional[timedelta] = None,
         sync_nodes: bool = True,
     ) -> FlyteWorkflowExecution:
+        """Wait for an execution of the task or workflow to complete.
+
+        :param timeout: maximum amount of time to wait
+        :param poll_interval: sync workflow execution at this interval
+        :param sync_nodes: passed along to the sync call for the workflow execution
+        """
         return self._remote_entry.wait(
             self._exe,
             timeout=timeout,
@@ -71,8 +77,10 @@ class FlyteFuture:
 
     @property
     def version(self) -> str:
+        """The version of the task or workflow being executed."""
         return self._version
 
     @property
     def exe(self) -> FlyteWorkflowExecution:
+        """The executing FlyteWorkflowExecution object."""
         return self._exe

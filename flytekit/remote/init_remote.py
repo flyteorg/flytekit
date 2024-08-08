@@ -2,6 +2,7 @@ import threading
 import typing
 
 from flytekit.configuration import Config
+from flytekit.loggers import get_level_from_cli_verbosity, logger
 from flytekit.remote.remote import FlyteRemote
 from flytekit.tools.interactive import ipython_check
 from flytekit.tools.translator import Options
@@ -19,6 +20,7 @@ def init_remote(
     data_upload_location: str = "flyte://my-s3-bucket/",
     default_options: typing.Optional[Options] = None,
     interactive_mode_enabled: bool = ipython_check(),
+    verbosity: int = 0,
     **kwargs,
 ):
     """
@@ -30,6 +32,7 @@ def init_remote(
         The default location - `s3://my-s3-bucket/data` works for sandbox/demo environment. Please override this for non-sandbox cases.
     :param default_options: default options to use when executing tasks or workflows remotely.
     :param interactive_mode_enabled: If True, the client will be configured to work in interactive mode.
+    :param verbosity: Verbosity level for the logger.
     :return:
     """
     global REMOTE_ENTRY, REMOTE_DEFAULT_OPTIONS
@@ -47,3 +50,7 @@ def init_remote(
             REMOTE_DEFAULT_OPTIONS = default_options
         else:
             raise AssertionError("Remote client already initialized")
+
+    # Set the log level
+    log_level = get_level_from_cli_verbosity(verbosity)
+    logger.setLevel(log_level)

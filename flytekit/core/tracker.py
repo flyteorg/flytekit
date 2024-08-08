@@ -273,6 +273,11 @@ class _ModuleSanitizer(object):
         if dirname == package_root:
             return basename
 
+        # Execution in a Jupyter notebook, we cannot resolve the module path
+        if not os.path.exists(dirname):
+            logger.warning(f"Directory {dirname} does not exist. It is likely that we are in a Jupyter notebook.")
+            return basename
+
         # If we have reached a directory with no __init__, ignore
         if "__init__.py" not in os.listdir(dirname):
             return basename
@@ -337,10 +342,6 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
 
 
 def get_full_module_path(mod: ModuleType, mod_name: str) -> str:
-    from flytekit.tools.interactive import ipython_check
-
-    if ipython_check():
-        return ""
     if FeatureFlags.FLYTE_PYTHON_PACKAGE_ROOT != ".":
         package_root = (
             FeatureFlags.FLYTE_PYTHON_PACKAGE_ROOT if FeatureFlags.FLYTE_PYTHON_PACKAGE_ROOT != "auto" else None
