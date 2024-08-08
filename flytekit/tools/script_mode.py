@@ -3,10 +3,14 @@ import hashlib
 import importlib
 import os
 import shutil
+import site
+import sys
 import tarfile
 import tempfile
 import typing
 from pathlib import Path
+from types import ModuleType
+from typing import List
 
 from flytekit import PythonFunctionTask
 from flytekit.core.tracker import get_full_module_path
@@ -46,6 +50,8 @@ def compress_scripts(source_path: str, destination: str, module_name: str):
 
         visited: typing.List[str] = []
         copy_module_to_destination(source_path, destination_path, module_name, visited)
+        add_imported_modules_from_source(source_path, destination_path, list(sys.modules.values()))
+
         tar_path = os.path.join(tmp_dir, "tmp.tar")
         with tarfile.open(tar_path, "w") as tar:
             tmp_path: str = os.path.join(tmp_dir, "code")
@@ -125,6 +131,52 @@ def tar_strip_file_attributes(tar_info: tarfile.TarInfo) -> tarfile.TarInfo:
     tar_info.pax_headers = {}
 
     return tar_info
+
+
+def add_imported_modules_from_source(source_path: str, destination: str, modules: List[ModuleType]):
+    """Copies modules into destination that are in modules. The module files are copied only if:
+
+    1. Not a site-packages. These are installed packages and not user files.
+    2. Not in the bin. These are also installed and not user files.
+    3. Does not share a common path with the source_path
+    3. Not already in the destination.
+    """
+
+    site_packages = site.getsitepackages()
+    site_packages_set = set(site_packages)
+    bin_directory = os.path.dirname(sys.executable)
+
+    for mod in modules:
+        try:
+            mod_file = mod.__file__
+        except AttributeError:
+            continue
+
+        if mod_file is None:
+            continue
+
+        if os.path.commonpath(site_packages + [mod_file]) in site_packages_set:
+            # Do not upload files from site-packages
+            continue
+
+        if os.path.commonpath([bin_directory, mod_file]) == bin_directory:
+            # Do not upload from the bin directory
+            continue
+
+        common_path = os.path.commonpath([mod_file, source_path])
+        if common_path != source_path:
+            # Do not upload files that do not share a common directory with the source
+            continue
+
+        relative_path = os.path.relpath(mod_file, start=source_path)
+        new_destination = os.path.join(destination, relative_path)
+
+        if os.path.exists(new_destination):
+            # Already exists in destination, no need to include it
+            continue
+
+        os.makedirs(os.path.dirname(new_destination), exist_ok=True)
+        shutil.copy(mod_file, new_destination)
 
 
 def hash_file(file_path: typing.Union[os.PathLike, str]) -> (bytes, str, int):
