@@ -358,7 +358,7 @@ class Task(object):
         return flyte_entity_call_handler(self, *args, **kwargs)  # type: ignore
 
     def compile(self, ctx: FlyteContext, *args, **kwargs):
-        raise Exception("not implemented")
+        raise NotImplementedError
 
     def get_container(self, settings: SerializationSettings) -> Optional[_task_model.Container]:
         """

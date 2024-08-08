@@ -300,7 +300,7 @@ class WorkflowBase(object):
             raise exc
 
     def execute(self, **kwargs):
-        raise Exception("Should not be called")
+        raise NotImplementedError
 
     def compile(self, **kwargs):
         pass
@@ -530,7 +530,7 @@ class ImperativeWorkflow(WorkflowBase):
     def create_conditional(self, name: str) -> ConditionalSection:
         ctx = FlyteContext.current_context()
         if ctx.compilation_state is not None:
-            raise Exception("Can't already be compiling")
+            raise RuntimeError("Can't already be compiling")
         FlyteContextManager.with_context(ctx.with_compilation_state(self.compilation_state))
         return conditional(name=name)
 
@@ -543,7 +543,7 @@ class ImperativeWorkflow(WorkflowBase):
 
         ctx = FlyteContext.current_context()
         if ctx.compilation_state is not None:
-            raise Exception("Can't already be compiling")
+            raise RuntimeError("Can't already be compiling")
         with FlyteContextManager.with_context(ctx.with_compilation_state(self.compilation_state)) as ctx:
             n = create_node(entity=entity, **kwargs)
 
@@ -605,7 +605,7 @@ class ImperativeWorkflow(WorkflowBase):
 
         ctx = FlyteContext.current_context()
         if ctx.compilation_state is not None:
-            raise Exception("Can't already be compiling")
+            raise RuntimeError("Can't already be compiling")
         with FlyteContextManager.with_context(ctx.with_compilation_state(self.compilation_state)) as ctx:
             b, _ = binding_from_python_std(
                 ctx, output_name, expected_literal_type=flyte_type, t_value=p, t_value_type=python_type
@@ -767,7 +767,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             if not isinstance(workflow_outputs, tuple):
                 raise AssertionError("The Workflow specification indicates multiple return values, received only one")
             if len(output_names) != len(workflow_outputs):
-                raise Exception(f"Length mismatch {len(output_names)} vs {len(workflow_outputs)}")
+                raise ValueError(f"Length mismatch {len(output_names)} vs {len(workflow_outputs)}")
             for i, out in enumerate(output_names):
                 if isinstance(workflow_outputs[i], ConditionalSection):
                     raise AssertionError("A Conditional block (if-else) should always end with an `else_()` clause")

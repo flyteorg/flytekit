@@ -23,7 +23,7 @@ def check_call(cmd_args, **kwargs):
                 err_str = std_err.read()
                 logger.error("Error from command '{}':\n{}\n".format(cmd_args, err_str))
 
-                raise Exception(
+                raise RuntimeError(
                     "Called process exited with error code: {}.  Stderr dump:\n\n{}".format(ret_code, err_str)
                 )
 

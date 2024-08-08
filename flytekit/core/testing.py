@@ -33,7 +33,7 @@ def task_mock(t: PythonTask) -> typing.Generator[MagicMock, None, None]:
     """
 
     if not isinstance(t, PythonTask) and not isinstance(t, WorkflowBase) and not isinstance(t, ReferenceEntity):
-        raise Exception("Can only be used for tasks")
+        raise ValueError(f"Can only be used for tasks, but got {type(t)}")
 
     m = MagicMock()
 
@@ -56,7 +56,7 @@ def patch(target: Union[PythonTask, WorkflowBase, ReferenceEntity]):
         and not isinstance(target, WorkflowBase)
         and not isinstance(target, ReferenceEntity)
     ):
-        raise Exception("Can only use mocks on tasks/workflows declared in Python.")
+        raise ValueError(f"Can only use mocks on tasks/workflows declared in Python, but got {type(target)}")
 
     logger.info(
         "When using this patch function on Flyte entities, please be aware weird issues may arise if also"

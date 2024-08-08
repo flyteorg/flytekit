@@ -446,7 +446,7 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
             launcher_args = ()
 
         else:
-            raise Exception("Bad start method")
+            raise ValueError("Bad start method")
 
         from torch.distributed.elastic.multiprocessing.api import SignalException
         from torch.distributed.elastic.multiprocessing.errors import ChildFailedError

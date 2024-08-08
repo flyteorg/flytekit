@@ -95,7 +95,7 @@ class SageMakerEndpointAgent(Boto3AgentMixin, AsyncAgentBase):
             error_message = original_exception.response["Error"]["Message"]
 
             if error_code == "ValidationException" and "Could not find endpoint" in error_message:
-                raise Exception(
+                raise RuntimeError(
                     "This might be due to resource limits being exceeded, preventing the creation of a new endpoint. Please check your resource usage and limits."
                 )
             raise e
