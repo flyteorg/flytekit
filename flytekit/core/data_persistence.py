@@ -36,7 +36,7 @@ from flytekit import configuration
 from flytekit.configuration import DataConfig
 from flytekit.core.local_fsspec import FlyteLocalFileSystem
 from flytekit.core.utils import timeit
-from flytekit.exceptions.user import FlyteAssertion, FlyteValueException
+from flytekit.exceptions.user import FlyteAssertion, FlyteDataNotFoundException
 from flytekit.interfaces.random import random
 from flytekit.loggers import logger
 
@@ -300,7 +300,7 @@ class FileAccessProvider(object):
         except OSError as oe:
             logger.debug(f"Error in getting {from_path} to {to_path} rec {recursive} {oe}")
             if not file_system.exists(from_path):
-                raise FlyteValueException(from_path, "File not found")
+                raise FlyteDataNotFoundException(from_path)
             file_system = self.get_filesystem(get_protocol(from_path), anonymous=True)
             if file_system is not None:
                 logger.debug(f"Attempting anonymous get with {file_system}")
@@ -558,6 +558,8 @@ class FileAccessProvider(object):
             pathlib.Path(local_path).parent.mkdir(parents=True, exist_ok=True)
             with timeit(f"Download data to local from {remote_path}"):
                 self.get(remote_path, to_path=local_path, recursive=is_multipart, **kwargs)
+        except FlyteDataNotFoundException:
+            raise
         except Exception as ex:
             raise FlyteAssertion(
                 f"Failed to get data from {remote_path} to {local_path} (recursive={is_multipart}).\n\n"

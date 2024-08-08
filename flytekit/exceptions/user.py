@@ -55,6 +55,11 @@ class FlyteValueException(FlyteUserException, ValueError):
         super(FlyteValueException, self).__init__(self._create_verbose_message(received_value, error_message))
 
 
+class FlyteDataNotFoundException(FlyteValueException):
+    def __init__(self, path: str):
+        super(FlyteDataNotFoundException, self).__init__(path, "File not found")
+
+
 class FlyteAssertion(FlyteUserException, AssertionError):
     _ERROR_CODE = "USER:AssertionError"
 
