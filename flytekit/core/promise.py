@@ -173,11 +173,13 @@ def resolve_attr_path_in_pb_struct(st: _struct.Struct, attr_path: List[Union[str
 def resolve_attr_path_in_dict(d: dict, attr_path: List[Union[str, int]]) -> Any:
     curr_val = d
     for attr in attr_path:
-        if attr not in curr_val:
+        try:
+            curr_val = curr_val[attr]
+        except (KeyError, IndexError, TypeError) as e:
             raise FlytePromiseAttributeResolveException(
-                f"Failed to resolve attribute path {attr_path} in dict {curr_val}, attribute {attr} not found"
-            )
-        curr_val = curr_val[attr]
+                f"Failed to resolve attribute path {attr_path} in dict {curr_val}, attribute {attr} not found.\n"
+                f"Error Message: {e}")
+
     return curr_val
 
 

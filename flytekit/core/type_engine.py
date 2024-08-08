@@ -1661,12 +1661,14 @@ class DictTransformer(TypeTransformer[dict]):
         from flytekit.types.pickle import FlytePickle
 
         try:
-            json_bytes = msgpack.dumps(v)
+            json_str = json.dumps(v)
+            json_bytes = msgpack.dumps(json_str)
             return Literal(scalar=Scalar(json=Json(value=json_bytes)), metadata={"format": "json"})
         except TypeError as e:
             if allow_pickle:
                 remote_path = FlytePickle.to_pickle(ctx, v)
-                json_bytes = msgpack.dumps({"pickle_file": remote_path})
+                json_str = json.dumps({"pickle_file": remote_path})
+                json_bytes = msgpack.dumps(json_str)
                 return Literal(scalar=Scalar(json=Json(value=json_bytes)), metadata={"format": "pickle"})
             raise e
 
@@ -1776,12 +1778,15 @@ class DictTransformer(TypeTransformer[dict]):
                     from flytekit.types.pickle import FlytePickle
 
                     json_bytes = lv.scalar.json.value
-                    uri = msgpack.loads(json_bytes).get("pickle_file")
+                    json_str = msgpack.loads(json_bytes)
+                    uri = json.loads(json_str).get("pickle_file")
                     return FlytePickle.from_pickle(uri)
 
                 try:
                     json_bytes = lv.scalar.json.value
-                    return msgpack.loads(json_bytes)
+                    json_str = msgpack.loads(json_bytes)
+                    return json.loads(json_str)
+
                 except TypeError:
                     raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
 
