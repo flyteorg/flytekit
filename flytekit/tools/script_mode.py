@@ -47,9 +47,6 @@ def compress_scripts(source_path: str, destination: str, module_name: str):
     """
     with tempfile.TemporaryDirectory() as tmp_dir:
         destination_path = os.path.join(tmp_dir, "code")
-
-        visited: typing.List[str] = []
-        copy_module_to_destination(source_path, destination_path, module_name, visited)
         add_imported_modules_from_source(source_path, destination_path, list(sys.modules.values()))
 
         tar_path = os.path.join(tmp_dir, "tmp.tar")
@@ -61,54 +58,6 @@ def compress_scripts(source_path: str, destination: str, module_name: str):
         with gzip.GzipFile(filename=destination, mode="wb", mtime=0) as gzipped:
             with open(tar_path, "rb") as tar_file:
                 gzipped.write(tar_file.read())
-
-
-def copy_module_to_destination(
-    original_source_path: str, original_destination_path: str, module_name: str, visited: typing.List[str]
-):
-    """
-    Copy the module (file) to the destination directory. If the module relative imports other modules, flytekit will
-    recursively copy them as well.
-    """
-    mod = importlib.import_module(module_name)
-    full_module_name = get_full_module_path(mod, mod.__name__)
-    if full_module_name in visited:
-        return
-    visited.append(full_module_name)
-
-    source_path = original_source_path
-    destination_path = original_destination_path
-    pkgs = full_module_name.split(".")
-
-    for p in pkgs[:-1]:
-        os.makedirs(os.path.join(destination_path, p), exist_ok=True)
-        destination_path = os.path.join(destination_path, p)
-        source_path = os.path.join(source_path, p)
-        init_file = Path(os.path.join(source_path, "__init__.py"))
-        if init_file.exists():
-            shutil.copy(init_file, Path(os.path.join(destination_path, "__init__.py")))
-
-    # Ensure destination path exists to cover the case of a single file and no modules.
-    os.makedirs(destination_path, exist_ok=True)
-    script_file = Path(source_path, f"{pkgs[-1]}.py")
-    script_file_destination = Path(destination_path, f"{pkgs[-1]}.py")
-    # Build the final script relative path and copy it to a known place.
-    shutil.copy(
-        script_file,
-        script_file_destination,
-    )
-
-    # Try to copy other files to destination if tasks or workflows aren't in the same file
-    for flyte_entity_name in mod.__dict__:
-        flyte_entity = mod.__dict__[flyte_entity_name]
-        if (
-            isinstance(flyte_entity, (PythonFunctionTask, WorkflowBase))
-            and not isinstance(flyte_entity, ImperativeWorkflow)
-            and flyte_entity.instantiated_in
-        ):
-            copy_module_to_destination(
-                original_source_path, original_destination_path, flyte_entity.instantiated_in, visited
-            )
 
 
 # Takes in a TarInfo and returns the modified TarInfo:
@@ -138,8 +87,7 @@ def add_imported_modules_from_source(source_path: str, destination: str, modules
 
     1. Not a site-packages. These are installed packages and not user files.
     2. Not in the bin. These are also installed and not user files.
-    3. Does not share a common path with the source_path
-    3. Not already in the destination.
+    3. Does not share a common path with the source_path.
     """
 
     site_packages = site.getsitepackages()
@@ -186,10 +134,6 @@ def add_imported_modules_from_source(source_path: str, destination: str, modules
 
         relative_path = os.path.relpath(mod_file, start=source_path)
         new_destination = os.path.join(destination, relative_path)
-
-        if os.path.exists(new_destination):
-            # Already exists in destination, no need to include it
-            continue
 
         os.makedirs(os.path.dirname(new_destination), exist_ok=True)
         shutil.copy(mod_file, new_destination)
