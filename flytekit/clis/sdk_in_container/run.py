@@ -7,10 +7,12 @@ import pathlib
 import sys
 import tempfile
 import typing
+import typing as t
 from dataclasses import dataclass, field, fields
 from typing import Iterator, get_args
 
 import rich_click as click
+from click import Context
 from mashumaro.codecs.json import JSONEncoder
 from rich.progress import Progress
 from typing_extensions import get_origin
@@ -571,6 +573,8 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
                         )
                 if processed_click_value is not None or optional_v:
                     inputs[input_name] = processed_click_value
+                if processed_click_value is None and v[0] == bool:
+                    inputs[input_name] = False
 
             if not run_level_params.is_remote:
                 with FlyteContextManager.with_context(_update_flyte_context(run_level_params)):
@@ -778,6 +782,57 @@ class RemoteEntityGroup(click.RichGroup):
         )
 
 
+class YamlFileReadingCommand(click.RichCommand):
+    def __init__(self, name: str, params: typing.List[click.Option], help: str, callback: typing.Callable = None):
+        params.append(
+            click.Option(
+                ["--flyte-inputs-file"],
+                required=False,
+                type=click.Path(exists=True, dir_okay=False, resolve_path=True),
+                help="Path to a YAML | JSON file containing inputs for the workflow.",
+            )
+        )
+        super().__init__(name=name, params=params, callback=callback, help=help)
+
+    def parse_args(self, ctx: Context, args: t.List[str]) -> t.List[str]:
+        if "--flyte-inputs-file" in args:
+            idx = args.index("--flyte-inputs-file")
+            args.pop(idx)
+            f = args.pop(idx)
+            with open(f, "r") as f:
+                import yaml
+
+                try:
+                    inputs = yaml.safe_load(f)
+                except yaml.YAMLError as e:
+                    yaml_e = e
+                    try:
+                        inputs = json.load(f)
+                    except json.JSONDecodeError as e:
+                        click.secho(
+                            "Could not load the inputs file. Please make sure it is a valid JSON or YAML file."
+                            f"\n json error: {e},"
+                            f"\n yaml error: {yaml_e}",
+                            fg="yellow",
+                        )
+                        exit(1)
+
+            new_args = []
+            for k, v in inputs.items():
+                if isinstance(v, str):
+                    v = v
+                    new_args.extend([f"--{k}", v])
+                elif isinstance(v, bool):
+                    if v:
+                        new_args.append(f"--{k}")
+                else:
+                    v = json.dumps(v)
+                    new_args.extend([f"--{k}", v])
+            new_args.extend(args)
+            args = new_args
+        return super().parse_args(ctx, args)
+
+
 class WorkflowCommand(click.RichGroup):
     """
     click multicommand at the python file layer, subcommands should be all the workflows in the file.
@@ -832,11 +887,11 @@ class WorkflowCommand(click.RichGroup):
         h = f"{click.style(entity_type, bold=True)} ({run_level_params.computed_params.module}.{entity_name})"
         if loaded_entity.__doc__:
             h = h + click.style(f"{loaded_entity.__doc__}", dim=True)
-        cmd = click.RichCommand(
+        cmd = YamlFileReadingCommand(
             name=entity_name,
             params=params,
-            callback=run_command(ctx, loaded_entity),
             help=h,
+            callback=run_command(ctx, loaded_entity),
         )
         return cmd
 
