@@ -3,7 +3,8 @@ from typing import Any, Dict, Type
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 from pydantic import BaseModel, model_serializer
-
+import msgpack
+from flytekit.models.literals import Json
 from flytekit import FlyteContext
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
@@ -37,10 +38,12 @@ class PydanticTransformer(TypeTransformer[BaseModel]):
         expected: types.LiteralType,
     ) -> Literal:
         json_str = python_val.model_dump_json()
-        return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))  # type: ignore
+        json_bytes = msgpack.dumps(json_str)
+        return Literal(scalar=Scalar(json=Json(value=json_bytes)))
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[BaseModel]) -> BaseModel:
-        json_str = _json_format.MessageToJson(lv.scalar.generic)
+        json_bytes = lv.scalar.json.value
+        json_str = msgpack.loads(json_bytes)
         return expected_python_type.model_validate_json(json_str)
 
 
