@@ -12,7 +12,7 @@ from types import ModuleType
 from typing import List
 
 
-def compress_scripts(source_path: str, destination: str, module_name: str):
+def compress_scripts(source_path: str, destination: str, modules: List[ModuleType]):
     """
     Compresses the single script while maintaining the folder structure for that file.
 
@@ -24,25 +24,27 @@ def compress_scripts(source_path: str, destination: str, module_name: str):
     │       ├── example.py
     │       ├── another_example.py
     │       ├── yet_another_example.py
+    │       ├── unused_example.py
     │       └── __init__.py
 
-    Let's say you want to compress `example.py`. In that case we specify the the full module name as
-    flyte.workflows.example and that will produce a tar file that contains only that file alongside
-    with the folder structure, i.e.:
+    Let's say you want to compress `example.py` imports `another_example.py`. And `another_example.py`
+    imports on `yet_another_example.py`. This will  produce a tar file that contains only that
+    file alongside with the folder structure, i.e.:
 
     .
     ├── flyte
     │   ├── __init__.py
     │   └── workflows
     │       ├── example.py
+    │       ├── another_example.py
+    │       ├── yet_another_example.py
     │       └── __init__.py
-
-    Note: If `example.py` didn't import tasks or workflows from `another_example.py` and `yet_another_example.py`, these files were not copied to the destination..
 
     """
     with tempfile.TemporaryDirectory() as tmp_dir:
         destination_path = os.path.join(tmp_dir, "code")
-        add_imported_modules_from_source(source_path, destination_path, list(sys.modules.values()))
+        os.mkdir(destination_path)
+        add_imported_modules_from_source(source_path, destination_path, modules)
 
         tar_path = os.path.join(tmp_dir, "tmp.tar")
         with tarfile.open(tar_path, "w") as tar:

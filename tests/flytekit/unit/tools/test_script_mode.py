@@ -75,14 +75,20 @@ def test_deterministic_hash(tmp_path):
 
     destination = tmp_path / "destination"
 
-    sys.path.append(str(workflows_dir.parent))
-    compress_scripts(str(workflows_dir.parent), str(destination), "workflows.hello_world")
+    modules = [
+        import_module_from_file("workflows.hello_world", os.fspath(workflow_file)),
+        import_module_from_file("workflows.imperative_wf", os.fspath(workflow_file)),
+        import_module_from_file("wf1.test", os.fspath(t1_file)),
+        import_module_from_file("wf2.test", os.fspath(t2_file))
+    ]
+
+    compress_scripts(str(workflows_dir.parent), str(destination), modules)
 
     digest, hex_digest, _ = hash_file(destination)
 
     # Try again to assert digest determinism
     destination2 = tmp_path / "destination2"
-    compress_scripts(str(workflows_dir.parent), str(destination2), "workflows.hello_world")
+    compress_scripts(str(workflows_dir.parent), str(destination2), modules)
     digest2, hex_digest2, _ = hash_file(destination)
 
     assert digest == digest2

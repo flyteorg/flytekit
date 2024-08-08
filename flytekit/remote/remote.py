@@ -13,6 +13,7 @@ import functools
 import hashlib
 import os
 import pathlib
+import sys
 import tempfile
 import time
 import typing
@@ -1020,7 +1021,7 @@ class FlyteRemote(object):
                 )
             else:
                 archive_fname = pathlib.Path(os.path.join(tmp_dir, "script_mode.tar.gz"))
-                compress_scripts(source_path, str(archive_fname), module_name)
+                compress_scripts(source_path, str(archive_fname), list(sys.modules.values()))
                 md5_bytes, upload_native_url = self.upload_file(
                     archive_fname, project or self.default_project, domain or self.default_domain
                 )
