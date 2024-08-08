@@ -103,7 +103,7 @@ def add_imported_modules_from_source(source_path: str, destination: str, modules
         if mod_file is None:
             continue
 
-        # Check to see if mod_file is in site_packages of bin_directory, which are
+        # Check to see if mod_file is in site_packages or bin_directory, which are
         # installed packages & libraries that are not user files. This happens when
         # there is a virtualenv like `.venv` in the working directory.
         try:
