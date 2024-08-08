@@ -683,7 +683,6 @@ class DataclassTransformer(TypeTransformer[object]):
             decoder = JSONDecoder(expected_python_type)
             self._decoder[expected_python_type] = decoder
 
-
         dc = decoder.decode(json_str)
         dc = self._fix_structured_dataset_type(expected_python_type, dc)
 

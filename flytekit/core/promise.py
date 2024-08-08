@@ -91,7 +91,7 @@ def translate_inputs_to_literals(
         t = native_types[k]
         try:
             if type(v) is Promise:
-                v = resolve_attr_path_in_promise(v)
+                v = resolve_attr_path_in_promise(v, t)
             result[k] = TypeEngine.to_literal(ctx, v, t, var.type)
         except TypeTransformerFailedError as exc:
             raise TypeTransformerFailedError(f"Failed argument '{k}': {exc}") from None
@@ -99,7 +99,7 @@ def translate_inputs_to_literals(
     return result
 
 
-def resolve_attr_path_in_promise(p: Promise) -> Promise:
+def resolve_attr_path_in_promise(p: Promise, t: typing.Type) -> Promise:
     """
     resolve_attr_path_in_promise resolves the attribute path in a promise and returns a new promise with the resolved value
     This is for local execution only. The remote execution will be resolved in flytepropeller.
@@ -152,8 +152,8 @@ def resolve_attr_path_in_promise(p: Promise) -> Promise:
             json_str = msgpack.loads(json_bytes)
             dict_obj = json.loads(json_str)
             v = resolve_attr_path_in_dict(dict_obj, attr_path=p.attr_path[used:])
-            literal_type = TypeEngine.to_literal_type(v)
-            curr_val = TypeEngine.to_literal(FlyteContextManager.current_context(), v, type(v), literal_type)
+            literal_type = TypeEngine.to_literal_type(t)
+            curr_val = TypeEngine.to_literal(FlyteContextManager.current_context(), v, t, literal_type)
 
     p._val = curr_val
     return p
@@ -178,7 +178,8 @@ def resolve_attr_path_in_dict(d: dict, attr_path: List[Union[str, int]]) -> Any:
         except (KeyError, IndexError, TypeError) as e:
             raise FlytePromiseAttributeResolveException(
                 f"Failed to resolve attribute path {attr_path} in dict {curr_val}, attribute {attr} not found.\n"
-                f"Error Message: {e}")
+                f"Error Message: {e}"
+            )
 
     return curr_val
 
