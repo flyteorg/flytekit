@@ -29,6 +29,7 @@ import fsspec
 import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
 from flyteidl.core import literals_pb2
+import flyteidl_rust as flyteidl
 from flyteidl_rust import FlyteEntityAlreadyExistsException, FlyteEntityNotExistException
 
 from flytekit import ImageSpec
@@ -2265,7 +2266,7 @@ class FlyteRemote(object):
                 tmp_name = os.path.join(ctx.file_access.local_sandbox_dir, "inputs.pb")
                 ctx.file_access.get_data(execution_data.inputs.url, tmp_name)
                 return literal_models.LiteralMap.from_flyte_idl(
-                    utils.load_proto_from_file(literals_pb2.LiteralMap, tmp_name)
+                    utils.load_proto_from_file(flyteidl.core.LiteralMap, tmp_name)
                 )
         return literal_models.LiteralMap({})
 
@@ -2278,7 +2279,7 @@ class FlyteRemote(object):
                 tmp_name = os.path.join(ctx.file_access.local_sandbox_dir, "outputs.pb")
                 ctx.file_access.get_data(execution_data.outputs.url, tmp_name)
                 return literal_models.LiteralMap.from_flyte_idl(
-                    utils.load_proto_from_file(literals_pb2.LiteralMap, tmp_name)
+                    utils.load_proto_from_file(flyteidl.core.LiteralMap, tmp_name)
                 )
         return literal_models.LiteralMap({})
 
