@@ -823,7 +823,7 @@ def get_serializable(
     else:
         raise Exception(f"Non serializable type found {type(entity)} Entity {entity}")
 
-    if isinstance(entity, TaskSpec) or isinstance(entity, WorkflowSpec):
+    if isinstance(cp_entity, TaskSpec) or isinstance(cp_entity, WorkflowSpec):
         # 1. Check if the size of long description exceeds 16KB
         # 2. Extract the repo URL from the git config, and assign it to the link of the source code of the description entity
         if entity.docs and entity.docs.long_description:
@@ -834,6 +834,7 @@ def get_serializable(
                     )
             entity.docs.source_code = SourceCode(link=settings.git_repo)
     # This needs to be at the bottom not the top - i.e. dependent tasks get added before the workflow containing it
+    # breakpoint()
     entity_mapping[entity] = cp_entity
     return cp_entity
 

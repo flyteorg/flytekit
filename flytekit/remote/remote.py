@@ -13,6 +13,7 @@ import functools
 import hashlib
 import os
 import pathlib
+import subprocess
 import tempfile
 import time
 import typing
@@ -158,7 +159,13 @@ def _get_git_repo_url(source_path: str):
     Get git repo URL from remote.origin.url
     """
     try:
-        git_config = pathlib.Path(source_path) / ".git" / "config"
+        git_root = (
+            subprocess.Popen(["git", "rev-parse", "--show-toplevel"], stdout=subprocess.PIPE)
+            .communicate()[0]
+            .rstrip()
+            .decode("utf-8")
+        )
+        git_config = pathlib.Path(git_root) / ".git" / "config"
         if not git_config.exists():
             raise ValueError(f"{source_path} is not a git repo")
 
