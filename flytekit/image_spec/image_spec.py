@@ -49,6 +49,7 @@ class ImageSpec:
         commands: Command to run during the building process
         tag_format: Custom string format for image tag. The ImageSpec hash passed in as `spec_hash`. For example,
             to add a "dev" suffix to the image tag, set `tag_format="{spec_hash}-dev"`
+        docker_commands: List of docker commands to run during the building process
     """
 
     name: str = "flytekit"
@@ -72,6 +73,7 @@ class ImageSpec:
     entrypoint: Optional[List[str]] = None
     commands: Optional[List[str]] = None
     tag_format: Optional[str] = None
+    docker_commands: Optional[List[str]] = None
 
     def __post_init__(self):
         self.name = self.name.lower()
@@ -207,6 +209,21 @@ class ImageSpec:
             new_image_spec.apt_packages.extend(apt_packages)
         else:
             new_image_spec.apt_packages.append(apt_packages)
+
+        return new_image_spec
+
+    def with_docker_commands(self, docker_commands: Union[str, List[str]]) -> "ImageSpec":
+        """
+        Builder that returns a new image spec with additional list of docker commands that will be executed during the building process.
+        """
+        new_image_spec = copy.deepcopy(self)
+        if new_image_spec.docker_commands is None:
+            new_image_spec.docker_commands = []
+
+        if isinstance(docker_commands, List):
+            new_image_spec.docker_commands.extend(docker_commands)
+        else:
+            new_image_spec.docker_commands.append(docker_commands)
 
         return new_image_spec
 

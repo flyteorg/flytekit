@@ -80,6 +80,7 @@ $ENTRYPOINT
 
 $COPY_COMMAND_RUNTIME
 RUN $RUN_COMMANDS
+$DOCKER_COMMANDS
 
 WORKDIR /root
 SHELL ["/bin/bash", "-c"]
@@ -232,6 +233,11 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
     else:
         run_commands = ""
 
+    if image_spec.docker_commands:
+        docker_commands = "\n".join(image_spec.docker_commands)
+    else:
+        docker_commands = ""
+
     docker_content = DOCKER_FILE_TEMPLATE.substitute(
         PYTHON_VERSION=python_version,
         UV_PYTHON_INSTALL_COMMAND=uv_python_install_command,
@@ -244,6 +250,7 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
         COPY_COMMAND_RUNTIME=copy_command_runtime,
         ENTRYPOINT=entrypoint,
         RUN_COMMANDS=run_commands,
+        DOCKER_COMMANDS=docker_commands,
     )
 
     dockerfile_path = tmp_dir / "Dockerfile"
@@ -272,6 +279,7 @@ class DefaultImageBuilder(ImageSpecBuilder):
         "pip_index",
         # "registry_config",
         "commands",
+        "docker_commands",
     }
 
     def build_image(self, image_spec: ImageSpec) -> str:
