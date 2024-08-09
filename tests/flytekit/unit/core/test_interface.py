@@ -338,9 +338,6 @@ def test_init_interface_with_invalid_parameters():
     with pytest.raises(ValueError, match=r"Type names and field names must be valid identifiers:"):
         _ = Interface({}, {"my.output": int})
 
-    with pytest.raises(ValueError, match=r"Input name must be lowercase:"):
-        _ = Interface({"A": int}, {})
-
 
 def test_parameter_change_to_pickle_type():
     ctx = context_manager.FlyteContext.current_context()

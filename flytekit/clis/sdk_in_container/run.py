@@ -379,6 +379,10 @@ def to_click_option(
     This handles converting workflow input types to supported click parameters with callbacks to initialize
     the input values to their expected types.
     """
+    if input_name != input_name.lower():
+        # Click does not support uppercase option names: https://github.com/pallets/click/issues/837
+        raise ValueError(f"Workflow input name must be lowercase: {input_name!r}")
+
     run_level_params: RunLevelParams = ctx.obj
 
     literal_converter = FlyteLiteralConverter(
