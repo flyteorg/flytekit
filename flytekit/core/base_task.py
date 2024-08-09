@@ -740,7 +740,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 try:
                     native_outputs = self.execute(**native_inputs)
                 except Exception as e:
-                    raise FlyteUserRuntimeException("Failed to execute user code") from e
+                    raise FlyteUserRuntimeException(e)
 
             if inspect.iscoroutine(native_outputs):
                 # If native outputs is a coroutine, then this is an eager workflow.
