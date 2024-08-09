@@ -1,6 +1,7 @@
 import datetime
 import typing
 
+import flyteidl_rust as flyteidl
 from flyteidl.admin import common_pb2 as _common_pb2
 from flyteidl.admin import execution_pb2 as _execution_pb2
 from flyteidl.admin import launch_plan_pb2 as _launch_plan_pb2
@@ -8,14 +9,10 @@ from flyteidl.admin import matchable_resource_pb2 as _matchable_resource_pb2
 from flyteidl.admin import node_execution_pb2 as _node_execution_pb2
 from flyteidl.admin import project_domain_attributes_pb2 as _project_domain_attributes_pb2
 from flyteidl.admin import project_pb2 as _project_pb2
-from flyteidl.admin import task_execution_pb2 as _task_execution_pb2
-from flyteidl.admin import task_pb2 as _task_pb2
 from flyteidl.admin import workflow_attributes_pb2 as _workflow_attributes_pb2
-from flyteidl.admin import workflow_pb2 as _workflow_pb2
 from flyteidl.service import dataproxy_pb2 as _data_proxy_pb2
 from google.protobuf.duration_pb2 import Duration
 
-from flytekit.clients.raw import RawSynchronousFlyteClient as _RawSynchronousFlyteClient
 from flytekit.models import common as _common
 from flytekit.models import execution as _execution
 from flytekit.models import filters as _filters
@@ -29,7 +26,7 @@ from flytekit.models.admin import workflow as _workflow
 from flytekit.models.core import identifier as _identifier
 
 
-class SynchronousFlyteClient(_RawSynchronousFlyteClient):
+class SynchronousFlyteClient(flyteidl.RawSynchronousFlyteClient):
     """
     This is a low-level client that users can use to make direct gRPC service calls to the control plane. See the
     :std:doc:`service spec <idl:protos/docs/service/index>`. This is more user-friendly interface than the
@@ -75,7 +72,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         :raises grpc.RpcError:
         """
         super(SynchronousFlyteClient, self).create_task(
-            _task_pb2.TaskCreateRequest(id=task_identifer.to_flyte_idl(), spec=task_spec.to_flyte_idl())
+            flyteidl.admin.TaskCreateRequest(id=task_identifer.to_flyte_idl(), spec=task_spec.to_flyte_idl())
         )
 
     def list_task_ids_paginated(self, project, domain, limit=100, token=None, sort_by=None):
@@ -173,7 +170,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         :rtype: flytekit.models.task.Task
         """
         return _task.Task.from_flyte_idl(
-            super(SynchronousFlyteClient, self).get_task(_common_pb2.ObjectGetRequest(id=id.to_flyte_idl()))
+            super(SynchronousFlyteClient, self).get_task(flyteidl.admin.ObjectGetRequest(id=id.to_flyte_idl()))
         )
 
     ####################################################################################################################
@@ -201,8 +198,9 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             identical workflow is already registered.
         :raises grpc.RpcError:
         """
+
         super(SynchronousFlyteClient, self).create_workflow(
-            _workflow_pb2.WorkflowCreateRequest(
+            flyteidl.admin.WorkflowCreateRequest(
                 id=workflow_identifier.to_flyte_idl(), spec=workflow_spec.to_flyte_idl()
             )
         )
@@ -234,8 +232,8 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         :raises: TODO
         :rtype: list[flytekit.models.common.NamedEntityIdentifier], Text
         """
-        identifier_list = super(SynchronousFlyteClient, self).list_workflow_ids_paginated(
-            _common_pb2.NamedEntityIdentifierListRequest(
+        identifier_list = super(SynchronousFlyteClient, self).list_workflow_ids(
+            flyteidl.admin.NamedEntityIdentifierListRequest(
                 project=project,
                 domain=domain,
                 limit=limit,
@@ -276,8 +274,8 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         :raises: TODO
         :rtype: list[flytekit.models.admin.workflow.Workflow], Text
         """
-        wf_list = super(SynchronousFlyteClient, self).list_workflows_paginated(
-            resource_list_request=_common_pb2.ResourceListRequest(
+        wf_list = super(SynchronousFlyteClient, self).list_workflows(
+            resource_list_request=flyteidl.admin.ResourceListRequest(
                 id=identifier.to_flyte_idl(),
                 limit=limit,
                 token=token,
@@ -287,7 +285,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         )
         # TODO: tmp workaround
         for pb in wf_list.workflows:
-            pb.id.resource_type = _identifier.ResourceType.WORKFLOW
+            pb.id.resource_type = flyteidl.core.ResourceType.Workflow
         return (
             [_workflow.Workflow.from_flyte_idl(wf_pb2) for wf_pb2 in wf_list.workflows],
             str(wf_list.token),
@@ -302,7 +300,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         :rtype: flytekit.models.admin.workflow.Workflow
         """
         return _workflow.Workflow.from_flyte_idl(
-            super(SynchronousFlyteClient, self).get_workflow(_common_pb2.ObjectGetRequest(id=id.to_flyte_idl()))
+            super(SynchronousFlyteClient, self).get_workflow(flyteidl.admin.ObjectGetRequest(id=id.to_flyte_idl()))
         )
 
     ####################################################################################################################
@@ -331,7 +329,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         :raises grpc.RpcError:
         """
         super(SynchronousFlyteClient, self).create_launch_plan(
-            _launch_plan_pb2.LaunchPlanCreateRequest(
+            flyteidl.admin.LaunchPlanCreateRequest(
                 id=launch_plan_identifer.to_flyte_idl(),
                 spec=launch_plan_spec.to_flyte_idl(),
             )
@@ -345,7 +343,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         :rtype: flytekit.models.launch_plan.LaunchPlan
         """
         return _launch_plan.LaunchPlan.from_flyte_idl(
-            super(SynchronousFlyteClient, self).get_launch_plan(_common_pb2.ObjectGetRequest(id=id.to_flyte_idl()))
+            super(SynchronousFlyteClient, self).get_launch_plan(flyteidl.admin.ObjectGetRequest(id=id.to_flyte_idl()))
         )
 
     def get_active_launch_plan(self, identifier):
@@ -551,12 +549,13 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         return _identifier.WorkflowExecutionIdentifier.from_flyte_idl(
             super(SynchronousFlyteClient, self)
             .create_execution(
-                _execution_pb2.ExecutionCreateRequest(
+                flyteidl.admin.ExecutionCreateRequest(
                     project=project,
                     domain=domain,
                     name=name,
                     spec=execution_spec.to_flyte_idl(),
                     inputs=inputs.to_flyte_idl(),
+                    org="",
                 )
             )
             .id
@@ -582,7 +581,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         """
         return _execution.Execution.from_flyte_idl(
             super(SynchronousFlyteClient, self).get_execution(
-                _execution_pb2.WorkflowExecutionGetRequest(id=id.to_flyte_idl())
+                flyteidl.admin.WorkflowExecutionGetRequest(id=id.to_flyte_idl())
             )
         )
 
@@ -595,7 +594,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         """
         return _execution.WorkflowExecutionGetDataResponse.from_flyte_idl(
             super(SynchronousFlyteClient, self).get_execution_data(
-                _execution_pb2.WorkflowExecutionGetDataRequest(id=id.to_flyte_idl())
+                flyteidl.admin.WorkflowExecutionGetDataRequest(id=id.to_flyte_idl())
             )
         )
 
@@ -647,7 +646,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         :param Text cause:
         """
         super(SynchronousFlyteClient, self).terminate_execution(
-            _execution_pb2.ExecutionTerminateRequest(id=id.to_flyte_idl(), cause=cause)
+            flyteidl.admin.ExecutionTerminateRequest(id=id.to_flyte_idl(), cause=cause)
         )
 
     def relaunch_execution(self, id, name=None):
@@ -677,7 +676,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         """
         return _node_execution.NodeExecution.from_flyte_idl(
             super(SynchronousFlyteClient, self).get_node_execution(
-                _node_execution_pb2.NodeExecutionGetRequest(id=node_execution_identifier.to_flyte_idl())
+                flyteidl.admin.NodeExecutionGetRequest(id=node_execution_identifier.to_flyte_idl())
             )
         )
 
@@ -689,7 +688,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         """
         return _execution.NodeExecutionGetDataResponse.from_flyte_idl(
             super(SynchronousFlyteClient, self).get_node_execution_data(
-                _node_execution_pb2.NodeExecutionGetDataRequest(id=node_execution_identifier.to_flyte_idl())
+                flyteidl.admin.NodeExecutionGetDataRequest(id=node_execution_identifier.to_flyte_idl())
             )
         )
 
@@ -714,14 +713,14 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         :param unique_parent_id: If specified, returns the node executions for the ``unique_parent_id`` node id.
         :rtype: list[flytekit.models.node_execution.NodeExecution], Text
         """
-        exec_list = super(SynchronousFlyteClient, self).list_node_executions_paginated(
-            _node_execution_pb2.NodeExecutionListRequest(
+        exec_list = super(SynchronousFlyteClient, self).list_node_executions(
+            flyteidl.admin.NodeExecutionListRequest(
                 workflow_execution_id=workflow_execution_identifier.to_flyte_idl(),
                 limit=limit,
                 token=token,
                 filters=_filters.FilterList(filters or []).to_flyte_idl(),
                 sort_by=None if sort_by is None else sort_by.to_flyte_idl(),
-                unique_parent_id=unique_parent_id,
+                unique_parent_id=unique_parent_id or "",
             )
         )
         return (
@@ -775,7 +774,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         """
         return _task_execution.TaskExecution.from_flyte_idl(
             super(SynchronousFlyteClient, self).get_task_execution(
-                _task_execution_pb2.TaskExecutionGetRequest(id=id.to_flyte_idl())
+                flyteidl.admin.TaskExecutionGetRequest(id=id.to_flyte_idl())
             )
         )
 
@@ -788,7 +787,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         """
         return _execution.TaskExecutionGetDataResponse.from_flyte_idl(
             super(SynchronousFlyteClient, self).get_task_execution_data(
-                _task_execution_pb2.TaskExecutionGetDataRequest(id=task_execution_identifier.to_flyte_idl())
+                flyteidl.admin.TaskExecutionGetDataRequest(id=task_execution_identifier.to_flyte_idl())
             )
         )
 
@@ -810,8 +809,8 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         :param flytekit.models.admin.common.Sort sort_by: [Optional] If provided, the results will be sorted.
         :rtype: (list[flytekit.models.admin.task_execution.TaskExecution], Text)
         """
-        exec_list = super(SynchronousFlyteClient, self).list_task_executions_paginated(
-            _task_execution_pb2.TaskExecutionListRequest(
+        exec_list = super(SynchronousFlyteClient, self).list_task_executions(
+            flyteidl.admin.TaskExecutionListRequest(
                 node_execution_id=node_execution_identifier.to_flyte_idl(),
                 limit=limit,
                 token=token,
@@ -988,7 +987,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         expires_in: typing.Optional[datetime.timedelta] = None,
         filename_root: typing.Optional[str] = None,
         add_content_md5_metadata: bool = True,
-    ) -> _data_proxy_pb2.CreateUploadLocationResponse:
+    ) -> flyteidl.service.CreateUploadLocationResponse:
         """
         Get a signed url to be used during fast registration
 
@@ -1010,14 +1009,15 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
                 expires_in_pb = Duration()
                 expires_in_pb.FromTimedelta(expires_in)
             return super(SynchronousFlyteClient, self).create_upload_location(
-                _data_proxy_pb2.CreateUploadLocationRequest(
+                flyteidl.service.CreateUploadLocationRequest(
                     project=project,
                     domain=domain,
                     content_md5=content_md5,
                     filename=filename,
                     expires_in=expires_in_pb,
-                    filename_root=filename_root,
+                    filename_root=filename_root or "",
                     add_content_md5_metadata=add_content_md5_metadata,
+                    org="",
                 )
             )
         except Exception as e:

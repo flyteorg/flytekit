@@ -1,3 +1,4 @@
+import flyteidl_rust as flyteidl
 from flyteidl.core import compiler_pb2 as _compiler_pb2
 
 from flytekit.models import common as _common
@@ -187,7 +188,7 @@ class CompiledWorkflowClosure(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.compiler_pb2.CompiledWorkflowClosure
         """
-        return _compiler_pb2.CompiledWorkflowClosure(
+        return flyteidl.core.CompiledWorkflowClosure(
             primary=self.primary.to_flyte_idl(),
             sub_workflows=[s.to_flyte_idl() for s in self.sub_workflows],
             tasks=[t.to_flyte_idl() for t in self.tasks],

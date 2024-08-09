@@ -4,7 +4,7 @@ import typing
 from dataclasses import Field, dataclass, field
 from types import MappingProxyType
 
-import grpc
+# import grpc
 import rich_click as click
 
 from flytekit.exceptions.base import FlyteException
@@ -69,14 +69,14 @@ def validate_package(ctx, param, values):
     return pkgs
 
 
-def pretty_print_grpc_error(e: grpc.RpcError):
-    """
-    This method will print the grpc error that us more human readable.
-    """
-    if isinstance(e, grpc._channel._InactiveRpcError):  # noqa
-        click.secho(f"RPC Failed, with Status: {e.code()}", fg="red", bold=True)
-        click.secho(f"\tdetails: {e.details()}", fg="magenta", bold=True)
-    return
+# def pretty_print_grpc_error(e: grpc.RpcError):
+#     """
+#     This method will print the grpc error that us more human readable.
+#     """
+#     if isinstance(e, grpc._channel._InactiveRpcError):  # noqa
+#         click.secho(f"RPC Failed, with Status: {e.code()}", fg="red", bold=True)
+#         click.secho(f"\tdetails: {e.details()}", fg="magenta", bold=True)
+#     return
 
 
 def pretty_print_traceback(e):
@@ -106,15 +106,15 @@ def pretty_print_exception(e: Exception):
             click.secho("Request rejected by the API, due to Invalid input.", fg="red")
         cause = e.__cause__
         if cause:
-            if isinstance(cause, grpc.RpcError):
-                pretty_print_grpc_error(cause)
-            else:
-                pretty_print_traceback(cause)
+            # if isinstance(cause, grpc.RpcError):
+            #     pretty_print_grpc_error(cause)
+            # else:
+            pretty_print_traceback(cause)
         return
 
-    if isinstance(e, grpc.RpcError):
-        pretty_print_grpc_error(e)
-        return
+    # if isinstance(e, grpc.RpcError):
+    #     pretty_print_grpc_error(e)
+    #     return
 
     if isinstance(e, AssertionError):
         click.secho(f"Assertion Error: {e}", fg="red")

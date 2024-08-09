@@ -29,6 +29,8 @@ import fsspec
 import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
 from flyteidl.core import literals_pb2
+import flyteidl_rust as flyteidl
+from flyteidl_rust import FlyteEntityAlreadyExistsException, FlyteEntityNotExistException
 
 from flytekit import ImageSpec
 from flytekit.clients.friendly import SynchronousFlyteClient
@@ -48,8 +50,6 @@ from flytekit.core.type_engine import LiteralsResolver, TypeEngine
 from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase, WorkflowFailurePolicy
 from flytekit.exceptions import user as user_exceptions
 from flytekit.exceptions.user import (
-    FlyteEntityAlreadyExistsException,
-    FlyteEntityNotExistException,
     FlyteValueException,
 )
 from flytekit.loggers import logger
@@ -240,7 +240,9 @@ class FlyteRemote(object):
     def client(self) -> SynchronousFlyteClient:
         """Return a SynchronousFlyteClient for additional operations."""
         if not self._client_initialized:
-            self._client = SynchronousFlyteClient(self.config.platform, **self._kwargs)
+            self._client = SynchronousFlyteClient(
+                endpoint=self.config.platform.endpoint, insecure=self.config.platform.insecure, **self._kwargs
+            )
             self._client_initialized = True
         return self._client
 
@@ -350,6 +352,7 @@ class FlyteRemote(object):
             version,
         )
         admin_task = self.client.get_task(task_id)
+
         flyte_task = FlyteTask.promote_from_model(admin_task.closure.compiled_task.template)
         flyte_task.template._id = task_id
         return flyte_task
@@ -716,7 +719,6 @@ class FlyteRemote(object):
                 except FlyteEntityAlreadyExistsException:
                     logger.info(f" {lp_entity.id} Already Exists!")
             return ident
-
         if isinstance(cp_entity, launch_plan_models.LaunchPlan):
             ident = self._resolve_identifier(ResourceType.LAUNCH_PLAN, cp_entity.id.name, version, settings)
             try:
@@ -1897,7 +1899,7 @@ class FlyteRemote(object):
         :param poll_interval: sync workflow execution at this interval
         :param sync_nodes: passed along to the sync call for the workflow execution
         """
-        poll_interval = poll_interval or timedelta(seconds=30)
+        poll_interval = poll_interval or timedelta(seconds=10)
         time_to_give_up = datetime.max if timeout is None else datetime.now() + timeout
 
         while datetime.now() < time_to_give_up:
@@ -2216,7 +2218,7 @@ class FlyteRemote(object):
                 tmp_name = os.path.join(ctx.file_access.local_sandbox_dir, "inputs.pb")
                 ctx.file_access.get_data(execution_data.inputs.url, tmp_name)
                 return literal_models.LiteralMap.from_flyte_idl(
-                    utils.load_proto_from_file(literals_pb2.LiteralMap, tmp_name)
+                    utils.load_proto_from_file(flyteidl.core.LiteralMap, tmp_name)
                 )
         return literal_models.LiteralMap({})
 
@@ -2229,7 +2231,7 @@ class FlyteRemote(object):
                 tmp_name = os.path.join(ctx.file_access.local_sandbox_dir, "outputs.pb")
                 ctx.file_access.get_data(execution_data.outputs.url, tmp_name)
                 return literal_models.LiteralMap.from_flyte_idl(
-                    utils.load_proto_from_file(literals_pb2.LiteralMap, tmp_name)
+                    utils.load_proto_from_file(flyteidl.core.LiteralMap, tmp_name)
                 )
         return literal_models.LiteralMap({})
 

@@ -1,6 +1,6 @@
 import typing
 
-from flyteidl.admin import workflow_pb2 as _admin_workflow
+import flyteidl_rust as flyteidl
 
 from flytekit.models import common as _common
 from flytekit.models.core import compiler as _compiler_models
@@ -50,7 +50,7 @@ class WorkflowSpec(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.workflow_pb2.WorkflowSpec
         """
-        return _admin_workflow.WorkflowSpec(
+        return flyteidl.admin.WorkflowSpec(
             template=self._template.to_flyte_idl(),
             sub_workflows=[s.to_flyte_idl() for s in self._sub_workflows],
             description=self._docs.to_flyte_idl() if self._docs else None,
@@ -96,7 +96,7 @@ class Workflow(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.workflow_pb2.Workflow
         """
-        return _admin_workflow.Workflow(id=self.id.to_flyte_idl(), closure=self.closure.to_flyte_idl())
+        return flyteidl.admin.Workflow(id=self.id.to_flyte_idl(), closure=self.closure.to_flyte_idl())
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -128,7 +128,7 @@ class WorkflowClosure(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.workflow_pb2.WorkflowClosure
         """
-        return _admin_workflow.WorkflowClosure(compiled_workflow=self.compiled_workflow.to_flyte_idl())
+        return flyteidl.admin.WorkflowClosure(compiled_workflow=self.compiled_workflow.to_flyte_idl())
 
     @classmethod
     def from_flyte_idl(cls, p):

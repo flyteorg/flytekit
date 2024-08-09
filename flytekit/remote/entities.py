@@ -174,7 +174,7 @@ class FlyteTask(hash_mixin.HashOnReferenceMixin, RemoteEntity, TaskSpec):
             task_type_version=base_model.task_type_version,
         )
         # Override the newly generated name if one exists in the base model
-        if not base_model.id.is_empty:
+        if len(str(base_model.id)) > 0:  # not is_empty
             t._id = base_model.id
 
         return t
@@ -453,7 +453,7 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
             None,
         )
         if model.task_node is not None:
-            if model.task_node.reference_id not in tasks:
+            if str(model.task_node.reference_id) not in [str(k) for k in tasks.keys()]:
                 raise RuntimeError(
                     f"Remote Workflow closure does not have task with id {model.task_node.reference_id}."
                 )
@@ -686,6 +686,7 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, RemoteEntity, WorkflowSpec
 
         node_map = {}
         converted_sub_workflows = {}
+
         for node in base_model_non_system_nodes:
             flyte_node, converted_sub_workflows = cls._promote_node(
                 node, sub_workflows, node_launch_plans, tasks, converted_sub_workflows
