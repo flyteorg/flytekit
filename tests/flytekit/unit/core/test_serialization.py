@@ -1,3 +1,4 @@
+import re
 import os
 import typing
 from collections import OrderedDict
@@ -775,7 +776,10 @@ def test_default_args_task_list_type():
     def wf_with_input() -> typing.List[int]:
         return t1(a=input_val)
 
-    with pytest.raises(FlyteAssertion, match="Cannot use non-hashable object as default argument"):
+    with pytest.raises(
+        FlyteAssertion,
+        match=r"Argument a for function .*test_serialization\.t1 is a mutable default argument, which is a python anti-pattern and not supported in flytekit tasks"
+    ):
         get_serializable(OrderedDict(), serialization_settings, wf_no_input)
 
     wf_with_input_spec = get_serializable(OrderedDict(), serialization_settings, wf_with_input)
@@ -810,7 +814,10 @@ def test_default_args_task_dict_type():
     def wf_with_input() -> typing.Dict[str, int]:
         return t1(a=input_val)
 
-    with pytest.raises(FlyteAssertion, match="Cannot use non-hashable object as default argument"):
+    with pytest.raises(
+        FlyteAssertion,
+        match=r"Argument a for function .*test_serialization\.t1 is a mutable default argument, which is a python anti-pattern and not supported in flytekit tasks"
+    ):
         get_serializable(OrderedDict(), serialization_settings, wf_no_input)
 
     wf_with_input_spec = get_serializable(OrderedDict(), serialization_settings, wf_with_input)
@@ -910,7 +917,10 @@ def test_default_args_task_optional_list_type_default_list():
     def wf_with_input() -> typing.Optional[typing.List[int]]:
         return t1(a=input_val)
 
-    with pytest.raises(FlyteAssertion, match="Cannot use non-hashable object as default argument"):
+    with pytest.raises(
+        FlyteAssertion,
+        match=r"Argument a for function .*test_serialization\.t1 is a mutable default argument, which is a python anti-pattern and not supported in flytekit tasks"
+    ):
         get_serializable(OrderedDict(), serialization_settings, wf_no_input)
 
     wf_with_input_spec = get_serializable(OrderedDict(), serialization_settings, wf_with_input)
