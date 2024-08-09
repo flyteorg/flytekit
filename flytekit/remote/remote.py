@@ -13,7 +13,6 @@ import functools
 import hashlib
 import os
 import pathlib
-import sys
 import tempfile
 import time
 import typing
@@ -88,7 +87,7 @@ from flytekit.remote.remote_callable import RemoteEntity
 from flytekit.remote.remote_fs import get_flyte_fs
 from flytekit.tools.fast_registration import FastPackageOptions, fast_package
 from flytekit.tools.interactive import ipython_check
-from flytekit.tools.script_mode import _find_project_root, compress_scripts, hash_file, get_all_modules
+from flytekit.tools.script_mode import _find_project_root, compress_scripts, get_all_modules, hash_file
 from flytekit.tools.translator import (
     FlyteControlPlaneEntity,
     FlyteLocalEntity,
