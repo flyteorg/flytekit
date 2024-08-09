@@ -46,7 +46,6 @@ from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceEntity, WorkflowReference
 from flytekit.core.tracker import extract_task_module
 from flytekit.core.type_engine import TypeEngine
-from flytekit.exceptions import scopes as exception_scopes
 from flytekit.exceptions.user import FlyteValidationException, FlyteValueException
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
@@ -690,7 +689,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             # Now lets compile the failure-node if it exists
             if self.on_failure:
                 c = wf_args.copy()
-                exception_scopes.user_entry_point(self.on_failure)(**c)
+                self.on_failure(**c)
                 inner_nodes = None
                 if inner_comp_ctx.compilation_state and inner_comp_ctx.compilation_state.nodes:
                     inner_nodes = inner_comp_ctx.compilation_state.nodes
@@ -717,7 +716,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             # Construct the default input promise bindings, but then override with the provided inputs, if any
             input_kwargs = construct_input_promises([k for k in self.interface.inputs.keys()])
             input_kwargs.update(kwargs)
-            workflow_outputs = exception_scopes.user_entry_point(self._workflow_function)(**input_kwargs)
+            workflow_outputs = self._workflow_function(**input_kwargs)
             all_nodes.extend(comp_ctx.compilation_state.nodes)
 
             # This little loop was added as part of the task resolver change. The task resolver interface itself is
@@ -800,7 +799,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         call execute from dispatch_execute which is in local_execute, workflows should also call an execute inside
         local_execute. This makes mocking cleaner.
         """
-        return exception_scopes.user_entry_point(self._workflow_function)(**kwargs)
+        return self._workflow_function(**kwargs)
 
 
 @overload

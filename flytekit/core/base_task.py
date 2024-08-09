@@ -26,6 +26,7 @@ import warnings
 from abc import abstractmethod
 from base64 import b64encode
 from dataclasses import dataclass
+from sys import exc_info
 from typing import (
     Any,
     Coroutine,
@@ -71,6 +72,7 @@ from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
 from flytekit.core.utils import timeit
 from flytekit.deck import DeckField
+from flytekit.exceptions.scopes import FlyteScopedUserException
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import interface as _interface_models
@@ -734,7 +736,10 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             #   a workflow or a subworkflow etc
             logger.info(f"Invoking {self.name} with inputs: {native_inputs}")
             with timeit("Execute user level code"):
-                native_outputs = self.execute(**native_inputs)
+                try:
+                    native_outputs = self.execute(**native_inputs)
+                except Exception:
+                    raise FlyteScopedUserException(*exc_info())
 
             if inspect.iscoroutine(native_outputs):
                 # If native outputs is a coroutine, then this is an eager workflow.
