@@ -14,9 +14,10 @@ class FlyteUserRuntimeException(_FlyteException):
     def __init__(self, exc_value):
         """
         FlyteUserRuntimeException is thrown when a user code raises an exception.
-        @param exc_type: The exception that was raised from user code.
+        @param exc_value: The exception that was raised from user code.
         """
         self._exc_value = exc_value
+        super(FlyteUserRuntimeException, self).__init__(str(exc_value))
 
     @property
     def value(self):
