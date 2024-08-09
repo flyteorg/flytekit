@@ -73,6 +73,7 @@ from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
 from flytekit.core.utils import timeit
 from flytekit.deck import DeckField
 from flytekit.exceptions.scopes import FlyteScopedUserException
+from flytekit.exceptions.user import FlyteUserRuntimeException
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import interface as _interface_models
@@ -738,8 +739,8 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             with timeit("Execute user level code"):
                 try:
                     native_outputs = self.execute(**native_inputs)
-                except Exception:
-                    raise FlyteScopedUserException(*exc_info())
+                except Exception as e:
+                    raise FlyteUserRuntimeException("Failed to execute user code") from e
 
             if inspect.iscoroutine(native_outputs):
                 # If native outputs is a coroutine, then this is an eager workflow.
