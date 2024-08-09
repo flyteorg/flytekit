@@ -244,6 +244,7 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
+        makefile-cmd: [integration_test_codecov, integration_test_lftransfers_codecov]
     steps:
       # As described in https://github.com/pypa/setuptools_scm/issues/414, SCM needs git history
       # and tags to work.
@@ -297,7 +298,7 @@ jobs:
           FLYTEKIT_CI: 1
           PYTEST_OPTS: -n2
         run: |
-          make integration_test_codecov
+          make ${{ matrix.makefile-cmd }}
       - name: Codecov
         uses: codecov/codecov-action@v3.1.0
         with:

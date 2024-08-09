@@ -5,7 +5,7 @@ import inspect
 import typing
 from copy import deepcopy
 from enum import Enum
-from typing import Any, Coroutine, Dict, Hashable, List, Optional, Set, Tuple, Union, cast, get_args
+from typing import Any, Coroutine, Dict, List, Optional, Set, Tuple, Union, cast, get_args
 
 from google.protobuf import struct_pb2 as _struct
 from typing_extensions import Protocol
@@ -94,7 +94,7 @@ def translate_inputs_to_literals(
                 v = resolve_attr_path_in_promise(v)
             result[k] = TypeEngine.to_literal(ctx, v, t, var.type)
         except TypeTransformerFailedError as exc:
-            raise TypeTransformerFailedError(f"Failed argument '{k}': {exc}") from exc
+            raise TypeTransformerFailedError(f"Failed argument '{k}': {exc}") from None
 
     return result
 
@@ -1116,8 +1116,13 @@ def create_and_link_node(
                 or UnionTransformer.is_optional_type(interface.inputs_with_defaults[k][0])
             ):
                 default_val = interface.inputs_with_defaults[k][1]
-                if not isinstance(default_val, Hashable):
-                    raise _user_exceptions.FlyteAssertion("Cannot use non-hashable object as default argument")
+                # Common cases of mutable default arguments, as described in https://www.pullrequest.com/blog/python-pitfalls-the-perils-of-using-lists-and-dicts-as-default-arguments/
+                # or https://florimond.dev/en/posts/2018/08/python-mutable-defaults-are-the-source-of-all-evil, are not supported.
+                # As of 2024-08-05, Python native sets are not supported in Flytekit. However, they are included here for completeness.
+                if isinstance(default_val, list) or isinstance(default_val, dict) or isinstance(default_val, set):
+                    raise _user_exceptions.FlyteAssertion(
+                        f"Argument {k} for function {entity.name} is a mutable default argument, which is a python anti-pattern and not supported in flytekit tasks"
+                    )
                 kwargs[k] = default_val
             else:
                 error_msg = f"Input {k} of type {interface.inputs[k]} was not specified for function {entity.name}"

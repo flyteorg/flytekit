@@ -770,6 +770,8 @@ class RemoteEntityGroup(click.RichGroup):
         return []
 
     def list_commands(self, ctx):
+        if "--help" in sys.argv:
+            return []
         if self._entities or ctx.obj is None:
             return self._entities
 
