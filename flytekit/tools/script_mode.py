@@ -9,7 +9,7 @@ import tempfile
 import typing
 from pathlib import Path
 from types import ModuleType
-from typing import List
+from typing import List, Optional
 
 
 def compress_scripts(source_path: str, destination: str, modules: List[ModuleType]):
@@ -140,10 +140,10 @@ def add_imported_modules_from_source(source_path: str, destination: str, modules
         shutil.copy(mod_file, new_destination)
 
 
-def get_all_modules(source_path: str, module_name: str) -> List[ModuleType]:
+def get_all_modules(source_path: str, module_name: Optional[str]) -> List[ModuleType]:
     """Import python file with module_name in source_path and return all modules."""
     sys_modules = list(sys.modules.values())
-    if module_name in sys.modules:
+    if module_name is None or module_name in sys.modules:
         # module already exists, there is no need to import it again
         return sys_modules
 
