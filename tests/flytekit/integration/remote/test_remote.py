@@ -100,7 +100,10 @@ def test_fetch_execute_launch_plan_with_args(register):
     flyte_launch_plan = remote.fetch_launch_plan(name="basic.basic_workflow.my_wf", version=VERSION)
     execution = remote.execute(flyte_launch_plan, inputs={"a": 10, "b": "foobar"}, wait=True)
     assert execution.node_executions["n0"].inputs == {"a": 10}
-    assert execution.node_executions["n0"].outputs == {"t1_int_output": 12, "c": "world"}
+    assert execution.node_executions["n0"].outputs == {
+        "t1_int_output": 12,
+        "c": "world",
+    }
     assert execution.node_executions["n1"].inputs == {"a": "world", "b": "foobar"}
     assert execution.node_executions["n1"].outputs == {"o0": "foobarworld"}
     assert execution.node_executions["n0"].task_executions[0].inputs == {"a": 10}
@@ -130,7 +133,7 @@ def test_monitor_workflow_execution(register):
             break
 
         with pytest.raises(
-            FlyteAssertion, match="Please wait until the execution has completed before requesting the outputs."
+            FlyteAssertion, match="Please wait until the execution has completed before requesting the outputs.",
         ):
             execution.outputs
 
@@ -241,7 +244,11 @@ def test_execute_python_workflow_and_launch_plan(register):
 
     launch_plan = LaunchPlan.get_or_create(workflow=my_wf, name=my_wf.name)
     execution = remote.execute(
-        launch_plan, name="basic.basic_workflow.my_wf", inputs={"a": 14, "b": "foobar"}, version=VERSION, wait=True
+        launch_plan,
+        name="basic.basic_workflow.my_wf",
+        inputs={"a": 14, "b": "foobar"},
+        version=VERSION,
+        wait=True,
     )
     assert execution.outputs["o0"] == 16
     assert execution.outputs["o1"] == "foobarworld"
@@ -269,7 +276,9 @@ def test_fetch_execute_task_list_of_floats(register):
 
 def test_fetch_execute_task_convert_dict(register):
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
-    flyte_task = remote.fetch_task(name="basic.dict_str_wf.convert_to_string", version=VERSION)
+    flyte_task = remote.fetch_task(
+        name="basic.dict_str_wf.convert_to_string", version=VERSION
+    )
     d: typing.Dict[str, str] = {"key1": "value1", "key2": "value2"}
     execution = remote.execute(flyte_task, inputs={"d": d}, wait=True)
     remote.sync_execution(execution, sync_nodes=True)
@@ -374,9 +383,7 @@ def test_execute_with_default_launch_plan(register):
     from .workflows.basic.subworkflows import parent_wf
 
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
-    execution = remote.execute(
-        parent_wf, inputs={"a": 101}, version=VERSION, wait=True, image_config=ImageConfig.auto(img_name=IMAGE)
-    )
+    execution = remote.execute(parent_wf, inputs={"a": 101}, version=VERSION, wait=True, image_config=ImageConfig.auto(img_name=IMAGE))
     # check node execution inputs and outputs
     assert execution.node_executions["n0"].inputs == {"a": 101}
     assert execution.node_executions["n0"].outputs == {"t1_int_output": 103, "c": "world"}

@@ -6,7 +6,18 @@ import inspect
 import sys
 import typing
 from collections import OrderedDict
-from typing import Any, Dict, Generator, List, Optional, Tuple, Type, TypeVar, Union, cast
+from typing import (
+    Any,
+    Dict,
+    Generator,
+    List,
+    Optional,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+)
 
 from flyteidl.core import artifact_id_pb2 as art_id
 from typing_extensions import get_args, get_type_hints
@@ -370,7 +381,9 @@ def transform_interface_to_list_interface(
 
 
 def transform_function_to_interface(
-    fn: typing.Callable, docstring: Optional[Docstring] = None, is_reference_entity: bool = False
+    fn: typing.Callable,
+    docstring: Optional[Docstring] = None,
+    is_reference_entity: bool = False,
 ) -> Interface:
     """
     From the annotations on a task function that the user should have provided, and the output names they want to use
@@ -463,7 +476,9 @@ def transform_type(x: type, description: Optional[str] = None) -> _interface_mod
     if artifact_id:
         logger.debug(f"Found artifact id spec: {artifact_id}")
     return _interface_models.Variable(
-        type=TypeEngine.to_literal_type(x), description=description, artifact_partial_id=artifact_id
+        type=TypeEngine.to_literal_type(x),
+        description=description,
+        artifact_partial_id=artifact_id,
     )
 
 
