@@ -141,6 +141,7 @@ def resolve_attr_path_in_promise(p: Promise, t: typing.Type) -> Promise:
 
         from flytekit.models.literals import Json
 
+        # We keep it for reference task local execution in the future.
         if type(curr_val.value.value) is _struct.Struct:
             st = curr_val.value.value
             new_st = resolve_attr_path_in_pb_struct(st, attr_path=p.attr_path[used:])
