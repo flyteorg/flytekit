@@ -14,6 +14,7 @@ import joblib
 from urllib.parse import urlparse
 import uuid
 import pytest
+from mock import mock, patch
 
 from flytekit import LaunchPlan, kwtypes
 from flytekit.configuration import Config, ImageConfig, SerializationSettings
@@ -22,7 +23,7 @@ from flytekit.core.task import reference_task
 from flytekit.core.workflow import reference_workflow
 from flytekit.exceptions.user import FlyteAssertion, FlyteEntityNotExistException
 from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
-from flytekit.remote.remote import FlyteRemote
+from flytekit.remote import init_remote, FlyteRemote
 from flytekit.types.schema import FlyteSchema
 
 MODULE_PATH = pathlib.Path(__file__).parent / "workflows/basic"
@@ -31,7 +32,7 @@ IMAGE = os.environ.get("FLYTEKIT_IMAGE", "localhost:30000/flytekit:dev")
 PROJECT = "flytesnacks"
 DOMAIN = "development"
 VERSION = f"v{os.getpid()}"
-
+init_remote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN, interactive_mode_enabled=True)
 
 @pytest.fixture(scope="session")
 def register():
@@ -97,7 +98,7 @@ def test_fetch_execute_launch_plan(register):
 
 def test_fetch_execute_launch_plan_with_args(register):
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
-    flyte_launch_plan = remote.fetch_launch_plan(name="basic.basic_workflow.my_wf", version=VERSION)
+    flyte_launch_plan = remote.fetch_launch_plan(name="basic.basic_workflow.my_basic_wf", version=VERSION)
     execution = remote.execute(flyte_launch_plan, inputs={"a": 10, "b": "foobar"}, wait=True)
     assert execution.node_executions["n0"].inputs == {"a": 10}
     assert execution.node_executions["n0"].outputs == {"t1_int_output": 12, "c": "world"}
@@ -230,18 +231,18 @@ def test_execute_python_task(register):
 
 def test_execute_python_workflow_and_launch_plan(register):
     """Test execution of a @workflow-decorated python function and launchplan that are already registered."""
-    from .workflows.basic.basic_workflow import my_wf
+    from .workflows.basic.basic_workflow import my_basic_wf
 
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     execution = remote.execute(
-        my_wf, name="basic.basic_workflow.my_wf", inputs={"a": 10, "b": "xyz"}, version=VERSION, wait=True
+        my_basic_wf, name="basic.basic_workflow.my_basic_wf", inputs={"a": 10, "b": "xyz"}, version=VERSION, wait=True
     )
     assert execution.outputs["o0"] == 12
     assert execution.outputs["o1"] == "xyzworld"
 
-    launch_plan = LaunchPlan.get_or_create(workflow=my_wf, name=my_wf.name)
+    launch_plan = LaunchPlan.get_or_create(workflow=my_basic_wf, name=my_basic_wf.name)
     execution = remote.execute(
-        launch_plan, name="basic.basic_workflow.my_wf", inputs={"a": 14, "b": "foobar"}, version=VERSION, wait=True
+        launch_plan, name="basic.basic_workflow.my_basic_wf", inputs={"a": 14, "b": "foobar"}, version=VERSION, wait=True
     )
     assert execution.outputs["o0"] == 16
     assert execution.outputs["o1"] == "foobarworld"
@@ -253,7 +254,7 @@ def test_execute_python_workflow_and_launch_plan(register):
 
 def test_fetch_execute_launch_plan_list_of_floats(register):
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
-    flyte_launch_plan = remote.fetch_launch_plan(name="basic.list_float_wf.my_wf", version=VERSION)
+    flyte_launch_plan = remote.fetch_launch_plan(name="basic.list_float_wf.my_list_float_wf", version=VERSION)
     xs: typing.List[float] = [42.24, 999.1, 0.0001]
     execution = remote.execute(flyte_launch_plan, inputs={"xs": xs}, wait=True)
     assert execution.outputs["o0"] == "[42.24, 999.1, 0.0001]"
@@ -278,23 +279,23 @@ def test_fetch_execute_task_convert_dict(register):
 
 def test_execute_python_workflow_dict_of_string_to_string(register):
     """Test execution of a @workflow-decorated python function and launchplan that are already registered."""
-    from .workflows.basic.dict_str_wf import my_wf
+    from .workflows.basic.dict_str_wf import my_dict_str_wf
 
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     d: typing.Dict[str, str] = {"k1": "v1", "k2": "v2"}
     execution = remote.execute(
-        my_wf,
-        name="basic.dict_str_wf.my_wf",
+        my_dict_str_wf,
+        name="basic.dict_str_wf.my_dict_str_wf",
         inputs={"d": d},
         version=VERSION,
         wait=True,
     )
     assert json.loads(execution.outputs["o0"]) == {"k1": "v1", "k2": "v2"}
 
-    launch_plan = LaunchPlan.get_or_create(workflow=my_wf, name=my_wf.name)
+    launch_plan = LaunchPlan.get_or_create(workflow=my_dict_str_wf, name=my_dict_str_wf.name)
     execution = remote.execute(
         launch_plan,
-        name="basic.dict_str_wf.my_wf",
+        name="basic.dict_str_wf.my_dict_str_wf",
         inputs={"d": {"k2": "vvvv", "abc": "def"}},
         version=VERSION,
         wait=True,
@@ -304,24 +305,24 @@ def test_execute_python_workflow_dict_of_string_to_string(register):
 
 def test_execute_python_workflow_list_of_floats(register):
     """Test execution of a @workflow-decorated python function and launchplan that are already registered."""
-    from .workflows.basic.list_float_wf import my_wf
+    from .workflows.basic.list_float_wf import my_list_float_wf
 
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
 
     xs: typing.List[float] = [42.24, 999.1, 0.0001]
     execution = remote.execute(
-        my_wf,
-        name="basic.list_float_wf.my_wf",
+        my_list_float_wf,
+        name="basic.list_float_wf.my_list_float_wf",
         inputs={"xs": xs},
         version=VERSION,
         wait=True,
     )
     assert execution.outputs["o0"] == "[42.24, 999.1, 0.0001]"
 
-    launch_plan = LaunchPlan.get_or_create(workflow=my_wf, name=my_wf.name)
+    launch_plan = LaunchPlan.get_or_create(workflow=my_list_float_wf, name=my_list_float_wf.name)
     execution = remote.execute(
         launch_plan,
-        name="basic.list_float_wf.my_wf",
+        name="basic.list_float_wf.my_list_float_wf",
         inputs={"xs": [-1.1, 0.12345]},
         version=VERSION,
         wait=True,
@@ -428,15 +429,15 @@ def test_execute_reference_workflow(register):
     @reference_workflow(
         project=PROJECT,
         domain=DOMAIN,
-        name="basic.basic_workflow.my_wf",
+        name="basic.basic_workflow.my_basic_wf",
         version=VERSION,
     )
-    def my_wf(a: int, b: str) -> (int, str):
+    def my_basic_wf(a: int, b: str) -> (int, str):
         return a + 2, b + "world"
 
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     execution = remote.execute(
-        my_wf,
+        my_basic_wf,
         inputs={"a": 10, "b": "xyz"},
         wait=True,
         overwrite_cache=True,
@@ -455,15 +456,15 @@ def test_execute_reference_launchplan(register):
     @reference_launch_plan(
         project=PROJECT,
         domain=DOMAIN,
-        name="basic.basic_workflow.my_wf",
+        name="basic.basic_workflow.my_basic_wf",
         version=VERSION,
     )
-    def my_wf(a: int, b: str) -> (int, str):
+    def my_basic_wf(a: int, b: str) -> (int, str):
         return 3, "world"
 
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     execution = remote.execute(
-        my_wf,
+        my_basic_wf,
         inputs={"a": 10, "b": "xyz"},
         wait=True,
         overwrite_cache=True,
@@ -578,3 +579,100 @@ class TestLargeFileTransfers:
             bucket, key = url.netloc, url.path.lstrip("/")
             s3_md5_bytes = TestLargeFileTransfers._get_s3_file_md5_bytes(minio_s3_client, bucket, key)
             assert s3_md5_bytes == md5_bytes
+
+@mock.patch("flytekit.tools.interactive.ipython_check")
+def test_workflow_remote_func(mock_ipython_check):
+    mock_ipython_check.return_value = True
+    with pytest.raises(AssertionError):
+        init_remote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN, interactive_mode_enabled=True)
+    from .workflows.basic.child_workflow import parent_wf, double
+
+    # child_workflow.parent_wf asynchronously register a parent wf1 with child lp from another wf2.
+    future0 = double.remote(a=3)
+    future1 = parent_wf.remote(a=3)
+    future2 = parent_wf.remote(a=2)
+    assert future0.version != VERSION
+    assert future1.version != VERSION
+    assert future2.version != VERSION
+    # It should generate a new version for each execution
+    assert future1.version != future2.version
+
+    out0 = future0.wait()
+    assert out0.outputs["o0"] == 6
+    out1 = future1.wait()
+    assert out1.outputs["o0"] == 18
+    out2 = future2.wait()
+    assert out2.outputs["o0"] == 12
+
+
+def test_fetch_python_task_remote_func(register):
+    """Test execution of a @task-decorated python function that is already registered."""
+    with patch("flytekit.tools.interactive.ipython_check") as mock_ipython_check:
+        mock_ipython_check.return_value = True
+
+        from .workflows.basic.basic_workflow import t1
+
+        future = t1.remote(a=10, version=VERSION)
+        out = future.wait()
+        assert future.version == VERSION
+
+        assert out.outputs["t1_int_output"] == 12
+        assert out.outputs["c"] == "world"
+
+@pytest.mark.skip(reason="Waiting for supporting the `name` parameter in the remote function")
+def test_fetch_python_workflow_remote_func(register):
+    """Test execution of a @workflow-decorated python function that is already registered."""
+    with patch("flytekit.tools.interactive.ipython_check") as mock_ipython_check:
+        mock_ipython_check.return_value = True
+        from .workflows.basic.basic_workflow import my_basic_wf
+
+        future = my_basic_wf.remote(a=10, b="xyz", version=VERSION)
+        out = future.wait()
+        assert out.outputs["o0"] == 12
+        assert out.outputs["o1"] == "xyzworld"
+
+
+@mock.patch("flytekit.tools.interactive.ipython_check")
+def test_execute_task_remote_func_list_of_floats(mock_ipython_check):
+    mock_ipython_check.return_value = True
+    from .workflows.basic.list_float_wf import concat_list
+
+    xs: typing.List[float] = [0.1, 0.2, 0.3, 0.4, -99999.7]
+    future = concat_list.remote(xs=xs)
+    out = future.wait()
+    assert out.outputs["o0"] == "[0.1, 0.2, 0.3, 0.4, -99999.7]"
+
+
+@mock.patch("flytekit.tools.interactive.ipython_check")
+def test_execute_task_remote_func_convert_dict(mock_ipython_check):
+    mock_ipython_check.return_value = True
+    from .workflows.basic.dict_str_wf import convert_to_string
+
+    d: typing.Dict[str, str] = {"key1": "value1", "key2": "value2"}
+    future = convert_to_string.remote(d=d)
+    out = future.wait()
+    assert json.loads(out.outputs["o0"]) == {"key1": "value1", "key2": "value2"}
+
+
+@mock.patch("flytekit.tools.interactive.ipython_check")
+def test_execute_python_workflow_remote_func_dict_of_string_to_string(mock_ipython_check):
+    """Test execution of a @workflow-decorated python function."""
+    mock_ipython_check.return_value = True
+    from .workflows.basic.dict_str_wf import my_dict_str_wf
+
+    d: typing.Dict[str, str] = {"k1": "v1", "k2": "v2"}
+    future = my_dict_str_wf.remote(d=d)
+    out = future.wait()
+    assert json.loads(out.outputs["o0"]) == {"k1": "v1", "k2": "v2"}
+
+
+@mock.patch("flytekit.tools.interactive.ipython_check")
+def test_execute_python_workflow_remote_func_list_of_floats(mock_ipython_check):
+    """Test execution of a @workflow-decorated python function."""
+    mock_ipython_check.return_value = True
+    from .workflows.basic.list_float_wf import my_list_float_wf
+
+    xs: typing.List[float] = [42.24, 999.1, 0.0001]
+    future = my_list_float_wf.remote(xs=xs)
+    out = future.wait()
+    assert out.outputs["o0"] == "[42.24, 999.1, 0.0001]"

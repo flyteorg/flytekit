@@ -1,7 +1,10 @@
+import pathlib
 import sys
+import tempfile
 import typing
 from collections import OrderedDict
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from flyteidl.admin import schedule_pb2
@@ -20,11 +23,17 @@ from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
 from flytekit.core.legacy_map_task import MapPythonTask
 from flytekit.core.node import Node
 from flytekit.core.python_auto_container import PythonAutoContainerTask
-from flytekit.core.reference_entity import ReferenceEntity, ReferenceSpec, ReferenceTemplate
+from flytekit.core.reference_entity import (
+    ReferenceEntity,
+    ReferenceSpec,
+    ReferenceTemplate,
+)
 from flytekit.core.task import ReferenceTask
 from flytekit.core.utils import ClassDecorator, _dnsify
 from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase
+from flytekit.exceptions.user import FlyteAssertion
 from flytekit.image_spec.image_spec import _calculate_deduped_hash_from_image_spec
+from flytekit.loggers import logger
 from flytekit.models import common as _common_models
 from flytekit.models import common as common_models
 from flytekit.models import interface as interface_models
@@ -35,7 +44,13 @@ from flytekit.models.admin.workflow import WorkflowSpec
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _core_wf
 from flytekit.models.core import workflow as workflow_model
-from flytekit.models.core.workflow import ApproveCondition, GateNode, SignalCondition, SleepCondition, TaskNodeOverrides
+from flytekit.models.core.workflow import (
+    ApproveCondition,
+    GateNode,
+    SignalCondition,
+    SleepCondition,
+    TaskNodeOverrides,
+)
 from flytekit.models.core.workflow import ArrayNode as ArrayNodeModel
 from flytekit.models.core.workflow import BranchNode as BranchNodeModel
 from flytekit.models.task import TaskSpec, TaskTemplate
@@ -91,18 +106,25 @@ class Options(object):
     notifications: typing.Optional[typing.List[common_models.Notification]] = None
     disable_notifications: typing.Optional[bool] = None
     overwrite_cache: typing.Optional[bool] = None
+    file_uploader: Optional[Callable] = (
+        None  # This is used by the translator to upload task files, like pickled code etc
+    )
 
     @classmethod
     def default_from(
-        cls, k8s_service_account: typing.Optional[str] = None, raw_data_prefix: typing.Optional[str] = None
+        cls,
+        k8s_service_account: typing.Optional[str] = None,
+        raw_data_prefix: typing.Optional[str] = None,
     ) -> "Options":
         return cls(
-            security_context=security.SecurityContext(run_as=security.Identity(k8s_service_account=k8s_service_account))
-            if k8s_service_account
-            else None,
-            raw_output_data_config=common_models.RawOutputDataConfig(output_location_prefix=raw_data_prefix)
-            if raw_data_prefix
-            else None,
+            security_context=(
+                security.SecurityContext(run_as=security.Identity(k8s_service_account=k8s_service_account))
+                if k8s_service_account
+                else None
+            ),
+            raw_output_data_config=(
+                common_models.RawOutputDataConfig(output_location_prefix=raw_data_prefix) if raw_data_prefix else None
+            ),
         )
 
 
@@ -133,18 +155,26 @@ def to_serializable_cases(
 
 
 def get_command_prefix_for_fast_execute(settings: SerializationSettings) -> List[str]:
-    return [
+    prefix = [
         "pyflyte-fast-execute",
         "--additional-distribution",
-        settings.fast_serialization_settings.distribution_location
-        if settings.fast_serialization_settings and settings.fast_serialization_settings.distribution_location
-        else "{{ .remote_package_path }}",
+        (
+            settings.fast_serialization_settings.distribution_location
+            if settings.fast_serialization_settings and settings.fast_serialization_settings.distribution_location
+            else "{{ .remote_package_path }}"
+        ),
         "--dest-dir",
-        settings.fast_serialization_settings.destination_dir
-        if settings.fast_serialization_settings and settings.fast_serialization_settings.destination_dir
-        else "{{ .dest_dir }}",
-        "--",
+        (
+            settings.fast_serialization_settings.destination_dir
+            if settings.fast_serialization_settings and settings.fast_serialization_settings.destination_dir
+            else "{{ .dest_dir }}"
+        ),
     ]
+    # If pickling is enabled, we will add a pickled bit
+    if settings.fast_serialization_settings and settings.fast_serialization_settings.pickled:
+        prefix = prefix + ["--pickled"]
+
+    return prefix + ["--"]
 
 
 def prefix_with_fast_execute(settings: SerializationSettings, cmd: typing.List[str]) -> List[str]:
@@ -165,6 +195,62 @@ def _fast_serialize_command_fn(
     return fn
 
 
+@lru_cache
+def display_ipython_warning(input: str) -> None:
+    # This is a warning that is only displayed once per python type
+    logger.debug(input)
+
+
+def _update_serialization_settings_for_ipython(
+    entity: FlyteLocalEntity,
+    serialization_settings: SerializationSettings,
+    options: Optional[Options] = None,
+) -> SerializationSettings:
+    # If the entity is not a PythonAutoContainerTask, we don't need to do anything, as only Tasks with container |
+    # user code in container need to be serialized as pickled objects.
+    if not isinstance(entity, (PythonAutoContainerTask, ArrayNodeMapTask)):
+        return serialization_settings
+
+    # Let's check if we are in an interactive environment like Jupyter notebook
+    if serialization_settings.interactive_mode_enabled is True:
+        # We are in an interactive environment, let's check if the task is a PythonFunctionTask and the task function
+        # is defined in the main module. If so, we will serialize the task as a pickled object and upload it to remote
+        # storage. The main module check is to ensure that the task function is not defined in a notebook cell.
+        if isinstance(entity, PythonFunctionTask):
+            # if not entity.task_function.__module__ == "__main__":
+            #     raise FlyteAssertion(
+            #         "Task function should be defined in the main module | jupyter cell for"
+            #         " interactive mode. Task function defined in imported modules is not supported."
+            #         f" Task function {entity.task_function.__name__} is defined in an imported module"
+            #     )
+            if entity.execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
+                raise FlyteAssertion(
+                    f"Dynamic tasks are not supported in interactive mode. {entity.name} is a dynamic task."
+                )
+
+        import gzip
+
+        import cloudpickle
+
+        display_ipython_warning("Jupyter notebook and interactive task support is still alpha.")
+
+        from flytekit.configuration import FastSerializationSettings
+
+        if options is None or options.file_uploader is None:
+            raise FlyteAssertion("To work interactively with Flyte, a code transporter/uploader should be configured.")
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            dest = pathlib.Path(tmp_dir, "pkl.gz")
+            with gzip.GzipFile(filename=dest, mode="wb", mtime=0) as gzipped:
+                cloudpickle.dump(entity, gzipped)
+            display_ipython_warning("Uploading Pickled representation of Task to remote storage...")
+            _, native_url = options.file_uploader(dest)
+
+            serialization_settings.fast_serialization_settings = FastSerializationSettings(
+                enabled=True, pickled=True, distribution_location=native_url
+            )
+
+
 def get_serializable_task(
     entity_mapping: OrderedDict,
     settings: SerializationSettings,
@@ -179,6 +265,9 @@ def get_serializable_task(
         settings.version,
     )
 
+    # Try update the serialization settings for ipython / jupyter notebook / interactive mode
+    _update_serialization_settings_for_ipython(entity, settings, options)
+
     if isinstance(entity, PythonFunctionTask) and entity.execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
         for e in context_manager.FlyteEntities.entities:
             if isinstance(e, PythonAutoContainerTask):
@@ -189,7 +278,8 @@ def get_serializable_task(
                         settings.image_config = ImageConfig.create_from(settings.image_config.default_image)
                     settings.image_config.images.append(
                         Image.look_up_image_info(
-                            _calculate_deduped_hash_from_image_spec(e.container_image), e.get_image(settings)
+                            _calculate_deduped_hash_from_image_spec(e.container_image),
+                            e.get_image(settings),
                         )
                     )
 
@@ -349,7 +439,9 @@ def get_serializable_workflow(
     )
 
     return admin_workflow_models.WorkflowSpec(
-        template=wf_t, sub_workflows=sorted(set(sub_wfs), key=lambda x: x.short_string()), docs=entity.docs
+        template=wf_t,
+        sub_workflows=sorted(set(sub_wfs), key=lambda x: x.short_string()),
+        docs=entity.docs,
     )
 
 
@@ -560,7 +652,9 @@ def get_serializable_node(
             output_name = list(entity.flyte_entity.python_interface.outputs.keys())[0]  # should be o0
             gn = GateNode(
                 signal=SignalCondition(
-                    entity.flyte_entity.name, type=entity.flyte_entity.literal_type, output_variable_name=output_name
+                    entity.flyte_entity.name,
+                    type=entity.flyte_entity.literal_type,
+                    output_variable_name=output_name,
                 )
             )
         else:
@@ -694,13 +788,18 @@ def get_serializable_branch_node(
 
     return BranchNodeModel(
         if_else=_core_wf.IfElseBlock(
-            case=first, other=other, else_node=else_node_model, error=entity._ifelse_block.error
+            case=first,
+            other=other,
+            else_node=else_node_model,
+            error=entity._ifelse_block.error,
         )
     )
 
 
 def get_reference_spec(
-    entity_mapping: OrderedDict, settings: SerializationSettings, entity: ReferenceEntity
+    entity_mapping: OrderedDict,
+    settings: SerializationSettings,
+    entity: ReferenceEntity,
 ) -> ReferenceSpec:
     template = ReferenceTemplate(entity.id, entity.reference.resource_type)
     return ReferenceSpec(template)
@@ -786,7 +885,7 @@ def get_serializable(
         cp_entity = get_reference_spec(entity_mapping, settings, entity)
 
     elif isinstance(entity, PythonTask):
-        cp_entity = get_serializable_task(entity_mapping, settings, entity)
+        cp_entity = get_serializable_task(entity_mapping, settings, entity, options)
 
     elif isinstance(entity, WorkflowBase):
         cp_entity = get_serializable_workflow(entity_mapping, settings, entity, options)
