@@ -189,6 +189,7 @@ class FlyteSchema(SerializableType, DataClassJSONMixin):
 
     @classmethod
     def _deserialize(cls, value) -> "FlyteSchema":
+        # download data from remote blob storage
         remote_path = value.get("remote_path", None)
 
         if remote_path is None:

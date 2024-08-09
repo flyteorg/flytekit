@@ -2,8 +2,9 @@ import sys
 from datetime import datetime, timedelta
 
 import pytest
+from dataclasses import dataclass
 
-from flytekit import kwtypes
+from flytekit import kwtypes, task, workflow
 from flytekit.core import context_manager
 from flytekit.core.context_manager import ExecutionState, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
@@ -64,3 +65,31 @@ def test_to_html():
     tf = PandasDataFrameTransformer()
     output = tf.to_html(FlyteContextManager.current_context(), df, pd.DataFrame)
     assert df.describe().to_html() == output
+
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
+def test_flyte_schema_in_dataclass():
+    import pandas as pd
+
+    TestSchema = FlyteSchema[kwtypes(some_str=str)]
+    @dataclass
+    class DC:
+        fs: TestSchema
+
+    @task
+    def t1() -> DC:
+        schema = TestSchema()
+        df = pd.DataFrame(data={"some_str": ["a", "b", "c"]})
+        opened_schema = schema.open()
+        opened_schema.write(df)
+        return DC(fs=schema)
+
+    @task
+    def t2(d: DC) -> pd.DataFrame:
+        return d.fs.open().all()
+
+    @workflow
+    def wf() -> pd.DataFrame:
+        return t2(d=t1())
+
+    df = wf()
+    assert df.equals(pd.DataFrame(data={"some_str": ["a", "b", "c"]}))

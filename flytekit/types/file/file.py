@@ -147,11 +147,13 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
     """
 
     def _serialize(self) -> typing.Dict[str, str]:
+        # upload data to remote blob storage
         lv = FlyteFilePathTransformer().to_literal(FlyteContextManager.current_context(), self, type(self), None)
         return {"path": lv.scalar.blob.uri}
 
     @classmethod
     def _deserialize(cls, value) -> "FlyteFile":
+        # download data from remote blob storage
         path = value.get("path", None)
 
         if path is None:
@@ -548,6 +550,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
 
         # This is a local file path, like /usr/local/my_file, don't mess with it. Certainly, downloading it doesn't
         # make any sense.
+        # Turn to true for pydantic plugin
         if not ctx.file_access.is_remote(uri):
             return expected_python_type(uri)  # type: ignore
 
