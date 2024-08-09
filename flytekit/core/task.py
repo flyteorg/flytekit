@@ -12,7 +12,7 @@ except ImportError:
 from flytekit.core import launch_plan as _annotated_launchplan
 from flytekit.core import workflow as _annotated_workflow
 from flytekit.core.base_task import PythonTask, TaskMetadata, TaskResolverMixin
-from flytekit.core.interface import transform_function_to_interface
+from flytekit.core.interface import Interface, transform_function_to_interface
 from flytekit.core.pod_template import PodTemplate
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.reference_entity import ReferenceEntity, TaskReference
@@ -416,3 +416,28 @@ def reference_task(
         return ReferenceTask(project, domain, name, version, interface.inputs, interface.outputs)
 
     return wrapper
+
+
+class Echo(PythonTask):
+    """
+    A task that simply echoes the inputs back to the user.
+    """
+
+    _TASK_TYPE = "echo"
+
+    def __init__(
+        self, name: str, inputs: Optional[Dict[str, Type]] = None, outputs: Optional[Dict[str, Type]] = None, **kwargs
+    ):
+        if outputs is None:
+            outputs = {"o0": None}
+        super().__init__(
+            task_type=self._TASK_TYPE,
+            name=name,
+            interface=Interface(inputs=inputs, outputs=outputs),
+            **kwargs,
+        )
+
+    def execute(self, **kwargs) -> Any:
+        for k, v in kwargs.items():
+            print(f"{k} = {v}")
+        return kwargs["a"]
