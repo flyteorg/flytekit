@@ -2,7 +2,7 @@ import os
 import subprocess
 import sys
 
-from flytekit.tools.script_mode import compress_scripts, hash_file, add_imported_modules_from_source
+from flytekit.tools.script_mode import compress_scripts, hash_file, add_imported_modules_from_source, get_all_modules
 from flytekit.core.tracker import import_module_from_file
 
 MAIN_WORKFLOW = """
@@ -222,3 +222,18 @@ def test_add_imported_modules_from_source_nested_workflow(tmp_path):
     assert workflow_dest.read_text() == WORKFLOW_NESTED_CONTENT
     assert utils_1_dest.read_text() == UTILS_NESTED_CONTENT_1
     assert utils_2_dest.read_text() == UTILS_NESTED_CONTENT_2
+
+
+def test_get_all_modules(tmp_path):
+    source_dir = tmp_path / "source"
+    workflow_dir = source_dir / "my_workflows"
+    workflow_dir.mkdir(parents=True)
+    workflow_file = workflow_dir / "main.py"
+
+    # workflow_file does not exists so there are no additional imports
+    n_sys_modules = len(sys.modules)
+    assert n_sys_modules == len(get_all_modules(os.fspath(source_dir), "my_workflows.main"))
+
+    # Workflow exists, so it is imported
+    workflow_file.write_text(WORKFLOW_CONTENT)
+    assert n_sys_modules + 1 == len(get_all_modules(os.fspath(source_dir), "my_workflows.main"))

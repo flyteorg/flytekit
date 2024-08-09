@@ -132,8 +132,36 @@ def add_imported_modules_from_source(source_path: str, destination: str, modules
         relative_path = os.path.relpath(mod_file, start=source_path)
         new_destination = os.path.join(destination, relative_path)
 
+        if os.path.exists(new_destination):
+            # No need to copy if it already exists
+            continue
+
         os.makedirs(os.path.dirname(new_destination), exist_ok=True)
         shutil.copy(mod_file, new_destination)
+
+
+def get_all_modules(source_path: str, module_name: str) -> List[ModuleType]:
+    """Import python file with module_name in source_path and return all modules."""
+    sys_modules = list(sys.modules.values())
+    if module_name in sys.modules:
+        # module already exists, there is no need to import it again
+        return sys_modules
+
+    full_module = os.path.join(source_path, *module_name.split("."))
+    full_module_path = f"{full_module}.py"
+
+    is_python_file = os.path.exists(full_module_path) and os.path.isfile(full_module_path)
+    if not is_python_file:
+        return sys_modules
+
+    from flytekit.core.tracker import import_module_from_file
+
+    try:
+        new_module = import_module_from_file(module_name, full_module_path)
+        return sys_modules + [new_module]
+    except Exception:
+        # Import failed so we fallback to `sys_modules`
+        return sys_modules
 
 
 def hash_file(file_path: typing.Union[os.PathLike, str]) -> (bytes, str, int):
