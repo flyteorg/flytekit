@@ -24,14 +24,14 @@ RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/uv,id=uv \
     --mount=from=uv,source=/uv,target=/usr/bin/uv \
     --mount=type=bind,target=requirements_uv.txt,src=requirements_uv.txt \
     /usr/bin/uv \
-    pip install --python /opt/micromamba/envs/dev/bin/python $PIP_EXTRA \
+    pip install --python /opt/micromamba/envs/runtime/bin/python $PIP_EXTRA \
     --requirement requirements_uv.txt
 """)
 
 PIP_PYTHON_INSTALL_COMMAND_TEMPLATE = Template("""\
 RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/pip,id=pip \
     --mount=type=bind,target=requirements_pip.txt,src=requirements_pip.txt \
-    /opt/micromamba/envs/dev/bin/python -m pip install $PIP_EXTRA \
+    /opt/micromamba/envs/runtime/bin/python -m pip install $PIP_EXTRA \
     --requirement requirements_pip.txt
 """)
 
@@ -61,7 +61,7 @@ RUN chown -R flytekit /root && chown -R flytekit /home
 RUN --mount=type=cache,sharing=locked,mode=0777,target=/opt/micromamba/pkgs,\
 id=micromamba \
     --mount=from=micromamba,source=/usr/bin/micromamba,target=/usr/bin/micromamba \
-    /usr/bin/micromamba create -n dev --root-prefix /opt/micromamba \
+    /usr/bin/micromamba create -n runtime --root-prefix /opt/micromamba \
     -c conda-forge $CONDA_CHANNELS \
     python=$PYTHON_VERSION $CONDA_PACKAGES
 
@@ -69,8 +69,12 @@ $UV_PYTHON_INSTALL_COMMAND
 $PIP_PYTHON_INSTALL_COMMAND
 
 # Configure user space
-ENV PATH="/opt/micromamba/envs/dev/bin:$$PATH"
-ENV FLYTE_SDK_RICH_TRACEBACKS=0 SSL_CERT_DIR=/etc/ssl/certs $ENV
+ENV PATH="/opt/micromamba/envs/runtime/bin:$$PATH" \
+    UV_LINK_MODE=copy \
+    UV_PRERELEASE=allow \
+    FLYTE_SDK_RICH_TRACEBACKS=0 \
+    SSL_CERT_DIR=/etc/ssl/certs \
+    $ENV
 
 # Adds nvidia just in case it exists
 ENV PATH="$$PATH:/usr/local/nvidia/bin:/usr/local/cuda/bin" \

@@ -509,7 +509,7 @@ def reference_launch_plan(
     """
 
     def wrapper(fn) -> ReferenceLaunchPlan:
-        interface = transform_function_to_interface(fn)
+        interface = transform_function_to_interface(fn, is_reference_entity=True)
         return ReferenceLaunchPlan(project, domain, name, version, interface.inputs, interface.outputs)
 
     return wrapper

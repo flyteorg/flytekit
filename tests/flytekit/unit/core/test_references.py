@@ -408,7 +408,7 @@ def test_lp_from_ref_wf():
 def test_ref_lp_from_decorator():
     @reference_launch_plan(project="project", domain="domain", name="name", version="version")
     def ref_lp1(p1: str, p2: str) -> int:
-        return 0
+        ...
 
     assert ref_lp1.id.name == "name"
     assert ref_lp1.id.project == "project"
@@ -422,7 +422,7 @@ def test_ref_lp_from_decorator_with_named_outputs():
     nt = typing.NamedTuple("RefLPOutput", [("o1", int), ("o2", str)])
     @reference_launch_plan(project="project", domain="domain", name="name", version="version")
     def ref_lp1(p1: str, p2: str) -> nt:
-        return nt(o1=1, o2="2")
+        ...
 
     assert ref_lp1.python_interface.outputs == {"o1": int, "o2": str}
 
@@ -470,7 +470,7 @@ def test_ref_dynamic_lp():
     def my_subwf(a: int) -> typing.List[int]:
         @reference_launch_plan(project="project", domain="domain", name="name", version="version")
         def ref_lp1(p1: str, p2: str) -> int:
-            return 1
+            ...
 
         s = []
         for i in range(a):

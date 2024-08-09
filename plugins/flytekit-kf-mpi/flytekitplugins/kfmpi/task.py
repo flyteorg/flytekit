@@ -233,6 +233,7 @@ class HorovodJob(object):
         verbose: Optional flag indicating whether to enable verbose logging (default: False).
         log_level: Optional string specifying the log level (default: "INFO").
         discovery_script_path: Path to the discovery script used for host discovery (default: "/etc/mpi/discover_hosts.sh").
+        elastic_timeout: horovod elastic timeout in second (default: 1200).
         num_launcher_replicas: [DEPRECATED] The number of launcher server replicas to use. This argument is deprecated. Please use launcher.replicas instead.
         num_workers: [DEPRECATED] The number of worker replicas to spawn in the cluster for this job. Please use worker.replicas instead.
     """
@@ -244,6 +245,7 @@ class HorovodJob(object):
     verbose: Optional[bool] = False
     log_level: Optional[str] = "INFO"
     discovery_script_path: Optional[str] = "/etc/mpi/discover_hosts.sh"
+    elastic_timeout: Optional[int] = 1200
     # Support v0 config for backwards compatibility
     num_launcher_replicas: Optional[int] = None
     num_workers: Optional[int] = None
@@ -287,6 +289,8 @@ class HorovodFunctionTask(MPIFunctionTask):
             f"{self.task_config.slots}",
             "--host-discovery-script",
             self.task_config.discovery_script_path,
+            "--elastic-timeout",
+            f"{self.task_config.elastic_timeout}",
         ]
         if self.task_config.verbose:
             base_cmd.append("--verbose")
