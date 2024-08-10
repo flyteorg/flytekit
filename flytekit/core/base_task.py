@@ -710,6 +710,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
           may be none
         * ``DynamicJobSpec`` is returned when a dynamic workflow is executed
         """
+        raise RuntimeError("failed to upload flyte decks")
         if DeckField.TIMELINE.value in self.deck_fields and ctx.user_space_params is not None:
             ctx.user_space_params.decks.append(ctx.user_space_params.timeline_deck)
         # Invoked before the task is executed
