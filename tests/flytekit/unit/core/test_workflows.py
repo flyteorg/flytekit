@@ -501,9 +501,13 @@ def test_failure_node_local_execution(mock_print):
     with pytest.raises(ValueError):
         wf()
 
+    # pytest-xdist uses `__channelexec__` as the top-level module
+    running_xdist = os.environ.get("PYTEST_XDIST_WORKER") is not None
+    prefix = "__channelexec__." if running_xdist else ""
+
     # Adjusted the error message to match the one in the failure
     expected_error_message = str(
-        FlyteError(message="Error encountered while executing 'tests.flytekit.unit.core.test_workflows.t1':\n  Fail!", failed_node_id="fn0")
+        FlyteError(message=f"Error encountered while executing '{prefix}tests.flytekit.unit.core.test_workflows.t1':\n  Fail!", failed_node_id="fn0")
     )
 
     assert mock_print.call_count > 0

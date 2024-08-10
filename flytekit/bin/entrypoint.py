@@ -132,13 +132,7 @@ def _dispatch_execute(
         else:
             kind = _error_models.ContainerError.Kind.NON_RECOVERABLE
 
-        lines = traceback.format_tb(e.__cause__.__traceback__)
-        lines = [line.rstrip() for line in lines]
-        lines = "\n".join(lines).split("\n")
-        tb_str = "\n    ".join([""] + lines)
-
-        format_str = "Traceback (most recent call last):\n" "{traceback}\n" "\n" "Message:\n" "\n" "    {message}"
-        exc_str = format_str.format(traceback=tb_str, message=f"{type(e.value)}: {e.value}")
+        exc_str = get_traceback_str(e)
         output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
             _error_models.ContainerError(
                 "USER",
@@ -154,7 +148,7 @@ def _dispatch_execute(
 
     # All the Non-user errors are captured here, and are considered system errors
     except Exception as e:
-        exc_str = traceback.format_exc()
+        exc_str = get_traceback_str(e)
         output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
             _error_models.ContainerError(
                 "SYSTEM",
@@ -184,6 +178,18 @@ def _dispatch_execute(
         # AWS batch job get the status from the exit code, so once we catch the error,
         # we should return the error code here
         exit(1)
+
+
+def get_traceback_str(e: Exception) -> str:
+    tb = e.__cause__.__traceback__ if e.__cause__ else e.__traceback__
+    lines = traceback.format_tb(tb)
+    lines = [line.rstrip() for line in lines]
+    lines = "\n".join(lines).split("\n")
+    tb_str = "\n    ".join([""] + lines)
+    format_str = "Traceback (most recent call last):\n" "{traceback}\n" "\n" "Message:\n" "\n" "    {message}"
+
+    value = e.value if isinstance(e, FlyteUserRuntimeException) else e
+    return format_str.format(traceback=tb_str, message=f"{type(value)}: {value}")
 
 
 def get_one_of(*args) -> str:
