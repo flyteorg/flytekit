@@ -189,7 +189,7 @@ def get_traceback_str(e: Exception) -> str:
     format_str = "Traceback (most recent call last):\n" "{traceback}\n" "\n" "Message:\n" "\n" "    {message}"
 
     value = e.value if isinstance(e, FlyteUserRuntimeException) else e
-    return format_str.format(traceback=tb_str, message=f"{type(value)}: {value}")
+    return format_str.format(traceback=tb_str, message=f"{type(value).__name__}: {value}")
 
 
 def get_one_of(*args) -> str:
