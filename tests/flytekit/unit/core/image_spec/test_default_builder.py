@@ -80,8 +80,8 @@ def test_create_docker_context_with_git_subfolder(tmp_path):
     assert dockerfile_path.exists()
     dockerfile_content = dockerfile_path.read_text()
 
-    assert "--requirement requirements_pip.txt" in dockerfile_content
-    requirements_path = docker_context_path / "requirements_pip.txt"
+    assert "--requirement requirements_uv.txt" in dockerfile_content
+    requirements_path = docker_context_path / "requirements_uv.txt"
     assert requirements_path.exists()
 
 
