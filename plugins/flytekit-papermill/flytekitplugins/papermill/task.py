@@ -202,15 +202,21 @@ class NotebookTask(PythonInstanceTask[T]):
         # Always extract the module from the notebook task, no matter what _config_task_instance is.
         _, m, t, _ = extract_task_module(self)
         loader_args = ["task-module", m, "task-name", t]
+        previous_loader_args = self._config_task_instance.task_resolver.loader_args
         self._config_task_instance.task_resolver.loader_args = lambda ss, task: loader_args
-        return self._config_task_instance.get_container(settings)
+        container = self._config_task_instance.get_container(settings)
+        self._config_task_instance.task_resolver.loader_args = previous_loader_args
+        return container
 
     def get_k8s_pod(self, settings: SerializationSettings) -> task_models.K8sPod:
         # Always extract the module from the notebook task, no matter what _config_task_instance is.
         _, m, t, _ = extract_task_module(self)
         loader_args = ["task-module", m, "task-name", t]
+        previous_loader_args = self._config_task_instance.task_resolver.loader_args
         self._config_task_instance.task_resolver.loader_args = lambda ss, task: loader_args
-        return self._config_task_instance.get_k8s_pod(settings)
+        k8s_pod = self._config_task_instance.get_k8s_pod(settings)
+        self._config_task_instance.task_resolver.loader_args = previous_loader_args
+        return k8s_pod
 
     def get_config(self, settings: SerializationSettings) -> typing.Dict[str, str]:
         return {**super().get_config(settings), **self._config_task_instance.get_config(settings)}
