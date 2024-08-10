@@ -377,6 +377,7 @@ def _execute_task(
         dynamic_dest_dir,
     ) as ctx:
         import sys
+
         sys.path.append(".")
         resolver_obj = load_object_from_module(resolver)
         # Use the resolver to load the actual task object
