@@ -121,16 +121,23 @@ def _dispatch_execute(
 
     # Handle user-scoped errors
     except FlyteUserRuntimeException as e:
+        # Step3b
         if isinstance(e.value, IgnoreOutputs):
             logger.warning(f"User-scoped IgnoreOutputs received! Outputs.pb will not be uploaded. reason {e}!!")
             return
+
+        # Step3c
         if isinstance(e.value, FlyteRecoverableException):
             kind = _error_models.ContainerError.Kind.RECOVERABLE
         else:
             kind = _error_models.ContainerError.Kind.NON_RECOVERABLE
 
+        lines = traceback.format_tb(e.__cause__.__traceback__)
+        lines = [line.rstrip() for line in lines]
+        lines = "\n".join(lines).split("\n")
+        tb_str = "\n    ".join([""] + lines)
+
         format_str = "Traceback (most recent call last):\n" "{traceback}\n" "\n" "Message:\n" "\n" "    {message}"
-        tb_str = traceback.format_tb(e.__cause__.__traceback__)
         exc_str = format_str.format(traceback=tb_str, message=f"{type(e.value)}: {e.value}")
         output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
             _error_models.ContainerError(
