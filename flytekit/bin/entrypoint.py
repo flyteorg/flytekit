@@ -34,7 +34,7 @@ from flytekit.core.context_manager import (
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.promise import VoidPromise
 from flytekit.deck.deck import _output_deck
-from flytekit.exceptions.user import FlyteUserRuntimeException
+from flytekit.exceptions.user import FlyteRecoverableException, FlyteUserRuntimeException
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
 from flytekit.loggers import logger, user_space_logger
 from flytekit.models import dynamic_job as _dynamic_job
@@ -124,13 +124,19 @@ def _dispatch_execute(
         if isinstance(e.value, IgnoreOutputs):
             logger.warning(f"User-scoped IgnoreOutputs received! Outputs.pb will not be uploaded. reason {e}!!")
             return
+        if isinstance(e.value, FlyteRecoverableException):
+            kind = _error_models.ContainerError.Kind.RECOVERABLE
+        else:
+            kind = _error_models.ContainerError.Kind.NON_RECOVERABLE
+
         format_str = "Traceback (most recent call last):\n" "{traceback}\n" "\n" "Message:\n" "\n" "    {message}"
-        exc_str = format_str.format(traceback=e.__cause__, message=f"{type(e.value)}: {e.value}")
+        tb_str = e.__cause__.__traceback__.__str__()
+        exc_str = format_str.format(traceback=tb_str, message=f"{type(e.value)}: {e.value}")
         output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
             _error_models.ContainerError(
                 "USER",
                 exc_str,
-                _error_models.ContainerError.Kind.NON_RECOVERABLE,
+                kind,
                 _execution_models.ExecutionError.ErrorKind.USER,
             )
         )

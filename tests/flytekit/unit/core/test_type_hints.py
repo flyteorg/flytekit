@@ -1635,6 +1635,7 @@ def test_error_messages():
     ):
         foo4()
 
+
 def test_failure_node():
     @task
     def run(a: int, b: str) -> typing.Tuple[int, str]:

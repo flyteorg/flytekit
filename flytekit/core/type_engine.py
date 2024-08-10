@@ -1155,7 +1155,8 @@ class TypeEngine(typing.Generic[T]):
             try:
                 kwargs[k] = TypeEngine.to_python_value(ctx, lm.literals[k], python_interface_inputs[k])
             except TypeTransformerFailedError as exc:
-                raise TypeTransformerFailedError(f"Error converting input '{k}' at position {i}:\n  {exc}") from None
+                exc.args = (f"Error converting input '{k}' at position {i}:\n  {exc.args[0]}",)
+                raise
         return kwargs
 
     @classmethod

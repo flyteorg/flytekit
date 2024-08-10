@@ -26,7 +26,6 @@ import warnings
 from abc import abstractmethod
 from base64 import b64encode
 from dataclasses import dataclass
-from sys import exc_info
 from typing import (
     Any,
     Coroutine,
@@ -73,7 +72,6 @@ from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
 from flytekit.core.utils import timeit
 from flytekit.deck import DeckField
-from flytekit.exceptions.scopes import FlyteScopedUserException
 from flytekit.exceptions.user import FlyteUserRuntimeException
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
@@ -294,9 +292,8 @@ class Task(object):
                 native_types=self.get_input_types(),  # type: ignore
             )
         except TypeTransformerFailedError as exc:
-            msg = f"Failed to convert inputs of task '{self.name}':\n  {exc}"
-            logger.error(msg)
-            raise TypeError(msg) from None
+            exc.args = (f"Error encountered while converting inputs of '{self.name}':\n  {exc.args[0]}",)
+            raise
         input_literal_map = _literal_models.LiteralMap(literals=literals)
 
         # if metadata.cache is set, check memoized version
@@ -730,9 +727,8 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             try:
                 native_inputs = self._literal_map_to_python_input(input_literal_map, exec_ctx)
             except Exception as exc:
-                msg = f"Failed to convert inputs of task '{self.name}':\n  {exc}"
-                logger.error(msg)
-                raise type(exc)(msg) from None
+                exc.args = (f"Error encountered while converting inputs of '{self.name}':\n  {exc.args[0]}",)
+                raise
 
             # TODO: Logger should auto inject the current context information to indicate if the task is running within
             #   a workflow or a subworkflow etc
@@ -743,6 +739,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 except Exception as e:
                     if flytekit.FlyteContextManager().current_context().execution_state.is_local_execution():
                         # If the task is being executed locally, we want to raise the original exception
+                        e.args = (f"Error encountered while executing '{self.name}':\n  {e.args[0]}",)
                         raise
                     raise FlyteUserRuntimeException(e) from e
 

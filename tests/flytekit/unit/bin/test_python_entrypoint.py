@@ -17,6 +17,7 @@ from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions import user as user_exceptions
 from flytekit.exceptions.scopes import system_entry_point
+from flytekit.exceptions.user import FlyteUserRuntimeException
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import errors as error_models
 from flytekit.models.core import execution as execution_models
@@ -68,7 +69,7 @@ def test_dispatch_execute_ignore(mock_write_to_file, mock_upload_dir, mock_get_d
         )
     ) as ctx:
         python_task = mock.MagicMock()
-        python_task.dispatch_execute.side_effect = IgnoreOutputs()
+        python_task.dispatch_execute.side_effect = FlyteUserRuntimeException(IgnoreOutputs())
 
         empty_literal_map = _literal_models.LiteralMap({}).to_flyte_idl()
         mock_load_proto.return_value = empty_literal_map
