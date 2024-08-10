@@ -503,7 +503,7 @@ def test_failure_node_local_execution(mock_print):
 
     # Adjusted the error message to match the one in the failure
     expected_error_message = str(
-        FlyteError(message="Error encountered while executing 'wf':\n  Fail!", failed_node_id="fn0")
+        FlyteError(message="Error encountered while executing 'tests.flytekit.unit.core.test_workflows.t1':\n  Fail!", failed_node_id="fn0")
     )
 
     assert mock_print.call_count > 0
