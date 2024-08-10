@@ -292,7 +292,7 @@ class Task(object):
                 native_types=self.get_input_types(),  # type: ignore
             )
         except TypeTransformerFailedError as exc:
-            exc.args = (f"Error encountered while converting inputs of '{self.name}':\n  {exc.args[0]}",)
+            exc.args = (f"Failed to convert inputs of task '{self.name}':\n  {exc.args[0]}",)
             raise
         input_literal_map = _literal_models.LiteralMap(literals=literals)
 

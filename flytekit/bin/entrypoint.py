@@ -130,7 +130,7 @@ def _dispatch_execute(
             kind = _error_models.ContainerError.Kind.NON_RECOVERABLE
 
         format_str = "Traceback (most recent call last):\n" "{traceback}\n" "\n" "Message:\n" "\n" "    {message}"
-        tb_str = e.__cause__.__traceback__.__str__()
+        tb_str = traceback.format_tb(e.__cause__.__traceback__)
         exc_str = format_str.format(traceback=tb_str, message=f"{type(e.value)}: {e.value}")
         output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
             _error_models.ContainerError(
