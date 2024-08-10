@@ -124,7 +124,8 @@ def _dispatch_execute(
         if isinstance(e.value, IgnoreOutputs):
             logger.warning(f"User-scoped IgnoreOutputs received! Outputs.pb will not be uploaded. reason {e}!!")
             return
-        exc_str = traceback.format_exc()
+        format_str = "Traceback (most recent call last):\n" "{traceback}\n" "\n" "Message:\n" "\n" "    {message}"
+        exc_str = format_str.format(traceback=e.__cause__, message=f"{type(e.value)}: {e.value}")
         output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
             _error_models.ContainerError(
                 "USER",
