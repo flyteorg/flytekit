@@ -1270,7 +1270,7 @@ def flyte_entity_call_handler(
         if inspect.iscoroutine(result):
             return result
 
-        if ctx.execution_state.mode == ExecutionState.Mode.DYNAMIC_TASK_EXECUTION:
+        if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.DYNAMIC_TASK_EXECUTION:
             return result
 
         if (1 < expected_outputs == len(cast(Tuple[Promise], result))) or (
