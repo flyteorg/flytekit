@@ -399,9 +399,10 @@ class LiteralType(_common.FlyteIdlEntity):
             type = flyteidl.literal_type.Type.UnionType(self.union_type.to_flyte_idl())
         elif self.structured_dataset_type is not None:
             type = flyteidl.literal_type.Type.StructuredDatasetType(self.structured_dataset_type.to_flyte_idl())
+        import json
         t = flyteidl.core.LiteralType(
             type=type,
-            metadata=self.metadata,
+            metadata=flyteidl.ParseStruct((json.dumps(self.metadata))) if self.metadata else None,
             annotation=self.annotation.to_flyte_idl() if self.annotation else None,
             structure=self.structure.to_flyte_idl() if self.structure else None,
         )
