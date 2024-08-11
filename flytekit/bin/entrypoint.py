@@ -12,7 +12,7 @@ from sys import exit
 from typing import List, Optional
 
 import click
-from flyteidl.core import literals_pb2 as _literals_pb2
+import flyteidl_rust as flyteidl
 
 from flytekit.configuration import (
     SERIALIZED_CONTEXT_ENV_VAR,
@@ -90,7 +90,7 @@ def _dispatch_execute(
         # Step1
         local_inputs_file = os.path.join(ctx.execution_state.working_dir, "inputs.pb")
         ctx.file_access.get_data(inputs_path, local_inputs_file)
-        input_proto = utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
+        input_proto = utils.load_proto_from_file(flyteidl.core.LiteralMap, local_inputs_file)
         idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
 
         # Step2

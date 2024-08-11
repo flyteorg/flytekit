@@ -25,11 +25,10 @@ from typing import Dict
 
 import click
 import cloudpickle
+import flyteidl_rust as flyteidl
 import fsspec
 import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
-from flyteidl.core import literals_pb2
-import flyteidl_rust as flyteidl
 from flyteidl_rust import FlyteEntityAlreadyExistsException, FlyteEntityNotExistException
 
 from flytekit import ImageSpec
