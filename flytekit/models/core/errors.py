@@ -1,12 +1,12 @@
-from flyteidl.core import errors_pb2 as _errors_pb2
+import flyteidl_rust as flyteidl
 
 from flytekit.models import common as _common
 
 
 class ContainerError(_common.FlyteIdlEntity):
     class Kind(object):
-        NON_RECOVERABLE = _errors_pb2.ContainerError.NON_RECOVERABLE
-        RECOVERABLE = _errors_pb2.ContainerError.RECOVERABLE
+        NON_RECOVERABLE = flyteidl.container_error.Kind.NonRecoverable
+        RECOVERABLE = flyteidl.container_error.Kind.Recoverable
 
     def __init__(self, code: str, message: str, kind: int, origin: int):
         """
@@ -53,7 +53,9 @@ class ContainerError(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.errors_pb2.ContainerError
         """
-        return _errors_pb2.ContainerError(code=self.code, message=self.message, kind=self.kind, origin=self.origin)
+        return flyteidl.core.ContainerError(
+            code=self.code, message=self.message, kind=int(self.kind), origin=int(self.origin)
+        )
 
     @classmethod
     def from_flyte_idl(cls, proto):
@@ -82,7 +84,7 @@ class ErrorDocument(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.errors_pb2.ErrorDocument
         """
-        return _errors_pb2.ErrorDocument(error=self.error.to_flyte_idl())
+        return flyteidl.core.ErrorDocument(error=self.error.to_flyte_idl())
 
     @classmethod
     def from_flyte_idl(cls, proto):
