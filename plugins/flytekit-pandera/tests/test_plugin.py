@@ -72,7 +72,7 @@ def test_pandera_dataframe_type_hints():
 
     with pytest.raises(
         TypeError,
-        match="Error encountered while executing 'wf_invalid_output':\n" "  Failed to convert outputs of task",
+        match="Failed to convert outputs of task 'test_plugin.transform2_noop' at position 0.\nFailed to convert type <class 'pandas.core.frame.DataFrame'> to type pandera.typing.pandas.DataFrame",
     ):
         wf_invalid_output(df=valid_df)
 
