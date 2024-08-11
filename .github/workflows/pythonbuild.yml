@@ -318,7 +318,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: Dockerfile.dev
+          file: Dockerfile.rust
           build-args: |
             PYTHON_VERSION=${{ matrix.python-version }}
             PSEUDO_VERSION=1.999.0dev0
