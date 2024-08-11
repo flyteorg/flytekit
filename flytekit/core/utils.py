@@ -200,7 +200,7 @@ def _serialize_pod_spec(
 def load_proto_from_file(pb2_type, path):
     with open(path, "rb") as reader:
         out = pb2_type()
-        out.ParseFromString(reader.read())
+        out = out.ParseFromString(reader.read())
         return out
 
 
