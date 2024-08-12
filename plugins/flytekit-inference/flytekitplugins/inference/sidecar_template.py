@@ -7,14 +7,12 @@ class ModelInferenceTemplate:
     def __init__(
         self,
         image: Optional[str] = None,
-        health_endpoint: str = "/",
+        health_endpoint: Optional[str] = None,
         port: int = 8000,
         cpu: int = 1,
         gpu: int = 1,
         mem: str = "1Gi",
-        env: Optional[
-            dict[str, str]
-        ] = None,  # https://docs.nvidia.com/nim/large-language-models/latest/configuration.html#environment-variables
+        env: Optional[dict[str, str]] = None,
     ):
         from kubernetes.client.models import (
             V1Container,
@@ -60,9 +58,13 @@ class ModelInferenceTemplate:
                     ),
                     restart_policy="Always",  # treat this container as a sidecar
                     env=([V1EnvVar(name=k, value=v) for k, v in self._env.items()] if self._env else None),
-                    startup_probe=V1Probe(
-                        http_get=V1HTTPGetAction(path=self._health_endpoint, port=self._port),
-                        failure_threshold=100,  # The model server initialization can take some time, so the failure threshold is increased to accommodate this delay.
+                    startup_probe=(
+                        V1Probe(
+                            http_get=V1HTTPGetAction(path=self._health_endpoint, port=self._port),
+                            failure_threshold=100,  # The model server initialization can take some time, so the failure threshold is increased to accommodate this delay.
+                        )
+                        if self._health_endpoint
+                        else None
                     ),
                 ),
             ],
