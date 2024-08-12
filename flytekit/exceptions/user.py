@@ -17,7 +17,7 @@ class FlyteUserRuntimeException(_FlyteException):
         @param exc_value: The exception that was raised from user code.
         """
         self._exc_value = exc_value
-        super(FlyteUserRuntimeException, self).__init__(str(exc_value))
+        super().__init__(str(exc_value))
 
     @property
     def value(self):
