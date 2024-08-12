@@ -8,7 +8,7 @@ import typing
 from collections import OrderedDict
 from typing import Any, Dict, Generator, List, Optional, Tuple, Type, TypeVar, Union, cast
 
-from flyteidl.core import artifact_id_pb2 as art_id
+import flyteidl_rust as flyteidl
 from typing_extensions import get_args, get_type_hints
 
 from flytekit.core import context_manager
@@ -442,7 +442,7 @@ def transform_variable_map(
 
 def detect_artifact(
     ts: typing.Tuple[typing.Any, ...],
-) -> Optional[art_id.ArtifactID]:
+) -> Optional[flyteidl.core.ArtifactID]:
     """
     If the user wishes to control how Artifacts are created (i.e. naming them, etc.) this is where we pick it up and
     store it in the interface.

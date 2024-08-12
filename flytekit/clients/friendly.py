@@ -2,16 +2,6 @@ import datetime
 import typing
 
 import flyteidl_rust as flyteidl
-from flyteidl.admin import common_pb2 as _common_pb2
-from flyteidl.admin import execution_pb2 as _execution_pb2
-from flyteidl.admin import launch_plan_pb2 as _launch_plan_pb2
-from flyteidl.admin import matchable_resource_pb2 as _matchable_resource_pb2
-from flyteidl.admin import node_execution_pb2 as _node_execution_pb2
-from flyteidl.admin import project_domain_attributes_pb2 as _project_domain_attributes_pb2
-from flyteidl.admin import project_pb2 as _project_pb2
-from flyteidl.admin import workflow_attributes_pb2 as _workflow_attributes_pb2
-from flyteidl.service import dataproxy_pb2 as _data_proxy_pb2
-from google.protobuf.duration_pb2 import Duration
 
 from flytekit.models import common as _common
 from flytekit.models import execution as _execution
@@ -20,6 +10,7 @@ from flytekit.models import launch_plan as _launch_plan
 from flytekit.models import node_execution as _node_execution
 from flytekit.models import project as _project
 from flytekit.models import task as _task
+from flytekit.models import utils
 from flytekit.models.admin import common as _admin_common
 from flytekit.models.admin import task_execution as _task_execution
 from flytekit.models.admin import workflow as _workflow
@@ -103,7 +94,7 @@ class SynchronousFlyteClient(flyteidl.RawSynchronousFlyteClient):
         :rtype: list[flytekit.models.common.NamedEntityIdentifier], Text
         """
         identifier_list = super(SynchronousFlyteClient, self).list_task_ids_paginated(
-            _common_pb2.NamedEntityIdentifierListRequest(
+            flyteidl.admin.NamedEntityIdentifierListRequest(
                 project=project,
                 domain=domain,
                 limit=limit,
@@ -145,7 +136,7 @@ class SynchronousFlyteClient(flyteidl.RawSynchronousFlyteClient):
         :rtype: list[flytekit.models.task.Task], Text
         """
         task_list = super(SynchronousFlyteClient, self).list_tasks_paginated(
-            resource_list_request=_common_pb2.ResourceListRequest(
+            resource_list_request=flyteidl.admin.ResourceListRequest(
                 id=identifier.to_flyte_idl(),
                 limit=limit,
                 token=token,
@@ -356,7 +347,7 @@ class SynchronousFlyteClient(flyteidl.RawSynchronousFlyteClient):
         """
         return _launch_plan.LaunchPlan.from_flyte_idl(
             super(SynchronousFlyteClient, self).get_active_launch_plan(
-                _launch_plan_pb2.ActiveLaunchPlanRequest(id=identifier.to_flyte_idl())
+                flyteidl.admin.ActiveLaunchPlanRequest(id=identifier.to_flyte_idl())
             )
         )
 
@@ -388,7 +379,7 @@ class SynchronousFlyteClient(flyteidl.RawSynchronousFlyteClient):
         :rtype: list[flytekit.models.common.NamedEntityIdentifier], Text
         """
         identifier_list = super(SynchronousFlyteClient, self).list_launch_plan_ids_paginated(
-            _common_pb2.NamedEntityIdentifierListRequest(
+            flyteidl.admin.NamedEntityIdentifierListRequest(
                 project=project,
                 domain=domain,
                 limit=limit,
@@ -430,7 +421,7 @@ class SynchronousFlyteClient(flyteidl.RawSynchronousFlyteClient):
         :rtype: list[flytekit.models.launch_plan.LaunchPlan], str
         """
         lp_list = super(SynchronousFlyteClient, self).list_launch_plans_paginated(
-            resource_list_request=_common_pb2.ResourceListRequest(
+            resource_list_request=flyteidl.admin.ResourceListRequest(
                 id=identifier.to_flyte_idl(),
                 limit=limit,
                 token=token,
@@ -476,7 +467,7 @@ class SynchronousFlyteClient(flyteidl.RawSynchronousFlyteClient):
         :rtype: list[flytekit.models.launch_plan.LaunchPlan], str
         """
         lp_list = super(SynchronousFlyteClient, self).list_active_launch_plans_paginated(
-            _launch_plan_pb2.ActiveLaunchPlanListRequest(
+            flyteidl.admin.ActiveLaunchPlanListRequest(
                 project=project,
                 domain=domain,
                 limit=limit,
@@ -503,7 +494,7 @@ class SynchronousFlyteClient(flyteidl.RawSynchronousFlyteClient):
         :param int state: Enum value from flytekit.models.launch_plan.LaunchPlanState
         """
         super(SynchronousFlyteClient, self).update_launch_plan(
-            _launch_plan_pb2.LaunchPlanUpdateRequest(id=id.to_flyte_idl(), state=state)
+            flyteidl.admin.LaunchPlanUpdateRequest(id=id.to_flyte_idl(), state=state)
         )
 
     ####################################################################################################################
@@ -522,7 +513,7 @@ class SynchronousFlyteClient(flyteidl.RawSynchronousFlyteClient):
         :param flytekit.models.admin.named_entity.NamedEntityIdentifierMetadata metadata:
         """
         super(SynchronousFlyteClient, self).update_named_entity(
-            _common_pb2.NamedEntityUpdateRequest(
+            flyteidl.admin.NamedEntityUpdateRequest(
                 resource_type=resource_type,
                 id=id.to_flyte_idl(),
                 metadata=metadata.to_flyte_idl(),
@@ -570,7 +561,7 @@ class SynchronousFlyteClient(flyteidl.RawSynchronousFlyteClient):
         """
         return _identifier.WorkflowExecutionIdentifier.from_flyte_idl(
             super(SynchronousFlyteClient, self)
-            .recover_execution(_execution_pb2.ExecutionRecoverRequest(id=id.to_flyte_idl(), name=name))
+            .recover_execution(flyteidl.admin.ExecutionRecoverRequest(id=id.to_flyte_idl(), name=name))
             .id
         )
 
@@ -627,8 +618,8 @@ class SynchronousFlyteClient(flyteidl.RawSynchronousFlyteClient):
         :rtype: (list[flytekit.models.execution.Execution], Text)
         """
         exec_list = super(SynchronousFlyteClient, self).list_executions_paginated(
-            resource_list_request=_common_pb2.ResourceListRequest(
-                id=_common_pb2.NamedEntityIdentifier(project=project, domain=domain),
+            resource_list_request=flyteidl.admin.ResourceListRequest(
+                id=flyteidl.admin.NamedEntityIdentifier(project=project, domain=domain),
                 limit=limit,
                 token=token,
                 filters=_filters.FilterList(filters or []).to_flyte_idl(),
@@ -659,7 +650,7 @@ class SynchronousFlyteClient(flyteidl.RawSynchronousFlyteClient):
         """
         return _identifier.WorkflowExecutionIdentifier.from_flyte_idl(
             super(SynchronousFlyteClient, self)
-            .relaunch_execution(_execution_pb2.ExecutionRelaunchRequest(id=id.to_flyte_idl(), name=name))
+            .relaunch_execution(flyteidl.admin.ExecutionRelaunchRequest(id=id.to_flyte_idl(), name=name))
             .id
         )
 
@@ -748,7 +739,7 @@ class SynchronousFlyteClient(flyteidl.RawSynchronousFlyteClient):
         :rtype: list[flytekit.models.node_execution.NodeExecution], Text
         """
         exec_list = self._stub.ListNodeExecutionsForTask(
-            _node_execution_pb2.NodeExecutionForTaskListRequest(
+            flyteidl.admin.NodeExecutionForTaskListRequest(
                 task_execution_id=task_execution_identifier.to_flyte_idl(),
                 limit=limit,
                 token=token,
@@ -836,7 +827,7 @@ class SynchronousFlyteClient(flyteidl.RawSynchronousFlyteClient):
         :rtype: flyteidl.admin.project_pb2.ProjectRegisterResponse
         """
         super(SynchronousFlyteClient, self).register_project(
-            _project_pb2.ProjectRegisterRequest(
+            flyteidl.admin.ProjectRegisterRequest(
                 project=project.to_flyte_idl(),
             )
         )
@@ -876,7 +867,7 @@ class SynchronousFlyteClient(flyteidl.RawSynchronousFlyteClient):
         :rtype: (list[flytekit.models.Project], Text)
         """
         projects = super(SynchronousFlyteClient, self).list_projects(
-            project_list_request=_project_pb2.ProjectListRequest(
+            project_list_request=flyteidl.admin.ProjectListRequest(
                 limit=limit,
                 token=token,
                 filters=_filters.FilterList(filters or []).to_flyte_idl(),
@@ -903,8 +894,8 @@ class SynchronousFlyteClient(flyteidl.RawSynchronousFlyteClient):
         :return:
         """
         super(SynchronousFlyteClient, self).update_project_domain_attributes(
-            _project_domain_attributes_pb2.ProjectDomainAttributesUpdateRequest(
-                attributes=_project_domain_attributes_pb2.ProjectDomainAttributes(
+            flyteidl.admin.ProjectDomainAttributesUpdateRequest(
+                attributes=flyteidl.admin.ProjectDomainAttributes(
                     project=project,
                     domain=domain,
                     matching_attributes=matching_attributes.to_flyte_idl(),
@@ -922,8 +913,8 @@ class SynchronousFlyteClient(flyteidl.RawSynchronousFlyteClient):
         :return:
         """
         super(SynchronousFlyteClient, self).update_workflow_attributes(
-            _workflow_attributes_pb2.WorkflowAttributesUpdateRequest(
-                attributes=_workflow_attributes_pb2.WorkflowAttributes(
+            flyteidl.admin.WorkflowAttributesUpdateRequest(
+                attributes=flyteidl.admin.WorkflowAttributes(
                     project=project,
                     domain=domain,
                     workflow=workflow,
@@ -941,7 +932,7 @@ class SynchronousFlyteClient(flyteidl.RawSynchronousFlyteClient):
         :return:
         """
         return super(SynchronousFlyteClient, self).get_project_domain_attributes(
-            _project_domain_attributes_pb2.ProjectDomainAttributesGetRequest(
+            flyteidl.admin.ProjectDomainAttributesGetRequest(
                 project=project,
                 domain=domain,
                 resource_type=resource_type,
@@ -958,7 +949,7 @@ class SynchronousFlyteClient(flyteidl.RawSynchronousFlyteClient):
         :return:
         """
         return super(SynchronousFlyteClient, self).get_workflow_attributes(
-            _workflow_attributes_pb2.WorkflowAttributesGetRequest(
+            flyteidl.admin.WorkflowAttributesGetRequest(
                 project=project,
                 domain=domain,
                 workflow=workflow,
@@ -973,7 +964,7 @@ class SynchronousFlyteClient(flyteidl.RawSynchronousFlyteClient):
         :return:
         """
         return super(SynchronousFlyteClient, self).list_matchable_attributes(
-            _matchable_resource_pb2.ListMatchableAttributesRequest(
+            flyteidl.admin.ListMatchableAttributesRequest(
                 resource_type=resource_type,
             )
         )
@@ -1006,8 +997,7 @@ class SynchronousFlyteClient(flyteidl.RawSynchronousFlyteClient):
         try:
             expires_in_pb = None
             if expires_in:
-                expires_in_pb = Duration()
-                expires_in_pb.FromTimedelta(expires_in)
+                expires_in_pb = utils.convert_from_timedelta_to_duration(expires_in)
             return super(SynchronousFlyteClient, self).create_upload_location(
                 flyteidl.service.CreateUploadLocationRequest(
                     project=project,
@@ -1025,20 +1015,19 @@ class SynchronousFlyteClient(flyteidl.RawSynchronousFlyteClient):
 
     def get_download_signed_url(
         self, native_url: str, expires_in: datetime.timedelta = None
-    ) -> _data_proxy_pb2.CreateDownloadLocationResponse:
+    ) -> flyteidl.service.CreateDownloadLocationResponse:
         expires_in_pb = None
         if expires_in:
-            expires_in_pb = Duration()
-            expires_in_pb.FromTimedelta(expires_in)
+            expires_in_pb = utils.convert_from_timedelta_to_duration(expires_in)
         return super(SynchronousFlyteClient, self).create_download_location(
-            _data_proxy_pb2.CreateDownloadLocationRequest(
+            flyteidl.service.CreateDownloadLocationRequest(
                 native_url=native_url,
                 expires_in=expires_in_pb,
             )
         )
 
-    def get_data(self, flyte_uri: str) -> _data_proxy_pb2.GetDataResponse:
-        req = _data_proxy_pb2.GetDataRequest(flyte_url=flyte_uri)
+    def get_data(self, flyte_uri: str) -> flyteidl.service.GetDataResponse:
+        req = flyteidl.service.GetDataRequest(flyte_url=flyte_uri)
 
         resp = self._dataproxy_stub.GetData(req, metadata=self._metadata)
         return resp

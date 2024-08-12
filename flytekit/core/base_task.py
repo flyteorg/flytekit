@@ -41,8 +41,7 @@ from typing import (
     cast,
 )
 
-from flyteidl.core import artifact_id_pb2 as art_id
-from flyteidl.core import tasks_pb2
+import flyteidl_rust as flyteidl
 
 from flytekit.configuration import LocalConfig, SerializationSettings
 from flytekit.core.artifact_utils import (
@@ -391,7 +390,7 @@ class Task(object):
         """
         return None
 
-    def get_extended_resources(self, settings: SerializationSettings) -> Optional[tasks_pb2.ExtendedResources]:
+    def get_extended_resources(self, settings: SerializationSettings) -> Optional[flyteidl.core.ExtendedResources]:
         """
         Returns the extended resources to allocate to the task on hosted Flyte.
         """
@@ -655,7 +654,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                                 metadata[md_key] = md_val
                             logger.info(f"Adding {om.additional_items} additional metadata items {metadata} for {k}")
                         if om.dynamic_partitions or om.time_partition:
-                            a = art_id.ArtifactID(
+                            a = flyteidl.core.ArtifactID(
                                 partitions=idl_partitions_from_dict(om.dynamic_partitions),
                                 time_partition=idl_time_partition_from_datetime(
                                     om.time_partition, om.artifact.time_partition_granularity

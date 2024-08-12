@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from typing import Any, Dict, List, Optional, Type, TypeVar
 
-from flyteidl.core import tasks_pb2 as _tasks_pb2
+import flyteidl_rust as flyteidl
 
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask, Task, TaskResolverMixin
@@ -241,7 +241,7 @@ class TaskTemplateResolver(TrackedInstance, TaskResolverMixin):
         ctx = FlyteContext.current_context()
         task_template_local_path = os.path.join(ctx.execution_state.working_dir, "task_template.pb")  # type: ignore
         ctx.file_access.get_data(loader_args[0], task_template_local_path)
-        task_template_proto = load_proto_from_file(_tasks_pb2.TaskTemplate, task_template_local_path)
+        task_template_proto = load_proto_from_file(flyteidl.core.TaskTemplate, task_template_local_path)
         task_template_model = _task_model.TaskTemplate.from_flyte_idl(task_template_proto)
 
         executor_class = load_object_from_module(loader_args[1])
