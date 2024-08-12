@@ -16,7 +16,6 @@ import pathlib
 import tempfile
 import time
 import typing
-import uuid
 from base64 import b64encode
 from collections import OrderedDict
 from dataclasses import asdict, dataclass
