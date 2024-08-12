@@ -42,7 +42,6 @@ class FlyteScopedException(Exception):
 
         lines = _format_tb(top_tb, limit=limit)
         lines = [line.rstrip() for line in lines]
-        lines = "\n".join(lines).split("\n")
         traceback_str = "\n    ".join([""] + lines)
 
         format_str = "Traceback (most recent call last):\n" "{traceback}\n" "\n" "Message:\n" "\n" "    {message}"
