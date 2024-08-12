@@ -134,7 +134,7 @@ def test_underscore_execute_uses_launch_plan_attributes(remote, mock_wf_exec):
     remote._client = mock_client
 
     def local_assertions(*args, **kwargs):
-        execution_spec = args[3]
+        execution_spec = args[2]
         assert execution_spec.security_context.run_as.k8s_service_account == "svc"
         assert execution_spec.labels == common_models.Labels({"a": "my_label_value"})
         assert execution_spec.annotations == common_models.Annotations({"b": "my_annotation_value"})
@@ -163,7 +163,7 @@ def test_execution_cluster_label_attributes(remote, mock_wf_exec):
     remote._client = mock_client
 
     def local_assertions(*args, **kwargs):
-        execution_spec = args[3]
+        execution_spec = args[2]
         assert execution_spec.execution_cluster_label.value == "label"
 
     mock_client.create_execution.side_effect = local_assertions
@@ -190,7 +190,7 @@ def test_underscore_execute_fall_back_remote_attributes(remote, mock_wf_exec):
     )
 
     def local_assertions(*args, **kwargs):
-        execution_spec = args[3]
+        execution_spec = args[2]
         assert execution_spec.security_context.run_as.iam_role == "iam:some:role"
         assert execution_spec.raw_output_data_config.output_location_prefix == "raw_output"
 
