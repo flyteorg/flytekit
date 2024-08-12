@@ -1112,8 +1112,6 @@ class FlyteRemote(object):
         inputs: typing.Dict[str, typing.Any],
         project: str = None,
         domain: str = None,
-        execution_name: typing.Optional[str] = None,
-        execution_name_prefix: typing.Optional[str] = None,
         options: typing.Optional[Options] = None,
         wait: bool = False,
         type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
@@ -1129,7 +1127,6 @@ class FlyteRemote(object):
         :param inputs: dictionary mapping argument names to values
         :param project: project on which to execute the entity referenced by flyte_id
         :param domain: domain on which to execute the entity referenced by flyte_id
-        :param execution_name: name of the execution
         :param wait: if True, waits for execution to complete
         :param type_hints: map of python types to inputs so that the TypeEngine knows how to convert the input values
           into Flyte Literals.
@@ -1142,10 +1139,6 @@ class FlyteRemote(object):
         :param execution_cluster_label: Specify label of cluster(s) on which newly created execution should be placed.
         :returns: :class:`~flytekit.remote.workflow_execution.FlyteWorkflowExecution`
         """
-        if execution_name is not None and execution_name_prefix is not None:
-            raise ValueError("Only one of execution_name and execution_name_prefix can be set, but got both set")
-        execution_name_prefix = execution_name_prefix + "-" if execution_name_prefix is not None else None
-        execution_name = execution_name or (execution_name_prefix or "f") + uuid.uuid4().hex[:19]
         if not options:
             options = Options()
         if options.disable_notifications is not None:
@@ -1188,49 +1181,40 @@ class FlyteRemote(object):
 
             literal_inputs = literal_models.LiteralMap(literals=literal_map)
 
-        try:
-            # Currently, this will only execute the flyte entity referenced by
-            # flyte_id in the same project and domain. However, it is possible to execute it in a different project
-            # and domain, which is specified in the first two arguments of client.create_execution. This is useful
-            # in the case that I want to use a flyte entity from e.g. project "A" but actually execute the entity on a
-            # different project "B". For now, this method doesn't support this use case.
-            exec_id = self.client.create_execution(
-                project or self.default_project,
-                domain or self.default_domain,
-                execution_name,
-                ExecutionSpec(
-                    entity.id,
-                    ExecutionMetadata(
-                        ExecutionMetadata.ExecutionMode.MANUAL,
-                        "placeholder",  # Admin replaces this from oidc token if auth is enabled.
-                        0,
-                    ),
-                    overwrite_cache=overwrite_cache,
-                    notifications=notifications,
-                    disable_all=options.disable_notifications,
-                    labels=options.labels,
-                    annotations=options.annotations,
-                    raw_output_data_config=options.raw_output_data_config,
-                    auth_role=None,
-                    max_parallelism=options.max_parallelism,
-                    security_context=options.security_context,
-                    envs=common_models.Envs(envs) if envs else None,
-                    tags=tags,
-                    cluster_assignment=ClusterAssignment(cluster_pool=cluster_pool) if cluster_pool else None,
-                    execution_cluster_label=ExecutionClusterLabel(execution_cluster_label)
-                    if execution_cluster_label
-                    else None,
+        # Currently, this will only execute the flyte entity referenced by
+        # flyte_id in the same project and domain. However, it is possible to execute it in a different project
+        # and domain, which is specified in the first two arguments of client.create_execution. This is useful
+        # in the case that I want to use a flyte entity from e.g. project "A" but actually execute the entity on a
+        # different project "B". For now, this method doesn't support this use case.
+        exec_id = self.client.create_execution(
+            project or self.default_project,
+            domain or self.default_domain,
+            ExecutionSpec(
+                entity.id,
+                ExecutionMetadata(
+                    ExecutionMetadata.ExecutionMode.MANUAL,
+                    "placeholder",  # Admin replaces this from oidc token if auth is enabled.
+                    0,
                 ),
-                literal_inputs,
-            )
-        except user_exceptions.FlyteEntityAlreadyExistsException:
-            logger.warning(
-                f"Execution with Execution ID {execution_name} already exists. "
-                f"Assuming this is the same execution, returning!"
-            )
-            exec_id = WorkflowExecutionIdentifier(
-                project=project or self.default_project, domain=domain or self.default_domain, name=execution_name
-            )
+                overwrite_cache=overwrite_cache,
+                notifications=notifications,
+                disable_all=options.disable_notifications,
+                labels=options.labels,
+                annotations=options.annotations,
+                raw_output_data_config=options.raw_output_data_config,
+                auth_role=None,
+                max_parallelism=options.max_parallelism,
+                security_context=options.security_context,
+                envs=common_models.Envs(envs) if envs else None,
+                tags=tags,
+                cluster_assignment=ClusterAssignment(cluster_pool=cluster_pool) if cluster_pool else None,
+                execution_cluster_label=ExecutionClusterLabel(execution_cluster_label)
+                if execution_cluster_label
+                else None,
+            ),
+            literal_inputs,
+        )
+
         execution = FlyteWorkflowExecution.promote_from_model(self.client.get_execution(exec_id))
 
         if wait:
@@ -1270,8 +1254,6 @@ class FlyteRemote(object):
         domain: str = None,
         name: str = None,
         version: str = None,
-        execution_name: typing.Optional[str] = None,
-        execution_name_prefix: typing.Optional[str] = None,
         image_config: typing.Optional[ImageConfig] = None,
         options: typing.Optional[Options] = None,
         wait: bool = False,
@@ -1306,7 +1288,6 @@ class FlyteRemote(object):
             first before executing.
         :param name: execute entity using this name. If not None, use this value instead of ``entity.name``
         :param version: execute entity using this version. If None, uses auto-generated value.
-        :param execution_name: name of the execution. If None, uses auto-generated value.
         :param image_config:
         :param wait: if True, waits for execution to complete
         :param type_hints: Python types to be passed to the TypeEngine so that it knows how to properly convert the
@@ -1335,8 +1316,6 @@ class FlyteRemote(object):
                 inputs=inputs,
                 project=project,
                 domain=domain,
-                execution_name=execution_name,
-                execution_name_prefix=execution_name_prefix,
                 options=options,
                 wait=wait,
                 type_hints=type_hints,
@@ -1352,8 +1331,6 @@ class FlyteRemote(object):
                 inputs=inputs,
                 project=project,
                 domain=domain,
-                execution_name=execution_name,
-                execution_name_prefix=execution_name_prefix,
                 options=options,
                 wait=wait,
                 type_hints=type_hints,
@@ -1367,8 +1344,6 @@ class FlyteRemote(object):
             return self.execute_reference_task(
                 entity=entity,
                 inputs=inputs,
-                execution_name=execution_name,
-                execution_name_prefix=execution_name_prefix,
                 options=options,
                 wait=wait,
                 type_hints=type_hints,
@@ -1382,8 +1357,6 @@ class FlyteRemote(object):
             return self.execute_reference_workflow(
                 entity=entity,
                 inputs=inputs,
-                execution_name=execution_name,
-                execution_name_prefix=execution_name_prefix,
                 options=options,
                 wait=wait,
                 type_hints=type_hints,
@@ -1397,8 +1370,6 @@ class FlyteRemote(object):
             return self.execute_reference_launch_plan(
                 entity=entity,
                 inputs=inputs,
-                execution_name=execution_name,
-                execution_name_prefix=execution_name_prefix,
                 options=options,
                 wait=wait,
                 type_hints=type_hints,
@@ -1416,8 +1387,6 @@ class FlyteRemote(object):
                 domain=domain,
                 name=name,
                 version=version,
-                execution_name=execution_name,
-                execution_name_prefix=execution_name_prefix,
                 image_config=image_config,
                 wait=wait,
                 overwrite_cache=overwrite_cache,
@@ -1434,8 +1403,6 @@ class FlyteRemote(object):
                 domain=domain,
                 name=name,
                 version=version,
-                execution_name=execution_name,
-                execution_name_prefix=execution_name_prefix,
                 image_config=image_config,
                 options=options,
                 wait=wait,
@@ -1453,8 +1420,6 @@ class FlyteRemote(object):
                 project=project,
                 domain=domain,
                 name=name,
-                execution_name=execution_name,
-                execution_name_prefix=execution_name_prefix,
                 options=options,
                 wait=wait,
                 overwrite_cache=overwrite_cache,
@@ -1474,8 +1439,6 @@ class FlyteRemote(object):
         inputs: typing.Dict[str, typing.Any],
         project: str = None,
         domain: str = None,
-        execution_name: typing.Optional[str] = None,
-        execution_name_prefix: typing.Optional[str] = None,
         options: typing.Optional[Options] = None,
         wait: bool = False,
         type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
@@ -1494,8 +1457,6 @@ class FlyteRemote(object):
             inputs,
             project=project,
             domain=domain,
-            execution_name=execution_name,
-            execution_name_prefix=execution_name_prefix,
             wait=wait,
             options=options,
             type_hints=type_hints,
@@ -1512,8 +1473,6 @@ class FlyteRemote(object):
         inputs: typing.Dict[str, typing.Any],
         project: str = None,
         domain: str = None,
-        execution_name: typing.Optional[str] = None,
-        execution_name_prefix: typing.Optional[str] = None,
         options: typing.Optional[Options] = None,
         wait: bool = False,
         type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
@@ -1533,8 +1492,6 @@ class FlyteRemote(object):
             inputs,
             project=project,
             domain=domain,
-            execution_name=execution_name,
-            execution_name_prefix=execution_name_prefix,
             options=options,
             wait=wait,
             type_hints=type_hints,
@@ -1551,8 +1508,6 @@ class FlyteRemote(object):
         self,
         entity: ReferenceTask,
         inputs: typing.Dict[str, typing.Any],
-        execution_name: typing.Optional[str] = None,
-        execution_name_prefix: typing.Optional[str] = None,
         options: typing.Optional[Options] = None,
         wait: bool = False,
         type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
@@ -1582,8 +1537,6 @@ class FlyteRemote(object):
             inputs,
             project=resolved_identifiers.project,
             domain=resolved_identifiers.domain,
-            execution_name=execution_name,
-            execution_name_prefix=execution_name_prefix,
             options=options,
             wait=wait,
             type_hints=type_hints,
@@ -1598,8 +1551,6 @@ class FlyteRemote(object):
         self,
         entity: ReferenceWorkflow,
         inputs: typing.Dict[str, typing.Any],
-        execution_name: typing.Optional[str] = None,
-        execution_name_prefix: typing.Optional[str] = None,
         options: typing.Optional[Options] = None,
         wait: bool = False,
         type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
@@ -1643,8 +1594,6 @@ class FlyteRemote(object):
             inputs,
             project=resolved_identifiers.project,
             domain=resolved_identifiers.domain,
-            execution_name=execution_name,
-            execution_name_prefix=execution_name_prefix,
             wait=wait,
             options=options,
             type_hints=type_hints,
@@ -1659,8 +1608,6 @@ class FlyteRemote(object):
         self,
         entity: ReferenceLaunchPlan,
         inputs: typing.Dict[str, typing.Any],
-        execution_name: typing.Optional[str] = None,
-        execution_name_prefix: typing.Optional[str] = None,
         options: typing.Optional[Options] = None,
         wait: bool = False,
         type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
@@ -1690,8 +1637,6 @@ class FlyteRemote(object):
             inputs,
             project=resolved_identifiers.project,
             domain=resolved_identifiers.domain,
-            execution_name=execution_name,
-            execution_name_prefix=execution_name_prefix,
             options=options,
             wait=wait,
             type_hints=type_hints,
@@ -1713,8 +1658,6 @@ class FlyteRemote(object):
         domain: str = None,
         name: str = None,
         version: str = None,
-        execution_name: typing.Optional[str] = None,
-        execution_name_prefix: typing.Optional[str] = None,
         image_config: typing.Optional[ImageConfig] = None,
         wait: bool = False,
         overwrite_cache: typing.Optional[bool] = None,
@@ -1732,7 +1675,6 @@ class FlyteRemote(object):
         :param domain: The execution domain, will default to the Remote's default domain.
         :param name: specific name of the task to run.
         :param version: specific version of the task to run.
-        :param execution_name: If provided, will use this name for the execution.
         :param image_config: If provided, will use this image config in the pod.
         :param wait: If True, will wait for the execution to complete before returning.
         :param overwrite_cache: If True, will overwrite the cache.
@@ -1763,8 +1705,6 @@ class FlyteRemote(object):
             inputs,
             project=resolved_identifiers.project,
             domain=resolved_identifiers.domain,
-            execution_name=execution_name,
-            execution_name_prefix=execution_name_prefix,
             wait=wait,
             type_hints=entity.python_interface.inputs,
             overwrite_cache=overwrite_cache,
@@ -1782,8 +1722,6 @@ class FlyteRemote(object):
         domain: str = None,
         name: str = None,
         version: str = None,
-        execution_name: typing.Optional[str] = None,
-        execution_name_prefix: typing.Optional[str] = None,
         image_config: typing.Optional[ImageConfig] = None,
         options: typing.Optional[Options] = None,
         wait: bool = False,
@@ -1801,7 +1739,6 @@ class FlyteRemote(object):
         :param domain:
         :param name:
         :param version:
-        :param execution_name:
         :param image_config:
         :param options:
         :param wait:
@@ -1849,8 +1786,6 @@ class FlyteRemote(object):
             inputs,
             project=project,
             domain=domain,
-            execution_name=execution_name,
-            execution_name_prefix=execution_name_prefix,
             wait=wait,
             options=options,
             type_hints=entity.python_interface.inputs,
@@ -1869,8 +1804,6 @@ class FlyteRemote(object):
         project: typing.Optional[str] = None,
         domain: typing.Optional[str] = None,
         name: typing.Optional[str] = None,
-        execution_name: typing.Optional[str] = None,
-        execution_name_prefix: typing.Optional[str] = None,
         options: typing.Optional[Options] = None,
         wait: bool = False,
         overwrite_cache: typing.Optional[bool] = None,
@@ -1887,7 +1820,6 @@ class FlyteRemote(object):
         :param project: The same as version, but will default to the Remote object's project
         :param domain: The same as version, but will default to the Remote object's domain
         :param name: The same as version, but will default to the entity's name
-        :param execution_name: If specified, will be used as the execution name instead of randomly generating.
         :param options: Options to be passed into the execution.
         :param wait: If True, will wait for the execution to complete before returning.
         :param overwrite_cache: If True, will overwrite the cache.
@@ -1915,8 +1847,6 @@ class FlyteRemote(object):
             inputs,
             project=project,
             domain=domain,
-            execution_name=execution_name,
-            execution_name_prefix=execution_name_prefix,
             options=options,
             wait=wait,
             type_hints=entity.python_interface.inputs,
@@ -2328,7 +2258,6 @@ class FlyteRemote(object):
         to_date: datetime,
         launchplan: str,
         launchplan_version: str = None,
-        execution_name: str = None,
         version: str = None,
         dry_run: bool = False,
         execute: bool = True,
@@ -2355,7 +2284,6 @@ class FlyteRemote(object):
         :param to_date:  datetime generate a backfill ending at this datetime (inclusive)
         :param launchplan: str launchplan name in the flyte backend
         :param launchplan_version: str (optional) version for the launchplan. If not specified the most recent will be retrieved
-        :param execution_name: str (optional) the generated execution will be named so. this can help in ensuring idempotency
         :param version: str (optional) version to be used for the newly created workflow.
         :param dry_run: bool do not register or execute the workflow
         :param execute: bool Register and execute the wwkflow.
@@ -2396,7 +2324,6 @@ class FlyteRemote(object):
             inputs={},
             project=project,
             domain=domain,
-            execution_name=execution_name,
             overwrite_cache=overwrite_cache,
         )
 

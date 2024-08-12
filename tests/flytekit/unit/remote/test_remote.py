@@ -533,8 +533,7 @@ def test_get_image_names(
         name="flytesnacks.examples.basics.basics.workflow.slope",
         version="v1",
     )
-    def ref_basic(x: typing.List[int], y: typing.List[int]) -> float:
-        ...
+    def ref_basic(x: typing.List[int], y: typing.List[int]) -> float: ...
 
     @workflow
     def wf1(name: str = "union") -> float:
@@ -560,56 +559,6 @@ def test_local_server(mock_client):
     )
     lr = rr.get("flyte://v1/flytesnacks/development/f6988c7bdad554a4da7a/n0/o")
     assert lr.get("hello", int) == 55
-
-
-@mock.patch("flytekit.remote.remote.uuid")
-@mock.patch("flytekit.remote.remote.FlyteRemote.client")
-def test_execution_name(mock_client, mock_uuid):
-    test_uuid = uuid.UUID("16fd2706-8baf-433b-82eb-8c7fada847da")
-    mock_uuid.uuid4.return_value = test_uuid
-    remote = FlyteRemote(config=Config.auto(), default_project="project", default_domain="domain")
-
-    default_img = Image(name="default", fqn="test", tag="tag")
-    serialization_settings = SerializationSettings(
-        project="project",
-        domain="domain",
-        version="version",
-        env=None,
-        image_config=ImageConfig(default_image=default_img, images=[default_img]),
-    )
-    tk_spec = get_serializable(OrderedDict(), serialization_settings, tk)
-    ft = FlyteTask.promote_from_model(tk_spec.template)
-
-    remote._execute(
-        entity=ft,
-        inputs={"t": datetime.now(), "v": 0},
-        execution_name="execution-test",
-    )
-    remote._execute(
-        entity=ft,
-        inputs={"t": datetime.now(), "v": 0},
-        execution_name_prefix="execution-test",
-    )
-    remote._execute(
-        entity=ft,
-        inputs={"t": datetime.now(), "v": 0},
-    )
-    mock_client.create_execution.assert_has_calls(
-        [
-            mock.call(ANY, ANY, "execution-test", ANY, ANY),
-            mock.call(ANY, ANY, "execution-test-" + test_uuid.hex[:19], ANY, ANY),
-            mock.call(ANY, ANY, "f" + test_uuid.hex[:19], ANY, ANY),
-        ]
-    )
-    with pytest.raises(
-        ValueError, match="Only one of execution_name and execution_name_prefix can be set, but got both set"
-    ):
-        remote._execute(
-            entity=ft,
-            inputs={"t": datetime.now(), "v": 0},
-            execution_name="execution-test",
-            execution_name_prefix="execution-test",
-        )
 
 
 @pytest.mark.parametrize(
