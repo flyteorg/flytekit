@@ -1,15 +1,17 @@
 import os
 import pathlib
+import pickle
 import tempfile
 import typing
 from unittest.mock import MagicMock, patch
 from dataclasses import dataclass
 import pytest
+from cloudpickle import cloudpickle
 from typing_extensions import Annotated
 
 import flytekit.configuration
 from flytekit.configuration import Config, Image, ImageConfig
-from flytekit.core.context_manager import ExecutionState, FlyteContextManager
+from flytekit.core.context_manager import ExecutionState, FlyteContextManager, FlyteContext
 from flytekit.core.data_persistence import FileAccessProvider, flyte_tmp_dir
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.hash import HashMethod
@@ -18,7 +20,7 @@ from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
 from flytekit.models.core.types import BlobType
-from flytekit.models.literals import LiteralMap
+from flytekit.models.literals import LiteralMap, Literal, Scalar, Blob, BlobMetadata
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
 
 
@@ -699,3 +701,26 @@ def test_new_remote_file():
     nf = FlyteFile.new_remote_file(name="foo.txt")
     assert isinstance(nf, FlyteFile)
     assert nf.path.endswith('foo.txt')
+
+
+def test_pickle_flyte_file():
+    transformer = TypeEngine.get_transformer(FlyteFile)
+
+    ctx = FlyteContext.current_context()
+    temp_dir = tempfile.mkdtemp(prefix="temp_example_")
+    local_file = os.path.join(temp_dir, "file.txt")
+    with open(local_file, "w") as file:
+        file.write("hello world")
+
+    lv = Literal(
+        scalar=Scalar(
+            blob=Blob(
+                metadata=BlobMetadata(type=BlobType(format="", dimensionality=0)),
+                uri="s3://bucket",
+            )
+        )
+    )
+
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=FlyteFile)
+    assert pv == cloudpickle.loads(cloudpickle.dumps(pv))
+    assert pv == pickle.loads(pickle.dumps(pv))
