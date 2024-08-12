@@ -419,17 +419,22 @@ def reference_task(
 
 
 class Echo(PythonTask):
-    """
-    A task that simply echoes the inputs back to the user.
-    The task's inputs and outputs interface are the same.
-    FlytePropeller won't create a pod for this task, it will simply pass the inputs to the outputs.
-    https://github.com/flyteorg/flyte/blob/master/flyteplugins/go/tasks/plugins/testing/echo.go
-    """
-
     _TASK_TYPE = "echo"
 
     def __init__(self, name: str, inputs: Optional[Dict[str, Type]] = None, **kwargs):
-        outputs = dict(zip(list(output_name_generator(len(inputs.values()))), inputs.values())) if inputs else None
+        """
+        A task that simply echoes the inputs back to the user.
+        The task's inputs and outputs interface are the same.
+        FlytePropeller won't create a pod for this task, it will simply pass the inputs to the outputs.
+        https://github.com/flyteorg/flyte/blob/master/flyteplugins/go/tasks/plugins/testing/echo.go
+
+        :param name: The name of the task.
+        :param inputs: Name and type of inputs specified as a dictionary.
+            e.g. {"a": int, "b": str}.
+        :param kwargs: All other args required by the parent type - PythonTask.
+
+        """
+        outputs = dict(zip(output_name_generator(len(inputs)), inputs.values())) if inputs else None
         super().__init__(
             task_type=self._TASK_TYPE,
             name=name,

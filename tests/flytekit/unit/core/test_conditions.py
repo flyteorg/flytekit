@@ -520,11 +520,11 @@ def test_echo_in_condition():
     echo2 = Echo(name="echo", inputs={"a": float, "b": float})
 
     @task()
-    def t2(radius: float) -> (float, float):
+    def t2(radius: float) -> typing.Tuple[float, float]:
         return 2 * 3.14 * radius, 2 * 3.14 * radius
 
     @workflow
-    def wf2(radius1: float, radius2: float) -> (float, float):
+    def wf2(radius1: float, radius2: float) -> typing.Tuple[float, float]:
         return (
             conditional("shape_properties_with_multiple_branches")
             .if_((radius1 >= 0.1) & (radius1 < 1.0))
