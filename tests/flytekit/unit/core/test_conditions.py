@@ -499,7 +499,7 @@ def test_nested_condition_2():
 
 
 def test_echo_in_condition():
-    echo1 = Echo(name="echo", inputs={"a": float})
+    echo1 = Echo(name="echo", inputs={"a": typing.Optional[float]})
 
     @task()
     def t1(radius: float) -> typing.Optional[float]:
