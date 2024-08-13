@@ -51,7 +51,5 @@ RUN SETUPTOOLS_SCM_PRETEND_VERSION_FOR_FLYTEKIT=$PSEUDO_VERSION \
     && :
 
 
-ENV PYTHONPATH "/flytekit:/flytekit/plugins/flytekit-k8s-pod:/flytekit/plugins/flytekit-deck-standard:"
-
 # Switch to the 'flytekit' user for better security.
 USER flytekit
