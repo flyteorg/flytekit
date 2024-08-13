@@ -147,7 +147,7 @@ class TypeStructure(_common.FlyteIdlEntity):
         )
 
     @classmethod
-    def from_flyte_idl(cls, proto: _types_pb2.TypeStructure):
+    def from_flyte_idl(cls, proto: flyteidl.core.TypeStructure):
         return cls(
             tag=proto.tag,
             dataclass_type={k: LiteralType.from_flyte_idl(v) for k, v in proto.dataclass_type.items()}
@@ -400,6 +400,7 @@ class LiteralType(_common.FlyteIdlEntity):
         elif self.structured_dataset_type is not None:
             type = flyteidl.literal_type.Type.StructuredDatasetType(self.structured_dataset_type.to_flyte_idl())
         import json
+
         t = flyteidl.core.LiteralType(
             type=type,
             metadata=flyteidl.ParseStruct((json.dumps(self.metadata))) if self.metadata else None,
@@ -421,6 +422,7 @@ class LiteralType(_common.FlyteIdlEntity):
             collection_type = cls.from_flyte_idl(proto.type[0])
         if isinstance(proto.type, flyteidl.literal_type.Type.MapValueType):
             map_value_type = cls.from_flyte_idl(proto.type[0])
+
         return cls(
             simple=proto.type[0] if isinstance(proto.type, flyteidl.literal_type.Type.Simple) else None,
             schema=SchemaType.from_flyte_idl(proto.type[0])
@@ -441,8 +443,8 @@ class LiteralType(_common.FlyteIdlEntity):
             if isinstance(proto.type, flyteidl.literal_type.Type.StructuredDatasetType)
             else None,
             metadata=proto.metadata if proto.metadata else None,  # _json_format.MessageToDict(proto.metadata) or None,
-            structure=TypeStructure.from_flyte_idl(proto.structure[0]) if proto.structure else None,
-            annotation=TypeAnnotationModel.from_flyte_idl(proto.annotation[0]) if proto.annotation else None,
+            structure=TypeStructure.from_flyte_idl(proto.structure) if proto.structure else None,
+            annotation=TypeAnnotationModel.from_flyte_idl(proto.annotation) if proto.annotation else None,
         )
 
 
