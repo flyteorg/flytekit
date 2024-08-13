@@ -3,8 +3,6 @@ import typing
 from dataclasses import dataclass
 
 import numpy as np
-import pyarrow as pa
-import pyarrow.parquet as pq
 import pytest
 from typing_extensions import Annotated
 
@@ -24,6 +22,8 @@ from flytekit.types.structured.structured_dataset import (
 )
 
 pd = pytest.importorskip("pandas")
+pa = pytest.importorskip("pyarrow")
+pq = pytest.importorskip("pyarrow.parquet")
 
 PANDAS_PATH = FlyteContextManager.current_context().file_access.get_random_local_directory()
 NUMPY_PATH = FlyteContextManager.current_context().file_access.get_random_local_directory()

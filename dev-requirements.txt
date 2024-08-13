@@ -44,7 +44,7 @@ botocore==1.34.106
     # via aiobotocore
 cachetools==5.3.3
     # via google-auth
-certifi==2024.2.2
+certifi==2024.7.4
     # via
     #   kubernetes
     #   requests
@@ -76,6 +76,7 @@ cryptography==42.0.7
     #   azure-storage-blob
     #   msal
     #   pyjwt
+    #   secretstorage
 dataclasses-json==0.5.9
     # via flytekit
 decorator==5.1.1
@@ -181,9 +182,7 @@ iniconfig==2.0.0
 ipython==8.25.0
     # via -r dev-requirements.in
 isodate==0.6.1
-    # via
-    #   azure-storage-blob
-    #   flytekit
+    # via azure-storage-blob
 jaraco-classes==3.4.0
     # via
     #   keyring
@@ -196,10 +195,10 @@ jaraco-functools==4.0.1
     # via keyring
 jedi==0.19.1
     # via ipython
-jinja2==3.1.4
+jeepney==0.8.0
     # via
-    #   -r dev-requirements.in
-    #   flytekit
+    #   keyring
+    #   secretstorage
 jmespath==1.0.1
     # via botocore
 joblib==1.4.2
@@ -221,8 +220,6 @@ markdown-it-py==3.0.0
     # via
     #   flytekit
     #   rich
-markupsafe==2.1.5
-    # via jinja2
 marshmallow==3.21.2
     # via
     #   dataclasses-json
@@ -314,6 +311,7 @@ proto-plus==1.23.0
     #   google-cloud-bigquery-storage
 protobuf==4.25.3
     # via
+    #   -r dev-requirements.in
     #   flyteidl
     #   flytekit
     #   google-api-core
@@ -423,6 +421,8 @@ scikit-learn==1.5.0
     # via -r dev-requirements.in
 scipy==1.13.1
     # via scikit-learn
+secretstorage==3.3.3
+    # via keyring
 setuptools-scm==8.1.0
     # via -r dev-requirements.in
 six==1.16.0
@@ -450,7 +450,7 @@ types-decorator==5.1.8.20240310
     # via -r dev-requirements.in
 types-mock==5.1.0.20240425
     # via -r dev-requirements.in
-types-protobuf==5.26.0.20240422
+types-protobuf==4.25.0.20240417
     # via -r dev-requirements.in
 types-requests==2.32.0.20240523
     # via -r dev-requirements.in

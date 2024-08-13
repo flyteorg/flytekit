@@ -2,6 +2,10 @@ import os
 import typing
 from dataclasses import dataclass
 from unittest import mock
+from typing_extensions import Annotated, cast
+from flytekitplugins.kfpytorch.task import Elastic
+
+from flytekit import Artifact
 
 import pytest
 import torch
@@ -11,9 +15,16 @@ from flytekitplugins.kfpytorch.task import CleanPodPolicy, Elastic, RunPolicy
 
 import flytekit
 from flytekit import task, workflow
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager, ExecutionState, ExecutionParameters, OutputMetadataTracker
 from flytekit.configuration import SerializationSettings
 from flytekit.exceptions.user import FlyteRecoverableException
 
+@pytest.fixture(autouse=True, scope="function")
+def restore_env():
+    original_env = os.environ.copy()
+    yield
+    os.environ.clear()
+    os.environ.update(original_env)
 
 @dataclass
 class Config(DataClassJsonMixin):
@@ -153,6 +164,41 @@ def test_deck(start_method: str) -> None:
     assert "Hello Flyte Deck viewer from worker process 0" in test_deck.html
 
 
+class Card(object):
+    def __init__(self, text: str):
+        self.text = text
+
+    def serialize_to_string(self, ctx: FlyteContext, variable_name: str):
+        print(f"In serialize_to_string: {id(ctx)}")
+        return "card", "card"
+
+
+@pytest.mark.parametrize("start_method", ["spawn", "fork"])
+def test_output_metadata_passing(start_method: str) -> None:
+    ea = Artifact(name="elastic-artf")
+
+    @task(
+        task_config=Elastic(start_method=start_method),
+    )
+    def train2() -> Annotated[str, ea]:
+        return ea.create_from("hello flyte", Card("## card"))
+
+    @workflow
+    def wf():
+        train2()
+
+    ctx = FlyteContext.current_context()
+    omt = OutputMetadataTracker()
+    with FlyteContextManager.with_context(
+            ctx.with_execution_state(ctx.new_execution_state().with_params(mode=ExecutionState.Mode.LOCAL_TASK_EXECUTION)).with_output_metadata_tracker(omt)
+    ) as child_ctx:
+        cast(ExecutionParameters, child_ctx.user_space_params)._decks = []
+        # call execute directly so as to be able to get at the same FlyteContext object.
+        res = train2.execute()
+        om = child_ctx.output_metadata_tracker.get(res)
+        assert len(om.additional_items) == 1
+
+
 @pytest.mark.parametrize(
     "recoverable,start_method",
     [
@@ -190,6 +236,15 @@ def test_recoverable_error(recoverable: bool, start_method: str) -> None:
             wf(recoverable=recoverable)
 
 
+def test_default_timeouts():
+    """Test that default timeouts are set for the elastic task."""
+    @task(task_config=Elastic(nnodes=1))
+    def test_task():
+        pass
+
+    assert test_task.task_config.rdzv_configs == {"join_timeout": 900, "timeout": 900}
+
+
 def test_run_policy() -> None:
     """Test that run policy is propagated to custom spec."""
 
@@ -212,3 +267,21 @@ def test_run_policy() -> None:
         "ttlSecondsAfterFinished": 600,
         "activeDeadlineSeconds": 36000,
     }
+
+@pytest.mark.parametrize("start_method", ["spawn", "fork"])
+def test_omp_num_threads(start_method: str) -> None:
+    """Test that the env var OMP_NUM_THREADS is set by default and not overwritten if set."""
+
+    @task(task_config=Elastic(nnodes=1, nproc_per_node=2, start_method=start_method))
+    def test_task_omp_default():
+        assert os.environ["OMP_NUM_THREADS"] == "1"
+
+    test_task_omp_default()
+
+    os.environ["OMP_NUM_THREADS"] = "42"
+
+    @task(task_config=Elastic(nnodes=1, nproc_per_node=2, start_method=start_method))
+    def test_task_omp_set():
+        assert os.environ["OMP_NUM_THREADS"] == "42"
+
+    test_task_omp_set()

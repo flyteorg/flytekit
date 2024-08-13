@@ -1,5 +1,5 @@
 import json
-import os
+import re
 import shutil
 import subprocess
 import sys
@@ -23,15 +23,8 @@ RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/uv,id=uv \
     --mount=from=uv,source=/uv,target=/usr/bin/uv \
     --mount=type=bind,target=requirements_uv.txt,src=requirements_uv.txt \
     /usr/bin/uv \
-    pip install --python /root/micromamba/envs/dev/bin/python $PIP_EXTRA \
+    pip install --python /opt/micromamba/envs/runtime/bin/python $PIP_EXTRA \
     --requirement requirements_uv.txt
-""")
-
-PIP_PYTHON_INSTALL_COMMAND_TEMPLATE = Template("""\
-RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/pip,id=pip \
-    --mount=type=bind,target=requirements_pip.txt,src=requirements_pip.txt \
-    /root/micromamba/envs/dev/bin/python -m pip install $PIP_EXTRA \
-    --requirement requirements_pip.txt
 """)
 
 APT_INSTALL_COMMAND_TEMPLATE = Template(
@@ -45,7 +38,7 @@ RUN --mount=type=cache,sharing=locked,mode=0777,target=/var/cache/apt,id=apt \
 DOCKER_FILE_TEMPLATE = Template(
     """\
 #syntax=docker/dockerfile:1.5
-FROM ghcr.io/astral-sh/uv:0.2.13 as uv
+FROM ghcr.io/astral-sh/uv:0.2.35 as uv
 FROM mambaorg/micromamba:1.5.8-bookworm-slim as micromamba
 
 FROM $BASE_IMAGE
@@ -57,18 +50,23 @@ RUN update-ca-certificates
 RUN id -u flytekit || useradd --create-home --shell /bin/bash flytekit
 RUN chown -R flytekit /root && chown -R flytekit /home
 
-RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/micromamba/pkgs,\
+RUN --mount=type=cache,sharing=locked,mode=0777,target=/opt/micromamba/pkgs,\
 id=micromamba \
     --mount=from=micromamba,source=/usr/bin/micromamba,target=/usr/bin/micromamba \
-    /usr/bin/micromamba create -n dev -c conda-forge $CONDA_CHANNELS \
+    micromamba config set use_lockfiles False && \
+    micromamba create -n runtime --root-prefix /opt/micromamba \
+    -c conda-forge $CONDA_CHANNELS \
     python=$PYTHON_VERSION $CONDA_PACKAGES
 
 $UV_PYTHON_INSTALL_COMMAND
-$PIP_PYTHON_INSTALL_COMMAND
 
 # Configure user space
-ENV PATH="/root/micromamba/envs/dev/bin:$$PATH"
-ENV FLYTE_SDK_RICH_TRACEBACKS=0 SSL_CERT_DIR=/etc/ssl/certs $ENV
+ENV PATH="/opt/micromamba/envs/runtime/bin:$$PATH" \
+    UV_LINK_MODE=copy \
+    UV_PRERELEASE=allow \
+    FLYTE_SDK_RICH_TRACEBACKS=0 \
+    SSL_CERT_DIR=/etc/ssl/certs \
+    $ENV
 
 # Adds nvidia just in case it exists
 ENV PATH="$$PATH:/usr/local/nvidia/bin:/usr/local/cuda/bin" \
@@ -99,11 +97,25 @@ def get_flytekit_for_pypi():
         return f"flytekit=={__version__}"
 
 
+_PACKAGE_NAME_RE = re.compile(r"^[\w-]+")
+
+
+def _is_flytekit(package: str) -> bool:
+    """Return True if `package` is flytekit. `package` is expected to be a valid version
+    spec. i.e. `flytekit==1.12.3`, `flytekit`, `flytekit~=1.12.3`.
+    """
+    m = _PACKAGE_NAME_RE.match(package)
+    if not m:
+        return False
+    name = m.group()
+    return name == "flytekit"
+
+
 def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
     """Populate tmp_dir with Dockerfile as specified by the `image_spec`."""
     base_image = image_spec.base_image or "debian:bookworm-slim"
 
-    requirements = [get_flytekit_for_pypi()]
+    requirements = []
 
     if image_spec.cuda is not None or image_spec.cudnn is not None:
         msg = (
@@ -125,30 +137,22 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
     if image_spec.packages:
         requirements.extend(image_spec.packages)
 
-    uv_requirements = []
-
-    # uv does not support git + subdirectory, so we use pip to install them instead
-    pip_requirements = []
-
-    for requirement in requirements:
-        if "git" in requirement and "subdirectory" in requirement:
-            pip_requirements.append(requirement)
-        else:
-            uv_requirements.append(requirement)
+    # Adds flytekit if it is not specified
+    if not any(_is_flytekit(package) for package in requirements):
+        requirements.append(get_flytekit_for_pypi())
 
     requirements_uv_path = tmp_dir / "requirements_uv.txt"
-    requirements_uv_path.write_text("\n".join(uv_requirements))
+    requirements_uv_path.write_text("\n".join(requirements))
 
-    pip_extra = f"--index-url {image_spec.pip_index}" if image_spec.pip_index else ""
-    uv_python_install_command = UV_PYTHON_INSTALL_COMMAND_TEMPLATE.substitute(PIP_EXTRA=pip_extra)
+    pip_extra_args = ""
 
-    if pip_requirements:
-        requirements_uv_path = tmp_dir / "requirements_pip.txt"
-        requirements_uv_path.write_text(os.linesep.join(pip_requirements))
+    if image_spec.pip_index:
+        pip_extra_args += f"--index-url {image_spec.pip_index}"
+    if image_spec.pip_extra_index_url:
+        extra_urls = [f"--extra-index-url {url}" for url in image_spec.pip_extra_index_url]
+        pip_extra_args += " ".join(extra_urls)
 
-        pip_python_install_command = PIP_PYTHON_INSTALL_COMMAND_TEMPLATE.substitute(PIP_EXTRA=pip_extra)
-    else:
-        pip_python_install_command = ""
+    uv_python_install_command = UV_PYTHON_INSTALL_COMMAND_TEMPLATE.substitute(PIP_EXTRA=pip_extra_args)
 
     env_dict = {"PYTHONPATH": "/root", _F_IMG_ID: image_spec.image_name()}
 
@@ -208,7 +212,6 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
     docker_content = DOCKER_FILE_TEMPLATE.substitute(
         PYTHON_VERSION=python_version,
         UV_PYTHON_INSTALL_COMMAND=uv_python_install_command,
-        PIP_PYTHON_INSTALL_COMMAND=pip_python_install_command,
         CONDA_PACKAGES=conda_packages_concat,
         CONDA_CHANNELS=conda_channels_concat,
         APT_INSTALL_COMMAND=apt_install_command,

@@ -1,11 +1,11 @@
 import sys
 
-import pyarrow as pa
 import pytest
 
 from flytekit.deck.renderer import DEFAULT_MAX_COLS, DEFAULT_MAX_ROWS, ArrowRenderer, TopFrameRenderer
 
 
+@pytest.mark.skipif("pyarrow" not in sys.modules, reason="Pyarrow is not installed.")
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 @pytest.mark.parametrize(
     "rows, cols, max_rows, expected_max_rows, max_cols, expected_max_cols",
@@ -23,6 +23,7 @@ from flytekit.deck.renderer import DEFAULT_MAX_COLS, DEFAULT_MAX_ROWS, ArrowRend
 )
 def test_renderer(rows, cols, max_rows, expected_max_rows, max_cols, expected_max_cols):
     import pandas as pd
+    import pyarrow as pa
 
     df = pd.DataFrame({f"abc-{k}": list(range(rows)) for k in range(cols)})
     pa_df = pa.Table.from_pandas(df)

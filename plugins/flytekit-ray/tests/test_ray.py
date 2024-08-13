@@ -72,4 +72,4 @@ def test_ray_task():
     ]
 
     assert t1(a=3) == "5"
-    assert not ray.is_initialized()
+    assert ray.is_initialized()

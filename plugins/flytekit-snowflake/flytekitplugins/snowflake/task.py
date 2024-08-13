@@ -12,27 +12,27 @@ _ACCOUNT_FIELD = "account"
 _DATABASE_FIELD = "database"
 _SCHEMA_FIELD = "schema"
 _WAREHOUSE_FIELD = "warehouse"
-_TABLE_FIELD = "table"
 
 
 @dataclass
 class SnowflakeConfig(object):
     """
     SnowflakeConfig should be used to configure a Snowflake Task.
+    You can use the query below to retrieve all metadata for this config.
+
+    SELECT
+        CURRENT_USER() AS "User",
+        CONCAT(CURRENT_ORGANIZATION_NAME(), '-', CURRENT_ACCOUNT_NAME()) AS "Account",
+        CURRENT_DATABASE() AS "Database",
+        CURRENT_SCHEMA() AS "Schema",
+        CURRENT_WAREHOUSE() AS "Warehouse";
     """
 
-    # The user to query against
-    user: Optional[str] = None
-    # The account to query against
-    account: Optional[str] = None
-    # The database to query against
-    database: Optional[str] = None
-    # The optional schema to separate query execution.
-    schema: Optional[str] = None
-    # The optional warehouse to set for the given Snowflake query
-    warehouse: Optional[str] = None
-    # The optional table to set for the given Snowflake query
-    table: Optional[str] = None
+    user: str
+    account: str
+    database: str
+    schema: str
+    warehouse: str
 
 
 class SnowflakeTask(AsyncAgentExecutorMixin, SQLTask[SnowflakeConfig]):
@@ -47,7 +47,7 @@ class SnowflakeTask(AsyncAgentExecutorMixin, SQLTask[SnowflakeConfig]):
         self,
         name: str,
         query_template: str,
-        task_config: Optional[SnowflakeConfig] = None,
+        task_config: SnowflakeConfig,
         inputs: Optional[Dict[str, Type]] = None,
         output_schema_type: Optional[Type[StructuredDataset]] = None,
         **kwargs,
@@ -63,13 +63,13 @@ class SnowflakeTask(AsyncAgentExecutorMixin, SQLTask[SnowflakeConfig]):
         :param output_schema_type: If some data is produced by this query, then you can specify the output schema type
         :param kwargs: All other args required by Parent type - SQLTask
         """
+
         outputs = None
         if output_schema_type is not None:
             outputs = {
                 "results": output_schema_type,
             }
-        if task_config is None:
-            task_config = SnowflakeConfig()
+
         super().__init__(
             name=name,
             task_config=task_config,
@@ -88,7 +88,6 @@ class SnowflakeTask(AsyncAgentExecutorMixin, SQLTask[SnowflakeConfig]):
             _DATABASE_FIELD: self.task_config.database,
             _SCHEMA_FIELD: self.task_config.schema,
             _WAREHOUSE_FIELD: self.task_config.warehouse,
-            _TABLE_FIELD: self.task_config.table,
         }
 
     def get_sql(self, settings: SerializationSettings) -> Optional[_task_model.Sql]:
