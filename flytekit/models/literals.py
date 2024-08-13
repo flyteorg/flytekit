@@ -4,7 +4,6 @@ from typing import Dict, Optional
 
 import flyteidl_rust as flyteidl
 from flyteidl.core import literals_pb2 as _literals_pb2
-from google.protobuf.struct_pb2 import Struct
 
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.models import common as _common
