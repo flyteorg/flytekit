@@ -491,6 +491,7 @@ def test_execute_workflow_with_maptask(register):
     )
     assert execution.outputs["o0"] == [4, 5, 6]
 
+
 @pytest.mark.lftransfers
 class TestLargeFileTransfers:
     """A class to capture tests and helper functions for large file transfers."""
@@ -580,8 +581,10 @@ class TestLargeFileTransfers:
             s3_md5_bytes = TestLargeFileTransfers._get_s3_file_md5_bytes(minio_s3_client, bucket, key)
             assert s3_md5_bytes == md5_bytes
 
+
 @mock.patch("flytekit.tools.interactive.ipython_check")
 def test_workflow_remote_func(mock_ipython_check):
+    """Test the logic of the remote execution of workflows and tasks."""
     mock_ipython_check.return_value = True
     with pytest.raises(AssertionError):
         init_remote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN, interactive_mode_enabled=True)
@@ -606,7 +609,7 @@ def test_workflow_remote_func(mock_ipython_check):
 
 
 def test_fetch_python_task_remote_func(register):
-    """Test execution of a @task-decorated python function that is already registered."""
+    """Test remote execution of a @task-decorated python function that is already registered."""
     with patch("flytekit.tools.interactive.ipython_check") as mock_ipython_check:
         mock_ipython_check.return_value = True
 
@@ -619,9 +622,10 @@ def test_fetch_python_task_remote_func(register):
         assert out.outputs["t1_int_output"] == 12
         assert out.outputs["c"] == "world"
 
+
 @pytest.mark.skip(reason="Waiting for supporting the `name` parameter in the remote function")
 def test_fetch_python_workflow_remote_func(register):
-    """Test execution of a @workflow-decorated python function that is already registered."""
+    """Test remote execution of a @workflow-decorated python function that is already registered."""
     with patch("flytekit.tools.interactive.ipython_check") as mock_ipython_check:
         mock_ipython_check.return_value = True
         from .workflows.basic.basic_workflow import my_basic_wf
@@ -634,6 +638,7 @@ def test_fetch_python_workflow_remote_func(register):
 
 @mock.patch("flytekit.tools.interactive.ipython_check")
 def test_execute_task_remote_func_list_of_floats(mock_ipython_check):
+    """Test remote execution of a @task-decorated python function with a list of floats."""
     mock_ipython_check.return_value = True
     from .workflows.basic.list_float_wf import concat_list
 
@@ -645,6 +650,7 @@ def test_execute_task_remote_func_list_of_floats(mock_ipython_check):
 
 @mock.patch("flytekit.tools.interactive.ipython_check")
 def test_execute_task_remote_func_convert_dict(mock_ipython_check):
+    """Test remote execution of a @task-decorated python function with a dict of strings."""
     mock_ipython_check.return_value = True
     from .workflows.basic.dict_str_wf import convert_to_string
 
@@ -656,7 +662,7 @@ def test_execute_task_remote_func_convert_dict(mock_ipython_check):
 
 @mock.patch("flytekit.tools.interactive.ipython_check")
 def test_execute_python_workflow_remote_func_dict_of_string_to_string(mock_ipython_check):
-    """Test execution of a @workflow-decorated python function."""
+    """Test remote execution of a @workflow-decorated python function with a dict of strings."""
     mock_ipython_check.return_value = True
     from .workflows.basic.dict_str_wf import my_dict_str_wf
 
@@ -668,6 +674,7 @@ def test_execute_python_workflow_remote_func_dict_of_string_to_string(mock_ipyth
 
 @mock.patch("flytekit.tools.interactive.ipython_check")
 def test_execute_python_workflow_remote_func_list_of_floats(mock_ipython_check):
+    """Test remote execution of a @workflow-decorated python function with a list of floats."""
     """Test execution of a @workflow-decorated python function."""
     mock_ipython_check.return_value = True
     from .workflows.basic.list_float_wf import my_list_float_wf
@@ -676,3 +683,14 @@ def test_execute_python_workflow_remote_func_list_of_floats(mock_ipython_check):
     future = my_list_float_wf.remote(xs=xs)
     out = future.wait()
     assert out.outputs["o0"] == "[42.24, 999.1, 0.0001]"
+
+@mock.patch("flytekit.tools.interactive.ipython_check")
+def test_execute_workflow_remote_fn_with_maptask(mock_ipython_check):
+    """Test remote execution of a @workflow-decorated python function with a map task."""
+    mock_ipython_check.return_value = True
+    from .workflows.basic.array_map import workflow_with_maptask
+
+    d: typing.List[int] = [1, 2, 3]
+    future = workflow_with_maptask.remote(data=d, y=3)
+    out = future.wait()
+    assert out.outputs["o0"] == [4, 5, 6]
