@@ -310,8 +310,25 @@ class JsonParamType(click.ParamType):
         parsed_value = self._parse(value, param)
 
         def has_nested_dataclass(t: typing.Type) -> bool:
+            """
+            Recursively checks whether the given type or its nested types contain any dataclass.
+
+            This function is typically called with a dictionary or list type and will return True if
+            any of the nested types within the dictionary or list is a dataclass.
+
+            Note:
+            - A single dataclass will return True.
+            - The function specifically excludes certain Flyte types like FlyteFile, FlyteDirectory,
+            StructuredDataset, and FlyteSchema from being considered as dataclasses. This is because
+            these types are handled separately by Flyte and do not need to be converted to dataclasses.
+
+            Args:
+                t (typing.Type): The type to check for nested dataclasses.
+
+            Returns:
+                bool: True if the type or its nested types contain a dataclass, False otherwise.
+            """
             if dataclasses.is_dataclass(t):
-                # After supporting dataclass with Flyte types members, we will support Flyte types here. 
                 if t not in [FlyteFile, FlyteDirectory, StructuredDataset, FlyteSchema]:
                     return True
             if get_args(t):
