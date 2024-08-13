@@ -10,7 +10,7 @@ import flyteidl_rust as flyteidl
 from flytekit.core.context_manager import FlyteContextManager, OutputMetadata, SerializableToString
 from flytekit.core.sentinel import DYNAMIC_INPUT_BINDING
 from flytekit.loggers import logger
-from flytekit.remote import utils
+from flytekit.models import utils
 
 TIME_PARTITION_KWARG = "time_partition"
 MAX_PARTITIONS = 10
