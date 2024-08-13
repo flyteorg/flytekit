@@ -12,4 +12,4 @@
 """
 
 from .nim.serve import NIM, NIMSecrets
-from .ollama.serve import Ollama
+from .ollama.serve import Model, Ollama

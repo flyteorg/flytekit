@@ -1,11 +1,11 @@
-from flytekitplugins.inference import Ollama
+from flytekitplugins.inference import Ollama, Model
 
 
 def test_ollama_init_valid_params():
     ollama_instance = Ollama(
         server_mem="30Gi",
         port=11435,
-        model="mistral-nemo",
+        model=Model(name="mistral-nemo"),
     )
 
     assert (
@@ -36,7 +36,19 @@ def test_ollama_default_params():
     assert ollama_instance._gpu == 1
     assert ollama_instance._health_endpoint == None
     assert ollama_instance._mem == "15Gi"
-    assert ollama_instance._model == "llama3:8b-instruct-fp16"
+    assert ollama_instance._model_name == "llama3:8b-instruct-fp16"
     assert ollama_instance._model_cpu == 1
-    assert ollama_instance._model_gpu == 0
-    assert ollama_instance._model_mem == "10Gi"
+    assert ollama_instance._model_mem == "500Mi"
+
+
+def test_ollama_modelfile():
+    ollama_instance = Ollama(
+        model=Model(
+            modelfile="FROM llama3\nPARAMETER temperature 1\nPARAMETER num_ctx 4096\nSYSTEM You are Mario from super mario bros, acting as an assistant."
+        )
+    )
+
+    assert (
+        "/api/create"
+        in ollama_instance.pod_template.pod_spec.init_containers[1].command[2]
+    )
