@@ -269,7 +269,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
                 # require a network call to flyteadmin to populate the TaskTemplate
                 # model
                 if isinstance(entity, ReferenceTask):
-                    raise Exception("Reference tasks are currently unsupported within dynamic tasks")
+                    raise ValueError("Reference tasks are currently unsupported within dynamic tasks")
 
                 if not isinstance(model, task_models.TaskSpec):
                     raise TypeError(

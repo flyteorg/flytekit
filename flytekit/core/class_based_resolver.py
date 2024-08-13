@@ -38,6 +38,6 @@ class ClassStorageTaskResolver(TrackedInstance, TaskResolverMixin):
         This is responsible for turning an instance of a task into args that the load_task function can reconstitute.
         """
         if t not in self.mapping:
-            raise Exception("no such task")
+            raise ValueError("no such task")
 
         return [f"{self.mapping.index(t)}"]

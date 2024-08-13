@@ -667,7 +667,7 @@ def create_task_output(
         return promises
 
     if len(promises) == 0:
-        raise Exception(
+        raise ValueError(
             "This function should not be called with an empty list. It should have been handled with a"
             "VoidPromise at this function's call-site."
         )
@@ -1265,7 +1265,7 @@ def flyte_entity_call_handler(
             if result is None or isinstance(result, VoidPromise):
                 return None
             else:
-                raise Exception(f"Received an output when workflow local execution expected None. Received: {result}")
+                raise ValueError(f"Received an output when workflow local execution expected None. Received: {result}")
 
         if inspect.iscoroutine(result):
             return result
