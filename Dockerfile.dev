@@ -15,7 +15,7 @@ WORKDIR /root
 ENV FLYTE_SDK_RICH_TRACEBACKS=0
 
 # Flytekit version of flytekit to be installed in the image
-ARG PSEUDO_VERSION=latest
+ARG PSEUDO_VERSION=1.13.3
 
 
 # Note: Pod tasks should be exposed in the default image
