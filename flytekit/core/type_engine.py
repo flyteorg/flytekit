@@ -578,6 +578,8 @@ class DataclassTransformer(TypeTransformer[object]):
             return self._make_dataclass_serializable(python_val, get_args(python_type)[0])
 
         if hasattr(python_type, "__origin__") and get_origin(python_type) is list:
+            if python_val is None:
+                return None
             return [self._make_dataclass_serializable(v, get_args(python_type)[0]) for v in cast(list, python_val)]
 
         if hasattr(python_type, "__origin__") and get_origin(python_type) is dict:
