@@ -732,7 +732,7 @@ class Scalar(_common.FlyteIdlEntity):
         union: Union = None,
         none_type: Void = None,
         error: Error = None,
-        generic: Struct = None,
+        generic: flyteidl.protobuf.Struct = None,
         structured_dataset: StructuredDataset = None,
     ):
         """
@@ -857,7 +857,7 @@ class Scalar(_common.FlyteIdlEntity):
         elif self.error is not None:
             value = flyteidl.scalar.Value.Error(self.error.to_flyte_idl())
         elif self.generic is not None:
-            value = flyteidl.scalar.Value.Generic(self.generic.to_flyte_idl())
+            value = flyteidl.scalar.Value.Generic(self.generic)
         elif self.structured_dataset is not None:
             value = flyteidl.scalar.Value.StructuredDataset(self.structured_dataset.to_flyte_idl())
         return flyteidl.core.Scalar(value)
