@@ -137,7 +137,7 @@ def create_node(
 
         if ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED:
             logger.warning(f"Manual node creation cannot be used in branch logic {entity.name}")
-            raise Exception("Being more restrictive for now and disallowing manual node creation in branch logic")
+            raise RuntimeError("Being more restrictive for now and disallowing manual node creation in branch logic")
 
         # This the output of __call__ under local execute conditions which means this is the output of local_execute
         # which means this is the output of create_task_output with Promises containing values (or a VoidPromise)
@@ -152,7 +152,7 @@ def create_node(
         output_names = entity.python_interface.output_names  # type: ignore
 
         if not output_names:
-            raise Exception(f"Non-VoidPromise received {results} but interface for {entity.name} doesn't have outputs")
+            raise ValueError(f"Non-VoidPromise received {results} but interface for {entity.name} doesn't have outputs")
 
         if len(output_names) == 1:
             # See explanation above for why we still tupletize a single element.
@@ -161,4 +161,4 @@ def create_node(
         return entity.python_interface.output_tuple(*results)  # type: ignore
 
     else:
-        raise Exception(f"Cannot use explicit run to call Flyte entities {entity.name}")
+        raise RuntimeError(f"Cannot use explicit run to call Flyte entities {entity.name}")

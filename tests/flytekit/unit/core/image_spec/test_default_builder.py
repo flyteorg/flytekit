@@ -30,6 +30,7 @@ def test_create_docker_context(tmp_path):
         source_root=os.fspath(source_root),
         commands=["mkdir my_dir"],
         entrypoint=["/bin/bash"],
+        pip_extra_index_url=["https://extra-url.com"]
     )
 
     create_docker_context(image_spec, docker_context_path)
@@ -42,6 +43,7 @@ def test_create_docker_context(tmp_path):
     assert "scipy==1.13.0 numpy" in dockerfile_content
     assert "python=3.12" in dockerfile_content
     assert "--requirement requirements_uv.txt" in dockerfile_content
+    assert "--extra-index-url" in dockerfile_content
     assert "COPY --chown=flytekit ./src /root" in dockerfile_content
     assert "RUN mkdir my_dir" in dockerfile_content
     assert "ENTRYPOINT [\"/bin/bash\"]" in dockerfile_content
@@ -78,8 +80,8 @@ def test_create_docker_context_with_git_subfolder(tmp_path):
     assert dockerfile_path.exists()
     dockerfile_content = dockerfile_path.read_text()
 
-    assert "--requirement requirements_pip.txt" in dockerfile_content
-    requirements_path = docker_context_path / "requirements_pip.txt"
+    assert "--requirement requirements_uv.txt" in dockerfile_content
+    requirements_path = docker_context_path / "requirements_uv.txt"
     assert requirements_path.exists()
 
 
