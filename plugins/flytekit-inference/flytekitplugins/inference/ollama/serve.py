@@ -39,9 +39,10 @@ class Ollama(ModelInferenceTemplate):
         )
 
         container_name = "create-model" if self._model_modelfile else "pull-model"
+        modelfile_escaped = self._model_modelfile.replace("\n", "\\n") if self._model_modelfile else None
         command = (
-            f'sleep 15; curl -X POST {self.base_url}/api/create -d \'{{"name": "{self._model_name}", "modelfile": "{self._model_modelfile.replace("\n", "\\n")}"}}\''
-            if self._model_modelfile
+            f'sleep 15; curl -X POST {self.base_url}/api/create -d \'{{"name": "{self._model_name}", "modelfile": "{modelfile_escaped}"}}\''
+            if modelfile_escaped
             else f'sleep 15; curl -X POST {self.base_url}/api/pull -d \'{{"name": "{self._model_name}"}}\''
         )
 
