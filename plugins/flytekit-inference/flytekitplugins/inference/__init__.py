@@ -8,6 +8,7 @@
 
    NIM
    NIMSecrets
+   Model
    Ollama
 """
 
