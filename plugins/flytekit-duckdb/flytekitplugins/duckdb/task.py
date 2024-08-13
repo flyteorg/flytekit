@@ -1,7 +1,7 @@
 import json
 from typing import Dict, List, NamedTuple, Optional, Union
 
-from flytekit import PythonInstanceTask, lazy_module
+from flytekit import PythonInstanceTask, lazy_module, current_context
 from flytekit.extend import Interface
 from flytekit.types.structured.structured_dataset import StructuredDataset
 
@@ -23,6 +23,7 @@ class DuckDBQuery(PythonInstanceTask):
         name: str,
         query: Union[str, List[str]],
         inputs: Optional[Dict[str, Union[StructuredDataset, list]]] = None,
+        md_token_name: Optional[str] = None,
         **kwargs,
     ):
         """
@@ -32,10 +33,17 @@ class DuckDBQuery(PythonInstanceTask):
             name: Name of the task
             query: DuckDB query to execute
             inputs: The query parameters to be used while executing the query
+            md_token_name: Name of the secret containing a MotherDuck authentication token
         """
+        if md_token_name is None:
+            # create an in-memory database that's non-persistent
+            self._con = duckdb.connect(":memory:")
+        else:
+            # connect to motherduck
+            md_token = current_context().secrets.get(md_token_name)
+            self._con = duckdb.connect("md:", config={'motherduck_token': md_token})
+
         self._query = query
-        # create an in-memory database that's non-persistent
-        self._con = duckdb.connect(":memory:")
 
         outputs = {"result": StructuredDataset}
 
