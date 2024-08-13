@@ -1088,7 +1088,7 @@ def update_launch_plan(state, host, insecure, urn=None):
 @_optional_name_option
 @_host_option
 @_insecure_option
-def recover_execution(urn, host, insecure):
+def recover_execution(urn, name, host, insecure):
     """
     Recreates a previously-run workflow execution that will only start executing from the last known failure point.
 
@@ -1099,6 +1099,8 @@ def recover_execution(urn, host, insecure):
         - machine failures
         - downstream system failures (downstream services)
         - or simply to recover executions that failed because of retry exhaustion and should complete if tried again.
+
+    You can optionally assign a name to the recreated execution you trigger or let the system assign one.
 
     Usage:
         $ flyte-cli recover-execution -u ex:flyteexamples:development:some-workflow:abc123 -n my_retry_name
@@ -1113,7 +1115,7 @@ def recover_execution(urn, host, insecure):
 
     original_workflow_execution_identifier = cli_identifiers.WorkflowExecutionIdentifier.from_python_std(urn)
 
-    execution_identifier_resp = client.recover_execution(id=original_workflow_execution_identifier)
+    execution_identifier_resp = client.recover_execution(id=original_workflow_execution_identifier, name=name)
     execution_identifier = cli_identifiers.WorkflowExecutionIdentifier.promote_from_model(execution_identifier_resp)
     click.secho("Launched execution: {}".format(execution_identifier), fg="blue")
     click.echo("")

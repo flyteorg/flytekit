@@ -537,11 +537,12 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
     #
     ####################################################################################################################
 
-    def create_execution(self, project, domain, execution_spec, inputs):
+    def create_execution(self, project, domain, name, execution_spec, inputs):
         """
         This will create an execution for the given execution spec.
         :param Text project:
         :param Text domain:
+        :param Text name:
         :param flytekit.models.execution.ExecutionSpec execution_spec: This is the specification for the execution.
         :param flytekit.models.literals.LiteralMap inputs: The inputs for the execution
         :returns: The unique identifier for the execution.
@@ -553,7 +554,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
                 _execution_pb2.ExecutionCreateRequest(
                     project=project,
                     domain=domain,
-                    name="",
+                    name=name,
                     spec=execution_spec.to_flyte_idl(),
                     inputs=inputs.to_flyte_idl(),
                 )
@@ -561,15 +562,16 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             .id
         )
 
-    def recover_execution(self, id):
+    def recover_execution(self, id, name: str = None):
         """
         Recreates a previously-run workflow execution that will only start executing from the last known failure point.
         :param flytekit.models.core.identifier.WorkflowExecutionIdentifier id:
+        :param name str: Optional name to assign to the newly created execution.
         :rtype: flytekit.models.core.identifier.WorkflowExecutionIdentifier
         """
         return _identifier.WorkflowExecutionIdentifier.from_flyte_idl(
             super(SynchronousFlyteClient, self)
-            .recover_execution(_execution_pb2.ExecutionRecoverRequest(id=id.to_flyte_idl(), name=""))
+            .recover_execution(_execution_pb2.ExecutionRecoverRequest(id=id.to_flyte_idl(), name=name))
             .id
         )
 
@@ -648,15 +650,17 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             _execution_pb2.ExecutionTerminateRequest(id=id.to_flyte_idl(), cause=cause)
         )
 
-    def relaunch_execution(self, id):
+    def relaunch_execution(self, id, name=None):
         """
         :param flytekit.models.core.identifier.WorkflowExecutionIdentifier id:
+        :param Text name: [Optional] name for the new execution. If not specified, a randomly generated name will be
+            used
         :returns: The unique identifier for the new execution.
         :rtype: flytekit.models.core.identifier.WorkflowExecutionIdentifier
         """
         return _identifier.WorkflowExecutionIdentifier.from_flyte_idl(
             super(SynchronousFlyteClient, self)
-            .relaunch_execution(_execution_pb2.ExecutionRelaunchRequest(id=id.to_flyte_idl(), name=""))
+            .relaunch_execution(_execution_pb2.ExecutionRelaunchRequest(id=id.to_flyte_idl(), name=name))
             .id
         )
 
