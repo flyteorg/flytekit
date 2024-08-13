@@ -1,12 +1,13 @@
 import json
+import os
 import re
 import shutil
-import subprocess
 import sys
 import tempfile
 import warnings
 from pathlib import Path
 from string import Template
+from subprocess import run
 from typing import ClassVar
 
 import click
@@ -251,7 +252,10 @@ class DefaultImageBuilder(ImageSpecBuilder):
     }
 
     def build_image(self, image_spec: ImageSpec) -> str:
-        return self._build_image(image_spec)
+        return self._build_image(
+            image_spec,
+            push=os.getenv("FLYTE_PUSH_IMAGE_SPEC", "True").lower() in ("true", "1"),
+        )
 
     def _build_image(self, image_spec: ImageSpec, *, push: bool = True) -> str:
         # For testing, set `push=False`` to just build the image locally and not push to
@@ -285,4 +289,4 @@ class DefaultImageBuilder(ImageSpecBuilder):
 
             concat_command = " ".join(command)
             click.secho(f"Run command: {concat_command} ", fg="blue")
-            subprocess.run(command, check=True)
+            run(command, check=True)
