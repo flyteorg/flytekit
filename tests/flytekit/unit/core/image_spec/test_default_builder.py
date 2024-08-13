@@ -30,7 +30,8 @@ def test_create_docker_context(tmp_path):
         source_root=os.fspath(source_root),
         commands=["mkdir my_dir"],
         entrypoint=["/bin/bash"],
-        pip_extra_index_url=["https://extra-url.com"]
+        pip_extra_index_url=["https://extra-url.com"],
+        docker_commands=["RUN git clone https://github.com/flyteorg/flytekit.git", "COPY . /root"],
     )
 
     create_docker_context(image_spec, docker_context_path)
@@ -48,6 +49,8 @@ def test_create_docker_context(tmp_path):
     assert "RUN mkdir my_dir" in dockerfile_content
     assert "ENTRYPOINT [\"/bin/bash\"]" in dockerfile_content
     assert "mkdir -p $HOME" in dockerfile_content
+    assert "RUN git clone https://github.com/flyteorg/flytekit.git" in dockerfile_content
+    assert "COPY . /root" in dockerfile_content
 
     requirements_path = docker_context_path / "requirements_uv.txt"
     assert requirements_path.exists()
@@ -170,12 +173,13 @@ def test_build(tmp_path):
         name="FLYTEKIT",
         python_version="3.12",
         env={"MY_ENV": "MY_VALUE"},
-        apt_packages=["curl"],
+        apt_packages=["curl", "git"],
         conda_packages=["scipy==1.13.0", "numpy"],
         packages=["pandas==2.2.1"],
         requirements=os.fspath(other_requirements_path),
         source_root=os.fspath(source_root),
         commands=["mkdir my_dir"],
+        docker_commands=["RUN git clone https://github.com/flyteorg/flytekit.git", "COPY . /root"],
     )
 
     builder = DefaultImageBuilder()
