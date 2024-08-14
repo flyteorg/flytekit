@@ -1,7 +1,6 @@
 import asyncio
 import contextlib
 import datetime
-import functools
 import inspect
 import os
 import pathlib
@@ -199,17 +198,6 @@ def get_one_of(*args) -> str:
     return ""
 
 
-def _fast_register_file_uploader(file_access: FileAccessProvider, dest: str, src: str):
-    """
-    This function can be used during dynamic task execution, where the downstream task needs to be pickled and uploaded
-
-    :param file_access: The file access provider
-    :param src: The source file to upload
-    """
-    # return md5_bytes and path
-    return "", file_access.put_data(src, dest)
-
-
 @contextlib.contextmanager
 def setup_execution(
     raw_output_data_prefix: str,
@@ -327,9 +315,6 @@ def setup_execution(
                 pickled=pickled,
             )
         cb = cb.with_serialization_settings(ssb.build())
-        _uploader = functools.partial(_fast_register_file_uploader, file_access)
-        cb.with_fast_register_file_uploader(_uploader)
-
     with FlyteContextManager.with_context(cb) as ctx:
         yield ctx
 

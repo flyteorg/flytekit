@@ -642,7 +642,6 @@ class FlyteContext(object):
     in_a_condition: bool = False
     origin_stackframe: Optional[traceback.FrameSummary] = None
     output_metadata_tracker: Optional[OutputMetadataTracker] = None
-    fast_register_file_uploader: Optional[typing.Callable] = None
 
     @property
     def user_space_params(self) -> Optional[ExecutionParameters]:
@@ -692,9 +691,6 @@ class FlyteContext(object):
 
     def with_output_metadata_tracker(self, t: OutputMetadataTracker) -> Builder:
         return self.new_builder().with_output_metadata_tracker(t)
-
-    def with_fast_register_file_uploader(self, f: typing.Callable) -> Builder:
-        return self.new_builder().with_fast_register_file_uploader(f)
 
     def new_compilation_state(self, prefix: str = "") -> CompilationState:
         """
@@ -757,7 +753,6 @@ class FlyteContext(object):
         serialization_settings: Optional[SerializationSettings] = None
         in_a_condition: bool = False
         output_metadata_tracker: Optional[OutputMetadataTracker] = None
-        fast_register_file_uploader: Optional[typing.Callable] = None
 
         def build(self) -> FlyteContext:
             return FlyteContext(
@@ -769,7 +764,6 @@ class FlyteContext(object):
                 serialization_settings=self.serialization_settings,
                 in_a_condition=self.in_a_condition,
                 output_metadata_tracker=self.output_metadata_tracker,
-                fast_register_file_uploader=self.fast_register_file_uploader,
             )
 
         def enter_conditional_section(self) -> FlyteContext.Builder:
@@ -833,10 +827,6 @@ class FlyteContext(object):
             if not working_dir:
                 working_dir = self.file_access.get_random_local_directory()
             return ExecutionState(working_dir=working_dir)
-
-        def with_fast_register_file_uploader(self, f) -> FlyteContext.Builder:
-            self.fast_register_file_uploader = f
-            return self
 
 
 class FlyteContextManager(object):
