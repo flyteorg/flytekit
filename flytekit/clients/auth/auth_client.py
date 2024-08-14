@@ -332,7 +332,7 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
         if resp.status_code != _StatusCodes.OK:
             # TODO: handle expected (?) error cases:
             #  https://auth0.com/docs/flows/guides/device-auth/call-api-device-auth#token-responses
-            raise Exception(
+            raise RuntimeError(
                 "Failed to request access token with response: [{}] {}".format(resp.status_code, resp.content)
             )
         return self._credentials_from_response(resp)

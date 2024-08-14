@@ -44,7 +44,7 @@ from flytekit.models.types import SimpleType
 from flytekit.remote import FlyteLaunchPlan, FlyteRemote, FlyteTask, FlyteWorkflow, remote_fs
 from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.tools import module_loader
-from flytekit.tools.script_mode import _find_project_root, compress_scripts
+from flytekit.tools.script_mode import _find_project_root, compress_scripts, get_all_modules
 from flytekit.tools.translator import Options
 
 
@@ -379,6 +379,10 @@ def to_click_option(
     This handles converting workflow input types to supported click parameters with callbacks to initialize
     the input values to their expected types.
     """
+    if input_name != input_name.lower():
+        # Click does not support uppercase option names: https://github.com/pallets/click/issues/837
+        raise ValueError(f"Workflow input name must be lowercase: {input_name!r}")
+
     run_level_params: RunLevelParams = ctx.obj
 
     literal_converter = FlyteLiteralConverter(
@@ -493,7 +497,8 @@ def _update_flyte_context(params: RunLevelParams) -> FlyteContext.Builder:
     if output_prefix and ctx.file_access.is_remote(output_prefix):
         with tempfile.TemporaryDirectory() as tmp_dir:
             archive_fname = pathlib.Path(os.path.join(tmp_dir, "script_mode.tar.gz"))
-            compress_scripts(params.computed_params.project_root, str(archive_fname), params.computed_params.module)
+            modules = get_all_modules(params.computed_params.project_root, params.computed_params.module)
+            compress_scripts(params.computed_params.project_root, str(archive_fname), modules)
             remote_dir = file_access.get_random_remote_directory()
             remote_archive_fname = f"{remote_dir}/script_mode.tar.gz"
             file_access.put_data(str(archive_fname), remote_archive_fname)

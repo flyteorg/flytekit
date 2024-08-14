@@ -309,38 +309,26 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
         cache_type: typing.Optional[str] = None,
         cache_options: typing.Optional[typing.Dict[str, typing.Any]] = None,
     ):
-        """
-        Returns a streaming File handle
+        """Returns a streaming File handle
 
         .. code-block:: python
 
             @task
             def copy_file(ff: FlyteFile) -> FlyteFile:
-                new_file = FlyteFile.new_remote_file(ff.name)
-                with ff.open("rb", cache_type="readahead", cache={}) as r:
+                new_file = FlyteFile.new_remote_file()
+                with ff.open("rb", cache_type="readahead") as r:
                     with new_file.open("wb") as w:
                         w.write(r.read())
                 return new_file
 
-        Alternatively,
-
-        .. code-block:: python
-
-            @task
-            def copy_file(ff: FlyteFile) -> FlyteFile:
-                new_file = FlyteFile.new_remote_file(ff.name)
-                with fsspec.open(f"readahead::{ff.remote_path}", "rb", readahead={}) as r:
-                    with new_file.open("wb") as w:
-                        w.write(r.read())
-                return new_file
-
-
-        :param mode: str Open mode like 'rb', 'rt', 'wb', ...
-        :param cache_type: optional str Specify if caching is to be used. Cache protocol can be ones supported by
-            fsspec https://filesystem-spec.readthedocs.io/en/latest/api.html#readbuffering,
-            especially useful for large file reads
-        :param cache_options: optional Dict[str, Any] Refer to fsspec caching options. This is strongly coupled to the
-            cache_protocol
+        :param mode: Open mode. For example: 'r', 'w', 'rb', 'rt', 'wb', etc.
+        :type mode: str
+        :param cache_type: Specifies the cache type. Possible values are "blockcache", "bytes", "mmap", "readahead", "first", or "background".
+            This is especially useful for large file reads. See https://filesystem-spec.readthedocs.io/en/latest/api.html#readbuffering.
+        :type cache_type: str, optional
+        :param cache_options: A Dict corresponding to the parameters for the chosen cache_type.
+             Refer to fsspec caching options above.
+        :type cache_options: Dict[str, Any], optional
         """
         ctx = FlyteContextManager.current_context()
         final_path = self.path
