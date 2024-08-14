@@ -40,12 +40,12 @@ class DuckDBQuery(PythonInstanceTask):
             self._con = duckdb.connect(":memory:")
         else:
             # connect to motherduck
-            md_token = current_context().secrets.get(
+            motherduck_token = current_context().secrets.get(
                 group=motherduck_secret.group,
                 key=motherduck_secret.key,
                 group_version=motherduck_secret.group_version,
             )
-            self._con = duckdb.connect("md:", config={"motherduck_token": md_token})
+            self._con = duckdb.connect("md:", config={"motherduck_token": motherduck_token})
 
         self._query = query
 
