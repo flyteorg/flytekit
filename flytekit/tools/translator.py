@@ -225,16 +225,16 @@ def _update_serialization_settings_for_ipython(
                     f"Dynamic tasks are not supported in interactive mode. {entity.name} is a dynamic task."
                 )
 
+        if options is None or options.file_uploader is None:
+            raise FlyteAssertion("To work interactively with Flyte, a code transporter/uploader should be configured.")
+
         import gzip
 
         import cloudpickle
 
-        display_ipython_warning("Jupyter notebook and interactive task support is still alpha.")
-
         from flytekit.configuration import FastSerializationSettings
 
-        if options is None or options.file_uploader is None:
-            raise FlyteAssertion("To work interactively with Flyte, a code transporter/uploader should be configured.")
+        display_ipython_warning("Jupyter notebook and interactive task support is still alpha.")
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             dest = pathlib.Path(tmp_dir, "pkl.gz")
