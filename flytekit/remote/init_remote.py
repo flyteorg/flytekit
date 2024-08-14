@@ -37,19 +37,16 @@ def init_remote(
     """
     global REMOTE_ENTRY, REMOTE_DEFAULT_OPTIONS
     with REMOTE_ENTRY_LOCK:
-        if REMOTE_ENTRY is None:
-            REMOTE_ENTRY = FlyteRemote(
-                config=config,
-                default_project=default_project,
-                default_domain=default_domain,
-                data_upload_location=data_upload_location,
-                interactive_mode_enabled=interactive_mode_enabled,
-                **kwargs,
-            )
-            # TODO: This should be merged into the FlyteRemote in the future
-            REMOTE_DEFAULT_OPTIONS = default_options
-        else:
-            raise AssertionError("Remote client already initialized")
+        REMOTE_ENTRY = FlyteRemote(
+            config=config,
+            default_project=default_project,
+            default_domain=default_domain,
+            data_upload_location=data_upload_location,
+            interactive_mode_enabled=interactive_mode_enabled,
+            **kwargs,
+        )
+        # TODO: This should be merged into the FlyteRemote in the future
+        REMOTE_DEFAULT_OPTIONS = default_options
 
     # Set the log level
     log_level = get_level_from_cli_verbosity(verbosity)

@@ -306,21 +306,19 @@ class WorkflowBase(object):
     def execute(self, **kwargs):
         raise Exception("Should not be called")
 
-    def remote(self, version: Optional[str] = None, options: Optional[Options] = None, **kwargs) -> FlyteFuture:
+    def remote(self, options: Optional[Options] = None, **kwargs) -> FlyteFuture:
         """
         This method will be invoked to execute the workflow remotely. This will return a FlyteFuture object that can be
         used to track the progress of the workflow execution.
 
         This method should be executed after specifying the remote configuration via `flytekit.remote.init_remote()`.
 
-        :param version: an optional version string to fetch or register the workflow. If not specified, it will randomly
-                generate a version string.
         :param options: an optional options that can be used to override the default options of the workflow. If not
                 specified, the default options provided by `init_remote()` will be used.
         :param kwargs: Dict[str, Any] the inputs to the workflow. The inputs should match the signature of the workflow.
         :return: FlyteFuture
         """
-        return FlyteFuture(self, version=version, options=options, **kwargs)
+        return FlyteFuture(self, options=options, **kwargs)
 
     def compile(self, **kwargs):
         pass

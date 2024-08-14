@@ -163,16 +163,13 @@ def get_command_prefix_for_fast_execute(settings: SerializationSettings) -> List
             if settings.fast_serialization_settings and settings.fast_serialization_settings.distribution_location
             else "{{ .remote_package_path }}"
         ),
-        "--dest-dir",
-        (
-            settings.fast_serialization_settings.destination_dir
-            if settings.fast_serialization_settings and settings.fast_serialization_settings.destination_dir
-            else "{{ .dest_dir }}"
-        ),
     ]
-    # If pickling is enabled, we will add a pickled bit
     if settings.fast_serialization_settings and settings.fast_serialization_settings.pickled:
         prefix = prefix + ["--pickled"]
+    elif settings.fast_serialization_settings and settings.fast_serialization_settings.destination_dir:
+        prefix = prefix + ["--dest-dir", settings.fast_serialization_settings.destination_dir]
+    else:
+        prefix = prefix + ["--dest-dir", "{{ .dest_dir }}"]
 
     return prefix + ["--"]
 
