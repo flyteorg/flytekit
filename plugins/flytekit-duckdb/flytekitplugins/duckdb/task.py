@@ -1,4 +1,5 @@
 import json
+from enum import Enum
 from typing import Dict, List, NamedTuple, Optional, Union
 
 from flytekit import PythonInstanceTask, Secret, current_context, lazy_module
@@ -8,6 +9,11 @@ from flytekit.types.structured.structured_dataset import StructuredDataset
 duckdb = lazy_module("duckdb")
 pd = lazy_module("pandas")
 pa = lazy_module("pyarrow")
+
+
+class DuckDBProvider(Enum):
+    LOCAL = "local"
+    MOTHERDUCK = "motherduck"
 
 
 class QueryOutput(NamedTuple):
@@ -23,7 +29,8 @@ class DuckDBQuery(PythonInstanceTask):
         name: str,
         query: Union[str, List[str]],
         inputs: Optional[Dict[str, Union[StructuredDataset, list]]] = None,
-        motherduck_secret: Optional[Secret] = None,
+        provider: Optional[DuckDBProvider] = DuckDBProvider.LOCAL,
+        hosted_secret: Optional[Secret] = None,
         **kwargs,
     ):
         """
@@ -33,20 +40,10 @@ class DuckDBQuery(PythonInstanceTask):
             name: Name of the task
             query: DuckDB query to execute
             inputs: The query parameters to be used while executing the query
-            motherduck_secret: Secret containing a MotherDuck authentication token
+            provider: DuckDB provider (e.g., LOCAL, MOTHERDUCK, ANOTHERPRODUCT)
+            hosted_secret: Secret containing authentication token for the hosted provider
         """
-        if motherduck_secret is None:
-            # create an in-memory database that's non-persistent
-            self._con = duckdb.connect(":memory:")
-        else:
-            # connect to motherduck
-            motherduck_token = current_context().secrets.get(
-                group=motherduck_secret.group,
-                key=motherduck_secret.key,
-                group_version=motherduck_secret.group_version,
-            )
-            self._con = duckdb.connect("md:", config={"motherduck_token": motherduck_token})
-
+        self._con = self._connect_to_duckdb(provider, hosted_secret)
         self._query = query
 
         outputs = {"result": StructuredDataset}
@@ -58,6 +55,43 @@ class DuckDBQuery(PythonInstanceTask):
             interface=Interface(inputs=inputs, outputs=outputs),
             **kwargs,
         )
+
+    def _connect_to_duckdb(self, provider: DuckDBProvider, hosted_secret: Optional[Secret]):
+        """
+        Handles the connection to DuckDB based on the provider.
+
+        Args:
+            provider: DuckDB provider
+            hosted_secret: Secret containing authentication token for the hosted provider
+
+        Returns:
+            A DuckDB connection object.
+        """
+        connection_map = {
+            DuckDBProvider.LOCAL: self._connect_local,
+            DuckDBProvider.MOTHERDUCK: self._connect_motherduck,
+        }
+
+        if provider not in connection_map:
+            raise ValueError(f"Unknown DuckDB provider: {provider}")
+
+        if provider != DuckDBProvider.LOCAL and hosted_secret is None:
+            raise ValueError(f"A secret is required for the {provider.value} provider.")
+
+        return connection_map[provider](hosted_secret)
+
+    def _connect_local(self, hosted_secret: Optional[Secret]):
+        """Connect to local DuckDB."""
+        return duckdb.connect(":memory:")
+
+    def _connect_motherduck(self, hosted_secret: Secret):
+        """Connect to MotherDuck."""
+        motherduck_token = current_context().secrets.get(
+            group=hosted_secret.group,
+            key=hosted_secret.key,
+            group_version=hosted_secret.group_version,
+        )
+        return duckdb.connect("md:", config={"motherduck_token": motherduck_token})
 
     def _execute_query(self, params: list, query: str, counter: int, multiple_params: bool):
         """
