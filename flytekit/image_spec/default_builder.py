@@ -59,8 +59,6 @@ id=micromamba \
     -c conda-forge $CONDA_CHANNELS \
     python=$PYTHON_VERSION $CONDA_PACKAGES
 
-$UV_PYTHON_INSTALL_COMMAND
-
 # Configure user space
 ENV PATH="/opt/micromamba/envs/runtime/bin:$$PATH" \
     UV_LINK_MODE=copy \
@@ -68,6 +66,8 @@ ENV PATH="/opt/micromamba/envs/runtime/bin:$$PATH" \
     FLYTE_SDK_RICH_TRACEBACKS=0 \
     SSL_CERT_DIR=/etc/ssl/certs \
     $ENV
+
+$UV_PYTHON_INSTALL_COMMAND
 
 # Adds nvidia just in case it exists
 ENV PATH="$$PATH:/usr/local/nvidia/bin:/usr/local/cuda/bin" \
