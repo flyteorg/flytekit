@@ -718,9 +718,12 @@ class ProtobufTransformer(TypeTransformer[Message]):
         struct = Struct()
         try:
             message_dict = _MessageToDict(cast(Message, python_val))
-            if isinstance(message_dict, list):
-                return self._handle_list_literal(ctx, message_dict)
-            struct.update(message_dict)
+            try:
+                struct.update(message_dict)
+            except Exception:
+                if isinstance(message_dict, list):
+                    return self._handle_list_literal(ctx, message_dict)
+                raise
         except Exception:
             raise TypeTransformerFailedError("Failed to convert to generic protobuf struct")
         return Literal(scalar=Scalar(generic=struct))
