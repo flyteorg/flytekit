@@ -562,11 +562,15 @@ def run_remote(
             cluster_pool=run_level_params.cluster_pool,
             execution_cluster_label=run_level_params.execution_cluster_label,
         )
+        additional_info_for_execution = get_plugin().get_additional_info_for_execution(
+            remote.generate_console_http_domain(), execution
+        )
         s = (
             click.style("\n[✔] ", fg="green")
             + "Go to "
             + click.style(execution.execution_url, fg="cyan")
-            + " to see execution in the console."
+            + " to see the execution in the console."
+            + additional_info_for_execution
         )
         click.echo(s)
 

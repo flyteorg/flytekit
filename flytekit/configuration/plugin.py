@@ -29,6 +29,7 @@ from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.workflow import WorkflowBase
 from flytekit.loggers import logger
 from flytekit.remote import FlyteRemote
+from flytekit.remote.executions import FlyteNodeExecution, FlyteTaskExecution, FlyteWorkflowExecution
 
 
 @runtime_checkable
@@ -62,6 +63,11 @@ class FlytekitPluginProtocol(Protocol):
     @staticmethod
     def get_additional_context_for_version_hash(entity: Union[PythonAutoContainerTask, WorkflowBase]) -> List[str]:
         """Get additional context to be used for calculating the version hash."""
+
+    def get_additional_info_for_execution(
+        console_http_domain: str, entity: Union[FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution]
+    ) -> str:
+        """Get additional info for a given execution. Useful to pass in additional urls."""
 
 
 class FlytekitPlugin:
@@ -122,6 +128,12 @@ class FlytekitPlugin:
     def get_additional_context_for_version_hash(entity: Union[PythonAutoContainerTask, WorkflowBase]) -> List[str]:
         """Get additional context to be used for calculating the version hash."""
         return []
+
+    def get_additional_info_for_execution(
+        console_http_domain: str, entity: Union[FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution]
+    ) -> str:
+        """Get additional info for a given execution. Useful to pass in additional urls."""
+        return ""
 
 
 def _get_plugin_from_entrypoint():
