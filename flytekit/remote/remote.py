@@ -833,7 +833,6 @@ class FlyteRemote(object):
         version: typing.Optional[str] = None,
         default_launch_plan: typing.Optional[bool] = True,
         options: typing.Optional[Options] = None,
-        fast: bool = False,
     ) -> FlyteWorkflow:
         """
         Use this method to register a workflow.
@@ -845,39 +844,6 @@ class FlyteRemote(object):
         :param fast: fast register if true
         :return:
         """
-        if fast:
-            if not isinstance(entity, PythonFunctionWorkflow):
-                raise ValueError(
-                    "Only PythonFunctionWorkflow entity is supported for script mode registration"
-                    "Please use register_script for other types of workflows"
-                )
-            if not isinstance(entity._module_file, pathlib.Path):
-                raise ValueError(f"entity._module_file should be pathlib.Path object, got {type(entity._module_file)}")
-
-            mod_name = ".".join(entity.name.split(".")[:-1])
-            # get the path representation of the module
-            module_path = f"{os.sep}".join(entity.name.split(".")[:-1])
-            module_file = str(entity._module_file.with_suffix(""))
-            if not module_file.endswith(module_path):
-                raise ValueError(
-                    f"Module file path should end with entity.__module__, got {module_file} and {module_path}"
-                )
-
-            # remove module suffix to get the root
-            module_root = str(pathlib.Path(module_file[: -len(module_path)]))
-
-            return self.register_script(
-                entity,
-                image_config=serialization_settings.image_config if serialization_settings else None,
-                project=serialization_settings.project if serialization_settings else None,
-                domain=serialization_settings.domain if serialization_settings else None,
-                version=version,
-                default_launch_plan=default_launch_plan,
-                options=options,
-                source_path=module_root,
-                module_name=mod_name,
-            )
-
         if serialization_settings is None:
             _, _, _, module_file = extract_task_module(entity)
             project_root = _find_project_root(module_file)
@@ -895,6 +861,59 @@ class FlyteRemote(object):
         fwf = self.fetch_workflow(ident.project, ident.domain, ident.name, ident.version)
         fwf._python_interface = entity.python_interface
         return fwf
+
+    def fast_register_workflow(
+        self,
+        entity: WorkflowBase,
+        serialization_settings: typing.Optional[SerializationSettings] = None,
+        version: typing.Optional[str] = None,
+        default_launch_plan: typing.Optional[bool] = True,
+        options: typing.Optional[Options] = None,
+    ) -> FlyteWorkflow:
+        """
+        Register a PythonFunctionWorkflow entity with the Flyte backend using the fast registration method.
+        :param entity: The PythonFunctionWorkflow entity to register
+        :param image_config: The image config to use for the registration
+        :param project: The project to register the entity under
+        :param domain: The domain to register the entity under
+        :param version: The version to register the entity under
+        :param default_launch_plan: If True, a default launch plan will be created for the workflow
+        :param options: Additional options to configure the default launch plan
+        :param source_path: The source path of the module containing the workflow
+        :param module_name: The name of the module containing the workflow
+        :return: The registered FlyteWorkflow entity
+        """
+        if not isinstance(entity, PythonFunctionWorkflow):
+            raise ValueError(
+                "Only PythonFunctionWorkflow entity is supported for script mode registration"
+                "Please use register_script for other types of workflows"
+            )
+        if not isinstance(entity._module_file, pathlib.Path):
+            raise ValueError(f"entity._module_file should be pathlib.Path object, got {type(entity._module_file)}")
+
+        mod_name = ".".join(entity.name.split(".")[:-1])
+        # get the path representation of the module
+        module_path = f"{os.sep}".join(entity.name.split(".")[:-1])
+        module_file = str(entity._module_file.with_suffix(""))
+        if not module_file.endswith(module_path):
+            raise ValueError(
+                f"Module file path should end with entity.__module__, got {module_file} and {module_path}"
+            )
+
+        # remove module suffix to get the root
+        module_root = str(pathlib.Path(module_file[: -len(module_path)]))
+
+        return self.register_script(
+            entity,
+            image_config=serialization_settings.image_config if serialization_settings else None,
+            project=serialization_settings.project if serialization_settings else None,
+            domain=serialization_settings.domain if serialization_settings else None,
+            version=version,
+            default_launch_plan=default_launch_plan,
+            options=options,
+            source_path=module_root,
+            module_name=mod_name,
+        )
 
     def fast_package(
         self,

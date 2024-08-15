@@ -670,7 +670,7 @@ def test_register_wf_script_mode(compress_scripts_mock, upload_file_mock, regist
     compress_scripts_mock.return_value = "compressed"
     upload_file_mock.return_value = md5_bytes, "localhost:30084"
     flyte_remote = FlyteRemote(config=Config.auto())
-    flyte_remote.register_workflow(hello_wf, version="v1", fast=True)
+    flyte_remote.fast_register_workflow(hello_wf, version="v1")
     register_workflow_mock.assert_called_with(
         hello_wf,
         image_config=None,
