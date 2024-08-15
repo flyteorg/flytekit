@@ -8,7 +8,7 @@ import tempfile
 import typing
 from dataclasses import asdict, dataclass, field
 from datetime import timedelta
-from enum import Enum, StrEnum, auto
+from enum import Enum, auto
 from typing import List, Optional, Type
 
 import mock
@@ -2935,7 +2935,7 @@ def test_DataclassTransformer_to_python_value():
 
 
 def test_DataclassTransformer_with_discriminated_subtypes():
-    class SubclassTypes(StrEnum):
+    class SubclassTypes(str, Enum):
         BASE = auto()
         CLASS_A = auto()
         CLASS_B = auto()
