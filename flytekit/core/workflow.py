@@ -747,7 +747,6 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 try:
                     # HACK, not sure if the nest_asyncio implementation uses thread since ctx is not thread-safe
                     loop = asyncio.get_running_loop()
-                    # breakpoint()
                     nest_asyncio.apply()
 
                     return loop.run_until_complete(self._workflow_function(**kwargs))

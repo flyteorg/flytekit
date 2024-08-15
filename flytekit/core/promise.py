@@ -394,7 +394,6 @@ class Promise(object):
             self._ref = val
             self._promise_ready = False
             self._val = None
-        # breakpoint()
         self._awaitable = awaitable
 
     def __hash__(self):
@@ -1285,7 +1284,6 @@ def flyte_entity_call_handler(
     #. Start a local execution - This means that we're not already in a local workflow execution, which means that
        we should expect inputs to be native Python values and that we should return Python native values.
     """
-    # breakpoint()
     # Make sure arguments are part of interface
     for k, v in kwargs.items():
         if k not in entity.python_interface.inputs:
