@@ -3075,3 +3075,24 @@ def test_union_file_directory():
 
     pv = union_trans.to_python_value(ctx, lv, typing.Union[FlyteFile, FlyteDirectory])
     assert pv._remote_source == s3_dir
+
+
+def test_offloaded_literal(tmp_path):
+    ctx = FlyteContext.current_context()
+
+    pt = typing.List[int]
+    lt = TypeEngine.to_literal_type(pt)
+    pv = [1, 2, 3]
+    offloaded_lv = TypeEngine.to_literal(ctx, pv, pt, lt)
+
+    # Write offloaded_lv as bytes to a temp file
+    with open(f"{tmp_path}/offloaded_proto.pb", "wb") as f:
+        f.write(offloaded_lv.to_flyte_idl().SerializeToString())
+
+    literal = Literal(
+        uri=f"{tmp_path}/offloaded_proto.pb",
+        size_bytes=100,
+    )
+
+    loaded_literal = TypeEngine.to_python_value(ctx, literal, pt)
+    assert loaded_literal == pv

@@ -860,6 +860,8 @@ class Literal(_common.FlyteIdlEntity):
         map: Optional[LiteralMap] = None,
         hash: Optional[str] = None,
         metadata: Optional[Dict[str, str]] = None,
+        uri: Optional[str] = None,
+        size_bytes: Optional[int] = None,
     ):
         """
         This IDL message represents a literal value in the Flyte ecosystem.
@@ -873,6 +875,8 @@ class Literal(_common.FlyteIdlEntity):
         self._map = map
         self._hash = hash
         self._metadata = metadata
+        self._uri = uri
+        self._size_bytes = size_bytes
 
     @property
     def scalar(self):
@@ -925,6 +929,20 @@ class Literal(_common.FlyteIdlEntity):
         """
         return self._metadata
 
+    @property
+    def uri(self) -> Optional[str]:
+        """
+        If set, this value holds the URI of the offloaded literal.
+        """
+        return self._uri
+
+    @property
+    def size_bytes(self) -> Optional[int]:
+        """
+        If set, this value holds the size in bytes of the offloaded literal proto.
+        """
+        return self._size_bytes
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.literals_pb2.Literal
@@ -935,6 +953,8 @@ class Literal(_common.FlyteIdlEntity):
             map=self.map.to_flyte_idl() if self.map is not None else None,
             hash=self.hash,
             metadata=self.metadata,
+            uri=self.uri,
+            size_bytes=self.size_bytes,
         )
 
     @classmethod
@@ -953,6 +973,8 @@ class Literal(_common.FlyteIdlEntity):
             map=LiteralMap.from_flyte_idl(pb2_object.map) if pb2_object.HasField("map") else None,
             hash=pb2_object.hash if pb2_object.hash else None,
             metadata={k: v for k, v in pb2_object.metadata.items()} if pb2_object.metadata else None,
+            uri=pb2_object.uri if pb2_object.uri else None,
+            size_bytes=pb2_object.size_bytes if pb2_object.size_bytes is not None else None,
         )
 
     def set_metadata(self, metadata: Dict[str, str]):

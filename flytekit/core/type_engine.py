@@ -8,6 +8,7 @@ import enum
 import inspect
 import json
 import mimetypes
+import os
 import sys
 import textwrap
 import typing
@@ -32,7 +33,7 @@ from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.hash import HashMethod
 from flytekit.core.type_helpers import load_type_from_tag
-from flytekit.core.utils import timeit
+from flytekit.core.utils import load_proto_from_file, timeit
 from flytekit.exceptions import user as user_exceptions
 from flytekit.interaction.string_literals import literal_map_string_repr
 from flytekit.lazy_import.lazy_module import is_imported
@@ -1097,6 +1098,16 @@ class TypeEngine(typing.Generic[T]):
         """
         Converts a Literal value with an expected python type into a python value.
         """
+        # Initiate the process of loading the offloaded literal if uri is set
+        if lv.uri:
+            # TODO: fail fast if size is larger than X MB
+            literal_random_path = ctx.file_access.get_random_local_path()
+            # TODO: Loading a literal from bytes requires writing it to a file
+            local_literal_file = os.path.join(ctx.execution_state.working_dir, literal_random_path)
+            ctx.file_access.download(lv.uri, local_literal_file)
+            input_proto = load_proto_from_file(literals_pb2.Literal, local_literal_file)
+            lv = Literal.from_flyte_idl(input_proto)
+
         transformer = cls.get_transformer(expected_python_type)
         return transformer.to_python_value(ctx, lv, expected_python_type)
 
