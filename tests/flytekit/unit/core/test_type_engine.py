@@ -3013,7 +3013,7 @@ def test_DataclassTransformer_guess_python_type():
 def test_DataclassTransformer_for_list_attributes():
     dataclass_bases = [DataClassJSONMixin, DataClassJsonMixin, object]
     for dataclass_base in dataclass_bases:
-        @dataclass(kw_only=True)
+        @dataclass
         class DataclassWithList(dataclass_base):
             some_strings: list[str]
 
