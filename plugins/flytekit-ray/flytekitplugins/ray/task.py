@@ -1,9 +1,11 @@
 import base64
 import json
 import os
+import click
 import typing
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional
+
 
 import yaml
 from flytekitplugins.ray.models import (
@@ -140,6 +142,21 @@ class AnyscaleFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask):
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
             return PythonFunctionTask.execute(self, **kwargs)
         return AsyncAgentExecutorMixin.execute(self, **kwargs)
+
+    def execute(self, **kwargs) -> Any:
+        try:
+            ctx = FlyteContextManager.current_context()
+            if not ctx.file_access.is_remote(ctx.file_access.raw_output_prefix):
+                raise ValueError(
+                    "To submit a Databricks job locally,"
+                    " please set --raw-output-data-prefix to a remote path. e.g. s3://, gcs//, etc."
+                )
+            if ctx.execution_state and ctx.execution_state.is_local_execution():
+                return AsyncAgentExecutorMixin.execute(self, **kwargs)
+        except Exception as e:
+            click.secho(f"❌ Agent failed to run the task with error: {e}", fg="red")
+            click.secho("Falling back to local execution", fg="red")
+        return PythonFunctionTask.execute(self, **kwargs)
 
 
 # Inject the Ray plugin into flytekits dynamic plugin loading system
