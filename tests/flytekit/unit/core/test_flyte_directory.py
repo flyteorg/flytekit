@@ -3,6 +3,7 @@ import pathlib
 import shutil
 import tempfile
 import typing
+from dataclasses import dataclass
 from unittest.mock import MagicMock
 
 import mock
@@ -345,3 +346,21 @@ def test_manual_creation_sandbox(local_dummy_directory):
             fd_new.download()
             assert os.path.exists(fd_new.path)
             assert os.path.isdir(fd_new.path)
+
+def test_flytefile_in_dataclass(local_dummy_directory):
+    SvgDirectory = FlyteDirectory["svg"]
+    @dataclass
+    class DC:
+        f: SvgDirectory
+    @task
+    def t1(path: SvgDirectory) -> DC:
+        return DC(f=path)
+    @workflow
+    def my_wf(path: SvgDirectory) -> DC:
+        dc = t1(path=path)
+        return dc
+
+    svg_directory = SvgDirectory(local_dummy_directory)
+    dc1 = my_wf(path=svg_directory)
+    dc2 = DC(f=svg_directory)
+    assert dc1 == dc2

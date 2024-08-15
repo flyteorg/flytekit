@@ -269,7 +269,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
                 # require a network call to flyteadmin to populate the TaskTemplate
                 # model
                 if isinstance(entity, ReferenceTask):
-                    raise Exception("Reference tasks are currently unsupported within dynamic tasks")
+                    raise ValueError("Reference tasks are currently unsupported within dynamic tasks")
 
                 if not isinstance(model, task_models.TaskSpec):
                     raise TypeError(
@@ -308,7 +308,12 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
             # local_execute directly though since that converts inputs into Promises.
             logger.debug(f"Executing Dynamic workflow, using raw inputs {kwargs}")
             self._create_and_cache_dynamic_workflow()
-            function_outputs = cast(PythonFunctionWorkflow, self._wf).execute(**kwargs)
+            if self.execution_mode == self.ExecutionBehavior.DYNAMIC:
+                es = ctx.new_execution_state().with_params(mode=ExecutionState.Mode.DYNAMIC_TASK_EXECUTION)
+            else:
+                es = cast(ExecutionState, ctx.execution_state)
+            with FlyteContextManager.with_context(ctx.with_execution_state(es)):
+                function_outputs = cast(PythonFunctionWorkflow, self._wf).execute(**kwargs)
 
             if isinstance(function_outputs, VoidPromise) or function_outputs is None:
                 return VoidPromise(self.name)
@@ -352,7 +357,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
 
     def _write_decks(self, native_inputs, native_outputs_as_map, ctx, new_user_params):
         if self._disable_deck is False:
-            from flytekit.deck import Deck
+            from flytekit.deck import Deck, DeckField
             from flytekit.deck.renderer import PythonDependencyRenderer
 
             # These errors are raised if the source code can not be retrieved
@@ -360,12 +365,14 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
                 source_code = inspect.getsource(self._task_function)
                 from flytekit.deck.renderer import SourceCodeRenderer
 
-                source_code_deck = Deck("Source Code")
-                renderer = SourceCodeRenderer()
-                source_code_deck.append(renderer.to_html(source_code))
+                if DeckField.SOURCE_CODE in self.deck_fields:
+                    source_code_deck = Deck(DeckField.SOURCE_CODE.value)
+                    renderer = SourceCodeRenderer()
+                    source_code_deck.append(renderer.to_html(source_code))
 
-            python_dependencies_deck = Deck("Dependencies")
-            renderer = PythonDependencyRenderer()
-            python_dependencies_deck.append(renderer.to_html())
+            if DeckField.DEPENDENCIES in self.deck_fields:
+                python_dependencies_deck = Deck(DeckField.DEPENDENCIES.value)
+                renderer = PythonDependencyRenderer()
+                python_dependencies_deck.append(renderer.to_html())
 
         return super()._write_decks(native_inputs, native_outputs_as_map, ctx, new_user_params)

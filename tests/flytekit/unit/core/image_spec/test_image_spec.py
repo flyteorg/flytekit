@@ -25,6 +25,7 @@ def test_image_spec(mock_image_spec_builder):
         cudnn="8",
         requirements=REQUIREMENT_FILE,
         registry_config=REGISTRY_CONFIG_FILE,
+        entrypoint=["/bin/bash"],
     )
     assert image_spec._is_force_push is False
 
@@ -50,6 +51,7 @@ def test_image_spec(mock_image_spec_builder):
     assert image_spec.is_container() is True
     assert image_spec.commands == ["echo hello"]
     assert image_spec._is_force_push is True
+    assert image_spec.entrypoint == ["/bin/bash"]
 
     tag = calculate_hash_from_image_spec(image_spec)
     assert "=" != tag[-1]
@@ -66,7 +68,7 @@ def test_image_spec(mock_image_spec_builder):
 
     assert "dummy" in ImageBuildEngine._REGISTRY
     assert calculate_hash_from_image_spec(image_spec) == tag
-    assert image_spec.exist() is True
+    assert image_spec.exist() is None
 
     # Remove the dummy builder, and build the image again
     # The image has already been built, so it shouldn't fail.
@@ -136,3 +138,19 @@ def test_no_build_during_execution():
         ImageBuildEngine.build(spec)
 
     ImageBuildEngine._build_image.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "parameter_name", [
+        "packages", "conda_channels", "conda_packages",
+        "apt_packages", "pip_extra_index_url", "entrypoint", "commands"
+    ]
+)
+@pytest.mark.parametrize("value", ["requirements.txt", [1, 2, 3]])
+def test_image_spec_validation_string_list(parameter_name, value):
+    msg = f"{parameter_name} must be a list of strings or None"
+
+    input_params = {parameter_name: value}
+
+    with pytest.raises(ValueError, match=msg):
+        ImageSpec(**input_params)

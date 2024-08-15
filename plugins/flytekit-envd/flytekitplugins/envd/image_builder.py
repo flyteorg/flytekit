@@ -2,10 +2,13 @@ import os
 import pathlib
 import shutil
 import subprocess
+from dataclasses import asdict
 from importlib import metadata
 
 import click
 from packaging.version import Version
+from rich import print
+from rich.pretty import Pretty
 
 from flytekit.configuration import DefaultImages
 from flytekit.core import context_manager
@@ -35,7 +38,16 @@ class EnvdImageSpecBuilder(ImageSpecBuilder):
         else:
             build_command += f" --tag {image_spec.image_name()}"
         envd_context_switch(image_spec.registry)
-        execute_command(build_command)
+        try:
+            execute_command(build_command)
+        except Exception as e:
+            click.secho("❌ Failed to build image spec:", fg="red")
+            print(
+                Pretty(
+                    asdict(image_spec, dict_factory=lambda x: {k: v for (k, v) in x if v is not None}), indent_size=2
+                )
+            )
+            raise e from None
 
 
 def envd_context_switch(registry: str):
@@ -72,7 +84,7 @@ def execute_command(command: str):
 
     if p.returncode != 0:
         _, stderr = p.communicate()
-        raise Exception(f"failed to run command {command} with error {stderr}")
+        raise RuntimeError(f"failed to run command {command} with error:\n {stderr.decode()}")
 
     return result
 
@@ -87,7 +99,7 @@ def create_envd_config(image_spec: ImageSpec) -> str:
     base_image = DefaultImages.default_image() if image_spec.base_image is None else image_spec.base_image
     if image_spec.cuda:
         if image_spec.python_version is None:
-            raise Exception("python_version is required when cuda and cudnn are specified")
+            raise ValueError("python_version is required when cuda and cudnn are specified")
         base_image = "ubuntu20.04"
 
     python_packages = _create_str_from_package_list(image_spec.packages)

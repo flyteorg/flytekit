@@ -8,6 +8,11 @@ from enum import Enum
 from functools import update_wrapper
 from typing import Any, Callable, Coroutine, Dict, List, Optional, Tuple, Type, Union, cast, overload
 
+try:
+    from typing import ParamSpec
+except ImportError:
+    from typing_extensions import ParamSpec  # type: ignore
+
 from flytekit.core import constants as _common_constants
 from flytekit.core import launch_plan as _annotated_launch_plan
 from flytekit.core.base_task import PythonTask, Task
@@ -58,6 +63,7 @@ GLOBAL_START_NODE = Node(
     flyte_entity=None,
 )
 
+P = ParamSpec("P")
 T = typing.TypeVar("T")
 FuncOut = typing.TypeVar("FuncOut")
 
@@ -294,7 +300,7 @@ class WorkflowBase(object):
             raise exc
 
     def execute(self, **kwargs):
-        raise Exception("Should not be called")
+        raise NotImplementedError
 
     def compile(self, **kwargs):
         pass
@@ -524,7 +530,7 @@ class ImperativeWorkflow(WorkflowBase):
     def create_conditional(self, name: str) -> ConditionalSection:
         ctx = FlyteContext.current_context()
         if ctx.compilation_state is not None:
-            raise Exception("Can't already be compiling")
+            raise RuntimeError("Can't already be compiling")
         FlyteContextManager.with_context(ctx.with_compilation_state(self.compilation_state))
         return conditional(name=name)
 
@@ -537,7 +543,7 @@ class ImperativeWorkflow(WorkflowBase):
 
         ctx = FlyteContext.current_context()
         if ctx.compilation_state is not None:
-            raise Exception("Can't already be compiling")
+            raise RuntimeError("Can't already be compiling")
         with FlyteContextManager.with_context(ctx.with_compilation_state(self.compilation_state)) as ctx:
             n = create_node(entity=entity, **kwargs)
 
@@ -599,7 +605,7 @@ class ImperativeWorkflow(WorkflowBase):
 
         ctx = FlyteContext.current_context()
         if ctx.compilation_state is not None:
-            raise Exception("Can't already be compiling")
+            raise RuntimeError("Can't already be compiling")
         with FlyteContextManager.with_context(ctx.with_compilation_state(self.compilation_state)) as ctx:
             b, _ = binding_from_python_std(
                 ctx, output_name, expected_literal_type=flyte_type, t_value=p, t_value_type=python_type
@@ -761,7 +767,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             if not isinstance(workflow_outputs, tuple):
                 raise AssertionError("The Workflow specification indicates multiple return values, received only one")
             if len(output_names) != len(workflow_outputs):
-                raise Exception(f"Length mismatch {len(output_names)} vs {len(workflow_outputs)}")
+                raise ValueError(f"Length mismatch {len(output_names)} vs {len(workflow_outputs)}")
             for i, out in enumerate(output_names):
                 if isinstance(workflow_outputs[i], ConditionalSection):
                     raise AssertionError("A Conditional block (if-else) should always end with an `else_()` clause")
@@ -809,21 +815,21 @@ def workflow(
 
 @overload
 def workflow(
-    _workflow_function: Callable[..., FuncOut],
+    _workflow_function: Callable[P, FuncOut],
     failure_policy: Optional[WorkflowFailurePolicy] = ...,
     interruptible: bool = ...,
     on_failure: Optional[Union[WorkflowBase, Task]] = ...,
     docs: Optional[Documentation] = ...,
-) -> Union[PythonFunctionWorkflow, Callable[..., FuncOut]]: ...
+) -> Union[Callable[P, FuncOut], PythonFunctionWorkflow]: ...
 
 
 def workflow(
-    _workflow_function: Optional[Callable[..., Any]] = None,
+    _workflow_function: Optional[Callable[P, FuncOut]] = None,
     failure_policy: Optional[WorkflowFailurePolicy] = None,
     interruptible: bool = False,
     on_failure: Optional[Union[WorkflowBase, Task]] = None,
     docs: Optional[Documentation] = None,
-) -> Union[Callable[[Callable[..., FuncOut]], PythonFunctionWorkflow], PythonFunctionWorkflow, Callable[..., FuncOut]]:
+) -> Union[Callable[P, FuncOut], Callable[[Callable[P, FuncOut]], PythonFunctionWorkflow], PythonFunctionWorkflow]:
     """
     This decorator declares a function to be a Flyte workflow. Workflows are declarative entities that construct a DAG
     of tasks using the data flow between tasks.
@@ -856,7 +862,7 @@ def workflow(
     :param docs: Description entity for the workflow
     """
 
-    def wrapper(fn: Callable[..., Any]) -> PythonFunctionWorkflow:
+    def wrapper(fn: Callable[P, FuncOut]) -> PythonFunctionWorkflow:
         workflow_metadata = WorkflowMetadata(on_failure=failure_policy or WorkflowFailurePolicy.FAIL_IMMEDIATELY)
 
         workflow_metadata_defaults = WorkflowMetadataDefaults(interruptible)

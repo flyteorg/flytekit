@@ -12,7 +12,6 @@ from enum import Enum, auto
 from typing import List, Optional, Type
 
 import mock
-import pyarrow as pa
 import pytest
 import typing_extensions
 from dataclasses_json import DataClassJsonMixin, dataclass_json
@@ -921,6 +920,30 @@ def test_dataclass_int_preserving():
 
 
 @mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
+def test_dataclass_with_postponed_annotation(mock_put_data):
+    remote_path = "s3://tmp/file"
+    mock_put_data.return_value = remote_path
+
+    @dataclass
+    class Data:
+        a: int
+        f: "FlyteFile"
+
+    ctx = FlyteContext.current_context()
+    tf = DataclassTransformer()
+    t = tf.get_literal_type(Data)
+    assert t.simple == SimpleType.STRUCT
+    with tempfile.TemporaryDirectory() as tmp:
+        test_file = os.path.join(tmp, "abc.txt")
+        with open(test_file, "w") as f:
+            f.write("123")
+
+        pv = Data(a=1, f=FlyteFile(test_file, remote_path=remote_path))
+        lt = tf.to_literal(ctx, pv, Data, t)
+        assert lt.scalar.generic.fields["f"].struct_value.fields["path"].string_value == remote_path
+
+
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
 def test_optional_flytefile_in_dataclass(mock_upload_dir):
     mock_upload_dir.return_value = True
 
@@ -988,17 +1011,17 @@ def test_optional_flytefile_in_dataclass(mock_upload_dir):
 
         ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestFileStruct)
 
-        assert o.a.path == ot.a.remote_source
-        assert o.b.path == ot.b.remote_source
+        assert o.a.remote_path == ot.a.remote_source
+        assert o.b.remote_path == ot.b.remote_source
         assert ot.b_prime is None
-        assert o.c.path == ot.c.remote_source
-        assert o.d[0].path == ot.d[0].remote_source
-        assert o.e[0].path == ot.e[0].remote_source
+        assert o.c.remote_path == ot.c.remote_source
+        assert o.d[0].remote_path == ot.d[0].remote_source
+        assert o.e[0].remote_path == ot.e[0].remote_source
         assert o.e_prime == [None]
-        assert o.f["a"].path == ot.f["a"].remote_source
-        assert o.g["a"].path == ot.g["a"].remote_source
+        assert o.f["a"].remote_path == ot.f["a"].remote_source
+        assert o.g["a"].remote_path == ot.g["a"].remote_source
         assert o.g_prime == {"a": None}
-        assert o.h.path == ot.h.remote_source
+        assert o.h.remote_path == ot.h.remote_source
         assert ot.h_prime is None
         assert o.i == ot.i
         assert o.i_prime == A(a=99)
@@ -1070,17 +1093,17 @@ def test_optional_flytefile_in_dataclassjsonmixin(mock_upload_dir):
 
         ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestFileStruct_optional_flytefile)
 
-        assert o.a.path == ot.a.remote_source
-        assert o.b.path == ot.b.remote_source
+        assert o.a.remote_path == ot.a.remote_source
+        assert o.b.remote_path == ot.b.remote_source
         assert ot.b_prime is None
-        assert o.c.path == ot.c.remote_source
-        assert o.d[0].path == ot.d[0].remote_source
-        assert o.e[0].path == ot.e[0].remote_source
+        assert o.c.remote_path == ot.c.remote_source
+        assert o.d[0].remote_path == ot.d[0].remote_source
+        assert o.e[0].remote_path == ot.e[0].remote_source
         assert o.e_prime == [None]
-        assert o.f["a"].path == ot.f["a"].remote_source
-        assert o.g["a"].path == ot.g["a"].remote_source
+        assert o.f["a"].remote_path == ot.f["a"].remote_source
+        assert o.g["a"].remote_path == ot.g["a"].remote_source
         assert o.g_prime == {"a": None}
-        assert o.h.path == ot.h.remote_source
+        assert o.h.remote_path == ot.h.remote_source
         assert ot.h_prime is None
         assert o.i == ot.i
         assert o.i_prime == A_optional_flytefile(a=99)
@@ -1384,9 +1407,11 @@ class UnsupportedEnumValues(Enum):
     BLUE = 3
 
 
+@pytest.mark.skipif("polars" not in sys.modules, reason="pyarrow is not installed.")
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_structured_dataset_type():
     import pandas as pd
+    import pyarrow as pa
     from pandas._testing import assert_frame_equal
 
     name = "Name"
@@ -1786,7 +1811,7 @@ def test_union_containers():
     lv = TypeEngine.to_literal(ctx, list_of_maps_of_list_ints, pt, lt)
     assert lv.scalar.union.stored_type.structure.tag == "Typed List"
     lv = TypeEngine.to_literal(ctx, map_of_list_ints, pt, lt)
-    assert lv.scalar.union.stored_type.structure.tag == "Python Dictionary"
+    assert lv.scalar.union.stored_type.structure.tag == "Typed Dict"
 
 
 @pytest.mark.skipif(sys.version_info < (3, 10), reason="PEP604 requires >=3.10.")
@@ -2364,9 +2389,15 @@ class Result(DataClassJsonMixin):
     schema: TestSchema  # type: ignore
 
 
-@pytest.mark.parametrize(
-    "t",
-    [
+def get_unsupported_complex_literals_tests():
+    if sys.version_info < (3, 9):
+        return [
+        typing_extensions.Annotated[typing.Dict[int, str], FlyteAnnotation({"foo": "bar"})],
+        typing_extensions.Annotated[typing.Dict[str, str], FlyteAnnotation({"foo": "bar"})],
+        typing_extensions.Annotated[Color, FlyteAnnotation({"foo": "bar"})],
+        typing_extensions.Annotated[Result, FlyteAnnotation({"foo": "bar"})],
+    ]
+    return [
         typing_extensions.Annotated[dict, FlyteAnnotation({"foo": "bar"})],
         typing_extensions.Annotated[dict[int, str], FlyteAnnotation({"foo": "bar"})],
         typing_extensions.Annotated[typing.Dict[int, str], FlyteAnnotation({"foo": "bar"})],
@@ -2374,7 +2405,12 @@ class Result(DataClassJsonMixin):
         typing_extensions.Annotated[typing.Dict[str, str], FlyteAnnotation({"foo": "bar"})],
         typing_extensions.Annotated[Color, FlyteAnnotation({"foo": "bar"})],
         typing_extensions.Annotated[Result, FlyteAnnotation({"foo": "bar"})],
-    ],
+    ]
+
+
+@pytest.mark.parametrize(
+    "t",
+    get_unsupported_complex_literals_tests(),
 )
 def test_unsupported_complex_literals(t):
     with pytest.raises(ValueError):
@@ -2532,6 +2568,9 @@ def test_schema_in_dataclass():
     ot = tf.to_python_value(ctx, lv=lv, expected_python_type=Result)
 
     assert o == ot
+    assert o.result.schema.remote_path == ot.result.schema.remote_path
+    assert o.result.number == ot.result.number
+    assert o.schema.remote_path == ot.schema.remote_path
 
 
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
@@ -2548,7 +2587,11 @@ def test_union_in_dataclass():
     lt = tf.get_literal_type(pt)
     lv = tf.to_literal(ctx, o, pt, lt)
     ot = tf.to_python_value(ctx, lv=lv, expected_python_type=pt)
+
     return o == ot
+    assert o.result.schema.remote_path == ot.result.schema.remote_path
+    assert o.result.number == ot.result.number
+    assert o.schema.remote_path == ot.schema.remote_path
 
 
 @dataclass
@@ -2578,6 +2621,9 @@ def test_schema_in_dataclassjsonmixin():
     ot = tf.to_python_value(ctx, lv=lv, expected_python_type=Result)
 
     assert o == ot
+    assert o.result.schema.remote_path == ot.result.schema.remote_path
+    assert o.result.number == ot.result.number
+    assert o.schema.remote_path == ot.schema.remote_path
 
 
 def test_guess_of_dataclass():
@@ -2971,7 +3017,7 @@ def test_dataclass_encoder_and_decoder_registry():
     class Datum:
         x: int
         y: str
-        z: dict[int, int]
+        z: typing.Dict[int, int]
         w: List[int]
 
     @task
@@ -3029,3 +3075,64 @@ def test_union_file_directory():
 
     pv = union_trans.to_python_value(ctx, lv, typing.Union[FlyteFile, FlyteDirectory])
     assert pv._remote_source == s3_dir
+
+
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="PEP604 requires >=3.10.")
+def test_dataclass_none_output_input_deserialization():
+    @dataclass
+    class OuterWorkflowInput(DataClassJSONMixin):
+        input: float
+
+    @dataclass
+    class OuterWorkflowOutput(DataClassJSONMixin):
+        nullable_output: float | None = None
+
+
+    @dataclass
+    class InnerWorkflowInput(DataClassJSONMixin):
+        input: float
+
+    @dataclass
+    class InnerWorkflowOutput(DataClassJSONMixin):
+        nullable_output: float | None = None
+
+
+    @task
+    def inner_task(input: float) -> float | None:
+        if input == 0:
+            return None
+        return input
+
+    @task
+    def wrap_inner_inputs(input: float) -> InnerWorkflowInput:
+        return InnerWorkflowInput(input=input)
+
+    @task
+    def wrap_inner_outputs(output: float | None) -> InnerWorkflowOutput:
+        return InnerWorkflowOutput(nullable_output=output)
+
+    @task
+    def wrap_outer_outputs(output: float | None) -> OuterWorkflowOutput:
+        return OuterWorkflowOutput(nullable_output=output)
+
+    @workflow
+    def inner_workflow(input: InnerWorkflowInput) -> InnerWorkflowOutput:
+        return wrap_inner_outputs(
+            output=inner_task(
+                input=input.input
+            )
+        )
+
+    @workflow
+    def outer_workflow(input: OuterWorkflowInput) -> OuterWorkflowOutput:
+        inner_outputs = inner_workflow(
+            input=wrap_inner_inputs(input=input.input)
+        )
+        return wrap_outer_outputs(
+            output=inner_outputs.nullable_output
+        )
+
+    float_value_output = outer_workflow(OuterWorkflowInput(input=1.0)).nullable_output
+    assert float_value_output == 1.0, f"Float value was {float_value_output}, not 1.0 as expected"
+    none_value_output = outer_workflow(OuterWorkflowInput(input=0)).nullable_output
+    assert none_value_output is None, f"None value was {none_value_output}, not None as expected"

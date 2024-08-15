@@ -14,6 +14,7 @@ from enum import Enum
 import pytest
 from dataclasses_json import DataClassJsonMixin
 from google.protobuf.struct_pb2 import Struct
+from mashumaro.codecs.json import JSONEncoder, JSONDecoder
 from typing_extensions import Annotated, get_origin
 
 import flytekit
@@ -1219,7 +1220,9 @@ def test_flyte_schema_dataclass():
     def wf(x: int) -> Result:
         return t1(x=x)
 
-    assert wf(x=10) == Result(result=InnerResult(number=10, schema=schema), schema=schema)
+    r1 = wf(x=10)
+    r2 = Result(result=InnerResult(number=10, schema=schema), schema=schema)
+    assert r1 == r2
 
 
 def test_environment():
@@ -1351,7 +1354,7 @@ def test_secrets():
 
         @task(secret_requests=["test"])
         def foo() -> str:
-            pass
+            return "hello"
 
 
 def test_nested_dynamic():
@@ -1523,6 +1526,7 @@ def test_guess_dict3():
     assert output_lm.literals["o0"].scalar.generic == expected_struct
 
 
+@pytest.mark.skipif(sys.version_info < (3, 9), reason="Use of dict hints is only supported in Python 3.9+")
 def test_guess_dict4():
     @dataclass
     class Foo(DataClassJsonMixin):
@@ -1564,6 +1568,17 @@ def test_guess_dict4():
 
 
 def test_error_messages():
+    @dataclass
+    class DC1:
+        a: int
+        b: str
+
+    @dataclass
+    class DC2:
+        a: int
+        b: str
+        c: int
+
     @task
     def foo(a: int, b: str) -> typing.Tuple[int, str]:
         return 10, "hello"
@@ -1575,6 +1590,10 @@ def test_error_messages():
     @task
     def foo3(a: typing.Dict) -> typing.Dict:
         return a
+
+    @task
+    def foo4(input: DC1=DC1(1, 'a')) -> DC2:
+        return input  # type: ignore
 
     # pytest-xdist uses `__channelexec__` as the top-level module
     running_xdist = os.environ.get("PYTEST_XDIST_WORKER") is not None
@@ -1592,9 +1611,9 @@ def test_error_messages():
     with pytest.raises(
         TypeError,
         match=(
-            f"Failed to convert outputs of task '{prefix}tests.flytekit.unit.core.test_type_hints.foo2' "
-            "at position 0:\n"
-            "  Expected value of type <class 'int'> but got 'hello' of type <class 'str'>"
+            f"Failed to convert outputs of task '{prefix}tests.flytekit.unit.core.test_type_hints.foo2' at position 0.\n"
+            f"Failed to convert type <class 'str'> to type <class 'int'>.\n"
+            "Error Message: Expected value of type <class 'int'> but got 'hello' of type <class 'str'>."
         ),
     ):
         foo2(a=10, b="hello")
@@ -1606,6 +1625,15 @@ def test_error_messages():
     ):
         foo3(a=[{"hello": 2}])
 
+    with pytest.raises(
+        TypeError,
+        match=(
+            f"Failed to convert outputs of task '{prefix}tests.flytekit.unit.core.test_type_hints.foo4' at position 0.\n"
+            f"Failed to convert type <class 'tests.flytekit.unit.core.test_type_hints.test_error_messages.<locals>.DC1'> to type <class 'tests.flytekit.unit.core.test_type_hints.test_error_messages.<locals>.DC2'>.\n"
+            "Error Message: 'DC1' object has no attribute 'c'."
+        ),
+    ):
+        foo4()
 
 def test_failure_node():
     @task
@@ -1615,6 +1643,7 @@ def test_failure_node():
     @task
     def fail(a: int, b: str) -> typing.Tuple[int, str]:
         raise ValueError("Fail!")
+        return a + 1, b
 
     @task
     def failure_handler(a: int, b: str, err: typing.Optional[FlyteError]) -> typing.Tuple[int, str]:

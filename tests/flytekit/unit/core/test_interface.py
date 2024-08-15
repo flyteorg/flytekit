@@ -4,7 +4,7 @@ import typing
 from typing import Dict, List
 
 import pytest
-from typing_extensions import Annotated  # type: ignore
+from typing_extensions import Annotated, TypeVar  # type: ignore
 
 from flytekit import map_task, task
 from flytekit.core import context_manager
@@ -96,6 +96,15 @@ def test_extract_only():
     assert len(return_type) == 1
     assert return_type["o0"] == Dict[str, int]
 
+    VST = TypeVar("VST")
+
+    def t(a: int, b: str) -> VST:  # type: ignore
+        ...
+
+    return_type = extract_return_annotation(typing.get_type_hints(t).get("return", None))
+    assert len(return_type) == 1
+    assert return_type["o0"] == VST
+
 
 def test_named_tuples():
     nt1 = typing.NamedTuple("NT1", x_str=str, y_int=int)
@@ -162,7 +171,7 @@ def test_parameters_and_defaults():
     ctx = context_manager.FlyteContext.current_context()
 
     def z(a: int, b: str) -> typing.Tuple[int, str]:
-        ...
+        return 1, "hello world"
 
     our_interface = transform_function_to_interface(z)
     params = transform_inputs_to_parameters(ctx, our_interface)
@@ -172,7 +181,7 @@ def test_parameters_and_defaults():
     assert params.parameters["b"].default is None
 
     def z(a: int, b: str = "hello") -> typing.Tuple[int, str]:
-        ...
+        return 1, "hello world"
 
     our_interface = transform_function_to_interface(z)
     params = transform_inputs_to_parameters(ctx, our_interface)
@@ -182,7 +191,7 @@ def test_parameters_and_defaults():
     assert params.parameters["b"].default.scalar.primitive.string_value == "hello"
 
     def z(a: int = 7, b: str = "eleven") -> typing.Tuple[int, str]:
-        ...
+        return 1, "hello world"
 
     our_interface = transform_function_to_interface(z)
     params = transform_inputs_to_parameters(ctx, our_interface)
@@ -204,7 +213,7 @@ def test_parameters_and_defaults():
     def z(
         a: typing.Optional[int] = None, b: typing.Optional[str] = None, c: typing.Union[typing.List[int], None] = None
     ) -> typing.Tuple[int, str]:
-        ...
+        return 1, "hello world"
 
     our_interface = transform_function_to_interface(z)
     params = transform_inputs_to_parameters(ctx, our_interface)
@@ -216,7 +225,7 @@ def test_parameters_and_defaults():
     assert params.parameters["c"].default.scalar.none_type == Void()
 
     def z(a: int | None = None, b: str | None = None, c: typing.List[int] | None = None) -> typing.Tuple[int, str]:
-        ...
+        return 1, "hello world"
 
     our_interface = transform_function_to_interface(z)
     params = transform_inputs_to_parameters(ctx, our_interface)
@@ -257,7 +266,7 @@ def test_transform_interface_to_typed_interface_with_docstring():
         :param b: bar
         :return: ramen
         """
-        ...
+        return 1, "hello world"
 
     our_interface = transform_function_to_interface(z, Docstring(callable_=z))
     typed_interface = transform_interface_to_typed_interface(our_interface)
@@ -282,7 +291,7 @@ def test_transform_interface_to_typed_interface_with_docstring():
         out1, out2 : tuple
             ramen
         """
-        ...
+        return 1, "hello world"
 
     our_interface = transform_function_to_interface(z, Docstring(callable_=z))
     typed_interface = transform_interface_to_typed_interface(our_interface)
@@ -310,7 +319,7 @@ def test_transform_interface_to_typed_interface_with_docstring():
         y_int : int
             description for y_int
         """
-        ...
+        return 1, "hello world"
 
     our_interface = transform_function_to_interface(z, Docstring(callable_=z))
     typed_interface = transform_interface_to_typed_interface(our_interface)
@@ -318,6 +327,16 @@ def test_transform_interface_to_typed_interface_with_docstring():
     assert typed_interface.inputs.get("b").description == "bar"
     assert typed_interface.outputs.get("x_str").description == "description for x_str"
     assert typed_interface.outputs.get("y_int").description == "description for y_int"
+
+
+def test_init_interface_with_invalid_parameters():
+    from flytekit.core.interface import Interface
+
+    with pytest.raises(ValueError, match=r"Input name must be a valid Python identifier:"):
+        _ = Interface({"my.input": int}, {})
+
+    with pytest.raises(ValueError, match=r"Type names and field names must be valid identifiers:"):
+        _ = Interface({}, {"my.output": int})
 
 
 def test_parameter_change_to_pickle_type():
@@ -328,7 +347,7 @@ def test_parameter_change_to_pickle_type():
             self.name = name
 
     def z(a: Foo) -> Foo:
-        ...
+        return a
 
     our_interface = transform_function_to_interface(z)
     params = transform_inputs_to_parameters(ctx, our_interface)
@@ -365,7 +384,7 @@ def test_doc_string():
 def test_transform_interface_to_list_interface(optional_outputs, expected_type):
     @task
     def t() -> int:
-        ...
+        return 123
 
     list_interface = transform_interface_to_list_interface(t.python_interface, set(), optional_outputs=optional_outputs)
     assert list_interface.outputs["o0"] == typing.List[expected_type]
@@ -385,7 +404,7 @@ def test_transform_interface_to_list_interface(optional_outputs, expected_type):
 def test_map_task_interface(min_success_ratio, expected_type):
     @task
     def t() -> str:
-        ...
+        return "hello"
 
     mt = map_task(t, min_success_ratio=min_success_ratio)
 

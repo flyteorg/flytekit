@@ -76,18 +76,35 @@ def subproc_execute(command: typing.Union[List[str], str], **kwargs) -> ProcessR
 
     kwargs = {**defaults, **kwargs}
 
+    if kwargs.get("shell"):
+        if "|" in command:
+            logger.warning(
+                """Found a pipe in the command and shell=True.
+                This can lead to silent failures if subsequent commands
+                succeed despite previous failures."""
+            )
+        if type(command) == list:
+            logger.warning(
+                """Found `command` formatted as a list instead of a string with shell=True.
+                With this configuration, the first member of the list will be
+                executed and the remaining arguments will be passed as arguments
+                to the shell instead of to the binary being called. This may not
+                be intended behavior and may lead to confusing failures."""
+            )
+
     try:
         # Execute the command and capture stdout and stderr
         result = subprocess.run(command, **kwargs)
+        result.check_returncode()
 
         # Access the stdout and stderr output
         return ProcessResult(result.returncode, result.stdout, result.stderr)
 
     except subprocess.CalledProcessError as e:
-        raise Exception(f"Command: {e.cmd}\nFailed with return code {e.returncode}:\n{e.stderr}")
+        raise RuntimeError(f"Command: {e.cmd}\nFailed with return code {e.returncode}:\n{e.stderr}")
 
     except FileNotFoundError as e:
-        raise Exception(
+        raise RuntimeError(
             f"""Process failed because the executable could not be found.
             Did you specify a container image in the task definition if using
             custom dependencies?\n{e}"""

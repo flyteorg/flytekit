@@ -1,3 +1,4 @@
+import os
 from unittest.mock import Mock, patch
 
 import pytest
@@ -57,10 +58,9 @@ def test_local_execution_with_id(wandb_mock):
     wandb_mock.init.assert_called_with(project="abc", entity="xyz", id="1234", tags=["my_tag"])
 
 
-@patch("flytekitplugins.wandb.tracking.os")
 @patch("flytekitplugins.wandb.tracking.FlyteContextManager")
 @patch("flytekitplugins.wandb.tracking.wandb")
-def test_non_local_execution(wandb_mock, manager_mock, os_mock):
+def test_non_local_execution(wandb_mock, manager_mock, monkeypatch):
     # Pretend that the execution is remote
     ctx_mock = Mock()
     ctx_mock.execution_state.is_local_execution.return_value = False
@@ -69,13 +69,19 @@ def test_non_local_execution(wandb_mock, manager_mock, os_mock):
     ctx_mock.user_space_params.execution_id.name = "my_execution_id"
 
     manager_mock.current_context.return_value = ctx_mock
-    os_mock.environ = {}
+    execution_url = "http://execution_url.com/afsdfsafafasdfs"
+    monkeypatch.setattr("flytekitplugins.wandb.tracking.os.environ", {"FLYTE_EXECUTION_URL": execution_url})
+
+    run_mock = Mock()
+    run_mock.notes = ""
+    wandb_mock.init.return_value = run_mock
 
     train_model()
 
     wandb_mock.init.assert_called_with(project="abc", entity="xyz", id="my_execution_id", tags=["my_tag"])
     ctx_mock.user_space_params.secrets.get.assert_called_with(key="abc", group="xyz")
     wandb_mock.login.assert_called_with(key="this_is_the_secret", host="https://api.wandb.ai")
+    assert run_mock.notes == f"[Execution URL]({execution_url})"
 
 
 def test_errors():

@@ -7,7 +7,7 @@ from flytekit import task, workflow
 
 
 def test_pandera_dataframe_type_hints():
-    class InSchema(pandera.SchemaModel):
+    class InSchema(pandera.DataFrameModel):
         col1: pandera.typing.Series[int]
         col2: pandera.typing.Series[float]
 
