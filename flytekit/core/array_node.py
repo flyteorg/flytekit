@@ -77,9 +77,9 @@ class ArrayNode:
                 if isinstance(metadata, _workflow_model.NodeMetadata):
                     self.metadata = metadata
                 else:
-                    raise Exception("Invalid metadata for LaunchPlan. Should be NodeMetadata.")
+                    raise TypeError("Invalid metadata for LaunchPlan. Should be NodeMetadata.")
         else:
-            raise Exception("Only LaunchPlans are supported for now.")
+            raise ValueError(f"Only LaunchPlans are supported for now, but got {type(target)}")
 
     def construct_node_metadata(self) -> _workflow_model.NodeMetadata:
         # Part of SupportsNodeCreation interface

@@ -280,7 +280,7 @@ def get_serializable_workflow(
             # require a network call to flyteadmin to populate the WorkflowTemplate
             # object
             if isinstance(n.flyte_entity, ReferenceWorkflow):
-                raise Exception(
+                raise ValueError(
                     "Reference sub-workflows are currently unsupported. Use reference launch plans instead."
                 )
             sub_wf_spec = get_serializable(entity_mapping, settings, n.flyte_entity, options)
@@ -440,7 +440,7 @@ def get_serializable_node(
     options: Optional[Options] = None,
 ) -> workflow_model.Node:
     if entity.flyte_entity is None:
-        raise Exception(f"Node {entity.id} has no flyte entity")
+        raise ValueError(f"Node {entity.id} has no flyte entity")
 
     upstream_nodes = [
         get_serializable(entity_mapping, settings, n, options=options)
@@ -466,7 +466,7 @@ def get_serializable_node(
         elif ref_template.resource_type == _identifier_model.ResourceType.LAUNCH_PLAN:
             node_model._workflow_node = workflow_model.WorkflowNode(launchplan_ref=ref_template.id)
         else:
-            raise Exception(
+            raise TypeError(
                 f"Unexpected resource type for reference entity {entity.flyte_entity}: {ref_template.resource_type}"
             )
         return node_model
@@ -622,7 +622,7 @@ def get_serializable_node(
             workflow_node=workflow_model.WorkflowNode(launchplan_ref=entity.flyte_entity.id),
         )
     else:
-        raise Exception(f"Node contained non-serializable entity {entity._flyte_entity}")
+        raise ValueError(f"Node contained non-serializable entity {entity._flyte_entity}")
 
     return node_model
 
@@ -821,7 +821,7 @@ def get_serializable(
         cp_entity = get_serializable_array_node(entity_mapping, settings, entity, options)
 
     else:
-        raise Exception(f"Non serializable type found {type(entity)} Entity {entity}")
+        raise ValueError(f"Non serializable type found {type(entity)} Entity {entity}")
 
     if isinstance(entity, TaskSpec) or isinstance(entity, WorkflowSpec):
         # 1. Check if the size of long description exceeds 16KB

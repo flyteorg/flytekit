@@ -79,6 +79,23 @@ class ImageSpec:
         if self.registry:
             self.registry = self.registry.lower()
 
+        parameters_str_list = [
+            "packages",
+            "conda_channels",
+            "conda_packages",
+            "apt_packages",
+            "pip_extra_index_url",
+            "entrypoint",
+            "commands",
+        ]
+        for parameter in parameters_str_list:
+            attr = getattr(self, parameter)
+            parameter_is_None = attr is None
+            parameter_is_list_string = isinstance(attr, list) and all(isinstance(v, str) for v in attr)
+            if not (parameter_is_None or parameter_is_list_string):
+                error_msg = f"{parameter} must be a list of strings or None"
+                raise ValueError(error_msg)
+
     def image_name(self) -> str:
         """Full image name with tag."""
         image_name = self._image_name()

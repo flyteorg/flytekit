@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Union
 
 from flytekit.core.base_task import PythonTask
-from flytekit.core.context_manager import BranchEvalMode, FlyteContext
+from flytekit.core.context_manager import BranchEvalMode, ExecutionState, FlyteContext
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.node import Node
 from flytekit.core.promise import VoidPromise
@@ -129,15 +129,18 @@ def create_node(
         return node
 
     # Handling local execution
-    # Note: execution state is set to TASK_EXECUTION when running dynamic task locally
+    # Note: execution state is set to DYNAMIC_TASK_EXECUTION when running a dynamic task locally
     # https://github.com/flyteorg/flytekit/blob/0815345faf0fae5dc26746a43d4bda4cc2cdf830/flytekit/core/python_function_task.py#L262
-    elif ctx.execution_state and ctx.execution_state.is_local_execution():
+    elif ctx.execution_state and (
+        ctx.execution_state.is_local_execution()
+        or ctx.execution_state.mode == ExecutionState.Mode.DYNAMIC_TASK_EXECUTION
+    ):
         if isinstance(entity, RemoteEntity):
             raise AssertionError(f"Remote entities are not yet runnable locally {entity.name}")
 
         if ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED:
             logger.warning(f"Manual node creation cannot be used in branch logic {entity.name}")
-            raise Exception("Being more restrictive for now and disallowing manual node creation in branch logic")
+            raise RuntimeError("Being more restrictive for now and disallowing manual node creation in branch logic")
 
         # This the output of __call__ under local execute conditions which means this is the output of local_execute
         # which means this is the output of create_task_output with Promises containing values (or a VoidPromise)
@@ -152,7 +155,7 @@ def create_node(
         output_names = entity.python_interface.output_names  # type: ignore
 
         if not output_names:
-            raise Exception(f"Non-VoidPromise received {results} but interface for {entity.name} doesn't have outputs")
+            raise ValueError(f"Non-VoidPromise received {results} but interface for {entity.name} doesn't have outputs")
 
         if len(output_names) == 1:
             # See explanation above for why we still tupletize a single element.
@@ -161,4 +164,4 @@ def create_node(
         return entity.python_interface.output_tuple(*results)  # type: ignore
 
     else:
-        raise Exception(f"Cannot use explicit run to call Flyte entities {entity.name}")
+        raise RuntimeError(f"Cannot use explicit run to call Flyte entities {entity.name}")

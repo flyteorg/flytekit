@@ -95,7 +95,15 @@ integration_test_codecov:
 
 .PHONY: integration_test
 integration_test:
-	$(PYTEST_AND_OPTS) tests/flytekit/integration ${CODECOV_OPTS}
+	$(PYTEST_AND_OPTS) tests/flytekit/integration ${CODECOV_OPTS} -m "not lftransfers"
+
+.PHONY: integration_test_lftransfers_codecov
+integration_test_lftransfers_codecov:
+	$(MAKE) CODECOV_OPTS="--cov=./ --cov-report=xml --cov-append" integration_test_lftransfers
+
+.PHONY: integration_test_lftransfers
+integration_test_lftransfers:
+	$(PYTEST) tests/flytekit/integration ${CODECOV_OPTS} -m "lftransfers"
 
 doc-requirements.txt: export CUSTOM_COMPILE_COMMAND := make doc-requirements.txt
 doc-requirements.txt: doc-requirements.in install-piptools
