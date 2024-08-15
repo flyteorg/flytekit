@@ -87,7 +87,7 @@ from flytekit.remote.remote_callable import RemoteEntity
 from flytekit.remote.remote_fs import get_flyte_fs
 from flytekit.tools.fast_registration import FastPackageOptions, fast_package
 from flytekit.tools.interactive import ipython_check
-from flytekit.tools.script_mode import _find_project_root, compress_scripts, hash_file
+from flytekit.tools.script_mode import _find_project_root, compress_scripts, get_all_modules, hash_file
 from flytekit.tools.translator import (
     FlyteControlPlaneEntity,
     FlyteLocalEntity,
@@ -658,7 +658,7 @@ class FlyteRemote(object):
                     raise RegistrationSkipped(f"Remote task/Workflow {cp_entity.name} is not registrable.")
             else:
                 logger.debug(f"Skipping registration of remote entity: {cp_entity.name}")
-                raise RegistrationSkipped(f"Remote task/Workflow {cp_entity.name} is not registrable.")
+                raise RegistrationSkipped(f"Remote entity {cp_entity.name} is not registrable.")
 
         if isinstance(
             cp_entity,
@@ -768,13 +768,23 @@ class FlyteRemote(object):
                     functools.partial(self.raw_register, cp_entity, serialization_settings, version, og_entity=entity),
                 )
             )
-        ident = []
-        ident.extend(await asyncio.gather(*tasks))
+
+        identifiers_or_exceptions = []
+        identifiers_or_exceptions.extend(await asyncio.gather(*tasks, return_exceptions=True))
+        # Check to make sure any exceptions are just registration skipped exceptions
+        for ie in identifiers_or_exceptions:
+            if isinstance(ie, RegistrationSkipped):
+                logger.info(f"Skipping registration... {ie}")
+                continue
+            if isinstance(ie, Exception):
+                raise ie
         # serial register
         cp_other_entities = OrderedDict(filter(lambda x: not isinstance(x[1], task_models.TaskSpec), m.items()))
         for entity, cp_entity in cp_other_entities.items():
-            ident.append(self.raw_register(cp_entity, serialization_settings, version, og_entity=entity))
-        return ident[-1]
+            identifiers_or_exceptions.append(
+                self.raw_register(cp_entity, serialization_settings, version, og_entity=entity)
+            )
+        return identifiers_or_exceptions[-1]
 
     def register_task(
         self,
@@ -901,14 +911,14 @@ class FlyteRemote(object):
         extra_headers = self.get_extra_headers_for_protocol(upload_location.native_url)
         extra_headers.update(upload_location.headers)
         encoded_md5 = b64encode(md5_bytes)
-        with open(str(to_upload), "+rb") as local_file:
-            content = local_file.read()
-            content_length = len(content)
+        local_file_path = str(to_upload)
+        content_length = os.stat(local_file_path).st_size
+        with open(local_file_path, "+rb") as local_file:
             headers = {"Content-Length": str(content_length), "Content-MD5": encoded_md5}
             headers.update(extra_headers)
             rsp = requests.put(
                 upload_location.signed_url,
-                data=content,
+                data=local_file,  # NOTE: We pass the file object directly to stream our upload.
                 headers=headers,
                 verify=False
                 if self._config.platform.insecure_skip_verify is True
@@ -1010,7 +1020,7 @@ class FlyteRemote(object):
                 )
             else:
                 archive_fname = pathlib.Path(os.path.join(tmp_dir, "script_mode.tar.gz"))
-                compress_scripts(source_path, str(archive_fname), module_name)
+                compress_scripts(source_path, str(archive_fname), get_all_modules(source_path, module_name))
                 md5_bytes, upload_native_url = self.upload_file(
                     archive_fname, project or self.default_project, domain or self.default_domain
                 )
@@ -2083,7 +2093,7 @@ class FlyteRemote(object):
         if node_id in node_mapping:
             execution._node = node_mapping[node_id]
         else:
-            raise Exception(f"Missing node from mapping: {node_id}")
+            raise ValueError(f"Missing node from mapping: {node_id}")
 
         # Get the node execution data
         node_execution_get_data_response = self.client.get_node_execution_data(execution.id)
@@ -2178,7 +2188,7 @@ class FlyteRemote(object):
                     return execution
             else:
                 logger.error(f"NE {execution} undeterminable, {type(execution._node)}, {execution._node}")
-                raise Exception(f"Node execution undeterminable, entity has type {type(execution._node)}")
+                raise ValueError(f"Node execution undeterminable, entity has type {type(execution._node)}")
 
         # Handle the case for gate nodes
         elif execution._node.gate_node is not None:
