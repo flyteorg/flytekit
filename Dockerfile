@@ -1,12 +1,12 @@
-ARG PYTHON_VERSION
+ARG PYTHON_VERSION=3.12
 FROM python:${PYTHON_VERSION}-slim-bookworm
 
-MAINTAINER Flyte Team <users@flyte.org>
+LABEL org.opencontainers.image.authors="Flyte Team <users@flyte.org>"
 LABEL org.opencontainers.image.source=https://github.com/flyteorg/flytekit
 
 WORKDIR /root
-ENV PYTHONPATH /root
-ENV FLYTE_SDK_RICH_TRACEBACKS 0
+ENV PYTHONPATH=/root
+ENV FLYTE_SDK_RICH_TRACEBACKS=0
 
 ARG VERSION
 ARG DOCKER_IMAGE
@@ -35,4 +35,4 @@ RUN apt-get update && apt-get install build-essential -y \
 
 USER flytekit
 
-ENV FLYTE_INTERNAL_IMAGE "$DOCKER_IMAGE"
+ENV FLYTE_INTERNAL_IMAGE="$DOCKER_IMAGE"
