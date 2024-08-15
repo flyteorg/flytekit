@@ -2934,13 +2934,14 @@ def test_DataclassTransformer_to_python_value():
     assert result.x == 5
 
 
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="dataclass(kw_only=True) requires >=3.10.")
 def test_DataclassTransformer_with_discriminated_subtypes():
     class SubclassTypes(str, Enum):
         BASE = auto()
         CLASS_A = auto()
         CLASS_B = auto()
 
-    @dataclass
+    @dataclass(kw_only=True)
     class BaseClass(DataClassJSONMixin):
         class Config(BaseConfig):
             discriminator = Discriminator(
@@ -2952,13 +2953,13 @@ def test_DataclassTransformer_with_discriminated_subtypes():
         base_attribute: int
 
 
-    @dataclass
+    @dataclass(kw_only=True)
     class ClassA(BaseClass):
         subclass_type: SubclassTypes = SubclassTypes.CLASS_A
         class_a_attribute: str
 
 
-    @dataclass
+    @dataclass(kw_only=True)
     class ClassB(BaseClass):
         subclass_type: SubclassTypes = SubclassTypes.CLASS_B
         class_b_attribute: float
