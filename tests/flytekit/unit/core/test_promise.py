@@ -319,5 +319,3 @@ def test_await_double_await():
 
     with pytest.raises(RuntimeError, match="Promise is not awaitable or is already awaited"):
         wf_output = subwf(a=3)
-
-
