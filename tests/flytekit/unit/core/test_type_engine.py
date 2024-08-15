@@ -2940,7 +2940,7 @@ def test_DataclassTransformer_with_discriminated_subtypes():
         CLASS_A = auto()
         CLASS_B = auto()
 
-    @dataclass(kw_only=True)
+    @dataclass
     class BaseClass(DataClassJSONMixin):
         class Config(BaseConfig):
             discriminator = Discriminator(
@@ -2952,13 +2952,13 @@ def test_DataclassTransformer_with_discriminated_subtypes():
         base_attribute: int
 
 
-    @dataclass(kw_only=True)
+    @dataclass
     class ClassA(BaseClass):
         subclass_type: SubclassTypes = SubclassTypes.CLASS_A
         class_a_attribute: str
 
 
-    @dataclass(kw_only=True)
+    @dataclass
     class ClassB(BaseClass):
         subclass_type: SubclassTypes = SubclassTypes.CLASS_B
         class_b_attribute: float
