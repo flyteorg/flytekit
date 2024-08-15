@@ -3077,6 +3077,7 @@ def test_union_file_directory():
     assert pv._remote_source == s3_dir
 
 
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="PEP604 requires >=3.10.")
 def test_dataclass_none_output_input_deserialization():
     @dataclass
     class OuterWorkflowInput(DataClassJSONMixin):
