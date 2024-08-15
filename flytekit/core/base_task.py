@@ -283,7 +283,6 @@ class Task(object):
         #  Promises as essentially inputs from previous task executions
         #  native constants are just bound to this specific task (default values for a task input)
         #  Also along with promises and constants, there could be dictionary or list of promises or constants
-        # breakpoint()
         try:
             literals = translate_inputs_to_literals(
                 ctx,
@@ -334,7 +333,6 @@ class Task(object):
             # This code should mirror the call to `sandbox_execute` in the above cache case.
             # Code is simpler with duplication and less metaprogramming, but introduces regressions
             # if one is changed and not the other.
-            # breakpoint()
             outputs_literal_map = self.sandbox_execute(ctx, input_literal_map)
 
         if inspect.iscoroutine(outputs_literal_map):
@@ -358,7 +356,6 @@ class Task(object):
         return create_task_output(vals, self.python_interface)
 
     def __call__(self, *args: object, **kwargs: object) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, None]:
-        # breakpoint()
         return flyte_entity_call_handler(self, *args, **kwargs)  # type: ignore
 
     def compile(self, ctx: FlyteContext, *args, **kwargs):
