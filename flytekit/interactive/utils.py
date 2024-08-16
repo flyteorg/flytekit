@@ -9,9 +9,8 @@ import flytekit
 from flytekit.core import utils
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
-from flytekit.models import literals as _literal_models
-
 from flytekit.interactive.constants import EXIT_CODE_SUCCESS
+from flytekit.models import literals as _literal_models
 
 
 def load_module_from_path(module_name, path):

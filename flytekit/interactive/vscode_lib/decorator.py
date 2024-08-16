@@ -13,17 +13,16 @@ from threading import Event
 from typing import Callable, List, Optional
 
 import fsspec
-from flytekit.interactive.utils import (
-    execute_command,
-    load_module_from_path,
-)
 
 import flytekit
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.utils import ClassDecorator
-
-from flytekit.interactive.vscode_lib.config import VscodeConfig
 from flytekit.interactive.constants import EXIT_CODE_SUCCESS, MAX_IDLE_SECONDS
+from flytekit.interactive.utils import (
+    execute_command,
+    load_module_from_path,
+)
+from flytekit.interactive.vscode_lib.config import VscodeConfig
 from flytekit.interactive.vscode_lib.vscode_constants import (
     DOWNLOAD_DIR,
     EXECUTABLE_NAME,
