@@ -26,7 +26,8 @@ RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/uv,id=uv \
     /usr/bin/uv \
     pip install --python /opt/micromamba/envs/runtime/bin/python $PIP_EXTRA \
     --requirement requirements_uv.txt
-""")
+"""
+)
 
 APT_INSTALL_COMMAND_TEMPLATE = Template("""\
 RUN --mount=type=cache,sharing=locked,mode=0777,target=/var/cache/apt,id=apt \
