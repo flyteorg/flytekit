@@ -841,7 +841,6 @@ class FlyteRemote(object):
         :param serialization_settings: The serialization settings to be used
         :param default_launch_plan: This should be true if a default launch plan should be created for the workflow
         :param options: Additional execution options that can be configured for the default launchplan
-        :param fast: fast register if true
         :return:
         """
         if serialization_settings is None:
@@ -871,17 +870,13 @@ class FlyteRemote(object):
         options: typing.Optional[Options] = None,
     ) -> FlyteWorkflow:
         """
-        Register a PythonFunctionWorkflow entity with the Flyte backend using the fast registration method.
-        :param entity: The PythonFunctionWorkflow entity to register
-        :param image_config: The image config to use for the registration
-        :param project: The project to register the entity under
-        :param domain: The domain to register the entity under
-        :param version: The version to register the entity under
-        :param default_launch_plan: If True, a default launch plan will be created for the workflow
-        :param options: Additional options to configure the default launch plan
-        :param source_path: The source path of the module containing the workflow
-        :param module_name: The name of the module containing the workflow
-        :return: The registered FlyteWorkflow entity
+        Use this method to register a workflow with zip mode.
+        :param version: version for the entity to be registered as
+        :param entity: The workflow to be registered
+        :param serialization_settings: The serialization settings to be used
+        :param default_launch_plan: This should be true if a default launch plan should be created for the workflow
+        :param options: Additional execution options that can be configured for the default launchplan
+        :return:
         """
         if not isinstance(entity, PythonFunctionWorkflow):
             raise ValueError(
@@ -896,9 +891,7 @@ class FlyteRemote(object):
         module_path = f"{os.sep}".join(entity.name.split(".")[:-1])
         module_file = str(entity._module_file.with_suffix(""))
         if not module_file.endswith(module_path):
-            raise ValueError(
-                f"Module file path should end with entity.__module__, got {module_file} and {module_path}"
-            )
+            raise ValueError(f"Module file path should end with entity.__module__, got {module_file} and {module_path}")
 
         # remove module suffix to get the root
         module_root = str(pathlib.Path(module_file[: -len(module_path)]))
