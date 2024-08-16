@@ -211,3 +211,10 @@ class PyFlyteParams:
     @classmethod
     def from_dict(cls, d: typing.Dict[str, typing.Any]) -> "PyFlyteParams":
         return cls(**d)
+
+
+@dataclass
+class RemoteVersion:
+    help_message: str = "Show the version of the entity"
+    splitter: str = ":"
+    option: str = "show-versions"

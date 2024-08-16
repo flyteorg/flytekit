@@ -1,4 +1,5 @@
 import typing
+from datetime import datetime, timezone
 
 from flyteidl.admin import workflow_pb2 as _admin_workflow
 
@@ -111,11 +112,13 @@ class Workflow(_common.FlyteIdlEntity):
 
 
 class WorkflowClosure(_common.FlyteIdlEntity):
-    def __init__(self, compiled_workflow):
+    def __init__(self, compiled_workflow, created_at: datetime = None):
         """
         :param flytekit.models.core.compiler.CompiledWorkflowClosure compiled_workflow:
+        :param datetime.datetime created_at:
         """
         self._compiled_workflow = compiled_workflow
+        self._created_at = created_at
 
     @property
     def compiled_workflow(self):
@@ -124,11 +127,20 @@ class WorkflowClosure(_common.FlyteIdlEntity):
         """
         return self._compiled_workflow
 
+    @property
+    def created_at(self) -> typing.Optional[datetime]:
+        return self._created_at
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.workflow_pb2.WorkflowClosure
         """
-        return _admin_workflow.WorkflowClosure(compiled_workflow=self.compiled_workflow.to_flyte_idl())
+        obj = _admin_workflow.WorkflowClosure(
+            compiled_workflow=self.compiled_workflow.to_flyte_idl(),
+        )
+        if self.created_at is not None:
+            obj.created_at.FromDatetime(self.created_at.astimezone(timezone.utc).replace(tzinfo=None))
+        return obj
 
     @classmethod
     def from_flyte_idl(cls, p):
@@ -136,4 +148,7 @@ class WorkflowClosure(_common.FlyteIdlEntity):
         :param flyteidl.admin.workflow_pb2.WorkflowClosure p:
         :rtype: WorkflowClosure
         """
-        return cls(compiled_workflow=_compiler_models.CompiledWorkflowClosure.from_flyte_idl(p.compiled_workflow))
+        return cls(
+            compiled_workflow=_compiler_models.CompiledWorkflowClosure.from_flyte_idl(p.compiled_workflow),
+            created_at=p.created_at.ToDatetime().replace(tzinfo=timezone.utc) if p.HasField("created_at") else None,
+        )

@@ -1,3 +1,6 @@
+import typing
+from datetime import datetime
+
 from flyteidl.admin import task_execution_pb2 as _task_execution_pb2
 
 from flytekit.models import common as _common
@@ -61,10 +64,7 @@ class TaskExecutionClosure(_common.FlyteIdlEntity):
         return self._started_at
 
     @property
-    def created_at(self):
-        """
-        :rtype: datetime.datetime
-        """
+    def created_at(self) -> typing.Optional[datetime]:
         return self._created_at
 
     @property
