@@ -379,7 +379,6 @@ def _execute_task(
         import sys
 
         working_dir = os.getcwd()
-        print(working_dir)
         if all(os.path.realpath(path) != working_dir for path in sys.path):
             sys.path.append(working_dir)
         resolver_obj = load_object_from_module(resolver)
