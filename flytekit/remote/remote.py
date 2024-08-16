@@ -942,8 +942,7 @@ class FlyteRemote(object):
     def _version_from_hash(
         md5_bytes: bytes,
         serialization_settings: SerializationSettings,
-        default_inputs: typing.Optional[Dict[str, typing.Any]] = None,
-        *additional_context: str,
+        entity: typing.Union[PythonAutoContainerTask, WorkflowBase],
     ) -> str:
         """
         The md5 version that we send to S3/GCS has to match the file contents exactly,
@@ -958,16 +957,27 @@ class FlyteRemote(object):
         """
         from flytekit import __version__
 
-        additional_context = additional_context or []
-
         h = hashlib.md5(md5_bytes)
         h.update(bytes(serialization_settings.to_json(), "utf-8"))
         h.update(bytes(__version__, "utf-8"))
 
+        def _get_image_names(entity: typing.Union[PythonAutoContainerTask, WorkflowBase]) -> typing.List[str]:
+            if isinstance(entity, PythonAutoContainerTask) and isinstance(entity.container_image, ImageSpec):
+                return [entity.container_image.image_name()]
+            if isinstance(entity, WorkflowBase):
+                image_names = []
+                for n in entity.nodes:
+                    image_names.extend(_get_image_names(n.flyte_entity))
+                return image_names
+            return []
+        additional_context = _get_image_names(entity) or []
+
         for s in additional_context:
             h.update(bytes(s, "utf-8"))
 
-        if default_inputs:
+        default_inputs = None
+        if isinstance(entity, WorkflowBase):
+            default_inputs = entity.python_interface.default_inputs_as_kwargs
             try:
                 h.update(cloudpickle.dumps(default_inputs))
             except TypeError:  # cannot pickle errors
@@ -1040,26 +1050,11 @@ class FlyteRemote(object):
         )
 
         if version is None:
-
-            def _get_image_names(entity: typing.Union[PythonAutoContainerTask, WorkflowBase]) -> typing.List[str]:
-                if isinstance(entity, PythonAutoContainerTask) and isinstance(entity.container_image, ImageSpec):
-                    return [entity.container_image.image_name()]
-                if isinstance(entity, WorkflowBase):
-                    image_names = []
-                    for n in entity.nodes:
-                        image_names.extend(_get_image_names(n.flyte_entity))
-                    return image_names
-                return []
-
-            default_inputs = None
-            if isinstance(entity, WorkflowBase):
-                default_inputs = entity.python_interface.default_inputs_as_kwargs
-
             # The md5 version that we send to S3/GCS has to match the file contents exactly,
             # but we don't have to use it when registering with the Flyte backend.
             # For that add the hash of the compilation settings to hash of file
             version = self._version_from_hash(
-                md5_bytes, serialization_settings, default_inputs, *_get_image_names(entity)
+                md5_bytes, serialization_settings, entity
             )
 
         if isinstance(entity, PythonTask):
