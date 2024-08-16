@@ -14,7 +14,7 @@ from flytekit.core import context_manager
 from flytekit.core.condition import conditional
 from flytekit.core.task import task
 from flytekit.core.workflow import WorkflowFailurePolicy, WorkflowMetadata, WorkflowMetadataDefaults, workflow
-from flytekit.exceptions.user import FlyteValidationException, FlyteValueException
+from flytekit.exceptions.user import FlyteValidationException, FlyteValueException, FlyteMissingReturnValueException
 from flytekit.tools.translator import get_serializable
 from flytekit.types.error.error import FlyteError
 
@@ -236,14 +236,45 @@ def test_unexpected_outputs():
     with pytest.raises(FlyteValueException):
         no_outputs_wf()
 
+
+@pytest.mark.skipif(sys.version_info < (3, 10, 10), reason="inspect module does not work correctly with Python <3.10.10. https://github.com/python/cpython/issues/102647#issuecomment-1466868212")
+def test_missing_return_value():
+    @task
+    def t1(a: int) -> int:
+        a = a + 5
+        return a
+
     # Should raise an exception because it doesn't return something when it should
-    with pytest.raises(AssertionError):
+    with pytest.raises(FlyteMissingReturnValueException):
 
         @workflow
         def one_output_wf() -> int:  # type: ignore
             t1(a=3)
 
         one_output_wf()
+
+
+def test_custom_wrapper():
+    def our_task(
+            _task_function: typing.Optional[typing.Callable] = None,
+            **kwargs,
+    ):
+        def wrapped(_func: typing.Callable):
+            return task(_task_function=_func)
+
+        if _task_function:
+            return wrapped(_task_function)
+        else:
+            return wrapped
+
+    @our_task(
+        foo={
+            "bar1": lambda x: print(x),
+            "bar2": lambda x: print(x),
+        },
+    )
+    def missing_func_body() -> str:
+        return "foo"
 
 
 def test_wf_no_output():

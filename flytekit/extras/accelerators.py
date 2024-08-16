@@ -93,6 +93,7 @@ if you want to use a fractional GPU, you can use the ``partitioned`` method on t
    A100_80GB
 
 """
+
 import abc
 import copy
 from typing import ClassVar, Generic, Optional, Type, TypeVar
@@ -109,8 +110,7 @@ class BaseAccelerator(abc.ABC, Generic[T]):
     """
 
     @abc.abstractmethod
-    def to_flyte_idl(self) -> T:
-        ...
+    def to_flyte_idl(self) -> T: ...
 
 
 class GPUAccelerator(BaseAccelerator):
@@ -133,7 +133,11 @@ A10G = GPUAccelerator("nvidia-a10g")
 
 #: use this constant to specify that the task should run on an
 #: `NVIDIA L4 Tensor Core GPU <https://www.nvidia.com/en-us/data-center/l4/>`_
-L4 = GPUAccelerator("nvidia-l4-vws")
+L4 = GPUAccelerator("nvidia-l4")
+
+#: use this constant to specify that the task should run on an
+#: `NVIDIA L4 Tensor Core GPU <https://www.nvidia.com/en-us/data-center/l4/>`_
+L4_VWS = GPUAccelerator("nvidia-l4-vws")
 
 #: use this constant to specify that the task should run on an
 #: `NVIDIA Tesla K80 GPU <https://www.nvidia.com/en-gb/data-center/tesla-k80/>`_

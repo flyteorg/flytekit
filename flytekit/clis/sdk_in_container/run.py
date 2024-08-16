@@ -4,14 +4,16 @@ import inspect
 import json
 import os
 import pathlib
+import sys
 import tempfile
 import typing
 from dataclasses import dataclass, field, fields
-from typing import cast, get_args
+from typing import Iterator, get_args
 
 import rich_click as click
-from dataclasses_json import DataClassJsonMixin
+from mashumaro.codecs.json import JSONEncoder
 from rich.progress import Progress
+from typing_extensions import get_origin
 
 from flytekit import Annotations, FlyteContext, FlyteContextManager, Labels, Literal
 from flytekit.clis.sdk_in_container.helpers import patch_image_config
@@ -32,7 +34,7 @@ from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow, WorkflowBase
 from flytekit.exceptions.system import FlyteSystemException
-from flytekit.interaction.click_types import FlyteLiteralConverter, key_value_callback
+from flytekit.interaction.click_types import FlyteLiteralConverter, key_value_callback, labels_callback
 from flytekit.interaction.string_literals import literal_string_repr
 from flytekit.loggers import logger
 from flytekit.models import security
@@ -42,7 +44,7 @@ from flytekit.models.types import SimpleType
 from flytekit.remote import FlyteLaunchPlan, FlyteRemote, FlyteTask, FlyteWorkflow, remote_fs
 from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.tools import module_loader
-from flytekit.tools.script_mode import _find_project_root, compress_scripts
+from flytekit.tools.script_mode import _find_project_root, compress_scripts, get_all_modules
 from flytekit.tools.translator import Options
 
 
@@ -174,7 +176,7 @@ class RunLevelParams(PyFlyteParams):
             multiple=True,
             type=str,
             show_default=True,
-            callback=key_value_callback,
+            callback=labels_callback,
             help="Labels to be attached to the execution of the format `label_key=label_value`.",
         )
     )
@@ -239,7 +241,7 @@ class RunLevelParams(PyFlyteParams):
     )
     limit: int = make_click_option_field(
         click.Option(
-            param_decls=["--limit", "limit"],
+            param_decls=["--limit"],
             required=False,
             type=int,
             default=50,
@@ -256,6 +258,16 @@ class RunLevelParams(PyFlyteParams):
             help="Assign newly created execution to a given cluster pool",
         )
     )
+    execution_cluster_label: str = make_click_option_field(
+        click.Option(
+            param_decls=["--execution-cluster-label", "--ecl"],
+            required=False,
+            type=str,
+            default="",
+            help="Assign newly created execution to a given execution cluster label",
+        )
+    )
+
     computed_params: RunLevelComputedParams = field(default_factory=RunLevelComputedParams)
     _remote: typing.Optional[FlyteRemote] = None
 
@@ -367,6 +379,10 @@ def to_click_option(
     This handles converting workflow input types to supported click parameters with callbacks to initialize
     the input values to their expected types.
     """
+    if input_name != input_name.lower():
+        # Click does not support uppercase option names: https://github.com/pallets/click/issues/837
+        raise ValueError(f"Workflow input name must be lowercase: {input_name!r}")
+
     run_level_params: RunLevelParams = ctx.obj
 
     literal_converter = FlyteLiteralConverter(
@@ -385,7 +401,8 @@ def to_click_option(
             if type(default_val) == dict or type(default_val) == list:
                 default_val = json.dumps(default_val)
             else:
-                default_val = cast(DataClassJsonMixin, default_val).to_json()
+                encoder = JSONEncoder(python_type)
+                default_val = encoder.encode(default_val)
         if literal_var.type.metadata:
             description_extra = f": {json.dumps(literal_var.type.metadata)}"
 
@@ -448,6 +465,7 @@ def run_remote(
         envs=run_level_params.envvars,
         tags=run_level_params.tags,
         cluster_pool=run_level_params.cluster_pool,
+        execution_cluster_label=run_level_params.execution_cluster_label,
     )
 
     console_url = remote.generate_console_url(execution)
@@ -479,7 +497,8 @@ def _update_flyte_context(params: RunLevelParams) -> FlyteContext.Builder:
     if output_prefix and ctx.file_access.is_remote(output_prefix):
         with tempfile.TemporaryDirectory() as tmp_dir:
             archive_fname = pathlib.Path(os.path.join(tmp_dir, "script_mode.tar.gz"))
-            compress_scripts(params.computed_params.project_root, str(archive_fname), params.computed_params.module)
+            modules = get_all_modules(params.computed_params.project_root, params.computed_params.module)
+            compress_scripts(params.computed_params.project_root, str(archive_fname), modules)
             remote_dir = file_access.get_random_remote_directory()
             remote_archive_fname = f"{remote_dir}/script_mode.tar.gz"
             file_access.put_data(str(archive_fname), remote_archive_fname)
@@ -498,6 +517,13 @@ def _update_flyte_context(params: RunLevelParams) -> FlyteContext.Builder:
         return ctx_builder.with_file_access(file_access)
 
 
+def is_optional(_type):
+    """
+    Checks if the given type is Optional Type
+    """
+    return typing.get_origin(_type) is typing.Union and type(None) in typing.get_args(_type)
+
+
 def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow, PythonTask]):
     """
     Returns a function that is used to implement WorkflowCommand and execute a flyte workflow.
@@ -510,13 +536,30 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
         # By the time we get to this function, all the loading has already happened
 
         run_level_params: RunLevelParams = ctx.obj
-        logger.debug(f"Running {entity.name} with {kwargs} and run_level_params {run_level_params}")
+        entity_type = "workflow" if isinstance(entity, PythonFunctionWorkflow) else "task"
+        logger.debug(f"Running {entity_type} {entity.name} with input {kwargs}")
 
         click.secho(f"Running Execution on {'Remote' if run_level_params.is_remote else 'local'}.", fg="cyan")
         try:
             inputs = {}
-            for input_name, _ in entity.python_interface.inputs.items():
+            for input_name, v in entity.python_interface.inputs_with_defaults.items():
                 processed_click_value = kwargs.get(input_name)
+                optional_v = False
+
+                skip_default_value_selection = False
+                if processed_click_value is None and isinstance(v, typing.Tuple):
+                    if entity_type == "workflow" and hasattr(v[0], "__args__"):
+                        origin_base_type = get_origin(v[0])
+                        if inspect.isclass(origin_base_type) and issubclass(origin_base_type, Iterator):  # Iterator
+                            args = getattr(v[0], "__args__")
+                            if isinstance(args, tuple) and get_origin(args[0]) is typing.Union:  # Iterator[JSON]
+                                logger.debug(f"Detected Iterator[JSON] in {entity.name} input annotations...")
+                                skip_default_value_selection = True
+
+                    if not skip_default_value_selection:
+                        optional_v = is_optional(v[0])
+                        if len(v) == 2:
+                            processed_click_value = v[1]
                 if isinstance(processed_click_value, ArtifactQuery):
                     if run_level_params.is_remote:
                         click.secho(
@@ -531,7 +574,8 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
                         raise click.UsageError(
                             f"Default for '{input_name}' is a query, which must be specified when running locally."
                         )
-                inputs[input_name] = processed_click_value
+                if processed_click_value is not None or optional_v:
+                    inputs[input_name] = processed_click_value
 
             if not run_level_params.is_remote:
                 with FlyteContextManager.with_context(_update_flyte_context(run_level_params)):
@@ -703,6 +747,8 @@ class RemoteEntityGroup(click.RichGroup):
         return []
 
     def list_commands(self, ctx):
+        if "--help" in sys.argv:
+            return []
         if self._entities or ctx.obj is None:
             return self._entities
 
@@ -768,7 +814,7 @@ class WorkflowCommand(click.RichGroup):
         ctx: click.Context,
         entity_name: str,
         run_level_params: RunLevelParams,
-        loaded_entity: typing.Any,
+        loaded_entity: [PythonTask, WorkflowBase],
         is_workflow: bool,
     ):
         """

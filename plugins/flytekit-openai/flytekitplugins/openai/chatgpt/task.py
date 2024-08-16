@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask
@@ -13,7 +13,7 @@ class ChatGPTTask(SyncAgentExecutorMixin, PythonTask):
 
     _TASK_TYPE = "chatgpt"
 
-    def __init__(self, name: str, openai_organization: str, chatgpt_config: Dict[str, Any], **kwargs):
+    def __init__(self, name: str, chatgpt_config: Dict[str, Any], openai_organization: Optional[str] = None, **kwargs):
         """
         Args:
             name: Name of this task, should be unique in the project

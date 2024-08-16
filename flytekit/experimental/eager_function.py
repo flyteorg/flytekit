@@ -179,7 +179,11 @@ class AsyncEntity:
         self.async_stack.set_node(node)
 
         poll_interval = self._poll_interval or timedelta(seconds=30)
-        time_to_give_up = datetime.max if self._timeout is None else datetime.now(timezone.utc) + self._timeout
+        time_to_give_up = (
+            (datetime.max.replace(tzinfo=timezone.utc))
+            if self._timeout is None
+            else datetime.now(timezone.utc) + self._timeout
+        )
 
         while datetime.now(timezone.utc) < time_to_give_up:
             execution = self.remote.sync(execution)
@@ -208,7 +212,11 @@ class AsyncEntity:
             )
 
             poll_interval = self._poll_interval or timedelta(seconds=6)
-            time_to_give_up = datetime.max if self._timeout is None else datetime.now(timezone.utc) + self._timeout
+            time_to_give_up = (
+                (datetime.max.replace(tzinfo=timezone.utc))
+                if self._timeout is None
+                else datetime.now(timezone.utc) + self._timeout
+            )
 
             while datetime.now(timezone.utc) < time_to_give_up:
                 execution = self.remote.sync(execution)

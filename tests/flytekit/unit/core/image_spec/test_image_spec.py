@@ -25,6 +25,7 @@ def test_image_spec(mock_image_spec_builder):
         cudnn="8",
         requirements=REQUIREMENT_FILE,
         registry_config=REGISTRY_CONFIG_FILE,
+        entrypoint=["/bin/bash"],
     )
     assert image_spec._is_force_push is False
 
@@ -50,6 +51,7 @@ def test_image_spec(mock_image_spec_builder):
     assert image_spec.is_container() is True
     assert image_spec.commands == ["echo hello"]
     assert image_spec._is_force_push is True
+    assert image_spec.entrypoint == ["/bin/bash"]
 
     tag = calculate_hash_from_image_spec(image_spec)
     assert "=" != tag[-1]
@@ -66,7 +68,7 @@ def test_image_spec(mock_image_spec_builder):
 
     assert "dummy" in ImageBuildEngine._REGISTRY
     assert calculate_hash_from_image_spec(image_spec) == tag
-    assert image_spec.exist() is True
+    assert image_spec.exist() is None
 
     # Remove the dummy builder, and build the image again
     # The image has already been built, so it shouldn't fail.
@@ -104,14 +106,14 @@ def test_image_spec_engine_priority():
 
 
 def test_build_existing_image_with_force_push():
-    image_spec = Mock()
-    image_spec.exist.return_value = True
-    image_spec._is_force_push = True
+    image_spec = ImageSpec(name="hello", builder="test").force_push()
 
-    ImageBuildEngine._build_image = Mock()
+    builder = Mock()
+    builder.build_image.return_value = "new_image_name"
+    ImageBuildEngine.register("test", builder)
 
     ImageBuildEngine.build(image_spec)
-    ImageBuildEngine._build_image.assert_called_once()
+    builder.build_image.assert_called_once()
 
 
 def test_custom_tag():
@@ -122,3 +124,33 @@ def test_custom_tag():
     )
     spec_hash = calculate_hash_from_image_spec(spec)
     assert spec.image_name() == f"my_image:{spec_hash}-dev"
+
+
+def test_no_build_during_execution():
+    # Check that no builds are called during executions
+    ImageBuildEngine._build_image = Mock()
+
+    ctx = context_manager.FlyteContext.current_context()
+    with context_manager.FlyteContextManager.with_context(
+        ctx.with_execution_state(ctx.execution_state.with_params(mode=ExecutionState.Mode.TASK_EXECUTION))
+    ):
+        spec = ImageSpec(name="my_image_v2", python_version="3.12")
+        ImageBuildEngine.build(spec)
+
+    ImageBuildEngine._build_image.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "parameter_name", [
+        "packages", "conda_channels", "conda_packages",
+        "apt_packages", "pip_extra_index_url", "entrypoint", "commands"
+    ]
+)
+@pytest.mark.parametrize("value", ["requirements.txt", [1, 2, 3]])
+def test_image_spec_validation_string_list(parameter_name, value):
+    msg = f"{parameter_name} must be a list of strings or None"
+
+    input_params = {parameter_name: value}
+
+    with pytest.raises(ValueError, match=msg):
+        ImageSpec(**input_params)

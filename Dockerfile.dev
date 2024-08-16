@@ -5,17 +5,17 @@
 # From your test user code
 # $ pyflyte run --image localhost:30000/flytekittest:someversion
 
-ARG PYTHON_VERSION
+ARG PYTHON_VERSION=3.12
 FROM python:${PYTHON_VERSION}-slim-bookworm
 
-MAINTAINER Flyte Team <users@flyte.org>
+LABEL org.opencontainers.image.authors="Flyte Team <users@flyte.org>"
 LABEL org.opencontainers.image.source=https://github.com/flyteorg/flytekit
 
 WORKDIR /root
-ENV FLYTE_SDK_RICH_TRACEBACKS 0
+ENV FLYTE_SDK_RICH_TRACEBACKS=0
 
 # Flytekit version of flytekit to be installed in the image
-ARG PSEUDO_VERSION
+ARG PSEUDO_VERSION=1.13.3
 
 
 # Note: Pod tasks should be exposed in the default image
@@ -32,13 +32,16 @@ RUN apt-get update && apt-get install build-essential vim libmagic1 git -y \
 
 COPY . /flytekit
 
-RUN SETUPTOOLS_SCM_PRETEND_VERSION_FOR_FLYTEKIT=$PSEUDO_VERSION uv pip install --system --no-cache-dir -U \
-        "git+https://github.com/flyteorg/flyte.git@master#subdirectory=flyteidl" \
-        -e /flytekit \
-        -e /flytekit/plugins/flytekit-k8s-pod \
-        -e /flytekit/plugins/flytekit-deck-standard \
-        -e /flytekit/plugins/flytekit-flyteinteractive \
-        scikit-learn \
+# Use a future version of SETUPTOOLS_SCM_PRETEND_VERSION_FOR_FLYTEIDL such that uv resolution works.
+RUN SETUPTOOLS_SCM_PRETEND_VERSION_FOR_FLYTEKIT=$PSEUDO_VERSION \
+    SETUPTOOLS_SCM_PRETEND_VERSION_FOR_FLYTEIDL=3.0.0dev0 \
+        uv pip install --system --no-cache-dir -U \
+            "git+https://github.com/flyteorg/flyte.git@master#subdirectory=flyteidl" \
+            -e /flytekit \
+            -e /flytekit/plugins/flytekit-k8s-pod \
+            -e /flytekit/plugins/flytekit-deck-standard \
+            -e /flytekit/plugins/flytekit-flyteinteractive \
+            scikit-learn \
     && apt-get clean autoclean \
     && apt-get autoremove --yes \
     && rm -rf /var/lib/{apt,dpkg,cache,log}/ \
@@ -48,7 +51,7 @@ RUN SETUPTOOLS_SCM_PRETEND_VERSION_FOR_FLYTEKIT=$PSEUDO_VERSION uv pip install -
     && :
 
 
-ENV PYTHONPATH "/flytekit:/flytekit/plugins/flytekit-k8s-pod:/flytekit/plugins/flytekit-deck-standard:"
+ENV PYTHONPATH="/flytekit:/flytekit/plugins/flytekit-k8s-pod:/flytekit/plugins/flytekit-deck-standard:"
 
 # Switch to the 'flytekit' user for better security.
 USER flytekit

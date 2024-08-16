@@ -1,7 +1,7 @@
 import sys
 from collections import OrderedDict
 from collections.abc import Sequence
-from typing import Dict, List, Union
+from typing import Any, Dict, List, Union, Tuple
 
 import numpy as np
 import pytest
@@ -11,6 +11,7 @@ import flytekit.configuration
 from flytekit.configuration import Image, ImageConfig
 from flytekit.core import context_manager
 from flytekit.core.task import task
+from flytekit.core.workflow import workflow
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import BlobMetadata
 from flytekit.models.types import LiteralType
@@ -126,3 +127,52 @@ def test_artf():
     task_spec = get_serializable(OrderedDict(), serialization_settings, t1)
     md = task_spec.template.interface.outputs["o0"].type.metadata["python_class_name"]
     assert "0x" not in str(md)
+
+
+def test_default_args_task():
+    default_val = 123
+    input_val = "foo"
+
+    @task
+    def t1(a: Any = default_val) -> Any:
+        return a
+
+    @workflow
+    def wf_no_input() -> Any:
+        return t1()
+
+    @workflow
+    def wf_with_input() -> Any:
+        return t1(a=input_val)
+
+    @workflow
+    def wf_with_sub_wf() -> Tuple[Any, Any]:
+        return (wf_no_input(), wf_with_input())
+
+    wf_no_input_spec = get_serializable(OrderedDict(), serialization_settings, wf_no_input)
+    wf_with_input_spec = get_serializable(OrderedDict(), serialization_settings, wf_with_input)
+
+    metadata = BlobMetadata(
+        type=BlobType(
+            format="PythonPickle",
+            dimensionality=BlobType.BlobDimensionality.SINGLE,
+        ),
+    )
+    assert wf_no_input_spec.template.nodes[0].inputs[0].binding.value.blob.metadata == metadata
+    assert wf_with_input_spec.template.nodes[0].inputs[0].binding.value.blob.metadata == metadata
+
+    output_type = LiteralType(
+        blob=BlobType(
+            format="PythonPickle",
+            dimensionality=BlobType.BlobDimensionality.SINGLE,
+        ),
+        metadata={
+            "python_class_name": "typing.Any",
+        },
+    )
+    assert wf_no_input_spec.template.interface.outputs["o0"].type == output_type
+    assert wf_with_input_spec.template.interface.outputs["o0"].type == output_type
+
+    assert wf_no_input() == default_val
+    assert wf_with_input() == input_val
+    assert wf_with_sub_wf() == (default_val, input_val)

@@ -70,6 +70,7 @@ from flytekit.core.promise import (
 from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
 from flytekit.core.utils import timeit
+from flytekit.deck import DeckField
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import interface as _interface_models
@@ -282,7 +283,7 @@ class Task(object):
         #  native constants are just bound to this specific task (default values for a task input)
         #  Also along with promises and constants, there could be dictionary or list of promises or constants
         try:
-            kwargs = translate_inputs_to_literals(
+            literals = translate_inputs_to_literals(
                 ctx,
                 incoming_values=kwargs,
                 flyte_interface_types=self.interface.inputs,
@@ -291,21 +292,20 @@ class Task(object):
         except TypeTransformerFailedError as exc:
             msg = f"Failed to convert inputs of task '{self.name}':\n  {exc}"
             logger.error(msg)
-            raise TypeError(msg) from exc
-        input_literal_map = _literal_models.LiteralMap(literals=kwargs)
+            raise TypeError(msg) from None
+        input_literal_map = _literal_models.LiteralMap(literals=literals)
 
         # if metadata.cache is set, check memoized version
         local_config = LocalConfig.auto()
         if self.metadata.cache and local_config.cache_enabled:
-            # TODO: how to get a nice `native_inputs` here?
-            logger.info(
-                f"Checking cache for task named {self.name}, cache version {self.metadata.cache_version} "
-                f", inputs: {input_literal_map}, and ignore input vars: {self.metadata.cache_ignore_input_vars}"
-            )
             if local_config.cache_overwrite:
                 outputs_literal_map = None
                 logger.info("Cache overwrite, task will be executed now")
             else:
+                logger.info(
+                    f"Checking cache for task named {self.name}, cache version {self.metadata.cache_version} "
+                    f", inputs: {kwargs}, and ignore input vars: {self.metadata.cache_ignore_input_vars}"
+                )
                 outputs_literal_map = LocalTaskCache.get(
                     self.name, self.metadata.cache_version, input_literal_map, self.metadata.cache_ignore_input_vars
                 )
@@ -326,7 +326,7 @@ class Task(object):
                 )
                 logger.info(
                     f"Cache set for task named {self.name}, cache version {self.metadata.cache_version} "
-                    f", inputs: {input_literal_map}, and ignore input vars: {self.metadata.cache_ignore_input_vars}"
+                    f", inputs: {kwargs}, and ignore input vars: {self.metadata.cache_ignore_input_vars}"
                 )
         else:
             # This code should mirror the call to `sandbox_execute` in the above cache case.
@@ -358,7 +358,7 @@ class Task(object):
         return flyte_entity_call_handler(self, *args, **kwargs)  # type: ignore
 
     def compile(self, ctx: FlyteContext, *args, **kwargs):
-        raise Exception("not implemented")
+        raise NotImplementedError
 
     def get_container(self, settings: SerializationSettings) -> Optional[_task_model.Container]:
         """
@@ -464,6 +464,13 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         environment: Optional[Dict[str, str]] = None,
         disable_deck: Optional[bool] = None,
         enable_deck: Optional[bool] = None,
+        deck_fields: Optional[Tuple[DeckField, ...]] = (
+            DeckField.SOURCE_CODE,
+            DeckField.DEPENDENCIES,
+            DeckField.TIMELINE,
+            DeckField.INPUT,
+            DeckField.OUTPUT,
+        ),
         **kwargs,
     ):
         """
@@ -479,6 +486,8 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 execution of the task. Supplied as a dictionary of key/value pairs
             disable_deck (bool): (deprecated) If true, this task will not output deck html file
             enable_deck (bool): If true, this task will output deck html file
+            deck_fields (Tuple[DeckField]): Tuple of decks to be
+                generated for this task. Valid values can be selected from fields of ``flytekit.deck.DeckField`` enum
         """
         super().__init__(
             task_type=task_type,
@@ -490,15 +499,17 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         self._environment = environment if environment else {}
         self._task_config = task_config
 
+        # first we resolve the conflict between params regarding decks, if any two of [disable_deck, enable_deck]
+        # are set, we raise an error
+        configured_deck_params = [disable_deck is not None, enable_deck is not None]
+        if sum(configured_deck_params) > 1:
+            raise ValueError("only one of [disable_deck, enable_deck] can be set")
+
         if disable_deck is not None:
             warnings.warn(
                 "disable_deck was deprecated in 1.10.0, please use enable_deck instead",
                 FutureWarning,
             )
-
-        # Confirm that disable_deck and enable_deck do not contradict each other
-        if disable_deck is not None and enable_deck is not None:
-            raise ValueError("disable_deck and enable_deck cannot both be set at the same time")
 
         if enable_deck is not None:
             self._disable_deck = not enable_deck
@@ -506,6 +517,17 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             self._disable_deck = disable_deck
         else:
             self._disable_deck = True
+
+        self._deck_fields = list(deck_fields) if (deck_fields is not None and self.disable_deck is False) else []
+
+        deck_members = set([_field for _field in DeckField])
+        # enumerate additional decks, check if any of them are invalid
+        for deck in self._deck_fields:
+            if deck not in deck_members:
+                raise ValueError(
+                    f"Element {deck} from deck_fields param is not a valid deck field. Please use one of {deck_members}"
+                )
+
         if self._python_interface.docstring:
             if self.docs is None:
                 self._docs = Documentation(
@@ -614,7 +636,11 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 except Exception as e:
                     # only show the name of output key if it's user-defined (by default Flyte names these as "o<n>")
                     key = k if k != f"o{i}" else i
-                    msg = f"Failed to convert outputs of task '{self.name}' at position {key}:\n  {e}"
+                    msg = (
+                        f"Failed to convert outputs of task '{self.name}' at position {key}.\n"
+                        f"Failed to convert type {type(native_outputs_as_map[expected_output_names[i]])} to type {py_type}.\n"
+                        f"Error Message: {e}."
+                    )
                     logger.error(msg)
                     raise TypeError(msg) from e
                 # Now check if there is any output metadata associated with this output variable and attach it to the
@@ -645,18 +671,20 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
 
     def _write_decks(self, native_inputs, native_outputs_as_map, ctx, new_user_params):
         if self._disable_deck is False:
-            from flytekit.deck.deck import Deck, _output_deck
+            from flytekit.deck.deck import Deck, DeckField, _output_deck
 
-            INPUT = "Inputs"
-            OUTPUT = "Outputs"
+            INPUT = DeckField.INPUT
+            OUTPUT = DeckField.OUTPUT
 
-            input_deck = Deck(INPUT)
-            for k, v in native_inputs.items():
-                input_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_input_var(k, v)))
+            if DeckField.INPUT in self.deck_fields:
+                input_deck = Deck(INPUT.value)
+                for k, v in native_inputs.items():
+                    input_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_input_var(k, v)))
 
-            output_deck = Deck(OUTPUT)
-            for k, v in native_outputs_as_map.items():
-                output_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_output_var(k, v)))
+            if DeckField.OUTPUT in self.deck_fields:
+                output_deck = Deck(OUTPUT.value)
+                for k, v in native_outputs_as_map.items():
+                    output_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_output_var(k, v)))
 
             if ctx.execution_state and ctx.execution_state.is_local_execution():
                 # When we run the workflow remotely, flytekit outputs decks at the end of _dispatch_execute
@@ -681,6 +709,8 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
           may be none
         * ``DynamicJobSpec`` is returned when a dynamic workflow is executed
         """
+        if DeckField.TIMELINE.value in self.deck_fields and ctx.user_space_params is not None:
+            ctx.user_space_params.decks.append(ctx.user_space_params.timeline_deck)
         # Invoked before the task is executed
         new_user_params = self.pre_execute(ctx.user_space_params)
 
@@ -698,7 +728,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             except Exception as exc:
                 msg = f"Failed to convert inputs of task '{self.name}':\n  {exc}"
                 logger.error(msg)
-                raise type(exc)(msg) from exc
+                raise type(exc)(msg) from None
 
             # TODO: Logger should auto inject the current context information to indicate if the task is running within
             #   a workflow or a subworkflow etc
@@ -729,7 +759,6 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
 
                 return self._async_execute(native_inputs, native_outputs, ctx, exec_ctx, new_user_params)
 
-            logger.debug("Task executed successfully in user level")
             # Lets run the post_execute method. This may result in a IgnoreOutputs Exception, which is
             # bubbled up to be handled at the callee layer.
             native_outputs = self.post_execute(new_user_params, native_outputs)
@@ -790,6 +819,13 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         If true, this task will not output deck html file
         """
         return self._disable_deck
+
+    @property
+    def deck_fields(self) -> List[DeckField]:
+        """
+        If not empty, this task will output deck html file for the specified decks
+        """
+        return self._deck_fields
 
 
 class TaskResolverMixin(object):

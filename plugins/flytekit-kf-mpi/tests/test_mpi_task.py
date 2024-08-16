@@ -167,6 +167,7 @@ def test_horovod_task(serialization_settings):
             slots=2,
             verbose=False,
             log_level="INFO",
+            elastic_timeout=200,
             run_policy=RunPolicy(
                 clean_pod_policy=CleanPodPolicy.NONE,
                 backoff_limit=5,
@@ -175,14 +176,15 @@ def test_horovod_task(serialization_settings):
             ),
         ),
     )
-    def my_horovod_task():
-        ...
+    def my_horovod_task(): ...
 
     cmd = my_horovod_task.get_command(serialization_settings)
     assert "horovodrun" in cmd
     assert "--verbose" not in cmd
     assert "--log-level" in cmd
     assert "INFO" in cmd
+    assert "--elastic-timeout" in cmd
+    assert "200" in cmd
     # CleanPodPolicy.NONE is the default, so it should not be in the output dictionary
     expected_dict = {
         "launcherReplicas": {

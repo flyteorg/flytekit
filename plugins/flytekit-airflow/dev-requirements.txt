@@ -846,7 +846,7 @@ referencing==0.30.2
     #   jsonschema-specifications
 regex==2023.10.3
     # via apache-beam
-requests==2.31.0
+requests==2.32.2
     # via
     #   apache-airflow-providers-http
     #   apache-beam

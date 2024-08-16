@@ -4,14 +4,20 @@ import datetime
 from functools import update_wrapper
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, TypeVar, Union, overload
 
+try:
+    from typing import ParamSpec
+except ImportError:
+    from typing_extensions import ParamSpec  # type: ignore
+
 from flytekit.core import launch_plan as _annotated_launchplan
 from flytekit.core import workflow as _annotated_workflow
-from flytekit.core.base_task import TaskMetadata, TaskResolverMixin
+from flytekit.core.base_task import PythonTask, TaskMetadata, TaskResolverMixin
 from flytekit.core.interface import transform_function_to_interface
 from flytekit.core.pod_template import PodTemplate
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.reference_entity import ReferenceEntity, TaskReference
 from flytekit.core.resources import Resources
+from flytekit.deck import DeckField
 from flytekit.extras.accelerators import BaseAccelerator
 from flytekit.image_spec.image_spec import ImageSpec
 from flytekit.models.documentation import Documentation
@@ -79,6 +85,7 @@ class TaskPlugins(object):
         return PythonFunctionTask
 
 
+P = ParamSpec("P")
 T = TypeVar("T")
 FuncOut = TypeVar("FuncOut")
 
@@ -114,16 +121,16 @@ def task(
     docs: Optional[Documentation] = ...,
     disable_deck: Optional[bool] = ...,
     enable_deck: Optional[bool] = ...,
+    deck_fields: Optional[Tuple[DeckField, ...]] = ...,
     pod_template: Optional["PodTemplate"] = ...,
     pod_template_name: Optional[str] = ...,
     accelerator: Optional[BaseAccelerator] = ...,
-) -> Callable[[Callable[..., FuncOut]], PythonFunctionTask[T]]:
-    ...
+) -> Callable[[Callable[..., FuncOut]], PythonFunctionTask[T]]: ...
 
 
 @overload
 def task(
-    _task_function: Callable[..., FuncOut],
+    _task_function: Callable[P, FuncOut],
     task_config: Optional[T] = ...,
     cache: bool = ...,
     cache_serialize: bool = ...,
@@ -152,15 +159,15 @@ def task(
     docs: Optional[Documentation] = ...,
     disable_deck: Optional[bool] = ...,
     enable_deck: Optional[bool] = ...,
+    deck_fields: Optional[Tuple[DeckField, ...]] = ...,
     pod_template: Optional["PodTemplate"] = ...,
     pod_template_name: Optional[str] = ...,
     accelerator: Optional[BaseAccelerator] = ...,
-) -> Union[PythonFunctionTask[T], Callable[..., FuncOut]]:
-    ...
+) -> Union[Callable[P, FuncOut], PythonFunctionTask[T]]: ...
 
 
 def task(
-    _task_function: Optional[Callable[..., FuncOut]] = None,
+    _task_function: Optional[Callable[P, FuncOut]] = None,
     task_config: Optional[T] = None,
     cache: bool = False,
     cache_serialize: bool = False,
@@ -189,13 +196,20 @@ def task(
     docs: Optional[Documentation] = None,
     disable_deck: Optional[bool] = None,
     enable_deck: Optional[bool] = None,
+    deck_fields: Optional[Tuple[DeckField, ...]] = (
+        DeckField.SOURCE_CODE,
+        DeckField.DEPENDENCIES,
+        DeckField.TIMELINE,
+        DeckField.INPUT,
+        DeckField.OUTPUT,
+    ),
     pod_template: Optional["PodTemplate"] = None,
     pod_template_name: Optional[str] = None,
     accelerator: Optional[BaseAccelerator] = None,
 ) -> Union[
-    Callable[[Callable[..., FuncOut]], PythonFunctionTask[T]],
+    Callable[P, FuncOut],
+    Callable[[Callable[P, FuncOut]], PythonFunctionTask[T]],
     PythonFunctionTask[T],
-    Callable[..., FuncOut],
 ]:
     """
     This is the core decorator to use for any task type in flytekit.
@@ -309,13 +323,14 @@ def task(
     :param task_resolver: Provide a custom task resolver.
     :param disable_deck: (deprecated) If true, this task will not output deck html file
     :param enable_deck: If true, this task will output deck html file
+    :param deck_fields: If specified and enble_deck is True, this task will output deck html file with the fields specified in the tuple
     :param docs: Documentation about this task
     :param pod_template: Custom PodTemplate for this task.
     :param pod_template_name: The name of the existing PodTemplate resource which will be used in this task.
     :param accelerator: The accelerator to use for this task.
     """
 
-    def wrapper(fn: Callable[..., Any]) -> PythonFunctionTask[T]:
+    def wrapper(fn: Callable[P, Any]) -> PythonFunctionTask[T]:
         _metadata = TaskMetadata(
             cache=cache,
             cache_serialize=cache_serialize,
@@ -341,6 +356,7 @@ def task(
             task_resolver=task_resolver,
             disable_deck=disable_deck,
             enable_deck=enable_deck,
+            deck_fields=deck_fields,
             docs=docs,
             pod_template=pod_template,
             pod_template_name=pod_template_name,
@@ -355,7 +371,7 @@ def task(
         return wrapper
 
 
-class ReferenceTask(ReferenceEntity, PythonFunctionTask):  # type: ignore
+class ReferenceTask(ReferenceEntity, PythonTask):  # type: ignore
     """
     This is a reference task, the body of the function passed in through the constructor will never be used, only the
     signature of the function will be. The signature should also match the signature of the task you're referencing,
@@ -396,7 +412,7 @@ def reference_task(
     """
 
     def wrapper(fn) -> ReferenceTask:
-        interface = transform_function_to_interface(fn)
+        interface = transform_function_to_interface(fn, is_reference_entity=True)
         return ReferenceTask(project, domain, name, version, interface.inputs, interface.outputs)
 
     return wrapper

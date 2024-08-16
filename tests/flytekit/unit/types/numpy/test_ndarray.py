@@ -1,7 +1,9 @@
+import pytest
 import numpy as np
 from typing_extensions import Annotated
 
-from flytekit import kwtypes, task, workflow
+from flytekit import HashMethod, kwtypes, task, workflow
+from flytekit.core.type_engine import TypeTransformerFailedError
 
 
 @task
@@ -63,6 +65,35 @@ def t4(array: Annotated[np.ndarray, kwtypes(allow_pickle=True)]) -> int:
     return array.size
 
 
+def dummy_hash_array(arr: np.ndarray) -> str:
+    return "dummy"
+
+
+@task
+def t5_annotate_kwtypes_and_hash(
+    array: Annotated[
+        np.ndarray, kwtypes(allow_pickle=True), HashMethod(dummy_hash_array)
+    ],
+):
+    pass
+
+
+@task
+def t6_annotate_kwtypes_twice(
+    array: Annotated[
+        np.ndarray, kwtypes(allow_pickle=True), kwtypes(allow_pickle=False)
+    ],
+):
+    pass
+
+
+@task
+def t7_annotate_with_sth_strange(
+    array: Annotated[np.ndarray, (1, 2, 3)],
+):
+    pass
+
+
 @workflow
 def wf():
     array_1d = generate_numpy_1d()
@@ -72,10 +103,15 @@ def wf():
     t2(array=array_2d)
     t3(array=array_1d)
     t4(array=array_dtype_object)
-    try:
-        generate_numpy_fails()
-    except Exception as e:
-        assert isinstance(e, TypeError)
+    t5_annotate_kwtypes_and_hash(array=array_1d)
+
+    if array_1d.is_ready:
+        with pytest.raises(TypeTransformerFailedError, match=r"Metadata OrderedDict.*'allow_pickle'.*True.* is already specified, cannot use OrderedDict.*'allow_pickle'.*False.*\."):
+            t6_annotate_kwtypes_twice(array=array_1d)
+        with pytest.raises(TypeTransformerFailedError, match=r"The metadata for typing.Annotated.*numpy\.ndarray.*1, 2, 3.* must be of type kwtypes or HashMethod\."):
+            t7_annotate_with_sth_strange(array=array_1d)
+        with pytest.raises(TypeError, match=r"The metadata for typing.Annotated.*numpy\.ndarray.*'allow_pickle'.*True.* must be of type kwtypes or HashMethod\."):
+            generate_numpy_fails()
 
 
 @workflow

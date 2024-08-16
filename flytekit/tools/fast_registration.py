@@ -8,20 +8,38 @@ import subprocess
 import tarfile
 import tempfile
 import typing
+from dataclasses import dataclass
 from typing import Optional
 
 import click
 
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.utils import timeit
-from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
+from flytekit.exceptions.user import FlyteDataNotFoundException
+from flytekit.loggers import logger
+from flytekit.tools.ignore import DockerIgnore, FlyteIgnore, GitIgnore, Ignore, IgnoreGroup, StandardIgnore
 from flytekit.tools.script_mode import tar_strip_file_attributes
 
 FAST_PREFIX = "fast"
 FAST_FILEENDING = ".tar.gz"
 
 
-def fast_package(source: os.PathLike, output_dir: os.PathLike, deref_symlinks: bool = False) -> os.PathLike:
+@dataclass(frozen=True)
+class FastPackageOptions:
+    """
+    FastPackageOptions is used to set configuration options when packaging files.
+    """
+
+    ignores: list[Ignore]
+    keep_default_ignores: bool = True
+
+
+def fast_package(
+    source: os.PathLike,
+    output_dir: os.PathLike,
+    deref_symlinks: bool = False,
+    options: Optional[FastPackageOptions] = None,
+) -> os.PathLike:
     """
     Takes a source directory and packages everything not covered by common ignores into a tarball
     named after a hexdigest of the included files.
@@ -30,7 +48,16 @@ def fast_package(source: os.PathLike, output_dir: os.PathLike, deref_symlinks: b
     :param bool deref_symlinks: Enables dereferencing symlinks when packaging directory
     :return os.PathLike:
     """
-    ignore = IgnoreGroup(source, [GitIgnore, DockerIgnore, StandardIgnore])
+    default_ignores = [GitIgnore, DockerIgnore, StandardIgnore, FlyteIgnore]
+    if options is not None:
+        if options.keep_default_ignores:
+            ignores = options.ignores + default_ignores
+        else:
+            ignores = options.ignores
+    else:
+        ignores = default_ignores
+    ignore = IgnoreGroup(source, ignores)
+
     digest = compute_digest(source, ignore.is_ignored)
     archive_fname = f"{FAST_PREFIX}{digest}{FAST_FILEENDING}"
 
@@ -70,6 +97,10 @@ def compute_digest(source: os.PathLike, filter: Optional[callable] = None) -> st
 
         for fname in files:
             abspath = os.path.join(root, fname)
+            # Only consider files that exist (e.g. disregard symlinks that point to non-existent files)
+            if not os.path.exists(abspath):
+                logger.info(f"Skipping non-existent file {abspath}")
+                continue
             relpath = os.path.relpath(abspath, source)
             if filter:
                 if filter(relpath):
@@ -116,7 +147,12 @@ def download_distribution(additional_distribution: str, destination: str):
     # NOTE the os.path.join(destination, ''). This is to ensure that the given path is in fact a directory and all
     # downloaded data should be copied into this directory. We do this to account for a difference in behavior in
     # fsspec, which requires a trailing slash in case of pre-existing directory.
-    FlyteContextManager.current_context().file_access.get_data(additional_distribution, os.path.join(destination, ""))
+    try:
+        FlyteContextManager.current_context().file_access.get_data(
+            additional_distribution, os.path.join(destination, "")
+        )
+    except FlyteDataNotFoundException as ex:
+        raise RuntimeError("task execution code was not found") from ex
     tarfile_name = os.path.basename(additional_distribution)
     if not tarfile_name.endswith(".tar.gz"):
         raise RuntimeError("Unrecognized additional distribution format for {}".format(additional_distribution))

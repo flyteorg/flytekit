@@ -264,3 +264,23 @@ def test_node_dependency_hints_are_not_allowed():
         @task(node_dependency_hints=[t1])
         def t2(i: str):
             pass
+
+
+def test_default_inputs():
+    @task
+    def foo(x: int = 0, y: str = "Hello") -> int:
+        return x
+
+    assert foo.python_interface.default_inputs_as_kwargs == {"x": 0, "y": "Hello"}
+
+    @task
+    def foo2(x: int, y: str = "Hello") -> int:
+        return x
+
+    assert foo2.python_interface.inputs_with_defaults == {"x": (int, None), "y": (str, "Hello")}
+
+    @task
+    def foo3(x: int, y: str) -> int:
+        return x
+
+    assert foo3.python_interface.inputs_with_defaults == {"x": (int, None), "y": (str, None)}
