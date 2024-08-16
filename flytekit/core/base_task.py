@@ -735,14 +735,8 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             #   a workflow or a subworkflow etc
             logger.info(f"Invoking {self.name} with inputs: {native_inputs}")
             with timeit("Execute user level code"):
-                from flytekit.core.python_function_task import PythonFunctionTask
-                if isinstance(self, PythonFunctionTask) and os.getenv("ENABLE_VSCODE"):
-                    print("starting vscode")
-                    from flytekitplugins.flyteinteractive import vscode
-                    vscode_task = vscode(task_function=self.task_function)
-                    native_outputs = vscode_task.execute(**native_inputs)
-                else:
-                    native_outputs = self.execute(**native_inputs)
+                task = decorate_python_task(self)
+                native_outputs = task.execute(**native_inputs)
 
             if inspect.iscoroutine(native_outputs):
                 # If native outputs is a coroutine, then this is an eager workflow.
@@ -909,3 +903,20 @@ class TaskResolverMixin(object):
         Overridable function that can optionally return a custom name for a given task
         """
         return None
+
+
+def decorate_python_task(task: PythonTask) -> PythonTask:
+    """
+    Decorates the task with additional functionality if necessary.
+
+    @param task: python task to decorate
+    @return: a decorated python task
+    """
+    from flytekit.core.python_function_task import PythonFunctionTask
+
+    if isinstance(task, PythonFunctionTask) and os.getenv("FLYTE_ENABLE_VSCODE"):
+        print("starting vscode")
+        from flytekitplugins.flyteinteractive import vscode
+
+        return vscode(task_function=task.task_function)
+    return task

@@ -229,7 +229,7 @@ def get_serializable_task(
 
     entity_config = entity.get_config(settings) or {}
 
-    extra_config = {"link_type": "vscode", "port": "8080"}
+    extra_config = {}
 
     if hasattr(entity, "task_function") and isinstance(entity.task_function, ClassDecorator):
         extra_config = entity.task_function.get_extra_config()
