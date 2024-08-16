@@ -128,3 +128,12 @@ def test_image_spec_extra_index_url():
     )
 
     assert contents == expected_contents
+
+def test_image_spec_with_envd_builder_exception():
+    image_spec = ImageSpec(
+        name="envd_image",
+        builder="envd",
+        docker_commands=["RUN ls"],
+    )
+    with pytest.raises(ValueError):
+        ImageBuildEngine.build(image_spec)
