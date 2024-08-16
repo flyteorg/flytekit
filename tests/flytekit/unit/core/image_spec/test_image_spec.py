@@ -26,12 +26,14 @@ def test_image_spec(mock_image_spec_builder):
         requirements=REQUIREMENT_FILE,
         registry_config=REGISTRY_CONFIG_FILE,
         entrypoint=["/bin/bash"],
+        docker_commands=["RUN ls"],
     )
     assert image_spec._is_force_push is False
 
     image_spec = image_spec.with_commands("echo hello")
     image_spec = image_spec.with_packages("numpy")
     image_spec = image_spec.with_apt_packages("wget")
+    image_spec = image_spec.with_docker_commands(["RUN echo hello"])
     image_spec = image_spec.force_push()
 
     assert image_spec.python_version == "3.8"
@@ -52,6 +54,7 @@ def test_image_spec(mock_image_spec_builder):
     assert image_spec.commands == ["echo hello"]
     assert image_spec._is_force_push is True
     assert image_spec.entrypoint == ["/bin/bash"]
+    assert image_spec.docker_commands == ["RUN ls", "RUN echo hello"]
 
     tag = calculate_hash_from_image_spec(image_spec)
     assert "=" != tag[-1]
