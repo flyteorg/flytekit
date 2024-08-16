@@ -29,7 +29,7 @@ class EnvdImageSpecBuilder(ImageSpecBuilder):
         cfg_path = create_envd_config(image_spec)
 
         if image_spec.docker_commands:
-            raise ValueError("Docker commands are not supported in envd")
+            raise ValueError("Docker commands are not supported in envd builder.")
 
         if image_spec.registry_config:
             bootstrap_command = f"envd bootstrap --registry-config {image_spec.registry_config}"
