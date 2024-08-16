@@ -1,4 +1,5 @@
 import os
+from unittest.mock import patch, Mock
 
 import pytest
 
@@ -181,3 +182,23 @@ def test_build(tmp_path):
     builder = DefaultImageBuilder()
 
     builder.build_image(image_spec)
+
+
+@pytest.mark.parametrize("push_image_spec", ["0", "1"])
+def test_should_push_env(monkeypatch, push_image_spec):
+    image_spec = ImageSpec(name="my_flytekit", python_version="3.12", registry="localhost:30000")
+    monkeypatch.setenv("FLYTE_PUSH_IMAGE_SPEC", push_image_spec)
+
+    run_mock = Mock()
+    monkeypatch.setattr("flytekit.image_spec.default_builder.run", run_mock)
+
+    builder = DefaultImageBuilder()
+    builder.build_image(image_spec)
+
+    run_mock.assert_called_once()
+    call_args = run_mock.call_args.args
+
+    if push_image_spec == "0":
+        assert "--push" not in call_args[0]
+    else:
+        assert "--push" in call_args[0]
