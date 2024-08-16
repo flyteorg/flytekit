@@ -12,6 +12,7 @@ from flytekit.configuration.default_images import DefaultImages
 from flytekit.interaction.click_types import key_value_callback
 from flytekit.loggers import logger
 from flytekit.tools import repo
+from flytekit.tools.fast_registration import CopyFileDetection
 
 _register_help = """
 This command is similar to ``package`` but instead of producing a zip file, all your Flyte entities are compiled,
@@ -96,6 +97,13 @@ the root of your project, it finds the first folder that does not have a ``__ini
     help="Skip zipping and uploading the package",
 )
 @click.option(
+    "--copy",
+    required=False,
+    type=click.Choice(["all", "auto", "none"], case_sensitive=False),
+    default="auto",
+    help="Skip zipping and uploading the package",
+)
+@click.option(
     "--dry-run",
     default=False,
     is_flag=True,
@@ -139,6 +147,7 @@ def register(
     version: typing.Optional[str],
     deref_symlinks: bool,
     non_fast: bool,
+    copy: str,
     package_or_module: typing.Tuple[str],
     dry_run: bool,
     activate_launchplans: bool,
@@ -148,6 +157,15 @@ def register(
     """
     see help
     """
+    # move to callback later
+    print(f"Register copy {copy} ----")
+    if copy == "auto":
+        copy_style = CopyFileDetection.LOADED_MODULES
+    elif copy == "all":
+        copy_style = CopyFileDetection.ALL
+    else:
+        copy_style = None
+
     pkgs = ctx.obj[constants.CTX_PACKAGES]
     if not pkgs:
         logger.debug("No pkgs")
@@ -190,6 +208,7 @@ def register(
         version,
         deref_symlinks,
         fast=not non_fast,
+        copy_style=copy_style,
         package_or_module=package_or_module,
         remote=remote,
         env=env,

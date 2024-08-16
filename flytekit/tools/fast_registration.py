@@ -5,10 +5,12 @@ import hashlib
 import os
 import posixpath
 import subprocess
+import sys
 import tarfile
 import tempfile
 import typing
 from dataclasses import dataclass
+from enum import Enum
 from typing import Optional
 
 import click
@@ -18,10 +20,15 @@ from flytekit.core.utils import timeit
 from flytekit.exceptions.user import FlyteDataNotFoundException
 from flytekit.loggers import logger
 from flytekit.tools.ignore import DockerIgnore, FlyteIgnore, GitIgnore, Ignore, IgnoreGroup, StandardIgnore
-from flytekit.tools.script_mode import tar_strip_file_attributes
+from flytekit.tools.script_mode import ls_files, tar_strip_file_attributes
 
 FAST_PREFIX = "fast"
 FAST_FILEENDING = ".tar.gz"
+
+
+class CopyFileDetection(Enum):
+    LOADED_MODULES = 1
+    ALL = 2
 
 
 @dataclass(frozen=True)
@@ -32,6 +39,26 @@ class FastPackageOptions:
 
     ignores: list[Ignore]
     keep_default_ignores: bool = True
+    copy_style: CopyFileDetection = CopyFileDetection.LOADED_MODULES
+
+
+"""
+clarify tar behavior
+- tar doesn't seem to add the folder, just the files, but extracts okay
+- this doesn't work for empty folders (but edge case because gitignore ignores them anyways?)
+changes to tar
+- will now add files one at a time.
+- the list will compute the list and the digest
+- could have used tar list but seems less powerful, also does more than we want.
+still need to
+- hook up the actual commands args
+- in order to support auto, we have to load all the modules first, then trigger copying, then serialize post-upload
+- make each create a separate tar
+- have a separate path for old and new commands
+process
+- like to beta and update docs and test before deprecate
+- so basically have to preserve both styles of code - worth it to do this? or just a long beta.
+"""
 
 
 def fast_package(
@@ -39,6 +66,7 @@ def fast_package(
     output_dir: os.PathLike,
     deref_symlinks: bool = False,
     options: Optional[FastPackageOptions] = None,
+    # use_old: bool = False,
 ) -> os.PathLike:
     """
     Takes a source directory and packages everything not covered by common ignores into a tarball
@@ -67,6 +95,29 @@ def fast_package(
 
     archive_fname = os.path.join(output_dir, archive_fname)
 
+    if options and options.copy_style == CopyFileDetection.LOADED_MODULES:
+        sys_modules = list(sys.modules.values())
+        ls, ls_digest = ls_files(str(source), sys_modules, deref_symlinks, ignore)
+    else:
+        ls, ls_digest = ls_files(str(source), [], deref_symlinks, ignore)
+    print(f"Digest check: old {digest} ==? new {ls_digest} -- {digest == ls_digest}")
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        tar_path = os.path.join(tmp_dir, "tmp.tar")
+        print(f"test tmp dir: {tar_path=}")
+        with tarfile.open(tar_path, "w", dereference=True) as tar:
+            for ws_file in ls:
+                rel_path = os.path.relpath(ws_file, start=source)
+                # not adding explicit folders, but extracting okay.
+                tar.add(
+                    os.path.join(source, ws_file),
+                    arcname=rel_path,
+                    filter=lambda x: tar_strip_file_attributes(x),
+                )
+            print("New tar file contents: ======================")
+            tar.list(verbose=True)
+        # breakpoint()
+
     with tempfile.TemporaryDirectory() as tmp_dir:
         tar_path = os.path.join(tmp_dir, "tmp.tar")
         with tarfile.open(tar_path, "w", dereference=deref_symlinks) as tar:
@@ -77,6 +128,9 @@ def fast_package(
                     arcname=ws_file,
                     filter=lambda x: ignore.tar_filter(tar_strip_file_attributes(x)),
                 )
+            print("Old tar file contents: ======================")
+            tar.list(verbose=True)
+        # breakpoint()
         with gzip.GzipFile(filename=archive_fname, mode="wb", mtime=0) as gzipped:
             with open(tar_path, "rb") as tar_file:
                 gzipped.write(tar_file.read())
