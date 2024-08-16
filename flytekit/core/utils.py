@@ -393,3 +393,12 @@ def has_return_statement(func: typing.Callable) -> bool:
         if "yield" in line.strip():
             return True
     return False
+
+
+def str2bool(value: str) -> bool:
+    """
+    Convert a string to a boolean. This is useful for parsing environment variables.
+    @param value: The string to convert to a boolean
+    @return: the boolean value
+    """
+    return value.lower() in ("true", "t", "1")
