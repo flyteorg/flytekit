@@ -50,15 +50,15 @@ def mock_code_server_info_dict():
 @pytest.fixture
 def vscode_patches():
     with mock.patch("multiprocessing.Process") as mock_process, mock.patch(
-        "flytekitplugins.flyteinteractive.vscode_lib.decorator.prepare_interactive_python"
+        "flytekit.interactive.vscode_lib.decorator.prepare_interactive_python"
     ) as mock_prepare_interactive_python, mock.patch(
-        "flytekitplugins.flyteinteractive.vscode_lib.decorator.exit_handler"
+        "flytekit.interactive.vscode_lib.decorator.exit_handler"
     ) as mock_exit_handler, mock.patch(
-        "flytekitplugins.flyteinteractive.vscode_lib.decorator.download_vscode"
+        "flytekit.interactive.vscode_lib.decorator.download_vscode"
     ) as mock_download_vscode, mock.patch("signal.signal") as mock_signal, mock.patch(
-        "flytekitplugins.flyteinteractive.vscode_lib.decorator.prepare_resume_task_python"
+        "flytekit.interactive.vscode_lib.decorator.prepare_resume_task_python"
     ) as mock_prepare_resume_task_python, mock.patch(
-        "flytekitplugins.flyteinteractive.vscode_lib.decorator.prepare_launch_json"
+        "flytekit.interactive.vscode_lib.decorator.prepare_launch_json"
     ) as mock_prepare_launch_json:
         yield (
             mock_process,
