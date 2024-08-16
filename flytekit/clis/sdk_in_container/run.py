@@ -465,9 +465,7 @@ def run_remote(
     )
 
     console_url = remote.generate_console_url(execution)
-    additional_info_for_execution = get_plugin().get_additional_info_for_execution(
-        remote.generate_console_http_domain(), execution
-    )
+    additional_info_for_execution = get_plugin().get_additional_info_for_execution(remote, execution)
     s = (
         click.style("\n[✔] ", fg="green")
         + "Go to "

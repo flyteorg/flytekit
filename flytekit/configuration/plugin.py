@@ -55,7 +55,7 @@ class FlytekitPluginProtocol(Protocol):
 
     @staticmethod
     def get_additional_info_for_execution(
-        console_http_domain: str, entity: Union[FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution]
+        remote: FlyteRemote, entity: Union[FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution]
     ) -> str:
         """Get additional info for a given execution. Useful to pass in additional urls."""
 
@@ -99,7 +99,7 @@ class FlytekitPlugin:
 
     @staticmethod
     def get_additional_info_for_execution(
-        console_http_domain: str, entity: Union[FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution]
+        remote: FlyteRemote, entity: Union[FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution]
     ) -> str:
         """Get additional info for a given execution. Useful to pass in additional urls."""
         return ""
