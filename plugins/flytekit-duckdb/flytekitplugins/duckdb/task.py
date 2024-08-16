@@ -1,5 +1,6 @@
 import json
 from enum import Enum
+from functools import partial
 from typing import Dict, List, NamedTuple, Optional, Union
 
 from flytekit import PythonInstanceTask, Secret, current_context, lazy_module
@@ -11,9 +12,24 @@ pd = lazy_module("pandas")
 pa = lazy_module("pyarrow")
 
 
+def connect_local(hosted_secret: Optional[Secret]):
+    """Connect to local DuckDB."""
+    return duckdb.connect(":memory:")
+
+
+def connect_motherduck(hosted_secret: Secret):
+    """Connect to MotherDuck."""
+    motherduck_token = current_context().secrets.get(
+        group=hosted_secret.group,
+        key=hosted_secret.key,
+        group_version=hosted_secret.group_version,
+    )
+    return duckdb.connect("md:", config={"motherduck_token": motherduck_token})
+
+
 class DuckDBProvider(Enum):
-    LOCAL = "local"
-    MOTHERDUCK = "motherduck"
+    LOCAL = partial(connect_local)
+    MOTHERDUCK = partial(connect_motherduck)
 
 
 class QueryOutput(NamedTuple):
@@ -29,7 +45,7 @@ class DuckDBQuery(PythonInstanceTask):
         name: str,
         query: Union[str, List[str]],
         inputs: Optional[Dict[str, Union[StructuredDataset, list]]] = None,
-        provider: Optional[DuckDBProvider] = DuckDBProvider.LOCAL,
+        provider: DuckDBProvider = DuckDBProvider.LOCAL,
         hosted_secret: Optional[Secret] = None,
         **kwargs,
     ):
@@ -43,8 +59,9 @@ class DuckDBQuery(PythonInstanceTask):
             provider: DuckDB provider (e.g., LOCAL, MOTHERDUCK, ANOTHERPRODUCT)
             hosted_secret: Secret containing authentication token for the hosted provider
         """
-        self._con = self._connect_to_duckdb(provider, hosted_secret)
         self._query = query
+        self._provider = provider
+        self._hosted_secret = hosted_secret
 
         outputs = {"result": StructuredDataset}
 
@@ -67,33 +84,18 @@ class DuckDBQuery(PythonInstanceTask):
         Returns:
             A DuckDB connection object.
         """
-        connection_map = {
-            DuckDBProvider.LOCAL: self._connect_local,
-            DuckDBProvider.MOTHERDUCK: self._connect_motherduck,
-        }
 
-        if provider not in connection_map:
+        if provider not in DuckDBProvider:
             raise ValueError(f"Unknown DuckDB provider: {provider}")
 
         if provider != DuckDBProvider.LOCAL and hosted_secret is None:
-            raise ValueError(f"A secret is required for the {provider.value} provider.")
+            raise ValueError(f"A secret is required for the {provider} provider.")
 
-        return connection_map[provider](hosted_secret)
+        return provider.value(hosted_secret)
 
-    def _connect_local(self, hosted_secret: Optional[Secret]):
-        """Connect to local DuckDB."""
-        return duckdb.connect(":memory:")
-
-    def _connect_motherduck(self, hosted_secret: Secret):
-        """Connect to MotherDuck."""
-        motherduck_token = current_context().secrets.get(
-            group=hosted_secret.group,
-            key=hosted_secret.key,
-            group_version=hosted_secret.group_version,
-        )
-        return duckdb.connect("md:", config={"motherduck_token": motherduck_token})
-
-    def _execute_query(self, params: list, query: str, counter: int, multiple_params: bool):
+    def _execute_query(
+        self, con: duckdb.DuckDBPyConnection, params: list, query: str, counter: int, multiple_params: bool
+    ):
         """
         This method runs the DuckDBQuery.
 
@@ -110,28 +112,30 @@ class DuckDBQuery(PythonInstanceTask):
                     raise ValueError("Parameter doesn't exist.")
                 if "insert" in query.lower():
                     # run executemany disregarding the number of entries to store for an insert query
-                    yield QueryOutput(output=self._con.executemany(query, params[counter]), counter=counter)
+                    yield QueryOutput(output=con.executemany(query, params[counter]), counter=counter)
                 else:
-                    yield QueryOutput(output=self._con.execute(query, params[counter]), counter=counter)
+                    yield QueryOutput(output=con.execute(query, params[counter]), counter=counter)
             else:
                 if params:
-                    yield QueryOutput(output=self._con.execute(query, params), counter=counter)
+                    yield QueryOutput(output=con.execute(query, params), counter=counter)
                 else:
                     raise ValueError("Parameter not specified.")
         else:
-            yield QueryOutput(output=self._con.execute(query), counter=counter)
+            yield QueryOutput(output=con.execute(query), counter=counter)
 
     def execute(self, **kwargs) -> StructuredDataset:
         # TODO: Enable iterative download after adding the functionality to structured dataset code.
+        con = self._connect_to_duckdb(self._provider, self._hosted_secret)
+
         params = None
         for key in self.python_interface.inputs.keys():
             val = kwargs.get(key)
             if isinstance(val, StructuredDataset):
                 # register structured dataset
-                self._con.register(key, val.open(pa.Table).all())
+                con.register(key, val.open(pa.Table).all())
             elif isinstance(val, (pd.DataFrame, pa.Table)):
                 # register pandas dataframe/arrow table
-                self._con.register(key, val)
+                con.register(key, val)
             elif isinstance(val, list):
                 # copy val into params
                 params = val
@@ -151,7 +155,11 @@ class DuckDBQuery(PythonInstanceTask):
             for query in self._query[:-1]:
                 query_output = next(
                     self._execute_query(
-                        params=params, query=query, counter=query_output.counter, multiple_params=multiple_params
+                        con=con,
+                        params=params,
+                        query=query,
+                        counter=query_output.counter,
+                        multiple_params=multiple_params,
                     )
                 )
             final_query = self._query[-1]
@@ -160,7 +168,7 @@ class DuckDBQuery(PythonInstanceTask):
         # expecting a SELECT query
         dataframe = next(
             self._execute_query(
-                params=params, query=final_query, counter=query_output.counter, multiple_params=multiple_params
+                con=con, params=params, query=final_query, counter=query_output.counter, multiple_params=multiple_params
             )
         ).output.arrow()
 
