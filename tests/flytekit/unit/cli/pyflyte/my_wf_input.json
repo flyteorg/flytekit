@@ -42,6 +42,6 @@
     },
     "p": "None",
     "q": "tests/flytekit/unit/cli/pyflyte/testdata",
-    "remote": "/Users/chenvincent/Desktop/Github/flytekit/tests/flytekit/unit/cli/pyflyte/testdata",
-    "image": "/Users/chenvincent/Desktop/Github/flytekit/tests/flytekit/unit/cli/pyflyte/testdata"
+    "remote": "tests/flytekit/unit/cli/pyflyte/testdata",
+    "image": "tests/flytekit/unit/cli/pyflyte/testdata"
 }
