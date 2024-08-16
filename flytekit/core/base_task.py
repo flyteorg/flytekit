@@ -915,8 +915,11 @@ def decorate_python_task(task: PythonTask) -> PythonTask:
     from flytekit.core.python_function_task import PythonFunctionTask
 
     if isinstance(task, PythonFunctionTask) and os.getenv("FLYTE_ENABLE_VSCODE"):
-        print("starting vscode")
-        from flytekitplugins.flyteinteractive import vscode
+        """
+        If the environment variable FLYTE_ENABLE_VSCODE is set to True, then the task is decorated with vscode
+        functionality. This is useful for debugging the task in vscode.
+        """
+        from flytekit.interactive.vscode.decorator import vscode
 
         return vscode(task_function=task.task_function)
     return task
