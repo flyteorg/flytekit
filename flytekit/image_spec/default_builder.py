@@ -2,12 +2,12 @@ import json
 import os
 import re
 import shutil
-import subprocess
 import sys
 import tempfile
 import warnings
 from pathlib import Path
 from string import Template
+from subprocess import run
 from typing import ClassVar
 
 import click
@@ -24,15 +24,8 @@ RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/uv,id=uv \
     --mount=from=uv,source=/uv,target=/usr/bin/uv \
     --mount=type=bind,target=requirements_uv.txt,src=requirements_uv.txt \
     /usr/bin/uv \
-    pip install --python /opt/micromamba/envs/dev/bin/python $PIP_EXTRA \
+    pip install --python /opt/micromamba/envs/runtime/bin/python $PIP_EXTRA \
     --requirement requirements_uv.txt
-""")
-
-PIP_PYTHON_INSTALL_COMMAND_TEMPLATE = Template("""\
-RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/pip,id=pip \
-    --mount=type=bind,target=requirements_pip.txt,src=requirements_pip.txt \
-    /opt/micromamba/envs/dev/bin/python -m pip install $PIP_EXTRA \
-    --requirement requirements_pip.txt
 """)
 
 APT_INSTALL_COMMAND_TEMPLATE = Template(
@@ -46,7 +39,7 @@ RUN --mount=type=cache,sharing=locked,mode=0777,target=/var/cache/apt,id=apt \
 DOCKER_FILE_TEMPLATE = Template(
     """\
 #syntax=docker/dockerfile:1.5
-FROM ghcr.io/astral-sh/uv:0.2.13 as uv
+FROM ghcr.io/astral-sh/uv:0.2.37 as uv
 FROM mambaorg/micromamba:1.5.8-bookworm-slim as micromamba
 
 FROM $BASE_IMAGE
@@ -61,16 +54,20 @@ RUN chown -R flytekit /root && chown -R flytekit /home
 RUN --mount=type=cache,sharing=locked,mode=0777,target=/opt/micromamba/pkgs,\
 id=micromamba \
     --mount=from=micromamba,source=/usr/bin/micromamba,target=/usr/bin/micromamba \
-    /usr/bin/micromamba create -n dev --root-prefix /opt/micromamba \
+    micromamba config set use_lockfiles False && \
+    micromamba create -n runtime --root-prefix /opt/micromamba \
     -c conda-forge $CONDA_CHANNELS \
     python=$PYTHON_VERSION $CONDA_PACKAGES
 
-$UV_PYTHON_INSTALL_COMMAND
-$PIP_PYTHON_INSTALL_COMMAND
-
 # Configure user space
-ENV PATH="/opt/micromamba/envs/dev/bin:$$PATH"
-ENV FLYTE_SDK_RICH_TRACEBACKS=0 SSL_CERT_DIR=/etc/ssl/certs $ENV
+ENV PATH="/opt/micromamba/envs/runtime/bin:$$PATH" \
+    UV_LINK_MODE=copy \
+    UV_PRERELEASE=allow \
+    FLYTE_SDK_RICH_TRACEBACKS=0 \
+    SSL_CERT_DIR=/etc/ssl/certs \
+    $ENV
+
+$UV_PYTHON_INSTALL_COMMAND
 
 # Adds nvidia just in case it exists
 ENV PATH="$$PATH:/usr/local/nvidia/bin:/usr/local/cuda/bin" \
@@ -145,19 +142,8 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
     if not any(_is_flytekit(package) for package in requirements):
         requirements.append(get_flytekit_for_pypi())
 
-    uv_requirements = []
-
-    # uv does not support git + subdirectory, so we use pip to install them instead
-    pip_requirements = []
-
-    for requirement in requirements:
-        if "git" in requirement and "subdirectory" in requirement:
-            pip_requirements.append(requirement)
-        else:
-            uv_requirements.append(requirement)
-
     requirements_uv_path = tmp_dir / "requirements_uv.txt"
-    requirements_uv_path.write_text("\n".join(uv_requirements))
+    requirements_uv_path.write_text("\n".join(requirements))
 
     pip_extra_args = ""
 
@@ -168,14 +154,6 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
         pip_extra_args += " ".join(extra_urls)
 
     uv_python_install_command = UV_PYTHON_INSTALL_COMMAND_TEMPLATE.substitute(PIP_EXTRA=pip_extra_args)
-
-    if pip_requirements:
-        requirements_uv_path = tmp_dir / "requirements_pip.txt"
-        requirements_uv_path.write_text(os.linesep.join(pip_requirements))
-
-        pip_python_install_command = PIP_PYTHON_INSTALL_COMMAND_TEMPLATE.substitute(PIP_EXTRA=pip_extra_args)
-    else:
-        pip_python_install_command = ""
 
     env_dict = {"PYTHONPATH": "/root", _F_IMG_ID: image_spec.image_name()}
 
@@ -235,7 +213,6 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
     docker_content = DOCKER_FILE_TEMPLATE.substitute(
         PYTHON_VERSION=python_version,
         UV_PYTHON_INSTALL_COMMAND=uv_python_install_command,
-        PIP_PYTHON_INSTALL_COMMAND=pip_python_install_command,
         CONDA_PACKAGES=conda_packages_concat,
         CONDA_CHANNELS=conda_channels_concat,
         APT_INSTALL_COMMAND=apt_install_command,
@@ -275,7 +252,10 @@ class DefaultImageBuilder(ImageSpecBuilder):
     }
 
     def build_image(self, image_spec: ImageSpec) -> str:
-        return self._build_image(image_spec)
+        return self._build_image(
+            image_spec,
+            push=os.getenv("FLYTE_PUSH_IMAGE_SPEC", "True").lower() in ("true", "1"),
+        )
 
     def _build_image(self, image_spec: ImageSpec, *, push: bool = True) -> str:
         # For testing, set `push=False`` to just build the image locally and not push to
@@ -309,4 +289,4 @@ class DefaultImageBuilder(ImageSpecBuilder):
 
             concat_command = " ".join(command)
             click.secho(f"Run command: {concat_command} ", fg="blue")
-            subprocess.run(command, check=True)
+            run(command, check=True)

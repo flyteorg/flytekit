@@ -87,7 +87,7 @@ from flytekit.remote.remote_callable import RemoteEntity
 from flytekit.remote.remote_fs import get_flyte_fs
 from flytekit.tools.fast_registration import FastPackageOptions, fast_package
 from flytekit.tools.interactive import ipython_check
-from flytekit.tools.script_mode import _find_project_root, compress_scripts, hash_file
+from flytekit.tools.script_mode import _find_project_root, compress_scripts, get_all_modules, hash_file
 from flytekit.tools.translator import (
     FlyteControlPlaneEntity,
     FlyteLocalEntity,
@@ -1020,7 +1020,7 @@ class FlyteRemote(object):
                 )
             else:
                 archive_fname = pathlib.Path(os.path.join(tmp_dir, "script_mode.tar.gz"))
-                compress_scripts(source_path, str(archive_fname), module_name)
+                compress_scripts(source_path, str(archive_fname), get_all_modules(source_path, module_name))
                 md5_bytes, upload_native_url = self.upload_file(
                     archive_fname, project or self.default_project, domain or self.default_domain
                 )
@@ -2093,7 +2093,7 @@ class FlyteRemote(object):
         if node_id in node_mapping:
             execution._node = node_mapping[node_id]
         else:
-            raise Exception(f"Missing node from mapping: {node_id}")
+            raise ValueError(f"Missing node from mapping: {node_id}")
 
         # Get the node execution data
         node_execution_get_data_response = self.client.get_node_execution_data(execution.id)
@@ -2188,7 +2188,7 @@ class FlyteRemote(object):
                     return execution
             else:
                 logger.error(f"NE {execution} undeterminable, {type(execution._node)}, {execution._node}")
-                raise Exception(f"Node execution undeterminable, entity has type {type(execution._node)}")
+                raise ValueError(f"Node execution undeterminable, entity has type {type(execution._node)}")
 
         # Handle the case for gate nodes
         elif execution._node.gate_node is not None:
