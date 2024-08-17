@@ -62,10 +62,10 @@ changes to tar
 - finish deprecating serialize function
 - update comment
 - move compute of old digest and fname construction
-
 - update click help
-- move prints to debug, add click
 - add manual option checking
+
+- move prints to debug, add click
 """
 
 
