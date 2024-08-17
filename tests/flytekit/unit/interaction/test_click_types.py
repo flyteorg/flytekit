@@ -288,7 +288,7 @@ def test_nested_dataclass_type():
         w: Datum
         x: typing.List[Datum]
         y: typing.Dict[str, Datum] = field(default_factory=lambda: {"key": Datum(1)})
-        
+
 
     # typing.List[Datum]
     value = '[{ "w": 1 }]'
@@ -391,7 +391,7 @@ def test_dataclass_with_flyte_type_exception():
     from flytekit.types.directory import FlyteDirectory
     from flytekit.types.file import FlyteFile
     import os
-    
+
     DIR_NAME = os.path.dirname(os.path.realpath(__file__))
     parquet_file = os.path.join(DIR_NAME, "testdata/df.parquet")
 
@@ -406,4 +406,3 @@ def test_dataclass_with_flyte_type_exception():
 
     with pytest.raises(AttributeError):
         t.convert(value=value, param=None, ctx=None)
-
