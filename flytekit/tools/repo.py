@@ -25,33 +25,6 @@ class NoSerializableEntitiesError(Exception):
     pass
 
 
-def serialize(
-    pkgs: typing.List[str],
-    settings: SerializationSettings,
-    local_source_root: typing.Optional[str] = None,
-    options: typing.Optional[Options] = None,
-) -> typing.List[FlyteControlPlaneEntity]:
-    """
-    See :py:class:`flytekit.models.core.identifier.ResourceType` to match the trailing index in the file name with the
-    entity type.
-    :param options:
-    :param settings: SerializationSettings to be used
-    :param pkgs: Dot-delimited Python packages/subpackages to look into for serialization.
-    :param local_source_root: Where to start looking for the code.
-    """
-    settings.source_root = local_source_root
-    ctx = FlyteContextManager.current_context().with_serialization_settings(settings)
-    with FlyteContextManager.with_context(ctx) as ctx:
-        # Scan all modules. the act of loading populates the global singleton that contains all objects
-        with module_loader.add_sys_path(local_source_root):
-            click.secho(f"Loading packages {pkgs} under source root {local_source_root}", fg="yellow")
-            module_loader.just_load_modules(pkgs=pkgs)
-
-        registrable_entities = get_registrable_entities(ctx, options=options)
-        click.secho(f"Successfully serialized {len(registrable_entities)} flyte objects", fg="green")
-        return registrable_entities
-
-
 def serialize_load_only(
     pkgs: typing.List[str],
     settings: SerializationSettings,
@@ -106,7 +79,8 @@ def serialize_to_folder(
     """
     if folder is None:
         folder = "."
-    loaded_entities = serialize(pkgs, settings, local_source_root, options=options)
+    serialize_load_only(pkgs, settings, local_source_root)
+    loaded_entities = serialize_get_control_plane_entities(settings, local_source_root, options=options)
     persist_registrable_entities(loaded_entities, folder)
 
 
@@ -126,6 +100,10 @@ def package(
     :param fast: fast enabled implies source code is bundled
     :param deref_symlinks: if enabled then symlinks are dereferenced during packaging
     :param copy_style:
+
+    Temporarily, for fast register, specify both the fast arg as well as copy_style fast == True with
+    copy_style == None means use the old fast register tar'ring method.
+    In the future the fast bool will be removed, and copy_style == None will mean do not fast register.
     """
     if not serializable_entities:
         raise NoSerializableEntitiesError("Nothing to package")
@@ -164,6 +142,8 @@ def serialize_and_package(
 ):
     """
     Fist serialize and then package all entities
+    Temporarily for fast package, specify both the fast arg as well as copy_style.
+    fast == True with copy_style == None means use the old fast register tar'ring method.
     """
     serialize_load_only(pkgs, settings, source)
     serializable_entities = serialize_get_control_plane_entities(settings, source, options=options)

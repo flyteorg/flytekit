@@ -54,7 +54,6 @@ changes to tar
 - hook up the actual commands args
 - make each create a separate tar
 - have a separate path for old and new commands
-
 - finish deprecating serialize function
 - update comment
 """
