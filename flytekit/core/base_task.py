@@ -70,7 +70,7 @@ from flytekit.core.promise import (
 )
 from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
-from flytekit.core.utils import timeit
+from flytekit.core.utils import str2bool, timeit
 from flytekit.deck import DeckField
 from flytekit.interactive.constants import FLYTE_ENABLE_VSCODE_KEY
 from flytekit.loggers import logger
@@ -915,7 +915,7 @@ def decorate_python_task(task: PythonTask) -> PythonTask:
     """
     from flytekit.core.python_function_task import PythonFunctionTask
 
-    if isinstance(task, PythonFunctionTask) and os.getenv(FLYTE_ENABLE_VSCODE_KEY):
+    if isinstance(task, PythonFunctionTask) and str2bool(os.getenv(FLYTE_ENABLE_VSCODE_KEY)):
         """
         If the environment variable FLYTE_ENABLE_VSCODE is set to True, then the task is decorated with vscode
         functionality. This is useful for debugging the task in vscode.
