@@ -53,16 +53,18 @@ from flytekit.tools.repo import NoSerializableEntitiesError, serialize_and_packa
     is_flag=True,
     default=False,
     required=False,
-    help="This flag enables fast packaging, that allows `no container build` deploys of flyte workflows and tasks. "
-    "Note this needs additional configuration, refer to the docs.",
+    help="[Will be deprecated, see --copy] This flag enables fast packaging, that allows `no container build`"
+    " deploys of flyte workflows and tasks. You can specify --copy all/auto instead"
+    " Note this needs additional configuration, refer to the docs.",
 )
 @click.option(
     "--copy",
     required=False,
     type=click.Choice(["all", "auto", "none"], case_sensitive=False),
-    default="none",  # this will be changed to "all" after removing non-fast option
+    default=None,  # this will be changed to "none" after removing fast option
     callback=parse_copy,
-    help="Specify how and whether to use fast register",
+    help="[Beta] Specify how and whether to use fast register"
+    " 'all' will behave as the current fast flag copying all files, 'auto' copies only loaded Python modules",
 )
 @click.option(
     "-f",
@@ -125,6 +127,12 @@ def package(
     object contains the WorkflowTemplate, along with the relevant tasks for that workflow.
     This serialization step will set the name of the tasks to the fully qualified name of the task function.
     """
+    if copy == CopyFileDetection.TEMP_NO_COPY:
+        raise ValueError("--copy none doesn't need to be specified, package by default does not copy files")
+    elif copy == CopyFileDetection.ALL or copy == CopyFileDetection.LOADED_MODULES:
+        # for those migrating, who only set --copy all/auto but don't have --fast set.
+        fast = True
+
     if os.path.exists(output) and not force:
         raise click.BadParameter(
             click.style(

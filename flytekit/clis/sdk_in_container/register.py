@@ -98,15 +98,16 @@ the root of your project, it finds the first folder that does not have a ``__ini
     "--non-fast",
     default=False,
     is_flag=True,
-    help="Skip zipping and uploading the package",
+    help="[Will be deprecated, see --copy] Skip zipping and uploading the package. You can specify --copy none instead",
 )
 @click.option(
     "--copy",
     required=False,
     type=click.Choice(["all", "auto", "none"], case_sensitive=False),
-    default="none",  # this will be changed to "all" after removing non-fast option
+    default=None,  # this will be changed to "all" after removing non-fast option
     callback=parse_copy,
-    help="Specify how and whether to use fast register",
+    help="[Beta] Specify how and whether to use fast register"
+    " 'all' is the current behavior copying all files from root, 'auto' copies only loaded Python modules",
 )
 @click.option(
     "--dry-run",
@@ -163,7 +164,17 @@ def register(
     see help
     """
 
-    # Add error handling for fast/copy conflicts
+    # Error handling for non-fast/copy conflicts
+    if copy == CopyFileDetection.TEMP_NO_COPY:
+        non_fast = True
+        # Set this to None because downstream logic currently detects None to mean old logic.
+        copy = None
+    elif copy == CopyFileDetection.ALL:
+        if non_fast:
+            raise ValueError("Conflicting options: cannot specify both --non-fast and --copy all")
+    elif copy == CopyFileDetection.LOADED_MODULES:
+        if non_fast:
+            raise ValueError("Conflicting options: cannot specify both --non-fast and --copy auto")
 
     pkgs = ctx.obj[constants.CTX_PACKAGES]
     if not pkgs:
@@ -172,7 +183,7 @@ def register(
         raise ValueError("Unimplemented, just specify pkgs like folder/files as args at the end of the command")
 
     if non_fast and not version:
-        raise ValueError("Version is a required parameter in case --non-fast is specified.")
+        raise ValueError("Version is a required parameter in case --non-fast/--copy none is specified.")
 
     if len(package_or_module) == 0:
         display_help_with_error(

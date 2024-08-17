@@ -29,6 +29,11 @@ FAST_FILEENDING = ".tar.gz"
 class CopyFileDetection(Enum):
     LOADED_MODULES = 1
     ALL = 2
+    # This is a temporary option to be removed in the future. In the future this value of the enum should simply
+    # be Python None. Here now to distinguish between users explicitly setting --copy none and not setting the flag.
+    # This is only used for register, not for package or run because run doesn't have a no-fast-register option and
+    # package is by default non-fast.
+    TEMP_NO_COPY = 3
 
 
 @dataclass(frozen=True)
@@ -56,6 +61,11 @@ changes to tar
 - have a separate path for old and new commands
 - finish deprecating serialize function
 - update comment
+- move compute of old digest and fname construction
+
+- update click help
+- move prints to debug, add click
+- add manual option checking
 """
 
 
@@ -86,13 +96,6 @@ def fast_package(
 
     digest = compute_digest(source, ignore.is_ignored)
 
-    # Compute where the archive should be written
-    archive_fname = f"{FAST_PREFIX}{digest}{FAST_FILEENDING}"
-    if output_dir is None:
-        output_dir = tempfile.mkdtemp()
-        click.secho(f"No output path provided, using a temporary directory at {output_dir} instead", fg="yellow")
-    archive_fname = os.path.join(output_dir, archive_fname)
-
     # This function is temporarily split into two, to support the creation of the tar file in both the old way,
     # copying the underlying items in the source dir by doing a listdir, and the new way, relying on a list of files.
     if options and (
@@ -107,6 +110,13 @@ def fast_package(
             ls, ls_digest = ls_files(str(source), [], deref_symlinks, ignore)
 
         print(f"Digest check: old {digest} ==? new {ls_digest} -- {digest == ls_digest}")
+
+        # Compute where the archive should be written
+        archive_fname = f"{FAST_PREFIX}{ls_digest}{FAST_FILEENDING}"
+        if output_dir is None:
+            output_dir = tempfile.mkdtemp()
+            click.secho(f"No output path provided, using a temporary directory at {output_dir} instead", fg="yellow")
+        archive_fname = os.path.join(output_dir, archive_fname)
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             tar_path = os.path.join(tmp_dir, "tmp.tar")
@@ -126,8 +136,15 @@ def fast_package(
                 with open(tar_path, "rb") as tar_file:
                     gzipped.write(tar_file.read())
 
-    # Original tar command
+    # Original tar command - This condition to be removed in the future.
     else:
+        # Compute where the archive should be written
+        archive_fname = f"{FAST_PREFIX}{digest}{FAST_FILEENDING}"
+        if output_dir is None:
+            output_dir = tempfile.mkdtemp()
+            click.secho(f"No output path provided, using a temporary directory at {output_dir} instead", fg="yellow")
+        archive_fname = os.path.join(output_dir, archive_fname)
+
         with tempfile.TemporaryDirectory() as tmp_dir:
             tar_path = os.path.join(tmp_dir, "tmp.tar")
             with tarfile.open(tar_path, "w", dereference=deref_symlinks) as tar:

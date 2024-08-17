@@ -89,18 +89,20 @@ class RunLevelParams(PyFlyteParams):
             is_flag=True,
             default=False,
             show_default=True,
-            help="Copy all files in the source root directory to the destination directory",
+            help="[Will be deprecated, see --copy] Copy all files in the source root directory to"
+            " the destination directory. You can specify --copy all instead",
         )
     )
     copy: typing.Optional[CopyFileDetection] = make_click_option_field(
         click.Option(
             param_decls=["--copy"],
             required=False,
-            default="none",
-            type=click.Choice(["all", "auto", "none"], case_sensitive=False),
+            default=None,  # this will change to "auto" after removing copy_all option
+            type=click.Choice(["all", "auto"], case_sensitive=False),
             show_default=True,
             callback=parse_copy,
-            help="Specifies how to detect which files to copy into image",
+            help="[Beta] Specifies how to detect which files to copy into image."
+            " 'all' will behave as the current copy-all flag, 'auto' copies only loaded Python modules",
         )
     )
     image_config: ImageConfig = make_click_option_field(

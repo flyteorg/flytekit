@@ -69,6 +69,8 @@ def parse_copy(ctx, param, value) -> Optional[CopyFileDetection]:
         copy_style = CopyFileDetection.LOADED_MODULES
     elif value == "all":
         copy_style = CopyFileDetection.ALL
+    elif value == "none":
+        copy_style = CopyFileDetection.TEMP_NO_COPY
     else:
         copy_style = None
 
