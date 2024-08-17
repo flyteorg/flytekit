@@ -1,9 +1,11 @@
 import os
+import typing
 
 import rich_click as click
 
 from flytekit.clis.helpers import display_help_with_error
 from flytekit.clis.sdk_in_container import constants
+from flytekit.clis.sdk_in_container.helpers import parse_copy
 from flytekit.configuration import (
     DEFAULT_RUNTIME_PYTHON_INTERPRETER,
     FastSerializationSettings,
@@ -11,6 +13,7 @@ from flytekit.configuration import (
     SerializationSettings,
 )
 from flytekit.interaction.click_types import key_value_callback
+from flytekit.tools.fast_registration import CopyFileDetection
 from flytekit.tools.repo import NoSerializableEntitiesError, serialize_and_package
 
 
@@ -52,6 +55,14 @@ from flytekit.tools.repo import NoSerializableEntitiesError, serialize_and_packa
     required=False,
     help="This flag enables fast packaging, that allows `no container build` deploys of flyte workflows and tasks. "
     "Note this needs additional configuration, refer to the docs.",
+)
+@click.option(
+    "--copy",
+    required=False,
+    type=click.Choice(["all", "auto", "none"], case_sensitive=False),
+    default="none",  # this will be changed to "all" after removing non-fast option
+    callback=parse_copy,
+    help="Specify how and whether to use fast register",
 )
 @click.option(
     "-f",
@@ -100,6 +111,7 @@ def package(
     source,
     output,
     force,
+    copy: typing.Optional[CopyFileDetection],
     fast,
     in_container_source_path,
     python_interpreter,
@@ -136,6 +148,6 @@ def package(
         display_help_with_error(ctx, "No packages to scan for flyte entities. Aborting!")
 
     try:
-        serialize_and_package(pkgs, serialization_settings, source, output, fast, deref_symlinks)
+        serialize_and_package(pkgs, serialization_settings, source, output, fast, deref_symlinks, copy_style=copy)
     except NoSerializableEntitiesError:
         click.secho(f"No flyte objects found in packages {pkgs}", fg="yellow")

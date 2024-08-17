@@ -116,6 +116,7 @@ def package(
     output: str = "./flyte-package.tgz",
     fast: bool = False,
     deref_symlinks: bool = False,
+    copy_style: typing.Optional[fast_registration.CopyFileDetection] = None,
 ):
     """
     Package the given entities and the source code (if fast is enabled) into a package with the given name in output
@@ -124,6 +125,7 @@ def package(
     :param output: output package name with suffix
     :param fast: fast enabled implies source code is bundled
     :param deref_symlinks: if enabled then symlinks are dereferenced during packaging
+    :param copy_style:
     """
     if not serializable_entities:
         raise NoSerializableEntitiesError("Nothing to package")
@@ -137,7 +139,9 @@ def package(
             if os.path.abspath(output).startswith(os.path.abspath(source)) and os.path.exists(output):
                 click.secho(f"{output} already exists within {source}, deleting and re-creating it", fg="yellow")
                 os.remove(output)
-            archive_fname = fast_registration.fast_package(source, output_tmpdir, deref_symlinks)
+            archive_fname = fast_registration.fast_package(
+                source, output_tmpdir, deref_symlinks, fast_registration.FastPackageOptions([], copy_style=copy_style)
+            )
             click.secho(f"Fast mode enabled: compressed archive {archive_fname}", dim=True)
 
         with tarfile.open(output, "w:gz") as tar:
@@ -156,13 +160,14 @@ def serialize_and_package(
     fast: bool = False,
     deref_symlinks: bool = False,
     options: typing.Optional[Options] = None,
+    copy_style: typing.Optional[fast_registration.CopyFileDetection] = None,
 ):
     """
     Fist serialize and then package all entities
     """
-    # copy and remove as well.
-    serializable_entities = serialize(pkgs, settings, source, options=options)
-    package(serializable_entities, source, output, fast, deref_symlinks)
+    serialize_load_only(pkgs, settings, source)
+    serializable_entities = serialize_get_control_plane_entities(settings, source, options=options)
+    package(serializable_entities, source, output, fast, deref_symlinks, copy_style)
 
 
 def find_common_root(
@@ -273,6 +278,10 @@ def register(
     activate_launchplans: bool = False,
     skip_errors: bool = False,
 ):
+    """
+    Temporarily, for fast register, specify both the fast arg as well as copy_style.
+    fast == True with copy_style == None means use the old fast register tar'ring method.
+    """
     detected_root = find_common_root(package_or_module)
     click.secho(f"Detected Root {detected_root}, using this to create deployable package...", fg="yellow")
 
@@ -283,10 +292,9 @@ def register(
         domain=domain,
         version=version,
         image_config=image_config,
-        fast_serialization_settings=None,
+        fast_serialization_settings=None,  # should probably add incomplete fast settings
         env=env,
     )
-    # should probably add incomplete fast settings
 
     if not version and not fast:
         click.secho("Version is required.", fg="red")
@@ -307,7 +315,7 @@ def register(
     #     version, upload native url, hash digest, etc.).
     serialize_load_only(pkgs_and_modules, serialization_settings, str(detected_root))
 
-    # Move the fast registration stuff here
+    # Fast registration is handled after module loading
     if fast:
         md5_bytes, native_url = remote.fast_package(
             detected_root,
@@ -315,12 +323,12 @@ def register(
             output,
             options=fast_registration.FastPackageOptions([], copy_style=copy_style),
         )
+        # update serialization settings from fast register output
         fast_serialization_settings = FastSerializationSettings(
             enabled=True,
             destination_dir=destination_dir,
             distribution_location=native_url,
         )
-        # update serialization settings from fast
         serialization_settings.fast_serialization_settings = fast_serialization_settings
         if not version:
             version = remote._version_from_hash(md5_bytes, serialization_settings, service_account, raw_data_prefix)  # noqa

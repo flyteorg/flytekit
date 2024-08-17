@@ -39,7 +39,7 @@ class FastPackageOptions:
 
     ignores: list[Ignore]
     keep_default_ignores: bool = True
-    copy_style: CopyFileDetection = CopyFileDetection.LOADED_MODULES
+    copy_style: Optional[CopyFileDetection] = None
 
 
 """
@@ -50,14 +50,13 @@ changes to tar
 - will now add files one at a time.
 - the list will compute the list and the digest
 - could have used tar list but seems less powerful, also does more than we want.
-still need to
-- hook up the actual commands args
 - in order to support auto, we have to load all the modules first, then trigger copying, then serialize post-upload
+- hook up the actual commands args
 - make each create a separate tar
 - have a separate path for old and new commands
-process
-- like to beta and update docs and test before deprecate
-- so basically have to preserve both styles of code - worth it to do this? or just a long beta.
+
+- finish deprecating serialize function
+- update comment
 """
 
 
@@ -66,7 +65,6 @@ def fast_package(
     output_dir: os.PathLike,
     deref_symlinks: bool = False,
     options: Optional[FastPackageOptions] = None,
-    # use_old: bool = False,
 ) -> os.PathLike:
     """
     Takes a source directory and packages everything not covered by common ignores into a tarball
@@ -74,6 +72,7 @@ def fast_package(
     :param os.PathLike source:
     :param os.PathLike output_dir:
     :param bool deref_symlinks: Enables dereferencing symlinks when packaging directory
+    :param options: The CopyFileDetection option set to None
     :return os.PathLike:
     """
     default_ignores = [GitIgnore, DockerIgnore, StandardIgnore, FlyteIgnore]
@@ -87,53 +86,65 @@ def fast_package(
     ignore = IgnoreGroup(source, ignores)
 
     digest = compute_digest(source, ignore.is_ignored)
-    archive_fname = f"{FAST_PREFIX}{digest}{FAST_FILEENDING}"
 
+    # Compute where the archive should be written
+    archive_fname = f"{FAST_PREFIX}{digest}{FAST_FILEENDING}"
     if output_dir is None:
         output_dir = tempfile.mkdtemp()
         click.secho(f"No output path provided, using a temporary directory at {output_dir} instead", fg="yellow")
-
     archive_fname = os.path.join(output_dir, archive_fname)
 
-    if options and options.copy_style == CopyFileDetection.LOADED_MODULES:
-        sys_modules = list(sys.modules.values())
-        ls, ls_digest = ls_files(str(source), sys_modules, deref_symlinks, ignore)
+    # This function is temporarily split into two, to support the creation of the tar file in both the old way,
+    # copying the underlying items in the source dir by doing a listdir, and the new way, relying on a list of files.
+    if options and (
+        options.copy_style == CopyFileDetection.LOADED_MODULES or options.copy_style == CopyFileDetection.ALL
+    ):
+        if options.copy_style == CopyFileDetection.LOADED_MODULES:
+            # This is the 'auto' semantic by default used for pyflyte run, it only copies loaded .py files.
+            sys_modules = list(sys.modules.values())
+            ls, ls_digest = ls_files(str(source), sys_modules, deref_symlinks, ignore)
+        else:
+            # This triggers listing of all files, mimicking the old way of creating the tar file.
+            ls, ls_digest = ls_files(str(source), [], deref_symlinks, ignore)
+
+        print(f"Digest check: old {digest} ==? new {ls_digest} -- {digest == ls_digest}")
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tar_path = os.path.join(tmp_dir, "tmp.tar")
+            print(f"test tmp dir: {tar_path=}")
+            with tarfile.open(tar_path, "w", dereference=True) as tar:
+                for ws_file in ls:
+                    rel_path = os.path.relpath(ws_file, start=source)
+                    tar.add(
+                        os.path.join(source, ws_file),
+                        arcname=rel_path,
+                        filter=lambda x: tar_strip_file_attributes(x),
+                    )
+                print("New tar file contents: ======================")
+                tar.list(verbose=True)
+
+            with gzip.GzipFile(filename=archive_fname, mode="wb", mtime=0) as gzipped:
+                with open(tar_path, "rb") as tar_file:
+                    gzipped.write(tar_file.read())
+
+    # Original tar command
     else:
-        ls, ls_digest = ls_files(str(source), [], deref_symlinks, ignore)
-    print(f"Digest check: old {digest} ==? new {ls_digest} -- {digest == ls_digest}")
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tar_path = os.path.join(tmp_dir, "tmp.tar")
+            with tarfile.open(tar_path, "w", dereference=deref_symlinks) as tar:
+                files: typing.List[str] = os.listdir(source)
+                for ws_file in files:
+                    tar.add(
+                        os.path.join(source, ws_file),
+                        arcname=ws_file,
+                        filter=lambda x: ignore.tar_filter(tar_strip_file_attributes(x)),
+                    )
+                print("Old tar file contents: ======================")
+                tar.list(verbose=True)
 
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        tar_path = os.path.join(tmp_dir, "tmp.tar")
-        print(f"test tmp dir: {tar_path=}")
-        with tarfile.open(tar_path, "w", dereference=True) as tar:
-            for ws_file in ls:
-                rel_path = os.path.relpath(ws_file, start=source)
-                # not adding explicit folders, but extracting okay.
-                tar.add(
-                    os.path.join(source, ws_file),
-                    arcname=rel_path,
-                    filter=lambda x: tar_strip_file_attributes(x),
-                )
-            print("New tar file contents: ======================")
-            tar.list(verbose=True)
-        # breakpoint()
-
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        tar_path = os.path.join(tmp_dir, "tmp.tar")
-        with tarfile.open(tar_path, "w", dereference=deref_symlinks) as tar:
-            files: typing.List[str] = os.listdir(source)
-            for ws_file in files:
-                tar.add(
-                    os.path.join(source, ws_file),
-                    arcname=ws_file,
-                    filter=lambda x: ignore.tar_filter(tar_strip_file_attributes(x)),
-                )
-            print("Old tar file contents: ======================")
-            tar.list(verbose=True)
-        # breakpoint()
-        with gzip.GzipFile(filename=archive_fname, mode="wb", mtime=0) as gzipped:
-            with open(tar_path, "rb") as tar_file:
-                gzipped.write(tar_file.read())
+            with gzip.GzipFile(filename=archive_fname, mode="wb", mtime=0) as gzipped:
+                with open(tar_path, "rb") as tar_file:
+                    gzipped.write(tar_file.read())
 
     return archive_fname
 

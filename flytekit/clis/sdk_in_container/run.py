@@ -16,7 +16,10 @@ from rich.progress import Progress
 from typing_extensions import get_origin
 
 from flytekit import Annotations, FlyteContext, FlyteContextManager, Labels, Literal
-from flytekit.clis.sdk_in_container.helpers import patch_image_config
+from flytekit.clis.sdk_in_container.helpers import (
+    parse_copy,
+    patch_image_config,
+)
 from flytekit.clis.sdk_in_container.utils import (
     PyFlyteParams,
     domain_option,
@@ -44,6 +47,7 @@ from flytekit.models.types import SimpleType
 from flytekit.remote import FlyteLaunchPlan, FlyteRemote, FlyteTask, FlyteWorkflow, remote_fs
 from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.tools import module_loader
+from flytekit.tools.fast_registration import CopyFileDetection, FastPackageOptions
 from flytekit.tools.script_mode import _find_project_root, compress_scripts, get_all_modules
 from flytekit.tools.translator import Options
 
@@ -86,6 +90,17 @@ class RunLevelParams(PyFlyteParams):
             default=False,
             show_default=True,
             help="Copy all files in the source root directory to the destination directory",
+        )
+    )
+    copy: typing.Optional[CopyFileDetection] = make_click_option_field(
+        click.Option(
+            param_decls=["--copy"],
+            required=False,
+            default="none",
+            type=click.Choice(["all", "auto", "none"], case_sensitive=False),
+            show_default=True,
+            callback=parse_copy,
+            help="Specifies how to detect which files to copy into image",
         )
     )
     image_config: ImageConfig = make_click_option_field(
@@ -598,6 +613,7 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
             image_config = patch_image_config(config_file, image_config)
 
             with context_manager.FlyteContextManager.with_context(remote.context.new_builder()):
+                fast_package_options = FastPackageOptions([], copy_style=run_level_params.copy)
                 remote_entity = remote.register_script(
                     entity,
                     project=run_level_params.project,
@@ -607,6 +623,7 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
                     source_path=run_level_params.computed_params.project_root,
                     module_name=run_level_params.computed_params.module,
                     copy_all=run_level_params.copy_all,
+                    fast_package_options=fast_package_options,
                 )
 
                 run_remote(

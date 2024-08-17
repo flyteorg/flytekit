@@ -7,6 +7,7 @@ from flytekit.clis.sdk_in_container.constants import CTX_CONFIG_FILE
 from flytekit.configuration import ImageConfig
 from flytekit.configuration.plugin import get_plugin
 from flytekit.remote.remote import FlyteRemote
+from flytekit.tools.fast_registration import CopyFileDetection
 
 FLYTE_REMOTE_INSTANCE_KEY = "flyte_remote"
 
@@ -61,3 +62,14 @@ def patch_image_config(config_file: Optional[str], image_config: ImageConfig) ->
             if addl.name not in additional_image_names:
                 new_additional_images.append(addl)
     return replace(image_config, default_image=new_default, images=new_additional_images)
+
+
+def parse_copy(ctx, param, value) -> Optional[CopyFileDetection]:
+    if value == "auto":
+        copy_style = CopyFileDetection.LOADED_MODULES
+    elif value == "all":
+        copy_style = CopyFileDetection.ALL
+    else:
+        copy_style = None
+
+    return copy_style

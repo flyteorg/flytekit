@@ -5,7 +5,11 @@ import rich_click as click
 
 from flytekit.clis.helpers import display_help_with_error
 from flytekit.clis.sdk_in_container import constants
-from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_click_context, patch_image_config
+from flytekit.clis.sdk_in_container.helpers import (
+    get_and_save_remote_with_click_context,
+    parse_copy,
+    patch_image_config,
+)
 from flytekit.clis.sdk_in_container.utils import domain_option_dec, project_option_dec
 from flytekit.configuration import ImageConfig
 from flytekit.configuration.default_images import DefaultImages
@@ -100,8 +104,9 @@ the root of your project, it finds the first folder that does not have a ``__ini
     "--copy",
     required=False,
     type=click.Choice(["all", "auto", "none"], case_sensitive=False),
-    default="auto",
-    help="Skip zipping and uploading the package",
+    default="none",  # this will be changed to "all" after removing non-fast option
+    callback=parse_copy,
+    help="Specify how and whether to use fast register",
 )
 @click.option(
     "--dry-run",
@@ -147,7 +152,7 @@ def register(
     version: typing.Optional[str],
     deref_symlinks: bool,
     non_fast: bool,
-    copy: str,
+    copy: typing.Optional[CopyFileDetection],
     package_or_module: typing.Tuple[str],
     dry_run: bool,
     activate_launchplans: bool,
@@ -157,14 +162,8 @@ def register(
     """
     see help
     """
-    # move to callback later
-    print(f"Register copy {copy} ----")
-    if copy == "auto":
-        copy_style = CopyFileDetection.LOADED_MODULES
-    elif copy == "all":
-        copy_style = CopyFileDetection.ALL
-    else:
-        copy_style = None
+
+    # Add error handling for fast/copy conflicts
 
     pkgs = ctx.obj[constants.CTX_PACKAGES]
     if not pkgs:
@@ -208,7 +207,7 @@ def register(
         version,
         deref_symlinks,
         fast=not non_fast,
-        copy_style=copy_style,
+        copy_style=copy,
         package_or_module=package_or_module,
         remote=remote,
         env=env,
