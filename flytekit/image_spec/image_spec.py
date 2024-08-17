@@ -89,6 +89,7 @@ class ImageSpec:
             "pip_extra_index_url",
             "entrypoint",
             "commands",
+            "docker_commands",
         ]
         for parameter in parameters_str_list:
             attr = getattr(self, parameter)
