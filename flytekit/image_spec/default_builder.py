@@ -38,7 +38,7 @@ RUN --mount=type=cache,sharing=locked,mode=0777,target=/var/cache/apt,id=apt \
 
 DOCKER_FILE_TEMPLATE = Template("""\
 #syntax=docker/dockerfile:1.5
-FROM ghcr.io/astral-sh/uv:0.2.35 as uv
+FROM ghcr.io/astral-sh/uv:0.2.37 as uv
 FROM mambaorg/micromamba:1.5.8-bookworm-slim as micromamba
 
 FROM $BASE_IMAGE
