@@ -74,7 +74,7 @@ You can also use the ``--inputs-file`` flag to pass either a JSON or YAML file a
   pyflyte run workflow.py my_workflow --inputs-file inputs.json
   cat inputs.json | pyflyte run workflow.py my_workflow
 
-input.json
+inputs.json
 
 .. code-block:: json
 
