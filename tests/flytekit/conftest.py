@@ -16,10 +16,3 @@ def configure_plugin():
 @pytest.fixture(scope="module", autouse=True)
 def set_default_envs():
     os.environ["FLYTE_EXIT_ON_USER_EXCEPTION"] = "0"
-
-
-@pytest.fixture(scope="module")
-def pytest_prefix():
-    # pytest-xdist uses `__channelexec__` as the top-level module
-    running_xdist = os.environ.get("PYTEST_XDIST_WORKER") is not None
-    return "__channelexec__." if running_xdist else ""

@@ -736,7 +736,8 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 try:
                     native_outputs = self.execute(**native_inputs)
                 except Exception as e:
-                    if FlyteContextManager().current_context().execution_state.is_local_execution():
+                    ctx = FlyteContextManager().current_context()
+                    if ctx.execution_state and ctx.execution_state.is_local_execution():
                         # If the task is being executed locally, we want to raise the original exception
                         e.args = (f"Error encountered while executing '{self.name}':\n  {e.args[0]}",)
                         raise
