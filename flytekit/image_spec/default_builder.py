@@ -19,27 +19,26 @@ from flytekit.image_spec.image_spec import (
 )
 from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
 
-UV_PYTHON_INSTALL_COMMAND_TEMPLATE = Template("""\
+UV_PYTHON_INSTALL_COMMAND_TEMPLATE = Template(
+    """\
 RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/uv,id=uv \
     --mount=from=uv,source=/uv,target=/usr/bin/uv \
     --mount=type=bind,target=requirements_uv.txt,src=requirements_uv.txt \
     /usr/bin/uv \
     pip install --python /opt/micromamba/envs/runtime/bin/python $PIP_EXTRA \
     --requirement requirements_uv.txt
-""")
-
-APT_INSTALL_COMMAND_TEMPLATE = Template(
-    """\
-RUN --mount=type=cache,sharing=locked,mode=0777,target=/var/cache/apt,id=apt \
-    apt-get update && apt-get install -y --no-install-recommends \
-    $APT_PACKAGES
 """
 )
 
-DOCKER_FILE_TEMPLATE = Template(
-    """\
+APT_INSTALL_COMMAND_TEMPLATE = Template("""\
+RUN --mount=type=cache,sharing=locked,mode=0777,target=/var/cache/apt,id=apt \
+    apt-get update && apt-get install -y --no-install-recommends \
+    $APT_PACKAGES
+""")
+
+DOCKER_FILE_TEMPLATE = Template("""\
 #syntax=docker/dockerfile:1.5
-FROM ghcr.io/astral-sh/uv:0.2.35 as uv
+FROM ghcr.io/astral-sh/uv:0.2.37 as uv
 FROM mambaorg/micromamba:1.5.8-bookworm-slim as micromamba
 
 FROM $BASE_IMAGE
@@ -84,8 +83,7 @@ SHELL ["/bin/bash", "-c"]
 USER flytekit
 RUN mkdir -p $$HOME && \
     echo "export PATH=$$PATH" >> $$HOME/.profile
-"""
-)
+""")
 
 
 def get_flytekit_for_pypi():
