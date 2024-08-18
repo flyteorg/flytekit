@@ -914,7 +914,7 @@ class FlyteRemote(object):
         deref_symlinks: bool = True,
         output: str = None,
         options: typing.Optional[FastPackageOptions] = None,
-    ) -> typing.Tuple[bytes, str]:        
+    ) -> typing.Tuple[bytes, str]:
         """
         Packages the given paths into an installable zip and returns the md5_bytes and the URL of the uploaded location
         :param root: path to the root of the package system that should be uploaded
