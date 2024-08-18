@@ -44,7 +44,6 @@ from typing import (
 from flyteidl.core import artifact_id_pb2 as art_id
 from flyteidl.core import tasks_pb2
 
-import flytekit
 from flytekit.configuration import LocalConfig, SerializationSettings
 from flytekit.core.artifact_utils import (
     idl_partitions_from_dict,
@@ -737,7 +736,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 try:
                     native_outputs = self.execute(**native_inputs)
                 except Exception as e:
-                    if flytekit.FlyteContextManager().current_context().execution_state.is_local_execution():
+                    if FlyteContextManager().current_context().execution_state.is_local_execution():
                         # If the task is being executed locally, we want to raise the original exception
                         e.args = (f"Error encountered while executing '{self.name}':\n  {e.args[0]}",)
                         raise

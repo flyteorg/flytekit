@@ -92,8 +92,7 @@ def _dispatch_execute(
         idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
 
         # Step2
-        # Decorate the dispatch execute function before calling it, this wraps all exceptions into one
-        # of the FlyteScopedExceptions
+        # Invoke task - dispatch_execute
         outputs = task_def.dispatch_execute(ctx, idl_input_literals)
         if inspect.iscoroutine(outputs):
             # Handle eager-mode (async) tasks
@@ -141,7 +140,7 @@ def _dispatch_execute(
                 _execution_models.ExecutionError.ErrorKind.USER,
             )
         )
-        logger.error(f"Exception when executing task {task_def.name}, reason {str(e)}")
+        logger.error(f"Exception when executing task {task_def.name or task_def.id.name}, reason {str(e)}")
         logger.error("!! Begin User Error Captured by Flyte !!")
         logger.error(exc_str)
         logger.error("!! End Error Captured by Flyte !!")
@@ -181,7 +180,12 @@ def _dispatch_execute(
 
 
 def get_traceback_str(e: Exception) -> str:
-    tb = e.__cause__.__traceback__ if e.__cause__ else e.__traceback__
+    if isinstance(e, FlyteUserRuntimeException):
+        # If the exception is a user exception, we want to capture the traceback of the exception that was raised by the
+        # user code, not the Flyte internals.
+        tb = e.__cause__.__traceback__ if e.__cause__ else e.__traceback__
+    else:
+        tb = e.__traceback__
     lines = traceback.format_tb(tb)
     lines = [line.rstrip() for line in lines]
     tb_str = "\n    ".join(lines)

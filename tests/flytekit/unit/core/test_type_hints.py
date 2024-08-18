@@ -1688,7 +1688,7 @@ def test_failure_node():
 
 
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
-def test_union_type():
+def test_union_type(pytest_prefix):
     import pandas as pd
 
     from flytekit.types.schema import FlyteSchema
@@ -1722,14 +1722,10 @@ def test_union_type():
     def wf2(a: typing.Union[int, str]) -> typing.Union[int, str]:
         return t2(a=a)
 
-    # pytest-xdist uses `__channelexec__` as the top-level module
-    running_xdist = os.environ.get("PYTEST_XDIST_WORKER") is not None
-    prefix = "__channelexec__." if running_xdist else ""
-
     with pytest.raises(
         TypeError,
         match=re.escape(
-            f"Error encountered while converting inputs of '{prefix}tests.flytekit.unit.core.test_type_hints.t2':\n"
+            f"Error encountered while converting inputs of '{pytest_prefix}tests.flytekit.unit.core.test_type_hints.t2':\n"
             '  Cannot convert from [Flyte Serialized object: Type: <Literal> Value: <scalar { union { value { scalar { primitive { string_value: "2" } } } '
             'type { simple: STRING structure { tag: "str" } } } }>] to typing.Union[float, dict] (using tag str)'
         ),
