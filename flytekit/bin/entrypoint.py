@@ -378,9 +378,8 @@ def _execute_task(
     ) as ctx:
         import sys
 
-        working_dir = os.getcwd()
-        if all(os.path.realpath(path) != working_dir for path in sys.path):
-            sys.path.append(working_dir)
+        if all(os.path.realpath(path) != dynamic_dest_dir for path in sys.path):
+            sys.path.append(dynamic_dest_dir)
         resolver_obj = load_object_from_module(resolver)
         # Use the resolver to load the actual task object
         _task_def = resolver_obj.load_task(loader_args=resolver_args)
