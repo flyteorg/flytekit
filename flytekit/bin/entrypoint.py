@@ -378,7 +378,7 @@ def _execute_task(
     ) as ctx:
         import sys
 
-        working_dir=os.getcwd()
+        working_dir = os.getcwd()
         if all(os.path.realpath(path) != working_dir for path in sys.path):
             sys.path.append(working_dir)
         resolver_obj = load_object_from_module(resolver)
