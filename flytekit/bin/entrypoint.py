@@ -6,6 +6,7 @@ import os
 import pathlib
 import signal
 import subprocess
+import sys
 import tempfile
 import traceback
 from sys import exit
@@ -376,8 +377,6 @@ def _execute_task(
         dynamic_addl_distro,
         dynamic_dest_dir,
     ) as ctx:
-        import sys
-
         working_dir = os.getcwd()
         if all(os.path.realpath(path) != working_dir for path in sys.path):
             sys.path.append(working_dir)
@@ -429,6 +428,9 @@ def _execute_map_task(
     with setup_execution(
         raw_output_data_prefix, checkpoint_path, prev_checkpoint, dynamic_addl_distro, dynamic_dest_dir
     ) as ctx:
+        working_dir = os.getcwd()
+        if all(os.path.realpath(path) != working_dir for path in sys.path):
+            sys.path.append(working_dir)
         task_index = _compute_array_job_index()
         mtr = load_object_from_module(resolver)()
         map_task = mtr.load_task(loader_args=resolver_args, max_concurrency=max_concurrency)
