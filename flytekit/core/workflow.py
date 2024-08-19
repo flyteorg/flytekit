@@ -47,7 +47,11 @@ from flytekit.core.reference_entity import ReferenceEntity, WorkflowReference
 from flytekit.core.tracker import extract_task_module
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions import scopes as exception_scopes
-from flytekit.exceptions.user import FlyteValidationException, FlyteValueException
+from flytekit.exceptions.user import (
+    FlyteFailureNodeInputMismatchException,
+    FlyteValidationException,
+    FlyteValueException,
+)
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
@@ -689,6 +693,8 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         ) as inner_comp_ctx:
             # Now lets compile the failure-node if it exists
             if self.on_failure:
+                if self.on_failure.python_interface.inputs != self.python_interface.inputs:
+                    raise FlyteFailureNodeInputMismatchException(self.on_failure, self)
                 c = wf_args.copy()
                 exception_scopes.user_entry_point(self.on_failure)(**c)
                 inner_nodes = None

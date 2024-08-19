@@ -33,7 +33,7 @@ from flytekit.core.task import TaskMetadata, task
 from flytekit.core.testing import patch, task_mock
 from flytekit.core.type_engine import RestrictedTypeError, SimpleTransformer, TypeEngine
 from flytekit.core.workflow import workflow
-from flytekit.exceptions.user import FlyteValidationException
+from flytekit.exceptions.user import FlyteValidationException, FlyteFailureNodeInputMismatchException
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import types as _core_types
 from flytekit.models.interface import Parameter
@@ -1635,6 +1635,7 @@ def test_error_messages():
     ):
         foo4()
 
+
 def test_failure_node():
     @task
     def run(a: int, b: str) -> typing.Tuple[int, str]:
@@ -1684,6 +1685,33 @@ def test_failure_node():
         assert "hello" in s
         assert wf2.failure_node is not None
         assert wf2.failure_node.flyte_entity == failure_handler
+
+
+def test_failure_node_mismatch_inputs():
+    @task()
+    def t1() -> int:
+        return 3 + 2
+
+    @task()
+    def t2(a: int) -> int:
+        return a + 3
+
+    @workflow(on_failure=t2)
+    def wf(a: int = 3, b: str = "hello"):
+        t1()
+        t2(a=a)
+
+    with pytest.raises(
+        FlyteFailureNodeInputMismatchException,
+        match="Mismatched Inputs Detected\n"
+              "The failure node `tests.flytekit.unit.core.test_type_hints.t2` has "
+              "inputs that do not align with those expected by the workflow `tests.flytekit.unit.core.test_type_hints.wf`.\n"
+              "Failure Node's Inputs: {'a': <class 'int'>}\n"
+              "Workflow's Inputs: {'a': <class 'int'>, 'b': <class 'str'>}\n"
+              "Action Required:\n"
+              "Please ensure that all input arguments in the failure node are provided and match the expected arguments specified in the workflow.",
+    ):
+        wf()
 
 
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
