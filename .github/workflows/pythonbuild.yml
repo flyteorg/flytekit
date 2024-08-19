@@ -289,7 +289,7 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           if: matrix.os == 'ubuntu-latest'
-          target: x86_64
+          target: x86
           command: build
           args: --release --out ${{ github.workspace }}/dist --sdist -m flyte/flyteidl/Cargo.toml
       - name: Install built wheel
