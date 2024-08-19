@@ -911,8 +911,8 @@ def decorate_python_task(task: PythonTask) -> Union[PythonTask, vscode]:
     """
     Decorates the task with additional functionality if necessary.
 
-    @param task: python task to decorate
-    @return: a decorated python task
+    :param task: python task to decorate
+    :return: a decorated python task
     """
     from flytekit.core.python_function_task import PythonFunctionTask
 
