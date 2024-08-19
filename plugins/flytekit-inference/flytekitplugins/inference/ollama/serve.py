@@ -52,10 +52,15 @@ class Ollama(ModelInferenceTemplate):
         self.setup_ollama_pod_template()
 
     def setup_ollama_pod_template(self):
-        from kubernetes.client.models import V1Container, V1ResourceRequirements
+        from kubernetes.client.models import (
+            V1Container,
+            V1ResourceRequirements,
+            V1SecurityContext,
+        )
 
         container_name = "create-model" if self._model_modelfile else "pull-model"
-        modelfile_escaped = self._model_modelfile.replace("\n", "\\n") if self._model_modelfile else None
+
+        one_liner_modelfile = self._model_modelfile.replace("\n", "\\n").strip()
 
         python_code = """
 import os
@@ -71,9 +76,9 @@ from flytekit.types.file import FlyteFile
 
 
 ctx = FlyteContextManager.current_context()
-local_inputs_file = os.path.join(ctx.execution_state.working_dir, "inputs.pb")
+local_inputs_file = os.path.join(ctx.execution_state.working_dir, 'inputs.pb')
 ctx.file_access.get_data(
-    {{.input}},
+    '{{.input}}',
     local_inputs_file,
 )
 input_proto = utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
@@ -100,24 +105,23 @@ for var_name, literal in idl_input_literals.literals.items():
 
 """
 
-        python_code += f"""
+        python_code += """
 class AttrDict(dict):
-    "Convert a dictionary to an attribute style lookup. Do not use this in regular places, this is used for namespacing inputs and outputs"
+    'Convert a dictionary to an attribute style lookup. Do not use this in regular places, this is used for namespacing inputs and outputs'
 
     def __init__(self, *args, **kwargs):
         super(AttrDict, self).__init__(*args, **kwargs)
         self.__dict__ = self
 
 
-inputs = {"inputs": AttrDict(inputs)}
+inputs = {'inputs': AttrDict(inputs)}
 
-modelfile = "{modelfile_escaped}".format(**inputs)
-print(modelfile)
 """
+        python_code += f'modelfile = """{one_liner_modelfile}""".format(**inputs)\nprint(modelfile)'
 
         command = (
             f'updated_modelfile=$(python3 -c "{python_code}"); sleep 15; curl -X POST {self.base_url}/api/create -d \'{{"name": "{self._model_name}", "modelfile": "$updated_modelfile"}}\''
-            if modelfile_escaped
+            if one_liner_modelfile
             else f'sleep 15; curl -X POST {self.base_url}/api/pull -d \'{{"name": "{self._model_name}"}}\''
         )
 
@@ -139,6 +143,9 @@ print(modelfile)
                         "cpu": self._model_cpu,
                         "memory": self._model_mem,
                     },
+                ),
+                security_context=V1SecurityContext(
+                    run_as_user=0,
                 ),
             )
         )
