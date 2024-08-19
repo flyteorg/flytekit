@@ -2984,6 +2984,64 @@ def test_DataclassTransformer_with_discriminated_subtypes():
     assert res_2.class_b_attribute == -2.5
 
 
+def test_DataclassTransformer_with_sub_dataclasses():
+    @dataclass
+    class Base:
+        a: int
+
+
+    @dataclass
+    class Child1(Base):
+        b: int
+
+
+    @task
+    def get_data() -> Child1:
+        return Child1(a=10, b=12)
+
+
+    @task
+    def read_data(base: Base) -> int:
+        return base.a
+
+
+    @task
+    def read_child(child: Child1) -> int:
+        return child.b
+
+
+    @workflow
+    def wf1() -> Child1:
+        data = get_data()
+        read_data(base=data)
+        read_child(child=data)
+        return data
+
+    @workflow
+    def wf2() -> Base:
+        data = Base(a=10)
+        read_data(base=data)
+        read_child(child=data)
+        return data
+
+    @workflow
+    def wf3() -> Base:
+        data = Base(a=10)
+        read_data(base=data)
+        return data
+
+    child_data = wf1()
+    assert child_data.a == 10
+    assert child_data.b == 12
+    assert isinstance(child_data, Child1)
+
+    with pytest.raises(AssertionError):
+        wf2()
+
+    base_data = wf3()
+    assert base_data.a == 10
+
+
 def test_DataclassTransformer_guess_python_type():
     @dataclass
     class DatumMashumaroORJSON(DataClassORJSONMixin):
