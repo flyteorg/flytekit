@@ -6,6 +6,7 @@ import os
 import pathlib
 import signal
 import subprocess
+import sys
 import tempfile
 import traceback
 from sys import exit
@@ -376,6 +377,8 @@ def _execute_task(
         dynamic_addl_distro,
         dynamic_dest_dir,
     ) as ctx:
+        if all(os.path.realpath(path) != dynamic_dest_dir for path in sys.path):
+            sys.path.append(dynamic_dest_dir)
         resolver_obj = load_object_from_module(resolver)
         # Use the resolver to load the actual task object
         _task_def = resolver_obj.load_task(loader_args=resolver_args)
