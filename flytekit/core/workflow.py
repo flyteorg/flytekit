@@ -693,7 +693,11 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         ) as inner_comp_ctx:
             # Now lets compile the failure-node if it exists
             if self.on_failure:
-                if self.on_failure.python_interface.inputs != self.python_interface.inputs:
+                if (
+                    self.on_failure.python_interface
+                    and self.python_interface
+                    and self.on_failure.python_interface.inputs != self.python_interface.inputs
+                ):
                     raise FlyteFailureNodeInputMismatchException(self.on_failure, self)
                 c = wf_args.copy()
                 exception_scopes.user_entry_point(self.on_failure)(**c)

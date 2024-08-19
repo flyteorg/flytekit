@@ -1689,22 +1689,21 @@ def test_failure_node():
 
 def test_failure_node_mismatch_inputs():
     @task()
-    def t1() -> int:
-        return 3 + 2
-
-    @task()
     def t2(a: int) -> int:
         return a + 3
 
     @workflow(on_failure=t2)
     def wf(a: int = 3, b: str = "hello"):
-        t1()
         t2(a=a)
+
+    # pytest-xdist uses `__channelexec__` as the top-level module
+    running_xdist = os.environ.get("PYTEST_XDIST_WORKER") is not None
+    prefix = "__channelexec__." if running_xdist else ""
 
     with pytest.raises(
         FlyteFailureNodeInputMismatchException,
         match="Mismatched Inputs Detected\n"
-              "The failure node `tests.flytekit.unit.core.test_type_hints.t2` has "
+              f"The failure node `{prefix}tests.flytekit.unit.core.test_type_hints.t2` has "
               "inputs that do not align with those expected by the workflow `tests.flytekit.unit.core.test_type_hints.wf`.\n"
               "Failure Node's Inputs: {'a': <class 'int'>}\n"
               "Workflow's Inputs: {'a': <class 'int'>, 'b': <class 'str'>}\n"
