@@ -291,7 +291,7 @@ jobs:
           if: matrix.os == 'ubuntu-latest'
           target: x86
           command: build
-          args: --release --out ${{ github.workspace }}/dist --sdist -m flyte/flyteidl/Cargo.toml
+          args: --release --out ${{ github.workspace }}/dist --find-interpreter -m flyte/flyteidl/Cargo.toml
       - name: Install built wheel
         run: |
           uv pip install --system flyteidl-rust --no-index --find-links dist --force-reinstall
