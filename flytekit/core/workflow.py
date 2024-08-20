@@ -8,6 +8,8 @@ from enum import Enum
 from functools import update_wrapper
 from typing import Any, Callable, Coroutine, Dict, List, Optional, Tuple, Type, Union, cast, overload
 
+from typing_inspect import is_optional_type
+
 try:
     from typing import ParamSpec
 except ImportError:
@@ -693,12 +695,19 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         ) as inner_comp_ctx:
             # Now lets compile the failure-node if it exists
             if self.on_failure:
-                if (
-                    self.on_failure.python_interface
-                    and self.python_interface
-                    and self.on_failure.python_interface.inputs != self.python_interface.inputs
-                ):
-                    raise FlyteFailureNodeInputMismatchException(self.on_failure, self)
+                if self.on_failure.python_interface and self.python_interface:
+                    workflow_inputs = self.python_interface.inputs
+                    failure_node_inputs = self.on_failure.python_interface.inputs
+
+                    # Workflow inputs should be a subset of failure node inputs.
+                    if (failure_node_inputs | workflow_inputs) != failure_node_inputs:
+                        raise FlyteFailureNodeInputMismatchException(self.on_failure, self)
+                    additional_keys = failure_node_inputs.keys() - workflow_inputs.keys()
+                    # Raising an error if the additional inputs in the failure node are not optional.
+                    for k in additional_keys:
+                        if not is_optional_type(failure_node_inputs[k]):
+                            raise FlyteFailureNodeInputMismatchException(self.on_failure, self)
+
                 c = wf_args.copy()
                 exception_scopes.user_entry_point(self.on_failure)(**c)
                 inner_nodes = None
