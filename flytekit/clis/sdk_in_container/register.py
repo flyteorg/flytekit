@@ -110,6 +110,14 @@ the root of your project, it finds the first folder that does not have a ``__ini
     " 'all' is the current behavior copying all files from root, 'auto' copies only loaded Python modules",
 )
 @click.option(
+    "--ls-files",
+    required=False,
+    is_flag=True,
+    default=False,
+    show_default=True,
+    help="List the files copied into the image (valid only for new --copy switch)",
+)
+@click.option(
     "--dry-run",
     default=False,
     is_flag=True,
@@ -154,6 +162,7 @@ def register(
     deref_symlinks: bool,
     non_fast: bool,
     copy: typing.Optional[CopyFileDetection],
+    ls_files: bool,
     package_or_module: typing.Tuple[str],
     dry_run: bool,
     activate_launchplans: bool,
@@ -225,4 +234,5 @@ def register(
         dry_run=dry_run,
         activate_launchplans=activate_launchplans,
         skip_errors=skip_errors,
+        ls_files=ls_files,
     )

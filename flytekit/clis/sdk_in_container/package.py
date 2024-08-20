@@ -13,7 +13,7 @@ from flytekit.configuration import (
     SerializationSettings,
 )
 from flytekit.interaction.click_types import key_value_callback
-from flytekit.tools.fast_registration import CopyFileDetection
+from flytekit.tools.fast_registration import CopyFileDetection, FastPackageOptions
 from flytekit.tools.repo import NoSerializableEntitiesError, serialize_and_package
 
 
@@ -67,6 +67,14 @@ from flytekit.tools.repo import NoSerializableEntitiesError, serialize_and_packa
     " 'all' will behave as the current fast flag copying all files, 'auto' copies only loaded Python modules",
 )
 @click.option(
+    "--ls-files",
+    required=False,
+    is_flag=True,
+    default=False,
+    show_default=True,
+    help="List the files copied into the image (valid only for new --copy switch)",
+)
+@click.option(
     "-f",
     "--force",
     is_flag=True,
@@ -114,6 +122,7 @@ def package(
     output,
     force,
     copy: typing.Optional[CopyFileDetection],
+    ls_files: bool,
     fast,
     in_container_source_path,
     python_interpreter,
@@ -156,6 +165,9 @@ def package(
         display_help_with_error(ctx, "No packages to scan for flyte entities. Aborting!")
 
     try:
-        serialize_and_package(pkgs, serialization_settings, source, output, fast, deref_symlinks, copy_style=copy)
+        fast_options = FastPackageOptions([], copy_style=copy, ls_files=ls_files)
+        serialize_and_package(
+            pkgs, serialization_settings, source, output, fast, deref_symlinks, fast_options=fast_options
+        )
     except NoSerializableEntitiesError:
         click.secho(f"No flyte objects found in packages {pkgs}", fg="yellow")

@@ -90,7 +90,7 @@ def package(
     output: str = "./flyte-package.tgz",
     fast: bool = False,
     deref_symlinks: bool = False,
-    copy_style: typing.Optional[fast_registration.CopyFileDetection] = None,
+    fast_options: typing.Optional[fast_registration.FastPackageOptions] = None,
 ):
     """
     Package the given entities and the source code (if fast is enabled) into a package with the given name in output
@@ -99,7 +99,7 @@ def package(
     :param output: output package name with suffix
     :param fast: fast enabled implies source code is bundled
     :param deref_symlinks: if enabled then symlinks are dereferenced during packaging
-    :param copy_style:
+    :param fast_options:
 
     Temporarily, for fast register, specify both the fast arg as well as copy_style fast == True with
     copy_style == None means use the old fast register tar'ring method.
@@ -117,9 +117,7 @@ def package(
             if os.path.abspath(output).startswith(os.path.abspath(source)) and os.path.exists(output):
                 click.secho(f"{output} already exists within {source}, deleting and re-creating it", fg="yellow")
                 os.remove(output)
-            archive_fname = fast_registration.fast_package(
-                source, output_tmpdir, deref_symlinks, fast_registration.FastPackageOptions([], copy_style=copy_style)
-            )
+            archive_fname = fast_registration.fast_package(source, output_tmpdir, deref_symlinks, options=fast_options)
             click.secho(f"Fast mode enabled: compressed archive {archive_fname}", dim=True)
 
         with tarfile.open(output, "w:gz") as tar:
@@ -138,7 +136,7 @@ def serialize_and_package(
     fast: bool = False,
     deref_symlinks: bool = False,
     options: typing.Optional[Options] = None,
-    copy_style: typing.Optional[fast_registration.CopyFileDetection] = None,
+    fast_options: typing.Optional[fast_registration.FastPackageOptions] = None,
 ):
     """
     Fist serialize and then package all entities
@@ -147,7 +145,7 @@ def serialize_and_package(
     """
     serialize_load_only(pkgs, settings, source)
     serializable_entities = serialize_get_control_plane_entities(settings, source, options=options)
-    package(serializable_entities, source, output, fast, deref_symlinks, copy_style)
+    package(serializable_entities, source, output, fast, deref_symlinks, fast_options)
 
 
 def find_common_root(
@@ -257,6 +255,7 @@ def register(
     dry_run: bool = False,
     activate_launchplans: bool = False,
     skip_errors: bool = False,
+    ls_files: bool = False,
 ):
     """
     Temporarily, for fast register, specify both the fast arg as well as copy_style.
@@ -301,7 +300,7 @@ def register(
             detected_root,
             deref_symlinks,
             output,
-            options=fast_registration.FastPackageOptions([], copy_style=copy_style),
+            options=fast_registration.FastPackageOptions([], copy_style=copy_style, ls_files=ls_files),
         )
         # update serialization settings from fast register output
         fast_serialization_settings = FastSerializationSettings(

@@ -3,6 +3,7 @@ from __future__ import annotations
 import gzip
 import hashlib
 import os
+import pathlib
 import posixpath
 import subprocess
 import sys
@@ -14,6 +15,8 @@ from enum import Enum
 from typing import Optional
 
 import click
+from rich import print as rich_print
+from rich.tree import Tree
 
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.utils import timeit
@@ -45,28 +48,33 @@ class FastPackageOptions:
     ignores: list[Ignore]
     keep_default_ignores: bool = True
     copy_style: Optional[CopyFileDetection] = None
+    ls_files: bool = False
 
 
-"""
-clarify tar behavior
-- tar doesn't seem to add the folder, just the files, but extracts okay
-- this doesn't work for empty folders (but edge case because gitignore ignores them anyways?)
-changes to tar
-- will now add files one at a time.
-- the list will compute the list and the digest
-- could have used tar list but seems less powerful, also does more than we want.
-- in order to support auto, we have to load all the modules first, then trigger copying, then serialize post-upload
-- hook up the actual commands args
-- make each create a separate tar
-- have a separate path for old and new commands
-- finish deprecating serialize function
-- update comment
-- move compute of old digest and fname construction
-- update click help
-- add manual option checking
+def print_ls_tree(source: os.PathLike, ls: typing.List[str]):
+    click.secho("Files to be copied for fast registration...", fg="bright_blue")
+    fff = []
 
-- move prints to debug, add click
-"""
+    tree_root = Tree(
+        f":open_file_folder: [link file://{source}]{source} (detected source root)",
+        guide_style="bold bright_blue",
+    )
+    trees = {pathlib.Path(source): tree_root}
+
+    for f in ls:
+        rpath = os.path.relpath(f, start=source)
+        fff.append(rpath)
+        fpp = pathlib.Path(f)
+        if fpp.parent not in trees:
+            # add trees for all intermediate folders
+            current = tree_root
+            current_path = pathlib.Path(source)
+            for subdir in fpp.parent.relative_to(source).parts:
+                current = current.add(f"{subdir}", guide_style="bold bright_blue")
+                current_path = current_path / subdir
+                trees[current_path] = current
+        trees[fpp.parent].add(f"{fpp.name}", guide_style="bold bright_blue")
+    rich_print(tree_root)
 
 
 def fast_package(
@@ -94,6 +102,7 @@ def fast_package(
         ignores = default_ignores
     ignore = IgnoreGroup(source, ignores)
 
+    # Remove this after original tar command is removed.
     digest = compute_digest(source, ignore.is_ignored)
 
     # This function is temporarily split into two, to support the creation of the tar file in both the old way,
@@ -109,8 +118,12 @@ def fast_package(
             # This triggers listing of all files, mimicking the old way of creating the tar file.
             ls, ls_digest = ls_files(str(source), [], deref_symlinks, ignore)
 
-        print(f"Digest check: old {digest} ==? new {ls_digest} -- {digest == ls_digest}")
+        logger.debug(f"Hash digest: {ls_digest}", fg="green")
 
+        if options.ls_files:
+            print_ls_tree(source, ls)
+
+        # print(f"Digest check: old {digest} ==? new {ls_digest} -- {digest == ls_digest}")
         # Compute where the archive should be written
         archive_fname = f"{FAST_PREFIX}{ls_digest}{FAST_FILEENDING}"
         if output_dir is None:
@@ -120,7 +133,6 @@ def fast_package(
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             tar_path = os.path.join(tmp_dir, "tmp.tar")
-            print(f"test tmp dir: {tar_path=}")
             with tarfile.open(tar_path, "w", dereference=True) as tar:
                 for ws_file in ls:
                     rel_path = os.path.relpath(ws_file, start=source)
@@ -129,8 +141,6 @@ def fast_package(
                         arcname=rel_path,
                         filter=lambda x: tar_strip_file_attributes(x),
                     )
-                print("New tar file contents: ======================")
-                tar.list(verbose=True)
 
             with gzip.GzipFile(filename=archive_fname, mode="wb", mtime=0) as gzipped:
                 with open(tar_path, "rb") as tar_file:
@@ -155,8 +165,7 @@ def fast_package(
                         arcname=ws_file,
                         filter=lambda x: ignore.tar_filter(tar_strip_file_attributes(x)),
                     )
-                print("Old tar file contents: ======================")
-                tar.list(verbose=True)
+                # tar.list(verbose=True)
 
             with gzip.GzipFile(filename=archive_fname, mode="wb", mtime=0) as gzipped:
                 with open(tar_path, "rb") as tar_file:
