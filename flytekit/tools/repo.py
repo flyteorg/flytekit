@@ -173,29 +173,18 @@ def find_common_root(
     return project_root
 
 
-# to be renamed, get module names
-def load_packages_and_modules(
-    ss: SerializationSettings,
+def list_packages_and_modules(
     project_root: Path,
     pkgs_or_mods: typing.List[str],
-    options: typing.Optional[Options] = None,
 ) -> typing.List[str]:
     """
-    The project root is added as the first entry to sys.path, and then all the specified packages and modules
-    given are loaded with all submodules. The reason for prepending the entry is to ensure that the name that
-    the various modules are loaded under are the fully-resolved name.
+    This is a helper function that returns the input list of python packages/modules as a dot delinated list
+    relative to the given project_root.
 
-    For example, using flytesnacks cookbook, if you are in core/ and you call this function with
-    ``flyte_basics/hello_world.py control_flow/``, the ``hello_world`` module would be loaded
-    as ``core.flyte_basics.hello_world`` even though you're already in the core/ folder.
-
-    :param ss:
     :param project_root:
     :param pkgs_or_mods:
-    :param options:
-    :return: The common detected root path, the output of _find_project_root
+    :return: List of packages/modules, dot delineated.
     """
-    ss.git_repo = _get_git_repo_url(project_root)
     pkgs_and_modules: typing.List[str] = []
     for pm in pkgs_or_mods:
         p = Path(pm).resolve()
@@ -210,10 +199,6 @@ def load_packages_and_modules(
         pkgs_and_modules.append(dot_delineated)
 
     return pkgs_and_modules
-
-    # registrable_entities = serialize(pkgs_and_modules, ss, str(project_root), options)
-    #
-    # return registrable_entities
 
 
 def secho(i: Identifier, state: str = "success", reason: str = None, op: str = "Registration"):
@@ -286,9 +271,8 @@ def register(
 
     # Load all the entities
     FlyteContextManager.push_context(remote.context)
-    pkgs_and_modules = load_packages_and_modules(  # to be renamed
-        serialization_settings, detected_root, list(package_or_module), options
-    )
+    serialization_settings.git_repo = _get_git_repo_url(str(detected_root))
+    pkgs_and_modules = list_packages_and_modules(detected_root, list(package_or_module))
 
     # NB: The change here is that the loading of user code _cannot_ depend on fast register information (the computed
     #     version, upload native url, hash digest, etc.).
