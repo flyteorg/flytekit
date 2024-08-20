@@ -31,10 +31,14 @@ class PolarsDataFrameRenderer:
     The Polars DataFrame summary statistics are rendered as an HTML table.
     """
 
-    def to_html(self, df: pl.DataFrame) -> str:
-        assert isinstance(df, pl.DataFrame)
-        describe_df = df.describe()
-        columns = describe_df.select("describe")
+    def to_html(self, df: typing.Union[pl.DataFrame, pl.LazyFrame]) -> str:
+        assert isinstance(df, (pl.DataFrame, pl.LazyFrame))
+        if isinstance(df, pl.LazyFrame):
+            describe_df = df.collect().describe()
+        else:
+            describe_df = df.describe()
+
+        columns = describe_df["describe"]
         html_repr = describe_df.drop("describe").transpose(column_names=columns)._repr_html_()
         return html_repr
 
@@ -89,24 +93,11 @@ class ParquetToPolarsDataFrameDecodingHandler(StructuredDatasetDecoder):
             columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
             return pl.read_parquet(uri, columns=columns, use_pyarrow=True, storage_options=kwargs)
         return pl.read_parquet(uri, use_pyarrow=True, storage_options=kwargs)
-    
+
 
 ############################
 # Polars LazyFrame classes #
 ############################
-
-class PolarsLazyFrameRenderer:
-    """
-    The Polars DataFrame summary statistics are rendered as an HTML table.
-    """
-
-    def to_html(self, lf: pl.LazyFrame) -> str:
-        assert isinstance(lf, pl.LazyFrame)
-        describe_df = lf.collect().describe()
-        columns = describe_df.select("describe")
-        html_repr = describe_df.drop("describe").transpose(column_names=columns)._repr_html_()
-        return html_repr
-
 
 class PolarsLazyFrameToParquetEncodingHandler(StructuredDatasetEncoder):
     def __init__(self):
@@ -153,14 +144,19 @@ class ParquetToPolarsLazyFrameDecodingHandler(StructuredDatasetDecoder):
     ) -> pl.LazyFrame:
         uri = flyte_value.uri
 
-        kwargs = get_fsspec_storage_options(
-            protocol=fsspec_utils.get_protocol(uri),
-            data_config=ctx.file_access.data_config,
-        )
+        protocol = fsspec_utils.get_protocol(uri)
+        if protocol == "file":
+            kwargs = None
+        else:
+            kwargs = get_fsspec_storage_options(
+                protocol=fsspec_utils.get_protocol(uri),
+                data_config=ctx.file_access.data_config,
+            )
+
         if current_task_metadata.structured_dataset_type and current_task_metadata.structured_dataset_type.columns:
             columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
             return pl.scan_parquet(uri, storage_options=kwargs).select(columns)
-        return pl.scan_parquet(uri, storage_options=kwargs).select(columns)
+        return pl.scan_parquet(uri, storage_options=kwargs)
 
 
 # Register the Polars DataFrame handlers
@@ -171,4 +167,4 @@ StructuredDatasetTransformerEngine.register_renderer(pl.DataFrame, PolarsDataFra
 # Register the Polars LazyFrame handlers
 StructuredDatasetTransformerEngine.register(PolarsLazyFrameToParquetEncodingHandler())
 StructuredDatasetTransformerEngine.register(ParquetToPolarsLazyFrameDecodingHandler())
-StructuredDatasetTransformerEngine.register_renderer(pl.LazyFrame, PolarsLazyFrameRenderer())
+StructuredDatasetTransformerEngine.register_renderer(pl.LazyFrame, PolarsDataFrameRenderer())
