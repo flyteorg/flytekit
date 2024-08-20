@@ -21,7 +21,7 @@ def neptune_init_run(
     Args:
         project (str): Name of the project where the run should go, in the form `workspace-name/project_name`.
             (Required)
-        secret (Secret or Callable): Secret with your `COMET_API_KEY` or a callable that returns the API key.
+        secret (Secret or Callable): Secret with your `NEPTUNE_API_KEY` or a callable that returns the API key.
             The callable takes no arguments and returns a string. (Required)
         host (str): URL to Neptune. Defaults to "https://app.neptune.ai".
         **init_run_kwargs (dict):
