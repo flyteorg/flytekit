@@ -23,7 +23,7 @@ from flytekit.core.utils import timeit
 from flytekit.exceptions.user import FlyteDataNotFoundException
 from flytekit.loggers import logger
 from flytekit.tools.ignore import DockerIgnore, FlyteIgnore, GitIgnore, Ignore, IgnoreGroup, StandardIgnore
-from flytekit.tools.script_mode import ls_files, tar_strip_file_attributes
+from flytekit.tools.script_mode import _filehash_update, _pathhash_update, ls_files, tar_strip_file_attributes
 
 FAST_PREFIX = "fast"
 FAST_FILEENDING = ".tar.gz"
@@ -200,20 +200,6 @@ def compute_digest(source: os.PathLike, filter: Optional[callable] = None) -> st
             _pathhash_update(relpath, hasher)
 
     return hasher.hexdigest()
-
-
-def _filehash_update(path: os.PathLike, hasher: hashlib._Hash) -> None:
-    blocksize = 65536
-    with open(path, "rb") as f:
-        bytes = f.read(blocksize)
-        while bytes:
-            hasher.update(bytes)
-            bytes = f.read(blocksize)
-
-
-def _pathhash_update(path: os.PathLike, hasher: hashlib._Hash) -> None:
-    path_list = path.split(os.sep)
-    hasher.update("".join(path_list).encode("utf-8"))
 
 
 def get_additional_distribution_loc(remote_location: str, identifier: str) -> str:

@@ -65,6 +65,7 @@ def patch_image_config(config_file: Optional[str], image_config: ImageConfig) ->
 
 
 def parse_copy(ctx, param, value) -> Optional[CopyFileDetection]:
+    """Helper function to parse cmd line args into enum"""
     if value == "auto":
         copy_style = CopyFileDetection.LOADED_MODULES
     elif value == "all":
