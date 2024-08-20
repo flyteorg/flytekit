@@ -1,5 +1,7 @@
 -e file:.
-flyteidl @ git+https://github.com/flyteorg/flyte.git@master#subdirectory=flyteidl
+# TODO: change this back to
+# flyteidl @ git+https://github.com/flyteorg/flyte.git@master#subdirectory=flyteidl
+flyteidl @ git+https://github.com/bgedik/flyte.git@bugra.gedik/add_metadata_labels_support_for_pytorch#subdirectory=flyteidl
 
 coverage[toml]
 hypothesis

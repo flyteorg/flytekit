@@ -111,6 +111,7 @@ class PyTorch(object):
             and and one might have to increase the shared memory size. This option configures the task's pod template to mount
             an `emptyDir` volume with medium `Memory` to to `/dev/shm`.
             The shared memory size upper limit is the sum of the memory limits of the containers in the pod.
+        metadata_labels (dict[str, str]): List of metadata labels to be added to the PyTorch job, useful for scheduler integrations
     """
 
     master: Master = field(default_factory=lambda: Master())
@@ -119,6 +120,7 @@ class PyTorch(object):
     # Support v0 config for backwards compatibility
     num_workers: Optional[int] = None
     increase_shared_mem: bool = True
+    metadata_labels: Optional[dict[str, str]] = None
 
 
 @dataclass
@@ -152,6 +154,7 @@ class Elastic(object):
             an `emptyDir` volume with medium `Memory` to to `/dev/shm`.
             The shared memory size upper limit is the sum of the memory limits of the containers in the pod.
         run_policy: Configuration for the run policy.
+        metadata_labels (dict[str, str]): List of metadata labels to be added to the PyTorch job, useful for scheduler integrations
     """
 
     nnodes: Union[int, str] = 1
@@ -162,6 +165,7 @@ class Elastic(object):
     rdzv_configs: Dict[str, Any] = field(default_factory=lambda: {"timeout": 900, "join_timeout": 900})
     increase_shared_mem: bool = True
     run_policy: Optional[RunPolicy] = None
+    metadata_labels: Optional[dict[str, str]] = None
 
 
 class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
@@ -222,6 +226,7 @@ class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
             worker_replicas=worker,
             master_replicas=self._convert_replica_spec(self.task_config.master),
             run_policy=run_policy,
+            metadata_labels=self.task_config.metadata_labels,
         )
         return MessageToDict(pytorch_job)
 
@@ -530,6 +535,7 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
                 ),
                 elastic_config=elastic_config,
                 run_policy=run_policy,
+                metadata_labels=self.task_config.metadata_labels,
             )
             return MessageToDict(job)
 

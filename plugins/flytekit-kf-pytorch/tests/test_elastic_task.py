@@ -258,6 +258,18 @@ def test_run_policy() -> None:
         "activeDeadlineSeconds": 36000,
     }
 
+def test_metadata_labels() -> None:
+    """Test that metadata labels is propagated to custom spec."""
+
+    # nnodes must be > 1 to get pytorchjob spec
+    @task(task_config=Elastic(nnodes=2, nproc_per_node=2, metadata_labels={"some": "label"}))
+    def test_task():
+        pass
+
+    spec = test_task.get_custom(SerializationSettings(image_config=None))
+
+    assert spec["metadataLabels"] == {"some": "label"}
+
 
 @pytest.mark.parametrize("start_method", ["spawn", "fork"])
 def test_omp_num_threads(start_method: str) -> None:

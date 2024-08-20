@@ -141,3 +141,15 @@ def test_pytorch_task_with_custom_config(serialization_settings: SerializationSe
         },
     }
     assert my_pytorch_task.get_custom(serialization_settings) == expected_custom_dict
+
+def test_metadata_labels() -> None:
+    """Test that metadata labels is propagated to custom spec."""
+
+    # nnodes must be > 1 to get pytorchjob spec
+    @task(task_config=PyTorch(num_workers=10, metadata_labels={"some": "label"}))
+    def test_task():
+        pass
+
+    spec = test_task.get_custom(SerializationSettings(image_config=None))
+
+    assert spec["metadataLabels"] == {"some": "label"}
