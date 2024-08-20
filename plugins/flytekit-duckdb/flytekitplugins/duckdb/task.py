@@ -43,7 +43,7 @@ class DuckDBQuery(PythonInstanceTask):
     def __init__(
         self,
         name: str,
-        query: Union[str, List[str]],
+        query: Optional[Union[str, List[str]]] = None,
         inputs: Optional[Dict[str, Union[StructuredDataset, list]]] = None,
         provider: DuckDBProvider = DuckDBProvider.LOCAL,
         **kwargs,
@@ -118,7 +118,7 @@ class DuckDBQuery(PythonInstanceTask):
         else:
             yield QueryOutput(output=con.execute(query), counter=counter)
 
-    def execute(self, **kwargs) -> StructuredDataset:
+    def execute(self, query: Optional[Union[str, List[str]]] = None, **kwargs) -> StructuredDataset:
         # TODO: Enable iterative download after adding the functionality to structured dataset code.
         con = self._connect_to_duckdb()
 
@@ -139,6 +139,13 @@ class DuckDBQuery(PythonInstanceTask):
                 params = json.loads(val)
             else:
                 raise ValueError(f"Expected inputs of type StructuredDataset, str or list, received {type(val)}")
+
+        if self._query is None and query is None:
+            raise ValueError("A query must be specified when defining or executing a DuckDBQuery.")
+
+        # Execution query takes priority
+        if query is not None:
+            self._query = query
 
         final_query = self._query
         query_output = QueryOutput()
