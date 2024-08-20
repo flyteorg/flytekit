@@ -248,7 +248,6 @@ def add_imported_modules_from_source(source_path: str, destination: str, modules
     # identify a common root amongst the packages listed?
 
     files = list_imported_modules_as_files(source_path, modules)
-    print("files", files)
     for file in files:
         relative_path = os.path.relpath(file, start=source_path)
         new_destination = os.path.join(destination, relative_path)
