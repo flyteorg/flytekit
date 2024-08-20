@@ -33,10 +33,11 @@ class PolarsDataFrameRenderer:
 
     def to_html(self, df: typing.Union[pl.DataFrame, pl.LazyFrame]) -> str:
         assert isinstance(df, (pl.DataFrame, pl.LazyFrame))
-        if isinstance(df, pl.LazyFrame):
-            describe_df = df.collect().describe()
-        else:
+        try:
             describe_df = df.describe()
+        except AttributeError:
+            # LazyFrames in polars <= 0.19 does not support `describe`
+            describe_df = df.collect().describe()
 
         columns = describe_df["describe"]
         html_repr = describe_df.drop("describe").transpose(column_names=columns)._repr_html_()
@@ -111,23 +112,25 @@ class PolarsLazyFrameToParquetEncodingHandler(StructuredDatasetEncoder):
     ) -> literals.StructuredDataset:
         lf = typing.cast(pl.LazyFrame, structured_dataset.dataframe)
 
-        output_bytes = io.BytesIO()
         # The pl.LazyFrame.sink_parquet method uses streaming mode, which is currently considered unstable. Until it is
         # stable, we collect the dataframe and write it to a BytesIO buffer.
         df = lf.collect()
-        # Polars 0.13.12 deprecated to_parquet in favor of write_parquet
+
         if hasattr(df, "write_parquet"):
-            df.write_parquet(output_bytes)
+            # Polars 0.13.12 deprecated to_parquet in favor of write_parquet
+            _write_method = df.write_parquet
         else:
-            df.to_parquet(output_bytes)
+            _write_method = df.to_parquet
 
         if structured_dataset.uri is not None:
             fs = ctx.file_access.get_filesystem_for_path(path=structured_dataset.uri)
             with fs.open(structured_dataset.uri, "wb") as s:
-                s.write(output_bytes)
+                _write_method(s)
             output_uri = structured_dataset.uri
         else:
+            output_bytes = io.BytesIO()
             remote_fn = "00000"  # 00000 is our default unnamed parquet filename
+            _write_method(output_bytes)
             output_uri = ctx.file_access.put_raw_data(output_bytes, file_name=remote_fn)
         return literals.StructuredDataset(uri=output_uri, metadata=StructuredDatasetMetadata(structured_dataset_type))
 
