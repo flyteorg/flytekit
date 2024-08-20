@@ -88,7 +88,7 @@ class FlyteIdlEntity(object, metaclass=FlyteType):
         """
         str_repr = _repr_idl_yaml_like(self.to_flyte_idl(), indent=2).rstrip(os.linesep)
         type_str = type(self).__name__
-        return f"{type_str}:" + os.linesep + str_repr
+        return f"Flyte Serialized object ({type_str}):" + os.linesep + str_repr
 
     def verbose_string(self):
         """

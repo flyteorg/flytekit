@@ -1706,7 +1706,7 @@ def test_union_type():
         match=re.escape(
             "Error encountered while executing 'wf2':\n"
             f"  Failed to convert inputs of task '{prefix}tests.flytekit.unit.core.test_type_hints.t2':\n"
-            '  Cannot convert from Literal:'
+            r'  Cannot convert from Flyte Serialized object (Literal):'
         ),
     ):
         assert wf2(a="2") == "2"
