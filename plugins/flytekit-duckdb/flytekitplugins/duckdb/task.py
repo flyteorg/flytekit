@@ -46,7 +46,6 @@ class DuckDBQuery(PythonInstanceTask):
         query: Union[str, List[str]],
         inputs: Optional[Dict[str, Union[StructuredDataset, list]]] = None,
         provider: DuckDBProvider = DuckDBProvider.LOCAL,
-        hosted_secret: Optional[Secret] = None,
         **kwargs,
     ):
         """
@@ -57,11 +56,11 @@ class DuckDBQuery(PythonInstanceTask):
             query: DuckDB query to execute
             inputs: The query parameters to be used while executing the query
             provider: DuckDB provider (e.g., LOCAL, MOTHERDUCK, ANOTHERPRODUCT)
-            hosted_secret: Secret containing authentication token for the hosted provider
         """
         self._query = query
         self._provider = provider
-        self._hosted_secret = hosted_secret
+        secret_requests: Optional[list[Secret]] = kwargs.get("secret_requests", None)
+        self._hosted_secret = secret_requests[0] if secret_requests else None
 
         outputs = {"result": StructuredDataset}
 
@@ -73,25 +72,21 @@ class DuckDBQuery(PythonInstanceTask):
             **kwargs,
         )
 
-    def _connect_to_duckdb(self, provider: DuckDBProvider, hosted_secret: Optional[Secret]):
+    def _connect_to_duckdb(self):
         """
         Handles the connection to DuckDB based on the provider.
-
-        Args:
-            provider: DuckDB provider
-            hosted_secret: Secret containing authentication token for the hosted provider
 
         Returns:
             A DuckDB connection object.
         """
 
-        if provider not in DuckDBProvider:
-            raise ValueError(f"Unknown DuckDB provider: {provider}")
+        if self._provider not in DuckDBProvider:
+            raise ValueError(f"Unknown DuckDB provider: {self._provider}")
 
-        if provider != DuckDBProvider.LOCAL and hosted_secret is None:
-            raise ValueError(f"A secret is required for the {provider} provider.")
+        if self._provider != DuckDBProvider.LOCAL and self._hosted_secret is None:
+            raise ValueError(f"A secret is required for the {self._provider} provider.")
 
-        return provider.value(hosted_secret)
+        return self._provider.value(self._hosted_secret)
 
     def _execute_query(
         self, con: duckdb.DuckDBPyConnection, params: list, query: str, counter: int, multiple_params: bool
@@ -125,7 +120,7 @@ class DuckDBQuery(PythonInstanceTask):
 
     def execute(self, **kwargs) -> StructuredDataset:
         # TODO: Enable iterative download after adding the functionality to structured dataset code.
-        con = self._connect_to_duckdb(self._provider, self._hosted_secret)
+        con = self._connect_to_duckdb()
 
         params = None
         for key in self.python_interface.inputs.keys():
