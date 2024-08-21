@@ -1,5 +1,4 @@
 from flytekit.exceptions import base as _base_exceptions
-from flytekit.models.core import errors
 
 
 class FlyteSystemException(_base_exceptions.FlyteRecoverableException):
@@ -61,7 +60,6 @@ class FlyteNonRecoverableSystemException(FlyteSystemException):
         :param exc_value: The exception that was raised from system code.
         """
         self._exc_value = exc_value
-        self.kind = errors.ContainerError.Kind.RECOVERABLE
         super().__init__(str(exc_value))
 
     @property

@@ -35,6 +35,7 @@ from flytekit.core.context_manager import (
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.promise import VoidPromise
 from flytekit.deck.deck import _output_deck
+from flytekit.exceptions.system import FlyteNonRecoverableSystemException
 from flytekit.exceptions.user import FlyteRecoverableException, FlyteUserRuntimeException
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
 from flytekit.loggers import logger, user_space_logger
@@ -148,12 +149,19 @@ def _dispatch_execute(
 
     # All the Non-user errors are captured here, and are considered system errors
     except Exception as e:
-        exc_str = get_traceback_str(e)
+        kind = _error_models.ContainerError.Kind.RECOVERABLE
+        err = e
+
+        if isinstance(e, FlyteNonRecoverableSystemException):
+            kind = _error_models.ContainerError.Kind.NON_RECOVERABLE
+            err = e.value
+
+        exc_str = get_traceback_str(err)
         output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
             _error_models.ContainerError(
                 "SYSTEM",
                 exc_str,
-                _error_models.ContainerError.Kind.RECOVERABLE,
+                kind,
                 _execution_models.ExecutionError.ErrorKind.SYSTEM,
             )
         )
