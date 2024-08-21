@@ -145,6 +145,7 @@ class ImageSpec:
                 return False
 
             if re.match(f"unknown: repository .*{self.name} not found", e.explanation):
+                click.secho(f"Received 500 error with explanation: {e.explanation}", fg="yellow")
                 return False
 
             click.secho(f"Failed to check if the image exists with error:\n {e}", fg="red")
