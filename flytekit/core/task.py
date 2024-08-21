@@ -425,8 +425,17 @@ class Echo(PythonTask):
         """
         A task that simply echoes the inputs back to the user.
         The task's inputs and outputs interface are the same.
-        FlytePropeller won't create a pod for this task, it will simply pass the inputs to the outputs.
+
+        FlytePropeller uses echo plugin to handle this task, and it won't create a pod for this task.
+        It will simply pass the inputs to the outputs.
         https://github.com/flyteorg/flyte/blob/master/flyteplugins/go/tasks/plugins/testing/echo.go
+
+        Note: Make sure to enable the echo plugin in the propeller config to use this task.
+        ```
+        task-plugins:
+          enabled-plugins:
+            - echo
+        ```
 
         :param name: The name of the task.
         :param inputs: Name and type of inputs specified as a dictionary.
