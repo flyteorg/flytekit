@@ -748,7 +748,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     logger.debug(f"WF {self.name} saving task {n.flyte_entity.name}")
                     self.add(n.flyte_entity)
 
-            self._validate_add_on_failure_handler(comp_ctx, comp_ctx.compilation_state.exec_prefix + "f", input_kwargs)
+            self._validate_add_on_failure_handler(comp_ctx, comp_ctx.compilation_state.prefix + "f", input_kwargs)
 
         # Iterate through the workflow outputs
         bindings = []
