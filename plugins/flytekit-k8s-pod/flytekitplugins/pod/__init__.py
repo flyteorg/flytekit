@@ -15,6 +15,7 @@ This package contains things that are useful when extending Flytekit.
 """
 
 warnings.warn(
-    "This pod plugin is no longer necessary, please use the pod_template and pod_template_name options to @task instead.",
+    "This pod plugin is no longer necessary, please use the pod_template and pod_template_name options to @task as described "
+    "in https://docs.flyte.org/en/latest/deployment/configuration/general.html#configuring-task-pods-with-k8s-podtemplates",
     DeprecationWarning,
 )
