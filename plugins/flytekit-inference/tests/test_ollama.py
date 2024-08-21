@@ -3,7 +3,7 @@ from flytekitplugins.inference import Ollama, Model
 
 def test_ollama_init_valid_params():
     ollama_instance = Ollama(
-        server_mem="30Gi",
+        mem="30Gi",
         port=11435,
         model=Model(name="mistral-nemo"),
     )
@@ -26,17 +26,21 @@ def test_ollama_init_valid_params():
         "mistral-nemo"
         in ollama_instance.pod_template.pod_spec.init_containers[1].command[2]
     )
+    assert (
+        "/api/pull"
+        in ollama_instance.pod_template.pod_spec.init_containers[1].command[2]
+    )
 
 
 def test_ollama_default_params():
-    ollama_instance = Ollama()
+    ollama_instance = Ollama(model=Model(name="phi"))
 
     assert ollama_instance.base_url == "http://localhost:11434"
     assert ollama_instance._cpu == 1
     assert ollama_instance._gpu == 1
     assert ollama_instance._health_endpoint == None
     assert ollama_instance._mem == "15Gi"
-    assert ollama_instance._model_name == "llama3:8b-instruct-fp16"
+    assert ollama_instance._model_name == "phi"
     assert ollama_instance._model_cpu == 1
     assert ollama_instance._model_mem == "500Mi"
 
@@ -44,11 +48,52 @@ def test_ollama_default_params():
 def test_ollama_modelfile():
     ollama_instance = Ollama(
         model=Model(
-            modelfile="FROM llama3\nPARAMETER temperature 1\nPARAMETER num_ctx 4096\nSYSTEM You are Mario from super mario bros, acting as an assistant."
+            name="llama3-mario",
+            modelfile="FROM llama3\nPARAMETER temperature 1\nPARAMETER num_ctx 4096\nSYSTEM You are Mario from super mario bros, acting as an assistant.",
         )
     )
 
     assert (
-        "/api/create"
+        "ollama.create"
+        in ollama_instance.pod_template.pod_spec.init_containers[1].command[2]
+    )
+    assert (
+        "format(**inputs)"
+        not in ollama_instance.pod_template.pod_spec.init_containers[1].command[2]
+    )
+
+
+def test_ollama_modelfile_with_inputs():
+    ollama_instance = Ollama(
+        model=Model(
+            name="tinyllama-finetuned",
+            modelfile='''FROM tinyllama:latest
+ADAPTER {inputs.ggml}
+TEMPLATE """Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
+
+{{ if .System }}### Instruction:
+{{ .System }}{{ end }}
+
+{{ if .Prompt }}### Input:
+{{ .Prompt }}{{ end }}
+
+### Response:
+"""
+SYSTEM "You're a kitty. Answer using kitty sounds."
+PARAMETER stop "### Response:"
+PARAMETER stop "### Instruction:"
+PARAMETER stop "### Input:"
+PARAMETER stop "Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request."
+PARAMETER num_predict 200
+''',
+        )
+    )
+
+    assert (
+        "ollama.create"
+        in ollama_instance.pod_template.pod_spec.init_containers[1].command[2]
+    )
+    assert (
+        "format(**inputs)"
         in ollama_instance.pod_template.pod_spec.init_containers[1].command[2]
     )

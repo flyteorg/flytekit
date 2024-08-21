@@ -61,12 +61,96 @@ class Ollama(ModelInferenceTemplate):
 
         container_name = "create-model" if self._model_modelfile else "pull-model"
 
-        encoded_modelfile = base64.b64encode(self._model_modelfile.encode("utf-8")).decode("utf-8")
+        python_code = None
+        no_inputs_python_code = None
+
+        if self._model_modelfile:
+            python_code = """import base64
+import os
+import json
+
+import ollama
+from flyteidl.core import literals_pb2 as _literals_pb2
+from flytekit.core import utils
+from flytekit.core.context_manager import FlyteContextManager
+from flytekit.interaction.string_literals import literal_map_string_repr
+from flytekit.models import literals as _literal_models
+from flytekit.models.core.types import BlobType
+from flytekit.types.file import FlyteFile
+
+
+ctx = FlyteContextManager.current_context()
+local_inputs_file = os.path.join(ctx.execution_state.working_dir, 'inputs.pb')
+ctx.file_access.get_data(
+    '{{.input}}',
+    local_inputs_file,
+)
+input_proto = utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
+idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
+
+inputs = literal_map_string_repr(idl_input_literals)
+
+for var_name, literal in idl_input_literals.literals.items():
+    if literal.scalar.blob:
+        if (
+            literal.scalar.blob.metadata.type.dimensionality
+            == BlobType.BlobDimensionality.SINGLE
+        ):
+            downloaded_file = FlyteFile.from_source(literal.scalar.blob.uri).download()
+            inputs[var_name] = downloaded_file
+
+"""
+
+            python_code += """
+class AttrDict(dict):
+    'Convert a dictionary to an attribute style lookup. Do not use this in regular places, this is used for namespacing inputs and outputs'
+
+    def __init__(self, *args, **kwargs):
+        super(AttrDict, self).__init__(*args, **kwargs)
+        self.__dict__ = self
+
+
+inputs = {'inputs': AttrDict(inputs)}
+
+"""
+            encoded_modelfile = base64.b64encode(self._model_modelfile.encode("utf-8")).decode("utf-8")
+
+            python_code += f"""
+encoded_model_file = '{encoded_modelfile}'
+
+modelfile = base64.b64decode(encoded_model_file).decode('utf-8').format(**inputs)
+modelfile = modelfile.replace('{{', '{{{{').replace('}}', '}}}}')
+
+with open('Modelfile', 'w') as f:
+    f.write(modelfile)
+
+for chunk in ollama.create(model='{self._model_name}', path='Modelfile', stream=True):
+    print(chunk)
+"""
+
+            no_inputs_python_code = f"""
+import base64
+import ollama
+
+encoded_model_file = '{encoded_modelfile}'
+
+modelfile = base64.b64decode(encoded_model_file).decode('utf-8')
+
+with open('Modelfile', 'w') as f:
+    f.write(modelfile)
+
+for chunk in ollama.create(model='{self._model_name}', path='Modelfile', stream=True):
+    print(chunk)
+"""
 
         command = (
-            f'updated_modelfile=$(python3 download_inputs.py --encoded_modelfile "{encoded_modelfile}"); sleep 15; curl -X POST {self.base_url}/api/create -d \'{{"name": "{self._model_name}", "modelfile": "$updated_modelfile"}}\''
-            if encoded_modelfile
-            else f'sleep 15; curl -X POST {self.base_url}/api/pull -d \'{{"name": "{self._model_name}"}}\''
+            f'sleep 15; python3 -c "{python_code}"'
+            if self._model_modelfile and "{inputs" in self._model_modelfile
+            else (
+                f'sleep 15; python3 -c "{no_inputs_python_code}"'
+                if self._model_modelfile and "{inputs" not in self._model_modelfile
+                else f'sleep 15; curl -X POST {self.base_url}/api/pull -d \'{{"name": "{self._model_name}"}}\''
+            )
         )
 
         self.pod_template.pod_spec.init_containers.append(
@@ -76,7 +160,7 @@ class Ollama(ModelInferenceTemplate):
                 command=[
                     "/bin/sh",
                     "-c",
-                    f"apt-get install -y curl && {command}",
+                    f"apt-get install -y curl && pip install ollama && {command}",
                 ],
                 resources=V1ResourceRequirements(
                     requests={
