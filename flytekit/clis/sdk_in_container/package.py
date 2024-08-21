@@ -128,7 +128,7 @@ def package(
     This serialization step will set the name of the tasks to the fully qualified name of the task function.
     """
     if copy is not None and fast:
-        raise ValueError("--fast and --copy cannot be used together. Please use --copy instead.")
+        raise ValueError("--fast and --copy cannot be used together. Please use --copy all instead.")
     elif copy == CopyFileDetection.ALL or copy == CopyFileDetection.LOADED_MODULES:
         # for those migrating, who only set --copy all/auto but don't have --fast set.
         fast = True

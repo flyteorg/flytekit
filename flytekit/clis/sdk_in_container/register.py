@@ -163,6 +163,8 @@ def register(
     """
     see help
     """
+    if copy is not None and non_fast:
+        raise ValueError("--non-fast and --copy cannot be used together. Use --copy none instead.")
 
     # Error handling for non-fast/copy conflicts
     if copy == CopyFileDetection.NO_COPY:
