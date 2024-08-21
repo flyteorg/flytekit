@@ -118,13 +118,16 @@ class DuckDBQuery(PythonInstanceTask):
         else:
             yield QueryOutput(output=con.execute(query), counter=counter)
 
-    def execute(self, query: Optional[Union[str, List[str]]] = None, **kwargs) -> StructuredDataset:
+    def execute(self, **kwargs) -> StructuredDataset:
         # TODO: Enable iterative download after adding the functionality to structured dataset code.
         con = self._connect_to_duckdb()
 
         params = None
         for key in self.python_interface.inputs.keys():
             val = kwargs.get(key)
+            if key == "query" and val is not None:
+                # Execution query takes priority
+                self._query = val
             if isinstance(val, StructuredDataset):
                 # register structured dataset
                 con.register(key, val.open(pa.Table).all())
@@ -140,12 +143,8 @@ class DuckDBQuery(PythonInstanceTask):
             else:
                 raise ValueError(f"Expected inputs of type StructuredDataset, str or list, received {type(val)}")
 
-        if self._query is None and query is None:
+        if self._query is None:
             raise ValueError("A query must be specified when defining or executing a DuckDBQuery.")
-
-        # Execution query takes priority
-        if query is not None:
-            self._query = query
 
         final_query = self._query
         query_output = QueryOutput()
