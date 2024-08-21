@@ -194,6 +194,28 @@ def test_pod_template():
     def func_with_pod_template(i: str):
         print(i + "a")
 
+    @task(
+        container_image="repo/image:0.0.0",
+        pod_template=PodTemplate(
+            primary_container_name="primary",
+            labels={"lKeyA": "lValA"},
+            annotations={"aKeyA": "aValA"},
+            pod_spec=V1PodSpec(
+                containers=[
+                    V1Container(
+                        name="primary",
+                    ),
+                    V1Container(
+                        name="secondary",
+                    ),
+                ]
+            ),
+        ),
+        pod_template_name="A",
+    )
+    def func_with_pod_template_multi_container(i: str):
+        print(i + "a")
+
     default_image = Image(name="default", fqn="docker.io/xyz", tag="some-git-hash")
     default_image_config = ImageConfig(default_image=default_image)
     default_serialization_settings = SerializationSettings(
@@ -211,7 +233,10 @@ def test_pod_template():
 
     metadata = k8s_pod.metadata
     assert metadata.labels == {"lKeyA": "lValA"}
-    assert metadata.annotations == {"aKeyA": "aValA"}
+    assert metadata.annotations == {"aKeyA": "aValA", "primary_container_name": "primary"}
+
+    k8s_pod_multi = func_with_pod_template_multi_container.get_k8s_pod(default_serialization_settings)
+    assert k8s_pod_multi.metadata.annotations == {"aKeyA": "aValA", "primary_container_name": "primary"}
 
     pod_spec = k8s_pod.pod_spec
     primary_container = pod_spec["containers"][0]
