@@ -184,16 +184,16 @@ def get_traceback_str(e: Exception) -> str:
     if isinstance(e, FlyteUserRuntimeException):
         # If the exception is a user exception, we want to capture the traceback of the exception that was raised by the
         # user code, not the Flyte internals.
-        err = e.__cause__ if e.__cause__ else e
+        tb = e.__cause__.__traceback__ if e.__cause__ else e.__traceback__
     else:
-        err = e
-    tb = e.__traceback__
+        tb = e.__traceback__
     lines = traceback.format_tb(tb)
     lines = [line.rstrip() for line in lines]
     tb_str = "\n    ".join(lines)
     format_str = "Traceback (most recent call last):\n" "\n    {traceback}\n" "\n" "Message:\n" "\n" "    {message}"
 
-    return format_str.format(traceback=tb_str, message=f"{type(err).__name__}: {err}")
+    value = e.value if isinstance(e, FlyteUserRuntimeException) else e
+    return format_str.format(traceback=tb_str, message=f"{type(value).__name__}: {value}")
 
 
 def get_one_of(*args) -> str:

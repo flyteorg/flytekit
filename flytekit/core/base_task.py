@@ -741,7 +741,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                         # If the task is being executed locally, we want to raise the original exception
                         e.args = (f"Error encountered while executing '{self.name}':\n  {e.args[0]}",)
                         raise
-                    raise FlyteUserRuntimeException("flytekit runtime error. Original error message: {e}") from e
+                    raise FlyteUserRuntimeException(e) from e
 
             if inspect.iscoroutine(native_outputs):
                 # If native outputs is a coroutine, then this is an eager workflow.
