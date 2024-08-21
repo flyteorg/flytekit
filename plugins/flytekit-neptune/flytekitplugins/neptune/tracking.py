@@ -86,6 +86,13 @@ class _neptune_init_run_class(ClassDecorator):
             # If HOSTNAME is not defined, use the execution name as a fallback
             hostname = os.environ.get("HOSTNAME", ctx.user_space_params.execution_id.name)
             run["flyte/execution_id"] = hostname
+            run["flyte/project"] = ctx.user_space_params.execution_id.project
+            run["flyte/domain"] = ctx.user_space_params.execution_id.domain
+            run["flyte/name"] = ctx.user_space_params.execution_id.name
+            run["flyte/task/name"] = ctx.user_space_params.task_id.name
+            run["flyte/task/project"] = ctx.user_space_params.task_id.project
+            run["flyte/task/domain"] = ctx.user_space_params.task_id.domain
+            run["flyte/task/version"] = ctx.user_space_params.task_id.version
 
             if (execution_url := os.getenv("FLYTE_EXECUTION_URL")) is not None:
                 run["flyte/execution_url"] = execution_url
