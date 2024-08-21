@@ -81,7 +81,7 @@ def pretty_print_grpc_error(e: grpc.RpcError):
     """
     if isinstance(e, grpc._channel._InactiveRpcError):  # noqa
         click.secho(f"RPC Failed, with Status: {e.code()}", fg="red", bold=True)
-        click.secho(f"\tdetails: {e.details()}", fg="magenta", bold=True)
+        click.secho(f"\tDetails: {e.details()}", fg="magenta", bold=True)
     return
 
 
@@ -113,7 +113,6 @@ def pretty_print_traceback(e: Exception, verbosity: int = 1):
     Print the traceback in a nice formatted way if verbose is set to True.
     """
     console = Console()
-    tb = e.__cause__.__traceback__ if e.__cause__ else e.__traceback__
 
     if verbosity == 0:
         console.print(Traceback.from_exception(type(e), e, None))
@@ -124,10 +123,11 @@ def pretty_print_traceback(e: Exception, verbosity: int = 1):
             f" For more verbose output, use the flags -vv or -vvv.",
             fg="yellow",
         )
-        new_tb = remove_unwanted_traceback_frames(tb, unwanted_module_names)
+
+        new_tb = remove_unwanted_traceback_frames(e.__traceback__, unwanted_module_names)
         console.print(Traceback.from_exception(type(e), e, new_tb))
     elif verbosity >= 2:
-        console.print(Traceback.from_exception(type(e), e, tb))
+        console.print(Traceback.from_exception(type(e), e, e.__traceback__))
     else:
         raise ValueError(f"Verbosity level must be between 0 and 2. Got {verbosity}")
 

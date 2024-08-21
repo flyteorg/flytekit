@@ -1,0 +1,34 @@
+a: 1
+b: Hello
+c: 1.1
+d:
+  i: 1
+  a:
+    - h
+    - e
+e:
+  - 1
+  - 2
+  - 3
+f:
+  x: 1.0
+  y: 2.0
+g: tests/flytekit/unit/cli/pyflyte/testdata/df.parquet
+h: true
+i: '2020-05-01'
+j: 20H
+k: RED
+l:
+  hello: world
+m:
+  a: b
+  c: d
+n:
+  - x: tests/flytekit/unit/cli/pyflyte/testdata/df.parquet
+o:
+  x:
+    - tests/flytekit/unit/cli/pyflyte/testdata/df.parquet
+p: 'None'
+q: tests/flytekit/unit/cli/pyflyte/testdata
+remote: tests/flytekit/unit/cli/pyflyte/testdata
+image: tests/flytekit/unit/cli/pyflyte/testdata
