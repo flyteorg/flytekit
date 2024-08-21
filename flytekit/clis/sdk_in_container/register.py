@@ -110,14 +110,6 @@ the root of your project, it finds the first folder that does not have a ``__ini
     " 'all' is the current behavior copying all files from root, 'auto' copies only loaded Python modules",
 )
 @click.option(
-    "--ls-files",
-    required=False,
-    is_flag=True,
-    default=False,
-    show_default=True,
-    help="List the files copied into the image (valid only for new --copy switch)",
-)
-@click.option(
     "--dry-run",
     default=False,
     is_flag=True,
@@ -162,7 +154,6 @@ def register(
     deref_symlinks: bool,
     non_fast: bool,
     copy: typing.Optional[CopyFileDetection],
-    ls_files: bool,
     package_or_module: typing.Tuple[str],
     dry_run: bool,
     activate_launchplans: bool,
@@ -174,7 +165,7 @@ def register(
     """
 
     # Error handling for non-fast/copy conflicts
-    if copy == CopyFileDetection.TEMP_NO_COPY:
+    if copy == CopyFileDetection.NO_COPY:
         non_fast = True
         # Set this to None because downstream logic currently detects None to mean old logic.
         copy = None
@@ -184,6 +175,7 @@ def register(
     elif copy == CopyFileDetection.LOADED_MODULES:
         if non_fast:
             raise ValueError("Conflicting options: cannot specify both --non-fast and --copy auto")
+    ls_files = ctx.obj[constants.CTX_VERBOSE] > 0
 
     pkgs = ctx.obj[constants.CTX_PACKAGES]
     if not pkgs:

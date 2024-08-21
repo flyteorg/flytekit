@@ -105,16 +105,6 @@ class RunLevelParams(PyFlyteParams):
             " 'all' will behave as the current copy-all flag, 'auto' copies only loaded Python modules",
         )
     )
-    ls_files: bool = make_click_option_field(
-        click.Option(
-            param_decls=["--ls-files", "ls_files"],
-            required=False,
-            is_flag=True,
-            default=False,
-            show_default=True,
-            help="List the files copied into the image (valid only for new --copy switch)",
-        )
-    )
     image_config: ImageConfig = make_click_option_field(
         click.Option(
             param_decls=["-i", "--image", "image_config"],
@@ -625,8 +615,11 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
             image_config = patch_image_config(config_file, image_config)
 
             with context_manager.FlyteContextManager.with_context(remote.context.new_builder()):
+                ls_files = run_level_params.verbose > 0
                 fast_package_options = FastPackageOptions(
-                    [], copy_style=run_level_params.copy, ls_files=run_level_params.ls_files
+                    [],
+                    copy_style=run_level_params.copy,
+                    ls_files=ls_files,
                 )
                 remote_entity = remote.register_script(
                     entity,

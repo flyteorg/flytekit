@@ -32,11 +32,12 @@ FAST_FILEENDING = ".tar.gz"
 class CopyFileDetection(Enum):
     LOADED_MODULES = 1
     ALL = 2
-    # This is a temporary option to be removed in the future. In the future this value of the enum should simply
-    # be Python None. Here now to distinguish between users explicitly setting --copy none and not setting the flag.
-    # This is only used for register, not for package or run because run doesn't have a no-fast-register option and
-    # package is by default non-fast.
-    TEMP_NO_COPY = 3
+    # This option's meaning will change in the future. In the future this will mean that no files should be copied
+    # (i.e. no fast registration is used). For now, both this value and setting this Enum to Python None are both
+    # valid to distinguish between users explicitly setting --copy none and not setting the flag.
+    # Currently, this is only used for register, not for package or run because run doesn't have a no-fast-register
+    # option and package is by default non-fast.
+    NO_COPY = 3
 
 
 @dataclass(frozen=True)
@@ -53,7 +54,6 @@ class FastPackageOptions:
 
 def print_ls_tree(source: os.PathLike, ls: typing.List[str]):
     click.secho("Files to be copied for fast registration...", fg="bright_blue")
-    fff = []
 
     tree_root = Tree(
         f":open_file_folder: [link file://{source}]{source} (detected source root)",
@@ -62,8 +62,6 @@ def print_ls_tree(source: os.PathLike, ls: typing.List[str]):
     trees = {pathlib.Path(source): tree_root}
 
     for f in ls:
-        rpath = os.path.relpath(f, start=source)
-        fff.append(rpath)
         fpp = pathlib.Path(f)
         if fpp.parent not in trees:
             # add trees for all intermediate folders
