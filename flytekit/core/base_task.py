@@ -737,8 +737,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             #   a workflow or a subworkflow etc
             logger.info(f"Invoking {self.name} with inputs: {native_inputs}")
             with timeit("Execute user level code"):
-                task = decorate_python_task(self)
-                native_outputs = task.execute(**native_inputs)
+                native_outputs = self.execute(**native_inputs)
 
             if inspect.iscoroutine(native_outputs):
                 # If native outputs is a coroutine, then this is an eager workflow.
