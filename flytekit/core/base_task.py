@@ -601,7 +601,11 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
     def _literal_map_to_python_input(
         self, literal_map: _literal_models.LiteralMap, ctx: FlyteContext
     ) -> Dict[str, Any]:
-        return TypeEngine.literal_map_to_kwargs(ctx, literal_map, self.python_interface.inputs)
+        try:
+            return TypeEngine.literal_map_to_kwargs(ctx, literal_map, self.python_interface.inputs)
+        except Exception as exc:
+            exc.args = (f"Error encountered while converting inputs of '{self.name}':\n  {exc.args[0]}",)
+            raise
 
     def _output_to_literal_map(self, native_outputs: Dict[int, Any], ctx: FlyteContext):
         expected_output_names = list(self._outputs_interface.keys())
@@ -639,7 +643,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                     e.args = (
                         f"Failed to convert outputs of task '{self.name}' at position {key}.\n"
                         f"Failed to convert type {type(native_outputs_as_map[expected_output_names[i]])} to type {py_type}.\n"
-                        f"Error Message: {e.args[0]}."
+                        f"Error Message: {e.args[0]}.",
                     )
                     raise
                 # Now check if there is any output metadata associated with this output variable and attach it to the

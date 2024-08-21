@@ -1,4 +1,5 @@
 from flytekit.exceptions import base as _base_exceptions
+from flytekit.models.core import errors
 
 
 class FlyteSystemException(_base_exceptions.FlyteRecoverableException):
@@ -48,3 +49,21 @@ class FlyteSystemAssertion(FlyteSystemException, AssertionError):
 
 class FlyteAgentNotFound(FlyteSystemException, AssertionError):
     _ERROR_CODE = "SYSTEM:AgentNotFound"
+
+
+class FlyteNonRecoverableSystemException(FlyteSystemException):
+    _ERROR_CODE = "USER:NonRecoverableSystemError"
+
+    def __init__(self, exc_value: Exception):
+        """
+        FlyteNonRecoverableSystemException is thrown when a system code raises an exception.
+
+        :param exc_value: The exception that was raised from system code.
+        """
+        self._exc_value = exc_value
+        self.kind = errors.ContainerError.Kind.RECOVERABLE
+        super().__init__(str(exc_value))
+
+    @property
+    def value(self):
+        return self._exc_value
