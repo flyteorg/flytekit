@@ -128,7 +128,7 @@ class DuckDBQuery(PythonInstanceTask):
             if key == "query" and val is not None:
                 # Execution query takes priority
                 self._query = val
-            if isinstance(val, StructuredDataset):
+            elif isinstance(val, StructuredDataset):
                 # register structured dataset
                 con.register(key, val.open(pa.Table).all())
             elif isinstance(val, (pd.DataFrame, pa.Table)):
