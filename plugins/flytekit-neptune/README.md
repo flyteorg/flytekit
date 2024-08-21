@@ -32,5 +32,5 @@ plugins:
     dynamic-log-links:
       - neptune-run-id:
           displayName: Neptune
-          templateUris: "{{ .taskConfig.host }}/{{ .taskConfig.project }}?query=(%60flyte%2execution-id%60%3Astring%20%3D%20%22{{ .executionName }}-{{ .nodeId }}-{{ .taskRetryAttempt }}%22)&lbViewUnpacked=true"
+          templateUris: "{{ .taskConfig.host }}/{{ .taskConfig.project }}?query=(%60flyte%2Fexecution_id%60%3Astring%20%3D%20%22{{ .executionName }}-{{ .nodeId }}-{{ .taskRetryAttempt }}%22)&lbViewUnpacked=true"
 ```
