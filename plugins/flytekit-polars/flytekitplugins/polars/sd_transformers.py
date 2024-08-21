@@ -15,8 +15,9 @@ from flytekit.types.structured.structured_dataset import (
 )
 
 if typing.TYPE_CHECKING:
-    import polars as pl
     import fsspec.utils as fsspec_utils
+
+    import polars as pl
 else:
     pl = lazy_module("polars")
     fsspec_utils = lazy_module("fsspec.utils")
@@ -25,6 +26,7 @@ else:
 ############################
 # Polars DataFrame classes #
 ############################
+
 
 class PolarsDataFrameRenderer:
     """
@@ -99,6 +101,7 @@ class ParquetToPolarsDataFrameDecodingHandler(StructuredDatasetDecoder):
 ############################
 # Polars LazyFrame classes #
 ############################
+
 
 class PolarsLazyFrameToParquetEncodingHandler(StructuredDatasetEncoder):
     def __init__(self):
