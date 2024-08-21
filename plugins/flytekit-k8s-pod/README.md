@@ -1,6 +1,6 @@
 # Flytekit Kubernetes Pod Plugin
 
-> [!IMPORTANT]  
+> [!IMPORTANT]
 > This plugin is no longer needed and is here only for backwards compatibility. No new versions will be published after v1.13.x
 > Please use the `pod_template` and `pod_template_name` args to `@task` instead.
 
