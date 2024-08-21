@@ -70,8 +70,8 @@ def test_remote_project_and_init_run_kwargs(
     neptune_task()
 
     init_run_mock.assert_called_with(project="flytekit/project", tags=["my-tag"], api_token=api_token)
-    assert run_mock["Flyte Execution ID"] == host_name
-    assert run_mock["Flyte Execution URL"] == execution_url
+    assert run_mock["flyte/execution_id"] == host_name
+    assert run_mock["flyte/execution_url"] == execution_url
 
 
 def test_get_secret_callable():
