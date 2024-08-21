@@ -62,8 +62,16 @@ class ArrayNodeMapTask(PythonTask):
             actual_task = python_function_task
 
         # TODO: add support for other Flyte entities
-        if not (isinstance(actual_task, PythonFunctionTask) or isinstance(actual_task, PythonInstanceTask)):
-            raise ValueError("Only PythonFunctionTask and PythonInstanceTask are supported in map tasks.")
+        if not (
+            (
+                isinstance(actual_task, PythonFunctionTask)
+                and actual_task.execution_mode == PythonFunctionTask.ExecutionBehavior.DEFAULT
+            )
+            or isinstance(actual_task, PythonInstanceTask)
+        ):
+            raise ValueError(
+                "Only PythonFunctionTask with default execution mode (not @dynamic or @eager) and PythonInstanceTask are supported in map tasks."
+            )
 
         for k, v in actual_task.python_interface.inputs.items():
             if bound_inputs and k in bound_inputs:

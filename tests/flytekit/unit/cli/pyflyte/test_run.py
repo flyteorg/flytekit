@@ -4,6 +4,7 @@ import os
 import pathlib
 import shutil
 import sys
+import io
 
 import mock
 import pytest
@@ -38,6 +39,8 @@ IMPERATIVE_WORKFLOW_FILE = os.path.join(
     os.path.dirname(os.path.realpath(__file__)), "imperative_wf.py"
 )
 DIR_NAME = os.path.dirname(os.path.realpath(__file__))
+
+monkeypatch = pytest.MonkeyPatch()
 
 
 class WorkflowFileLocation(enum.Enum):
@@ -230,6 +233,92 @@ def test_union_type1(input):
     assert result.exit_code == 0
 
 
+def test_all_types_with_json_input():
+    runner = CliRunner()
+    result = runner.invoke(
+        pyflyte.main,
+        [
+            "run",
+            os.path.join(DIR_NAME, "workflow.py"),
+            "my_wf",
+            "--inputs-file",
+            os.path.join(os.path.dirname(os.path.realpath(__file__)), "my_wf_input.json"),
+        ],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0, result.stdout
+
+
+def test_all_types_with_yaml_input():
+    runner = CliRunner()
+
+    result = runner.invoke(
+        pyflyte.main,
+        ["run", os.path.join(DIR_NAME, "workflow.py"), "my_wf", "--inputs-file", os.path.join(os.path.dirname(os.path.realpath(__file__)), "my_wf_input.yaml")],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0, result.stdout
+
+
+def test_all_types_with_pipe_input(monkeypatch):
+    runner = CliRunner()
+    input= str(json.load(open(os.path.join(os.path.dirname(os.path.realpath(__file__)), "my_wf_input.json"),"r")))
+    monkeypatch.setattr("sys.stdin", io.StringIO(input))
+    result = runner.invoke(
+        pyflyte.main,
+        [
+            "run",
+            os.path.join(DIR_NAME, "workflow.py"),
+            "my_wf",
+        ],
+        input=input,
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0, result.stdout
+
+
+@pytest.mark.parametrize(
+    "pipe_input, option_input",
+    [
+        (
+            str(
+                json.load(
+                    open(
+                        os.path.join(
+                            os.path.dirname(os.path.realpath(__file__)),
+                            "my_wf_input.json",
+                        ),
+                        "r",
+                    )
+                )
+            ),
+            "GREEN",
+        )
+    ],
+)
+def test_replace_file_inputs(monkeypatch, pipe_input, option_input):
+    runner = CliRunner()
+    monkeypatch.setattr("sys.stdin", io.StringIO(pipe_input))
+    result = runner.invoke(
+        pyflyte.main,
+        [
+            "run",
+            os.path.join(DIR_NAME, "workflow.py"),
+            "my_wf",
+            "--inputs-file",
+            os.path.join(
+                os.path.dirname(os.path.realpath(__file__)), "my_wf_input.json"
+            ),
+            "--k",
+            option_input,
+        ],
+        input=pipe_input,
+    )
+
+    assert result.exit_code == 0
+    assert option_input in result.output
+
+
 @pytest.mark.parametrize(
     "input",
     [2.0, '{"i":1,"a":["h","e"]}', "[1, 2, 3]"],
@@ -276,7 +365,9 @@ def test_union_type_with_invalid_input():
     assert result.exit_code == 2
 
 
-@pytest.mark.skipif(sys.version_info < (3, 9), reason="listing entities requires python>=3.9")
+@pytest.mark.skipif(
+    sys.version_info < (3, 9), reason="listing entities requires python>=3.9"
+)
 @pytest.mark.parametrize(
     "workflow_file",
     [
@@ -287,12 +378,13 @@ def test_union_type_with_invalid_input():
 )
 def test_get_entities_in_file(workflow_file):
     e = get_entities_in_file(pathlib.Path(workflow_file), False)
-    assert e.workflows == ["my_wf", "wf_with_env_vars", "wf_with_none"]
+    assert e.workflows == ["my_wf", "wf_with_env_vars", "wf_with_list", "wf_with_none"]
     assert e.tasks == [
         "get_subset_df",
         "print_all",
         "show_sd",
         "task_with_env_vars",
+        "task_with_list",
         "task_with_optional",
         "test_union1",
         "test_union2",
@@ -300,11 +392,13 @@ def test_get_entities_in_file(workflow_file):
     assert e.all() == [
         "my_wf",
         "wf_with_env_vars",
+        "wf_with_list",
         "wf_with_none",
         "get_subset_df",
         "print_all",
         "show_sd",
         "task_with_env_vars",
+        "task_with_list",
         "task_with_optional",
         "test_union1",
         "test_union2",
