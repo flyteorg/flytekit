@@ -1,7 +1,7 @@
 import json
 from enum import Enum
 from functools import partial
-from typing import Dict, List, NamedTuple, Optional, Union
+from typing import Callable, Dict, List, NamedTuple, Optional, Union
 
 from flytekit import PythonInstanceTask, Secret, current_context, lazy_module
 from flytekit.extend import Interface
@@ -12,19 +12,14 @@ pd = lazy_module("pandas")
 pa = lazy_module("pyarrow")
 
 
-def connect_local(hosted_secret: Optional[Secret]):
+def connect_local(token: Optional[str]):
     """Connect to local DuckDB."""
     return duckdb.connect(":memory:")
 
 
-def connect_motherduck(hosted_secret: Secret):
+def connect_motherduck(token: str):
     """Connect to MotherDuck."""
-    motherduck_token = current_context().secrets.get(
-        group=hosted_secret.group,
-        key=hosted_secret.key,
-        group_version=hosted_secret.group_version,
-    )
-    return duckdb.connect("md:", config={"motherduck_token": motherduck_token})
+    return duckdb.connect("md:", config={"motherduck_token": token})
 
 
 class DuckDBProvider(Enum):
@@ -45,22 +40,29 @@ class DuckDBQuery(PythonInstanceTask):
         name: str,
         query: Optional[Union[str, List[str]]] = None,
         inputs: Optional[Dict[str, Union[StructuredDataset, list]]] = None,
-        provider: DuckDBProvider = DuckDBProvider.LOCAL,
+        provider: Union[DuckDBProvider, Callable] = DuckDBProvider.LOCAL,
         **kwargs,
     ):
         """
         This method initializes the DuckDBQuery.
 
+        Note that the provider can be one of the default providers listed in DuckDBProvider or a custom callable like the following:
+
+        def custom_connect_motherduck(token: str):
+            return duckdb.connect("md:", config={"motherduck_token": token, "another_config": "hello"})
+
+        DuckDBQuery(..., provider=custom_connect_motherduck)
+
         Args:
             name: Name of the task
             query: DuckDB query to execute
             inputs: The query parameters to be used while executing the query
-            provider: DuckDB provider (e.g., LOCAL, MOTHERDUCK, ANOTHERPRODUCT)
+            provider: DuckDB provider
         """
         self._query = query
         self._provider = provider
         secret_requests: Optional[list[Secret]] = kwargs.get("secret_requests", None)
-        self._hosted_secret = secret_requests[0] if secret_requests else None
+        self._connect_secret = secret_requests[0] if secret_requests else None
 
         outputs = {"result": StructuredDataset}
 
@@ -79,14 +81,17 @@ class DuckDBQuery(PythonInstanceTask):
         Returns:
             A DuckDB connection object.
         """
-
-        if self._provider not in DuckDBProvider:
-            raise ValueError(f"Unknown DuckDB provider: {self._provider}")
-
-        if self._provider != DuckDBProvider.LOCAL and self._hosted_secret is None:
-            raise ValueError(f"A secret is required for the {self._provider} provider.")
-
-        return self._provider.value(self._hosted_secret)
+        connect_token = None
+        if self._connect_secret:
+            connect_token = current_context().secrets.get(
+                group=self._connect_secret.group,
+                key=self._connect_secret.key,
+                group_version=self._connect_secret.group_version,
+            )
+        if isinstance(self._provider, DuckDBProvider):
+            return self._provider.value(connect_token)
+        else:  # callable
+            return self._provider(connect_token)
 
     def _execute_query(
         self, con: duckdb.DuckDBPyConnection, params: list, query: str, counter: int, multiple_params: bool
