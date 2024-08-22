@@ -45,7 +45,6 @@ class DuckDBQuery(PythonInstanceTask):
         query: Optional[Union[str, List[str]]] = None,
         inputs: Optional[Dict[str, Union[StructuredDataset, list]]] = None,
         provider: Union[DuckDBProvider, Callable] = DuckDBProvider.LOCAL,
-        secret: Optional[Secret] = None,
         **kwargs,
     ):
         """
@@ -66,7 +65,11 @@ class DuckDBQuery(PythonInstanceTask):
         """
         self._query = query
         self._provider = provider
-        self._secret = secret
+        secret_requests: Optional[list[Secret]] = kwargs.get("secret_requests", None)
+        self._connect_secret = None
+        if secret_requests:
+            assert len(secret_requests) == 1, "Only one secret can be used for a DuckDBQuery task."
+            self._connect_secret = secret_requests[0] if secret_requests else None
 
         outputs = {"result": StructuredDataset}
 
@@ -86,11 +89,11 @@ class DuckDBQuery(PythonInstanceTask):
             A DuckDB connection object.
         """
         connect_token = None
-        if self._secret:
+        if self._connect_secret:
             connect_token = current_context().secrets.get(
-                group=self._secret.group,
-                key=self._secret.key,
-                group_version=self._secret.group_version,
+                group=self._connect_secret.group,
+                key=self._connect_secret.key,
+                group_version=self._connect_secret.group_version,
             )
         if isinstance(self._provider, DuckDBProvider):
             if not connect_token and self._provider != DuckDBProvider.LOCAL:
