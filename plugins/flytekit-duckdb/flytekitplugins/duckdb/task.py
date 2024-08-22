@@ -12,6 +12,10 @@ pd = lazy_module("pandas")
 pa = lazy_module("pyarrow")
 
 
+class MissingSecretError(ValueError):
+    pass
+
+
 def connect_local(token: Optional[str]):
     """Connect to local DuckDB."""
     return duckdb.connect(":memory:")
@@ -89,6 +93,8 @@ class DuckDBQuery(PythonInstanceTask):
                 group_version=self._connect_secret.group_version,
             )
         if isinstance(self._provider, DuckDBProvider):
+            if not connect_token and self._provider != DuckDBProvider.LOCAL:
+                raise MissingSecretError(f"A secret_requests must be provided for the {self._provider.name} provider.")
             return self._provider.value(connect_token)
         else:  # callable
             return self._provider(connect_token)
