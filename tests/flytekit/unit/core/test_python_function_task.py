@@ -1,13 +1,16 @@
 from collections import OrderedDict
+from typing import Optional, Union, Callable
+from functools import wraps
 
 import pytest
 from kubernetes.client.models import V1Container, V1PodSpec
 
-from flytekit import task
+from flytekit import task, workflow
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
+from flytekit.core.context_manager import ExecutionParameters
 from flytekit.core.pod_template import PodTemplate
 from flytekit.core.python_auto_container import get_registerable_container_image
-from flytekit.core.python_function_task import PythonFunctionTask
+from flytekit.core.python_function_task import PythonFunctionTask, ExecuteInterceptor
 from flytekit.core.tracker import isnested, istestfunction
 from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec
 from flytekit.tools.translator import get_serializable_task
@@ -284,3 +287,90 @@ def test_default_inputs():
         return x
 
     assert foo3.python_interface.inputs_with_defaults == {"x": (int, None), "y": (str, None)}
+
+
+def my_execute_handler(f):
+    class Wrapper(ExecuteInterceptor):
+        def __init__(self, f: Union[ExecuteInterceptor, Callable]):
+            self._f = f
+            self._next = None
+            wraps(f)(self)
+            if isinstance(f, ExecuteInterceptor):
+                self._next = f
+
+        def get_next(self) -> Optional[ExecuteInterceptor]:
+            return self._next
+
+        def pre_execute(self, user_params: Optional[ExecutionParameters]) -> Optional[ExecutionParameters]:  # type: ignore
+            print(f"my_execute_handler: pre_execute")
+            if self.get_next() is not None:
+                return self.get_next().pre_execute(user_params)
+            return user_params
+
+        def execute(self, *args, **kwargs):
+            return self._f(*args, **kwargs)
+
+        def __call__(self, *args, **kwargs):
+            if self._f:
+                # Where the actual execution happens.
+                return self.execute(*args, **kwargs)
+
+        def post_execute(self, user_params: Optional[ExecutionParameters], rval: object) -> object:  # type: ignore
+            print(f"my_execute_handler: post_execute")
+            if self.get_next() is not None:
+                return self.get_next().post_execute(user_params, rval)
+            return rval
+
+    wrapper = Wrapper(f)
+    return wrapper
+
+
+def my_outer_handler(f):
+    class Wrapper(ExecuteInterceptor):
+        def __init__(self, f: Union[ExecuteInterceptor, Callable]):
+            self._f = f
+            self._next = None
+            wraps(f)(self)
+            if isinstance(f, ExecuteInterceptor):
+                self._next = f
+
+        def get_next(self) -> Optional[ExecuteInterceptor]:
+            return self._next
+
+        def pre_execute(self, user_params: Optional[ExecutionParameters]) -> Optional[ExecutionParameters]:  # type: ignore
+            print(f"my_outer_handler: pre_execute")
+            if self.get_next() is not None:
+                return self.get_next().pre_execute(user_params)
+            return user_params
+
+        def execute(self, *args, **kwargs):
+            return self._f(*args, **kwargs)
+
+        def __call__(self, *args, **kwargs):
+            if self._f:
+                # Where the actual execution happens.
+                return self.execute(*args, **kwargs)
+
+        def post_execute(self, user_params: Optional[ExecutionParameters], rval: object) -> object:  # type: ignore
+            print(f"my_outer_handler: post_execute")
+            if self.get_next() is not None:
+                return self.get_next().post_execute(user_params, rval)
+            return rval
+
+    wrapper = Wrapper(f)
+    return wrapper
+
+
+def test_stacking():
+    @task
+    @my_outer_handler
+    @my_execute_handler
+    def foo(x: int = 0, y: str = "Hello") -> int:
+        print(f"foo got y: {y}")
+        return x
+
+    @workflow
+    def wf() -> int:
+        return foo(x=10, y="World")
+
+    print(wf())

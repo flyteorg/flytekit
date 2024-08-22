@@ -26,7 +26,7 @@ from typing import Any, Callable, Iterable, List, Optional, TypeVar, Union, cast
 
 from flytekit.core import launch_plan as _annotated_launch_plan
 from flytekit.core.base_task import Task, TaskResolverMixin
-from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
+from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager, ExecutionParameters
 from flytekit.core.docstring import Docstring
 from flytekit.core.interface import transform_function_to_interface
 from flytekit.core.promise import VoidPromise, translate_inputs_to_literals
@@ -79,6 +79,24 @@ class PythonInstanceTask(PythonAutoContainerTask[T], ABC):  # type: ignore
         super().__init__(name=name, task_config=task_config, task_type=task_type, task_resolver=task_resolver, **kwargs)
 
 
+from typing_extensions import Protocol, runtime_checkable
+
+
+@runtime_checkable
+class ExecuteInterceptor(Protocol):
+    def get_next(self) -> Optional[ExecuteInterceptor]:
+        ...
+
+    def pre_execute(self, user_params: Optional[ExecutionParameters]) -> Optional[ExecutionParameters]:
+        ...
+
+    def post_execute(self, user_params: Optional[ExecutionParameters], rval: Any) -> Any:
+        ...
+
+    def execute(self, **kwargs) -> Any:
+        ...
+
+
 class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
     """
     A Python Function task should be used as the base for all extensions that have a python function. It will
@@ -105,7 +123,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
     def __init__(
         self,
         task_config: T,
-        task_function: Callable,
+        task_function: Union[Callable, ExecuteInterceptor],
         task_type="python-task",
         ignore_input_vars: Optional[List[str]] = None,
         execution_mode: ExecutionBehavior = ExecutionBehavior.DEFAULT,
@@ -190,6 +208,11 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
             return f"{self.instantiated_in}.{self._name}"
         return self._name
 
+    def pre_execute(self, user_params: Optional[ExecutionParameters]) -> Optional[ExecutionParameters]:  # type: ignore
+        if isinstance(self._task_function, ExecuteInterceptor):
+            return self._task_function.pre_execute(user_params)
+        return super().pre_execute(user_params)
+
     def execute(self, **kwargs) -> Any:
         """
         This method will be invoked to execute the task. If you do decide to override this method you must also
@@ -204,6 +227,11 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
             return exception_scopes.user_entry_point(self._task_function)(**kwargs)
         elif self.execution_mode == self.ExecutionBehavior.DYNAMIC:
             return self.dynamic_execute(self._task_function, **kwargs)
+
+    def post_execute(self, user_params: Optional[ExecutionParameters], rval: Any) -> Any:
+        if isinstance(self._task_function, ExecuteInterceptor):
+            return self._task_function.post_execute(user_params, rval)
+        return super().post_execute(user_params, rval)
 
     def _create_and_cache_dynamic_workflow(self):
         if self._wf is None:
