@@ -61,7 +61,6 @@ id=micromamba \
 # Configure user space
 ENV PATH="/opt/micromamba/envs/runtime/bin:$$PATH" \
     UV_LINK_MODE=copy \
-    UV_PRERELEASE=allow \
     FLYTE_SDK_RICH_TRACEBACKS=0 \
     SSL_CERT_DIR=/etc/ssl/certs \
     $ENV
