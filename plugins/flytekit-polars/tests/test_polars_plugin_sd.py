@@ -14,6 +14,7 @@ full_schema = Annotated[StructuredDataset, PARQUET]
 
 polars_version = pl.__version__
 
+
 def test_polars_workflow_subset():
     @task
     def generate() -> subset_schema:
@@ -67,9 +68,9 @@ def test_polars_workflow_full():
 
 def test_polars_renderer():
     df = pl.DataFrame({"col1": [1, 3, 2], "col2": list("abc")})
-    assert PolarsDataFrameRenderer().to_html(df) == pd.DataFrame(
-        df.describe().transpose(), columns=df.describe().columns
-    ).to_html(index=False)
+    assert PolarsDataFrameRenderer().to_html(df) == df.to_pandas().describe(
+        include="all"
+    ).transpose().to_html(index=False)
 
 
 def test_parquet_to_polars():
