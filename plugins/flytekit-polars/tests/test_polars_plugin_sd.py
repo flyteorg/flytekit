@@ -106,7 +106,7 @@ def test_parquet_to_polars():
         return StructuredDataset(dataframe=sd.open(pl.DataFrame).all())
 
     sd = StructuredDataset(uri=tmp)
-    
+
     if version.parse(polars_version) >= version.parse("0.19.16"):
         assert t2(sd=sd).open(pl.DataFrame).all().equals(polars_df)
     else:
