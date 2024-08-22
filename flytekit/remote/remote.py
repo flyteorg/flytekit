@@ -1144,10 +1144,9 @@ class FlyteRemote(object):
         """
         if execution_name is not None and execution_name_prefix is not None:
             raise ValueError("Only one of execution_name and execution_name_prefix can be set, but got both set")
+        # todo: The prefix should be passed to the backend
         if execution_name_prefix is not None:
             execution_name = execution_name_prefix + "-" + uuid.uuid4().hex[:19]
-        if execution_name is None and execution_name_prefix is None:
-            execution_name = ""
         if not options:
             options = Options()
         if options.disable_notifications is not None:
