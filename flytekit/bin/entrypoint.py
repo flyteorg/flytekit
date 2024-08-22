@@ -377,8 +377,6 @@ def _execute_task(
         dynamic_addl_distro,
         dynamic_dest_dir,
     ) as ctx:
-        if all(os.path.realpath(path) != dynamic_dest_dir for path in sys.path):
-            sys.path.append(dynamic_dest_dir)
         resolver_obj = load_object_from_module(resolver)
         # Use the resolver to load the actual task object
         _task_def = resolver_obj.load_task(loader_args=resolver_args)
@@ -545,7 +543,14 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
 
     # Use the commandline to run the task execute command rather than calling it directly in python code
     # since the current runtime bytecode references the older user code, rather than the downloaded distribution.
-    p = subprocess.Popen(cmd)
+    env = os.environ.copy()
+    if dest_dir is not None:
+        if all(os.path.realpath(path) != dest_dir for path in sys.path):
+            if "PYTHONPATH" in env:
+                env["PYTHONPATH"] += os.pathsep + dest_dir
+            else:
+                env["PYTHONPATH"] = dest_dir
+    p = subprocess.Popen(cmd,env=env)
 
     def handle_sigterm(signum, frame):
         logger.info(f"passing signum {signum} [frame={frame}] to subprocess")
