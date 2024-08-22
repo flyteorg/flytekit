@@ -68,6 +68,7 @@ class Ollama(ModelInferenceTemplate):
             python_code = """import base64
 import os
 import json
+import sys
 
 import ollama
 from flyteidl.core import literals_pb2 as _literals_pb2
@@ -78,11 +79,12 @@ from flytekit.models import literals as _literal_models
 from flytekit.models.core.types import BlobType
 from flytekit.types.file import FlyteFile
 
+input_arg = sys.argv[1]
 
 ctx = FlyteContextManager.current_context()
 local_inputs_file = os.path.join(ctx.execution_state.working_dir, 'inputs.pb')
 ctx.file_access.get_data(
-    '{{.input}}',
+    input_arg,
     local_inputs_file,
 )
 input_proto = utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
@@ -162,6 +164,7 @@ for chunk in ollama.create(model='{self._model_name}', path='Modelfile', stream=
                     "-c",
                     f"apt-get install -y curl && pip install ollama && {command}",
                 ],
+                args=(["{{.input}}"] if self._model_modelfile and "{inputs" in self._model_modelfile else None),
                 resources=V1ResourceRequirements(
                     requests={
                         "cpu": self._model_cpu,
