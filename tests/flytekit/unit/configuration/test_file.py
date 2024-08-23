@@ -54,9 +54,9 @@ def test_get_config_file():
         Path(Path.home(), ".flyte", "config"),
         Path(Path.home(), ".flyte", "config.yaml")
     ]
-    if os.getenv(FLYTECTL_CONFIG_ENV_VAR_OVERRIDE, os.getenv(FLYTECTL_CONFIG_ENV_VAR, None)):
-        paths.append(
-            Path(os.getenv(FLYTECTL_CONFIG_ENV_VAR_OVERRIDE, os.getenv(FLYTECTL_CONFIG_ENV_VAR, None)))
+    config_file = os.getenv(FLYTECTL_CONFIG_ENV_VAR_OVERRIDE, os.getenv(FLYTECTL_CONFIG_ENV_VAR)
+    if config_file:
+        paths.append(Path(config_file))
         )
 
     c = get_config_file(None)
