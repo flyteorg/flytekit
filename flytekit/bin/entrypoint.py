@@ -550,11 +550,11 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
     # Use the commandline to run the task execute command rather than calling it directly in python code
     # since the current runtime bytecode references the older user code, rather than the downloaded distribution.
     env = os.environ.copy()
-    if all(os.path.realpath(path) != dest_dir for path in sys.path) and dest_dir is not None:
+    if dest_dir is not None:
         if "PYTHONPATH" in env:
-            env["PYTHONPATH"] += os.pathsep + dest_dir
+            env["PYTHONPATH"] += os.pathsep + os.path.realpath(dest_dir)
         else:
-            env["PYTHONPATH"] = dest_dir
+            env["PYTHONPATH"] = os.path.realpath(dest_dir)
     p = subprocess.Popen(cmd, env=env)
 
     def handle_sigterm(signum, frame):
