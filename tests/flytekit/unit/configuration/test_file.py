@@ -4,10 +4,11 @@ import os
 
 import mock
 import pytest
+from pathlib import Path
 from pytimeparse.timeparse import timeparse
 
 from flytekit.configuration import ConfigEntry, get_config_file, set_if_exists
-from flytekit.configuration.file import LegacyConfigEntry, _exists
+from flytekit.configuration.file import LegacyConfigEntry, _exists, FLYTECTL_CONFIG_ENV_VAR, FLYTECTL_CONFIG_ENV_VAR_OVERRIDE
 from flytekit.configuration.internal import Platform
 
 
@@ -42,8 +43,24 @@ def test_exists(data, expected):
 
 
 def test_get_config_file():
+    def all_path_not_exists(paths):
+        for path in paths:
+            if path.exists():
+                return False
+        return True
+
+    paths = [
+        Path("flytekit.config"),
+        Path(Path.home(), ".flyte", "config"),
+        Path(Path.home(), ".flyte", "config.yaml")
+    ]
+    if os.getenv(FLYTECTL_CONFIG_ENV_VAR_OVERRIDE, os.getenv(FLYTECTL_CONFIG_ENV_VAR, None)):
+        paths.append(
+            Path(os.getenv(FLYTECTL_CONFIG_ENV_VAR_OVERRIDE, os.getenv(FLYTECTL_CONFIG_ENV_VAR, None)))
+        )
+
     c = get_config_file(None)
-    assert c is None
+    assert (c is None) == all_path_not_exists(paths)
     c = get_config_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/good.config"))
     assert c is not None
     assert c.legacy_config is not None
