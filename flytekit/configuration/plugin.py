@@ -97,7 +97,7 @@ class FlytekitPlugin:
 
     @staticmethod
     def get_additional_upstream_nodes(ctx: Context, entity: "SupportsNodeCreation") -> List[Node]:
-        return None
+        return []
 
 
 def _get_plugin_from_entrypoint():
