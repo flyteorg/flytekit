@@ -1163,7 +1163,6 @@ def create_and_link_node(
     from flytekit.configuration.plugin import get_plugin
 
     additional_nodes = get_plugin().get_additional_upstream_nodes(ctx, entity)
-    print("nodes", additional_nodes)
     upstream_nodes.extend(additional_nodes)
 
     flytekit_node = Node(
