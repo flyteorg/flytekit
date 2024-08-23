@@ -41,8 +41,11 @@ class PolarsDataFrameRenderer:
             # LazyFrames in polars <= 0.19 does not support `describe`
             describe_df = df.collect().describe()
 
-        columns = describe_df["describe"]
-        html_repr = describe_df.drop("describe").transpose(column_names=columns)._repr_html_()
+        # the value is "statistic" or "describe" depending on polars version
+        stat_colname = describe_df.columns[0]
+
+        columns = describe_df[stat_colname]
+        html_repr = describe_df.drop(stat_colname).transpose(column_names=columns)._repr_html_()
         return html_repr
 
 
@@ -173,4 +176,3 @@ StructuredDatasetTransformerEngine.register_renderer(pl.DataFrame, PolarsDataFra
 # Register the Polars LazyFrame handlers
 StructuredDatasetTransformerEngine.register(PolarsLazyFrameToParquetEncodingHandler())
 StructuredDatasetTransformerEngine.register(ParquetToPolarsLazyFrameDecodingHandler())
-StructuredDatasetTransformerEngine.register_renderer(pl.LazyFrame, PolarsDataFrameRenderer())

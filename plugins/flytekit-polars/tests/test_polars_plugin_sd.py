@@ -87,7 +87,8 @@ def test_polars_renderer(df_cls):
     else:
         df_desc = df.describe()
 
-    expected = df_desc.drop("describe").transpose(column_names=df_desc["describe"])._repr_html_()
+    stat_colname = df_desc.columns[0]
+    expected = df_desc.drop(stat_colname).transpose(column_names=df_desc[stat_colname])._repr_html_()
     assert PolarsDataFrameRenderer().to_html(df) == expected
 
 
@@ -105,7 +106,7 @@ def test_parquet_to_polars_dataframe(df_cls):
     if isinstance(polars_df, pl.LazyFrame):
         polars_df = polars_df.collect()
 
-    assert pl.DataFrame(data).frame_equal(polars_df)
+    assert_frame_equal(pl.DataFrame(data), polars_df)
 
     tmp = tempfile.mktemp()
     pl.DataFrame(data).write_parquet(tmp)
@@ -120,7 +121,7 @@ def test_parquet_to_polars_dataframe(df_cls):
     if df_cls is pl.LazyFrame:
         df_out = df_out.collect()
 
-    assert df_out.frame_equal(polars_df)
+    assert_frame_equal(df_out, polars_df)
 
     @task
     def consume_sd_return_sd(sd: StructuredDataset) -> StructuredDataset:
@@ -132,4 +133,4 @@ def test_parquet_to_polars_dataframe(df_cls):
     if df_cls is pl.LazyFrame:
         opened_sd = opened_sd.collect()
 
-    assert opened_sd.frame_equal(polars_df)
+    assert_frame_equal(opened_sd, polars_df)
