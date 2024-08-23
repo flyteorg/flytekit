@@ -57,8 +57,10 @@ def test_get_remote(mock_remote, reset_flytectl_config_env_var):
     )
 
 
+@mock.patch("flytekit.configuration.plugin.get_config_file")
 @mock.patch("flytekit.configuration.plugin.FlyteRemote")
-def test_saving_remote(mock_remote):
+def test_saving_remote(mock_remote, mock_config_file):
+    mock_config_file.return_value = None
     mock_context = mock.MagicMock
     mock_context.obj = {}
     get_and_save_remote_with_click_context(mock_context, "p", "d")
