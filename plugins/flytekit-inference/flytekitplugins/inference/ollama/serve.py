@@ -79,7 +79,7 @@ from flytekit.models import literals as _literal_models
 from flytekit.models.core.types import BlobType
 from flytekit.types.file import FlyteFile
 
-input_arg = sys.argv[1]
+input_arg = sys.argv[-1]
 
 ctx = FlyteContextManager.current_context()
 local_inputs_file = os.path.join(ctx.execution_state.working_dir, 'inputs.pb')
@@ -93,7 +93,7 @@ idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
 inputs = literal_map_string_repr(idl_input_literals)
 
 for var_name, literal in idl_input_literals.literals.items():
-    if literal.scalar.blob:
+    if literal.scalar and literal.scalar.blob:
         if (
             literal.scalar.blob.metadata.type.dimensionality
             == BlobType.BlobDimensionality.SINGLE
@@ -146,12 +146,12 @@ for chunk in ollama.create(model='{self._model_name}', path='Modelfile', stream=
 """
 
         command = (
-            f'sleep 15; python3 -c "{python_code}"'
+            f'sleep 15 && python3 -c "{python_code}" {{{{.input}}}}'
             if self._model_modelfile and "{inputs" in self._model_modelfile
             else (
-                f'sleep 15; python3 -c "{no_inputs_python_code}"'
+                f'sleep 15 && python3 -c "{no_inputs_python_code}"'
                 if self._model_modelfile and "{inputs" not in self._model_modelfile
-                else f'sleep 15; curl -X POST {self.base_url}/api/pull -d \'{{"name": "{self._model_name}"}}\''
+                else f'sleep 15 && curl -X POST {self.base_url}/api/pull -d \'{{"name": "{self._model_name}"}}\''
             )
         )
 
@@ -159,12 +159,8 @@ for chunk in ollama.create(model='{self._model_name}', path='Modelfile', stream=
             V1Container(
                 name=container_name,
                 image=DefaultImages.default_image(),
-                command=[
-                    "/bin/sh",
-                    "-c",
-                    f"apt-get install -y curl && pip install ollama && {command}",
-                ],
-                args=(["{{.input}}"] if self._model_modelfile and "{inputs" in self._model_modelfile else None),
+                command=["/bin/sh", "-c"],
+                args=[f"apt-get install -y curl && pip install ollama && {command}"],
                 resources=V1ResourceRequirements(
                     requests={
                         "cpu": self._model_cpu,
