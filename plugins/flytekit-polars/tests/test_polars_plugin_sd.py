@@ -5,12 +5,16 @@ import polars as pl
 import pytest
 from flytekitplugins.polars.sd_transformers import PolarsDataFrameRenderer
 from typing_extensions import Annotated
+from packaging import version
+from polars.testing import assert_frame_equal
 
 from flytekit import kwtypes, task, workflow
 from flytekit.types.structured.structured_dataset import PARQUET, StructuredDataset
 
 subset_schema = Annotated[StructuredDataset, kwtypes(col2=str), PARQUET]
 full_schema = Annotated[StructuredDataset, PARQUET]
+
+polars_version = pl.__version__
 
 
 @pytest.mark.parametrize("df_cls", [pl.DataFrame, pl.LazyFrame])
