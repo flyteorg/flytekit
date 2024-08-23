@@ -22,7 +22,6 @@ import asyncio
 import collections
 import datetime
 import inspect
-import os
 import warnings
 from abc import abstractmethod
 from base64 import b64encode
@@ -70,10 +69,8 @@ from flytekit.core.promise import (
 )
 from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
-from flytekit.core.utils import str2bool, timeit
+from flytekit.core.utils import timeit
 from flytekit.deck import DeckField
-from flytekit.interactive import vscode
-from flytekit.interactive.constants import FLYTE_ENABLE_VSCODE_KEY
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import interface as _interface_models
@@ -904,22 +901,3 @@ class TaskResolverMixin(object):
         Overridable function that can optionally return a custom name for a given task
         """
         return None
-
-
-def decorate_python_task(task: PythonTask) -> Union[PythonTask, vscode]:
-    """
-    Decorates the task with additional functionality if necessary.
-
-    :param task: python task to decorate
-    :return: a decorated python task
-    """
-    from flytekit.core.python_function_task import PythonFunctionTask
-
-    if isinstance(task, PythonFunctionTask) and str2bool(os.getenv(FLYTE_ENABLE_VSCODE_KEY)):
-        """
-        If the environment variable FLYTE_ENABLE_VSCODE is set to True, then the task is decorated with vscode
-        functionality. This is useful for debugging the task in vscode.
-        """
-
-        return vscode(task_function=task.task_function)
-    return task
