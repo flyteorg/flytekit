@@ -1,7 +1,6 @@
 import json
 
-from flyteidl.plugins import array_job_pb2 as _array_job
-from google.protobuf import json_format as _json_format
+import flyteidl_rust as flyteidl
 
 from flytekit.models import common as _common
 
@@ -72,19 +71,19 @@ class ArrayJob(_common.FlyteCustomIdlEntity):
         """
         array_job = None
         if self.min_successes is not None:
-            array_job = _array_job.ArrayJob(
+            array_job = flyteidl.plugins.ArrayJob(
                 parallelism=self.parallelism,
                 size=self.size,
-                min_successes=self.min_successes,
+                success_criteria=flyteidl.array_job.SuccessCriteria.SuccessCriteria(self.min_successes),
             )
         elif self.min_success_ratio is not None:
-            array_job = _array_job.ArrayJob(
+            array_job = flyteidl.plugins.ArrayJob(
                 parallelism=self.parallelism,
                 size=self.size,
-                min_success_ratio=self.min_success_ratio,
+                success_criteria=flyteidl.array_job.SuccessCriteria.MinSuccessRatio(self.min_success_ratio),
             )
 
-        return _json_format.MessageToDict(array_job)
+        return json.loads(array_job.DumpToJsonString())
 
     @classmethod
     def from_dict(cls, idl_dict):
@@ -92,7 +91,7 @@ class ArrayJob(_common.FlyteCustomIdlEntity):
         :param dict[T, Text] idl_dict:
         :rtype: ArrayJob
         """
-        pb2_object = _json_format.Parse(json.dumps(idl_dict), _array_job.ArrayJob())
+        pb2_object = flyteidl.plugins.ArrayJob.LoadFromJsonString(json.dumps(idl_dict))
 
         if pb2_object.HasField("min_successes"):
             return cls(

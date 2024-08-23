@@ -2,7 +2,6 @@ import typing
 from typing import Dict
 
 import flyteidl_rust as flyteidl
-from flyteidl.core import types_pb2 as _types_pb2
 
 from flytekit.models import common as _common
 from flytekit.models.annotation import TypeAnnotation as TypeAnnotationModel
@@ -111,13 +110,13 @@ class UnionType(_common.FlyteIdlEntity):
     def variants(self) -> typing.List["LiteralType"]:
         return self._variants
 
-    def to_flyte_idl(self) -> _types_pb2.UnionType:
-        return _types_pb2.UnionType(
+    def to_flyte_idl(self) -> flyteidl.core.UnionType:
+        return flyteidl.core.UnionType(
             variants=[val.to_flyte_idl() if val else None for val in self._variants],
         )
 
     @classmethod
-    def from_flyte_idl(cls, proto: _types_pb2.UnionType):
+    def from_flyte_idl(cls, proto: flyteidl.core.UnionType):
         return cls(variants=[LiteralType.from_flyte_idl(v) for v in proto.variants])
 
 
@@ -223,8 +222,8 @@ class StructuredDatasetType(_common.FlyteIdlEntity):
     def external_schema_bytes(self) -> bytes:
         return self._external_schema_bytes
 
-    def to_flyte_idl(self) -> _types_pb2.StructuredDatasetType:
-        return _types_pb2.StructuredDatasetType(
+    def to_flyte_idl(self) -> flyteidl.core.StructuredDatasetType:
+        return flyteidl.core.StructuredDatasetType(
             columns=[c.to_flyte_idl() for c in self.columns] if self.columns else None,
             format=self.format,
             external_schema_type=self.external_schema_type if self.external_schema_type else None,
@@ -232,7 +231,7 @@ class StructuredDatasetType(_common.FlyteIdlEntity):
         )
 
     @classmethod
-    def from_flyte_idl(cls, proto: _types_pb2.StructuredDatasetType) -> _types_pb2.StructuredDatasetType:
+    def from_flyte_idl(cls, proto: flyteidl.core.StructuredDatasetType) -> flyteidl.core.StructuredDatasetType:
         return cls(
             columns=[StructuredDatasetType.DatasetColumn.from_flyte_idl(c) for c in proto.columns],
             format=proto.format,
@@ -282,8 +281,6 @@ class LiteralType(_common.FlyteIdlEntity):
         self._union_type = union_type
         self._structured_dataset_type = structured_dataset_type
         self._structure = structure
-        self._structured_dataset_type = structured_dataset_type
-        self._metadata = metadata
         self._annotation = annotation
 
     def __rich_repr__(self):
@@ -422,7 +419,6 @@ class LiteralType(_common.FlyteIdlEntity):
             collection_type = cls.from_flyte_idl(proto.type[0])
         if isinstance(proto.type, flyteidl.literal_type.Type.MapValueType):
             map_value_type = cls.from_flyte_idl(proto.type[0])
-
         return cls(
             simple=proto.type[0] if isinstance(proto.type, flyteidl.literal_type.Type.Simple) else None,
             schema=SchemaType.from_flyte_idl(proto.type[0])

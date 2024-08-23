@@ -23,7 +23,7 @@ def convert_from_timedelta_to_duration(delta: datetime.timedelta) -> flyteidl.pr
 
 
 # A function to convert Python `datetime` `to flyteidl.protobuf.Timestamp(seconds, nanoseconds)`.
-def convert_from_datetime_to_timestamp(dt_or_td: datetime.datetime) -> flyteidl.protobuf.Timestamp:
+def convert_from_datetime_to_timestamp(dt: datetime.datetime) -> flyteidl.protobuf.Timestamp:
     # Ensure the datetime is in UTC and is timezone-aware
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=datetime.timezone.utc)
@@ -36,4 +36,4 @@ def convert_from_datetime_to_timestamp(dt_or_td: datetime.datetime) -> flyteidl.
         (total_seconds - seconds) * 1e9
     )  # Fractional part to nanoseconds  # Convert the fractional part to nanoseconds
 
-    return flyteidl.protobuf.Timestamp(seconds=total_seconds, nanos=nanos)
+    return flyteidl.protobuf.Timestamp(seconds=seconds, nanos=nanos)

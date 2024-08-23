@@ -4,9 +4,6 @@ import re
 from typing import Dict
 
 import flyteidl_rust as flytedidl
-from flyteidl.admin import common_pb2 as _common_pb2
-from google.protobuf import json_format as _json_format
-from google.protobuf import struct_pb2 as _struct
 
 
 class FlyteABCMeta(abc.ABCMeta):
@@ -42,7 +39,8 @@ class FlyteType(FlyteABCMeta):
 
 class FlyteIdlEntity(object, metaclass=FlyteType):
     def __eq__(self, other):
-        return isinstance(other, FlyteIdlEntity) and other.to_flyte_idl() == self.to_flyte_idl()
+        import json
+        return isinstance(other, FlyteIdlEntity) and json.loads(other.to_flyte_idl().DumpToJsonString())  == json.loads(self.to_flyte_idl().DumpToJsonString())
 
     def __ne__(self, other):
         return not (self == other)
@@ -90,10 +88,10 @@ class FlyteCustomIdlEntity(FlyteIdlEntity):
         :param _struct.Struct idl_object:
         :return: FlyteCustomIdlEntity
         """
-        return cls.from_dict(idl_dict=_json_format.MessageToDict(idl_object))
+        return cls.from_dict(idl_dict=json.loads(idl_object.DumpToJsonString()))
 
     def to_flyte_idl(self):
-        return _json_format.Parse(json.dumps(self.to_dict()), _struct.Struct())
+        return flytedidl.ParseStruct(json.dumps(self.to_dict()))
 
     @abc.abstractmethod
     def from_dict(self, idl_dict):
@@ -179,7 +177,7 @@ class EmailNotification(FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.common_pb2.EmailNotification
         """
-        return _common_pb2.EmailNotification(recipients_email=self.recipients_email)
+        return flytedidl.admin.EmailNotification(recipients_email=self.recipients_email)
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -208,7 +206,7 @@ class SlackNotification(FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.common_pb2.SlackNotification
         """
-        return _common_pb2.SlackNotification(recipients_email=self.recipients_email)
+        return flytedidl.admin.SlackNotification(recipients_email=self.recipients_email)
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -237,7 +235,7 @@ class PagerDutyNotification(FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.common_pb2.PagerDutyNotification
         """
-        return _common_pb2.PagerDutyNotification(recipients_email=self.recipients_email)
+        return flytedidl.admin.PagerDutyNotification(recipients_email=self.recipients_email)
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -511,5 +509,5 @@ class Envs(FlyteIdlEntity):
         return flytedidl.admin.Envs(values=[flytedidl.core.KeyValuePair(key=k, value=v) for k, v in self.envs.items()])
 
     @classmethod
-    def from_flyte_idl(cls, pb2: _common_pb2.Envs) -> _common_pb2.Envs:
+    def from_flyte_idl(cls, pb2: flytedidl.admin.Envs) -> flytedidl.admin.Envs:
         return cls(envs={kv.key: kv.value for kv in pb2.values})

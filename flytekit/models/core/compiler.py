@@ -1,5 +1,4 @@
 import flyteidl_rust as flyteidl
-from flyteidl.core import compiler_pb2 as _compiler_pb2
 
 from flytekit.models import common as _common
 from flytekit.models.core import workflow as _core_workflow_models
@@ -24,7 +23,7 @@ class ConnectionSet(_common.FlyteIdlEntity):
             """
             :rtype: flyteidl.core.compiler_pb2.ConnectionSet.IdList
             """
-            return _compiler_pb2.ConnectionSet.IdList(ids=self.ids)
+            return flyteidl.connection_set.IdList(ids=self.ids)
 
         @classmethod
         def from_flyte_idl(cls, p):
@@ -60,7 +59,7 @@ class ConnectionSet(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.compiler_pb2.ConnectionSet
         """
-        return _compiler_pb2.ConnectionSet(
+        return flyteidl.core.ConnectionSet(
             upstream={k: v.to_flyte_idl() for k, v in self.upstream.items()},
             downstream={k: v.to_flyte_idl() for k, v in self.upstream.items()},
         )
@@ -104,7 +103,7 @@ class CompiledWorkflow(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.compiler_pb2.CompiledWorkflow
         """
-        return _compiler_pb2.CompiledWorkflow(
+        return flyteidl.core.CompiledWorkflow(
             template=self.template.to_flyte_idl(),
             connections=self.connections.to_flyte_idl(),
         )
@@ -140,7 +139,7 @@ class CompiledTask(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.compiler_pb2.CompiledTask
         """
-        return _compiler_pb2.CompiledTask(template=self.template)  # TODO: .to_flyte_idl()
+        return flyteidl.core.CompiledTask(template=self.template)  # TODO: .to_flyte_idl()
 
     @classmethod
     def from_flyte_idl(cls, p):

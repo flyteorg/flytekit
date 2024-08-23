@@ -1,5 +1,4 @@
 import flyteidl_rust as flyteidl
-from flyteidl.core import identifier_pb2 as identifier_pb2
 
 from flytekit.models import common as _common_models
 
@@ -305,14 +304,14 @@ class SignalIdentifier(_common_models.FlyteIdlEntity):
     def execution_id(self) -> WorkflowExecutionIdentifier:
         return self._execution_id
 
-    def to_flyte_idl(self) -> identifier_pb2.SignalIdentifier:
-        return identifier_pb2.SignalIdentifier(
+    def to_flyte_idl(self) -> flyteidl.core.SignalIdentifier:
+        return flyteidl.core.SignalIdentifier(
             signal_id=self.signal_id,
             execution_id=self.execution_id.to_flyte_idl(),
         )
 
     @classmethod
-    def from_flyte_idl(cls, proto: identifier_pb2.SignalIdentifier) -> "SignalIdentifier":
+    def from_flyte_idl(cls, proto: flyteidl.core.SignalIdentifier) -> "SignalIdentifier":
         return cls(
             signal_id=proto.signal_id,
             execution_id=WorkflowExecutionIdentifier.from_flyte_idl(proto.execution_id),

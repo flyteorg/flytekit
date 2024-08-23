@@ -2,7 +2,6 @@ import datetime
 import typing
 
 import flyteidl_rust as flyteidl
-from flyteidl.core import execution_pb2 as _execution_pb2
 
 from flytekit.models import common as _common
 
@@ -13,16 +12,16 @@ class WorkflowExecutionPhase(object):
     for sample usage.
     """
 
-    UNDEFINED = _execution_pb2.WorkflowExecution.UNDEFINED
-    QUEUED = _execution_pb2.WorkflowExecution.QUEUED
-    RUNNING = _execution_pb2.WorkflowExecution.RUNNING
-    SUCCEEDING = _execution_pb2.WorkflowExecution.SUCCEEDING
-    SUCCEEDED = _execution_pb2.WorkflowExecution.SUCCEEDED
-    FAILING = _execution_pb2.WorkflowExecution.FAILING
-    FAILED = _execution_pb2.WorkflowExecution.FAILED
-    ABORTED = _execution_pb2.WorkflowExecution.ABORTED
-    TIMED_OUT = _execution_pb2.WorkflowExecution.TIMED_OUT
-    ABORTING = _execution_pb2.WorkflowExecution.ABORTING
+    UNDEFINED = int(flyteidl.workflow_execution.Phase.Undefined)
+    QUEUED = int(flyteidl.workflow_execution.Phase.Queued)
+    RUNNING = int(flyteidl.workflow_execution.Phase.Running)
+    SUCCEEDING = int(flyteidl.workflow_execution.Phase.Succeeding)
+    SUCCEEDED = int(flyteidl.workflow_execution.Phase.Succeeded)
+    FAILING = int(flyteidl.workflow_execution.Phase.Failing)
+    FAILED = int(flyteidl.workflow_execution.Phase.Failed)
+    ABORTED = int(flyteidl.workflow_execution.Phase.Aborted)
+    TIMED_OUT = int(flyteidl.workflow_execution.Phase.TimedOut)
+    ABORTING = int(flyteidl.workflow_execution.Phase.Aborting)
 
     @classmethod
     def enum_to_string(cls, int_value):
@@ -37,17 +36,17 @@ class WorkflowExecutionPhase(object):
 
 
 class NodeExecutionPhase(object):
-    UNDEFINED = _execution_pb2.NodeExecution.UNDEFINED
-    QUEUED = _execution_pb2.NodeExecution.QUEUED
-    RUNNING = _execution_pb2.NodeExecution.RUNNING
-    SUCCEEDED = _execution_pb2.NodeExecution.SUCCEEDED
-    FAILING = _execution_pb2.NodeExecution.FAILING
-    FAILED = _execution_pb2.NodeExecution.FAILED
-    ABORTED = _execution_pb2.NodeExecution.ABORTED
-    SKIPPED = _execution_pb2.NodeExecution.SKIPPED
-    TIMED_OUT = _execution_pb2.NodeExecution.TIMED_OUT
-    DYNAMIC_RUNNING = _execution_pb2.NodeExecution.DYNAMIC_RUNNING
-    RECOVERED = _execution_pb2.NodeExecution.RECOVERED
+    UNDEFINED = flyteidl.node_execution.Phase.Undefined
+    QUEUED = flyteidl.node_execution.Phase.Queued
+    RUNNING = flyteidl.node_execution.Phase.Running
+    SUCCEEDED = flyteidl.node_execution.Phase.Succeeded
+    FAILING = flyteidl.node_execution.Phase.Failing
+    FAILED = flyteidl.node_execution.Phase.Failed
+    ABORTED = flyteidl.node_execution.Phase.Aborted
+    SKIPPED = flyteidl.node_execution.Phase.Skipped
+    TIMED_OUT = flyteidl.node_execution.Phase.TimedOut
+    DYNAMIC_RUNNING = flyteidl.node_execution.Phase.DynamicRunning
+    RECOVERED = flyteidl.node_execution.Phase.Recovered
 
     @classmethod
     def enum_to_string(cls, int_value):
@@ -62,14 +61,14 @@ class NodeExecutionPhase(object):
 
 
 class TaskExecutionPhase(object):
-    UNDEFINED = _execution_pb2.TaskExecution.UNDEFINED
-    RUNNING = _execution_pb2.TaskExecution.RUNNING
-    SUCCEEDED = _execution_pb2.TaskExecution.SUCCEEDED
-    FAILED = _execution_pb2.TaskExecution.FAILED
-    ABORTED = _execution_pb2.TaskExecution.ABORTED
-    QUEUED = _execution_pb2.TaskExecution.QUEUED
-    INITIALIZING = _execution_pb2.TaskExecution.INITIALIZING
-    WAITING_FOR_RESOURCES = _execution_pb2.TaskExecution.WAITING_FOR_RESOURCES
+    UNDEFINED = flyteidl.task_execution.Phase.Undefined
+    RUNNING = flyteidl.task_execution.Phase.Running
+    SUCCEEDED = flyteidl.task_execution.Phase.Succeeded
+    FAILED = flyteidl.task_execution.Phase.Failed
+    ABORTED = flyteidl.task_execution.Phase.Aborted
+    QUEUED = flyteidl.task_execution.Phase.Queued
+    INITIALIZING = flyteidl.task_execution.Phase.Initializing
+    WAITING_FOR_RESOURCES = flyteidl.task_execution.Phase.WaitingForResources
 
     @classmethod
     def enum_to_string(cls, int_value):
@@ -151,9 +150,9 @@ class ExecutionError(_common.FlyteIdlEntity):
 
 class TaskLog(_common.FlyteIdlEntity):
     class MessageFormat(object):
-        UNKNOWN = _execution_pb2.TaskLog.UNKNOWN
-        CSV = _execution_pb2.TaskLog.CSV
-        JSON = _execution_pb2.TaskLog.JSON
+        UNKNOWN = flyteidl.task_log.MessageFormat.Unknown
+        CSV = flyteidl.task_log.MessageFormat.Csv
+        JSON = flyteidl.task_log.MessageFormat.Json
 
     def __init__(
         self,
@@ -206,7 +205,7 @@ class TaskLog(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.execution_pb2.TaskLog
         """
-        p = _execution_pb2.TaskLog(uri=self.uri, name=self.name, message_format=self.message_format)
+        p = flyteidl.core.TaskLog(uri=self.uri, name=self.name, message_format=self.message_format)
         if self.ttl is not None:
             p.ttl.FromTimedelta(self.ttl)
         return p

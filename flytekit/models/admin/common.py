@@ -1,12 +1,12 @@
-from flyteidl.admin import common_pb2 as _common_pb2
+import flyteidl_rust as flyteidl
 
 from flytekit.models import common as _common
 
 
 class Sort(_common.FlyteIdlEntity):
     class Direction(object):
-        DESCENDING = _common_pb2.Sort.DESCENDING
-        ASCENDING = _common_pb2.Sort.ASCENDING
+        DESCENDING = flyteidl.sort.Direction.Descending
+        ASCENDING = flyteidl.sort.Direction.Ascending
 
     def __init__(self, key, direction):
         """
@@ -34,7 +34,7 @@ class Sort(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.common_pb2.Sort
         """
-        return _common_pb2.Sort(key=self.key, direction=self.direction)
+        return flyteidl.admin.Sort(key=self.key, direction=self.direction)
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):

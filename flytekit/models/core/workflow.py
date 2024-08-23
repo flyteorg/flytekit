@@ -2,7 +2,6 @@ import datetime
 import typing
 
 import flyteidl_rust as flyteidl
-from flyteidl.core import tasks_pb2
 
 from flytekit.models import common as _common
 from flytekit.models import interface as _interface
@@ -634,7 +633,7 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
     def __init__(
         self,
         resources: typing.Optional[Resources],
-        extended_resources: typing.Optional[tasks_pb2.ExtendedResources],
+        extended_resources: typing.Optional[flyteidl.core.ExtendedResources],
         container_image: typing.Optional[str] = None,
     ):
         self._resources = resources
@@ -646,7 +645,7 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
         return self._resources
 
     @property
-    def extended_resources(self) -> tasks_pb2.ExtendedResources:
+    def extended_resources(self) -> flyteidl.core.ExtendedResources:
         return self._extended_resources
 
     @property

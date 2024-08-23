@@ -1,8 +1,6 @@
 import typing
 
 import flyteidl_rust as flyteidl
-from flyteidl.core import artifact_id_pb2 as art_id
-from flyteidl.core import interface_pb2 as _interface_pb2
 
 from flytekit.models import common as _common
 from flytekit.models import literals as _literals
@@ -14,8 +12,8 @@ class Variable(_common.FlyteIdlEntity):
         self,
         type,
         description,
-        artifact_partial_id: typing.Optional[art_id.ArtifactID] = None,
-        artifact_tag: typing.Optional[art_id.ArtifactTag] = None,
+        artifact_partial_id: typing.Optional[flyteidl.core.ArtifactId] = None,
+        artifact_tag: typing.Optional[flyteidl.core.ArtifactTag] = None,
     ):
         """
         :param flytekit.models.types.LiteralType type: This describes the type of value that must be provided to
@@ -47,11 +45,11 @@ class Variable(_common.FlyteIdlEntity):
         return self._description
 
     @property
-    def artifact_partial_id(self) -> typing.Optional[art_id.ArtifactID]:
+    def artifact_partial_id(self) -> typing.Optional[flyteidl.core.ArtifactId]:
         return self._artifact_partial_id
 
     @property
-    def artifact_tag(self) -> typing.Optional[art_id.ArtifactTag]:
+    def artifact_tag(self) -> typing.Optional[flyteidl.core.ArtifactTag]:
         return self._artifact_tag
 
     def to_flyte_idl(self):
@@ -136,7 +134,7 @@ class TypedInterface(_common.FlyteIdlEntity):
         )
 
     @classmethod
-    def from_flyte_idl(cls, proto: _interface_pb2.TypedInterface) -> "TypedInterface":
+    def from_flyte_idl(cls, proto: flyteidl.core.TypedInterface) -> "TypedInterface":
         """
         :param proto:
         """
@@ -152,8 +150,8 @@ class Parameter(_common.FlyteIdlEntity):
         var,
         default=None,
         required=None,
-        artifact_query: typing.Optional[art_id.ArtifactQuery] = None,
-        artifact_id: typing.Optional[art_id.ArtifactID] = None,
+        artifact_query: typing.Optional[flyteidl.core.ArtifactQuery] = None,
+        artifact_id: typing.Optional[flyteidl.core.ArtifactId] = None,
     ):
         """
         Declares an input parameter.  A parameter is used as input to a launch plan and has
@@ -203,11 +201,11 @@ class Parameter(_common.FlyteIdlEntity):
         return self._default or self._required or self._artifact_query
 
     @property
-    def artifact_query(self) -> typing.Optional[art_id.ArtifactQuery]:
+    def artifact_query(self) -> typing.Optional[flyteidl.core.ArtifactQuery]:
         return self._artifact_query
 
     @property
-    def artifact_id(self) -> typing.Optional[art_id.ArtifactID]:
+    def artifact_id(self) -> typing.Optional[flyteidl.core.ArtifactId]:
         return self._artifact_id
 
     def to_flyte_idl(self):

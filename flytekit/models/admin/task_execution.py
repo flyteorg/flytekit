@@ -1,5 +1,4 @@
 import flyteidl_rust as flyteidl
-from flyteidl.admin import task_execution_pb2 as _task_execution_pb2
 
 from flytekit.models import common as _common
 from flytekit.models import utils
@@ -188,7 +187,7 @@ class TaskExecution(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.task_execution_pb2.TaskExecution
         """
-        return _task_execution_pb2.TaskExecution(
+        return flyteidl.admin.TaskExecution(
             id=self.id.to_flyte_idl(),
             input_uri=self.input_uri,
             closure=self.closure.to_flyte_idl(),

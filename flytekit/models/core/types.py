@@ -3,7 +3,6 @@ from __future__ import annotations
 import typing
 
 import flyteidl_rust as flyteidl
-from flyteidl.core import types_pb2 as _types_pb2
 
 from flytekit.models import common as _common
 
@@ -20,13 +19,13 @@ class EnumType(_common.FlyteIdlEntity):
     def values(self) -> typing.List[str]:
         return self._values
 
-    def to_flyte_idl(self) -> _types_pb2.EnumType:
-        return _types_pb2.EnumType(
+    def to_flyte_idl(self) -> flyteidl.core.EnumType:
+        return flyteidl.core.EnumType(
             values=self._values if self._values else [],
         )
 
     @classmethod
-    def from_flyte_idl(cls, proto: _types_pb2.EnumType):
+    def from_flyte_idl(cls, proto: flyteidl.core.EnumType):
         return cls(values=proto.values)
 
 

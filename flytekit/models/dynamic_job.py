@@ -1,4 +1,4 @@
-from flyteidl.core import dynamic_job_pb2 as _dynamic_job
+import flyteidl_rust as flyteidl
 
 from flytekit.models import common as _common
 from flytekit.models import literals as _literals
@@ -74,7 +74,7 @@ class DynamicJobSpec(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.dynamic_job.DynamicJobSpec
         """
-        return _dynamic_job.DynamicJobSpec(
+        return flyteidl.core.DynamicJobSpec(
             tasks=[task.to_flyte_idl() for task in self.tasks] if self.tasks else None,
             nodes=[node.to_flyte_idl() for node in self.nodes] if self.nodes else None,
             min_successes=self.min_successes,

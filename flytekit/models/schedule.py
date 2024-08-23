@@ -147,11 +147,11 @@ class Schedule(common.FlyteIdlEntity):
         """
         schedule_expression = None
         if self.cron_expression:
-            schedule_expression = flyteidl.schedule.ScheduleExpression(self.cron_expression)
+            schedule_expression = flyteidl.schedule.ScheduleExpression.CronExpression(self.cron_expression)
         elif self.rate:
-            schedule_expression = flyteidl.schedule.ScheduleExpression(self.rate.to_flyte_idl())
+            schedule_expression = flyteidl.schedule.ScheduleExpression.Rate(self.rate.to_flyte_idl())
         elif self.cron_schedule:
-            schedule_expression = flyteidl.schedule.ScheduleExpression(self.cron_schedule.to_flyte_idl())
+            schedule_expression = flyteidl.schedule.ScheduleExpression.CronSchedule(self.cron_schedule.to_flyte_idl())
 
         return flyteidl.admin.Schedule(
             kickoff_time_input_arg=self.kickoff_time_input_arg,
@@ -164,12 +164,11 @@ class Schedule(common.FlyteIdlEntity):
         :param flyteidl.admin.schedule_pb2.Schedule pb2_object:
         :rtype: Schedule
         """
+        
         # Explicitly instantiate a Schedule model rather than a potential sub-class.
         return Schedule(
             pb2_object.kickoff_time_input_arg,
-            cron_expression=pb2_object.cron_expression if pb2_object.HasField("cron_expression") else None,
-            rate=Schedule.FixedRate.from_flyte_idl(pb2_object.rate) if pb2_object.HasField("rate") else None,
-            cron_schedule=Schedule.CronSchedule.from_flyte_idl(pb2_object.cron_schedule)
-            if pb2_object.HasField("cron_schedule")
-            else None,
+            cron_expression=pb2_object.schedule_expression[0] if isinstance(pb2_object.schedule_expression, flyteidl.schedule.ScheduleExpression.CronExpression) else None,
+            rate=Schedule.FixedRate.from_flyte_idl(pb2_object.schedule_expression[0]) if isinstance(pb2_object.schedule_expression, flyteidl.schedule.ScheduleExpression.Rate) else None,
+            cron_schedule=Schedule.CronSchedule.from_flyte_idl(pb2_object.schedule_expression[0]) if isinstance(pb2_object.schedule_expression, flyteidl.schedule.ScheduleExpression.CronSchedule) else None
         )

@@ -3,7 +3,6 @@ from datetime import timezone as _timezone
 from typing import Dict, Optional
 
 import flyteidl_rust as flyteidl
-from flyteidl.core import literals_pb2 as _literals_pb2
 
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.models import common as _common
@@ -150,7 +149,7 @@ class Primitive(_common.FlyteIdlEntity):
         elif self.float_value:
             value = flyteidl.primitive.Value.FloatValue(self.float_value)
         elif self.boolean:
-            value = flyteidl.primitive.Value.Boolean(self.string_value)
+            value = flyteidl.primitive.Value.Boolean(self.boolean)
         elif self.datetime:
             # Convert to UTC and remove timezone so protobuf behaves.
             value = flyteidl.primitive.Value.Datetime(
@@ -329,7 +328,7 @@ class BindingDataMap(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.literals_pb2.BindingDataMap
         """
-        return _literals_pb2.BindingDataMap(bindings={k: v.to_flyte_idl() for (k, v) in self.bindings.items()})
+        return flyteidl.core.BindingDataMap(bindings={k: v.to_flyte_idl() for (k, v) in self.bindings.items()})
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):

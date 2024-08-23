@@ -287,7 +287,7 @@ def verify_outputs_artifact_bindings(
         # actually exists in the interface.
         if (
             v.artifact_partial_id
-            and v.artifact_partial_id.HasField("partitions")
+            and v.artifact_partial_id.partitions
             and v.artifact_partial_id.partitions.value
         ):
             for pk, pv in v.artifact_partial_id.partitions.value.items():
@@ -298,13 +298,13 @@ def verify_outputs_artifact_bindings(
                         )
                     else:
                         continue
-                if pv.HasField("input_binding"):
-                    input_name = pv.input_binding.var
+                if isinstance(pv.value, flyteidl.label_value.Value.InputBinding):
+                    input_name = pv.value[0].var
                     if input_name not in inputs:
                         raise FlyteValidationException(
                             f"Output partition {k} is bound to input {input_name} which does not exist in the interface"
                         )
-            if v.artifact_partial_id.HasField("time_partition"):
+            if v.artifact_partial_id.time_partition:
                 if (
                     v.artifact_partial_id.time_partition.value == DYNAMIC_INPUT_BINDING
                     and not allow_partial_artifact_id_binding
@@ -312,9 +312,8 @@ def verify_outputs_artifact_bindings(
                     raise FlyteValidationException(
                         "Binding a time partition's value dynamically is not allowed for workflows"
                     )
-
-                if v.artifact_partial_id.time_partition.value.HasField("input_binding"):
-                    input_name = v.artifact_partial_id.time_partition.value.input_binding.var
+                if isinstance(v.artifact_partial_id.time_partition.value.value, flyteidl.label_value.Value.InputBinding):
+                    input_name = v.artifact_partial_id.time_partition.value.value[0].var
                     if input_name not in inputs:
                         raise FlyteValidationException(
                             f"Output time partition is bound to input {input_name} which does not exist in the interface"

@@ -706,10 +706,12 @@ class ProtobufTransformer(TypeTransformer[Message]):
         return LiteralType(simple=SimpleType.STRUCT, metadata={ProtobufTransformer.PB_FIELD_KEY: self.tag(t)})
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
-        struct = Struct()
+        struct = flyteidl.protobuf.Struct()
         try:
+            import json
             # TODO: handle google.protobuf.Message
-            struct.update(_MessageToDict(cast(Message, python_val)))
+            # struct.update(_MessageToDict(cast(Message, python_val)))
+            struct = flyteidl.ParseStruct(flyteidl.DumpStruct(python_val))
         except Exception:
             raise TypeTransformerFailedError("Failed to convert to generic protobuf struct")
         return Literal(scalar=Scalar(generic=struct))
@@ -719,8 +721,9 @@ class ProtobufTransformer(TypeTransformer[Message]):
             raise TypeTransformerFailedError("Can only convert a generic literal to a Protobuf")
 
         pb_obj = expected_python_type()
-        dictionary = _MessageToDict(lv.scalar.generic)
-        pb_obj = _ParseDict(dictionary, pb_obj)  # type: ignore
+        # dictionary = _MessageToDict(lv.scalar.generic)
+        # pb_obj = _ParseDict(dictionary, pb_obj)  # type: ignore
+        pb_obj = flyteidl.ParseStruct(flyteidl.DumpStruct(lv.scalar.generic))
         return pb_obj
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
@@ -1722,11 +1725,11 @@ class DictTransformer(TypeTransformer[dict]):
             if lv.metadata and lv.metadata.get("format", None) == "pickle":
                 from flytekit.types.pickle import FlytePickle
 
-                uri = json.loads(_json_format.MessageToJson(lv.scalar.generic)).get("pickle_file")
+                uri = json.loads(flyteidl.DumpStruct(lv.scalar.generic)).get("pickle_file")
                 return FlytePickle.from_pickle(uri)
 
             try:
-                return json.loads(_json_format.MessageToJson(lv.scalar.generic))
+                return json.loads(flyteidl.DumpStruct(lv.scalar.generic))
             except TypeError:
                 raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
 

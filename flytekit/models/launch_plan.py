@@ -1,7 +1,6 @@
 import typing
 
 import flyteidl_rust as flyteidl
-from flyteidl.admin import launch_plan_pb2 as _launch_plan
 from google.protobuf.any_pb2 import Any
 
 from flytekit.models import common as _common
@@ -106,7 +105,7 @@ class Auth(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.launch_plan_pb2.Auth
         """
-        return _launch_plan.Auth(
+        return flyteidl.admin.Auth(
             assumable_iam_role=self.assumable_iam_role if self.assumable_iam_role else None,
             kubernetes_service_account=self.kubernetes_service_account if self.kubernetes_service_account else None,
         )
@@ -318,8 +317,8 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
 
 
 class LaunchPlanState(object):
-    INACTIVE = _launch_plan.INACTIVE
-    ACTIVE = _launch_plan.ACTIVE
+    INACTIVE = flyteidl.admin.LaunchPlanState.Inactive
+    ACTIVE = flyteidl.admin.LaunchPlanState.Active
 
     @classmethod
     def enum_to_string(cls, val):
@@ -372,7 +371,7 @@ class LaunchPlanClosure(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.launch_plan_pb2.LaunchPlanClosure
         """
-        return _launch_plan.LaunchPlanClosure(
+        return flyteidl.admin.LaunchPlanClosure(
             state=self.state,
             expected_inputs=self.expected_inputs.to_flyte_idl(),
             expected_outputs=self.expected_outputs.to_flyte_idl(),

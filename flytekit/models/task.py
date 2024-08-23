@@ -1,8 +1,6 @@
 import typing
 
 import flyteidl_rust as flyteidl
-from flyteidl.admin import agent_pb2 as _admin_agent
-from flyteidl.core import tasks_pb2 as _core_task
 from google.protobuf import json_format as _json_format
 
 from flytekit.models import common as _common
@@ -598,7 +596,7 @@ class TaskExecutionMetadata(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.agent_pb2.TaskExecutionMetadata
         """
-        task_execution_metadata = _admin_agent.TaskExecutionMetadata(
+        task_execution_metadata = flyteidl.admin.TaskExecutionMetadata(
             task_execution_id=self.task_execution_id.to_flyte_idl(),
             namespace=self.namespace,
             labels={k: v for k, v in self.labels.items()} if self.labels is not None else None,
@@ -785,27 +783,27 @@ class IOStrategy(_common.FlyteIdlEntity):
     Provides methods to manage data in and out of the Raw container using Download Modes. This can only be used if DataLoadingConfig is enabled.
     """
 
-    DOWNLOAD_MODE_EAGER = _core_task.IOStrategy.DOWNLOAD_EAGER
-    DOWNLOAD_MODE_STREAM = _core_task.IOStrategy.DOWNLOAD_STREAM
-    DOWNLOAD_MODE_NO_DOWNLOAD = _core_task.IOStrategy.DO_NOT_DOWNLOAD
+    DOWNLOAD_MODE_EAGER = flyteidl.io_strategy.DownloadMode.DownloadEager
+    DOWNLOAD_MODE_STREAM = flyteidl.io_strategy.DownloadMode.DownloadStream
+    DOWNLOAD_MODE_NO_DOWNLOAD = flyteidl.io_strategy.DownloadMode.DoNotDownload
 
-    UPLOAD_MODE_EAGER = _core_task.IOStrategy.UPLOAD_EAGER
-    UPLOAD_MODE_ON_EXIT = _core_task.IOStrategy.UPLOAD_ON_EXIT
-    UPLOAD_MODE_NO_UPLOAD = _core_task.IOStrategy.DO_NOT_UPLOAD
+    UPLOAD_MODE_EAGER = flyteidl.io_strategy.UploadMode.UploadEager
+    UPLOAD_MODE_ON_EXIT = flyteidl.io_strategy.UploadMode.UploadOnExit
+    UPLOAD_MODE_NO_UPLOAD = flyteidl.io_strategy.UploadMode.DoNotUpload
 
     def __init__(
         self,
-        download_mode: _core_task.IOStrategy.DownloadMode = DOWNLOAD_MODE_EAGER,
-        upload_mode: _core_task.IOStrategy.UploadMode = UPLOAD_MODE_ON_EXIT,
+        download_mode: flyteidl.io_strategy.DownloadMode = DOWNLOAD_MODE_EAGER,
+        upload_mode: flyteidl.io_strategy.UploadMode = UPLOAD_MODE_ON_EXIT,
     ):
         self._download_mode = download_mode
         self._upload_mode = upload_mode
 
-    def to_flyte_idl(self) -> _core_task.IOStrategy:
-        return _core_task.IOStrategy(download_mode=self._download_mode, upload_mode=self._upload_mode)
+    def to_flyte_idl(self) -> flyteidl.core.IoStrategy:
+        return flyteidl.core.IoStrategy(download_mode=self._download_mode, upload_mode=self._upload_mode)
 
     @classmethod
-    def from_flyte_idl(cls, pb2_object: _core_task.IOStrategy):
+    def from_flyte_idl(cls, pb2_object: flyteidl.core.IoStrategy):
         if pb2_object is None:
             return None
         return cls(
@@ -848,7 +846,7 @@ class DataLoadingConfig(_common.FlyteIdlEntity):
         )
 
     @classmethod
-    def from_flyte_idl(cls, pb2: _core_task.DataLoadingConfig) -> "DataLoadingConfig":
+    def from_flyte_idl(cls, pb2: flyteidl.core.DataLoadingConfig) -> "DataLoadingConfig":
         if pb2 is None:
             return None
         return cls(
@@ -993,14 +991,14 @@ class K8sObjectMetadata(_common.FlyteIdlEntity):
     def annotations(self) -> typing.Dict[str, str]:
         return self._annotations
 
-    def to_flyte_idl(self) -> _core_task.K8sObjectMetadata:
-        return _core_task.K8sObjectMetadata(
+    def to_flyte_idl(self) -> flyteidl.core.K8sObjectMetadata:
+        return flyteidl.core.K8sObjectMetadata(
             labels={k: v for k, v in self.labels.items()} if self.labels is not None else None,
             annotations={k: v for k, v in self.annotations.items()} if self.annotations is not None else None,
         )
 
     @classmethod
-    def from_flyte_idl(cls, pb2_object: _core_task.K8sObjectMetadata):
+    def from_flyte_idl(cls, pb2_object: flyteidl.core.K8sObjectMetadata):
         return cls(
             labels={k: v for k, v in pb2_object.labels.items()} if pb2_object.labels is not None else None,
             annotations={k: v for k, v in pb2_object.annotations.items()}
@@ -1035,15 +1033,15 @@ class K8sPod(_common.FlyteIdlEntity):
     def data_config(self) -> typing.Optional[DataLoadingConfig]:
         return self._data_config
 
-    def to_flyte_idl(self) -> _core_task.K8sPod:
-        return _core_task.K8sPod(
+    def to_flyte_idl(self) -> flyteidl.core.K8sPod:
+        return flyteidl.core.K8sPod(
             metadata=self._metadata.to_flyte_idl(),
             pod_spec=self.pod_spec or None,
             data_config=self.data_config.to_flyte_idl() if self.data_config else None,
         )
 
     @classmethod
-    def from_flyte_idl(cls, pb2_object: _core_task.K8sPod):
+    def from_flyte_idl(cls, pb2_object: flyteidl.core.K8sPod):
         return cls(
             metadata=K8sObjectMetadata.from_flyte_idl(pb2_object.metadata),
             pod_spec=_json_format.MessageToDict(pb2_object.pod_spec) if pb2_object.pod_spec else None,
@@ -1071,11 +1069,11 @@ class Sql(_common.FlyteIdlEntity):
     def dialect(self) -> int:
         return self._dialect
 
-    def to_flyte_idl(self) -> _core_task.Sql:
-        return _core_task.Sql(statement=self.statement, dialect=self.dialect)
+    def to_flyte_idl(self) -> flyteidl.core.Sql:
+        return flyteidl.core.Sql(statement=self.statement, dialect=self.dialect)
 
     @classmethod
-    def from_flyte_idl(cls, pb2_object: _core_task.Sql):
+    def from_flyte_idl(cls, pb2_object: flyteidl.core.Sql):
         return cls(
             statement=pb2_object.statement,
             dialect=pb2_object.dialect,

@@ -654,7 +654,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                                 metadata[md_key] = md_val
                             logger.info(f"Adding {om.additional_items} additional metadata items {metadata} for {k}")
                         if om.dynamic_partitions or om.time_partition:
-                            a = flyteidl.core.ArtifactID(
+                            a = flyteidl.core.ArtifactId(
                                 partitions=idl_partitions_from_dict(om.dynamic_partitions),
                                 time_partition=idl_time_partition_from_datetime(
                                     om.time_partition, om.artifact.time_partition_granularity

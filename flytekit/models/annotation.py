@@ -23,7 +23,7 @@ class TypeAnnotation:
         :rtype: flyteidl.core.types_pb2.TypeAnnotation
         """
         if self._annotations is not None:
-            annotations = _json_format.Parse(json.dumps(self.annotations), flyteidl.protobuf.Struct())
+            annotations = flyteidl.ParseStruct(json.dumps(self.annotations))
         else:
             annotations = None
 
@@ -37,8 +37,8 @@ class TypeAnnotation:
         :param flyteidl.core.types_pb2.TypeAnnotation proto:
         :rtype: TypeAnnotation
         """
-
-        return cls(annotations=_json_format.MessageToDict(proto.annotations))
+        import json
+        return cls(annotations=json.loads(flyteidl.DumpStruct(proto.annotations[0])))
 
     def __eq__(self, x: object) -> bool:
         if not isinstance(x, self.__class__):

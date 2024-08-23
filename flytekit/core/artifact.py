@@ -107,7 +107,7 @@ class ArtifactIDSpecification(object):
 
         return self
 
-    def to_partial_artifact_id(self) -> flyteidl.core.ArtifactID:
+    def to_partial_artifact_id(self) -> flyteidl.core.ArtifactId:
         # This function should only be called by transform_variable_map
         artifact_id = self.artifact.to_id_idl()
         # Use the partitions from this object, but replacement is not allowed by protobuf, so generate new object
@@ -128,7 +128,7 @@ class ArtifactIDSpecification(object):
                     f"Artifact {artifact_id.artifact_key} requires {required} partitions, but only {fulfilled} are "
                     f"bound."
                 )
-        artifact_id = flyteidl.core.ArtifactID(
+        artifact_id = flyteidl.core.ArtifactId(
             artifact_key=artifact_id.artifact_key,
             partitions=p,
             time_partition=tp,
@@ -596,7 +596,7 @@ class Artifact(object):
         return aq
 
     @property
-    def concrete_artifact_id(self) -> flyteidl.core.ArtifactID:
+    def concrete_artifact_id(self) -> flyteidl.core.ArtifactId:
         # This property is used when you want to ensure that this is a materialized artifact, all fields are known.
         if self.name is None or self.project is None or self.domain is None or self.version is None:
             raise ValueError("Cannot create artifact id without name, project, domain, version")
@@ -630,7 +630,7 @@ class Artifact(object):
 
         return aq
 
-    def to_id_idl(self) -> flyteidl.core.ArtifactID:
+    def to_id_idl(self) -> flyteidl.core.ArtifactId:
         """
         Converts this object to the IDL representation.
         This is here instead of translator because it's in the interface, a relatively simple proto object
@@ -639,7 +639,7 @@ class Artifact(object):
         p = Serializer.partitions_to_idl(self.partitions)
         tp = Serializer.time_partition_to_idl(self.time_partition) if self.time_partitioned else None
 
-        i = flyteidl.core.ArtifactID(
+        i = flyteidl.core.ArtifactId(
             artifact_key=flyteidl.core.ArtifactKey(
                 project=self.project,
                 domain=self.domain,
@@ -680,7 +680,7 @@ class DefaultArtifactSerializationHandler(ArtifactSerializationHandler):
 
     def time_partition_to_idl(self, tp: Optional[TimePartition], **kwargs) -> Optional[flyteidl.core.TimePartition]:
         if tp:
-            return flyteidl.core.TimePartition(value=tp.value, granularity=tp.granularity)
+            return flyteidl.core.TimePartition(value=tp.value, granularity=int(tp.granularity))
         return None
 
     def artifact_query_to_idl(self, aq: ArtifactQuery, **kwargs) -> flyteidl.core.ArtifactQuery:
@@ -693,14 +693,14 @@ class DefaultArtifactSerializationHandler(ArtifactSerializationHandler):
         p = self.partitions_to_idl(aq.partitions)
         tp = self.time_partition_to_idl(aq.time_partition)
 
-        i = flyteidl.core.ArtifactID(
+        i = flyteidl.core.ArtifactId(
             artifact_key=ak,
             partitions=p,
             time_partition=tp,
         )
 
         aq = flyteidl.core.ArtifactQuery(
-            artifact_id=i,
+            identifier=flyteidl.artifact_query.Identifier.ArtifactId(i),
         )
 
         return aq

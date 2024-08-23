@@ -4,7 +4,7 @@ from collections import OrderedDict
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
-from flyteidl.admin import schedule_pb2
+import flyteidl_rust as flyteidl
 
 from flytekit import ImageSpec, PythonFunctionTask, SourceCode
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
@@ -390,7 +390,7 @@ def get_serializable_launch_plan(
 
     if entity.trigger:
         lc = entity.trigger.to_flyte_idl(entity)
-        if isinstance(lc, schedule_pb2.Schedule):
+        if isinstance(lc, flyteidl.admin.Schedule):
             raise ValueError("Please continue to use the schedule arg, the trigger arg is not implemented yet")
     else:
         lc = None

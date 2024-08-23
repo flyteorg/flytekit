@@ -1,11 +1,12 @@
+import flyteidl_rust as flyteidl
 from flyteidl.admin import common_pb2 as _common
 
 from flytekit.models import common as _common_models
 
 
 class NamedEntityState(object):
-    ACTIVE = _common.NAMED_ENTITY_ACTIVE
-    ARCHIVED = _common.NAMED_ENTITY_ARCHIVED
+    ACTIVE = flyteidl.admin.NamedEntityState.NamedEntityActive
+    ARCHIVED = flyteidl.admin.NamedEntityState.NamedEntityArchived
 
     @classmethod
     def enum_to_string(cls, val):

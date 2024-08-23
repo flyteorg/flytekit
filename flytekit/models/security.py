@@ -3,7 +3,6 @@ from enum import Enum
 from typing import List, Optional
 
 import flyteidl_rust as flyteidl
-from flyteidl.core import security_pb2 as _sec
 
 from flytekit.models import common as _common
 
@@ -21,16 +20,16 @@ class Secret(_common.FlyteIdlEntity):
     """
 
     class MountType(Enum):
-        ANY = _sec.Secret.MountType.ANY
+        ANY = flyteidl.secret.MountType.Any
         """
         Use this if the secret can be injected as either an environment variable / file and this should be left for the
         platform to decide. This is the most flexible option
         """
-        ENV_VAR = _sec.Secret.MountType.ENV_VAR
+        ENV_VAR = flyteidl.secret.MountType.EnvVar
         """
         Use this if the secret can be injected as an environment variable. Usually works for symmetric keys, passwords etc
         """
-        FILE = _sec.Secret.MountType.FILE
+        FILE = flyteidl.secret.MountType.File
         """
         Use this for Secrets that cannot be injected into env-var or need to be available as a file
         Caution: May not be supported in all environments
@@ -51,8 +50,8 @@ class Secret(_common.FlyteIdlEntity):
         if in_registration_context and get_plugin().secret_requires_group() and self.group is None:
             raise ValueError("Group is a required parameter")
 
-    def to_flyte_idl(self) -> _sec.Secret:
-        return _sec.Secret(
+    def to_flyte_idl(self) -> flyteidl.core.Secret:
+        return flyteidl.core.Secret(
             group=self.group,
             group_version=self.group_version,
             key=self.key,
@@ -60,7 +59,7 @@ class Secret(_common.FlyteIdlEntity):
         )
 
     @classmethod
-    def from_flyte_idl(cls, pb2_object: _sec.Secret) -> "Secret":
+    def from_flyte_idl(cls, pb2_object: flyteidl.core.Secret) -> "Secret":
         return cls(
             group=pb2_object.group,
             group_version=pb2_object.group_version if pb2_object.group_version else None,
@@ -74,14 +73,14 @@ class OAuth2Client(_common.FlyteIdlEntity):
     client_id: str
     client_secret: str
 
-    def to_flyte_idl(self) -> _sec.OAuth2Client:
-        return _sec.OAuth2Client(
+    def to_flyte_idl(self) -> flyteidl.core.OAuth2Client:
+        return flyteidl.core.OAuth2Client(
             client_id=self.client_id,
             client_secret=self.client_secret,
         )
 
     @classmethod
-    def from_flyte_idl(cls, pb2_object: _sec.OAuth2Client) -> "OAuth2Client":
+    def from_flyte_idl(cls, pb2_object: flyteidl.core.OAuth2Client) -> "OAuth2Client":
         return cls(
             client_id=pb2_object.client_id,
             client_secret=pb2_object.client_secret,
@@ -95,8 +94,8 @@ class Identity(_common.FlyteIdlEntity):
     oauth2_client: Optional[OAuth2Client] = None
     execution_identity: Optional[str] = None
 
-    def to_flyte_idl(self) -> _sec.Identity:
-        return _sec.Identity(
+    def to_flyte_idl(self) -> flyteidl.core.Identity:
+        return flyteidl.core.Identity(
             iam_role=self.iam_role if self.iam_role else None,
             k8s_service_account=self.k8s_service_account if self.k8s_service_account else None,
             oauth2_client=self.oauth2_client.to_flyte_idl() if self.oauth2_client else None,
@@ -104,7 +103,7 @@ class Identity(_common.FlyteIdlEntity):
         )
 
     @classmethod
-    def from_flyte_idl(cls, pb2_object: _sec.Identity) -> "Identity":
+    def from_flyte_idl(cls, pb2_object: flyteidl.core.Identity) -> "Identity":
         return cls(
             iam_role=pb2_object.iam_role if pb2_object.iam_role else None,
             k8s_service_account=pb2_object.k8s_service_account if pb2_object.k8s_service_account else None,
@@ -118,7 +117,7 @@ class Identity(_common.FlyteIdlEntity):
 @dataclass
 class OAuth2TokenRequest(_common.FlyteIdlEntity):
     class Type(Enum):
-        CLIENT_CREDENTIALS = _sec.OAuth2TokenRequest.Type.CLIENT_CREDENTIALS
+        CLIENT_CREDENTIALS = flyteidl.o_auth2_token_request.Type.ClientCredentials
 
     name: str
     client: OAuth2Client
@@ -126,8 +125,8 @@ class OAuth2TokenRequest(_common.FlyteIdlEntity):
     token_endpoint: Optional[str] = None
     type_: Type = Type.CLIENT_CREDENTIALS
 
-    def to_flyte_idl(self) -> _sec.OAuth2TokenRequest:
-        return _sec.OAuth2TokenRequest(
+    def to_flyte_idl(self) -> flyteidl.core.OAuth2TokenRequest:
+        return flyteidl.core.OAuth2TokenRequest(
             name=self.name,
             type=self.type_,
             token_endpoint=self.token_endpoint,
@@ -136,7 +135,7 @@ class OAuth2TokenRequest(_common.FlyteIdlEntity):
         )
 
     @classmethod
-    def from_flyte_idl(cls, pb2_object: _sec.OAuth2TokenRequest) -> "OAuth2TokenRequest":
+    def from_flyte_idl(cls, pb2_object: flyteidl.core.OAuth2TokenRequest) -> "OAuth2TokenRequest":
         return cls(
             name=pb2_object.name,
             idp_discovery_endpoint=pb2_object.idp_discovery_endpoint,

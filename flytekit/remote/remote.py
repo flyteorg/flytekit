@@ -28,7 +28,6 @@ import cloudpickle
 import flyteidl_rust as flyteidl
 import fsspec
 import requests
-from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
 from flyteidl_rust import FlyteEntityAlreadyExistsException, FlyteEntityNotExistException
 
 from flytekit import ImageSpec
@@ -63,7 +62,7 @@ from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.models.admin.common import Sort
 from flytekit.models.core import identifier as id_models
 from flytekit.models.core import workflow as workflow_model
-from flytekit.models.core.identifier import Identifier, ResourceType, SignalIdentifier, WorkflowExecutionIdentifier
+from flytekit.models.core.identifier import Identifier, ResourceType, WorkflowExecutionIdentifier
 from flytekit.models.core.workflow import BranchNode, Node, NodeMetadata
 from flytekit.models.execution import (
     ClusterAssignment,
@@ -517,7 +516,7 @@ class FlyteRemote(object):
         domain: typing.Optional[str] = None,
         limit: int = 100,
         filters: typing.Optional[typing.List[filter_models.Filter]] = None,
-    ) -> typing.List[Signal]:
+    ) -> typing.List[flyteidl.admin.Signal]:
         """
         :param execution_name: The name of the execution. This is the tailend of the URL when looking at the workflow execution.
         :param project: The execution project, will default to the Remote's default project.
@@ -528,7 +527,9 @@ class FlyteRemote(object):
         wf_exec_id = WorkflowExecutionIdentifier(
             project=project or self.default_project, domain=domain or self.default_domain, name=execution_name
         )
-        req = SignalListRequest(workflow_execution_id=wf_exec_id.to_flyte_idl(), limit=limit, filters=filters)
+        req = flyteidl.admin.SignalListRequest(
+            workflow_execution_id=wf_exec_id.to_flyte_idl(), limit=limit, filters=filters
+        )
         resp = self.client.list_signals(req)
         s = resp.signals
         return s
@@ -568,7 +569,9 @@ class FlyteRemote(object):
             lit = TypeEngine.to_literal(self.context, value, python_type or type(value), lt)
             logger.debug(f"Converted {value} to literal {lit} using literal type {lt}")
 
-        req = SignalSetRequest(id=SignalIdentifier(signal_id, wf_exec_id).to_flyte_idl(), value=lit.to_flyte_idl())
+        req = flyteidl.admin.SignalSetRequest(
+            id=flyteidl.core.SignalIdentifier(signal_id, wf_exec_id).to_flyte_idl(), value=lit.to_flyte_idl()
+        )
 
         # Response is empty currently, nothing to give back to the user.
         self.client.set_signal(req)

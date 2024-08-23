@@ -1,13 +1,13 @@
-from flyteidl.admin import project_pb2 as _project_pb2
+import flyteidl_rust as flyteidl
 
 from flytekit.models import common as _common
 
 
 class Project(_common.FlyteIdlEntity):
     class ProjectState(object):
-        ACTIVE = _project_pb2.Project.ACTIVE
-        ARCHIVED = _project_pb2.Project.ARCHIVED
-        SYSTEM_GENERATED = _project_pb2.Project.SYSTEM_GENERATED
+        ACTIVE = flyteidl.project.ProjectState.Active
+        ARCHIVED = flyteidl.project.ProjectState.Archived
+        SYSTEM_GENERATED = flyteidl.project.ProjectState.SystemGenerated
 
     def __init__(self, id, name, description, state=ProjectState.ACTIVE):
         """
@@ -67,7 +67,7 @@ class Project(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.project_pb2.Project
         """
-        return _project_pb2.Project(id=self.id, name=self.name, description=self.description, state=self._state)
+        return flyteidl.admin.Project(id=self.id, name=self.name, description=self.description, state=self._state)
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
