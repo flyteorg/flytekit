@@ -141,6 +141,8 @@ class ImageSpec:
         from flytekit.core.context_manager import ExecutionState, FlyteContextManager
 
         state = FlyteContextManager.current_context().execution_state
+        print("state.mode", state.mode)
+        print(os.environ.get(_F_IMG_ID))
         if state and state.mode and state.mode != ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
             return os.environ.get(_F_IMG_ID) == self.id
         return True
@@ -327,6 +329,7 @@ class ImageBuildEngine:
 
         if isinstance(image_spec.base_image, ImageSpec):
             cls.build(image_spec.base_image)
+            image_spec.base_image = image_spec.base_image.image_name()
 
         if image_spec.builder is None and cls._REGISTRY:
             builder = max(cls._REGISTRY, key=lambda name: cls._REGISTRY[name][1])
@@ -362,7 +365,7 @@ class ImageBuildEngine:
 
 
 @lru_cache
-def calculate_hash_from_image_spec(image_spec: ImageSpec):
+def calculate_hash_from_image_spec(image_spec: ImageSpec) -> str:
     """
     Calculate the hash from the image spec. The hash will be the tag of the image.
     This method will also read the content of the requirement file and the source root to calculate the hash.

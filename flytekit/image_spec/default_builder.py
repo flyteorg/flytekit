@@ -118,8 +118,6 @@ def _is_flytekit(package: str) -> bool:
 def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
     """Populate tmp_dir with Dockerfile as specified by the `image_spec`."""
     base_image = image_spec.base_image or "debian:bookworm-slim"
-    if isinstance(base_image, ImageSpec):
-        base_image = base_image.image_name()
 
     requirements = []
 
