@@ -23,7 +23,6 @@ from flytekit.core.task import task
 from flytekit.image_spec.image_spec import (
     ImageBuildEngine,
     ImageSpec,
-    calculate_hash_from_image_spec,
 )
 from flytekit.interaction.click_types import DirParamType, FileParamType
 from flytekit.remote import FlyteRemote
