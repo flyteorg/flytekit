@@ -82,15 +82,14 @@ class ImageSpec:
         if self.registry:
             self.registry = self.registry.lower()
 
-        """
-        Calculate a unique hash as the ID for the ImageSpec, and it will be used to
-        1. Identify the imageSpec in the ImageConfig in the serialization context.
-        2. Check if the current container image in the pod is built from this image spec in `is_container()`.
+        # Calculate a unique hash as the ID for the ImageSpec, and it will be used to
+        # 1. Identify the imageSpec in the ImageConfig in the serialization context.
+        # 2. Check if the current container image in the pod is built from this image spec in `is_container()`.
+        #
+        # ImageConfig:
+        # - deduced abc: flyteorg/flytekit:123
+        # - deduced xyz: flyteorg/flytekit:456
 
-        ImageConfig:
-        - deduced abc: flyteorg/flytekit:123
-        - deduced xyz: flyteorg/flytekit:456
-        """
         # Only get the non-None values in the ImageSpec to ensure the hash is consistent across different Flytekit versions.
         image_spec_dict = asdict(self, dict_factory=lambda x: {k: v for (k, v) in x if v is not None})
         image_spec_bytes = image_spec_dict.__str__().encode("utf-8")
@@ -107,18 +106,21 @@ class ImageSpec:
         ]
         for parameter in parameters_str_list:
             attr = getattr(self, parameter)
-            parameter_is_None = attr is None
+            parameter_is_none = attr is None
             parameter_is_list_string = isinstance(attr, list) and all(isinstance(v, str) for v in attr)
-            if not (parameter_is_None or parameter_is_list_string):
+            if not (parameter_is_none or parameter_is_list_string):
                 error_msg = f"{parameter} must be a list of strings or None"
                 raise ValueError(error_msg)
 
     @property
     def id(self) -> str:
-        return self._id
+        image_spec_dict = asdict(self, dict_factory=lambda x: {k: v for (k, v) in x if v is not None})
+        image_spec_bytes = image_spec_dict.__str__().encode("utf-8")
+        id = base64.urlsafe_b64encode(hashlib.md5(image_spec_bytes).digest()).decode("ascii").rstrip("=")
+        print("id id", id)
+        return id
 
     def __hash__(self):
-        print("__hash__")
         return hash(self.id)
 
     @property
@@ -346,7 +348,6 @@ class ImageBuildEngine:
 
         if isinstance(image_spec.base_image, ImageSpec):
             cls.build(image_spec.base_image)
-            image_spec.base_image = image_spec.base_image.image_name()
 
         if image_spec.builder is None and cls._REGISTRY:
             builder = max(cls._REGISTRY, key=lambda name: cls._REGISTRY[name][1])
