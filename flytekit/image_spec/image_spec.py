@@ -4,6 +4,7 @@ import dataclasses
 import hashlib
 import os
 import pathlib
+import re
 import typing
 from abc import abstractmethod
 from dataclasses import asdict, dataclass
@@ -95,6 +96,23 @@ class ImageSpec:
         image_spec_bytes = image_spec_dict.__str__().encode("utf-8")
         self._id = base64.urlsafe_b64encode(hashlib.md5(image_spec_bytes).digest()).decode("ascii").rstrip("=")
 
+        parameters_str_list = [
+            "packages",
+            "conda_channels",
+            "conda_packages",
+            "apt_packages",
+            "pip_extra_index_url",
+            "entrypoint",
+            "commands",
+        ]
+        for parameter in parameters_str_list:
+            attr = getattr(self, parameter)
+            parameter_is_None = attr is None
+            parameter_is_list_string = isinstance(attr, list) and all(isinstance(v, str) for v in attr)
+            if not (parameter_is_None or parameter_is_list_string):
+                error_msg = f"{parameter} must be a list of strings or None"
+                raise ValueError(error_msg)
+
     @property
     def id(self) -> str:
         return self._id
@@ -176,6 +194,10 @@ class ImageSpec:
             return True
         except APIError as e:
             if e.response.status_code == 404:
+                return False
+
+            if re.match(f"unknown: repository .*{self.name} not found", e.explanation):
+                click.secho(f"Received 500 error with explanation: {e.explanation}", fg="yellow")
                 return False
 
             click.secho(f"Failed to check if the image exists with error:\n {e}", fg="red")

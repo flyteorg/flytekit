@@ -267,7 +267,7 @@ class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
         return ["task-module", m, "task-name", t]
 
     def get_all_tasks(self) -> List[PythonAutoContainerTask]:  # type: ignore
-        raise Exception("should not be needed")
+        raise NotImplementedError
 
 
 default_task_resolver = DefaultTaskResolver()

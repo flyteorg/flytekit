@@ -1021,7 +1021,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
                 )
             )
         except Exception as e:
-            raise RuntimeError(f"Failed to get signed url for {filename}, reason: {e}")
+            raise RuntimeError(f"Failed to get signed url for {filename}.") from e
 
     def get_download_signed_url(
         self, native_url: str, expires_in: datetime.timedelta = None

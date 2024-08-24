@@ -332,7 +332,7 @@ def test_transform_interface_to_typed_interface_with_docstring():
 def test_init_interface_with_invalid_parameters():
     from flytekit.core.interface import Interface
 
-    with pytest.raises(ValueError, match=r"Input name must be valid Python identifier:"):
+    with pytest.raises(ValueError, match=r"Input name must be a valid Python identifier:"):
         _ = Interface({"my.input": int}, {})
 
     with pytest.raises(ValueError, match=r"Type names and field names must be valid identifiers:"):
