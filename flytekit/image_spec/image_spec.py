@@ -276,10 +276,10 @@ class ImageSpec:
         """
         Builder that returns a new image spec with force push enabled.
         """
-        new_image_spec = copy.deepcopy(self)
-        new_image_spec._is_force_push = True
+        copied_image_spec = copy.deepcopy(self)
+        copied_image_spec._is_force_push = True
 
-        return new_image_spec
+        return copied_image_spec
 
 
 class ImageSpecBuilder:
@@ -346,8 +346,11 @@ class ImageBuildEngine:
         if execution_mode is not None:
             return
 
+        copied_image_spec = copy.deepcopy(image_spec)
+
         if isinstance(image_spec.base_image, ImageSpec):
             cls.build(image_spec.base_image)
+            copied_image_spec.base_image = copied_image_spec.base_image.image_name()
 
         if image_spec.builder is None and cls._REGISTRY:
             builder = max(cls._REGISTRY, key=lambda name: cls._REGISTRY[name][1])
