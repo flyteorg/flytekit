@@ -76,8 +76,7 @@ def test_image_spec(mock_image_spec_builder, monkeypatch):
     ImageBuildEngine.build(image_spec)
 
     with pytest.raises(AssertionError, match="Image builder flyte is not registered"):
-        image_spec.builder = "flyte"
-        ImageBuildEngine.build(image_spec)
+        ImageBuildEngine.build(ImageSpec(builder="flyte"))
 
     # ImageSpec should be immutable
     image_spec.with_commands("ls")

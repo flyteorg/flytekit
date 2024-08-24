@@ -8,7 +8,7 @@ import re
 import typing
 from abc import abstractmethod
 from dataclasses import asdict, dataclass
-from functools import lru_cache
+from functools import cached_property, lru_cache
 from importlib import metadata
 from typing import Dict, List, Optional, Tuple, Union
 
@@ -98,7 +98,7 @@ class ImageSpec:
                 error_msg = f"{parameter} must be a list of strings or None"
                 raise ValueError(error_msg)
 
-    @property
+    @cached_property
     def id(self) -> str:
         """
         Calculate a unique hash as the ID for the ImageSpec, and it will be used to
