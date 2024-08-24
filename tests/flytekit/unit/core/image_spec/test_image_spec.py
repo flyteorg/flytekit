@@ -7,13 +7,13 @@ import pytest
 from flytekit.core import context_manager
 from flytekit.core.context_manager import ExecutionState
 from flytekit.image_spec import ImageSpec
-from flytekit.image_spec.image_spec import _F_IMG_ID, ImageBuildEngine
+from flytekit.image_spec.image_spec import _F_IMG_ID, ImageBuildEngine, FLYTE_FORCE_PUSH_IMAGE_SPEC
 
 REQUIREMENT_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "requirements.txt")
 REGISTRY_CONFIG_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "registry_config.json")
 
 
-def test_image_spec(mock_image_spec_builder):
+def test_image_spec(mock_image_spec_builder, monkeypatch):
     base_image = ImageSpec(name="base", builder="dummy", base_image="base_image")
 
     image_spec = ImageSpec(
@@ -75,7 +75,7 @@ def test_image_spec(mock_image_spec_builder):
     del ImageBuildEngine._REGISTRY["dummy"]
     ImageBuildEngine.build(image_spec)
 
-    with pytest.raises(Exception):
+    with pytest.raises(AssertionError, match="Image builder flyte is not registered"):
         image_spec.builder = "flyte"
         ImageBuildEngine.build(image_spec)
 

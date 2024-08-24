@@ -499,6 +499,7 @@ def test_fetch_workflow_with_nested_branch(mock_promote, mock_workflow, remote):
 @mock.patch("flytekit.remote.remote.FlyteRemote.register_workflow")
 @mock.patch("flytekit.remote.remote.FlyteRemote.upload_file")
 @mock.patch("flytekit.remote.remote.compress_scripts")
+@pytest.mark.serial
 def test_get_image_names(
     compress_scripts_mock, upload_file_mock, register_workflow_mock, version_from_hash_mock, read_bytes_mock
 ):
