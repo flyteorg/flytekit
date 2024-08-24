@@ -411,12 +411,11 @@ IMAGE_SPEC = os.path.join(os.path.dirname(os.path.realpath(__file__)), "imageSpe
 with open(IMAGE_SPEC, "r") as f:
     image_spec_dict = yaml.safe_load(f)
     image_spec = ImageSpec(**image_spec_dict)
-    tag = calculate_hash_from_image_spec(image_spec)
 
 ic_result_4 = ImageConfig(
-    default_image=Image(name="default", fqn="flytekit", tag=tag),
+    default_image=Image(name="default", fqn="flytekit", tag=image_spec.tag),
     images=[
-        Image(name="default", fqn="flytekit", tag=tag),
+        Image(name="default", fqn="flytekit", tag=image_spec.tag),
         Image(name="xyz", fqn="docker.io/xyz", tag="latest"),
         Image(name="abc", fqn="docker.io/abc", tag=None),
         Image(

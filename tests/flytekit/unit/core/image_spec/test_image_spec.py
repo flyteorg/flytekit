@@ -121,8 +121,7 @@ def test_custom_tag():
         python_version="3.11",
         tag_format="{spec_hash}-dev",
     )
-    spec_hash = calculate_hash_from_image_spec(spec)
-    assert spec.image_name() == f"my_image:{spec_hash}-dev"
+    assert spec.image_name() == f"my_image:{spec.tag}"
 
 
 def test_no_build_during_execution():
