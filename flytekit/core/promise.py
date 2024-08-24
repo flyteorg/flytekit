@@ -994,9 +994,13 @@ def extract_obj_name(name: str) -> str:
 
 def check_awaitable(entity: SupportsNodeCreation):
     from flytekit.core.array_node_map_task import ArrayNodeMapTask
+    from flytekit.core.reference_entity import ReferenceEntity
     from flytekit.core.task import PythonFunctionTask
     from flytekit.core.workflow import PythonFunctionWorkflow
 
+    # currently we can only await on PythonFunctionTask, ArrayNodeMapTask and PythonFunctionWorkflow
+    if isinstance(entity, ReferenceEntity):
+        return False
     python_task = isinstance(entity, PythonFunctionTask) and inspect.iscoroutinefunction(entity.task_function)
     map_function_task = (
         isinstance(entity, ArrayNodeMapTask)
