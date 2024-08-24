@@ -74,7 +74,6 @@ class ImageSpec:
     entrypoint: Optional[List[str]] = None
     commands: Optional[List[str]] = None
     tag_format: Optional[str] = None
-    test: Optional[str] = None
 
     def __post_init__(self):
         self.name = self.name.lower()
@@ -142,7 +141,7 @@ class ImageSpec:
             spec.source_root = digest
 
         if spec.requirements:
-            spec.requirements = hashlib.sha1(pathlib.Path(spec.requirements).read_bytes()).hexdigest()
+            spec.requirements = hashlib.sha1(pathlib.Path(spec.requirements).read_bytes().strip()).hexdigest()
         # won't rebuild the image if we change the registry_config path
         spec.registry_config = None
         image_spec_dict = asdict(spec, dict_factory=lambda x: {k: v for (k, v) in x if v is not None})
@@ -168,6 +167,10 @@ class ImageSpec:
             return image_name
 
     def is_container(self) -> bool:
+        """
+        Check if the current container image in the pod is built from current image spec.
+        :return: True if the current container image in the pod is built from current image spec, False otherwise.
+        """
         from flytekit.core.context_manager import ExecutionState, FlyteContextManager
 
         state = FlyteContextManager.current_context().execution_state
