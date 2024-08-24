@@ -1,12 +1,13 @@
 import os
 from unittest.mock import Mock
 
+import mock
 import pytest
 
 from flytekit.core import context_manager
 from flytekit.core.context_manager import ExecutionState
 from flytekit.image_spec import ImageSpec
-from flytekit.image_spec.image_spec import _F_IMG_ID, ImageBuildEngine, calculate_hash_from_image_spec
+from flytekit.image_spec.image_spec import _F_IMG_ID, ImageBuildEngine
 
 REQUIREMENT_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "requirements.txt")
 REGISTRY_CONFIG_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "registry_config.json")
@@ -124,9 +125,9 @@ def test_custom_tag():
     assert spec.image_name() == f"my_image:{spec.tag}"
 
 
-def test_no_build_during_execution():
+@mock.patch("flytekit.image_spec.default_builder.DefaultImageBuilder.build_image")
+def test_no_build_during_execution(mock_build_image):
     # Check that no builds are called during executions
-    ImageBuildEngine._build_image = Mock()
 
     ctx = context_manager.FlyteContext.current_context()
     with context_manager.FlyteContextManager.with_context(
@@ -135,7 +136,7 @@ def test_no_build_during_execution():
         spec = ImageSpec(name="my_image_v2", python_version="3.12")
         ImageBuildEngine.build(spec)
 
-    ImageBuildEngine._build_image.assert_not_called()
+    mock_build_image.assert_not_called()
 
 
 @pytest.mark.parametrize(
