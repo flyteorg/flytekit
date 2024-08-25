@@ -584,7 +584,7 @@ def test_execution_name(mock_client, mock_uuid):
         inputs={"t": datetime.now(), "v": 0},
         execution_name="execution-test",
     )
-    exe = remote._execute(
+    remote._execute(
         entity=ft,
         inputs={"t": datetime.now(), "v": 0},
         execution_name_prefix="execution-test",
