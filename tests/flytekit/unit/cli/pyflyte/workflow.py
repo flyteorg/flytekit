@@ -134,3 +134,11 @@ def task_with_env_vars(env_vars: typing.List[str]) -> str:
 @workflow
 def wf_with_env_vars(env_vars: typing.List[str]) -> str:
     return task_with_env_vars(env_vars=env_vars)
+
+@task
+def task_with_list(a: typing.List[int]) -> typing.List[int]:
+    return a
+
+@workflow
+def wf_with_list(a: typing.List[int]) -> typing.List[int]:
+    return task_with_list(a=a)
