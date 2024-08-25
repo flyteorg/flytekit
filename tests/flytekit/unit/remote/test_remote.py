@@ -533,7 +533,8 @@ def test_get_image_names(
         name="flytesnacks.examples.basics.basics.workflow.slope",
         version="v1",
     )
-    def ref_basic(x: typing.List[int], y: typing.List[int]) -> float: ...
+    def ref_basic(x: typing.List[int], y: typing.List[int]) -> float:
+        ...
 
     @workflow
     def wf1(name: str = "union") -> float:
