@@ -3,6 +3,7 @@ import copy
 import hashlib
 import os
 import pathlib
+import re
 import typing
 from abc import abstractmethod
 from dataclasses import asdict, dataclass
@@ -141,6 +142,10 @@ class ImageSpec:
             return True
         except APIError as e:
             if e.response.status_code == 404:
+                return False
+
+            if re.match(f"unknown: repository .*{self.name} not found", e.explanation):
+                click.secho(f"Received 500 error with explanation: {e.explanation}", fg="yellow")
                 return False
 
             click.secho(f"Failed to check if the image exists with error:\n {e}", fg="red")
