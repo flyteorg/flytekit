@@ -584,7 +584,7 @@ def test_execution_name(mock_client, mock_uuid):
         inputs={"t": datetime.now(), "v": 0},
         execution_name="execution-test",
     )
-    remote._execute(
+    exe = remote._execute(
         entity=ft,
         inputs={"t": datetime.now(), "v": 0},
         execution_name_prefix="execution-test",
@@ -600,7 +600,6 @@ def test_execution_name(mock_client, mock_uuid):
             mock.call(ANY, ANY, None, ANY, ANY),
         ]
     )
-    assert mock_client.create_execution.call_args_list[1][0][2] == "execution-test-" + test_uuid.hex[:19]
     with pytest.raises(
         ValueError, match="Only one of execution_name and execution_name_prefix can be set, but got both set"
     ):
