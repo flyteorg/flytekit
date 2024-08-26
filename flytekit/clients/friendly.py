@@ -165,6 +165,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             str(task_list.token),
         )
 
+    @lru_cache
     def get_task(self, id):
         """
         This returns a single task for a given identifier.
@@ -294,6 +295,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             str(wf_list.token),
         )
 
+    @lru_cache
     def get_workflow(self, id):
         """
         This returns a single workflow for a given ID.
