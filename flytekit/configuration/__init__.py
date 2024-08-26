@@ -144,6 +144,7 @@ from typing import Dict, List, Optional
 
 import yaml
 
+from flytekit import DataClassBaseClass
 from flytekit.configuration import internal as _internal
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.configuration.file import ConfigEntry, ConfigFile, get_config_file, read_file_if_exists, set_if_exists
@@ -161,11 +162,6 @@ DEFAULT_IN_CONTAINER_SRC_PATH = "/root"
 _IMAGE_FQN_TAG_REGEX = re.compile(r"([^:]+)(?=:.+)?")
 SERIALIZED_CONTEXT_ENV_VAR = "_F_SS_C"
 
-try:
-    from dataclasses_json import DataClassJsonMixin
-    DataClassBaseClass = DataClassJsonMixin
-except ImportError:
-    DataClassBaseClass = object
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
 class Image(DataClassBaseClass):
