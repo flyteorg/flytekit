@@ -2073,7 +2073,6 @@ class FlyteRemote(object):
         encapsulated in this function.
         """
         # For single task execution - the metadata spec node id is missing. In these cases, revert to regular node id
-        print(f"Syncing {execution.id.node_id=} {execution.metadata.spec_node_id=}", flush=True)
         node_id = execution.metadata.spec_node_id
         # This case supports single-task execution compiled workflows.
         if node_id and node_id not in node_mapping and execution.id.node_id in node_mapping:
@@ -2150,15 +2149,10 @@ class FlyteRemote(object):
                             ).spec
 
                 dynamic_flyte_wf = FlyteWorkflow.promote_from_closure(compiled_wf, node_launch_plans)
-                # execution._underlying_node_executions = [
-                #     self.sync_node_execution(FlyteNodeExecution.promote_from_model(cne), dynamic_flyte_wf._node_map)
-                #     for cne in child_node_executions
-                # ]
-                execution._underlying_node_executions = []
-                for cne in child_node_executions:
-                    print(f"Syncing {cne.id}", flush=True)
-                    nodex = self.sync_node_execution(FlyteNodeExecution.promote_from_model(cne), dynamic_flyte_wf._node_map)
-                    execution._underlying_node_executions.append(nodex)
+                execution._underlying_node_executions = [
+                    self.sync_node_execution(FlyteNodeExecution.promote_from_model(cne), dynamic_flyte_wf._node_map)
+                    for cne in child_node_executions
+                ]
                 execution._task_executions = [
                     node_exes.task_executions for node_exes in execution.subworkflow_node_executions.values()
                 ]
