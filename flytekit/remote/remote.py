@@ -2139,11 +2139,10 @@ class FlyteRemote(object):
                 for template in [compiled_wf.primary.template] + [swf.template for swf in compiled_wf.sub_workflows]:
                     for node in FlyteWorkflow.get_non_system_nodes(template.nodes):
                         if (
-                                node.workflow_node is not None
-                                and node.workflow_node.launchplan_ref is not None
-                                and node.workflow_node.launchplan_ref not in node_launch_plans
+                            node.workflow_node is not None
+                            and node.workflow_node.launchplan_ref is not None
+                            and node.workflow_node.launchplan_ref not in node_launch_plans
                         ):
-                            logger.warning(f"Fetching launch plan {node.workflow_node.launchplan_ref.name}")
                             node_launch_plans[node.workflow_node.launchplan_ref] = self.client.get_launch_plan(
                                 node.workflow_node.launchplan_ref
                             ).spec
