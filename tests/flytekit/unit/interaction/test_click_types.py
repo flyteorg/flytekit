@@ -406,3 +406,95 @@ def test_dataclass_with_flyte_type_exception():
 
     with pytest.raises(AttributeError):
         t.convert(value=value, param=None, ctx=None)
+
+def test_dataclass_with_optional_fields():
+    from dataclasses import dataclass
+    from typing import Optional
+
+    @dataclass
+    class Datum:
+        x: int
+        y: Optional[str] = None
+        z: Optional[typing.Dict[int, str]] = None
+        w: Optional[typing.List[int]] = None
+
+    t = JsonParamType(Datum)
+    value = '{ "x": 1 }'
+    v = t.convert(value=value, param=None, ctx=None)
+    lt = TypeEngine.to_literal_type(Datum)
+    ctx = FlyteContextManager.current_context()
+    literal_converter = FlyteLiteralConverter(
+        ctx, literal_type=lt, python_type=Datum, is_remote=False
+    )
+    v = literal_converter.convert(ctx=ctx, param=None, value=v)
+
+    # Assertions to check the Optional fields
+    assert v.x == 1
+    assert v.y is None  # Optional field with no value provided
+    assert v.z is None  # Optional field with no value provided
+    assert v.w is None  # Optional field with no value provided
+
+    # Test with all fields provided
+    value = '{ "x": 2, "y": "test", "z": {"1": "value"}, "w": [1, 2, 3] }'
+    v = t.convert(value=value, param=None, ctx=None)
+    v = literal_converter.convert(ctx=ctx, param=None, value=v)
+
+    assert v.x == 2
+    assert v.y == "test"
+    assert v.z == {1: "value"}
+    assert v.w == [1, 2, 3]
+
+def test_nested_dataclass_with_optional_fields():
+    from dataclasses import dataclass
+    from typing import Optional, List, Dict
+
+    @dataclass
+    class InnerDatum:
+        a: int
+        b: Optional[str] = None
+
+    @dataclass
+    class Datum:
+        x: int
+        y: Optional[InnerDatum] = None
+        z: Optional[Dict[str, InnerDatum]] = None
+        w: Optional[List[InnerDatum]] = None
+
+    t = JsonParamType(Datum)
+
+    # Case 1: Only required field provided
+    value = '{ "x": 1 }'
+    v = t.convert(value=value, param=None, ctx=None)
+    lt = TypeEngine.to_literal_type(Datum)
+    ctx = FlyteContextManager.current_context()
+    literal_converter = FlyteLiteralConverter(
+        ctx, literal_type=lt, python_type=Datum, is_remote=False
+    )
+    v = literal_converter.convert(ctx=ctx, param=None, value=v)
+
+    # Assertions to check the Optional fields
+    assert v.x == 1
+    assert v.y is None  # Optional field with no value provided
+    assert v.z is None  # Optional field with no value provided
+    assert v.w is None  # Optional field with no value provided
+
+    # Case 2: All fields provided with nested structures
+    value = '''
+    {
+        "x": 2,
+        "y": {"a": 10, "b": "inner"},
+        "z": {"key": {"a": 20, "b": "nested"}},
+        "w": [{"a": 30, "b": "list_item"}]
+    }
+    '''
+    v = t.convert(value=value, param=None, ctx=None)
+    v = literal_converter.convert(ctx=ctx, param=None, value=v)
+
+    # Assertions for nested structure
+    assert v.x == 2
+    assert v.y.a == 10
+    assert v.y.b == "inner"
+    assert v.z["key"].a == 20
+    assert v.z["key"].b == "nested"
+    assert v.w[0].a == 30
+    assert v.w[0].b == "list_item"

@@ -307,7 +307,7 @@ class JsonParamType(click.ParamType):
         if value is None:
             raise click.BadParameter("None value cannot be converted to a Json type.")
 
-        parsed_value = self._parse(value, param)
+        FLYTE_TYPES = [FlyteFile, FlyteDirectory, StructuredDataset, FlyteSchema]
 
         def has_nested_dataclass(t: typing.Type) -> bool:
             """
@@ -330,16 +330,12 @@ class JsonParamType(click.ParamType):
             """
 
             if dataclasses.is_dataclass(t):
-                # FlyteTypes is not supported now, we can add it later.
-                if t not in [FlyteFile, FlyteDirectory, StructuredDataset, FlyteSchema]:
-                    return True
-                else:
-                    return False
-            if get_args(t):
-                for a in get_args(t):
-                    if has_nested_dataclass(a):
-                        return True
-            return False
+                # FlyteTypes is not supported now, we can support it in the future.
+                return t not in FLYTE_TYPES
+
+            return any(has_nested_dataclass(arg) for arg in get_args(t))
+
+        parsed_value = self._parse(value, param)
 
         # We compare the origin type because the json parsed value for list or dict is always a list or dict without
         # the covariant type information.
