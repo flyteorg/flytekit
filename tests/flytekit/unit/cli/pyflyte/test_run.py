@@ -815,3 +815,18 @@ def test_list_default_arguments(task_path):
     )
     assert result.exit_code == 0
     assert result.stdout == "Running Execution on local.\n0 Hello Color.RED\n\n"
+
+
+def test_entity_non_found_in_file():
+    runner = CliRunner()
+    result = runner.invoke(
+        pyflyte.main,
+        [
+            "run",
+            os.path.join(DIR_NAME, "workflow.py"),
+            "my_wffffff",
+        ],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 1
+    assert "FlyteEntityNotFoundException: Entity \'my_wffffff\' not found in module \n\'pyflyte.workflow\'" in result.stdout
