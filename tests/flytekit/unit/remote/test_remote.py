@@ -598,7 +598,7 @@ def test_execution_name(mock_client, mock_uuid):
         [
             mock.call(ANY, ANY, "execution-test", ANY, ANY),
             mock.call(ANY, ANY, "execution-test-" + test_uuid.hex[:19], ANY, ANY),
-            mock.call(ANY, ANY, "f" + test_uuid.hex[:19], ANY, ANY),
+            mock.call(ANY, ANY, None, ANY, ANY),
         ]
     )
     with pytest.raises(
