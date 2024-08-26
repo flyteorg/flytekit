@@ -92,6 +92,7 @@ def test_map_task_with_pickle():
     map_task(say_hello)(name=["abc", "def"])
 
 
+@pytest.mark.idl
 def test_serialization(serialization_settings):
     @task
     def t1(a: int) -> int:
@@ -101,7 +102,7 @@ def test_serialization(serialization_settings):
     task_spec = get_serializable(OrderedDict(), serialization_settings, arraynode_maptask)
 
     assert task_spec.template.metadata.retries.retries == 2
-    assert task_spec.template.custom["minSuccessRatio"] == 1.0
+    assert task_spec.template.custom['success_criteria']["MinSuccessRatio"] == 1.0
     assert task_spec.template.type == "python-task"
     assert task_spec.template.task_type_version == 1
     assert task_spec.template.container.args == [

@@ -49,7 +49,7 @@ class CustomReturn(object):
     def __init__(self, data):
         self.data = data
 
-
+@pytest.mark.idl
 def test_basic_option_a_rev():
     import pandas as pd
 
@@ -71,16 +71,18 @@ def test_basic_option_a_rev():
     assert (
         t1_s.template.interface.outputs["o0"].artifact_partial_id.time_partition.granularity == art_id.Granularity.DAY
     )
-    assert t1_s.template.interface.outputs["o0"].artifact_partial_id.time_partition.value.input_binding.var == "dt"
-    assert p["b"].HasField("input_binding")
-    assert p["b"].input_binding.var == "b_value"
-    assert p["a"].HasField("static_value")
-    assert p["a"].static_value == "manual"
+    assert t1_s.template.interface.outputs["o0"].artifact_partial_id.time_partition.value.value[0].var == "dt"
+    assert t1_s.template.interface.outputs["o0"].artifact_partial_id.time_partition.value.value[0].var == "dt"
+    import flyteidl_rust as flyteidl
+    assert isinstance((p["b"]).value, flyteidl.label_value.Value.InputBinding)
+    assert (p["b"]).value[0].var == "b_value"
+    assert isinstance((p["a"]).value, flyteidl.label_value.Value.StaticValue)
+    assert (p["a"]).value[0] == "manual"
     assert t1_s.template.interface.outputs["o0"].artifact_partial_id.version == ""
     assert t1_s.template.interface.outputs["o0"].artifact_partial_id.artifact_key.name == "my_data"
     assert t1_s.template.interface.outputs["o0"].artifact_partial_id.artifact_key.project == ""
 
-
+@pytest.mark.idl
 def test_basic_multiple_call():
     import pandas as pd
 
@@ -102,16 +104,17 @@ def test_basic_multiple_call():
     assert (
         t1_s.template.interface.outputs["o0"].artifact_partial_id.time_partition.granularity == art_id.Granularity.DAY
     )
-    assert t1_s.template.interface.outputs["o0"].artifact_partial_id.time_partition.value.input_binding.var == "dt"
-    assert p["b"].HasField("input_binding")
-    assert p["b"].input_binding.var == "b_value"
-    assert p["a"].HasField("static_value")
-    assert p["a"].static_value == "manual"
+    assert t1_s.template.interface.outputs["o0"].artifact_partial_id.time_partition.value.value[0].var == "dt"
+    import flyteidl_rust as flyteidl
+    assert isinstance((p["b"]).value, flyteidl.label_value.Value.InputBinding)
+    assert (p["b"]).value[0].var == "b_value"
+    assert isinstance((p["a"]).value, flyteidl.label_value.Value.StaticValue)
+    assert (p["a"]).value[0] == "manual"
     assert t1_s.template.interface.outputs["o0"].artifact_partial_id.version == ""
     assert t1_s.template.interface.outputs["o0"].artifact_partial_id.artifact_key.name == "my_data"
     assert t1_s.template.interface.outputs["o0"].artifact_partial_id.artifact_key.project == ""
 
-
+@pytest.mark.idl
 def test_args_getting():
     a1 = Artifact(name="argstst")
     a1_called = a1()
@@ -122,9 +125,10 @@ def test_args_getting():
     detected = detect_artifact(get_args(int))
     assert detected is None
     detected = detect_artifact(get_args(x))
-    assert detected == a1_called.to_partial_artifact_id()
+    import json
+    assert json.loads(detected.DumpToJsonString()) == json.loads(a1_called.to_partial_artifact_id().DumpToJsonString())
 
-
+@pytest.mark.idl
 def test_basic_option_no_tp():
     import pandas as pd
 
@@ -150,10 +154,11 @@ def test_basic_option_no_tp():
     t1_s = get_serializable(entities, serialization_settings, t1)
     assert len(t1_s.template.interface.outputs["o0"].artifact_partial_id.partitions.value) == 2
     p = t1_s.template.interface.outputs["o0"].artifact_partial_id.partitions.value
-    assert t1_s.template.interface.outputs["o0"].artifact_partial_id.HasField("time_partition") is False
-    assert p["b"].HasField("input_binding")
+    import flyteidl_rust as flyteidl
+    assert t1_s.template.interface.outputs["o0"].artifact_partial_id.time_partition is None
+    assert isinstance((p["b"]).value, flyteidl.label_value.Value.InputBinding)
 
-
+@pytest.mark.idl
 def test_basic_option_hardcoded_tp():
     a1_t_ab = Artifact(name="my_data", time_partitioned=True)
 
@@ -161,7 +166,8 @@ def test_basic_option_hardcoded_tp():
 
     id_spec = a1_t_ab(time_partition=dt)
     assert id_spec.partitions is None
-    assert id_spec.time_partition.value.HasField("time_value")
+    import flyteidl_rust as flyteidl
+    assert isinstance(id_spec.time_partition.value.value, flyteidl.label_value.Value.TimeValue)
 
 
 def test_bound_ness():
@@ -202,7 +208,7 @@ def test_basic_option_a():
     assert t1_s.template.interface.outputs["o0"].artifact_partial_id.artifact_key.project == ""
     assert t1_s.template.interface.outputs["o0"].artifact_partial_id.time_partition is not None
 
-
+@pytest.mark.idl
 def test_basic_dynamic():
     import pandas as pd
 
@@ -223,9 +229,10 @@ def test_basic_dynamic():
     entities = OrderedDict()
     t1_s = get_serializable(entities, serialization_settings, t1)
     assert len(t1_s.template.interface.outputs["o0"].artifact_partial_id.partitions.value) == 2
-    assert t1_s.template.interface.outputs["o0"].artifact_partial_id.partitions.value["a"].HasField("runtime_binding")
+    import flyteidl_rust as flyteidl
+    assert (t1_s.template.interface.outputs["o0"].artifact_partial_id.partitions.value["a"].value, flyteidl.label_value.Value.RuntimeBinding)
     assert (
-        not t1_s.template.interface.outputs["o0"].artifact_partial_id.partitions.value["b"].HasField("runtime_binding")
+        not isinstance(t1_s.template.interface.outputs["o0"].artifact_partial_id.partitions.value["b"].value, flyteidl.label_value.Value.RuntimeBinding)
     )
     assert t1_s.template.interface.outputs["o0"].artifact_partial_id.version == ""
     assert t1_s.template.interface.outputs["o0"].artifact_partial_id.artifact_key.name == "my_data"
@@ -236,13 +243,15 @@ def test_basic_dynamic():
     lm = TypeEngine.dict_to_literal_map(ctx, {"b_value": "my b value", "dt": d})
     lm_outputs = t1.dispatch_execute(ctx, lm)
     dyn_partition_encoded = lm_outputs.literals["o0"].metadata["_uap"]
-    artifact_id = art_id.ArtifactID()
-    artifact_id.ParseFromString(b64decode(dyn_partition_encoded.encode("utf-8")))
-    assert artifact_id.partitions.value["a"].static_value == "dynamic!"
+    artifact_id = flyteidl.core.ArtifactId()
+    artifact_id = artifact_id.ParseFromString(b64decode(dyn_partition_encoded.encode("utf-8")))
+    assert artifact_id.partitions.value["a"].value[0] == "dynamic!"
 
-    proto_timestamp = Timestamp()
-    proto_timestamp.FromDatetime(d)
-    assert artifact_id.time_partition.value.time_value == proto_timestamp
+    proto_timestamp = flyteidl.protobuf.Timestamp()
+    from flytekit.models import utils
+    proto_timestamp = utils.convert_from_datetime_to_timestamp(d)
+    import json
+    assert json.loads(artifact_id.time_partition.value.value[0].DumpToJsonString()) == json.loads(proto_timestamp.DumpToJsonString())
     assert artifact_id.time_partition.granularity == Granularity.MONTH
 
 
@@ -263,21 +272,26 @@ def test_basic_dynamic_only_time():
         return a1_t.create_from(df, time_partition=dt)
 
     entities = OrderedDict()
+
     t1_s = get_serializable(entities, serialization_settings, t1)
-    assert not t1_s.template.interface.outputs["o0"].artifact_partial_id.partitions.value
+    assert not t1_s.template.interface.outputs["o0"].artifact_partial_id.partitions
     assert t1_s.template.interface.outputs["o0"].artifact_partial_id.time_partition is not None
 
     d = datetime.datetime(2021, 1, 1, 0, 0)
     lm = TypeEngine.dict_to_literal_map(ctx, {"b_value": "my b value", "dt": d})
     lm_outputs = t1.dispatch_execute(ctx, lm)
     dyn_partition_encoded = lm_outputs.literals["o0"].metadata["_uap"]
-    artifact_id = art_id.ArtifactID()
-    artifact_id.ParseFromString(b64decode(dyn_partition_encoded.encode("utf-8")))
-    assert not artifact_id.partitions.value
+    import flyteidl_rust as flyteidl
+    artifact_id = flyteidl.core.ArtifactId()
+    artifact_id = artifact_id.ParseFromString(b64decode(dyn_partition_encoded.encode("utf-8")))
 
-    proto_timestamp = Timestamp()
-    proto_timestamp.FromDatetime(d)
-    assert artifact_id.time_partition.value.time_value == proto_timestamp
+    assert not artifact_id.partitions
+
+    proto_timestamp = flyteidl.protobuf.Timestamp()
+    from flytekit.models import utils
+    proto_timestamp = utils.convert_from_datetime_to_timestamp(d)
+    import json
+    assert json.loads(artifact_id.time_partition.value.value[0].DumpToJsonString()) == json.loads(proto_timestamp.DumpToJsonString())
 
 
 def test_dynamic_with_extras():
@@ -299,10 +313,11 @@ def test_dynamic_with_extras():
 
     entities = OrderedDict()
     t1_s = get_serializable(entities, serialization_settings, t1)
+    import flyteidl_rust as flyteidl
     assert len(t1_s.template.interface.outputs["o0"].artifact_partial_id.partitions.value) == 2
-    assert t1_s.template.interface.outputs["o0"].artifact_partial_id.partitions.value["a"].HasField("runtime_binding")
+    assert isinstance(t1_s.template.interface.outputs["o0"].artifact_partial_id.partitions.value["a"].value, flyteidl.label_value.Value.RuntimeBinding)
     assert (
-        not t1_s.template.interface.outputs["o0"].artifact_partial_id.partitions.value["b"].HasField("runtime_binding")
+        not isinstance(t1_s.template.interface.outputs["o0"].artifact_partial_id.partitions.value["b"].value, flyteidl.label_value.Value.RuntimeBinding)
     )
     assert t1_s.template.interface.outputs["o0"].artifact_partial_id.version == ""
     assert t1_s.template.interface.outputs["o0"].artifact_partial_id.artifact_key.name == "my_data"
@@ -314,13 +329,17 @@ def test_dynamic_with_extras():
     lm_outputs = t1.dispatch_execute(ctx, lm)
     o0 = lm_outputs.literals["o0"]
     dyn_partition_encoded = o0.metadata["_uap"]
-    artifact_id = art_id.ArtifactID()
-    artifact_id.ParseFromString(b64decode(dyn_partition_encoded.encode("utf-8")))
-    assert artifact_id.partitions.value["a"].static_value == "dynamic!"
+    artifact_id = flyteidl.core.ArtifactId()
 
-    proto_timestamp = Timestamp()
-    proto_timestamp.FromDatetime(d)
-    assert artifact_id.time_partition.value.time_value == proto_timestamp
+    artifact_id = artifact_id.ParseFromString(b64decode(dyn_partition_encoded.encode("utf-8")))
+
+    assert artifact_id.partitions.value["a"].value[0] == "dynamic!"
+
+    proto_timestamp = flyteidl.protobuf.Timestamp()
+    from flytekit.models import utils
+    proto_timestamp = utils.convert_from_datetime_to_timestamp(d)
+    import json
+    assert json.loads(artifact_id.time_partition.value.value[0].DumpToJsonString()) == json.loads(proto_timestamp.DumpToJsonString())
     assert o0.metadata["p1_metao0"] == "this is extra information"
     assert o0.metadata["p2_metao0"] == "this is more extra information"
 
@@ -336,7 +355,7 @@ def test_basic_option_a3():
 
     entities = OrderedDict()
     t3_s = get_serializable(entities, serialization_settings, t3)
-    assert len(t3_s.template.interface.outputs["o0"].artifact_partial_id.partitions.value) == 0
+    assert t3_s.template.interface.outputs["o0"].artifact_partial_id.partitions is None
     assert t3_s.template.interface.outputs["o0"].artifact_partial_id.artifact_key.name == "my_data3"
 
 
@@ -350,28 +369,29 @@ def test_query_basic():
     assert data_query.binding is None
     assert data_query.artifact is aa
     dq_idl = data_query.to_flyte_idl()
-    assert dq_idl.HasField("artifact_id")
-    assert dq_idl.artifact_id.artifact_key.name == "ride_count_data"
-    assert len(dq_idl.artifact_id.partitions.value) == 1
-    assert dq_idl.artifact_id.partitions.value["region"].HasField("input_binding")
-    assert dq_idl.artifact_id.partitions.value["region"].input_binding.var == "blah"
-    assert dq_idl.artifact_id.time_partition.value.input_binding.var == "dt"
+    import flyteidl_rust as flyteidl
+    assert isinstance(dq_idl.identifier, flyteidl.artifact_query.Identifier.ArtifactId)
+    assert dq_idl.identifier[0].artifact_key.name == "ride_count_data"
+    assert len(dq_idl.identifier[0].partitions.value) == 1
+    assert isinstance(dq_idl.identifier[0].partitions.value["region"].value, flyteidl.label_value.Value.InputBinding)
+    assert dq_idl.identifier[0].partitions.value["region"].value[0].var == "blah"
+    assert dq_idl.identifier[0].time_partition.value.value[0].var == "dt"
 
 
 def test_not_specified_behavior():
     wf_artifact_no_tag = Artifact(project="project1", domain="dev", name="wf_artifact", version="1", partitions=None)
     aq = wf_artifact_no_tag.query("pr", "dom").to_flyte_idl()
-    assert aq.artifact_id.HasField("partitions") is False
-    assert aq.artifact_id.artifact_key.project == "pr"
-    assert aq.artifact_id.artifact_key.domain == "dom"
+    assert aq.identifier[0].partitions is None
+    assert aq.identifier[0].artifact_key.project == "pr"
+    assert aq.identifier[0].artifact_key.domain == "dom"
 
-    assert wf_artifact_no_tag.concrete_artifact_id.HasField("partitions") is False
+    assert wf_artifact_no_tag.concrete_artifact_id.partitions is None
 
     wf_artifact_no_tag = Artifact(project="project1", domain="dev", name="wf_artifact", partitions={})
     assert wf_artifact_no_tag.partitions is None
     aq = wf_artifact_no_tag.query().to_flyte_idl()
-    assert aq.artifact_id.HasField("partitions") is False
-    assert aq.artifact_id.HasField("time_partition") is False
+    assert aq.identifier[0].partitions is None
+    assert aq.identifier[0].time_partition is None
 
 
 def test_artifact_as_promise_query():
@@ -391,9 +411,9 @@ def test_artifact_as_promise_query():
     lp = LaunchPlan.get_default_launch_plan(ctx, wf)
     entities = OrderedDict()
     spec = get_serializable(entities, serialization_settings, lp)
-    assert spec.spec.default_inputs.parameters["a"].artifact_query.artifact_id.artifact_key.project == "project1"
-    assert spec.spec.default_inputs.parameters["a"].artifact_query.artifact_id.artifact_key.domain == "dev"
-    assert spec.spec.default_inputs.parameters["a"].artifact_query.artifact_id.artifact_key.name == "wf_artifact"
+    assert spec.spec.default_inputs.parameters["a"].artifact_query.identifier[0].artifact_key.project == "project1"
+    assert spec.spec.default_inputs.parameters["a"].artifact_query.identifier[0].artifact_key.domain == "dev"
+    assert spec.spec.default_inputs.parameters["a"].artifact_query.identifier[0].artifact_key.name == "wf_artifact"
 
     # Test non-specified query for unpartitioned artifacts
     @workflow
@@ -404,9 +424,9 @@ def test_artifact_as_promise_query():
     lp2 = LaunchPlan.get_default_launch_plan(ctx, wf2)
     entities = OrderedDict()
     spec = get_serializable(entities, serialization_settings, lp2)
-    assert spec.spec.default_inputs.parameters["a"].artifact_query.artifact_id.artifact_key.project == "project1"
-    assert spec.spec.default_inputs.parameters["a"].artifact_query.artifact_id.artifact_key.domain == "dev"
-    assert spec.spec.default_inputs.parameters["a"].artifact_query.artifact_id.artifact_key.name == "wf_artifact"
+    assert spec.spec.default_inputs.parameters["a"].artifact_query.identifier[0].artifact_key.project == "project1"
+    assert spec.spec.default_inputs.parameters["a"].artifact_query.identifier[0].artifact_key.domain == "dev"
+    assert spec.spec.default_inputs.parameters["a"].artifact_query.identifier[0].artifact_key.name == "wf_artifact"
 
 
 def test_artifact_as_promise():
@@ -427,13 +447,14 @@ def test_artifact_as_promise():
     lp = LaunchPlan.get_default_launch_plan(ctx, wf3)
     entities = OrderedDict()
     spec = get_serializable(entities, serialization_settings, lp)
-    assert spec.spec.default_inputs.parameters["a"].artifact_id.artifact_key.project == "pro"
-    assert spec.spec.default_inputs.parameters["a"].artifact_id.artifact_key.domain == "dom"
-    assert spec.spec.default_inputs.parameters["a"].artifact_id.artifact_key.name == "key"
+    assert spec.spec.default_inputs.parameters["a"].to_flyte_idl().behavior[0].artifact_key.project == "pro"
+    assert spec.spec.default_inputs.parameters["a"].to_flyte_idl().behavior[0].artifact_key.domain == "dom"
+    assert spec.spec.default_inputs.parameters["a"].to_flyte_idl().behavior[0].artifact_key.name == "key"
 
     aq = wf_artifact.query().to_flyte_idl()
-    assert aq.artifact_id.HasField("partitions") is True
-    assert aq.artifact_id.partitions.value["region"].static_value == "LAX"
+    import flyteidl_rust as flyteidl
+    assert aq.identifier[0].partitions is not None
+    assert aq.identifier[0].partitions.value["region"].value[0] == "LAX"
 
 
 def test_query_basic_query_bindings():
@@ -493,9 +514,10 @@ def test_as_artf_no_partitions():
     entities = OrderedDict()
     spec = get_serializable(entities, serialization_settings, tst_lp)
     aq = spec.spec.default_inputs.parameters["number"].artifact_query
-    assert aq.artifact_id.artifact_key.name == "important_int"
-    assert not aq.artifact_id.HasField("partitions")
-    assert not aq.artifact_id.HasField("time_partition")
+    assert aq.identifier[0].artifact_key.name == "important_int"
+    import flyteidl_rust as flyteidl
+    assert aq.identifier[0].partitions is None
+    assert aq.identifier[0].time_partition is None
 
 
 def test_check_input_binding():
@@ -596,22 +618,24 @@ def test_map_doesnt_add_any_metadata():
 def test_tp_math():
     a = Artifact(name="test artifact", time_partitioned=True)
     d = datetime.datetime(2063, 4, 5, 0, 0)
-    pt = Timestamp()
-    pt.FromDatetime(d)
-    tp = TimePartition(value=art_id.LabelValue(time_value=pt), granularity=Granularity.HOUR)
+    import flyteidl_rust as flyteidl
+    pt = flyteidl.protobuf.Timestamp()
+    from flytekit.models import utils
+    pt = utils.convert_from_datetime_to_timestamp(d)
+    tp = TimePartition(value=flyteidl.core.LabelValue(value=flyteidl.label_value.Value.TimeValue(pt)), granularity=flyteidl.core.Granularity.Hour)
     tp.reference_artifact = a
     tp2 = tp + datetime.timedelta(days=1)
-    assert tp2.op == art_id.Operator.PLUS
+    assert tp2.op == flyteidl.core.Operator.Plus
     assert tp2.other == datetime.timedelta(days=1)
-    assert tp2.granularity == Granularity.HOUR
+    assert tp2.granularity == flyteidl.core.Granularity.Hour
     assert tp2 is not tp
 
-    tp = TimePartition(value=art_id.LabelValue(time_value=pt), granularity=Granularity.HOUR)
+    tp = TimePartition(value=flyteidl.core.LabelValue(value=flyteidl.label_value.Value.TimeValue(pt)), granularity=flyteidl.core.Granularity.Hour)
     tp.reference_artifact = a
     tp2 = tp - datetime.timedelta(days=1)
-    assert tp2.op == art_id.Operator.MINUS
+    assert tp2.op == flyteidl.core.Operator.Minus
     assert tp2.other == datetime.timedelta(days=1)
-    assert tp2.granularity == Granularity.HOUR
+    assert tp2.granularity == flyteidl.core.Granularity.Hour
     assert tp2 is not tp
 
 

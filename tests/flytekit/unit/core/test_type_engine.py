@@ -180,7 +180,8 @@ def test_list_of_single_dataclass():
         b: Bar
 
     foo = Foo(a=["abc", "def"], b=Bar(v=[1, 2, 99], w=[3.1415, 2.7182]))
-    generic = _json_format.Parse(typing.cast(DataClassJsonMixin, foo).to_json(), _struct.Struct())
+    import flyteidl_rust as flyteidl
+    generic = flyteidl.ParseStruct(typing.cast(DataClassJsonMixin, foo).to_json())
     lv = Literal(collection=LiteralCollection(literals=[Literal(scalar=Scalar(generic=generic))]))
 
     transformer = TypeEngine.get_transformer(typing.List)
@@ -205,7 +206,8 @@ class Foo(DataClassJSONMixin):
 
 def test_list_of_single_dataclassjsonmixin():
     foo = Foo(a=["abc", "def"], b=Bar(v=[1, 2, 99], w=[3.1415, 2.7182]))
-    generic = _json_format.Parse(typing.cast(DataClassJSONMixin, foo).to_json(), _struct.Struct())
+    import flyteidl_rust as flyteidl
+    generic = flyteidl.ParseStruct(typing.cast(DataClassJsonMixin, foo).to_json())
     lv = Literal(collection=LiteralCollection(literals=[Literal(scalar=Scalar(generic=generic))]))
 
     transformer = TypeEngine.get_transformer(typing.List)
@@ -297,7 +299,8 @@ def test_list_of_dataclass_getting_python_value():
         y={"hello": "10"},
         z=Bar(v=3, w=None, x=1.0, y="hello", z={"world": False}),
     )
-    generic = _json_format.Parse(typing.cast(DataClassJsonMixin, foo).to_json(), _struct.Struct())
+    import flyteidl_rust as flyteidl
+    generic = flyteidl.ParseStruct(typing.cast(DataClassJsonMixin, foo).to_json())
     lv = Literal(collection=LiteralCollection(literals=[Literal(scalar=Scalar(generic=generic))]))
 
     transformer = TypeEngine.get_transformer(typing.List)
@@ -355,7 +358,8 @@ def test_list_of_dataclassjsonmixin_getting_python_value():
         y={"hello": "10"},
         z=Bar_getting_python_value(v=3, w=None, x=1.0, y="hello", z={"world": False}),
     )
-    generic = _json_format.Parse(typing.cast(DataClassJSONMixin, foo).to_json(), _struct.Struct())
+    import flyteidl_rust as flyteidl
+    generic = flyteidl.ParseStruct(typing.cast(DataClassJsonMixin, foo).to_json())
     lv = Literal(collection=LiteralCollection(literals=[Literal(scalar=Scalar(generic=generic))]))
 
     transformer = TypeEngine.get_transformer(typing.List)
@@ -620,26 +624,26 @@ def test_list_transformer():
 
 def test_protos():
     ctx = FlyteContext.current_context()
+    import flyteidl_rust as flyteidl
+    pb = flyteidl.core.ContainerError(code="code", message="message")
+    lt = TypeEngine.to_literal_type(flyteidl.core.ContainerError)
+    assert isinstance(lt.blob.to_flyte_idl(), flyteidl.core.BlobType)
+    assert lt.metadata["python_class_name"] == "<class 'builtins.ContainerError'>"
 
-    pb = errors_pb2.ContainerError(code="code", message="message")
-    lt = TypeEngine.to_literal_type(errors_pb2.ContainerError)
-    assert lt.simple == SimpleType.STRUCT
-    assert lt.metadata["pb_type"] == "flyteidl.core.errors_pb2.ContainerError"
-
-    lit = TypeEngine.to_literal(ctx, pb, errors_pb2.ContainerError, lt)
-    new_python_val = TypeEngine.to_python_value(ctx, lit, errors_pb2.ContainerError)
+    lit = TypeEngine.to_literal(ctx, pb, flyteidl.core.ContainerError, lt)
+    new_python_val = TypeEngine.to_python_value(ctx, lit, flyteidl.core.ContainerError)
     assert new_python_val == pb
 
     # Test error
     l0 = Literal(scalar=Scalar(primitive=Primitive(integer=4)))
     with pytest.raises(AssertionError):
-        TypeEngine.to_python_value(ctx, l0, errors_pb2.ContainerError)
+        TypeEngine.to_python_value(ctx, l0, flyteidl.core.ContainerError)
 
-    default_proto = errors_pb2.ContainerError()
-    lit = TypeEngine.to_literal(ctx, default_proto, errors_pb2.ContainerError, lt)
+    default_proto = flyteidl.core.ContainerError()
+    lit = TypeEngine.to_literal(ctx, default_proto, flyteidl.core.ContainerError, lt)
     assert lit.scalar
     assert lit.scalar.generic is not None
-    new_python_val = TypeEngine.to_python_value(ctx, lit, errors_pb2.ContainerError)
+    new_python_val = TypeEngine.to_python_value(ctx, lit, flyteidl.core.ContainerError)
     assert new_python_val == default_proto
 
 
