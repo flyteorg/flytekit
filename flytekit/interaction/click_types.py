@@ -328,9 +328,13 @@ class JsonParamType(click.ParamType):
             Returns:
                 bool: True if the type or its nested types contain a dataclass, False otherwise.
             """
+
             if dataclasses.is_dataclass(t):
+                # FlyteTypes is not supported now, we can add it later.
                 if t not in [FlyteFile, FlyteDirectory, StructuredDataset, FlyteSchema]:
                     return True
+                else:
+                    return False
             if get_args(t):
                 for a in get_args(t):
                     if has_nested_dataclass(a):
