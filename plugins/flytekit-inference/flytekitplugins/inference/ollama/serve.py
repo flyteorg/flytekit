@@ -119,13 +119,17 @@ inputs = {'inputs': AttrDict(inputs)}
 
             python_code += f"""
 encoded_model_file = '{encoded_modelfile}'
+"""
 
+            python_code += """
 modelfile = base64.b64decode(encoded_model_file).decode('utf-8').format(**inputs)
-modelfile = modelfile.replace('{{', '{{{{').replace('}}', '}}}}')
+modelfile = modelfile.replace('{', '{{').replace('}', '}}')
 
 with open('Modelfile', 'w') as f:
     f.write(modelfile)
+"""
 
+            python_code += f"""
 for chunk in ollama.create(model='{self._model_name}', path='Modelfile', stream=True):
     print(chunk)
 """
