@@ -7,6 +7,7 @@ import os
 import pathlib
 import signal
 import subprocess
+import sys
 import tempfile
 import traceback
 from sys import exit
@@ -387,7 +388,6 @@ def _execute_task(
     """
     if not pickled and len(resolver_args) < 1:
         raise Exception("cannot be <1")
-
     with setup_execution(
         raw_output_data_prefix,
         output_prefix,
@@ -396,6 +396,9 @@ def _execute_task(
         dynamic_addl_distro,
         dynamic_dest_dir,
     ) as ctx:
+        working_dir = os.getcwd()
+        if all(os.path.realpath(path) != working_dir for path in sys.path):
+            sys.path.append(working_dir)
         if pickled:
             import gzip
 
@@ -449,11 +452,14 @@ def _execute_map_task(
     :return:
     """
     if len(resolver_args) < 1:
-        raise Exception(f"Resolver args cannot be <1, got {resolver_args}")
+        raise ValueError(f"Resolver args cannot be <1, got {resolver_args}")
 
     with setup_execution(
         raw_output_data_prefix, checkpoint_path, prev_checkpoint, dynamic_addl_distro, dynamic_dest_dir
     ) as ctx:
+        working_dir = os.getcwd()
+        if all(os.path.realpath(path) != working_dir for path in sys.path):
+            sys.path.append(working_dir)
         task_index = _compute_array_job_index()
 
         if pickled:

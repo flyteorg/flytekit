@@ -4,12 +4,16 @@ import pandas as pd
 import polars as pl
 from flytekitplugins.polars.sd_transformers import PolarsDataFrameRenderer
 from typing_extensions import Annotated
+from packaging import version
+from polars.testing import assert_frame_equal
 
 from flytekit import kwtypes, task, workflow
 from flytekit.types.structured.structured_dataset import PARQUET, StructuredDataset
 
 subset_schema = Annotated[StructuredDataset, kwtypes(col2=str), PARQUET]
 full_schema = Annotated[StructuredDataset, PARQUET]
+
+polars_version = pl.__version__
 
 
 def test_polars_workflow_subset():
@@ -65,9 +69,9 @@ def test_polars_workflow_full():
 
 def test_polars_renderer():
     df = pl.DataFrame({"col1": [1, 3, 2], "col2": list("abc")})
-    assert PolarsDataFrameRenderer().to_html(df) == pd.DataFrame(
-        df.describe().transpose(), columns=df.describe().columns
-    ).to_html(index=False)
+    assert PolarsDataFrameRenderer().to_html(df) == df.describe().to_pandas().to_html(
+        index=False
+    )
 
 
 def test_parquet_to_polars():
@@ -80,7 +84,7 @@ def test_parquet_to_polars():
 
     sd = create_sd()
     polars_df = sd.open(pl.DataFrame).all()
-    assert pl.DataFrame(data).frame_equal(polars_df)
+    assert_frame_equal(polars_df, pl.DataFrame(data))
 
     tmp = tempfile.mktemp()
     pl.DataFrame(data).write_parquet(tmp)
@@ -90,11 +94,11 @@ def test_parquet_to_polars():
         return sd.open(pl.DataFrame).all()
 
     sd = StructuredDataset(uri=tmp)
-    assert t1(sd=sd).frame_equal(polars_df)
+    assert_frame_equal(t1(sd=sd), polars_df)
 
     @task
     def t2(sd: StructuredDataset) -> StructuredDataset:
         return StructuredDataset(dataframe=sd.open(pl.DataFrame).all())
 
     sd = StructuredDataset(uri=tmp)
-    assert t2(sd=sd).open(pl.DataFrame).all().frame_equal(polars_df)
+    assert_frame_equal(t2(sd=sd).open(pl.DataFrame).all(), polars_df)

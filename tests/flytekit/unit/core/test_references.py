@@ -81,7 +81,7 @@ def test_ref_task_more():
         version="553018f39e519bdb2597b652639c30ce16b99c79",
     )
     def ref_t1(a: typing.List[str]) -> str:
-        return "hello"
+        ...
 
     @workflow
     def wf1(in1: typing.List[str]) -> str:
@@ -106,7 +106,7 @@ def test_ref_task_more_2():
         version="553018f39e519bdb2597b652639c30ce16b99c79",
     )
     def ref_t1(a: typing.List[str]) -> str:
-        return "hello"
+        ...
 
     @reference_task(
         project="flytesnacks",
@@ -115,7 +115,7 @@ def test_ref_task_more_2():
         version="553018f39e519bdb2597b652639c30ce16b99c79",
     )
     def ref_t2(a: typing.List[str]) -> str:
-        return "hello"
+        ...
 
     @workflow
     def wf1(in1: typing.List[str]) -> str:
@@ -408,7 +408,7 @@ def test_lp_from_ref_wf():
 def test_ref_lp_from_decorator():
     @reference_launch_plan(project="project", domain="domain", name="name", version="version")
     def ref_lp1(p1: str, p2: str) -> int:
-        return 0
+        ...
 
     assert ref_lp1.id.name == "name"
     assert ref_lp1.id.project == "project"
@@ -422,7 +422,7 @@ def test_ref_lp_from_decorator_with_named_outputs():
     nt = typing.NamedTuple("RefLPOutput", [("o1", int), ("o2", str)])
     @reference_launch_plan(project="project", domain="domain", name="name", version="version")
     def ref_lp1(p1: str, p2: str) -> nt:
-        return nt(o1=1, o2="2")
+        ...
 
     assert ref_lp1.python_interface.outputs == {"o1": int, "o2": str}
 
@@ -435,7 +435,7 @@ def test_ref_dynamic_task():
         version="553018f39e519bdb2597b652639c30ce16b99c79",
     )
     def ref_t1(a: int) -> str:
-        return "hello"
+        ...
 
     @task
     def t2(a: str, b: str) -> str:
@@ -470,7 +470,7 @@ def test_ref_dynamic_lp():
     def my_subwf(a: int) -> typing.List[int]:
         @reference_launch_plan(project="project", domain="domain", name="name", version="version")
         def ref_lp1(p1: str, p2: str) -> int:
-            return 1
+            ...
 
         s = []
         for i in range(a):
