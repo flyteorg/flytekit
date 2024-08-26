@@ -14,7 +14,7 @@ class Model:
     :param name: The name of the model.
     :param mem: The amount of memory allocated for the model, specified as a string. Default is "500Mi".
     :param cpu: The number of CPU cores allocated for the model. Default is 1.
-    :param modelfile: The actual model file as a string. This represents the file content. Default is `None` if not applicable.
+    :param modelfile: The actual model file as a JSON-serializable string. This represents the file content. Default is `None` if not applicable.
     """
 
     name: str
@@ -41,7 +41,7 @@ class Ollama(ModelInferenceTemplate):
         :param port: The port number on which the container should expose its service. Default is 11434.
         :param cpu: The number of CPU cores requested for the container. Default is 1.
         :param gpu: The number of GPUs requested for the container. Default is 1.
-        :param mem: The amount of memory requested for the container, specified as a string (e.g., "15Gi" for 15 gigabytes). Default is "15Gi".
+        :param mem: The amount of memory requested for the container, specified as a string. Default is "15Gi".
         """
         self._model_name = model.name
         self._model_mem = model.mem
@@ -61,16 +61,20 @@ class Ollama(ModelInferenceTemplate):
 
         container_name = "create-model" if self._model_modelfile else "pull-model"
 
-        python_code = None
-        no_inputs_python_code = None
-
         if self._model_modelfile:
-            python_code = """import base64
+            base_code = """
+import base64
+import ollama
+"""
+            encoded_modelfile = base64.b64encode(self._model_modelfile.encode("utf-8")).decode("utf-8")
+
+            if "{inputs" in self._model_modelfile:
+                python_code = f"""
+{base_code}
 import os
 import json
 import sys
 
-import ollama
 from flyteidl.core import literals_pb2 as _literals_pb2
 from flytekit.core import utils
 from flytekit.core.context_manager import FlyteContextManager
@@ -103,7 +107,7 @@ for var_name, literal in idl_input_literals.literals.items():
 
 """
 
-            python_code += """
+                python_code += """
 class AttrDict(dict):
     'Convert a dictionary to an attribute style lookup. Do not use this in regular places, this is used for namespacing inputs and outputs'
 
@@ -115,13 +119,12 @@ class AttrDict(dict):
 inputs = {'inputs': AttrDict(inputs)}
 
 """
-            encoded_modelfile = base64.b64encode(self._model_modelfile.encode("utf-8")).decode("utf-8")
 
-            python_code += f"""
+                python_code += f"""
 encoded_model_file = '{encoded_modelfile}'
 """
 
-            python_code += """
+                python_code += """
 modelfile = base64.b64decode(encoded_model_file).decode('utf-8').format(**inputs)
 modelfile = modelfile.replace('{', '{{').replace('}', '}}')
 
@@ -129,14 +132,13 @@ with open('Modelfile', 'w') as f:
     f.write(modelfile)
 """
 
-            python_code += f"""
+                python_code += f"""
 for chunk in ollama.create(model='{self._model_name}', path='Modelfile', stream=True):
     print(chunk)
 """
-
-            no_inputs_python_code = f"""
-import base64
-import ollama
+            else:
+                python_code = f"""
+{base_code}
 
 encoded_model_file = '{encoded_modelfile}'
 
@@ -148,15 +150,18 @@ with open('Modelfile', 'w') as f:
 for chunk in ollama.create(model='{self._model_name}', path='Modelfile', stream=True):
     print(chunk)
 """
+        else:
+            python_code = f"""
+import ollama
+
+for chunk in ollama.pull('{self._model_name}', stream=True):
+    print(chunk)
+"""
 
         command = (
             f'sleep 15 && python3 -c "{python_code}" {{{{.input}}}}'
             if self._model_modelfile and "{inputs" in self._model_modelfile
-            else (
-                f'sleep 15 && python3 -c "{no_inputs_python_code}"'
-                if self._model_modelfile and "{inputs" not in self._model_modelfile
-                else f'sleep 15 && curl -X POST {self.base_url}/api/pull -d \'{{"name": "{self._model_name}"}}\''
-            )
+            else f'sleep 15 && python3 -c "{python_code}"'
         )
 
         self.pod_template.pod_spec.init_containers.append(
