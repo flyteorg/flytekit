@@ -2,6 +2,7 @@
 This Plugin adds the capability of running distributed pytorch training to Flyte using backend plugins, natively on
 Kubernetes. It leverages `Pytorch Job <https://github.com/kubeflow/pytorch-operator>`_ Plugin from kubeflow.
 """
+
 import os
 from dataclasses import dataclass, field
 from enum import Enum
@@ -14,12 +15,15 @@ from google.protobuf.json_format import MessageToDict
 import flytekit
 from flytekit import PythonFunctionTask, Resources, lazy_module
 from flytekit.configuration import SerializationSettings
+from flytekit.core.context_manager import FlyteContextManager, OutputMetadata
+from flytekit.core.pod_template import PodTemplate
 from flytekit.core.resources import convert_resources_to_resource_model
 from flytekit.exceptions.user import FlyteRecoverableException
 from flytekit.extend import IgnoreOutputs, TaskPlugins
 from flytekit.loggers import logger
 
 from .error_handling import create_recoverable_error_file, is_recoverable_worker_error
+from .pod_template import add_shared_mem_volume_to_pod_template
 
 cloudpickle = lazy_module("cloudpickle")
 
@@ -102,13 +106,19 @@ class PyTorch(object):
         worker: Configuration for the worker replica group.
         run_policy: Configuration for the run policy.
         num_workers: [DEPRECATED] This argument is deprecated. Use `worker.replicas` instead.
+        increase_shared_mem (bool): PyTorch uses shared memory to share data between processes. If torch multiprocessing is used
+            (e.g. for multi-processed data loaders) the default shared memory segment size that the container runs with might not be enough
+            and and one might have to increase the shared memory size. This option configures the task's pod template to mount
+            an `emptyDir` volume with medium `Memory` to to `/dev/shm`.
+            The shared memory size upper limit is the sum of the memory limits of the containers in the pod.
     """
 
     master: Master = field(default_factory=lambda: Master())
     worker: Worker = field(default_factory=lambda: Worker())
-    run_policy: Optional[RunPolicy] = field(default_factory=lambda: None)
+    run_policy: Optional[RunPolicy] = None
     # Support v0 config for backwards compatibility
     num_workers: Optional[int] = None
+    increase_shared_mem: bool = True
 
 
 @dataclass
@@ -121,6 +131,10 @@ class Elastic(object):
     Single-node elastic training is executed in a k8s pod when `nnodes` is set to 1.
     Multi-node training is executed otherwise using a `Pytorch Job <https://github.com/kubeflow/training-operator>`_.
 
+    Like `torchrun`, this plugin sets the environment variable `OMP_NUM_THREADS` to 1 if it is not set.
+    Please see https://pytorch.org/tutorials/recipes/recipes/tuning_guide.html for potential performance improvements.
+    To change `OMP_NUM_THREADS`, specify it in the environment dict of the flytekit task decorator or via `pyflyte run --env`.
+
     Args:
         nnodes (Union[int, str]): Number of nodes, or the range of nodes in form <minimum_nodes>:<maximum_nodes>.
         nproc_per_node (str): Number of workers per node.
@@ -129,6 +143,15 @@ class Elastic(object):
         max_restarts (int): Maximum number of worker group restarts before failing.
         rdzv_configs (Dict[str, Any]): Additional rendezvous configs to pass to torch elastic, e.g. `{"timeout": 1200, "join_timeout": 900}`.
             See `torch.distributed.launcher.api.LaunchConfig` and `torch.distributed.elastic.rendezvous.dynamic_rendezvous.create_handler`.
+            Default timeouts are set to 15 minutes to account for the fact that some workers might start faster than others: Some pods might
+            be assigned to a running node which might have the image in its cache while other workers might require a node scale up and image pull.
+
+        increase_shared_mem (bool): PyTorch uses shared memory to share data between processes. If torch multiprocessing is used
+            (e.g. for multi-processed data loaders) the default shared memory segment size that the container runs with might not be enough
+            and and one might have to increase the shared memory size. This option configures the task's pod template to mount
+            an `emptyDir` volume with medium `Memory` to to `/dev/shm`.
+            The shared memory size upper limit is the sum of the memory limits of the containers in the pod.
+        run_policy: Configuration for the run policy.
     """
 
     nnodes: Union[int, str] = 1
@@ -136,7 +159,9 @@ class Elastic(object):
     start_method: str = "spawn"
     monitor_interval: int = 5
     max_restarts: int = 0
-    rdzv_configs: Dict[str, Any] = field(default_factory=dict)
+    rdzv_configs: Dict[str, Any] = field(default_factory=lambda: {"timeout": 900, "join_timeout": 900})
+    increase_shared_mem: bool = True
+    run_policy: Optional[RunPolicy] = None
 
 
 class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
@@ -164,6 +189,10 @@ class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
             task_type_version=1,
             **kwargs,
         )
+        if self.task_config.increase_shared_mem:
+            if self.pod_template is None:
+                self.pod_template = PodTemplate()
+            add_shared_mem_volume_to_pod_template(self.pod_template)
 
     def _convert_replica_spec(
         self, replica_config: Union[Master, Worker]
@@ -177,15 +206,7 @@ class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
             replicas=replicas,
             image=replica_config.image,
             resources=resources.to_flyte_idl() if resources else None,
-            restart_policy=replica_config.restart_policy.value if replica_config.restart_policy else None,
-        )
-
-    def _convert_run_policy(self, run_policy: RunPolicy) -> kubeflow_common.RunPolicy:
-        return kubeflow_common.RunPolicy(
-            clean_pod_policy=run_policy.clean_pod_policy.value if run_policy.clean_pod_policy else None,
-            ttl_seconds_after_finished=run_policy.ttl_seconds_after_finished,
-            active_deadline_seconds=run_policy.active_deadline_seconds,
-            backoff_limit=run_policy.backoff_limit,
+            restart_policy=(replica_config.restart_policy.value if replica_config.restart_policy else None),
         )
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
@@ -194,7 +215,9 @@ class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
         if self.task_config.num_workers:
             worker.replicas = self.task_config.num_workers
 
-        run_policy = self._convert_run_policy(self.task_config.run_policy) if self.task_config.run_policy else None
+        run_policy = (
+            _convert_run_policy_to_flyte_idl(self.task_config.run_policy) if self.task_config.run_policy else None
+        )
         pytorch_job = pytorch_task.DistributedPyTorchTrainingTask(
             worker_replicas=worker,
             master_replicas=self._convert_replica_spec(self.task_config.master),
@@ -218,6 +241,7 @@ class ElasticWorkerResult(NamedTuple):
 
     return_value: Any
     decks: List[flytekit.Deck]
+    om: Optional[OutputMetadata] = None
 
 
 def spawn_helper(
@@ -248,18 +272,32 @@ def spawn_helper(
         raw_output_data_prefix=raw_output_prefix,
         checkpoint_path=checkpoint_dest,
         prev_checkpoint=checkpoint_src,
-    ):
+    ) as ctx:
         fn = cloudpickle.loads(fn)
-
         try:
             return_val = fn(**kwargs)
+            omt = ctx.output_metadata_tracker
+            om = None
+            if omt:
+                om = omt.get(return_val)
         except Exception as e:
             # See explanation in `create_recoverable_error_file` why we check
             # for recoverable errors here in the worker processes.
             if isinstance(e, FlyteRecoverableException):
                 create_recoverable_error_file()
             raise
-        return ElasticWorkerResult(return_value=return_val, decks=flytekit.current_context().decks)
+        return ElasticWorkerResult(return_value=return_val, decks=flytekit.current_context().decks, om=om)
+
+
+def _convert_run_policy_to_flyte_idl(
+    run_policy: RunPolicy,
+) -> kubeflow_common.RunPolicy:
+    return kubeflow_common.RunPolicy(
+        clean_pod_policy=(run_policy.clean_pod_policy.value if run_policy.clean_pod_policy else None),
+        ttl_seconds_after_finished=run_policy.ttl_seconds_after_finished,
+        active_deadline_seconds=run_policy.active_deadline_seconds,
+        backoff_limit=run_policy.backoff_limit,
+    )
 
 
 class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
@@ -298,6 +336,11 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
         """
         self.rdzv_backend = "c10d"
 
+        if self.task_config.increase_shared_mem:
+            if self.pod_template is None:
+                self.pod_template = PodTemplate()
+            add_shared_mem_volume_to_pod_template(self.pod_template)
+
     def _execute(self, **kwargs) -> Any:
         """
         Execute the task function using torch distributed's `elastic_launch`.
@@ -325,6 +368,22 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
                     "to not run in a `PyTorchJob`. Rendezvous might timeout."
                 )
             )
+
+        # If OMP_NUM_THREADS is not set, set it to 1 to avoid overloading the system.
+        # Doing so to copy the default behavior of torchrun.
+        # See https://github.com/pytorch/pytorch/blob/eea4ece256d74c6f25c1f4eab37b3f2f4aeefd4d/torch/distributed/run.py#L791
+        if "OMP_NUM_THREADS" not in os.environ and self.task_config.nproc_per_node > 1:
+            omp_num_threads = 1
+            logger.warning(
+                "\n*****************************************\n"
+                "Setting OMP_NUM_THREADS environment variable for each process to be "
+                "%s in default, to avoid your system being overloaded, "
+                "please further tune the variable for optimal performance in "
+                "your application as needed. \n"
+                "*****************************************",
+                omp_num_threads,
+            )
+            os.environ["OMP_NUM_THREADS"] = str(omp_num_threads)
 
         config = LaunchConfig(
             run_id=flytekit.current_context().execution_id.name,
@@ -359,7 +418,13 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
                 checkpoint_dest = None
                 checkpoint_src = None
 
-            launcher_args = (dumped_target_function, ctx.raw_output_prefix, checkpoint_dest, checkpoint_src, kwargs)
+            launcher_args = (
+                dumped_target_function,
+                ctx.raw_output_prefix,
+                checkpoint_dest,
+                checkpoint_src,
+                kwargs,
+            )
         elif self.task_config.start_method == "fork":
             """
             The torch elastic launcher doesn't support passing kwargs to the target function,
@@ -372,19 +437,28 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
                 """Closure of the task function with kwargs already bound."""
                 try:
                     return_val = self._task_function(**kwargs)
+                    core_context = FlyteContextManager.current_context()
+                    omt = core_context.output_metadata_tracker
+                    om = None
+                    if omt:
+                        om = omt.get(return_val)
                 except Exception as e:
                     # See explanation in `create_recoverable_error_file` why we check
                     # for recoverable errors here in the worker processes.
                     if isinstance(e, FlyteRecoverableException):
                         create_recoverable_error_file()
                     raise
-                return ElasticWorkerResult(return_value=return_val, decks=flytekit.current_context().decks)
+                return ElasticWorkerResult(
+                    return_value=return_val,
+                    decks=flytekit.current_context().decks,
+                    om=om,
+                )
 
             launcher_target_func = fn_partial
             launcher_args = ()
 
         else:
-            raise Exception("Bad start method")
+            raise ValueError("Bad start method")
 
         from torch.distributed.elastic.multiprocessing.api import SignalException
         from torch.distributed.elastic.multiprocessing.errors import ChildFailedError
@@ -412,6 +486,9 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
             for deck in out[0].decks:
                 if not isinstance(deck, flytekit.deck.deck.TimeLineDeck):
                     ctx.decks.append(deck)
+            if out[0].om:
+                core_context = FlyteContextManager.current_context()
+                core_context.output_metadata_tracker.add(out[0].return_value, out[0].om)
 
             return out[0].return_value
         else:
@@ -444,11 +521,15 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
                 nproc_per_node=self.task_config.nproc_per_node,
                 max_restarts=self.task_config.max_restarts,
             )
+            run_policy = (
+                _convert_run_policy_to_flyte_idl(self.task_config.run_policy) if self.task_config.run_policy else None
+            )
             job = pytorch_task.DistributedPyTorchTrainingTask(
                 worker_replicas=pytorch_task.DistributedPyTorchTrainingReplicaSpec(
                     replicas=self.max_nodes,
                 ),
                 elastic_config=elastic_config,
+                run_policy=run_policy,
             )
             return MessageToDict(job)
 

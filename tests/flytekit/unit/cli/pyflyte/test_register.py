@@ -48,8 +48,10 @@ def reset_flytectl_config_env_var() -> pytest.fixture():
     return os.environ[FLYTECTL_CONFIG_ENV_VAR]
 
 
+@mock.patch("flytekit.configuration.plugin.get_config_file")
 @mock.patch("flytekit.configuration.plugin.FlyteRemote")
-def test_get_remote(mock_remote, reset_flytectl_config_env_var):
+def test_get_remote(mock_remote, mock_config_file, reset_flytectl_config_env_var):
+    mock_config_file.return_value = None
     r = FlytekitPlugin.get_remote(None, "p", "d")
     assert r is not None
     mock_remote.assert_called_once_with(
@@ -57,8 +59,10 @@ def test_get_remote(mock_remote, reset_flytectl_config_env_var):
     )
 
 
+@mock.patch("flytekit.configuration.plugin.get_config_file")
 @mock.patch("flytekit.configuration.plugin.FlyteRemote")
-def test_saving_remote(mock_remote):
+def test_saving_remote(mock_remote, mock_config_file):
+    mock_config_file.return_value = None
     mock_context = mock.MagicMock
     mock_context.obj = {}
     get_and_save_remote_with_click_context(mock_context, "p", "d")
@@ -158,5 +162,4 @@ def test_non_fast_register_require_version(mock_client, mock_remote):
             f.close()
         result = runner.invoke(pyflyte.main, ["register", "--non-fast", "core3"])
         assert result.exit_code == 1
-        assert str(result.exception) == "Version is a required parameter in case --non-fast is specified."
         shutil.rmtree("core3")

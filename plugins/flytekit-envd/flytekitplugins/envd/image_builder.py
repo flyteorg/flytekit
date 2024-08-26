@@ -2,17 +2,22 @@ import os
 import pathlib
 import shutil
 import subprocess
+from dataclasses import asdict
 from importlib import metadata
 
 import click
 from packaging.version import Version
+from rich import print
+from rich.pretty import Pretty
 
 from flytekit.configuration import DefaultImages
 from flytekit.core import context_manager
 from flytekit.core.constants import REQUIREMENTS_FILE_NAME
 from flytekit.image_spec.image_spec import _F_IMG_ID, ImageBuildEngine, ImageSpec, ImageSpecBuilder
+from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
 
 FLYTE_LOCAL_REGISTRY = "localhost:30000"
+FLYTE_ENVD_CONTEXT = "FLYTE_ENVD_CONTEXT"
 
 
 class EnvdImageSpecBuilder(ImageSpecBuilder):
@@ -28,13 +33,27 @@ class EnvdImageSpecBuilder(ImageSpecBuilder):
             execute_command(bootstrap_command)
 
         build_command = f"envd build --path {pathlib.Path(cfg_path).parent}  --platform {image_spec.platform}"
-        if image_spec.registry:
+        if image_spec.registry and os.getenv("FLYTE_PUSH_IMAGE_SPEC", "True").lower() in ("true", "1"):
             build_command += f" --output type=image,name={image_spec.image_name()},push=true"
+        else:
+            build_command += f" --tag {image_spec.image_name()}"
         envd_context_switch(image_spec.registry)
-        execute_command(build_command)
+        try:
+            execute_command(build_command)
+        except Exception as e:
+            click.secho("❌ Failed to build image spec:", fg="red")
+            print(
+                Pretty(
+                    asdict(image_spec, dict_factory=lambda x: {k: v for (k, v) in x if v is not None}), indent_size=2
+                )
+            )
+            raise e from None
 
 
 def envd_context_switch(registry: str):
+    if os.getenv(FLYTE_ENVD_CONTEXT):
+        execute_command(f"envd context use --name {os.getenv(FLYTE_ENVD_CONTEXT)}")
+        return
     if registry == FLYTE_LOCAL_REGISTRY:
         # Assume buildkit daemon is running within the sandbox and exposed on port 30003
         command = "envd context create --name flyte-sandbox --builder tcp --builder-address localhost:30003 --use"
@@ -65,7 +84,7 @@ def execute_command(command: str):
 
     if p.returncode != 0:
         _, stderr = p.communicate()
-        raise Exception(f"failed to run command {command} with error {stderr}")
+        raise RuntimeError(f"failed to run command {command} with error:\n {stderr.decode()}")
 
     return result
 
@@ -80,7 +99,7 @@ def create_envd_config(image_spec: ImageSpec) -> str:
     base_image = DefaultImages.default_image() if image_spec.base_image is None else image_spec.base_image
     if image_spec.cuda:
         if image_spec.python_version is None:
-            raise Exception("python_version is required when cuda and cudnn are specified")
+            raise ValueError("python_version is required when cuda and cudnn are specified")
         base_image = "ubuntu20.04"
 
     python_packages = _create_str_from_package_list(image_spec.packages)
@@ -88,7 +107,7 @@ def create_envd_config(image_spec: ImageSpec) -> str:
     run_commands = _create_str_from_package_list(image_spec.commands)
     conda_channels = _create_str_from_package_list(image_spec.conda_channels)
     apt_packages = _create_str_from_package_list(image_spec.apt_packages)
-    env = {"PYTHONPATH": "/root", _F_IMG_ID: image_spec.image_name()}
+    env = {"PYTHONPATH": "/root:", _F_IMG_ID: image_spec.image_name()}
 
     if image_spec.env:
         env.update(image_spec.env)
@@ -131,14 +150,20 @@ def build():
         envd_config += f'    install.cuda(version="{image_spec.cuda}", cudnn="{cudnn}")\n'
 
     if image_spec.source_root:
-        shutil.copytree(image_spec.source_root, pathlib.Path(cfg_path).parent, dirs_exist_ok=True)
+        ignore = IgnoreGroup(image_spec.source_root, [GitIgnore, DockerIgnore, StandardIgnore])
+        shutil.copytree(
+            src=image_spec.source_root,
+            dst=pathlib.Path(cfg_path).parent,
+            ignore=shutil.ignore_patterns(*ignore.list_ignored()),
+            dirs_exist_ok=True,
+        )
 
         envd_version = metadata.version("envd")
         # Indentation is required by envd
         if Version(envd_version) <= Version("0.3.37"):
-            envd_config += '    io.copy(host_path="./", envd_path="/root")'
+            envd_config += '    io.copy(host_path="./", envd_path="/root")\n'
         else:
-            envd_config += '    io.copy(source="./", target="/root")'
+            envd_config += '    io.copy(source="./", target="/root")\n'
 
     with open(cfg_path, "w+") as f:
         f.write(envd_config)

@@ -3,6 +3,7 @@ import copy
 import hashlib
 import os
 import pathlib
+import re
 import typing
 from abc import abstractmethod
 from dataclasses import asdict, dataclass
@@ -45,7 +46,10 @@ class ImageSpec:
         pip_index: Specify the custom pip index url
         pip_extra_index_url: Specify one or more pip index urls as a list
         registry_config: Specify the path to a JSON registry config file
+        entrypoint: List of strings to overwrite the entrypoint of the base image with, set to [] to remove the entrypoint.
         commands: Command to run during the building process
+        tag_format: Custom string format for image tag. The ImageSpec hash passed in as `spec_hash`. For example,
+            to add a "dev" suffix to the image tag, set `tag_format="{spec_hash}-dev"`
     """
 
     name: str = "flytekit"
@@ -66,13 +70,32 @@ class ImageSpec:
     pip_index: Optional[str] = None
     pip_extra_index_url: Optional[List[str]] = None
     registry_config: Optional[str] = None
+    entrypoint: Optional[List[str]] = None
     commands: Optional[List[str]] = None
+    tag_format: Optional[str] = None
 
     def __post_init__(self):
         self.name = self.name.lower()
         self._is_force_push = os.environ.get(FLYTE_FORCE_PUSH_IMAGE_SPEC, False)  # False by default
         if self.registry:
             self.registry = self.registry.lower()
+
+        parameters_str_list = [
+            "packages",
+            "conda_channels",
+            "conda_packages",
+            "apt_packages",
+            "pip_extra_index_url",
+            "entrypoint",
+            "commands",
+        ]
+        for parameter in parameters_str_list:
+            attr = getattr(self, parameter)
+            parameter_is_None = attr is None
+            parameter_is_list_string = isinstance(attr, list) and all(isinstance(v, str) for v in attr)
+            if not (parameter_is_None or parameter_is_list_string):
+                error_msg = f"{parameter} must be a list of strings or None"
+                raise ValueError(error_msg)
 
     def image_name(self) -> str:
         """Full image name with tag."""
@@ -85,6 +108,9 @@ class ImageSpec:
     def _image_name(self) -> str:
         """Construct full image name with tag."""
         tag = calculate_hash_from_image_spec(self)
+        if self.tag_format:
+            tag = self.tag_format.format(spec_hash=tag)
+
         container_image = f"{self.name}:{tag}"
         if self.registry:
             container_image = f"{self.registry}/{container_image}"
@@ -98,10 +124,11 @@ class ImageSpec:
             return os.environ.get(_F_IMG_ID) == self.image_name()
         return True
 
-    @lru_cache
-    def exist(self) -> bool:
+    def exist(self) -> Optional[bool]:
         """
         Check if the image exists in the registry.
+        Return True if the image exists in the registry, False otherwise.
+        Return None if failed to check if the image exists due to the permission issue or other reasons.
         """
         import docker
         from docker.errors import APIError, ImageNotFound
@@ -116,26 +143,46 @@ class ImageSpec:
         except APIError as e:
             if e.response.status_code == 404:
                 return False
+
+            if re.match(f"unknown: repository .*{self.name} not found", e.explanation):
+                click.secho(f"Received 500 error with explanation: {e.explanation}", fg="yellow")
+                return False
+
+            click.secho(f"Failed to check if the image exists with error:\n {e}", fg="red")
+            return None
         except ImageNotFound:
             return False
         except Exception as e:
             tag = calculate_hash_from_image_spec(self)
-            # if docker engine is not running locally
-            container_registry = DOCKER_HUB
-            if self.registry and "/" in self.registry:
+            # if docker engine is not running locally, use requests to check if the image exists.
+            if "localhost:" in self.registry:
+                container_registry = self.registry
+            elif self.registry and "/" in self.registry:
                 container_registry = self.registry.split("/")[0]
+            else:
+                # Assume the image is in docker hub if users don't specify a registry, such as ghcr.io, docker.io.
+                container_registry = DOCKER_HUB
             if container_registry == DOCKER_HUB:
                 url = f"https://hub.docker.com/v2/repositories/{self.registry}/{self.name}/tags/{tag}"
                 response = requests.get(url)
                 if response.status_code == 200:
                     return True
 
-                if response.status_code == 404:
+                if response.status_code == 404 and "not found" in str(response.content):
                     return False
 
-            click.secho(f"Failed to check if the image exists with error : {e}", fg="red")
-            click.secho("Flytekit assumes that the image already exists.", fg="blue")
-            return True
+            if "Not supported URL scheme http+docker" in str(e):
+                raise RuntimeError(
+                    f"{str(e)}\n"
+                    f"Error: Incompatible Docker package version.\n"
+                    f"Current version: {docker.__version__}\n"
+                    f"Please upgrade the Docker package to version 7.1.0 or higher.\n"
+                    f"You can upgrade the package by running:\n"
+                    f"    pip install --upgrade docker"
+                )
+
+            click.secho(f"Failed to check if the image exists with error:\n {e}", fg="red")
+            return None
 
     def __hash__(self):
         return hash(asdict(self).__str__())
@@ -209,6 +256,30 @@ class ImageSpecBuilder:
         """
         raise NotImplementedError("This method is not implemented in the base class.")
 
+    def should_build(self, image_spec: ImageSpec) -> bool:
+        """
+        Whether or not the builder should build the ImageSpec.
+
+        Args:
+            image_spec: image spec of the task.
+
+        Returns:
+            True if the image should be built, otherwise it returns False.
+        """
+        img_name = image_spec.image_name()
+        exist = image_spec.exist()
+        if exist is False:
+            click.secho(f"Image {img_name} not found. building...", fg="blue")
+            return True
+        elif exist is True:
+            if image_spec._is_force_push:
+                click.secho(f"Overwriting existing image {img_name}.", fg="blue")
+                return True
+            click.secho(f"Image {img_name} found. Skip building.", fg="blue")
+        else:
+            click.secho(f"Flytekit assumes the image {img_name} already exists.", fg="blue")
+        return False
+
 
 class ImageBuildEngine:
     """
@@ -227,7 +298,14 @@ class ImageBuildEngine:
 
     @classmethod
     @lru_cache
-    def build(cls, image_spec: ImageSpec) -> str:
+    def build(cls, image_spec: ImageSpec):
+        from flytekit.core.context_manager import FlyteContextManager
+
+        execution_mode = FlyteContextManager.current_context().execution_state.mode
+        # Do not build in executions
+        if execution_mode is not None:
+            return
+
         if isinstance(image_spec.base_image, ImageSpec):
             cls.build(image_spec.base_image)
             image_spec.base_image = image_spec.base_image.image_name()
@@ -238,20 +316,15 @@ class ImageBuildEngine:
             builder = image_spec.builder
 
         img_name = image_spec.image_name()
-        if image_spec.exist():
-            if image_spec._is_force_push:
-                click.secho(f"Image {img_name} found. but overwriting existing image.", fg="blue")
-                cls._build_image(builder, image_spec, img_name)
-            else:
-                click.secho(f"Image {img_name} found. Skip building.", fg="blue")
-        else:
-            click.secho(f"Image {img_name} not found. building...", fg="blue")
+        if cls._get_builder(builder).should_build(image_spec):
             cls._build_image(builder, image_spec, img_name)
 
     @classmethod
-    def _build_image(cls, builder, image_spec, img_name):
+    def _get_builder(cls, builder: str) -> ImageSpecBuilder:
+        if builder is None:
+            raise AssertionError("There is no image builder registered.")
         if builder not in cls._REGISTRY:
-            raise Exception(f"Builder {builder} is not registered.")
+            raise AssertionError(f"Image builder {builder} is not registered.")
         if builder == "envd":
             envd_version = metadata.version("envd")
             # flytekit v1.10.2+ copies the workflow code to the WorkDir specified in the Dockerfile. However, envd<0.3.39
@@ -261,9 +334,28 @@ class ImageBuildEngine:
                     f"envd version {envd_version} is not compatible with flytekit>v1.10.2."
                     f" Please upgrade envd to v0.3.39+."
                 )
-        fully_qualified_image_name = cls._REGISTRY[builder][0].build_image(image_spec)
+        return cls._REGISTRY[builder][0]
+
+    @classmethod
+    def _build_image(cls, builder: str, image_spec: ImageSpec, img_name: str):
+        fully_qualified_image_name = cls._get_builder(builder).build_image(image_spec)
         if fully_qualified_image_name is not None:
             cls._IMAGE_NAME_TO_REAL_NAME[img_name] = fully_qualified_image_name
+
+
+@lru_cache
+def _calculate_deduped_hash_from_image_spec(image_spec: ImageSpec):
+    """
+    Calculate this special hash from the image spec,
+    and it used to identify the imageSpec in the ImageConfig in the serialization context.
+
+    ImageConfig:
+    - deduced hash 1: flyteorg/flytekit: 123
+    - deduced hash 2: flyteorg/flytekit: 456
+    """
+    image_spec_bytes = asdict(image_spec).__str__().encode("utf-8")
+    # copy the image spec to avoid modifying the original image spec. otherwise, the hash will be different.
+    return base64.urlsafe_b64encode(hashlib.md5(image_spec_bytes).digest()).decode("ascii").rstrip("=")
 
 
 @lru_cache
@@ -275,7 +367,15 @@ def calculate_hash_from_image_spec(image_spec: ImageSpec):
     spec = copy.deepcopy(image_spec)
     if isinstance(spec.base_image, ImageSpec):
         spec.base_image = spec.base_image.image_name()
-    spec.source_root = hash_directory(image_spec.source_root) if image_spec.source_root else b""
+
+    if image_spec.source_root:
+        from flytekit.tools.fast_registration import compute_digest
+        from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
+
+        ignore = IgnoreGroup(image_spec.source_root, [GitIgnore, DockerIgnore, StandardIgnore])
+        digest = compute_digest(image_spec.source_root, ignore.is_ignored)
+        spec.source_root = digest
+
     if spec.requirements:
         spec.requirements = hashlib.sha1(pathlib.Path(spec.requirements).read_bytes()).hexdigest()
     # won't rebuild the image if we change the registry_config path

@@ -3,16 +3,16 @@ from __future__ import annotations
 import collections
 import copy
 import dataclasses
-import datetime as _datetime
+import datetime
 import enum
 import inspect
 import json
-import json as _json
 import mimetypes
 import sys
 import textwrap
 import typing
 from abc import ABC, abstractmethod
+from collections import OrderedDict
 from functools import lru_cache
 from typing import Dict, List, NamedTuple, Optional, Type, cast
 
@@ -24,10 +24,9 @@ from google.protobuf.json_format import MessageToDict as _MessageToDict
 from google.protobuf.json_format import ParseDict as _ParseDict
 from google.protobuf.message import Message
 from google.protobuf.struct_pb2 import Struct
-from marshmallow_enum import EnumField, LoadDumpOptions
+from mashumaro.codecs.json import JSONDecoder, JSONEncoder
 from mashumaro.mixins.json import DataClassJSONMixin
 from typing_extensions import Annotated, get_args, get_origin
-from typing_inspect import is_union_type
 
 from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext
@@ -43,19 +42,15 @@ from flytekit.models import types as _type_models
 from flytekit.models.annotation import TypeAnnotation as TypeAnnotationModel
 from flytekit.models.core import types as _core_types
 from flytekit.models.literals import (
-    Blob,
-    BlobMetadata,
     Literal,
     LiteralCollection,
     LiteralMap,
     Primitive,
     Scalar,
-    Schema,
-    StructuredDatasetMetadata,
     Union,
     Void,
 )
-from flytekit.models.types import LiteralType, SimpleType, StructuredDatasetType, TypeStructure, UnionType
+from flytekit.models.types import LiteralType, SimpleType, TypeStructure, UnionType
 
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
@@ -121,8 +116,7 @@ def modify_literal_uris(lit: Literal):
             )
 
 
-class TypeTransformerFailedError(TypeError, AssertionError, ValueError):
-    ...
+class TypeTransformerFailedError(TypeError, AssertionError, ValueError): ...
 
 
 class TypeTransformer(typing.Generic[T]):
@@ -286,11 +280,24 @@ class RestrictedTypeTransformer(TypeTransformer[T], ABC):
 
 class DataclassTransformer(TypeTransformer[object]):
     """
-    The Dataclass Transformer provides a type transformer for dataclasses_json dataclasses.
+    The Dataclass Transformer provides a type transformer for dataclasses.
 
-    The Dataclass is converted to and from json and is transported between tasks using the proto.Structpb representation
-    Also the type declaration will try to extract the JSON Schema for the object if possible and pass it with the
-    definition.
+    The dataclass is converted to and from a JSON string by the mashumaro library
+    and is transported between tasks using the proto.Structpb representation.
+    Also, the type declaration will try to extract the JSON Schema for the
+    object, if possible, and pass it with the definition.
+
+    The lifecycle of the dataclass in the Flyte type system is as follows:
+
+    1. Serialization: The dataclass transformer converts the dataclass to a JSON string.
+        (1) Handle dataclass attributes to make them serializable with mashumaro.
+        (2) Use the mashumaro API to serialize the dataclass to a JSON string.
+        (3) Use the JSON string to create a Flyte Literal.
+        (4) Serialize the Flyte Literal to a protobuf.
+
+    2. Deserialization: The dataclass transformer converts the JSON string back to a dataclass.
+        (1) Convert the JSON string to a dataclass using mashumaro.
+        (2) Handle dataclass attributes to ensure they are of the correct types.
 
     For Json Schema, we use https://github.com/fuhrysteve/marshmallow-jsonschema library.
 
@@ -328,13 +335,8 @@ class DataclassTransformer(TypeTransformer[object]):
 
     def __init__(self):
         super().__init__("Object-Dataclass-Transformer", object)
-        self._serializable_classes = [DataClassJSONMixin, DataClassJsonMixin]
-        try:
-            from mashumaro.mixins.orjson import DataClassORJSONMixin
-
-            self._serializable_classes.append(DataClassORJSONMixin)
-        except ModuleNotFoundError:
-            pass
+        self._encoder: Dict[Type, JSONEncoder] = {}
+        self._decoder: Dict[Type, JSONDecoder] = {}
 
     def assert_type(self, expected_type: Type[DataClassJsonMixin], v: T):
         # Skip iterating all attributes in the dataclass if the type of v already matches the expected_type
@@ -356,7 +358,9 @@ class DataclassTransformer(TypeTransformer[object]):
         # However, FooSchema is created by flytekit and it's not equal to the user-defined dataclass (Foo).
         # Therefore, we should iterate all attributes in the dataclass and check the type of value in dataclass matches the expected_type.
 
+        expected_type = get_underlying_type(expected_type)
         expected_fields_dict = {}
+
         for f in dataclasses.fields(expected_type):
             expected_fields_dict[f.name] = f.type
 
@@ -421,19 +425,23 @@ class DataclassTransformer(TypeTransformer[object]):
         Extracts the Literal type definition for a Dataclass and returns a type Struct.
         If possible also extracts the JSONSchema for the dataclass.
         """
-        if is_annotated(t):
-            raise ValueError(
-                "Flytekit does not currently have support for FlyteAnnotations applied to Dataclass."
-                f"Type {t} cannot be parsed."
-            )
 
-        if not self.is_serializable_class(t):
-            raise AssertionError(
-                f"Dataclass {t} should be decorated with @dataclass_json or mixin with DataClassJSONMixin to be "
-                f"serialized correctly"
-            )
+        if is_annotated(t):
+            args = get_args(t)
+            for x in args[1:]:
+                if isinstance(x, FlyteAnnotation):
+                    raise ValueError(
+                        "Flytekit does not currently have support for FlyteAnnotations applied to Dataclass."
+                        f"Type {t} cannot be parsed."
+                    )
+            logger.info(f"These annotations will be skipped for dataclasses = {args[1:]}")
+            # Drop all annotations and handle only the dataclass type passed in.
+            t = args[0]
+
         schema = None
         try:
+            from marshmallow_enum import EnumField, LoadDumpOptions
+
             if issubclass(t, DataClassJsonMixin):
                 s = cast(DataClassJsonMixin, self._get_origin_type_in_annotation(t)).schema()
                 for _, v in s.fields.items():
@@ -445,10 +453,6 @@ class DataclassTransformer(TypeTransformer[object]):
                 from marshmallow_jsonschema import JSONSchema
 
                 schema = JSONSchema().dump(s)
-            else:  # DataClassJSONMixin
-                from mashumaro.jsonschema import build_json_schema
-
-                schema = build_json_schema(cast(DataClassJSONMixin, self._get_origin_type_in_annotation(t))).to_dict()
         except Exception as e:
             # https://github.com/lovasoa/marshmallow_dataclass/issues/13
             logger.warning(
@@ -456,6 +460,17 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"If you have postponed annotations turned on (PEP 563) turn it off please. Postponed"
                 f"evaluation doesn't work with json dataclasses"
             )
+
+        if schema is None:
+            try:
+                from mashumaro.jsonschema import build_json_schema
+
+                schema = build_json_schema(cast(DataClassJSONMixin, self._get_origin_type_in_annotation(t))).to_dict()
+            except Exception as e:
+                logger.error(
+                    f"Failed to extract schema for object {t}, error: {e}\n"
+                    f"Please remove `DataClassJsonMixin` and `dataclass_json` decorator from the dataclass definition"
+                )
 
         # Recursively construct the dataclass_type which contains the literal type of each field
         literal_type = {}
@@ -475,9 +490,6 @@ class DataclassTransformer(TypeTransformer[object]):
 
         return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT, metadata=schema, structure=ts)
 
-    def is_serializable_class(self, class_: Type[T]) -> bool:
-        return any(issubclass(class_, serializable_class) for serializable_class in self._serializable_classes)
-
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         if isinstance(python_val, dict):
             json_str = json.dumps(python_val)
@@ -488,14 +500,25 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"{type(python_val)} is not of type @dataclass, only Dataclasses are supported for "
                 f"user defined datatypes in Flytekit"
             )
-        if not self.is_serializable_class(type(python_val)):
-            raise TypeTransformerFailedError(
-                f"Dataclass {python_type} should be decorated with @dataclass_json or inherit DataClassJSONMixin to be "
-                f"serialized correctly"
-            )
-        self._serialize_flyte_type(python_val, python_type)
 
-        json_str = python_val.to_json()  # type: ignore
+        self._make_dataclass_serializable(python_val, python_type)
+
+        # The function looks up or creates a JSONEncoder specifically designed for the object's type.
+        # This encoder is then used to convert a data class into a JSON string.
+        try:
+            encoder = self._encoder[python_type]
+        except KeyError:
+            encoder = JSONEncoder(python_type)
+            self._encoder[python_type] = encoder
+
+        try:
+            json_str = encoder.encode(python_val)
+        except NotImplementedError:
+            # you can refer FlyteFile, FlyteDirectory and StructuredDataset to see how flyte types can be implemented.
+            raise NotImplementedError(
+                f"{python_type} should inherit from mashumaro.types.SerializableType"
+                f" and implement _serialize and _deserialize methods."
+            )
 
         return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))  # type: ignore
 
@@ -517,11 +540,13 @@ class DataclassTransformer(TypeTransformer[object]):
                 field.type = self._get_origin_type_in_annotation(field.type)
         return python_type
 
-    def _fix_structured_dataset_type(self, python_type: Type[T], python_val: typing.Any) -> T:
+    def _fix_structured_dataset_type(self, python_type: Type[T], python_val: typing.Any) -> T | None:
         # In python 3.7, 3.8, DataclassJson will deserialize Annotated[StructuredDataset, kwtypes(..)] to a dict,
         # so here we convert it back to the Structured Dataset.
         from flytekit.types.structured import StructuredDataset
 
+        if python_val is None:
+            return python_val
         if python_type == StructuredDataset and type(python_val) == dict:
             return StructuredDataset(**python_val)
         elif get_origin(python_type) is list:
@@ -539,158 +564,56 @@ class DataclassTransformer(TypeTransformer[object]):
                 python_val.__setattr__(field.name, self._fix_structured_dataset_type(field.type, val))
         return python_val
 
-    def _serialize_flyte_type(self, python_val: T, python_type: Type[T]) -> typing.Any:
+    def _make_dataclass_serializable(self, python_val: T, python_type: Type[T]) -> typing.Any:
         """
         If any field inside the dataclass is flyte type, we should use flyte type transformer for that field.
         """
-        from flytekit.types.directory.types import FlyteDirectory
+        from flytekit.types.directory import FlyteDirectory
         from flytekit.types.file import FlyteFile
-        from flytekit.types.schema.types import FlyteSchema
-        from flytekit.types.structured.structured_dataset import StructuredDataset
 
         # Handle Optional
         if UnionTransformer.is_optional_type(python_type):
             if python_val is None:
                 return None
-            return self._serialize_flyte_type(python_val, get_args(python_type)[0])
+            return self._make_dataclass_serializable(python_val, get_args(python_type)[0])
 
         if hasattr(python_type, "__origin__") and get_origin(python_type) is list:
-            return [self._serialize_flyte_type(v, get_args(python_type)[0]) for v in cast(list, python_val)]
+            if python_val is None:
+                return None
+            return [self._make_dataclass_serializable(v, get_args(python_type)[0]) for v in cast(list, python_val)]
 
         if hasattr(python_type, "__origin__") and get_origin(python_type) is dict:
+            if python_val is None:
+                return None
             return {
-                k: self._serialize_flyte_type(v, get_args(python_type)[1]) for k, v in cast(dict, python_val).items()
+                k: self._make_dataclass_serializable(v, get_args(python_type)[1])
+                for k, v in cast(dict, python_val).items()
             }
 
         if not dataclasses.is_dataclass(python_type):
             return python_val
 
+        # Transform str to FlyteFile or FlyteDirectory so that mashumaro can serialize the path.
+        # For example, if you return s3://my-s3-bucket/a/example.txt,
+        # flytekit will convert the path to FlyteFile(path="s3://my-s3-bucket/a/example.txt")
+        # so that mashumaro can use the serialize method implemented in FlyteFile.
         if inspect.isclass(python_type) and (
-            issubclass(python_type, FlyteSchema)
-            or issubclass(python_type, FlyteFile)
-            or issubclass(python_type, FlyteDirectory)
-            or issubclass(python_type, StructuredDataset)
+            issubclass(python_type, FlyteFile) or issubclass(python_type, FlyteDirectory)
         ):
-            lv = TypeEngine.to_literal(FlyteContext.current_context(), python_val, python_type, None)
-            # dataclasses_json package will extract the "path" from FlyteFile, FlyteDirectory, and write it to a
-            # JSON which will be stored in IDL. The path here should always be a remote path, but sometimes the
-            # path in FlyteFile and FlyteDirectory could be a local path. Therefore, reset the python value here,
-            # so that dataclasses_json can always get a remote path.
-            # In other words, the file transformer has special code that handles the fact that if remote_source is
-            # set, then the real uri in the literal should be the remote source, not the path (which may be an
-            # auto-generated random local path). To be sure we're writing the right path to the json, use the uri
-            # as determined by the transformer.
-            if issubclass(python_type, FlyteFile) or issubclass(python_type, FlyteDirectory):
-                return python_type(path=lv.scalar.blob.uri)
-            elif issubclass(python_type, StructuredDataset):
-                sd = python_type(uri=lv.scalar.structured_dataset.uri)
-                sd.file_format = lv.scalar.structured_dataset.metadata.structured_dataset_type.format
-                return sd
-            else:
-                return python_val
-        else:
-            for v in dataclasses.fields(python_type):
-                val = python_val.__getattribute__(v.name)
-                field_type = v.type
-                python_val.__setattr__(v.name, self._serialize_flyte_type(val, field_type))
+            if type(python_val) == str:
+                logger.warning(
+                    f"Converting string '{python_val}' to {python_type.__name__}.\n"
+                    f"Directly using a string instead of {python_type.__name__} is not recommended.\n"
+                    f"flytekit will not support it in the future."
+                )
+                return python_type(python_val)
             return python_val
 
-    def _deserialize_flyte_type(self, python_val: T, expected_python_type: Type) -> Optional[T]:
-        from flytekit.types.directory.types import FlyteDirectory, FlyteDirToMultipartBlobTransformer
-        from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
-        from flytekit.types.schema.types import FlyteSchema, FlyteSchemaTransformer
-        from flytekit.types.structured.structured_dataset import StructuredDataset, StructuredDatasetTransformerEngine
-
-        # Handle Optional
-        if UnionTransformer.is_optional_type(expected_python_type):
-            if python_val is None:
-                return None
-            return self._deserialize_flyte_type(python_val, get_args(expected_python_type)[0])
-
-        if hasattr(expected_python_type, "__origin__") and expected_python_type.__origin__ is list:
-            return [self._deserialize_flyte_type(v, expected_python_type.__args__[0]) for v in python_val]  # type: ignore
-
-        if hasattr(expected_python_type, "__origin__") and expected_python_type.__origin__ is dict:
-            return {k: self._deserialize_flyte_type(v, expected_python_type.__args__[1]) for k, v in python_val.items()}  # type: ignore
-
-        if not dataclasses.is_dataclass(expected_python_type):
-            return python_val
-
-        if issubclass(expected_python_type, FlyteSchema):
-            t = FlyteSchemaTransformer()
-            return t.to_python_value(
-                FlyteContext.current_context(),
-                Literal(
-                    scalar=Scalar(
-                        schema=Schema(
-                            cast(FlyteSchema, python_val).remote_path, t._get_schema_type(expected_python_type)
-                        )
-                    )
-                ),
-                expected_python_type,
-            )
-        elif issubclass(expected_python_type, FlyteFile):
-            return FlyteFilePathTransformer().to_python_value(
-                FlyteContext.current_context(),
-                Literal(
-                    scalar=Scalar(
-                        blob=Blob(
-                            metadata=BlobMetadata(
-                                type=_core_types.BlobType(
-                                    format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
-                                )
-                            ),
-                            uri=cast(FlyteFile, python_val).path,
-                        )
-                    )
-                ),
-                expected_python_type,
-            )
-        elif issubclass(expected_python_type, FlyteDirectory):
-            return FlyteDirToMultipartBlobTransformer().to_python_value(
-                FlyteContext.current_context(),
-                Literal(
-                    scalar=Scalar(
-                        blob=Blob(
-                            metadata=BlobMetadata(
-                                type=_core_types.BlobType(
-                                    format="", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
-                                )
-                            ),
-                            uri=cast(FlyteDirectory, python_val).path,
-                        )
-                    )
-                ),
-                expected_python_type,
-            )
-        elif issubclass(expected_python_type, StructuredDataset):
-            return StructuredDatasetTransformerEngine().to_python_value(
-                FlyteContext.current_context(),
-                Literal(
-                    scalar=Scalar(
-                        structured_dataset=StructuredDataset(
-                            metadata=StructuredDatasetMetadata(
-                                structured_dataset_type=StructuredDatasetType(
-                                    format=cast(StructuredDataset, python_val).file_format
-                                )
-                            ),
-                            uri=cast(StructuredDataset, python_val).uri,
-                        )
-                    )
-                ),
-                expected_python_type,
-            )
-        else:
-            for f in dataclasses.fields(expected_python_type):
-                value = python_val.__getattribute__(f.name)
-                if hasattr(f.type, "__origin__") and f.type.__origin__ is list:
-                    value = [self._deserialize_flyte_type(v, f.type.__args__[0]) for v in value]
-                elif hasattr(f.type, "__origin__") and f.type.__origin__ is dict:
-                    value = {k: self._deserialize_flyte_type(v, f.type.__args__[1]) for k, v in value.items()}
-                else:
-                    value = self._deserialize_flyte_type(value, f.type)
-                python_val.__setattr__(f.name, value)
-            return python_val
+        dataclass_attributes = typing.get_type_hints(python_type)
+        for n, t in dataclass_attributes.items():
+            val = python_val.__getattribute__(n)
+            python_val.__setattr__(n, self._make_dataclass_serializable(val, t))
+        return python_val
 
     def _fix_val_int(self, t: typing.Type, val: typing.Any) -> typing.Any:
         if val is None:
@@ -711,7 +634,7 @@ class DataclassTransformer(TypeTransformer[object]):
             return list(map(lambda x: self._fix_val_int(ListTransformer.get_sub_type(t), x), val))
 
         if isinstance(val, dict):
-            ktype, vtype = DictTransformer.get_dict_types(t)
+            ktype, vtype = DictTransformer.extract_types_or_metadata(t)
             # Handle nested Dict. e.g. {1: {2: 3}, 4: {5: 6}})
             return {
                 self._fix_val_int(cast(type, ktype), k): self._fix_val_int(cast(type, vtype), v) for k, v in val.items()
@@ -722,7 +645,7 @@ class DataclassTransformer(TypeTransformer[object]):
 
         return val
 
-    def _fix_dataclass_int(self, dc_type: Type[DataClassJsonMixin], dc: DataClassJsonMixin) -> DataClassJsonMixin:
+    def _fix_dataclass_int(self, dc_type: Type[dataclasses.dataclass], dc: typing.Any) -> typing.Any:  # type: ignore
         """
         This is a performance penalty to convert to the right types, but this is expected by the user and hence
         needs to be done
@@ -731,8 +654,9 @@ class DataclassTransformer(TypeTransformer[object]):
         # https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Value
         # Thus we will have to walk the given dataclass and typecast values to int, where expected.
         for f in dataclasses.fields(dc_type):
-            val = dc.__getattribute__(f.name)
-            dc.__setattr__(f.name, self._fix_val_int(f.type, val))
+            val = getattr(dc, f.name)
+            setattr(dc, f.name, self._fix_val_int(f.type, val))
+
         return dc
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
@@ -741,16 +665,21 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"{expected_python_type} is not of type @dataclass, only Dataclasses are supported for "
                 "user defined datatypes in Flytekit"
             )
-        if not self.is_serializable_class(expected_python_type):
-            raise TypeTransformerFailedError(
-                f"Dataclass {expected_python_type} should be decorated with @dataclass_json or mixin with DataClassJSONMixin to be "
-                f"serialized correctly"
-            )
+
         json_str = _json_format.MessageToJson(lv.scalar.generic)
-        dc = expected_python_type.from_json(json_str)  # type: ignore
+
+        # The function looks up or creates a JSONDecoder specifically designed for the object's type.
+        # This decoder is then used to convert a JSON string into a data class.
+        try:
+            decoder = self._decoder[expected_python_type]
+        except KeyError:
+            decoder = JSONDecoder(expected_python_type)
+            self._decoder[expected_python_type] = decoder
+
+        dc = decoder.decode(json_str)
 
         dc = self._fix_structured_dataset_type(expected_python_type, dc)
-        return self._fix_dataclass_int(expected_python_type, self._deserialize_flyte_type(dc, expected_python_type))
+        return self._fix_dataclass_int(expected_python_type, dc)
 
     # This ensures that calls with the same literal type returns the same dataclass. For example, `pyflyte run``
     # command needs to call guess_python_type to get the TypeEngine-derived dataclass. Without caching here, separate
@@ -943,6 +872,7 @@ class TypeEngine(typing.Generic[T]):
 
           d = dictionary of registered transformers, where is a python `type`
           v = lookup type
+
         Step 1:
             If the type is annotated with a TypeTransformer instance, use that.
 
@@ -1008,13 +938,30 @@ class TypeEngine(typing.Generic[T]):
             # Special case: prevent that for a type `FooEnum(str, Enum)`, the str transformer is used.
             return cls._ENUM_TRANSFORMER
 
+        from flytekit.types.iterator.json_iterator import JSONIterator
+
         for base_type in cls._REGISTRY.keys():
             if base_type is None:
                 continue  # None is actually one of the keys, but isinstance/issubclass doesn't work on it
             try:
-                if isinstance(python_type, base_type) or (
-                    inspect.isclass(python_type) and issubclass(python_type, base_type)
+                origin_type: Optional[typing.Any] = base_type
+                if hasattr(base_type, "__args__"):
+                    origin_base_type = get_origin(base_type)
+                    if isinstance(origin_base_type, type) and issubclass(
+                        origin_base_type, typing.Iterator
+                    ):  # Iterator[JSON]
+                        origin_type = origin_base_type
+
+                if isinstance(python_type, origin_type) or (  # type: ignore[arg-type]
+                    inspect.isclass(python_type) and issubclass(python_type, origin_type)  # type: ignore[arg-type]
                 ):
+                    # Consider Iterator[JSON] but not vanilla Iterator when the value is a JSON iterator.
+                    if (
+                        isinstance(python_type, type)
+                        and issubclass(python_type, JSONIterator)
+                        and not get_args(base_type)
+                    ):
+                        continue
                     return cls._REGISTRY[base_type]
             except TypeError:
                 # As of python 3.9, calls to isinstance raise a TypeError if the base type is not a valid type, which
@@ -1043,7 +990,9 @@ class TypeEngine(typing.Generic[T]):
             register_arrow_handlers,
             register_bigquery_handlers,
             register_pandas_handlers,
+            register_snowflake_handlers,
         )
+        from flytekit.types.structured.structured_dataset import DuplicateHandlerError
 
         if is_imported("tensorflow"):
             from flytekit.extras import tensorflow  # noqa: F401
@@ -1056,15 +1005,29 @@ class TypeEngine(typing.Generic[T]):
                 from flytekit.types.schema.types_pandas import PandasSchemaReader, PandasSchemaWriter  # noqa: F401
             except ValueError:
                 logger.debug("Transformer for pandas is already registered.")
-            register_pandas_handlers()
+            try:
+                register_pandas_handlers()
+            except DuplicateHandlerError:
+                logger.debug("Transformer for pandas is already registered.")
         if is_imported("pyarrow"):
-            register_arrow_handlers()
+            try:
+                register_arrow_handlers()
+            except DuplicateHandlerError:
+                logger.debug("Transformer for arrow is already registered.")
         if is_imported("google.cloud.bigquery"):
-            register_bigquery_handlers()
+            try:
+                register_bigquery_handlers()
+            except DuplicateHandlerError:
+                logger.debug("Transformer for bigquery is already registered.")
         if is_imported("numpy"):
             from flytekit.types import numpy  # noqa: F401
         if is_imported("PIL"):
             from flytekit.types.file import image  # noqa: F401
+        if is_imported("snowflake.connector"):
+            try:
+                register_snowflake_handlers()
+            except DuplicateHandlerError:
+                logger.debug("Transformer for snowflake is already registered.")
 
     @classmethod
     def to_literal_type(cls, python_type: Type) -> LiteralType:
@@ -1110,7 +1073,7 @@ class TypeEngine(typing.Generic[T]):
                 "actual attribute that you want to use. For example, in NamedTuple('OP', x=int) then"
                 "return v.x, instead of v, even if this has a single element"
             )
-        if python_val is None and expected and expected.union_type is None:
+        if (python_val is None and python_type != type(None)) and expected and expected.union_type is None:
             raise TypeTransformerFailedError(f"Python value cannot be None, expected {python_type}/{expected}")
         transformer = cls.get_transformer(python_type)
         if transformer.type_assertions_enabled:
@@ -1199,7 +1162,7 @@ class TypeEngine(typing.Generic[T]):
             try:
                 kwargs[k] = TypeEngine.to_python_value(ctx, lm.literals[k], python_interface_inputs[k])
             except TypeTransformerFailedError as exc:
-                raise TypeTransformerFailedError(f"Error converting input '{k}' at position {i}:\n  {exc}") from exc
+                raise TypeTransformerFailedError(f"Error converting input '{k}' at position {i}:\n  {exc}") from None
         return kwargs
 
     @classmethod
@@ -1491,6 +1454,19 @@ def _are_types_castable(upstream: LiteralType, downstream: LiteralType) -> bool:
     return False
 
 
+def _is_union_type(t):
+    """Returns True if t is a Union type."""
+
+    if sys.version_info >= (3, 10):
+        import types
+
+        UnionType = types.UnionType
+    else:
+        UnionType = None
+
+    return t is typing.Union or get_origin(t) is Union or UnionType and isinstance(t, UnionType)
+
+
 class UnionTransformer(TypeTransformer[T]):
     """
     Transformer that handles a typing.Union[T1, T2, ...]
@@ -1500,8 +1476,9 @@ class UnionTransformer(TypeTransformer[T]):
         super().__init__("Typed Union", typing.Union)
 
     @staticmethod
-    def is_optional_type(t: Type[T]) -> bool:
-        return is_union_type(t) and type(None) in get_args(t)
+    def is_optional_type(t: Type) -> bool:
+        """Return True if `t` is a Union or Optional type."""
+        return _is_union_type(t) or type(None) in get_args(t)
 
     @staticmethod
     def get_sub_type_in_optional(t: Type[T]) -> Type[T]:
@@ -1531,6 +1508,7 @@ class UnionTransformer(TypeTransformer[T]):
         is_ambiguous = False
         res = None
         res_type = None
+        t = None
         for i in range(len(get_args(python_type))):
             try:
                 t = get_args(python_type)[i]
@@ -1541,7 +1519,7 @@ class UnionTransformer(TypeTransformer[T]):
                     is_ambiguous = True
                 found_res = True
             except Exception as e:
-                logger.debug(f"Failed to convert from {python_val} to {t}", e)
+                logger.debug(f"Failed to convert from {python_val} to {t} with error: {e}", exc_info=True)
                 continue
 
         if is_ambiguous:
@@ -1595,7 +1573,7 @@ class UnionTransformer(TypeTransformer[T]):
                 res_tag = trans.name
                 found_res = True
             except Exception as e:
-                logger.debug(f"Failed to convert from {lv} to {v}", e)
+                logger.debug(f"Failed to convert from {lv} to {v} with error: {e}")
 
         if is_ambiguous:
             raise TypeError(
@@ -1625,35 +1603,73 @@ class DictTransformer(TypeTransformer[dict]):
         super().__init__("Typed Dict", dict)
 
     @staticmethod
-    def get_dict_types(t: Optional[Type[dict]]) -> typing.Tuple[Optional[type], Optional[type]]:
-        """
-        Return the generic Type T of the Dict
-        """
+    def extract_types_or_metadata(t: Optional[Type[dict]]) -> typing.Tuple:
         _origin = get_origin(t)
         _args = get_args(t)
         if _origin is not None:
-            if _origin is Annotated:
-                raise ValueError(
-                    f"Flytekit does not currently have support \
-                        for FlyteAnnotations applied to dicts. {t} cannot be \
-                        parsed."
-                )
-            if _origin is dict and _args is not None:
+            if _origin is Annotated and _args:
+                # _args holds the type arguments to the dictionary, in other words:
+                # >>> get_args(Annotated[dict[int, str], FlyteAnnotation("abc")])
+                # (dict[int, str], <flytekit.core.annotation.FlyteAnnotation object at 0x107f6ff80>)
+                for x in _args[1:]:
+                    if isinstance(x, FlyteAnnotation):
+                        raise ValueError(
+                            f"Flytekit does not currently have support for FlyteAnnotations applied to dicts. {t} cannot be parsed."
+                        )
+            if _origin in [dict, Annotated] and _args is not None:
                 return _args  # type: ignore
         return None, None
 
     @staticmethod
-    def dict_to_generic_literal(v: dict) -> Literal:
+    def dict_to_generic_literal(ctx: FlyteContext, v: dict, allow_pickle: bool) -> Literal:
         """
         Creates a flyte-specific ``Literal`` value from a native python dictionary.
         """
-        return Literal(scalar=Scalar(generic=_json_format.Parse(_json.dumps(v), _struct.Struct())))
+        from flytekit.types.pickle import FlytePickle
+
+        try:
+            return Literal(
+                scalar=Scalar(generic=_json_format.Parse(json.dumps(v), _struct.Struct())),
+                metadata={"format": "json"},
+            )
+        except TypeError as e:
+            if allow_pickle:
+                remote_path = FlytePickle.to_pickle(ctx, v)
+                return Literal(
+                    scalar=Scalar(
+                        generic=_json_format.Parse(json.dumps({"pickle_file": remote_path}), _struct.Struct())
+                    ),
+                    metadata={"format": "pickle"},
+                )
+            raise e
+
+    @staticmethod
+    def is_pickle(python_type: Type[dict]) -> typing.Tuple[bool, Type]:
+        base_type, *metadata = DictTransformer.extract_types_or_metadata(python_type)
+
+        for each_metadata in metadata:
+            if isinstance(each_metadata, OrderedDict):
+                allow_pickle = each_metadata.get("allow_pickle", False)
+                return allow_pickle, base_type
+
+        return False, base_type
+
+    @staticmethod
+    def dict_types(python_type: Type) -> typing.Tuple[typing.Any, ...]:
+        if get_origin(python_type) is Annotated:
+            base_type, *_ = DictTransformer.extract_types_or_metadata(python_type)
+            tp = get_args(base_type)
+        else:
+            tp = DictTransformer.extract_types_or_metadata(python_type)
+
+        return tp
 
     def get_literal_type(self, t: Type[dict]) -> LiteralType:
         """
         Transforms a native python dictionary to a flyte-specific ``LiteralType``
         """
-        tp = self.get_dict_types(t)
+        tp = self.dict_types(t)
+
         if tp:
             if tp[0] == str:
                 try:
@@ -1669,21 +1685,33 @@ class DictTransformer(TypeTransformer[dict]):
         if type(python_val) != dict:
             raise TypeTransformerFailedError("Expected a dict")
 
+        allow_pickle = False
+        base_type = None
+
+        if get_origin(python_type) is Annotated:
+            allow_pickle, base_type = DictTransformer.is_pickle(python_type)
+
         if expected and expected.simple and expected.simple == SimpleType.STRUCT:
-            return self.dict_to_generic_literal(python_val)
+            return self.dict_to_generic_literal(ctx, python_val, allow_pickle)
 
         lit_map = {}
         for k, v in python_val.items():
             if type(k) != str:
                 raise ValueError("Flyte MapType expects all keys to be strings")
             # TODO: log a warning for Annotated objects that contain HashMethod
-            k_type, v_type = self.get_dict_types(python_type)
+
+            if base_type:
+                _, v_type = get_args(base_type)
+            else:
+                _, v_type = self.extract_types_or_metadata(python_type)
+
             lit_map[k] = TypeEngine.to_literal(ctx, v, cast(type, v_type), expected.map_value_type)
         return Literal(map=LiteralMap(literals=lit_map))
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[dict]) -> dict:
         if lv and lv.map and lv.map.literals is not None:
-            tp = self.get_dict_types(expected_python_type)
+            tp = self.dict_types(expected_python_type)
+
             if tp is None or tp[0] is None:
                 raise TypeError(
                     "TypeMismatch: Cannot convert to python dictionary from Flyte Literal Dictionary as the given "
@@ -1700,10 +1728,17 @@ class DictTransformer(TypeTransformer[dict]):
         # for empty generic we have to explicitly test for lv.scalar.generic is not None as empty dict
         # evaluates to false
         if lv and lv.scalar and lv.scalar.generic is not None:
+            if lv.metadata and lv.metadata.get("format", None) == "pickle":
+                from flytekit.types.pickle import FlytePickle
+
+                uri = json.loads(_json_format.MessageToJson(lv.scalar.generic)).get("pickle_file")
+                return FlytePickle.from_pickle(uri)
+
             try:
-                return _json.loads(_json_format.MessageToJson(lv.scalar.generic))
+                return json.loads(_json_format.MessageToJson(lv.scalar.generic))
             except TypeError:
                 raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
+
         raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
 
     def guess_python_type(self, literal_type: LiteralType) -> Union[Type[dict], typing.Dict[Type, Type]]:
@@ -1933,7 +1968,7 @@ def _register_default_type_transformers():
     TypeEngine.register(
         SimpleTransformer(
             "datetime",
-            _datetime.datetime,
+            datetime.datetime,
             _type_models.LiteralType(simple=_type_models.SimpleType.DATETIME),
             lambda x: Literal(scalar=Scalar(primitive=Primitive(datetime=x))),
             lambda x: x.scalar.primitive.datetime,
@@ -1943,7 +1978,7 @@ def _register_default_type_transformers():
     TypeEngine.register(
         SimpleTransformer(
             "timedelta",
-            _datetime.timedelta,
+            datetime.timedelta,
             _type_models.LiteralType(simple=_type_models.SimpleType.DURATION),
             lambda x: Literal(scalar=Scalar(primitive=Primitive(duration=x))),
             lambda x: x.scalar.primitive.duration,
@@ -1953,10 +1988,10 @@ def _register_default_type_transformers():
     TypeEngine.register(
         SimpleTransformer(
             "date",
-            _datetime.date,
+            datetime.date,
             _type_models.LiteralType(simple=_type_models.SimpleType.DATETIME),
             lambda x: Literal(
-                scalar=Scalar(primitive=Primitive(datetime=_datetime.datetime.combine(x, _datetime.time.min)))
+                scalar=Scalar(primitive=Primitive(datetime=datetime.datetime.combine(x, datetime.time.min)))
             ),  # convert datetime to date
             lambda x: x.scalar.primitive.datetime.date(),  # get date from datetime
         )
@@ -2001,8 +2036,6 @@ class LiteralsResolver(collections.UserDict):
     LiteralsResolver is a helper class meant primarily for use with the FlyteRemote experience or any other situation
     where you might be working with LiteralMaps. This object allows the caller to specify the Python type that should
     correspond to an element of the map.
-
-    TODO: Consider inheriting from collections.UserDict instead of manually having the _native_values cache
     """
 
     def __init__(

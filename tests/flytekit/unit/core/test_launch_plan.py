@@ -44,7 +44,7 @@ def test_lp_documentation():
     # fixed_and_default_end
 
     # schedule_start
-    sched = CronSchedule("* * ? * * *", kickoff_time_input_arg="abc")
+    sched = CronSchedule(schedule="*/1 * * * *", kickoff_time_input_arg="abc")
     email_notif = notification.Email(
         phases=[_execution_model.WorkflowExecutionPhase.SUCCEEDED], recipients_email=["my-team@email.com"]
     )
@@ -122,7 +122,7 @@ def test_lp_each_parameter():
         launch_plan.LaunchPlan.get_or_create(workflow=wf, name="get_or_create_fixed")
 
     # Schedule Parameter
-    obj = CronSchedule("* * ? * * *", kickoff_time_input_arg="abc")
+    obj = CronSchedule(schedule="*/1 * * * *", kickoff_time_input_arg="abc")
     schedule_lp = launch_plan.LaunchPlan.get_or_create(workflow=wf, name="get_or_create_schedule", schedule=obj)
     schedule_lp1 = launch_plan.LaunchPlan.get_or_create(workflow=wf, name="get_or_create_schedule", schedule=obj)
 
@@ -323,8 +323,8 @@ def test_lp_all_parameters():
         u = t2(a=x, b=y, c=c)
         return u
 
-    obj = CronSchedule("* * ? * * *", kickoff_time_input_arg="abc")
-    obj1 = CronSchedule("10 * ? * * *", kickoff_time_input_arg="abc")
+    obj = CronSchedule(schedule="* * * * * *", kickoff_time_input_arg="abc")
+    obj1 = CronSchedule(schedule="10 * * * * *", kickoff_time_input_arg="abc")
     slack_notif = notification.Slack(
         phases=[_execution_model.WorkflowExecutionPhase.SUCCEEDED], recipients_email=["my-team@slack.com"]
     )

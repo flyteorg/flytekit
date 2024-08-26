@@ -4,8 +4,7 @@ PLUGIN_NAME = "mlflow"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-# TODO: support mlflow 2.0+
-plugin_requires = ["flytekit>=1.1.0,<2.0.0", "plotly", "mlflow<2.0.0", "pandas"]
+plugin_requires = ["flytekit>=1.1.0,<2.0.0", "plotly", "mlflow>=2.10.0", "pandas"]
 
 __version__ = "0.0.0+develop"
 
@@ -27,6 +26,7 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
         "Topic :: Scientific/Engineering",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Software Development",

@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 import grpc
 import pytest
 from flyteidl.admin.agent_pb2 import (
+    Agent,
     CreateRequestHeader,
     CreateTaskRequest,
     DeleteTaskRequest,
@@ -14,12 +15,13 @@ from flyteidl.admin.agent_pb2 import (
     GetTaskRequest,
     ListAgentsRequest,
     ListAgentsResponse,
-    TaskCategory,
+    TaskCategory, DeleteTaskResponse,
 )
 from flyteidl.core.execution_pb2 import TaskExecution, TaskLog
 from flyteidl.core.identifier_pb2 import ResourceType
 
 from flytekit import PythonFunctionTask, task
+from flytekit.clis.sdk_in_container.serve import print_agents_metadata
 from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask, kwtypes
 from flytekit.core.interface import Interface
@@ -45,6 +47,7 @@ from flytekit.models.core.identifier import (
     WorkflowExecutionIdentifier,
 )
 from flytekit.models.literals import LiteralMap
+from flytekit.models.security import Identity
 from flytekit.models.task import TaskExecutionMetadata, TaskTemplate
 from flytekit.tools.translator import get_serializable
 
@@ -157,6 +160,7 @@ task_execution_metadata = TaskExecutionMetadata(
     annotations={"annotation_key": "annotation_val"},
     k8s_service_account="k8s service account",
     environment_variables={"env_var_key": "env_var_val"},
+    identity=Identity(execution_identity="task executor"),
 )
 
 
@@ -219,7 +223,7 @@ async def test_async_agent_service(agent, consume_metadata):
     res = await service.GetTask(GetTaskRequest(task_category=task_category, resource_meta=metadata_bytes), ctx)
     assert res.resource.phase == TaskExecution.SUCCEEDED
     res = await service.DeleteTask(DeleteTaskRequest(task_category=task_category, resource_meta=metadata_bytes), ctx)
-    assert res is None
+    assert res == DeleteTaskResponse()
 
     agent_metadata = AgentRegistry.get_agent_metadata(agent.name)
     assert agent_metadata.supported_task_types[0] == agent.task_category.name
@@ -384,3 +388,14 @@ def test_render_task_template():
         "task-name",
         "simple_task",
     ]
+
+
+@pytest.fixture
+def sample_agents():
+    async_agent = Agent(
+        name="Sensor", is_sync=False, supported_task_categories=[TaskCategory(name="sensor", version=0)]
+    )
+    sync_agent = Agent(
+        name="ChatGPT Agent", is_sync=True, supported_task_categories=[TaskCategory(name="chatgpt", version=0)]
+    )
+    return [async_agent, sync_agent]

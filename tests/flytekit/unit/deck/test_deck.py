@@ -3,12 +3,13 @@ import sys
 
 import pytest
 from markdown_it import MarkdownIt
-from mock import mock
+from mock import mock, patch
 
 import flytekit
 from flytekit import Deck, FlyteContextManager, task
-from flytekit.deck import MarkdownRenderer, SourceCodeRenderer, TopFrameRenderer
+from flytekit.deck import DeckField, MarkdownRenderer, SourceCodeRenderer, TopFrameRenderer
 from flytekit.deck.deck import _output_deck
+from flytekit.deck.renderer import PythonDependencyRenderer
 
 
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
@@ -39,20 +40,21 @@ def test_timeline_deck():
     )
     ctx = FlyteContextManager.current_context()
     ctx.user_space_params._decks = []
+    ctx.user_space_params._timeline_deck = None
     timeline_deck = ctx.user_space_params.timeline_deck
     timeline_deck.append_time_info(time_info)
     assert timeline_deck.name == "Timeline"
     assert len(timeline_deck.time_info) == 1
     assert timeline_deck.time_info[0] == time_info
-    assert len(ctx.user_space_params.decks) == 1
+    assert len(ctx.user_space_params.decks) == 0
 
 
 @pytest.mark.parametrize(
     "disable_deck,expected_decks",
     [
-        (None, 2),  # time line deck + source code deck
-        (False, 4),  # time line deck + source code deck + input and output decks
-        (True, 2),  # time line deck + source code deck
+        (None, 0),
+        (False, 5),  # source code + dependency + input + output + timeline decks
+        (True, 0),
     ],
 )
 def test_deck_for_task(disable_deck, expected_decks):
@@ -70,16 +72,80 @@ def test_deck_for_task(disable_deck, expected_decks):
     assert len(ctx.user_space_params.decks) == expected_decks
 
 
+@pytest.mark.parametrize(
+    "deck_fields,enable_deck,expected_decks",
+    [
+        ((), True, 0),
+        ((DeckField.INPUT.value), False, 0),
+        (
+            (DeckField.OUTPUT.value, DeckField.INPUT.value, DeckField.TIMELINE.value, DeckField.DEPENDENCIES.value),
+            True,
+            4,  # time line deck + dependency + input and output decks
+        ),
+        (None, True, 5),  # source code + dependency + input + output + timeline decks
+    ],
+)
+@mock.patch("flytekit.deck.deck._output_deck")
+def test_additional_deck_for_task(_output_deck, deck_fields, enable_deck, expected_decks):
+    ctx = FlyteContextManager.current_context()
+
+    kwargs = {}
+    if deck_fields is not None:
+        kwargs["deck_fields"] = deck_fields
+    if enable_deck is not None:
+        kwargs["enable_deck"] = enable_deck
+
+    @task(**kwargs)
+    def t1(a: int) -> str:
+        return str(a)
+
+    t1(a=3)
+    assert len(ctx.user_space_params.decks) == expected_decks
+
+
+@pytest.mark.parametrize(
+    "deck_fields,enable_deck,disable_deck",
+    [
+        (None, True, False),
+        (("WrongDeck", DeckField.INPUT.value, DeckField.OUTPUT.value), True, None),  # WrongDeck is not a valid field
+    ],
+)
+def test_invalid_deck_params(deck_fields, enable_deck, disable_deck):
+    kwargs = {}
+    if deck_fields is not None:
+        kwargs["deck_fields"] = deck_fields
+    if enable_deck is not None:
+        kwargs["enable_deck"] = enable_deck
+    if disable_deck is not None:
+        kwargs["disable_deck"] = disable_deck
+
+    with pytest.raises(ValueError):
+
+        @task(**kwargs)
+        def t1(a: int) -> str:
+            return str(a)
+
+
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 @pytest.mark.filterwarnings("ignore:disable_deck was deprecated")
 @pytest.mark.parametrize(
     "enable_deck,disable_deck, expected_decks, expect_error",
     [
-        (None, None, 3, False),  # default deck and time line deck + source code deck
-        (None, False, 5, False),  # default deck and time line deck + source code deck + input and output decks
-        (None, True, 3, False),  # default deck and time line deck + source code deck
-        (True, None, 5, False),  # default deck and time line deck + source code deck + input and output decks
-        (False, None, 3, False),  # default deck and time line deck + source code deck
+        (None, None, 1, False),  # default deck
+        (
+            None,
+            False,
+            6,
+            False,
+        ),  # default deck + source code + dependency + input + output + timeline decks
+        (None, True, 1, False),  # default deck
+        (
+            True,
+            None,
+            6,
+            False,
+        ),  # default deck + source code + dependency + input + output + timeline decks
+        (False, None, 1, False),  # default deck
         (True, True, -1, True),  # Set both disable_deck and enable_deck to True and confirm that it fails
         (False, False, -1, True),  # Set both disable_deck and enable_deck to False and confirm that it fails
     ],
@@ -176,3 +242,19 @@ def test_source_code_renderer():
     # Assert that the color #ffffff is used instead of #fff0f0
     assert "#ffffff" in result
     assert "#fff0f0" not in result
+
+
+def test_python_dependency_renderer():
+    with patch("subprocess.check_output") as mock_check_output:
+        mock_check_output.return_value = '[{"name": "numpy", "version": "1.21.0"}]'.encode()
+        renderer = PythonDependencyRenderer()
+        result = renderer.to_html()
+        assert "numpy" in result
+        assert "1.21.0" in result
+
+        # Assert that the result includes parts of the python dependency
+        assert "Name" in result
+        assert "Version" in result
+
+        # Assert that the button of copy
+        assert 'button onclick="copyTable()"' in result

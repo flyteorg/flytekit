@@ -8,6 +8,8 @@ Flyte Deck
 Contains deck renderers provided by flytekit.
 
 .. autosummary::
+   :nosignatures:
+   :template: custom.rst
    :toctree: generated/
 
    Deck
@@ -16,5 +18,5 @@ Contains deck renderers provided by flytekit.
    SourceCodeRenderer
 """
 
-from .deck import Deck
+from .deck import Deck, DeckField
 from .renderer import MarkdownRenderer, SourceCodeRenderer, TopFrameRenderer

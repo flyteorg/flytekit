@@ -269,19 +269,28 @@ class LaunchPlan(object):
                     ),
                 )
 
-            if (
-                workflow != cached_outputs["_workflow"]
-                or schedule != cached_outputs["_schedule"]
-                or notifications != cached_outputs["_notifications"]
-                or default_inputs != cached_outputs["_saved_inputs"]
-                or labels != cached_outputs["_labels"]
-                or annotations != cached_outputs["_annotations"]
-                or raw_output_data_config != cached_outputs["_raw_output_data_config"]
-                or max_parallelism != cached_outputs["_max_parallelism"]
-                or security_context != cached_outputs["_security_context"]
-                or overwrite_cache != cached_outputs["_overwrite_cache"]
-            ):
-                raise AssertionError("The cached values aren't the same as the current call arguments")
+            if workflow != cached_outputs["_workflow"]:
+                raise AssertionError(
+                    f"Trying to create two launch plans both named '{name}' for the workflows '{workflow.name}' "
+                    f"and '{cached_outputs['_workflow'].name}' - please ensure unique names."
+                )
+
+            for arg_name, new, cached in [
+                ("schedule", schedule, cached_outputs["_schedule"]),
+                ("notifications", notifications, cached_outputs["_notifications"]),
+                ("default_inputs", default_inputs, cached_outputs["_saved_inputs"]),
+                ("labels", labels, cached_outputs["_labels"]),
+                ("annotations", annotations, cached_outputs["_annotations"]),
+                ("raw_output_data_config", raw_output_data_config, cached_outputs["_raw_output_data_config"]),
+                ("max_parallelism", max_parallelism, cached_outputs["_max_parallelism"]),
+                ("security_context", security_context, cached_outputs["_security_context"]),
+                ("overwrite_cache", overwrite_cache, cached_outputs["_overwrite_cache"]),
+            ]:
+                if new != cached:
+                    raise AssertionError(
+                        f"Trying to create two launch plans for workflow '{workflow.name}' both named '{name}' "
+                        f"but with different values for '{arg_name}' - please use different launch plan names."
+                    )
 
             return LaunchPlan.CACHE[name]
         elif name is None and workflow.name in LaunchPlan.CACHE:
@@ -500,7 +509,7 @@ def reference_launch_plan(
     """
 
     def wrapper(fn) -> ReferenceLaunchPlan:
-        interface = transform_function_to_interface(fn)
+        interface = transform_function_to_interface(fn, is_reference_entity=True)
         return ReferenceLaunchPlan(project, domain, name, version, interface.inputs, interface.outputs)
 
     return wrapper

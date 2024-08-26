@@ -309,7 +309,7 @@ def test_codecov():
     with pytest.raises(AssertionError):
         wb(3)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(AssertionError):
         wb(in2="hello")
 
 

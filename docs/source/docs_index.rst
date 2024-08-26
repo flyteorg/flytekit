@@ -8,6 +8,7 @@ Flytekit API Reference
    design/index
    flytekit
    configuration
+   imagespec
    remote
    clients
    testing

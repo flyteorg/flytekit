@@ -116,14 +116,18 @@ def test_remote_upload_with_data_persistence(sandbox_remote):
         assert res == f"s3://my-s3-bucket/flytesnacks/development/O55F24U7RMLDOUI3LZ6SL4ZBEI======/{only_file}"
 
 
-def test_common_matching():
+@pytest.mark.parametrize("url_prefix", ["s3://my-s3-bucket", "abfs://my-azure-container", "abfss://my-azure-container", "gcs://my-gcs-bucket"])
+def test_common_matching(url_prefix):
     urls = [
-        "s3://my-s3-bucket/flytesnacks/development/ABCYZWMPACZAJ2MABGMOZ6CCPY======/source/empty.md",
-        "s3://my-s3-bucket/flytesnacks/development/ABCXKL5ZZWXY3PDLM3OONUHHME======/source/nested/more.txt",
-        "s3://my-s3-bucket/flytesnacks/development/ABCXBAPBKONMADXVW5Q3J6YBWM======/source/original.txt",
+        url_prefix + url_suffix
+        for url_suffix in [
+            "/flytesnacks/development/ABCYZWMPACZAJ2MABGMOZ6CCPY======/source/empty.md",
+            "/flytesnacks/development/ABCXKL5ZZWXY3PDLM3OONUHHME======/source/nested/more.txt",
+            "/flytesnacks/development/ABCXBAPBKONMADXVW5Q3J6YBWM======/source/original.txt",
+        ]
     ]
 
-    assert FlyteFS.extract_common(urls) == "s3://my-s3-bucket/flytesnacks/development"
+    assert FlyteFS.extract_common(urls) == url_prefix + "/flytesnacks/development"
 
 
 def test_hashing(sandbox_remote, source_folder):

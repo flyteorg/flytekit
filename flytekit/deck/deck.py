@@ -1,5 +1,8 @@
+import enum
 import os
 import typing
+from html import escape
+from string import Template
 from typing import Optional
 
 from flytekit.core.context_manager import ExecutionParameters, ExecutionState, FlyteContext, FlyteContextManager
@@ -8,6 +11,18 @@ from flytekit.tools.interactive import ipython_check
 
 OUTPUT_DIR_JUPYTER_PREFIX = "jupyter"
 DECK_FILE_NAME = "deck.html"
+
+
+class DeckField(str, enum.Enum):
+    """
+    DeckField is used to specify the fields that will be rendered in the deck.
+    """
+
+    INPUT = "Input"
+    OUTPUT = "Output"
+    SOURCE_CODE = "Source Code"
+    TIMELINE = "Timeline"
+    DEPENDENCIES = "Dependencies"
 
 
 class Deck:
@@ -52,10 +67,11 @@ class Deck:
             return iris_df
     """
 
-    def __init__(self, name: str, html: Optional[str] = ""):
+    def __init__(self, name: str, html: Optional[str] = "", auto_add_to_deck: bool = True):
         self._name = name
         self._html = html
-        FlyteContextManager.current_context().user_space_params.decks.append(self)
+        if auto_add_to_deck:
+            FlyteContextManager.current_context().user_space_params.decks.append(self)
 
     def append(self, html: str) -> "Deck":
         assert isinstance(html, str)
@@ -79,8 +95,8 @@ class TimeLineDeck(Deck):
     Instead, the complete data set is used to create a comprehensive visualization of the execution time of each part of the task.
     """
 
-    def __init__(self, name: str, html: Optional[str] = ""):
-        super().__init__(name, html)
+    def __init__(self, name: str, html: Optional[str] = "", auto_add_to_deck: bool = True):
+        super().__init__(name, html, auto_add_to_deck)
         self.time_info = []
 
     def append_time_info(self, info: dict):
@@ -89,19 +105,9 @@ class TimeLineDeck(Deck):
 
     @property
     def html(self) -> str:
-        try:
-            from flytekitplugins.deck.renderer import GanttChartRenderer, TableRenderer
-        except ImportError:
-            warning_info = "Plugin 'flytekit-deck-standard' is not installed. To display time line, install the plugin in the image."
-            logger.warning(warning_info)
-            return warning_info
-
         if len(self.time_info) == 0:
             return ""
 
-        import pandas
-
-        df = pandas.DataFrame(self.time_info)
         note = """
             <p><strong>Note:</strong></p>
             <ol>
@@ -109,16 +115,36 @@ class TimeLineDeck(Deck):
                 <li>For accurate execution time measurements, users should refer to wall time and process time.</li>
             </ol>
         """
-        # set the accuracy to microsecond
-        df["ProcessTime"] = df["ProcessTime"].apply(lambda time: "{:.6f}".format(time))
-        df["WallTime"] = df["WallTime"].apply(lambda time: "{:.6f}".format(time))
 
-        gantt_chart_html = GanttChartRenderer().to_html(df)
-        time_table_html = TableRenderer().to_html(
-            df[["Name", "WallTime", "ProcessTime"]],
-            header_labels=["Name", "Wall Time(s)", "Process Time(s)"],
-        )
-        return gantt_chart_html + time_table_html + note
+        return generate_time_table(self.time_info) + note
+
+
+def generate_time_table(data: dict) -> str:
+    html = [
+        '<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; width: 100%;">',
+        """
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Wall Time(s)</th>
+                <th>Process Time(s)</th>
+            </tr>
+        </thead>
+        """,
+        "<tbody>",
+    ]
+
+    # Add table rows
+    for row in data:
+        html.append("<tr>")
+        html.append(f"<td>{row['Name']}</td>")
+        html.append(f"<td>{row['WallTime']:.6f}</td>")
+        html.append(f"<td>{row['ProcessTime']:.6f}</td>")
+        html.append("</tr>")
+    html.append("</tbody>")
+
+    html.append("</table>")
+    return "".join(html)
 
 
 def _get_deck(
@@ -129,7 +155,16 @@ def _get_deck(
     If ignore_jupyter is set to True, then it will return a str even in a jupyter environment.
     """
     deck_map = {deck.name: deck.html for deck in new_user_params.decks}
-    raw_html = get_deck_template().render(metadata=deck_map)
+    nav_htmls = []
+    body_htmls = []
+
+    for key, value in deck_map.items():
+        nav_htmls.append(f'<li onclick="handleLinkClick(this)">{escape(key)}</li>')
+        # Can not escape here because this is HTML. Escaping it will present the HTML as text.
+        # The renderer must ensure that the HTML is safe.
+        body_htmls.append(f"<div>{value}</div>")
+
+    raw_html = get_deck_template().substitute(NAV_HTML="".join(nav_htmls), BODY_HTML="".join(body_htmls))
     if not ignore_jupyter and ipython_check():
         try:
             from IPython.core.display import HTML
@@ -159,18 +194,9 @@ def _output_deck(task_name: str, new_user_params: ExecutionParameters):
         logger.error(f"Failed to write flyte deck html with error {e}.")
 
 
-def get_deck_template() -> "Template":
-    from jinja2 import Environment, FileSystemLoader, select_autoescape
-
+def get_deck_template() -> Template:
     root = os.path.dirname(os.path.abspath(__file__))
-    templates_dir = os.path.join(root, "html")
-    env = Environment(
-        loader=FileSystemLoader(templates_dir),
-        # 🔥 include autoescaping for security purposes
-        # sources:
-        # - https://jinja.palletsprojects.com/en/3.0.x/api/#autoescaping
-        # - https://stackoverflow.com/a/38642558/8474894 (see in comments)
-        # - https://stackoverflow.com/a/68826578/8474894
-        autoescape=select_autoescape(enabled_extensions=("html",)),
-    )
-    return env.get_template("template.html")
+    templates_dir = os.path.join(root, "html", "template.html")
+    with open(templates_dir, "r") as f:
+        template_content = f.read()
+    return Template(template_content)

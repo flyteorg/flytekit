@@ -61,9 +61,9 @@ class ModinPandasDataFrameTransformer(TypeTransformer[pandas.DataFrame]):
     Transforms ModinPandas DataFrame's to and from a Schema (typed/untyped)
     """
 
-    _SUPPORTED_TYPES: typing.Dict[
-        type, SchemaType.SchemaColumn.SchemaColumnType
-    ] = FlyteSchemaTransformer._SUPPORTED_TYPES
+    _SUPPORTED_TYPES: typing.Dict[type, SchemaType.SchemaColumn.SchemaColumnType] = (
+        FlyteSchemaTransformer._SUPPORTED_TYPES
+    )
 
     def __init__(self):
         super().__init__("pandas-df-transformer", pandas.DataFrame)

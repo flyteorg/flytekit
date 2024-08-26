@@ -13,43 +13,40 @@ requires-python = ">=3.8,<3.13"
 dependencies = [
     # Please maintain an alphabetical order in the following list
     "adlfs>=2023.3.0",
-    "click>=6.6,<9.0",
+    "click>=6.6",
     "cloudpickle>=2.0.0",
-    "cookiecutter>=1.7.3",
-    "croniter>=0.3.20,<4.0.0",
+    "croniter>=0.3.20",
     "dataclasses-json>=0.5.2,<0.5.12", # TODO: remove upper-bound after fixing change in contract
     "diskcache>=5.2.1",
-    "docker>=4.0.0,<7.0.0",
+    "docker>=4.0.0",
     "docstring-parser>=0.9.0",
-    "flyteidl>=1.11.0b1",
+    "flyteidl>=1.13.1",
     "fsspec>=2023.3.0",
     "gcsfs>=2023.3.0",
     "googleapis-common-protos>=1.57",
     "grpcio",
     "grpcio-status",
     "importlib-metadata",
-    "isodate",
     "joblib",
+    "jsonlines",
     "jsonpickle",
     "keyring>=18.0.1",
     "markdown-it-py",
     "marshmallow-enum",
     "marshmallow-jsonschema>=0.12.0",
-    "mashumaro>=3.9.1",
+    "mashumaro>=3.11",
     "protobuf!=4.25.0",
-    "pyarrow",
     "pygments",
     "python-json-logger>=2.0.0",
-    "pytimeparse>=1.1.8,<2.0.0",
-    "pyyaml!=6.0.0,!=5.4.0,!=5.4.1", # pyyaml is broken with cython 3: https://github.com/yaml/pyyaml/issues/601
-    "requests>=2.18.4,<3.0.0",
+    "pytimeparse>=1.1.8",
+    "pyyaml!=6.0.0,!=5.4.0,!=5.4.1",   # pyyaml is broken with cython 3: https://github.com/yaml/pyyaml/issues/601
+    "requests>=2.18.4",
     "rich",
     "rich_click",
     "s3fs>=2023.3.0,!=2024.3.1",
-    "statsd>=3.0.0,<4.0.0",
+    "statsd>=3.0.0",
     "typing_extensions",
-    "typing-inspect",
-    "urllib3>=1.22,<2.0.0",
+    "urllib3>=1.22",
 ]
 classifiers = [
     "Intended Audience :: Science/Research",
@@ -97,8 +94,10 @@ norecursedirs = ["common", "workflows", "spark", "fsspec"]
 log_cli = true
 log_cli_level = 20
 markers = [
-    "sandbox_test: fake integration tests", # unit tests that are really integration tests that run on a sandbox environment
+    "sandbox_test: fake integration tests",               # unit tests that are really integration tests that run on a sandbox environment
     "serial: tests to avoid using with pytest-xdist",
+    "hypothesis: tests that use they hypothesis library",
+    "lftransfers: integration tests which involve large file transfers"
 ]
 
 [tool.coverage.report]
@@ -117,7 +116,7 @@ branch = true
 
 [tool.ruff]
 line-length = 120
-lint.select = ["E", "W", "F", "I"]
+lint.select = ["E", "W", "F", "I", "B006"]
 lint.ignore = [
     # Whitespace before '{symbol}'
     "E203",
@@ -134,6 +133,7 @@ lint.ignore = [
     # Do not assign a lambda expression, use a def
     "E731",
 ]
+extend-exclude = ["tests/", "**/tests/**"]
 
 [tool.ruff.lint.extend-per-file-ignores]
 "*/__init__.py" = [
@@ -142,5 +142,5 @@ lint.ignore = [
 ]
 
 [tool.codespell]
-ignore-words-list="ot,te,raison,fo,lits"
-skip="./docs/build,./.git,*.txt"
+ignore-words-list = "ot,te,raison,fo,lits"
+skip = "./docs/build,./.git,*.txt"

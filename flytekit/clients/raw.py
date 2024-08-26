@@ -45,9 +45,17 @@ class RawSynchronousFlyteClient(object):
           url: The server address.
           insecure: if insecure is desired
         """
+        # Set the value here to match the limit in Admin, otherwise the client will cut off and the user gets a
+        # StreamRemoved exception.
+        # https://github.com/flyteorg/flyte/blob/e8588f3a04995a420559327e78c3f95fbf64dc01/flyteadmin/pkg/common/constants.go#L14
+        # 32KB for error messages, 20MB for actual messages.
+        options = (("grpc.max_metadata_size", 32 * 1024), ("grpc.max_receive_message_length", 20 * 1024 * 1024))
         self._cfg = cfg
         self._channel = wrap_exceptions_channel(
-            cfg, upgrade_channel_to_authenticated(cfg, upgrade_channel_to_proxy_authenticated(cfg, get_channel(cfg)))
+            cfg,
+            upgrade_channel_to_authenticated(
+                cfg, upgrade_channel_to_proxy_authenticated(cfg, get_channel(cfg, options=options))
+            ),
         )
         self._stub = _admin_service.AdminServiceStub(self._channel)
         self._signal = signal_service.SignalServiceStub(self._channel)
