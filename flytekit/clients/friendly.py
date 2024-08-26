@@ -176,6 +176,16 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             super(SynchronousFlyteClient, self).get_task(_common_pb2.ObjectGetRequest(id=id.to_flyte_idl()))
         )
 
+    def get_launch_plan_node(self, entity, id):
+        """ """
+        response = super(SynchronousFlyteClient, self).get_launch_plan_node(
+            _launch_plan_pb2.CreateLaunchPlanFromNodeSpecRequest(
+                identifier=id.to_flyte_idl(),
+                node=entity.to_flyte_idl(),
+            ),
+        )
+        return _launch_plan.LaunchPlan.from_flyte_idl(response.launch_plan)
+
     ####################################################################################################################
     #
     #  Workflow Endpoints

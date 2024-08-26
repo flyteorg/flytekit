@@ -1,4 +1,7 @@
+import hashlib
+import pathlib
 import sys
+import tempfile
 import typing
 from collections import OrderedDict
 from dataclasses import dataclass
@@ -24,6 +27,7 @@ from flytekit.core.reference_entity import ReferenceEntity, ReferenceSpec, Refer
 from flytekit.core.task import ReferenceTask
 from flytekit.core.utils import ClassDecorator, _dnsify
 from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase
+from flytekit.exceptions.user import FlyteAssertion
 from flytekit.image_spec.image_spec import _calculate_deduped_hash_from_image_spec
 from flytekit.models import common as _common_models
 from flytekit.models import common as common_models
@@ -91,6 +95,9 @@ class Options(object):
     notifications: typing.Optional[typing.List[common_models.Notification]] = None
     disable_notifications: typing.Optional[bool] = None
     overwrite_cache: typing.Optional[bool] = None
+    file_uploader: Optional[Callable] = (
+        None  # This is used by the translator to upload task files, like pickled code etc
+    )
 
     @classmethod
     def default_from(
@@ -133,7 +140,7 @@ def to_serializable_cases(
 
 
 def get_command_prefix_for_fast_execute(settings: SerializationSettings) -> List[str]:
-    return [
+    prefix = [
         "pyflyte-fast-execute",
         "--additional-distribution",
         settings.fast_serialization_settings.distribution_location
@@ -143,8 +150,12 @@ def get_command_prefix_for_fast_execute(settings: SerializationSettings) -> List
         settings.fast_serialization_settings.destination_dir
         if settings.fast_serialization_settings and settings.fast_serialization_settings.destination_dir
         else "{{ .dest_dir }}",
-        "--",
     ]
+    # If pickling is enabled, we will add a pickled bit
+    if settings.fast_serialization_settings and settings.fast_serialization_settings.pickled:
+        prefix = prefix + ["--pickled"]
+
+    return prefix + ["--"]
 
 
 def prefix_with_fast_execute(settings: SerializationSettings, cmd: typing.List[str]) -> List[str]:
@@ -165,6 +176,66 @@ def _fast_serialize_command_fn(
     return fn
 
 
+def _update_serialization_settings_for_ipython(
+    entity: FlyteLocalEntity,
+    serialization_settings: SerializationSettings,
+    options: Optional[Options] = None,
+) -> SerializationSettings:
+    # If the entity is not a PythonAutoContainerTask, we don't need to do anything, as only Tasks with container |
+    # user code in container need to be serialized as pickled objects.
+    if not isinstance(entity, (PythonAutoContainerTask, ArrayNodeMapTask)):
+        return serialization_settings
+
+    from flytekit.tools.interactive import ipython_check
+
+    # Let's check if we are in an interactive environment like Jupyter notebook
+    if ipython_check():
+        # We are in an interactive environment, let's check if the task is a PythonFunctionTask and the task function
+        # is defined in the main module. If so, we will serialize the task as a pickled object and upload it to remote
+        # storage. The main module check is to ensure that the task function is not defined in a notebook cell.
+        if isinstance(entity, PythonFunctionTask):
+            if not entity.task_function.__module__ == "__main__":
+                raise FlyteAssertion(
+                    "Task function should be defined in the main module | jupyter cell for"
+                    " interactive mode. Task function defined in imported modules is not supported."
+                    f" Task function {entity.task_function.__name__} is defined in an imported module"
+                )
+            if entity.execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
+                raise FlyteAssertion(
+                    f"Dynamic tasks are not supported in interactive mode. {entity.name} is a dynamic task."
+                )
+
+        import gzip
+
+        import cloudpickle
+        import rich
+
+        rich.get_console().print("[bold red]Jupyter notebook and interactive task support is still alpha.[/bold red]")
+
+        from flytekit.configuration import FastSerializationSettings
+
+        if options is None or options.file_uploader is None:
+            raise FlyteAssertion("To work interactively with Flyte, a code transporter/uploader should be configured.")
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            dest = pathlib.Path(tmp_dir, "pkl.gz")
+            with gzip.GzipFile(filename=dest, mode="wb", mtime=0) as gzipped:
+                cloudpickle.dump(entity, gzipped)
+            rich.get_console().print("[yellow]Uploading Pickled representation of Task to remote storage...[/ yellow]")
+            md5_bytes, native_url = options.file_uploader(dest)
+            b = serialization_settings.new_builder()
+            if not serialization_settings.version and md5_bytes:
+                import base64
+
+                h = hashlib.md5(md5_bytes)
+                base64.urlsafe_b64encode(h.digest()).decode("ascii").rstrip("=")
+                b.version = md5_bytes
+            return b.with_fast_serialization_settings(
+                FastSerializationSettings(enabled=True, pickled=True, distribution_location=native_url),
+            ).build()
+    return serialization_settings
+
+
 def get_serializable_task(
     entity_mapping: OrderedDict,
     settings: SerializationSettings,
@@ -178,6 +249,9 @@ def get_serializable_task(
         entity.name,
         settings.version,
     )
+
+    # Try update the serialization settings for ipython / jupyter notebook / interactive mode
+    settings = _update_serialization_settings_for_ipython(entity, settings, options)
 
     if isinstance(entity, PythonFunctionTask) and entity.execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
         for e in context_manager.FlyteEntities.entities:
@@ -786,7 +860,7 @@ def get_serializable(
         cp_entity = get_reference_spec(entity_mapping, settings, entity)
 
     elif isinstance(entity, PythonTask):
-        cp_entity = get_serializable_task(entity_mapping, settings, entity)
+        cp_entity = get_serializable_task(entity_mapping, settings, entity, options)
 
     elif isinstance(entity, WorkflowBase):
         cp_entity = get_serializable_workflow(entity_mapping, settings, entity, options)

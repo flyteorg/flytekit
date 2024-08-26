@@ -35,11 +35,14 @@ from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.core import constants, utils
+from flytekit.core.array_node import ArrayNode
+from flytekit.core.array_node_map_task import ArrayNodeMapTask
 from flytekit.core.artifact import Artifact
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
+from flytekit.core.node import Node as FlytekitNode
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceSpec
 from flytekit.core.task import ReferenceTask
@@ -94,6 +97,7 @@ from flytekit.tools.translator import (
     Options,
     get_serializable,
     get_serializable_launch_plan,
+    get_serializable_node,
 )
 
 if typing.TYPE_CHECKING:
@@ -354,6 +358,23 @@ class FlyteRemote(object):
         flyte_task = FlyteTask.promote_from_model(admin_task.closure.compiled_task.template)
         flyte_task.template._id = task_id
         return flyte_task
+
+    def fetch_node_launch_plan(
+        self, node_entity: ArrayNode, project: str = None, domain: str = None, name: str = None, version: str = None
+    ) -> launch_plan_models.LaunchPlan:
+        """ """
+        if name is None:
+            raise user_exceptions.FlyteAssertion("the 'name' argument must be specified.")
+        lp_id = _get_entity_identifier(
+            self.client.list_tasks_paginated,
+            ResourceType.LAUNCH_PLAN,
+            project or self.default_project,
+            domain or self.default_domain,
+            name,
+            version,
+        )
+        admin_launch_plan = self.client.get_launch_plan_node(node_entity, lp_id)
+        return admin_launch_plan
 
     def fetch_workflow_lazy(
         self, project: str = None, domain: str = None, name: str = None, version: str = None
@@ -756,6 +777,11 @@ class FlyteRemote(object):
         if serialization_settings.version is None:
             serialization_settings.version = version
 
+        if options is None:
+            options = Options()
+        if options.file_uploader is None:
+            options.file_uploader = self.upload_file
+
         _ = get_serializable(m, settings=serialization_settings, entity=entity, options=options)
         # concurrent register
         cp_task_entity_map = OrderedDict(filter(lambda x: isinstance(x[1], task_models.TaskSpec), m.items()))
@@ -813,9 +839,18 @@ class FlyteRemote(object):
                 domain=self.default_domain,
             )
 
-        ident = asyncio.run(
-            self._serialize_and_register(entity=entity, settings=serialization_settings, version=version)
-        )
+        try:
+            import nest_asyncio
+
+            nest_asyncio.apply()
+            loop = asyncio.get_running_loop()
+            ident = loop.run_until_complete(
+                self._serialize_and_register(entity=entity, settings=serialization_settings, version=version)
+            )
+        except RuntimeError:
+            ident = asyncio.run(
+                self._serialize_and_register(entity=entity, settings=serialization_settings, version=version)
+            )
 
         ft = self.fetch_task(
             ident.project,
@@ -853,9 +888,17 @@ class FlyteRemote(object):
                 domain=self.default_domain,
             )
         self._resolve_identifier(ResourceType.WORKFLOW, entity.name, version, serialization_settings)
-        ident = asyncio.run(
-            self._serialize_and_register(entity, serialization_settings, version, options, default_launch_plan)
-        )
+        try:
+            import nest_asyncio
+
+            nest_asyncio.apply()
+            ident = asyncio.run(
+                self._serialize_and_register(entity, serialization_settings, version, options, default_launch_plan)
+            )
+        except RuntimeError:
+            ident = asyncio.run(
+                self._serialize_and_register(entity, serialization_settings, version, options, default_launch_plan)
+            )
         fwf = self.fetch_workflow(ident.project, ident.domain, ident.name, ident.version)
         fwf._python_interface = entity.python_interface
         return fwf
@@ -1409,6 +1452,24 @@ class FlyteRemote(object):
                 cluster_pool=cluster_pool,
                 execution_cluster_label=execution_cluster_label,
             )
+        if isinstance(entity, ArrayNode) or isinstance(entity, ArrayNodeMapTask):
+            return self.execute_node(
+                entity=entity,
+                inputs=inputs,
+                project=project,
+                domain=domain,
+                name=name,
+                version=version,
+                execution_name=execution_name,
+                execution_name_prefix=execution_name_prefix,
+                image_config=image_config,
+                wait=wait,
+                overwrite_cache=overwrite_cache,
+                envs=envs,
+                tags=tags,
+                cluster_pool=cluster_pool,
+                execution_cluster_label=execution_cluster_label,
+            )
         if isinstance(entity, PythonTask):
             return self.execute_local_task(
                 entity=entity,
@@ -1745,19 +1806,23 @@ class FlyteRemote(object):
         """
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
         resolved_identifiers_dict = asdict(resolved_identifiers)
+        not_found = False
         try:
             flyte_task: FlyteTask = self.fetch_task(**resolved_identifiers_dict)
         except FlyteEntityNotExistException:
-            if isinstance(entity, PythonAutoContainerTask):
-                if not image_config:
-                    raise ValueError(f"PythonTask {entity.name} not already registered, but image_config missing")
+            not_found = True
+
+        if not_found:
             ss = SerializationSettings(
-                image_config=image_config,
+                image_config=image_config or ImageConfig.auto_default_image(),
                 project=project or self.default_project,
                 domain=domain or self._default_domain,
                 version=version,
             )
-            flyte_task: FlyteTask = self.register_task(entity, ss)
+            try:
+                flyte_task: FlyteTask = self.register_task(entity, ss)
+            except Exception as e:
+                raise e
 
         return self.execute(
             flyte_task,
@@ -1815,6 +1880,9 @@ class FlyteRemote(object):
         """
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
         resolved_identifiers_dict = asdict(resolved_identifiers)
+        if not image_config:
+            image_config = ImageConfig.auto_default_image()
+
         ss = SerializationSettings(
             image_config=image_config,
             project=resolved_identifiers.project,
@@ -1827,8 +1895,6 @@ class FlyteRemote(object):
             self.fetch_workflow(**resolved_identifiers_dict)
         except FlyteEntityNotExistException:
             logger.info("Registering workflow because it wasn't found in Flyte Admin.")
-            if not image_config:
-                raise ValueError("Need image config since we are registering")
             self.register_workflow(entity, ss, version=version, options=options)
 
         try:
@@ -1921,6 +1987,87 @@ class FlyteRemote(object):
             options=options,
             wait=wait,
             type_hints=entity.python_interface.inputs,
+            overwrite_cache=overwrite_cache,
+            envs=envs,
+            tags=tags,
+            cluster_pool=cluster_pool,
+            execution_cluster_label=execution_cluster_label,
+        )
+
+    def execute_node(
+        self,
+        entity: typing.Union[ArrayNode, ArrayNodeMapTask],
+        inputs: typing.Dict[str, typing.Any],
+        project: str = None,
+        domain: str = None,
+        name: str = None,
+        version: str = None,
+        execution_name: typing.Optional[str] = None,
+        execution_name_prefix: typing.Optional[str] = None,
+        image_config: typing.Optional[ImageConfig] = None,
+        wait: bool = False,
+        overwrite_cache: typing.Optional[bool] = None,
+        envs: typing.Optional[typing.Dict[str, str]] = None,
+        tags: typing.Optional[typing.List[str]] = None,
+        cluster_pool: typing.Optional[str] = None,
+        execution_cluster_label: typing.Optional[str] = None,
+    ) -> FlyteWorkflowExecution:
+        """ """
+        resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
+        resolved_identifiers_dict = asdict(resolved_identifiers)
+
+        serialization_settings = SerializationSettings(
+            image_config=image_config or ImageConfig(),
+            project=project or self.default_project,
+            domain=domain or self.default_domain,
+            version=version,
+        )
+
+        # need to register underlying subtask for map tasks
+        if isinstance(entity, ArrayNodeMapTask):
+            not_found = False
+            try:
+                self.fetch_task(**resolved_identifiers_dict)
+            except FlyteEntityNotExistException:
+                not_found = True
+
+            if not_found:
+                try:
+                    self.register_task(entity, serialization_settings)
+                except Exception as e:
+                    raise e
+        else:
+            raise ValueError("Only ArrayNodeMapTask is supported for now.")
+
+        node = FlytekitNode(
+            id=f"{entity.name}-node",
+            metadata=entity.construct_node_metadata(),
+            bindings=[],
+            upstream_nodes=[],
+            flyte_entity=entity,
+        )
+        options = Options()
+        options.file_uploader = self.upload_file
+        m = OrderedDict()
+
+        serializable_node = get_serializable_node(m, settings=serialization_settings, entity=node, options=options)
+        admin_launch_plan = self.fetch_node_launch_plan(serializable_node, **resolved_identifiers_dict)
+        flyte_launch_plan = FlyteLaunchPlan.promote_from_model(admin_launch_plan.id, admin_launch_plan.spec)
+        wf_id = flyte_launch_plan.workflow_id
+        workflow = self.fetch_workflow(wf_id.project, wf_id.domain, wf_id.name, wf_id.version)
+        flyte_launch_plan._interface = workflow.interface
+        flyte_launch_plan._flyte_workflow = workflow
+
+        return self.execute_remote_task_lp(
+            entity=flyte_launch_plan,
+            inputs=inputs,
+            project=project,
+            domain=domain,
+            execution_name=execution_name,
+            execution_name_prefix=execution_name_prefix,
+            options=options,
+            wait=wait,
+            # type_hints=type_hints,
             overwrite_cache=overwrite_cache,
             envs=envs,
             tags=tags,
