@@ -340,7 +340,11 @@ class JsonParamType(click.ParamType):
         # We compare the origin type because the json parsed value for list or dict is always a list or dict without
         # the covariant type information.
         if type(parsed_value) == typing.get_origin(self._python_type) or type(parsed_value) == self._python_type:
-            if isinstance(parsed_value, list) and has_nested_dataclass(get_args(self._python_type)[0]):
+            # Indexing the return value of get_args will raise an error for native dict and list types.
+            # We don't support native list/dict types with nested dataclasses.
+            if get_args(self._python_type) == ():
+                return parsed_value
+            elif isinstance(parsed_value, list) and has_nested_dataclass(get_args(self._python_type)[0]):
                 j = JsonParamType(get_args(self._python_type)[0])
                 return [j.convert(v, param, ctx) for v in parsed_value]
             elif isinstance(parsed_value, dict) and has_nested_dataclass(get_args(self._python_type)[1]):
