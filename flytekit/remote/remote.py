@@ -960,8 +960,15 @@ class FlyteRemote(object):
 
         additional_context = additional_context or []
 
+        if hasattr(serialization_settings, "to_json"):
+            json_str = serialization_settings.to_json()
+        else:
+            from mashumaro.codecs.json import JSONEncoder
+            encoder = JSONEncoder(SerializationSettings)
+            json_str = encoder.encode(serialization_settings)
+
         h = hashlib.md5(md5_bytes)
-        h.update(bytes(serialization_settings.to_json(), "utf-8"))
+        h.update(bytes(json_str, "utf-8"))
         h.update(bytes(__version__, "utf-8"))
 
         for s in additional_context:
