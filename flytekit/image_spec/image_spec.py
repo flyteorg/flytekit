@@ -346,21 +346,21 @@ class ImageBuildEngine:
         if execution_mode is not None:
             return
 
-        copied_image_spec = copy.deepcopy(image_spec)
+        spec = copy.deepcopy(image_spec)
 
-        if isinstance(image_spec.base_image, ImageSpec):
-            cls.build(image_spec.base_image)
-            copied_image_spec.base_image = copied_image_spec.base_image.image_name()
+        if isinstance(spec.base_image, ImageSpec):
+            cls.build(spec.base_image)
+            spec.base_image = spec.base_image.image_name()
 
-        if image_spec.builder is None and cls._REGISTRY:
+        if spec.builder is None and cls._REGISTRY:
             builder = max(cls._REGISTRY, key=lambda name: cls._REGISTRY[name][1])
         else:
-            builder = image_spec.builder
+            builder = spec.builder
 
-        img_name = image_spec.image_name()
+        img_name = spec.image_name()
         img_builder = cls._get_builder(builder)
-        if img_builder.should_build(image_spec):
-            fully_qualified_image_name = img_builder.build_image(image_spec)
+        if img_builder.should_build(spec):
+            fully_qualified_image_name = img_builder.build_image(spec)
             if fully_qualified_image_name is not None:
                 cls._IMAGE_NAME_TO_REAL_NAME[img_name] = fully_qualified_image_name
 

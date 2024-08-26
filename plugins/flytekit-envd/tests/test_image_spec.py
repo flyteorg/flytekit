@@ -42,8 +42,8 @@ def test_image_spec():
     )
 
     image_spec = image_spec.with_commands("echo hello")
-
     ImageBuildEngine.build(image_spec)
+    image_spec.base_image = base_image.image_name()
     config_path = create_envd_config(image_spec)
     assert image_spec.platform == "linux/amd64"
     contents = Path(config_path).read_text()
