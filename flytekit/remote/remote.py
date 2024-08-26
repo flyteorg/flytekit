@@ -36,6 +36,7 @@ from flytekit.clients.helpers import iterate_node_executions, iterate_task_execu
 from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.core import constants, utils
 from flytekit.core.array_node import ArrayNode
+from flytekit.core.array_node_map_task import ArrayNodeMapTask
 from flytekit.core.artifact import Artifact
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
@@ -360,7 +361,7 @@ class FlyteRemote(object):
 
     def fetch_node_launch_plan(
         self, node_entity: ArrayNode, project: str = None, domain: str = None, name: str = None, version: str = None
-    ) -> FlyteLaunchPlan:
+    ) -> launch_plan_models.LaunchPlan:
         """ """
         if name is None:
             raise user_exceptions.FlyteAssertion("the 'name' argument must be specified.")
@@ -1440,6 +1441,24 @@ class FlyteRemote(object):
                 cluster_pool=cluster_pool,
                 execution_cluster_label=execution_cluster_label,
             )
+        if isinstance(entity, ArrayNode) or isinstance(entity, ArrayNodeMapTask):
+            return self.execute_node(
+                entity=entity,
+                inputs=inputs,
+                project=project,
+                domain=domain,
+                name=name,
+                version=version,
+                execution_name=execution_name,
+                execution_name_prefix=execution_name_prefix,
+                image_config=image_config,
+                wait=wait,
+                overwrite_cache=overwrite_cache,
+                envs=envs,
+                tags=tags,
+                cluster_pool=cluster_pool,
+                execution_cluster_label=execution_cluster_label,
+            )
         if isinstance(entity, PythonTask):
             return self.execute_local_task(
                 entity=entity,
@@ -1488,24 +1507,6 @@ class FlyteRemote(object):
                 execution_name=execution_name,
                 execution_name_prefix=execution_name_prefix,
                 options=options,
-                wait=wait,
-                overwrite_cache=overwrite_cache,
-                envs=envs,
-                tags=tags,
-                cluster_pool=cluster_pool,
-                execution_cluster_label=execution_cluster_label,
-            )
-        if isinstance(entity, ArrayNode):
-            return self.execute_node(
-                entity=entity,
-                inputs=inputs,
-                project=project,
-                domain=domain,
-                name=name,
-                version=version,
-                execution_name=execution_name,
-                execution_name_prefix=execution_name_prefix,
-                image_config=image_config,
                 wait=wait,
                 overwrite_cache=overwrite_cache,
                 envs=envs,
@@ -1984,7 +1985,7 @@ class FlyteRemote(object):
 
     def execute_node(
         self,
-        entity: Node,
+        entity: typing.Union[ArrayNode, ArrayNodeMapTask],
         inputs: typing.Dict[str, typing.Any],
         project: str = None,
         domain: str = None,
@@ -2004,28 +2005,64 @@ class FlyteRemote(object):
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
         resolved_identifiers_dict = asdict(resolved_identifiers)
 
-        m = OrderedDict()
         serialization_settings = SerializationSettings(
-            image_config=ImageConfig(),
+            image_config=image_config or ImageConfig(),
             project=project or self.default_project,
             domain=domain or self.default_domain,
             version=version,
         )
 
-        options = Options()
-        options.file_uploader = self.upload_file
+        # need to register underlying subtask for map tasks
+        if isinstance(entity, ArrayNodeMapTask):
+            not_found = False
+            try:
+                self.fetch_task(**resolved_identifiers_dict)
+            except FlyteEntityNotExistException:
+                not_found = True
+
+            if not_found:
+                try:
+                    self.register_task(entity, serialization_settings)
+                except Exception as e:
+                    raise e
+        else:
+            raise ValueError("Only ArrayNodeMapTask is supported for now.")
 
         node = FlytekitNode(
-            id=f"{entity.id.name}-node",
-            metadata=entity.metadata,
+            id=f"{entity.name}-node",
+            metadata=entity.construct_node_metadata(),
             bindings=[],
             upstream_nodes=[],
             flyte_entity=entity,
         )
+        options = Options()
+        options.file_uploader = self.upload_file
+        m = OrderedDict()
 
         serializable_node = get_serializable_node(m, settings=serialization_settings, entity=node, options=options)
-        lp = self.fetch_node_launch_plan(serializable_node, **resolved_identifiers_dict)
-        print(lp)
+        admin_launch_plan = self.fetch_node_launch_plan(serializable_node, **resolved_identifiers_dict)
+        flyte_launch_plan = FlyteLaunchPlan.promote_from_model(admin_launch_plan.id, admin_launch_plan.spec)
+        wf_id = flyte_launch_plan.workflow_id
+        workflow = self.fetch_workflow(wf_id.project, wf_id.domain, wf_id.name, wf_id.version)
+        flyte_launch_plan._interface = workflow.interface
+        flyte_launch_plan._flyte_workflow = workflow
+
+        return self.execute_remote_task_lp(
+            entity=flyte_launch_plan,
+            inputs=inputs,
+            project=project,
+            domain=domain,
+            execution_name=execution_name,
+            execution_name_prefix=execution_name_prefix,
+            options=options,
+            wait=wait,
+            # type_hints=type_hints,
+            overwrite_cache=overwrite_cache,
+            envs=envs,
+            tags=tags,
+            cluster_pool=cluster_pool,
+            execution_cluster_label=execution_cluster_label,
+        )
 
     ###################################
     # Wait for Executions to Complete #

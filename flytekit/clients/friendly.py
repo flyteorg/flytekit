@@ -178,14 +178,13 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
 
     def get_launch_plan_node(self, entity, id):
         """ """
-        return _launch_plan.LaunchPlan.from_flyte_idl(
-            super(SynchronousFlyteClient, self).get_launch_plan_node(
-                _launch_plan_pb2.CreateLaunchPlanFromNodeSpecRequest(
-                    identifier=id.to_flyte_idl(),
-                    node=entity.to_flyte_idl(),
-                ),
-            )
+        response = super(SynchronousFlyteClient, self).get_launch_plan_node(
+            _launch_plan_pb2.CreateLaunchPlanFromNodeSpecRequest(
+                identifier=id.to_flyte_idl(),
+                node=entity.to_flyte_idl(),
+            ),
         )
+        return _launch_plan.LaunchPlan.from_flyte_idl(response.launch_plan)
 
     ####################################################################################################################
     #

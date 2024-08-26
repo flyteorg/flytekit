@@ -101,6 +101,7 @@ class ArrayNodeMapTask(PythonTask):
             f"{sorted_bounded_inputs}{concurrency}{min_successes}{min_success_ratio}".encode("utf-8")
         ).hexdigest()
         self._name = f"{mod}.map_{f}_{h}-arraynode"
+        self.id = self._name
 
         self._cmd_prefix: Optional[List[str]] = None
         self._concurrency: Optional[int] = concurrency
