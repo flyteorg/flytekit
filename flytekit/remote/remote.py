@@ -2073,6 +2073,7 @@ class FlyteRemote(object):
         encapsulated in this function.
         """
         # For single task execution - the metadata spec node id is missing. In these cases, revert to regular node id
+        print(f"Syncing {execution.id.node_id=} {execution.metadata.spec_node_id=}", flush=True)
         node_id = execution.metadata.spec_node_id
         # This case supports single-task execution compiled workflows.
         if node_id and node_id not in node_mapping and execution.id.node_id in node_mapping:
@@ -2136,21 +2137,28 @@ class FlyteRemote(object):
                 compiled_wf = node_execution_get_data_response.dynamic_workflow.compiled_workflow
                 node_launch_plans = {}
                 # TODO: Inspect branch nodes for launch plans
-                for node in FlyteWorkflow.get_non_system_nodes(compiled_wf.primary.template.nodes):
-                    if (
-                        node.workflow_node is not None
-                        and node.workflow_node.launchplan_ref is not None
-                        and node.workflow_node.launchplan_ref not in node_launch_plans
-                    ):
-                        node_launch_plans[node.workflow_node.launchplan_ref] = self.client.get_launch_plan(
-                            node.workflow_node.launchplan_ref
-                        ).spec
+                for template in [compiled_wf.primary.template] + [swf.template for swf in compiled_wf.sub_workflows]:
+                    for node in FlyteWorkflow.get_non_system_nodes(template.nodes):
+                        if (
+                                node.workflow_node is not None
+                                and node.workflow_node.launchplan_ref is not None
+                                and node.workflow_node.launchplan_ref not in node_launch_plans
+                        ):
+                            logger.warning(f"Fetching launch plan {node.workflow_node.launchplan_ref.name}")
+                            node_launch_plans[node.workflow_node.launchplan_ref] = self.client.get_launch_plan(
+                                node.workflow_node.launchplan_ref
+                            ).spec
 
                 dynamic_flyte_wf = FlyteWorkflow.promote_from_closure(compiled_wf, node_launch_plans)
-                execution._underlying_node_executions = [
-                    self.sync_node_execution(FlyteNodeExecution.promote_from_model(cne), dynamic_flyte_wf._node_map)
-                    for cne in child_node_executions
-                ]
+                # execution._underlying_node_executions = [
+                #     self.sync_node_execution(FlyteNodeExecution.promote_from_model(cne), dynamic_flyte_wf._node_map)
+                #     for cne in child_node_executions
+                # ]
+                execution._underlying_node_executions = []
+                for cne in child_node_executions:
+                    print(f"Syncing {cne.id}", flush=True)
+                    nodex = self.sync_node_execution(FlyteNodeExecution.promote_from_model(cne), dynamic_flyte_wf._node_map)
+                    execution._underlying_node_executions.append(nodex)
                 execution._task_executions = [
                     node_exes.task_executions for node_exes in execution.subworkflow_node_executions.values()
                 ]
