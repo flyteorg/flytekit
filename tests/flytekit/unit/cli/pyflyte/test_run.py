@@ -201,6 +201,12 @@ def test_pyflyte_run_cli(workflow_file):
             "Any",
             "--q",
             DIR_NAME,
+            "--r",
+            json.dumps([{"i": 1, "a": ["h", "e"]}]),
+            "--s",
+            json.dumps({"x": {"i": 1, "a": ["h", "e"]}}),
+            "--t",
+            json.dumps({"i": [{"i":1,"a":["h","e"]}]}),
         ],
         catch_exceptions=False,
     )
