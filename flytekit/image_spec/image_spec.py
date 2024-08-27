@@ -50,6 +50,7 @@ class ImageSpec:
         commands: Command to run during the building process
         tag_format: Custom string format for image tag. The ImageSpec hash passed in as `spec_hash`. For example,
             to add a "dev" suffix to the image tag, set `tag_format="{spec_hash}-dev"`
+        copy_src_dest: List of tuples containing source files/directories and their corresponding destination directory for copying.
     """
 
     name: str = "flytekit"
@@ -73,6 +74,7 @@ class ImageSpec:
     entrypoint: Optional[List[str]] = None
     commands: Optional[List[str]] = None
     tag_format: Optional[str] = None
+    copy_src_dest: Optional[List[Tuple[List[str], str]]] = None
 
     def __post_init__(self):
         self.name = self.name.lower()
@@ -229,6 +231,18 @@ class ImageSpec:
             new_image_spec.apt_packages.extend(apt_packages)
         else:
             new_image_spec.apt_packages.append(apt_packages)
+
+        return new_image_spec
+
+    def copy(self, src: List[str], dest: str = ".") -> "ImageSpec":
+        """
+        Builder that returns a new image spec with the source files copied to the destination directory.
+        """
+        new_image_spec = copy.deepcopy(self)
+        if new_image_spec.copy_src_dest is None:
+            new_image_spec.copy_src_dest = []
+
+        new_image_spec.copy_src_dest.append((src, dest))
 
         return new_image_spec
 
