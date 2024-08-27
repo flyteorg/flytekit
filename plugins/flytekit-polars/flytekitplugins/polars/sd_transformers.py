@@ -157,7 +157,7 @@ class ParquetToPolarsLazyFrameDecodingHandler(StructuredDatasetDecoder):
             protocol=fsspec_utils.get_protocol(uri),
             data_config=ctx.file_access.data_config,
         )
-        # use read_parquet instead of scan_parquet for now because scan_parquet currently does't work with fsspec:
+        # use read_parquet instead of scan_parquet for now because scan_parquet currently doesn't work with fsspec:
         # https://github.com/pola-rs/polars/issues/16737
         if current_task_metadata.structured_dataset_type and current_task_metadata.structured_dataset_type.columns:
             columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
