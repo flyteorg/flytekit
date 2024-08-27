@@ -211,7 +211,8 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
     extra_copy_cmds = ""
     if image_spec.copy_src_dest:
         for src, dest in image_spec.copy_src_dest:
-            extra_copy_cmds += f"COPY --chown=flytekit {" ".join(src)} {dest}\n"
+            src_files_and_dirs = " ".join(src)
+            extra_copy_cmds += f"COPY --chown=flytekit {src_files_and_dirs} {dest}\n"
     else:
         extra_copy_cmds = ""
 
