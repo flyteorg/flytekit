@@ -158,12 +158,9 @@ class ParquetToPolarsLazyFrameDecodingHandler(StructuredDatasetDecoder):
             kwargs = None
         else:
             kwargs = get_fsspec_storage_options(
-                protocol=fsspec_utils.get_protocol(uri),
+                protocol=protocol,
                 data_config=ctx.file_access.data_config,
             )
-
-        print("uri", uri)
-        print("kwargs", kwargs)
 
         if current_task_metadata.structured_dataset_type and current_task_metadata.structured_dataset_type.columns:
             columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
