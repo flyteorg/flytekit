@@ -36,17 +36,17 @@ class WorkflowExecutionPhase(object):
 
 
 class NodeExecutionPhase(object):
-    UNDEFINED = flyteidl.node_execution.Phase.Undefined
-    QUEUED = flyteidl.node_execution.Phase.Queued
-    RUNNING = flyteidl.node_execution.Phase.Running
-    SUCCEEDED = flyteidl.node_execution.Phase.Succeeded
-    FAILING = flyteidl.node_execution.Phase.Failing
-    FAILED = flyteidl.node_execution.Phase.Failed
-    ABORTED = flyteidl.node_execution.Phase.Aborted
-    SKIPPED = flyteidl.node_execution.Phase.Skipped
-    TIMED_OUT = flyteidl.node_execution.Phase.TimedOut
-    DYNAMIC_RUNNING = flyteidl.node_execution.Phase.DynamicRunning
-    RECOVERED = flyteidl.node_execution.Phase.Recovered
+    UNDEFINED = int(flyteidl.node_execution.Phase.Undefined)
+    QUEUED = int(flyteidl.node_execution.Phase.Queued)
+    RUNNING = int(flyteidl.node_execution.Phase.Running)
+    SUCCEEDED = int(flyteidl.node_execution.Phase.Succeeded)
+    FAILING = int(flyteidl.node_execution.Phase.Failing)
+    FAILED = int(flyteidl.node_execution.Phase.Failed)
+    ABORTED = int(flyteidl.node_execution.Phase.Aborted)
+    SKIPPED = int(flyteidl.node_execution.Phase.Skipped)
+    TIMED_OUT = int(flyteidl.node_execution.Phase.TimedOut)
+    DYNAMIC_RUNNING = int(flyteidl.node_execution.Phase.DynamicRunning)
+    RECOVERED = int(flyteidl.node_execution.Phase.Recovered)
 
     @classmethod
     def enum_to_string(cls, int_value):
@@ -61,14 +61,14 @@ class NodeExecutionPhase(object):
 
 
 class TaskExecutionPhase(object):
-    UNDEFINED = flyteidl.task_execution.Phase.Undefined
-    RUNNING = flyteidl.task_execution.Phase.Running
-    SUCCEEDED = flyteidl.task_execution.Phase.Succeeded
-    FAILED = flyteidl.task_execution.Phase.Failed
-    ABORTED = flyteidl.task_execution.Phase.Aborted
-    QUEUED = flyteidl.task_execution.Phase.Queued
-    INITIALIZING = flyteidl.task_execution.Phase.Initializing
-    WAITING_FOR_RESOURCES = flyteidl.task_execution.Phase.WaitingForResources
+    UNDEFINED = int(flyteidl.task_execution.Phase.Undefined)
+    RUNNING = int(flyteidl.task_execution.Phase.Running)
+    SUCCEEDED = int(flyteidl.task_execution.Phase.Succeeded)
+    FAILED = int(flyteidl.task_execution.Phase.Failed)
+    ABORTED = int(flyteidl.task_execution.Phase.Aborted)
+    QUEUED = int(flyteidl.task_execution.Phase.Queued)
+    INITIALIZING = int(flyteidl.task_execution.Phase.Initializing)
+    WAITING_FOR_RESOURCES = int(flyteidl.task_execution.Phase.WaitingForResources)
 
     @classmethod
     def enum_to_string(cls, int_value):
