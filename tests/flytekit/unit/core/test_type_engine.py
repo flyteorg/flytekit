@@ -79,18 +79,18 @@ T = typing.TypeVar("T")
 def test_type_engine():
     t = int
     lt = TypeEngine.to_literal_type(t)
-    assert lt.simple == model_types.SimpleType.INTEGER
+    assert int(str(lt.simple)) == model_types.SimpleType.INTEGER
 
     t = typing.Dict[str, typing.List[typing.Dict[str, timedelta]]]
     lt = TypeEngine.to_literal_type(t)
-    assert lt.map_value_type.collection_type.map_value_type.simple == model_types.SimpleType.DURATION
+    assert int(str(lt.map_value_type.collection_type.map_value_type.simple)) == model_types.SimpleType.DURATION
 
 
 def test_named_tuple():
     t = typing.NamedTuple("Outputs", [("x_str", str), ("y_int", int)])
     var_map = TypeEngine.named_tuple_to_variable_map(t)
-    assert var_map.variables["x_str"].type.simple == model_types.SimpleType.STRING
-    assert var_map.variables["y_int"].type.simple == model_types.SimpleType.INTEGER
+    assert int(str(var_map.variables["x_str"].type.simple)) == model_types.SimpleType.STRING
+    assert int(str(var_map.variables["y_int"].type.simple)) == model_types.SimpleType.INTEGER
 
 
 def test_type_resolution():
@@ -997,22 +997,24 @@ def test_optional_flytefile_in_dataclass(mock_upload_dir):
         tf = DataclassTransformer()
         lt = tf.get_literal_type(TestFileStruct)
         lv = tf.to_literal(ctx, o, TestFileStruct, lt)
+        import flyteidl_rust as flyteidl
+        import json
+        generic = json.loads(flyteidl.DumpStruct(lv.scalar.generic))
 
-        assert lv.scalar.generic["a"].fields["path"].string_value == remote_path
-        assert lv.scalar.generic["b"].fields["path"].string_value == remote_path
-        assert lv.scalar.generic["b_prime"] is None
-        assert lv.scalar.generic["c"].fields["path"].string_value == remote_path
-        assert lv.scalar.generic["d"].values[0].struct_value.fields["path"].string_value == remote_path
-        assert lv.scalar.generic["e"].values[0].struct_value.fields["path"].string_value == remote_path
-        assert lv.scalar.generic["e_prime"].values[0].WhichOneof("kind") == "null_value"
-        assert lv.scalar.generic["f"]["a"].fields["path"].string_value == remote_path
-        assert lv.scalar.generic["g"]["a"].fields["path"].string_value == remote_path
-        assert lv.scalar.generic["g_prime"]["a"] is None
-        assert lv.scalar.generic["h"].fields["path"].string_value == remote_path
-        assert lv.scalar.generic["h_prime"] is None
-        assert lv.scalar.generic["i"].fields["a"].number_value == 42
-        assert lv.scalar.generic["i_prime"].fields["a"].number_value == 99
-
+        assert generic["a"]["path"] == remote_path
+        assert generic["b"]["path"] == remote_path
+        assert generic["b_prime"] is None
+        assert generic["c"]["path"] == remote_path
+        assert generic["d"][0]["path"] == remote_path
+        assert generic["e"][0]["path"] == remote_path
+        assert generic["e_prime"][0] is None
+        assert generic["f"]["a"]["path"] == remote_path
+        assert generic["g"]["a"]["path"] == remote_path
+        assert generic["g_prime"]["a"] is None
+        assert generic["h"]["path"] == remote_path
+        assert generic["h_prime"] is None
+        assert generic["i"]["a"] == 42
+        assert generic["i_prime"]["a"] == 99
         ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestFileStruct)
 
         assert o.a.remote_path == ot.a.remote_source
@@ -1080,20 +1082,23 @@ def test_optional_flytefile_in_dataclassjsonmixin(mock_upload_dir):
         lt = tf.get_literal_type(TestFileStruct_optional_flytefile)
         lv = tf.to_literal(ctx, o, TestFileStruct_optional_flytefile, lt)
 
-        assert lv.scalar.generic["a"].fields["path"].string_value == remote_path
-        assert lv.scalar.generic["b"].fields["path"].string_value == remote_path
-        assert lv.scalar.generic["b_prime"] is None
-        assert lv.scalar.generic["c"].fields["path"].string_value == remote_path
-        assert lv.scalar.generic["d"].values[0].struct_value.fields["path"].string_value == remote_path
-        assert lv.scalar.generic["e"].values[0].struct_value.fields["path"].string_value == remote_path
-        assert lv.scalar.generic["e_prime"].values[0].WhichOneof("kind") == "null_value"
-        assert lv.scalar.generic["f"]["a"].fields["path"].string_value == remote_path
-        assert lv.scalar.generic["g"]["a"].fields["path"].string_value == remote_path
-        assert lv.scalar.generic["g_prime"]["a"] is None
-        assert lv.scalar.generic["h"].fields["path"].string_value == remote_path
-        assert lv.scalar.generic["h_prime"] is None
-        assert lv.scalar.generic["i"].fields["a"].number_value == 42
-        assert lv.scalar.generic["i_prime"].fields["a"].number_value == 99
+        import flyteidl_rust as flyteidl
+        import json
+        generic = json.loads(flyteidl.DumpStruct(lv.scalar.generic))
+        assert generic["a"]["path"] == remote_path
+        assert generic["b"]["path"] == remote_path
+        assert generic["b_prime"] is None
+        assert generic["c"]["path"] == remote_path
+        assert generic["d"][0]["path"] == remote_path
+        assert generic["e"][0]["path"] == remote_path
+        assert generic["e_prime"][0] is None
+        assert generic["f"]["a"]["path"] == remote_path
+        assert generic["g"]["a"]["path"] == remote_path
+        assert generic["g_prime"]["a"] is None
+        assert generic["h"]["path"] == remote_path
+        assert generic["h_prime"] is None
+        assert generic["i"]["a"] == 42
+        assert generic["i_prime"]["a"] == 99
 
         ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestFileStruct_optional_flytefile)
 
@@ -1657,7 +1662,9 @@ def test_to_literal_dict():
     # Test when python_val is a dict
     python_val = {"x": 3, "y": "hello"}
     literal = DataclassTransformer().to_literal(ctx, python_val, python_type, expected)
-    literal_json = _json_format.MessageToJson(literal.scalar.generic)
+    import flyteidl_rust as flyteidl
+    import json
+    literal_json = flyteidl.DumpStruct(literal.scalar.generic)
     assert json.loads(literal_json) == python_val
 
     # Test when python_val is not a dict and not a dataclass
@@ -1746,6 +1753,7 @@ def test_union_type_with_annotated():
 
     ctx = FlyteContextManager.current_context()
     lv = TypeEngine.to_literal(ctx, 3, pt, lt)
+
     v = TypeEngine.to_python_value(ctx, lv, pt)
     assert lv.scalar.union.stored_type.structure.tag == "int"
     assert lv.scalar.union.value.scalar.primitive.integer == 3
@@ -2195,7 +2203,7 @@ def test_dict_to_literal_map_with_dataclass():
     class TestStructD(DataClassJsonMixin):
         s: InnerStruct
         m: typing.Dict[str, typing.List[int]]
-
+    import flyteidl_rust as flyteidl
     ctx = FlyteContext.current_context()
     python_value = {"p1": TestStructD(s=InnerStruct(a=5, b=None, c=[1, 2, 3]), m={"a": [5]})}
     python_types = {"p1": TestStructD}
@@ -2203,15 +2211,14 @@ def test_dict_to_literal_map_with_dataclass():
                 literals={
                     "p1": Literal(
                         scalar=Scalar(
-                            generic=_json_format.Parse(
+                            generic=flyteidl.ParseStruct(
                                 typing.cast(
                                     DataClassJsonMixin,
                                     TestStructD(
                                         s=InnerStruct(a=5, b=None, c=[1, 2, 3]),
                                         m={"a": [5]},
                                     ),
-                                ).to_json(),
-                                _struct.Struct(),
+                                ).to_json()
                             )
                         )
                     )
