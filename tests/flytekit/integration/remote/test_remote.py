@@ -31,6 +31,7 @@ IMAGE = os.environ.get("FLYTEKIT_IMAGE", "localhost:30000/flytekit:dev")
 PROJECT = "flytesnacks"
 DOMAIN = "development"
 VERSION = f"v{os.getpid()}"
+DEST_DIR = "/tmp"
 
 
 @pytest.fixture(scope="session")
@@ -65,6 +66,8 @@ def run(file_name, wf_name, *args):
             CONFIG,
             "run",
             "--remote",
+            "--destination-dir",
+            DEST_DIR,
             "--image",
             IMAGE,
             "--project",
