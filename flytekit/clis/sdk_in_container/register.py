@@ -107,7 +107,8 @@ the root of your project, it finds the first folder that does not have a ``__ini
     default=None,  # this will be changed to "all" after removing non-fast option
     callback=parse_copy,
     help="[Beta] Specify how and whether to use fast register"
-    " 'all' is the current behavior copying all files from root, 'auto' copies only loaded Python modules",
+    " 'all' is the current behavior copying all files from root, 'auto' copies only loaded Python modules"
+    " 'none' means no files are copied, i.e. don't use fast register",
 )
 @click.option(
     "--dry-run",
