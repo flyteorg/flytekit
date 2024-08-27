@@ -829,4 +829,4 @@ def test_entity_non_found_in_file():
         catch_exceptions=False,
     )
     assert result.exit_code == 1
-    assert "FlyteEntityNotFoundException: Entity \'my_wffffff\' not found in module \n\'pyflyte.workflow\'" in result.stdout
+    assert "FlyteEntityNotFoundException: Task/Workflow \'my_wffffff\' not found in module \n\'pyflyte.workflow\'" in result.stdout

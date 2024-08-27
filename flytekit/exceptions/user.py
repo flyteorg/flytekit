@@ -70,7 +70,7 @@ class FlyteEntityNotFoundException(FlyteValueException):
         self._entity_name = entity_name
 
     def __str__(self):
-        return f"Entity '{self._entity_name}' not found in module '{self._module_name}'"
+        return f"Task/Workflow '{self._entity_name}' not found in module '{self._module_name}'"
 
 
 class FlyteAssertion(FlyteUserException, AssertionError):
