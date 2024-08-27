@@ -381,6 +381,7 @@ class Promise(object):
         var: str,
         val: Union[NodeOutput, _literals_models.Literal],
         type: typing.Optional[_type_models.LiteralType] = None,
+        awaitable: bool = False,
     ):
         self._var = var
         self._promise_ready = True
@@ -392,6 +393,7 @@ class Promise(object):
             self._ref = val
             self._promise_ready = False
             self._val = None
+        self._awaitable = awaitable
 
     def __hash__(self):
         return hash(id(self))
@@ -550,7 +552,7 @@ class Promise(object):
         return str(self.__repr__())
 
     def deepcopy(self) -> Promise:
-        new_promise = Promise(var=self.var, val=self.val)
+        new_promise = Promise(var=self.var, val=self.val, awaitable=self._awaitable)
         new_promise._promise_ready = self._promise_ready
         new_promise._ref = self._ref
         new_promise._attr_path = deepcopy(self._attr_path)
@@ -635,6 +637,14 @@ class Promise(object):
             new_promise._ref = new_promise.ref.with_attr(key)
 
         return new_promise
+
+    def __await__(self):
+        if not self._awaitable:
+            # pass
+            raise RuntimeError("Promise is not awaitable or is already awaited")
+        self._awaitable = False
+        yield
+        return self
 
 
 def create_native_named_tuple(
@@ -870,9 +880,10 @@ class VoidPromise(object):
     VoidPromise cannot be interacted with and does not allow comparisons or any operations
     """
 
-    def __init__(self, task_name: str, ref: Optional[NodeOutput] = None):
+    def __init__(self, task_name: str, ref: Optional[NodeOutput] = None, awaitable=False):
         self._task_name = task_name
         self._ref = ref
+        self._awaitable = awaitable
 
     def runs_before(self, *args, **kwargs):
         """
@@ -939,6 +950,13 @@ class VoidPromise(object):
 
     def __repr__(self):
         raise AssertionError(f"Task {self._task_name} returns nothing, NoneType return cannot be used")
+
+    def __await__(self):
+        if not self._awaitable:
+            raise RuntimeError("Promise is not awaitable or is already awaited")
+        self._awaitable = False
+        yield
+        return self
 
 
 class NodeOutput(type_models.OutputReference):
@@ -1010,6 +1028,28 @@ def extract_obj_name(name: str) -> str:
     if "." in name:
         return name.split(".")[-1]
     return name
+
+
+def check_awaitable(entity: SupportsNodeCreation):
+    from flytekit.core.array_node_map_task import ArrayNodeMapTask
+    from flytekit.core.reference_entity import ReferenceEntity
+    from flytekit.core.task import PythonFunctionTask
+    from flytekit.core.workflow import PythonFunctionWorkflow
+
+    # currently we can only await on PythonFunctionTask, ArrayNodeMapTask and PythonFunctionWorkflow
+    if isinstance(entity, ReferenceEntity):
+        return False
+    python_task = isinstance(entity, PythonFunctionTask) and inspect.iscoroutinefunction(entity.task_function)
+    map_function_task = (
+        isinstance(entity, ArrayNodeMapTask)
+        and isinstance(entity._run_task, PythonFunctionTask)
+        and inspect.iscoroutinefunction(entity._run_task.task_function)
+    )
+    python_workflow = isinstance(entity, PythonFunctionWorkflow) and inspect.iscoroutinefunction(
+        entity._workflow_function
+    )
+    awaitable = python_task or map_function_task or python_workflow
+    return awaitable
 
 
 def create_and_link_node_from_remote(
@@ -1118,7 +1158,7 @@ def create_and_link_node(
     ctx: FlyteContext,
     entity: SupportsNodeCreation,
     **kwargs,
-) -> Optional[Union[Tuple[Promise], Promise, VoidPromise]]:
+) -> Optional[Union[Tuple[Union[Promise]], Promise, VoidPromise]]:
     """
     This method is used to generate a node with bindings within a flytekit workflow. this is useful to traverse the
     workflow using regular python interpreter and generate nodes and promises whenever an execution is encountered
@@ -1207,15 +1247,17 @@ def create_and_link_node(
         flyte_entity=entity,
     )
     ctx.compilation_state.add_node(flytekit_node)
-
+    awaitable = check_awaitable(entity)
     if len(typed_interface.outputs) == 0:
-        return VoidPromise(entity.name, NodeOutput(node=flytekit_node, var="placeholder"))
+        return VoidPromise(entity.name, NodeOutput(node=flytekit_node, var="placeholder"), awaitable=awaitable)
 
     # Create a node output object for each output, they should all point to this node of course.
-    node_outputs = []
+    node_outputs: List[Promise] = []
     for output_name, output_var_model in typed_interface.outputs.items():
         node_outputs.append(
-            Promise(output_name, NodeOutput(node=flytekit_node, var=output_name), output_var_model.type)
+            Promise(
+                output_name, NodeOutput(node=flytekit_node, var=output_name), output_var_model.type, awaitable=awaitable
+            )
         )
         # Don't print this, it'll crash cuz sdk_node._upstream_node_ids might be None, but idl code will break
 
@@ -1282,9 +1324,10 @@ def flyte_entity_call_handler(
             ):
                 if len(entity.python_interface.inputs) > 0 or len(entity.python_interface.outputs) > 0:
                     output_names = list(entity.python_interface.outputs.keys())
+                    awaitable = check_awaitable(entity)
                     if len(output_names) == 0:
-                        return VoidPromise(entity.name)
-                    vals = [Promise(var, None) for var in output_names]
+                        return VoidPromise(entity.name, awaitable=awaitable)
+                    vals = [Promise(var, None, awaitable=awaitable) for var in output_names]
                     return create_task_output(vals, entity.python_interface)
                 else:
                     return None

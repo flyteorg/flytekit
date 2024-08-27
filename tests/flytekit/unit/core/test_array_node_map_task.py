@@ -435,3 +435,16 @@ def test_unsupported_node_types():
 
     with pytest.raises(ValueError):
         map_task(test_wf)
+
+
+def test_async_map_task():
+    @task
+    async def t1(a: int) -> int:
+        return a + 1
+
+    @workflow
+    async def async_wf(x: typing.List[int]) -> typing.List[int]:
+        return await map_task(t1, concurrency=2)(a=x)
+
+    wf_output = async_wf([1, 2, 3])
+    assert wf_output == [2, 3, 4]

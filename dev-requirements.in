@@ -50,6 +50,7 @@ autoflake
 
 pillow
 numpy
+nest_asyncio
 pandas
 pyarrow
 scikit-learn

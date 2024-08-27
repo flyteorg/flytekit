@@ -1,6 +1,8 @@
 # TODO: has to support the SupportsNodeCreation protocol
+import asyncio
 import functools
 import hashlib
+import inspect
 import logging
 import math
 import os  # TODO: use flytekit logger
@@ -353,7 +355,15 @@ class ArrayNodeMapTask(PythonTask):
                     logger.error("The number of successful tasks is lower than the minimum ratio")
                     raise exc
 
-        return outputs
+        any_coroutines = any(inspect.iscoroutine(o) for o in outputs)
+        all_coroutines = all(inspect.iscoroutine(o) for o in outputs)
+        if any_coroutines != all_coroutines:
+            raise ValueError("Cannot mix coroutines and non-coroutines in a map task")
+
+        async def gather_wrapper():
+            return await asyncio.gather(*outputs)
+
+        return outputs if not any_coroutines else gather_wrapper()
 
 
 def map_task(

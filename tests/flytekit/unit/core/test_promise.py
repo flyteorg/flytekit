@@ -1,3 +1,4 @@
+import asyncio
 import sys
 import typing
 from dataclasses import dataclass
@@ -254,3 +255,67 @@ def test_prom_with_union_literals():
     assert bd.scalar.union.stored_type.structure.tag == "int"
     bd = binding_data_from_python_std(ctx, lt, "hello", pt, [])
     assert bd.scalar.union.stored_type.structure.tag == "str"
+
+
+def test_async_promise():
+
+    @task
+    async def get_val(a: int) -> int:
+        await asyncio.sleep(0.1)
+        return a
+
+    with pytest.raises(FlyteAssertion, match="Cannot create node when not compiling..."):
+        ctx = context_manager.FlyteContext.current_context()
+        create_and_link_node(ctx, get_val, a=3)
+
+    ctx = context_manager.FlyteContext.current_context().with_compilation_state(CompilationState(prefix=""))
+    p = create_and_link_node(ctx, get_val, a=3)
+    assert p.ref.node_id == "n0"
+    assert p.ref.var == "o0"
+    assert len(p.ref.node.bindings) == 1
+
+
+def test_async_subwf():
+    @task
+    async def subtask(a: int) -> int:
+        return a
+
+    @workflow
+    async def subwf(a: int) -> int:
+        return await subtask(a=a)
+
+    @workflow
+    async def wf(a: int) -> int:
+        return await subwf(a=a)
+
+    output = wf(a=3)
+    assert output == 3
+
+
+def test_await_non_awaitable():
+    @task
+    def subtask(a: int) -> int:
+        return a
+
+    @workflow
+    async def subwf(a: int) -> int:
+        return await subtask(a=a)
+
+    with pytest.raises(RuntimeError, match="Promise is not awaitable or is already awaited"):
+        wf_output = subwf(a=3)
+
+
+def test_await_double_await():
+    @task
+    async def subtask(a: int) -> int:
+        return a
+
+    @workflow
+    async def subwf(a: int) -> int:
+        task_coro = subtask(a=a)
+        task_output = await task_coro
+        task_output = await task_coro
+        return task_output
+
+    with pytest.raises(RuntimeError, match="Promise is not awaitable or is already awaited"):
+        wf_output = subwf(a=3)

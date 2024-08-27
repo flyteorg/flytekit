@@ -14,6 +14,7 @@ try:
     from typing import ParamSpec
 except ImportError:
     from typing_extensions import ParamSpec  # type: ignore
+import nest_asyncio
 
 from flytekit.core import constants as _common_constants
 from flytekit.core import launch_plan as _annotated_launch_plan
@@ -39,6 +40,7 @@ from flytekit.core.promise import (
     Promise,
     VoidPromise,
     binding_from_python_std,
+    check_awaitable,
     create_task_output,
     extract_obj_name,
     flyte_entity_call_handler,
@@ -320,7 +322,8 @@ class WorkflowBase(object):
             flyte_interface_types=self.interface.inputs,
             native_types=self.python_interface.inputs,
         )
-        kwargs_literals = {k: Promise(var=k, val=v) for k, v in literal_map.items()}
+        awaitable = check_awaitable(self)
+        kwargs_literals = {k: Promise(var=k, val=v, awaitable=awaitable) for k, v in literal_map.items()}
         self.compile()
         function_outputs = self.execute(**kwargs_literals)
 
@@ -370,7 +373,9 @@ class WorkflowBase(object):
             native_types=self.python_interface.outputs,
         )
         # Recreate new promises that use the workflow's output names.
-        new_promises = [Promise(var, wf_outputs_as_literal_dict[var]) for var in expected_output_names]
+        new_promises = [
+            Promise(var, wf_outputs_as_literal_dict[var], awaitable=awaitable) for var in expected_output_names
+        ]
 
         return create_task_output(new_promises, self.python_interface)
 
@@ -736,7 +741,24 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             # Construct the default input promise bindings, but then override with the provided inputs, if any
             input_kwargs = construct_input_promises([k for k in self.interface.inputs.keys()])
             input_kwargs.update(kwargs)
-            workflow_outputs = exception_scopes.user_entry_point(self._workflow_function)(**input_kwargs)
+            from functools import wraps as _wraps
+
+            @_wraps(self._workflow_function)
+            def _wrapped_function(**kwargs):
+                try:
+                    # HACK, not sure if the nest_asyncio implementation uses thread since ctx is not thread-safe
+                    loop = asyncio.get_running_loop()
+                    nest_asyncio.apply()
+
+                    return loop.run_until_complete(self._workflow_function(**kwargs))
+                except RuntimeError:
+                    loop = asyncio.get_event_loop()
+                    return loop.run_until_complete(self._workflow_function(**kwargs))
+
+            user_func = (
+                _wrapped_function if inspect.iscoroutinefunction(self._workflow_function) else self._workflow_function
+            )
+            workflow_outputs = exception_scopes.user_entry_point(user_func)(**input_kwargs)
             all_nodes.extend(comp_ctx.compilation_state.nodes)
 
             # This little loop was added as part of the task resolver change. The task resolver interface itself is

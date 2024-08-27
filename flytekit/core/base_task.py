@@ -28,6 +28,7 @@ from base64 import b64encode
 from dataclasses import dataclass
 from typing import (
     Any,
+    Awaitable,
     Coroutine,
     Dict,
     Generic,
@@ -270,7 +271,7 @@ class Task(object):
 
     def local_execute(
         self, ctx: FlyteContext, **kwargs
-    ) -> Union[Tuple[Promise], Promise, VoidPromise, Coroutine, None]:
+    ) -> Union[Tuple[Promise], Promise, VoidPromise, Coroutine, Awaitable, None]:
         """
         This function is used only in the local execution path and is responsible for calling dispatch execute.
         Use this function when calling a task with native values (or Promises containing Flyte literals derived from
@@ -739,23 +740,28 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             if inspect.iscoroutine(native_outputs):
                 # If native outputs is a coroutine, then this is an eager workflow.
                 if exec_ctx.execution_state:
+                    # HACK local workflow
+                    # return native_outputs
                     if exec_ctx.execution_state.mode == ExecutionState.Mode.LOCAL_TASK_EXECUTION:
                         # Just return task outputs as a coroutine if the eager workflow is being executed locally,
                         # outside of a workflow. This preserves the expectation that the eager workflow is an async
                         # function.
                         return native_outputs
                     elif exec_ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
-                        # If executed inside of a workflow being executed locally, then run the coroutine to get the
-                        # actual results.
-                        return asyncio.run(
-                            self._async_execute(
-                                native_inputs,
-                                native_outputs,
-                                ctx,
-                                exec_ctx,
-                                new_user_params,
+                        try:
+                            # Invoked from WorkflowBase's local_execute and it uses asyncio.run
+                            asyncio.get_running_loop()
+                            return native_outputs
+                        except RuntimeError:
+                            return asyncio.run(
+                                self._async_execute(
+                                    native_inputs,
+                                    native_outputs,
+                                    ctx,
+                                    exec_ctx,
+                                    new_user_params,
+                                )
                             )
-                        )
 
                 return self._async_execute(native_inputs, native_outputs, ctx, exec_ctx, new_user_params)
 
