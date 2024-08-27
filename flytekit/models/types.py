@@ -420,7 +420,7 @@ class LiteralType(_common.FlyteIdlEntity):
         if isinstance(proto.type, flyteidl.literal_type.Type.MapValueType):
             map_value_type = cls.from_flyte_idl(proto.type[0])
         return cls(
-            simple=proto.type if isinstance(proto.type, flyteidl.literal_type.Type.Simple) else None,
+            simple=proto.type[0] if isinstance(proto.type, flyteidl.literal_type.Type.Simple) else None,
             schema=SchemaType.from_flyte_idl(proto.type[0])
             if isinstance(proto.type, flyteidl.literal_type.Type.Schema)
             else None,
