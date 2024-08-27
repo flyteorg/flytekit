@@ -31,7 +31,8 @@ def test_create_docker_context(tmp_path):
         source_root=os.fspath(source_root),
         commands=["mkdir my_dir"],
         entrypoint=["/bin/bash"],
-        pip_extra_index_url=["https://extra-url.com"]
+        pip_extra_index_url=["https://extra-url.com"],
+        copy_src_dest=[(["file1.txt", "/dir1"], "/root")]
     )
 
     create_docker_context(image_spec, docker_context_path)
@@ -49,6 +50,7 @@ def test_create_docker_context(tmp_path):
     assert "RUN mkdir my_dir" in dockerfile_content
     assert "ENTRYPOINT [\"/bin/bash\"]" in dockerfile_content
     assert "mkdir -p $HOME" in dockerfile_content
+    assert "COPY --chown=flytekit file1.txt /dir1 /root" in dockerfile_content
 
     requirements_path = docker_context_path / "requirements_uv.txt"
     assert requirements_path.exists()
@@ -177,6 +179,7 @@ def test_build(tmp_path):
         requirements=os.fspath(other_requirements_path),
         source_root=os.fspath(source_root),
         commands=["mkdir my_dir"],
+        copy_src_dest=[([f"{tmp_path}/hello_world.txt", f"{tmp_path}/requirements.txt"], "/my_dir")]
     )
 
     builder = DefaultImageBuilder()
