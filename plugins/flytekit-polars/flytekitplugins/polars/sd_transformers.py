@@ -162,6 +162,8 @@ class ParquetToPolarsLazyFrameDecodingHandler(StructuredDatasetDecoder):
                 data_config=ctx.file_access.data_config,
             )
 
+        print("kwargs", kwargs)
+
         if current_task_metadata.structured_dataset_type and current_task_metadata.structured_dataset_type.columns:
             columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
             return pl.scan_parquet(uri, storage_options=kwargs).select(columns)
