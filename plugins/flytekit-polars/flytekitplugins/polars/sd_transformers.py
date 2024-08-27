@@ -161,8 +161,8 @@ class ParquetToPolarsLazyFrameDecodingHandler(StructuredDatasetDecoder):
         # https://github.com/pola-rs/polars/issues/16737
         if current_task_metadata.structured_dataset_type and current_task_metadata.structured_dataset_type.columns:
             columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
-            return pl.read_parquet(uri, columns=columns, use_pyarrow=True, storage_options=kwargs)
-        return pl.read_parquet(uri, use_pyarrow=True, storage_options=kwargs)
+            return pl.read_parquet(uri, columns=columns, use_pyarrow=True, storage_options=kwargs).lazy()
+        return pl.read_parquet(uri, use_pyarrow=True, storage_options=kwargs).lazy()
 
 
 # Register the Polars DataFrame handlers
