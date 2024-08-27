@@ -26,8 +26,7 @@ class PolarsDataFrameRenderer:
 
     def to_html(self, df: pl.DataFrame) -> str:
         assert isinstance(df, pl.DataFrame)
-        describe_df = df.describe()
-        return pd.DataFrame(describe_df.transpose(), columns=describe_df.columns).to_html(index=False)
+        return df.describe().to_pandas().to_html(index=False)
 
 
 class PolarsDataFrameToParquetEncodingHandler(StructuredDatasetEncoder):

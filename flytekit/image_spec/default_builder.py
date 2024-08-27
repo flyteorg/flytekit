@@ -244,6 +244,7 @@ class DefaultImageBuilder(ImageSpecBuilder):
         "cudnn",
         "base_image",
         "pip_index",
+        "pip_extra_index_url",
         # "registry_config",
         "commands",
     }

@@ -342,6 +342,7 @@ jobs:
           - flytekit-mlflow
           - flytekit-mmcloud
           - flytekit-modin
+          - flytekit-neptune
           - flytekit-onnx-pytorch
           - flytekit-onnx-scikitlearn
           # onnx-tensorflow needs a version of tensorflow that does not work with protobuf>4.

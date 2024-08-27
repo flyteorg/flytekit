@@ -1144,8 +1144,9 @@ class FlyteRemote(object):
         """
         if execution_name is not None and execution_name_prefix is not None:
             raise ValueError("Only one of execution_name and execution_name_prefix can be set, but got both set")
-        execution_name_prefix = execution_name_prefix + "-" if execution_name_prefix is not None else None
-        execution_name = execution_name or (execution_name_prefix or "f") + uuid.uuid4().hex[:19]
+        # todo: The prefix should be passed to the backend
+        if execution_name_prefix is not None:
+            execution_name = execution_name_prefix + "-" + uuid.uuid4().hex[:19]
         if not options:
             options = Options()
         if options.disable_notifications is not None:
@@ -2135,15 +2136,16 @@ class FlyteRemote(object):
                 compiled_wf = node_execution_get_data_response.dynamic_workflow.compiled_workflow
                 node_launch_plans = {}
                 # TODO: Inspect branch nodes for launch plans
-                for node in FlyteWorkflow.get_non_system_nodes(compiled_wf.primary.template.nodes):
-                    if (
-                        node.workflow_node is not None
-                        and node.workflow_node.launchplan_ref is not None
-                        and node.workflow_node.launchplan_ref not in node_launch_plans
-                    ):
-                        node_launch_plans[node.workflow_node.launchplan_ref] = self.client.get_launch_plan(
-                            node.workflow_node.launchplan_ref
-                        ).spec
+                for template in [compiled_wf.primary.template] + [swf.template for swf in compiled_wf.sub_workflows]:
+                    for node in FlyteWorkflow.get_non_system_nodes(template.nodes):
+                        if (
+                            node.workflow_node is not None
+                            and node.workflow_node.launchplan_ref is not None
+                            and node.workflow_node.launchplan_ref not in node_launch_plans
+                        ):
+                            node_launch_plans[node.workflow_node.launchplan_ref] = self.client.get_launch_plan(
+                                node.workflow_node.launchplan_ref
+                            ).spec
 
                 dynamic_flyte_wf = FlyteWorkflow.promote_from_closure(compiled_wf, node_launch_plans)
                 execution._underlying_node_executions = [
