@@ -24,10 +24,10 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 # Install maturin to build Python bindings with PyO3
 RUN pip install maturin
 
-# RUN git clone -b flyrs https://github.com/austin362667/flyte.git
+RUN git clone -b flyrs https://github.com/austin362667/flyte.git
 
 # Build the Python bindings
-# RUN --mount=type=cache,target=/usr/local/cargo/registry maturin build --release --out dist -m flyte/flyteidl/Cargo.toml
+RUN --mount=type=cache,target=/usr/local/cargo/registry maturin build --release --out dist -m flyte/flyteidl/Cargo.toml
 
 
 # Stage 2: Runtime environment: The fresh and final base image
@@ -37,8 +37,7 @@ FROM python:${PYTHON_VERSION}-slim-bookworm
 COPY --from=builder dist/*.whl .
 
 # Install the built `flyteidl-rust` Python package locally
-# RUN pip install *.whl
-RUN pip install -i https://test.pypi.org/simple/ flyteidl-rust
+RUN pip install *.whl
 
 
 MAINTAINER Flyte Team <users@flyte.org>
