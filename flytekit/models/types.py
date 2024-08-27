@@ -420,7 +420,7 @@ class LiteralType(_common.FlyteIdlEntity):
         if isinstance(proto.type, flyteidl.literal_type.Type.MapValueType):
             map_value_type = cls.from_flyte_idl(proto.type[0])
         return cls(
-            simple=proto.type[0] if isinstance(proto.type, flyteidl.literal_type.Type.Simple) else None,
+            simple=proto.type if isinstance(proto.type, flyteidl.literal_type.Type.Simple) else None,
             schema=SchemaType.from_flyte_idl(proto.type[0])
             if isinstance(proto.type, flyteidl.literal_type.Type.Schema)
             else None,
@@ -429,7 +429,7 @@ class LiteralType(_common.FlyteIdlEntity):
             blob=_core_types.BlobType.from_flyte_idl(proto.type[0])
             if isinstance(proto.type, flyteidl.literal_type.Type.Blob)
             else None,
-            enum_type=_core_types.EnumType.from_flyte_idl(proto.type)[0]
+            enum_type=_core_types.EnumType.from_flyte_idl(proto.type[0])
             if isinstance(proto.type, flyteidl.literal_type.Type.EnumType)
             else None,
             union_type=UnionType.from_flyte_idl(proto.type[0])

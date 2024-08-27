@@ -1528,7 +1528,6 @@ class UnionTransformer(TypeTransformer[T]):
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> Optional[typing.Any]:
         expected_python_type = get_underlying_type(expected_python_type)
-
         union_tag = None
         union_type = None
         if lv.scalar is not None and lv.scalar.union is not None:

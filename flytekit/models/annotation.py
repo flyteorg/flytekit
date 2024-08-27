@@ -38,7 +38,7 @@ class TypeAnnotation:
         :rtype: TypeAnnotation
         """
         import json
-        return cls(annotations=json.loads(flyteidl.DumpStruct(proto.annotations[0])))
+        return cls(annotations=json.loads(flyteidl.DumpStruct(proto.annotations)))
 
     def __eq__(self, x: object) -> bool:
         if not isinstance(x, self.__class__):
