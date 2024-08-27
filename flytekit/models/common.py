@@ -1,6 +1,9 @@
 import abc
 import json
-import re
+import os
+from contextlib import closing
+from io import StringIO
+from textwrap import shorten
 from typing import Dict
 
 from flyteidl.admin import common_pb2 as _common_pb2
@@ -40,6 +43,29 @@ class FlyteType(FlyteABCMeta):
         pass
 
 
+def _repr_idl_yaml_like(idl, indent=0) -> str:
+    """Formats an IDL into a YAML-like representation."""
+    if not hasattr(idl, "ListFields"):
+        return str(idl)
+
+    with closing(StringIO()) as out:
+        for descriptor, field in idl.ListFields():
+            try:
+                inner_fields = field.ListFields()
+                # if inner_fields is empty, then we do not render the descriptor,
+                # because it is empty
+                if inner_fields:
+                    out.write(" " * indent + descriptor.name + ":" + os.linesep)
+                    out.write(_repr_idl_yaml_like(field, indent + 2))
+            except AttributeError:
+                # No ListFields -> Must be a scalar
+                str_repr = shorten(str(field).strip(), width=80)
+                if str_repr:
+                    out.write(" " * indent + descriptor.name + ": " + str_repr + os.linesep)
+
+        return out.getvalue()
+
+
 class FlyteIdlEntity(object, metaclass=FlyteType):
     def __eq__(self, other):
         return isinstance(other, FlyteIdlEntity) and other.to_flyte_idl() == self.to_flyte_idl()
@@ -60,9 +86,9 @@ class FlyteIdlEntity(object, metaclass=FlyteType):
         """
         :rtype: Text
         """
-        literal_str = re.sub(r"\s+", " ", str(self.to_flyte_idl())).strip()
+        str_repr = _repr_idl_yaml_like(self.to_flyte_idl(), indent=2).rstrip(os.linesep)
         type_str = type(self).__name__
-        return f"[Flyte Serialized object: Type: <{type_str}> Value: <{literal_str}>]"
+        return f"Flyte Serialized object ({type_str}):" + os.linesep + str_repr
 
     def verbose_string(self):
         """
@@ -72,6 +98,14 @@ class FlyteIdlEntity(object, metaclass=FlyteType):
 
     def serialize_to_string(self) -> str:
         return self.to_flyte_idl().SerializeToString()
+
+    def _repr_html_(self) -> str:
+        """HTML repr for object."""
+        # `_repr_html_` is used by Jupyter to render objects
+        type_str = type(self).__name__
+        idl = self.to_flyte_idl()
+        str_repr = _repr_idl_yaml_like(idl).rstrip(os.linesep)
+        return f"<h4>{type_str}</h4><pre>{str_repr}</pre>"
 
     @property
     def is_empty(self):
