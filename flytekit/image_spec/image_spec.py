@@ -3,6 +3,7 @@ import copy
 import hashlib
 import os
 import pathlib
+import re
 import typing
 from abc import abstractmethod
 from dataclasses import asdict, dataclass
@@ -79,6 +80,23 @@ class ImageSpec:
         if self.registry:
             self.registry = self.registry.lower()
 
+        parameters_str_list = [
+            "packages",
+            "conda_channels",
+            "conda_packages",
+            "apt_packages",
+            "pip_extra_index_url",
+            "entrypoint",
+            "commands",
+        ]
+        for parameter in parameters_str_list:
+            attr = getattr(self, parameter)
+            parameter_is_None = attr is None
+            parameter_is_list_string = isinstance(attr, list) and all(isinstance(v, str) for v in attr)
+            if not (parameter_is_None or parameter_is_list_string):
+                error_msg = f"{parameter} must be a list of strings or None"
+                raise ValueError(error_msg)
+
     def image_name(self) -> str:
         """Full image name with tag."""
         image_name = self._image_name()
@@ -124,6 +142,10 @@ class ImageSpec:
             return True
         except APIError as e:
             if e.response.status_code == 404:
+                return False
+
+            if re.match(f"unknown: repository .*{self.name} not found", e.explanation):
+                click.secho(f"Received 500 error with explanation: {e.explanation}", fg="yellow")
                 return False
 
             click.secho(f"Failed to check if the image exists with error:\n {e}", fg="red")

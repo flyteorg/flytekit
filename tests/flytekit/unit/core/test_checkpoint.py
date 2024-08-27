@@ -5,7 +5,7 @@ import pytest
 
 import flytekit
 from flytekit.core.checkpointer import SyncCheckpoint
-from flytekit.exceptions.user import FlyteAssertion
+from flytekit.exceptions.user import FlyteDataNotFoundException
 
 
 def test_sync_checkpoint_write(tmpdir):
@@ -90,10 +90,10 @@ def test_sync_checkpoint_restore_corrupt(tmpdir):
     prev.unlink()
     src.rmdir()
 
-    with pytest.raises(FlyteAssertion):
+    with pytest.raises(FlyteDataNotFoundException):
         cp.restore(user_dest)
 
-    with pytest.raises(FlyteAssertion):
+    with pytest.raises(FlyteDataNotFoundException):
         cp.restore(user_dest)
 
 

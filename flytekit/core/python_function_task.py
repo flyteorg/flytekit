@@ -269,7 +269,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
                 # require a network call to flyteadmin to populate the TaskTemplate
                 # model
                 if isinstance(entity, ReferenceTask):
-                    raise Exception("Reference tasks are currently unsupported within dynamic tasks")
+                    raise ValueError("Reference tasks are currently unsupported within dynamic tasks")
 
                 if not isinstance(model, task_models.TaskSpec):
                     raise TypeError(
@@ -308,7 +308,12 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
             # local_execute directly though since that converts inputs into Promises.
             logger.debug(f"Executing Dynamic workflow, using raw inputs {kwargs}")
             self._create_and_cache_dynamic_workflow()
-            function_outputs = cast(PythonFunctionWorkflow, self._wf).execute(**kwargs)
+            if self.execution_mode == self.ExecutionBehavior.DYNAMIC:
+                es = ctx.new_execution_state().with_params(mode=ExecutionState.Mode.DYNAMIC_TASK_EXECUTION)
+            else:
+                es = cast(ExecutionState, ctx.execution_state)
+            with FlyteContextManager.with_context(ctx.with_execution_state(es)):
+                function_outputs = cast(PythonFunctionWorkflow, self._wf).execute(**kwargs)
 
             if isinstance(function_outputs, VoidPromise) or function_outputs is None:
                 return VoidPromise(self.name)

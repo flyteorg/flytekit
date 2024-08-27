@@ -7,20 +7,37 @@ import numpy as np
 from typing_extensions import Annotated, get_args, get_origin
 
 from flytekit.core.context_manager import FlyteContext
-from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
+from flytekit.core.hash import HashMethod
+from flytekit.core.type_engine import (
+    TypeEngine,
+    TypeTransformer,
+    TypeTransformerFailedError,
+)
 from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 
 
 def extract_metadata(t: Type[np.ndarray]) -> Tuple[Type[np.ndarray], Dict[str, bool]]:
-    metadata = {}
+    metadata: dict = {}
+    metadata_set = False
+
     if get_origin(t) is Annotated:
-        base_type, metadata = get_args(t)
-        if isinstance(metadata, OrderedDict):
-            return base_type, metadata
-        else:
-            raise TypeTransformerFailedError(f"{t}'s metadata needs to be of type kwtypes.")
+        base_type, *annotate_args = get_args(t)
+
+        for aa in annotate_args:
+            if isinstance(aa, OrderedDict):
+                if metadata_set:
+                    raise TypeTransformerFailedError(f"Metadata {metadata} is already specified, cannot use {aa}.")
+                metadata = aa
+                metadata_set = True
+            elif isinstance(aa, HashMethod):
+                continue
+            else:
+                raise TypeTransformerFailedError(f"The metadata for {t} must be of type kwtypes or HashMethod.")
+        return base_type, metadata
+
+    # Return the type itself if no metadata was found.
     return t, metadata
 
 
@@ -37,18 +54,24 @@ class NumpyArrayTransformer(TypeTransformer[np.ndarray]):
     def get_literal_type(self, t: Type[np.ndarray]) -> LiteralType:
         return LiteralType(
             blob=_core_types.BlobType(
-                format=self.NUMPY_ARRAY_FORMAT, dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
+                format=self.NUMPY_ARRAY_FORMAT,
+                dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
             )
         )
 
     def to_literal(
-        self, ctx: FlyteContext, python_val: np.ndarray, python_type: Type[np.ndarray], expected: LiteralType
+        self,
+        ctx: FlyteContext,
+        python_val: np.ndarray,
+        python_type: Type[np.ndarray],
+        expected: LiteralType,
     ) -> Literal:
         python_type, metadata = extract_metadata(python_type)
 
         meta = BlobMetadata(
             type=_core_types.BlobType(
-                format=self.NUMPY_ARRAY_FORMAT, dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
+                format=self.NUMPY_ARRAY_FORMAT,
+                dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
             )
         )
 
@@ -56,7 +79,11 @@ class NumpyArrayTransformer(TypeTransformer[np.ndarray]):
         pathlib.Path(local_path).parent.mkdir(parents=True, exist_ok=True)
 
         # save numpy array to file
-        np.save(file=local_path, arr=python_val, allow_pickle=metadata.get("allow_pickle", False))
+        np.save(
+            file=local_path,
+            arr=python_val,
+            allow_pickle=metadata.get("allow_pickle", False),
+        )
         remote_path = ctx.file_access.put_raw_data(local_path)
         return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
 

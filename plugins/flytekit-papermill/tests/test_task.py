@@ -4,8 +4,10 @@ import shutil
 import tempfile
 import typing
 from unittest import mock
+import pytest
 
 import pandas as pd
+from flytekit.core.pod_template import PodTemplate
 from click.testing import CliRunner
 from flytekitplugins.awsbatch import AWSBatchConfig
 from flytekitplugins.papermill import NotebookTask
@@ -147,16 +149,27 @@ def generate_por_spec_for_task():
     return pod_spec
 
 
-nb = NotebookTask(
+nb_pod = NotebookTask(
     name="test",
     task_config=Pod(pod_spec=generate_por_spec_for_task(), primary_container_name="primary"),
     notebook_path=_get_nb_path("nb-simple", abs=False),
     inputs=kwtypes(h=str, n=int, w=str),
     outputs=kwtypes(h=str, w=PythonNotebook, x=X),
 )
+nb_pod_template = NotebookTask(
+    name="test",
+    pod_template=PodTemplate(pod_spec=generate_por_spec_for_task(), primary_container_name="primary"),
+    notebook_path=_get_nb_path("nb-simple", abs=False),
+    inputs=kwtypes(h=str, n=int, w=str),
+    outputs=kwtypes(h=str, w=PythonNotebook, x=X),
+)
 
 
-def test_notebook_pod_task():
+@pytest.mark.parametrize("nb_task", [
+    nb_pod,
+    nb_pod_template,
+])
+def test_notebook_pod_task(nb_task):
     serialization_settings = flytekit.configuration.SerializationSettings(
         project="project",
         domain="domain",
@@ -165,12 +178,92 @@ def test_notebook_pod_task():
         image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
     )
 
-    assert nb.get_container(serialization_settings) is None
-    assert nb.get_config(serialization_settings)["primary_container_name"] == "primary"
+    assert nb_task.get_container(serialization_settings) is None
+    assert nb_task.get_config(serialization_settings)["primary_container_name"] == "primary"
     assert (
-        nb.get_command(serialization_settings)
-        == nb.get_k8s_pod(serialization_settings).pod_spec["containers"][0]["args"]
+        nb_task.get_command(serialization_settings)
+        == nb_task.get_k8s_pod(serialization_settings).pod_spec["containers"][0]["args"]
     )
+
+
+@pytest.mark.parametrize("nb_task, name", [
+    (nb_pod, "nb_pod"),
+    (nb_pod_template, "nb_pod_template"),
+])
+def test_notebook_pod_override(nb_task, name):
+    serialization_settings = flytekit.configuration.SerializationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env=None,
+        image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+    )
+
+    @task
+    def t1():
+        ...
+
+    assert t1.get_container(serialization_settings).args == [
+        "pyflyte-execute",
+        "--inputs",
+        "{{.input}}",
+        "--output-prefix",
+        "{{.outputPrefix}}",
+        "--raw-output-data-prefix",
+        "{{.rawOutputDataPrefix}}",
+        "--checkpoint-path",
+        "{{.checkpointOutputPrefix}}",
+        "--prev-checkpoint",
+        "{{.prevCheckpointPrefix}}",
+        "--resolver",
+        "flytekit.core.python_auto_container.default_task_resolver",
+        "--",
+        "task-module",
+        "tests.test_task",
+        "task-name",
+        "t1",
+    ]
+    assert nb_task.get_k8s_pod(serialization_settings).pod_spec["containers"][0]["args"] == [
+        "pyflyte-execute",
+        "--inputs",
+        "{{.input}}",
+        "--output-prefix",
+        "{{.outputPrefix}}",
+        "--raw-output-data-prefix",
+        "{{.rawOutputDataPrefix}}",
+        "--checkpoint-path",
+        "{{.checkpointOutputPrefix}}",
+        "--prev-checkpoint",
+        "{{.prevCheckpointPrefix}}",
+        "--resolver",
+        "flytekit.core.python_auto_container.default_task_resolver",
+        "--",
+        "task-module",
+        "tests.test_task",
+        "task-name",
+        f"{name}",
+    ]
+    assert t1.get_container(serialization_settings).args == [
+        "pyflyte-execute",
+        "--inputs",
+        "{{.input}}",
+        "--output-prefix",
+        "{{.outputPrefix}}",
+        "--raw-output-data-prefix",
+        "{{.rawOutputDataPrefix}}",
+        "--checkpoint-path",
+        "{{.checkpointOutputPrefix}}",
+        "--prev-checkpoint",
+        "{{.prevCheckpointPrefix}}",
+        "--resolver",
+        "flytekit.core.python_auto_container.default_task_resolver",
+        "--",
+        "task-module",
+        "tests.test_task",
+        "task-name",
+        # Confirm that task name is correctly pointing to t1
+        "t1",
+    ]
 
 
 nb_batch = NotebookTask(
@@ -208,6 +301,79 @@ def test_notebook_batch_task():
         "task-name",
         "nb_batch",
     ]
+
+
+def test_overriding_task_resolver_loader_args():
+    serialization_settings = flytekit.configuration.SerializationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env=None,
+        image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+    )
+
+    @task
+    def t1():
+        ...
+
+    assert t1.get_container(serialization_settings).args == [
+        "pyflyte-execute",
+        "--inputs",
+        "{{.input}}",
+        "--output-prefix",
+        "{{.outputPrefix}}",
+        "--raw-output-data-prefix",
+        "{{.rawOutputDataPrefix}}",
+        "--checkpoint-path",
+        "{{.checkpointOutputPrefix}}",
+        "--prev-checkpoint",
+        "{{.prevCheckpointPrefix}}",
+        "--resolver",
+        "flytekit.core.python_auto_container.default_task_resolver",
+        "--",
+        "task-module",
+        "tests.test_task",
+        "task-name",
+        "t1",
+    ]
+    assert nb_batch.get_container(serialization_settings).args == [
+        "pyflyte-execute",
+        "--inputs",
+        "{{.input}}",
+        "--output-prefix",
+        "{{.outputPrefix}}/0",
+        "--raw-output-data-prefix",
+        "{{.rawOutputDataPrefix}}",
+        "--resolver",
+        "flytekit.core.python_auto_container.default_task_resolver",
+        "--",
+        "task-module",
+        "tests.test_task",
+        "task-name",
+        "nb_batch",
+    ]
+    assert t1.get_container(serialization_settings).args == [
+        "pyflyte-execute",
+        "--inputs",
+        "{{.input}}",
+        "--output-prefix",
+        "{{.outputPrefix}}",
+        "--raw-output-data-prefix",
+        "{{.rawOutputDataPrefix}}",
+        "--checkpoint-path",
+        "{{.checkpointOutputPrefix}}",
+        "--prev-checkpoint",
+        "{{.prevCheckpointPrefix}}",
+        "--resolver",
+        "flytekit.core.python_auto_container.default_task_resolver",
+        "--",
+        "task-module",
+        "tests.test_task",
+        "task-name",
+        # Confirm that task name is correctly pointing to t1
+        "t1",
+    ]
+
 
 
 def test_flyte_types():

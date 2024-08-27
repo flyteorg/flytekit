@@ -4,7 +4,7 @@ from typing import Union
 import grpc
 
 from flytekit.exceptions.base import FlyteException
-from flytekit.exceptions.system import FlyteSystemException
+from flytekit.exceptions.system import FlyteSystemException, FlyteSystemUnavailableException
 from flytekit.exceptions.user import (
     FlyteAuthenticationException,
     FlyteEntityAlreadyExistsException,
@@ -28,6 +28,8 @@ class RetryExceptionWrapperInterceptor(grpc.UnaryUnaryClientInterceptor, grpc.Un
                 raise FlyteEntityNotExistException() from e
             elif e.code() == grpc.StatusCode.INVALID_ARGUMENT:
                 raise FlyteInvalidInputException(request) from e
+            elif e.code() == grpc.StatusCode.UNAVAILABLE:
+                raise FlyteSystemUnavailableException() from e
         raise FlyteSystemException() from e
 
     def intercept_unary_unary(self, continuation, client_call_details, request):
