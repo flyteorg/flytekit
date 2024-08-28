@@ -1,3 +1,4 @@
+from dataclasses import field
 import json
 import tempfile
 import typing
@@ -270,3 +271,230 @@ def test_dataclass_type():
     assert v.y == "2"
     assert v.z == {1: "one", 2: "two"}
     assert v.w == [1, 2, 3]
+
+
+def test_nested_dataclass_type():
+    from dataclasses import dataclass
+
+    @dataclass
+    class Datum:
+        w: int
+        x: str = "default"
+        y: typing.Dict[str, str] = field(default_factory=lambda: {"key": "value"})
+        z: typing.List[int] = field(default_factory=lambda: [1, 2, 3])
+
+    @dataclass
+    class NestedDatum:
+        w: Datum
+        x: typing.List[Datum]
+        y: typing.Dict[str, Datum] = field(default_factory=lambda: {"key": Datum(1)})
+
+
+    # typing.List[Datum]
+    value = '[{ "w": 1 }]'
+    t = JsonParamType(typing.List[Datum])
+    v = t.convert(value=value, param=None, ctx=None)
+
+    ctx = FlyteContextManager.current_context()
+    lt = TypeEngine.to_literal_type(typing.List[Datum])
+    literal_converter = FlyteLiteralConverter(
+        ctx, literal_type=lt, python_type=typing.List[Datum], is_remote=False
+    )
+    v = literal_converter.convert(ctx, None, v)
+
+    assert v[0].w == 1
+    assert v[0].x == "default"
+    assert v[0].y == {"key": "value"}
+    assert v[0].z == [1, 2, 3]
+
+    # typing.Dict[str, Datum]
+    value = '{ "x": { "w": 1 } }'
+    t = JsonParamType(typing.Dict[str, Datum])
+    v = t.convert(value=value, param=None, ctx=None)
+    ctx = FlyteContextManager.current_context()
+    lt = TypeEngine.to_literal_type(typing.Dict[str, Datum])
+    literal_converter = FlyteLiteralConverter(
+        ctx, literal_type=lt, python_type=typing.Dict[str, Datum], is_remote=False
+    )
+    v = literal_converter.convert(ctx, None, v)
+
+    assert v["x"].w == 1
+    assert v["x"].x == "default"
+    assert v["x"].y == {"key": "value"}
+    assert v["x"].z == [1, 2, 3]
+
+    # typing.List[NestedDatum]
+    value = '[{"w":{ "w" : 1 },"x":[{ "w" : 1 }]}]'
+    t = JsonParamType(typing.List[NestedDatum])
+    v = t.convert(value=value, param=None, ctx=None)
+    ctx = FlyteContextManager.current_context()
+    lt = TypeEngine.to_literal_type(typing.List[NestedDatum])
+    literal_converter = FlyteLiteralConverter(
+        ctx, literal_type=lt, python_type=typing.List[NestedDatum], is_remote=False
+    )
+    v = literal_converter.convert(ctx, None, v)
+
+    assert v[0].w.w == 1
+    assert v[0].w.x == "default"
+    assert v[0].w.y == {"key": "value"}
+    assert v[0].w.z == [1, 2, 3]
+    assert v[0].x[0].w == 1
+    assert v[0].x[0].x == "default"
+    assert v[0].x[0].y == {"key": "value"}
+    assert v[0].x[0].z == [1, 2, 3]
+
+    # typing.List[typing.List[Datum]]
+    value = '[[{ "w": 1 }]]'
+    t = JsonParamType(typing.List[typing.List[Datum]])
+    v = t.convert(value=value, param=None, ctx=None)
+    ctx = FlyteContextManager.current_context()
+    lt = TypeEngine.to_literal_type(typing.List[typing.List[Datum]])
+    literal_converter = FlyteLiteralConverter(
+        ctx, literal_type=lt, python_type=typing.List[typing.List[Datum]], is_remote=False
+    )
+    v = literal_converter.convert(ctx, None, v)
+
+    assert v[0][0].w == 1
+    assert v[0][0].x == "default"
+    assert v[0][0].y == {"key": "value"}
+    assert v[0][0].z == [1, 2, 3]
+
+def test_dataclass_with_default_none():
+    from dataclasses import dataclass
+
+    @dataclass
+    class Datum:
+        x: int
+        y: str = None
+        z: typing.Dict[int, str] = None
+        w: typing.List[int] = None
+
+    t = JsonParamType(Datum)
+    value = '{ "x": 1 }'
+    v = t.convert(value=value, param=None, ctx=None)
+    lt = TypeEngine.to_literal_type(Datum)
+    ctx = FlyteContextManager.current_context()
+    literal_converter = FlyteLiteralConverter(
+        ctx, literal_type=lt, python_type=Datum, is_remote=False
+    )
+    v = literal_converter.convert(ctx=ctx, param=None, value=v)
+
+    assert v.x == 1
+    assert v.y is None
+    assert v.z is None
+    assert v.w is None
+
+
+def test_dataclass_with_flyte_type_exception():
+    from dataclasses import dataclass
+    from flytekit import StructuredDataset
+    from flytekit.types.directory import FlyteDirectory
+    from flytekit.types.file import FlyteFile
+    import os
+
+    DIR_NAME = os.path.dirname(os.path.realpath(__file__))
+    parquet_file = os.path.join(DIR_NAME, "testdata/df.parquet")
+
+    @dataclass
+    class Datum:
+        x: FlyteFile
+        y: FlyteDirectory
+        z: StructuredDataset
+
+    t = JsonParamType(Datum)
+    value = { "x": parquet_file, "y": DIR_NAME, "z": os.path.join(DIR_NAME, "testdata")}
+
+    with pytest.raises(AttributeError):
+        t.convert(value=value, param=None, ctx=None)
+
+def test_dataclass_with_optional_fields():
+    from dataclasses import dataclass
+    from typing import Optional
+
+    @dataclass
+    class Datum:
+        x: int
+        y: Optional[str] = None
+        z: Optional[typing.Dict[int, str]] = None
+        w: Optional[typing.List[int]] = None
+
+    t = JsonParamType(Datum)
+    value = '{ "x": 1 }'
+    v = t.convert(value=value, param=None, ctx=None)
+    lt = TypeEngine.to_literal_type(Datum)
+    ctx = FlyteContextManager.current_context()
+    literal_converter = FlyteLiteralConverter(
+        ctx, literal_type=lt, python_type=Datum, is_remote=False
+    )
+    v = literal_converter.convert(ctx=ctx, param=None, value=v)
+
+    # Assertions to check the Optional fields
+    assert v.x == 1
+    assert v.y is None  # Optional field with no value provided
+    assert v.z is None  # Optional field with no value provided
+    assert v.w is None  # Optional field with no value provided
+
+    # Test with all fields provided
+    value = '{ "x": 2, "y": "test", "z": {"1": "value"}, "w": [1, 2, 3] }'
+    v = t.convert(value=value, param=None, ctx=None)
+    v = literal_converter.convert(ctx=ctx, param=None, value=v)
+
+    assert v.x == 2
+    assert v.y == "test"
+    assert v.z == {1: "value"}
+    assert v.w == [1, 2, 3]
+
+def test_nested_dataclass_with_optional_fields():
+    from dataclasses import dataclass
+    from typing import Optional, List, Dict
+
+    @dataclass
+    class InnerDatum:
+        a: int
+        b: Optional[str] = None
+
+    @dataclass
+    class Datum:
+        x: int
+        y: Optional[InnerDatum] = None
+        z: Optional[Dict[str, InnerDatum]] = None
+        w: Optional[List[InnerDatum]] = None
+
+    t = JsonParamType(Datum)
+
+    # Case 1: Only required field provided
+    value = '{ "x": 1 }'
+    v = t.convert(value=value, param=None, ctx=None)
+    lt = TypeEngine.to_literal_type(Datum)
+    ctx = FlyteContextManager.current_context()
+    literal_converter = FlyteLiteralConverter(
+        ctx, literal_type=lt, python_type=Datum, is_remote=False
+    )
+    v = literal_converter.convert(ctx=ctx, param=None, value=v)
+
+    # Assertions to check the Optional fields
+    assert v.x == 1
+    assert v.y is None  # Optional field with no value provided
+    assert v.z is None  # Optional field with no value provided
+    assert v.w is None  # Optional field with no value provided
+
+    # Case 2: All fields provided with nested structures
+    value = '''
+    {
+        "x": 2,
+        "y": {"a": 10, "b": "inner"},
+        "z": {"key": {"a": 20, "b": "nested"}},
+        "w": [{"a": 30, "b": "list_item"}]
+    }
+    '''
+    v = t.convert(value=value, param=None, ctx=None)
+    v = literal_converter.convert(ctx=ctx, param=None, value=v)
+
+    # Assertions for nested structure
+    assert v.x == 2
+    assert v.y.a == 10
+    assert v.y.b == "inner"
+    assert v.z["key"].a == 20
+    assert v.z["key"].b == "nested"
+    assert v.w[0].a == 30
+    assert v.w[0].b == "list_item"

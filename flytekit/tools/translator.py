@@ -24,7 +24,6 @@ from flytekit.core.reference_entity import ReferenceEntity, ReferenceSpec, Refer
 from flytekit.core.task import ReferenceTask
 from flytekit.core.utils import ClassDecorator, _dnsify
 from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase
-from flytekit.image_spec.image_spec import _calculate_deduped_hash_from_image_spec
 from flytekit.models import common as _common_models
 from flytekit.models import common as common_models
 from flytekit.models import interface as interface_models
@@ -188,9 +187,7 @@ def get_serializable_task(
                     if settings.image_config.images is None:
                         settings.image_config = ImageConfig.create_from(settings.image_config.default_image)
                     settings.image_config.images.append(
-                        Image.look_up_image_info(
-                            _calculate_deduped_hash_from_image_spec(e.container_image), e.get_image(settings)
-                        )
+                        Image.look_up_image_info(e.container_image.id, e.get_image(settings))
                     )
 
         # In case of Dynamic tasks, we want to pass the serialization context, so that they can reconstruct the state

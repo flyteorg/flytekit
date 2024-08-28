@@ -1753,9 +1753,20 @@ def test_union_type(exec_prefix):
     with pytest.raises(
         TypeError,
         match=re.escape(
+<<<<<<< HEAD
             f"Error encountered while converting inputs of '{exec_prefix}tests.flytekit.unit.core.test_type_hints.t2':\n"
             '  Cannot convert from [Flyte Serialized object: Type: <Literal> Value: <scalar { union { value { scalar { primitive { string_value: "2" } } } '
             'type { simple: STRING structure { tag: "str" } } } }>] to typing.Union[float, dict] (using tag str)'
+||||||| e28c8bf29
+            "Error encountered while executing 'wf2':\n"
+            f"  Failed to convert inputs of task '{prefix}tests.flytekit.unit.core.test_type_hints.t2':\n"
+            '  Cannot convert from [Flyte Serialized object: Type: <Literal> Value: <scalar { union { value { scalar { primitive { string_value: "2" } } } '
+            'type { simple: STRING structure { tag: "str" } } } }>] to typing.Union[float, dict] (using tag str)'
+=======
+            "Error encountered while executing 'wf2':\n"
+            f"  Failed to convert inputs of task '{prefix}tests.flytekit.unit.core.test_type_hints.t2':\n"
+            r'  Cannot convert from Flyte Serialized object (Literal):'
+>>>>>>> fdb2d7911ef907e248b1bc8a43cab11d794da325
         ),
     ):
         assert wf2(a="2") == "2"
