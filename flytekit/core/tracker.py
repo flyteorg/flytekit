@@ -33,16 +33,14 @@ class InstanceTrackingMeta(type):
 
     @staticmethod
     def _get_module_from_main(globals) -> Optional[str]:
-        curdir = Path.cwd()
         file = globals.get("__file__")
         if file is None:
             return None
 
         file = Path(file)
         try:
-            root_dir = os.path.commonpath([file.resolve(), curdir.resolve()])
+            root_dir = os.path.commonpath([file.resolve(), Path.cwd()])
             file_relative = Path(os.path.relpath(file.resolve(), root_dir))
-            curdir = Path(root_dir)
         except ValueError:
             return None
 
@@ -51,8 +49,8 @@ class InstanceTrackingMeta(type):
         if len(module_components) == 0:
             return None
 
-        # make sure current directory is in the PYTHONPATH.
-        sys.path.insert(0, str(curdir))
+        # make sure /root directory is in the PYTHONPATH.
+        sys.path.insert(0, root_dir)
         try:
             return import_module_from_file(module_name, file)
         except ModuleNotFoundError:
