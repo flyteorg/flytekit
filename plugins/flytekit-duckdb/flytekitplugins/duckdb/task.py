@@ -57,6 +57,17 @@ class DuckDBQuery(PythonInstanceTask):
 
         DuckDBQuery(..., provider=custom_connect_motherduck)
 
+        Also note that a query can be provided at runtime if query=None is provided.
+
+        duckdb_query = DuckDBQuery(
+            name="my_duckdb_query",
+            inputs=kwtypes(query=str)
+        )
+
+        @workflow
+        def wf(user_query: str) -> pd.DataFrame:
+            return duckdb_query(query=user_query)
+
         Args:
             name: Name of the task
             query: DuckDB query to execute
@@ -69,7 +80,14 @@ class DuckDBQuery(PythonInstanceTask):
         self._connect_secret = None
         if secret_requests:
             assert len(secret_requests) == 1, "Only one secret can be used for a DuckDBQuery task."
-            self._connect_secret = secret_requests[0] if secret_requests else None
+            self._connect_secret = secret_requests[0]
+
+        if (
+            self._connect_secret is None
+            and isinstance(self._provider, DuckDBProvider)
+            and self._provider != DuckDBProvider.LOCAL
+        ):
+            raise MissingSecretError(f"A secret_requests must be provided for the {self._provider.name} provider.")
 
         outputs = {"result": StructuredDataset}
 
@@ -96,8 +114,6 @@ class DuckDBQuery(PythonInstanceTask):
                 group_version=self._connect_secret.group_version,
             )
         if isinstance(self._provider, DuckDBProvider):
-            if not connect_token and self._provider != DuckDBProvider.LOCAL:
-                raise MissingSecretError(f"A secret_requests must be provided for the {self._provider.name} provider.")
             return self._provider.value(connect_token)
         else:  # callable
             return self._provider(connect_token)
