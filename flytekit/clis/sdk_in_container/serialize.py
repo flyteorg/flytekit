@@ -8,7 +8,6 @@ import rich_click as click
 from flytekit.clis.sdk_in_container import constants
 from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
 from flytekit.configuration import FastSerializationSettings, ImageConfig, SerializationSettings
-from flytekit.exceptions.scopes import system_entry_point
 from flytekit.interaction.click_types import key_value_callback
 from flytekit.tools.fast_registration import fast_package
 from flytekit.tools.repo import serialize_to_folder
@@ -25,7 +24,6 @@ class SerializationMode(Enum):
     FAST = 1
 
 
-@system_entry_point
 def serialize_all(
     pkgs: typing.List[str] = None,
     local_source_root: typing.Optional[str] = None,
