@@ -130,7 +130,7 @@ class ImageSpec:
         # copy the image spec to avoid modifying the original image spec. otherwise, the hash will be different.
         spec = copy.deepcopy(self)
         if isinstance(spec.base_image, ImageSpec):
-            spec.base_image = spec.base_image.image_name()
+            spec = dataclasses.replace(spec, base_image=spec.base_image)
 
         if self.source_root:
             from flytekit.tools.fast_registration import compute_digest
@@ -138,20 +138,14 @@ class ImageSpec:
 
             ignore = IgnoreGroup(self.source_root, [GitIgnore, DockerIgnore, StandardIgnore])
             digest = compute_digest(self.source_root, ignore.is_ignored)
-            spec.source_root = digest
+            spec = dataclasses.replace(spec, source_root=digest)
 
         if spec.requirements:
-            spec.requirements = hashlib.sha1(pathlib.Path(spec.requirements).read_bytes().strip()).hexdigest()
+            requirements = hashlib.sha1(pathlib.Path(spec.requirements).read_bytes().strip()).hexdigest()
+            spec = dataclasses.replace(spec, requirements=requirements)
         # won't rebuild the image if we change the registry_config path
-        spec.registry_config = None
-        image_spec_dict = asdict(spec, dict_factory=lambda x: {k: v for (k, v) in x if v is not None})
-        image_spec_bytes = image_spec_dict.__str__().encode("utf-8")
-        tag = (
-            base64.urlsafe_b64encode(hashlib.md5(image_spec_bytes).digest())
-            .decode("ascii")
-            .rstrip("=")
-            .replace("-", "_")
-        )
+        spec = dataclasses.replace(spec, registry_config=None)
+        tag = spec.id.replace("-", "_")
         if self.tag_format:
             return self.tag_format.format(spec_hash=tag)
         return tag
