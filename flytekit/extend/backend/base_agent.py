@@ -272,7 +272,8 @@ class SyncAgentExecutorMixin:
                 agent.do, task_template=template, inputs=literal_map, output_prefix=output_prefix
             )
         except Exception as e:
-            raise FlyteUserException(f"Failed to run the task {self.name} with error: {e}") from None
+            e.args = (f"Failed to run the task {self.name} with error: {e.args[0]}",)
+            raise
 
 
 class AsyncAgentExecutorMixin:

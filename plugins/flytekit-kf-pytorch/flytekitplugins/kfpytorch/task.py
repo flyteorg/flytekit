@@ -206,7 +206,7 @@ class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
             replicas=replicas,
             image=replica_config.image,
             resources=resources.to_flyte_idl() if resources else None,
-            restart_policy=replica_config.restart_policy.value if replica_config.restart_policy else None,
+            restart_policy=(replica_config.restart_policy.value if replica_config.restart_policy else None),
         )
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
@@ -289,9 +289,11 @@ def spawn_helper(
         return ElasticWorkerResult(return_value=return_val, decks=flytekit.current_context().decks, om=om)
 
 
-def _convert_run_policy_to_flyte_idl(run_policy: RunPolicy) -> kubeflow_common.RunPolicy:
+def _convert_run_policy_to_flyte_idl(
+    run_policy: RunPolicy,
+) -> kubeflow_common.RunPolicy:
     return kubeflow_common.RunPolicy(
-        clean_pod_policy=run_policy.clean_pod_policy.value if run_policy.clean_pod_policy else None,
+        clean_pod_policy=(run_policy.clean_pod_policy.value if run_policy.clean_pod_policy else None),
         ttl_seconds_after_finished=run_policy.ttl_seconds_after_finished,
         active_deadline_seconds=run_policy.active_deadline_seconds,
         backoff_limit=run_policy.backoff_limit,
@@ -416,7 +418,13 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
                 checkpoint_dest = None
                 checkpoint_src = None
 
-            launcher_args = (dumped_target_function, ctx.raw_output_prefix, checkpoint_dest, checkpoint_src, kwargs)
+            launcher_args = (
+                dumped_target_function,
+                ctx.raw_output_prefix,
+                checkpoint_dest,
+                checkpoint_src,
+                kwargs,
+            )
         elif self.task_config.start_method == "fork":
             """
             The torch elastic launcher doesn't support passing kwargs to the target function,
@@ -440,7 +448,11 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
                     if isinstance(e, FlyteRecoverableException):
                         create_recoverable_error_file()
                     raise
-                return ElasticWorkerResult(return_value=return_val, decks=flytekit.current_context().decks, om=om)
+                return ElasticWorkerResult(
+                    return_value=return_val,
+                    decks=flytekit.current_context().decks,
+                    om=om,
+                )
 
             launcher_target_func = fn_partial
             launcher_args = ()
@@ -488,9 +500,8 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
 
         Handles the exception scope for the `_execute` method.
         """
-        from flytekit.exceptions import scopes as exception_scopes
 
-        return exception_scopes.user_entry_point(self._execute)(**kwargs)
+        return self._execute(**kwargs)
 
     def get_custom(self, settings: SerializationSettings) -> Optional[Dict[str, Any]]:
         if self.task_config.nnodes == 1:
