@@ -25,9 +25,9 @@ def annotate_exception_with_code(
 ) -> FlyteUserException:
     """
     Annotate the exception with the source code, and will be printed in the rich panel.
-    @param exception: The exception to be annotated.
-    @param fn: The function where the parameter is defined.
-    @param param_name: The name of the parameter in the function signature.
+    :param exception: The exception to be annotated.
+    :param fn: The function where the parameter is defined.
+    :param param_name: The name of the parameter in the function signature.
 
     For example:
         exception: TypeError, 'a' has no type. Please add a type annotation to the input parameter.

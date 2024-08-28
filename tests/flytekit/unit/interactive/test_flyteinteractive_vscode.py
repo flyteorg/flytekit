@@ -2,23 +2,17 @@ from collections import OrderedDict
 
 import mock
 import pytest
-from flytekitplugins.flyteinteractive import (
-    CODE_TOGETHER_CONFIG,
-    CODE_TOGETHER_EXTENSION,
-    COPILOT_CONFIG,
-    COPILOT_EXTENSION,
+from flytekit.interactive import (
     DEFAULT_CODE_SERVER_DIR_NAMES,
     DEFAULT_CODE_SERVER_EXTENSIONS,
     DEFAULT_CODE_SERVER_REMOTE_PATHS,
-    VIM_CONFIG,
-    VIM_EXTENSION,
     VscodeConfig,
     vscode,
 )
-from flytekitplugins.flyteinteractive.constants import (
+from flytekit.interactive.constants import (
     EXIT_CODE_SUCCESS,
 )
-from flytekitplugins.flyteinteractive.vscode_lib.decorator import (
+from flytekit.interactive.vscode_lib.decorator import (
     get_code_server_info,
     get_installed_extensions,
     is_extension_installed,
@@ -226,41 +220,6 @@ def test_vscode_config():
     assert config.code_server_remote_paths == DEFAULT_CODE_SERVER_REMOTE_PATHS
     assert config.code_server_dir_names == DEFAULT_CODE_SERVER_DIR_NAMES
     assert config.extension_remote_paths == DEFAULT_CODE_SERVER_EXTENSIONS
-
-    code_together_config = CODE_TOGETHER_CONFIG
-    assert code_together_config.code_server_remote_paths == DEFAULT_CODE_SERVER_REMOTE_PATHS
-    assert code_together_config.code_server_dir_names == DEFAULT_CODE_SERVER_DIR_NAMES
-    assert code_together_config.extension_remote_paths == DEFAULT_CODE_SERVER_EXTENSIONS + [CODE_TOGETHER_EXTENSION]
-
-    copilot_config = COPILOT_CONFIG
-    assert copilot_config.code_server_remote_paths == DEFAULT_CODE_SERVER_REMOTE_PATHS
-    assert copilot_config.code_server_dir_names == DEFAULT_CODE_SERVER_DIR_NAMES
-    assert copilot_config.extension_remote_paths == DEFAULT_CODE_SERVER_EXTENSIONS + [COPILOT_EXTENSION]
-
-    vim_config = VIM_CONFIG
-    assert vim_config.code_server_remote_paths == DEFAULT_CODE_SERVER_REMOTE_PATHS
-    assert vim_config.code_server_dir_names == DEFAULT_CODE_SERVER_DIR_NAMES
-    assert vim_config.extension_remote_paths == DEFAULT_CODE_SERVER_EXTENSIONS + [VIM_EXTENSION]
-
-    all_extensions_config = VscodeConfig()
-    all_extensions_config.add_extensions([CODE_TOGETHER_EXTENSION, COPILOT_EXTENSION, VIM_EXTENSION])
-    assert CODE_TOGETHER_EXTENSION in all_extensions_config.extension_remote_paths
-    assert COPILOT_EXTENSION in all_extensions_config.extension_remote_paths
-    assert VIM_EXTENSION in all_extensions_config.extension_remote_paths
-
-
-def test_vscode_config_add_extensions():
-    additional_extensions = [COPILOT_EXTENSION, VIM_EXTENSION, CODE_TOGETHER_EXTENSION]
-
-    config = VscodeConfig()
-    config.add_extensions(additional_extensions)
-
-    for extension in additional_extensions:
-        assert extension in config.extension_remote_paths
-
-    additional_extension = "test_str_extension"
-    config.add_extensions(additional_extension)
-    assert additional_extension in config.extension_remote_paths
 
 
 def test_vscode_with_args(vscode_patches, mock_remote_execution):
