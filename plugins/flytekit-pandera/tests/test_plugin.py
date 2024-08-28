@@ -1,3 +1,5 @@
+import os
+
 import pandas
 import pandera
 import pytest
@@ -70,9 +72,13 @@ def test_pandera_dataframe_type_hints():
     def wf_invalid_output(df: pandera.typing.DataFrame[InSchema]) -> pandera.typing.DataFrame[OutSchema]:
         return transform2_noop(df=transform1(df=df))
 
+    # pytest-xdist uses `__channelexec__` as the top-level module
+    running_xdist = os.environ.get("PYTEST_XDIST_WORKER") is not None
+    prefix = "__channelexec__." if running_xdist else ""
+
     with pytest.raises(
         TypeError,
-        match="Failed to convert outputs of task 'test_plugin.transform2_noop' at position 0.\nFailed to convert type <class 'pandas.core.frame.DataFrame'> to type pandera.typing.pandas.DataFrame",
+        match=f"Failed to convert outputs of task '{prefix}test_plugin.transform2_noop' at position 0.\nFailed to convert type <class 'pandas.core.frame.DataFrame'> to type pandera.typing.pandas.DataFrame",
     ):
         wf_invalid_output(df=valid_df)
 
