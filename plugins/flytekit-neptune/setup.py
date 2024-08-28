@@ -1,16 +1,11 @@
 from setuptools import setup
 
-PLUGIN_NAME = "great_expectations"
+PLUGIN_NAME = "neptune"
+
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = [
-    "flytekit>=1.5.0",
-    "great-expectations>=0.13.30,<1.0.0",
-    "sqlalchemy>=1.4.23",
-    "pyspark==3.3.1",
-    "s3fs<2023.6.0",
-]
+plugin_requires = ["flytekit>=1.13.3", "neptune>=1.10.4"]
 
 __version__ = "0.0.0+develop"
 
@@ -19,7 +14,7 @@ setup(
     version=__version__,
     author="flyteorg",
     author_email="admin@flyte.org",
-    description="Great Expectations Plugin for Flytekit",
+    description="This package enables seamless use of Neptune within Flyte",
     namespace_packages=["flytekitplugins"],
     packages=[f"flytekitplugins.{PLUGIN_NAME}"],
     install_requires=plugin_requires,
@@ -32,6 +27,8 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
         "Topic :: Scientific/Engineering",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Software Development",

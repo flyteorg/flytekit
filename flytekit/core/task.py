@@ -15,7 +15,7 @@ except ImportError:
 from flytekit.core import launch_plan as _annotated_launchplan
 from flytekit.core import workflow as _annotated_workflow
 from flytekit.core.base_task import PythonTask, TaskMetadata, TaskResolverMixin
-from flytekit.core.interface import transform_function_to_interface
+from flytekit.core.interface import Interface, output_name_generator, transform_function_to_interface
 from flytekit.core.pod_template import PodTemplate
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.reference_entity import ReferenceEntity, TaskReference
@@ -440,3 +440,44 @@ def decorate_function(fn: Callable[P, Any]) -> Callable[P, Any]:
         """
         return vscode(task_function=fn)
     return fn
+
+
+class Echo(PythonTask):
+    _TASK_TYPE = "echo"
+
+    def __init__(self, name: str, inputs: Optional[Dict[str, Type]] = None, **kwargs):
+        """
+        A task that simply echoes the inputs back to the user.
+        The task's inputs and outputs interface are the same.
+
+        FlytePropeller uses echo plugin to handle this task, and it won't create a pod for this task.
+        It will simply pass the inputs to the outputs.
+        https://github.com/flyteorg/flyte/blob/master/flyteplugins/go/tasks/plugins/testing/echo.go
+
+        Note: Make sure to enable the echo plugin in the propeller config to use this task.
+        ```
+        task-plugins:
+          enabled-plugins:
+            - echo
+        ```
+
+        :param name: The name of the task.
+        :param inputs: Name and type of inputs specified as a dictionary.
+            e.g. {"a": int, "b": str}.
+        :param kwargs: All other args required by the parent type - PythonTask.
+
+        """
+        outputs = dict(zip(output_name_generator(len(inputs)), inputs.values())) if inputs else None
+        super().__init__(
+            task_type=self._TASK_TYPE,
+            name=name,
+            interface=Interface(inputs=inputs, outputs=outputs),
+            **kwargs,
+        )
+
+    def execute(self, **kwargs) -> Any:
+        values = list(kwargs.values())
+        if len(values) == 1:
+            return values[0]
+        else:
+            return tuple(values)
