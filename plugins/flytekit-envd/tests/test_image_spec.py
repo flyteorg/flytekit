@@ -42,11 +42,10 @@ def test_image_spec():
     )
 
     image_spec = image_spec.with_commands("echo hello")
-
     ImageBuildEngine.build(image_spec)
+    image_spec.base_image = base_image.image_name()
     config_path = create_envd_config(image_spec)
     assert image_spec.platform == "linux/amd64"
-    image_name = image_spec.image_name()
     contents = Path(config_path).read_text()
     assert (
         contents
@@ -57,7 +56,7 @@ def build():
     run(commands=["echo hello"])
     install.python_packages(name=["pandas"])
     install.apt_packages(name=["git"])
-    runtime.environ(env={{'PYTHONPATH': '/root:', '_F_IMG_ID': '{image_name}'}}, extra_path=['/root'])
+    runtime.environ(env={{'PYTHONPATH': '/root:', '_F_IMG_ID': '{image_spec.id}'}}, extra_path=['/root'])
     config.pip_index(url="https://pypi.python.org/simple")
     install.python(version="3.8")
     io.copy(source="./", target="/root")
@@ -77,7 +76,6 @@ def test_image_spec_conda():
     EnvdImageSpecBuilder().build_image(image_spec)
     config_path = create_envd_config(image_spec)
     assert image_spec.platform == "linux/amd64"
-    image_name = image_spec.image_name()
     contents = Path(config_path).read_text()
     expected_contents = dedent(
         f"""\
@@ -88,7 +86,7 @@ def test_image_spec_conda():
         run(commands=[])
         install.python_packages(name=["flytekit"])
         install.apt_packages(name=[])
-        runtime.environ(env={{'PYTHONPATH': '/root:', '_F_IMG_ID': '{image_name}'}}, extra_path=['/root'])
+        runtime.environ(env={{'PYTHONPATH': '/root:', '_F_IMG_ID': '{image_spec.id}'}}, extra_path=['/root'])
         config.pip_index(url="https://pypi.org/simple")
         install.conda(use_mamba=True)
         install.conda_packages(name=["pytorch", "cpuonly"], channel=["pytorch"])
@@ -111,7 +109,6 @@ def test_image_spec_extra_index_url():
     EnvdImageSpecBuilder().build_image(image_spec)
     config_path = create_envd_config(image_spec)
     assert image_spec.platform == "linux/amd64"
-    image_name = image_spec.image_name()
     contents = Path(config_path).read_text()
     expected_contents = dedent(
         f"""\
@@ -122,7 +119,7 @@ def test_image_spec_extra_index_url():
         run(commands=[])
         install.python_packages(name=["-U pandas", "torch", "torchvision"])
         install.apt_packages(name=[])
-        runtime.environ(env={{'PYTHONPATH': '/root:', '_F_IMG_ID': '{image_name}'}}, extra_path=['/root'])
+        runtime.environ(env={{'PYTHONPATH': '/root:', '_F_IMG_ID': '{image_spec.id}'}}, extra_path=['/root'])
         config.pip_index(url="https://pypi.org/simple", extra_url="https://download.pytorch.org/whl/cpu https://pypi.anaconda.org/scientific-python-nightly-wheels/simple")
     """
     )
