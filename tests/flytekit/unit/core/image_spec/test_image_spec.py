@@ -13,6 +13,80 @@ REQUIREMENT_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "re
 REGISTRY_CONFIG_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "registry_config.json")
 
 
+def test_uilkj():
+
+
+    image_spec = ImageSpec(
+        name="FLYTEKIT",
+        builder="dummy",
+        packages=["pandas"],
+        apt_packages=["git"],
+        python_version="3.8",
+        registry="localhost:30001",
+        # base_image=base_image,
+        cuda="11.2.2",
+        cudnn="8",
+        requirements=REQUIREMENT_FILE,
+        registry_config=REGISTRY_CONFIG_FILE,
+        entrypoint=["/bin/bash"],
+    )
+    print(f"{image_spec.id=}")
+    print(f"{image_spec.tag=}")
+
+    @task(image_spec)
+    def t1(): ...
+
+    # cat > requirements.txt: add pandas
+    #
+
+    """
+    when you do non-fast register, package, serialize, with ImageSpec
+        * by default, the entire source root is copied into the image
+        * source root of IS, is set to SS.local source root
+
+    (add copy auto functionality)
+    non-fast register but copy auto for image spec
+    
+    (make sure this is still true)
+    when you do --copy none register, package, serialize, with ImageSpec
+        * by default, the entire source root is copied into the image
+
+    
+    when you do fast register, package, serialize, run
+        * no files copied into the image
+    
+    
+    """
+
+    image_spec2 = ImageSpec(
+        name="FLYTEKIT",
+        builder="dummy",
+        packages=["pandas"],
+        apt_packages=["git"],
+        python_version="3.8",
+        registry="localhost:30001",
+        # base_image=base_image,
+        cuda="11.2.2",
+        cudnn="8",
+        requirements=REQUIREMENT_FILE,
+        registry_config=REGISTRY_CONFIG_FILE,
+        source_root=".",
+        entrypoint=["/bin/bash"],
+    )
+    print(f"{image_spec2.id=}")
+    print(f"{image_spec2.tag=}")
+
+    @task(image_spec2)
+    def t2(): ...
+
+    # {image_specs.id: image_specs.tag}
+
+    # remote.register t1
+
+    # remote.register t2
+
+
+
 def test_image_spec(mock_image_spec_builder, monkeypatch):
     base_image = ImageSpec(name="base", builder="dummy", base_image="base_image")
 

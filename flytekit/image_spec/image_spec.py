@@ -56,7 +56,7 @@ class ImageSpec:
     name: str = "flytekit"
     python_version: str = None  # Use default python in the base image if None.
     builder: Optional[str] = None
-    source_root: Optional[str] = None
+    source_root: Optional[str] = None  # a.txt:auto
     env: Optional[typing.Dict[str, str]] = None
     registry: Optional[str] = None
     packages: Optional[List[str]] = None
