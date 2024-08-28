@@ -64,6 +64,15 @@ class FlyteDataNotFoundException(FlyteValueException):
         super(FlyteDataNotFoundException, self).__init__(path, "File not found")
 
 
+class FlyteEntityNotFoundException(FlyteValueException):
+    def __init__(self, module_name: str, entity_name: str):
+        self._module_name = module_name
+        self._entity_name = entity_name
+
+    def __str__(self):
+        return f"Task/Workflow '{self._entity_name}' not found in module '{self._module_name}'"
+
+
 class FlyteAssertion(FlyteUserException, AssertionError):
     _ERROR_CODE = "USER:AssertionError"
 
