@@ -88,7 +88,7 @@ def test_create_and_link_node_from_remote_ignore():
     # which is incorrect
     with pytest.raises(
         FlyteAssertion,
-        match=r"Missing input `i` type `\[Flyte Serialized object: Type: <LiteralType> Value: <simple: INTEGER>\]`",
+        match=r"Missing input `i` type `Flyte Serialized object \(LiteralType\):",
     ):
         create_and_link_node_from_remote(ctx, lp)
 

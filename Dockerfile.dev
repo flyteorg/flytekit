@@ -38,7 +38,6 @@ RUN SETUPTOOLS_SCM_PRETEND_VERSION_FOR_FLYTEKIT=$PSEUDO_VERSION \
         uv pip install --system --no-cache-dir -U \
             "git+https://github.com/flyteorg/flyte.git@master#subdirectory=flyteidl" \
             -e /flytekit \
-            -e /flytekit/plugins/flytekit-k8s-pod \
             -e /flytekit/plugins/flytekit-deck-standard \
             -e /flytekit/plugins/flytekit-flyteinteractive \
             scikit-learn \
@@ -52,6 +51,5 @@ RUN SETUPTOOLS_SCM_PRETEND_VERSION_FOR_FLYTEKIT=$PSEUDO_VERSION \
 
 
 ENV PYTHONPATH="/flytekit:/flytekit/tests/flytekit/integration/remote:/flytekit/plugins/flytekit-k8s-pod:/flytekit/plugins/flytekit-deck-standard:"
-
 # Switch to the 'flytekit' user for better security.
 USER flytekit
