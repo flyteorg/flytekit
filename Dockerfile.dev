@@ -49,7 +49,8 @@ RUN SETUPTOOLS_SCM_PRETEND_VERSION_FOR_FLYTEKIT=$PSEUDO_VERSION \
     && chown flytekit: /home \
     && :
 
-ENV PYTHONPATH="/flytekit:"
+
+ENV PYTHONPATH="/flytekit:/flytekit/tests/flytekit/integration/remote"
 
 # Switch to the 'flytekit' user for better security.
 USER flytekit
