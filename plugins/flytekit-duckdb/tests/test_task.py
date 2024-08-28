@@ -150,18 +150,12 @@ def test_insert_query_with_single_params():
 
 
 def test_motherduck_no_token():
-    duckdb_params_query = DuckDBQuery(
-        name="motherduck_query",
-        query="SELECT SUM(a) FROM sometable",
-        provider=DuckDBProvider.MOTHERDUCK,
-    )
-
-    @workflow
-    def motherduck_wf() -> pd.DataFrame:
-        return duckdb_params_query()
-
     with pytest.raises(MissingSecretError, match="A secret_requests must be provided for the MOTHERDUCK provider."):
-        motherduck_wf()
+        duckdb_params_query = DuckDBQuery(
+            name="motherduck_query",
+            query="SELECT SUM(a) FROM sometable",
+            provider=DuckDBProvider.MOTHERDUCK,
+        )
 
 
 def test_runtime_query():
