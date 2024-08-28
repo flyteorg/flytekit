@@ -150,7 +150,10 @@ def _dispatch_execute(
                 _execution_models.ExecutionError.ErrorKind.USER,
             )
         )
-        logger.error(f"Exception when executing task {task_def.name}, reason {str(e)}")
+        if task_def is not None:
+            logger.error(f"Exception when executing task {task_def.name or task_def.id.name}, reason {str(e)}")
+        else:
+            logger.error(f"Exception when loading_task, reason {str(e)}")
         logger.error("!! Begin User Error Captured by Flyte !!")
         logger.error(exc_str)
         logger.error("!! End Error Captured by Flyte !!")
@@ -166,10 +169,6 @@ def _dispatch_execute(
                 _execution_models.ExecutionError.ErrorKind.SYSTEM,
             )
         )
-        if task_def is not None:
-            logger.error(f"Exception when executing task {task_def.name or task_def.id.name}, reason {str(e)}")
-        else:
-            logger.error(f"Exception when loading_task, reason {str(e)}")
 
         logger.error("!! Begin Unknown System Error Captured by Flyte !!")
         logger.error(exc_str)
