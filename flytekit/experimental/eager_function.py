@@ -542,7 +542,10 @@ def eager(
                 await cleanup_fn()
 
     secret_requests = kwargs.pop("secret_requests", None) or []
-    secret_requests.append(Secret(group=client_secret_group, key=client_secret_key))
+    try:
+        secret_requests.append(Secret(group=client_secret_group, key=client_secret_key))
+    except ValueError:
+        pass
 
     return task(
         wrapper,
