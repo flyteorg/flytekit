@@ -383,7 +383,7 @@ def eager(
     timeout: Optional[timedelta] = None,
     poll_interval: Optional[timedelta] = None,
     local_entrypoint: bool = False,
-    bind_secret_to_env_var: Optional[str] = None,
+    client_secret_env_var: Optional[str] = None,
     **kwargs,
 ):
     """Eager workflow decorator.
@@ -398,7 +398,8 @@ def eager(
     :param local_entrypoint: If True, the eager workflow will can be executed locally but use the provided
         :py:func:`~flytekit.remote.FlyteRemote` object to create task/workflow executions. This is useful for local
         testing against a remote Flyte cluster.
-    :param bind_secret_to_env_var: if specified, binds the client secret to the specified environment variable.
+    :param client_secret_env_var: if specified, binds the client secret to the specified environment variable for
+        remote authentication.
     :param kwargs: keyword-arguments forwarded to :py:func:`~flytekit.task`.
 
     This type of workflow will execute all flyte entities within it eagerly, meaning that all python constructs can be
@@ -494,7 +495,7 @@ def eager(
             timeout=timeout,
             poll_interval=poll_interval,
             local_entrypoint=local_entrypoint,
-            bind_secret_to_env_var=bind_secret_to_env_var
+            client_secret_env_var=client_secret_env_var
             **kwargs,
         )
 
@@ -516,7 +517,9 @@ def eager(
             execution_id = exec_params.execution_id
 
         async_stack = AsyncStack(task_id, execution_id)
-        _remote = _prepare_remote(_remote, ctx, client_secret_group, client_secret_key, local_entrypoint, bind_secret_to_env_var)
+        _remote = _prepare_remote(
+            _remote, ctx, client_secret_group, client_secret_key, local_entrypoint, client_secret_env_var
+        )
 
         # make sure sub-nodes as cleaned up on termination signal
         loop = asyncio.get_event_loop()
@@ -556,7 +559,7 @@ def _prepare_remote(
     client_secret_group: Optional[str] = None,
     client_secret_key: Optional[str] = None,
     local_entrypoint: bool = False,
-    bind_secret_to_env_var: Optional[str] = None,
+    client_secret_env_var: Optional[str] = None,
 ) -> Optional[FlyteRemote]:
     """Prepare FlyteRemote object for accessing Flyte cluster in a task running on the same cluster."""
 
@@ -582,7 +585,7 @@ def _prepare_remote(
     if remote.config.platform.endpoint.startswith("localhost"):
         # replace sandbox endpoints with internal dns, since localhost won't exist within the Flyte cluster
         return _internal_demo_remote(remote)
-    return _internal_remote(remote, client_secret_group, client_secret_key, bind_secret_to_env_var)
+    return _internal_remote(remote, client_secret_group, client_secret_key, client_secret_env_var)
 
 
 def _internal_demo_remote(remote: FlyteRemote) -> FlyteRemote:
@@ -613,7 +616,7 @@ def _internal_remote(
     remote: FlyteRemote,
     client_secret_group: Optional[str],
     client_secret_key: Optional[str],
-    bind_secret_to_env_var: Optional[str],
+    client_secret_env_var: Optional[str],
 ) -> FlyteRemote:
     """Derives a FlyteRemote object from a yaml configuration file, modifying parts to make it work internally."""
     secrets_manager = current_context().secrets
@@ -621,9 +624,9 @@ def _internal_remote(
     # get the raw output prefix from the context that's set from the pyflyte-execute entrypoint
     # (see flytekit/bin/entrypoint.py)
 
-    if bind_secret_to_env_var is not None:
+    if client_secret_env_var is not None:
         # this creates a remote client where the env var client secret is sufficient for authentication
-        os.environ[bind_secret_to_env_var] = client_secret
+        os.environ[client_secret_env_var] = client_secret
         try:
             remote_cls = type(remote)
             return remote_cls()
