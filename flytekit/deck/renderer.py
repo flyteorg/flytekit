@@ -113,7 +113,7 @@ class PythonDependencyRenderer:
                 .replace("\\n", "\n")
                 .rstrip()
             )
-        except subprocess.CalledProcessError as e:
+        except Exception as e:
             logger.error(f"Error occurred while fetching installed packages: {e}")
             return "Error occurred while fetching installed packages."
 

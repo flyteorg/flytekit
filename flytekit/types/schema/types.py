@@ -367,7 +367,7 @@ def _get_numpy_type_mappings() -> typing.Dict[Type, SchemaType.SchemaColumn.Sche
             _np.object_: SchemaType.SchemaColumn.SchemaColumnType.STRING,
         }
     except ImportError as e:
-        logger.warning("Numpy not found, skipping numpy type mappings, error: %s", e)
+        logger.debug("Numpy not found, skipping numpy type mappings, error: %s", e)
         return {}
 
 

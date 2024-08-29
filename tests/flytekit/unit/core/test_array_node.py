@@ -37,7 +37,7 @@ lp = LaunchPlan.get_default_launch_plan(current_context(), parent_wf)
 
 
 @workflow
-def grandparent_wf() -> list[int]:
+def grandparent_wf() -> typing.List[int]:
     return array_node(lp, concurrency=10, min_success_ratio=0.9)(a=[1, 3, 5], b=[2, 4, 6])
 
 
@@ -86,7 +86,7 @@ def test_local_exec_lp_min_successes(min_successes, min_success_ratio, should_ra
     ex_lp = LaunchPlan.get_default_launch_plan(current_context(), ex_wf)
 
     @workflow
-    def grandparent_ex_wf() -> list[typing.Optional[int]]:
+    def grandparent_ex_wf() -> typing.List[typing.Optional[int]]:
         return array_node(ex_lp, min_successes=min_successes, min_success_ratio=min_success_ratio)(val=[1, 2, 3, 4])
 
     if should_raise_error:
