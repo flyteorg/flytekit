@@ -622,8 +622,13 @@ def _internal_remote(
     # (see flytekit/bin/entrypoint.py)
 
     if bind_secret_to_env_var is not None:
+        # this creates a remote client where the env var client secret is sufficient for authentication
         os.environ[bind_secret_to_env_var] = client_secret
-        return type(remote)()
+        try:
+            remote_cls = type(remote)
+            return remote_cls()
+        except Exception as exc:
+            raise TypeError(f"Unable to authenticate remote class {remote_cls} with client secret") from exc
 
     ctx = FlyteContextManager.current_context()
     return FlyteRemote(
