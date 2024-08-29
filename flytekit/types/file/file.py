@@ -179,13 +179,15 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
         return ""
 
     @classmethod
-    def new_remote_file(cls, name: typing.Optional[str] = None) -> FlyteFile:
+    def new_remote_file(cls, name: typing.Optional[str] = None, alt: typing.Optional[str] = None) -> FlyteFile:
         """
         Create a new FlyteFile object with a remote path.
+
+        :param name: If you want to specify a different name for the file, you can specify it here.
+        :param alt: If you want to specify a different prefix head than the default one, you can specify it here.
         """
         ctx = FlyteContextManager.current_context()
-        r = name or ctx.file_access.get_random_string()
-        remote_path = ctx.file_access.join(ctx.file_access.raw_output_prefix, r)
+        remote_path = ctx.file_access.generate_new_custom_path(alt=alt, stem=name)
         return cls(path=remote_path)
 
     @classmethod
@@ -243,7 +245,7 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
         self,
         path: typing.Union[str, os.PathLike],
         downloader: typing.Callable = noop,
-        remote_path: typing.Optional[typing.Union[os.PathLike, bool]] = None,
+        remote_path: typing.Optional[typing.Union[os.PathLike, str, bool]] = None,
     ):
         """
         FlyteFile's init method.
@@ -307,38 +309,26 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
         cache_type: typing.Optional[str] = None,
         cache_options: typing.Optional[typing.Dict[str, typing.Any]] = None,
     ):
-        """
-        Returns a streaming File handle
+        """Returns a streaming File handle
 
         .. code-block:: python
 
             @task
             def copy_file(ff: FlyteFile) -> FlyteFile:
-                new_file = FlyteFile.new_remote_file(ff.name)
-                with ff.open("rb", cache_type="readahead", cache={}) as r:
+                new_file = FlyteFile.new_remote_file()
+                with ff.open("rb", cache_type="readahead") as r:
                     with new_file.open("wb") as w:
                         w.write(r.read())
                 return new_file
 
-        Alternatively,
-
-        .. code-block:: python
-
-            @task
-            def copy_file(ff: FlyteFile) -> FlyteFile:
-                new_file = FlyteFile.new_remote_file(ff.name)
-                with fsspec.open(f"readahead::{ff.remote_path}", "rb", readahead={}) as r:
-                    with new_file.open("wb") as w:
-                        w.write(r.read())
-                return new_file
-
-
-        :param mode: str Open mode like 'rb', 'rt', 'wb', ...
-        :param cache_type: optional str Specify if caching is to be used. Cache protocol can be ones supported by
-            fsspec https://filesystem-spec.readthedocs.io/en/latest/api.html#readbuffering,
-            especially useful for large file reads
-        :param cache_options: optional Dict[str, Any] Refer to fsspec caching options. This is strongly coupled to the
-            cache_protocol
+        :param mode: Open mode. For example: 'r', 'w', 'rb', 'rt', 'wb', etc.
+        :type mode: str
+        :param cache_type: Specifies the cache type. Possible values are "blockcache", "bytes", "mmap", "readahead", "first", or "background".
+            This is especially useful for large file reads. See https://filesystem-spec.readthedocs.io/en/latest/api.html#readbuffering.
+        :type cache_type: str, optional
+        :param cache_options: A Dict corresponding to the parameters for the chosen cache_type.
+             Refer to fsspec caching options above.
+        :type cache_options: Dict[str, Any], optional
         """
         ctx = FlyteContextManager.current_context()
         final_path = self.path

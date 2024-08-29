@@ -12,7 +12,6 @@ from enum import Enum, auto
 from typing import List, Optional, Type
 
 import mock
-import pyarrow as pa
 import pytest
 import typing_extensions
 from dataclasses_json import DataClassJsonMixin, dataclass_json
@@ -1408,9 +1407,11 @@ class UnsupportedEnumValues(Enum):
     BLUE = 3
 
 
+@pytest.mark.skipif("polars" not in sys.modules, reason="pyarrow is not installed.")
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_structured_dataset_type():
     import pandas as pd
+    import pyarrow as pa
     from pandas._testing import assert_frame_equal
 
     name = "Name"
@@ -2388,9 +2389,15 @@ class Result(DataClassJsonMixin):
     schema: TestSchema  # type: ignore
 
 
-@pytest.mark.parametrize(
-    "t",
-    [
+def get_unsupported_complex_literals_tests():
+    if sys.version_info < (3, 9):
+        return [
+        typing_extensions.Annotated[typing.Dict[int, str], FlyteAnnotation({"foo": "bar"})],
+        typing_extensions.Annotated[typing.Dict[str, str], FlyteAnnotation({"foo": "bar"})],
+        typing_extensions.Annotated[Color, FlyteAnnotation({"foo": "bar"})],
+        typing_extensions.Annotated[Result, FlyteAnnotation({"foo": "bar"})],
+    ]
+    return [
         typing_extensions.Annotated[dict, FlyteAnnotation({"foo": "bar"})],
         typing_extensions.Annotated[dict[int, str], FlyteAnnotation({"foo": "bar"})],
         typing_extensions.Annotated[typing.Dict[int, str], FlyteAnnotation({"foo": "bar"})],
@@ -2398,7 +2405,12 @@ class Result(DataClassJsonMixin):
         typing_extensions.Annotated[typing.Dict[str, str], FlyteAnnotation({"foo": "bar"})],
         typing_extensions.Annotated[Color, FlyteAnnotation({"foo": "bar"})],
         typing_extensions.Annotated[Result, FlyteAnnotation({"foo": "bar"})],
-    ],
+    ]
+
+
+@pytest.mark.parametrize(
+    "t",
+    get_unsupported_complex_literals_tests(),
 )
 def test_unsupported_complex_literals(t):
     with pytest.raises(ValueError):
@@ -3005,7 +3017,7 @@ def test_dataclass_encoder_and_decoder_registry():
     class Datum:
         x: int
         y: str
-        z: dict[int, int]
+        z: typing.Dict[int, int]
         w: List[int]
 
     @task
@@ -3063,3 +3075,64 @@ def test_union_file_directory():
 
     pv = union_trans.to_python_value(ctx, lv, typing.Union[FlyteFile, FlyteDirectory])
     assert pv._remote_source == s3_dir
+
+
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="PEP604 requires >=3.10.")
+def test_dataclass_none_output_input_deserialization():
+    @dataclass
+    class OuterWorkflowInput(DataClassJSONMixin):
+        input: float
+
+    @dataclass
+    class OuterWorkflowOutput(DataClassJSONMixin):
+        nullable_output: float | None = None
+
+
+    @dataclass
+    class InnerWorkflowInput(DataClassJSONMixin):
+        input: float
+
+    @dataclass
+    class InnerWorkflowOutput(DataClassJSONMixin):
+        nullable_output: float | None = None
+
+
+    @task
+    def inner_task(input: float) -> float | None:
+        if input == 0:
+            return None
+        return input
+
+    @task
+    def wrap_inner_inputs(input: float) -> InnerWorkflowInput:
+        return InnerWorkflowInput(input=input)
+
+    @task
+    def wrap_inner_outputs(output: float | None) -> InnerWorkflowOutput:
+        return InnerWorkflowOutput(nullable_output=output)
+
+    @task
+    def wrap_outer_outputs(output: float | None) -> OuterWorkflowOutput:
+        return OuterWorkflowOutput(nullable_output=output)
+
+    @workflow
+    def inner_workflow(input: InnerWorkflowInput) -> InnerWorkflowOutput:
+        return wrap_inner_outputs(
+            output=inner_task(
+                input=input.input
+            )
+        )
+
+    @workflow
+    def outer_workflow(input: OuterWorkflowInput) -> OuterWorkflowOutput:
+        inner_outputs = inner_workflow(
+            input=wrap_inner_inputs(input=input.input)
+        )
+        return wrap_outer_outputs(
+            output=inner_outputs.nullable_output
+        )
+
+    float_value_output = outer_workflow(OuterWorkflowInput(input=1.0)).nullable_output
+    assert float_value_output == 1.0, f"Float value was {float_value_output}, not 1.0 as expected"
+    none_value_output = outer_workflow(OuterWorkflowInput(input=0)).nullable_output
+    assert none_value_output is None, f"None value was {none_value_output}, not None as expected"

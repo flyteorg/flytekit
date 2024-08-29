@@ -4,15 +4,16 @@ import base64
 import hashlib
 import http.server as _BaseHTTPServer
 import logging
-import multiprocessing
 import os
 import re
+import threading
+import time
 import typing
 import urllib.parse as _urlparse
 import webbrowser
 from dataclasses import dataclass
 from http import HTTPStatus as _StatusCodes
-from multiprocessing import get_context
+from queue import Queue
 from urllib.parse import urlencode as _urlencode
 
 import click
@@ -124,7 +125,7 @@ class OAuthHTTPServer(_BaseHTTPServer.HTTPServer):
         request_handler_class: typing.Type[_BaseHTTPServer.BaseHTTPRequestHandler],
         bind_and_activate: bool = True,
         redirect_path: str = None,
-        queue: multiprocessing.Queue = None,
+        queue: Queue = None,
     ):
         _BaseHTTPServer.HTTPServer.__init__(self, server_address, request_handler_class, bind_and_activate)
         self._redirect_path = redirect_path
@@ -142,9 +143,8 @@ class OAuthHTTPServer(_BaseHTTPServer.HTTPServer):
 
     def handle_authorization_code(self, auth_code: str):
         self._queue.put(auth_code)
-        self.server_close()
 
-    def handle_request(self, queue: multiprocessing.Queue = None) -> typing.Any:
+    def handle_request(self, queue: Queue = None) -> typing.Any:
         self._queue = queue
         return super().handle_request()
 
@@ -238,6 +238,9 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
         self._verify = verify
         self._headers = {"content-type": "application/x-www-form-urlencoded"}
         self._session = session or requests.Session()
+        self._lock = threading.Lock()
+        self._cached_credentials = None
+        self._cached_credentials_ts = None
 
         self._request_auth_code_params = {
             "client_id": client_id,  # This must match the Client ID of the OAuth application.
@@ -334,37 +337,45 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
         if resp.status_code != _StatusCodes.OK:
             # TODO: handle expected (?) error cases:
             #  https://auth0.com/docs/flows/guides/device-auth/call-api-device-auth#token-responses
-            raise Exception(
+            raise RuntimeError(
                 "Failed to request access token with response: [{}] {}".format(resp.status_code, resp.content)
             )
         return self._credentials_from_response(resp)
 
     def get_creds_from_remote(self) -> Credentials:
         """
-        This is the entrypoint method. It will kickoff the full authentication flow and trigger a web-browser to
-        retrieve credentials
+        This is the entrypoint method. It will kickoff the full authentication
+        flow and trigger a web-browser to retrieve credentials. Because this
+        needs to open a port on localhost and may be called from a
+        multithreaded context (e.g. pyflyte register), this call may block
+        multiple threads and return a cached result for up to 60 seconds.
         """
         # In the absence of globally-set token values, initiate the token request flow
-        ctx = get_context("fork")
-        q = ctx.Queue()
+        with self._lock:
+            # Clear cache if it's been more than 60 seconds since the last check
+            cache_ttl_s = 60
+            if self._cached_credentials_ts is not None and self._cached_credentials_ts + cache_ttl_s < time.monotonic():
+                self._cached_credentials = None
 
-        # First prepare the callback server in the background
-        server = self._create_callback_server()
+            if self._cached_credentials is not None:
+                return self._cached_credentials
+            q = Queue()
 
-        server_process = ctx.Process(target=server.handle_request, args=(q,))
-        server_process.daemon = True
+            # First prepare the callback server in the background
+            server = self._create_callback_server()
 
-        try:
-            server_process.start()
+            self._request_authorization_code()
+
+            server.handle_request(q)
+            server.server_close()
 
             # Send the call to request the authorization code in the background
-            self._request_authorization_code()
 
             # Request the access token once the auth code has been received.
             auth_code = q.get()
-            return self._request_access_token(auth_code)
-        finally:
-            server_process.terminate()
+            self._cached_credentials = self._request_access_token(auth_code)
+            self._cached_credentials_ts = time.monotonic()
+            return self._cached_credentials
 
     def refresh_access_token(self, credentials: Credentials) -> Credentials:
         if credentials.refresh_token is None:

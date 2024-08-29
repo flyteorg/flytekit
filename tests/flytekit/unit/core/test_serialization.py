@@ -1,3 +1,4 @@
+import re
 import os
 import typing
 from collections import OrderedDict
@@ -13,7 +14,7 @@ from flytekit.core.python_auto_container import get_registerable_container_image
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
 from flytekit.exceptions.user import FlyteAssertion, FlyteMissingTypeException
-from flytekit.image_spec.image_spec import ImageBuildEngine, _calculate_deduped_hash_from_image_spec
+from flytekit.image_spec.image_spec import ImageBuildEngine
 from flytekit.models.admin.workflow import WorkflowSpec
 from flytekit.models.literals import (
     BindingData,
@@ -301,7 +302,7 @@ def test_serialization_images(mock_image_spec_builder):
             config_file=os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/images.config")
         )
         imgs.images.append(
-            Image(name=_calculate_deduped_hash_from_image_spec(image_spec), fqn="docker.io/t7", tag="latest")
+            Image(name=image_spec.id, fqn="docker.io/t7", tag="latest")
         )
         rs = flytekit.configuration.SerializationSettings(
             project="project",
@@ -525,7 +526,7 @@ def test_default_args_task_int_type():
         return t1(a=input_val)
 
     @workflow
-    def wf_with_sub_wf() -> tuple[int, int]:
+    def wf_with_sub_wf() -> typing.Tuple[int, int]:
         return (wf_no_input(), wf_with_input())
 
     wf_no_input_spec = get_serializable(OrderedDict(), serialization_settings, wf_no_input)
@@ -564,7 +565,7 @@ def test_default_args_task_str_type():
         return t1(a=input_val)
 
     @workflow
-    def wf_with_sub_wf() -> tuple[str, str]:
+    def wf_with_sub_wf() -> typing.Tuple[str, str]:
         return (wf_no_input(), wf_with_input())
 
     wf_no_input_spec = get_serializable(OrderedDict(), serialization_settings, wf_no_input)
@@ -603,7 +604,7 @@ def test_default_args_task_optional_int_type_default_none():
         return t1(a=input_val)
 
     @workflow
-    def wf_with_sub_wf() -> tuple[typing.Optional[int], typing.Optional[int]]:
+    def wf_with_sub_wf() -> typing.Tuple[typing.Optional[int], typing.Optional[int]]:
         return (wf_no_input(), wf_with_input())
 
     wf_no_input_spec = get_serializable(OrderedDict(), serialization_settings, wf_no_input)
@@ -673,7 +674,7 @@ def test_default_args_task_optional_int_type_default_int():
         return t1(a=input_val)
 
     @workflow
-    def wf_with_sub_wf() -> tuple[typing.Optional[int], typing.Optional[int]]:
+    def wf_with_sub_wf() -> typing.Tuple[typing.Optional[int], typing.Optional[int]]:
         return (wf_no_input(), wf_with_input())
 
     wf_no_input_spec = get_serializable(OrderedDict(), serialization_settings, wf_no_input)
@@ -764,18 +765,21 @@ def test_default_args_task_list_type():
     input_val = [1, 2, 3]
 
     @task
-    def t1(a: list[int] = []) -> list[int]:
+    def t1(a: typing.List[int] = []) -> typing.List[int]:
         return a
 
     @workflow
-    def wf_no_input() -> list[int]:
+    def wf_no_input() -> typing.List[int]:
         return t1()
 
     @workflow
-    def wf_with_input() -> list[int]:
+    def wf_with_input() -> typing.List[int]:
         return t1(a=input_val)
 
-    with pytest.raises(FlyteAssertion, match="Cannot use non-hashable object as default argument"):
+    with pytest.raises(
+        FlyteAssertion,
+        match=r"Argument a for function .*test_serialization\.t1 is a mutable default argument, which is a python anti-pattern and not supported in flytekit tasks"
+    ):
         get_serializable(OrderedDict(), serialization_settings, wf_no_input)
 
     wf_with_input_spec = get_serializable(OrderedDict(), serialization_settings, wf_with_input)
@@ -799,18 +803,21 @@ def test_default_args_task_dict_type():
     input_val = {"a": 1, "b": 2}
 
     @task
-    def t1(a: dict[str, int] = {}) -> dict[str, int]:
+    def t1(a: typing.Dict[str, int] = {}) -> typing.Dict[str, int]:
         return a
 
     @workflow
-    def wf_no_input() -> dict[str, int]:
+    def wf_no_input() -> typing.Dict[str, int]:
         return t1()
 
     @workflow
-    def wf_with_input() -> dict[str, int]:
+    def wf_with_input() -> typing.Dict[str, int]:
         return t1(a=input_val)
 
-    with pytest.raises(FlyteAssertion, match="Cannot use non-hashable object as default argument"):
+    with pytest.raises(
+        FlyteAssertion,
+        match=r"Argument a for function .*test_serialization\.t1 is a mutable default argument, which is a python anti-pattern and not supported in flytekit tasks"
+    ):
         get_serializable(OrderedDict(), serialization_settings, wf_no_input)
 
     wf_with_input_spec = get_serializable(OrderedDict(), serialization_settings, wf_with_input)
@@ -846,7 +853,7 @@ def test_default_args_task_optional_list_type_default_none():
         return t1(a=input_val)
 
     @workflow
-    def wf_with_sub_wf() -> tuple[typing.Optional[typing.List[int]], typing.Optional[typing.List[int]]]:
+    def wf_with_sub_wf() -> typing.Tuple[typing.Optional[typing.List[int]], typing.Optional[typing.List[int]]]:
         return (wf_no_input(), wf_with_input())
 
     wf_no_input_spec = get_serializable(OrderedDict(), serialization_settings, wf_no_input)
@@ -910,7 +917,10 @@ def test_default_args_task_optional_list_type_default_list():
     def wf_with_input() -> typing.Optional[typing.List[int]]:
         return t1(a=input_val)
 
-    with pytest.raises(FlyteAssertion, match="Cannot use non-hashable object as default argument"):
+    with pytest.raises(
+        FlyteAssertion,
+        match=r"Argument a for function .*test_serialization\.t1 is a mutable default argument, which is a python anti-pattern and not supported in flytekit tasks"
+    ):
         get_serializable(OrderedDict(), serialization_settings, wf_no_input)
 
     wf_with_input_spec = get_serializable(OrderedDict(), serialization_settings, wf_with_input)

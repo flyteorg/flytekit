@@ -117,7 +117,7 @@ def get_proxy_authenticator(cfg: PlatformConfig) -> Authenticator:
 def upgrade_channel_to_proxy_authenticated(cfg: PlatformConfig, in_channel: grpc.Channel) -> grpc.Channel:
     """
     If activated in the platform config, given a grpc.Channel, preferably a secure channel, it returns a composed
-    channel that uses Interceptor to perform authentication with a proxy infront of Flyte
+    channel that uses Interceptor to perform authentication with a proxy in front of Flyte
     :param cfg: PlatformConfig
     :param in_channel: grpc.Channel Precreated channel
     :return: grpc.Channel. New composite channel
@@ -275,7 +275,7 @@ class AuthenticationHTTPAdapter(requests.adapters.HTTPAdapter):
 def upgrade_session_to_proxy_authenticated(cfg: PlatformConfig, session: requests.Session) -> requests.Session:
     """
     Given a requests.Session, it returns a new session that uses a custom HTTPAdapter to
-    perform authentication with a proxy infront of Flyte
+    perform authentication with a proxy in front of Flyte
 
     :param cfg: PlatformConfig
     :param session: requests.Session Precreated session

@@ -360,6 +360,7 @@ class DataclassTransformer(TypeTransformer[object]):
 
         expected_type = get_underlying_type(expected_type)
         expected_fields_dict = {}
+
         for f in dataclasses.fields(expected_type):
             expected_fields_dict[f.name] = f.type
 
@@ -539,11 +540,13 @@ class DataclassTransformer(TypeTransformer[object]):
                 field.type = self._get_origin_type_in_annotation(field.type)
         return python_type
 
-    def _fix_structured_dataset_type(self, python_type: Type[T], python_val: typing.Any) -> T:
+    def _fix_structured_dataset_type(self, python_type: Type[T], python_val: typing.Any) -> T | None:
         # In python 3.7, 3.8, DataclassJson will deserialize Annotated[StructuredDataset, kwtypes(..)] to a dict,
         # so here we convert it back to the Structured Dataset.
         from flytekit.types.structured import StructuredDataset
 
+        if python_val is None:
+            return python_val
         if python_type == StructuredDataset and type(python_val) == dict:
             return StructuredDataset(**python_val)
         elif get_origin(python_type) is list:
@@ -575,9 +578,13 @@ class DataclassTransformer(TypeTransformer[object]):
             return self._make_dataclass_serializable(python_val, get_args(python_type)[0])
 
         if hasattr(python_type, "__origin__") and get_origin(python_type) is list:
+            if python_val is None:
+                return None
             return [self._make_dataclass_serializable(v, get_args(python_type)[0]) for v in cast(list, python_val)]
 
         if hasattr(python_type, "__origin__") and get_origin(python_type) is dict:
+            if python_val is None:
+                return None
             return {
                 k: self._make_dataclass_serializable(v, get_args(python_type)[1])
                 for k, v in cast(dict, python_val).items()
@@ -983,6 +990,7 @@ class TypeEngine(typing.Generic[T]):
             register_arrow_handlers,
             register_bigquery_handlers,
             register_pandas_handlers,
+            register_snowflake_handlers,
         )
         from flytekit.types.structured.structured_dataset import DuplicateHandlerError
 
@@ -1015,6 +1023,11 @@ class TypeEngine(typing.Generic[T]):
             from flytekit.types import numpy  # noqa: F401
         if is_imported("PIL"):
             from flytekit.types.file import image  # noqa: F401
+        if is_imported("snowflake.connector"):
+            try:
+                register_snowflake_handlers()
+            except DuplicateHandlerError:
+                logger.debug("Transformer for snowflake is already registered.")
 
     @classmethod
     def to_literal_type(cls, python_type: Type) -> LiteralType:
@@ -1060,7 +1073,7 @@ class TypeEngine(typing.Generic[T]):
                 "actual attribute that you want to use. For example, in NamedTuple('OP', x=int) then"
                 "return v.x, instead of v, even if this has a single element"
             )
-        if python_val is None and expected and expected.union_type is None:
+        if (python_val is None and python_type != type(None)) and expected and expected.union_type is None:
             raise TypeTransformerFailedError(f"Python value cannot be None, expected {python_type}/{expected}")
         transformer = cls.get_transformer(python_type)
         if transformer.type_assertions_enabled:
@@ -1149,7 +1162,8 @@ class TypeEngine(typing.Generic[T]):
             try:
                 kwargs[k] = TypeEngine.to_python_value(ctx, lm.literals[k], python_interface_inputs[k])
             except TypeTransformerFailedError as exc:
-                raise TypeTransformerFailedError(f"Error converting input '{k}' at position {i}:\n  {exc}") from exc
+                exc.args = (f"Error converting input '{k}' at position {i}:\n  {exc.args[0]}",)
+                raise
         return kwargs
 
     @classmethod
@@ -1495,6 +1509,7 @@ class UnionTransformer(TypeTransformer[T]):
         is_ambiguous = False
         res = None
         res_type = None
+        t = None
         for i in range(len(get_args(python_type))):
             try:
                 t = get_args(python_type)[i]
@@ -1504,8 +1519,8 @@ class UnionTransformer(TypeTransformer[T]):
                 if found_res:
                     is_ambiguous = True
                 found_res = True
-            except Exception:
-                logger.debug(f"Failed to convert from {python_val} to {t}", exc_info=True)
+            except Exception as e:
+                logger.debug(f"Failed to convert from {python_val} to {t} with error: {e}", exc_info=True)
                 continue
 
         if is_ambiguous:
@@ -2022,8 +2037,6 @@ class LiteralsResolver(collections.UserDict):
     LiteralsResolver is a helper class meant primarily for use with the FlyteRemote experience or any other situation
     where you might be working with LiteralMaps. This object allows the caller to specify the Python type that should
     correspond to an element of the map.
-
-    TODO: Consider inheriting from collections.UserDict instead of manually having the _native_values cache
     """
 
     def __init__(

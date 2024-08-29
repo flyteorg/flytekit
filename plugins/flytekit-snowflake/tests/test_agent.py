@@ -55,7 +55,6 @@ async def test_snowflake_agent(mock_get_private_key):
         "database": "dummy_database",
         "schema": "dummy_schema",
         "warehouse": "dummy_warehouse",
-        "table": "dummy_table",
     }
 
     int_type = types.LiteralType(types.SimpleType.INTEGER)
@@ -86,11 +85,11 @@ async def test_snowflake_agent(mock_get_private_key):
     snowflake_metadata = SnowflakeJobMetadata(
         user="dummy_user",
         account="dummy_account",
-        table="dummy_table",
         database="dummy_database",
         schema="dummy_schema",
         warehouse="dummy_warehouse",
         query_id="dummy_id",
+        has_output=False,
     )
 
     metadata = await agent.create(dummy_template, task_inputs)
@@ -98,10 +97,7 @@ async def test_snowflake_agent(mock_get_private_key):
 
     resource = await agent.get(metadata)
     assert resource.phase == TaskExecution.SUCCEEDED
-    assert (
-        resource.outputs.literals["results"].scalar.structured_dataset.uri
-        == "snowflake://dummy_user:dummy_account/dummy_warehouse/dummy_database/dummy_schema/dummy_table"
-    )
+    assert resource.outputs == None
 
     delete_response = await agent.delete(snowflake_metadata)
     assert delete_response is None

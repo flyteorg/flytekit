@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import collections
+import datetime
 import inspect
 import typing
 from copy import deepcopy
 from enum import Enum
-from typing import Any, Coroutine, Dict, Hashable, List, Optional, Set, Tuple, Union, cast, get_args
+from typing import Any, Coroutine, Dict, List, Optional, Set, Tuple, Union, cast, get_args
 
 from google.protobuf import struct_pb2 as _struct
 from typing_extensions import Protocol
@@ -33,6 +34,7 @@ from flytekit.core.type_engine import (
 )
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.exceptions.user import FlytePromiseAttributeResolveException
+from flytekit.extras.accelerators import BaseAccelerator
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literals_models
@@ -40,6 +42,7 @@ from flytekit.models import types as _type_models
 from flytekit.models import types as type_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.literals import Primitive
+from flytekit.models.task import Resources
 from flytekit.models.types import SimpleType
 
 
@@ -94,7 +97,8 @@ def translate_inputs_to_literals(
                 v = resolve_attr_path_in_promise(v)
             result[k] = TypeEngine.to_literal(ctx, v, t, var.type)
         except TypeTransformerFailedError as exc:
-            raise TypeTransformerFailedError(f"Failed argument '{k}': {exc}") from exc
+            exc.args = (f"Failed argument '{k}': {exc.args[0]}",)
+            raise
 
     return result
 
@@ -497,10 +501,45 @@ class Promise(object):
     def __or__(self, other):
         raise ValueError("Cannot perform Logical OR of Promise with other")
 
-    def with_overrides(self, *args, **kwargs):
+    def with_overrides(
+        self,
+        node_name: Optional[str] = None,
+        aliases: Optional[Dict[str, str]] = None,
+        requests: Optional[Resources] = None,
+        limits: Optional[Resources] = None,
+        timeout: Optional[Union[int, datetime.timedelta]] = None,
+        retries: Optional[int] = None,
+        interruptible: Optional[bool] = None,
+        name: Optional[str] = None,
+        task_config: Optional[Any] = None,
+        container_image: Optional[str] = None,
+        accelerator: Optional[BaseAccelerator] = None,
+        cache: Optional[bool] = None,
+        cache_version: Optional[str] = None,
+        cache_serialize: Optional[bool] = None,
+        *args,
+        **kwargs,
+    ):
         if not self.is_ready:
             # TODO, this should be forwarded, but right now this results in failure and we want to test this behavior
-            self.ref.node.with_overrides(*args, **kwargs)
+            self.ref.node.with_overrides(  # type: ignore
+                node_name=node_name,
+                aliases=aliases,
+                requests=requests,
+                limits=limits,
+                timeout=timeout,
+                retries=retries,
+                interruptible=interruptible,
+                name=name,
+                task_config=task_config,
+                container_image=container_image,
+                accelerator=accelerator,
+                cache=cache,
+                cache_version=cache_version,
+                cache_serialize=cache_serialize,
+                *args,
+                **kwargs,
+            )
         return self
 
     def __repr__(self):
@@ -667,7 +706,7 @@ def create_task_output(
         return promises
 
     if len(promises) == 0:
-        raise Exception(
+        raise ValueError(
             "This function should not be called with an empty list. It should have been handled with a"
             "VoidPromise at this function's call-site."
         )
@@ -1116,8 +1155,13 @@ def create_and_link_node(
                 or UnionTransformer.is_optional_type(interface.inputs_with_defaults[k][0])
             ):
                 default_val = interface.inputs_with_defaults[k][1]
-                if not isinstance(default_val, Hashable):
-                    raise _user_exceptions.FlyteAssertion("Cannot use non-hashable object as default argument")
+                # Common cases of mutable default arguments, as described in https://www.pullrequest.com/blog/python-pitfalls-the-perils-of-using-lists-and-dicts-as-default-arguments/
+                # or https://florimond.dev/en/posts/2018/08/python-mutable-defaults-are-the-source-of-all-evil, are not supported.
+                # As of 2024-08-05, Python native sets are not supported in Flytekit. However, they are included here for completeness.
+                if isinstance(default_val, list) or isinstance(default_val, dict) or isinstance(default_val, set):
+                    raise _user_exceptions.FlyteAssertion(
+                        f"Argument {k} for function {entity.name} is a mutable default argument, which is a python anti-pattern and not supported in flytekit tasks"
+                    )
                 kwargs[k] = default_val
             else:
                 error_msg = f"Input {k} of type {interface.inputs[k]} was not specified for function {entity.name}"
@@ -1260,9 +1304,12 @@ def flyte_entity_call_handler(
             if result is None or isinstance(result, VoidPromise):
                 return None
             else:
-                raise Exception(f"Received an output when workflow local execution expected None. Received: {result}")
+                raise ValueError(f"Received an output when workflow local execution expected None. Received: {result}")
 
         if inspect.iscoroutine(result):
+            return result
+
+        if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.DYNAMIC_TASK_EXECUTION:
             return result
 
         if (1 < expected_outputs == len(cast(Tuple[Promise], result))) or (
