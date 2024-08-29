@@ -504,6 +504,7 @@ class DataclassTransformer(TypeTransformer[object]):
 
         # The `to_json` integrated through mashumaro's `DataClassJSONMixin` allows for more
         # functionality than JSONEncoder
+        # We can't use hasattr(python_val, "to_json") here because we rely on mashumaro's API to customize the serialization behavior for Flyte types.
         if isinstance(python_val, DataClassJSONMixin):
             json_str = python_val.to_json()
         else:
@@ -668,6 +669,7 @@ class DataclassTransformer(TypeTransformer[object]):
 
         # The `from_json` function is provided from mashumaro's `DataClassJSONMixin`.
         # It deserializes a JSON string into a data class, and supports additional functionality over JSONDecoder
+        # We can't use hasattr(expected_python_type, "from_json") here because we rely on mashumaro's API to customize the deserialization behavior for Flyte types.
         if issubclass(expected_python_type, DataClassJSONMixin):
             dc = expected_python_type.from_json(json_str)  # type: ignore
         else:
