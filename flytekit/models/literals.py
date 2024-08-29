@@ -15,7 +15,7 @@ from flytekit.models.types import SchemaType as _SchemaType
 
 
 class RetryStrategy(_common.FlyteIdlEntity):
-    def __init__(self, retries):
+    def __init__(self, retries: int):
         """
         :param int retries: Number of retries to attempt on recoverable failures.  If retries is 0, then
             only one attempt will be made.

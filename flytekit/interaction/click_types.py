@@ -1,3 +1,4 @@
+import dataclasses
 import datetime
 import enum
 import json
@@ -5,7 +6,7 @@ import logging
 import os
 import pathlib
 import typing
-from typing import cast
+from typing import cast, get_args
 
 import rich_click as click
 import yaml
@@ -22,6 +23,7 @@ from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import FlyteFile
 from flytekit.types.iterator.json_iterator import JSONIteratorTransformer
 from flytekit.types.pickle.pickle import FlytePickleTransformer
+from flytekit.types.schema.types import FlyteSchema
 
 
 def is_pydantic_basemodel(python_type: typing.Type) -> bool:
@@ -305,11 +307,50 @@ class JsonParamType(click.ParamType):
         if value is None:
             raise click.BadParameter("None value cannot be converted to a Json type.")
 
+        FLYTE_TYPES = [FlyteFile, FlyteDirectory, StructuredDataset, FlyteSchema]
+
+        def has_nested_dataclass(t: typing.Type) -> bool:
+            """
+            Recursively checks whether the given type or its nested types contain any dataclass.
+
+            This function is typically called with a dictionary or list type and will return True if
+            any of the nested types within the dictionary or list is a dataclass.
+
+            Note:
+            - A single dataclass will return True.
+            - The function specifically excludes certain Flyte types like FlyteFile, FlyteDirectory,
+            StructuredDataset, and FlyteSchema from being considered as dataclasses. This is because
+            these types are handled separately by Flyte and do not need to be converted to dataclasses.
+
+            Args:
+                t (typing.Type): The type to check for nested dataclasses.
+
+            Returns:
+                bool: True if the type or its nested types contain a dataclass, False otherwise.
+            """
+
+            if dataclasses.is_dataclass(t):
+                # FlyteTypes is not supported now, we can support it in the future.
+                return t not in FLYTE_TYPES
+
+            return any(has_nested_dataclass(arg) for arg in get_args(t))
+
         parsed_value = self._parse(value, param)
 
         # We compare the origin type because the json parsed value for list or dict is always a list or dict without
         # the covariant type information.
         if type(parsed_value) == typing.get_origin(self._python_type) or type(parsed_value) == self._python_type:
+            # Indexing the return value of get_args will raise an error for native dict and list types.
+            # We don't support native list/dict types with nested dataclasses.
+            if get_args(self._python_type) == ():
+                return parsed_value
+            elif isinstance(parsed_value, list) and has_nested_dataclass(get_args(self._python_type)[0]):
+                j = JsonParamType(get_args(self._python_type)[0])
+                return [j.convert(v, param, ctx) for v in parsed_value]
+            elif isinstance(parsed_value, dict) and has_nested_dataclass(get_args(self._python_type)[1]):
+                j = JsonParamType(get_args(self._python_type)[1])
+                return {k: j.convert(v, param, ctx) for k, v in parsed_value.items()}
+
             return parsed_value
 
         if is_pydantic_basemodel(self._python_type):
