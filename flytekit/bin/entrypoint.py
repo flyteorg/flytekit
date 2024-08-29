@@ -108,12 +108,6 @@ def _dispatch_execute(
             # Handle eager-mode (async) tasks
             logger.info("Output is a coroutine")
             outputs = asyncio.run(outputs)
-            # make sure an event loop exists for data persistence step
-            try:
-                asyncio.get_event_loop()
-            except RuntimeError:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
 
         # Step3a
         if isinstance(outputs, VoidPromise):
@@ -182,6 +176,13 @@ def _dispatch_execute(
 
     for k, v in output_file_dict.items():
         utils.write_proto_to_file(v.to_flyte_idl(), os.path.join(ctx.execution_state.engine_dir, k))
+
+    # make sure an event loop exists for data persistence step
+    try:
+        asyncio.get_event_loop()
+    except Exception:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
 
     ctx.file_access.put_data(ctx.execution_state.engine_dir, output_prefix, is_multipart=True)
     logger.info(f"Engine folder written successfully to the output prefix {output_prefix}")
