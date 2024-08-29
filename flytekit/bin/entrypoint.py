@@ -68,6 +68,15 @@ def _compute_array_job_index():
     return offset
 
 
+def _reset_event_loop_if_needed():
+    """Create new event loop if it doesn't exist."""
+    try:
+        asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+
 def _dispatch_execute(
     ctx: FlyteContext,
     load_task: Callable[[], PythonTask],
@@ -107,13 +116,14 @@ def _dispatch_execute(
         if inspect.iscoroutine(outputs):
             # Handle eager-mode (async) tasks
             logger.info("Output is a coroutine")
+
+            # make sure event loop exists before running the coroutine
+            _reset_event_loop_if_needed()
+
             outputs = asyncio.run(outputs)
+
             # make sure an event loop exists for data persistence step
-            try:
-                asyncio.get_event_loop()
-            except RuntimeError:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
+            _reset_event_loop_if_needed()
 
         # Step3a
         if isinstance(outputs, VoidPromise):
