@@ -496,6 +496,7 @@ def eager(
             poll_interval=poll_interval,
             local_entrypoint=local_entrypoint,
             client_secret_env_var=client_secret_env_var,
+            **kwargs,
         )
 
     if local_entrypoint and remote is None:
