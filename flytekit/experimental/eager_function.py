@@ -528,6 +528,13 @@ def eager(
         signal.signal(signal.SIGTERM, partial(node_cleanup, loop=loop, async_stack=async_stack))
 
         async with eager_context(_fn, _remote, ctx, async_stack, timeout, poll_interval, local_entrypoint):
+            # make sure an event loop exists
+            try:
+                asyncio.get_event_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+
             try:
                 if _remote is not None:
                     with _remote.remote_context():
