@@ -802,9 +802,9 @@ def get_serializable(
                     raise ValueError(
                         "Long Description of the flyte entity exceeds the 16KB size limit. Please specify the uri in the long description instead."
                     )
-            entity.docs.source_code = SourceCode(link=settings.git_repo)
+            link = f"{settings.git_repo}/{entity.instantiated_in}.py"
+            entity.docs.source_code = SourceCode(link=link)
     # This needs to be at the bottom not the top - i.e. dependent tasks get added before the workflow containing it
-    # breakpoint()
     entity_mapping[entity] = cp_entity
     return cp_entity
 

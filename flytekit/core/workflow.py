@@ -213,7 +213,9 @@ class WorkflowBase(object):
                     self._docs.long_description = Description(value=self._python_interface.docstring.long_description)
 
         FlyteEntities.entities.append(self)
+
         super().__init__(**kwargs)
+
 
     @property
     def name(self) -> str:

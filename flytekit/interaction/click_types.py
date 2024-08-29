@@ -175,7 +175,7 @@ class DateTimeType(click.DateTime):
         if isinstance(value, ArtifactQuery):
             return value
 
-        if isinstance(value, str) and " " in value:
+        if " " in value:
             import re
 
             m = re.match(self._FLOATING_FORMAT_PATTERN, value)
