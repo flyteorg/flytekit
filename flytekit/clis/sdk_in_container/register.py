@@ -167,17 +167,11 @@ def register(
     if copy is not None and non_fast:
         raise ValueError("--non-fast and --copy cannot be used together. Use --copy none instead.")
 
-    # Error handling for non-fast/copy conflicts
+    # Handle the new case where the copy flag is used instead of non-fast
     if copy == CopyFileDetection.NO_COPY:
         non_fast = True
         # Set this to None because downstream logic currently detects None to mean old logic.
         copy = None
-    elif copy == CopyFileDetection.ALL:
-        if non_fast:
-            raise ValueError("Conflicting options: cannot specify both --non-fast and --copy all")
-    elif copy == CopyFileDetection.LOADED_MODULES:
-        if non_fast:
-            raise ValueError("Conflicting options: cannot specify both --non-fast and --copy auto")
     ls_files = ctx.obj[constants.CTX_VERBOSE] > 0
 
     pkgs = ctx.obj[constants.CTX_PACKAGES]

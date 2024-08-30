@@ -121,7 +121,6 @@ def fast_package(
         if options.ls_files:
             print_ls_tree(source, ls)
 
-        # print(f"Digest check: old {digest} ==? new {ls_digest} -- {digest == ls_digest}")
         # Compute where the archive should be written
         archive_fname = f"{FAST_PREFIX}{ls_digest}{FAST_FILEENDING}"
         if output_dir is None:
