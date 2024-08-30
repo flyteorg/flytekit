@@ -3,6 +3,7 @@ from datetime import timezone as _timezone
 from typing import Dict, Optional
 
 from flyteidl.core import literals_pb2 as _literals_pb2
+from flyteidl.core import types_pb2 as _types_pb2
 from google.protobuf.struct_pb2 import Struct
 
 from flytekit.exceptions import user as _user_exceptions
@@ -47,13 +48,13 @@ class RetryStrategy(_common.FlyteIdlEntity):
 
 class Primitive(_common.FlyteIdlEntity):
     def __init__(
-        self,
-        integer=None,
-        float_value=None,
-        string_value=None,
-        boolean=None,
-        datetime=None,
-        duration=None,
+            self,
+            integer=None,
+            float_value=None,
+            string_value=None,
+            boolean=None,
+            datetime=None,
+            duration=None,
     ):
         """
         This object proxies the primitives supported by the Flyte IDL system.  Only one value can be set.
@@ -700,18 +701,73 @@ class LiteralMap(_common.FlyteIdlEntity):
         return cls({k: Literal.from_flyte_idl(v) for k, v in pb2_object.literals.items()})
 
 
+class LiteralOffloadedMetadata(_common.FlyteIdlEntity):
+    def __init__(self, uri: str, size_bytes: int, inferred_type: _types_pb2.LiteralType):
+        """
+        Used to represent metadata for offloaded literals.  This is used when the size of the literal is too large and
+        need to be offloaded to storage. The metadata contains the uri where the literal is stored, the size in bytes
+        and the type of the literal.
+        """
+        self._uri = uri
+        self._size_bytes = size_bytes
+        self._inferred_type = inferred_type
+
+    @property
+    def uri(self):
+        """
+        URI where the literal is stored
+        """
+        return self._uri
+
+    @property
+    def size_bytes(self):
+        """
+        Size of the literal in bytes
+        """
+        return self._size_bytes
+
+    @property
+    def inferred_type(self):
+        """
+        Type inferred for the literal
+        """
+        return self._inferred_type
+
+    def to_flyte_idl(self):
+        """
+        :rtype: flyteidl.core.literals_pb2.LiteralOffloadedMetadata
+        """
+        return _literals_pb2.LiteralOffloadedMetadata(
+            uri=self.uri,
+            size_bytes=self.size_bytes,
+            inferred_type=self.inferred_type
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object):
+        """
+        :param flyteidl.core.literals_pb2.LiteralOffloadedMetadata pb2_object:
+        :rtype: LiteralOffloadedMetadata
+        """
+        return cls(
+            uri=pb2_object.uri,
+            size_bytes=pb2_object.size_bytes,
+            inferred_type=pb2_object.inferred_type
+        )
+
+
 class Scalar(_common.FlyteIdlEntity):
     def __init__(
-        self,
-        primitive: Primitive = None,
-        blob: Blob = None,
-        binary: Binary = None,
-        schema: Schema = None,
-        union: Union = None,
-        none_type: Void = None,
-        error: Error = None,
-        generic: Struct = None,
-        structured_dataset: StructuredDataset = None,
+            self,
+            primitive: Primitive = None,
+            blob: Blob = None,
+            binary: Binary = None,
+            schema: Schema = None,
+            union: Union = None,
+            none_type: Void = None,
+            error: Error = None,
+            generic: Struct = None,
+            structured_dataset: StructuredDataset = None,
     ):
         """
         Scalar wrapper around Flyte types.  Only one can be specified.
@@ -803,15 +859,15 @@ class Scalar(_common.FlyteIdlEntity):
         :rtype: T
         """
         return (
-            self.primitive
-            or self.blob
-            or self.binary
-            or self.schema
-            or self.union
-            or self.none_type
-            or self.error
-            or self.generic
-            or self.structured_dataset
+                self.primitive
+                or self.blob
+                or self.binary
+                or self.schema
+                or self.union
+                or self.none_type
+                or self.error
+                or self.generic
+                or self.structured_dataset
         )
 
     def to_flyte_idl(self):
@@ -854,14 +910,13 @@ class Scalar(_common.FlyteIdlEntity):
 
 class Literal(_common.FlyteIdlEntity):
     def __init__(
-        self,
-        scalar: Optional[Scalar] = None,
-        collection: Optional[LiteralCollection] = None,
-        map: Optional[LiteralMap] = None,
-        hash: Optional[str] = None,
-        metadata: Optional[Dict[str, str]] = None,
-        uri: Optional[str] = None,
-        size_bytes: Optional[int] = None,
+            self,
+            scalar: Optional[Scalar] = None,
+            collection: Optional[LiteralCollection] = None,
+            map: Optional[LiteralMap] = None,
+            offloaded_metadata: Optional[LiteralOffloadedMetadata] = None,
+            hash: Optional[str] = None,
+            metadata: Optional[Dict[str, str]] = None,
     ):
         """
         This IDL message represents a literal value in the Flyte ecosystem.
@@ -873,10 +928,9 @@ class Literal(_common.FlyteIdlEntity):
         self._scalar = scalar
         self._collection = collection
         self._map = map
+        self._offloaded_metadata = offloaded_metadata
         self._hash = hash
         self._metadata = metadata
-        self._uri = uri
-        self._size_bytes = size_bytes
 
     @property
     def scalar(self):
@@ -930,18 +984,11 @@ class Literal(_common.FlyteIdlEntity):
         return self._metadata
 
     @property
-    def uri(self) -> Optional[str]:
+    def offloaded_metadata(self) -> Optional[LiteralOffloadedMetadata]:
         """
-        If set, this value holds the URI of the offloaded literal.
+        If set, this value holds the metadata for the offloaded literal which includes the uri,size and type of literal stored.
         """
-        return self._uri
-
-    @property
-    def size_bytes(self) -> Optional[int]:
-        """
-        If set, this value holds the size in bytes of the offloaded literal proto.
-        """
-        return self._size_bytes
+        return self._offloaded_metadata
 
     def to_flyte_idl(self):
         """
@@ -953,8 +1000,7 @@ class Literal(_common.FlyteIdlEntity):
             map=self.map.to_flyte_idl() if self.map is not None else None,
             hash=self.hash,
             metadata=self.metadata,
-            uri=self.uri,
-            size_bytes=self.size_bytes,
+            offloaded_metadata=self.offloaded_metadata.to_flyte_idl() if self.offloaded_metadata is not None else None,
         )
 
     @classmethod
@@ -973,8 +1019,8 @@ class Literal(_common.FlyteIdlEntity):
             map=LiteralMap.from_flyte_idl(pb2_object.map) if pb2_object.HasField("map") else None,
             hash=pb2_object.hash if pb2_object.hash else None,
             metadata={k: v for k, v in pb2_object.metadata.items()} if pb2_object.metadata else None,
-            uri=pb2_object.uri if pb2_object.uri else None,
-            size_bytes=pb2_object.size_bytes if pb2_object.size_bytes is not None else None,
+            offloaded_metadata=LiteralOffloadedMetadata.from_flyte_idl(
+                pb2_object.offloaded_metadata) if pb2_object.HasField("offloaded_metadata") else None,
         )
 
     def set_metadata(self, metadata: Dict[str, str]):
