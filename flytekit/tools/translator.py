@@ -1,3 +1,4 @@
+import importlib
 import sys
 import typing
 from collections import OrderedDict
@@ -823,6 +824,7 @@ def get_serializable(
     if isinstance(cp_entity, TaskSpec) or isinstance(cp_entity, WorkflowSpec):
         # 1. Check if the size of long description exceeds 16KB
         # 2. Extract the repo URL from the git config, and assign it to the link of the source code of the description entity
+        module = importlib.import_module(entity.instantiated_in)
         if entity.docs and entity.docs.long_description:
             if entity.docs.long_description.value:
                 if sys.getsizeof(entity.docs.long_description.value) > 16 * 1024 * 1024:

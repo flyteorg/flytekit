@@ -112,6 +112,10 @@ class TrackedInstance(metaclass=InstanceTrackingMeta):
         n, _, _, _ = extract_task_module(self)
         return n
 
+    def file_path(self) -> str:
+        _, _, _ , file_path = extract_task_module(self)
+        return file_path
+
     @property
     def lhs(self):
         if self._lhs is not None:
