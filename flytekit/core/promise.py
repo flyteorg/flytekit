@@ -772,7 +772,7 @@ def binding_data_from_python_std(
             if upstream_type.collection_type and upstream_type.collection_type.union_type:
                 if not (expected_literal_type.collection_type and expected_literal_type.collection_type.union_type):
                     raise AssertionError(
-                        f"Expected type {expected_literal_type} does not match upstream type {upstream_type}"
+                        f"Expected type {expected_literal_type}\n does not match upstream type {upstream_type}"
                     )
             nodes.append(t_value.ref.node)  # keeps track of upstream nodes
             return _literals_models.BindingData(promise=t_value.ref)
@@ -1198,6 +1198,7 @@ def create_and_link_node(
             used_inputs.add(k)
         except Exception as exc:
             exc.args = (f"Failed to Bind variable {k} for function {entity.name}:\n {exc.args[0]}",)
+            raise
 
     extra_inputs = used_inputs ^ set(kwargs.keys())
     if len(extra_inputs) > 0:
