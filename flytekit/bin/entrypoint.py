@@ -180,7 +180,7 @@ def _dispatch_execute(
     # make sure an event loop exists for data persistence step
     try:
         asyncio.get_event_loop()
-    except Exception:
+    except RuntimeError:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
