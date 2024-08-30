@@ -1087,8 +1087,9 @@ def create_and_link_node_from_remote(
             bindings.append(b)
             nodes.extend(n)
             used_inputs.add(k)
-        except Exception as e:
-            raise AssertionError(f"Failed to Bind variable {k} for function {entity.name}.") from e
+        except Exception as exc:
+            exc.args = (f"Failed to Bind variable {k} for function {entity.name}:\n {exc.args[0]}",)
+            raise
 
     extra_inputs = used_inputs ^ set(kwargs.keys())
     if len(extra_inputs) > 0:
@@ -1194,8 +1195,8 @@ def create_and_link_node(
             bindings.append(b)
             nodes.extend(n)
             used_inputs.add(k)
-        except Exception as e:
-            raise AssertionError(f"Failed to Bind variable {k} for function {entity.name}.") from e
+        except Exception as exc:
+            exc.args = (f"Failed to Bind variable {k} for function {entity.name}:\n {exc.args[0]}",)
 
     extra_inputs = used_inputs ^ set(kwargs.keys())
     if len(extra_inputs) > 0:
