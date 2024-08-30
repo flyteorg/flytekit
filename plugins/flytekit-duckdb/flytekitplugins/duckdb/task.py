@@ -16,7 +16,7 @@ class MissingSecretError(ValueError):
     pass
 
 
-def connect_local(token: Optional[str]):
+def connect_local():
     """Connect to local DuckDB."""
     return duckdb.connect(":memory:")
 
@@ -114,9 +114,9 @@ class DuckDBQuery(PythonInstanceTask):
                 group_version=self._connect_secret.group_version,
             )
         if isinstance(self._provider, DuckDBProvider):
-            return self._provider.value(connect_token)
+            return self._provider.value(connect_token) if connect_token else self._provider.value()
         else:  # callable
-            return self._provider(connect_token)
+            return self._provider(connect_token) if connect_token else self._provider()
 
     def _execute_query(
         self, con: duckdb.DuckDBPyConnection, params: list, query: str, counter: int, multiple_params: bool
