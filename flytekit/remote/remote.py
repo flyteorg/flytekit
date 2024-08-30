@@ -166,8 +166,8 @@ def _get_git_repo_url(source_path: str):
             .rstrip()
             .decode("utf-8")
         )
-        git_branch = (
-            subprocess.Popen(["git", "branch", "--show-current"], stdout=subprocess.PIPE)
+        git_sha = (
+            subprocess.Popen(["git", "rev-parse", "HEAD"], stdout=subprocess.PIPE)
             .communicate()[0]
             .rstrip()
             .decode("utf-8")
@@ -196,7 +196,7 @@ def _get_git_repo_url(source_path: str):
         else:
             raise ValueError("Unable to parse url")
 
-        return f"{repo_link}/blob/{git_branch}"
+        return f"{repo_link}/blob/{git_sha}"
 
     except Exception as e:
         logger.debug(f"unable to find the git config in {source_path} with error: {str(e)}")
