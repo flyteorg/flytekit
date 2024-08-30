@@ -62,7 +62,7 @@ def test_real_config():
     res = AWS.S3_ACCESS_KEY_ID.read(config_file)
     assert res == "minio"
 
-    with patch.dict(os.environ, {"FLYTE_AWS_ENDPOINT": "http://localhost:30084"}):
+    with patch.dict(os.environ, {}, clear=True):
         res = AWS.S3_ENDPOINT.read(config_file)
         assert res == "http://localhost:30084"
 
