@@ -12,6 +12,23 @@ class FlyteUserException(_FlyteException):
     _ERROR_CODE = "USER:Unknown"
 
 
+class FlyteUserRuntimeException(_FlyteException):
+    _ERROR_CODE = "USER:RuntimeError"
+
+    def __init__(self, exc_value: Exception):
+        """
+        FlyteUserRuntimeException is thrown when a user code raises an exception.
+
+        :param exc_value: The exception that was raised from user code.
+        """
+        self._exc_value = exc_value
+        super().__init__(str(exc_value))
+
+    @property
+    def value(self):
+        return self._exc_value
+
+
 class FlyteTypeException(FlyteUserException, TypeError):
     _ERROR_CODE = "USER:TypeError"
 

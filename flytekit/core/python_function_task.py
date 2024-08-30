@@ -39,7 +39,6 @@ from flytekit.core.workflow import (
     WorkflowMetadata,
     WorkflowMetadataDefaults,
 )
-from flytekit.exceptions import scopes as exception_scopes
 from flytekit.exceptions.user import FlyteValueException
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
@@ -196,12 +195,12 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         handle dynamic tasks or you will no longer be able to use the task as a dynamic task generator.
         """
         if self.execution_mode == self.ExecutionBehavior.DEFAULT:
-            return exception_scopes.user_entry_point(self._task_function)(**kwargs)
+            return self._task_function(**kwargs)
         elif self.execution_mode == self.ExecutionBehavior.EAGER:
             # if the task is a coroutine function, inject the context object so that the async_entity
             # has access to the FlyteContext.
             kwargs["async_ctx"] = FlyteContextManager.current_context()
-            return exception_scopes.user_entry_point(self._task_function)(**kwargs)
+            return self._task_function(**kwargs)
         elif self.execution_mode == self.ExecutionBehavior.DYNAMIC:
             return self.dynamic_execute(self._task_function, **kwargs)
 
@@ -351,7 +350,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
             return self.compile_into_workflow(ctx, task_function, **kwargs)
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_TASK_EXECUTION:
-            return exception_scopes.user_entry_point(task_function)(**kwargs)
+            return task_function(**kwargs)
 
         raise ValueError(f"Invalid execution provided, execution state: {ctx.execution_state}")
 
