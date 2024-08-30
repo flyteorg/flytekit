@@ -52,6 +52,9 @@ def test_config_entry_file_2(mock_get):
 
 
 def test_real_config():
+    # unset this variable
+    os.environ.pop("FLYTE_AWS_ENDPOINT", None)
+
     config_file = get_config_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/sample.yaml"))
     res = Platform.INSECURE.read(config_file)
     assert res
