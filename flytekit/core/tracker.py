@@ -56,10 +56,10 @@ class InstanceTrackingMeta(type):
         sys.path.insert(0, root_dir)
         try:
             xx = import_module_from_file(module_name, file)
-            print(f"=========> Successfully loaded module and assigned to name {module_name}")
+            print(f"=========> Successfully loaded module at {file} and assigned to name {module_name}")
             return xx
         except ModuleNotFoundError:
-            print(f"=========> Exception!!! Failed to load module {module_name}")
+            print(f"=========> Exception!!! Failed to load module {module_name} at {file}")
             return None
 
     @staticmethod
