@@ -240,7 +240,7 @@ def register(
     dry_run: bool = False,
     activate_launchplans: bool = False,
     skip_errors: bool = False,
-    ls_files: bool = False,
+    show_files: bool = False,
 ):
     """
     Temporarily, for fast register, specify both the fast arg as well as copy_style.
@@ -284,7 +284,7 @@ def register(
             detected_root,
             deref_symlinks,
             output,
-            options=fast_registration.FastPackageOptions([], copy_style=copy_style, ls_files=ls_files),
+            options=fast_registration.FastPackageOptions([], copy_style=copy_style, show_files=show_files),
         )
         # update serialization settings from fast register output
         fast_serialization_settings = FastSerializationSettings(

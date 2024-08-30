@@ -49,7 +49,7 @@ class FastPackageOptions:
     ignores: list[Ignore]
     keep_default_ignores: bool = True
     copy_style: Optional[CopyFileDetection] = None
-    ls_files: bool = False
+    show_files: bool = False
 
 
 def print_ls_tree(source: os.PathLike, ls: typing.List[str]):
@@ -118,7 +118,7 @@ def fast_package(
 
         logger.debug(f"Hash digest: {ls_digest}", fg="green")
 
-        if options.ls_files:
+        if options.show_files:
             print_ls_tree(source, ls)
 
         # Compute where the archive should be written

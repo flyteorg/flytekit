@@ -643,11 +643,11 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
             image_config = patch_image_config(config_file, image_config)
 
             with context_manager.FlyteContextManager.with_context(remote.context.new_builder()):
-                ls_files = run_level_params.verbose > 0
+                show_files = run_level_params.verbose > 0
                 fast_package_options = FastPackageOptions(
                     [],
                     copy_style=run_level_params.copy,
-                    ls_files=ls_files,
+                    show_files=show_files,
                 )
                 remote_entity = remote.register_script(
                     entity,

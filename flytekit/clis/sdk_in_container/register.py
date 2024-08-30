@@ -172,7 +172,7 @@ def register(
         non_fast = True
         # Set this to None because downstream logic currently detects None to mean old logic.
         copy = None
-    ls_files = ctx.obj[constants.CTX_VERBOSE] > 0
+    show_files = ctx.obj[constants.CTX_VERBOSE] > 0
 
     pkgs = ctx.obj[constants.CTX_PACKAGES]
     if not pkgs:
@@ -223,5 +223,5 @@ def register(
         dry_run=dry_run,
         activate_launchplans=activate_launchplans,
         skip_errors=skip_errors,
-        ls_files=ls_files,
+        show_files=show_files,
     )

@@ -157,9 +157,9 @@ def package(
 
     try:
         # verbosity greater than 0 means to print the files
-        ls_files = ctx.obj[constants.CTX_VERBOSE] > 0
+        show_files = ctx.obj[constants.CTX_VERBOSE] > 0
 
-        fast_options = FastPackageOptions([], copy_style=copy, ls_files=ls_files)
+        fast_options = FastPackageOptions([], copy_style=copy, show_files=show_files)
         serialize_and_package(
             pkgs, serialization_settings, source, output, fast, deref_symlinks, fast_options=fast_options
         )
