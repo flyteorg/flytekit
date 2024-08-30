@@ -632,7 +632,10 @@ def _internal_remote(
         os.environ[client_secret_env_var] = client_secret
         try:
             remote_cls = type(remote)
-            return remote_cls()
+            return remote_cls(
+                default_domain=remote.default_domain,
+                default_project=remote.default_project,
+            )
         except Exception as exc:
             raise TypeError(f"Unable to authenticate remote class {remote_cls} with client secret") from exc
 
