@@ -111,8 +111,8 @@ class TaskMetadata(object):
     See the :std:ref:`IDL <idl:protos/docs/core/core:taskmetadata>` for the protobuf definition.
 
     Args:
-        cache (bool): Indicates if caching should be enabled. See :std:ref:`Caching <cookbook:caching>`
-        cache_serialize (bool): Indicates if identical (ie. same inputs) instances of this task should be executed in serial when caching is enabled. See :std:ref:`Caching <cookbook:caching>`
+        cache (bool): Indicates if caching should be enabled. See :ref:`Caching <caching>`
+        cache_serialize (bool): Indicates if identical (ie. same inputs) instances of this task should be executed in serial when caching is enabled. See :ref:`Caching <caching>`
         cache_version (str): Version to be used for the cached value
         cache_ignore_input_vars (Tuple[str, ...]): Input variables that should not be included when calculating hash for cache
         interruptible (Optional[bool]): Indicates that this task can be interrupted and/or scheduled on nodes with

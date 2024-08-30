@@ -5,7 +5,7 @@ the Flyte platform to send emails when a workflow run reaches certain stages (fa
 .. note::
 
     Notifications require some setup and configuration on the Flyte platform side. Please contact your Flyte platform
-    admins to get this feature enabled. See :std:ref:`cookbook:setting up workflow notifications`
+    admins to get this feature enabled. See :ref:`setting up workflow notifications`
 
 Each notification type takes a list of :py:class:`flytekit.models.core.execution.WorkflowExecutionPhase` and a list of
 emails. Even though there are different notification classes in this module, they all just send email. The differentiation

@@ -32,7 +32,7 @@ class CronSchedule(_schedule_models.Schedule):
             schedule="*/1 * * * *",  # Following schedule runs every min
         )
 
-    See the :std:ref:`User Guide <cookbook:cron schedules>` for further examples.
+    See the :ref:`User Guide <cron schedules>` for further examples.
     """
 
     _VALID_CRON_ALIASES = [
@@ -166,7 +166,7 @@ class FixedRate(_schedule_models.Schedule):
 
         FixedRate(duration=timedelta(minutes=10))
 
-    See the :std:ref:`fixed rate intervals` chapter in the cookbook for additional usage examples.
+    See the :ref:`fixed rate intervals` documentation for additional usage examples.
     """
 
     def __init__(self, duration: datetime.timedelta, kickoff_time_input_arg: Optional[str] = None):

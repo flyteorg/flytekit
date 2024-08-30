@@ -243,7 +243,7 @@ def task(
         def my_task(x: int, y: typing.Dict[str, str]) -> str:
             ...
 
-    Please see some cookbook :std:ref:`task examples <cookbook:tasks>` for additional information.
+    Please see the :ref:`task examples <tasks>` for additional information.
 
     :param _task_function: This argument is implicitly passed and represents the decorated function
     :param task_config: This argument provides configuration for a specific task types.

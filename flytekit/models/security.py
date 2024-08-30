@@ -10,7 +10,7 @@ from flytekit.models import common as _common
 @dataclass
 class Secret(_common.FlyteIdlEntity):
     """
-    See :std:ref:`cookbook:secrets` for usage examples.
+    See :ref:`secrets` for usage examples.
 
     Args:
         group is the Name of the secret. For example in kubernetes secrets is the name of the secret
