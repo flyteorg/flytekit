@@ -52,25 +52,25 @@ def test_config_entry_file_2(mock_get):
 
 
 def test_real_config():
+    config_file = get_config_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/sample.yaml"))
+    res = Platform.INSECURE.read(config_file)
+    assert res
+
+    res = Platform.URL.read(config_file)
+    assert res == "flyte.mycorp.io"
+
+    res = AWS.S3_ACCESS_KEY_ID.read(config_file)
+    assert res == "minio"
+
     with patch.dict(os.environ, {"FLYTE_AWS_ENDPOINT": "http://localhost:30084"}):
-        config_file = get_config_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/sample.yaml"))
-        res = Platform.INSECURE.read(config_file)
-        assert res
-
-        res = Platform.URL.read(config_file)
-        assert res == "flyte.mycorp.io"
-
-        res = AWS.S3_ACCESS_KEY_ID.read(config_file)
-        assert res == "minio"
-
         res = AWS.S3_ENDPOINT.read(config_file)
         assert res == "http://localhost:30084"
 
-        res = AWS.S3_SECRET_ACCESS_KEY.read(config_file)
-        assert res == "miniostorage"
+    res = AWS.S3_SECRET_ACCESS_KEY.read(config_file)
+    assert res == "miniostorage"
 
-        res = Credentials.SCOPES.read(config_file)
-        assert res == ["all"]
+    res = Credentials.SCOPES.read(config_file)
+    assert res == ["all"]
 
 
 def test_use_ssl():
