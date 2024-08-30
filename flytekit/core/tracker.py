@@ -39,9 +39,12 @@ class InstanceTrackingMeta(type):
 
         file = Path(file)
         try:
+            # file.relative_to(Path.cwd())
             root_dir = os.path.commonpath([file.resolve(), Path.cwd()])
             file_relative = Path(os.path.relpath(file.resolve(), root_dir))
+            print(f"=========> In _get_module_from_main ({Path.cwd()}): {file_relative=}, {root_dir=}, {file=}")
         except ValueError:
+            print(f"=========> Exception!!! Failed to get relative path between {file} and {Path.cwd()}")
             return None
 
         module_components = [*file_relative.with_suffix("").parts]
@@ -52,8 +55,11 @@ class InstanceTrackingMeta(type):
         # make sure /root directory is in the PYTHONPATH.
         sys.path.insert(0, root_dir)
         try:
-            return import_module_from_file(module_name, file)
+            xx = import_module_from_file(module_name, file)
+            print(f"=========> Successfully loaded module and assigned to name {module_name}")
+            return xx
         except ModuleNotFoundError:
+            print(f"=========> Exception!!! Failed to load module {module_name}")
             return None
 
     @staticmethod
