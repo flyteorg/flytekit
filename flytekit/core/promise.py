@@ -1089,7 +1089,7 @@ def create_and_link_node_from_remote(
             nodes.extend(n)
             used_inputs.add(k)
         except Exception as exc:
-            exc.args = (f"Failed to Bind variable {k} for function {entity.name}:\n {exc.args[0]}",)
+            exc.args = (f"Failed to Bind variable '{k}' for function '{entity.name}':\n {exc.args[0]}",)
             raise
 
     extra_inputs = used_inputs ^ set(kwargs.keys())
@@ -1197,7 +1197,7 @@ def create_and_link_node(
             nodes.extend(n)
             used_inputs.add(k)
         except Exception as exc:
-            exc.args = (f"Failed to Bind variable {k} for function {entity.name}:\n {exc.args[0]}",)
+            exc.args = (f"Failed to Bind variable '{k}' for function '{entity.name}':\n {exc.args[0]}",)
             raise
 
     extra_inputs = used_inputs ^ set(kwargs.keys())
