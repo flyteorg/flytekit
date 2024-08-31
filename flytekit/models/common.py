@@ -1,9 +1,11 @@
 import abc
 import json
 import os
-from contextlib import closing
+import platform
+from contextlib import closing, nullcontext
 from io import StringIO
 from textwrap import shorten
+from threading import Lock
 from typing import Dict
 
 from flyteidl.admin import common_pb2 as _common_pb2
@@ -86,7 +88,13 @@ class FlyteIdlEntity(object, metaclass=FlyteType):
         """
         :rtype: Text
         """
-        str_repr = _repr_idl_yaml_like(self.to_flyte_idl(), indent=2).rstrip(os.linesep)
+        if platform.system() == "Windows":
+            lock = Lock()
+        else:
+            lock = nullcontext()
+        with lock:
+            str_repr = _repr_idl_yaml_like(self.to_flyte_idl(), indent=2).rstrip(os.linesep)
+
         type_str = type(self).__name__
         return f"Flyte Serialized object ({type_str}):" + os.linesep + str_repr
 
