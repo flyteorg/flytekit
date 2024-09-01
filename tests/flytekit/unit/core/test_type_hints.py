@@ -1984,7 +1984,7 @@ def test_list_containing_multiple_annotated_pandas_dataframes():
     ):
         return [pd.DataFrame({"column_1": [1, 2, 3]}), pd.DataFrame({"column_1": [4, 5, 6]})]
 
-    @task(cache=True, cache_version="v0")
+    @task
     def sum_list_of_pandas_dataframes(lst: typing.List[pd.DataFrame]) -> pd.DataFrame:
         return sum(lst)
 
