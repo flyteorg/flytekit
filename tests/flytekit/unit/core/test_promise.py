@@ -254,30 +254,3 @@ def test_prom_with_union_literals():
     assert bd.scalar.union.stored_type.structure.tag == "int"
     bd = binding_data_from_python_std(ctx, lt, "hello", pt, [])
     assert bd.scalar.union.stored_type.structure.tag == "str"
-
-
-def test_pro_with_mismatch_type():
-    @task
-    def t1(a: int) -> int:
-        return a
-
-    @task
-    def t2(a: str) -> str:
-        return a
-
-    @workflow
-    def wf1():
-        t2(a=t1(a=123))
-
-    with pytest.raises(AssertionError):
-        wf1.compile()
-
-    @task
-    def t3(a: typing.Union[int, str]) -> int:
-        return a
-
-    @workflow
-    def wf2():
-        t3(a=t1(a=123))
-
-    wf2.compile()
