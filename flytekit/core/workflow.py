@@ -385,7 +385,7 @@ class ImperativeWorkflow(WorkflowBase):
 
     Assuming you have some tasks like so
 
-    .. literalinclude:: ../../../tests/flytekit/unit/core/test_imperative.py
+    .. rli:: https://raw.githubusercontent.com/flyteorg/flytekit/master/tests/flytekit/unit/core/test_imperative.py
        :start-after: # docs_tasks_start
        :end-before: # docs_tasks_end
        :language: python
@@ -393,7 +393,7 @@ class ImperativeWorkflow(WorkflowBase):
 
     You could create a workflow imperatively like so
 
-    .. literalinclude:: ../../../tests/flytekit/unit/core/test_imperative.py
+    .. rli:: https://raw.githubusercontent.com/flyteorg/flytekit/master/tests/flytekit/unit/core/test_imperative.py
        :start-after: # docs_start
        :end-before: # docs_end
        :language: python
@@ -401,7 +401,7 @@ class ImperativeWorkflow(WorkflowBase):
 
     This workflow would be identical on the back-end to
 
-    .. literalinclude:: ../../../tests/flytekit/unit/core/test_imperative.py
+    .. rli:: https://raw.githubusercontent.com/flyteorg/flytekit/master/tests/flytekit/unit/core/test_imperative.py
        :start-after: # docs_equivalent_start
        :end-before: # docs_equivalent_end
        :language: python
@@ -862,7 +862,7 @@ def workflow(
 
     Example:
 
-    .. literalinclude:: ../../../tests/flytekit/unit/core/test_workflows.py
+    .. rli:: https://raw.githubusercontent.com/flyteorg/flytekit/master/tests/flytekit/unit/core/test_workflows.py
        :pyobject: my_wf_example
 
     Again, users should keep in mind that even though the body of the function looks like regular Python, it is
@@ -928,7 +928,7 @@ def reference_workflow(
 
     Example:
 
-    .. literalinclude:: ../../../tests/flytekit/unit/core/test_references.py
+    .. rli:: https://raw.githubusercontent.com/flyteorg/flytekit/master/tests/flytekit/unit/core/test_references.py
        :pyobject: ref_wf1
     """
 
