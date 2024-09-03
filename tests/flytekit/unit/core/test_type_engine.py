@@ -3035,7 +3035,7 @@ def test_DataclassTransformer_with_sub_dataclasses():
     assert child_data.b == 12
     assert isinstance(child_data, Child1)
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(AttributeError):
         wf2()
 
     base_data = wf3()
