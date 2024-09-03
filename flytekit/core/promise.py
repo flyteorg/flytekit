@@ -31,6 +31,7 @@ from flytekit.core.type_engine import (
     TypeEngine,
     TypeTransformerFailedError,
     UnionTransformer,
+    _is_union_type,
 )
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.exceptions.user import FlytePromiseAttributeResolveException
@@ -765,15 +766,26 @@ def binding_data_from_python_std(
     # This handles the case where the given value is the output of another task
     if isinstance(t_value, Promise):
         if not t_value.is_ready:
-            upstream_type = t_value.ref.node.flyte_entity.interface.outputs[t_value.ref.var].type
+            upstream_type = t_value.ref.node.flyte_entity.python_interface.outputs[t_value.ref.var]
             # if upstream type is a list of unions, make sure the downstream type is a list of unions
             # this is just a very limited test case for handling common map task type mis-matches so that we can show
             # the user more information without relying on the user to register with Admin to trigger the compiler
-            if upstream_type.collection_type and upstream_type.collection_type.union_type:
-                if not (expected_literal_type.collection_type and expected_literal_type.collection_type.union_type):
+            if upstream_type is not t_value_type:
+                if _is_union_type(t_value_type):
+                    sub_types = get_args(t_value_type)
+                    if not any(upstream_type == t for t in sub_types):
+                        raise AssertionError(
+                            f"Expected type '{t_value_type}' does not include upstream type '{upstream_type}'"
+                        )
+                else:
                     raise AssertionError(
-                        f"Expected type {expected_literal_type}\n does not match upstream type {upstream_type}"
+                        f"Expected type '{t_value_type}' does not match upstream type '{upstream_type}'"
                     )
+            # if upstream_type.collection_type and upstream_type.collection_type.union_type:
+            #     if not (expected_literal_type.collection_type and expected_literal_type.collection_type.union_type):
+            #         raise AssertionError(
+            #             f"Expected type {expected_literal_type}\n does not match upstream type {upstream_type}"
+            #         )
             nodes.append(t_value.ref.node)  # keeps track of upstream nodes
             return _literals_models.BindingData(promise=t_value.ref)
 

@@ -1,4 +1,5 @@
 import functools
+import os
 import typing
 from collections import OrderedDict
 from typing import List
@@ -461,4 +462,5 @@ def test_mis_match():
         dirs = mt(word=["one", "two", "three"])
         consume_directories(dirs=dirs)
 
-    wf.compile()
+    with pytest.raises(AssertionError):
+        wf.compile()

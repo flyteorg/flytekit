@@ -1477,7 +1477,7 @@ def _is_union_type(t):
     else:
         UnionType = None
 
-    return t is typing.Union or get_origin(t) is Union or UnionType and isinstance(t, UnionType)
+    return t is typing.Union or get_origin(t) is typing.Union or UnionType and isinstance(t, UnionType)
 
 
 class UnionTransformer(TypeTransformer[T]):
