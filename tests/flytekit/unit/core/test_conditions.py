@@ -9,6 +9,7 @@ import flytekit.configuration
 from flytekit import task, workflow
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.condition import conditional
+from flytekit.core.task import Echo
 from flytekit.models.core.workflow import Node
 from flytekit.tools.translator import get_serializable
 
@@ -491,3 +492,41 @@ def test_nested_condition_2():
 
     res = multiplier_2(my_input=10.0)
     assert res == 20
+
+
+def test_echo_in_condition():
+    echo1 = Echo(name="echo", inputs={"a": typing.Optional[float]})
+
+    @task()
+    def t1(radius: float) -> typing.Optional[float]:
+        return 2 * 3.14 * radius
+
+    @workflow
+    def wf1(radius: float) -> typing.Optional[float]:
+        return (
+            conditional("shape_properties_with_multiple_branches")
+            .if_((radius >= 0.1) & (radius < 1.0))
+            .then(t1(radius=radius))
+            .else_()
+            .then(echo1(a=radius))
+        )
+
+    assert wf1(radius=1.8) == 1.8
+
+    echo2 = Echo(name="echo", inputs={"a": float, "b": float})
+
+    @task()
+    def t2(radius: float) -> typing.Tuple[float, float]:
+        return 2 * 3.14 * radius, 2 * 3.14 * radius
+
+    @workflow
+    def wf2(radius1: float, radius2: float) -> typing.Tuple[float, float]:
+        return (
+            conditional("shape_properties_with_multiple_branches")
+            .if_((radius1 >= 0.1) & (radius1 < 1.0))
+            .then(t2(radius=radius2))
+            .else_()
+            .then(echo2(a=radius1, b=radius2))
+        )
+
+    assert wf2(radius1=1.8, radius2=1.8) == (1.8, 1.8)

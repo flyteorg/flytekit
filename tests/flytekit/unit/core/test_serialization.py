@@ -14,7 +14,7 @@ from flytekit.core.python_auto_container import get_registerable_container_image
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
 from flytekit.exceptions.user import FlyteAssertion, FlyteMissingTypeException
-from flytekit.image_spec.image_spec import ImageBuildEngine, _calculate_deduped_hash_from_image_spec
+from flytekit.image_spec.image_spec import ImageBuildEngine
 from flytekit.models.admin.workflow import WorkflowSpec
 from flytekit.models.literals import (
     BindingData,
@@ -302,7 +302,7 @@ def test_serialization_images(mock_image_spec_builder):
             config_file=os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/images.config")
         )
         imgs.images.append(
-            Image(name=_calculate_deduped_hash_from_image_spec(image_spec), fqn="docker.io/t7", tag="latest")
+            Image(name=image_spec.id, fqn="docker.io/t7", tag="latest")
         )
         rs = flytekit.configuration.SerializationSettings(
             project="project",

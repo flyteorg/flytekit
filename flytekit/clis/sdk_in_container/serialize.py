@@ -3,6 +3,7 @@ import sys
 import typing
 from enum import Enum
 
+import rich
 import rich_click as click
 
 from flytekit.clis.sdk_in_container import constants
@@ -136,6 +137,12 @@ def serialize(
     ctx.obj[CTX_IMAGE] = image_config
     ctx.obj[CTX_LOCAL_SRC_ROOT] = local_source_root
     ctx.obj[CTX_ENV] = env
+    rich.print(
+        "[bold bright_green on black][Deprecation notice]\nThis 'serialize' command is being deprecated,"
+        " please move to using 'package' instead."
+        " See [link=https://docs.flyte.org/en/latest/api/flytekit/design/clis.html#pyflyte]docs[/link]"
+        " for more information.[/]\n"
+    )
     click.echo(f"Serializing Flyte elements with image {image_config}")
 
     if in_container_virtualenv_root:

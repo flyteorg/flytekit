@@ -10,7 +10,7 @@ import sys
 import tempfile
 import traceback
 from sys import exit
-from typing import List, Optional
+from typing import Callable, List, Optional
 
 import click
 from flyteidl.core import literals_pb2 as _literals_pb2
@@ -71,7 +71,7 @@ def _compute_array_job_index():
 
 def _dispatch_execute(
     ctx: FlyteContext,
-    task_def: PythonTask,
+    load_task: Callable[[], PythonTask],
     inputs_path: str,
     output_prefix: str,
 ):
@@ -85,8 +85,17 @@ def _dispatch_execute(
             c: OR if an unhandled exception is retrieved - record it as an errors.pb
     """
     output_file_dict = {}
-    logger.debug(f"Starting _dispatch_execute for {task_def.name}")
+
+    task_def = None
     try:
+        try:
+            task_def = load_task()
+        except Exception as e:
+            # If the task can not be loaded, then it's most likely a user error. For example,
+            # a dependency is not installed during execution.
+            raise FlyteUserRuntimeException(e) from e
+
+        logger.debug(f"Starting _dispatch_execute for {task_def.name}")
         # Step1
         local_inputs_file = os.path.join(ctx.execution_state.working_dir, "inputs.pb")
         ctx.file_access.get_data(inputs_path, local_inputs_file)
@@ -142,6 +151,25 @@ def _dispatch_execute(
                 _execution_models.ExecutionError.ErrorKind.USER,
             )
         )
+        if task_def is not None:
+            logger.error(f"Exception when executing task {task_def.name or task_def.id.name}, reason {str(e)}")
+        else:
+            logger.error(f"Exception when loading_task, reason {str(e)}")
+        logger.error("!! Begin User Error Captured by Flyte !!")
+        logger.error(exc_str)
+        logger.error("!! End Error Captured by Flyte !!")
+
+    # All the Non-user errors are captured here, and are considered system errors
+    except Exception as e:
+        exc_str = get_traceback_str(e)
+        output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
+            _error_models.ContainerError(
+                "SYSTEM",
+                exc_str,
+                _error_models.ContainerError.Kind.RECOVERABLE,
+                _execution_models.ExecutionError.ErrorKind.USER,
+            )
+        )
         logger.error(f"Exception when executing task {task_def.name}, reason {str(e)}")
         logger.error("!! Begin User Error Captured by Flyte !!")
         logger.error(exc_str)
@@ -165,8 +193,8 @@ def _dispatch_execute(
                 _execution_models.ExecutionError.ErrorKind.SYSTEM,
             )
         )
-        logger.error(f"Exception when executing task {task_def.name}, reason {str(e)}")
-        logger.error("!! Begin System Error Captured by Flyte !!")
+
+        logger.error("!! Begin Unknown System Error Captured by Flyte !!")
         logger.error(exc_str)
         logger.error("!! End Error Captured by Flyte !!")
 
@@ -176,7 +204,7 @@ def _dispatch_execute(
     ctx.file_access.put_data(ctx.execution_state.engine_dir, output_prefix, is_multipart=True)
     logger.info(f"Engine folder written successfully to the output prefix {output_prefix}")
 
-    if not getattr(task_def, "disable_deck", True):
+    if task_def is not None and not getattr(task_def, "disable_deck", True):
         _output_deck(task_def.name.split(".")[-1], ctx.user_space_params)
 
     logger.debug("Finished _dispatch_execute")
@@ -336,18 +364,6 @@ def setup_execution(
         yield ctx
 
 
-def _handle_annotated_task(
-    ctx: FlyteContext,
-    task_def: PythonTask,
-    inputs: str,
-    output_prefix: str,
-):
-    """
-    Entrypoint for all PythonTask extensions
-    """
-    _dispatch_execute(ctx, task_def, inputs, output_prefix)
-
-
 def _execute_task(
     inputs: str,
     output_prefix: str,
@@ -398,14 +414,17 @@ def _execute_task(
         if all(os.path.realpath(path) != working_dir for path in sys.path):
             sys.path.append(working_dir)
         resolver_obj = load_object_from_module(resolver)
-        # Use the resolver to load the actual task object
-        _task_def = resolver_obj.load_task(loader_args=resolver_args)
+
+        def load_task():
+            # Use the resolver to load the actual task object
+            return resolver_obj.load_task(loader_args=resolver_args)
+
         if test:
             logger.info(
                 f"Test detected, returning. Args were {inputs} {output_prefix} {raw_output_data_prefix} {resolver} {resolver_args}"
             )
             return
-        _handle_annotated_task(ctx, _task_def, inputs, output_prefix)
+        _dispatch_execute(ctx, load_task, inputs, output_prefix)
 
 
 def _execute_map_task(
@@ -449,7 +468,9 @@ def _execute_map_task(
             sys.path.append(working_dir)
         task_index = _compute_array_job_index()
         mtr = load_object_from_module(resolver)()
-        map_task = mtr.load_task(loader_args=resolver_args, max_concurrency=max_concurrency)
+
+        def load_task():
+            return mtr.load_task(loader_args=resolver_args, max_concurrency=max_concurrency)
 
         # Special case for the map task resolver, we need to append the task index to the output prefix.
         # TODO: (https://github.com/flyteorg/flyte/issues/5011) Remove legacy map task
@@ -464,7 +485,7 @@ def _execute_map_task(
             )
             return
 
-        _handle_annotated_task(ctx, map_task, inputs, output_prefix)
+        _dispatch_execute(ctx, load_task, inputs, output_prefix)
 
 
 def normalize_inputs(

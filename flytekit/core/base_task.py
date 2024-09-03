@@ -730,7 +730,8 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             try:
                 native_inputs = self._literal_map_to_python_input(input_literal_map, exec_ctx)
             except Exception as exc:
-                raise FlyteUserRuntimeException(exc) from exc
+                exc.args = (f"Error encountered while converting inputs of '{self.name}':\n  {exc.args[0]}",)
+                raise
 
             # TODO: Logger should auto inject the current context information to indicate if the task is running within
             #   a workflow or a subworkflow etc
