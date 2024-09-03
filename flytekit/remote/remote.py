@@ -1062,7 +1062,7 @@ class FlyteRemote(object):
             image_config = ImageConfig.auto_default_image()
 
         with tempfile.TemporaryDirectory() as tmp_dir:
-            if copy_all:
+            if copy_all or (fast_package_options and fast_package_options.copy_style):
                 md5_bytes, upload_native_url = self.fast_package(
                     pathlib.Path(source_path), False, tmp_dir, fast_package_options
                 )
