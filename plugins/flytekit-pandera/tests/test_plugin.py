@@ -44,7 +44,7 @@ def test_pandera_dataframe_type_hints():
     # raise error when defining workflow using invalid data
     invalid_df = pandas.DataFrame({"col1": [1, 2, 3], "col2": list("abc")})
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(pandera.errors.SchemaError):
 
         @workflow
         def invalid_wf() -> pandera.typing.DataFrame[OutSchema]:
