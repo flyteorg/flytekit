@@ -31,7 +31,7 @@ from flytekit.core.promise import NodeOutput, Promise, VoidPromise
 from flytekit.core.resources import Resources
 from flytekit.core.task import TaskMetadata, task
 from flytekit.core.testing import patch, task_mock
-from flytekit.core.type_engine import RestrictedTypeError, SimpleTransformer, TypeEngine
+from flytekit.core.type_engine import RestrictedTypeError, SimpleTransformer, TypeEngine, TypeTransformerFailedError
 from flytekit.core.workflow import workflow
 from flytekit.exceptions.user import FlyteValidationException, FlyteFailureNodeInputMismatchException
 from flytekit.models import literals as _literal_models
@@ -1596,7 +1596,7 @@ def test_error_messages(exec_prefix):
         return input  # type: ignore
 
     with pytest.raises(
-        TypeError,
+        TypeTransformerFailedError,
         match=(
             f"Failed to convert inputs of task '{exec_prefix}tests.flytekit.unit.core.test_type_hints.foo':\n"
             "  Failed argument 'a': Expected value of type <class 'int'> but got 'hello' of type <class 'str'>"
@@ -1615,14 +1615,14 @@ def test_error_messages(exec_prefix):
         foo2(a=10, b="hello")
 
     with pytest.raises(
-        TypeError,
+        TypeTransformerFailedError,
         match=f"Failed to convert inputs of task '{exec_prefix}tests.flytekit.unit.core.test_type_hints.foo3':\n  "
         f"Failed argument 'a': Expected a dict",
     ):
         foo3(a=[{"hello": 2}])
 
     with pytest.raises(
-        TypeError,
+        AttributeError,
         match=(
             f"Failed to convert outputs of task '{exec_prefix}tests.flytekit.unit.core.test_type_hints.foo4' at position 0.\n"
             f"Failed to convert type <class 'tests.flytekit.unit.core.test_type_hints.test_error_messages.<locals>.DC1'> to type <class 'tests.flytekit.unit.core.test_type_hints.test_error_messages.<locals>.DC2'>.\n"
@@ -1754,7 +1754,6 @@ def test_union_type(exec_prefix):
         TypeError,
         match=re.escape(
             f"Error encountered while converting inputs of '{exec_prefix}tests.flytekit.unit.core.test_type_hints.t2':\n"
-            # needs to be fixed more.
             r'  Cannot convert from Flyte Serialized object (Literal):'
         ),
     ):

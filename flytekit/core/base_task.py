@@ -726,7 +726,11 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         ) as exec_ctx:
             # TODO We could support default values here too - but not part of the plan right now
             # Translate the input literals to Python native
-            native_inputs = system_error_handler(self._literal_map_to_python_input)(input_literal_map, exec_ctx)
+            try:
+                native_inputs = system_error_handler(self._literal_map_to_python_input)(input_literal_map, exec_ctx)
+            except Exception as exc:
+                exc.args = (f"Error encountered while converting inputs of '{self.name}':\n  {exc.args[0]}",)
+                raise
 
             # TODO: Logger should auto inject the current context information to indicate if the task is running within
             #   a workflow or a subworkflow etc
