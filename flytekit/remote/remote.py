@@ -171,7 +171,7 @@ def _get_git_repo_url(source_path: str):
     try:
         git_root = _get_git_root(source_path)
         git_sha = (
-            subprocess.Popen(["git", "rev-parse", "HEAD"], stdout=subprocess.PIPE, cwd=source_path)
+            subprocess.Popen(["git", "rev-parse", "HEAD"], stdout=subprocess.PIPE, cwd=git_root)
             .communicate()[0]
             .rstrip()
             .decode("utf-8")
@@ -186,8 +186,7 @@ def _get_git_repo_url(source_path: str):
 
         if url.startswith("git@"):
             # url format: git@github.com:flytekit/flytekit.git
-            prefix_len, suffix_len = len("git@"), len(".git")
-            repo_link = url[prefix_len:-suffix_len].replace(":", "/")
+            repo_link = url.removeprefix("git@").removesuffix(".git").replace(":", "/")
         elif url.startswith("https://"):
             # url format: https://github.com/flytekit/flytekit
             prefix_len = len("https://")

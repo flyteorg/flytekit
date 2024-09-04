@@ -3,9 +3,10 @@ from collections import OrderedDict
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
+import requests
 from flyteidl.admin import schedule_pb2
 
-from flytekit import ImageSpec, PythonFunctionTask, SourceCode
+from flytekit import ImageSpec, PythonFunctionTask, SourceCode, logger
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core import constants as _common_constants
 from flytekit.core import context_manager
@@ -841,8 +842,14 @@ def _get_git_link_from_entity(module: str, settings: SerializationSettings) -> O
 
     from flytekit.remote.remote import _get_git_root
 
-    link = f"{settings.git_repo}/{module.removeprefix(_get_git_root(settings.source_root))}.py"
-    return link
+    git_link = settings.git_repo + module.removeprefix(_get_git_root(settings.source_root))
+    response = requests.get("https://" + git_link)
+
+    if response.status_code != 200:
+        logger.debug(f"Source code link not found: {git_link}")
+        return None
+
+    return git_link
 
 
 def gather_dependent_entities(
