@@ -113,8 +113,11 @@ class TrackedInstance(metaclass=InstanceTrackingMeta):
         return n
 
     @property
-    def full_path(self) -> str:
-        _, _, _ , full_path = extract_task_module(self)
+    def module(self) -> str:
+        """
+        The full path to the module that instantiated this object.
+        """
+        _, _, _, full_path = extract_task_module(self)
         return full_path
 
     @property

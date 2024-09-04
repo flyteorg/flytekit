@@ -1,5 +1,3 @@
-import importlib
-import sys
 import typing
 from collections import OrderedDict
 from dataclasses import dataclass
@@ -822,21 +820,29 @@ def get_serializable(
         raise ValueError(f"Non serializable type found {type(entity)} Entity {entity}")
 
     if isinstance(cp_entity, TaskSpec) or isinstance(cp_entity, WorkflowSpec):
-        # 1. Check if the size of long description exceeds 16KB
-        # 2. Extract the repo URL from the git config, and assign it to the link of the source code of the description entity
-        module = importlib.import_module(entity.instantiated_in)
-        if entity.docs and entity.docs.long_description:
-            if entity.docs.long_description.value:
-                if sys.getsizeof(entity.docs.long_description.value) > 16 * 1024 * 1024:
-                    raise ValueError(
-                        "Long Description of the flyte entity exceeds the 16KB size limit. Please specify the uri in the long description instead."
-                    )
-            print("full path", entity.full_path)
-            link = f"{settings.git_repo}/{entity.instantiated_in}.py"
-            entity.docs.source_code = SourceCode(link=link)
-    # This needs to be at the bottom not the top - i.e. dependent tasks get added before the workflow containing it
+        # Extract the repo URL from the git config, and assign it to the link of the source code of the description entity
+        entity.docs.source_code = SourceCode(link=_get_git_link_from_entity(entity.module, settings))
+    # This needs to be at the bottom, not the top - i.e., dependent tasks get added before the workflow containing it
     entity_mapping[entity] = cp_entity
     return cp_entity
+
+
+def _get_git_link_from_entity(module: str, settings: SerializationSettings) -> Optional[str]:
+    """
+    Get the git link from the task/workflow.
+    This is used to set the source code link in the description of the entity.
+
+    :param module: the full name of the module
+    :param settings: the serialization settings
+    :return: the git source code link
+    """
+    if settings.git_repo is None:
+        return None
+
+    from flytekit.remote.remote import _get_git_root
+
+    link = f"{settings.git_repo}/{module.removeprefix(_get_git_root(settings.source_root))}.py"
+    return link
 
 
 def gather_dependent_entities(

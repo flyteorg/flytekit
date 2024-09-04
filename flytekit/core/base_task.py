@@ -56,7 +56,7 @@ from flytekit.core.context_manager import (
     FlyteContextManager,
     FlyteEntities,
 )
-from flytekit.core.interface import Interface, transform_interface_to_typed_interface
+from flytekit.core.interface import Interface, get_documentation_from_docstring, transform_interface_to_typed_interface
 from flytekit.core.local_cache import LocalTaskCache
 from flytekit.core.promise import (
     Promise,
@@ -78,7 +78,7 @@ from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_model
 from flytekit.models.core import workflow as _workflow_model
-from flytekit.models.documentation import Description, Documentation
+from flytekit.models.documentation import Documentation
 from flytekit.models.interface import Variable
 from flytekit.models.security import SecurityContext
 
@@ -462,6 +462,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         task_config: Optional[T] = None,
         interface: Optional[Interface] = None,
         environment: Optional[Dict[str, str]] = None,
+        docs: Optional[Documentation] = None,
         disable_deck: Optional[bool] = None,
         enable_deck: Optional[bool] = None,
         deck_fields: Optional[Tuple[DeckField, ...]] = (
@@ -484,6 +485,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 signature of the task
             environment (Optional[Dict[str, str]]): Any environment variables that should be supplied during the
                 execution of the task. Supplied as a dictionary of key/value pairs
+            docs (Optional[Documentation]): Documentation for the task
             disable_deck (bool): (deprecated) If true, this task will not output deck html file
             enable_deck (bool): If true, this task will output deck html file
             deck_fields (Tuple[DeckField]): Tuple of decks to be
@@ -498,6 +500,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         self._python_interface = interface if interface else Interface()
         self._environment = environment if environment else {}
         self._task_config = task_config
+        self._docs = get_documentation_from_docstring(self.python_interface.docstring, docs)
 
         # first we resolve the conflict between params regarding decks, if any two of [disable_deck, enable_deck]
         # are set, we raise an error
@@ -527,22 +530,6 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 raise ValueError(
                     f"Element {deck} from deck_fields param is not a valid deck field. Please use one of {deck_members}"
                 )
-
-        if self._python_interface.docstring:
-            if self.docs is None:
-                self._docs = Documentation(
-                    short_description=self._python_interface.docstring.short_description,
-                    long_description=Description(value=self._python_interface.docstring.long_description),
-                )
-            else:
-                if self._python_interface.docstring.short_description:
-                    cast(
-                        Documentation, self._docs
-                    ).short_description = self._python_interface.docstring.short_description
-                if self._python_interface.docstring.long_description:
-                    cast(Documentation, self._docs).long_description = Description(
-                        value=self._python_interface.docstring.long_description
-                    )
 
     # TODO lets call this interface and the other as flyte_interface?
     @property

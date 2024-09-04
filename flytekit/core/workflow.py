@@ -30,6 +30,7 @@ from flytekit.core.context_manager import (
 from flytekit.core.docstring import Docstring
 from flytekit.core.interface import (
     Interface,
+    get_documentation_from_docstring,
     transform_function_to_interface,
     transform_interface_to_typed_interface,
 )
@@ -57,7 +58,7 @@ from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model
-from flytekit.models.documentation import Description, Documentation
+from flytekit.models.documentation import Documentation
 from flytekit.types.error import FlyteError
 
 GLOBAL_START_NODE = Node(
@@ -207,26 +208,10 @@ class WorkflowBase(object):
         self._output_bindings: List[_literal_models.Binding] = []
         self._on_failure = on_failure
         self._failure_node = None
-        self._docs = docs
-
-        if self._python_interface.docstring:
-            if self.docs is None:
-                self._docs = Documentation(
-                    short_description=self._python_interface.docstring.short_description,
-                    long_description=Description(value=self._python_interface.docstring.long_description),
-                )
-            else:
-                if self._python_interface.docstring.short_description:
-                    cast(
-                        Documentation, self._docs
-                    ).short_description = self._python_interface.docstring.short_description
-                if self._python_interface.docstring.long_description:
-                    self._docs.long_description = Description(value=self._python_interface.docstring.long_description)
-
+        self._docs = get_documentation_from_docstring(self._python_interface.docstring, docs)
         FlyteEntities.entities.append(self)
 
         super().__init__(**kwargs)
-
 
     @property
     def name(self) -> str:

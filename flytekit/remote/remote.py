@@ -27,7 +27,6 @@ from typing import Dict
 import click
 import cloudpickle
 import fsspec
-import git
 import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
 from flyteidl.core import literals_pb2
@@ -155,19 +154,24 @@ def _get_entity_identifier(
     )
 
 
+@functools.lru_cache
+def _get_git_root(source_path: str):
+    return (
+        subprocess.Popen(["git", "rev-parse", "--show-toplevel"], stdout=subprocess.PIPE, cwd=source_path)
+        .communicate()[0]
+        .rstrip()
+        .decode("utf-8")
+    )
+
+
 def _get_git_repo_url(source_path: str):
     """
     Get git repo URL from remote.origin.url
     """
     try:
-        git_root = (
-            subprocess.Popen(["git", "rev-parse", "--show-toplevel"], stdout=subprocess.PIPE)
-            .communicate()[0]
-            .rstrip()
-            .decode("utf-8")
-        )
+        git_root = _get_git_root(source_path)
         git_sha = (
-            subprocess.Popen(["git", "rev-parse", "HEAD"], stdout=subprocess.PIPE)
+            subprocess.Popen(["git", "rev-parse", "HEAD"], stdout=subprocess.PIPE, cwd=source_path)
             .communicate()[0]
             .rstrip()
             .decode("utf-8")
@@ -180,7 +184,6 @@ def _get_git_repo_url(source_path: str):
         config.read(git_config)
         url = config['remote "origin"']["url"]
 
-        # ranch name
         if url.startswith("git@"):
             # url format: git@github.com:flytekit/flytekit.git
             prefix_len, suffix_len = len("git@"), len(".git")

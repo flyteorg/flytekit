@@ -36,6 +36,7 @@ from flytekit.exceptions.user import (
 )
 from flytekit.loggers import developer_logger, logger
 from flytekit.models import interface as _interface_models
+from flytekit.models.documentation import Description, Documentation
 from flytekit.models.literals import Literal, Scalar, Void
 
 T = typing.TypeVar("T")
@@ -573,3 +574,30 @@ def remap_shared_output_descriptions(output_descriptions: Dict[str, str], output
         return output_descriptions
     _, shared_description = next(iter(output_descriptions.items()))
     return {k: shared_description for k, _ in outputs.items()}
+
+
+def get_documentation_from_docstring(
+    docstring: Optional[Docstring], default_val: Optional[Documentation] = None
+) -> Documentation:
+    """
+    Extracts documentation from the task/workflow
+
+    :param docstring: the docstring from the task/workflow
+    :param default_val: default value
+    :return: documentation object
+    """
+    doc = default_val or Documentation()
+
+    if docstring is None:
+        return doc
+
+    if docstring.short_description:
+        doc.short_description = docstring.short_description
+    if docstring.long_description:
+        if sys.getsizeof(docstring.long_description) > 16 * 1024 * 1024:
+            # Check if the size of long description exceeds 16KB
+            raise ValueError(
+                "Long Description of the flyte entity exceeds the 16KB size limit. Please specify the uri in the long description instead."
+            )
+        doc.long_description = Description(value=docstring.long_description)
+    return doc
