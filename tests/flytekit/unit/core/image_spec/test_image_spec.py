@@ -29,12 +29,14 @@ def test_image_spec(mock_image_spec_builder, monkeypatch):
         requirements=REQUIREMENT_FILE,
         registry_config=REGISTRY_CONFIG_FILE,
         entrypoint=["/bin/bash"],
+        docker_commands=["RUN ls"],
     )
     assert image_spec._is_force_push is False
 
     image_spec = image_spec.with_commands("echo hello")
     image_spec = image_spec.with_packages("numpy")
     image_spec = image_spec.with_apt_packages("wget")
+    image_spec = image_spec.with_docker_commands(["RUN echo hello"])
     image_spec = image_spec.force_push()
 
     assert image_spec.python_version == "3.8"
@@ -55,6 +57,7 @@ def test_image_spec(mock_image_spec_builder, monkeypatch):
     assert image_spec.commands == ["echo hello"]
     assert image_spec._is_force_push is True
     assert image_spec.entrypoint == ["/bin/bash"]
+    assert image_spec.docker_commands == ["RUN ls", "RUN echo hello"]
 
     assert image_spec.image_name() == f"localhost:30001/flytekit:lh20ze1E7qsZn5_kBQifRw"
     ctx = context_manager.FlyteContext.current_context()
