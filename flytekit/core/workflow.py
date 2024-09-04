@@ -209,6 +209,7 @@ class WorkflowBase(object):
         self._on_failure = on_failure
         self._failure_node = None
         self._docs = get_documentation_from_docstring(self._python_interface.docstring, docs)
+        self._module_file = None
         FlyteEntities.entities.append(self)
 
         super().__init__(**kwargs)
@@ -216,6 +217,12 @@ class WorkflowBase(object):
     @property
     def name(self) -> str:
         return self._name
+
+    def module_file(self) -> str:
+        """
+        The full name of the module where the workflow function is defined.
+        """
+        return self._module_file
 
     @property
     def docs(self):
@@ -649,7 +656,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         on_failure: Optional[Union[WorkflowBase, Task]] = None,
         docs: Optional[Documentation] = None,
     ):
-        name, _, _, _ = extract_task_module(workflow_function)
+        name, _, _, module_file = extract_task_module(workflow_function)
         self._workflow_function = workflow_function
         native_interface = transform_function_to_interface(workflow_function, docstring=docstring)
 
@@ -666,6 +673,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             docs=docs,
         )
         self.compiled = False
+        self._module_file = module_file
 
     @property
     def function(self):

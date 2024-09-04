@@ -108,17 +108,16 @@ class TrackedInstance(metaclass=InstanceTrackingMeta):
         return self._instantiated_in
 
     @property
-    def location(self) -> str:
-        n, _, _, _ = extract_task_module(self)
-        return n
-
-    @property
-    def module(self) -> str:
+    def module_file(self) -> str:
         """
         The full path to the module that instantiated this object.
         """
-        _, _, _, full_path = extract_task_module(self)
-        return full_path
+        return self._module_file
+
+    @property
+    def location(self) -> str:
+        n, _, _, _ = extract_task_module(self)
+        return n
 
     @property
     def lhs(self):

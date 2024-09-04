@@ -30,7 +30,6 @@ from flytekit.models import interface as interface_models
 from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models import security
 from flytekit.models.admin import workflow as admin_workflow_models
-from flytekit.models.admin.workflow import WorkflowSpec
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _core_wf
 from flytekit.models.core import workflow as workflow_model
@@ -820,9 +819,13 @@ def get_serializable(
     else:
         raise ValueError(f"Non serializable type found {type(entity)} Entity {entity}")
 
-    if isinstance(cp_entity, TaskSpec) or isinstance(cp_entity, WorkflowSpec):
+    if (
+        isinstance(entity, (PythonTask, WorkflowBase))
+        and not isinstance(entity, ReferenceEntity)
+        and entity.module_file
+    ):
         # Extract the repo URL from the git config, and assign it to the link of the source code of the description entity
-        entity.docs.source_code = SourceCode(link=_get_git_link_from_entity(entity.module, settings))
+        entity.docs.source_code = SourceCode(link=_get_git_link_from_entity(str(entity.module_file), settings))
     # This needs to be at the bottom, not the top - i.e., dependent tasks get added before the workflow containing it
     entity_mapping[entity] = cp_entity
     return cp_entity
@@ -837,13 +840,17 @@ def _get_git_link_from_entity(module: str, settings: SerializationSettings) -> O
     :param settings: the serialization settings
     :return: the git source code link
     """
-    if settings.git_repo is None:
+    if not settings.git_repo:
         return None
 
     from flytekit.remote.remote import _get_git_root
 
-    git_link = settings.git_repo + module.removeprefix(_get_git_root(settings.source_root))
-    response = requests.get("https://" + git_link)
+    try:
+        git_link = settings.git_repo + module.removeprefix(_get_git_root(settings.source_root))
+        response = requests.get("https://" + git_link)
+    except Exception as e:
+        logger.debug(f"Failing to get source code link: {e}")
+        return None
 
     if response.status_code != 200:
         logger.debug(f"Source code link not found: {git_link}")

@@ -580,7 +580,7 @@ def get_documentation_from_docstring(
     docstring: Optional[Docstring], default_val: Optional[Documentation] = None
 ) -> Documentation:
     """
-    Extracts documentation from the task/workflow
+    Construct a Documentation object from the docstring and default value
 
     :param docstring: the docstring from the task/workflow
     :param default_val: default value

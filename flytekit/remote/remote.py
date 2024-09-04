@@ -155,7 +155,10 @@ def _get_entity_identifier(
 
 
 @functools.lru_cache
-def _get_git_root(source_path: str):
+def _get_git_root(source_path: str) -> typing.Optional[str]:
+    """
+    Get the root of the git repository in the source path.
+    """
     return (
         subprocess.Popen(["git", "rev-parse", "--show-toplevel"], stdout=subprocess.PIPE, cwd=source_path)
         .communicate()[0]
@@ -164,7 +167,7 @@ def _get_git_root(source_path: str):
     )
 
 
-def _get_git_repo_url(source_path: str):
+def _get_git_repo_url(source_path: str) -> typing.Optional[str]:
     """
     Get git repo URL from remote.origin.url
     """
