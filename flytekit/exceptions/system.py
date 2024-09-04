@@ -65,3 +65,11 @@ class FlyteNonRecoverableSystemException(FlyteSystemException):
     @property
     def value(self):
         return self._exc_value
+
+
+class FlyteDownloadDataException(FlyteSystemException):
+    _ERROR_CODE = "SYSTEM:DownloadDataError"
+
+
+class FlyteUploadDataException(FlyteSystemException):
+    _ERROR_CODE = "SYSTEM:UploadDataError"

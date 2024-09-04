@@ -71,7 +71,11 @@ from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
 from flytekit.core.utils import timeit
 from flytekit.deck import DeckField
-from flytekit.exceptions.system import FlyteNonRecoverableSystemException
+from flytekit.exceptions.system import (
+    FlyteDownloadDataException,
+    FlyteNonRecoverableSystemException,
+    FlyteUploadDataException,
+)
 from flytekit.exceptions.user import FlyteUserRuntimeException
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
@@ -729,6 +733,8 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             # Translate the input literals to Python native
             try:
                 native_inputs = self._literal_map_to_python_input(input_literal_map, exec_ctx)
+            except FlyteUploadDataException:
+                raise
             except Exception as exc:
                 raise FlyteNonRecoverableSystemException(exc) from exc
 
@@ -785,6 +791,8 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             try:
                 literals_map, native_outputs_as_map = self._output_to_literal_map(native_outputs, exec_ctx)
                 self._write_decks(native_inputs, native_outputs_as_map, ctx, new_user_params)
+            except FlyteDownloadDataException:
+                raise
             except Exception as exc:
                 raise FlyteNonRecoverableSystemException(exc) from exc
             # After the execute has been successfully completed
