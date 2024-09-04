@@ -15,6 +15,7 @@ from urllib.parse import urlparse
 import uuid
 import pytest
 
+import flytekit
 from flytekit import LaunchPlan, kwtypes
 from flytekit.configuration import Config, ImageConfig, SerializationSettings
 from flytekit.core.launch_plan import reference_launch_plan
@@ -22,7 +23,7 @@ from flytekit.core.task import reference_task
 from flytekit.core.workflow import reference_workflow
 from flytekit.exceptions.user import FlyteAssertion, FlyteEntityNotExistException
 from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
-from flytekit.remote.remote import FlyteRemote
+from flytekit.remote.remote import FlyteRemote, _get_git_root
 from flytekit.types.schema import FlyteSchema
 
 MODULE_PATH = pathlib.Path(__file__).parent / "workflows/basic"
@@ -608,3 +609,8 @@ def test_register_wf_fast(register):
     subworkflow_node_executions = execution.node_executions["n1"].subworkflow_node_executions
     subworkflow_node_executions["n1-0-n0"].inputs == {"a": 103}
     subworkflow_node_executions["n1-0-n1"].outputs == {"t1_int_output": 107, "c": "world"}
+
+
+def test_get_git_root():
+    flytekit_module = pathlib.Path(flytekit.__file__).parent
+    assert _get_git_root(str(flytekit_module)) == str(flytekit_module.parent)

@@ -1,9 +1,12 @@
 import typing
 from collections import OrderedDict
+from pathlib import Path
+
+import mock
 
 import flytekit.configuration
 from flytekit import ContainerTask, Resources
-from flytekit.configuration import FastSerializationSettings, Image, ImageConfig
+from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SerializationSettings
 from flytekit.core.base_task import kwtypes
 from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
 from flytekit.core.reference_entity import ReferenceSpec, ReferenceTemplate
@@ -11,7 +14,7 @@ from flytekit.core.task import ReferenceTask, task
 from flytekit.core.workflow import ReferenceWorkflow, workflow
 from flytekit.models.core import identifier as identifier_models
 from flytekit.models.task import Resources as resource_model
-from flytekit.tools.translator import get_serializable
+from flytekit.tools.translator import get_serializable, _get_git_link, _is_file_pushed
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = flytekit.configuration.SerializationSettings(
@@ -166,3 +169,32 @@ def test_launch_plan_with_fixed_input():
     assert len(task_spec.template.interface.outputs) == 1
     assert len(task_spec.template.nodes) == 1
     assert len(task_spec.template.nodes[0].inputs) == 2
+
+
+@mock.patch("flytekit.remote.remote._get_git_root")
+@mock.patch("flytekit.tools.translator._is_file_pushed")
+def test_get_git_link(mock_is_file_pushed, mock_get_git_root):
+    ss = SerializationSettings(
+        project="test_proj",
+        domain="test_domain",
+        version="abc",
+        image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+        env={},
+    )
+
+    assert _get_git_link(module="flytekit/workflow.py", settings=ss) is None
+
+    mock_is_file_pushed.return_value = True
+    mock_get_git_root.return_value = "flytekit"
+    ss.git_repo = "https://github.com/flyteorg/flytekit/blob/master"
+
+    assert _get_git_link(module="flytekit/workflow.py", settings=ss) == "https://github.com/flyteorg/flytekit/blob/master/workflow.py"
+
+    mock_is_file_pushed.return_value = False
+    assert _get_git_link(module="flytekit/workflow.py", settings=ss) is None
+
+
+def test_is_file_pushed():
+    module = str(Path(flytekit.__file__).parent.parent)
+    assert _is_file_pushed(module, "workflow.py") is False
+    assert _is_file_pushed(module, "NOTICE") is True
