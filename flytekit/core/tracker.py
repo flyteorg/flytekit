@@ -98,17 +98,17 @@ class TrackedInstance(metaclass=InstanceTrackingMeta):
     """
 
     def __init__(self, *args, **kwargs):
-        self._instantiated_in = None
-        self._module_file = None
-        self._lhs = None
+        self._instantiated_in: Optional[str] = None
+        self._module_file: Optional[str] = None
+        self._lhs: Optional[str] = None
         super().__init__(*args, **kwargs)
 
     @property
-    def instantiated_in(self) -> str:
+    def instantiated_in(self) -> Optional[str]:
         return self._instantiated_in
 
     @property
-    def module_file(self) -> str:
+    def module_file(self) -> Optional[str]:
         """
         The full path to the module that instantiated this object.
         """

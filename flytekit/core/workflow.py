@@ -209,7 +209,6 @@ class WorkflowBase(object):
         self._on_failure = on_failure
         self._failure_node = None
         self._docs = get_documentation_from_docstring(self._python_interface.docstring, docs)
-        self._module_file = None
         FlyteEntities.entities.append(self)
 
         super().__init__(**kwargs)
@@ -217,12 +216,6 @@ class WorkflowBase(object):
     @property
     def name(self) -> str:
         return self._name
-
-    def module_file(self) -> str:
-        """
-        The full name of the module where the workflow function is defined.
-        """
-        return self._module_file
 
     @property
     def docs(self):
@@ -416,6 +409,8 @@ class ImperativeWorkflow(WorkflowBase):
         workflow_metadata_defaults = WorkflowMetadataDefaults(interruptible)
         self._compilation_state = CompilationState(prefix="")
         self._inputs = {}
+        # TODO: Get the module file that defines the ImperativeWorkflow
+        self._module_file = None
         # This unbound inputs construct is just here to help workflow authors detect issues a bit earlier. It just
         # keeps track of workflow inputs that you've declared with add_workflow_input but haven't yet consumed. This
         # is an error that Admin would return at compile time anyways, but this allows flytekit to raise
@@ -447,6 +442,13 @@ class ImperativeWorkflow(WorkflowBase):
         the global start node.
         """
         return self._inputs
+
+    @property
+    def module_file(self) -> Optional[str]:
+        """
+        The module file is the file that the ImperativeWorkflow is defined in.
+        """
+        return self._module_file
 
     def __repr__(self):
         return super().__repr__() + f"Nodes ({len(self.compilation_state.nodes)}): {self.compilation_state.nodes}"
@@ -656,7 +658,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         on_failure: Optional[Union[WorkflowBase, Task]] = None,
         docs: Optional[Documentation] = None,
     ):
-        name, _, _, module_file = extract_task_module(workflow_function)
+        name, _, _, _ = extract_task_module(workflow_function)
         self._workflow_function = workflow_function
         native_interface = transform_function_to_interface(workflow_function, docstring=docstring)
 
@@ -673,7 +675,6 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             docs=docs,
         )
         self.compiled = False
-        self._module_file = module_file
 
     @property
     def function(self):
