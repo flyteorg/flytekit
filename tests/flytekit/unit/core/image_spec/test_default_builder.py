@@ -32,7 +32,7 @@ def test_create_docker_context(tmp_path):
         commands=["mkdir my_dir"],
         entrypoint=["/bin/bash"],
         pip_extra_index_url=["https://extra-url.com"],
-        copy_src_dest=[(["file1.txt", "/dir1"], "/root")]
+        copy=[["file1.txt", "/dir1"]]
     )
 
     create_docker_context(image_spec, docker_context_path)
@@ -179,7 +179,7 @@ def test_build(tmp_path):
         requirements=os.fspath(other_requirements_path),
         source_root=os.fspath(source_root),
         commands=["mkdir my_dir"],
-        copy_src_dest=[([f"{tmp_path}/hello_world.txt", f"{tmp_path}/requirements.txt"], "/my_dir")]
+        copy=[[f"{tmp_path}/hello_world.txt", f"{tmp_path}/requirements.txt"]]
     )
 
     builder = DefaultImageBuilder()

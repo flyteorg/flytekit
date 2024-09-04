@@ -209,10 +209,9 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
         run_commands = ""
 
     extra_copy_cmds = ""
-    if image_spec.copy_src_dest:
-        for src, dest in image_spec.copy_src_dest:
-            src_files_and_dirs = " ".join(src)
-            extra_copy_cmds += f"COPY --chown=flytekit {src_files_and_dirs} {dest}\n"
+    if image_spec.copy:
+        for src in image_spec.copy:
+            extra_copy_cmds += f'COPY --chown=flytekit {" ".join(src)} /root\n'
     else:
         extra_copy_cmds = ""
 
@@ -257,7 +256,7 @@ class DefaultImageBuilder(ImageSpecBuilder):
         "pip_extra_index_url",
         # "registry_config",
         "commands",
-        "copy_src_dest",
+        "copy",
     }
 
     def build_image(self, image_spec: ImageSpec) -> str:
