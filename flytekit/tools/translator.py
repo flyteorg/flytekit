@@ -846,7 +846,7 @@ def _get_git_link(module: str, settings: SerializationSettings) -> Optional[str]
     from flytekit.remote.remote import _get_git_root
 
     if _is_file_pushed(settings.source_root, module):
-        _get_git_root(settings.source_root)
+        return settings.git_repo + module.removeprefix(_get_git_root(settings.source_root))
 
     return None
 
