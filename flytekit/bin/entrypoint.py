@@ -35,8 +35,7 @@ from flytekit.core.context_manager import (
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.promise import VoidPromise
 from flytekit.deck.deck import _output_deck
-from flytekit.exceptions import scopes as _scoped_exceptions
-from flytekit.exceptions import scopes as _scopes
+from flytekit.exceptions.user import FlyteRecoverableException, FlyteUserRuntimeException
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
 from flytekit.loggers import logger, user_space_logger
 from flytekit.models import dynamic_job as _dynamic_job
@@ -55,7 +54,6 @@ def get_version_message():
 
 
 def _compute_array_job_index():
-    # type () -> int
     """
     Computes the absolute index of the current array job. This is determined by summing the compute-environment-specific
     environment variable and the offset (if one's set). The offset will be set and used when the user request that the
@@ -94,7 +92,7 @@ def _dispatch_execute(
         except Exception as e:
             # If the task can not be loaded, then it's most likely a user error. For example,
             # a dependency is not installed during execution.
-            raise _scoped_exceptions.FlyteScopedUserException(*sys.exc_info()) from e
+            raise FlyteUserRuntimeException(e) from e
 
         logger.debug(f"Starting _dispatch_execute for {task_def.name}")
         # Step1
@@ -104,9 +102,8 @@ def _dispatch_execute(
         idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
 
         # Step2
-        # Decorate the dispatch execute function before calling it, this wraps all exceptions into one
-        # of the FlyteScopedExceptions
-        outputs = _scoped_exceptions.system_entry_point(task_def.dispatch_execute)(ctx, idl_input_literals)
+        # Invoke task - dispatch_execute
+        outputs = task_def.dispatch_execute(ctx, idl_input_literals)
         if inspect.iscoroutine(outputs):
             # Handle eager-mode (async) tasks
             logger.info("Output is a coroutine")
@@ -132,50 +129,46 @@ def _dispatch_execute(
             )
 
     # Handle user-scoped errors
-    except _scoped_exceptions.FlyteScopedUserException as e:
+    except FlyteUserRuntimeException as e:
+        # Step3b
         if isinstance(e.value, IgnoreOutputs):
             logger.warning(f"User-scoped IgnoreOutputs received! Outputs.pb will not be uploaded. reason {e}!!")
             return
-        output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
-            _error_models.ContainerError(
-                e.error_code, e.verbose_message, e.kind, _execution_models.ExecutionError.ErrorKind.USER
-            )
-        )
-        logger.error("!! Begin User Error Captured by Flyte !!")
-        logger.error(e.verbose_message)
-        logger.error("!! End Error Captured by Flyte !!")
 
-    # Handle system-scoped errors
-    except _scoped_exceptions.FlyteScopedSystemException as e:
-        if isinstance(e.value, IgnoreOutputs):
-            logger.warning(f"System-scoped IgnoreOutputs received! Outputs.pb will not be uploaded. reason {e}!!")
-            return
-        output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
-            _error_models.ContainerError(
-                e.error_code, e.verbose_message, e.kind, _execution_models.ExecutionError.ErrorKind.SYSTEM
-            )
-        )
-        logger.error("!! Begin System Error Captured by Flyte !!")
-        logger.error(e.verbose_message)
-        logger.error("!! End Error Captured by Flyte !!")
+        # Step3c
+        if isinstance(e.value, FlyteRecoverableException):
+            kind = _error_models.ContainerError.Kind.RECOVERABLE
+        else:
+            kind = _error_models.ContainerError.Kind.NON_RECOVERABLE
 
-    # Interpret all other exceptions (some of which may be caused by the code in the try block outside of
-    # dispatch_execute) as recoverable system exceptions.
-    except Exception as e:
-        # Step 3c
-        exc_str = traceback.format_exc()
+        exc_str = get_traceback_str(e)
         output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
             _error_models.ContainerError(
-                "SYSTEM:Unknown",
+                "USER",
                 exc_str,
-                _error_models.ContainerError.Kind.RECOVERABLE,
-                _execution_models.ExecutionError.ErrorKind.SYSTEM,
+                kind,
+                _execution_models.ExecutionError.ErrorKind.USER,
             )
         )
         if task_def is not None:
             logger.error(f"Exception when executing task {task_def.name or task_def.id.name}, reason {str(e)}")
         else:
             logger.error(f"Exception when loading_task, reason {str(e)}")
+        logger.error("!! Begin User Error Captured by Flyte !!")
+        logger.error(exc_str)
+        logger.error("!! End Error Captured by Flyte !!")
+
+    # All the Non-user errors are captured here, and are considered system errors
+    except Exception as e:
+        exc_str = get_traceback_str(e)
+        output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
+            _error_models.ContainerError(
+                "SYSTEM",
+                exc_str,
+                _error_models.ContainerError.Kind.RECOVERABLE,
+                _execution_models.ExecutionError.ErrorKind.SYSTEM,
+            )
+        )
 
         logger.error("!! Begin Unknown System Error Captured by Flyte !!")
         logger.error(exc_str)
@@ -197,6 +190,22 @@ def _dispatch_execute(
         # AWS batch job get the status from the exit code, so once we catch the error,
         # we should return the error code here
         exit(1)
+
+
+def get_traceback_str(e: Exception) -> str:
+    if isinstance(e, FlyteUserRuntimeException):
+        # If the exception is a user exception, we want to capture the traceback of the exception that was raised by the
+        # user code, not the Flyte internals.
+        tb = e.__cause__.__traceback__ if e.__cause__ else e.__traceback__
+    else:
+        tb = e.__traceback__
+    lines = traceback.format_tb(tb)
+    lines = [line.rstrip() for line in lines]
+    tb_str = "\n    ".join(lines)
+    format_str = "Traceback (most recent call last):\n" "\n    {traceback}\n" "\n" "Message:\n" "\n" "    {message}"
+
+    value = e.value if isinstance(e, FlyteUserRuntimeException) else e
+    return format_str.format(traceback=tb_str, message=f"{type(value).__name__}: {value}")
 
 
 def get_one_of(*args) -> str:
@@ -331,7 +340,6 @@ def setup_execution(
         yield ctx
 
 
-@_scopes.system_entry_point
 def _execute_task(
     inputs: str,
     output_prefix: str,
@@ -395,7 +403,6 @@ def _execute_task(
         _dispatch_execute(ctx, load_task, inputs, output_prefix)
 
 
-@_scopes.system_entry_point
 def _execute_map_task(
     inputs,
     output_prefix,

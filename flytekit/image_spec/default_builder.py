@@ -153,7 +153,7 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
 
     uv_python_install_command = UV_PYTHON_INSTALL_COMMAND_TEMPLATE.substitute(PIP_EXTRA=pip_extra_args)
 
-    env_dict = {"PYTHONPATH": "/root", _F_IMG_ID: image_spec.image_name()}
+    env_dict = {"PYTHONPATH": "/root", _F_IMG_ID: image_spec.id}
 
     if image_spec.env:
         env_dict.update(image_spec.env)

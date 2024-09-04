@@ -97,7 +97,8 @@ def translate_inputs_to_literals(
                 v = resolve_attr_path_in_promise(v)
             result[k] = TypeEngine.to_literal(ctx, v, t, var.type)
         except TypeTransformerFailedError as exc:
-            raise TypeTransformerFailedError(f"Failed argument '{k}': {exc}") from None
+            exc.args = (f"Failed argument '{k}': {exc.args[0]}",)
+            raise
 
     return result
 
@@ -764,7 +765,20 @@ def binding_data_from_python_std(
     # This handles the case where the given value is the output of another task
     if isinstance(t_value, Promise):
         if not t_value.is_ready:
-            nodes.append(t_value.ref.node)  # keeps track of upstream nodes
+            node = t_value.ref.node
+            if node.flyte_entity and hasattr(node.flyte_entity, "interface"):
+                upstream_lt_type = node.flyte_entity.interface.outputs[t_value.ref.var].type
+                # if an upstream type is a list of unions, make sure the downstream type is a list of unions
+                # this is just a very limited test case for handling common map task type mis-matches so that we can show
+                # the user more information without relying on the user to register with Admin to trigger the compiler
+                if upstream_lt_type.collection_type and upstream_lt_type.collection_type.union_type:
+                    if not (expected_literal_type.collection_type and expected_literal_type.collection_type.union_type):
+                        upstream_python_type = node.flyte_entity.python_interface.outputs[t_value.ref.var]
+                        raise AssertionError(
+                            f"Expected type '{t_value_type}' does not match upstream type '{upstream_python_type}'"
+                        )
+
+            nodes.append(node)  # keeps track of upstream nodes
             return _literals_models.BindingData(promise=t_value.ref)
 
     elif isinstance(t_value, VoidPromise):
@@ -1078,8 +1092,9 @@ def create_and_link_node_from_remote(
             bindings.append(b)
             nodes.extend(n)
             used_inputs.add(k)
-        except Exception as e:
-            raise AssertionError(f"Failed to Bind variable {k} for function {entity.name}.") from e
+        except Exception as exc:
+            exc.args = (f"Failed to Bind variable '{k}' for function '{entity.name}':\n {exc.args[0]}",)
+            raise
 
     extra_inputs = used_inputs ^ set(kwargs.keys())
     if len(extra_inputs) > 0:
@@ -1185,8 +1200,9 @@ def create_and_link_node(
             bindings.append(b)
             nodes.extend(n)
             used_inputs.add(k)
-        except Exception as e:
-            raise AssertionError(f"Failed to Bind variable {k} for function {entity.name}.") from e
+        except Exception as exc:
+            exc.args = (f"Failed to Bind variable '{k}' for function '{entity.name}':\n {exc.args[0]}",)
+            raise
 
     extra_inputs = used_inputs ^ set(kwargs.keys())
     if len(extra_inputs) > 0:

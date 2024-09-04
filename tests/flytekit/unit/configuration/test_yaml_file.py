@@ -1,7 +1,7 @@
 import os
 
 import mock
-
+from unittest.mock import patch
 from flytekit.configuration import ConfigEntry, get_config_file
 from flytekit.configuration.file import LegacyConfigEntry, YamlConfigEntry
 from flytekit.configuration.internal import AWS, Credentials, Images, Platform
@@ -62,8 +62,9 @@ def test_real_config():
     res = AWS.S3_ACCESS_KEY_ID.read(config_file)
     assert res == "minio"
 
-    res = AWS.S3_ENDPOINT.read(config_file)
-    assert res == "http://localhost:30084"
+    with patch.dict(os.environ, {}, clear=True):
+        res = AWS.S3_ENDPOINT.read(config_file)
+        assert res == "http://localhost:30084"
 
     res = AWS.S3_SECRET_ACCESS_KEY.read(config_file)
     assert res == "miniostorage"

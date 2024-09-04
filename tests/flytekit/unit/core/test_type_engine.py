@@ -20,8 +20,10 @@ from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 from marshmallow_enum import LoadDumpOptions
 from marshmallow_jsonschema import JSONSchema
+from mashumaro.config import BaseConfig
 from mashumaro.mixins.json import DataClassJSONMixin
 from mashumaro.mixins.orjson import DataClassORJSONMixin
+from mashumaro.types import Discriminator
 from typing_extensions import Annotated, get_args, get_origin
 
 from flytekit import dynamic, kwtypes, task, workflow
@@ -2930,6 +2932,114 @@ def test_DataclassTransformer_to_python_value():
     result = de.to_python_value(FlyteContext.current_context(), mock_literal, MyDataClassMashumaroORJSON)
     assert isinstance(result, MyDataClassMashumaroORJSON)
     assert result.x == 5
+
+
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="dataclass(kw_only=True) requires >=3.10.")
+def test_DataclassTransformer_with_discriminated_subtypes():
+    class SubclassTypes(str, Enum):
+        BASE = auto()
+        CLASS_A = auto()
+        CLASS_B = auto()
+
+    @dataclass(kw_only=True)
+    class BaseClass(DataClassJSONMixin):
+        class Config(BaseConfig):
+            discriminator = Discriminator(
+                field="subclass_type",
+                include_subtypes=True,
+            )
+
+        subclass_type: SubclassTypes = SubclassTypes.BASE
+        base_attribute: int
+
+
+    @dataclass(kw_only=True)
+    class ClassA(BaseClass):
+        subclass_type: SubclassTypes = SubclassTypes.CLASS_A
+        class_a_attribute: str
+
+
+    @dataclass(kw_only=True)
+    class ClassB(BaseClass):
+        subclass_type: SubclassTypes = SubclassTypes.CLASS_B
+        class_b_attribute: float
+
+    @task
+    def assert_class_and_return(instance: BaseClass) -> BaseClass:
+        assert hasattr(instance, "class_a_attribute") or hasattr(instance, "class_b_attribute")
+        return instance
+
+    class_a = ClassA(base_attribute=4, class_a_attribute="hello")
+    assert "class_a_attribute" in class_a.to_json()
+    res_1 = assert_class_and_return(class_a)
+    assert res_1.base_attribute == 4
+    assert isinstance(res_1, ClassA)
+    assert res_1.class_a_attribute == "hello"
+
+    class_b = ClassB(base_attribute=4, class_b_attribute=-2.5)
+    assert "class_b_attribute" in class_b.to_json()
+    res_2 = assert_class_and_return(class_b)
+    assert res_2.base_attribute == 4
+    assert isinstance(res_2, ClassB)
+    assert res_2.class_b_attribute == -2.5
+
+
+def test_DataclassTransformer_with_sub_dataclasses():
+    @dataclass
+    class Base:
+        a: int
+
+
+    @dataclass
+    class Child1(Base):
+        b: int
+
+
+    @task
+    def get_data() -> Child1:
+        return Child1(a=10, b=12)
+
+
+    @task
+    def read_data(base: Base) -> int:
+        return base.a
+
+
+    @task
+    def read_child(child: Child1) -> int:
+        return child.b
+
+
+    @workflow
+    def wf1() -> Child1:
+        data = get_data()
+        read_data(base=data)
+        read_child(child=data)
+        return data
+
+    @workflow
+    def wf2() -> Base:
+        data = Base(a=10)
+        read_data(base=data)
+        read_child(child=data)
+        return data
+
+    @workflow
+    def wf3() -> Base:
+        data = Base(a=10)
+        read_data(base=data)
+        return data
+
+    child_data = wf1()
+    assert child_data.a == 10
+    assert child_data.b == 12
+    assert isinstance(child_data, Child1)
+
+    with pytest.raises(AttributeError):
+        wf2()
+
+    base_data = wf3()
+    assert base_data.a == 10
 
 
 def test_DataclassTransformer_guess_python_type():

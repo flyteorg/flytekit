@@ -23,7 +23,6 @@ from flytekit.core.task import task
 from flytekit.image_spec.image_spec import (
     ImageBuildEngine,
     ImageSpec,
-    calculate_hash_from_image_spec,
 )
 from flytekit.interaction.click_types import DirParamType, FileParamType
 from flytekit.remote import FlyteRemote
@@ -511,12 +510,11 @@ IMAGE_SPEC = os.path.join(os.path.dirname(os.path.realpath(__file__)), "imageSpe
 with open(IMAGE_SPEC, "r") as f:
     image_spec_dict = yaml.safe_load(f)
     image_spec = ImageSpec(**image_spec_dict)
-    tag = calculate_hash_from_image_spec(image_spec)
 
 ic_result_4 = ImageConfig(
-    default_image=Image(name="default", fqn="flytekit", tag=tag),
+    default_image=Image(name="default", fqn="flytekit", tag=image_spec.tag),
     images=[
-        Image(name="default", fqn="flytekit", tag=tag),
+        Image(name="default", fqn="flytekit", tag=image_spec.tag),
         Image(name="xyz", fqn="docker.io/xyz", tag="latest"),
         Image(name="abc", fqn="docker.io/abc", tag=None),
         Image(
@@ -815,3 +813,18 @@ def test_list_default_arguments(task_path):
     )
     assert result.exit_code == 0
     assert result.stdout == "Running Execution on local.\n0 Hello Color.RED\n\n"
+
+
+def test_entity_non_found_in_file():
+    runner = CliRunner()
+    result = runner.invoke(
+        pyflyte.main,
+        [
+            "run",
+            os.path.join(DIR_NAME, "workflow.py"),
+            "my_wffffff",
+        ],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 1
+    assert "FlyteEntityNotFoundException: Task/Workflow \'my_wffffff\' not found in module \n\'pyflyte.workflow\'" in result.stdout
