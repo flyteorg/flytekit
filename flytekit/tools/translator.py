@@ -1,9 +1,9 @@
+import subprocess
 import typing
 from collections import OrderedDict
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
-import requests
 from flyteidl.admin import schedule_pb2
 
 from flytekit import ImageSpec, PythonFunctionTask, SourceCode, logger
@@ -845,18 +845,45 @@ def _get_git_link(module: str, settings: SerializationSettings) -> Optional[str]
 
     from flytekit.remote.remote import _get_git_root
 
+    if _is_file_pushed(settings.source_root, module):
+        _get_git_root(settings.source_root)
+
+    return None
+
+
+def _is_file_pushed(source_root: str, filename: str) -> bool:
+    """
+    Check if a specific file has been pushed to the remote repository.
+
+    Args:
+        source_root: The root directory of the source code.
+        filename: The name of the file to check.
+
+    Returns:
+        True if the file has been pushed, False otherwise.
+    """
     try:
-        git_link = "https://" + settings.git_repo + module.removeprefix(_get_git_root(settings.source_root))
-        response = requests.get(git_link)
+        # Check if the file is tracked by Git
+        check_file_command = ["git", "ls-files", filename]
+        result = subprocess.run(
+            check_file_command, cwd=source_root, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        )
+
+        if not result.stdout.strip():
+            return False
+
+        # Compare the file version in the current branch with the remote branch
+        diff_command = ["git", "diff", "--name-only", "@{u}", filename]
+        diff_result = subprocess.run(
+            diff_command, cwd=source_root, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        )
+
+        # If there is no output from diff, the file has been pushed
+        return not bool(diff_result.stdout.strip())
+
     except Exception as e:
-        logger.debug(f"Failing to get source code link: {e}")
-        return None
-
-    if response.status_code != 200:
-        logger.debug(f"Source code link not found: {git_link}")
-        return None
-
-    return git_link
+        logger.debug(f"Error while checking the file's push status: {str(e)}")
+        return False
 
 
 def gather_dependent_entities(
