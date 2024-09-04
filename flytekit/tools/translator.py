@@ -846,8 +846,8 @@ def _get_git_link(module: str, settings: SerializationSettings) -> Optional[str]
     from flytekit.remote.remote import _get_git_root
 
     try:
-        git_link = settings.git_repo + module.removeprefix(_get_git_root(settings.source_root))
-        response = requests.get("https://" + git_link)
+        git_link = "https://" + settings.git_repo + module.removeprefix(_get_git_root(settings.source_root))
+        response = requests.get(git_link)
     except Exception as e:
         logger.debug(f"Failing to get source code link: {e}")
         return None
