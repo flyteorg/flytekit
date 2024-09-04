@@ -71,12 +71,7 @@ from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
 from flytekit.core.utils import timeit
 from flytekit.deck import DeckField
-from flytekit.exceptions.scopes import user_error_handler
-from flytekit.exceptions.system import (
-    FlyteDownloadDataException,
-    FlyteNonRecoverableSystemException,
-    FlyteUploadDataException,
-)
+from flytekit.exceptions.scopes import system_error_handler, user_error_handler
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import interface as _interface_models
@@ -730,13 +725,8 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             # type: ignore
         ) as exec_ctx:
             # TODO We could support default values here too - but not part of the plan right now
-            try:
-                # Translate the input literals to Python native
-                native_inputs = self._literal_map_to_python_input(input_literal_map, exec_ctx)
-            except FlyteUploadDataException:
-                raise
-            except Exception as exc:
-                raise FlyteNonRecoverableSystemException(exc) from exc
+            # Translate the input literals to Python native
+            native_inputs = system_error_handler(self._literal_map_to_python_input)(input_literal_map, exec_ctx)
 
             # TODO: Logger should auto inject the current context information to indicate if the task is running within
             #   a workflow or a subworkflow etc
@@ -784,13 +774,10 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             ):
                 return native_outputs
 
-            try:
-                literals_map, native_outputs_as_map = self._output_to_literal_map(native_outputs, exec_ctx)
-                self._write_decks(native_inputs, native_outputs_as_map, ctx, new_user_params)
-            except FlyteDownloadDataException:
-                raise
-            except Exception as exc:
-                raise FlyteNonRecoverableSystemException(exc) from exc
+            literals_map, native_outputs_as_map = system_error_handler(self._output_to_literal_map)(
+                native_outputs, exec_ctx
+            )
+            system_error_handler(self._write_decks)(native_inputs, native_outputs_as_map, ctx, new_user_params)
             # After the execution has been successfully completed
             return literals_map
 

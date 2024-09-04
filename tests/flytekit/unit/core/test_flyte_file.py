@@ -510,7 +510,7 @@ def test_returning_folder_instead_of_file():
     def wf1() -> FlyteFile:
         return t1()
 
-    with pytest.raises(FlyteNonRecoverableSystemException):
+    with pytest.raises(TypeError):
         wf1()
 
     @task
@@ -522,9 +522,8 @@ def test_returning_folder_instead_of_file():
     def wf2() -> FlyteFile:
         return t2()
 
-    with pytest.raises(FlyteNonRecoverableSystemException) as e:
+    with pytest.raises(TypeError):
         wf2()
-    assert type(e.value) is TypeError
 
 
 def test_bad_return():

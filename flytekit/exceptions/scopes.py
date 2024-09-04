@@ -7,10 +7,15 @@ from traceback import format_tb as _format_tb
 from warnings import warn
 
 import flytekit
-from flytekit import FlyteContextManager
+from flytekit.core.context_manager import FlyteContextManager
 from flytekit.exceptions import base as _base_exceptions
 from flytekit.exceptions import system as _system_exceptions
 from flytekit.exceptions import user as _user_exceptions
+from flytekit.exceptions.system import (
+    FlyteDownloadDataException,
+    FlyteNonRecoverableSystemException,
+    FlyteUploadDataException,
+)
 from flytekit.exceptions.user import FlyteUserRuntimeException
 from flytekit.loggers import is_rich_logging_enabled
 from flytekit.models.core import errors as _error_model
@@ -165,8 +170,10 @@ def system_error_handler(wrapped, args, kwargs):
         return wrapped(*args, **kwargs)
     try:
         return wrapped(*args, **kwargs)
+    except (FlyteUploadDataException, FlyteDownloadDataException):
+        raise
     except Exception as e:
-        raise FlyteUserRuntimeException(e) from e
+        raise FlyteNonRecoverableSystemException(e) from e
 
 
 @_decorator
