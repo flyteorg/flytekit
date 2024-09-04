@@ -781,9 +781,13 @@ class FlyteRemote(object):
         # serial register
         cp_other_entities = OrderedDict(filter(lambda x: not isinstance(x[1], task_models.TaskSpec), m.items()))
         for entity, cp_entity in cp_other_entities.items():
-            identifiers_or_exceptions.append(
-                self.raw_register(cp_entity, serialization_settings, version, og_entity=entity)
-            )
+            try:
+                identifiers_or_exceptions.append(
+                    self.raw_register(cp_entity, serialization_settings, version, og_entity=entity)
+                )
+            except RegistrationSkipped as e:
+                logger.info(f"Skipping registration... {e}")
+                continue
         return identifiers_or_exceptions[-1]
 
     def register_task(
