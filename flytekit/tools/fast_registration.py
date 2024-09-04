@@ -5,10 +5,12 @@ import hashlib
 import os
 import pathlib
 import posixpath
+import shutil
 import subprocess
 import sys
 import tarfile
 import tempfile
+import time
 import typing
 from dataclasses import dataclass
 from enum import Enum
@@ -139,9 +141,21 @@ def fast_package(
                         filter=lambda x: tar_strip_file_attributes(x),
                     )
 
-            with gzip.GzipFile(filename=archive_fname, mode="wb", mtime=0) as gzipped:
-                with open(tar_path, "rb") as tar_file:
-                    gzipped.write(tar_file.read())
+            if shutil.which("pigz"):
+                with open(archive_fname, "wb") as gzipped:
+                    subprocess.run(["pigz", "-c", tar_path], stdout=gzipped)
+            else:
+                start_time = time.time()
+                with gzip.GzipFile(filename=archive_fname, mode="wb", mtime=0) as gzipped:
+                    with open(tar_path, "rb") as tar_file:
+                        gzipped.write(tar_file.read())
+
+                end_time = time.time()
+                warning_time = 30
+                if end_time - start_time > warning_time:
+                    logger.info(
+                        f"Code tarball compression took {end_time - start_time:.0f} seconds. Consider installing `pigz` for faster compression."
+                    )
 
     # Original tar command - This condition to be removed in the future.
     else:
@@ -164,9 +178,21 @@ def fast_package(
                     )
                 # tar.list(verbose=True)
 
-            with gzip.GzipFile(filename=archive_fname, mode="wb", mtime=0) as gzipped:
-                with open(tar_path, "rb") as tar_file:
-                    gzipped.write(tar_file.read())
+            if shutil.which("pigz"):
+                with open(archive_fname, "wb") as gzipped:
+                    subprocess.run(["pigz", "-c", tar_path], stdout=gzipped)
+            else:
+                start_time = time.time()
+                with gzip.GzipFile(filename=archive_fname, mode="wb", mtime=0) as gzipped:
+                    with open(tar_path, "rb") as tar_file:
+                        gzipped.write(tar_file.read())
+
+                end_time = time.time()
+                warning_time = 30
+                if end_time - start_time > warning_time:
+                    logger.info(
+                        f"Code tarball compression took {end_time - start_time:.0f} seconds. Consider installing `pigz` for faster compression."
+                    )
 
     return archive_fname
 
