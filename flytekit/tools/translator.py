@@ -825,13 +825,13 @@ def get_serializable(
         and entity.module_file
     ):
         # Extract the repo URL from the git config, and assign it to the link of the source code of the description entity
-        entity.docs.source_code = SourceCode(link=_get_git_link_from_entity(str(entity.module_file), settings))
+        entity.docs.source_code = SourceCode(link=_get_git_link(str(entity.module_file), settings))
     # This needs to be at the bottom, not the top - i.e., dependent tasks get added before the workflow containing it
     entity_mapping[entity] = cp_entity
     return cp_entity
 
 
-def _get_git_link_from_entity(module: str, settings: SerializationSettings) -> Optional[str]:
+def _get_git_link(module: str, settings: SerializationSettings) -> Optional[str]:
     """
     Get the git link from the task/workflow.
     This is used to set the source code link in the description of the entity.
