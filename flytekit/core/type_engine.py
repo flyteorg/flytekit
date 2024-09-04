@@ -497,8 +497,8 @@ class DataclassTransformer(TypeTransformer[object]):
 
         if isinstance(python_val, dict):
             json_str = json.dumps(python_val)
-            json_bytes = msgpack.dumps(json_str)
-            return Literal(scalar=Scalar(json=Json(value=json_bytes)))
+            msgpack_bytes = msgpack.dumps(json_str)
+            return Literal(scalar=Scalar(json=Json(value=msgpack_bytes)))
 
         if not dataclasses.is_dataclass(python_val):
             raise TypeTransformerFailedError(
@@ -531,8 +531,8 @@ class DataclassTransformer(TypeTransformer[object]):
                     f" and implement _serialize and _deserialize methods."
                 )
 
-        json_bytes = msgpack.dumps(json_str)
-        return Literal(scalar=Scalar(json=Json(value=json_bytes)))
+        msgpack_bytes = msgpack.dumps(json_str)
+        return Literal(scalar=Scalar(json=Json(value=msgpack_bytes)))
 
     def _get_origin_type_in_annotation(self, python_type: Type[T]) -> Type[T]:
         # dataclass will try to hash python type when calling dataclass.schema(), but some types in the annotation is
@@ -683,8 +683,8 @@ class DataclassTransformer(TypeTransformer[object]):
         scalar = lv.scalar
         json_str = ""
         if scalar.json:
-            json_bytes = lv.scalar.json.value
-            json_str = msgpack.loads(json_bytes)
+            msgpack_bytes = lv.scalar.json.value
+            json_str = msgpack.loads(msgpack_bytes)
         elif scalar.generic:
             json_str = _json_format.MessageToJson(scalar.generic)
 
@@ -1800,14 +1800,14 @@ class DictTransformer(TypeTransformer[dict]):
                 if lv.metadata and lv.metadata.get("format", None) == "pickle":
                     from flytekit.types.pickle import FlytePickle
 
-                    json_bytes = lv.scalar.json.value
-                    json_str = msgpack.loads(json_bytes)
+                    msgpack_bytes = lv.scalar.json.value
+                    json_str = msgpack.loads(msgpack_bytes)
                     uri = json.loads(json_str).get("pickle_file")
                     return FlytePickle.from_pickle(uri)
 
                 try:
-                    json_bytes = lv.scalar.json.value
-                    json_str = msgpack.loads(json_bytes)
+                    msgpack_bytes = lv.scalar.json.value
+                    json_str = msgpack.loads(msgpack_bytes)
                     return json.loads(json_str)
 
                 except TypeError:
