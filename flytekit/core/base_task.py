@@ -71,6 +71,7 @@ from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
 from flytekit.core.utils import timeit
 from flytekit.deck import DeckField
+from flytekit.exceptions.scopes import user_error_handler
 from flytekit.exceptions.system import (
     FlyteDownloadDataException,
     FlyteNonRecoverableSystemException,
@@ -730,8 +731,8 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             # type: ignore
         ) as exec_ctx:
             # TODO We could support default values here too - but not part of the plan right now
-            # Translate the input literals to Python native
             try:
+                # Translate the input literals to Python native
                 native_inputs = self._literal_map_to_python_input(input_literal_map, exec_ctx)
             except FlyteUploadDataException:
                 raise
@@ -743,14 +744,10 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             logger.info(f"Invoking {self.name} with inputs: {native_inputs}")
             with timeit("Execute user level code"):
                 try:
-                    native_outputs = self.execute(**native_inputs)
+                    native_outputs = user_error_handler(self.execute)(**native_inputs)
                 except Exception as e:
-                    ctx = FlyteContextManager().current_context()
-                    if ctx.execution_state and ctx.execution_state.is_local_execution():
-                        # If the task is being executed locally, we want to raise the original exception
-                        e.args = (f"Error encountered while executing '{self.name}':\n  {e.args[0]}",)
-                        raise
-                    raise FlyteUserRuntimeException(e) from e
+                    e.args = (f"Error encountered while executing '{self.name}':\n  {e.args[0]}",)
+                    raise
 
             if inspect.iscoroutine(native_outputs):
                 # If native outputs is a coroutine, then this is an eager workflow.
@@ -795,7 +792,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 raise
             except Exception as exc:
                 raise FlyteNonRecoverableSystemException(exc) from exc
-            # After the execute has been successfully completed
+            # After the execution has been successfully completed
             return literals_map
 
     def pre_execute(self, user_params: Optional[ExecutionParameters]) -> Optional[ExecutionParameters]:  # type: ignore

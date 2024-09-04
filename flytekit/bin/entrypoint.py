@@ -174,9 +174,13 @@ def _dispatch_execute(
                 "SYSTEM",
                 exc_str,
                 kind,
-                _execution_models.ExecutionError.ErrorKind.USER,
+                _execution_models.ExecutionError.ErrorKind.SYSTEM,
             )
         )
+
+        logger.error("!! Begin Unknown System Error Captured by Flyte !!")
+        logger.error(exc_str)
+        logger.error("!! End Error Captured by Flyte !!")
 
     for k, v in output_file_dict.items():
         utils.write_proto_to_file(v.to_flyte_idl(), os.path.join(ctx.execution_state.engine_dir, k))

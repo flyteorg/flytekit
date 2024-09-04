@@ -17,6 +17,7 @@ from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
+from flytekit.exceptions.system import FlyteNonRecoverableSystemException
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import LiteralMap
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
@@ -509,7 +510,7 @@ def test_returning_folder_instead_of_file():
     def wf1() -> FlyteFile:
         return t1()
 
-    with pytest.raises(TypeError):
+    with pytest.raises(FlyteNonRecoverableSystemException):
         wf1()
 
     @task
@@ -521,8 +522,9 @@ def test_returning_folder_instead_of_file():
     def wf2() -> FlyteFile:
         return t2()
 
-    with pytest.raises(TypeError):
+    with pytest.raises(FlyteNonRecoverableSystemException) as e:
         wf2()
+    assert type(e.value) is TypeError
 
 
 def test_bad_return():

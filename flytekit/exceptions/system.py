@@ -1,4 +1,5 @@
 from flytekit.exceptions import base as _base_exceptions
+from flytekit.exceptions.base import FlyteException
 
 
 class FlyteSystemException(_base_exceptions.FlyteRecoverableException):
@@ -50,7 +51,15 @@ class FlyteAgentNotFound(FlyteSystemException, AssertionError):
     _ERROR_CODE = "SYSTEM:AgentNotFound"
 
 
-class FlyteNonRecoverableSystemException(FlyteSystemException):
+class FlyteDownloadDataException(FlyteSystemException):
+    _ERROR_CODE = "SYSTEM:DownloadDataError"
+
+
+class FlyteUploadDataException(FlyteSystemException):
+    _ERROR_CODE = "SYSTEM:UploadDataError"
+
+
+class FlyteNonRecoverableSystemException(FlyteException):
     _ERROR_CODE = "USER:NonRecoverableSystemError"
 
     def __init__(self, exc_value: Exception):
@@ -65,11 +74,3 @@ class FlyteNonRecoverableSystemException(FlyteSystemException):
     @property
     def value(self):
         return self._exc_value
-
-
-class FlyteDownloadDataException(FlyteSystemException):
-    _ERROR_CODE = "SYSTEM:DownloadDataError"
-
-
-class FlyteUploadDataException(FlyteSystemException):
-    _ERROR_CODE = "SYSTEM:UploadDataError"
