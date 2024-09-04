@@ -701,8 +701,8 @@ class DataclassTransformer(TypeTransformer[object]):
             except KeyError:
                 decoder = JSONDecoder(expected_python_type)
                 self._decoder[expected_python_type] = decoder
+            dc = decoder.decode(json_str)
 
-        dc = decoder.decode(json_str)
         dc = self._fix_structured_dataset_type(expected_python_type, dc)
 
         if scalar.generic:
@@ -1685,14 +1685,14 @@ class DictTransformer(TypeTransformer[dict]):
 
         try:
             json_str = json.dumps(v)
-            json_bytes = msgpack.dumps(json_str)
-            return Literal(scalar=Scalar(json=Json(value=json_bytes)), metadata={"format": "json"})
+            msgpack_bytes = msgpack.dumps(json_str)
+            return Literal(scalar=Scalar(json=Json(value=msgpack_bytes)), metadata={"format": "msgpack"})
         except TypeError as e:
             if allow_pickle:
                 remote_path = FlytePickle.to_pickle(ctx, v)
                 json_str = json.dumps({"pickle_file": remote_path})
-                json_bytes = msgpack.dumps(json_str)
-                return Literal(scalar=Scalar(json=Json(value=json_bytes)), metadata={"format": "pickle"})
+                msgpack_bytes = msgpack.dumps(json_str)
+                return Literal(scalar=Scalar(json=Json(value=msgpack_bytes)), metadata={"format": "pickle"})
             raise e
 
     @staticmethod
