@@ -77,7 +77,6 @@ from flytekit.exceptions.system import (
     FlyteNonRecoverableSystemException,
     FlyteUploadDataException,
 )
-from flytekit.exceptions.user import FlyteUserRuntimeException
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import interface as _interface_models
