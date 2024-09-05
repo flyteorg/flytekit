@@ -1214,6 +1214,11 @@ def create_and_link_node(
     # These will be our core Nodes until we can amend the Promise to use NodeOutputs that reference our Nodes
     upstream_nodes = list(set([n for n in nodes if n.id != _common_constants.GLOBAL_INPUT_NODE_ID]))
 
+    from flytekit.configuration.plugin import get_plugin
+
+    additional_nodes = get_plugin().get_additional_upstream_nodes(ctx, entity)
+    upstream_nodes.extend(additional_nodes)
+
     flytekit_node = Node(
         # TODO: Better naming, probably a derivative of the function name.
         id=f"{ctx.compilation_state.prefix}n{len(ctx.compilation_state.nodes)}",

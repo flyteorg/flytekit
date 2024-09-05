@@ -18,14 +18,19 @@ my_plugin = "my_module:MyCustomPlugin"
 ```
 """
 
-from typing import Optional, Protocol, runtime_checkable
+from contextvars import Context
+from typing import TYPE_CHECKING, List, Optional, Protocol, runtime_checkable
 
 from click import Group
 from importlib_metadata import entry_points
 
 from flytekit.configuration import Config, get_config_file
+from flytekit.core.node import Node
 from flytekit.loggers import logger
 from flytekit.remote import FlyteRemote
+
+if TYPE_CHECKING:
+    from flytekit.core.promise import SupportsNodeCreation
 
 
 @runtime_checkable
@@ -89,6 +94,10 @@ class FlytekitPlugin:
     def get_auth_success_html(endpoint: str) -> Optional[str]:
         """Get default success html. Return None to use flytekit's default success html."""
         return None
+
+    @staticmethod
+    def get_additional_upstream_nodes(ctx: Context, entity: "SupportsNodeCreation") -> List[Node]:
+        return []
 
 
 def _get_plugin_from_entrypoint():
