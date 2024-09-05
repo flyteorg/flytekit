@@ -484,7 +484,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
                     should_upload = False
                 else:
                     if isinstance(python_val, pathlib.Path) and not python_val.is_file():
-                        raise TypeError(f"Error converting pathlib.Path {python_val} because it's not a file.")
+                        raise ValueError(f"Error converting pathlib.Path {python_val} because it's not a file.")
 
                     # If it's a string pointing to a local destination, then make sure it's a file.
                     if isinstance(python_val, str):

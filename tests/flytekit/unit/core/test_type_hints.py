@@ -1605,7 +1605,7 @@ def test_error_messages(exec_prefix):
         foo(a="hello", b=10)  # type: ignore
 
     with pytest.raises(
-        TypeError,
+        ValueError,
         match=(
             f"Failed to convert outputs of task '{exec_prefix}tests.flytekit.unit.core.test_type_hints.foo2' at position 0.\n"
             f"Failed to convert type <class 'str'> to type <class 'int'>.\n"
