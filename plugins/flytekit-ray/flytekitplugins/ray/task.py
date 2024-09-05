@@ -1,12 +1,11 @@
 import base64
 import json
 import os
-import click
 import typing
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional
 
-
+import click
 import yaml
 from flytekitplugins.ray.models import (
     HeadGroupSpec,
@@ -18,7 +17,7 @@ from google.protobuf.json_format import MessageToDict
 
 from flytekit import ImageSpec
 from flytekit.configuration import SerializationSettings
-from flytekit.core.context_manager import ExecutionParameters, FlyteContextManager, ExecutionState
+from flytekit.core.context_manager import ExecutionParameters, ExecutionState, FlyteContextManager
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.extend import TaskPlugins
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
@@ -67,6 +66,7 @@ class RayFunctionTask(PythonFunctionTask):
 
     def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
         import ray
+
         init_params = {"address": self._task_config.address}
 
         ctx = FlyteContextManager.current_context()

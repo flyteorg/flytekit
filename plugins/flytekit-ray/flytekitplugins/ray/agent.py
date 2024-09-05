@@ -7,6 +7,7 @@ from anyscale.job.models import JobConfig
 
 from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource, ResourceMeta
 from flytekit.extend.backend.utils import convert_to_flyte_phase
+from flytekit.models.core.execution import TaskLog
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
@@ -35,7 +36,7 @@ class AnyscaleAgent(AsyncAgentBase):
                 "AWS_SECRET_ACCESS_KEY": os.getenv("AWS_SECRET_ACCESS_KEY"),
                 "AWS_SESSION_TOKEN": os.getenv("AWS_SESSION_TOKEN"),
                 "OPEN_API_KEY": os.getenv("OPEN_API_KEY"),
-                "PYTHONPATH": "/root:."
+                "PYTHONPATH": "/root:.",
             },
             entrypoint=" ".join(container.args),
             max_retries=1,
@@ -48,7 +49,11 @@ class AnyscaleAgent(AsyncAgentBase):
 
     async def get(self, resource_meta: AnyscaleJobMetadata, **kwargs) -> Resource:
         cur_phase = convert_to_flyte_phase(anyscale.job.status(id=resource_meta.job_id).state.value)
-        return Resource(phase=cur_phase, message=None, log_links=None)
+        log_link = TaskLog(
+            uri=f"https://console.anyscale.com/v2/jobs/{resource_meta.job_id}",
+            name="Anyscale Job Details",
+        )
+        return Resource(phase=cur_phase, message=None, log_links=log_link)
 
     async def delete(self, resource_meta: AnyscaleJobMetadata, **kwargs):
         anyscale.job.terminate(id=resource_meta.job_id)
