@@ -725,7 +725,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             )
             # type: ignore
         ) as exec_ctx:
-            is_local_execution = exec_ctx.execution_state.is_local_execution()
+            is_local_execution = cast(ExecutionState, exec_ctx.execution_state).is_local_execution()
             # TODO We could support default values here too - but not part of the plan right now
             # Translate the input literals to Python native
             try:
