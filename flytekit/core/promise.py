@@ -31,6 +31,7 @@ from flytekit.core.type_engine import (
     TypeTransformerFailedError,
     UnionTransformer,
 )
+from flytekit.core.type_helpers import is_namedtuple
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.exceptions.user import FlytePromiseAttributeResolveException
 from flytekit.loggers import logger
@@ -92,6 +93,20 @@ def translate_inputs_to_literals(
         try:
             if type(v) is Promise:
                 v = resolve_attr_path_in_promise(v)
+            if isinstance(v, tuple):
+                new_v = []
+                for elem in v:
+                    if type(elem) is Promise:
+                        new_v.append(resolve_attr_path_in_promise(elem))
+                    else:
+                        new_v.append(elem)
+                # raise error if type not match
+                if is_namedtuple(t):
+                    if type(v) is not t:
+                        raise TypeError(f"Expected type {t} but got {type(v)}")
+                    v = type(v)(*new_v)
+                else:
+                    v = tuple(new_v)
             result[k] = TypeEngine.to_literal(ctx, v, t, var.type)
         except TypeTransformerFailedError as exc:
             raise TypeTransformerFailedError(f"Failed argument '{k}': {exc}") from None
@@ -129,6 +144,24 @@ def resolve_attr_path_in_promise(p: Promise) -> Promise:
 
             curr_val = curr_val.value.literals[attr]
             used += 1
+
+        # If current value is Flyte Tuple, use [] to resolve
+        if curr_val.tuple:
+            if type(attr) == int:
+                if attr >= len(curr_val.tuple.type.order):
+                    raise FlytePromiseAttributeResolveException(
+                        f"Failed to resolve attribute path {p.attr_path} in promise {p},"
+                        f" index {attr} out of range {len(curr_val.tuple.type.order)}"
+                    )
+                attr = curr_val.tuple.type.order[attr]
+            if type(attr) == str and attr not in curr_val.tuple.literals:
+                raise FlytePromiseAttributeResolveException(
+                    f"Failed to resolve attribute path {p.attr_path} in promise {p},"
+                    f" attribute {attr} not found in {curr_val.tuple.literals.keys()}"
+                )
+            curr_val = curr_val.tuple.literals[attr]
+            used += 1
+
         # Scalar is always the leaf. There can't be a collection or map in a scalar.
         if type(curr_val.value) is _literals_models.Scalar:
             break
@@ -556,10 +589,18 @@ class Promise(object):
         Flyte/kit (as of https://github.com/flyteorg/flyte/issues/3864) supports indexing into a list of promises.
         But it still doesn't make sense to
         """
-        raise ValueError(
-            f" {self.var} is a Promise. Promise objects are not iterable - can't range() over a promise."
-            " But you can use [index] or the alpha version of @eager workflows"
-        )
+        # If the promise is a tuple, we can iterate over it
+        if self._type and self._type.tuple_type:
+            for i in range(len(self._type.tuple_type.order)):
+                yield self[i]
+        elif self.val and self.val.tuple:
+            for i in range(len(self.val.tuple.literals)):
+                yield self[i]
+        else:
+            raise ValueError(
+                f" {self.var} is a Promise. Promise objects are not iterable - can't range() over a promise."
+                " But you can use [index] or the alpha version of @eager workflows"
+            )
 
     def __getattr__(self, key) -> Promise:
         """
@@ -792,11 +833,49 @@ def binding_data_from_python_std(
         return _literals_models.BindingData(map=m)
 
     elif isinstance(t_value, tuple):
-        raise AssertionError(
-            "Tuples are not a supported type for individual values in Flyte - got a tuple -"
-            f" {t_value}. If using named tuple in an inner task, please, de-reference the"
-            "actual attribute that you want to use. For example, in NamedTuple('OP', x=int) then"
-            "return v.x, instead of v, even if this has a single element"
+        # This is the tuple case - e.g. my_task(in1=5, in2="hello")
+        if expected_literal_type.tuple_type is None:
+            raise AssertionError(f"Expected a Tuple type, but got {type(t_value)}")
+        if len(t_value) != len(expected_literal_type.tuple_type.fields):
+            raise AssertionError(
+                f"Expected a Tuple with {len(expected_literal_type.tuple_type.fields)} elements, but got {len(t_value)}"
+            )
+        is_nt = is_namedtuple(t_value_type)
+        if is_nt:
+            if (
+                len(t_value) != len(getattr(t_value_type, "_fields"))
+                or len(t_value) != len(expected_literal_type.tuple_type.fields)
+                or len(t_value) != len(expected_literal_type.tuple_type.order)
+            ):
+                raise AssertionError(
+                    "The length of the NamedTuple python value, python type, and expected literal type do not match.",
+                    f"Python value: {len(t_value)}, Python type: {len(getattr(t_value_type, '_fields'))},"
+                    f" Expected literal type: {len(expected_literal_type.tuple_type.fields)}",
+                )
+        else:
+            if (
+                len(t_value) != len(getattr(t_value_type, "__args__"))
+                or len(t_value) != len(expected_literal_type.tuple_type.fields)
+                or len(t_value) != len(expected_literal_type.tuple_type.order)
+            ):
+                raise AssertionError(
+                    "The length of the Tuple python value, python type, and expected literal type do not match.",
+                    f"Python value: {len(t_value)}, Python type: {len(getattr(t_value_type, "__args__"))},"
+                    f" Expected literal type: {len(expected_literal_type.tuple_type.fields)}",
+                )
+
+        bindings = {}
+        for i, field_key in enumerate(expected_literal_type.tuple_type.order):
+            field_type = expected_literal_type.tuple_type.fields[field_key]
+            field_value = t_value[i]
+            if is_nt:
+                field_value_type = getattr(t_value_type, "__annotations__")[field_key]
+            else:
+                field_value_type = getattr(t_value_type, "__args__")[i]
+            bindings[field_key] = binding_data_from_python_std(ctx, field_type, field_value, field_value_type, nodes)
+
+        return _literals_models.BindingData(
+            tuple=_literals_models.BindingDataTupleMap(type=expected_literal_type.tuple_type, bindings=bindings)
         )
 
     # This is the scalar case - e.g. my_task(in1=5)
@@ -1131,11 +1210,11 @@ def create_and_link_node(
         # This check ensures that tuples are not passed into a function, as tuples are not supported by Flyte
         # Usually a Tuple will indicate that multiple outputs from a previous task were accidentally passed
         # into the function.
-        if isinstance(v, tuple):
-            raise AssertionError(
-                f"Variable({k}) for function({entity.name}) cannot receive a multi-valued tuple {v}."
-                f" Check if the predecessor function returning more than one value?"
-            )
+        # if isinstance(v, tuple):
+        #     raise AssertionError(
+        #         f"Variable({k}) for function({entity.name}) cannot receive a multi-valued tuple {v}."
+        #         f" Check if the predecessor function returning more than one value?"
+        #     )
         try:
             b, n = binding_from_python_std(
                 ctx,

@@ -123,6 +123,44 @@ class UnionType(_common.FlyteIdlEntity):
         return cls(variants=[LiteralType.from_flyte_idl(v) for v in proto.variants])
 
 
+class TupleType(_common.FlyteIdlEntity):
+    """
+    Models _types_pb2.TupleType
+    """
+
+    def __init__(self, tuple_name: str, order: typing.List[str], fields: typing.Dict[str, "LiteralType"]):
+        self._tuple_name = tuple_name
+        self._order = order
+        self._fields = fields
+
+    @property
+    def tuple_name(self) -> str:
+        return self._tuple_name
+
+    @property
+    def order(self) -> typing.List[str]:
+        return self._order
+
+    @property
+    def fields(self) -> typing.Dict[str, "LiteralType"]:
+        return self._fields
+
+    def to_flyte_idl(self) -> _types_pb2.TupleType:
+        return _types_pb2.TupleType(
+            tuple_name=self._tuple_name,
+            order=self._order,
+            fields={k: v.to_flyte_idl() for k, v in self._fields.items()},
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, proto: _types_pb2.TupleType):
+        return cls(
+            tuple_name=proto.tuple_name,
+            order=proto.order,
+            fields={k: LiteralType.from_flyte_idl(proto.fields[k]) for k in proto.order},
+        )
+
+
 class TypeStructure(_common.FlyteIdlEntity):
     """
     Models _types_pb2.TypeStructure
@@ -250,6 +288,7 @@ class LiteralType(_common.FlyteIdlEntity):
         schema=None,
         collection_type=None,
         map_value_type=None,
+        tuple_type=None,
         blob=None,
         enum_type=None,
         union_type=None,
@@ -266,6 +305,7 @@ class LiteralType(_common.FlyteIdlEntity):
         :param LiteralType collection_type: For list-like objects, this is the type of each entry in the list.
         :param LiteralType map_value_type: For map objects, this is the type of the value.  The key must always be a
             string.
+        :param TupleType tuple_type: For tuple objects, this is the type of each element in the tuple and the name of tuple.
         :param flytekit.models.core.types.BlobType blob: For blob objects, this describes the type.
         :param flytekit.models.core.types.EnumType enum_type: For enum objects, describes an enum
         :param flytekit.models.core.types.UnionType union_type: For union objects, describes an python union type.
@@ -279,6 +319,7 @@ class LiteralType(_common.FlyteIdlEntity):
         self._schema = schema
         self._collection_type = collection_type
         self._map_value_type = map_value_type
+        self._tuple_type = tuple_type
         self._blob = blob
         self._enum_type = enum_type
         self._union_type = union_type
@@ -299,6 +340,16 @@ class LiteralType(_common.FlyteIdlEntity):
         elif self.map_value_type:
             sub = next(self.map_value_type.__rich_repr__())
             yield f"Dict[str, {sub}]"
+        elif self.tuple_type:
+            if self.tuple_type.tuple_name != "":
+                # Original Tuple
+                sub_list = [next(t.__rich_repr__()) for t in self.tuple_type.fields.values()]
+                yield f"Tuple[{', '.join(sub_list)}]"
+            else:
+                # NamedTuple
+                sub_list = [f"('{k}', {next(t.__rich_repr__())})" for k, t in self.tuple_type.fields.items()]
+                tuple_name = self.tuple_type.tuple_name
+            yield f"NamedTuple('{tuple_name}', [{', '.join(sub_list)}])"
         elif self.blob:
             if self.blob.dimensionality == _types_pb2.BlobType.BlobDimensionality.SINGLE:
                 yield "File"
@@ -336,6 +387,13 @@ class LiteralType(_common.FlyteIdlEntity):
         The Value for a dictionary. Key is always string
         """
         return self._map_value_type
+
+    @property
+    def tuple_type(self) -> TupleType:
+        """
+        The name and the value types for each field of a tuple
+        """
+        return self._tuple_type
 
     @property
     def blob(self) -> _core_types.BlobType:
@@ -394,6 +452,7 @@ class LiteralType(_common.FlyteIdlEntity):
             schema=self.schema.to_flyte_idl() if self.schema is not None else None,
             collection_type=self.collection_type.to_flyte_idl() if self.collection_type is not None else None,
             map_value_type=self.map_value_type.to_flyte_idl() if self.map_value_type is not None else None,
+            tuple_type=self.tuple_type.to_flyte_idl() if self.tuple_type is not None else None,
             blob=self.blob.to_flyte_idl() if self.blob is not None else None,
             enum_type=self.enum_type.to_flyte_idl() if self.enum_type else None,
             union_type=self.union_type.to_flyte_idl() if self.union_type else None,
@@ -423,6 +482,7 @@ class LiteralType(_common.FlyteIdlEntity):
             schema=SchemaType.from_flyte_idl(proto.schema) if proto.HasField("schema") else None,
             collection_type=collection_type,
             map_value_type=map_value_type,
+            tuple_type=TupleType.from_flyte_idl(proto.tuple_type) if proto.HasField("tuple_type") else None,
             blob=_core_types.BlobType.from_flyte_idl(proto.blob) if proto.HasField("blob") else None,
             enum_type=_core_types.EnumType.from_flyte_idl(proto.enum_type) if proto.HasField("enum_type") else None,
             union_type=UnionType.from_flyte_idl(proto.union_type) if proto.HasField("union_type") else None,

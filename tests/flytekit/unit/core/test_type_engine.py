@@ -1534,6 +1534,61 @@ def test_union_type():
     assert lv.scalar.union.value.scalar.primitive.string_value == "hello"
     assert v == "hello"
 
+@pytest.mark.skipif(sys.version_info < (3, 9), reason="PEP585 requires >=3.9.")
+def test_tuple_type():
+    pt = typing.Tuple[int, str]
+    lt = TypeEngine.to_literal_type(pt)
+    pt_585 = tuple[int, str]
+    lt_585 = TypeEngine.to_literal_type(pt_585)
+    assert lt == lt_585
+    assert lt.tuple_type.tuple_name == ""
+    assert lt.tuple_type.order == ["t0", "t1"]
+    assert lt.tuple_type.fields == {
+        "t0": LiteralType(simple=SimpleType.INTEGER),
+        "t1": LiteralType(simple=SimpleType.STRING),
+    }
+
+    ctx = FlyteContextManager.current_context()
+    lv = TypeEngine.to_literal(ctx, (3, "hello"), pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert len(lv.tuple.literals) == 2
+    assert lv.tuple.literals["t0"].scalar.primitive.integer == 3
+    assert lv.tuple.literals["t1"].scalar.primitive.string_value == "hello"
+    assert lv.tuple.type == lt.tuple_type
+    assert v == (3, "hello")
+
+    with pytest.raises(TypeTransformerFailedError):
+        TypeEngine.to_literal(ctx, ("hello", 3), pt, lt)
+
+    with pytest.raises(TypeTransformerFailedError):
+        TypeEngine.to_literal(ctx, (3, "hello", "extra"), pt, lt)
+
+    with pytest.raises(TypeTransformerFailedError):
+        TypeEngine.to_literal(ctx, (3,), pt, lt)
+
+    with pytest.raises(TypeTransformerFailedError):
+        TypeEngine.to_literal(ctx, (3.0, "hello"), pt, lt)
+
+
+def test_namedtuple_type():
+    pt = typing.NamedTuple("MyNamedTuple", [("a", int), ("b", str)])
+    lt = TypeEngine.to_literal_type(pt)
+    assert lt.tuple_type.tuple_name == "MyNamedTuple"
+    assert lt.tuple_type.order == ["a", "b"]
+    assert lt.tuple_type.fields == {
+        "a": LiteralType(simple=SimpleType.INTEGER),
+        "b": LiteralType(simple=SimpleType.STRING),
+    }
+
+    ctx = FlyteContextManager.current_context()
+    lv = TypeEngine.to_literal(ctx, pt(a=3, b="hello"), pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert len(lv.tuple.literals) == 2
+    assert lv.tuple.literals["a"].scalar.primitive.integer == 3
+    assert lv.tuple.literals["b"].scalar.primitive.string_value == "hello"
+    assert lv.tuple.type == lt.tuple_type
+    assert v == pt(a=3, b="hello")
+
 
 def test_assert_dataclass_type():
     @dataclass

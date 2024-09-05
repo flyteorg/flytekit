@@ -400,6 +400,7 @@ def test_binding_data_scalar():
     assert obj.promise is None
     assert obj.collection is None
     assert obj.map is None
+    assert obj.tuple is None
 
     obj2 = literals.BindingData.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
@@ -407,6 +408,7 @@ def test_binding_data_scalar():
     assert obj2.promise is None
     assert obj2.collection is None
     assert obj2.map is None
+    assert obj2.tuple is None
 
 
 def test_binding_data_map():
@@ -421,6 +423,7 @@ def test_binding_data_map():
     assert obj.scalar is None
     assert obj.promise is None
     assert obj.collection is None
+    assert obj.tuple is None
     assert obj.value.bindings["three"].value.value.value == 2
     assert obj.value.bindings["sample_map"].value.bindings["second"].value.value.value == 57
 
@@ -429,6 +432,7 @@ def test_binding_data_map():
     assert obj2.scalar is None
     assert obj2.promise is None
     assert obj2.collection is None
+    assert obj2.tuple is None
     assert obj2.value.bindings["three"].value.value.value == 2
     assert obj2.value.bindings["sample_map"].value.bindings["first"].value.value.value == 5
 
@@ -439,6 +443,7 @@ def test_binding_data_promise():
     assert obj.promise is not None
     assert obj.collection is None
     assert obj.map is None
+    assert obj.tuple is None
     assert obj.value.node_id == "some_node"
     assert obj.value.var == "myvar"
 
@@ -448,6 +453,7 @@ def test_binding_data_promise():
     assert obj2.promise is not None
     assert obj2.collection is None
     assert obj2.map is None
+    assert obj2.tuple is None
 
 
 def test_binding_data_collection():
@@ -460,6 +466,7 @@ def test_binding_data_collection():
     assert obj.promise is None
     assert obj.collection is not None
     assert obj.map is None
+    assert obj.tuple is None
     assert obj.value.bindings[0].value.value.value == 5
     assert obj.value.bindings[1].value.value.value == 57
 
@@ -469,6 +476,7 @@ def test_binding_data_collection():
     assert obj2.promise is None
     assert obj2.collection is not None
     assert obj2.map is None
+    assert obj2.tuple is None
     assert obj2.value.bindings[0].value.value.value == 5
     assert obj2.value.bindings[1].value.value.value == 57
 
@@ -486,6 +494,7 @@ def test_binding_data_collection_nested():
     assert obj.promise is None
     assert obj.collection is not None
     assert obj.map is None
+    assert obj.tuple is None
 
     obj2 = literals.BindingData.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
@@ -493,9 +502,95 @@ def test_binding_data_collection_nested():
     assert obj2.promise is None
     assert obj2.collection is not None
     assert obj2.map is None
+    assert obj2.tuple is None
     assert obj2.value.bindings[0].value.bindings[0].value.value.value == 5
     assert obj2.value.bindings[0].value.bindings[1].value.value.value == 57
 
+def test_binding_data_tuple_map():
+    b1 = literals.BindingData(scalar=literals.Scalar(primitive=literals.Primitive(integer=5)))
+    b2 = literals.BindingData(scalar=literals.Scalar(primitive=literals.Primitive(integer=57)))
+
+    bd = literals.BindingData(tuple=literals.BindingDataTupleMap(
+        type=_types.TupleType(
+            tuple_name="my_tuple",
+            order=["first", "second"],
+            fields={
+                "second": _types.LiteralType(simple=_types.SimpleType.INTEGER),
+                "first": _types.LiteralType(simple=_types.SimpleType.INTEGER),
+            }
+        ),
+        bindings={"second": b2, "first": b1}
+    ))
+    obj = literals.BindingData(tuple=bd.value)
+    assert obj.scalar is None
+    assert obj.promise is None
+    assert obj.collection is None
+    assert obj.map is None
+    assert obj.tuple is not None
+    assert obj.value.bindings["first"].value.value.value == 5
+    assert obj.value.bindings["second"].value.value.value == 57
+
+    obj2 = literals.BindingData.from_flyte_idl(obj.to_flyte_idl())
+    assert obj == obj2
+    assert obj2.scalar is None
+    assert obj2.promise is None
+    assert obj2.collection is None
+    assert obj2.map is None
+    assert obj2.tuple is not None
+    assert obj2.value.bindings["first"].value.value.value == 5
+    assert obj2.value.bindings["second"].value.value.value == 57
+
+def test_binding_data_tuple_map_nested():
+    b1 = literals.BindingData(scalar=literals.Scalar(primitive=literals.Primitive(integer=5)))
+    b2 = literals.BindingData(scalar=literals.Scalar(primitive=literals.Primitive(integer=57)))
+
+    bd_inner = literals.BindingData(tuple=literals.BindingDataTupleMap(
+        type=_types.TupleType(
+            tuple_name="my_tuple",
+            order=["first", "second"],
+            fields={
+                "second": _types.LiteralType(simple=_types.SimpleType.INTEGER),
+                "first": _types.LiteralType(simple=_types.SimpleType.INTEGER),
+            }
+        ),
+        bindings={"second": b2, "first": b1}
+    ))
+
+    bd_outer = literals.BindingData(tuple=literals.BindingDataTupleMap(
+        type=_types.TupleType(
+            tuple_name="my_tuple",
+            order=["inner"],
+            fields={
+                "inner": _types.LiteralType(tuple_type=_types.TupleType(
+                    tuple_name="my_tuple",
+                    order=["first", "second"],
+                    fields={
+                        "second": _types.LiteralType(simple=_types.SimpleType.INTEGER),
+                        "first": _types.LiteralType(simple=_types.SimpleType.INTEGER),
+                    }
+                ))
+            }
+        ),
+        bindings={"inner": bd_inner}
+    ))
+    obj = literals.BindingData(tuple=bd_outer.value)
+    assert obj.scalar is None
+    assert obj.promise is None
+    assert obj.collection is None
+    assert obj.map is None
+    assert obj.tuple is not None
+    assert obj.value.bindings["inner"].value.bindings["first"].value.value.value == 5
+    assert obj.value.bindings["inner"].value.bindings["second"].value.value.value == 57
+
+    obj2 = literals.BindingData.from_flyte_idl(obj.to_flyte_idl())
+    assert obj == obj2
+    assert obj2.scalar is None
+    assert obj2.promise is None
+    assert obj2.collection is None
+    assert obj2.map is None
+    assert obj2.tuple is not None
+    assert obj2.value.bindings["inner"].value.bindings["first"].value.value.value == 5
+    assert obj2.value.bindings["inner"].value.bindings["second"].value.value.value == 57
 
 @pytest.mark.parametrize("scalar_value_pair", parameterizers.LIST_OF_SCALARS_AND_PYTHON_VALUES)
 def test_scalar_literals(scalar_value_pair):
@@ -505,6 +600,7 @@ def test_scalar_literals(scalar_value_pair):
     assert obj.scalar == scalar
     assert obj.collection is None
     assert obj.map is None
+    assert obj.tuple is None
     assert obj.metadata["hello"] == "world"
 
     obj2 = literals.Literal.from_flyte_idl(obj.to_flyte_idl())
@@ -513,6 +609,7 @@ def test_scalar_literals(scalar_value_pair):
     assert obj2.scalar == scalar
     assert obj2.collection is None
     assert obj2.map is None
+    assert obj2.tuple is None
     assert obj2.metadata["hello"] == "world"
 
     obj = literals.Literal(scalar=scalar)
@@ -531,6 +628,7 @@ def test_literal_collection(literal_value_pair):
     assert obj == obj2
     assert all(ll == lit for ll in obj.literals)
     assert len(obj.literals) == 3
+
 
 
 def test_set_metadata():

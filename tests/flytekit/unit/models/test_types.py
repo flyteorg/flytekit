@@ -62,6 +62,7 @@ def test_literal_types():
     assert obj.schema is None
     assert obj.collection_type is None
     assert obj.map_value_type is None
+    assert obj.tuple_type is None
     assert obj == _types.LiteralType.from_flyte_idl(obj.to_flyte_idl())
 
     schema_type = _types.SchemaType(
@@ -79,6 +80,7 @@ def test_literal_types():
     assert obj.schema == schema_type
     assert obj.collection_type is None
     assert obj.map_value_type is None
+    assert obj.tuple_type is None
     assert obj == _types.LiteralType.from_flyte_idl(obj.to_flyte_idl())
 
 
@@ -88,6 +90,7 @@ def test_annotated_literal_types():
     assert obj.schema is None
     assert obj.collection_type is None
     assert obj.map_value_type is None
+    assert obj.tuple_type is None
     assert obj.annotation.annotations == {"foo": "bar"}
     assert obj == _types.LiteralType.from_flyte_idl(obj.to_flyte_idl())
 
@@ -98,6 +101,27 @@ def test_literal_collections(literal_type):
     assert obj.collection_type == literal_type
     assert obj.simple is None
     assert obj.schema is None
+    assert obj.map_value_type is None
+    assert obj.tuple_type is None
+    assert obj == _types.LiteralType.from_flyte_idl(obj.to_flyte_idl())
+
+
+@pytest.mark.parametrize("literal_type", parameterizers.LIST_OF_ALL_LITERAL_TYPES)
+def test_literal_tuple_map(literal_type):
+    tuple_type = _types.TupleType(
+        tuple_name="tuple_name",
+        order=["t0", "t1", "t2"],
+        fields={
+            "t0": literal_type,
+            "t1": literal_type,
+            "t2": literal_type,
+        }
+    )
+    obj = _types.LiteralType(tuple_type=tuple_type)
+    assert obj.tuple_type == tuple_type
+    assert obj.simple is None
+    assert obj.schema is None
+    assert obj.collection_type is None
     assert obj.map_value_type is None
     assert obj == _types.LiteralType.from_flyte_idl(obj.to_flyte_idl())
 

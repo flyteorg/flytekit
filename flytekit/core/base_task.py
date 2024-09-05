@@ -628,8 +628,6 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 literal_type = self._outputs_interface[k].type
                 py_type = self.get_type_for_output_var(k, v)
 
-                if isinstance(v, tuple):
-                    raise TypeError(f"Output({k}) in task '{self.name}' received a tuple {v}, instead of {py_type}")
                 try:
                     lit = TypeEngine.to_literal(ctx, v, py_type, literal_type)
                     literals[k] = lit

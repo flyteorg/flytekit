@@ -171,6 +171,7 @@ class SchemaEngine(object):
 
     @classmethod
     def get_handler(cls, t: Type) -> SchemaHandler:
+        logger.warning(f"Getting handler for {t}")
         if t not in cls._SCHEMA_HANDLERS:
             raise ValueError(f"DataFrames of type {t} are not supported currently")
         return cls._SCHEMA_HANDLERS[t]

@@ -62,6 +62,16 @@ LIST_OF_SCALAR_LITERAL_TYPES = [
             ]
         )
     ),
+    types.LiteralType(
+        tuple_type=types.TupleType(
+            tuple_name="DefaultTupleName",
+            order=["t0", "t1"],
+            fields={
+                "t0": types.LiteralType(simple=types.SimpleType.INTEGER),
+                "t1": types.LiteralType(simple=types.SimpleType.STRING),
+            },
+        )
+    )
 ]
 
 
@@ -73,9 +83,33 @@ LIST_OF_NESTED_COLLECTION_LITERAL_TYPES = [
     types.LiteralType(collection_type=literal_type) for literal_type in LIST_OF_COLLECTION_LITERAL_TYPES
 ]
 
-LIST_OF_ALL_LITERAL_TYPES = (
+LIST_OF_ALL_LITERAL_TYPES_WITHOUT_NESTED_TUPLE = (
     LIST_OF_SCALAR_LITERAL_TYPES + LIST_OF_COLLECTION_LITERAL_TYPES + LIST_OF_NESTED_COLLECTION_LITERAL_TYPES
 )
+
+TUPLE_TYPE_WITH_ALL_LITERAL_TYPES = types.TupleType(
+    tuple_name="AnotherTuple",
+    order=[f"t{i}" for i in range(len(LIST_OF_ALL_LITERAL_TYPES_WITHOUT_NESTED_TUPLE))],
+    fields={
+        f"t{i}": t for i, t in enumerate(LIST_OF_ALL_LITERAL_TYPES_WITHOUT_NESTED_TUPLE)
+    },
+)
+
+TUPLE_LITERAL_TYPE_WITH_ALL_LITERAL_TYPES = types.LiteralType(
+    tuple_type=TUPLE_TYPE_WITH_ALL_LITERAL_TYPES
+)
+
+NESTED_TUPLE_TYPE_WITH_ALL_LITERAL_TYPES = types.TupleType(
+    tuple_name="NestedTuple",
+    order=["t0", "t1"],
+    fields={"t0": TUPLE_LITERAL_TYPE_WITH_ALL_LITERAL_TYPES, "t1": TUPLE_LITERAL_TYPE_WITH_ALL_LITERAL_TYPES},
+)
+
+NESTED_LITERAL_TYPE_WITH_ALL_LITERAL_TYPES = types.LiteralType(
+    tuple_type=NESTED_TUPLE_TYPE_WITH_ALL_LITERAL_TYPES
+)
+
+LIST_OF_ALL_LITERAL_TYPES = LIST_OF_ALL_LITERAL_TYPES_WITHOUT_NESTED_TUPLE + [TUPLE_LITERAL_TYPE_WITH_ALL_LITERAL_TYPES, NESTED_LITERAL_TYPE_WITH_ALL_LITERAL_TYPES]
 
 LIST_OF_INTERFACES = [
     interface.TypedInterface(
