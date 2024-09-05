@@ -7,16 +7,9 @@ from traceback import format_tb as _format_tb
 from warnings import warn
 
 import flytekit
-from flytekit.core.context_manager import FlyteContextManager
 from flytekit.exceptions import base as _base_exceptions
 from flytekit.exceptions import system as _system_exceptions
 from flytekit.exceptions import user as _user_exceptions
-from flytekit.exceptions.system import (
-    FlyteDownloadDataException,
-    FlyteNonRecoverableSystemException,
-    FlyteUploadDataException,
-)
-from flytekit.exceptions.user import FlyteUserRuntimeException
 from flytekit.loggers import is_rich_logging_enabled
 from flytekit.models.core import errors as _error_model
 
@@ -160,32 +153,6 @@ def _decorator(outer_f):
         return f
 
     return inner_decorator
-
-
-@_decorator
-def system_error_handler(wrapped, args, kwargs):
-    ctx = FlyteContextManager().current_context()
-    if ctx.execution_state and ctx.execution_state.is_local_execution():
-        # If the task is being executed locally, we want to raise the original exception
-        return wrapped(*args, **kwargs)
-    try:
-        return wrapped(*args, **kwargs)
-    except (FlyteUploadDataException, FlyteDownloadDataException):
-        raise
-    except Exception as e:
-        raise FlyteNonRecoverableSystemException(e) from e
-
-
-@_decorator
-def user_error_handler(wrapped, args, kwargs):
-    ctx = FlyteContextManager().current_context()
-    if ctx.execution_state and ctx.execution_state.is_local_execution():
-        # If the task is being executed locally, we want to raise the original exception
-        return wrapped(*args, **kwargs)
-    try:
-        return wrapped(*args, **kwargs)
-    except Exception as e:
-        raise FlyteUserRuntimeException(e) from e
 
 
 @_decorator
