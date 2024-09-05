@@ -1,10 +1,6 @@
 import pytest
 
-from flytekit.core import context_manager
 from flytekit.exceptions import scopes, system, user
-from flytekit.exceptions.scopes import system_error_handler, user_error_handler
-from flytekit.exceptions.system import FlyteNonRecoverableSystemException
-from flytekit.exceptions.user import FlyteUserRuntimeException
 from flytekit.models.core import errors as _error_models
 
 
