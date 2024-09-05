@@ -143,7 +143,7 @@ def fast_package(
 
             if shutil.which("pigz"):
                 with open(archive_fname, "wb") as gzipped:
-                    subprocess.run(["pigz", "-c", tar_path], stdout=gzipped)
+                    subprocess.run(["pigz", "-c", tar_path], stdout=gzipped, check=True)
             else:
                 start_time = time.time()
                 with gzip.GzipFile(filename=archive_fname, mode="wb", mtime=0) as gzipped:
@@ -181,7 +181,7 @@ def fast_package(
 
             if shutil.which("pigz"):
                 with open(archive_fname, "wb") as gzipped:
-                    subprocess.run(["pigz", "-c", tar_path], stdout=gzipped)
+                    subprocess.run(["pigz", "-c", tar_path], stdout=gzipped, check=True)
             else:
                 start_time = time.time()
                 with gzip.GzipFile(filename=archive_fname, mode="wb", mtime=0) as gzipped:
