@@ -8,65 +8,12 @@ from flytekit.core import context_manager
 from flytekit.core.context_manager import ExecutionState
 from flytekit.image_spec import ImageSpec
 from flytekit.image_spec.image_spec import _F_IMG_ID, ImageBuildEngine, FLYTE_FORCE_PUSH_IMAGE_SPEC
+from flytekit.core.python_auto_container import update_image_spec_copy_handling
+from flytekit.configuration import SerializationSettings, FastSerializationSettings, ImageConfig
+from flytekit.constants import CopyFileDetection
 
 REQUIREMENT_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "requirements.txt")
 REGISTRY_CONFIG_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "registry_config.json")
-
-
-def test_pr_notes():
-    image_spec = ImageSpec(
-        name="FLYTEKIT",
-        builder="dummy",
-        packages=["pandas"],
-        apt_packages=["git"],
-        python_version="3.8",
-        registry="localhost:30001",
-        # base_image=base_image,
-        cuda="11.2.2",
-        cudnn="8",
-        requirements=REQUIREMENT_FILE,
-        registry_config=REGISTRY_CONFIG_FILE,
-        entrypoint=["/bin/bash"],
-    )
-    print(f"{image_spec.id=}")
-    print(f"{image_spec.tag=}")
-
-    @task(image_spec)
-    def t1(): ...
-
-    # cat > requirements.txt: add pandas
-    #
-
-    """    
-    """
-
-    image_spec2 = ImageSpec(
-        name="FLYTEKIT",
-        builder="dummy",
-        packages=["pandas"],
-        apt_packages=["git"],
-        python_version="3.8",
-        registry="localhost:30001",
-        # base_image=base_image,
-        cuda="11.2.2",
-        cudnn="8",
-        requirements=REQUIREMENT_FILE,
-        registry_config=REGISTRY_CONFIG_FILE,
-        source_root=".",
-        entrypoint=["/bin/bash"],
-    )
-    print(f"{image_spec2.id=}")
-    print(f"{image_spec2.tag=}")
-
-    @task(image_spec2)
-    def t2(): ...
-
-    # {image_specs.id: image_specs.tag}
-
-    # remote.register t1
-
-    # remote.register t2
-
 
 
 def test_image_spec(mock_image_spec_builder, monkeypatch):
@@ -210,4 +157,43 @@ def test_image_spec_validation_string_list(parameter_name, value):
         ImageSpec(**input_params)
 
 
-# test update_image_spec_copy_handling
+def test_update_image_spec_copy_handling():
+    image_spec = ImageSpec(name="my_image", python_version="3.12")
+    assert image_spec.copy is None
+    assert image_spec.source_root is None
+    ss = SerializationSettings(
+        source_root="/tmp",
+        fast_serialization_settings=FastSerializationSettings(
+            enabled=False,
+        ),
+        image_config=ImageConfig.auto_default_image(),
+    )
+    update_image_spec_copy_handling(image_spec, ss)
+    assert image_spec.copy == CopyFileDetection.LOADED_MODULES
+    assert image_spec.source_root == "/tmp"
+
+    image_spec = ImageSpec(name="my_image", python_version="3.12", copy=CopyFileDetection.NO_COPY)
+    assert image_spec.source_root is None
+    ss = SerializationSettings(
+        source_root="/tmp",
+        fast_serialization_settings=FastSerializationSettings(
+            enabled=False,
+        ),
+        image_config=ImageConfig.auto_default_image(),
+    )
+    update_image_spec_copy_handling(image_spec, ss)
+    assert image_spec.copy == CopyFileDetection.NO_COPY
+    assert image_spec.source_root is None
+
+    image_spec = ImageSpec(name="my_image", python_version="3.12", copy=CopyFileDetection.ALL)
+    assert image_spec.source_root is None
+    ss = SerializationSettings(
+        source_root="/tmp",
+        fast_serialization_settings=FastSerializationSettings(
+            enabled=False,
+        ),
+        image_config=ImageConfig.auto_default_image(),
+    )
+    update_image_spec_copy_handling(image_spec, ss)
+    assert image_spec.copy == CopyFileDetection.ALL
+    assert image_spec.source_root == "/tmp"
