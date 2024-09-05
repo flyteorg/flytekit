@@ -623,6 +623,11 @@ def _internal_remote(
 ) -> FlyteRemote:
     """Derives a FlyteRemote object from a yaml configuration file, modifying parts to make it work internally."""
     secrets_manager = current_context().secrets
+
+    assert (
+        client_secret_group is not None or client_secret_key is not None
+    ), "One of client_secret_group or client_secret_key must be defined when using a remote cluster"
+
     client_secret = secrets_manager.get(client_secret_group, client_secret_key)
     # get the raw output prefix from the context that's set from the pyflyte-execute entrypoint
     # (see flytekit/bin/entrypoint.py)
