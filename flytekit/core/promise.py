@@ -139,10 +139,6 @@ def resolve_attr_path_in_promise(p: Promise, t: typing.Type) -> Promise:
 
     # If the current value is a dataclass, resolve the dataclass with the remaining path
     if len(p.attr_path) > 0 and type(curr_val.value) is _literals_models.Scalar:
-        import json
-
-        import msgpack
-
         from flytekit.models.literals import Json
 
         # We keep it for reference task local execution in the future.
@@ -153,9 +149,9 @@ def resolve_attr_path_in_promise(p: Promise, t: typing.Type) -> Promise:
             # Reconstruct the resolved result to flyte literal (because the resolved result might not be struct)
             curr_val = TypeEngine.to_literal(FlyteContextManager.current_context(), new_st, type(new_st), literal_type)
         elif type(curr_val.value.value) is Json:
-            json_bytes = curr_val.value.json.value
-            json_str = msgpack.loads(json_bytes)
-            dict_obj = json.loads(json_str)
+            import msgpack
+
+            dict_obj = msgpack.loads(curr_val.value.json.value)
             v = resolve_attr_path_in_dict(dict_obj, attr_path=p.attr_path[used:])
             literal_type = TypeEngine.to_literal_type(t)
             curr_val = TypeEngine.to_literal(FlyteContextManager.current_context(), v, t, literal_type)
