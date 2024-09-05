@@ -71,7 +71,6 @@ from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
 from flytekit.core.utils import timeit
 from flytekit.deck import DeckField
-from flytekit.exceptions.scopes import system_error_handler, user_error_handler
 from flytekit.exceptions.system import FlyteNonRecoverableSystemException
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
@@ -727,7 +726,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         ) as exec_ctx:
             # TODO We could support default values here too - but not part of the plan right now
             # Translate the input literals to Python native
-            native_inputs = system_error_handler(self._literal_map_to_python_input)(input_literal_map, exec_ctx)
+            native_inputs = self._literal_map_to_python_input(input_literal_map, exec_ctx)
             # TODO: Logger should auto inject the current context information to indicate if the task is running within
             #   a workflow or a subworkflow etc
             logger.info(f"Invoking {self.name} with inputs: {native_inputs}")
