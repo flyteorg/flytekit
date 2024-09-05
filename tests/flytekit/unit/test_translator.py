@@ -195,6 +195,6 @@ def test_get_git_link(mock_is_file_pushed, mock_get_git_root):
 
 
 def test_is_file_pushed():
-    module = str(Path(flytekit.__file__).parent.parent)
+    module = str(Path(flytekit.__file__).parent)
     assert _is_file_pushed(module, "workflow.py") is False
-    assert _is_file_pushed(module, "NOTICE") is True
+    assert _is_file_pushed(module, "__init__.py") is True
