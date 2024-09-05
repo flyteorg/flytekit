@@ -3,13 +3,12 @@ import typing
 from enum import Enum
 from typing import Any, Dict, List, Optional, OrderedDict, Tuple, Type
 
-import flytekit.configuration
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask, TaskMetadata
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.interface import Interface
 from flytekit.core.pod_template import PodTemplate
-from flytekit.core.python_auto_container import get_registerable_container_image
+from flytekit.core.python_auto_container import get_registerable_container_image, update_image_spec_copy_handling
 from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.utils import _get_container_definition, _serialize_pod_spec
 from flytekit.image_spec.image_spec import ImageSpec
@@ -17,8 +16,6 @@ from flytekit.loggers import logger
 from flytekit.models import task as _task_model
 from flytekit.models.literals import LiteralMap
 from flytekit.models.security import Secret, SecurityContext
-
-flytekit.configuration.CopyFileDetection
 
 _PRIMARY_CONTAINER_NAME_FIELD = "primary_container_name"
 DOCKER_IMPORT_ERROR_MESSAGE = "Docker is not installed. Please install Docker by running `pip install docker`."
@@ -282,13 +279,10 @@ class ContainerTask(PythonTask):
         )
 
     def _get_image(self, settings: SerializationSettings) -> str:
-        # This is where the relationship between fast register and imagespec is set
-        # If fast register is not enabled, then source root is used.
-        # and then files are copied.
-        if settings.fast_serialization_settings is None or not settings.fast_serialization_settings.enabled:
-            if isinstance(self._image, ImageSpec):
-                # Set the source root for the image spec if it's non-fast registration
-                self._image.source_root = settings.source_root
+        """Update image spec based on fast registration usage, and return string representing the image"""
+        if isinstance(self._image, ImageSpec):
+            update_image_spec_copy_handling(self._image, settings)
+
         return get_registerable_container_image(self._image, settings.image_config)
 
     def _get_container(self, settings: SerializationSettings) -> _task_model.Container:

@@ -17,7 +17,7 @@ import click
 from rich import print as rich_print
 from rich.tree import Tree
 
-from flytekit.configuration import CopyFileDetection
+from flytekit.constants import CopyFileDetection
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.utils import timeit
 from flytekit.exceptions.user import FlyteDataNotFoundException
@@ -95,7 +95,7 @@ def fast_package(
     # This function is temporarily split into two, to support the creation of the tar file in both the old way,
     # copying the underlying items in the source dir by doing a listdir, and the new way, relying on a list of files.
     if options and (
-            options.copy_style == CopyFileDetection.LOADED_MODULES or options.copy_style == CopyFileDetection.ALL
+        options.copy_style == CopyFileDetection.LOADED_MODULES or options.copy_style == CopyFileDetection.ALL
     ):
         if options.copy_style == CopyFileDetection.LOADED_MODULES:
             # This is the 'auto' semantic by default used for pyflyte run, it only copies loaded .py files.

@@ -12,12 +12,14 @@ from typing import ClassVar
 
 import click
 
+from flytekit.constants import CopyFileDetection
 from flytekit.image_spec.image_spec import (
     _F_IMG_ID,
     ImageSpec,
     ImageSpecBuilder,
 )
 from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
+from flytekit.tools.script_mode import ls_files
 
 UV_PYTHON_INSTALL_COMMAND_TEMPLATE = Template(
     """\
@@ -165,21 +167,27 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
 
     apt_install_command = APT_INSTALL_COMMAND_TEMPLATE.substitute(APT_PACKAGES=" ".join(apt_packages))
 
-    if image_spec.source_root:
-        source_path = tmp_dir / "src"
+    if image_spec.copy is not None and image_spec.copy != CopyFileDetection.NO_COPY:
+        if not image_spec.source_root:
+            raise ValueError(f"Field source_root for {image_spec} must be set when copy is set")
 
-        """
-        Basically if slow register is specified, then files are copied.
-        Currently files are copied from the source root in their entirety. Need to be able to use auto by default
-        as well as somehow specify all. 
-        """
+        source_path = tmp_dir / "src"
+        # todo: See note in we should pipe through ignores from the command line here at some point.
+        #  what about deref_symlink?
         ignore = IgnoreGroup(image_spec.source_root, [GitIgnore, DockerIgnore, StandardIgnore])
-        shutil.copytree(
-            image_spec.source_root,
-            source_path,
-            ignore=shutil.ignore_patterns(*ignore.list_ignored()),
-            dirs_exist_ok=True,
-        )
+
+        if image_spec.copy == CopyFileDetection.LOADED_MODULES:
+            # This is the 'auto' semantic by default used for pyflyte run, it only copies loaded .py files.
+            sys_modules = list(sys.modules.values())
+            ls, _ = ls_files(str(image_spec.source_root), sys_modules, deref_symlinks=False, ignore_group=ignore)
+        else:
+            # This triggers listing of all files
+            ls, _ = ls_files(str(image_spec.source_root), [], deref_symlinks=False, ignore_group=ignore)
+
+        for file_to_copy in ls:
+            rel_path = os.path.relpath(file_to_copy, start=str(image_spec.source_root))
+            shutil.copy(file_to_copy, source_path / rel_path)
+
         copy_command_runtime = "COPY --chown=flytekit ./src /root"
     else:
         copy_command_runtime = ""

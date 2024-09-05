@@ -2,6 +2,7 @@ import os
 import pathlib
 import shutil
 import subprocess
+import sys
 from dataclasses import asdict
 from importlib import metadata
 
@@ -11,10 +12,12 @@ from rich import print
 from rich.pretty import Pretty
 
 from flytekit.configuration import DefaultImages
+from flytekit.constants import CopyFileDetection
 from flytekit.core import context_manager
 from flytekit.core.constants import REQUIREMENTS_FILE_NAME
 from flytekit.image_spec.image_spec import _F_IMG_ID, ImageBuildEngine, ImageSpec, ImageSpecBuilder
 from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
+from flytekit.tools.script_mode import ls_files
 
 FLYTE_LOCAL_REGISTRY = "localhost:30000"
 FLYTE_ENVD_CONTEXT = "FLYTE_ENVD_CONTEXT"
@@ -149,14 +152,26 @@ def build():
         cudnn = image_spec.cudnn if image_spec.cudnn else ""
         envd_config += f'    install.cuda(version="{image_spec.cuda}", cudnn="{cudnn}")\n'
 
-    if image_spec.source_root:
+    if image_spec.copy is not None and image_spec.copy != CopyFileDetection.NO_COPY:
+        if not image_spec.source_root:
+            raise ValueError(f"Field source_root for {image_spec} must be set when copy is set")
+        # todo: See note in we should pipe through ignores from the command line here at some point.
+        #  what about deref_symlink?
         ignore = IgnoreGroup(image_spec.source_root, [GitIgnore, DockerIgnore, StandardIgnore])
-        shutil.copytree(
-            src=image_spec.source_root,
-            dst=pathlib.Path(cfg_path).parent,
-            ignore=shutil.ignore_patterns(*ignore.list_ignored()),
-            dirs_exist_ok=True,
-        )
+
+        dst = pathlib.Path(cfg_path).parent
+
+        if image_spec.copy == CopyFileDetection.LOADED_MODULES:
+            # This is the 'auto' semantic by default used for pyflyte run, it only copies loaded .py files.
+            sys_modules = list(sys.modules.values())
+            ls, _ = ls_files(str(image_spec.source_root), sys_modules, deref_symlinks=False, ignore_group=ignore)
+        else:
+            # This triggers listing of all files
+            ls, _ = ls_files(str(image_spec.source_root), [], deref_symlinks=False, ignore_group=ignore)
+
+        for file_to_copy in ls:
+            rel_path = os.path.relpath(file_to_copy, start=str(image_spec.source_root))
+            shutil.copy(file_to_copy, dst / rel_path)
 
         envd_version = metadata.version("envd")
         # Indentation is required by envd

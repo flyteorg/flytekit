@@ -10,8 +10,9 @@ from flytekit.configuration import (
     DEFAULT_RUNTIME_PYTHON_INTERPRETER,
     FastSerializationSettings,
     ImageConfig,
-    SerializationSettings, CopyFileDetection,
+    SerializationSettings,
 )
+from flytekit.constants import CopyFileDetection
 from flytekit.interaction.click_types import key_value_callback
 from flytekit.tools.fast_registration import FastPackageOptions
 from flytekit.tools.repo import NoSerializableEntitiesError, serialize_and_package

@@ -13,7 +13,7 @@ REQUIREMENT_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "re
 REGISTRY_CONFIG_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "registry_config.json")
 
 
-def test_uilkj():
+def test_pr_notes():
     image_spec = ImageSpec(
         name="FLYTEKIT",
         builder="dummy",
@@ -37,23 +37,7 @@ def test_uilkj():
     # cat > requirements.txt: add pandas
     #
 
-    """
-    when you do non-fast register, package, serialize, with ImageSpec
-        * by default, the entire source root is copied into the image
-        * source root of IS, is set to SS.local source root
-
-    (add copy auto functionality)
-    non-fast register but copy auto for image spec
-    
-    (make sure this is still true)
-    when you do --copy none register, package, serialize, with ImageSpec
-        * by default, the entire source root is copied into the image
-
-    
-    when you do fast register, package, serialize, run
-        * no files copied into the image
-    
-    
+    """    
     """
 
     image_spec2 = ImageSpec(
@@ -224,3 +208,6 @@ def test_image_spec_validation_string_list(parameter_name, value):
 
     with pytest.raises(ValueError, match=msg):
         ImageSpec(**input_params)
+
+
+# test update_image_spec_copy_handling

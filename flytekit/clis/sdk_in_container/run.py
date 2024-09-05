@@ -35,9 +35,10 @@ from flytekit.configuration import (
     DefaultImages,
     FastSerializationSettings,
     ImageConfig,
-    SerializationSettings, CopyFileDetection,
+    SerializationSettings,
 )
 from flytekit.configuration.plugin import get_plugin
+from flytekit.constants import CopyFileDetection
 from flytekit.core import context_manager
 from flytekit.core.artifact import ArtifactQuery
 from flytekit.core.base_task import PythonTask

@@ -5,6 +5,7 @@ import hashlib
 import os
 import pathlib
 import re
+import sys
 import typing
 from abc import abstractmethod
 from dataclasses import asdict, dataclass
@@ -16,6 +17,7 @@ import click
 import requests
 from packaging.version import Version
 
+from flytekit.constants import CopyFileDetection
 from flytekit.exceptions.user import FlyteAssertion
 
 DOCKER_HUB = "docker.io"
@@ -51,6 +53,13 @@ class ImageSpec:
         commands: Command to run during the building process
         tag_format: Custom string format for image tag. The ImageSpec hash passed in as `spec_hash`. For example,
             to add a "dev" suffix to the image tag, set `tag_format="{spec_hash}-dev"`
+        copy: This option allows the user to specify which source files to copy from the local host, into the image.
+            Not setting this option means to use the default flytekit behavior. The default behavior is:
+                - if fast register is used, source files are not copied into the image (because they're already copied
+                  into the fast register tar layer).
+                - if fast register is not used, then the LOADED_MODULES (aka 'auto') option is used to copy loaded
+                  Python files into the image.
+            If the option is set by the user, then that option is of course used.
     """
 
     name: str = "flytekit"
@@ -74,6 +83,7 @@ class ImageSpec:
     entrypoint: Optional[List[str]] = None
     commands: Optional[List[str]] = None
     tag_format: Optional[str] = None
+    copy: Optional[CopyFileDetection] = None
 
     def __post_init__(self):
         self.name = self.name.lower()
@@ -109,6 +119,8 @@ class ImageSpec:
         - deduced abc: flyteorg/flytekit:123
         - deduced xyz: flyteorg/flytekit:456
 
+        The result of this property also depends on whether or not update_image_spec_copy_handling was called.
+
         :return: a unique identifier of the ImageSpec
         """
         # Only get the non-None values in the ImageSpec to ensure the hash is consistent across different Flytekit versions.
@@ -125,6 +137,9 @@ class ImageSpec:
         Calculate a hash from the image spec. The hash will be the tag of the image.
         We will also read the content of the requirement file and the source root to calculate the hash.
         Therefore, it will generate different hash if new dependencies are added or the source code is changed.
+
+        Keep in mind the fields source_root and copy may be changed by update_image_spec_copy_handling, so when
+        you call this property in relation to that function matter will change the output.
         """
 
         # copy the image spec to avoid modifying the original image spec. otherwise, the hash will be different.
@@ -132,17 +147,33 @@ class ImageSpec:
         if isinstance(spec.base_image, ImageSpec):
             spec = dataclasses.replace(spec, base_image=spec.base_image)
 
-        if self.source_root:
-            from flytekit.tools.fast_registration import compute_digest
-            from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
+        if self.copy is not None and self.copy != CopyFileDetection.NO_COPY:
+            if not self.source_root:
+                raise ValueError(f"Field source_root for {image_spec} must be set when copy is set")
 
+            # Imports of flytekit.tools are circular
+            from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
+            from flytekit.tools.script_mode import ls_files
+
+            # todo: we should pipe through ignores from the command line here at some point.
+            #  what about deref_symlink?
             ignore = IgnoreGroup(self.source_root, [GitIgnore, DockerIgnore, StandardIgnore])
-            digest = compute_digest(self.source_root, ignore.is_ignored)
-            spec = dataclasses.replace(spec, source_root=digest)
+            if self.copy == CopyFileDetection.LOADED_MODULES:
+                # This is the 'auto' semantic by default used for pyflyte run, it only copies loaded .py files.
+                sys_modules = list(sys.modules.values())
+                _, ls_digest = ls_files(str(self.source_root), sys_modules, deref_symlinks=False, ignore_group=ignore)
+            else:
+                # This triggers listing of all files, mimicking the old way of creating the tar file.
+                _, ls_digest = ls_files(str(self.source_root), [], deref_symlinks=False, ignore_group=ignore)
+
+            # Since the source root is supposed to represent the files, store the digest into the source root as a
+            # shortcut to represent all the files.
+            spec = dataclasses.replace(spec, source_root=ls_digest)
 
         if spec.requirements:
             requirements = hashlib.sha1(pathlib.Path(spec.requirements).read_bytes().strip()).hexdigest()
             spec = dataclasses.replace(spec, requirements=requirements)
+
         # won't rebuild the image if we change the registry_config path
         spec = dataclasses.replace(spec, registry_config=None)
         tag = spec.id.replace("-", "_")
