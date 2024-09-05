@@ -1,13 +1,3 @@
-"""
-.. currentmodule:: flytekit.extras.sklearn
-
-.. autosummary::
-   :template: custom.rst
-   :toctree: generated/
-
-   SklearnEstimatorTransformer
-"""
-
 from flytekit.loggers import logger
 
 # TODO: abstract this out so that there's an established pattern for registering plugins

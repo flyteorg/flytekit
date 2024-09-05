@@ -20,7 +20,7 @@ from flytekit.models.core import workflow as _workflow_model
 class LaunchPlan(object):
     """
     Launch Plans are one of the core constructs of Flyte. Please take a look at the discussion in the
-    :std:ref:`core concepts <flyte:divedeep-launchplans>` if you are unfamiliar with them.
+    :ref:`core concepts <divedeep-launchplans>` if you are unfamiliar with them.
 
     Every workflow is registered with a default launch plan, which is just a launch plan with none of the additional
     attributes set - no default values, fixed values, schedules, etc. Assuming you have the following workflow
@@ -40,7 +40,7 @@ class LaunchPlan(object):
     If you specify additional parameters, you'll also have to give the launch plan a unique name. Default and
     fixed inputs can be expressed as Python native values like so:
 
-    .. literalinclude:: ../../../tests/flytekit/unit/core/test_launch_plan.py
+    .. rli:: https://raw.githubusercontent.com/flyteorg/flytekit/master/tests/flytekit/unit/core/test_launch_plan.py
        :start-after: # fixed_and_default_start
        :end-before: # fixed_and_default_end
        :language: python
@@ -53,7 +53,7 @@ class LaunchPlan(object):
 
     To configure the remaining parameters, you'll need to import the relevant model objects as well.
 
-    .. literalinclude:: ../../../tests/flytekit/unit/core/test_launch_plan.py
+    .. rli:: https://raw.githubusercontent.com/flyteorg/flytekit/master/tests/flytekit/unit/core/test_launch_plan.py
        :start-after: # schedule_start
        :end-before: # schedule_end
        :language: python
@@ -65,7 +65,7 @@ class LaunchPlan(object):
 
     Then use as follows
 
-    .. literalinclude:: ../../../tests/flytekit/unit/core/test_launch_plan.py
+    .. rli:: https://raw.githubusercontent.com/flyteorg/flytekit/master/tests/flytekit/unit/core/test_launch_plan.py
        :start-after: # auth_role_start
        :end-before: # auth_role_end
        :language: python

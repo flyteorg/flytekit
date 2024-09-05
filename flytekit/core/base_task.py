@@ -108,7 +108,7 @@ class TaskMetadata(object):
     Metadata for a Task. Things like retries and whether or not caching is turned on, and cache version are specified
     here.
 
-    See the :std:ref:`IDL <idl:protos/docs/core/core:taskmetadata>` for the protobuf definition.
+    See the :ref:`IDL <ref_flyteidl.core.TaskMetadata>` for the protobuf definition.
 
     Args:
         cache (bool): Indicates if caching should be enabled. See :ref:`Caching <caching>`

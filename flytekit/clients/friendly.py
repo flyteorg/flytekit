@@ -33,7 +33,7 @@ from flytekit.models.core import identifier as _identifier
 class SynchronousFlyteClient(_RawSynchronousFlyteClient):
     """
     This is a low-level client that users can use to make direct gRPC service calls to the control plane. See the
-    :std:doc:`service spec <idl:protos/docs/service/index>`. This is more user-friendly interface than the
+    :doc:`service spec </api/flyteidl/docs/service/index>`. This is more user-friendly interface than the
     :py:class:`raw client <flytekit.clients.raw.RawSynchronousFlyteClient>` so users should try to use this class
     first. Create a client by ::
 

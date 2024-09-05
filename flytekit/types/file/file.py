@@ -45,7 +45,7 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
     literal that represents a file is typically just the path to the file on the local filesystem. However in Flyte,
     an instance of a file is represented by a :py:class:`Blob <flytekit.models.literals.Blob>` literal,
     with the ``uri`` field set to the location in the Flyte blob store (AWS/GCS etc.). Take a look at the
-    :std:ref:`data handling doc <flyte:divedeep-data-management>` for a deeper discussion.
+    :ref:`data handling doc <divedeep-data-management>` for a deeper discussion.
 
     We decided to not support ``pathlib.Path`` as an input/output type because if you wanted the automatic
     upload/download behavior, you should just use the ``FlyteFile`` type. If you do not, then a ``str`` works just as

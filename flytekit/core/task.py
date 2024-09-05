@@ -413,7 +413,7 @@ def reference_task(
 
     Example:
 
-    .. literalinclude:: ../../../tests/flytekit/unit/core/test_references.py
+    .. rli:: https://raw.githubusercontent.com/flyteorg/flytekit/master/tests/flytekit/unit/core/test_references.py
        :pyobject: ref_t1
 
     """

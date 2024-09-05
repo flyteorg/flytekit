@@ -1,17 +1,3 @@
-"""
-Flytekit StructuredDataset
-==========================================================
-.. currentmodule:: flytekit.types.structured
-
-.. autosummary::
-   :template: custom.rst
-   :toctree: generated/
-
-   StructuredDataset
-   StructuredDatasetEncoder
-   StructuredDatasetDecoder
-"""
-
 from flytekit.deck.renderer import ArrowRenderer, TopFrameRenderer
 from flytekit.loggers import logger
 

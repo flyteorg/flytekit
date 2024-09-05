@@ -648,7 +648,7 @@ class ImperativeWorkflow(WorkflowBase):
 
 class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
     """
-    Please read :std:ref:`flyte:divedeep-workflows` first for a high-level understanding of what workflows are in Flyte.
+    Please read :ref:`divedeep-workflows` first for a high-level understanding of what workflows are in Flyte.
     This Python object represents a workflow  defined by a function and decorated with the
     :py:func:`@workflow <flytekit.workflow>` decorator. Please see notes on that object for additional information.
     """

@@ -62,7 +62,7 @@ class SQLite3Task(PythonCustomizedContainerTask[SQLite3Config], SQLTask[SQLite3C
        This is a pre-built container task. That is, your user container will not be used at task execution time.
        Instead the image defined in this task definition will be used instead.
 
-    .. literalinclude:: ../../../tests/flytekit/unit/extras/sqlite3/test_task.py
+    .. rli:: https://raw.githubusercontent.com/flyteorg/flytekit/master/tests/flytekit/unit/extras/sqlite3/test_task.py
        :start-after: # sqlite3_start
        :end-before: # sqlite3_end
        :language: python
