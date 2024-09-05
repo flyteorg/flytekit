@@ -158,6 +158,7 @@ for chunk in ollama.pull('{self._model_name}', stream=True):
     print(chunk)
 """
 
+        # `sleep 15` allows time for the Ollama server to start up before executing the Python code.
         command = (
             f'sleep 15 && python3 -c "{python_code}" {{{{.input}}}}'
             if self._model_modelfile and "{inputs" in self._model_modelfile
