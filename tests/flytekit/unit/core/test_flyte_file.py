@@ -17,7 +17,6 @@ from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
-from flytekit.exceptions.system import FlyteNonRecoverableSystemException
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import LiteralMap
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
