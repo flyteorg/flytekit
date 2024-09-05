@@ -187,7 +187,7 @@ def fast_package(
                         gzipped.write(tar_file.read())
 
                 end_time = time.time()
-                warning_time = 30
+                warning_time = 10
                 if end_time - start_time > warning_time:
                     click.secho(
                         f"Code tarball compression took {end_time - start_time:.0f} seconds. Consider installing `pigz` for faster compression.",
