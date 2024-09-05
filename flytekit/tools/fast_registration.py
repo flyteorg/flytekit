@@ -152,8 +152,9 @@ def fast_package(
                 end_time = time.time()
                 warning_time = 30
                 if end_time - start_time > warning_time:
-                    logger.info(
-                        f"Code tarball compression took {end_time - start_time:.0f} seconds. Consider installing `pigz` for faster compression."
+                    click.secho(
+                        f"Code tarball compression took {end_time - start_time:.0f} seconds. Consider installing `pigz` for faster compression.",
+                        fg="yellow",
                     )
 
     # Original tar command - This condition to be removed in the future.
@@ -188,8 +189,9 @@ def fast_package(
                 end_time = time.time()
                 warning_time = 30
                 if end_time - start_time > warning_time:
-                    logger.info(
-                        f"Code tarball compression took {end_time - start_time:.0f} seconds. Consider installing `pigz` for faster compression."
+                    click.secho(
+                        f"Code tarball compression took {end_time - start_time:.0f} seconds. Consider installing `pigz` for faster compression.",
+                        fg="yellow",
                     )
 
     return archive_fname
