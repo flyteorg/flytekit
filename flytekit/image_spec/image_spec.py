@@ -149,7 +149,7 @@ class ImageSpec:
 
         if self.copy is not None and self.copy != CopyFileDetection.NO_COPY:
             if not self.source_root:
-                raise ValueError(f"Field source_root for {image_spec} must be set when copy is set")
+                raise ValueError(f"Field source_root for image spec {self.name} must be set when copy is set")
 
             # Imports of flytekit.tools are circular
             from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
