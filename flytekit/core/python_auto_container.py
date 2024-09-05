@@ -289,15 +289,20 @@ def update_image_spec_copy_handling(image_spec: ImageSpec, settings: Serializati
         if image_spec.copy != CopyFileDetection.NO_COPY:
             # if we need to copy any files, make sure source root is set. This preserves the behavior pre-copy arg,
             # and allows the user to not have to specify source root.
-            if image_spec.source_root is None:
+            if image_spec.source_root is None and settings.source_root is not None:
                 image_spec.source_root = settings.source_root
 
     # Handle the default behavior of setting the behavior based on the inverse of fast register usage
+    # The default behavior additionally requires that serializa
     elif settings.fast_serialization_settings is None or not settings.fast_serialization_settings.enabled:
         # Set the source root for the image spec if it's non-fast registration
-        image_spec.source_root = settings.source_root
-        if image_spec.copy is None:
-            image_spec.copy = CopyFileDetection.LOADED_MODULES
+        # Unfortunately whether the source_root/copy instructions should be set is implicitly dependent also on the
+        # existence of the source root in settings.
+        if settings.source_root is not None or image_spec.source_root is not None:
+            if image_spec.source_root is None:
+                image_spec.source_root = settings.source_root
+            if image_spec.copy is None:
+                image_spec.copy = CopyFileDetection.LOADED_MODULES
 
 
 def get_registerable_container_image(img: Optional[Union[str, ImageSpec]], cfg: ImageConfig) -> str:

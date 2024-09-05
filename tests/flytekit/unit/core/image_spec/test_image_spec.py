@@ -197,3 +197,13 @@ def test_update_image_spec_copy_handling():
     update_image_spec_copy_handling(image_spec, ss)
     assert image_spec.copy == CopyFileDetection.ALL
     assert image_spec.source_root == "/tmp"
+
+    # no fast, but because ss doesn't have source_root, it should be None
+    image_spec = ImageSpec(name="my_image", python_version="3.12", copy=None)
+    assert image_spec.source_root is None
+    ss = SerializationSettings(
+        image_config=ImageConfig.auto_default_image(),
+    )
+    update_image_spec_copy_handling(image_spec, ss)
+    assert image_spec.copy is None
+    assert image_spec.source_root is None
