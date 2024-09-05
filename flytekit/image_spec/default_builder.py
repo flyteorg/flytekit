@@ -172,6 +172,7 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
             raise ValueError(f"Field source_root for {image_spec} must be set when copy is set")
 
         source_path = tmp_dir / "src"
+        source_path.mkdir(parents=True, exist_ok=True)
         # todo: See note in we should pipe through ignores from the command line here at some point.
         #  what about deref_symlink?
         ignore = IgnoreGroup(image_spec.source_root, [GitIgnore, DockerIgnore, StandardIgnore])

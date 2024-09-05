@@ -91,6 +91,11 @@ class ImageSpec:
         if self.registry:
             self.registry = self.registry.lower()
 
+        # If not set, help the user set this option as well, to support the older default behavior where existence
+        # of the source root implied that copying of files was needed.
+        if self.source_root is not None:
+            self.copy = self.copy or CopyFileDetection.LOADED_MODULES
+
         parameters_str_list = [
             "packages",
             "conda_channels",
