@@ -79,7 +79,6 @@ class TaskPlugins(object):
         """
         Returns a PluginObjectType if found or returns the base PythonFunctionTask
         """
-        # breakpoint()
         if plugin_config_type in cls._PYTHONFUNCTION_TASK_PLUGINS:
             return cls._PYTHONFUNCTION_TASK_PLUGINS[plugin_config_type]
         # Defaults to returning Base PythonFunctionTask
