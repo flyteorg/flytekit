@@ -1,6 +1,6 @@
-FROM python:3.10-slim-bookworm as agent-slim
+FROM python:3.10-slim-bookworm AS agent-slim
 
-MAINTAINER Flyte Team <users@flyte.org>
+LABEL org.opencontainers.image.authors="Flyte Team <users@flyte.org>"
 LABEL org.opencontainers.image.source=https://github.com/flyteorg/flytekit
 
 ARG VERSION
@@ -19,9 +19,9 @@ RUN pip install --no-cache-dir -U flytekit==$VERSION \
   && rm -rf /var/lib/{apt,dpkg,cache,log}/ \
   && :
 
-CMD pyflyte serve agent --port 8000
+CMD ["pyflyte", "serve", "agent", "--port", "8000"]
 
-FROM agent-slim as agent-all
+FROM agent-slim AS agent-all
 ARG VERSION
 
 RUN pip install --no-cache-dir -U \

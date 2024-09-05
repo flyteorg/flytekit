@@ -71,6 +71,7 @@ from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
 from flytekit.core.utils import timeit
 from flytekit.deck import DeckField
+from flytekit.exceptions.user import FlyteUserRuntimeException
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import interface as _interface_models
@@ -290,9 +291,8 @@ class Task(object):
                 native_types=self.get_input_types(),  # type: ignore
             )
         except TypeTransformerFailedError as exc:
-            msg = f"Failed to convert inputs of task '{self.name}':\n  {exc}"
-            logger.error(msg)
-            raise TypeError(msg) from exc
+            exc.args = (f"Failed to convert inputs of task '{self.name}':\n  {exc.args[0]}",)
+            raise
         input_literal_map = _literal_models.LiteralMap(literals=literals)
 
         # if metadata.cache is set, check memoized version
@@ -358,7 +358,7 @@ class Task(object):
         return flyte_entity_call_handler(self, *args, **kwargs)  # type: ignore
 
     def compile(self, ctx: FlyteContext, *args, **kwargs):
-        raise Exception("not implemented")
+        raise NotImplementedError
 
     def get_container(self, settings: SerializationSettings) -> Optional[_task_model.Container]:
         """
@@ -636,7 +636,11 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 except Exception as e:
                     # only show the name of output key if it's user-defined (by default Flyte names these as "o<n>")
                     key = k if k != f"o{i}" else i
-                    msg = f"Failed to convert outputs of task '{self.name}' at position {key}:\n  {e}"
+                    msg = (
+                        f"Failed to convert outputs of task '{self.name}' at position {key}.\n"
+                        f"Failed to convert type {type(native_outputs_as_map[expected_output_names[i]])} to type {py_type}.\n"
+                        f"Error Message: {e}."
+                    )
                     logger.error(msg)
                     raise TypeError(msg) from e
                 # Now check if there is any output metadata associated with this output variable and attach it to the
@@ -722,15 +726,22 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             try:
                 native_inputs = self._literal_map_to_python_input(input_literal_map, exec_ctx)
             except Exception as exc:
-                msg = f"Failed to convert inputs of task '{self.name}':\n  {exc}"
-                logger.error(msg)
-                raise type(exc)(msg) from exc
+                exc.args = (f"Error encountered while converting inputs of '{self.name}':\n  {exc.args[0]}",)
+                raise
 
             # TODO: Logger should auto inject the current context information to indicate if the task is running within
             #   a workflow or a subworkflow etc
             logger.info(f"Invoking {self.name} with inputs: {native_inputs}")
             with timeit("Execute user level code"):
-                native_outputs = self.execute(**native_inputs)
+                try:
+                    native_outputs = self.execute(**native_inputs)
+                except Exception as e:
+                    ctx = FlyteContextManager().current_context()
+                    if ctx.execution_state and ctx.execution_state.is_local_execution():
+                        # If the task is being executed locally, we want to raise the original exception
+                        e.args = (f"Error encountered while executing '{self.name}':\n  {e.args[0]}",)
+                        raise
+                    raise FlyteUserRuntimeException(e) from e
 
             if inspect.iscoroutine(native_outputs):
                 # If native outputs is a coroutine, then this is an eager workflow.

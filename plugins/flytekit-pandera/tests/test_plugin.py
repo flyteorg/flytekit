@@ -1,3 +1,5 @@
+import os
+
 import pandas
 import pandera
 import pytest
@@ -42,7 +44,7 @@ def test_pandera_dataframe_type_hints():
     # raise error when defining workflow using invalid data
     invalid_df = pandas.DataFrame({"col1": [1, 2, 3], "col2": list("abc")})
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(pandera.errors.SchemaError):
 
         @workflow
         def invalid_wf() -> pandera.typing.DataFrame[OutSchema]:
@@ -72,7 +74,7 @@ def test_pandera_dataframe_type_hints():
 
     with pytest.raises(
         TypeError,
-        match="Error encountered while executing 'wf_invalid_output':\n" "  Failed to convert outputs of task",
+        match=f"Failed to convert type <class 'pandas.core.frame.DataFrame'> to type pandera.typing.pandas.DataFrame",
     ):
         wf_invalid_output(df=valid_df)
 

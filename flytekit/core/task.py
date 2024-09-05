@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import datetime
+import os
 from functools import update_wrapper
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, TypeVar, Union, overload
+
+from flytekit.core.utils import str2bool
 
 try:
     from typing import ParamSpec
@@ -11,8 +14,8 @@ except ImportError:
 
 from flytekit.core import launch_plan as _annotated_launchplan
 from flytekit.core import workflow as _annotated_workflow
-from flytekit.core.base_task import TaskMetadata, TaskResolverMixin
-from flytekit.core.interface import transform_function_to_interface
+from flytekit.core.base_task import PythonTask, TaskMetadata, TaskResolverMixin
+from flytekit.core.interface import Interface, output_name_generator, transform_function_to_interface
 from flytekit.core.pod_template import PodTemplate
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.reference_entity import ReferenceEntity, TaskReference
@@ -20,6 +23,8 @@ from flytekit.core.resources import Resources
 from flytekit.deck import DeckField
 from flytekit.extras.accelerators import BaseAccelerator
 from flytekit.image_spec.image_spec import ImageSpec
+from flytekit.interactive import vscode
+from flytekit.interactive.constants import FLYTE_ENABLE_VSCODE_KEY
 from flytekit.models.documentation import Documentation
 from flytekit.models.security import Secret
 
@@ -342,9 +347,11 @@ def task(
             timeout=timeout,
         )
 
+        decorated_fn = decorate_function(fn)
+
         task_instance = TaskPlugins.find_pythontask_plugin(type(task_config))(
             task_config,
-            fn,
+            decorated_fn,
             metadata=_metadata,
             container_image=container_image,
             environment=environment,
@@ -362,7 +369,7 @@ def task(
             pod_template_name=pod_template_name,
             accelerator=accelerator,
         )
-        update_wrapper(task_instance, fn)
+        update_wrapper(task_instance, decorated_fn)
         return task_instance
 
     if _task_function:
@@ -371,7 +378,7 @@ def task(
         return wrapper
 
 
-class ReferenceTask(ReferenceEntity, PythonFunctionTask):  # type: ignore
+class ReferenceTask(ReferenceEntity, PythonTask):  # type: ignore
     """
     This is a reference task, the body of the function passed in through the constructor will never be used, only the
     signature of the function will be. The signature should also match the signature of the task you're referencing,
@@ -412,7 +419,65 @@ def reference_task(
     """
 
     def wrapper(fn) -> ReferenceTask:
-        interface = transform_function_to_interface(fn)
+        interface = transform_function_to_interface(fn, is_reference_entity=True)
         return ReferenceTask(project, domain, name, version, interface.inputs, interface.outputs)
 
     return wrapper
+
+
+def decorate_function(fn: Callable[P, Any]) -> Callable[P, Any]:
+    """
+    Decorates the task with additional functionality if necessary.
+
+    :param fn: python function to decorate.
+    :return: a decorated python function.
+    """
+
+    if str2bool(os.getenv(FLYTE_ENABLE_VSCODE_KEY)):
+        """
+        If the environment variable FLYTE_ENABLE_VSCODE is set to True, then the task is decorated with vscode
+        functionality. This is useful for debugging the task in vscode.
+        """
+        return vscode(task_function=fn)
+    return fn
+
+
+class Echo(PythonTask):
+    _TASK_TYPE = "echo"
+
+    def __init__(self, name: str, inputs: Optional[Dict[str, Type]] = None, **kwargs):
+        """
+        A task that simply echoes the inputs back to the user.
+        The task's inputs and outputs interface are the same.
+
+        FlytePropeller uses echo plugin to handle this task, and it won't create a pod for this task.
+        It will simply pass the inputs to the outputs.
+        https://github.com/flyteorg/flyte/blob/master/flyteplugins/go/tasks/plugins/testing/echo.go
+
+        Note: Make sure to enable the echo plugin in the propeller config to use this task.
+        ```
+        task-plugins:
+          enabled-plugins:
+            - echo
+        ```
+
+        :param name: The name of the task.
+        :param inputs: Name and type of inputs specified as a dictionary.
+            e.g. {"a": int, "b": str}.
+        :param kwargs: All other args required by the parent type - PythonTask.
+
+        """
+        outputs = dict(zip(output_name_generator(len(inputs)), inputs.values())) if inputs else None
+        super().__init__(
+            task_type=self._TASK_TYPE,
+            name=name,
+            interface=Interface(inputs=inputs, outputs=outputs),
+            **kwargs,
+        )
+
+    def execute(self, **kwargs) -> Any:
+        values = list(kwargs.values())
+        if len(values) == 1:
+            return values[0]
+        else:
+            return tuple(values)

@@ -4,18 +4,25 @@ import inspect
 import json
 import os
 import pathlib
+import sys
 import tempfile
 import typing
+import typing as t
 from dataclasses import dataclass, field, fields
 from typing import Iterator, get_args
 
 import rich_click as click
+import yaml
+from click import Context
 from mashumaro.codecs.json import JSONEncoder
 from rich.progress import Progress
 from typing_extensions import get_origin
 
 from flytekit import Annotations, FlyteContext, FlyteContextManager, Labels, Literal
-from flytekit.clis.sdk_in_container.helpers import patch_image_config
+from flytekit.clis.sdk_in_container.helpers import (
+    parse_copy,
+    patch_image_config,
+)
 from flytekit.clis.sdk_in_container.utils import (
     PyFlyteParams,
     domain_option,
@@ -24,7 +31,12 @@ from flytekit.clis.sdk_in_container.utils import (
     pretty_print_exception,
     project_option,
 )
-from flytekit.configuration import DefaultImages, FastSerializationSettings, ImageConfig, SerializationSettings
+from flytekit.configuration import (
+    DefaultImages,
+    FastSerializationSettings,
+    ImageConfig,
+    SerializationSettings,
+)
 from flytekit.configuration.plugin import get_plugin
 from flytekit.core import context_manager
 from flytekit.core.artifact import ArtifactQuery
@@ -33,17 +45,29 @@ from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow, WorkflowBase
 from flytekit.exceptions.system import FlyteSystemException
-from flytekit.interaction.click_types import FlyteLiteralConverter, key_value_callback, labels_callback
+from flytekit.exceptions.user import FlyteEntityNotFoundException
+from flytekit.interaction.click_types import (
+    FlyteLiteralConverter,
+    key_value_callback,
+    labels_callback,
+)
 from flytekit.interaction.string_literals import literal_string_repr
 from flytekit.loggers import logger
 from flytekit.models import security
 from flytekit.models.common import RawOutputDataConfig
 from flytekit.models.interface import Parameter, Variable
 from flytekit.models.types import SimpleType
-from flytekit.remote import FlyteLaunchPlan, FlyteRemote, FlyteTask, FlyteWorkflow, remote_fs
+from flytekit.remote import (
+    FlyteLaunchPlan,
+    FlyteRemote,
+    FlyteTask,
+    FlyteWorkflow,
+    remote_fs,
+)
 from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.tools import module_loader
-from flytekit.tools.script_mode import _find_project_root, compress_scripts
+from flytekit.tools.fast_registration import CopyFileDetection, FastPackageOptions
+from flytekit.tools.script_mode import _find_project_root, compress_scripts, get_all_modules
 from flytekit.tools.translator import Options
 
 
@@ -84,7 +108,20 @@ class RunLevelParams(PyFlyteParams):
             is_flag=True,
             default=False,
             show_default=True,
-            help="Copy all files in the source root directory to the destination directory",
+            help="[Will be deprecated, see --copy] Copy all files in the source root directory to"
+            " the destination directory. You can specify --copy all instead",
+        )
+    )
+    copy: typing.Optional[CopyFileDetection] = make_click_option_field(
+        click.Option(
+            param_decls=["--copy"],
+            required=False,
+            default=None,  # this will change to "auto" after removing copy_all option
+            type=click.Choice(["all", "auto"], case_sensitive=False),
+            show_default=True,
+            callback=parse_copy,
+            help="[Beta] Specifies how to detect which files to copy into image."
+            " 'all' will behave as the current copy-all flag, 'auto' copies only loaded Python modules",
         )
     )
     image_config: ImageConfig = make_click_option_field(
@@ -303,7 +340,10 @@ def load_naive_entity(module_name: str, entity_name: str, project_root: str) -> 
     with context_manager.FlyteContextManager.with_context(flyte_ctx_builder):
         with module_loader.add_sys_path(project_root):
             importlib.import_module(module_name)
-    return module_loader.load_object_from_module(f"{module_name}.{entity_name}")
+    try:
+        return module_loader.load_object_from_module(f"{module_name}.{entity_name}")
+    except AttributeError as e:
+        raise FlyteEntityNotFoundException(module_name, entity_name) from e
 
 
 def dump_flyte_remote_snippet(execution: FlyteWorkflowExecution, project: str, domain: str):
@@ -378,6 +418,10 @@ def to_click_option(
     This handles converting workflow input types to supported click parameters with callbacks to initialize
     the input values to their expected types.
     """
+    if input_name != input_name.lower():
+        # Click does not support uppercase option names: https://github.com/pallets/click/issues/837
+        raise ValueError(f"Workflow input name must be lowercase: {input_name!r}")
+
     run_level_params: RunLevelParams = ctx.obj
 
     literal_converter = FlyteLiteralConverter(
@@ -484,7 +528,8 @@ def _update_flyte_context(params: RunLevelParams) -> FlyteContext.Builder:
         return ctx.current_context().new_builder()
 
     file_access = FileAccessProvider(
-        local_sandbox_dir=tempfile.mkdtemp(prefix="flyte"), raw_output_prefix=output_prefix
+        local_sandbox_dir=tempfile.mkdtemp(prefix="flyte"),
+        raw_output_prefix=output_prefix,
     )
 
     # The task might run on a remote machine if raw_output_prefix is a remote path,
@@ -492,7 +537,8 @@ def _update_flyte_context(params: RunLevelParams) -> FlyteContext.Builder:
     if output_prefix and ctx.file_access.is_remote(output_prefix):
         with tempfile.TemporaryDirectory() as tmp_dir:
             archive_fname = pathlib.Path(os.path.join(tmp_dir, "script_mode.tar.gz"))
-            compress_scripts(params.computed_params.project_root, str(archive_fname), params.computed_params.module)
+            modules = get_all_modules(params.computed_params.project_root, params.computed_params.module)
+            compress_scripts(params.computed_params.project_root, str(archive_fname), modules)
             remote_dir = file_access.get_random_remote_directory()
             remote_archive_fname = f"{remote_dir}/script_mode.tar.gz"
             file_access.put_data(str(archive_fname), remote_archive_fname)
@@ -533,7 +579,10 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
         entity_type = "workflow" if isinstance(entity, PythonFunctionWorkflow) else "task"
         logger.debug(f"Running {entity_type} {entity.name} with input {kwargs}")
 
-        click.secho(f"Running Execution on {'Remote' if run_level_params.is_remote else 'local'}.", fg="cyan")
+        click.secho(
+            f"Running Execution on {'Remote' if run_level_params.is_remote else 'local'}.",
+            fg="cyan",
+        )
         try:
             inputs = {}
             for input_name, v in entity.python_interface.inputs_with_defaults.items():
@@ -570,6 +619,8 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
                         )
                 if processed_click_value is not None or optional_v:
                     inputs[input_name] = processed_click_value
+                if processed_click_value is None and v[0] == bool:
+                    inputs[input_name] = False
 
             if not run_level_params.is_remote:
                 with FlyteContextManager.with_context(_update_flyte_context(run_level_params)):
@@ -592,6 +643,12 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
             image_config = patch_image_config(config_file, image_config)
 
             with context_manager.FlyteContextManager.with_context(remote.context.new_builder()):
+                show_files = run_level_params.verbose > 0
+                fast_package_options = FastPackageOptions(
+                    [],
+                    copy_style=run_level_params.copy,
+                    show_files=show_files,
+                )
                 remote_entity = remote.register_script(
                     entity,
                     project=run_level_params.project,
@@ -601,6 +658,7 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
                     source_path=run_level_params.computed_params.project_root,
                     module_name=run_level_params.computed_params.module,
                     copy_all=run_level_params.copy_all,
+                    fast_package_options=fast_package_options,
                 )
 
                 run_remote(
@@ -741,13 +799,18 @@ class RemoteEntityGroup(click.RichGroup):
         return []
 
     def list_commands(self, ctx):
+        if "--help" in sys.argv:
+            return []
         if self._entities or ctx.obj is None:
             return self._entities
 
         run_level_params: RunLevelParams = ctx.obj
         r = run_level_params.remote_instance()
         progress = Progress(transient=True)
-        task = progress.add_task(f"[cyan]Gathering [{run_level_params.limit}] remote LaunchPlans...", total=None)
+        task = progress.add_task(
+            f"[cyan]Gathering [{run_level_params.limit}] remote LaunchPlans...",
+            total=None,
+        )
         with progress:
             progress.start_task(task)
             try:
@@ -773,6 +836,70 @@ class RemoteEntityGroup(click.RichGroup):
             entity_name=name,
             launcher=DynamicEntityLaunchCommand.TASK_LAUNCHER,
         )
+
+
+class YamlFileReadingCommand(click.RichCommand):
+    def __init__(
+        self,
+        name: str,
+        params: typing.List[click.Option],
+        help: str,
+        callback: typing.Callable = None,
+    ):
+        params.append(
+            click.Option(
+                ["--inputs-file"],
+                required=False,
+                type=click.Path(exists=True, dir_okay=False, resolve_path=True),
+                help="Path to a YAML | JSON file containing inputs for the workflow.",
+            )
+        )
+        super().__init__(name=name, params=params, callback=callback, help=help)
+
+    def parse_args(self, ctx: Context, args: t.List[str]) -> t.List[str]:
+        def load_inputs(f: str) -> t.Dict[str, str]:
+            try:
+                inputs = yaml.safe_load(f)
+            except yaml.YAMLError as e:
+                yaml_e = e
+                try:
+                    inputs = json.loads(f)
+                except json.JSONDecodeError as e:
+                    raise click.BadParameter(
+                        message=f"Could not load the inputs file. Please make sure it is a valid JSON or YAML file."
+                        f"\n json error: {e},"
+                        f"\n yaml error: {yaml_e}",
+                        param_hint="--inputs-file",
+                    )
+
+            return inputs
+
+        inputs = {}
+        if "--inputs-file" in args:
+            idx = args.index("--inputs-file")
+            args.pop(idx)
+            f = args.pop(idx)
+            with open(f, "r") as f:
+                inputs = load_inputs(f.read())
+        elif not sys.stdin.isatty():
+            f = sys.stdin.read()
+            if f != "":
+                inputs = load_inputs(f)
+
+        new_args = []
+        for k, v in inputs.items():
+            if isinstance(v, str):
+                new_args.extend([f"--{k}", v])
+            elif isinstance(v, bool):
+                if v:
+                    new_args.append(f"--{k}")
+            else:
+                v = json.dumps(v)
+                new_args.extend([f"--{k}", v])
+        new_args.extend(args)
+        args = new_args
+
+        return super().parse_args(ctx, args)
 
 
 class WorkflowCommand(click.RichGroup):
@@ -829,11 +956,11 @@ class WorkflowCommand(click.RichGroup):
         h = f"{click.style(entity_type, bold=True)} ({run_level_params.computed_params.module}.{entity_name})"
         if loaded_entity.__doc__:
             h = h + click.style(f"{loaded_entity.__doc__}", dim=True)
-        cmd = click.RichCommand(
+        cmd = YamlFileReadingCommand(
             name=entity_name,
             params=params,
-            callback=run_command(ctx, loaded_entity),
             help=h,
+            callback=run_command(ctx, loaded_entity),
         )
         return cmd
 

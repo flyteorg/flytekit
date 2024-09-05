@@ -3,24 +3,41 @@ from __future__ import annotations
 import gzip
 import hashlib
 import os
+import pathlib
 import posixpath
 import subprocess
+import sys
 import tarfile
 import tempfile
 import typing
 from dataclasses import dataclass
+from enum import Enum
 from typing import Optional
 
 import click
+from rich import print as rich_print
+from rich.tree import Tree
 
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.utils import timeit
+from flytekit.exceptions.user import FlyteDataNotFoundException
 from flytekit.loggers import logger
 from flytekit.tools.ignore import DockerIgnore, FlyteIgnore, GitIgnore, Ignore, IgnoreGroup, StandardIgnore
-from flytekit.tools.script_mode import tar_strip_file_attributes
+from flytekit.tools.script_mode import _filehash_update, _pathhash_update, ls_files, tar_strip_file_attributes
 
 FAST_PREFIX = "fast"
 FAST_FILEENDING = ".tar.gz"
+
+
+class CopyFileDetection(Enum):
+    LOADED_MODULES = 1
+    ALL = 2
+    # This option's meaning will change in the future. In the future this will mean that no files should be copied
+    # (i.e. no fast registration is used). For now, both this value and setting this Enum to Python None are both
+    # valid to distinguish between users explicitly setting --copy none and not setting the flag.
+    # Currently, this is only used for register, not for package or run because run doesn't have a no-fast-register
+    # option and package is by default non-fast.
+    NO_COPY = 3
 
 
 @dataclass(frozen=True)
@@ -31,6 +48,31 @@ class FastPackageOptions:
 
     ignores: list[Ignore]
     keep_default_ignores: bool = True
+    copy_style: Optional[CopyFileDetection] = None
+    show_files: bool = False
+
+
+def print_ls_tree(source: os.PathLike, ls: typing.List[str]):
+    click.secho("Files to be copied for fast registration...", fg="bright_blue")
+
+    tree_root = Tree(
+        f":open_file_folder: [link file://{source}]{source} (detected source root)",
+        guide_style="bold bright_blue",
+    )
+    trees = {pathlib.Path(source): tree_root}
+
+    for f in ls:
+        fpp = pathlib.Path(f)
+        if fpp.parent not in trees:
+            # add trees for all intermediate folders
+            current = tree_root
+            current_path = pathlib.Path(source)
+            for subdir in fpp.parent.relative_to(source).parts:
+                current = current.add(f"{subdir}", guide_style="bold bright_blue")
+                current_path = current_path / subdir
+                trees[current_path] = current
+        trees[fpp.parent].add(f"{fpp.name}", guide_style="bold bright_blue")
+    rich_print(tree_root)
 
 
 def fast_package(
@@ -45,6 +87,7 @@ def fast_package(
     :param os.PathLike source:
     :param os.PathLike output_dir:
     :param bool deref_symlinks: Enables dereferencing symlinks when packaging directory
+    :param options: The CopyFileDetection option set to None
     :return os.PathLike:
     """
     default_ignores = [GitIgnore, DockerIgnore, StandardIgnore, FlyteIgnore]
@@ -57,28 +100,73 @@ def fast_package(
         ignores = default_ignores
     ignore = IgnoreGroup(source, ignores)
 
+    # Remove this after original tar command is removed.
     digest = compute_digest(source, ignore.is_ignored)
-    archive_fname = f"{FAST_PREFIX}{digest}{FAST_FILEENDING}"
 
-    if output_dir is None:
-        output_dir = tempfile.mkdtemp()
-        click.secho(f"No output path provided, using a temporary directory at {output_dir} instead", fg="yellow")
+    # This function is temporarily split into two, to support the creation of the tar file in both the old way,
+    # copying the underlying items in the source dir by doing a listdir, and the new way, relying on a list of files.
+    if options and (
+        options.copy_style == CopyFileDetection.LOADED_MODULES or options.copy_style == CopyFileDetection.ALL
+    ):
+        if options.copy_style == CopyFileDetection.LOADED_MODULES:
+            # This is the 'auto' semantic by default used for pyflyte run, it only copies loaded .py files.
+            sys_modules = list(sys.modules.values())
+            ls, ls_digest = ls_files(str(source), sys_modules, deref_symlinks, ignore)
+        else:
+            # This triggers listing of all files, mimicking the old way of creating the tar file.
+            ls, ls_digest = ls_files(str(source), [], deref_symlinks, ignore)
 
-    archive_fname = os.path.join(output_dir, archive_fname)
+        logger.debug(f"Hash digest: {ls_digest}", fg="green")
 
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        tar_path = os.path.join(tmp_dir, "tmp.tar")
-        with tarfile.open(tar_path, "w", dereference=deref_symlinks) as tar:
-            files: typing.List[str] = os.listdir(source)
-            for ws_file in files:
-                tar.add(
-                    os.path.join(source, ws_file),
-                    arcname=ws_file,
-                    filter=lambda x: ignore.tar_filter(tar_strip_file_attributes(x)),
-                )
-        with gzip.GzipFile(filename=archive_fname, mode="wb", mtime=0) as gzipped:
-            with open(tar_path, "rb") as tar_file:
-                gzipped.write(tar_file.read())
+        if options.show_files:
+            print_ls_tree(source, ls)
+
+        # Compute where the archive should be written
+        archive_fname = f"{FAST_PREFIX}{ls_digest}{FAST_FILEENDING}"
+        if output_dir is None:
+            output_dir = tempfile.mkdtemp()
+            click.secho(f"No output path provided, using a temporary directory at {output_dir} instead", fg="yellow")
+        archive_fname = os.path.join(output_dir, archive_fname)
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tar_path = os.path.join(tmp_dir, "tmp.tar")
+            with tarfile.open(tar_path, "w", dereference=True) as tar:
+                for ws_file in ls:
+                    rel_path = os.path.relpath(ws_file, start=source)
+                    tar.add(
+                        os.path.join(source, ws_file),
+                        arcname=rel_path,
+                        filter=lambda x: tar_strip_file_attributes(x),
+                    )
+
+            with gzip.GzipFile(filename=archive_fname, mode="wb", mtime=0) as gzipped:
+                with open(tar_path, "rb") as tar_file:
+                    gzipped.write(tar_file.read())
+
+    # Original tar command - This condition to be removed in the future.
+    else:
+        # Compute where the archive should be written
+        archive_fname = f"{FAST_PREFIX}{digest}{FAST_FILEENDING}"
+        if output_dir is None:
+            output_dir = tempfile.mkdtemp()
+            click.secho(f"No output path provided, using a temporary directory at {output_dir} instead", fg="yellow")
+        archive_fname = os.path.join(output_dir, archive_fname)
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tar_path = os.path.join(tmp_dir, "tmp.tar")
+            with tarfile.open(tar_path, "w", dereference=deref_symlinks) as tar:
+                files: typing.List[str] = os.listdir(source)
+                for ws_file in files:
+                    tar.add(
+                        os.path.join(source, ws_file),
+                        arcname=ws_file,
+                        filter=lambda x: ignore.tar_filter(tar_strip_file_attributes(x)),
+                    )
+                # tar.list(verbose=True)
+
+            with gzip.GzipFile(filename=archive_fname, mode="wb", mtime=0) as gzipped:
+                with open(tar_path, "rb") as tar_file:
+                    gzipped.write(tar_file.read())
 
     return archive_fname
 
@@ -111,20 +199,6 @@ def compute_digest(source: os.PathLike, filter: Optional[callable] = None) -> st
     return hasher.hexdigest()
 
 
-def _filehash_update(path: os.PathLike, hasher: hashlib._Hash) -> None:
-    blocksize = 65536
-    with open(path, "rb") as f:
-        bytes = f.read(blocksize)
-        while bytes:
-            hasher.update(bytes)
-            bytes = f.read(blocksize)
-
-
-def _pathhash_update(path: os.PathLike, hasher: hashlib._Hash) -> None:
-    path_list = path.split(os.sep)
-    hasher.update("".join(path_list).encode("utf-8"))
-
-
 def get_additional_distribution_loc(remote_location: str, identifier: str) -> str:
     """
     :param Text remote_location:
@@ -146,7 +220,12 @@ def download_distribution(additional_distribution: str, destination: str):
     # NOTE the os.path.join(destination, ''). This is to ensure that the given path is in fact a directory and all
     # downloaded data should be copied into this directory. We do this to account for a difference in behavior in
     # fsspec, which requires a trailing slash in case of pre-existing directory.
-    FlyteContextManager.current_context().file_access.get_data(additional_distribution, os.path.join(destination, ""))
+    try:
+        FlyteContextManager.current_context().file_access.get_data(
+            additional_distribution, os.path.join(destination, "")
+        )
+    except FlyteDataNotFoundException as ex:
+        raise RuntimeError("task execution code was not found") from ex
     tarfile_name = os.path.basename(additional_distribution)
     if not tarfile_name.endswith(".tar.gz"):
         raise RuntimeError("Unrecognized additional distribution format for {}".format(additional_distribution))
