@@ -3,6 +3,7 @@ import typing
 from enum import Enum
 from typing import Any, Dict, List, Optional, OrderedDict, Tuple, Type
 
+import flytekit.configuration
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask, TaskMetadata
 from flytekit.core.context_manager import FlyteContext
@@ -16,6 +17,8 @@ from flytekit.loggers import logger
 from flytekit.models import task as _task_model
 from flytekit.models.literals import LiteralMap
 from flytekit.models.security import Secret, SecurityContext
+
+flytekit.configuration.CopyFileDetection
 
 _PRIMARY_CONTAINER_NAME_FIELD = "primary_container_name"
 DOCKER_IMPORT_ERROR_MESSAGE = "Docker is not installed. Please install Docker by running `pip install docker`."
@@ -279,6 +282,9 @@ class ContainerTask(PythonTask):
         )
 
     def _get_image(self, settings: SerializationSettings) -> str:
+        # This is where the relationship between fast register and imagespec is set
+        # If fast register is not enabled, then source root is used.
+        # and then files are copied.
         if settings.fast_serialization_settings is None or not settings.fast_serialization_settings.enabled:
             if isinstance(self._image, ImageSpec):
                 # Set the source root for the image spec if it's non-fast registration

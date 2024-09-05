@@ -11,12 +11,11 @@ from flytekit.clis.sdk_in_container.helpers import (
     patch_image_config,
 )
 from flytekit.clis.sdk_in_container.utils import domain_option_dec, project_option_dec
-from flytekit.configuration import ImageConfig
+from flytekit.configuration import ImageConfig, CopyFileDetection
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.interaction.click_types import key_value_callback
 from flytekit.loggers import logger
 from flytekit.tools import repo
-from flytekit.tools.fast_registration import CopyFileDetection
 
 _register_help = """
 This command is similar to ``package`` but instead of producing a zip file, all your Flyte entities are compiled,

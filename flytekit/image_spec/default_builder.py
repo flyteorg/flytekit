@@ -168,6 +168,11 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
     if image_spec.source_root:
         source_path = tmp_dir / "src"
 
+        """
+        Basically if slow register is specified, then files are copied.
+        Currently files are copied from the source root in their entirety. Need to be able to use auto by default
+        as well as somehow specify all. 
+        """
         ignore = IgnoreGroup(image_spec.source_root, [GitIgnore, DockerIgnore, StandardIgnore])
         shutil.copytree(
             image_spec.source_root,

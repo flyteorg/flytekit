@@ -8,6 +8,7 @@ from pathlib import Path
 
 import click
 
+import flytekit.configuration
 from flytekit.configuration import FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.loggers import logger
@@ -235,7 +236,7 @@ def register(
     fast: bool,
     package_or_module: typing.Tuple[str],
     remote: FlyteRemote,
-    copy_style: typing.Optional[fast_registration.CopyFileDetection],
+    copy_style: typing.Optional[flytekit.configuration.CopyFileDetection],
     env: typing.Optional[typing.Dict[str, str]],
     dry_run: bool = False,
     activate_launchplans: bool = False,

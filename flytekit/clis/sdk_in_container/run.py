@@ -35,7 +35,7 @@ from flytekit.configuration import (
     DefaultImages,
     FastSerializationSettings,
     ImageConfig,
-    SerializationSettings,
+    SerializationSettings, CopyFileDetection,
 )
 from flytekit.configuration.plugin import get_plugin
 from flytekit.core import context_manager
@@ -66,7 +66,7 @@ from flytekit.remote import (
 )
 from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.tools import module_loader
-from flytekit.tools.fast_registration import CopyFileDetection, FastPackageOptions
+from flytekit.tools.fast_registration import FastPackageOptions
 from flytekit.tools.script_mode import _find_project_root, compress_scripts, get_all_modules
 from flytekit.tools.translator import Options
 

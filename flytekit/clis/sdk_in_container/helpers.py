@@ -4,10 +4,9 @@ from typing import Optional
 import rich_click as click
 
 from flytekit.clis.sdk_in_container.constants import CTX_CONFIG_FILE
-from flytekit.configuration import ImageConfig
+from flytekit.configuration import ImageConfig, CopyFileDetection
 from flytekit.configuration.plugin import get_plugin
 from flytekit.remote.remote import FlyteRemote
-from flytekit.tools.fast_registration import CopyFileDetection
 
 FLYTE_REMOTE_INSTANCE_KEY = "flyte_remote"
 
