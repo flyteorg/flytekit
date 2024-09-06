@@ -157,7 +157,13 @@ def test_image_spec_validation_string_list(parameter_name, value):
         ImageSpec(**input_params)
 
 
+def test_copy_is_set_if_source_root_is_set():
+    image_spec = ImageSpec(name="my_image", python_version="3.12", source_root="/tmp")
+    assert image_spec.copy == CopyFileDetection.LOADED_MODULES
+
+
 def test_update_image_spec_copy_handling():
+    # if fast is disabled, and copy wasn't set by the user, it should be set to python modules with source root
     image_spec = ImageSpec(name="my_image", python_version="3.12")
     assert image_spec.copy is None
     assert image_spec.source_root is None
@@ -172,6 +178,7 @@ def test_update_image_spec_copy_handling():
     assert image_spec.copy == CopyFileDetection.LOADED_MODULES
     assert image_spec.source_root == "/tmp"
 
+    # specified no copy should not inherit source_root and copy shouldn't change
     image_spec = ImageSpec(name="my_image", python_version="3.12", copy=CopyFileDetection.NO_COPY)
     assert image_spec.source_root is None
     ss = SerializationSettings(
@@ -185,6 +192,7 @@ def test_update_image_spec_copy_handling():
     assert image_spec.copy == CopyFileDetection.NO_COPY
     assert image_spec.source_root is None
 
+    # manually specified copy should still inherit source_root
     image_spec = ImageSpec(name="my_image", python_version="3.12", copy=CopyFileDetection.ALL)
     assert image_spec.source_root is None
     ss = SerializationSettings(
