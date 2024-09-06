@@ -171,6 +171,7 @@ def build():
 
         for file_to_copy in ls:
             rel_path = os.path.relpath(file_to_copy, start=str(image_spec.source_root))
+            pathlib.Path(dst / rel_path).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(file_to_copy, dst / rel_path)
 
         envd_version = metadata.version("envd")

@@ -187,7 +187,11 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
 
         for file_to_copy in ls:
             rel_path = os.path.relpath(file_to_copy, start=str(image_spec.source_root))
-            shutil.copy(file_to_copy, source_path / rel_path)
+            Path(source_path / rel_path).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy(
+                file_to_copy,
+                source_path / rel_path,
+            )
 
         copy_command_runtime = "COPY --chown=flytekit ./src /root"
     else:
@@ -242,10 +246,12 @@ class DefaultImageBuilder(ImageSpecBuilder):
     """Image builder using Docker and buildkit."""
 
     _SUPPORTED_IMAGE_SPEC_PARAMETERS: ClassVar[set] = {
+        "id",
         "name",
         "python_version",
         "builder",
         "source_root",
+        "copy",
         "env",
         "registry",
         "packages",
