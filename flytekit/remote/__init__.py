@@ -96,5 +96,4 @@ from flytekit.remote.entities import (
     FlyteWorkflowNode,
 )
 from flytekit.remote.executions import FlyteNodeExecution, FlyteTaskExecution, FlyteWorkflowExecution
-from flytekit.remote.init_remote import init_remote
 from flytekit.remote.remote import FlyteRemote
