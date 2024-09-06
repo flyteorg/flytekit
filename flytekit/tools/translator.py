@@ -32,7 +32,6 @@ from flytekit.core.task import ReferenceTask
 from flytekit.core.utils import ClassDecorator, _dnsify
 from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase
 from flytekit.exceptions.user import FlyteAssertion
-from flytekit.image_spec.image_spec import _calculate_deduped_hash_from_image_spec
 from flytekit.loggers import logger
 from flytekit.models import common as _common_models
 from flytekit.models import common as common_models
