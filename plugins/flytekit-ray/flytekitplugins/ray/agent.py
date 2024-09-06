@@ -53,7 +53,7 @@ class AnyscaleAgent(AsyncAgentBase):
             uri=f"https://console.anyscale.com/v2/jobs/{resource_meta.job_id}",
             name="Anyscale Job Details",
         )
-        return Resource(phase=cur_phase, message=None, log_links=log_link)
+        return Resource(phase=cur_phase, message=None, log_links=[log_link])
 
     async def delete(self, resource_meta: AnyscaleJobMetadata, **kwargs):
         anyscale.job.terminate(id=resource_meta.job_id)
