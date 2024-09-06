@@ -59,6 +59,7 @@ class ImageSpec:
                   into the fast register tar layer).
                 - if fast register is not used, then the LOADED_MODULES (aka 'auto') option is used to copy loaded
                   Python files into the image.
+
             If the option is set by the user, then that option is of course used.
     """
 
