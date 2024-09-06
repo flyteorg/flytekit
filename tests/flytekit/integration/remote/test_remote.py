@@ -600,19 +600,16 @@ def test_workflow_remote_func(mock_ipython_check):
     out0 = remote.execute(
         double,
         inputs={"a": 3},
-        version=VERSION,
         wait=True,
     )
     out1 = remote.execute(
         parent_wf,
         inputs={"a": 3},
-        version=VERSION,
         wait=True,
     )
     out2 = remote.execute(
         parent_wf,
         inputs={"a": 2},
-        version=VERSION,
         wait=True,
     )
 
@@ -633,7 +630,6 @@ def test_execute_task_remote_func_list_of_floats(mock_ipython_check):
     out = remote.execute(
         concat_list,
         inputs={"xs": xs},
-        version=VERSION,
         wait=True,
     )
     assert out["o0"] == "[0.1, 0.2, 0.3, 0.4, -99999.7]"
@@ -651,7 +647,6 @@ def test_execute_task_remote_func_convert_dict(mock_ipython_check):
     out = remote.execute(
         convert_to_string,
         inputs={"d": d},
-        version=VERSION,
         wait=True,
     )
     assert json.loads(out["o0"]) == {"key1": "value1", "key2": "value2"}
@@ -669,7 +664,6 @@ def test_execute_python_workflow_remote_func_dict_of_string_to_string(mock_ipyth
     out = remote.execute(
         my_dict_str_wf,
         inputs={"d": d},
-        version=VERSION,
         wait=True,
     )
     assert json.loads(out["o0"]) == {"k1": "v1", "k2": "v2"}
@@ -688,7 +682,6 @@ def test_execute_python_workflow_remote_func_list_of_floats(mock_ipython_check):
     out = remote.execute(
         my_list_float_wf,
         inputs={"xs": xs},
-        version=VERSION,
         wait=True,
     )
     assert out["o0"] == "[42.24, 999.1, 0.0001]"
@@ -705,7 +698,6 @@ def test_execute_workflow_remote_fn_with_maptask(mock_ipython_check):
     out = remote.execute(
         workflow_with_maptask,
         inputs={"data": d, "y": 3},
-        version=VERSION,
         wait=True,
     )
     assert out["o0"] == [4, 5, 6]
