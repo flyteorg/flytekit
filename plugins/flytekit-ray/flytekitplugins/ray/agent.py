@@ -7,7 +7,7 @@ from anyscale.job.models import JobConfig
 
 from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource, ResourceMeta
 from flytekit.extend.backend.utils import convert_to_flyte_phase
-from flytekit.models.core.execution import TaskLog
+from flyteidl.core.execution_pb2 import TaskLog
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
