@@ -159,21 +159,29 @@ def _dispatch_execute(
         logger.error(exc_str)
         logger.error("!! End Error Captured by Flyte !!")
 
-    # All the Non-user runtime errors are captured here, and are considered system errors
-    except Exception as e:
-        kind = _error_models.ContainerError.Kind.RECOVERABLE
-        err = e
-
-        if isinstance(e, FlyteNonRecoverableSystemException):
-            kind = _error_models.ContainerError.Kind.NON_RECOVERABLE
-            err = e.value
-
-        exc_str = get_traceback_str(err)
+    except FlyteNonRecoverableSystemException as e:
+        exc_str = get_traceback_str(e.value)
         output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
             _error_models.ContainerError(
                 "SYSTEM",
                 exc_str,
-                kind,
+                _error_models.ContainerError.Kind.NON_RECOVERABLE,
+                _execution_models.ExecutionError.ErrorKind.SYSTEM,
+            )
+        )
+
+        logger.error("!! Begin Non-recoverable System Error Captured by Flyte !!")
+        logger.error(exc_str)
+        logger.error("!! End Error Captured by Flyte !!")
+
+    # All other errors are captured here, and are considered system errors
+    except Exception as e:
+        exc_str = get_traceback_str(e)
+        output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
+            _error_models.ContainerError(
+                "SYSTEM",
+                exc_str,
+                _error_models.ContainerError.Kind.RECOVERABLE,
                 _execution_models.ExecutionError.ErrorKind.SYSTEM,
             )
         )
