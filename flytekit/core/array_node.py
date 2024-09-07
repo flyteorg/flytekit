@@ -25,7 +25,7 @@ class ArrayNode:
     def __init__(
         self,
         target: LaunchPlan,
-        execution_mode: flyteidl.core.ArrayNode.ExecutionMode = flyteidl.core.ArrayNode.FULL_STATE,
+        execution_mode: flyteidl.core.ArrayNode.execution_mode = flyteidl.array_node.ExecutionMode.FullState,
         concurrency: Optional[int] = None,
         min_successes: Optional[int] = None,
         min_success_ratio: Optional[float] = None,
@@ -186,7 +186,7 @@ class ArrayNode:
         return self._concurrency
 
     @property
-    def execution_mode(self) -> flyteidl.core.ArrayNode.ExecutionMode:
+    def execution_mode(self) -> flyteidl.array_node.ExecutionMode:
         return self._execution_mode
 
     def __call__(self, *args, **kwargs):

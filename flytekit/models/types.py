@@ -280,6 +280,7 @@ class LiteralType(_common.FlyteIdlEntity):
         self._enum_type = enum_type
         self._union_type = union_type
         self._structured_dataset_type = structured_dataset_type
+        self._metadata = metadata
         self._structure = structure
         self._annotation = annotation
 
@@ -295,9 +296,9 @@ class LiteralType(_common.FlyteIdlEntity):
             sub = next(self.map_value_type.__rich_repr__())
             yield f"Dict[str, {sub}]"
         elif self.blob:
-            if self.blob.dimensionality == _types_pb2.BlobType.BlobDimensionality.SINGLE:
+            if self.blob.dimensionality == flyteidl.blob_type.BlobDimensionality.Single:
                 yield "File"
-            elif self.blob.dimensionality == _types_pb2.BlobType.BlobDimensionality.MULTIPART:
+            elif self.blob.dimensionality == flyteidl.blob_type.BlobDimensionality.Multipart:
                 yield "Directory"
             else:
                 yield "Unknown Blob Type"

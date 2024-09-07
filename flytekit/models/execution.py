@@ -186,7 +186,6 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         tags: Optional[typing.List[str]] = None,
         cluster_assignment: Optional[ClusterAssignment] = None,
         execution_cluster_label: Optional[matchable_resource.ExecutionClusterLabel] = None,
-        execution_cluster_label: Optional[ExecutionClusterLabel] = None,
     ):
         """
         :param flytekit.models.core.identifier.Identifier launch_plan: Launch plan unique identifier to execute
