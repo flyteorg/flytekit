@@ -117,7 +117,7 @@ class Identity(_common.FlyteIdlEntity):
 @dataclass
 class OAuth2TokenRequest(_common.FlyteIdlEntity):
     class Type(Enum):
-        CLIENT_CREDENTIALS = flyteidl.o_auth2_token_request.Type.ClientCredentials
+        CLIENT_CREDENTIALS = int(flyteidl.o_auth2_token_request.Type.ClientCredentials)
 
     name: str
     client: OAuth2Client
@@ -175,9 +175,7 @@ class SecurityContext(_common.FlyteIdlEntity):
     def from_flyte_idl(cls, pb2_object: flyteidl.core.SecurityContext) -> "flyteidl.core.SecurityContext":
         # TODO:
         return cls(
-            run_as=None,  # Identity.from_flyte_idl(pb2_object.run_as)
-            # if pb2_object.run_as and pb2_object.run_as.ByteSize() > 0
-            # else None,
-            secrets=[],  # [Secret.from_flyte_idl(s) for s in pb2_object.secrets] if pb2_object.secrets else None,
-            tokens=[],  # [OAuth2TokenRequest.from_flyte_idl(t) for t in pb2_object.tokens] if pb2_object.tokens else None,
+            run_as=Identity.from_flyte_idl(pb2_object.run_as) if pb2_object.run_as else None,
+            secrets=[Secret.from_flyte_idl(s) for s in pb2_object.secrets] if pb2_object.secrets else None,
+            tokens=[OAuth2TokenRequest.from_flyte_idl(t) for t in pb2_object.tokens] if pb2_object.tokens else None,
         )

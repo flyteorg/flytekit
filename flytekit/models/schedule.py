@@ -164,11 +164,17 @@ class Schedule(common.FlyteIdlEntity):
         :param flyteidl.admin.schedule_pb2.Schedule pb2_object:
         :rtype: Schedule
         """
-        
+
         # Explicitly instantiate a Schedule model rather than a potential sub-class.
         return Schedule(
             pb2_object.kickoff_time_input_arg,
-            cron_expression=pb2_object.schedule_expression[0] if isinstance(pb2_object.schedule_expression, flyteidl.schedule.ScheduleExpression.CronExpression) else None,
-            rate=Schedule.FixedRate.from_flyte_idl(pb2_object.schedule_expression[0]) if isinstance(pb2_object.schedule_expression, flyteidl.schedule.ScheduleExpression.Rate) else None,
-            cron_schedule=Schedule.CronSchedule.from_flyte_idl(pb2_object.schedule_expression[0]) if isinstance(pb2_object.schedule_expression, flyteidl.schedule.ScheduleExpression.CronSchedule) else None
+            cron_expression=pb2_object.schedule_expression[0]
+            if isinstance(pb2_object.schedule_expression, flyteidl.schedule.ScheduleExpression.CronExpression)
+            else None,
+            rate=Schedule.FixedRate.from_flyte_idl(pb2_object.schedule_expression[0])
+            if isinstance(pb2_object.schedule_expression, flyteidl.schedule.ScheduleExpression.Rate)
+            else None,
+            cron_schedule=Schedule.CronSchedule.from_flyte_idl(pb2_object.schedule_expression[0])
+            if isinstance(pb2_object.schedule_expression, flyteidl.schedule.ScheduleExpression.CronSchedule)
+            else None,
         )

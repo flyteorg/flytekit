@@ -1553,9 +1553,9 @@ def activate_project(identifier, host, insecure):
 
 
 _resource_map = {
-    flyteidl.core.ResourceType.LaunchPlan: flyteidl.admin.LaunchPlan,
-    flyteidl.core.ResourceType.Workflow: flyteidl.admin.WorkflowSpec,
-    flyteidl.core.ResourceType.Task: flyteidl.admin.TaskSpec,
+    int(flyteidl.core.ResourceType.LaunchPlan): flyteidl.admin.LaunchPlan,
+    int(flyteidl.core.ResourceType.Workflow): flyteidl.admin.WorkflowSpec,
+    int(flyteidl.core.ResourceType.Task): flyteidl.admin.TaskSpec,
 }
 
 

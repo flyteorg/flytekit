@@ -285,11 +285,7 @@ def verify_outputs_artifact_bindings(
     for k, v in outputs.items():
         # Iterate through output partition values if any and verify that if they're bound to an input, that that input
         # actually exists in the interface.
-        if (
-            v.artifact_partial_id
-            and v.artifact_partial_id.partitions
-            and v.artifact_partial_id.partitions.value
-        ):
+        if v.artifact_partial_id and v.artifact_partial_id.partitions and v.artifact_partial_id.partitions.value:
             for pk, pv in v.artifact_partial_id.partitions.value.items():
                 if pv == DYNAMIC_INPUT_BINDING:
                     if not allow_partial_artifact_id_binding:
@@ -312,7 +308,9 @@ def verify_outputs_artifact_bindings(
                     raise FlyteValidationException(
                         "Binding a time partition's value dynamically is not allowed for workflows"
                     )
-                if isinstance(v.artifact_partial_id.time_partition.value.value, flyteidl.label_value.Value.InputBinding):
+                if isinstance(
+                    v.artifact_partial_id.time_partition.value.value, flyteidl.label_value.Value.InputBinding
+                ):
                     input_name = v.artifact_partial_id.time_partition.value.value[0].var
                     if input_name not in inputs:
                         raise FlyteValidationException(

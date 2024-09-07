@@ -40,7 +40,10 @@ class FlyteType(FlyteABCMeta):
 class FlyteIdlEntity(object, metaclass=FlyteType):
     def __eq__(self, other):
         import json
-        return isinstance(other, FlyteIdlEntity) and json.loads(other.to_flyte_idl().DumpToJsonString())  == json.loads(self.to_flyte_idl().DumpToJsonString())
+
+        return isinstance(other, FlyteIdlEntity) and json.loads(other.to_flyte_idl().DumpToJsonString()) == json.loads(
+            self.to_flyte_idl().DumpToJsonString()
+        )
 
     def __ne__(self, other):
         return not (self == other)

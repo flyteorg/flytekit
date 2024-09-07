@@ -18,11 +18,8 @@ from typing import Dict, List, NamedTuple, Optional, Type, cast
 
 import flyteidl_rust as flyteidl
 from dataclasses_json import DataClassJsonMixin, dataclass_json
-from google.protobuf import json_format as _json_format
-from google.protobuf.json_format import MessageToDict as _MessageToDict
-from google.protobuf.json_format import ParseDict as _ParseDict
 from google.protobuf.message import Message
-from google.protobuf.struct_pb2 import Struct
+from marshmallow_enum import EnumField, LoadDumpOptions
 from mashumaro.codecs.json import JSONDecoder, JSONEncoder
 from mashumaro.mixins.json import DataClassJSONMixin
 from typing_extensions import Annotated, get_args, get_origin
@@ -708,7 +705,6 @@ class ProtobufTransformer(TypeTransformer[Message]):
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         struct = flyteidl.protobuf.Struct()
         try:
-            import json
             # TODO: handle google.protobuf.Message
             # struct.update(_MessageToDict(cast(Message, python_val)))
             struct = flyteidl.ParseStruct(flyteidl.DumpStruct(python_val))

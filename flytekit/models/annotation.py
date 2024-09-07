@@ -2,7 +2,6 @@ import json
 from typing import Any, Dict
 
 import flyteidl_rust as flyteidl
-from google.protobuf import json_format as _json_format
 
 
 class TypeAnnotation:
@@ -38,6 +37,7 @@ class TypeAnnotation:
         :rtype: TypeAnnotation
         """
         import json
+
         return cls(annotations=json.loads(flyteidl.DumpStruct(proto.annotations)))
 
     def __eq__(self, x: object) -> bool:

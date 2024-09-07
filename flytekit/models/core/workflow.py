@@ -1011,10 +1011,13 @@ class WorkflowTemplate(_common.FlyteIdlEntity):
 
         :rtype: WorkflowTemplate
         """
+
         return cls(
             id=_identifier.Identifier.from_flyte_idl(pb2_object.id),
             metadata=WorkflowMetadata.from_flyte_idl(pb2_object.metadata),
-            metadata_defaults=WorkflowMetadataDefaults.from_flyte_idl(pb2_object.metadata_defaults),
+            metadata_defaults=WorkflowMetadataDefaults.from_flyte_idl(pb2_object.metadata_defaults)
+            if pb2_object.metadata_defaults
+            else None,
             interface=_interface.TypedInterface.from_flyte_idl(pb2_object.interface),
             nodes=[Node.from_flyte_idl(n) for n in pb2_object.nodes],
             outputs=[_Binding.from_flyte_idl(b) for b in pb2_object.outputs],

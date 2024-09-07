@@ -278,16 +278,15 @@ class FlyteRemote(object):
         ctx = self._ctx or FlyteContextManager.current_context()
         try:
             data_response = self.client.get_data(flyte_uri)
-
-            if data_response.HasField("literal_map"):
-                lm = LiteralMap.from_flyte_idl(data_response.literal_map)
+            if isinstance(data_response.data, flyteidl.get_data_response.Data.LiteralMap):
+                lm = LiteralMap.from_flyte_idl(data_response.data[0])
                 return LiteralsResolver(lm.literals)
-            elif data_response.HasField("literal"):
-                return Literal.from_flyte_idl(data_response.literal)
-            elif data_response.HasField("pre_signed_urls"):
-                if len(data_response.pre_signed_urls.signed_url) == 0:
+            elif isinstance(data_response.data, flyteidl.get_data_response.Data.Literal):
+                return Literal.from_flyte_idl(data_response.data[0])
+            elif isinstance(data_response.data, flyteidl.get_data_response.Data.PreSignedUrls):
+                if len(data_response.data[0].signed_url) == 0:
                     raise ValueError(f"Flyte url {flyte_uri} resolved to empty download link")
-                d = data_response.pre_signed_urls.signed_url[0]
+                d = data_response.data[0].signed_url[0]
                 logger.debug(f"Download link is {d}")
                 fs = ctx.file_access.get_filesystem_for_path(d)
 
