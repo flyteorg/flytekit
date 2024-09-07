@@ -11,7 +11,7 @@ import flyteidl_rust as flyteidl
 import flytekit
 from flytekit.models import common as _common_models
 from flytekit.models import literals as _literals_models
-from flytekit.models import security
+from flytekit.models import matchable_resource, security
 from flytekit.models.core import execution as _core_execution
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.matchable_resource import ExecutionClusterLabel
@@ -192,6 +192,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         envs: Optional[_common_models.Envs] = None,
         tags: Optional[typing.List[str]] = None,
         cluster_assignment: Optional[ClusterAssignment] = None,
+        execution_cluster_label: Optional[matchable_resource.ExecutionClusterLabel] = None,
         execution_cluster_label: Optional[ExecutionClusterLabel] = None,
     ):
         """
@@ -321,8 +322,6 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         return flyteidl.admin.ExecutionSpec(
             launch_plan=self.launch_plan.to_flyte_idl(),
             metadata=self.metadata.to_flyte_idl(),
-            # notifications=self.notifications.to_flyte_idl() if self.notifications else None,
-            # disable_all=self.disable_all,  # type: ignore
             notification_overrides=self.notifications.to_flyte_idl()
             if isinstance(self.notifications, flyteidl.execution_spec.NotificationOverrides.Notifications)
             else flyteidl.execution_spec.NotificationOverrides.DisableAll(self.disable_all),
@@ -373,7 +372,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             envs=_common_models.Envs.from_flyte_idl(p.envs) if p.envs else None,
             tags=p.tags,
             cluster_assignment=ClusterAssignment.from_flyte_idl(p.cluster_assignment) if p.cluster_assignment else None,
-            execution_cluster_label=ExecutionClusterLabel.from_flyte_idl(p.execution_cluster_label)
+            execution_cluster_label=matchable_resource.ExecutionClusterLabel.from_flyte_idl(p.execution_cluster_label)
             if p.execution_cluster_label
             else None,
         )
