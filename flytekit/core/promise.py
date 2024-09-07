@@ -148,12 +148,12 @@ def resolve_attr_path_in_promise(p: Promise) -> Promise:
         # If current value is Flyte Tuple, use [] to resolve
         if curr_val.tuple:
             if type(attr) == int:
-                if attr >= len(curr_val.tuple.type.order):
+                if attr >= len(curr_val.tuple.order):
                     raise FlytePromiseAttributeResolveException(
                         f"Failed to resolve attribute path {p.attr_path} in promise {p},"
-                        f" index {attr} out of range {len(curr_val.tuple.type.order)}"
+                        f" index {attr} out of range {len(curr_val.tuple.order)}"
                     )
-                attr = curr_val.tuple.type.order[attr]
+                attr = curr_val.tuple.order[attr]
             if type(attr) == str and attr not in curr_val.tuple.literals:
                 raise FlytePromiseAttributeResolveException(
                     f"Failed to resolve attribute path {p.attr_path} in promise {p},"
@@ -875,7 +875,11 @@ def binding_data_from_python_std(
             bindings[field_key] = binding_data_from_python_std(ctx, field_type, field_value, field_value_type, nodes)
 
         return _literals_models.BindingData(
-            tuple=_literals_models.BindingDataTupleMap(type=expected_literal_type.tuple_type, bindings=bindings)
+            tuple=_literals_models.BindingDataTupleMap(
+                tuple_name=expected_literal_type.tuple_type.tuple_name,
+                order=expected_literal_type.tuple_type.order,
+                bindings=bindings,
+            )
         )
 
     # This is the scalar case - e.g. my_task(in1=5)

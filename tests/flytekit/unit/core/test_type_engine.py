@@ -1554,7 +1554,8 @@ def test_tuple_type():
     assert len(lv.tuple.literals) == 2
     assert lv.tuple.literals["t0"].scalar.primitive.integer == 3
     assert lv.tuple.literals["t1"].scalar.primitive.string_value == "hello"
-    assert lv.tuple.type == lt.tuple_type
+    assert lv.tuple.order == lt.tuple_type.order
+    assert lv.tuple.tuple_name == lt.tuple_type.tuple_name
     assert v == (3, "hello")
 
     with pytest.raises(TypeTransformerFailedError):
@@ -1586,7 +1587,8 @@ def test_namedtuple_type():
     assert len(lv.tuple.literals) == 2
     assert lv.tuple.literals["a"].scalar.primitive.integer == 3
     assert lv.tuple.literals["b"].scalar.primitive.string_value == "hello"
-    assert lv.tuple.type == lt.tuple_type
+    assert lv.tuple.order == lt.tuple_type.order
+    assert lv.tuple.tuple_name == lt.tuple_type.tuple_name
     assert v == pt(a=3, b="hello")
 
 

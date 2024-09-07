@@ -1075,13 +1075,6 @@ class TypeEngine(typing.Generic[T]):
             raise AssertionError(
                 f"Outputs of a non-output producing task {python_val.task_name} cannot be passed to another task."
             )
-        # if isinstance(python_val, tuple):
-        #     raise AssertionError(
-        #         "Tuples are not a supported type for individual values in Flyte - got a tuple -"
-        #         f" {python_val}. If using named tuple in an inner task, please, de-reference the"
-        #         "actual attribute that you want to use. For example, in NamedTuple('OP', x=int) then"
-        #         "return v.x, instead of v, even if this has a single element"
-        #     )
         if (python_val is None and python_type != type(None)) and expected and expected.union_type is None:
             raise TypeTransformerFailedError(f"Python value cannot be None, expected {python_type}/{expected}")
         transformer = cls.get_transformer(python_type)
@@ -1463,7 +1456,8 @@ class TupleTransformer(TypeTransformer[T]):
 
         return Literal(
             tuple=LiteralTupleMap(
-                type=expected.tuple_type,
+                tuple_name=expected.tuple_type.tuple_name,
+                order=expected.tuple_type.order,
                 literals=lits,
             )
         )
@@ -1474,7 +1468,7 @@ class TupleTransformer(TypeTransformer[T]):
         # The `typing.Tuple` is deprecated since it is the alias of `tuple`. We use `tuple` as default type
         try:
             lits = lv.tuple.literals
-            tuple_type = lv.tuple.type
+            order = lv.tuple.order
         except AttributeError:
             raise TypeTransformerFailedError(
                 (
@@ -1498,7 +1492,7 @@ class TupleTransformer(TypeTransformer[T]):
                 TypeEngine.get_transformer(getattr(expected_python_type, "__args__")[i]).to_python_value(
                     ctx, lits[k], getattr(expected_python_type, "__args__")[i]
                 )
-                for i, k in enumerate(tuple_type.order)
+                for i, k in enumerate(order)
             )
 
     def guess_python_type(self, literal_type: LiteralType) -> Union[Type[tuple], Type[NamedTuple]]:  # type: ignore

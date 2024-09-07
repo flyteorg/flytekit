@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime as _datetime
 from datetime import timezone as _timezone
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 from flyteidl.core import literals_pb2 as _literals_pb2
 from google.protobuf.struct_pb2 import Struct
@@ -14,7 +14,6 @@ from flytekit.models.types import Error, StructuredDatasetType
 from flytekit.models.types import LiteralType as _LiteralType
 from flytekit.models.types import OutputReference as _OutputReference
 from flytekit.models.types import SchemaType as _SchemaType
-from flytekit.models.types import TupleType as _TupleType
 
 
 class RetryStrategy(_common.FlyteIdlEntity):
@@ -366,22 +365,33 @@ class BindingDataCollection(_common.FlyteIdlEntity):
 
 
 class BindingDataTupleMap(_common.FlyteIdlEntity):
-    def __init__(self, type: _TupleType, bindings: Dict[str, BindingData]):
+    def __init__(self, tuple_name: str, order: List[str], bindings: Dict[str, BindingData]):
         """
         A map of BindingData items.  Can be a recursive structure
 
-        :param _TupleType type: The type of tuple
-        :param dict[str, BindingData] bindings: Map of strings to Bindings
+        :param str tuple_name: The name of the NamedTuple. If tuple, this value should be an empty string.
+        :param list[str] order: The list indicating the order of each field stored in the tuple.
+        :param dict[str, BindingData] bindings: Map of strings to Bindings.
         """
-        self._type = type
+        self._tuple_name = tuple_name
+        self._order = order
         self._bindings = bindings
 
     @property
-    def type(self):
+    def tuple_name(self):
         """
-        The type of _TupleType
+        The name of the NamedTuple. If tuple, this value should be an empty string.
+        :rtype: str
         """
-        return self._type
+        return self._tuple_name
+
+    @property
+    def order(self):
+        """
+        The list indicating the order of each field stored in the tuple.
+        :rtype: list[str]
+        """
+        return self._order
 
     @property
     def bindings(self):
@@ -396,7 +406,9 @@ class BindingDataTupleMap(_common.FlyteIdlEntity):
         :rtype: flyteidl.core.literals_pb2.BindingDataTupleMap
         """
         return _literals_pb2.BindingDataTupleMap(
-            type=self.type.to_flyte_idl(), bindings={k: v.to_flyte_idl() for (k, v) in self.bindings.items()}
+            tuple_name=self.tuple_name,
+            order=self.order,
+            bindings={k: v.to_flyte_idl() for (k, v) in self.bindings.items()},
         )
 
     @classmethod
@@ -405,9 +417,10 @@ class BindingDataTupleMap(_common.FlyteIdlEntity):
         :param flyteidl.core.literals_pb2.BindingDataTupleMap pb2_object:
         :rtype: flytekit.models.literals.BindingDataTupleMap
         """
-        tuple_type = _TupleType.from_flyte_idl(pb2_object.type)
         return cls(
-            type=tuple_type, bindings={k: BindingData.from_flyte_idl(pb2_object.bindings[k]) for k in tuple_type.order}
+            tuple_name=pb2_object.tuple_name,
+            order=pb2_object.order,
+            bindings={k: BindingData.from_flyte_idl(v) for k, v in pb2_object.bindings.items()},
         )
 
 
@@ -769,21 +782,31 @@ class LiteralMap(_common.FlyteIdlEntity):
 
 
 class LiteralTupleMap(_common.FlyteIdlEntity):
-    def __init__(self, type: _TupleType, literals: Dict[str, Literal]):
+    def __init__(self, tuple_name: str, order: List[str], literals: Dict[str, Literal]):
         """
-        :param _TupleType type: The type of tuple
+        :param str tuple_name: The name of the NamedTuple. If tuple, this value should be an empty string.
+        :param list[str] order: The list indicating the order of each field stored in the tuple.
         :param dict[str, Literal] literals: A dictionary mapping Text key names to Literal objects.
         """
-        self._type = type
+        self._tuple_name = tuple_name
+        self._order = order
         self._literals = literals
 
     @property
-    def type(self):
+    def tuple_name(self):
         """
-        The type of the tuple
-        :rtype: _TupleType
+        The name of the NamedTuple. If tuple, this value should be an empty string.
+        :rtype: str
         """
-        return self._type
+        return self._tuple_name
+
+    @property
+    def order(self):
+        """
+        The list indicating the order of each field stored in the tuple.
+        :rtype: list[str]
+        """
+        return self._order
 
     @property
     def literals(self):
@@ -798,7 +821,9 @@ class LiteralTupleMap(_common.FlyteIdlEntity):
         :rtype: flyteidl.core.literals_pb2.LiteralTupleMap
         """
         return _literals_pb2.LiteralTupleMap(
-            type=self.type.to_flyte_idl(), literals={k: v.to_flyte_idl() for k, v in self.literals.items()}
+            tuple_name=self.tuple_name,
+            order=self.order,
+            literals={k: v.to_flyte_idl() for k, v in self.literals.items()},
         )
 
     @classmethod
@@ -807,9 +832,10 @@ class LiteralTupleMap(_common.FlyteIdlEntity):
         :param flyteidl.core.literals_pb2.LiteralTupleMap pb2_object:
         :rtype: LiteralTupleMap
         """
-        tuple_type = _TupleType.from_flyte_idl(pb2_object.type)
         return cls(
-            type=tuple_type, literals={k: Literal.from_flyte_idl(pb2_object.literals[k]) for k in tuple_type.order}
+            tuple_name=pb2_object.tuple_name,
+            order=pb2_object.order,
+            literals={k: Literal.from_flyte_idl(v) for k, v in pb2_object.literals.items()},
         )
 
 
