@@ -160,19 +160,10 @@ def pretty_print_exception(e: Exception, verbosity: int = 1):
             click.secho("Request rejected by the API, due to Invalid input.", fg="red")
         cause = e.__cause__
         if cause:
-<<<<<<< HEAD
-            if isinstance(cause, grpc.RpcError):
-                pretty_print_grpc_error(cause)
-            else:
-                pretty_print_traceback(e, verbosity)
-        else:
-            pretty_print_traceback(e, verbosity)
-=======
             # if isinstance(cause, grpc.RpcError):
             #     pretty_print_grpc_error(cause)
             # else:
             pretty_print_traceback(cause)
->>>>>>> 78f1fef71 (temporarily comments out grpcio)
         return
 
     # if isinstance(e, grpc.RpcError):
