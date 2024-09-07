@@ -143,8 +143,6 @@ class TaskMetadata(object):
                 self.timeout = datetime.timedelta(seconds=self.timeout)
             elif not isinstance(self.timeout, datetime.timedelta):
                 raise ValueError("timeout should be duration represented as either a datetime.timedelta or int seconds")
-        if self.cache and not self.cache_version:
-            raise ValueError("Caching is enabled ``cache=True`` but ``cache_version`` is not set.")
         if self.cache_serialize and not self.cache:
             raise ValueError("Cache serialize is enabled ``cache_serialize=True`` but ``cache`` is not enabled.")
         if self.cache_ignore_input_vars and not self.cache:
