@@ -1841,7 +1841,7 @@ class DictTransformer(TypeTransformer[dict]):
                     raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
             elif lv.scalar.json is not None:
                 try:
-                    if metadata.get("format", None) == "msgpack":
+                    if metadata and metadata.get("format", None) == "msgpack":
                         msgpack_bytes = lv.scalar.json.value
                         return msgpack.loads(msgpack_bytes)
                 except TypeError:
