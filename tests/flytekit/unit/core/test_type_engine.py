@@ -3248,9 +3248,12 @@ def test_dataclass_none_output_input_deserialization():
     none_value_output = outer_workflow(OuterWorkflowInput(input=0)).nullable_output
     assert none_value_output is None, f"None value was {none_value_output}, not None as expected"
 
+
+@pytest.mark.serial
 def test_lazy_import_transformers_concurrently():
-    TypeEngine.has_lazy_import = False  # Ensure that next call to TypeEngine.lazy_import_transformers doesn't
-    # skip the import
+    # Ensure that next call to TypeEngine.lazy_import_transformers doesn't skip the import. Mark as serial to ensure 
+    # this achieves what we expect.
+    TypeEngine.has_lazy_import = False
 
     # Configure the mocks similar to https://stackoverflow.com/questions/29749193/python-unit-testing-with-two-mock-objects-how-to-verify-call-order
     after_import_mock, mock_register = mock.Mock(), mock.Mock()
@@ -3271,4 +3274,6 @@ def test_lazy_import_transformers_concurrently():
         # Assert that all the register calls come before anything else.
         assert mock_wrapper.mock_calls[-N:] == [mock.call.after_import_mock()]*N
         expected_number_of_register_calls = len(mock_wrapper.mock_calls) - N
-        assert mock_wrapper.mock_calls[:expected_number_of_register_calls] == [mock.call.mock_register(mock.ANY, default_format_for_type=mock.ANY)]*expected_number_of_register_calls
+        assert mock_wrapper.mock_calls[:expected_number_of_register_calls] == [
+            mock.call.mock_register(mock.ANY, default_format_for_type=mock.ANY)
+        ] * expected_number_of_register_calls
