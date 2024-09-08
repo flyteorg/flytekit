@@ -14,6 +14,7 @@ from typing import List, Optional, Type
 import mock
 import pytest
 import typing_extensions
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from flyteidl.core import errors_pb2
 from google.protobuf import json_format as _json_format
@@ -3250,20 +3251,23 @@ def test_dataclass_none_output_input_deserialization():
 def test_lazy_import_transformers_concurrently():
     TypeEngine.has_lazy_import = False  # Ensure that next call to TypeEngine.lazy_import_transformers doesn't
     # skip the import
+
+    # Configure the mocks similar to https://stackoverflow.com/questions/29749193/python-unit-testing-with-two-mock-objects-how-to-verify-call-order
+    after_import_mock, mock_register = mock.Mock(), mock.Mock()
     mock_wrapper = mock.Mock()
-    after_import_mock = mock.Mock()
+    mock_wrapper.mock_register = mock_register
+    mock_wrapper.after_import_mock = after_import_mock
 
-    with mock.patch.object(StructuredDatasetTransformerEngine, "register") as mock_register:
-        mock_wrapper.mock_register = mock_register
-        mock_wrapper.after_import_mock = after_import_mock
-
+    with mock.patch.object(StructuredDatasetTransformerEngine, "register", new=mock_register):
         def run():
             TypeEngine.lazy_import_transformers()
             after_import_mock()
 
-        run()
-        run()
+        N = 5
+        with ThreadPoolExecutor(max_workers=N) as executor:
+            futures = [executor.submit(run) for _ in range(N)]
+            [f.result() for f in futures]
 
-        # Assert that all the register calls come before anything else. 
-        mock_wrapper.mock_calls[-1] = mock.call.after_import_mock()
-        mock_wrapper.mock_calls[-2] = mock.call.after_import_mock()
+        # Assert that all the register calls come before anything else.
+        for i in range(N):
+            assert mock_wrapper.mock_calls[-(i+1)] == mock.call.after_import_mock()
