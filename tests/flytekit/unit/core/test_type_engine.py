@@ -74,7 +74,7 @@ from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer, noop
 from flytekit.types.pickle import FlytePickle
 from flytekit.types.pickle.pickle import BatchSize, FlytePickleTransformer
 from flytekit.types.schema import FlyteSchema
-from flytekit.types.structured.structured_dataset import StructuredDataset
+from flytekit.types.structured.structured_dataset import StructuredDataset, StructuredDatasetTransformerEngine
 
 T = typing.TypeVar("T")
 
@@ -3269,5 +3269,6 @@ def test_lazy_import_transformers_concurrently():
             [f.result() for f in futures]
 
         # Assert that all the register calls come before anything else.
-        for i in range(N):
-            assert mock_wrapper.mock_calls[-(i+1)] == mock.call.after_import_mock()
+        assert mock_wrapper.mock_calls[-N:] == [mock.call.after_import_mock()]*N
+        expected_number_of_register_calls = len(mock_wrapper.mock_calls) - N
+        assert mock_wrapper.mock_calls[:expected_number_of_register_calls] == [mock.call.mock_register(mock.ANY, default_format_for_type=mock.ANY)]*expected_number_of_register_calls
