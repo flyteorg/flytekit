@@ -390,10 +390,24 @@ class DataclassTransformer(TypeTransformer[object]):
                     f"The original fields have the following extra keys that are not in dataclass fields: {list(extra_keys)}"
                 )
 
+            from flytekit import StructuredDataset
+            from flytekit.types.directory import FlyteDirectory
+            from flytekit.types.file import FlyteFile
+            from flytekit.types.schema.types import FlyteSchema
+
+            FLYTE_TYPES = [FlyteFile, FlyteDirectory, StructuredDataset, FlyteSchema]
+
             for k, v in original_dict.items():
                 if k in expected_fields_dict:
                     if isinstance(v, dict):
-                        self.assert_type(expected_fields_dict[k], v)
+                        # todo: 1. check if expected_fields_dict[k] is a flyte type, if yes, then use v to construct a flyet types and assert them
+                        expected_type = expected_fields_dict[k]
+                        if expected_type in FLYTE_TYPES:
+                            new_v = copy.deepcopy(v)
+                            new_v = expected_type(**new_v)
+                            self.assert_type(expected_fields_dict[k], new_v)
+                        else:
+                            self.assert_type(expected_fields_dict[k], v)
                     else:
                         expected_type = expected_fields_dict[k]
                         original_type = type(v)
@@ -498,6 +512,7 @@ class DataclassTransformer(TypeTransformer[object]):
         from flytekit.models.literals import Json
 
         if isinstance(python_val, dict):
+            # There will be bug for local execution dataclass attribute access
             msgpack_bytes = msgpack.dumps(python_val)
             return Literal(scalar=Scalar(json=Json(value=msgpack_bytes)))
 
