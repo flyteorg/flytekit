@@ -9,8 +9,8 @@ import inspect
 import json
 import mimetypes
 import sys
-import threading
 import textwrap
+import threading
 import typing
 from abc import ABC, abstractmethod
 from collections import OrderedDict
