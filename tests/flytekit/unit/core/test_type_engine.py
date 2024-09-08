@@ -3251,7 +3251,7 @@ def test_dataclass_none_output_input_deserialization():
 
 @pytest.mark.serial
 def test_lazy_import_transformers_concurrently():
-    # Ensure that next call to TypeEngine.lazy_import_transformers doesn't skip the import. Mark as serial to ensure 
+    # Ensure that next call to TypeEngine.lazy_import_transformers doesn't skip the import. Mark as serial to ensure
     # this achieves what we expect.
     TypeEngine.has_lazy_import = False
 
