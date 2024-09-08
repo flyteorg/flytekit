@@ -3246,3 +3246,24 @@ def test_dataclass_none_output_input_deserialization():
     assert float_value_output == 1.0, f"Float value was {float_value_output}, not 1.0 as expected"
     none_value_output = outer_workflow(OuterWorkflowInput(input=0)).nullable_output
     assert none_value_output is None, f"None value was {none_value_output}, not None as expected"
+
+def test_lazy_import_transformers_concurrently():
+    TypeEngine.has_lazy_import = False  # Ensure that next call to TypeEngine.lazy_import_transformers doesn't
+    # skip the import
+    mock_wrapper = mock.Mock()
+    after_import_mock = mock.Mock()
+
+    with mock.patch.object(StructuredDatasetTransformerEngine, "register") as mock_register:
+        mock_wrapper.mock_register = mock_register
+        mock_wrapper.after_import_mock = after_import_mock
+
+        def run():
+            TypeEngine.lazy_import_transformers()
+            after_import_mock()
+
+        run()
+        run()
+
+        # Assert that all the register calls come before anything else. 
+        mock_wrapper.mock_calls[-1] = mock.call.after_import_mock()
+        mock_wrapper.mock_calls[-2] = mock.call.after_import_mock()
