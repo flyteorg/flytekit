@@ -997,7 +997,6 @@ class TypeEngine(typing.Generic[T]):
         """
         if cls.has_lazy_import:
             return
-        cls.has_lazy_import = True
         from flytekit.types.structured import (
             register_arrow_handlers,
             register_bigquery_handlers,
@@ -1040,6 +1039,7 @@ class TypeEngine(typing.Generic[T]):
                 register_snowflake_handlers()
             except DuplicateHandlerError:
                 logger.debug("Transformer for snowflake is already registered.")
+        cls.has_lazy_import = True
 
     @classmethod
     def to_literal_type(cls, python_type: Type) -> LiteralType:
