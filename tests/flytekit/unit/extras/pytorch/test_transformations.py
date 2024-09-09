@@ -1,10 +1,11 @@
 from collections import OrderedDict
+from typing import Union
 
 import pytest
 import torch
 
 import flytekit
-from flytekit import task
+from flytekit import task, workflow
 from flytekit.configuration import Image, ImageConfig
 from flytekit.core import context_manager
 from flytekit.core.type_engine import TypeTransformerFailedError
@@ -154,3 +155,20 @@ def test_to_literal_unambiguity():
         model = torch.nn.Linear(2, 2)
         trans = PyTorchModuleTransformer()
         trans.to_literal(ctx, [model], torch.nn.Module, trans.get_literal_type(torch.nn.Module))
+
+
+def test_torch_tensor_list_union():
+    """Test that a task can return a union of list of tensor and tensor.
+
+    See test_to_literal_unambiguity for more details why this failed.
+    """
+
+    @task
+    def foo() -> Union[list[torch.Tensor], torch.Tensor]:
+        return [torch.tensor([1, 2, 3])]
+
+    @workflow
+    def wf():
+        foo()
+
+    wf()
