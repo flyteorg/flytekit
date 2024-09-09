@@ -2,7 +2,6 @@ import os
 import pathlib
 import shutil
 import subprocess
-import sys
 from dataclasses import asdict
 from importlib import metadata
 
@@ -161,13 +160,7 @@ def build():
 
         dst = pathlib.Path(cfg_path).parent
 
-        if image_spec.copy == CopyFileDetection.LOADED_MODULES:
-            # This is the 'auto' semantic by default used for pyflyte run, it only copies loaded .py files.
-            sys_modules = list(sys.modules.values())
-            ls, _ = ls_files(str(image_spec.source_root), sys_modules, deref_symlinks=False, ignore_group=ignore)
-        else:
-            # This triggers listing of all files
-            ls, _ = ls_files(str(image_spec.source_root), [], deref_symlinks=False, ignore_group=ignore)
+        ls, _ = ls_files(str(image_spec.source_root), image_spec.copy, deref_symlinks=False, ignore_group=ignore)
 
         for file_to_copy in ls:
             rel_path = os.path.relpath(file_to_copy, start=str(image_spec.source_root))

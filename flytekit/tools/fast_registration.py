@@ -6,7 +6,6 @@ import os
 import pathlib
 import posixpath
 import subprocess
-import sys
 import tarfile
 import tempfile
 import typing
@@ -97,14 +96,7 @@ def fast_package(
     if options and (
         options.copy_style == CopyFileDetection.LOADED_MODULES or options.copy_style == CopyFileDetection.ALL
     ):
-        if options.copy_style == CopyFileDetection.LOADED_MODULES:
-            # This is the 'auto' semantic by default used for pyflyte run, it only copies loaded .py files.
-            sys_modules = list(sys.modules.values())
-            ls, ls_digest = ls_files(str(source), sys_modules, deref_symlinks, ignore)
-        else:
-            # This triggers listing of all files, mimicking the old way of creating the tar file.
-            ls, ls_digest = ls_files(str(source), [], deref_symlinks, ignore)
-
+        ls, ls_digest = ls_files(str(source), options.copy_style, deref_symlinks, ignore)
         logger.debug(f"Hash digest: {ls_digest}", fg="green")
 
         if options.show_files:

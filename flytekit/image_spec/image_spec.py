@@ -5,7 +5,6 @@ import hashlib
 import os
 import pathlib
 import re
-import sys
 import typing
 from abc import abstractmethod
 from dataclasses import asdict, dataclass
@@ -164,13 +163,8 @@ class ImageSpec:
             # todo: we should pipe through ignores from the command line here at some point.
             #  what about deref_symlink?
             ignore = IgnoreGroup(self.source_root, [GitIgnore, DockerIgnore, StandardIgnore])
-            if self.copy == CopyFileDetection.LOADED_MODULES:
-                # This is the 'auto' semantic by default used for pyflyte run, it only copies loaded .py files.
-                sys_modules = list(sys.modules.values())
-                _, ls_digest = ls_files(str(self.source_root), sys_modules, deref_symlinks=False, ignore_group=ignore)
-            else:
-                # This triggers listing of all files, mimicking the old way of creating the tar file.
-                _, ls_digest = ls_files(str(self.source_root), [], deref_symlinks=False, ignore_group=ignore)
+
+            _, ls_digest = ls_files(str(self.source_root), self.copy, deref_symlinks=False, ignore_group=ignore)
 
             # Since the source root is supposed to represent the files, store the digest into the source root as a
             # shortcut to represent all the files.

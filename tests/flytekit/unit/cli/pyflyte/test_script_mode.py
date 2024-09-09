@@ -4,7 +4,7 @@ import pytest
 import tempfile
 
 from flytekit.tools.script_mode import ls_files
-
+from flytekit.constants import CopyFileDetection
 
 # a pytest fixture that creates a tmp directory and creates
 # a small file structure in it
@@ -36,15 +36,16 @@ def dummy_dir_structure():
 
 
 def test_list_dir(dummy_dir_structure):
-    files, d = ls_files(str(dummy_dir_structure), [])
+    files, d = ls_files(str(dummy_dir_structure), CopyFileDetection.ALL)
     assert len(files) == 5
     if os.name != "nt":
         assert d == "c092f1b85f7c6b2a71881a946c00a855"
 
 
 def test_list_filtered_on_modules(dummy_dir_structure):
-    import sys  # any module will do
-    files, d = ls_files(str(dummy_dir_structure), [sys])
+    # any module will do
+    import sys  # noqa
+    files, d = ls_files(str(dummy_dir_structure), CopyFileDetection.LOADED_MODULES)
     # because none of the files are python modules, nothing should be returned
     assert len(files) == 0
     if os.name != "nt":
