@@ -287,8 +287,12 @@ class DefaultImageBuilder(ImageSpecBuilder):
 
             command = [
                 "docker",
-                "image",
+                "buildx",
                 "build",
+                "--builder",
+                "mybuildx",
+                "--allow",
+                "security.insecure",
                 "--tag",
                 f"{image_spec.image_name()}",
                 "--platform",
