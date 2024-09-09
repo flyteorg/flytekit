@@ -1,4 +1,5 @@
 import asyncio
+import mock
 import os
 import sys
 import typing
@@ -9,8 +10,13 @@ import pytest
 from hypothesis import given
 
 from flytekit import dynamic, task, workflow
+
+from flytekit.bin.entrypoint import _dispatch_execute
+from flytekit.core import context_manager
+from flytekit.core.promise import VoidPromise
 from flytekit.exceptions.user import FlyteValidationException
 from flytekit.experimental import EagerException, eager
+from flytekit.models import literals as _literal_models
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import FlyteFile
 from flytekit.types.structured import StructuredDataset
@@ -275,3 +281,28 @@ def test_eager_workflow_with_offloaded_types():
 
     result = asyncio.run(eager_wf_flyte_directory())
     assert result == "some data"
+
+
+@mock.patch("flytekit.core.utils.load_proto_from_file")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_data")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
+def test_eager_workflow_dispatch_preserves_event_loop(*args):
+    """Test that event loop is preserved when dispatching eager workflows."""
+
+    @eager
+    async def eager_wf():
+        return await asyncio.sleep(1)
+
+    async def async_func():
+        return 1
+
+    ctx = context_manager.FlyteContext.current_context()
+    with context_manager.FlyteContextManager.with_context(
+        ctx.with_execution_state(
+            ctx.execution_state.with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION)
+        )
+    ) as ctx:
+        _dispatch_execute(ctx, lambda: eager_wf, "inputs path", "outputs prefix")
+        loop = asyncio.get_event_loop()
+        result = loop.run_until_complete(async_func())
+        assert result == 1
