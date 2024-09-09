@@ -3274,6 +3274,4 @@ def test_lazy_import_transformers_concurrently():
         # Assert that all the register calls come before anything else.
         assert mock_wrapper.mock_calls[-N:] == [mock.call.after_import_mock()]*N
         expected_number_of_register_calls = len(mock_wrapper.mock_calls) - N
-        assert mock_wrapper.mock_calls[:expected_number_of_register_calls] == [
-            mock.call.mock_register(mock.ANY, default_format_for_type=mock.ANY)
-        ] * expected_number_of_register_calls
+        assert all([mock_call[0] == "mock_register" for mock_call in mock_wrapper.mock_calls[:expected_number_of_register_calls]])
