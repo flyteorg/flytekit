@@ -299,8 +299,9 @@ class Void(_common.FlyteIdlEntity):
 
 
 class Json(_common.FlyteIdlEntity):
-    def __init__(self, value: bytes):
+    def __init__(self, value: bytes, serialization_format: str = "msgpack"):
         self._value = value
+        self._serialization_format = serialization_format
 
     @property
     def value(self):
@@ -309,11 +310,18 @@ class Json(_common.FlyteIdlEntity):
         """
         return self._value
 
+    @property
+    def serialization_format(self):
+        """
+        :rtype: str
+        """
+        return self._serialization_format
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.literals_pb2.Json
         """
-        return _literals_pb2.Json(value=self.value)
+        return _literals_pb2.Json(value=self.value, serialization_format=self.serialization_format)
 
     @classmethod
     def from_flyte_idl(cls, proto):
@@ -321,7 +329,7 @@ class Json(_common.FlyteIdlEntity):
         :param flyteidl.core.literals_pb2.Json proto:
         :rtype: Json
         """
-        return cls(value=proto.value)
+        return cls(value=proto.value, serialization_format=proto.serialization_format)
 
 
 class BindingDataMap(_common.FlyteIdlEntity):

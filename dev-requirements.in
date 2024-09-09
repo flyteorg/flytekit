@@ -1,5 +1,5 @@
 -e file:.
-flyteidl @ git+https://github.com/flyteorg/flyte.git@2cf54c386c9af63fe91252ba2dcd6a82adb2aeaa#subdirectory=flyteidl
+flyteidl @ git+https://github.com/flyteorg/flyte.git@1631a94149ff9af80745415a57deb2f6f93d0cbe#subdirectory=flyteidl
 
 coverage[toml]
 hypothesis
