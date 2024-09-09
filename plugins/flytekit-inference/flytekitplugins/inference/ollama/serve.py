@@ -64,6 +64,7 @@ class Ollama(ModelInferenceTemplate):
         if self._model_modelfile:
             base_code = """
 import base64
+import time
 import ollama
 """
             encoded_modelfile = base64.b64encode(self._model_modelfile.encode("utf-8")).decode("utf-8")
@@ -133,6 +134,9 @@ with open('Modelfile', 'w') as f:
 """
 
                 python_code += f"""
+# sleep allows time for the Ollama server to start up before executing the Python code.
+time.sleep(15)
+
 for chunk in ollama.create(model='{self._model_name}', path='Modelfile', stream=True):
     print(chunk)
 """
@@ -147,22 +151,25 @@ modelfile = base64.b64decode(encoded_model_file).decode('utf-8')
 with open('Modelfile', 'w') as f:
     f.write(modelfile)
 
+time.sleep(15)
+
 for chunk in ollama.create(model='{self._model_name}', path='Modelfile', stream=True):
     print(chunk)
 """
         else:
             python_code = f"""
-import ollama
+{base_code}
+
+time.sleep(15)
 
 for chunk in ollama.pull('{self._model_name}', stream=True):
     print(chunk)
 """
 
-        # `sleep 15` allows time for the Ollama server to start up before executing the Python code.
         command = (
-            f'sleep 15 && python3 -c "{python_code}" {{{{.input}}}}'
+            f'python3 -c "{python_code}" {{{{.input}}}}'
             if self._model_modelfile and "{inputs" in self._model_modelfile
-            else f'sleep 15 && python3 -c "{python_code}"'
+            else f'python3 -c "{python_code}"'
         )
 
         self.pod_template.pod_spec.init_containers.append(
