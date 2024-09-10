@@ -1444,27 +1444,47 @@ class ListTransformer(TypeTransformer[T]):
         return Literal(collection=LiteralCollection(literals=lit_list))
 
     def from_json(self, ctx: FlyteContext, json_idl_object: Json, expected_python_type: Type[T]) -> typing.List[T]:
-        # TODO: Handle FlyteTypes and Dict Cases
+        """
+        Process JSON IDL object and convert it to the corresponding Python value.
+        Handles both simple types and recursive structures like List[List[int]] or List[List[float]].
+        """
+
         def recursive_from_json(ctx: FlyteContext, json_value: typing.Any, expected_python_type: Type[T]) -> typing.Any:
             """
             Recursively process JSON objects, converting them to their corresponding Python values based on
             the expected Python type (e.g., handling List[List[int]] or List[List[float]]).
             """
+            # Check if the type is a List
             if typing.get_origin(expected_python_type) is list:
                 # Get the subtype, which should be the type of the list's elements
                 sub_type = self.get_sub_type(expected_python_type)
                 # Recursively process each element in the list
-                return [self.recursive_from_json(ctx, item, sub_type) for item in json_value]
-            else:
-                # Base case: if it's not a list, we assume it's a simple type and return it as-is
-                return expected_python_type(json_value)
+                return [recursive_from_json(ctx, item, sub_type) for item in json_value]
 
+            # Check if the type is a Dict
+            elif typing.get_origin(expected_python_type) is dict:
+                # For Dicts, get key and value types
+                key_type, val_type = typing.get_args(expected_python_type)
+                # Recursively process each key and value in the dict
+                return {recursive_from_json(ctx, k, key_type): recursive_from_json(ctx, v, val_type) for k, v in
+                        json_value.items()}
+
+            # Base case: if it's not a list or dict, we assume it's a simple type and return it
+            try:
+                return expected_python_type(json_value)  # Cast to the expected type
+            except Exception as e:
+                raise ValueError(f"Could not cast {json_value} to {expected_python_type}: {e}")
+
+        # Handle the serialization format
         value = json_idl_object.value
         serialization_format = json_idl_object.serialization_format
         if serialization_format == "UTF-8":
+            # Decode JSON string
             json_value = json.loads(value.decode("utf-8"))
         else:
             raise ValueError(f"Unknown serialization format {serialization_format}")
+
+        # Call the recursive function to handle nested structures
         return recursive_from_json(ctx, json_value, expected_python_type)
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> typing.List[typing.Any]:  # type: ignore
