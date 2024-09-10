@@ -107,7 +107,7 @@ def _dispatch_execute(
         if inspect.iscoroutine(outputs):
             # Handle eager-mode (async) tasks
             logger.info("Output is a coroutine")
-            outputs = asyncio.get_event_loop().run_until_complete(outputs)
+            outputs = asyncio.get_running_loop().run_until_complete(outputs)
 
         # Step3a
         if isinstance(outputs, VoidPromise):
