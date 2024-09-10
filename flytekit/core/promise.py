@@ -7,7 +7,7 @@ import typing
 from copy import deepcopy
 from enum import Enum
 from typing import Any, Coroutine, Dict, List, Optional, Set, Tuple, Union, cast, get_args
-
+import json
 from google.protobuf import struct_pb2 as _struct
 from typing_extensions import Protocol
 
@@ -94,7 +94,7 @@ def translate_inputs_to_literals(
         t = native_types[k]
         try:
             if type(v) is Promise:
-                v = resolve_attr_path_in_promise(v)
+                v = resolve_attr_path_in_promise(v, t)
             result[k] = TypeEngine.to_literal(ctx, v, t, var.type)
         except TypeTransformerFailedError as exc:
             exc.args = (f"Failed argument '{k}': {exc.args[0]}",)
@@ -103,7 +103,7 @@ def translate_inputs_to_literals(
     return result
 
 
-def resolve_attr_path_in_promise(p: Promise) -> Promise:
+def resolve_attr_path_in_promise(p: Promise, t: typing.Type) -> Promise:
     """
     resolve_attr_path_in_promise resolves the attribute path in a promise and returns a new promise with the resolved value
     This is for local execution only. The remote execution will be resolved in flytepropeller.
@@ -138,20 +138,47 @@ def resolve_attr_path_in_promise(p: Promise) -> Promise:
             break
 
     # If the current value is a dataclass, resolve the dataclass with the remaining path
-    if (
-        len(p.attr_path) > 0
-        and type(curr_val.value) is _literals_models.Scalar
-        and type(curr_val.value.value) is _struct.Struct
-    ):
-        st = curr_val.value.value
-        new_st = resolve_attr_path_in_pb_struct(st, attr_path=p.attr_path[used:])
-        literal_type = TypeEngine.to_literal_type(type(new_st))
-        # Reconstruct the resolved result to flyte literal (because the resolved result might not be struct)
-        curr_val = TypeEngine.to_literal(FlyteContextManager.current_context(), new_st, type(new_st), literal_type)
+    if len(p.attr_path) > 0 and type(curr_val.value) is _literals_models.Scalar:
+        from flytekit.models.literals import Json
+
+        # We keep it for reference task local execution in the future.
+        if type(curr_val.value.value) is _struct.Struct:
+            st = curr_val.value.value
+            new_st = resolve_attr_path_in_pb_struct(st, attr_path=p.attr_path[used:])
+            literal_type = TypeEngine.to_literal_type(type(new_st))
+            # Reconstruct the resolved result to flyte literal (because the resolved result might not be struct)
+            curr_val = TypeEngine.to_literal(FlyteContextManager.current_context(), new_st, type(new_st), literal_type)
+        elif type(curr_val.value.value) is Json:
+            json_idl_object = curr_val.value.json
+            serialization_format = json_idl_object.serialization_format
+            if serialization_format == "UTF-8":
+                json_str = json_idl_object.value.decode("utf-8")
+            else:
+                raise ValueError(
+                    f"Bytes can't be converted to JSON String.\n"
+                    f"Unsupported serialization format: {serialization_format}"
+                )
+            dict_obj = json.loads(json_str)
+            v = resolve_attr_path_in_dict(dict_obj, attr_path=p.attr_path[used:])
+            literal_type = TypeEngine.to_literal_type(t)
+            curr_val = TypeEngine.to_literal(FlyteContextManager.current_context(), v, t, literal_type)
 
     p._val = curr_val
     return p
 
+
+def resolve_attr_path_in_dict(d: dict, attr_path: List[Union[str, int]]) -> Any:
+    curr_val = d
+    for attr in attr_path:
+        try:
+            curr_val = curr_val[attr]
+        except (KeyError, IndexError, TypeError) as e:
+            raise FlytePromiseAttributeResolveException(
+                f"Failed to resolve attribute path {attr_path} in dict {curr_val}, attribute {attr} not found.\n"
+                f"Error Message: {e}"
+            )
+
+    return curr_val
 
 def resolve_attr_path_in_pb_struct(st: _struct.Struct, attr_path: List[Union[str, int]]) -> _struct.Struct:
     curr_val = st
