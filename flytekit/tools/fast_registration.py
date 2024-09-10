@@ -7,19 +7,18 @@ import pathlib
 import posixpath
 import shutil
 import subprocess
-import sys
 import tarfile
 import tempfile
 import time
 import typing
 from dataclasses import dataclass
-from enum import Enum
 from typing import Optional
 
 import click
 from rich import print as rich_print
 from rich.tree import Tree
 
+from flytekit.constants import CopyFileDetection
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.utils import timeit
 from flytekit.exceptions.user import FlyteDataNotFoundException
@@ -29,17 +28,6 @@ from flytekit.tools.script_mode import _filehash_update, _pathhash_update, ls_fi
 
 FAST_PREFIX = "fast"
 FAST_FILEENDING = ".tar.gz"
-
-
-class CopyFileDetection(Enum):
-    LOADED_MODULES = 1
-    ALL = 2
-    # This option's meaning will change in the future. In the future this will mean that no files should be copied
-    # (i.e. no fast registration is used). For now, both this value and setting this Enum to Python None are both
-    # valid to distinguish between users explicitly setting --copy none and not setting the flag.
-    # Currently, this is only used for register, not for package or run because run doesn't have a no-fast-register
-    # option and package is by default non-fast.
-    NO_COPY = 3
 
 
 @dataclass(frozen=True)
@@ -130,14 +118,7 @@ def fast_package(
     if options and (
         options.copy_style == CopyFileDetection.LOADED_MODULES or options.copy_style == CopyFileDetection.ALL
     ):
-        if options.copy_style == CopyFileDetection.LOADED_MODULES:
-            # This is the 'auto' semantic by default used for pyflyte run, it only copies loaded .py files.
-            sys_modules = list(sys.modules.values())
-            ls, ls_digest = ls_files(str(source), sys_modules, deref_symlinks, ignore)
-        else:
-            # This triggers listing of all files, mimicking the old way of creating the tar file.
-            ls, ls_digest = ls_files(str(source), [], deref_symlinks, ignore)
-
+        ls, ls_digest = ls_files(str(source), options.copy_style, deref_symlinks, ignore)
         logger.debug(f"Hash digest: {ls_digest}", fg="green")
 
         if options.show_files:

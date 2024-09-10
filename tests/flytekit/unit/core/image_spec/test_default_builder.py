@@ -6,6 +6,7 @@ import pytest
 import flytekit
 from flytekit.image_spec import ImageSpec
 from flytekit.image_spec.default_builder import DefaultImageBuilder, create_docker_context
+from flytekit.constants import CopyFileDetection
 
 
 def test_create_docker_context(tmp_path):
@@ -31,7 +32,8 @@ def test_create_docker_context(tmp_path):
         source_root=os.fspath(source_root),
         commands=["mkdir my_dir"],
         entrypoint=["/bin/bash"],
-        pip_extra_index_url=["https://extra-url.com"]
+        pip_extra_index_url=["https://extra-url.com"],
+        source_copy_mode=CopyFileDetection.ALL,
     )
 
     create_docker_context(image_spec, docker_context_path)
