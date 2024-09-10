@@ -69,10 +69,10 @@ To run the workflow, use the following command:
 
 You can also use the ``--inputs-file`` flag to pass either a JSON or YAML file as inputs or pass from pipe instead. Remember to include all required inputs with valid JSON/YAML formats.
 
-.. prompt:: bash $
+.. prompt:: bash
 
-  pyflyte run workflow.py my_workflow --inputs-file inputs.json
-  cat inputs.json | pyflyte run workflow.py my_workflow
+  $ pyflyte run workflow.py my_workflow --inputs-file inputs.json
+  $ cat inputs.json | pyflyte run workflow.py my_workflow
 
 inputs.json
 
