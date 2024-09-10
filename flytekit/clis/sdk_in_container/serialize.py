@@ -3,12 +3,12 @@ import sys
 import typing
 from enum import Enum
 
+import rich
 import rich_click as click
 
 from flytekit.clis.sdk_in_container import constants
 from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
 from flytekit.configuration import FastSerializationSettings, ImageConfig, SerializationSettings
-from flytekit.exceptions.scopes import system_entry_point
 from flytekit.interaction.click_types import key_value_callback
 from flytekit.tools.fast_registration import fast_package
 from flytekit.tools.repo import serialize_to_folder
@@ -25,7 +25,6 @@ class SerializationMode(Enum):
     FAST = 1
 
 
-@system_entry_point
 def serialize_all(
     pkgs: typing.List[str] = None,
     local_source_root: typing.Optional[str] = None,
@@ -138,6 +137,12 @@ def serialize(
     ctx.obj[CTX_IMAGE] = image_config
     ctx.obj[CTX_LOCAL_SRC_ROOT] = local_source_root
     ctx.obj[CTX_ENV] = env
+    rich.print(
+        "[bold bright_green on black][Deprecation notice]\nThis 'serialize' command is being deprecated,"
+        " please move to using 'package' instead."
+        " See [link=https://docs.flyte.org/en/latest/api/flytekit/design/clis.html#pyflyte]docs[/link]"
+        " for more information.[/]\n"
+    )
     click.echo(f"Serializing Flyte elements with image {image_config}")
 
     if in_container_virtualenv_root:

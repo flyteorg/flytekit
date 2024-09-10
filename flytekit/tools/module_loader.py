@@ -17,6 +17,12 @@ def add_sys_path(path: Union[str, os.PathLike]) -> Iterator[None]:
         sys.path.remove(path)
 
 
+def module_load_error_handler(*args, **kwargs):
+    from flytekit import logger
+
+    logger.info(f"Error walking package structure when loading: {args}, {kwargs}")
+
+
 def just_load_modules(pkgs: List[str]):
     """
     This one differs from the above in that we don't yield anything, just load all the modules.
@@ -29,7 +35,9 @@ def just_load_modules(pkgs: List[str]):
             continue
 
         # Note that walk_packages takes an onerror arg and swallows import errors silently otherwise
-        for _, name, _ in pkgutil.walk_packages(package.__path__, prefix=f"{package_name}."):
+        for _, name, _ in pkgutil.walk_packages(
+            package.__path__, prefix=f"{package_name}.", onerror=module_load_error_handler
+        ):
             importlib.import_module(name)
 
 
