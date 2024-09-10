@@ -544,6 +544,8 @@ class DataclassTransformer(TypeTransformer[object]):
     def from_json(self, ctx: FlyteContext, json_idl_object: Json, expected_python_type: Type[T]) -> T:
         value = json_idl_object.value
         serialization_format = json_idl_object.serialization_format
+        print("@@@ JSON IDL VAL: ", value)
+        print("@@@ JSON IDL SERIALIZATION FORMAT: ", serialization_format)
 
         if serialization_format == "UTF-8":
             json_str = value.decode("UTF-8")
