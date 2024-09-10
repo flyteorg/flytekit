@@ -212,9 +212,6 @@ class TypeTransformer(typing.Generic[T]):
             )
         python_val =  json.loads(json_str)
         expected_python_val = expected_python_type(python_val)
-        print("@@@ json str:", json_str)
-        print("@@@ python val:", python_val)
-        print("@@@ expected python val:", expected_python_val)
         return expected_python_val
 
     def __repr__(self):
