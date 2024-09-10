@@ -5,19 +5,20 @@ import hashlib
 import os
 import pathlib
 import posixpath
+import shutil
 import subprocess
-import sys
 import tarfile
 import tempfile
+import time
 import typing
 from dataclasses import dataclass
-from enum import Enum
 from typing import Optional
 
 import click
 from rich import print as rich_print
 from rich.tree import Tree
 
+from flytekit.constants import CopyFileDetection
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.utils import timeit
 from flytekit.exceptions.user import FlyteDataNotFoundException
@@ -27,17 +28,6 @@ from flytekit.tools.script_mode import _filehash_update, _pathhash_update, ls_fi
 
 FAST_PREFIX = "fast"
 FAST_FILEENDING = ".tar.gz"
-
-
-class CopyFileDetection(Enum):
-    LOADED_MODULES = 1
-    ALL = 2
-    # This option's meaning will change in the future. In the future this will mean that no files should be copied
-    # (i.e. no fast registration is used). For now, both this value and setting this Enum to Python None are both
-    # valid to distinguish between users explicitly setting --copy none and not setting the flag.
-    # Currently, this is only used for register, not for package or run because run doesn't have a no-fast-register
-    # option and package is by default non-fast.
-    NO_COPY = 3
 
 
 @dataclass(frozen=True)
@@ -75,6 +65,26 @@ def print_ls_tree(source: os.PathLike, ls: typing.List[str]):
     rich_print(tree_root)
 
 
+def compress_tarball(source: os.PathLike, output: os.PathLike) -> None:
+    """Compress code tarball using pigz if available, otherwise gzip"""
+    if pigz := shutil.which("pigz"):
+        with open(output, "wb") as gzipped:
+            subprocess.run([pigz, "-c", source], stdout=gzipped, check=True)
+    else:
+        start_time = time.time()
+        with gzip.GzipFile(filename=output, mode="wb", mtime=0) as gzipped:
+            with open(source, "rb") as source_file:
+                gzipped.write(source_file.read())
+
+        end_time = time.time()
+        warning_time = 10
+        if end_time - start_time > warning_time:
+            click.secho(
+                f"Code tarball compression took {end_time - start_time:.0f} seconds. Consider installing `pigz` for faster compression.",
+                fg="yellow",
+            )
+
+
 def fast_package(
     source: os.PathLike,
     output_dir: os.PathLike,
@@ -108,14 +118,7 @@ def fast_package(
     if options and (
         options.copy_style == CopyFileDetection.LOADED_MODULES or options.copy_style == CopyFileDetection.ALL
     ):
-        if options.copy_style == CopyFileDetection.LOADED_MODULES:
-            # This is the 'auto' semantic by default used for pyflyte run, it only copies loaded .py files.
-            sys_modules = list(sys.modules.values())
-            ls, ls_digest = ls_files(str(source), sys_modules, deref_symlinks, ignore)
-        else:
-            # This triggers listing of all files, mimicking the old way of creating the tar file.
-            ls, ls_digest = ls_files(str(source), [], deref_symlinks, ignore)
-
+        ls, ls_digest = ls_files(str(source), options.copy_style, deref_symlinks, ignore)
         logger.debug(f"Hash digest: {ls_digest}", fg="green")
 
         if options.show_files:
@@ -139,9 +142,7 @@ def fast_package(
                         filter=lambda x: tar_strip_file_attributes(x),
                     )
 
-            with gzip.GzipFile(filename=archive_fname, mode="wb", mtime=0) as gzipped:
-                with open(tar_path, "rb") as tar_file:
-                    gzipped.write(tar_file.read())
+            compress_tarball(tar_path, archive_fname)
 
     # Original tar command - This condition to be removed in the future.
     else:
@@ -164,9 +165,7 @@ def fast_package(
                     )
                 # tar.list(verbose=True)
 
-            with gzip.GzipFile(filename=archive_fname, mode="wb", mtime=0) as gzipped:
-                with open(tar_path, "rb") as tar_file:
-                    gzipped.write(tar_file.read())
+            compress_tarball(tar_path, archive_fname)
 
     return archive_fname
 
