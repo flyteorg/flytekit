@@ -397,17 +397,17 @@ def _execute_task(
             sys.path.append(working_dir)
 
         if pickled:
-                import gzip
+            import gzip
 
-                import cloudpickle
+            import cloudpickle
 
-                with gzip.open(pkl_file, "r") as f:
-                    load_task = lambda: cloudpickle.load(f)
+            with gzip.open(pkl_file, "r") as f:
+                load_task = lambda: cloudpickle.load(f)
         else:
             resolver_obj = load_object_from_module(resolver)
             # Use the resolver to load the actual task object
             load_task = lambda: resolver_obj.load_task(loader_args=resolver_args)
-        
+
         if test:
             logger.info(
                 f"Test detected, returning. Args were {inputs} {output_prefix} {raw_output_data_prefix} {resolver} {resolver_args}"
