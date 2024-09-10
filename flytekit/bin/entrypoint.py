@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 import traceback
+import warnings
 from sys import exit
 from typing import Callable, List, Optional
 
@@ -68,6 +69,23 @@ def _compute_array_job_index():
     return offset
 
 
+def _get_working_loop():
+    """Returns a running event loop."""
+    try:
+        return asyncio.get_running_loop()
+    except RuntimeError:
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", DeprecationWarning)
+            try:
+                return asyncio.get_event_loop_policy().get_event_loop()
+            # Since version 3.12, DeprecationWarning is emitted if there is no
+            # current event loop.
+            except DeprecationWarning:
+                loop = asyncio.get_event_loop_policy().new_event_loop()
+                asyncio.set_event_loop(loop)
+                return loop
+
+
 def _dispatch_execute(
     ctx: FlyteContext,
     load_task: Callable[[], PythonTask],
@@ -107,7 +125,7 @@ def _dispatch_execute(
         if inspect.iscoroutine(outputs):
             # Handle eager-mode (async) tasks
             logger.info("Output is a coroutine")
-            outputs = asyncio.get_running_loop().run_until_complete(outputs)
+            outputs = _get_working_loop().run_until_complete(outputs)
 
         # Step3a
         if isinstance(outputs, VoidPromise):
