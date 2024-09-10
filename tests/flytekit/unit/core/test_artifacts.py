@@ -6,9 +6,10 @@ from collections import OrderedDict
 from dataclasses import dataclass
 
 import pytest
-from flyteidl.core import artifact_id_pb2 as art_id
-from flyteidl.core.artifact_id_pb2 import Granularity
-from google.protobuf.timestamp_pb2 import Timestamp
+# from flyteidl.core import artifact_id_pb2 as art_id
+# from flyteidl.core.artifact_id_pb2 import Granularity
+# from google.protobuf.timestamp_pb2 import Timestamp
+import flyteidl_rust as flyteidl
 from typing_extensions import Annotated, get_args
 
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
@@ -62,18 +63,17 @@ def test_basic_option_a_rev():
         df = pd.DataFrame({"a": [1, 2, 3], "b": [b_value, b_value, b_value]})
         return df
 
-    assert a1_t_ab.time_partition.granularity == Granularity.DAY
+    assert a1_t_ab.time_partition.granularity == flyteidl.core.Granularity.Day
     entities = OrderedDict()
     t1_s = get_serializable(entities, serialization_settings, t1)
     assert len(t1_s.template.interface.outputs["o0"].artifact_partial_id.partitions.value) == 2
     p = t1_s.template.interface.outputs["o0"].artifact_partial_id.partitions.value
     assert t1_s.template.interface.outputs["o0"].artifact_partial_id.time_partition is not None
     assert (
-        t1_s.template.interface.outputs["o0"].artifact_partial_id.time_partition.granularity == art_id.Granularity.DAY
+        t1_s.template.interface.outputs["o0"].artifact_partial_id.time_partition.granularity == flyteidl.core.Granularity.Day
     )
     assert t1_s.template.interface.outputs["o0"].artifact_partial_id.time_partition.value.value[0].var == "dt"
     assert t1_s.template.interface.outputs["o0"].artifact_partial_id.time_partition.value.value[0].var == "dt"
-    import flyteidl_rust as flyteidl
     assert isinstance((p["b"]).value, flyteidl.label_value.Value.InputBinding)
     assert (p["b"]).value[0].var == "b_value"
     assert isinstance((p["a"]).value, flyteidl.label_value.Value.StaticValue)
@@ -95,17 +95,17 @@ def test_basic_multiple_call():
         df = pd.DataFrame({"a": [1, 2, 3], "b": [b_value, b_value, b_value]})
         return df
 
-    assert a1_t_ab.time_partition.granularity == Granularity.DAY
+    assert a1_t_ab.time_partition.granularity == flyteidl.core.Granularity.Day
     entities = OrderedDict()
     t1_s = get_serializable(entities, serialization_settings, t1)
     assert len(t1_s.template.interface.outputs["o0"].artifact_partial_id.partitions.value) == 2
     p = t1_s.template.interface.outputs["o0"].artifact_partial_id.partitions.value
     assert t1_s.template.interface.outputs["o0"].artifact_partial_id.time_partition is not None
     assert (
-        t1_s.template.interface.outputs["o0"].artifact_partial_id.time_partition.granularity == art_id.Granularity.DAY
+        t1_s.template.interface.outputs["o0"].artifact_partial_id.time_partition.granularity == flyteidl.core.Granularity.Day
     )
     assert t1_s.template.interface.outputs["o0"].artifact_partial_id.time_partition.value.value[0].var == "dt"
-    import flyteidl_rust as flyteidl
+
     assert isinstance((p["b"]).value, flyteidl.label_value.Value.InputBinding)
     assert (p["b"]).value[0].var == "b_value"
     assert isinstance((p["a"]).value, flyteidl.label_value.Value.StaticValue)
@@ -154,7 +154,6 @@ def test_basic_option_no_tp():
     t1_s = get_serializable(entities, serialization_settings, t1)
     assert len(t1_s.template.interface.outputs["o0"].artifact_partial_id.partitions.value) == 2
     p = t1_s.template.interface.outputs["o0"].artifact_partial_id.partitions.value
-    import flyteidl_rust as flyteidl
     assert t1_s.template.interface.outputs["o0"].artifact_partial_id.time_partition is None
     assert isinstance((p["b"]).value, flyteidl.label_value.Value.InputBinding)
 
@@ -166,7 +165,6 @@ def test_basic_option_hardcoded_tp():
 
     id_spec = a1_t_ab(time_partition=dt)
     assert id_spec.partitions is None
-    import flyteidl_rust as flyteidl
     assert isinstance(id_spec.time_partition.value.value, flyteidl.label_value.Value.TimeValue)
 
 
@@ -218,7 +216,7 @@ def test_basic_dynamic():
     ctx = ctx.with_output_metadata_tracker(omt).build()
 
     a1_t_ab = Artifact(
-        name="my_data", partition_keys=["a", "b"], time_partitioned=True, time_partition_granularity=Granularity.MONTH
+        name="my_data", partition_keys=["a", "b"], time_partitioned=True, time_partition_granularity=int(flyteidl.core.Granularity.Month)
     )
 
     @task
@@ -229,7 +227,6 @@ def test_basic_dynamic():
     entities = OrderedDict()
     t1_s = get_serializable(entities, serialization_settings, t1)
     assert len(t1_s.template.interface.outputs["o0"].artifact_partial_id.partitions.value) == 2
-    import flyteidl_rust as flyteidl
     assert (t1_s.template.interface.outputs["o0"].artifact_partial_id.partitions.value["a"].value, flyteidl.label_value.Value.RuntimeBinding)
     assert (
         not isinstance(t1_s.template.interface.outputs["o0"].artifact_partial_id.partitions.value["b"].value, flyteidl.label_value.Value.RuntimeBinding)
@@ -252,7 +249,7 @@ def test_basic_dynamic():
     proto_timestamp = utils.convert_from_datetime_to_timestamp(d)
     import json
     assert json.loads(artifact_id.time_partition.value.value[0].DumpToJsonString()) == json.loads(proto_timestamp.DumpToJsonString())
-    assert artifact_id.time_partition.granularity == Granularity.MONTH
+    assert artifact_id.time_partition.granularity == int(flyteidl.core.Granularity.Month)
 
 
 def test_basic_dynamic_only_time():
@@ -482,13 +479,13 @@ def test_query_basic_query_bindings():
 def test_partition_none():
     # confirm that we can distinguish between partitions being set to empty, and not being set
     # though this is not currently used.
-    ak = art_id.ArtifactKey(project="p", domain="d", name="name")
-    no_partition = art_id.ArtifactID(artifact_key=ak, version="without_p")
-    assert not no_partition.HasField("partitions")
+    ak = flyteidl.core.ArtifactKey(project="p", domain="d", name="name")
+    no_partition = flyteidl.core.ArtifactId(artifact_key=ak, version="without_p")
+    assert no_partition.partitions is None
 
-    p = art_id.Partitions()
-    with_partition = art_id.ArtifactID(artifact_key=ak, version="without_p", partitions=p)
-    assert with_partition.HasField("partitions")
+    p = flyteidl.core.Partitions()
+    with_partition = flyteidl.core.ArtifactId(artifact_key=ak, version="without_p", partitions=p)
+    assert with_partition.partitions is not None
 
 
 def test_as_artf_no_partitions():
@@ -565,9 +562,9 @@ def test_dynamic_input_binding():
 
 def test_tp_granularity():
     a1_t_b = Artifact(
-        name="my_data", partition_keys=["b"], time_partition_granularity=Granularity.MONTH, time_partitioned=True
+        name="my_data", partition_keys=["b"], time_partition_granularity=int(flyteidl.core.Granularity.Month), time_partitioned=True
     )
-    assert a1_t_b.time_partition.granularity == Granularity.MONTH
+    assert a1_t_b.time_partition.granularity == int(flyteidl.core.Granularity.Month)
 
     @task
     def t1(b_value: str, dt: datetime.datetime) -> Annotated[int, a1_t_b(b=Inputs.b_value)(time_partition=Inputs.dt)]:
@@ -576,7 +573,7 @@ def test_tp_granularity():
     entities = OrderedDict()
     spec = get_serializable(entities, serialization_settings, t1)
     assert (
-        spec.template.interface.outputs["o0"].artifact_partial_id.time_partition.granularity == art_id.Granularity.MONTH
+        spec.template.interface.outputs["o0"].artifact_partial_id.time_partition.granularity == flyteidl.core.Granularity.Month
     )
 
 
@@ -622,28 +619,29 @@ def test_tp_math():
     pt = flyteidl.protobuf.Timestamp()
     from flytekit.models import utils
     pt = utils.convert_from_datetime_to_timestamp(d)
-    tp = TimePartition(value=flyteidl.core.LabelValue(value=flyteidl.label_value.Value.TimeValue(pt)), granularity=flyteidl.core.Granularity.Hour)
+    tp = TimePartition(value=flyteidl.core.LabelValue(value=flyteidl.label_value.Value.TimeValue(pt)), granularity=int(flyteidl.core.Granularity.Hour))
     tp.reference_artifact = a
     tp2 = tp + datetime.timedelta(days=1)
     assert tp2.op == flyteidl.core.Operator.Plus
     assert tp2.other == datetime.timedelta(days=1)
-    assert tp2.granularity == flyteidl.core.Granularity.Hour
+    assert tp2.granularity == int(flyteidl.core.Granularity.Hour)
     assert tp2 is not tp
 
-    tp = TimePartition(value=flyteidl.core.LabelValue(value=flyteidl.label_value.Value.TimeValue(pt)), granularity=flyteidl.core.Granularity.Hour)
+    tp = TimePartition(value=flyteidl.core.LabelValue(value=flyteidl.label_value.Value.TimeValue(pt)), granularity=int(flyteidl.core.Granularity.Hour))
     tp.reference_artifact = a
     tp2 = tp - datetime.timedelta(days=1)
     assert tp2.op == flyteidl.core.Operator.Minus
     assert tp2.other == datetime.timedelta(days=1)
-    assert tp2.granularity == flyteidl.core.Granularity.Hour
+    assert tp2.granularity == int(flyteidl.core.Granularity.Hour)
     assert tp2 is not tp
 
 
 def test_tp_printing():
     d = datetime.datetime(2063, 4, 5, 0, 0)
-    pt = Timestamp()
-    pt.FromDatetime(d)
-    tp = TimePartition(value=art_id.LabelValue(time_value=pt), granularity=Granularity.HOUR)
+    pt = flyteidl.protobuf.Timestamp()
+    from flytekit.models import utils
+    pt = utils.convert_from_datetime_to_timestamp(d)
+    tp = TimePartition(value=flyteidl.core.LabelValue(value=flyteidl.label_value.Value.TimeValue(pt)), granularity=int(flyteidl.core.Granularity.Hour))
     txt = "".join([str(x) for x in tp.__rich_repr__()])
     # should show something like ('Time Partition', '2063-04-05 00:00:00')
     # just check that we don't accidentally fail to evaluate a generator
@@ -668,7 +666,7 @@ def test_lims():
 
 def test_cloudpickle():
     a1_b = Artifact(name="my_data", partition_keys=["b"])
-
+    breakpoint()
     spec = a1_b(b="my_b_value")
     import cloudpickle
 

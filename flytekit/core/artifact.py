@@ -275,11 +275,12 @@ class TimePartition(object):
 
     def __rich_repr__(self):
         if self.value:
-            if isinstance(self.value, art_id.LabelValue):
-                if self.value.HasField("time_value"):
-                    yield "Time Partition", str(self.value.time_value.ToDatetime())
-                elif self.value.HasField("input_binding"):
-                    yield "Time Partition (bound to)", self.value.input_binding.var
+            if isinstance(self.value, flyteidl.core.LabelValue):
+                from flytekit.models import utils
+                if isinstance(self.value.value, flyteidl.label_value.Value.TimeValue):
+                    yield "Time Partition", str(utils.convert_to_datetime(seconds=self.value.value[0].seconds, nanos=self.value.value[0].nanos))
+                elif isinstance(self.value.value, flyteidl.label_value.Value.InputBinding):
+                    yield "Time Partition (bound to)", self.value.value[0].var
                 else:
                     yield "Time Partition", "unspecified"
         else:
