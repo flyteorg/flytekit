@@ -49,6 +49,10 @@ Suppose you execute a script that defines 10 tasks and a workflow that calls onl
 
 It is considered fast registration because when a script is executed using ``pyflyte run``, the script is bundled up and uploaded to FlyteAdmin. When the task is executed in the backend, this zipped file is extracted and used.
 
+.. note ::
+
+   If `pigz <https://zlib.net/pigz/>`_ is installed, it will be leveraged by ``pyflyte`` to accelerate the compression of the code tarball.
+
 .. _pyflyte-register:
 
 What is ``pyflyte register``?
