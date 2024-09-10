@@ -13,6 +13,7 @@ class ModelInferenceTemplate:
         gpu: int = 1,
         mem: str = "1Gi",
         env: Optional[dict[str, str]] = None,
+        download_inputs: bool = False,
     ):
         from kubernetes.client.models import (
             V1Container,
@@ -22,6 +23,8 @@ class ModelInferenceTemplate:
             V1PodSpec,
             V1Probe,
             V1ResourceRequirements,
+            V1Volume,
+            V1VolumeMount,
         )
 
         self._image = image
@@ -31,6 +34,7 @@ class ModelInferenceTemplate:
         self._gpu = gpu
         self._mem = mem
         self._env = env
+        self._download_inputs = download_inputs
 
         self._pod_template = PodTemplate()
 
@@ -68,7 +72,59 @@ class ModelInferenceTemplate:
                     ),
                 ),
             ],
+            volumes=[V1Volume(name="shared-data", empty_dir={})],
         )
+
+        if self._download_inputs:
+            input_download_code = """
+import os
+import json
+import sys
+
+from flyteidl.core import literals_pb2 as _literals_pb2
+from flytekit.core import utils
+from flytekit.core.context_manager import FlyteContextManager
+from flytekit.interaction.string_literals import literal_map_string_repr
+from flytekit.models import literals as _literal_models
+from flytekit.models.core.types import BlobType
+from flytekit.types.file import FlyteFile
+
+input_arg = sys.argv[-1]
+
+ctx = FlyteContextManager.current_context()
+local_inputs_file = os.path.join(ctx.execution_state.working_dir, 'inputs.pb')
+ctx.file_access.get_data(
+    input_arg,
+    local_inputs_file,
+)
+input_proto = utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
+idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
+
+inputs = literal_map_string_repr(idl_input_literals)
+
+for var_name, literal in idl_input_literals.literals.items():
+    if literal.scalar and literal.scalar.blob:
+        if (
+            literal.scalar.blob.metadata.type.dimensionality
+            == BlobType.BlobDimensionality.SINGLE
+        ):
+            downloaded_file = FlyteFile.from_source(literal.scalar.blob.uri).download()
+            inputs[var_name] = downloaded_file
+
+with open('/shared/inputs.json', 'w') as f:
+    json.dump(inputs, f)
+"""
+
+            command = f'pip install flytekit && python3 -c "{input_download_code}" {{{{.input}}}}'
+            self._pod_template.pod_spec.init_containers.append(
+                V1Container(
+                    name="input-downloader",
+                    image="python:3.11-slim",
+                    command=["/bin/sh", "-c"],
+                    args=[f"pip install flytekit && {command}"],
+                    volume_mounts=[V1VolumeMount(name="shared-data", mount_path="/shared")],
+                ),
+            )
 
     @property
     def pod_template(self):

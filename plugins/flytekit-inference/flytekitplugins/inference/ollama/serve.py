@@ -33,6 +33,7 @@ class Ollama(ModelInferenceTemplate):
         cpu: int = 1,
         gpu: int = 1,
         mem: str = "15Gi",
+        health_endpoint: str = "/",
     ):
         """Initialize Ollama class for managing a Kubernetes pod template.
 
@@ -42,13 +43,22 @@ class Ollama(ModelInferenceTemplate):
         :param cpu: The number of CPU cores requested for the container. Default is 1.
         :param gpu: The number of GPUs requested for the container. Default is 1.
         :param mem: The amount of memory requested for the container, specified as a string. Default is "15Gi".
+        :param health_endpoint: The health endpoint for the model server container. Default is "/".
         """
         self._model_name = model.name
         self._model_mem = model.mem
         self._model_cpu = model.cpu
         self._model_modelfile = model.modelfile
 
-        super().__init__(image=image, port=port, cpu=cpu, gpu=gpu, mem=mem)
+        super().__init__(
+            image=image,
+            port=port,
+            cpu=cpu,
+            gpu=gpu,
+            mem=mem,
+            health_endpoint=health_endpoint,
+            download_inputs=(True if self._model_modelfile and "{inputs" in self._model_modelfile else False),
+        )
 
         self.setup_ollama_pod_template()
 
@@ -56,7 +66,7 @@ class Ollama(ModelInferenceTemplate):
         from kubernetes.client.models import (
             V1Container,
             V1ResourceRequirements,
-            V1SecurityContext,
+            V1VolumeMount,
         )
 
         container_name = "create-model" if self._model_modelfile else "pull-model"
@@ -72,69 +82,26 @@ import ollama
             if "{inputs" in self._model_modelfile:
                 python_code = f"""
 {base_code}
-import os
 import json
-import sys
 
-from flyteidl.core import literals_pb2 as _literals_pb2
-from flytekit.core import utils
-from flytekit.core.context_manager import FlyteContextManager
-from flytekit.interaction.string_literals import literal_map_string_repr
-from flytekit.models import literals as _literal_models
-from flytekit.models.core.types import BlobType
-from flytekit.types.file import FlyteFile
+with open('/shared/inputs.json', 'r') as f:
+    inputs = json.load(f)
 
-input_arg = sys.argv[-1]
-
-ctx = FlyteContextManager.current_context()
-local_inputs_file = os.path.join(ctx.execution_state.working_dir, 'inputs.pb')
-ctx.file_access.get_data(
-    input_arg,
-    local_inputs_file,
-)
-input_proto = utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
-idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
-
-inputs = literal_map_string_repr(idl_input_literals)
-
-for var_name, literal in idl_input_literals.literals.items():
-    if literal.scalar and literal.scalar.blob:
-        if (
-            literal.scalar.blob.metadata.type.dimensionality
-            == BlobType.BlobDimensionality.SINGLE
-        ):
-            downloaded_file = FlyteFile.from_source(literal.scalar.blob.uri).download()
-            inputs[var_name] = downloaded_file
-
-"""
-
-                python_code += """
 class AttrDict(dict):
-    'Convert a dictionary to an attribute style lookup. Do not use this in regular places, this is used for namespacing inputs and outputs'
-
     def __init__(self, *args, **kwargs):
         super(AttrDict, self).__init__(*args, **kwargs)
         self.__dict__ = self
 
+inputs = {{'inputs': AttrDict(inputs)}}
 
-inputs = {'inputs': AttrDict(inputs)}
-
-"""
-
-                python_code += f"""
 encoded_model_file = '{encoded_modelfile}'
-"""
 
-                python_code += """
 modelfile = base64.b64decode(encoded_model_file).decode('utf-8').format(**inputs)
-modelfile = modelfile.replace('{', '{{').replace('}', '}}')
+modelfile = modelfile.replace('{{', '{{{{').replace('}}', '}}}}')
 
 with open('Modelfile', 'w') as f:
     f.write(modelfile)
-"""
 
-                python_code += f"""
-# sleep allows time for the Ollama server to start up before executing the Python code.
 time.sleep(15)
 
 for chunk in ollama.create(model='{self._model_name}', path='Modelfile', stream=True):
@@ -166,18 +133,14 @@ for chunk in ollama.pull('{self._model_name}', stream=True):
     print(chunk)
 """
 
-        command = (
-            f'python3 -c "{python_code}" {{{{.input}}}}'
-            if self._model_modelfile and "{inputs" in self._model_modelfile
-            else f'python3 -c "{python_code}"'
-        )
+        command = f'python3 -c "{python_code}"'
 
         self.pod_template.pod_spec.init_containers.append(
             V1Container(
                 name=container_name,
                 image=DefaultImages.default_image(),
                 command=["/bin/sh", "-c"],
-                args=[f"apt-get install -y curl && pip install ollama && {command}"],
+                args=[f"pip install ollama && {command}"],
                 resources=V1ResourceRequirements(
                     requests={
                         "cpu": self._model_cpu,
@@ -188,8 +151,6 @@ for chunk in ollama.pull('{self._model_name}', stream=True):
                         "memory": self._model_mem,
                     },
                 ),
-                security_context=V1SecurityContext(
-                    run_as_user=0,
-                ),
+                volume_mounts=[V1VolumeMount(name="shared-data", mount_path="/shared")],
             )
         )
