@@ -554,6 +554,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"Bytes can't be converted to JSON String.\n"
                 f"Unsupported serialization format: {serialization_format}"
             )
+        print("@@@ JSON STR: ", json_str)
         # The `from_json` function is provided from mashumaro's `DataClassJSONMixin`.
         # It deserializes a JSON string into a data class, and supports additional functionality over JSONDecoder
         # We can't use hasattr(expected_python_type, "from_json") here because we rely on mashumaro's API to customize the deserialization behavior for Flyte types.
