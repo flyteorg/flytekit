@@ -194,6 +194,13 @@ class TypeTransformer(typing.Generic[T]):
         return Literal(scalar=Scalar(json=Json(value=json_bytes, serialization_format="UTF-8")))
 
     def from_json(self, ctx: FlyteContext, json_idl_object: Json, expected_python_type: Type[T]) -> T:
+        if expected_python_type in [datetime.datetime, datetime.timedelta, datetime.date]:
+            raise TypeTransformerFailedError(
+                f"Unsupported Type Error: JSON IDL serialization/deserialization is not supported for Python type "
+                f"'{expected_python_type.__name__}'.\n"
+                f"Please ensure that the type is serializable or convert it to a supported format."
+            )
+
         value = json_idl_object.value
         serialization_format = json_idl_object.serialization_format
         if serialization_format == "UTF-8":
@@ -248,6 +255,9 @@ class SimpleTransformer(TypeTransformer[T]):
             raise TypeTransformerFailedError(
                 f"Cannot convert to type {expected_python_type}, only {self._type} is supported"
             )
+
+        if lv.scalar.json:
+            return self.from_json(ctx, lv.scalar.json, expected_python_type)
 
         try:  # todo(maximsmol): this is quite ugly and each transformer should really check their Literal
             res = self._from_literal_transformer(lv)
@@ -544,8 +554,6 @@ class DataclassTransformer(TypeTransformer[object]):
     def from_json(self, ctx: FlyteContext, json_idl_object: Json, expected_python_type: Type[T]) -> T:
         value = json_idl_object.value
         serialization_format = json_idl_object.serialization_format
-        print("@@@ JSON IDL VAL: ", value)
-        print("@@@ JSON IDL SERIALIZATION FORMAT: ", serialization_format)
 
         if serialization_format == "UTF-8":
             json_str = value.decode("UTF-8")
@@ -554,7 +562,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"Bytes can't be converted to JSON String.\n"
                 f"Unsupported serialization format: {serialization_format}"
             )
-        print("@@@ JSON STR: ", json_str)
+
         # The `from_json` function is provided from mashumaro's `DataClassJSONMixin`.
         # It deserializes a JSON string into a data class, and supports additional functionality over JSONDecoder
         # We can't use hasattr(expected_python_type, "from_json") here because we rely on mashumaro's API to customize the deserialization behavior for Flyte types.
