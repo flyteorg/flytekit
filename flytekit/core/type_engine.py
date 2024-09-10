@@ -210,8 +210,8 @@ class TypeTransformer(typing.Generic[T]):
                 f"Bytes can't be converted to JSON String.\n"
                 f"Unsupported serialization format: {serialization_format}"
             )
-        python_val =  json.loads(json_str)
-        expected_python_val = expected_python_type(python_val)
+        python_val = json.loads(json_str)
+        expected_python_val = expected_python_type(python_val)  # type: ignore
         return expected_python_val
 
     def __repr__(self):

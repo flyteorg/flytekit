@@ -3,11 +3,12 @@ from __future__ import annotations
 import collections
 import datetime
 import inspect
+import json
 import typing
 from copy import deepcopy
 from enum import Enum
 from typing import Any, Coroutine, Dict, List, Optional, Set, Tuple, Union, cast, get_args
-import json
+
 from google.protobuf import struct_pb2 as _struct
 from typing_extensions import Protocol
 
@@ -179,6 +180,7 @@ def resolve_attr_path_in_dict(d: dict, attr_path: List[Union[str, int]]) -> Any:
             )
 
     return curr_val
+
 
 def resolve_attr_path_in_pb_struct(st: _struct.Struct, attr_path: List[Union[str, int]]) -> _struct.Struct:
     curr_val = st
