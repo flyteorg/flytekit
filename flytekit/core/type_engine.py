@@ -1443,7 +1443,34 @@ class ListTransformer(TypeTransformer[T]):
             lit_list = [TypeEngine.to_literal(ctx, x, t, expected.collection_type) for x in python_val]  # type: ignore
         return Literal(collection=LiteralCollection(literals=lit_list))
 
+    def from_json(self, ctx: FlyteContext, json_idl_object: Json, expected_python_type: Type[T]) -> typing.List[T]:
+        # TODO: Handle FlyteTypes and Dict Cases
+        def recursive_from_json(self, ctx: FlyteContext, json_value: typing.Any, expected_python_type: Type[T]) -> typing.Any:
+            """
+            Recursively process JSON objects, converting them to their corresponding Python values based on
+            the expected Python type (e.g., handling List[List[int]] or List[List[float]]).
+            """
+            if typing.get_origin(expected_python_type) is list:
+                # Get the subtype, which should be the type of the list's elements
+                sub_type = self.get_sub_type(expected_python_type)
+                # Recursively process each element in the list
+                return [self.recursive_from_json(ctx, item, sub_type) for item in json_value]
+            else:
+                # Base case: if it's not a list, we assume it's a simple type and return it as-is
+                return expected_python_type(json_value)
+
+        value = json_idl_object.value
+        serialization_format = json_idl_object.serialization_format
+        if serialization_format == "UTF-8":
+            json_value = json.loads(value.decode("utf-8"))
+        else:
+            raise ValueError(f"Unknown serialization format {serialization_format}")
+        return recursive_from_json(ctx, json_value, expected_python_type)
+
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> typing.List[typing.Any]:  # type: ignore
+        scalar = lv.scalar
+        if scalar and scalar.json:
+            return self.from_json(self, ctx, scalar.json, expected_python_type)
         try:
             lits = lv.collection.literals
         except AttributeError:
