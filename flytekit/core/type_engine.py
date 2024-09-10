@@ -210,7 +210,12 @@ class TypeTransformer(typing.Generic[T]):
                 f"Bytes can't be converted to JSON String.\n"
                 f"Unsupported serialization format: {serialization_format}"
             )
-        return json.loads(json_str)
+        python_val =  json.loads(json_str)
+        expected_python_val = expected_python_type(python_val)
+        print("@@@ json str:", json_str)
+        print("@@@ python val:", python_val)
+        print("@@@ expected python val:", expected_python_val)
+        return expected_python_val
 
     def __repr__(self):
         return f"{self._name} Transforms ({self._t}) to Flyte native"
