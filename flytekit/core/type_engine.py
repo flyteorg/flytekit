@@ -41,16 +41,7 @@ from flytekit.models import interface as _interface_models
 from flytekit.models import types as _type_models
 from flytekit.models.annotation import TypeAnnotation as TypeAnnotationModel
 from flytekit.models.core import types as _core_types
-from flytekit.models.literals import (
-    Literal,
-    LiteralCollection,
-    LiteralMap,
-    Primitive,
-    Scalar,
-    Union,
-    Void,
-    Json
-)
+from flytekit.models.literals import Json, Literal, LiteralCollection, LiteralMap, Primitive, Scalar, Union, Void
 from flytekit.models.types import LiteralType, SimpleType, TypeStructure, UnionType
 
 T = typing.TypeVar("T")
@@ -199,22 +190,19 @@ class TypeTransformer(typing.Generic[T]):
 
     def to_json(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         json_str = json.dumps(python_val)
-        serialization_format = expected.simple.JSON
-        json_bytes = None
-        if serialization_format == "UTF-8":
-            json_bytes = json_str.encode("UTF-8")
-        if json_bytes is None:
-            json_bytes = json_str.encode("UTF-8") # default to UTF-8
+        json_bytes = json_str.encode("UTF-8")
         return Literal(scalar=Scalar(json=Json(value=json_bytes, serialization_format="UTF-8")))
 
     def from_json(self, ctx: FlyteContext, json_idl_object: Json, expected_python_type: Type[T]) -> T:
         value = json_idl_object.value
         serialization_format = json_idl_object.serialization_format
-        json_str = None
         if serialization_format == "UTF-8":
             json_str = value.decode("UTF-8")
-        if json_str is None:
-            json_str = value.decode("UTF-8") # default to UTF-8
+        else:
+            raise ValueError(
+                f"Bytes can't be converted to JSON String.\n"
+                f"Unsupported serialization format: {serialization_format}"
+            )
         return json.loads(json_str)
 
     def __repr__(self):
@@ -556,13 +544,14 @@ class DataclassTransformer(TypeTransformer[object]):
     def from_json(self, ctx: FlyteContext, json_idl_object: Json, expected_python_type: Type[T]) -> T:
         value = json_idl_object.value
         serialization_format = json_idl_object.serialization_format
-        json_str = None
 
         if serialization_format == "UTF-8":
             json_str = value.decode("UTF-8")
-        if json_str is None:
-            json_str = value.decode("UTF-8") # default to UTF-8
-
+        else:
+            raise ValueError(
+                f"Bytes can't be converted to JSON String.\n"
+                f"Unsupported serialization format: {serialization_format}"
+            )
         # The `from_json` function is provided from mashumaro's `DataClassJSONMixin`.
         # It deserializes a JSON string into a data class, and supports additional functionality over JSONDecoder
         # We can't use hasattr(expected_python_type, "from_json") here because we rely on mashumaro's API to customize the deserialization behavior for Flyte types.
@@ -596,7 +585,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"user defined datatypes in Flytekit"
             )
 
-        self._make_dataclass_serializable(python_val, python_type)
+        self._make_dataclass_json_serializable(python_val, python_type)
 
         # The `to_json` integrated through mashumaro's `DataClassJSONMixin` allows for more
         # functionality than JSONEncoder
@@ -769,7 +758,7 @@ class DataclassTransformer(TypeTransformer[object]):
 
         json_idl_object = lv.scalar.json
         if json_idl_object:
-            return self.from_json(ctx, json_idl_object, expected_python_type)
+            return self.from_json(ctx, json_idl_object, expected_python_type)  # type: ignore
 
         json_str = _json_format.MessageToJson(lv.scalar.generic)
 
