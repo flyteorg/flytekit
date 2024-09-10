@@ -287,7 +287,7 @@ def test_eager_workflow_with_offloaded_types():
 @mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_data")
 @mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
 @mock.patch("flytekit.core.utils.write_proto_to_file")
-def test_eager_workflow_dispatch(*args):
+def test_eager_workflow_dispatch(mock_write_to_file, mock_put_data, mock_get_data, mock_load_proto, event_loop):
     """Test that event loop is preserved after executing eager workflow via dispatch."""
 
     @eager
@@ -301,9 +301,6 @@ def test_eager_workflow_dispatch(*args):
             ctx.execution_state.with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION)
         )
     ) as ctx:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        asyncio.events.set_event_loop(loop)
         _dispatch_execute(ctx, lambda: eager_wf, "inputs path", "outputs prefix")
         loop_after_execute = asyncio.get_event_loop_policy().get_event_loop()
-        assert loop == loop_after_execute
+        assert event_loop == loop_after_execute
