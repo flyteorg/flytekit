@@ -11,6 +11,7 @@ from flytekit.core.node import Node
 from flytekit.core.promise import (
     Promise,
     VoidPromise,
+    create_and_link_node,
     flyte_entity_call_handler,
     translate_inputs_to_literals,
 )
@@ -49,6 +50,7 @@ class ArrayNode:
         self._concurrency = concurrency
         self._execution_mode = execution_mode
         self.id = target.name
+        self._bindings = []
 
         if min_successes is not None:
             self._min_successes = min_successes
@@ -99,7 +101,7 @@ class ArrayNode:
     @property
     def bindings(self) -> List[_literal_models.Binding]:
         # Required in get_serializable_node
-        return []
+        return self._bindings
 
     @property
     def upstream_nodes(self) -> List[Node]:
@@ -190,6 +192,14 @@ class ArrayNode:
         return self._execution_mode
 
     def __call__(self, *args, **kwargs):
+        ctx = FlyteContext.current_context()
+        # interface mismatch between the target and the actual inputs since we don't overwrite the interface to a list
+        temp = {
+            key: (val[0] if isinstance(val, list) and val else None) if isinstance(val, list) else val
+            for key, val in kwargs.items()
+        }
+        bound_subnode = create_and_link_node(ctx, entity=self.flyte_entity, *args, **temp)
+        self._bindings = bound_subnode.ref.node.bindings
         return flyte_entity_call_handler(self, *args, **kwargs)
 
 

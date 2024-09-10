@@ -29,7 +29,7 @@ def multiply(val: int, val1: int) -> int:
 
 
 @workflow
-def parent_wf(a: int, b: int) -> int:
+def parent_wf(a: int, b: int = 2) -> int:
     return multiply(val=a, val1=b)
 
 
