@@ -14,6 +14,7 @@ from typing import List, Optional, Type
 import mock
 import pytest
 import typing_extensions
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from flyteidl.core import errors_pb2
 from google.protobuf import json_format as _json_format
@@ -73,7 +74,7 @@ from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer, noop
 from flytekit.types.pickle import FlytePickle
 from flytekit.types.pickle.pickle import BatchSize, FlytePickleTransformer
 from flytekit.types.schema import FlyteSchema
-from flytekit.types.structured.structured_dataset import StructuredDataset
+from flytekit.types.structured.structured_dataset import StructuredDataset, StructuredDatasetTransformerEngine
 
 T = typing.TypeVar("T")
 
@@ -3246,3 +3247,31 @@ def test_dataclass_none_output_input_deserialization():
     assert float_value_output == 1.0, f"Float value was {float_value_output}, not 1.0 as expected"
     none_value_output = outer_workflow(OuterWorkflowInput(input=0)).nullable_output
     assert none_value_output is None, f"None value was {none_value_output}, not None as expected"
+
+
+@pytest.mark.serial
+def test_lazy_import_transformers_concurrently():
+    # Ensure that next call to TypeEngine.lazy_import_transformers doesn't skip the import. Mark as serial to ensure
+    # this achieves what we expect.
+    TypeEngine.has_lazy_import = False
+
+    # Configure the mocks similar to https://stackoverflow.com/questions/29749193/python-unit-testing-with-two-mock-objects-how-to-verify-call-order
+    after_import_mock, mock_register = mock.Mock(), mock.Mock()
+    mock_wrapper = mock.Mock()
+    mock_wrapper.mock_register = mock_register
+    mock_wrapper.after_import_mock = after_import_mock
+
+    with mock.patch.object(StructuredDatasetTransformerEngine, "register", new=mock_register):
+        def run():
+            TypeEngine.lazy_import_transformers()
+            after_import_mock()
+
+        N = 5
+        with ThreadPoolExecutor(max_workers=N) as executor:
+            futures = [executor.submit(run) for _ in range(N)]
+            [f.result() for f in futures]
+
+        # Assert that all the register calls come before anything else.
+        assert mock_wrapper.mock_calls[-N:] == [mock.call.after_import_mock()]*N
+        expected_number_of_register_calls = len(mock_wrapper.mock_calls) - N
+        assert all([mock_call[0] == "mock_register" for mock_call in mock_wrapper.mock_calls[:expected_number_of_register_calls]])
