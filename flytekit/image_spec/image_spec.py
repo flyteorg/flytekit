@@ -52,7 +52,7 @@ class ImageSpec:
         commands: Command to run during the building process
         tag_format: Custom string format for image tag. The ImageSpec hash passed in as `spec_hash`. For example,
             to add a "dev" suffix to the image tag, set `tag_format="{spec_hash}-dev"`
-        copy: This option allows the user to specify which source files to copy from the local host, into the image.
+        source_copy_mode: This option allows the user to specify which source files to copy from the local host, into the image.
             Not setting this option means to use the default flytekit behavior. The default behavior is:
                 - if fast register is used, source files are not copied into the image (because they're already copied
                   into the fast register tar layer).
@@ -83,7 +83,7 @@ class ImageSpec:
     entrypoint: Optional[List[str]] = None
     commands: Optional[List[str]] = None
     tag_format: Optional[str] = None
-    copy: Optional[CopyFileDetection] = None
+    source_copy_mode: Optional[CopyFileDetection] = None
 
     def __post_init__(self):
         self.name = self.name.lower()
@@ -94,7 +94,7 @@ class ImageSpec:
         # If not set, help the user set this option as well, to support the older default behavior where existence
         # of the source root implied that copying of files was needed.
         if self.source_root is not None:
-            self.copy = self.copy or CopyFileDetection.LOADED_MODULES
+            self.source_copy_mode = self.source_copy_mode or CopyFileDetection.LOADED_MODULES
 
         parameters_str_list = [
             "packages",
@@ -152,7 +152,7 @@ class ImageSpec:
         if isinstance(spec.base_image, ImageSpec):
             spec = dataclasses.replace(spec, base_image=spec.base_image)
 
-        if self.copy is not None and self.copy != CopyFileDetection.NO_COPY:
+        if self.source_copy_mode is not None and self.source_copy_mode != CopyFileDetection.NO_COPY:
             if not self.source_root:
                 raise ValueError(f"Field source_root for image spec {self.name} must be set when copy is set")
 
@@ -164,7 +164,9 @@ class ImageSpec:
             #  what about deref_symlink?
             ignore = IgnoreGroup(self.source_root, [GitIgnore, DockerIgnore, StandardIgnore])
 
-            _, ls_digest = ls_files(str(self.source_root), self.copy, deref_symlinks=False, ignore_group=ignore)
+            _, ls_digest = ls_files(
+                str(self.source_root), self.source_copy_mode, deref_symlinks=False, ignore_group=ignore
+            )
 
             # Since the source root is supposed to represent the files, store the digest into the source root as a
             # shortcut to represent all the files.

@@ -33,7 +33,7 @@ def test_create_docker_context(tmp_path):
         commands=["mkdir my_dir"],
         entrypoint=["/bin/bash"],
         pip_extra_index_url=["https://extra-url.com"],
-        copy=CopyFileDetection.ALL,
+        source_copy_mode=CopyFileDetection.ALL,
     )
 
     create_docker_context(image_spec, docker_context_path)

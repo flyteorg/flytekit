@@ -151,7 +151,7 @@ def build():
         cudnn = image_spec.cudnn if image_spec.cudnn else ""
         envd_config += f'    install.cuda(version="{image_spec.cuda}", cudnn="{cudnn}")\n'
 
-    if image_spec.copy is not None and image_spec.copy != CopyFileDetection.NO_COPY:
+    if image_spec.source_copy_mode is not None and image_spec.source_copy_mode != CopyFileDetection.NO_COPY:
         if not image_spec.source_root:
             raise ValueError(f"Field source_root for {image_spec} must be set when copy is set")
         # todo: See note in we should pipe through ignores from the command line here at some point.
@@ -160,7 +160,9 @@ def build():
 
         dst = pathlib.Path(cfg_path).parent
 
-        ls, _ = ls_files(str(image_spec.source_root), image_spec.copy, deref_symlinks=False, ignore_group=ignore)
+        ls, _ = ls_files(
+            str(image_spec.source_root), image_spec.source_copy_mode, deref_symlinks=False, ignore_group=ignore
+        )
 
         for file_to_copy in ls:
             rel_path = os.path.relpath(file_to_copy, start=str(image_spec.source_root))

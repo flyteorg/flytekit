@@ -285,8 +285,8 @@ def update_image_spec_copy_handling(image_spec: ImageSpec, settings: Serializati
     from where. (or to where but that is hard-coded)
     """
     # Handle when the copy method is explicitly set by the user.
-    if image_spec.copy is not None:
-        if image_spec.copy != CopyFileDetection.NO_COPY:
+    if image_spec.source_copy_mode is not None:
+        if image_spec.source_copy_mode != CopyFileDetection.NO_COPY:
             # if we need to copy any files, make sure source root is set. This preserves the behavior pre-copy arg,
             # and allows the user to not have to specify source root.
             if image_spec.source_root is None and settings.source_root is not None:
@@ -301,8 +301,8 @@ def update_image_spec_copy_handling(image_spec: ImageSpec, settings: Serializati
         if settings.source_root is not None or image_spec.source_root is not None:
             if image_spec.source_root is None:
                 image_spec.source_root = settings.source_root
-            if image_spec.copy is None:
-                image_spec.copy = CopyFileDetection.LOADED_MODULES
+            if image_spec.source_copy_mode is None:
+                image_spec.source_copy_mode = CopyFileDetection.LOADED_MODULES
 
 
 def get_registerable_container_image(img: Optional[Union[str, ImageSpec]], cfg: ImageConfig) -> str:
