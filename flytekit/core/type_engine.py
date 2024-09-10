@@ -1445,7 +1445,7 @@ class ListTransformer(TypeTransformer[T]):
 
     def from_json(self, ctx: FlyteContext, json_idl_object: Json, expected_python_type: Type[T]) -> typing.List[T]:
         # TODO: Handle FlyteTypes and Dict Cases
-        def recursive_from_json(self, ctx: FlyteContext, json_value: typing.Any, expected_python_type: Type[T]) -> typing.Any:
+        def recursive_from_json(ctx: FlyteContext, json_value: typing.Any, expected_python_type: Type[T]) -> typing.Any:
             """
             Recursively process JSON objects, converting them to their corresponding Python values based on
             the expected Python type (e.g., handling List[List[int]] or List[List[float]]).
@@ -1470,7 +1470,7 @@ class ListTransformer(TypeTransformer[T]):
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> typing.List[typing.Any]:  # type: ignore
         scalar = lv.scalar
         if scalar and scalar.json:
-            return self.from_json(self, ctx, scalar.json, expected_python_type)
+            return self.from_json(ctx, scalar.json, expected_python_type)
         try:
             lits = lv.collection.literals
         except AttributeError:
