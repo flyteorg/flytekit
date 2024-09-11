@@ -234,6 +234,7 @@ def test_registry_name():
         "192.168.1.1:30000/myimage",
         "ghcr.io/flyteorg",
         "my.registry.com/myimage",
+        "my.registry.com:5000/myimage",
         "myregistry:5000/myimage",
         "us-west1-docker.pkg.dev/example.com/my-project/my-repo"
         "flyteorg",
