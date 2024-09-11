@@ -601,21 +601,24 @@ def test_workflow_remote_func(mock_ipython_check):
         double,
         inputs={"a": 3},
         wait=True,
+        version=VERSION,
     )
     out1 = remote.execute(
         parent_wf,
         inputs={"a": 3},
         wait=True,
+        version=VERSION,
     )
     out2 = remote.execute(
         parent_wf,
         inputs={"a": 2},
         wait=True,
+        version=VERSION,
     )
 
-    assert out0["o0"] == 6
-    assert out1["o0"] == 18
-    assert out2["o0"] == 12
+    assert out0.outputs["o0"] == 6
+    assert out1.outputs["o0"] == 18
+    assert out2.outputs["o0"] == 12
 
 
 @mock.patch("flytekit.tools.interactive.ipython_check")
@@ -631,8 +634,9 @@ def test_execute_task_remote_func_list_of_floats(mock_ipython_check):
         concat_list,
         inputs={"xs": xs},
         wait=True,
+        version=VERSION,
     )
-    assert out["o0"] == "[0.1, 0.2, 0.3, 0.4, -99999.7]"
+    assert out.outputs["o0"] == "[0.1, 0.2, 0.3, 0.4, -99999.7]"
 
 
 @mock.patch("flytekit.tools.interactive.ipython_check")
@@ -648,8 +652,9 @@ def test_execute_task_remote_func_convert_dict(mock_ipython_check):
         convert_to_string,
         inputs={"d": d},
         wait=True,
+        version=VERSION,
     )
-    assert json.loads(out["o0"]) == {"key1": "value1", "key2": "value2"}
+    assert json.loads(out.outputs["o0"]) == {"key1": "value1", "key2": "value2"}
 
 
 @mock.patch("flytekit.tools.interactive.ipython_check")
@@ -665,8 +670,9 @@ def test_execute_python_workflow_remote_func_dict_of_string_to_string(mock_ipyth
         my_dict_str_wf,
         inputs={"d": d},
         wait=True,
+        version=VERSION,
     )
-    assert json.loads(out["o0"]) == {"k1": "v1", "k2": "v2"}
+    assert json.loads(out.outputs["o0"]) == {"k1": "v1", "k2": "v2"}
 
 
 @mock.patch("flytekit.tools.interactive.ipython_check")
@@ -683,8 +689,9 @@ def test_execute_python_workflow_remote_func_list_of_floats(mock_ipython_check):
         my_list_float_wf,
         inputs={"xs": xs},
         wait=True,
+        version=VERSION,
     )
-    assert out["o0"] == "[42.24, 999.1, 0.0001]"
+    assert out.outputs["o0"] == "[42.24, 999.1, 0.0001]"
 
 @mock.patch("flytekit.tools.interactive.ipython_check")
 def test_execute_workflow_remote_fn_with_maptask(mock_ipython_check):
@@ -699,8 +706,9 @@ def test_execute_workflow_remote_fn_with_maptask(mock_ipython_check):
         workflow_with_maptask,
         inputs={"data": d, "y": 3},
         wait=True,
+        version=VERSION,
     )
-    assert out["o0"] == [4, 5, 6]
+    assert out.outputs["o0"] == [4, 5, 6]
 
 def test_register_wf_fast(register):
     from workflows.basic.subworkflows import parent_wf
