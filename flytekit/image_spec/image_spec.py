@@ -90,6 +90,13 @@ class ImageSpec:
         self._is_force_push = os.environ.get(FLYTE_FORCE_PUSH_IMAGE_SPEC, False)  # False by default
         if self.registry:
             self.registry = self.registry.lower()
+            if not validate_docker_registry_name(self.registry):
+                raise ValueError(
+                    f"Invalid container registry name: '{self.registry}'.\n Expected formats:\n"
+                    f"- 'localhost:30000' (for local registries)\n"
+                    f"- 'ghcr.io/username' (for GitHub Container Registry)\n"
+                    f"- 'docker.io/username' (for docker hub)\n"
+                )
 
         # If not set, help the user set this option as well, to support the older default behavior where existence
         # of the source root implied that copying of files was needed.
@@ -407,3 +414,12 @@ class ImageBuildEngine:
                     f" Please upgrade envd to v0.3.39+."
                 )
         return cls._REGISTRY[builder][0]
+
+
+def validate_docker_registry_name(name: str) -> bool:
+    """Validate Docker container registry name."""
+    # Define the regular expression for the registry name
+    registry_pattern = r"^(localhost:\d{1,5}|([a-z0-9._-]+)(:[0-9]{1,5})?)(/[a-zA-Z0-9._-]+)*$"
+
+    # Use regex to validate the given name
+    return bool(re.match(registry_pattern, name))
