@@ -325,6 +325,7 @@ can be found within the ``workflow_executions`` of a given node execution. Note 
 must again be synced in order to inspect the input and output of the contained tasks.
 
 .. code-block:: python
+
     @task
     def add_random(x: int) -> int:
         return x + random.randint(1, 100)
@@ -348,6 +349,7 @@ To get the output of the first ``add_random`` call in ``sub_wf``, you can do the
 ``parent_wf``:
 
 .. code-block:: python
+
     execution = remote.fetch_execution(name="adgswtrzfn99k2cws49q", project="flytesnacks", domain="development")
     remote.sync_execution(execution, sync_nodes=True)
     remote.sync_execution(execution.node_executions['n1'].workflow_executions[0], sync_nodes=True)
