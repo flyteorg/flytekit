@@ -90,7 +90,7 @@ class ImageSpec:
         self._is_force_push = os.environ.get(FLYTE_FORCE_PUSH_IMAGE_SPEC, False)  # False by default
         if self.registry:
             self.registry = self.registry.lower()
-            if not validate_docker_registry_name(self.registry):
+            if not validate_container_registry_name(self.registry):
                 raise ValueError(
                     f"Invalid container registry name: '{self.registry}'.\n Expected formats:\n"
                     f"- 'localhost:30000' (for local registries)\n"
@@ -416,7 +416,7 @@ class ImageBuildEngine:
         return cls._REGISTRY[builder][0]
 
 
-def validate_docker_registry_name(name: str) -> bool:
+def validate_container_registry_name(name: str) -> bool:
     """Validate Docker container registry name."""
     # Define the regular expression for the registry name
     registry_pattern = r"^(localhost:\d{1,5}|([a-z0-9._-]+)(:[0-9]{1,5})?)(/[a-zA-Z0-9._-]+)*$"
