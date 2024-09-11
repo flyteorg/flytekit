@@ -84,13 +84,12 @@ image = ImageSpec(
     name="ollama_serve",
     registry="...",
     packages=["flytekitplugins-inference"],
-    builder="default",
 )
 
 ollama_instance = Ollama(
     model=Model(
         name="llama3-mario",
-        modelfile="FROM llama3\nADAPTER {inputs.ggml}\nPARAMETER temperature 1\nPARAMETER num_ctx 4096\nSYSTEM You are Mario from super mario bros, acting as an assistant.",
+        modelfile="FROM llama3\nADAPTER {inputs.gguf}\nPARAMETER temperature 1\nPARAMETER num_ctx 4096\nSYSTEM You are Mario from super mario bros, acting as an assistant.",
     )
 )
 
@@ -101,7 +100,7 @@ ollama_instance = Ollama(
     accelerator=A10G,
     requests=Resources(gpu="0"),
 )
-def model_serving(questions: list[str], ggml: FlyteFile) -> list[str]:
+def model_serving(questions: list[str], gguf: FlyteFile) -> list[str]:
     responses = []
     client = OpenAI(
         base_url=f"{ollama_instance.base_url}/v1", api_key="ollama"
@@ -111,7 +110,6 @@ def model_serving(questions: list[str], ggml: FlyteFile) -> list[str]:
         completion = client.chat.completions.create(
             model="llama3-mario",
             messages=[
-                {"role": "system", "content": "You are a knowledgeable AI assistant."},
                 {"role": "user", "content": question},
             ],
             max_tokens=256,

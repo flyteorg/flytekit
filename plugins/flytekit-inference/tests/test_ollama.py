@@ -8,6 +8,7 @@ def test_ollama_init_valid_params():
         model=Model(name="mistral-nemo"),
     )
 
+    assert len(ollama_instance.pod_template.pod_spec.init_containers) == 2
     assert (
         ollama_instance.pod_template.pod_spec.init_containers[0].image
         == "ollama/ollama"
@@ -24,11 +25,11 @@ def test_ollama_init_valid_params():
     )
     assert (
         "mistral-nemo"
-        in ollama_instance.pod_template.pod_spec.init_containers[1].command[2]
+        in ollama_instance.pod_template.pod_spec.init_containers[1].args[0]
     )
     assert (
-        "/api/pull"
-        in ollama_instance.pod_template.pod_spec.init_containers[1].command[2]
+        "ollama.pull"
+        in ollama_instance.pod_template.pod_spec.init_containers[1].args[0]
     )
 
 
@@ -53,13 +54,14 @@ def test_ollama_modelfile():
         )
     )
 
+    assert len(ollama_instance.pod_template.pod_spec.init_containers) == 2
     assert (
         "ollama.create"
-        in ollama_instance.pod_template.pod_spec.init_containers[1].command[2]
+        in ollama_instance.pod_template.pod_spec.init_containers[1].args[0]
     )
     assert (
         "format(**inputs)"
-        not in ollama_instance.pod_template.pod_spec.init_containers[1].command[2]
+        not in ollama_instance.pod_template.pod_spec.init_containers[1].args[0]
     )
 
 
@@ -89,11 +91,19 @@ PARAMETER num_predict 200
         )
     )
 
+    assert len(ollama_instance.pod_template.pod_spec.init_containers) == 3
+    assert (
+        "model-server" in ollama_instance.pod_template.pod_spec.init_containers[0].name
+    )
+    assert (
+        "input-downloader"
+        in ollama_instance.pod_template.pod_spec.init_containers[1].name
+    )
     assert (
         "ollama.create"
-        in ollama_instance.pod_template.pod_spec.init_containers[1].command[2]
+        in ollama_instance.pod_template.pod_spec.init_containers[2].args[0]
     )
     assert (
         "format(**inputs)"
-        in ollama_instance.pod_template.pod_spec.init_containers[1].command[2]
+        in ollama_instance.pod_template.pod_spec.init_containers[2].args[0]
     )
