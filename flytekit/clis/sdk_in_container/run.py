@@ -38,6 +38,7 @@ from flytekit.configuration import (
     SerializationSettings,
 )
 from flytekit.configuration.plugin import get_plugin
+from flytekit.constants import CopyFileDetection
 from flytekit.core import context_manager
 from flytekit.core.artifact import ArtifactQuery
 from flytekit.core.base_task import PythonTask
@@ -66,7 +67,7 @@ from flytekit.remote import (
 )
 from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.tools import module_loader
-from flytekit.tools.fast_registration import CopyFileDetection, FastPackageOptions
+from flytekit.tools.fast_registration import FastPackageOptions
 from flytekit.tools.script_mode import _find_project_root, compress_scripts, get_all_modules
 from flytekit.tools.translator import Options
 

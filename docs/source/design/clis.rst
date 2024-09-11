@@ -49,6 +49,10 @@ Suppose you execute a script that defines 10 tasks and a workflow that calls onl
 
 It is considered fast registration because when a script is executed using ``pyflyte run``, the script is bundled up and uploaded to FlyteAdmin. When the task is executed in the backend, this zipped file is extracted and used.
 
+.. note ::
+
+   If `pigz <https://zlib.net/pigz/>`_ is installed, it will be leveraged by ``pyflyte`` to accelerate the compression of the code tarball.
+
 .. _pyflyte-register:
 
 What is ``pyflyte register``?
@@ -109,6 +113,7 @@ The ``serialize`` command is deprecated around the end of Q3 2024. Users should 
 Migrate
 -------
 To use the ``package`` command, make the following changes:
+
 * The ``--local-source-root`` option should be changed to ``--source``
 * If the already ``--in-container-virtualenv-root`` option was specified, then move to the ``--python-interpreter`` option in ``package``. The default Python interpreter for serialize was based on this deprecated flag, and if not specified, ``sys.executable``. The default for ``package`` is ``/opt/venv/bin/python3``. If that is not where the Python interpreter is located in the task container, then you'll need to now specify ``--python-interpreter``.  Note that this was only used for Spark tasks.
 * The ``--in-container-config-path`` option should be removed as this was not actually being used by the ``serialize`` command.
@@ -117,5 +122,6 @@ To use the ``package`` command, make the following changes:
 Functional Changes
 ------------------
 Beyond the options, the ``package`` command differs in that
+
 * Whether or not to use fast register should be specified by the ``--copy auto`` or ``--copy all`` flags, rather than ``fast`` being a subcommand.
 * The serialized file output by default is in a .tgz file, rather than being separate files. This means that any subsequent ``flytectl register`` command will need to be updated with the ``--archive`` flag.

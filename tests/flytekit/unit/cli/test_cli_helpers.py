@@ -10,7 +10,7 @@ from flyteidl.core.identifier_pb2 import LAUNCH_PLAN
 from flytekit.clis import helpers
 from flytekit.clis.helpers import _hydrate_identifier, _hydrate_workflow_template_nodes, hydrate_registration_parameters
 from flytekit.clis.sdk_in_container.helpers import parse_copy
-from flytekit.tools.fast_registration import CopyFileDetection
+from flytekit.constants import CopyFileDetection
 
 
 def test_parse_args_into_dict():
