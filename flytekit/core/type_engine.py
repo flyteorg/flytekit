@@ -1540,6 +1540,9 @@ class UnionTransformer(TypeTransformer[T]):
         python_type = get_underlying_type(t)
         if _is_union_type(python_type):
             for sub_type in get_args(python_type):
+                if sub_type == typing.Any:
+                    # this is an edge case
+                    return
                 try:
                     super().assert_type(sub_type, v)
                     return
