@@ -149,7 +149,7 @@ class TypeTransformer(typing.Generic[T]):
         return self._type_assertions_enabled
 
     def assert_type(self, t: Type[T], v: T):
-        if not hasattr(t, "__origin__") and not isinstance(v, t):
+        if not ((get_origin(t) is not None) or isinstance(v, t)):
             raise TypeTransformerFailedError(f"Expected value of type {t} but got '{v}' of type {type(v)}")
 
     @abstractmethod
@@ -726,10 +726,24 @@ class ProtobufTransformer(TypeTransformer[Message]):
     def get_literal_type(self, t: Type[T]) -> LiteralType:
         return LiteralType(simple=SimpleType.STRUCT, metadata={ProtobufTransformer.PB_FIELD_KEY: self.tag(t)})
 
+    def _handle_list_literal(self, ctx: FlyteContext, elems: list) -> Literal:
+        if len(elems) == 0:
+            return Literal(collection=LiteralCollection(literals=[]))
+        st = type(elems[0])
+        lt = TypeEngine.to_literal_type(st)
+        lits = [TypeEngine.to_literal(ctx, x, st, lt) for x in elems]
+        return Literal(collection=LiteralCollection(literals=lits))
+
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         struct = Struct()
         try:
-            struct.update(_MessageToDict(cast(Message, python_val)))
+            message_dict = _MessageToDict(cast(Message, python_val))
+            try:
+                struct.update(message_dict)
+            except Exception:
+                if isinstance(message_dict, list):
+                    return self._handle_list_literal(ctx, message_dict)
+                raise
         except Exception:
             raise TypeTransformerFailedError("Failed to convert to generic protobuf struct")
         return Literal(scalar=Scalar(generic=struct))
