@@ -33,14 +33,14 @@ class InstanceTrackingMeta(type):
 
     @staticmethod
     def _get_module_from_main(globals) -> Optional[str]:
+        curdir = Path.cwd()
         file = globals.get("__file__")
         if file is None:
             return None
 
         file = Path(file)
         try:
-            root_dir = os.path.commonpath([file.resolve(), Path.cwd()])
-            file_relative = Path(os.path.relpath(file.resolve(), root_dir))
+            file_relative = file.relative_to(curdir)
         except ValueError:
             return None
 
@@ -49,8 +49,8 @@ class InstanceTrackingMeta(type):
         if len(module_components) == 0:
             return None
 
-        # make sure /root directory is in the PYTHONPATH.
-        sys.path.insert(0, root_dir)
+        # make sure current directory is in the PYTHONPATH.
+        sys.path.insert(0, str(curdir))
         try:
             return import_module_from_file(module_name, file)
         except ModuleNotFoundError:
@@ -328,8 +328,8 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
             f = f.task_function
         # If the module is __main__, we need to find the actual module name based on the file path
         inspect_file = inspect.getfile(f)  # type: ignore
-        # get module name for instances in the same file as the __main__ module
-        mod_name, _ = InstanceTrackingMeta._find_instance_module()
+        file_name, _ = os.path.splitext(os.path.basename(inspect_file))
+        mod_name = get_full_module_path(f, file_name)  # type: ignore
         return f"{mod_name}.{name}", mod_name, name, os.path.abspath(inspect_file)
 
     mod_name = get_full_module_path(mod, mod_name)
