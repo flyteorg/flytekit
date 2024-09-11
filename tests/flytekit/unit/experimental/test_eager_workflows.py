@@ -281,5 +281,3 @@ def test_eager_workflow_with_offloaded_types():
 
     result = asyncio.run(eager_wf_flyte_directory())
     assert result == "some data"
-
-
