@@ -607,13 +607,13 @@ def test_workflow_remote_func(mock_ipython_check):
         parent_wf,
         inputs={"a": 3},
         wait=True,
-        version=VERSION,
+        version=VERSION + "-1",
     )
     out2 = remote.execute(
         parent_wf,
         inputs={"a": 2},
         wait=True,
-        version=VERSION,
+        version=VERSION + "-2",
     )
 
     assert out0.outputs["o0"] == 6
