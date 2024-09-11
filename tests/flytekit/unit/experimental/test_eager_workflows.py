@@ -11,7 +11,7 @@ from hypothesis import given
 
 from flytekit import dynamic, task, workflow
 
-from flytekit.bin.entrypoint import _get_working_loop, _dispatch_execute
+from flytekit.bin.entrypoint import _dispatch_execute
 from flytekit.core import context_manager
 from flytekit.core.promise import VoidPromise
 from flytekit.exceptions.user import FlyteValidationException

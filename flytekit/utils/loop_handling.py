@@ -1,8 +1,7 @@
 import asyncio
-from signal import SIGINT, SIGTERM
-from contextlib import contextmanager
-
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
+from signal import SIGINT, SIGTERM
 
 from flytekit.loggers import logger
 
