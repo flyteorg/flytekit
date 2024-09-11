@@ -192,16 +192,16 @@ class ArrayNode:
         return self._execution_mode
 
     def __call__(self, *args, **kwargs):
-        # interface mismatch between the target and the actual inputs since we don't create a new entity with a
-        # transformed to list interface
-        transformed_kwargs = {
-            key: (val[0] if isinstance(val, list) and val else None) if isinstance(val, list) else val
-            for key, val in kwargs.items()
-        }
-        bound_subnode = create_and_link_node(
-            FlyteContext.current_context(), entity=self.flyte_entity, link_node=False, **transformed_kwargs
-        )
-        self._bindings = bound_subnode.ref.node.bindings
+        ctx = FlyteContext.current_context()
+        if ctx.compilation_state is not None:
+            # interface mismatch between the target and the actual inputs since we don't create a new entity with a
+            # transformed to list interface
+            transformed_kwargs = {
+                key: (val[0] if isinstance(val, list) and val else None) if isinstance(val, list) else val
+                for key, val in kwargs.items()
+            }
+            bound_subnode = create_and_link_node(ctx, entity=self.flyte_entity, link_node=False, **transformed_kwargs)
+            self._bindings = bound_subnode.ref.node.bindings
         return flyte_entity_call_handler(self, *args, **kwargs)
 
 
