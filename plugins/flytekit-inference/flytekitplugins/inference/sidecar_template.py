@@ -64,7 +64,10 @@ class ModelInferenceTemplate:
                     env=([V1EnvVar(name=k, value=v) for k, v in self._env.items()] if self._env else None),
                     startup_probe=(
                         V1Probe(
-                            http_get=V1HTTPGetAction(path=self._health_endpoint, port=self._port),
+                            http_get=V1HTTPGetAction(
+                                path=self._health_endpoint,
+                                port=self._port,
+                            ),
                             failure_threshold=100,  # The model server initialization can take some time, so the failure threshold is increased to accommodate this delay.
                         )
                         if self._health_endpoint
@@ -72,7 +75,10 @@ class ModelInferenceTemplate:
                     ),
                 ),
             ],
-            volumes=[V1Volume(name="shared-data", empty_dir={})],
+            volumes=[
+                V1Volume(name="shared-data", empty_dir={}),
+                V1Volume(name="tmp", empty_dir={}),
+            ],
         )
 
         if self._download_inputs:
@@ -115,14 +121,17 @@ with open('/shared/inputs.json', 'w') as f:
     json.dump(inputs, f)
 """
 
-            command = f'pip install flytekit && python3 -c "{input_download_code}" {{{{.input}}}}'
+            command = f'python3 -c "{input_download_code}" {{{{.input}}}}'
             self._pod_template.pod_spec.init_containers.append(
                 V1Container(
                     name="input-downloader",
                     image="python:3.11-slim",
                     command=["/bin/sh", "-c"],
                     args=[f"pip install flytekit && {command}"],
-                    volume_mounts=[V1VolumeMount(name="shared-data", mount_path="/shared")],
+                    volume_mounts=[
+                        V1VolumeMount(name="shared-data", mount_path="/shared"),
+                        V1VolumeMount(name="tmp", mount_path="/tmp"),
+                    ],
                 ),
             )
 

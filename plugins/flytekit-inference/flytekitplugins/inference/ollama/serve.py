@@ -33,7 +33,6 @@ class Ollama(ModelInferenceTemplate):
         cpu: int = 1,
         gpu: int = 1,
         mem: str = "15Gi",
-        health_endpoint: str = "/",
     ):
         """Initialize Ollama class for managing a Kubernetes pod template.
 
@@ -43,7 +42,6 @@ class Ollama(ModelInferenceTemplate):
         :param cpu: The number of CPU cores requested for the container. Default is 1.
         :param gpu: The number of GPUs requested for the container. Default is 1.
         :param mem: The amount of memory requested for the container, specified as a string. Default is "15Gi".
-        :param health_endpoint: The health endpoint for the model server container. Default is "/".
         """
         self._model_name = model.name
         self._model_mem = model.mem
@@ -56,7 +54,6 @@ class Ollama(ModelInferenceTemplate):
             cpu=cpu,
             gpu=gpu,
             mem=mem,
-            health_endpoint=health_endpoint,
             download_inputs=(True if self._model_modelfile and "{inputs" in self._model_modelfile else False),
         )
 
@@ -66,6 +63,7 @@ class Ollama(ModelInferenceTemplate):
         from kubernetes.client.models import (
             V1Container,
             V1ResourceRequirements,
+            V1SecurityContext,
             V1VolumeMount,
         )
 
@@ -76,7 +74,27 @@ class Ollama(ModelInferenceTemplate):
 import base64
 import time
 import ollama
+import requests
 """
+
+            ollama_service_ready = f"""
+# Wait for Ollama service to be ready
+max_retries = 30
+retry_interval = 1
+for _ in range(max_retries):
+    try:
+        response = requests.get('{self.base_url}')
+        if response.status_code == 200:
+            print('Ollama service is ready')
+            break
+    except requests.RequestException:
+        pass
+    time.sleep(retry_interval)
+else:
+    print('Ollama service did not become ready in time')
+    exit(1)
+"""
+
             encoded_modelfile = base64.b64encode(self._model_modelfile.encode("utf-8")).decode("utf-8")
 
             if "{inputs" in self._model_modelfile:
@@ -102,7 +120,7 @@ modelfile = modelfile.replace('{{', '{{{{').replace('}}', '}}}}')
 with open('Modelfile', 'w') as f:
     f.write(modelfile)
 
-time.sleep(15)
+{ollama_service_ready}
 
 for chunk in ollama.create(model='{self._model_name}', path='Modelfile', stream=True):
     print(chunk)
@@ -118,7 +136,7 @@ modelfile = base64.b64decode(encoded_model_file).decode('utf-8')
 with open('Modelfile', 'w') as f:
     f.write(modelfile)
 
-time.sleep(15)
+{ollama_service_ready}
 
 for chunk in ollama.create(model='{self._model_name}', path='Modelfile', stream=True):
     print(chunk)
@@ -127,7 +145,7 @@ for chunk in ollama.create(model='{self._model_name}', path='Modelfile', stream=
             python_code = f"""
 {base_code}
 
-time.sleep(15)
+{ollama_service_ready}
 
 for chunk in ollama.pull('{self._model_name}', stream=True):
     print(chunk)
@@ -140,7 +158,7 @@ for chunk in ollama.pull('{self._model_name}', stream=True):
                 name=container_name,
                 image=DefaultImages.default_image(),
                 command=["/bin/sh", "-c"],
-                args=[f"pip install ollama && {command}"],
+                args=[f"pip install requests && pip install ollama && {command}"],
                 resources=V1ResourceRequirements(
                     requests={
                         "cpu": self._model_cpu,
@@ -151,6 +169,12 @@ for chunk in ollama.pull('{self._model_name}', stream=True):
                         "memory": self._model_mem,
                     },
                 ),
-                volume_mounts=[V1VolumeMount(name="shared-data", mount_path="/shared")],
+                security_context=V1SecurityContext(
+                    run_as_user=0,
+                ),
+                volume_mounts=[
+                    V1VolumeMount(name="shared-data", mount_path="/shared"),
+                    V1VolumeMount(name="tmp", mount_path="/tmp"),
+                ],
             )
         )
