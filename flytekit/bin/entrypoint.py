@@ -396,17 +396,18 @@ def _execute_task(
         if all(os.path.realpath(path) != working_dir for path in sys.path):
             sys.path.append(working_dir)
 
-        if pickled:
-            import gzip
+        def load_task():
+            if pickled:
+                import gzip
 
-            import cloudpickle
+                import cloudpickle
 
-            with gzip.open(pkl_file, "r") as f:
-                load_task = lambda: cloudpickle.load(f)
-        else:
-            resolver_obj = load_object_from_module(resolver)
-            # Use the resolver to load the actual task object
-            load_task = lambda: resolver_obj.load_task(loader_args=resolver_args)
+                with gzip.open(pkl_file, "r") as f:
+                    return cloudpickle.load(f)
+            else:
+                resolver_obj = load_object_from_module(resolver)
+                # Use the resolver to load the actual task object
+                return resolver_obj.load_task(loader_args=resolver_args)
 
         if test:
             logger.info(
@@ -462,16 +463,15 @@ def _execute_map_task(
         task_index = _compute_array_job_index()
         mtr = load_object_from_module(resolver)()
 
-        if pickled:
-            import gzip
+        def load_task():
+            if pickled:
+                import gzip
 
-            import cloudpickle
+                import cloudpickle
 
-            with gzip.open(pkl_file, "r") as f:
-                load_task = lambda: cloudpickle.load(f)
-        else:
-            mtr = load_object_from_module(resolver)()
-            load_task = lambda: mtr.load_task(loader_args=resolver_args, max_concurrency=max_concurrency)
+                with gzip.open(pkl_file, "r") as f:
+                    return cloudpickle.load(f)
+            return mtr.load_task(loader_args=resolver_args, max_concurrency=max_concurrency)
 
         # Special case for the map task resolver, we need to append the task index to the output prefix.
         # TODO: (https://github.com/flyteorg/flyte/issues/5011) Remove legacy map task
