@@ -140,7 +140,7 @@ def resolve_attr_path_in_promise(p: Promise, t: typing.Type) -> Promise:
 
     # If the current value is a dataclass, resolve the dataclass with the remaining path
     if len(p.attr_path) > 0 and type(curr_val.value) is _literals_models.Scalar:
-        from flytekit.models.literals import Json
+        from flytekit.models.literals import Json, Literal, Scalar
 
         # We keep it for reference task local execution in the future.
         if type(curr_val.value.value) is _struct.Struct:
@@ -160,9 +160,10 @@ def resolve_attr_path_in_promise(p: Promise, t: typing.Type) -> Promise:
                     f"Unsupported serialization format: {serialization_format}"
                 )
             dict_obj = json.loads(json_str)
-            v = resolve_attr_path_in_dict(dict_obj, attr_path=p.attr_path[used:])
-            literal_type = TypeEngine.to_literal_type(t)
-            curr_val = TypeEngine.to_literal(FlyteContextManager.current_context(), v, t, literal_type)
+            python_val = resolve_attr_path_in_dict(dict_obj, attr_path=p.attr_path[used:])
+            json_str = json.dumps(python_val)
+            json_bytes = json_str.encode("UTF-8")
+            curr_val = Literal(scalar=Scalar(json=Json(value=json_bytes, serialization_format="UTF-8")))
 
     p._val = curr_val
     return p

@@ -14,7 +14,7 @@ import typing
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from functools import lru_cache
-from typing import Dict, List, NamedTuple, Optional, Type, cast
+from typing import Dict, List, NamedTuple, Optional, Type, cast, get_type_hints
 
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from flyteidl.core import literals_pb2
@@ -360,6 +360,9 @@ class DataclassTransformer(TypeTransformer[object]):
         self._decoder: Dict[Type, JSONDecoder] = {}
 
     def assert_type(self, expected_type: Type[DataClassJsonMixin], v: T):
+        # special case for JSON IDL
+        if v is str:
+            return
         # Skip iterating all attributes in the dataclass if the type of v already matches the expected_type
         expected_type = get_underlying_type(expected_type)
         if type(v) == expected_type or issubclass(type(v), expected_type):
@@ -496,10 +499,13 @@ class DataclassTransformer(TypeTransformer[object]):
         # Recursively construct the dataclass_type which contains the literal type of each field
         literal_type = {}
 
+        hints = get_type_hints(t)
         # Get the type of each field from dataclass
         for field in t.__dataclass_fields__.values():  # type: ignore
             try:
-                literal_type[field.name] = TypeEngine.to_literal_type(field.type)
+                name = field.name
+                python_type = hints.get(field.name, field.type)
+                literal_type[name] = TypeEngine.to_literal_type(python_type)
             except Exception as e:
                 logger.warning(
                     "Field {} of type {} cannot be converted to a literal type. Error: {}".format(
@@ -712,7 +718,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 return python_type(python_val)
             return python_val
 
-        dataclass_attributes = typing.get_type_hints(python_type)
+        dataclass_attributes = get_type_hints(python_type)
         for n, t in dataclass_attributes.items():
             val = python_val.__getattribute__(n)
             python_val.__setattr__(n, self._make_dataclass_json_serializable(val, t))
