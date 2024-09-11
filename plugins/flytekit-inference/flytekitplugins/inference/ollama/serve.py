@@ -69,15 +69,14 @@ class Ollama(ModelInferenceTemplate):
 
         container_name = "create-model" if self._model_modelfile else "pull-model"
 
-        if self._model_modelfile:
-            base_code = """
+        base_code = """
 import base64
 import time
 import ollama
 import requests
 """
 
-            ollama_service_ready = f"""
+        ollama_service_ready = f"""
 # Wait for Ollama service to be ready
 max_retries = 30
 retry_interval = 1
@@ -94,7 +93,7 @@ else:
     print('Ollama service did not become ready in time')
     exit(1)
 """
-
+        if self._model_modelfile:
             encoded_modelfile = base64.b64encode(self._model_modelfile.encode("utf-8")).decode("utf-8")
 
             if "{inputs" in self._model_modelfile:
