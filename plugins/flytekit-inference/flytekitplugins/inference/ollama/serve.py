@@ -2,8 +2,6 @@ import base64
 from dataclasses import dataclass
 from typing import Optional
 
-from flytekit.configuration.default_images import DefaultImages
-
 from ..sidecar_template import ModelInferenceTemplate
 
 
@@ -155,7 +153,7 @@ for chunk in ollama.pull('{self._model_name}', stream=True):
         self.pod_template.pod_spec.init_containers.append(
             V1Container(
                 name=container_name,
-                image=DefaultImages.default_image(),
+                image="python:3.11-slim",
                 command=["/bin/sh", "-c"],
                 args=[f"pip install requests && pip install ollama && {command}"],
                 resources=V1ResourceRequirements(

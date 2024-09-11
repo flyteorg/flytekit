@@ -1,6 +1,7 @@
 from typing import Optional
 
 from flytekit import PodTemplate
+from flytekit.configuration.default_images import DefaultImages
 
 
 class ModelInferenceTemplate:
@@ -121,13 +122,12 @@ with open('/shared/inputs.json', 'w') as f:
     json.dump(inputs, f)
 """
 
-            command = f'python3 -c "{input_download_code}" {{{{.input}}}}'
             self._pod_template.pod_spec.init_containers.append(
                 V1Container(
                     name="input-downloader",
-                    image="python:3.11-slim",
+                    image=DefaultImages.default_image(),
                     command=["/bin/sh", "-c"],
-                    args=[f"pip install flytekit && {command}"],
+                    args=[f'python3 -c "{input_download_code}" {{{{.input}}}}'],
                     volume_mounts=[
                         V1VolumeMount(name="shared-data", mount_path="/shared"),
                         V1VolumeMount(name="tmp", mount_path="/tmp"),
