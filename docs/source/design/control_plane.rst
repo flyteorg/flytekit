@@ -318,7 +318,7 @@ To fetch output of a specific node execution:
 :ref:`Node <flyte:divedeep-nodes>` here, can correspond to a task, workflow, or branch node.
 
 Reference launch plan executions
-====
+================================
 
 When retrieving and inspecting an execution which calls a launch plan, the launch plan manifests as a sub-workflow which
 can be found within the ``workflow_executions`` of a given node execution. Note that the workflow execution of interest
