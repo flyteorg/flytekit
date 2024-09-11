@@ -3286,6 +3286,11 @@ def test_option_list_with_pipe():
     lit = TypeEngine.to_literal(ctx, [1, 2, 3], pt, lt)
     assert lit.scalar.union.value.collection.literals[2].scalar.primitive.integer == 3
 
+    TypeEngine.to_literal(ctx, None, pt, lt)
+
+    with pytest.raises(TypeTransformerFailedError):
+        TypeEngine.to_literal(ctx, [1, 2, "3"], pt, lt)
+
 
 @pytest.mark.skipif(sys.version_info < (3, 10), reason="PEP604 requires >=3.10, 585 requires >=3.9")
 def test_option_list_with_pipe_2():
@@ -3304,3 +3309,6 @@ def test_option_list_with_pipe_2():
     v1 = lt.union_type.variants[0]
     assert len(v1.collection_type.union_type.variants) == 2
     assert v1.collection_type.union_type.variants[0].collection_type.map_value_type.simple == SimpleType.STRING
+
+    with pytest.raises(TypeTransformerFailedError):
+        TypeEngine.to_literal(ctx, [[{"a": "one"}], None, [{"b": 3}]], pt, lt)
