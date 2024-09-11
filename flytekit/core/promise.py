@@ -95,7 +95,7 @@ def translate_inputs_to_literals(
         t = native_types[k]
         try:
             if type(v) is Promise:
-                v = resolve_attr_path_in_promise(v, t)
+                v = resolve_attr_path_in_promise(v)
             result[k] = TypeEngine.to_literal(ctx, v, t, var.type)
         except TypeTransformerFailedError as exc:
             exc.args = (f"Failed argument '{k}': {exc.args[0]}",)
@@ -104,7 +104,7 @@ def translate_inputs_to_literals(
     return result
 
 
-def resolve_attr_path_in_promise(p: Promise, t: typing.Type) -> Promise:
+def resolve_attr_path_in_promise(p: Promise) -> Promise:
     """
     resolve_attr_path_in_promise resolves the attribute path in a promise and returns a new promise with the resolved value
     This is for local execution only. The remote execution will be resolved in flytepropeller.

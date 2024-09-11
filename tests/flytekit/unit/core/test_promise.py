@@ -233,12 +233,12 @@ def test_resolve_attr_path_in_promise():
     src_promise = Promise("val1", src_lit)
 
     # happy path
-    tgt_promise = resolve_attr_path_in_promise(src_promise["a"][0]["b"], str)
+    tgt_promise = resolve_attr_path_in_promise(src_promise["a"][0]["b"])
     assert "foo" == TypeEngine.to_python_value(FlyteContextManager.current_context(), tgt_promise.val, str)
 
     # exception
     with pytest.raises(FlytePromiseAttributeResolveException):
-        tgt_promise = resolve_attr_path_in_promise(src_promise["c"], List[Foo])
+        tgt_promise = resolve_attr_path_in_promise(src_promise["c"])
 
 
 def test_prom_with_union_literals():
