@@ -45,16 +45,22 @@ def test_lp_serialization(serialization_settings):
 
     wf_spec = get_serializable(OrderedDict(), serialization_settings, grandparent_wf)
     assert len(wf_spec.template.nodes) == 1
-    assert wf_spec.template.nodes[0].array_node is not None
-    assert wf_spec.template.nodes[0].array_node.node is not None
-    assert wf_spec.template.nodes[0].array_node.node.workflow_node is not None
+    serialized_array_node = wf_spec.template.nodes[0].array_node
+    assert serialized_array_node is not None
+    assert serialized_array_node.node is not None
+    assert serialized_array_node.node.workflow_node is not None
     assert (
-        wf_spec.template.nodes[0].array_node.node.workflow_node.launchplan_ref.resource_type
+        serialized_array_node.node.workflow_node.launchplan_ref.resource_type
         == identifier_models.ResourceType.LAUNCH_PLAN
     )
-    assert wf_spec.template.nodes[0].array_node.node.workflow_node.launchplan_ref.name == "tests.flytekit.unit.core.test_array_node.parent_wf"
-    assert wf_spec.template.nodes[0].array_node._min_success_ratio == 0.9
-    assert wf_spec.template.nodes[0].array_node._parallelism == 10
+    assert serialized_array_node.node.workflow_node.launchplan_ref.name == "tests.flytekit.unit.core.test_array_node.parent_wf"
+    assert serialized_array_node._min_success_ratio == 0.9
+    assert serialized_array_node._parallelism == 10
+    assert len(serialized_array_node.node.inputs) == 2
+    assert serialized_array_node.node.inputs[0].var == "a"
+    assert serialized_array_node.node.inputs[0].binding.value.primitive.integer is not None
+    assert serialized_array_node.node.inputs[1].var == "b"
+    assert serialized_array_node.node.inputs[0].binding.value.primitive.integer is not None
 
 
 @pytest.mark.parametrize(

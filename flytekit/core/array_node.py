@@ -50,7 +50,7 @@ class ArrayNode:
         self._concurrency = concurrency
         self._execution_mode = execution_mode
         self.id = target.name
-        self._bindings = []
+        self._bindings: List[_literal_models.Binding] = []
 
         if min_successes is not None:
             self._min_successes = min_successes
@@ -192,13 +192,15 @@ class ArrayNode:
         return self._execution_mode
 
     def __call__(self, *args, **kwargs):
-        ctx = FlyteContext.current_context()
-        # interface mismatch between the target and the actual inputs since we don't overwrite the interface to a list
-        temp = {
+        # interface mismatch between the target and the actual inputs since we don't create a new entity with a
+        # transformed to list interface
+        transformed_kwargs = {
             key: (val[0] if isinstance(val, list) and val else None) if isinstance(val, list) else val
             for key, val in kwargs.items()
         }
-        bound_subnode = create_and_link_node(ctx, entity=self.flyte_entity, *args, **temp)
+        bound_subnode = create_and_link_node(
+            FlyteContext.current_context(), entity=self.flyte_entity, link_node=False, **transformed_kwargs
+        )
         self._bindings = bound_subnode.ref.node.bindings
         return flyte_entity_call_handler(self, *args, **kwargs)
 
