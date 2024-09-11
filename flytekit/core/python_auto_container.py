@@ -8,6 +8,7 @@ from typing import Callable, Dict, List, Optional, TypeVar, Union
 from flyteidl.core import tasks_pb2
 
 from flytekit.configuration import ImageConfig, SerializationSettings
+from flytekit.constants import CopyFileDetection
 from flytekit.core.base_task import PythonTask, TaskMetadata, TaskResolverMixin
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.pod_template import PodTemplate
@@ -16,7 +17,7 @@ from flytekit.core.tracked_abc import FlyteTrackedABC
 from flytekit.core.tracker import TrackedInstance, extract_task_module
 from flytekit.core.utils import _get_container_definition, _serialize_pod_spec, timeit
 from flytekit.extras.accelerators import BaseAccelerator
-from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec, _calculate_deduped_hash_from_image_spec
+from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec
 from flytekit.loggers import logger
 from flytekit.models import task as _task_model
 from flytekit.models.security import Secret, SecurityContext
@@ -185,10 +186,10 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         return self._get_command_fn(settings)
 
     def get_image(self, settings: SerializationSettings) -> str:
-        if settings.fast_serialization_settings is None or not settings.fast_serialization_settings.enabled:
-            if isinstance(self.container_image, ImageSpec):
-                # Set the source root for the image spec if it's non-fast registration
-                self.container_image.source_root = settings.source_root
+        """Update image spec based on fast registration usage, and return string representing the image"""
+        if isinstance(self.container_image, ImageSpec):
+            update_image_spec_copy_handling(self.container_image, settings)
+
         return get_registerable_container_image(self.container_image, settings.image_config)
 
     def get_container(self, settings: SerializationSettings) -> _task_model.Container:
@@ -273,6 +274,37 @@ class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
 default_task_resolver = DefaultTaskResolver()
 
 
+def update_image_spec_copy_handling(image_spec: ImageSpec, settings: SerializationSettings):
+    """
+    This helper function is where the relationship between fast register and ImageSpec is codified.
+    If fast register is not enabled, then source root is used and then files are copied.
+    See the copy option in ImageSpec for more information.
+
+    Currently the relationship is incidental. Because serialization settings are not passed into the image spec
+    build command (and it probably shouldn't be), the builder has no concept of which files to copy, when, and
+    from where. (or to where but that is hard-coded)
+    """
+    # Handle when the copy method is explicitly set by the user.
+    if image_spec.source_copy_mode is not None:
+        if image_spec.source_copy_mode != CopyFileDetection.NO_COPY:
+            # if we need to copy any files, make sure source root is set. This preserves the behavior pre-copy arg,
+            # and allows the user to not have to specify source root.
+            if image_spec.source_root is None and settings.source_root is not None:
+                image_spec.source_root = settings.source_root
+
+    # Handle the default behavior of setting the behavior based on the inverse of fast register usage
+    # The default behavior additionally requires that serializa
+    elif settings.fast_serialization_settings is None or not settings.fast_serialization_settings.enabled:
+        # Set the source root for the image spec if it's non-fast registration
+        # Unfortunately whether the source_root/copy instructions should be set is implicitly dependent also on the
+        # existence of the source root in settings.
+        if settings.source_root is not None or image_spec.source_root is not None:
+            if image_spec.source_root is None:
+                image_spec.source_root = settings.source_root
+            if image_spec.source_copy_mode is None:
+                image_spec.source_copy_mode = CopyFileDetection.LOADED_MODULES
+
+
 def get_registerable_container_image(img: Optional[Union[str, ImageSpec]], cfg: ImageConfig) -> str:
     """
     Resolve the image to the real image name that should be used for registration.
@@ -285,7 +317,7 @@ def get_registerable_container_image(img: Optional[Union[str, ImageSpec]], cfg: 
     :return:
     """
     if isinstance(img, ImageSpec):
-        image = cfg.find_image(_calculate_deduped_hash_from_image_spec(img))
+        image = cfg.find_image(img.id)
         image_name = image.full if image else None
         if not image_name:
             ImageBuildEngine.build(img)

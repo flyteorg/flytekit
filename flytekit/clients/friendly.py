@@ -1,5 +1,6 @@
 import datetime
 import typing
+from functools import lru_cache
 
 from flyteidl.admin import common_pb2 as _common_pb2
 from flyteidl.admin import execution_pb2 as _execution_pb2
@@ -164,6 +165,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             str(task_list.token),
         )
 
+    @lru_cache
     def get_task(self, id):
         """
         This returns a single task for a given identifier.
@@ -293,6 +295,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             str(wf_list.token),
         )
 
+    @lru_cache
     def get_workflow(self, id):
         """
         This returns a single workflow for a given ID.
@@ -337,6 +340,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             )
         )
 
+    @lru_cache
     def get_launch_plan(self, id):
         """
         Retrieves a launch plan entity.
@@ -1021,7 +1025,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
                 )
             )
         except Exception as e:
-            raise RuntimeError(f"Failed to get signed url for {filename}, reason: {e}")
+            raise RuntimeError(f"Failed to get signed url for {filename}.") from e
 
     def get_download_signed_url(
         self, native_url: str, expires_in: datetime.timedelta = None

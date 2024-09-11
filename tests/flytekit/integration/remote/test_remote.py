@@ -28,6 +28,7 @@ from flytekit.types.schema import FlyteSchema
 
 MODULE_PATH = pathlib.Path(__file__).parent / "workflows/basic"
 CONFIG = os.environ.get("FLYTECTL_CONFIG", str(pathlib.Path.home() / ".flyte" / "config-sandbox.yaml"))
+# Run `make build-dev` to build and push the image to the local registry.
 IMAGE = os.environ.get("FLYTEKIT_IMAGE", "localhost:30000/flytekit:dev")
 PROJECT = "flytesnacks"
 DOMAIN = "development"
@@ -101,7 +102,10 @@ def test_fetch_execute_launch_plan_with_args(register):
     flyte_launch_plan = remote.fetch_launch_plan(name="basic.basic_workflow.my_basic_wf", version=VERSION)
     execution = remote.execute(flyte_launch_plan, inputs={"a": 10, "b": "foobar"}, wait=True)
     assert execution.node_executions["n0"].inputs == {"a": 10}
-    assert execution.node_executions["n0"].outputs == {"t1_int_output": 12, "c": "world"}
+    assert execution.node_executions["n0"].outputs == {
+        "t1_int_output": 12,
+        "c": "world",
+    }
     assert execution.node_executions["n1"].inputs == {"a": "world", "b": "foobar"}
     assert execution.node_executions["n1"].outputs == {"o0": "foobarworld"}
     assert execution.node_executions["n0"].task_executions[0].inputs == {"a": 10}
@@ -131,7 +135,7 @@ def test_monitor_workflow_execution(register):
             break
 
         with pytest.raises(
-            FlyteAssertion, match="Please wait until the execution has completed before requesting the outputs."
+            FlyteAssertion, match="Please wait until the execution has completed before requesting the outputs.",
         ):
             execution.outputs
 
@@ -208,7 +212,7 @@ def test_fetch_execute_task(register):
 
 def test_execute_python_task(register):
     """Test execution of a @task-decorated python function that is already registered."""
-    from .workflows.basic.basic_workflow import t1
+    from workflows.basic.basic_workflow import t1
 
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     execution = remote.execute(
@@ -270,7 +274,9 @@ def test_fetch_execute_task_list_of_floats(register):
 
 def test_fetch_execute_task_convert_dict(register):
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
-    flyte_task = remote.fetch_task(name="basic.dict_str_wf.convert_to_string", version=VERSION)
+    flyte_task = remote.fetch_task(
+        name="basic.dict_str_wf.convert_to_string", version=VERSION
+    )
     d: typing.Dict[str, str] = {"key1": "value1", "key2": "value2"}
     execution = remote.execute(flyte_task, inputs={"d": d}, wait=True)
     remote.sync_execution(execution, sync_nodes=True)
@@ -372,12 +378,10 @@ def test_execute_joblib_workflow(register):
 
 
 def test_execute_with_default_launch_plan(register):
-    from .workflows.basic.subworkflows import parent_wf
+    from workflows.basic.subworkflows import parent_wf
 
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
-    execution = remote.execute(
-        parent_wf, inputs={"a": 101}, version=VERSION, wait=True, image_config=ImageConfig.auto(img_name=IMAGE)
-    )
+    execution = remote.execute(parent_wf, inputs={"a": 101}, version=VERSION, wait=True, image_config=ImageConfig.auto(img_name=IMAGE))
     # check node execution inputs and outputs
     assert execution.node_executions["n0"].inputs == {"a": 101}
     assert execution.node_executions["n0"].outputs == {"t1_int_output": 103, "c": "world"}
@@ -659,3 +663,25 @@ def test_execute_workflow_remote_fn_with_maptask(mock_ipython_check):
     future = workflow_with_maptask.remote(data=d, y=3)
     out = future.get()
     assert out["o0"] == [4, 5, 6]
+
+
+def test_register_wf_fast(register):
+    from workflows.basic.subworkflows import parent_wf
+
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    fast_version = f"{VERSION}_fast"
+    serialization_settings = SerializationSettings(image_config=ImageConfig.auto(img_name=IMAGE))
+    registered_wf = remote.fast_register_workflow(parent_wf, serialization_settings, version=fast_version)
+    execution = remote.execute(registered_wf, inputs={"a": 101}, wait=True)
+    assert registered_wf.name == "workflows.basic.subworkflows.parent_wf"
+    assert execution.spec.launch_plan.version == fast_version
+    # check node execution inputs and outputs
+    assert execution.node_executions["n0"].inputs == {"a": 101}
+    assert execution.node_executions["n0"].outputs == {"t1_int_output": 103, "c": "world"}
+    assert execution.node_executions["n1"].inputs == {"a": 103}
+    assert execution.node_executions["n1"].outputs == {"o0": "world", "o1": "world"}
+
+    # check subworkflow task execution inputs and outputs
+    subworkflow_node_executions = execution.node_executions["n1"].subworkflow_node_executions
+    subworkflow_node_executions["n1-0-n0"].inputs == {"a": 103}
+    subworkflow_node_executions["n1-0-n1"].outputs == {"t1_int_output": 107, "c": "world"}

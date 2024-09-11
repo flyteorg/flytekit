@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import gzip
 import hashlib
 import os
@@ -9,7 +11,11 @@ import tempfile
 import typing
 from pathlib import Path
 from types import ModuleType
-from typing import List, Optional
+from typing import List, Optional, Tuple, Union
+
+from flytekit.constants import CopyFileDetection
+from flytekit.loggers import logger
+from flytekit.tools.ignore import IgnoreGroup
 
 
 def compress_scripts(source_path: str, destination: str, modules: List[ModuleType]):
@@ -79,17 +85,112 @@ def tar_strip_file_attributes(tar_info: tarfile.TarInfo) -> tarfile.TarInfo:
     return tar_info
 
 
-def add_imported_modules_from_source(source_path: str, destination: str, modules: List[ModuleType]):
+def ls_files(
+    source_path: str,
+    copy_file_detection: CopyFileDetection,
+    deref_symlinks: bool = False,
+    ignore_group: Optional[IgnoreGroup] = None,
+) -> Tuple[List[str], str]:
+    """
+    user_modules_and_packages is a list of the Python modules and packages, expressed as absolute paths, that the
+    user has run this pyflyte command with. For pyflyte run for instance, this is just a list of one.
+    This is used for two reasons.
+      - Everything in this list needs to be returned. Files are returned and folders are walked.
+      - A common source path is derived from this is, which is just the common folder that contains everything in the
+        list. For ex. if you do
+        $ pyflyte --pkgs a.b,a.c package
+        Then the common root is just the folder a/. The modules list is filtered against this root. Only files
+        representing modules under this root are included
+
+    If the copy enum is set to loaded_modules, then the loaded sys modules will be used.
+    """
+
+    # Unlike the below, the value error here is useful and should be returned to the user, like if absolute and
+    # relative paths are mixed.
+
+    # This is --copy auto
+    if copy_file_detection == CopyFileDetection.LOADED_MODULES:
+        sys_modules = list(sys.modules.values())
+        all_files = list_imported_modules_as_files(source_path, sys_modules)
+    # this is --copy all (--copy none should never invoke this function)
+    else:
+        all_files = list_all_files(source_path, deref_symlinks, ignore_group)
+
+    hasher = hashlib.md5()
+    for abspath in all_files:
+        relpath = os.path.relpath(abspath, source_path)
+        _filehash_update(abspath, hasher)
+        _pathhash_update(relpath, hasher)
+
+    digest = hasher.hexdigest()
+
+    return all_files, digest
+
+
+def _filehash_update(path: Union[os.PathLike, str], hasher: hashlib._Hash) -> None:
+    blocksize = 65536
+    with open(path, "rb") as f:
+        bytes = f.read(blocksize)
+        while bytes:
+            hasher.update(bytes)
+            bytes = f.read(blocksize)
+
+
+def _pathhash_update(path: Union[os.PathLike, str], hasher: hashlib._Hash) -> None:
+    path_list = path.split(os.sep)
+    hasher.update("".join(path_list).encode("utf-8"))
+
+
+def list_all_files(source_path: str, deref_symlinks, ignore_group: Optional[IgnoreGroup] = None) -> List[str]:
+    all_files = []
+
+    # This is needed to prevent infinite recursion when walking with followlinks
+    visited_inodes = set()
+
+    for root, dirnames, files in os.walk(source_path, topdown=True, followlinks=deref_symlinks):
+        if deref_symlinks:
+            inode = os.stat(root).st_ino
+            if inode in visited_inodes:
+                continue
+            visited_inodes.add(inode)
+
+        ff = []
+        files.sort()
+        for fname in files:
+            abspath = os.path.join(root, fname)
+            # Only consider files that exist (e.g. disregard symlinks that point to non-existent files)
+            if not os.path.exists(abspath):
+                logger.info(f"Skipping non-existent file {abspath}")
+                continue
+            if ignore_group:
+                if ignore_group.is_ignored(abspath):
+                    continue
+
+            ff.append(abspath)
+        all_files.extend(ff)
+
+        # Remove directories that we've already visited from dirnames
+        if deref_symlinks:
+            dirnames[:] = [d for d in dirnames if os.stat(os.path.join(root, d)).st_ino not in visited_inodes]
+
+    return all_files
+
+
+def list_imported_modules_as_files(source_path: str, modules: List[ModuleType]) -> List[str]:
     """Copies modules into destination that are in modules. The module files are copied only if:
 
     1. Not a site-packages. These are installed packages and not user files.
     2. Not in the bin. These are also installed and not user files.
     3. Does not share a common path with the source_path.
     """
+    # source path is the folder holding the main script.
+    # but in register/package case, there are multiple folders.
+    # identify a common root amongst the packages listed?
 
     site_packages = site.getsitepackages()
     site_packages_set = set(site_packages)
     bin_directory = os.path.dirname(sys.executable)
+    files = []
 
     for mod in modules:
         try:
@@ -129,7 +230,25 @@ def add_imported_modules_from_source(source_path: str, destination: str, modules
             # so we do not upload the file.
             continue
 
-        relative_path = os.path.relpath(mod_file, start=source_path)
+        files.append(mod_file)
+
+    return files
+
+
+def add_imported_modules_from_source(source_path: str, destination: str, modules: List[ModuleType]):
+    """Copies modules into destination that are in modules. The module files are copied only if:
+
+    1. Not a site-packages. These are installed packages and not user files.
+    2. Not in the bin. These are also installed and not user files.
+    3. Does not share a common path with the source_path.
+    """
+    # source path is the folder holding the main script.
+    # but in register/package case, there are multiple folders.
+    # identify a common root amongst the packages listed?
+
+    files = list_imported_modules_as_files(source_path, modules)
+    for file in files:
+        relative_path = os.path.relpath(file, start=source_path)
         new_destination = os.path.join(destination, relative_path)
 
         if os.path.exists(new_destination):
@@ -137,7 +256,7 @@ def add_imported_modules_from_source(source_path: str, destination: str, modules
             continue
 
         os.makedirs(os.path.dirname(new_destination), exist_ok=True)
-        shutil.copy(mod_file, new_destination)
+        shutil.copy(file, new_destination)
 
 
 def get_all_modules(source_path: str, module_name: Optional[str]) -> List[ModuleType]:
@@ -154,12 +273,14 @@ def get_all_modules(source_path: str, module_name: Optional[str]) -> List[Module
     if not is_python_file:
         return sys_modules
 
+    # should move it here probably
     from flytekit.core.tracker import import_module_from_file
 
     try:
         new_module = import_module_from_file(module_name, full_module_path)
         return sys_modules + [new_module]
-    except Exception:
+    except Exception as exc:
+        logger.error(f"Using system modules, failed to import {module_name} from {full_module_path}: {str(exc)}")
         # Import failed so we fallback to `sys_modules`
         return sys_modules
 

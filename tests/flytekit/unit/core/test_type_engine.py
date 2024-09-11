@@ -14,14 +14,17 @@ from typing import List, Optional, Type
 import mock
 import pytest
 import typing_extensions
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from flyteidl.core import errors_pb2
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 from marshmallow_enum import LoadDumpOptions
 from marshmallow_jsonschema import JSONSchema
+from mashumaro.config import BaseConfig
 from mashumaro.mixins.json import DataClassJSONMixin
 from mashumaro.mixins.orjson import DataClassORJSONMixin
+from mashumaro.types import Discriminator
 from typing_extensions import Annotated, get_args, get_origin
 
 from flytekit import dynamic, kwtypes, task, workflow
@@ -71,7 +74,7 @@ from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer, noop
 from flytekit.types.pickle import FlytePickle
 from flytekit.types.pickle.pickle import BatchSize, FlytePickleTransformer
 from flytekit.types.schema import FlyteSchema
-from flytekit.types.structured.structured_dataset import StructuredDataset
+from flytekit.types.structured.structured_dataset import StructuredDataset, StructuredDatasetTransformerEngine
 
 T = typing.TypeVar("T")
 
@@ -2932,6 +2935,114 @@ def test_DataclassTransformer_to_python_value():
     assert result.x == 5
 
 
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="dataclass(kw_only=True) requires >=3.10.")
+def test_DataclassTransformer_with_discriminated_subtypes():
+    class SubclassTypes(str, Enum):
+        BASE = auto()
+        CLASS_A = auto()
+        CLASS_B = auto()
+
+    @dataclass(kw_only=True)
+    class BaseClass(DataClassJSONMixin):
+        class Config(BaseConfig):
+            discriminator = Discriminator(
+                field="subclass_type",
+                include_subtypes=True,
+            )
+
+        subclass_type: SubclassTypes = SubclassTypes.BASE
+        base_attribute: int
+
+
+    @dataclass(kw_only=True)
+    class ClassA(BaseClass):
+        subclass_type: SubclassTypes = SubclassTypes.CLASS_A
+        class_a_attribute: str
+
+
+    @dataclass(kw_only=True)
+    class ClassB(BaseClass):
+        subclass_type: SubclassTypes = SubclassTypes.CLASS_B
+        class_b_attribute: float
+
+    @task
+    def assert_class_and_return(instance: BaseClass) -> BaseClass:
+        assert hasattr(instance, "class_a_attribute") or hasattr(instance, "class_b_attribute")
+        return instance
+
+    class_a = ClassA(base_attribute=4, class_a_attribute="hello")
+    assert "class_a_attribute" in class_a.to_json()
+    res_1 = assert_class_and_return(class_a)
+    assert res_1.base_attribute == 4
+    assert isinstance(res_1, ClassA)
+    assert res_1.class_a_attribute == "hello"
+
+    class_b = ClassB(base_attribute=4, class_b_attribute=-2.5)
+    assert "class_b_attribute" in class_b.to_json()
+    res_2 = assert_class_and_return(class_b)
+    assert res_2.base_attribute == 4
+    assert isinstance(res_2, ClassB)
+    assert res_2.class_b_attribute == -2.5
+
+
+def test_DataclassTransformer_with_sub_dataclasses():
+    @dataclass
+    class Base:
+        a: int
+
+
+    @dataclass
+    class Child1(Base):
+        b: int
+
+
+    @task
+    def get_data() -> Child1:
+        return Child1(a=10, b=12)
+
+
+    @task
+    def read_data(base: Base) -> int:
+        return base.a
+
+
+    @task
+    def read_child(child: Child1) -> int:
+        return child.b
+
+
+    @workflow
+    def wf1() -> Child1:
+        data = get_data()
+        read_data(base=data)
+        read_child(child=data)
+        return data
+
+    @workflow
+    def wf2() -> Base:
+        data = Base(a=10)
+        read_data(base=data)
+        read_child(child=data)
+        return data
+
+    @workflow
+    def wf3() -> Base:
+        data = Base(a=10)
+        read_data(base=data)
+        return data
+
+    child_data = wf1()
+    assert child_data.a == 10
+    assert child_data.b == 12
+    assert isinstance(child_data, Child1)
+
+    with pytest.raises(AttributeError):
+        wf2()
+
+    base_data = wf3()
+    assert base_data.a == 10
+
+
 def test_DataclassTransformer_guess_python_type():
     @dataclass
     class DatumMashumaroORJSON(DataClassORJSONMixin):
@@ -3075,3 +3186,92 @@ def test_union_file_directory():
 
     pv = union_trans.to_python_value(ctx, lv, typing.Union[FlyteFile, FlyteDirectory])
     assert pv._remote_source == s3_dir
+
+
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="PEP604 requires >=3.10.")
+def test_dataclass_none_output_input_deserialization():
+    @dataclass
+    class OuterWorkflowInput(DataClassJSONMixin):
+        input: float
+
+    @dataclass
+    class OuterWorkflowOutput(DataClassJSONMixin):
+        nullable_output: float | None = None
+
+
+    @dataclass
+    class InnerWorkflowInput(DataClassJSONMixin):
+        input: float
+
+    @dataclass
+    class InnerWorkflowOutput(DataClassJSONMixin):
+        nullable_output: float | None = None
+
+
+    @task
+    def inner_task(input: float) -> float | None:
+        if input == 0:
+            return None
+        return input
+
+    @task
+    def wrap_inner_inputs(input: float) -> InnerWorkflowInput:
+        return InnerWorkflowInput(input=input)
+
+    @task
+    def wrap_inner_outputs(output: float | None) -> InnerWorkflowOutput:
+        return InnerWorkflowOutput(nullable_output=output)
+
+    @task
+    def wrap_outer_outputs(output: float | None) -> OuterWorkflowOutput:
+        return OuterWorkflowOutput(nullable_output=output)
+
+    @workflow
+    def inner_workflow(input: InnerWorkflowInput) -> InnerWorkflowOutput:
+        return wrap_inner_outputs(
+            output=inner_task(
+                input=input.input
+            )
+        )
+
+    @workflow
+    def outer_workflow(input: OuterWorkflowInput) -> OuterWorkflowOutput:
+        inner_outputs = inner_workflow(
+            input=wrap_inner_inputs(input=input.input)
+        )
+        return wrap_outer_outputs(
+            output=inner_outputs.nullable_output
+        )
+
+    float_value_output = outer_workflow(OuterWorkflowInput(input=1.0)).nullable_output
+    assert float_value_output == 1.0, f"Float value was {float_value_output}, not 1.0 as expected"
+    none_value_output = outer_workflow(OuterWorkflowInput(input=0)).nullable_output
+    assert none_value_output is None, f"None value was {none_value_output}, not None as expected"
+
+
+@pytest.mark.serial
+def test_lazy_import_transformers_concurrently():
+    # Ensure that next call to TypeEngine.lazy_import_transformers doesn't skip the import. Mark as serial to ensure
+    # this achieves what we expect.
+    TypeEngine.has_lazy_import = False
+
+    # Configure the mocks similar to https://stackoverflow.com/questions/29749193/python-unit-testing-with-two-mock-objects-how-to-verify-call-order
+    after_import_mock, mock_register = mock.Mock(), mock.Mock()
+    mock_wrapper = mock.Mock()
+    mock_wrapper.mock_register = mock_register
+    mock_wrapper.after_import_mock = after_import_mock
+
+    with mock.patch.object(StructuredDatasetTransformerEngine, "register", new=mock_register):
+        def run():
+            TypeEngine.lazy_import_transformers()
+            after_import_mock()
+
+        N = 5
+        with ThreadPoolExecutor(max_workers=N) as executor:
+            futures = [executor.submit(run) for _ in range(N)]
+            [f.result() for f in futures]
+
+        # Assert that all the register calls come before anything else.
+        assert mock_wrapper.mock_calls[-N:] == [mock.call.after_import_mock()]*N
+        expected_number_of_register_calls = len(mock_wrapper.mock_calls) - N
+        assert all([mock_call[0] == "mock_register" for mock_call in mock_wrapper.mock_calls[:expected_number_of_register_calls]])

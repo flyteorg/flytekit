@@ -1,18 +1,22 @@
 import functools
+import os
 import typing
 from collections import OrderedDict
 from typing import List
 from typing_extensions import Annotated
+import tempfile
 
 import pytest
 
-from flytekit import map_task, task, workflow
+from flytekit import dynamic, map_task, task, workflow
+from flytekit.types.directory import FlyteDirectory
 from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SerializationSettings
 from flytekit.core import context_manager
 from flytekit.core.array_node_map_task import ArrayNodeMapTask, ArrayNodeMapTaskResolver
 from flytekit.core.task import TaskMetadata
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extras.accelerators import GPUAccelerator
+from flytekit.experimental.eager_function import eager
 from flytekit.tools.translator import get_serializable
 from flytekit.types.pickle import BatchSize
 
@@ -403,3 +407,60 @@ def test_serialization_extended_resources(serialization_settings):
     task_spec = od[arraynode_maptask]
 
     assert task_spec.template.extended_resources.gpu_accelerator.device == "test_gpu"
+
+
+def test_supported_node_type():
+    @task
+    def test_task():
+        ...
+
+    map_task(test_task)
+
+
+def test_unsupported_node_types():
+    @dynamic
+    def test_dynamic():
+        ...
+
+    with pytest.raises(ValueError):
+        map_task(test_dynamic)
+
+    @eager
+    def test_eager():
+        ...
+
+    with pytest.raises(ValueError):
+        map_task(test_eager)
+
+    @workflow
+    def test_wf():
+        ...
+
+    with pytest.raises(ValueError):
+        map_task(test_wf)
+
+
+def test_mis_match():
+    @task
+    def generate_directory(word: str) -> FlyteDirectory:
+        temp_dir1 = tempfile.TemporaryDirectory(delete=False)
+        with open(os.path.join(temp_dir1.name, "file.txt"), "w") as tmp:
+            tmp.write(f"Hello world {word}!\n")
+        return FlyteDirectory(path=temp_dir1.name)
+
+    @task
+    def consume_directories(dirs: List[FlyteDirectory]):
+        for d in dirs:
+            print(f"Directory: {d.path} {d._remote_source}")
+            for path_info, other_info in d.crawl():
+                print(path_info)
+
+    mt = map_task(generate_directory, min_success_ratio=0.1)
+
+    @workflow
+    def wf():
+        dirs = mt(word=["one", "two", "three"])
+        consume_directories(dirs=dirs)
+
+    with pytest.raises(AssertionError):
+        wf.compile()
