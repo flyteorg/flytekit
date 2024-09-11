@@ -485,6 +485,7 @@ class FlyteLiteralConverter(object):
             # If the input matches the default value in the launch plan, serialization can be skipped.
             if param and value == param.default:
                 return None
+            breakpoint()
             lit = TypeEngine.to_literal(self._flyte_ctx, value, self._python_type, self._literal_type)
 
             if not self._is_remote:
