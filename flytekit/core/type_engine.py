@@ -1443,7 +1443,7 @@ class ListTransformer(TypeTransformer[T]):
             lit_list = [TypeEngine.to_literal(ctx, x, t, expected.collection_type) for x in python_val]  # type: ignore
         return Literal(collection=LiteralCollection(literals=lit_list))
 
-    def from_json(self, ctx: FlyteContext, json_idl_object: Json, expected_python_type: Type[T]) -> typing.List[T]:
+    def from_json(self, ctx: FlyteContext, json_idl_object: Json, expected_python_type: Type[T]) -> typing.List[T]: # type: ignore
         """
         Process JSON IDL object and convert it to the corresponding Python value.
         Handles both simple types and recursive structures like List[List[int]] or List[List[float]].
@@ -1466,8 +1466,7 @@ class ListTransformer(TypeTransformer[T]):
                 # For Dicts, get key and value types
                 key_type, val_type = typing.get_args(expected_python_type)
                 # Recursively process each key and value in the dict
-                return {recursive_from_json(ctx, k, key_type): recursive_from_json(ctx, v, val_type) for k, v in
-                        json_value.items()}
+                return {recursive_from_json(ctx, k, key_type): recursive_from_json(ctx, v, val_type) for k, v in json_value.items()}
 
             # Base case: if it's not a list or dict, we assume it's a simple type and return it
             try:
@@ -1838,7 +1837,81 @@ class DictTransformer(TypeTransformer[dict]):
                     return _type_models.LiteralType(map_value_type=sub_type)
                 except Exception as e:
                     raise ValueError(f"Type of Generic List type is not supported, {e}")
-        return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT)
+        return _type_models.LiteralType(simple=_type_models.SimpleType.JSON)
+
+    
+    def to_json(self, ctx: FlyteContext, python_val: dict, python_type: Type[dict], allow_pickle: bool) -> Literal:
+        """
+        Creates a flyte-specific ``Literal`` JSON IDL object from a native python dictionary.
+        """
+        
+        try:
+            json_str = json.dumps(python_val)
+            json_bytes = json_str.encode("utf-8")
+            return Literal(scalar=Scalar(json=Json(value=json_bytes, serialization_format="UTF-8")))
+        except TypeError as e:
+            from flytekit.types.pickle import FlytePickle
+            if allow_pickle:
+                remote_path = FlytePickle.to_pickle(ctx, python_val)
+                return Literal(
+                    scalar=Scalar(
+                        generic=_json_format.Parse(json.dumps({"pickle_file": remote_path}), _struct.Struct())
+                    ),
+                    metadata={"format": "pickle"},
+                )
+            raise user_exceptions.FlyteTypeException(type(python_val), python_type, received_value=python_val)
+        
+
+    def from_json(self, ctx: FlyteContext, json_idl_object: Json, expected_python_type: Type[dict]) -> dict:
+        """
+        Process JSON IDL object and convert it to the corresponding Python dictionary.
+        Handles both simple types and recursive structures like Dict[str, Dict[str, int]].
+        Also supports "pure dict" (i.e., untyped dict) without recursively checking types.
+        """
+
+        def recursive_from_json(ctx: FlyteContext, json_value: typing.Any, expected_python_type: Type[T]) -> typing.Any:
+            """
+            Recursively process JSON objects, converting them to their corresponding Python values based on
+            the expected Python type (e.g., handling Dict[str, Dict[str, int]] or Dict[str, List[int]]).
+            """
+            # If the expected type is a "pure dict", directly return the JSON value
+            if expected_python_type is dict:
+                return json_value
+
+            # Check if the type is a Dict with specific key-value types
+            if typing.get_origin(expected_python_type) is dict:
+                # For Dicts, get key and value types
+                key_type, val_type = typing.get_args(expected_python_type)
+                
+                # Assuming Flyte enforces str keys for dicts
+                if key_type is not str:
+                    raise TypeError(f"TypeMismatch. Destination dictionary does not accept {key_type} key type")
+                
+                # Recursively process each key and value in the dict
+                return {recursive_from_json(ctx, k, key_type): recursive_from_json(ctx, v, val_type) for k, v in json_value.items()}
+
+            # Check if the type is a List
+            elif typing.get_origin(expected_python_type) is list:
+                # Get the subtype, which should be the type of the list's elements
+                sub_type = ListTransformer.get_sub_type(expected_python_type)
+                # Recursively process each element in the list
+                return [recursive_from_json(ctx, item, sub_type) for item in json_value]
+
+            # Base case: if it's not a dict or list, assume it's a simple type and return it
+            try:
+                return expected_python_type(json_value)  # Cast to the expected type
+            except Exception as e:
+                raise ValueError(f"Could not cast {json_value} to {expected_python_type}: {e}")
+
+        # Decode JSON string from UTF-8
+        json_value = json.loads(json_idl_object.value.decode("utf-8"))
+
+        # If expected type is a pure dict (not typed with keys/values), directly return the decoded JSON
+        if expected_python_type is dict:
+            return json_value
+
+        # Otherwise, call the recursive function to handle nested dictionary structures
+        return recursive_from_json(ctx, json_value, expected_python_type)
 
     def to_literal(
         self, ctx: FlyteContext, python_val: typing.Any, python_type: Type[dict], expected: LiteralType
@@ -1852,8 +1925,12 @@ class DictTransformer(TypeTransformer[dict]):
         if get_origin(python_type) is Annotated:
             allow_pickle, base_type = DictTransformer.is_pickle(python_type)
 
+        # Don't delete it, this is for reference task backward compatibility.
         if expected and expected.simple and expected.simple == SimpleType.STRUCT:
             return self.dict_to_generic_literal(ctx, python_val, allow_pickle)
+        if expected and expected.simple and expected.simple == SimpleType.JSON:
+            return self.to_json(ctx, python_val, python_type, allow_pickle)
+
 
         lit_map = {}
         for k, v in python_val.items():
@@ -1888,17 +1965,20 @@ class DictTransformer(TypeTransformer[dict]):
 
         # for empty generic we have to explicitly test for lv.scalar.generic is not None as empty dict
         # evaluates to false
-        if lv and lv.scalar and lv.scalar.generic is not None:
-            if lv.metadata and lv.metadata.get("format", None) == "pickle":
-                from flytekit.types.pickle import FlytePickle
+        if lv and lv.scalar:
+            scalar = lv.scalar
+            if scalar.json is not None:
+                return self.from_json(ctx, scalar.json, expected_python_type)
+            if scalar.generic is not None:
+                if lv.metadata and lv.metadata.get("format", None) == "pickle":
+                    from flytekit.types.pickle import FlytePickle
 
-                uri = json.loads(_json_format.MessageToJson(lv.scalar.generic)).get("pickle_file")
-                return FlytePickle.from_pickle(uri)
-
-            try:
-                return json.loads(_json_format.MessageToJson(lv.scalar.generic))
-            except TypeError:
-                raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
+                    uri = json.loads(_json_format.MessageToJson(lv.scalar.generic)).get("pickle_file")
+                    return FlytePickle.from_pickle(uri)
+                try:
+                    return json.loads(_json_format.MessageToJson(lv.scalar.generic))
+                except TypeError:
+                    raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
 
         raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
 
