@@ -46,6 +46,7 @@ from flytekit.models.core import execution as _execution_models
 from flytekit.models.core import identifier as _identifier
 from flytekit.tools.fast_registration import download_distribution as _download_distribution
 from flytekit.tools.module_loader import load_object_from_module
+from flytekit.utils.loop_handling import use_event_loop
 
 
 def get_version_message():
@@ -67,23 +68,6 @@ def _compute_array_job_index():
     if os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME"):
         return offset + int(os.environ.get(os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME")))
     return offset
-
-
-def _get_working_loop():
-    """Returns a running event loop."""
-    try:
-        return asyncio.get_running_loop()
-    except RuntimeError:
-        with warnings.catch_warnings():
-            warnings.simplefilter("error", DeprecationWarning)
-            try:
-                return asyncio.get_event_loop_policy().get_event_loop()
-            # Since version 3.12, DeprecationWarning is emitted if there is no
-            # current event loop.
-            except DeprecationWarning:
-                loop = asyncio.get_event_loop_policy().new_event_loop()
-                asyncio.set_event_loop(loop)
-                return loop
 
 
 def _dispatch_execute(
@@ -125,7 +109,8 @@ def _dispatch_execute(
         if inspect.iscoroutine(outputs):
             # Handle eager-mode (async) tasks
             logger.info("Output is a coroutine")
-            outputs = _get_working_loop().run_until_complete(outputs)
+            with use_event_loop() as loop:
+                outputs = loop.run_until_complete(outputs)
 
         # Step3a
         if isinstance(outputs, VoidPromise):
