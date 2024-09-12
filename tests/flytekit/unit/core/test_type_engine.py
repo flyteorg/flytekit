@@ -2860,8 +2860,24 @@ def test_DataclassTransformer_get_literal_type():
     assert literal_type is not None
 
     invalid_json_str = "{ unbalanced_braces"
+
     with pytest.raises(Exception):
         Literal(scalar=Scalar(generic=_json_format.Parse(invalid_json_str, _struct.Struct())))
+
+    @dataclass
+    class Fruit(DataClassJSONMixin):
+        name: str
+
+    @dataclass
+    class NestedFruit(DataClassJSONMixin):
+        sub_fruit: Fruit
+        name: str
+
+    literal_type = de.get_literal_type(NestedFruit)
+    dataclass_type = literal_type.structure.dataclass_type
+    assert dataclass_type["sub_fruit"].simple == SimpleType.STRUCT
+    assert dataclass_type["sub_fruit"].structure.dataclass_type["name"].simple == SimpleType.STRING
+    assert dataclass_type["name"].simple == SimpleType.STRING
 
 
 def test_DataclassTransformer_to_literal():

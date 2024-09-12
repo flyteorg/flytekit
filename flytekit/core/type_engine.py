@@ -476,10 +476,13 @@ class DataclassTransformer(TypeTransformer[object]):
         # Recursively construct the dataclass_type which contains the literal type of each field
         literal_type = {}
 
+        hints = typing.get_type_hints(t)
         # Get the type of each field from dataclass
         for field in t.__dataclass_fields__.values():  # type: ignore
             try:
-                literal_type[field.name] = TypeEngine.to_literal_type(field.type)
+                name = field.name
+                python_type = hints.get(name, field.type)
+                literal_type[name] = TypeEngine.to_literal_type(python_type)
             except Exception as e:
                 logger.warning(
                     "Field {} of type {} cannot be converted to a literal type. Error: {}".format(
