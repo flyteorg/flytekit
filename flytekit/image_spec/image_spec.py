@@ -16,6 +16,7 @@ import click
 import requests
 from packaging.version import Version
 
+from flytekit.constants import CopyFileDetection
 from flytekit.exceptions.user import FlyteAssertion
 
 DOCKER_HUB = "docker.io"
@@ -51,13 +52,21 @@ class ImageSpec:
         commands: Command to run during the building process
         tag_format: Custom string format for image tag. The ImageSpec hash passed in as `spec_hash`. For example,
             to add a "dev" suffix to the image tag, set `tag_format="{spec_hash}-dev"`
+        source_copy_mode: This option allows the user to specify which source files to copy from the local host, into the image.
+            Not setting this option means to use the default flytekit behavior. The default behavior is:
+                - if fast register is used, source files are not copied into the image (because they're already copied
+                  into the fast register tar layer).
+                - if fast register is not used, then the LOADED_MODULES (aka 'auto') option is used to copy loaded
+                  Python files into the image.
+
+            If the option is set by the user, then that option is of course used.
         copy: List of files/directories to copy to /root. e.g. ["src/file1.txt", "src/file2.txt"]
     """
 
     name: str = "flytekit"
     python_version: str = None  # Use default python in the base image if None.
     builder: Optional[str] = None
-    source_root: Optional[str] = None
+    source_root: Optional[str] = None  # a.txt:auto
     env: Optional[typing.Dict[str, str]] = None
     registry: Optional[str] = None
     packages: Optional[List[str]] = None
@@ -75,6 +84,7 @@ class ImageSpec:
     entrypoint: Optional[List[str]] = None
     commands: Optional[List[str]] = None
     tag_format: Optional[str] = None
+    source_copy_mode: Optional[CopyFileDetection] = None
     copy: Optional[List[List[str]]] = None
 
     def __post_init__(self):
@@ -82,6 +92,11 @@ class ImageSpec:
         self._is_force_push = os.environ.get(FLYTE_FORCE_PUSH_IMAGE_SPEC, False)  # False by default
         if self.registry:
             self.registry = self.registry.lower()
+
+        # If not set, help the user set this option as well, to support the older default behavior where existence
+        # of the source root implied that copying of files was needed.
+        if self.source_root is not None:
+            self.source_copy_mode = self.source_copy_mode or CopyFileDetection.LOADED_MODULES
 
         parameters_str_list = [
             "packages",
@@ -111,6 +126,8 @@ class ImageSpec:
         - deduced abc: flyteorg/flytekit:123
         - deduced xyz: flyteorg/flytekit:456
 
+        The result of this property also depends on whether or not update_image_spec_copy_handling was called.
+
         :return: a unique identifier of the ImageSpec
         """
         # Only get the non-None values in the ImageSpec to ensure the hash is consistent across different Flytekit versions.
@@ -127,6 +144,9 @@ class ImageSpec:
         Calculate a hash from the image spec. The hash will be the tag of the image.
         We will also read the content of the requirement file and the source root to calculate the hash.
         Therefore, it will generate different hash if new dependencies are added or the source code is changed.
+
+        Keep in mind the fields source_root and copy may be changed by update_image_spec_copy_handling, so when
+        you call this property in relation to that function matter will change the output.
         """
 
         # copy the image spec to avoid modifying the original image spec. otherwise, the hash will be different.
@@ -134,13 +154,25 @@ class ImageSpec:
         if isinstance(spec.base_image, ImageSpec):
             spec = dataclasses.replace(spec, base_image=spec.base_image.image_name())
 
-        if self.source_root:
-            from flytekit.tools.fast_registration import compute_digest
-            from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
+        if self.source_copy_mode is not None and self.source_copy_mode != CopyFileDetection.NO_COPY:
+            if not self.source_root:
+                raise ValueError(f"Field source_root for image spec {self.name} must be set when copy is set")
 
+            # Imports of flytekit.tools are circular
+            from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
+            from flytekit.tools.script_mode import ls_files
+
+            # todo: we should pipe through ignores from the command line here at some point.
+            #  what about deref_symlink?
             ignore = IgnoreGroup(self.source_root, [GitIgnore, DockerIgnore, StandardIgnore])
-            digest = compute_digest(self.source_root, ignore.is_ignored)
-            spec = dataclasses.replace(spec, source_root=digest)
+
+            _, ls_digest = ls_files(
+                str(self.source_root), self.source_copy_mode, deref_symlinks=False, ignore_group=ignore
+            )
+
+            # Since the source root is supposed to represent the files, store the digest into the source root as a
+            # shortcut to represent all the files.
+            spec = dataclasses.replace(spec, source_root=ls_digest)
 
         if self.copy:
             from flytekit.tools.fast_registration import compute_digest
@@ -153,6 +185,7 @@ class ImageSpec:
         if spec.requirements:
             requirements = hashlib.sha1(pathlib.Path(spec.requirements).read_bytes().strip()).hexdigest()
             spec = dataclasses.replace(spec, requirements=requirements)
+
         # won't rebuild the image if we change the registry_config path
         spec = dataclasses.replace(spec, registry_config=None)
         tag = spec.id.replace("-", "_")

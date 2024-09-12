@@ -12,12 +12,14 @@ from typing import ClassVar
 
 import click
 
+from flytekit.constants import CopyFileDetection
 from flytekit.image_spec.image_spec import (
     _F_IMG_ID,
     ImageSpec,
     ImageSpecBuilder,
 )
 from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
+from flytekit.tools.script_mode import ls_files
 
 UV_PYTHON_INSTALL_COMMAND_TEMPLATE = Template(
     """\
@@ -166,16 +168,28 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
 
     apt_install_command = APT_INSTALL_COMMAND_TEMPLATE.substitute(APT_PACKAGES=" ".join(apt_packages))
 
-    if image_spec.source_root:
-        source_path = tmp_dir / "src"
+    if image_spec.source_copy_mode is not None and image_spec.source_copy_mode != CopyFileDetection.NO_COPY:
+        if not image_spec.source_root:
+            raise ValueError(f"Field source_root for {image_spec} must be set when copy is set")
 
+        source_path = tmp_dir / "src"
+        source_path.mkdir(parents=True, exist_ok=True)
+        # todo: See note in we should pipe through ignores from the command line here at some point.
+        #  what about deref_symlink?
         ignore = IgnoreGroup(image_spec.source_root, [GitIgnore, DockerIgnore, StandardIgnore])
-        shutil.copytree(
-            image_spec.source_root,
-            source_path,
-            ignore=shutil.ignore_patterns(*ignore.list_ignored()),
-            dirs_exist_ok=True,
+
+        ls, _ = ls_files(
+            str(image_spec.source_root), image_spec.source_copy_mode, deref_symlinks=False, ignore_group=ignore
         )
+
+        for file_to_copy in ls:
+            rel_path = os.path.relpath(file_to_copy, start=str(image_spec.source_root))
+            Path(source_path / rel_path).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy(
+                file_to_copy,
+                source_path / rel_path,
+            )
+
         copy_command_runtime = "COPY --chown=flytekit ./src /root"
     else:
         copy_command_runtime = ""
@@ -237,10 +251,12 @@ class DefaultImageBuilder(ImageSpecBuilder):
     """Image builder using Docker and buildkit."""
 
     _SUPPORTED_IMAGE_SPEC_PARAMETERS: ClassVar[set] = {
+        "id",
         "name",
         "python_version",
         "builder",
         "source_root",
+        "copy",
         "env",
         "registry",
         "packages",
@@ -256,7 +272,6 @@ class DefaultImageBuilder(ImageSpecBuilder):
         "pip_extra_index_url",
         # "registry_config",
         "commands",
-        "copy",
     }
 
     def build_image(self, image_spec: ImageSpec) -> str:

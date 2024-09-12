@@ -12,8 +12,9 @@ from flytekit.configuration import (
     ImageConfig,
     SerializationSettings,
 )
+from flytekit.constants import CopyFileDetection
 from flytekit.interaction.click_types import key_value_callback
-from flytekit.tools.fast_registration import CopyFileDetection, FastPackageOptions
+from flytekit.tools.fast_registration import FastPackageOptions
 from flytekit.tools.repo import NoSerializableEntitiesError, serialize_and_package
 
 
