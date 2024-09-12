@@ -470,7 +470,7 @@ def test_resource_type():
 
     o2 = Resource.from_flyte_idl(v)
     assert o2.phase == o.phase
-    assert o2.log_links == o.log_links
+    assert list(o2.log_links) == list(o.log_links)
     assert o2.message == o.message
     # round-tripping creates a literal map out of outputs
     assert o2.outputs.literals["o0"].scalar.primitive.integer == 1
