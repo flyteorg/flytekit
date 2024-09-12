@@ -61,6 +61,7 @@ Here is an example of how to use the ``pyflyte run`` command. The following code
     @workflow
     def my_workflow(input1: int, input2: int) -> int:
         return my_task(input1=input1, input2=input2)
+
 To run the workflow, use the following command:
 
 .. prompt:: bash $
