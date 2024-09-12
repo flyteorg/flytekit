@@ -1,3 +1,4 @@
+import asyncio
 import contextlib
 import datetime
 import inspect
@@ -107,8 +108,8 @@ def _dispatch_execute(
         if inspect.iscoroutine(outputs):
             # Handle eager-mode (async) tasks
             logger.info("Output is a coroutine")
-            with use_event_loop() as loop:
-                outputs = loop.run_until_complete(outputs)
+            loop = asyncio.get_running_loop()
+            outputs = loop.run_until_complete(outputs)
 
         # Step3a
         if isinstance(outputs, VoidPromise):
@@ -401,7 +402,8 @@ def _execute_task(
                 f"Test detected, returning. Args were {inputs} {output_prefix} {raw_output_data_prefix} {resolver} {resolver_args}"
             )
             return
-        _dispatch_execute(ctx, load_task, inputs, output_prefix)
+        with use_event_loop():
+            _dispatch_execute(ctx, load_task, inputs, output_prefix)
 
 
 def _execute_map_task(
@@ -462,7 +464,8 @@ def _execute_map_task(
             )
             return
 
-        _dispatch_execute(ctx, load_task, inputs, output_prefix)
+        with use_event_loop():
+            _dispatch_execute(ctx, load_task, inputs, output_prefix)
 
 
 def normalize_inputs(
