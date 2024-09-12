@@ -14,7 +14,7 @@ import time
 import typing
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
+from typing import List, Optional, Union
 
 import click
 from rich import print as rich_print
@@ -189,7 +189,7 @@ def fast_package(
     return archive_fname
 
 
-def compute_digest(source: os.PathLike, filter: Optional[callable] = None) -> str:
+def compute_digest(source: Union[os.PathLike, List[os.PathLike]], filter: Optional[callable] = None) -> str:
     """
     Walks the entirety of the source dir to compute a deterministic md5 hex digest of the dir contents.
     :param os.PathLike source:
@@ -197,22 +197,37 @@ def compute_digest(source: os.PathLike, filter: Optional[callable] = None) -> st
     :return Text:
     """
     hasher = hashlib.md5()
-    for root, _, files in os.walk(source, topdown=True):
-        files.sort()
 
-        for fname in files:
-            abspath = os.path.join(root, fname)
-            # Only consider files that exist (e.g. disregard symlinks that point to non-existent files)
-            if not os.path.exists(abspath):
-                logger.info(f"Skipping non-existent file {abspath}")
-                continue
-            relpath = os.path.relpath(abspath, source)
-            if filter:
-                if filter(relpath):
-                    continue
+    def process_file(path: os.PathLike, rel_path: os.PathLike) -> None:
+        # Only consider files that exist (e.g. disregard symlinks that point to non-existent files)
+        if not os.path.exists(path):
+            logger.info(f"Skipping non-existent file {path}")
+            return
 
-            _filehash_update(abspath, hasher)
-            _pathhash_update(relpath, hasher)
+        if filter:
+            if filter(rel_path):
+                return
+
+        _filehash_update(path, hasher)
+        _pathhash_update(rel_path, hasher)
+
+    def process_dir(source: os.PathLike) -> None:
+        for root, _, files in os.walk(source, topdown=True):
+            files.sort()
+
+            for fname in files:
+                abspath = os.path.join(root, fname)
+                relpath = os.path.relpath(abspath, source)
+                process_file(abspath, relpath)
+
+    if isinstance(source, list):
+        for src in source:
+            if os.path.isdir(src):
+                process_dir(src)
+            else:
+                process_file(src, os.path.basename(src))
+    else:
+        process_dir(source)
 
     return hasher.hexdigest()
 
