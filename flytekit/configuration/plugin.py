@@ -18,7 +18,7 @@ my_plugin = "my_module:MyCustomPlugin"
 ```
 """
 
-from typing import Optional, Protocol, runtime_checkable
+from typing import Optional, Protocol, Union, runtime_checkable
 
 from click import Group
 from importlib_metadata import entry_points
@@ -26,6 +26,7 @@ from importlib_metadata import entry_points
 from flytekit.configuration import Config, get_config_file
 from flytekit.loggers import logger
 from flytekit.remote import FlyteRemote
+from flytekit.remote.executions import FlyteNodeExecution, FlyteTaskExecution, FlyteWorkflowExecution
 
 
 @runtime_checkable
@@ -51,6 +52,12 @@ class FlytekitPluginProtocol(Protocol):
     @staticmethod
     def get_auth_success_html(endpoint: str) -> Optional[str]:
         """Get default success html for auth. Return None to use flytekit's default success html."""
+
+    @staticmethod
+    def get_additional_info_for_execution(
+        remote: FlyteRemote, entity: Union[FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution]
+    ) -> str:
+        """Get additional info for a given execution. Useful to pass in additional urls."""
 
 
 class FlytekitPlugin:
@@ -89,6 +96,13 @@ class FlytekitPlugin:
     def get_auth_success_html(endpoint: str) -> Optional[str]:
         """Get default success html. Return None to use flytekit's default success html."""
         return None
+
+    @staticmethod
+    def get_additional_info_for_execution(
+        remote: FlyteRemote, entity: Union[FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution]
+    ) -> str:
+        """Get additional info for a given execution. Useful to pass in additional urls."""
+        return ""
 
 
 def _get_plugin_from_entrypoint():
