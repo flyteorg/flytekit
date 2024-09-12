@@ -142,6 +142,14 @@ class ImageSpec:
             digest = compute_digest(self.source_root, ignore.is_ignored)
             spec = dataclasses.replace(spec, source_root=digest)
 
+        if self.copy:
+            from flytekit.tools.fast_registration import compute_digest
+            from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
+
+            # ignore = IgnoreGroup("/root", [GitIgnore, DockerIgnore, StandardIgnore])
+            digest = compute_digest([path for pathlist in self.copy for path in pathlist], None)  # , ignore.is_ignored)
+            spec = dataclasses.replace(spec, copy=digest)
+
         if spec.requirements:
             requirements = hashlib.sha1(pathlib.Path(spec.requirements).read_bytes().strip()).hexdigest()
             spec = dataclasses.replace(spec, requirements=requirements)
