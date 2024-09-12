@@ -621,7 +621,7 @@ def test_list_transformer():
     xx = TypeEngine.to_python_value(ctx, lit, typing.List[int])
     assert xx == [3, 4]
 
-
+@pytest.mark.flyteidl()
 def test_protos():
     ctx = FlyteContext.current_context()
     import flyteidl_rust as flyteidl
@@ -944,7 +944,7 @@ def test_dataclass_with_postponed_annotation(mock_put_data):
 
         pv = Data(a=1, f=FlyteFile(test_file, remote_path=remote_path))
         lt = tf.to_literal(ctx, pv, Data, t)
-        assert lt.scalar.generic.fields["f"].struct_value.fields["path"].string_value == remote_path
+        assert lt.scalar.generic.fields["f"].kind[0].fields['path'].kind[0] == remote_path
 
 
 @mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")

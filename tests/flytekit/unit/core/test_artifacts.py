@@ -663,10 +663,10 @@ def test_lims():
     with pytest.raises(ValueError):
         Artifact(name="test artifact", time_partitioned=True, partition_keys=[f"key_{i}" for i in range(11)])
 
-
+@pytest.mark.flyteidl
 def test_cloudpickle():
     a1_b = Artifact(name="my_data", partition_keys=["b"])
-    breakpoint()
+    
     spec = a1_b(b="my_b_value")
     import cloudpickle
 
