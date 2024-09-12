@@ -132,7 +132,7 @@ class ImageSpec:
         # copy the image spec to avoid modifying the original image spec. otherwise, the hash will be different.
         spec = copy.deepcopy(self)
         if isinstance(spec.base_image, ImageSpec):
-            spec = dataclasses.replace(spec, base_image=spec.base_image)
+            spec = dataclasses.replace(spec, base_image=spec.base_image.image_name())
 
         if self.source_root:
             from flytekit.tools.fast_registration import compute_digest
