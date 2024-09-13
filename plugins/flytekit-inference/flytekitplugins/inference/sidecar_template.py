@@ -1,7 +1,6 @@
-from pathlib import Path
 from typing import Optional
 
-from flytekit import FlyteContextManager, PodTemplate
+from flytekit import PodTemplate
 from flytekit.configuration.default_images import DefaultImages
 
 
@@ -79,7 +78,7 @@ class ModelInferenceTemplate:
             ],
             volumes=[
                 V1Volume(name="shared-data", empty_dir={}),
-                V1Volume(name="local-sandbox", empty_dir={}),
+                V1Volume(name="tmp", empty_dir={}),
             ],
         )
 
@@ -117,7 +116,13 @@ for var_name, literal in idl_input_literals.literals.items():
             == BlobType.BlobDimensionality.SINGLE
         ):
             downloaded_file = FlyteFile.from_source(literal.scalar.blob.uri).download()
-            inputs[var_name] = downloaded_file
+
+            tmp_destination = None
+            if not downloaded_file.startswith('/tmp'):
+                tmp_destination = '/tmp' + os.path.basename(downloaded_file)
+                shutil.copy(downloaded_file, tmp_destination)
+
+            inputs[var_name] = tmp_destination or downloaded_file
 
 with open('/shared/inputs.json', 'w') as f:
     json.dump(inputs, f)
@@ -131,7 +136,7 @@ with open('/shared/inputs.json', 'w') as f:
                     args=[f'python3 -c "{input_download_code}" {{{{.input}}}}'],
                     volume_mounts=[
                         V1VolumeMount(name="shared-data", mount_path="/shared"),
-                        V1VolumeMount(name="local-sandbox", mount_path=self.local_sandbox_dir),
+                        V1VolumeMount(name="tmp", mount_path="/tmp"),
                     ],
                 ),
             )
@@ -143,7 +148,3 @@ with open('/shared/inputs.json', 'w') as f:
     @property
     def base_url(self):
         return f"http://localhost:{self._port}"
-
-    @property
-    def local_sandbox_dir(self):
-        return Path(FlyteContextManager.current_context().file_access.local_sandbox_dir).parent

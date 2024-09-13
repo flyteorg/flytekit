@@ -174,7 +174,7 @@ for chunk in ollama.pull('{self._model_name}', stream=True):
                 ),
                 volume_mounts=[
                     V1VolumeMount(name="shared-data", mount_path="/shared"),
-                    V1VolumeMount(name="local-sandbox", mount_path=self.local_sandbox_dir),
+                    V1VolumeMount(name="tmp", mount_path="/tmp"),
                 ],
             )
         )
