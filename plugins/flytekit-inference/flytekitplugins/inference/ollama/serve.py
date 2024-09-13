@@ -119,6 +119,7 @@ with open('Modelfile', 'w') as f:
 
 {ollama_service_ready}
 
+# Debugging: Shows the status of model creation.
 for chunk in ollama.create(model='{self._model_name}', path='Modelfile', stream=True):
     print(chunk)
 """
@@ -135,6 +136,7 @@ with open('Modelfile', 'w') as f:
 
 {ollama_service_ready}
 
+# Debugging: Shows the status of model creation.
 for chunk in ollama.create(model='{self._model_name}', path='Modelfile', stream=True):
     print(chunk)
 """
@@ -144,6 +146,7 @@ for chunk in ollama.create(model='{self._model_name}', path='Modelfile', stream=
 
 {ollama_service_ready}
 
+# Debugging: Shows the status of model pull.
 for chunk in ollama.pull('{self._model_name}', stream=True):
     print(chunk)
 """
@@ -171,7 +174,7 @@ for chunk in ollama.pull('{self._model_name}', stream=True):
                 ),
                 volume_mounts=[
                     V1VolumeMount(name="shared-data", mount_path="/shared"),
-                    V1VolumeMount(name="tmp", mount_path="/tmp"),
+                    V1VolumeMount(name="local-sandbox", mount_path=self.local_sandbox_dir),
                 ],
             )
         )

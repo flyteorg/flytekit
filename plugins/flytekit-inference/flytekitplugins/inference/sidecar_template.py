@@ -1,6 +1,7 @@
+from pathlib import Path
 from typing import Optional
 
-from flytekit import PodTemplate
+from flytekit import FlyteContextManager, PodTemplate
 from flytekit.configuration.default_images import DefaultImages
 
 
@@ -78,7 +79,7 @@ class ModelInferenceTemplate:
             ],
             volumes=[
                 V1Volume(name="shared-data", empty_dir={}),
-                V1Volume(name="tmp", empty_dir={}),
+                V1Volume(name="local-sandbox", empty_dir={}),
             ],
         )
 
@@ -130,7 +131,7 @@ with open('/shared/inputs.json', 'w') as f:
                     args=[f'python3 -c "{input_download_code}" {{{{.input}}}}'],
                     volume_mounts=[
                         V1VolumeMount(name="shared-data", mount_path="/shared"),
-                        V1VolumeMount(name="tmp", mount_path="/tmp"),
+                        V1VolumeMount(name="local-sandbox", mount_path=self.local_sandbox_dir),
                     ],
                 ),
             )
@@ -142,3 +143,7 @@ with open('/shared/inputs.json', 'w') as f:
     @property
     def base_url(self):
         return f"http://localhost:{self._port}"
+
+    @property
+    def local_sandbox_dir(self):
+        return Path(FlyteContextManager.current_context().file_access.local_sandbox_dir).parent
