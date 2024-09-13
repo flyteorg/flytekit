@@ -15,7 +15,7 @@ import typing
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from functools import lru_cache
-from typing import Dict, List, NamedTuple, Optional, Type, cast
+from typing import Any, Dict, List, NamedTuple, Optional, Type, cast
 
 import msgpack
 from dataclasses_json import DataClassJsonMixin, dataclass_json
@@ -50,6 +50,13 @@ from flytekit.models.types import LiteralType, SimpleType, TypeStructure, UnionT
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
 TITLE = "title"
+
+
+# In mashumaro, default encoder use strict type = False, but default decoder use strict type = True.
+# This is for case like Dict[int, str], where the key is int, but it's serialized as string.
+# If we don't use strict_map_key=False, the decoder will raise error for strict types.
+def _default_flytekit_decoder(data: bytes) -> Any:
+    return msgpack.unpackb(data, raw=False, strict_map_key=False)
 
 
 class BatchSize:
@@ -192,7 +199,7 @@ class TypeTransformer(typing.Generic[T]):
             try:
                 decoder = self._msgpack_decoder[expected_python_type]
             except KeyError:
-                decoder = MessagePackDecoder(expected_python_type)
+                decoder = MessagePackDecoder(expected_python_type, pre_decoder_func=_default_flytekit_decoder)
                 self._msgpack_decoder[expected_python_type] = decoder
             return decoder.decode(binary_idl_object.value)
         else:
@@ -531,7 +538,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 encoder = self._msgpack_encoder[python_type]
             except KeyError:
                 encoder = MessagePackEncoder(python_type)
-                self._encoder[python_type] = encoder
+                self._msgpack_encoder[python_type] = encoder
 
             try:
                 msgpack_bytes = encoder.encode(python_val)
@@ -684,14 +691,14 @@ class DataclassTransformer(TypeTransformer[object]):
     def from_binary_idl(self, binary_idl_object: Binary, expected_python_type: Type[T]) -> T:
         if binary_idl_object.tag == "msgpack":
             if issubclass(expected_python_type, DataClassJSONMixin):
-                dict_obj = msgpack.loads(binary_idl_object.value)
+                dict_obj = msgpack.loads(binary_idl_object.value, strict_map_key=False)
                 json_str = json.dumps(dict_obj)
                 dc = expected_python_type.from_json(json_str)  # type: ignore
             else:
                 try:
                     decoder = self._msgpack_decoder[expected_python_type]
                 except KeyError:
-                    decoder = MessagePackDecoder(expected_python_type)
+                    decoder = MessagePackDecoder(expected_python_type, pre_decoder_func=_default_flytekit_decoder)
                     self._msgpack_decoder[expected_python_type] = decoder
                 dc = decoder.decode(binary_idl_object.value)
 

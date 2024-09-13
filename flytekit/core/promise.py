@@ -151,7 +151,7 @@ def resolve_attr_path_in_promise(p: Promise) -> Promise:
             if binary_idl_obj.tag == "msgpack":
                 import msgpack
 
-                dict_obj = msgpack.loads(binary_idl_obj.value)
+                dict_obj = msgpack.loads(binary_idl_obj.value, strict_map_key=False)
                 v = resolve_attr_path_in_dict(dict_obj, attr_path=p.attr_path[used:])
                 msgpack_bytes = msgpack.dumps(v)
                 curr_val = Literal(scalar=Scalar(binary=Binary(value=msgpack_bytes, tag="msgpack")))
