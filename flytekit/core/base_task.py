@@ -194,6 +194,7 @@ class Task(object):
     examples of how to extend this class.
     """
 
+
     def __init__(
         self,
         task_type: str,
@@ -203,6 +204,7 @@ class Task(object):
         task_type_version=0,
         security_ctx: Optional[SecurityContext] = None,
         docs: Optional[Documentation] = None,
+        timeout: Optional[Union[datetime.timedelta, int]] = None,
         **kwargs,
     ):
         self._task_type = task_type
@@ -212,6 +214,9 @@ class Task(object):
         self._task_type_version = task_type_version
         self._security_ctx = security_ctx
         self._docs = docs
+        self._timeout = timeout
+        # put timeout to metadata here
+        # raise error if metadata and timeout are both set
 
         FlyteEntities.entities.append(self)
 
@@ -247,6 +252,9 @@ class Task(object):
     def docs(self) -> Documentation:
         return self._docs
 
+    @property
+    def timeout(self) -> Optional[Union[datetime.timedelta, int]]:
+        return self._timeout
     def get_type_for_input_var(self, k: str, v: Any) -> type:
         """
         Returns the python native type for the given input variable
