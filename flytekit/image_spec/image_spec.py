@@ -176,7 +176,7 @@ class ImageSpec:
 
         if self.copy:
             from flytekit.tools.fast_registration import compute_digest
- 
+
             digest = compute_digest([path for pathlist in self.copy for path in pathlist], None)
             spec = dataclasses.replace(spec, copy=digest)
 
