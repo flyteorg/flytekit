@@ -251,6 +251,9 @@ class SimpleTransformer(TypeTransformer[T]):
                 f"Cannot convert to type {expected_python_type}, only {self._type} is supported"
             )
 
+        if lv.scalar and lv.scalar.binary:
+            return self.from_binary_idl(lv.scalar.binary, expected_python_type)
+
         try:  # todo(maximsmol): this is quite ugly and each transformer should really check their Literal
             res = self._from_literal_transformer(lv)
             if type(res) != self._type:
