@@ -26,6 +26,7 @@ from typing import Dict
 import click
 import cloudpickle
 import fsspec
+import nest_asyncio
 import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
 from flyteidl.core import literals_pb2
@@ -101,6 +102,8 @@ if typing.TYPE_CHECKING:
         from IPython.core.display import HTML
     except ImportError:
         ...
+
+nest_asyncio.apply()
 
 ExecutionDataResponse = typing.Union[WorkflowExecutionGetDataResponse, NodeExecutionGetDataResponse]
 
@@ -829,18 +832,9 @@ class FlyteRemote(object):
                 domain=self.default_domain,
             )
 
-        try:
-            import nest_asyncio
-
-            nest_asyncio.apply()
-            loop = asyncio.get_running_loop()
-            ident = loop.run_until_complete(
-                self._serialize_and_register(entity=entity, settings=serialization_settings, version=version)
-            )
-        except RuntimeError:
-            ident = asyncio.run(
-                self._serialize_and_register(entity=entity, settings=serialization_settings, version=version)
-            )
+        ident = asyncio.run(
+            self._serialize_and_register(entity=entity, settings=serialization_settings, version=version)
+        )
 
         ft = self.fetch_task(
             ident.project,
@@ -879,17 +873,11 @@ class FlyteRemote(object):
             )
 
         self._resolve_identifier(ResourceType.WORKFLOW, entity.name, version, serialization_settings)
-        try:
-            import nest_asyncio
 
-            nest_asyncio.apply()
-            ident = asyncio.run(
-                self._serialize_and_register(entity, serialization_settings, version, options, default_launch_plan)
-            )
-        except RuntimeError:
-            ident = asyncio.run(
-                self._serialize_and_register(entity, serialization_settings, version, options, default_launch_plan)
-            )
+        ident = asyncio.run(
+            self._serialize_and_register(entity, serialization_settings, version, options, default_launch_plan)
+        )
+
         fwf = self.fetch_workflow(ident.project, ident.domain, ident.name, ident.version)
         fwf._python_interface = entity.python_interface
         return fwf
