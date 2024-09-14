@@ -3291,3 +3291,40 @@ def test_lazy_import_transformers_concurrently():
         assert mock_wrapper.mock_calls[-N:] == [mock.call.after_import_mock()]*N
         expected_number_of_register_calls = len(mock_wrapper.mock_calls) - N
         assert all([mock_call[0] == "mock_register" for mock_call in mock_wrapper.mock_calls[:expected_number_of_register_calls]])
+
+
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="PEP604 requires >=3.10, 585 requires >=3.9")
+def test_option_list_with_pipe():
+    pt = list[int] | None
+    lt = TypeEngine.to_literal_type(pt)
+
+    ctx = FlyteContextManager.current_context()
+    lit = TypeEngine.to_literal(ctx, [1, 2, 3], pt, lt)
+    assert lit.scalar.union.value.collection.literals[2].scalar.primitive.integer == 3
+
+    TypeEngine.to_literal(ctx, None, pt, lt)
+
+    with pytest.raises(TypeTransformerFailedError):
+        TypeEngine.to_literal(ctx, [1, 2, "3"], pt, lt)
+
+
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="PEP604 requires >=3.10, 585 requires >=3.9")
+def test_option_list_with_pipe_2():
+    pt = list[list[dict[str, str]] | None] | None
+    lt = TypeEngine.to_literal_type(pt)
+
+    ctx = FlyteContextManager.current_context()
+    lit = TypeEngine.to_literal(ctx, [[{"a": "one"}], None, [{"b": "two"}]], pt, lt)
+    uv = lit.scalar.union.value
+    assert uv is not None
+    assert len(uv.collection.literals) == 3
+    first = uv.collection.literals[0]
+    assert first.scalar.union.value.collection.literals[0].map.literals["a"].scalar.primitive.string_value == "one"
+
+    assert len(lt.union_type.variants) == 2
+    v1 = lt.union_type.variants[0]
+    assert len(v1.collection_type.union_type.variants) == 2
+    assert v1.collection_type.union_type.variants[0].collection_type.map_value_type.simple == SimpleType.STRING
+
+    with pytest.raises(TypeTransformerFailedError):
+        TypeEngine.to_literal(ctx, [[{"a": "one"}], None, [{"b": 3}]], pt, lt)
