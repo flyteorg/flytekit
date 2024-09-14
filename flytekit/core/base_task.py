@@ -624,6 +624,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         with timeit("Translate the output to literals"):
             literals = {}
             omt = ctx.output_metadata_tracker
+            # Here is where we iterate through the outputs, need to call new type engine.
             for i, (k, v) in enumerate(native_outputs_as_map.items()):
                 literal_type = self._outputs_interface[k].type
                 py_type = self.get_type_for_output_var(k, v)
@@ -631,6 +632,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 if isinstance(v, tuple):
                     raise TypeError(f"Output({k}) in task '{self.name}' received a tuple {v}, instead of {py_type}")
                 try:
+                    # switch this to async version
                     lit = TypeEngine.to_literal(ctx, v, py_type, literal_type)
                     literals[k] = lit
                 except Exception as e:

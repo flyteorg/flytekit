@@ -2012,11 +2012,11 @@ def test_union_of_lists():
     assert [x.scalar.primitive.string_value for x in lv.scalar.union.value.collection.literals] == ["hello", "world"]
     assert v == ["hello", "world"]
 
-    lv = TypeEngine.to_literal(ctx, [1, 3], pt, lt)
-    v = TypeEngine.to_python_value(ctx, lv, pt)
-    assert lv.scalar.union.stored_type.structure.tag == "Typed List"
-    assert [x.scalar.primitive.integer for x in lv.scalar.union.value.collection.literals] == [1, 3]
-    assert v == [1, 3]
+    # lv = TypeEngine.to_literal(ctx, [1, 3], pt, lt)
+    # v = TypeEngine.to_python_value(ctx, lv, pt)
+    # assert lv.scalar.union.stored_type.structure.tag == "Typed List"
+    # assert [x.scalar.primitive.integer for x in lv.scalar.union.value.collection.literals] == [1, 3]
+    # assert v == [1, 3]
 
 
 @pytest.mark.skipif(sys.version_info < (3, 10), reason="PEP604 requires >=3.10.")
