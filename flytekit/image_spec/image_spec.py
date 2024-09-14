@@ -419,7 +419,7 @@ class ImageBuildEngine:
 def validate_container_registry_name(name: str) -> bool:
     """Validate Docker container registry name."""
     # Define the regular expression for the registry name
-    registry_pattern = r"^(localhost:\d{1,5}|([a-z0-9._-]+)(:[0-9]{1,5})?)(/[a-zA-Z0-9._-]+)*$"
+    registry_pattern = r"^(localhost:\d{1,5}|([a-z\d\._-]+)(:\d{1,5})?)(/[\w\.-]+)*$"
 
     # Use regex to validate the given name
     return bool(re.match(registry_pattern, name))
