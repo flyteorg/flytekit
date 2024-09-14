@@ -1,3 +1,4 @@
+import os
 import pathlib
 import sys
 import tempfile
@@ -239,6 +240,10 @@ def _update_serialization_settings_for_ipython(
             dest = pathlib.Path(tmp_dir, "pkl.gz")
             with gzip.GzipFile(filename=dest, mode="wb", mtime=0) as gzipped:
                 cloudpickle.dump(entity, gzipped)
+            if os.path.getsize(dest) > 150 * 1024 * 1024:
+                raise ValueError(
+                    "The size of the task to pickled exceeds the limit of 150MB. Please reduce the size of the task."
+                )
             display_ipython_warning("Uploading Pickled representation of Task to remote storage...")
             _, native_url = options.file_uploader(dest)
 
