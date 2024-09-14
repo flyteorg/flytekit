@@ -256,7 +256,7 @@ class DefaultImageBuilder(ImageSpecBuilder):
         "python_version",
         "builder",
         "source_root",
-        "copy",
+        "source_copy_mode",
         "env",
         "registry",
         "packages",
@@ -272,6 +272,7 @@ class DefaultImageBuilder(ImageSpecBuilder):
         "pip_extra_index_url",
         # "registry_config",
         "commands",
+        "copy",
     }
 
     def build_image(self, image_spec: ImageSpec) -> str:
