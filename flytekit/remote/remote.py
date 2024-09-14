@@ -240,7 +240,7 @@ class FlyteRemote(object):
         """Return a SynchronousFlyteClient for additional operations."""
         if not self._client_initialized:
             self._client = SynchronousFlyteClient(
-                endpoint=self.config.platform.endpoint, insecure=self.config.platform.insecure, auth_mode=str(self.config.platform.auth_mode), **self._kwargs
+                endpoint=self.config.platform.endpoint, insecure=self.config.platform.insecure, auth_mode=str(self.config.platform.auth_mode), client_id=self.config.platform.client_id, client_credentials_secret=self.config.platform.client_credentials_secret, **self._kwargs
             )
             self._client_initialized = True
         return self._client
