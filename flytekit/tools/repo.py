@@ -8,6 +8,8 @@ from pathlib import Path
 
 import click
 
+import flytekit.configuration
+import flytekit.constants
 from flytekit.configuration import FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.loggers import logger
@@ -25,8 +27,28 @@ class NoSerializableEntitiesError(Exception):
     pass
 
 
-def serialize(
+def serialize_load_only(
     pkgs: typing.List[str],
+    settings: SerializationSettings,
+    local_source_root: typing.Optional[str] = None,
+):
+    """
+    See :py:class:`flytekit.models.core.identifier.ResourceType` to match the trailing index in the file name with the
+    entity type.
+    :param settings: SerializationSettings to be used
+    :param pkgs: Dot-delimited Python packages/subpackages to look into for serialization.
+    :param local_source_root: Where to start looking for the code.
+    """
+    settings.source_root = local_source_root
+    ctx_builder = FlyteContextManager.current_context().with_serialization_settings(settings)
+    with FlyteContextManager.with_context(ctx_builder):
+        # Scan all modules. the act of loading populates the global singleton that contains all objects
+        with module_loader.add_sys_path(local_source_root):
+            click.secho(f"Loading packages {pkgs} under source root {local_source_root}", fg="yellow")
+            module_loader.just_load_modules(pkgs=pkgs)
+
+
+def serialize_get_control_plane_entities(
     settings: SerializationSettings,
     local_source_root: typing.Optional[str] = None,
     options: typing.Optional[Options] = None,
@@ -40,13 +62,8 @@ def serialize(
     :param local_source_root: Where to start looking for the code.
     """
     settings.source_root = local_source_root
-    ctx = FlyteContextManager.current_context().with_serialization_settings(settings)
-    with FlyteContextManager.with_context(ctx) as ctx:
-        # Scan all modules. the act of loading populates the global singleton that contains all objects
-        with module_loader.add_sys_path(local_source_root):
-            click.secho(f"Loading packages {pkgs} under source root {local_source_root}", fg="yellow")
-            module_loader.just_load_modules(pkgs=pkgs)
-
+    ctx_builder = FlyteContextManager.current_context().with_serialization_settings(settings)
+    with FlyteContextManager.with_context(ctx_builder) as ctx:
         registrable_entities = get_registrable_entities(ctx, options=options)
         click.secho(f"Successfully serialized {len(registrable_entities)} flyte objects", fg="green")
         return registrable_entities
@@ -64,7 +81,8 @@ def serialize_to_folder(
     """
     if folder is None:
         folder = "."
-    loaded_entities = serialize(pkgs, settings, local_source_root, options=options)
+    serialize_load_only(pkgs, settings, local_source_root)
+    loaded_entities = serialize_get_control_plane_entities(settings, local_source_root, options=options)
     persist_registrable_entities(loaded_entities, folder)
 
 
@@ -74,6 +92,7 @@ def package(
     output: str = "./flyte-package.tgz",
     fast: bool = False,
     deref_symlinks: bool = False,
+    fast_options: typing.Optional[fast_registration.FastPackageOptions] = None,
 ):
     """
     Package the given entities and the source code (if fast is enabled) into a package with the given name in output
@@ -82,6 +101,11 @@ def package(
     :param output: output package name with suffix
     :param fast: fast enabled implies source code is bundled
     :param deref_symlinks: if enabled then symlinks are dereferenced during packaging
+    :param fast_options:
+
+    Temporarily, for fast register, specify both the fast arg as well as copy_style fast == True with
+    copy_style == None means use the old fast register tar'ring method.
+    In the future the fast bool will be removed, and copy_style == None will mean do not fast register.
     """
     if not serializable_entities:
         raise NoSerializableEntitiesError("Nothing to package")
@@ -95,7 +119,7 @@ def package(
             if os.path.abspath(output).startswith(os.path.abspath(source)) and os.path.exists(output):
                 click.secho(f"{output} already exists within {source}, deleting and re-creating it", fg="yellow")
                 os.remove(output)
-            archive_fname = fast_registration.fast_package(source, output_tmpdir, deref_symlinks)
+            archive_fname = fast_registration.fast_package(source, output_tmpdir, deref_symlinks, options=fast_options)
             click.secho(f"Fast mode enabled: compressed archive {archive_fname}", dim=True)
 
         with tarfile.open(output, "w:gz") as tar:
@@ -114,12 +138,16 @@ def serialize_and_package(
     fast: bool = False,
     deref_symlinks: bool = False,
     options: typing.Optional[Options] = None,
+    fast_options: typing.Optional[fast_registration.FastPackageOptions] = None,
 ):
     """
     Fist serialize and then package all entities
+    Temporarily for fast package, specify both the fast arg as well as copy_style.
+    fast == True with copy_style == None means use the old fast register tar'ring method.
     """
-    serializable_entities = serialize(pkgs, settings, source, options=options)
-    package(serializable_entities, source, output, fast, deref_symlinks)
+    serialize_load_only(pkgs, settings, source)
+    serializable_entities = serialize_get_control_plane_entities(settings, source, options=options)
+    package(serializable_entities, source, output, fast, deref_symlinks, fast_options)
 
 
 def find_common_root(
@@ -147,29 +175,19 @@ def find_common_root(
     return project_root
 
 
-def load_packages_and_modules(
-    ss: SerializationSettings,
+def list_packages_and_modules(
     project_root: Path,
     pkgs_or_mods: typing.List[str],
-    options: typing.Optional[Options] = None,
-) -> typing.List[FlyteControlPlaneEntity]:
+) -> typing.List[str]:
     """
-    The project root is added as the first entry to sys.path, and then all the specified packages and modules
-    given are loaded with all submodules. The reason for prepending the entry is to ensure that the name that
-    the various modules are loaded under are the fully-resolved name.
+    This is a helper function that returns the input list of python packages/modules as a dot delinated list
+    relative to the given project_root.
 
-    For example, using flytesnacks cookbook, if you are in core/ and you call this function with
-    ``flyte_basics/hello_world.py control_flow/``, the ``hello_world`` module would be loaded
-    as ``core.flyte_basics.hello_world`` even though you're already in the core/ folder.
-
-    :param ss:
     :param project_root:
     :param pkgs_or_mods:
-    :param options:
-    :return: The common detected root path, the output of _find_project_root
+    :return: List of packages/modules, dot delineated.
     """
-    ss.git_repo = _get_git_repo_url(project_root)
-    pkgs_and_modules = []
+    pkgs_and_modules: typing.List[str] = []
     for pm in pkgs_or_mods:
         p = Path(pm).resolve()
         rel_path_from_root = p.relative_to(project_root)
@@ -182,9 +200,7 @@ def load_packages_and_modules(
         )
         pkgs_and_modules.append(dot_delineated)
 
-    registrable_entities = serialize(pkgs_and_modules, ss, str(project_root), options)
-
-    return registrable_entities
+    return pkgs_and_modules
 
 
 def secho(i: Identifier, state: str = "success", reason: str = None, op: str = "Registration"):
@@ -221,21 +237,19 @@ def register(
     fast: bool,
     package_or_module: typing.Tuple[str],
     remote: FlyteRemote,
+    copy_style: typing.Optional[flytekit.constants.CopyFileDetection],
     env: typing.Optional[typing.Dict[str, str]],
     dry_run: bool = False,
     activate_launchplans: bool = False,
     skip_errors: bool = False,
+    show_files: bool = False,
 ):
+    """
+    Temporarily, for fast register, specify both the fast arg as well as copy_style.
+    fast == True with copy_style == None means use the old fast register tar'ring method.
+    """
     detected_root = find_common_root(package_or_module)
     click.secho(f"Detected Root {detected_root}, using this to create deployable package...", fg="yellow")
-    fast_serialization_settings = None
-    if fast:
-        md5_bytes, native_url = remote.fast_package(detected_root, deref_symlinks, output)
-        fast_serialization_settings = FastSerializationSettings(
-            enabled=True,
-            destination_dir=destination_dir,
-            distribution_location=native_url,
-        )
 
     # Create serialization settings
     # Todo: Rely on default Python interpreter for now, this will break custom Spark containers
@@ -244,28 +258,50 @@ def register(
         domain=domain,
         version=version,
         image_config=image_config,
-        fast_serialization_settings=fast_serialization_settings,
+        fast_serialization_settings=None,  # should probably add incomplete fast settings
         env=env,
     )
 
-    if not version and fast:
-        version = remote._version_from_hash(md5_bytes, serialization_settings, service_account, raw_data_prefix)  # noqa
-        click.secho(f"Computed version is {version}", fg="yellow")
-    elif not version:
+    if not version and not fast:
         click.secho("Version is required.", fg="red")
         return
 
     b = serialization_settings.new_builder()
-    b.version = version
     serialization_settings = b.build()
 
     options = Options.default_from(k8s_service_account=service_account, raw_data_prefix=raw_data_prefix)
 
     # Load all the entities
     FlyteContextManager.push_context(remote.context)
-    registrable_entities = load_packages_and_modules(
-        serialization_settings, detected_root, list(package_or_module), options
-    )
+    serialization_settings.git_repo = _get_git_repo_url(str(detected_root))
+    pkgs_and_modules = list_packages_and_modules(detected_root, list(package_or_module))
+
+    # NB: The change here is that the loading of user code _cannot_ depend on fast register information (the computed
+    #     version, upload native url, hash digest, etc.).
+    serialize_load_only(pkgs_and_modules, serialization_settings, str(detected_root))
+
+    # Fast registration is handled after module loading
+    if fast:
+        md5_bytes, native_url = remote.fast_package(
+            detected_root,
+            deref_symlinks,
+            output,
+            options=fast_registration.FastPackageOptions([], copy_style=copy_style, show_files=show_files),
+        )
+        # update serialization settings from fast register output
+        fast_serialization_settings = FastSerializationSettings(
+            enabled=True,
+            destination_dir=destination_dir,
+            distribution_location=native_url,
+        )
+        serialization_settings.fast_serialization_settings = fast_serialization_settings
+        if not version:
+            version = remote._version_from_hash(md5_bytes, serialization_settings, service_account, raw_data_prefix)  # noqa
+            serialization_settings.version = version
+            click.secho(f"Computed version is {version}", fg="yellow")
+
+    registrable_entities = serialize_get_control_plane_entities(serialization_settings, str(detected_root), options)
+
     FlyteContextManager.pop_context()
     if len(registrable_entities) == 0:
         click.secho("No Flyte entities were detected. Aborting!", fg="red")

@@ -317,6 +317,44 @@ To fetch output of a specific node execution:
 
 :ref:`Node <flyte:divedeep-nodes>` here, can correspond to a task, workflow, or branch node.
 
+Reference launch plan executions
+================================
+
+When retrieving and inspecting an execution which calls a launch plan, the launch plan manifests as a sub-workflow which
+can be found within the ``workflow_executions`` of a given node execution. Note that the workflow execution of interest
+must again be synced in order to inspect the input and output of the contained tasks.
+
+.. code-block:: python
+
+    @task
+    def add_random(x: int) -> int:
+        return x + random.randint(1, 100)
+
+    @workflow
+    def sub_wf(x: int) -> int:
+        x = add_random(x=x)
+        return add_random(x=x)
+
+    sub_wf_lp = LaunchPlan.get_or_create(
+        name="sub_wf_lp",
+        workflow=sub_wf,
+    )
+
+    @workflow
+    def parent_wf(x: int = 1) -> int:
+        x = add_random(x=x)
+        return sub_wf_lp(x=x)
+
+To get the output of the first ``add_random`` call in ``sub_wf``, you can do the following with the ``execution`` from the
+``parent_wf``:
+
+.. code-block:: python
+
+    execution = remote.fetch_execution(name="adgswtrzfn99k2cws49q", project="flytesnacks", domain="development")
+    remote.sync_execution(execution, sync_nodes=True)
+    remote.sync_execution(execution.node_executions['n1'].workflow_executions[0], sync_nodes=True)
+    out = execution.node_executions['n1'].workflow_executions[0].node_executions['n0'].outputs['o0']
+
 ****************
 Listing Entities
 ****************

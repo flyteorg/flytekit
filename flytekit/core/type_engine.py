@@ -10,6 +10,7 @@ import json
 import mimetypes
 import sys
 import textwrap
+import threading
 import typing
 from abc import ABC, abstractmethod
 from collections import OrderedDict
@@ -147,7 +148,37 @@ class TypeTransformer(typing.Generic[T]):
         """
         return self._type_assertions_enabled
 
+    def isinstance_generic(self, obj, generic_alias):
+        origin = get_origin(generic_alias)  # list from list[int])
+        args = get_args(generic_alias)  # (int,) from list[int]
+
+        if not isinstance(obj, origin):
+            raise TypeTransformerFailedError(f"Value '{obj}' is not of container type {origin}")
+
+        # Optionally check the type of elements if it's a collection like list or dict
+        if origin in {list, tuple, set}:
+            for item in obj:
+                self.assert_type(args[0], item)
+                return
+            raise TypeTransformerFailedError(f"Not all items in '{obj}' are of type {args[0]}")
+
+        if origin is dict:
+            key_type, value_type = args
+            for k, v in obj.items():
+                self.assert_type(key_type, k)
+                self.assert_type(value_type, v)
+                return
+            raise TypeTransformerFailedError(f"Not all values in '{obj}' are of type {value_type}")
+
+        return
+
     def assert_type(self, t: Type[T], v: T):
+        if sys.version_info >= (3, 10):
+            import types
+
+            if isinstance(t, types.GenericAlias):
+                return self.isinstance_generic(v, t)
+
         if not hasattr(t, "__origin__") and not isinstance(v, t):
             raise TypeTransformerFailedError(f"Expected value of type {t} but got '{v}' of type {type(v)}")
 
@@ -340,7 +371,8 @@ class DataclassTransformer(TypeTransformer[object]):
 
     def assert_type(self, expected_type: Type[DataClassJsonMixin], v: T):
         # Skip iterating all attributes in the dataclass if the type of v already matches the expected_type
-        if type(v) == expected_type:
+        expected_type = get_underlying_type(expected_type)
+        if type(v) == expected_type or issubclass(type(v), expected_type):
             return
 
         # @dataclass
@@ -358,7 +390,6 @@ class DataclassTransformer(TypeTransformer[object]):
         # However, FooSchema is created by flytekit and it's not equal to the user-defined dataclass (Foo).
         # Therefore, we should iterate all attributes in the dataclass and check the type of value in dataclass matches the expected_type.
 
-        expected_type = get_underlying_type(expected_type)
         expected_fields_dict = {}
 
         for f in dataclasses.fields(expected_type):
@@ -475,10 +506,13 @@ class DataclassTransformer(TypeTransformer[object]):
         # Recursively construct the dataclass_type which contains the literal type of each field
         literal_type = {}
 
+        hints = typing.get_type_hints(t)
         # Get the type of each field from dataclass
         for field in t.__dataclass_fields__.values():  # type: ignore
             try:
-                literal_type[field.name] = TypeEngine.to_literal_type(field.type)
+                name = field.name
+                python_type = hints.get(name, field.type)
+                literal_type[name] = TypeEngine.to_literal_type(python_type)
             except Exception as e:
                 logger.warning(
                     "Field {} of type {} cannot be converted to a literal type. Error: {}".format(
@@ -503,22 +537,28 @@ class DataclassTransformer(TypeTransformer[object]):
 
         self._make_dataclass_serializable(python_val, python_type)
 
-        # The function looks up or creates a JSONEncoder specifically designed for the object's type.
-        # This encoder is then used to convert a data class into a JSON string.
-        try:
-            encoder = self._encoder[python_type]
-        except KeyError:
-            encoder = JSONEncoder(python_type)
-            self._encoder[python_type] = encoder
+        # The `to_json` integrated through mashumaro's `DataClassJSONMixin` allows for more
+        # functionality than JSONEncoder
+        # We can't use hasattr(python_val, "to_json") here because we rely on mashumaro's API to customize the serialization behavior for Flyte types.
+        if isinstance(python_val, DataClassJSONMixin):
+            json_str = python_val.to_json()
+        else:
+            # The function looks up or creates a JSONEncoder specifically designed for the object's type.
+            # This encoder is then used to convert a data class into a JSON string.
+            try:
+                encoder = self._encoder[python_type]
+            except KeyError:
+                encoder = JSONEncoder(python_type)
+                self._encoder[python_type] = encoder
 
-        try:
-            json_str = encoder.encode(python_val)
-        except NotImplementedError:
-            # you can refer FlyteFile, FlyteDirectory and StructuredDataset to see how flyte types can be implemented.
-            raise NotImplementedError(
-                f"{python_type} should inherit from mashumaro.types.SerializableType"
-                f" and implement _serialize and _deserialize methods."
-            )
+            try:
+                json_str = encoder.encode(python_val)
+            except NotImplementedError:
+                # you can refer FlyteFile, FlyteDirectory and StructuredDataset to see how flyte types can be implemented.
+                raise NotImplementedError(
+                    f"{python_type} should inherit from mashumaro.types.SerializableType"
+                    f" and implement _serialize and _deserialize methods."
+                )
 
         return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))  # type: ignore
 
@@ -668,15 +708,21 @@ class DataclassTransformer(TypeTransformer[object]):
 
         json_str = _json_format.MessageToJson(lv.scalar.generic)
 
-        # The function looks up or creates a JSONDecoder specifically designed for the object's type.
-        # This decoder is then used to convert a JSON string into a data class.
-        try:
-            decoder = self._decoder[expected_python_type]
-        except KeyError:
-            decoder = JSONDecoder(expected_python_type)
-            self._decoder[expected_python_type] = decoder
+        # The `from_json` function is provided from mashumaro's `DataClassJSONMixin`.
+        # It deserializes a JSON string into a data class, and supports additional functionality over JSONDecoder
+        # We can't use hasattr(expected_python_type, "from_json") here because we rely on mashumaro's API to customize the deserialization behavior for Flyte types.
+        if issubclass(expected_python_type, DataClassJSONMixin):
+            dc = expected_python_type.from_json(json_str)  # type: ignore
+        else:
+            # The function looks up or creates a JSONDecoder specifically designed for the object's type.
+            # This decoder is then used to convert a JSON string into a data class.
+            try:
+                decoder = self._decoder[expected_python_type]
+            except KeyError:
+                decoder = JSONDecoder(expected_python_type)
+                self._decoder[expected_python_type] = decoder
 
-        dc = decoder.decode(json_str)
+            dc = decoder.decode(json_str)
 
         dc = self._fix_structured_dataset_type(expected_python_type, dc)
         return self._fix_dataclass_int(expected_python_type, dc)
@@ -830,6 +876,7 @@ class TypeEngine(typing.Generic[T]):
     _DATACLASS_TRANSFORMER: TypeTransformer = DataclassTransformer()  # type: ignore
     _ENUM_TRANSFORMER: TypeTransformer = EnumTransformer()  # type: ignore
     has_lazy_import = False
+    lazy_import_lock = threading.Lock()
 
     @classmethod
     def register(
@@ -983,51 +1030,55 @@ class TypeEngine(typing.Generic[T]):
         """
         Only load the transformers if needed.
         """
-        if cls.has_lazy_import:
-            return
-        cls.has_lazy_import = True
-        from flytekit.types.structured import (
-            register_arrow_handlers,
-            register_bigquery_handlers,
-            register_pandas_handlers,
-            register_snowflake_handlers,
-        )
-        from flytekit.types.structured.structured_dataset import DuplicateHandlerError
+        with cls.lazy_import_lock:
+            # Avoid a race condition where concurrent threads may exit lazy_import_transformers before the transformers
+            # have been imported. This could be implemented without a lock if you assume python assignments are atomic
+            # and re-registering transformers is acceptable, but I decided to play it safe.
+            if cls.has_lazy_import:
+                return
+            cls.has_lazy_import = True
+            from flytekit.types.structured import (
+                register_arrow_handlers,
+                register_bigquery_handlers,
+                register_pandas_handlers,
+                register_snowflake_handlers,
+            )
+            from flytekit.types.structured.structured_dataset import DuplicateHandlerError
 
-        if is_imported("tensorflow"):
-            from flytekit.extras import tensorflow  # noqa: F401
-        if is_imported("torch"):
-            from flytekit.extras import pytorch  # noqa: F401
-        if is_imported("sklearn"):
-            from flytekit.extras import sklearn  # noqa: F401
-        if is_imported("pandas"):
-            try:
-                from flytekit.types.schema.types_pandas import PandasSchemaReader, PandasSchemaWriter  # noqa: F401
-            except ValueError:
-                logger.debug("Transformer for pandas is already registered.")
-            try:
-                register_pandas_handlers()
-            except DuplicateHandlerError:
-                logger.debug("Transformer for pandas is already registered.")
-        if is_imported("pyarrow"):
-            try:
-                register_arrow_handlers()
-            except DuplicateHandlerError:
-                logger.debug("Transformer for arrow is already registered.")
-        if is_imported("google.cloud.bigquery"):
-            try:
-                register_bigquery_handlers()
-            except DuplicateHandlerError:
-                logger.debug("Transformer for bigquery is already registered.")
-        if is_imported("numpy"):
-            from flytekit.types import numpy  # noqa: F401
-        if is_imported("PIL"):
-            from flytekit.types.file import image  # noqa: F401
-        if is_imported("snowflake.connector"):
-            try:
-                register_snowflake_handlers()
-            except DuplicateHandlerError:
-                logger.debug("Transformer for snowflake is already registered.")
+            if is_imported("tensorflow"):
+                from flytekit.extras import tensorflow  # noqa: F401
+            if is_imported("torch"):
+                from flytekit.extras import pytorch  # noqa: F401
+            if is_imported("sklearn"):
+                from flytekit.extras import sklearn  # noqa: F401
+            if is_imported("pandas"):
+                try:
+                    from flytekit.types.schema.types_pandas import PandasSchemaReader, PandasSchemaWriter  # noqa: F401
+                except ValueError:
+                    logger.debug("Transformer for pandas is already registered.")
+                try:
+                    register_pandas_handlers()
+                except DuplicateHandlerError:
+                    logger.debug("Transformer for pandas is already registered.")
+            if is_imported("pyarrow"):
+                try:
+                    register_arrow_handlers()
+                except DuplicateHandlerError:
+                    logger.debug("Transformer for arrow is already registered.")
+            if is_imported("google.cloud.bigquery"):
+                try:
+                    register_bigquery_handlers()
+                except DuplicateHandlerError:
+                    logger.debug("Transformer for bigquery is already registered.")
+            if is_imported("numpy"):
+                from flytekit.types import numpy  # noqa: F401
+            if is_imported("PIL"):
+                from flytekit.types.file import image  # noqa: F401
+            if is_imported("snowflake.connector"):
+                try:
+                    register_snowflake_handlers()
+                except DuplicateHandlerError:
+                    logger.debug("Transformer for snowflake is already registered.")
 
     @classmethod
     def to_literal_type(cls, python_type: Type) -> LiteralType:
@@ -1162,7 +1213,8 @@ class TypeEngine(typing.Generic[T]):
             try:
                 kwargs[k] = TypeEngine.to_python_value(ctx, lm.literals[k], python_interface_inputs[k])
             except TypeTransformerFailedError as exc:
-                raise TypeTransformerFailedError(f"Error converting input '{k}' at position {i}:\n  {exc}") from None
+                exc.args = (f"Error converting input '{k}' at position {i}:\n  {exc.args[0]}",)
+                raise
         return kwargs
 
     @classmethod
@@ -1464,7 +1516,7 @@ def _is_union_type(t):
     else:
         UnionType = None
 
-    return t is typing.Union or get_origin(t) is Union or UnionType and isinstance(t, UnionType)
+    return t is typing.Union or get_origin(t) is typing.Union or UnionType and isinstance(t, UnionType)
 
 
 class UnionTransformer(TypeTransformer[T]):
@@ -1486,6 +1538,22 @@ class UnionTransformer(TypeTransformer[T]):
         Return the generic Type T of the Optional type
         """
         return get_args(t)[0]
+
+    def assert_type(self, t: Type[T], v: T):
+        python_type = get_underlying_type(t)
+        if _is_union_type(python_type):
+            for sub_type in get_args(python_type):
+                if sub_type == typing.Any:
+                    # this is an edge case
+                    return
+                try:
+                    super().assert_type(sub_type, v)
+                    return
+                except TypeTransformerFailedError:
+                    continue
+            raise TypeTransformerFailedError(f"Value {v} is not of type {t}")
+        else:
+            super().assert_type(t, v)
 
     def get_literal_type(self, t: Type[T]) -> Optional[LiteralType]:
         t = get_underlying_type(t)

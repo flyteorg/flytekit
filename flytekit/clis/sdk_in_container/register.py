@@ -5,10 +5,15 @@ import rich_click as click
 
 from flytekit.clis.helpers import display_help_with_error
 from flytekit.clis.sdk_in_container import constants
-from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_click_context, patch_image_config
+from flytekit.clis.sdk_in_container.helpers import (
+    get_and_save_remote_with_click_context,
+    parse_copy,
+    patch_image_config,
+)
 from flytekit.clis.sdk_in_container.utils import domain_option_dec, project_option_dec
 from flytekit.configuration import ImageConfig
 from flytekit.configuration.default_images import DefaultImages
+from flytekit.constants import CopyFileDetection
 from flytekit.interaction.click_types import key_value_callback
 from flytekit.loggers import logger
 from flytekit.tools import repo
@@ -93,7 +98,17 @@ the root of your project, it finds the first folder that does not have a ``__ini
     "--non-fast",
     default=False,
     is_flag=True,
-    help="Skip zipping and uploading the package",
+    help="[Will be deprecated, see --copy] Skip zipping and uploading the package. You can specify --copy none instead",
+)
+@click.option(
+    "--copy",
+    required=False,
+    type=click.Choice(["all", "auto", "none"], case_sensitive=False),
+    default=None,  # this will be changed to "all" after removing non-fast option
+    callback=parse_copy,
+    help="[Beta] Specify how and whether to use fast register"
+    " 'all' is the current behavior copying all files from root, 'auto' copies only loaded Python modules"
+    " 'none' means no files are copied, i.e. don't use fast register",
 )
 @click.option(
     "--dry-run",
@@ -139,6 +154,7 @@ def register(
     version: typing.Optional[str],
     deref_symlinks: bool,
     non_fast: bool,
+    copy: typing.Optional[CopyFileDetection],
     package_or_module: typing.Tuple[str],
     dry_run: bool,
     activate_launchplans: bool,
@@ -148,6 +164,16 @@ def register(
     """
     see help
     """
+    if copy is not None and non_fast:
+        raise ValueError("--non-fast and --copy cannot be used together. Use --copy none instead.")
+
+    # Handle the new case where the copy flag is used instead of non-fast
+    if copy == CopyFileDetection.NO_COPY:
+        non_fast = True
+        # Set this to None because downstream logic currently detects None to mean old logic.
+        copy = None
+    show_files = ctx.obj[constants.CTX_VERBOSE] > 0
+
     pkgs = ctx.obj[constants.CTX_PACKAGES]
     if not pkgs:
         logger.debug("No pkgs")
@@ -155,7 +181,7 @@ def register(
         raise ValueError("Unimplemented, just specify pkgs like folder/files as args at the end of the command")
 
     if non_fast and not version:
-        raise ValueError("Version is a required parameter in case --non-fast is specified.")
+        raise ValueError("Version is a required parameter in case --non-fast/--copy none is specified.")
 
     if len(package_or_module) == 0:
         display_help_with_error(
@@ -190,10 +216,12 @@ def register(
         version,
         deref_symlinks,
         fast=not non_fast,
+        copy_style=copy,
         package_or_module=package_or_module,
         remote=remote,
         env=env,
         dry_run=dry_run,
         activate_launchplans=activate_launchplans,
         skip_errors=skip_errors,
+        show_files=show_files,
     )

@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import datetime
+import os
 from functools import update_wrapper
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, TypeVar, Union, overload
+
+from flytekit.core.utils import str2bool
 
 try:
     from typing import ParamSpec
@@ -20,6 +23,8 @@ from flytekit.core.resources import Resources
 from flytekit.deck import DeckField
 from flytekit.extras.accelerators import BaseAccelerator
 from flytekit.image_spec.image_spec import ImageSpec
+from flytekit.interactive import vscode
+from flytekit.interactive.constants import FLYTE_ENABLE_VSCODE_KEY
 from flytekit.models.documentation import Documentation
 from flytekit.models.security import Secret
 
@@ -342,9 +347,11 @@ def task(
             timeout=timeout,
         )
 
+        decorated_fn = decorate_function(fn)
+
         task_instance = TaskPlugins.find_pythontask_plugin(type(task_config))(
             task_config,
-            fn,
+            decorated_fn,
             metadata=_metadata,
             container_image=container_image,
             environment=environment,
@@ -362,7 +369,7 @@ def task(
             pod_template_name=pod_template_name,
             accelerator=accelerator,
         )
-        update_wrapper(task_instance, fn)
+        update_wrapper(task_instance, decorated_fn)
         return task_instance
 
     if _task_function:
@@ -416,6 +423,23 @@ def reference_task(
         return ReferenceTask(project, domain, name, version, interface.inputs, interface.outputs)
 
     return wrapper
+
+
+def decorate_function(fn: Callable[P, Any]) -> Callable[P, Any]:
+    """
+    Decorates the task with additional functionality if necessary.
+
+    :param fn: python function to decorate.
+    :return: a decorated python function.
+    """
+
+    if str2bool(os.getenv(FLYTE_ENABLE_VSCODE_KEY)):
+        """
+        If the environment variable FLYTE_ENABLE_VSCODE is set to True, then the task is decorated with vscode
+        functionality. This is useful for debugging the task in vscode.
+        """
+        return vscode(task_function=fn)
+    return fn
 
 
 class Echo(PythonTask):

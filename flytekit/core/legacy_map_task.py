@@ -21,7 +21,6 @@ from flytekit.core.interface import transform_interface_to_list_interface
 from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanceTask
 from flytekit.core.tracker import TrackedInstance
 from flytekit.core.utils import timeit
-from flytekit.exceptions import scopes as exception_scopes
 from flytekit.loggers import logger
 from flytekit.models.array_job import ArrayJob
 from flytekit.models.interface import Variable
@@ -254,7 +253,7 @@ class MapPythonTask(PythonTask):
                 map_task_inputs[k] = v[task_index]
             else:
                 map_task_inputs[k] = v
-        return exception_scopes.user_entry_point(self._run_task.execute)(**map_task_inputs)
+        return self._run_task.execute(**map_task_inputs)
 
     def _raw_execute(self, **kwargs) -> Any:
         """
@@ -288,7 +287,7 @@ class MapPythonTask(PythonTask):
                 else:
                     single_instance_inputs[k] = kwargs[k]
             try:
-                o = exception_scopes.user_entry_point(self._run_task.execute)(**single_instance_inputs)
+                o = self._run_task.execute(**single_instance_inputs)
                 if outputs_expected:
                     outputs.append(o)
             except Exception as exc:

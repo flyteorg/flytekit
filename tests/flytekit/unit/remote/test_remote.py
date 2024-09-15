@@ -499,6 +499,7 @@ def test_fetch_workflow_with_nested_branch(mock_promote, mock_workflow, remote):
 @mock.patch("flytekit.remote.remote.FlyteRemote.register_workflow")
 @mock.patch("flytekit.remote.remote.FlyteRemote.upload_file")
 @mock.patch("flytekit.remote.remote.compress_scripts")
+@pytest.mark.serial
 def test_get_image_names(
     compress_scripts_mock, upload_file_mock, register_workflow_mock, version_from_hash_mock, read_bytes_mock
 ):
@@ -656,3 +657,29 @@ def test_get_git_report_url_unknown_url(tmp_path):
 
     returned_url = _get_git_repo_url(source_path)
     assert returned_url == ""
+
+
+@mock.patch("pathlib.Path.read_bytes")
+@mock.patch("flytekit.remote.remote.FlyteRemote.register_script")
+@mock.patch("flytekit.remote.remote.FlyteRemote.upload_file")
+@mock.patch("flytekit.remote.remote.compress_scripts")
+def test_register_wf_script_mode(compress_scripts_mock, upload_file_mock, register_workflow_mock, read_bytes_mock):
+    from .resources import hello_wf
+
+    md5_bytes = bytes([1, 2, 3])
+    read_bytes_mock.return_value = bytes([4, 5, 6])
+    compress_scripts_mock.return_value = "compressed"
+    upload_file_mock.return_value = md5_bytes, "localhost:30084"
+    flyte_remote = FlyteRemote(config=Config.auto())
+    flyte_remote.fast_register_workflow(hello_wf, version="v1")
+    register_workflow_mock.assert_called_with(
+        hello_wf,
+        image_config=None,
+        project=None,
+        domain=None,
+        version="v1",
+        default_launch_plan=True,
+        options=None,
+        source_path=str(pathlib.Path(flytekit.__file__).parent.parent),
+        module_name="tests.flytekit.unit.remote.resources",
+    )
