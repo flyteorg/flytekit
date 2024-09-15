@@ -26,7 +26,6 @@ from typing import Dict
 import click
 import cloudpickle
 import fsspec
-import nest_asyncio
 import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
 from flyteidl.core import literals_pb2
@@ -102,8 +101,6 @@ if typing.TYPE_CHECKING:
         from IPython.core.display import HTML
     except ImportError:
         ...
-
-nest_asyncio.apply()
 
 ExecutionDataResponse = typing.Union[WorkflowExecutionGetDataResponse, NodeExecutionGetDataResponse]
 
