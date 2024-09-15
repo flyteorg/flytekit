@@ -205,7 +205,7 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
         files = [f for f in os.listdir('.') if os.path.isfile(f)]
         for f in files:
             print(f)
-        # self.sess = sess_builder.getOrCreate().addArtifacts()
+        self.sess = sess_builder.getOrCreate()
         return user_params.builder().add_attr("SPARK_SESSION", self.sess).build()
 
     def execute(self, **kwargs) -> Any:
