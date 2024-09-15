@@ -159,10 +159,10 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
         )
 
     def get_image(self, settings: SerializationSettings) -> str:
-        if isinstance(self.container_image, ImageSpec):
-            # Ensure that the code is always copied into the image, even during fast-registration.
-            self.container_image.source_root = settings.source_root
-
+        # if isinstance(self.container_image, ImageSpec):
+        #     # Ensure that the code is always copied into the image, even during fast-registration.
+        #     self.container_image.source_root = settings.source_root
+        #
         return get_registerable_container_image(self.container_image, settings.image_config)
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
@@ -200,7 +200,12 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
                 spark_conf.setExecutorEnv("PYTHONPATH", os.environ["PYTHONPATH"])
             sess_builder = sess_builder.config(conf=spark_conf)
 
-        self.sess = sess_builder.getOrCreate()
+        print("os.getcwd()", os.getcwd())
+
+        files = [f for f in os.listdir('.') if os.path.isfile(f)]
+        for f in files:
+            print(f)
+        # self.sess = sess_builder.getOrCreate().addArtifacts()
         return user_params.builder().add_attr("SPARK_SESSION", self.sess).build()
 
     def execute(self, **kwargs) -> Any:
