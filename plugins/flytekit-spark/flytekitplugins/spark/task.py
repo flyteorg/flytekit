@@ -207,8 +207,9 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
             print(f)
         self.sess = sess_builder.getOrCreate()
         # self.sess.addArtifacts("fast_spark.py", file=True)
-        print("self.instantiated_in", self.instantiated_in)
-        self.sess.sparkContext.addFile(self.instantiated_in)
+        breakpoint()
+        print("self.module_file", self.module_file)
+        self.sess.sparkContext.addFile(self.module_file)
         return user_params.builder().add_attr("SPARK_SESSION", self.sess).build()
 
     def execute(self, **kwargs) -> Any:

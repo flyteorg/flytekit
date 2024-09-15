@@ -113,6 +113,10 @@ class TrackedInstance(metaclass=InstanceTrackingMeta):
         return n
 
     @property
+    def module_file(self) -> str:
+        return str(self._module_file)
+
+    @property
     def lhs(self):
         if self._lhs is not None:
             return self._lhs
