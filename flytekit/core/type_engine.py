@@ -143,6 +143,10 @@ class TypeTransformer(typing.Generic[T]):
         return self._t
 
     @property
+    def is_async(self) -> bool:
+        return False
+
+    @property
     def type_assertions_enabled(self) -> bool:
         """
         Indicates if the transformer wants type assertions to be enabled at the core type engine layer
@@ -167,7 +171,7 @@ class TypeTransformer(typing.Generic[T]):
         raise ValueError("By default, transformers do not translate from Flyte types back to Python types")
 
     @abstractmethod
-    def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Union[Literal, asyncio.Future]:
+    def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         """
         Converts a given python_val to a Flyte Literal, assuming the given python_val matches the declared python_type.
         Implementers should refrain from using type(python_val) instead rely on the passed in python_type. If these
@@ -205,6 +209,80 @@ class TypeTransformer(typing.Generic[T]):
         return str(self.__repr__())
 
 
+class AsyncTypeTransformer(TypeTransformer[T]):
+    def __init__(self, name: str, t: Type[T], enable_type_assertions: bool = True):
+        super().__init__(name, t, enable_type_assertions)
+
+    @property
+    def is_async(self) -> bool:
+        return True
+
+    @abstractmethod
+    async def async_to_literal(
+        self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType
+    ) -> Literal:
+        """
+        Converts a given python_val to a Flyte Literal, assuming the given python_val matches the declared python_type.
+        Implementers should refrain from using type(python_val) instead rely on the passed in python_type. If these
+        do not match (or are not allowed) the Transformer implementer should raise an AssertionError, clearly stating
+        what was the mismatch
+        :param ctx: A FlyteContext, useful in accessing the filesystem and other attributes
+        :param python_val: The actual value to be transformed
+        :param python_type: The assumed type of the value (this matches the declared type on the function)
+        :param expected: Expected Literal Type
+        """
+
+        raise NotImplementedError(f"Conversion to Literal for python type {python_type} not implemented")
+
+    @abstractmethod
+    async def async_to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> Optional[T]:
+        """
+        Converts the given Literal to a Python Type. If the conversion cannot be done an AssertionError should be raised
+        :param ctx: FlyteContext
+        :param lv: The received literal Value
+        :param expected_python_type: Expected native python type that should be returned
+        """
+        raise NotImplementedError(
+            f"Conversion to python value expected type {expected_python_type} from literal not implemented"
+        )
+
+    def to_literal(
+        self, ctx: FlyteContext, python_val: typing.Any, python_type: Type[T], expected: LiteralType
+    ) -> typing.Union[Literal, asyncio.Future]:
+        try:
+            loop = asyncio.get_running_loop()
+            coro = self.async_to_literal(ctx, python_val, python_type, expected)
+            if loop.is_running():
+                fut = loop.create_task(coro)
+                return fut
+
+            return loop.run_until_complete(coro)
+        except RuntimeError as e:
+            if "no running event loop" in str(e):
+                coro = self.async_to_literal(ctx, python_val, python_type, expected)
+                return asyncio.run(coro)
+            logger.error(f"Unknown RuntimeError {str(e)}")
+            raise
+
+    def to_python_value(
+        self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]
+    ) -> typing.Union[Optional[T], asyncio.Future]:
+        try:
+            loop = asyncio.get_running_loop()
+            coro = self.async_to_python_value(ctx, lv, expected_python_type)
+            if loop.is_running():
+                fut = loop.create_task(coro)
+                return fut
+
+            return loop.run_until_complete(coro)
+        except RuntimeError as e:
+            if "no running event loop" in str(e):
+                coro = self.async_to_python_value(ctx, lv, expected_python_type)
+                return asyncio.run(coro)
+            logger.error(f"Unknown RuntimeError {str(e)}")
+            raise
+
+
 class SimpleTransformer(TypeTransformer[T]):
     """
     A Simple implementation of a type transformer that uses simple lambdas to transform and reduces boilerplate
@@ -226,6 +304,12 @@ class SimpleTransformer(TypeTransformer[T]):
 
     def get_literal_type(self, t: Optional[Type[T]] = None) -> LiteralType:
         return LiteralType.from_flyte_idl(self._lt.to_flyte_idl())
+
+    def __getattr__(self, item):
+        if item == "async_to_literal":
+            breakpoint()
+        else:
+            return super().__getattribute__(item)
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         if type(python_val) != self._type:
@@ -875,14 +959,14 @@ class TypeEngine(typing.Generic[T]):
         cls.register(RestrictedTypeTransformer(name, type))  # type: ignore
 
     @classmethod
-    def register_additional_type(cls, transformer: TypeTransformer, additional_type: Type, override=False):
+    def register_additional_type(cls, transformer: TypeTransformer[T], additional_type: Type[T], override=False):
         if additional_type not in cls._REGISTRY or override:
             cls._REGISTRY[additional_type] = transformer
 
     @classmethod
     def get_transformer(cls, python_type: Type) -> TypeTransformer[T]:
         """
-        The TypeEngine hierarchy for flyteKit. This method looksup and selects the type transformer. The algorithm is
+        The TypeEngine hierarchy for flyteKit. This method looks up and selects the type transformer. The algorithm is
         as follows
 
           d = dictionary of registered transformers, where is a python `type`
@@ -1049,7 +1133,7 @@ class TypeEngine(typing.Generic[T]):
                     logger.debug("Transformer for snowflake is already registered.")
 
     @classmethod
-    def to_literal_type(cls, python_type: Type) -> LiteralType:
+    def to_literal_type(cls, python_type: Type[T]) -> LiteralType:
         """
         Converts a python type into a flyte specific ``LiteralType``
         """
@@ -1072,32 +1156,9 @@ class TypeEngine(typing.Generic[T]):
         return res
 
     @classmethod
-    def to_literal(cls, ctx: FlyteContext, python_val: typing.Any, python_type: Type, expected: LiteralType) -> Union[Literal, asyncio.Future]:
-        try:
-            loop = asyncio.get_running_loop()
-            coro = cls.a_to_literal(ctx, python_val, python_type, expected)
-            if loop.is_running():
-                fut = loop.create_task(coro)
-                return fut
+    def to_literal_checks(cls, python_val: typing.Any, python_type: Type[T], expected: LiteralType):
+        from flytekit.core.promise import VoidPromise
 
-            return loop.run_until_complete(coro)
-        except RuntimeError as e:
-            if "no running event loop" in str(e):
-                coro = cls.a_to_literal(ctx, python_val, python_type, expected)
-                return asyncio.run(coro)
-            logger.error(f"Unknown RuntimeError {str(e)}")
-            raise
-
-    @classmethod
-    async def a_to_literal(cls, ctx: FlyteContext, python_val: typing.Any, python_type: Type, expected: LiteralType) -> Literal:
-        """
-        Converts a python value of a given type and expected ``LiteralType`` into a resolved ``Literal`` value.
-        """
-        from flytekit.core.promise import Promise, VoidPromise
-
-        if isinstance(python_val, Promise):
-            # In the example above, this handles the "in2=a" type of argument
-            return python_val.val
         if isinstance(python_val, VoidPromise):
             raise AssertionError(
                 f"Outputs of a non-output producing task {python_val.task_name} cannot be passed to another task."
@@ -1111,31 +1172,114 @@ class TypeEngine(typing.Generic[T]):
             )
         if (python_val is None and python_type != type(None)) and expected and expected.union_type is None:
             raise TypeTransformerFailedError(f"Python value cannot be None, expected {python_type}/{expected}")
-        transformer = cls.get_transformer(python_type)
-        if transformer.type_assertions_enabled:
-            transformer.assert_type(python_type, python_val)
 
+    @classmethod
+    def calculate_hash(cls, python_val: typing.Any, python_type: Type[T]) -> Optional[str]:
         # In case the value is an annotated type we inspect the annotations and look for hash-related annotations.
-        hash = None
+        hsh = None
         if is_annotated(python_type):
             # We are now dealing with one of two cases:
             # 1. The annotated type is a `HashMethod`, which indicates that we should produce the hash using
             #    the method indicated in the annotation.
-            # 2. The annotated type is being used for a different purpose other than calculating hash values, in which case
-            #    we should just continue.
+            # 2. The annotated type is being used for a different purpose other than calculating hash values,
+            #    in which case we should just continue.
             for annotation in get_args(python_type)[1:]:
                 if not isinstance(annotation, HashMethod):
                     continue
-                hash = annotation.calculate(python_val)
+                hsh = annotation.calculate(python_val)
                 break
+        return hsh
 
-        lv = transformer.to_literal(ctx, python_val, python_type, expected)
-        if isinstance(lv, asyncio.Future):
-            await lv
-            lv = lv.result()
+    @classmethod
+    def to_literal(
+        cls, ctx: FlyteContext, python_val: typing.Any, python_type: Type[T], expected: LiteralType
+    ) -> typing.Union[Literal, asyncio.Future]:
+        """
+        The current dance is because we are allowing users to call from an async function, this synchronous
+        to_literal function, and allowing this to_literal function, to then invoke yet another async functionl,
+        namely an async tranformer.
+
+        We can remove the need for this function to return a future if we always just asyncio.run().
+        That is, if you use this function to call an async transformer, it has to be not within a
+        running loop.
+        """
+        from flytekit.core.promise import Promise
+
+        cls.to_literal_checks(python_val, python_type, expected)
+        if isinstance(python_val, Promise):
+            # In the example above, this handles the "in2=a" type of argument
+            return python_val.val
+
+        transformer = cls.get_transformer(python_type)
+        # possible options are:
+        #   a) in a loop (somewhere above, someone called async)
+        #        1) transformer is async - just await the async function.
+        #        2) transformer is not async - since the expectation is for async behavior
+        #           run it in an executor.
+        #   b) not in a loop (async has never been called)
+        #        1) transformer is async - create loop and run it.
+        #        2) transformer is not async - just invoke normally as a blocking function
+
+        if transformer.type_assertions_enabled:
+            transformer.assert_type(python_type, python_val)
+
+        loop = None
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError as e:
+            # handle outside of try/catch to avoid nested exceptions
+            if "no running event loop" not in str(e):
+                logger.error(f"Unknown RuntimeError {str(e)}")
+                raise
+
+        if loop:  # get_running_loop didn't raise, return a Future
+            if transformer.is_async:
+                coro = transformer.async_to_literal(ctx, python_val, python_type, expected)
+                fut = loop.create_task(coro)
+            else:
+                fut = loop.run_in_executor(None, transformer.to_literal, ctx, python_val, python_type, expected)
+            return fut
+        else:  # get_running_loop raised
+            if transformer.is_async:
+                coro = transformer.async_to_literal(ctx, python_val, python_type, expected)
+                lv = asyncio.run(coro)
+                print("hi")
+            else:
+                lv = transformer.to_literal(ctx, python_val, python_type, expected)
+
+            modify_literal_uris(lv)
+            lv.hash = cls.calculate_hash(python_val, python_type)
+            return lv
+
+    @classmethod
+    async def async_to_literal(
+        cls, ctx: FlyteContext, python_val: typing.Any, python_type: Type[T], expected: LiteralType
+    ) -> Literal:
+        """
+        Converts a python value of a given type and expected ``LiteralType`` into a resolved ``Literal`` value.
+        """
+        from flytekit.core.promise import Promise
+
+        cls.to_literal_checks(python_val, python_type, expected)
+
+        if isinstance(python_val, Promise):
+            # In the example above, this handles the "in2=a" type of argument
+            return python_val.val
+
+        transformer = cls.get_transformer(python_type)
+        if transformer.type_assertions_enabled:
+            transformer.assert_type(python_type, python_val)
+
+        if transformer.is_async:
+            lv = await transformer.async_to_literal(ctx, python_val, python_type, expected)
+        else:
+            loop = asyncio.get_running_loop()
+            fut = loop.run_in_executor(None, transformer.to_literal, ctx, python_val, python_type, expected)
+            lv = await fut
+
         modify_literal_uris(lv)
-        if hash is not None:
-            lv.hash = hash
+        lv.hash = cls.calculate_hash(python_val, python_type)
+
         return lv
 
     @classmethod
@@ -1144,7 +1288,41 @@ class TypeEngine(typing.Generic[T]):
         Converts a Literal value with an expected python type into a python value.
         """
         transformer = cls.get_transformer(expected_python_type)
-        return transformer.to_python_value(ctx, lv, expected_python_type)
+
+        loop = None
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError as e:
+            # handle outside of try/catch to avoid nested exceptions
+            if "no running event loop" not in str(e):
+                logger.error(f"Unknown RuntimeError {str(e)}")
+                raise
+
+        if loop:  # get_running_loop didn't raise, return a Future
+            if transformer.is_async:
+                coro = transformer.async_to_python_value(ctx, lv, expected_python_type)
+                fut = loop.create_task(coro)
+            else:
+                fut = loop.run_in_executor(None, transformer.to_python_value, ctx, lv, expected_python_type)
+            return fut
+        else:  # get_running_loop raised
+            if transformer.is_async:
+                coro = transformer.async_to_python_value(ctx, lv, expected_python_type)
+                pv = asyncio.run(coro)
+            else:
+                pv = transformer.to_python_value(ctx, lv, expected_python_type)
+            return pv
+
+    @classmethod
+    async def async_to_python_value(cls, ctx: FlyteContext, lv: Literal, expected_python_type: Type) -> typing.Any:
+        transformer = cls.get_transformer(expected_python_type)
+        if transformer.is_async:
+            pv = await transformer.async_to_python_value(ctx, lv, expected_python_type)
+        else:
+            loop = asyncio.get_running_loop()
+            fut = loop.run_in_executor(None, transformer.to_python_value, ctx, lv, expected_python_type)
+            pv = await fut
+        return pv
 
     @classmethod
     def to_html(cls, ctx: FlyteContext, python_val: typing.Any, expected_python_type: Type[typing.Any]) -> str:
@@ -1283,7 +1461,7 @@ class TypeEngine(typing.Generic[T]):
         raise ValueError(f"No transformers could reverse Flyte literal type {flyte_type}")
 
 
-class ListTransformer(TypeTransformer[T]):
+class ListTransformer(AsyncTypeTransformer[T]):
     """
     Transformer that handles a univariate typing.List[T]
     """
@@ -1343,7 +1521,9 @@ class ListTransformer(TypeTransformer[T]):
                 return True
         return False
 
-    async def a_to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
+    async def async_to_literal(
+        self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType
+    ) -> Literal:
         if type(python_val) != list:
             raise TypeTransformerFailedError("Expected a list")
 
@@ -1359,7 +1539,7 @@ class ListTransformer(TypeTransformer[T]):
                         break
             if batch_size > 0:
                 lit_list = [
-                    TypeEngine.to_literal(ctx, python_val[i: i + batch_size], FlytePickle, expected.collection_type)
+                    TypeEngine.to_literal(ctx, python_val[i : i + batch_size], FlytePickle, expected.collection_type)
                     for i in range(0, len(python_val), batch_size)
                 ]  # type: ignore
             else:
@@ -1373,23 +1553,9 @@ class ListTransformer(TypeTransformer[T]):
                     lit_list[idx] = obj.result()
         return Literal(collection=LiteralCollection(literals=lit_list))
 
-    def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Union[Literal, asyncio.Future]:
-        try:
-            loop = asyncio.get_running_loop()
-            coro = self.a_to_literal(ctx, python_val, python_type, expected)
-            if loop.is_running():
-                fut = loop.create_task(coro)
-                return fut
-
-            return loop.run_until_complete(coro)
-        except RuntimeError as e:
-            if "no running event loop" in str(e):
-                coro = self.a_to_literal(ctx, python_val, python_type, expected)
-                return asyncio.run(coro)
-            logger.error(f"Unknown RuntimeError {str(e)}")
-            raise
-
-    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> typing.List[typing.Any]:  # type: ignore
+    async def async_to_python_value(
+        self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]
+    ) -> typing.List[typing.Any]:  # type: ignore
         try:
             lits = lv.collection.literals
         except AttributeError:
@@ -1410,7 +1576,12 @@ class ListTransformer(TypeTransformer[T]):
             return batch_list
         else:
             st = self.get_sub_type(expected_python_type)
-            return [TypeEngine.to_python_value(ctx, x, st) for x in lits]
+            result = [TypeEngine.to_python_value(ctx, x, st) for x in lits]
+            for idx, r in enumerate(result):
+                if isinstance(r, asyncio.Future):
+                    await r
+                    result[idx] = r.result()
+            return result
 
     def guess_python_type(self, literal_type: LiteralType) -> list:  # type: ignore
         if literal_type.collection_type:
@@ -1527,7 +1698,7 @@ def _is_union_type(t):
     return t is typing.Union or get_origin(t) is typing.Union or UnionType and isinstance(t, UnionType)
 
 
-class UnionTransformer(TypeTransformer[T]):
+class UnionTransformer(AsyncTypeTransformer[T]):
     """
     Transformer that handles a typing.Union[T1, T2, ...]
     """
@@ -1561,24 +1732,9 @@ class UnionTransformer(TypeTransformer[T]):
         except Exception as e:
             raise ValueError(f"Type of Generic Union type is not supported, {e}")
 
-    def to_literal(self, ctx: FlyteContext, python_val: typing.Any, python_type: Type, expected: LiteralType) -> Union[
-        Literal, asyncio.Future]:
-        try:
-            loop = asyncio.get_running_loop()
-            coro = self.a_to_literal(ctx, python_val, python_type, expected)
-            if loop.is_running():
-                fut = loop.create_task(coro)
-                return fut
-
-            return loop.run_until_complete(coro)
-        except RuntimeError as e:
-            if "no running event loop" in str(e):
-                coro = self.a_to_literal(ctx, python_val, python_type, expected)
-                return asyncio.run(coro)
-            logger.error(f"Unknown RuntimeError {str(e)}")
-            raise
-
-    async def a_to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Union[Literal, asyncio.Future]:
+    async def async_to_literal(
+        self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType
+    ) -> typing.Union[Literal, asyncio.Future]:
         python_type = get_underlying_type(python_type)
 
         found_res = False
@@ -1590,16 +1746,18 @@ class UnionTransformer(TypeTransformer[T]):
             try:
                 t = get_args(python_type)[i]
                 trans: TypeTransformer[T] = TypeEngine.get_transformer(t)
-                res = trans.to_literal(ctx, python_val, t, expected.union_type.variants[i])
-                if isinstance(res, asyncio.Future):
-                    res = await res
+                if isinstance(trans, AsyncTypeTransformer):
+                    attempt = trans.async_to_literal(ctx, python_val, t, expected.union_type.variants[i])
+                    res = await attempt
+                else:
+                    res = trans.to_literal(ctx, python_val, t, expected.union_type.variants[i])
                 if found_res:
                     print(f"Current type {get_args(python_type)[i]} old res {res_type}")
                     is_ambiguous = True
                 res_type = _add_tag_to_type(trans.get_literal_type(t), trans.name)
                 found_res = True
             except Exception as e:
-                logger.debug(
+                logger.warning(
                     f"UnionTransformer failed attempt to convert from {python_val} to {t} error: {e}",
                 )
                 continue
@@ -1613,7 +1771,9 @@ class UnionTransformer(TypeTransformer[T]):
         # breakpoint()
         raise TypeTransformerFailedError(f"Cannot convert from {python_val} to {python_type}")
 
-    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> Optional[typing.Any]:
+    async def async_to_python_value(
+        self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]
+    ) -> Optional[typing.Any]:
         expected_python_type = get_underlying_type(expected_python_type)
 
         union_tag = None
@@ -1642,13 +1802,22 @@ class UnionTransformer(TypeTransformer[T]):
                     assert lv.scalar is not None  # type checker
                     assert lv.scalar.union is not None  # type checker
 
-                    res = trans.to_python_value(ctx, lv.scalar.union.value, v)
+                    if isinstance(trans, AsyncTypeTransformer):
+                        res = await trans.async_to_python_value(ctx, lv.scalar.union.value, v)
+                    else:
+                        res = trans.to_python_value(ctx, lv.scalar.union.value, v)
+                        if isinstance(res, asyncio.Future):
+                            res = await res
+
                     if found_res:
                         is_ambiguous = True
                         cur_transformer = trans.name
                         break
                 else:
-                    res = trans.to_python_value(ctx, lv, v)
+                    if isinstance(trans, AsyncTypeTransformer):
+                        res = await trans.async_to_python_value(ctx, lv, v)
+                    else:
+                        res = trans.to_python_value(ctx, lv, v)
                     if found_res:
                         is_ambiguous = True
                         cur_transformer = trans.name
