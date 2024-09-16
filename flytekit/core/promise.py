@@ -231,9 +231,13 @@ class ComparisonExpression(object):
         self._op = op
         self._lhs = None
         self._rhs = None
+        import flytekit
         if isinstance(lhs, Promise):
             self._lhs = lhs
             if lhs.is_ready:
+                # if lhs.val.scalar and lhs.val.scalar.binary:
+                #     primitive_val = TypeEngine.to_python_value(flytekit.current_context(), lhs.val,  )
+                #     lhs.val.scalar.primitive =
                 if lhs.val.scalar is None or lhs.val.scalar.primitive is None:
                     union = lhs.val.scalar.union
                     if union and union.value.scalar:
