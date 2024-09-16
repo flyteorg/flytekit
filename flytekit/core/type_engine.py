@@ -249,38 +249,40 @@ class AsyncTypeTransformer(TypeTransformer[T]):
     def to_literal(
         self, ctx: FlyteContext, python_val: typing.Any, python_type: Type[T], expected: LiteralType
     ) -> typing.Union[Literal, asyncio.Future]:
+        loop = None
         try:
             loop = asyncio.get_running_loop()
-            coro = self.async_to_literal(ctx, python_val, python_type, expected)
-            if loop.is_running():
-                fut = loop.create_task(coro)
-                return fut
-
-            return loop.run_until_complete(coro)
         except RuntimeError as e:
-            if "no running event loop" in str(e):
-                coro = self.async_to_literal(ctx, python_val, python_type, expected)
-                return asyncio.run(coro)
-            logger.error(f"Unknown RuntimeError {str(e)}")
-            raise
+            if "no running event loop" not in str(e):
+                logger.error(f"Unknown RuntimeError {str(e)}")
+                raise
+
+        if loop:
+            coro = self.async_to_literal(ctx, python_val, python_type, expected)
+            fut = loop.create_task(coro)
+            return fut
+        else:
+            coro = self.async_to_literal(ctx, python_val, python_type, expected)
+            return asyncio.run(coro)
 
     def to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]
     ) -> typing.Union[Optional[T], asyncio.Future]:
+        loop = None
         try:
             loop = asyncio.get_running_loop()
-            coro = self.async_to_python_value(ctx, lv, expected_python_type)
-            if loop.is_running():
-                fut = loop.create_task(coro)
-                return fut
-
-            return loop.run_until_complete(coro)
         except RuntimeError as e:
-            if "no running event loop" in str(e):
-                coro = self.async_to_python_value(ctx, lv, expected_python_type)
-                return asyncio.run(coro)
-            logger.error(f"Unknown RuntimeError {str(e)}")
-            raise
+            if "no running event loop" not in str(e):
+                logger.error(f"Unknown RuntimeError {str(e)}")
+                raise
+
+        if loop:
+            coro = self.async_to_python_value(ctx, lv, expected_python_type)
+            fut = loop.create_task(coro)
+            return fut
+        else:
+            coro = self.async_to_python_value(ctx, lv, expected_python_type)
+            return asyncio.run(coro)
 
 
 class SimpleTransformer(TypeTransformer[T]):
@@ -1844,7 +1846,7 @@ class UnionTransformer(AsyncTypeTransformer[T]):
         raise ValueError(f"Union transformer cannot reverse {literal_type}")
 
 
-class DictTransformer(TypeTransformer[dict]):
+class DictTransformer(AsyncTypeTransformer[dict]):
     """
     Transformer that transforms a univariate dictionary Dict[str, T] to a Literal Map or
     transforms a untyped dictionary to a JSON (struct/Generic)
@@ -1930,7 +1932,7 @@ class DictTransformer(TypeTransformer[dict]):
                     raise ValueError(f"Type of Generic List type is not supported, {e}")
         return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT)
 
-    def to_literal(
+    async def async_to_literal(
         self, ctx: FlyteContext, python_val: typing.Any, python_type: Type[dict], expected: LiteralType
     ) -> Literal:
         if type(python_val) != dict:
@@ -1957,9 +1959,12 @@ class DictTransformer(TypeTransformer[dict]):
                 _, v_type = self.extract_types_or_metadata(python_type)
 
             lit_map[k] = TypeEngine.to_literal(ctx, v, cast(type, v_type), expected.map_value_type)
+            for result_k, result_v in lit_map.items():
+                if isinstance(result_v, asyncio.Future):
+                    lit_map[result_k] = await result_v
         return Literal(map=LiteralMap(literals=lit_map))
 
-    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[dict]) -> dict:
+    async def async_to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[dict]) -> dict:
         if lv and lv.map and lv.map.literals is not None:
             tp = self.dict_types(expected_python_type)
 
@@ -1973,7 +1978,11 @@ class DictTransformer(TypeTransformer[dict]):
                 raise TypeError("TypeMismatch. Destination dictionary does not accept 'str' key")
             py_map = {}
             for k, v in lv.map.literals.items():
-                py_map[k] = TypeEngine.to_python_value(ctx, v, cast(Type, tp[1]))
+                item = TypeEngine.to_python_value(ctx, v, cast(Type, tp[1]))
+                if isinstance(item, asyncio.Future):
+                    py_map[k] = await item
+                else:
+                    py_map[k] = item
             return py_map
 
         # for empty generic we have to explicitly test for lv.scalar.generic is not None as empty dict
