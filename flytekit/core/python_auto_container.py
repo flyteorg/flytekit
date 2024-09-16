@@ -257,7 +257,16 @@ class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
 
     @timeit("Load task")
     def load_task(self, loader_args: List[str]) -> PythonAutoContainerTask:
-        _, task_module, _, task_name, *_ = loader_args
+        _, task_module, _, task_name, *extra_args = loader_args
+
+        if len(extra_args) >= 2 and extra_args[0] == "pkl-path":
+            pkl_file = extra_args[1]
+            import gzip
+
+            import cloudpickle
+
+            with gzip.open(pkl_file, "r") as f:
+                return cloudpickle.load(f)
 
         task_module = importlib.import_module(name=task_module)  # type: ignore
         task_def = getattr(task_module, task_name)
