@@ -1243,7 +1243,6 @@ class TypeEngine(typing.Generic[T]):
             if transformer.is_async:
                 coro = transformer.async_to_literal(ctx, python_val, python_type, expected)
                 lv = asyncio.run(coro)
-                print("hi")
             else:
                 lv = transformer.to_literal(ctx, python_val, python_type, expected)
 
