@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from typing import cast
 from urllib.parse import unquote
 
+import msgpack
 from dataclasses_json import config
 from marshmallow import fields
 from mashumaro.mixins.json import DataClassJSONMixin
@@ -20,7 +21,7 @@ from flytekit.exceptions.user import FlyteAssertion
 from flytekit.loggers import logger
 from flytekit.models.core import types as _core_types
 from flytekit.models.core.types import BlobType
-from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
+from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar, Binary
 from flytekit.models.types import LiteralType
 from flytekit.types.pickle.pickle import FlytePickleTransformer
 
@@ -518,9 +519,37 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             return {"ContentEncoding": "gzip"}
         return {}
 
+    def from_binary_idl(self, binary_idl_object: Binary, expected_python_type: typing.Type[T]) -> typing.Optional[T]:
+        if binary_idl_object.tag == "msgpack":
+            python_val = msgpack.loads(binary_idl_object.value)
+            path = python_val.get("path", None)
+            if path is None:
+                raise ValueError("FlyteFile's path should not be None")
+
+            return FlyteFilePathTransformer().to_python_value(
+                FlyteContextManager.current_context(),
+                Literal(
+                    scalar=Scalar(
+                        blob=Blob(
+                            metadata=BlobMetadata(
+                                type=_core_types.BlobType(
+                                    format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
+                                )
+                            ),
+                            uri=path,
+                        )
+                    )
+                ),
+                expected_python_type,
+            )
+        else:
+            raise TypeTransformerFailedError(f"Unsupported binary format {binary_idl_object.tag}")
     def to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Union[typing.Type[FlyteFile], os.PathLike]
     ) -> FlyteFile:
+        if lv.scalar and lv.scalar.binary:
+            return self.from_binary_idl(lv.scalar.binary, expected_python_type)
+
         try:
             uri = lv.scalar.blob.uri
         except AttributeError:
