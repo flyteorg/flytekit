@@ -58,6 +58,7 @@ TITLE = "title"
 def _default_flytekit_decoder(data: bytes) -> Any:
     return msgpack.unpackb(data, raw=False, strict_map_key=False)
 
+
 class BatchSize:
     """
     This is used to annotate a FlyteDirectory when we want to download/upload the contents of the directory in batches. For example,
