@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional, Union, cast
 
 import click
+import shutil
 from google.protobuf.json_format import MessageToDict
 
 from flytekit import FlyteContextManager, PythonFunctionTask, lazy_module, logger
