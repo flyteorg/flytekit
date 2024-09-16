@@ -34,7 +34,9 @@ class NIM(ModelInferenceTemplate):
         gpu: int = 1,
         mem: str = "20Gi",
         shm_size: str = "16Gi",
-        env: Optional[dict[str, str]] = None,
+        env: Optional[
+            dict[str, str]
+        ] = None,  # https://docs.nvidia.com/nim/large-language-models/latest/configuration.html#environment-variables
         hf_repo_ids: Optional[list[str]] = None,
         lora_adapter_mem: Optional[str] = None,
     ):
