@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import collections
 import datetime
 import inspect
@@ -236,9 +237,13 @@ class ComparisonExpression(object):
                     else:
                         raise ValueError("Only primitive values can be used in comparison")
         if self._lhs is None:
-            self._lhs = type_engine.TypeEngine.to_literal(FlyteContextManager.current_context(), lhs, type(lhs), None)
+            lhs_lit = type_engine.TypeEngine.to_literal(FlyteContextManager.current_context(), lhs, type(lhs), None)
+            assert not isinstance(lhs_lit, asyncio.Future)
+            self._lhs = lhs_lit
         if self._rhs is None:
-            self._rhs = type_engine.TypeEngine.to_literal(FlyteContextManager.current_context(), rhs, type(rhs), None)
+            rhs_lit = type_engine.TypeEngine.to_literal(FlyteContextManager.current_context(), rhs, type(rhs), None)
+            assert not isinstance(rhs_lit, asyncio.Future)
+            self._rhs = rhs_lit
 
     @property
     def rhs(self) -> Union["Promise", _literals_models.Literal]:

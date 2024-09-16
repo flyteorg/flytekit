@@ -632,8 +632,9 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 if isinstance(v, tuple):
                     raise TypeError(f"Output({k}) in task '{self.name}' received a tuple {v}, instead of {py_type}")
                 try:
-                    # switch this to async version
+                    # switch this to async version and remove assert
                     lit = TypeEngine.to_literal(ctx, v, py_type, literal_type)
+                    assert not isinstance(lit, asyncio.Future)
                     literals[k] = lit
                 except Exception as e:
                     # only show the name of output key if it's user-defined (by default Flyte names these as "o<n>")

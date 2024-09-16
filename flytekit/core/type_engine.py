@@ -265,7 +265,7 @@ class AsyncTypeTransformer(TypeTransformer[T]):
             coro = self.async_to_literal(ctx, python_val, python_type, expected)
             return asyncio.run(coro)
 
-    def to_python_value(
+    def to_python_value(  # type: ignore[override]
         self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]
     ) -> typing.Union[Optional[T], asyncio.Future]:
         loop = None
@@ -306,12 +306,6 @@ class SimpleTransformer(TypeTransformer[T]):
 
     def get_literal_type(self, t: Optional[Type[T]] = None) -> LiteralType:
         return LiteralType.from_flyte_idl(self._lt.to_flyte_idl())
-
-    def __getattr__(self, item):
-        if item == "async_to_literal":
-            breakpoint()
-        else:
-            return super().__getattribute__(item)
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         if type(python_val) != self._type:
@@ -1235,14 +1229,14 @@ class TypeEngine(typing.Generic[T]):
                 raise
 
         if loop:  # get_running_loop didn't raise, return a Future
-            if transformer.is_async:
+            if isinstance(transformer, AsyncTypeTransformer):
                 coro = transformer.async_to_literal(ctx, python_val, python_type, expected)
                 fut = loop.create_task(coro)
             else:
-                fut = loop.run_in_executor(None, transformer.to_literal, ctx, python_val, python_type, expected)
+                fut = loop.run_in_executor(None, transformer.to_literal, ctx, python_val, python_type, expected)  # type: ignore[assignment]
             return fut
         else:  # get_running_loop raised
-            if transformer.is_async:
+            if isinstance(transformer, AsyncTypeTransformer):
                 coro = transformer.async_to_literal(ctx, python_val, python_type, expected)
                 lv = asyncio.run(coro)
             else:
@@ -1271,7 +1265,7 @@ class TypeEngine(typing.Generic[T]):
         if transformer.type_assertions_enabled:
             transformer.assert_type(python_type, python_val)
 
-        if transformer.is_async:
+        if isinstance(transformer, AsyncTypeTransformer):
             lv = await transformer.async_to_literal(ctx, python_val, python_type, expected)
         else:
             loop = asyncio.get_running_loop()
@@ -1284,7 +1278,7 @@ class TypeEngine(typing.Generic[T]):
         return lv
 
     @classmethod
-    def to_python_value(cls, ctx: FlyteContext, lv: Literal, expected_python_type: Type) -> typing.Any:
+    def to_python_value(cls, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> typing.Any:
         """
         Converts a Literal value with an expected python type into a python value.
         """
@@ -1300,14 +1294,14 @@ class TypeEngine(typing.Generic[T]):
                 raise
 
         if loop:  # get_running_loop didn't raise, return a Future
-            if transformer.is_async:
+            if isinstance(transformer, AsyncTypeTransformer):
                 coro = transformer.async_to_python_value(ctx, lv, expected_python_type)
                 fut = loop.create_task(coro)
             else:
-                fut = loop.run_in_executor(None, transformer.to_python_value, ctx, lv, expected_python_type)
+                fut = loop.run_in_executor(None, transformer.to_python_value, ctx, lv, expected_python_type)  # type: ignore[assignment]
             return fut
         else:  # get_running_loop raised
-            if transformer.is_async:
+            if isinstance(transformer, AsyncTypeTransformer):
                 coro = transformer.async_to_python_value(ctx, lv, expected_python_type)
                 pv = asyncio.run(coro)
             else:
@@ -1317,7 +1311,7 @@ class TypeEngine(typing.Generic[T]):
     @classmethod
     async def async_to_python_value(cls, ctx: FlyteContext, lv: Literal, expected_python_type: Type) -> typing.Any:
         transformer = cls.get_transformer(expected_python_type)
-        if transformer.is_async:
+        if isinstance(transformer, AsyncTypeTransformer):
             pv = await transformer.async_to_python_value(ctx, lv, expected_python_type)
         else:
             loop = asyncio.get_running_loop()
@@ -1554,9 +1548,9 @@ class ListTransformer(AsyncTypeTransformer[T]):
                     lit_list[idx] = obj.result()
         return Literal(collection=LiteralCollection(literals=lit_list))
 
-    async def async_to_python_value(
+    async def async_to_python_value(  # type: ignore
         self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]
-    ) -> typing.List[typing.Any]:  # type: ignore
+    ) -> typing.Optional[typing.List[T]]:
         try:
             lits = lv.collection.literals
         except AttributeError:
