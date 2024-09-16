@@ -151,7 +151,37 @@ class TypeTransformer(typing.Generic[T]):
         """
         return self._type_assertions_enabled
 
+    def isinstance_generic(self, obj, generic_alias):
+        origin = get_origin(generic_alias)  # list from list[int])
+        args = get_args(generic_alias)  # (int,) from list[int]
+
+        if not isinstance(obj, origin):
+            raise TypeTransformerFailedError(f"Value '{obj}' is not of container type {origin}")
+
+        # Optionally check the type of elements if it's a collection like list or dict
+        if origin in {list, tuple, set}:
+            for item in obj:
+                self.assert_type(args[0], item)
+                return
+            raise TypeTransformerFailedError(f"Not all items in '{obj}' are of type {args[0]}")
+
+        if origin is dict:
+            key_type, value_type = args
+            for k, v in obj.items():
+                self.assert_type(key_type, k)
+                self.assert_type(value_type, v)
+                return
+            raise TypeTransformerFailedError(f"Not all values in '{obj}' are of type {value_type}")
+
+        return
+
     def assert_type(self, t: Type[T], v: T):
+        if sys.version_info >= (3, 10):
+            import types
+
+            if isinstance(t, types.GenericAlias):
+                return self.isinstance_generic(v, t)
+
         if not hasattr(t, "__origin__") and not isinstance(v, t):
             raise TypeTransformerFailedError(f"Expected value of type {t} but got '{v}' of type {type(v)}")
 
@@ -1552,6 +1582,22 @@ class UnionTransformer(TypeTransformer[T]):
         Return the generic Type T of the Optional type
         """
         return get_args(t)[0]
+
+    def assert_type(self, t: Type[T], v: T):
+        python_type = get_underlying_type(t)
+        if _is_union_type(python_type):
+            for sub_type in get_args(python_type):
+                if sub_type == typing.Any:
+                    # this is an edge case
+                    return
+                try:
+                    super().assert_type(sub_type, v)
+                    return
+                except TypeTransformerFailedError:
+                    continue
+            raise TypeTransformerFailedError(f"Value {v} is not of type {t}")
+        else:
+            super().assert_type(t, v)
 
     def get_literal_type(self, t: Type[T]) -> Optional[LiteralType]:
         t = get_underlying_type(t)
