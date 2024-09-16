@@ -1,5 +1,5 @@
 # https://hub.docker.com/_/spark/tags
-FROM apache/spark:latest
+FROM spark:latest
 LABEL org.opencontainers.image.source=https://github.com/flyteorg/flytekit
 
 USER 0
