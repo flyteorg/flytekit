@@ -1,3 +1,4 @@
+import glob
 import os
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional, Union, cast
@@ -201,6 +202,14 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
             sess_builder = sess_builder.config(conf=spark_conf)
 
         print("os.getcwd()", os.getcwd())
+        fast_pattern = os.path.join(os.getcwd(), 'fast*.tar.gz')
+        script_mode_pattern = os.path.join(os.getcwd(), 'script_mode.tar.gz')
+
+        fast_files = glob.glob(fast_pattern)
+        script_mode_files = glob.glob(script_mode_pattern)
+
+        print("fast_files", fast_files)
+        print("script_mode_files", script_mode_files)
 
         files = [f for f in os.listdir('.') if os.path.isfile(f)]
         for f in files:
@@ -208,7 +217,7 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
         self.sess = sess_builder.getOrCreate()
         # self.sess.addArtifacts("fast_spark.py", file=True)
         print("self.module_file", self.module_file)
-        self.sess.sparkContext.addFile(os.getcwd(), recursive=True)
+        self.sess.sparkContext.addArchive("script_mode.tar.gz")
         return user_params.builder().add_attr("SPARK_SESSION", self.sess).build()
 
     def execute(self, **kwargs) -> Any:
