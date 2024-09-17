@@ -13,6 +13,7 @@ class ModelInferenceTemplate:
         cpu: int = 1,
         gpu: int = 1,
         mem: str = "1Gi",
+        inputs_mem: str = "500Mi",
         env: Optional[dict[str, str]] = None,
         download_inputs: bool = False,
     ):
@@ -34,6 +35,7 @@ class ModelInferenceTemplate:
         self._cpu = cpu
         self._gpu = gpu
         self._mem = mem
+        self._inputs_mem = inputs_mem
         self._env = env
         self._download_inputs = download_inputs
 
@@ -138,6 +140,18 @@ with open('/shared/inputs.json', 'w') as f:
                         V1VolumeMount(name="shared-data", mount_path="/shared"),
                         V1VolumeMount(name="tmp", mount_path="/tmp"),
                     ],
+                    resources=V1ResourceRequirements(
+                        requests={
+                            "cpu": 1,
+                            "nvidia.com/gpu": 0,
+                            "memory": self._inputs_mem,
+                        },
+                        limits={
+                            "cpu": 1,
+                            "nvidia.com/gpu": 0,
+                            "memory": self._inputs_mem,
+                        },
+                    ),
                 ),
             )
 
