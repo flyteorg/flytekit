@@ -564,10 +564,11 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
     # since the current runtime bytecode references the older user code, rather than the downloaded distribution.
     env = os.environ.copy()
     if dest_dir is not None:
+        dest_dir_resolved = os.path.realpath(os.path.expanduser(dest_dir))
         if "PYTHONPATH" in env:
-            env["PYTHONPATH"] += os.pathsep + os.path.realpath(dest_dir)
+            env["PYTHONPATH"] += os.pathsep + dest_dir_resolved
         else:
-            env["PYTHONPATH"] = os.path.realpath(dest_dir)
+            env["PYTHONPATH"] = dest_dir_resolved
     p = subprocess.Popen(cmd, env=env)
 
     def handle_sigterm(signum, frame):
