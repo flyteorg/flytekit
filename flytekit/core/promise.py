@@ -1029,7 +1029,8 @@ def extract_obj_name(name: str) -> str:
 def create_and_link_node_from_remote(
     ctx: FlyteContext,
     entity: HasFlyteInterface,
-    link_node: bool = True,
+    add_node_to_compilation_state: bool = True,
+    overridden_interface: Interface = None,
     _inputs_not_allowed: Optional[Set[str]] = None,
     _ignorable_inputs: Optional[Set[str]] = None,
     **kwargs,
@@ -1044,8 +1045,10 @@ def create_and_link_node_from_remote(
 
     :param ctx: FlyteContext
     :param entity: RemoteEntity
-    :param link_node: bool that enables for nodes to be created but not linked to the workflow. This is useful when
-                     creating nodes nested under other nodes such as ArrayNode
+    :param add_node_to_compilation_state: bool that enables for nodes to be created but not linked to the workflow. This
+                is useful when creating nodes nested under other nodes such as ArrayNode
+    :param overridden_interface: utilize this interface instead of the one provided by the entity. This is useful for
+                ArrayNode as there's a mismatch between the underlying interface and inputs
     :param _inputs_not_allowed: Set of all variable names that should not be provided when using this entity.
                      Useful for Launchplans with `fixed` inputs
     :param _ignorable_inputs: Set of all variable names that are optional, but if provided will be overridden. Useful
