@@ -215,8 +215,9 @@ def test_promise_with_attr_path():
     assert o3 == "b"
 
 
+@pytest.mark.asyncio
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
-def test_resolve_attr_path_in_promise():
+async def test_resolve_attr_path_in_promise():
     @dataclass_json
     @dataclass
     class Foo:
@@ -224,7 +225,7 @@ def test_resolve_attr_path_in_promise():
 
     src = {"a": [Foo(b="foo")]}
 
-    src_lit = TypeEngine.to_literal(
+    src_lit = await TypeEngine.to_literal(
         FlyteContextManager.current_context(),
         src,
         Dict[str, List[Foo]],
@@ -233,15 +234,16 @@ def test_resolve_attr_path_in_promise():
     src_promise = Promise("val1", src_lit)
 
     # happy path
-    tgt_promise = resolve_attr_path_in_promise(src_promise["a"][0]["b"])
-    assert "foo" == TypeEngine.to_python_value(FlyteContextManager.current_context(), tgt_promise.val, str)
+    tgt_promise = await resolve_attr_path_in_promise(src_promise["a"][0]["b"])
+    assert "foo" == await TypeEngine.to_python_value(FlyteContextManager.current_context(), tgt_promise.val, str)
 
     # exception
     with pytest.raises(FlytePromiseAttributeResolveException):
-        tgt_promise = resolve_attr_path_in_promise(src_promise["c"])
+        await resolve_attr_path_in_promise(src_promise["c"])
 
 
-def test_prom_with_union_literals():
+@pytest.mark.asyncio
+async def test_prom_with_union_literals():
     ctx = FlyteContextManager.current_context()
     pt = typing.Union[str, int]
     lt = TypeEngine.to_literal_type(pt)
@@ -250,7 +252,7 @@ def test_prom_with_union_literals():
         LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
     ]
 
-    bd = binding_data_from_python_std(ctx, lt, 3, pt, [])
+    bd = await binding_data_from_python_std(ctx, lt, 3, pt, [])
     assert bd.scalar.union.stored_type.structure.tag == "int"
-    bd = binding_data_from_python_std(ctx, lt, "hello", pt, [])
+    bd = await binding_data_from_python_std(ctx, lt, "hello", pt, [])
     assert bd.scalar.union.stored_type.structure.tag == "str"

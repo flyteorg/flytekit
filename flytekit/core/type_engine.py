@@ -53,6 +53,7 @@ from flytekit.models.literals import (
     Void,
 )
 from flytekit.models.types import LiteralType, SimpleType, TypeStructure, UnionType
+from flytekit.utils.async_utils import top_level_sync_wrapper
 
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
@@ -1344,7 +1345,7 @@ class TypeEngine(typing.Generic[T]):
 
     @classmethod
     @timeit("Translate literal to python value")
-    def literal_map_to_kwargs(
+    async def _literal_map_to_kwargs(
         cls,
         ctx: FlyteContext,
         lm: LiteralMap,
@@ -1372,14 +1373,14 @@ class TypeEngine(typing.Generic[T]):
         kwargs = {}
         for i, k in enumerate(lm.literals):
             try:
-                kwargs[k] = TypeEngine.to_python_value(ctx, lm.literals[k], python_interface_inputs[k])
+                kwargs[k] = await TypeEngine.async_to_python_value(ctx, lm.literals[k], python_interface_inputs[k])
             except TypeTransformerFailedError as exc:
                 exc.args = (f"Error converting input '{k}' at position {i}:\n  {exc.args[0]}",)
                 raise
         return kwargs
 
     @classmethod
-    def dict_to_literal_map(
+    async def _dict_to_literal_map(
         cls,
         ctx: FlyteContext,
         d: typing.Dict[str, typing.Any],
@@ -1397,7 +1398,7 @@ class TypeEngine(typing.Generic[T]):
             # `list` and `dict`.
             python_type = type_hints.get(k, type(v))
             try:
-                literal_map[k] = TypeEngine.to_literal(
+                literal_map[k] = await TypeEngine.async_to_literal(
                     ctx=ctx,
                     python_val=v,
                     python_type=python_type,
@@ -1408,13 +1409,13 @@ class TypeEngine(typing.Generic[T]):
         return LiteralMap(literal_map)
 
     @classmethod
-    def dict_to_literal_map_pb(
+    async def dict_to_literal_map_pb(
         cls,
         ctx: FlyteContext,
         d: typing.Dict[str, typing.Any],
         type_hints: Optional[typing.Dict[str, type]] = None,
     ) -> Optional[literals_pb2.LiteralMap]:
-        literal_map = cls.dict_to_literal_map(ctx, d, type_hints)
+        literal_map = await cls._dict_to_literal_map(ctx, d, type_hints)
         return literal_map.to_flyte_idl()
 
     @classmethod
@@ -1454,6 +1455,10 @@ class TypeEngine(typing.Generic[T]):
         except ValueError:
             logger.debug(f"Skipping transformer {cls._DATACLASS_TRANSFORMER.name} for {flyte_type}")
         raise ValueError(f"No transformers could reverse Flyte literal type {flyte_type}")
+
+
+TypeEngine.literal_map_to_kwargs = top_level_sync_wrapper(TypeEngine._literal_map_to_kwargs)
+TypeEngine.dict_to_literal_map = top_level_sync_wrapper(TypeEngine._dict_to_literal_map)
 
 
 class ListTransformer(AsyncTypeTransformer[T]):

@@ -81,6 +81,7 @@ from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.documentation import Description, Documentation
 from flytekit.models.interface import Variable
 from flytekit.models.security import SecurityContext
+from flytekit.utils.async_utils import ensure_no_loop
 
 DYNAMIC_PARTITIONS = "_uap"
 MODEL_CARD = "_ucm"
@@ -603,7 +604,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
     ) -> Dict[str, Any]:
         return TypeEngine.literal_map_to_kwargs(ctx, literal_map, self.python_interface.inputs)
 
-    def _output_to_literal_map(self, native_outputs: Dict[int, Any], ctx: FlyteContext):
+    async def _output_to_literal_map(self, native_outputs: Dict[int, Any], ctx: FlyteContext):
         expected_output_names = list(self._outputs_interface.keys())
         if len(expected_output_names) == 1:
             # Here we have to handle the fact that the task could've been declared with a typing.NamedTuple of
@@ -632,9 +633,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 if isinstance(v, tuple):
                     raise TypeError(f"Output({k}) in task '{self.name}' received a tuple {v}, instead of {py_type}")
                 try:
-                    # switch this to async version and remove assert
-                    lit = TypeEngine.to_literal(ctx, v, py_type, literal_type)
-                    assert not isinstance(lit, asyncio.Future)
+                    lit = await TypeEngine.async_to_literal(ctx, v, py_type, literal_type)
                     literals[k] = lit
                 except Exception as e:
                     # only show the name of output key if it's user-defined (by default Flyte names these as "o<n>")
@@ -696,7 +695,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
     async def _async_execute(self, native_inputs, native_outputs, ctx, exec_ctx, new_user_params):
         native_outputs = await native_outputs
         native_outputs = self.post_execute(new_user_params, native_outputs)
-        literals_map, native_outputs_as_map = self._output_to_literal_map(native_outputs, exec_ctx)
+        literals_map, native_outputs_as_map = await self._output_to_literal_map(native_outputs, exec_ctx)
         self._write_decks(native_inputs, native_outputs_as_map, ctx, new_user_params)
         return literals_map
 
@@ -782,8 +781,10 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             ):
                 return native_outputs
 
-            literals_map, native_outputs_as_map = self._output_to_literal_map(native_outputs, exec_ctx)
+            ensure_no_loop("Cannot run PythonTask.dispatch_execute from within a loop")
+            literals_map, native_outputs_as_map = asyncio.run(self._output_to_literal_map(native_outputs, exec_ctx))
             self._write_decks(native_inputs, native_outputs_as_map, ctx, new_user_params)
+
             # After the execute has been successfully completed
             return literals_map
 

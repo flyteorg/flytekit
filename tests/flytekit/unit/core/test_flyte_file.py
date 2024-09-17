@@ -105,14 +105,18 @@ def test_file_types_with_naked_flytefile_in_workflow(local_dummy_txt_file):
     with open(res, "r") as fh:
         assert fh.read() == "Hello World"
 
+
 def test_flytefile_in_dataclass(local_dummy_txt_file):
     TxtFile = FlyteFile[typing.TypeVar("txt")]
+
     @dataclass
     class DC:
         f: TxtFile
+
     @task
     def t1(path: TxtFile) -> DC:
         return DC(f=path)
+    
     @workflow
     def my_wf(path: TxtFile) -> DC:
         dc = t1(path=path)
@@ -125,6 +129,7 @@ def test_flytefile_in_dataclass(local_dummy_txt_file):
 
     dc2 = DC(f=txt_file)
     assert dc1 == dc2
+
 
 @pytest.mark.skipif(not can_import("magic"), reason="Libmagic is not installed")
 def test_mismatching_file_types(local_dummy_txt_file):
