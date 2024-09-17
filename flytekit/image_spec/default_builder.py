@@ -224,8 +224,19 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
 
     extra_copy_cmds = ""
     if image_spec.copy:
-        for src in image_spec.copy:
-            extra_copy_cmds += f'COPY --chown=flytekit {" ".join(src)} /root\n'
+        for src_list in image_spec.copy:
+            dst_path_list = []
+            for src in src_list:
+                src_path = Path(src)
+                dst_path = tmp_dir / src_path.name
+                if src_path.is_dir():
+                    shutil.copytree(src_path, dst_path)
+                else:
+                    shutil.copy(src_path, dst_path)
+
+                dst_path_list.append(dst_path.name)
+
+            extra_copy_cmds += f"COPY --chown=flytekit {" ".join(dst_path_list)} /root\n"
     else:
         extra_copy_cmds = ""
 
