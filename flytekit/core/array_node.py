@@ -50,7 +50,7 @@ class ArrayNode:
         self._concurrency = concurrency
         self._execution_mode = execution_mode
         self.id = target.name
-        self._bindings: List[_literal_models.Binding] = []
+        self._bindings: Optional[List[_literal_models.Binding]] = None
 
         if min_successes is not None:
             self._min_successes = min_successes
@@ -194,13 +194,18 @@ class ArrayNode:
     def __call__(self, *args, **kwargs):
         ctx = FlyteContext.current_context()
         if ctx.compilation_state is not None:
-            # interface mismatch between the target and the actual inputs since we don't create a new entity with a
-            # transformed to list interface
-            transformed_kwargs = {
-                key: (val[0] if isinstance(val, list) and val else None) if isinstance(val, list) else val
-                for key, val in kwargs.items()
-            }
-            bound_subnode = create_and_link_node(ctx, entity=self.flyte_entity, link_node=False, **transformed_kwargs)
+            # since a new entity with an updated list interface is not created, we have to work around the mismatch
+            # between the interface and the inputs
+            collection_interface = transform_interface_to_list_interface(self.flyte_entity.python_interface, set())
+            # don't link the node to the compilation state, since we don't want to add the subnode to the
+            # workflow as a node
+            bound_subnode = create_and_link_node(
+                ctx,
+                entity=self.flyte_entity,
+                add_node_to_compilation_state=False,
+                overridden_interface=collection_interface,
+                **kwargs,
+            )
             self._bindings = bound_subnode.ref.node.bindings
         return flyte_entity_call_handler(self, *args, **kwargs)
 

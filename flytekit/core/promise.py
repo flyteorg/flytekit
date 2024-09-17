@@ -1137,7 +1137,8 @@ def create_and_link_node_from_remote(
 def create_and_link_node(
     ctx: FlyteContext,
     entity: SupportsNodeCreation,
-    link_node: bool = True,
+    add_node_to_compilation_state: bool = True,
+    overridden_interface: Interface = None,
     **kwargs,
 ) -> Optional[Union[Tuple[Promise], Promise, VoidPromise]]:
     """
@@ -1146,8 +1147,10 @@ def create_and_link_node(
 
     :param ctx: FlyteContext
     :param entity: RemoteEntity
-    :param link_node: bool that enables for nodes to be created but not linked to the workflow. This is useful when
-                 creating nodes nested under other nodes such as ArrayNode
+    :param add_node_to_compilation_state: bool that enables for nodes to be created but not linked to the workflow. This
+                is useful when creating nodes nested under other nodes such as ArrayNode
+    :param overridden_interface: utilize this interface instead of the one provided by the entity. This is useful for
+                ArrayNode as there's a mismatch between the underlying interface and inputs
     :param kwargs: Dict[str, Any] default inputs passed from the user to this entity. Can be promises.
     :return:  Optional[Union[Tuple[Promise], Promise, VoidPromise]]
     """
@@ -1158,7 +1161,7 @@ def create_and_link_node(
     bindings = []
     nodes = []
 
-    interface = entity.python_interface
+    interface = overridden_interface if overridden_interface else entity.python_interface
     typed_interface = flyte_interface.transform_interface_to_typed_interface(
         interface, allow_partial_artifact_id_binding=True
     )
@@ -1231,7 +1234,7 @@ def create_and_link_node(
         flyte_entity=entity,
     )
 
-    if link_node:
+    if add_node_to_compilation_state:
         ctx.compilation_state.add_node(flytekit_node)
 
     if len(typed_interface.outputs) == 0:
