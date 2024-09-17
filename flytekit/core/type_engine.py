@@ -1194,7 +1194,7 @@ class TypeEngine(typing.Generic[T]):
         """
         The current dance is because we are allowing users to call from an async function, this synchronous
         to_literal function, and allowing this to_literal function, to then invoke yet another async functionl,
-        namely an async tranformer.
+        namely an async transformer.
 
         We can remove the need for this function to return a future if we always just asyncio.run().
         That is, if you use this function to call an async transformer, it has to be not within a
