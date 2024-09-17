@@ -1,11 +1,12 @@
-
 import asyncio
+import contextvars
 import functools
-
-from typing_extensions import Callable, Any
+from concurrent.futures import ThreadPoolExecutor
 from types import CoroutineType
-from flytekit.loggers import logger
 
+from typing_extensions import Any, Callable
+
+from flytekit.loggers import logger
 
 AsyncFuncType = Callable[[Any], CoroutineType]
 Synced = Callable[[Any], Any]
@@ -51,3 +52,13 @@ def top_level_sync_wrapper(func: AsyncFuncType) -> Synced:
         return top_level_sync(func, *args, **kwargs)
 
     return wrapper
+
+
+class ContextExecutor(ThreadPoolExecutor):
+    def __init__(self):
+        self.context = contextvars.copy_context()
+        super().__init__(initializer=self._set_child_context)
+
+    def _set_child_context(self):
+        for var, value in self.context.items():
+            var.set(value)

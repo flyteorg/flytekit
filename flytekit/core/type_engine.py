@@ -53,7 +53,7 @@ from flytekit.models.literals import (
     Void,
 )
 from flytekit.models.types import LiteralType, SimpleType, TypeStructure, UnionType
-from flytekit.utils.async_utils import top_level_sync_wrapper
+from flytekit.utils.async_utils import ContextExecutor, top_level_sync_wrapper
 
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
@@ -1234,7 +1234,8 @@ class TypeEngine(typing.Generic[T]):
                 coro = transformer.async_to_literal(ctx, python_val, python_type, expected)
                 fut = loop.create_task(coro)
             else:
-                fut = loop.run_in_executor(None, transformer.to_literal, ctx, python_val, python_type, expected)  # type: ignore[assignment]
+                executor = ContextExecutor()
+                fut = loop.run_in_executor(executor, transformer.to_literal, ctx, python_val, python_type, expected)  # type: ignore[assignment]
             return fut
         else:  # get_running_loop raised
             if isinstance(transformer, AsyncTypeTransformer):
@@ -1270,7 +1271,8 @@ class TypeEngine(typing.Generic[T]):
             lv = await transformer.async_to_literal(ctx, python_val, python_type, expected)
         else:
             loop = asyncio.get_running_loop()
-            fut = loop.run_in_executor(None, transformer.to_literal, ctx, python_val, python_type, expected)
+            executor = ContextExecutor()
+            fut = loop.run_in_executor(executor, transformer.to_literal, ctx, python_val, python_type, expected)
             lv = await fut
 
         modify_literal_uris(lv)
@@ -1299,7 +1301,8 @@ class TypeEngine(typing.Generic[T]):
                 coro = transformer.async_to_python_value(ctx, lv, expected_python_type)
                 fut = loop.create_task(coro)
             else:
-                fut = loop.run_in_executor(None, transformer.to_python_value, ctx, lv, expected_python_type)  # type: ignore[assignment]
+                executor = ContextExecutor()
+                fut = loop.run_in_executor(executor, transformer.to_python_value, ctx, lv, expected_python_type)  # type: ignore[assignment]
             return fut
         else:  # get_running_loop raised
             if isinstance(transformer, AsyncTypeTransformer):
@@ -1316,7 +1319,8 @@ class TypeEngine(typing.Generic[T]):
             pv = await transformer.async_to_python_value(ctx, lv, expected_python_type)
         else:
             loop = asyncio.get_running_loop()
-            fut = loop.run_in_executor(None, transformer.to_python_value, ctx, lv, expected_python_type)
+            executor = ContextExecutor()
+            fut = loop.run_in_executor(executor, transformer.to_python_value, ctx, lv, expected_python_type)
             pv = await fut
         return pv
 
