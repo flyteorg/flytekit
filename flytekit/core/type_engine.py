@@ -52,9 +52,9 @@ DEFINITIONS = "definitions"
 TITLE = "title"
 
 
-# In mashumaro, default encoder use strict type = False, but default decoder use strict type = True.
-# This is for case like Dict[int, str], where the key is int, but it's serialized as string.
-# If we don't use strict_map_key=False, the decoder will raise error for strict types.
+# In Mashumaro, the default encoder uses strict_map_key=False, while the default decoder uses strict_map_key=True.
+# This is relevant for cases like Dict[int, str], where the key is an int, it's not supported when strict_map_key=False.
+# If strict_map_key=False is not used, the decoder will raise an error when trying to decode strict types.
 def _default_flytekit_decoder(data: bytes) -> Any:
     return msgpack.unpackb(data, raw=False, strict_map_key=False)
 
@@ -732,8 +732,7 @@ class DataclassTransformer(TypeTransformer[object]):
                     self._msgpack_decoder[expected_python_type] = decoder
                 dc = decoder.decode(binary_idl_object.value)
 
-            dc = self._fix_structured_dataset_type(expected_python_type, dc)
-            return self._fix_dataclass_int(expected_python_type, dc)
+            return self._fix_structured_dataset_type(expected_python_type, dc)
         else:
             raise TypeTransformerFailedError(f"Unsupported binary format {binary_idl_object.tag}")
 
