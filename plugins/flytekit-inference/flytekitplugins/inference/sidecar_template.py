@@ -16,7 +16,7 @@ class ModelInferenceTemplate:
         env: Optional[dict[str, str]] = None,
         download_inputs: bool = False,
         download_inputs_mem: str = "500Mi",
-        download_inputs_cpu: int = 1,
+        download_inputs_cpu: int = 2,
     ):
         from kubernetes.client.models import (
             V1Container,
