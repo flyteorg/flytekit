@@ -1043,10 +1043,6 @@ def create_and_link_node_from_remote(
 
     :param ctx: FlyteContext
     :param entity: RemoteEntity
-    :param add_node_to_compilation_state: bool that enables for nodes to be created but not linked to the workflow. This
-                is useful when creating nodes nested under other nodes such as ArrayNode
-    :param overridden_interface: utilize this interface instead of the one provided by the entity. This is useful for
-                ArrayNode as there's a mismatch between the underlying interface and inputs
     :param _inputs_not_allowed: Set of all variable names that should not be provided when using this entity.
                      Useful for Launchplans with `fixed` inputs
     :param _ignorable_inputs: Set of all variable names that are optional, but if provided will be overridden. Useful
@@ -1118,6 +1114,7 @@ def create_and_link_node_from_remote(
         upstream_nodes=upstream_nodes,
         flyte_entity=entity,
     )
+    ctx.compilation_state.add_node(flytekit_node)
 
     if len(typed_interface.outputs) == 0:
         return VoidPromise(entity.name, NodeOutput(node=flytekit_node, var="placeholder"))
