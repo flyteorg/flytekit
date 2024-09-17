@@ -143,12 +143,10 @@ with open('/shared/inputs.json', 'w') as f:
                     resources=V1ResourceRequirements(
                         requests={
                             "cpu": 1,
-                            "nvidia.com/gpu": 0,
                             "memory": self._inputs_mem,
                         },
                         limits={
                             "cpu": 1,
-                            "nvidia.com/gpu": 0,
                             "memory": self._inputs_mem,
                         },
                     ),
