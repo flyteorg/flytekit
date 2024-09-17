@@ -30,7 +30,6 @@ class ArrayNode:
         concurrency: Optional[int] = None,
         min_successes: Optional[int] = None,
         min_success_ratio: Optional[float] = None,
-        bound_inputs: Optional[Set[str]] = None,
         metadata: Optional[Union[_workflow_model.NodeMetadata, TaskMetadata]] = None,
     ):
         """
@@ -42,7 +41,6 @@ class ArrayNode:
         :param min_successes: The minimum number of successful executions. If set, this takes precedence over
             min_success_ratio
         :param min_success_ratio: The minimum ratio of successful executions.
-        :param bound_inputs: The set of inputs that should be bound to the map task
         :param execution_mode: The execution mode for propeller to use when handling ArrayNode
         :param metadata: The metadata for the underlying entity
         """
@@ -63,7 +61,8 @@ class ArrayNode:
         if n_outputs > 1:
             raise ValueError("Only tasks with a single output are supported in map tasks.")
 
-        self._bound_inputs: Set[str] = bound_inputs or set(bound_inputs) if bound_inputs else set()
+        # TODO - bound inputs are not supported at the moment
+        self._bound_inputs: Set[str] = set()
 
         output_as_list_of_optionals = min_success_ratio is not None and min_success_ratio != 1 and n_outputs == 1
         collection_interface = transform_interface_to_list_interface(
@@ -140,7 +139,8 @@ class ArrayNode:
         literals = []
         for i in range(mapped_entity_count):
             single_instance_inputs = {}
-            for k in self.python_interface.inputs.keys():
+            for binding in self.bindings:
+                k = binding.var
                 if k not in self._bound_inputs:
                     single_instance_inputs[k] = kwargs[k][i]
                 else:
@@ -196,7 +196,9 @@ class ArrayNode:
         ctx = FlyteContext.current_context()
         # since a new entity with an updated list interface is not created, we have to work around the mismatch
         # between the interface and the inputs
-        collection_interface = transform_interface_to_list_interface(self.flyte_entity.python_interface, set())
+        collection_interface = transform_interface_to_list_interface(
+            self.flyte_entity.python_interface, self._bound_inputs
+        )
         # don't link the node to the compilation state, since we don't want to add the subnode to the
         # workflow as a node
         bound_subnode = create_and_link_node(
