@@ -1121,7 +1121,7 @@ def create_and_link_node_from_remote(
         flyte_entity=entity,
     )
 
-    if link_node:
+    if add_node_to_compilation_state:
         ctx.compilation_state.add_node(flytekit_node)
 
     if len(typed_interface.outputs) == 0:
