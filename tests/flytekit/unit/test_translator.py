@@ -97,7 +97,6 @@ def test_interactive():
     options = Options(file_uploader=fake_file_uploader)
 
     task_spec = get_serializable(OrderedDict(), ssettings, t1, options)
-    assert "--pickled" in task_spec.template.container.args
     assert "--dest-dir" not in task_spec.template.container.args
 
 

@@ -542,34 +542,23 @@ def execute_task_cmd(
 @_pass_through.command("pyflyte-fast-execute")
 @click.option("--additional-distribution", required=False)
 @click.option("--dest-dir", required=False)
-@click.option("--pickled", is_flag=True, default=False, help="Use this to mark if the distribution is pickled.")
 @click.argument("task-execute-cmd", nargs=-1, type=click.UNPROCESSED)
-def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, pickled: bool, task_execute_cmd: List[str]):
+def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_execute_cmd: List[str]):
     """
     Downloads a compressed code distribution specified by additional-distribution and then calls the underlying
     task execute command for the updated code.
     """
     if additional_distribution is not None:
-        if pickled:
-            click.secho("Received pickled object")
-            dest_file = os.path.join(os.getcwd(), "pickled.tar.gz")
-            FlyteContextManager.current_context().file_access.get_data(additional_distribution, dest_file)
-            cmd_extend = []
-            cmd_extend_last = ["pkl-path", dest_file]
-        else:
-            if not dest_dir:
-                dest_dir = os.getcwd()
-            _download_distribution(additional_distribution, dest_dir)
-            cmd_extend = ["--dynamic-addl-distro", additional_distribution, "--dynamic-dest-dir", dest_dir]
-            cmd_extend_last = []
+        if not dest_dir:
+            dest_dir = os.getcwd()
+        _download_distribution(additional_distribution, dest_dir)
 
     # Insert the call to fast before the unbounded resolver args
     cmd = []
     for arg in task_execute_cmd:
         if arg == "--resolver":
-            cmd.extend(cmd_extend)
+            cmd.extend(["--dynamic-addl-distro", additional_distribution, "--dynamic-dest-dir", dest_dir])
         cmd.append(arg)
-    cmd.extend(cmd_extend_last)
 
     # Use the commandline to run the task execute command rather than calling it directly in python code
     # since the current runtime bytecode references the older user code, rather than the downloaded distribution.

@@ -226,12 +226,13 @@ def download_distribution(additional_distribution: str, destination: str):
     except FlyteDataNotFoundException as ex:
         raise RuntimeError("task execution code was not found") from ex
     tarfile_name = os.path.basename(additional_distribution)
-    if not tarfile_name.endswith(".tar.gz"):
+    if tarfile_name.endswith(".tar.gz"):
+        # This will overwrite the existing user flyte workflow code in the current working code dir.
+        result = subprocess.run(
+            ["tar", "-xvf", os.path.join(destination, tarfile_name), "-C", destination],
+            stdout=subprocess.PIPE,
+        )
+        result.check_returncode()
+    elif tarfile_name != "pkl.gz":
+        # The distribution is not a pickled file.
         raise RuntimeError("Unrecognized additional distribution format for {}".format(additional_distribution))
-
-    # This will overwrite the existing user flyte workflow code in the current working code dir.
-    result = subprocess.run(
-        ["tar", "-xvf", os.path.join(destination, tarfile_name), "-C", destination],
-        stdout=subprocess.PIPE,
-    )
-    result.check_returncode()

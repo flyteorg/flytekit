@@ -165,7 +165,7 @@ def get_command_prefix_for_fast_execute(settings: SerializationSettings) -> List
         ),
     ]
     if settings.fast_serialization_settings and settings.fast_serialization_settings.pickled:
-        prefix = prefix + ["--pickled"]
+        prefix = prefix
     elif settings.fast_serialization_settings and settings.fast_serialization_settings.destination_dir:
         prefix = prefix + ["--dest-dir", settings.fast_serialization_settings.destination_dir]
     else:

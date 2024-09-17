@@ -259,13 +259,12 @@ class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
     def load_task(self, loader_args: List[str]) -> PythonAutoContainerTask:
         _, task_module, _, task_name, *extra_args = loader_args
 
-        if len(extra_args) >= 2 and extra_args[0] == "pkl-path":
-            pkl_file = extra_args[1]
+        if len(extra_args) >= 1 and extra_args[0] == "pkl":
             import gzip
 
             import cloudpickle
 
-            with gzip.open(pkl_file, "r") as f:
+            with gzip.open("pkl.gz", "r") as f:
                 return cloudpickle.load(f)
 
         task_module = importlib.import_module(name=task_module)  # type: ignore
@@ -274,7 +273,10 @@ class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
 
     def loader_args(self, settings: SerializationSettings, task: PythonAutoContainerTask) -> List[str]:  # type:ignore
         _, m, t, _ = extract_task_module(task)
-        return ["task-module", m, "task-name", t]
+        if settings.interactive_mode_enabled:
+            return ["task-module", m, "task-name", t, "pkl"]
+        else:
+            return ["task-module", m, "task-name", t]
 
     def get_all_tasks(self) -> List[PythonAutoContainerTask]:  # type: ignore
         raise NotImplementedError
