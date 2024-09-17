@@ -56,6 +56,7 @@ from flytekit.models.literals import (
     Literal,
     LiteralCollection,
     LiteralMap,
+    LiteralOffloadedMetadata,
     Primitive,
     Scalar,
     Void,
@@ -3090,8 +3091,11 @@ def test_offloaded_literal(tmp_path):
         f.write(offloaded_lv.to_flyte_idl().SerializeToString())
 
     literal = Literal(
-        uri=f"{tmp_path}/offloaded_proto.pb",
-        size_bytes=100,
+        offloaded_metadata=LiteralOffloadedMetadata(
+            uri=f"{tmp_path}/offloaded_proto.pb",
+            size_bytes=100,
+            inferred_type=lt,
+        ),
     )
 
     loaded_literal = TypeEngine.to_python_value(ctx, literal, pt)

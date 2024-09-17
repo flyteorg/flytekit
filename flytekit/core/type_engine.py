@@ -1099,12 +1099,13 @@ class TypeEngine(typing.Generic[T]):
         Converts a Literal value with an expected python type into a python value.
         """
         # Initiate the process of loading the offloaded literal if uri is set
-        if lv.uri:
-            # TODO: fail fast if size is larger than X MB
+        if lv.offloaded_metadata:
             literal_random_path = ctx.file_access.get_random_local_path()
             # TODO: Loading a literal from bytes requires writing it to a file
+            assert ctx.execution_state
             local_literal_file = os.path.join(ctx.execution_state.working_dir, literal_random_path)
-            ctx.file_access.download(lv.uri, local_literal_file)
+            assert lv.offloaded_metadata.uri
+            ctx.file_access.download(lv.offloaded_metadata.uri, local_literal_file)
             input_proto = load_proto_from_file(literals_pb2.Literal, local_literal_file)
             lv = Literal.from_flyte_idl(input_proto)
 
