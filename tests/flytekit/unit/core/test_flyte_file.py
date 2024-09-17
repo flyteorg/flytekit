@@ -123,6 +123,7 @@ def test_flytefile_in_dataclass(local_dummy_txt_file):
         return dc
 
     txt_file = TxtFile(local_dummy_txt_file)
+    my_wf.compile()
     dc1 = my_wf(path=txt_file)
     with open(dc1.f, "r") as fh:
         assert fh.read() == "Hello World"
