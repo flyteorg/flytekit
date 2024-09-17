@@ -27,7 +27,7 @@ def serialization_settings():
 def multiply(val: int, val1: typing.Union[int, str], val2: int) -> int:
     if type(val1) is str:
         return val * val2
-    return val * val1 * val2
+    return val * int(val1) * val2
 
 
 @workflow

@@ -1132,8 +1132,8 @@ def create_and_link_node_from_remote(
 def create_and_link_node(
     ctx: FlyteContext,
     entity: SupportsNodeCreation,
+    overridden_interface: Optional[Interface] = None,
     add_node_to_compilation_state: bool = True,
-    overridden_interface: Interface = None,
     **kwargs,
 ) -> Optional[Union[Tuple[Promise], Promise, VoidPromise]]:
     """
@@ -1223,7 +1223,9 @@ def create_and_link_node(
     # TODO: Better naming, probably a derivative of the function name.
     # if not adding to compilation state, we don't need to generate a unique node id
     node_id = (
-        f"{ctx.compilation_state.prefix}n{len(ctx.compilation_state.nodes)}" if add_node_to_compilation_state else ""
+        f"{ctx.compilation_state.prefix}n{len(ctx.compilation_state.nodes)}"
+        if add_node_to_compilation_state and ctx.compilation_state
+        else ""
     )
 
     flytekit_node = Node(
@@ -1234,7 +1236,7 @@ def create_and_link_node(
         flyte_entity=entity,
     )
 
-    if add_node_to_compilation_state:
+    if add_node_to_compilation_state and ctx.compilation_state:
         ctx.compilation_state.add_node(flytekit_node)
 
     if len(typed_interface.outputs) == 0:
