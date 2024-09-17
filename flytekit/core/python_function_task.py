@@ -253,9 +253,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
             # If at runtime we are in dynamic task, we will automatically have the fast_register_file_uploader set,
             # so we can use that to pass the file uploader to the translator.
             workflow_spec: admin_workflow_models.WorkflowSpec = get_serializable(
-                model_entities,
-                ctx.serialization_settings,
-                wf,
+                model_entities, ctx.serialization_settings, wf
             )
 
             # If no nodes were produced, let's just return the strict outputs
