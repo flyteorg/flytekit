@@ -45,9 +45,10 @@ from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.literals import Primitive
 from flytekit.models.task import Resources
 from flytekit.models.types import SimpleType
+from flytekit.utils.async_utils import top_level_sync_wrapper
 
 
-def translate_inputs_to_literals(
+async def _translate_inputs_to_literals(
     ctx: FlyteContext,
     incoming_values: Dict[str, Any],
     flyte_interface_types: Dict[str, _interface_models.Variable],
@@ -95,8 +96,8 @@ def translate_inputs_to_literals(
         t = native_types[k]
         try:
             if type(v) is Promise:
-                v = resolve_attr_path_in_promise(v)
-            result[k] = TypeEngine.to_literal(ctx, v, t, var.type)
+                v = await resolve_attr_path_in_promise(v)
+            result[k] = await TypeEngine.async_to_literal(ctx, v, t, var.type)
         except TypeTransformerFailedError as exc:
             exc.args = (f"Failed argument '{k}': {exc.args[0]}",)
             raise
@@ -104,7 +105,10 @@ def translate_inputs_to_literals(
     return result
 
 
-def resolve_attr_path_in_promise(p: Promise) -> Promise:
+translate_inputs_to_literals = top_level_sync_wrapper(_translate_inputs_to_literals)
+
+
+async def resolve_attr_path_in_promise(p: Promise) -> Promise:
     """
     resolve_attr_path_in_promise resolves the attribute path in a promise and returns a new promise with the resolved value
     This is for local execution only. The remote execution will be resolved in flytepropeller.
@@ -148,7 +152,9 @@ def resolve_attr_path_in_promise(p: Promise) -> Promise:
         new_st = resolve_attr_path_in_pb_struct(st, attr_path=p.attr_path[used:])
         literal_type = TypeEngine.to_literal_type(type(new_st))
         # Reconstruct the resolved result to flyte literal (because the resolved result might not be struct)
-        curr_val = TypeEngine.to_literal(FlyteContextManager.current_context(), new_st, type(new_st), literal_type)
+        curr_val = await TypeEngine.async_to_literal(
+            FlyteContextManager.current_context(), new_st, type(new_st), literal_type
+        )
 
     p._val = curr_val
     return p
@@ -760,7 +766,7 @@ def create_task_output(
     return Output(*promises)  # type: ignore
 
 
-def binding_data_from_python_std(
+async def binding_data_from_python_std(
     ctx: _flyte_context.FlyteContext,
     expected_literal_type: _type_models.LiteralType,
     t_value: Any,
@@ -795,7 +801,8 @@ def binding_data_from_python_std(
         # If the value is not a container type, then we can directly convert it to a scalar in the Union case.
         # This pushes the handling of the Union types to the type engine.
         if not isinstance(t_value, list) and not isinstance(t_value, dict):
-            scalar = TypeEngine.to_literal(ctx, t_value, t_value_type or type(t_value), expected_literal_type).scalar
+            lit = await TypeEngine.async_to_literal(ctx, t_value, t_value_type or type(t_value), expected_literal_type)
+            scalar = lit.scalar
             return _literals_models.BindingData(scalar=scalar)
 
         # If it is a container type, then we need to iterate over the variants in the Union type, try each one. This is
@@ -805,7 +812,7 @@ def binding_data_from_python_std(
             try:
                 lt_type = expected_literal_type.union_type.variants[i]
                 python_type = get_args(t_value_type)[i] if t_value_type else None
-                return binding_data_from_python_std(ctx, lt_type, t_value, python_type, nodes)
+                return await binding_data_from_python_std(ctx, lt_type, t_value, python_type, nodes)
             except Exception:
                 logger.debug(
                     f"failed to bind data {t_value} with literal type {expected_literal_type.union_type.variants[i]}."
@@ -818,7 +825,9 @@ def binding_data_from_python_std(
         sub_type: Optional[type] = ListTransformer.get_sub_type_or_none(t_value_type)
         collection = _literals_models.BindingDataCollection(
             bindings=[
-                binding_data_from_python_std(ctx, expected_literal_type.collection_type, t, sub_type or type(t), nodes)
+                await binding_data_from_python_std(
+                    ctx, expected_literal_type.collection_type, t, sub_type or type(t), nodes
+                )
                 for t in t_value
             ]
         )
@@ -834,13 +843,13 @@ def binding_data_from_python_std(
                 f"this should be a Dictionary type and it is not: {type(t_value)} vs {expected_literal_type}"
             )
         if expected_literal_type.simple == _type_models.SimpleType.STRUCT:
-            lit = TypeEngine.to_literal(ctx, t_value, type(t_value), expected_literal_type)
+            lit = await TypeEngine.async_to_literal(ctx, t_value, type(t_value), expected_literal_type)
             return _literals_models.BindingData(scalar=lit.scalar)
         else:
             _, v_type = DictTransformer.extract_types_or_metadata(t_value_type)
             m = _literals_models.BindingDataMap(
                 bindings={
-                    k: binding_data_from_python_std(
+                    k: await binding_data_from_python_std(
                         ctx, expected_literal_type.map_value_type, v, v_type or type(v), nodes
                     )
                     for k, v in t_value.items()
@@ -857,10 +866,11 @@ def binding_data_from_python_std(
         )
 
     # This is the scalar case - e.g. my_task(in1=5)
-    scalar = TypeEngine.to_literal(ctx, t_value, t_value_type or type(t_value), expected_literal_type).scalar
-    return _literals_models.BindingData(scalar=scalar)
+    lit = await TypeEngine.async_to_literal(ctx, t_value, t_value_type or type(t_value), expected_literal_type)
+    return _literals_models.BindingData(scalar=lit.scalar)
 
 
+# This function cannot be called from an async call stack
 def binding_from_python_std(
     ctx: _flyte_context.FlyteContext,
     var_name: str,
@@ -869,12 +879,21 @@ def binding_from_python_std(
     t_value_type: type,
 ) -> Tuple[_literals_models.Binding, List[Node]]:
     nodes: List[Node] = []
-    binding_data = binding_data_from_python_std(
-        ctx,
-        expected_literal_type,
-        t_value,
-        t_value_type,
-        nodes,
+    try:
+        asyncio.get_running_loop()
+        raise AssertionError("binding_from_python_std cannot be run from within an async call stack")
+    except RuntimeError as e:
+        if "no running event loop" not in str(e):
+            logger.error(f"Unknown RuntimeError {str(e)}")
+            raise
+    binding_data = asyncio.run(
+        binding_data_from_python_std(
+            ctx,
+            expected_literal_type,
+            t_value,
+            t_value_type,
+            nodes,
+        )
     )
     return _literals_models.Binding(var=var_name, binding=binding_data), nodes
 

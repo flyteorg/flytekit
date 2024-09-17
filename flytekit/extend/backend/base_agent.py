@@ -313,7 +313,7 @@ class AsyncAgentExecutorMixin:
             return LiteralMap.from_flyte_idl(output_proto)
 
         if resource.outputs and not isinstance(resource.outputs, LiteralMap):
-            return TypeEngine.dict_to_literal_map(ctx, resource.outputs)
+            return TypeEngine.dict_to_literal_map(ctx, resource.outputs)  # type: ignore
 
         return resource.outputs
 
