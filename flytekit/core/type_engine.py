@@ -1793,7 +1793,6 @@ class UnionTransformer(AsyncTypeTransformer[T]):
         if found_res:
             return Literal(scalar=Scalar(union=Union(value=res, stored_type=res_type)))
 
-        # breakpoint()
         raise TypeTransformerFailedError(f"Cannot convert from {python_val} to {python_type}")
 
     async def async_to_python_value(
