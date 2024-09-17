@@ -1347,6 +1347,17 @@ class TypeEngine(typing.Generic[T]):
             variables[var_name] = _interface_models.Variable(type=literal_type, description=f"{idx}")
         return _interface_models.VariableMap(variables=variables)
 
+    # Declare empty function to get linting to work. Monkeypatched below.
+    @classmethod
+    def literal_map_to_kwargs(
+        cls,
+        ctx: FlyteContext,
+        lm: LiteralMap,
+        python_types: typing.Optional[typing.Dict[str, type]] = None,
+        literal_types: typing.Optional[typing.Dict[str, _interface_models.Variable]] = None,
+    ) -> typing.Dict[str, typing.Any]:
+        raise NotImplementedError
+
     @classmethod
     @timeit("Translate literal to python value")
     async def _literal_map_to_kwargs(
@@ -1382,6 +1393,16 @@ class TypeEngine(typing.Generic[T]):
                 exc.args = (f"Error converting input '{k}' at position {i}:\n  {exc.args[0]}",)
                 raise
         return kwargs
+
+    # Declare empty function to get linting to work. Monkeypatched below.
+    @classmethod
+    def dict_to_literal_map(
+        cls,
+        ctx: FlyteContext,
+        d: typing.Dict[str, typing.Any],
+        type_hints: Optional[typing.Dict[str, type]] = None,
+    ) -> LiteralMap:
+        raise NotImplementedError
 
     @classmethod
     async def _dict_to_literal_map(
@@ -1461,8 +1482,8 @@ class TypeEngine(typing.Generic[T]):
         raise ValueError(f"No transformers could reverse Flyte literal type {flyte_type}")
 
 
-TypeEngine.literal_map_to_kwargs = top_level_sync_wrapper(TypeEngine._literal_map_to_kwargs)
-TypeEngine.dict_to_literal_map = top_level_sync_wrapper(TypeEngine._dict_to_literal_map)
+TypeEngine.literal_map_to_kwargs = top_level_sync_wrapper(TypeEngine._literal_map_to_kwargs)  # type: ignore[method-assign]
+TypeEngine.dict_to_literal_map = top_level_sync_wrapper(TypeEngine._dict_to_literal_map)  # type: ignore[method-assign]
 
 
 class ListTransformer(AsyncTypeTransformer[T]):

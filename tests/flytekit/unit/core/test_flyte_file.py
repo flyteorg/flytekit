@@ -116,7 +116,7 @@ def test_flytefile_in_dataclass(local_dummy_txt_file):
     @task
     def t1(path: TxtFile) -> DC:
         return DC(f=path)
-    
+
     @workflow
     def my_wf(path: TxtFile) -> DC:
         dc = t1(path=path)
