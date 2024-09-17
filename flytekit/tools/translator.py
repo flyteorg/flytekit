@@ -24,11 +24,7 @@ from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
 from flytekit.core.legacy_map_task import MapPythonTask
 from flytekit.core.node import Node
 from flytekit.core.python_auto_container import PythonAutoContainerTask
-from flytekit.core.reference_entity import (
-    ReferenceEntity,
-    ReferenceSpec,
-    ReferenceTemplate,
-)
+from flytekit.core.reference_entity import ReferenceEntity, ReferenceSpec, ReferenceTemplate
 from flytekit.core.task import ReferenceTask
 from flytekit.core.utils import ClassDecorator, _dnsify
 from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase
@@ -44,13 +40,7 @@ from flytekit.models.admin.workflow import WorkflowSpec
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _core_wf
 from flytekit.models.core import workflow as workflow_model
-from flytekit.models.core.workflow import (
-    ApproveCondition,
-    GateNode,
-    SignalCondition,
-    SleepCondition,
-    TaskNodeOverrides,
-)
+from flytekit.models.core.workflow import ApproveCondition, GateNode, SignalCondition, SleepCondition, TaskNodeOverrides
 from flytekit.models.core.workflow import ArrayNode as ArrayNodeModel
 from flytekit.models.core.workflow import BranchNode as BranchNodeModel
 from flytekit.models.task import TaskSpec, TaskTemplate
@@ -112,19 +102,15 @@ class Options(object):
 
     @classmethod
     def default_from(
-        cls,
-        k8s_service_account: typing.Optional[str] = None,
-        raw_data_prefix: typing.Optional[str] = None,
+        cls, k8s_service_account: typing.Optional[str] = None, raw_data_prefix: typing.Optional[str] = None
     ) -> "Options":
         return cls(
-            security_context=(
-                security.SecurityContext(run_as=security.Identity(k8s_service_account=k8s_service_account))
-                if k8s_service_account
-                else None
-            ),
-            raw_output_data_config=(
-                common_models.RawOutputDataConfig(output_location_prefix=raw_data_prefix) if raw_data_prefix else None
-            ),
+            security_context=security.SecurityContext(run_as=security.Identity(k8s_service_account=k8s_service_account))
+            if k8s_service_account
+            else None,
+            raw_output_data_config=common_models.RawOutputDataConfig(output_location_prefix=raw_data_prefix)
+            if raw_data_prefix
+            else None,
         )
 
 
@@ -155,23 +141,18 @@ def to_serializable_cases(
 
 
 def get_command_prefix_for_fast_execute(settings: SerializationSettings) -> List[str]:
-    prefix = [
+    return [
         "pyflyte-fast-execute",
         "--additional-distribution",
-        (
-            settings.fast_serialization_settings.distribution_location
-            if settings.fast_serialization_settings and settings.fast_serialization_settings.distribution_location
-            else "{{ .remote_package_path }}"
-        ),
+        settings.fast_serialization_settings.distribution_location
+        if settings.fast_serialization_settings and settings.fast_serialization_settings.distribution_location
+        else "{{ .remote_package_path }}",
+        "--dest-dir",
+        settings.fast_serialization_settings.destination_dir
+        if settings.fast_serialization_settings and settings.fast_serialization_settings.destination_dir
+        else "{{ .dest_dir }}",
+        "--",
     ]
-    if settings.fast_serialization_settings and settings.fast_serialization_settings.pickled:
-        prefix = prefix
-    elif settings.fast_serialization_settings and settings.fast_serialization_settings.destination_dir:
-        prefix = prefix + ["--dest-dir", settings.fast_serialization_settings.destination_dir]
-    else:
-        prefix = prefix + ["--dest-dir", "{{ .dest_dir }}"]
-
-    return prefix + ["--"]
 
 
 def prefix_with_fast_execute(settings: SerializationSettings, cmd: typing.List[str]) -> List[str]:
@@ -247,7 +228,7 @@ def _update_serialization_settings_for_ipython(
             _, native_url = options.file_uploader(dest)
 
             serialization_settings.fast_serialization_settings = FastSerializationSettings(
-                enabled=True, pickled=True, distribution_location=native_url
+                enabled=True, distribution_location=native_url, destination_dir="."
             )
 
 
@@ -436,9 +417,7 @@ def get_serializable_workflow(
     )
 
     return admin_workflow_models.WorkflowSpec(
-        template=wf_t,
-        sub_workflows=sorted(set(sub_wfs), key=lambda x: x.short_string()),
-        docs=entity.docs,
+        template=wf_t, sub_workflows=sorted(set(sub_wfs), key=lambda x: x.short_string()), docs=entity.docs
     )
 
 
@@ -649,9 +628,7 @@ def get_serializable_node(
             output_name = list(entity.flyte_entity.python_interface.outputs.keys())[0]  # should be o0
             gn = GateNode(
                 signal=SignalCondition(
-                    entity.flyte_entity.name,
-                    type=entity.flyte_entity.literal_type,
-                    output_variable_name=output_name,
+                    entity.flyte_entity.name, type=entity.flyte_entity.literal_type, output_variable_name=output_name
                 )
             )
         else:
@@ -785,18 +762,13 @@ def get_serializable_branch_node(
 
     return BranchNodeModel(
         if_else=_core_wf.IfElseBlock(
-            case=first,
-            other=other,
-            else_node=else_node_model,
-            error=entity._ifelse_block.error,
+            case=first, other=other, else_node=else_node_model, error=entity._ifelse_block.error
         )
     )
 
 
 def get_reference_spec(
-    entity_mapping: OrderedDict,
-    settings: SerializationSettings,
-    entity: ReferenceEntity,
+    entity_mapping: OrderedDict, settings: SerializationSettings, entity: ReferenceEntity
 ) -> ReferenceSpec:
     template = ReferenceTemplate(entity.id, entity.reference.resource_type)
     return ReferenceSpec(template)

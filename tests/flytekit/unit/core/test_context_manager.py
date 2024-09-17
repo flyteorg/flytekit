@@ -267,7 +267,7 @@ def test_serialization_settings_transport():
     ss = SerializationSettings.from_transport(tp)
     assert ss is not None
     assert ss == serialization_settings
-    assert len(tp) == 440
+    assert len(tp) == 432
 
 
 def test_exec_params():

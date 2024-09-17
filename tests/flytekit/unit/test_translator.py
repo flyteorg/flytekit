@@ -97,7 +97,8 @@ def test_interactive():
     options = Options(file_uploader=fake_file_uploader)
 
     task_spec = get_serializable(OrderedDict(), ssettings, t1, options)
-    assert "--dest-dir" not in task_spec.template.container.args
+    assert "--dest-dir" in task_spec.template.container.args
+    assert task_spec.template.container.args[task_spec.template.container.args.index("--dest-dir") + 1] == "."
 
 
 def test_fast():
