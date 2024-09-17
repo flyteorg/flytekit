@@ -50,7 +50,7 @@ class ArrayNode:
         self._concurrency = concurrency
         self._execution_mode = execution_mode
         self.id = target.name
-        self._bindings: Optional[List[_literal_models.Binding]] = None
+        self._bindings: List[_literal_models.Binding] = []
 
         if min_successes is not None:
             self._min_successes = min_successes
