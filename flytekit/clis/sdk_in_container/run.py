@@ -19,7 +19,10 @@ from rich.progress import Progress
 from typing_extensions import get_origin
 
 from flytekit import Annotations, FlyteContext, FlyteContextManager, Labels, Literal
-from flytekit.clis.sdk_in_container.helpers import patch_image_config
+from flytekit.clis.sdk_in_container.helpers import (
+    parse_copy,
+    patch_image_config,
+)
 from flytekit.clis.sdk_in_container.utils import (
     PyFlyteParams,
     domain_option,
@@ -35,6 +38,7 @@ from flytekit.configuration import (
     SerializationSettings,
 )
 from flytekit.configuration.plugin import get_plugin
+from flytekit.constants import CopyFileDetection
 from flytekit.core import context_manager
 from flytekit.core.artifact import ArtifactQuery
 from flytekit.core.base_task import PythonTask
@@ -42,6 +46,7 @@ from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow, WorkflowBase
 from flytekit.exceptions.system import FlyteSystemException
+from flytekit.exceptions.user import FlyteEntityNotFoundException
 from flytekit.interaction.click_types import (
     FlyteLiteralConverter,
     key_value_callback,
@@ -62,6 +67,7 @@ from flytekit.remote import (
 )
 from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.tools import module_loader
+from flytekit.tools.fast_registration import FastPackageOptions
 from flytekit.tools.script_mode import _find_project_root, compress_scripts, get_all_modules
 from flytekit.tools.translator import Options
 
@@ -103,7 +109,20 @@ class RunLevelParams(PyFlyteParams):
             is_flag=True,
             default=False,
             show_default=True,
-            help="Copy all files in the source root directory to the destination directory",
+            help="[Will be deprecated, see --copy] Copy all files in the source root directory to"
+            " the destination directory. You can specify --copy all instead",
+        )
+    )
+    copy: typing.Optional[CopyFileDetection] = make_click_option_field(
+        click.Option(
+            param_decls=["--copy"],
+            required=False,
+            default=None,  # this will change to "auto" after removing copy_all option
+            type=click.Choice(["all", "auto"], case_sensitive=False),
+            show_default=True,
+            callback=parse_copy,
+            help="[Beta] Specifies how to detect which files to copy into image."
+            " 'all' will behave as the current copy-all flag, 'auto' copies only loaded Python modules",
         )
     )
     image_config: ImageConfig = make_click_option_field(
@@ -322,7 +341,10 @@ def load_naive_entity(module_name: str, entity_name: str, project_root: str) -> 
     with context_manager.FlyteContextManager.with_context(flyte_ctx_builder):
         with module_loader.add_sys_path(project_root):
             importlib.import_module(module_name)
-    return module_loader.load_object_from_module(f"{module_name}.{entity_name}")
+    try:
+        return module_loader.load_object_from_module(f"{module_name}.{entity_name}")
+    except AttributeError as e:
+        raise FlyteEntityNotFoundException(module_name, entity_name) from e
 
 
 def dump_flyte_remote_snippet(execution: FlyteWorkflowExecution, project: str, domain: str):
@@ -622,6 +644,12 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
             image_config = patch_image_config(config_file, image_config)
 
             with context_manager.FlyteContextManager.with_context(remote.context.new_builder()):
+                show_files = run_level_params.verbose > 0
+                fast_package_options = FastPackageOptions(
+                    [],
+                    copy_style=run_level_params.copy,
+                    show_files=show_files,
+                )
                 remote_entity = remote.register_script(
                     entity,
                     project=run_level_params.project,
@@ -631,6 +659,7 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
                     source_path=run_level_params.computed_params.project_root,
                     module_name=run_level_params.computed_params.module,
                     copy_all=run_level_params.copy_all,
+                    fast_package_options=fast_package_options,
                 )
 
                 run_remote(

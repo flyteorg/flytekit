@@ -42,6 +42,9 @@
     },
     "p": "None",
     "q": "tests/flytekit/unit/cli/pyflyte/testdata",
+    "r": [{"i": 1, "a": ["h", "e"]}],
+    "s": {"x": {"i": 1, "a": ["h", "e"]}},
+    "t": {"i": [{"i":1,"a":["h","e"]}]},
     "remote": "tests/flytekit/unit/cli/pyflyte/testdata",
     "image": "tests/flytekit/unit/cli/pyflyte/testdata"
 }

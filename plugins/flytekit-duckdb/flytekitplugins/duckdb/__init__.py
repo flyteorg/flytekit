@@ -8,4 +8,4 @@
    DuckDBQuery
 """
 
-from .task import DuckDBQuery
+from .task import DuckDBProvider, DuckDBQuery

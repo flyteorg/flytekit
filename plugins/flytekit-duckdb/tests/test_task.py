@@ -1,12 +1,13 @@
 import json
 from typing import List
-
+import pytest
 import pandas as pd
 import pyarrow as pa
-from flytekitplugins.duckdb import DuckDBQuery
+from flytekitplugins.duckdb import DuckDBQuery, DuckDBProvider
+from flytekitplugins.duckdb.task import MissingSecretError
 from typing_extensions import Annotated
 
-from flytekit import kwtypes, task, workflow
+from flytekit import kwtypes, task, workflow, Secret
 from flytekit.types.structured.structured_dataset import StructuredDataset
 
 
@@ -146,3 +147,27 @@ def test_insert_query_with_single_params():
         return duckdb_params_query(params=params)
 
     assert isinstance(params_wf(params=json.dumps([[[500], [300], [2]]])), pa.Table)
+
+
+def test_motherduck_no_token():
+    with pytest.raises(MissingSecretError, match="A secret_requests must be provided for the MOTHERDUCK provider."):
+        duckdb_params_query = DuckDBQuery(
+            name="motherduck_query",
+            query="SELECT SUM(a) FROM sometable",
+            provider=DuckDBProvider.MOTHERDUCK,
+        )
+
+
+def test_runtime_query():
+    runtime_duckdb_query = DuckDBQuery(
+        name="runtime_query", inputs=kwtypes(mydf=pd.DataFrame, query=str)
+    )
+
+    @workflow
+    def pandas_wf(mydf: pd.DataFrame, query: str) -> pd.DataFrame:
+        return runtime_duckdb_query(mydf=df, query=query)
+
+    df = pd.DataFrame({"a": [1, 2, 3]})
+    query = "SELECT SUM(a) FROM mydf"
+    assert isinstance(pandas_wf(mydf=df, query=query), pd.DataFrame)
+    assert pandas_wf(mydf=df, query=query).iloc[0, 0] == 6

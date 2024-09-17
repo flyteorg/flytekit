@@ -45,7 +45,7 @@ from flytekit.core.reference_entity import ReferenceSpec
 from flytekit.core.task import ReferenceTask
 from flytekit.core.tracker import extract_task_module
 from flytekit.core.type_engine import LiteralsResolver, TypeEngine
-from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase, WorkflowFailurePolicy
+from flytekit.core.workflow import PythonFunctionWorkflow, ReferenceWorkflow, WorkflowBase, WorkflowFailurePolicy
 from flytekit.exceptions import user as user_exceptions
 from flytekit.exceptions.user import (
     FlyteEntityAlreadyExistsException,
@@ -781,9 +781,13 @@ class FlyteRemote(object):
         # serial register
         cp_other_entities = OrderedDict(filter(lambda x: not isinstance(x[1], task_models.TaskSpec), m.items()))
         for entity, cp_entity in cp_other_entities.items():
-            identifiers_or_exceptions.append(
-                self.raw_register(cp_entity, serialization_settings, version, og_entity=entity)
-            )
+            try:
+                identifiers_or_exceptions.append(
+                    self.raw_register(cp_entity, serialization_settings, version, og_entity=entity)
+                )
+            except RegistrationSkipped as e:
+                logger.info(f"Skipping registration... {e}")
+                continue
         return identifiers_or_exceptions[-1]
 
     def register_task(
@@ -852,6 +856,7 @@ class FlyteRemote(object):
                 project=self.default_project,
                 domain=self.default_domain,
             )
+
         self._resolve_identifier(ResourceType.WORKFLOW, entity.name, version, serialization_settings)
         ident = asyncio.run(
             self._serialize_and_register(entity, serialization_settings, version, options, default_launch_plan)
@@ -859,6 +864,53 @@ class FlyteRemote(object):
         fwf = self.fetch_workflow(ident.project, ident.domain, ident.name, ident.version)
         fwf._python_interface = entity.python_interface
         return fwf
+
+    def fast_register_workflow(
+        self,
+        entity: WorkflowBase,
+        serialization_settings: typing.Optional[SerializationSettings] = None,
+        version: typing.Optional[str] = None,
+        default_launch_plan: typing.Optional[bool] = True,
+        options: typing.Optional[Options] = None,
+    ) -> FlyteWorkflow:
+        """
+        Use this method to register a workflow with zip mode.
+        :param version: version for the entity to be registered as
+        :param entity: The workflow to be registered
+        :param serialization_settings: The serialization settings to be used
+        :param default_launch_plan: This should be true if a default launch plan should be created for the workflow
+        :param options: Additional execution options that can be configured for the default launchplan
+        :return:
+        """
+        if not isinstance(entity, PythonFunctionWorkflow):
+            raise ValueError(
+                "Only PythonFunctionWorkflow entity is supported for script mode registration"
+                "Please use register_script for other types of workflows"
+            )
+        if not isinstance(entity._module_file, pathlib.Path):
+            raise ValueError(f"entity._module_file should be pathlib.Path object, got {type(entity._module_file)}")
+
+        mod_name = ".".join(entity.name.split(".")[:-1])
+        # get the path representation of the module
+        module_path = f"{os.sep}".join(entity.name.split(".")[:-1])
+        module_file = str(entity._module_file.with_suffix(""))
+        if not module_file.endswith(module_path):
+            raise ValueError(f"Module file path should end with entity.__module__, got {module_file} and {module_path}")
+
+        # remove module suffix to get the root
+        module_root = str(pathlib.Path(module_file[: -len(module_path)]))
+
+        return self.register_script(
+            entity,
+            image_config=serialization_settings.image_config if serialization_settings else None,
+            project=serialization_settings.project if serialization_settings else None,
+            domain=serialization_settings.domain if serialization_settings else None,
+            version=version,
+            default_launch_plan=default_launch_plan,
+            options=options,
+            source_path=module_root,
+            module_name=mod_name,
+        )
 
     def fast_package(
         self,
@@ -1014,7 +1066,7 @@ class FlyteRemote(object):
             image_config = ImageConfig.auto_default_image()
 
         with tempfile.TemporaryDirectory() as tmp_dir:
-            if copy_all:
+            if copy_all or (fast_package_options and fast_package_options.copy_style):
                 md5_bytes, upload_native_url = self.fast_package(
                     pathlib.Path(source_path), False, tmp_dir, fast_package_options
                 )
@@ -1026,8 +1078,8 @@ class FlyteRemote(object):
                 )
 
         serialization_settings = SerializationSettings(
-            project=project,
-            domain=domain,
+            project=project or self.default_project,
+            domain=domain or self.default_domain,
             image_config=image_config,
             git_repo=_get_git_repo_url(source_path),
             env=envs,
@@ -1144,8 +1196,9 @@ class FlyteRemote(object):
         """
         if execution_name is not None and execution_name_prefix is not None:
             raise ValueError("Only one of execution_name and execution_name_prefix can be set, but got both set")
-        execution_name_prefix = execution_name_prefix + "-" if execution_name_prefix is not None else None
-        execution_name = execution_name or (execution_name_prefix or "f") + uuid.uuid4().hex[:19]
+        # todo: The prefix should be passed to the backend
+        if execution_name_prefix is not None:
+            execution_name = execution_name_prefix + "-" + uuid.uuid4().hex[:19]
         if not options:
             options = Options()
         if options.disable_notifications is not None:
@@ -2135,15 +2188,16 @@ class FlyteRemote(object):
                 compiled_wf = node_execution_get_data_response.dynamic_workflow.compiled_workflow
                 node_launch_plans = {}
                 # TODO: Inspect branch nodes for launch plans
-                for node in FlyteWorkflow.get_non_system_nodes(compiled_wf.primary.template.nodes):
-                    if (
-                        node.workflow_node is not None
-                        and node.workflow_node.launchplan_ref is not None
-                        and node.workflow_node.launchplan_ref not in node_launch_plans
-                    ):
-                        node_launch_plans[node.workflow_node.launchplan_ref] = self.client.get_launch_plan(
-                            node.workflow_node.launchplan_ref
-                        ).spec
+                for template in [compiled_wf.primary.template] + [swf.template for swf in compiled_wf.sub_workflows]:
+                    for node in FlyteWorkflow.get_non_system_nodes(template.nodes):
+                        if (
+                            node.workflow_node is not None
+                            and node.workflow_node.launchplan_ref is not None
+                            and node.workflow_node.launchplan_ref not in node_launch_plans
+                        ):
+                            node_launch_plans[node.workflow_node.launchplan_ref] = self.client.get_launch_plan(
+                                node.workflow_node.launchplan_ref
+                            ).spec
 
                 dynamic_flyte_wf = FlyteWorkflow.promote_from_closure(compiled_wf, node_launch_plans)
                 execution._underlying_node_executions = [

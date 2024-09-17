@@ -500,9 +500,8 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
 
         Handles the exception scope for the `_execute` method.
         """
-        from flytekit.exceptions import scopes as exception_scopes
 
-        return exception_scopes.user_entry_point(self._execute)(**kwargs)
+        return self._execute(**kwargs)
 
     def get_custom(self, settings: SerializationSettings) -> Optional[Dict[str, Any]]:
         if self.task_config.nnodes == 1:
