@@ -118,7 +118,8 @@ class ArrayNode:
             outputs_expected = False
 
         mapped_entity_count = 0
-        for k in self.python_interface.inputs.keys():
+        for binding in self.bindings:
+            k = binding.var
             if k not in self._bound_inputs:
                 v = kwargs[k]
                 if isinstance(v, list) and len(v) > 0 and isinstance(v[0], self.target.python_interface.inputs[k]):
@@ -193,20 +194,19 @@ class ArrayNode:
 
     def __call__(self, *args, **kwargs):
         ctx = FlyteContext.current_context()
-        if ctx.compilation_state:
-            # since a new entity with an updated list interface is not created, we have to work around the mismatch
-            # between the interface and the inputs
-            collection_interface = transform_interface_to_list_interface(self.flyte_entity.python_interface, set())
-            # don't link the node to the compilation state, since we don't want to add the subnode to the
-            # workflow as a node
-            bound_subnode = create_and_link_node(
-                ctx,
-                entity=self.flyte_entity,
-                add_node_to_compilation_state=False,
-                overridden_interface=collection_interface,
-                **kwargs,
-            )
-            self._bindings = bound_subnode.ref.node.bindings
+        # since a new entity with an updated list interface is not created, we have to work around the mismatch
+        # between the interface and the inputs
+        collection_interface = transform_interface_to_list_interface(self.flyte_entity.python_interface, set())
+        # don't link the node to the compilation state, since we don't want to add the subnode to the
+        # workflow as a node
+        bound_subnode = create_and_link_node(
+            ctx,
+            entity=self.flyte_entity,
+            add_node_to_compilation_state=False,
+            overridden_interface=collection_interface,
+            **kwargs,
+        )
+        self._bindings = bound_subnode.ref.node.bindings
         return flyte_entity_call_handler(self, *args, **kwargs)
 
 

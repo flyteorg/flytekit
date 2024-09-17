@@ -1149,7 +1149,7 @@ def create_and_link_node(
     :param kwargs: Dict[str, Any] default inputs passed from the user to this entity. Can be promises.
     :return:  Optional[Union[Tuple[Promise], Promise, VoidPromise]]
     """
-    if ctx.compilation_state is None:
+    if ctx.compilation_state is None and add_node_to_compilation_state:
         raise _user_exceptions.FlyteAssertion("Cannot create node when not compiling...")
 
     used_inputs = set()
@@ -1220,9 +1220,14 @@ def create_and_link_node(
     # These will be our core Nodes until we can amend the Promise to use NodeOutputs that reference our Nodes
     upstream_nodes = list(set([n for n in nodes if n.id != _common_constants.GLOBAL_INPUT_NODE_ID]))
 
+    # TODO: Better naming, probably a derivative of the function name.
+    # if not adding to compilation state, we don't need to generate a unique node id
+    node_id = (
+        f"{ctx.compilation_state.prefix}n{len(ctx.compilation_state.nodes)}" if add_node_to_compilation_state else ""
+    )
+
     flytekit_node = Node(
-        # TODO: Better naming, probably a derivative of the function name.
-        id=f"{ctx.compilation_state.prefix}n{len(ctx.compilation_state.nodes)}",
+        id=node_id,
         metadata=entity.construct_node_metadata(),
         bindings=sorted(bindings, key=lambda b: b.var),
         upstream_nodes=upstream_nodes,
