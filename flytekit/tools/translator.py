@@ -210,16 +210,9 @@ def _update_serialization_settings_for_ipython(
 
     # Let's check if we are in an interactive environment like Jupyter notebook
     if serialization_settings.interactive_mode_enabled is True:
-        # We are in an interactive environment, let's check if the task is a PythonFunctionTask and the task function
-        # is defined in the main module. If so, we will serialize the task as a pickled object and upload it to remote
-        # storage. The main module check is to ensure that the task function is not defined in a notebook cell.
+        # We are in an interactive environment. We will serialize the task as a pickled object and upload it to remote
+        # storage.
         if isinstance(entity, PythonFunctionTask):
-            # if not entity.task_function.__module__ == "__main__":
-            #     raise FlyteAssertion(
-            #         "Task function should be defined in the main module | jupyter cell for"
-            #         " interactive mode. Task function defined in imported modules is not supported."
-            #         f" Task function {entity.task_function.__name__} is defined in an imported module"
-            #     )
             if entity.execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
                 raise FlyteAssertion(
                     f"Dynamic tasks are not supported in interactive mode. {entity.name} is a dynamic task."
@@ -227,6 +220,12 @@ def _update_serialization_settings_for_ipython(
 
         if options is None or options.file_uploader is None:
             raise FlyteAssertion("To work interactively with Flyte, a code transporter/uploader should be configured.")
+
+        # For map tasks, we need to serialize the actual task, not the map task itself
+        if isinstance(entity, ArrayNodeMapTask):
+            actual_task = entity._run_task
+        else:
+            actual_task = entity
 
         import gzip
 
@@ -239,7 +238,7 @@ def _update_serialization_settings_for_ipython(
         with tempfile.TemporaryDirectory() as tmp_dir:
             dest = pathlib.Path(tmp_dir, "pkl.gz")
             with gzip.GzipFile(filename=dest, mode="wb", mtime=0) as gzipped:
-                cloudpickle.dump(entity, gzipped)
+                cloudpickle.dump(actual_task, gzipped)
             if os.path.getsize(dest) > 150 * 1024 * 1024:
                 raise ValueError(
                     "The size of the task to pickled exceeds the limit of 150MB. Please reduce the size of the task."
