@@ -193,7 +193,7 @@ class ArrayNode:
 
     def __call__(self, *args, **kwargs):
         ctx = FlyteContext.current_context()
-        if ctx.compilation_state is not None:
+        if ctx.compilation_state:
             # since a new entity with an updated list interface is not created, we have to work around the mismatch
             # between the interface and the inputs
             collection_interface = transform_interface_to_list_interface(self.flyte_entity.python_interface, set())
