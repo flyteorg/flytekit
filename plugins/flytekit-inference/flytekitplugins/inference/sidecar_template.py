@@ -13,9 +13,10 @@ class ModelInferenceTemplate:
         cpu: int = 1,
         gpu: int = 1,
         mem: str = "1Gi",
-        inputs_mem: str = "500Mi",
         env: Optional[dict[str, str]] = None,
         download_inputs: bool = False,
+        download_inputs_mem: str = "500Mi",
+        download_inputs_cpu: int = 1,
     ):
         from kubernetes.client.models import (
             V1Container,
@@ -35,7 +36,8 @@ class ModelInferenceTemplate:
         self._cpu = cpu
         self._gpu = gpu
         self._mem = mem
-        self._inputs_mem = inputs_mem
+        self._download_inputs_mem = download_inputs_mem
+        self._download_inputs_cpu = download_inputs_cpu
         self._env = env
         self._download_inputs = download_inputs
 
@@ -142,12 +144,12 @@ with open('/shared/inputs.json', 'w') as f:
                     ],
                     resources=V1ResourceRequirements(
                         requests={
-                            "cpu": 1,
-                            "memory": self._inputs_mem,
+                            "cpu": self._download_inputs_cpu,
+                            "memory": self._download_inputs_mem,
                         },
                         limits={
-                            "cpu": 1,
-                            "memory": self._inputs_mem,
+                            "cpu": self._download_inputs_cpu,
+                            "memory": self._download_inputs_mem,
                         },
                     ),
                 ),
