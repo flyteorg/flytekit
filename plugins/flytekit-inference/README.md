@@ -67,3 +67,62 @@ def model_serving() -> str:
 
     return completion.choices[0].message.content
 ```
+
+## Ollama
+
+The Ollama plugin allows you to serve LLMs locally.
+You can either pull an existing model or create a new one.
+
+```python
+from textwrap import dedent
+
+from flytekit import ImageSpec, Resources, task, workflow
+from flytekitplugins.inference import Ollama, Model
+from flytekit.extras.accelerators import A10G
+from openai import OpenAI
+
+
+image = ImageSpec(
+    name="ollama_serve",
+    registry="...",
+    packages=["flytekitplugins-inference"],
+)
+
+ollama_instance = Ollama(
+    model=Model(
+        name="llama3-mario",
+        modelfile=dedent("""\
+        FROM llama3
+        ADAPTER {inputs.gguf}
+        PARAMETER temperature 1
+        PARAMETER num_ctx 4096
+        SYSTEM You are Mario from super mario bros, acting as an assistant.\
+        """),
+    )
+)
+
+
+@task(
+    container_image=image,
+    pod_template=ollama_instance.pod_template,
+    accelerator=A10G,
+    requests=Resources(gpu="0"),
+)
+def model_serving(questions: list[str], gguf: FlyteFile) -> list[str]:
+    responses = []
+    client = OpenAI(
+        base_url=f"{ollama_instance.base_url}/v1", api_key="ollama"
+    )  # api key required but ignored
+
+    for question in questions:
+        completion = client.chat.completions.create(
+            model="llama3-mario",
+            messages=[
+                {"role": "user", "content": question},
+            ],
+            max_tokens=256,
+        )
+        responses.append(completion.choices[0].message.content)
+
+    return responses
+```
