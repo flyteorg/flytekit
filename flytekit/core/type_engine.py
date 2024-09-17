@@ -53,8 +53,8 @@ TITLE = "title"
 
 
 # In Mashumaro, the default encoder uses strict_map_key=False, while the default decoder uses strict_map_key=True.
-# This is relevant for cases like Dict[int, str], where the key is an int, it's not supported when strict_map_key=False.
-# If strict_map_key=False is not used, the decoder will raise an error when trying to decode strict types.
+# This is relevant for cases like Dict[int, str].
+# If strict_map_key=False is not used, the decoder will raise an error when trying to decode keys that are not strictly typed.｀
 def _default_flytekit_decoder(data: bytes) -> Any:
     return msgpack.unpackb(data, raw=False, strict_map_key=False)
 
