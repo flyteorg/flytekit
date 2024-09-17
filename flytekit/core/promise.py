@@ -1029,8 +1029,6 @@ def extract_obj_name(name: str) -> str:
 def create_and_link_node_from_remote(
     ctx: FlyteContext,
     entity: HasFlyteInterface,
-    add_node_to_compilation_state: bool = True,
-    overridden_interface: Interface = None,
     _inputs_not_allowed: Optional[Set[str]] = None,
     _ignorable_inputs: Optional[Set[str]] = None,
     **kwargs,
@@ -1120,9 +1118,6 @@ def create_and_link_node_from_remote(
         upstream_nodes=upstream_nodes,
         flyte_entity=entity,
     )
-
-    if add_node_to_compilation_state:
-        ctx.compilation_state.add_node(flytekit_node)
 
     if len(typed_interface.outputs) == 0:
         return VoidPromise(entity.name, NodeOutput(node=flytekit_node, var="placeholder"))
