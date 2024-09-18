@@ -144,7 +144,7 @@ def fast_package(
 
             compress_tarball(tar_path, archive_fname)
 
-    # Original tar command - This condition to be removed in the future.
+    # Original tar command - This condition to be removed in the future after serialize is removed.
     else:
         # Compute where the archive should be written
         archive_fname = f"{FAST_PREFIX}{digest}{FAST_FILEENDING}"
