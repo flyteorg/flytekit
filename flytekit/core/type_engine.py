@@ -1158,10 +1158,10 @@ class TypeEngine(typing.Generic[T]):
         """
         # Initiate the process of loading the offloaded literal if offloaded_metadata is set
         if lv.offloaded_metadata:
-            local_literal_file = ctx.file_access.get_random_local_path()
+            literal_local_file = ctx.file_access.get_random_local_path()
             assert lv.offloaded_metadata.uri, "missing offloaded uri"
-            ctx.file_access.download(lv.offloaded_metadata.uri, local_literal_file)
-            input_proto = load_proto_from_file(literals_pb2.Literal, local_literal_file)
+            ctx.file_access.download(lv.offloaded_metadata.uri, literal_local_file)
+            input_proto = load_proto_from_file(literals_pb2.Literal, literal_local_file)
             lv = Literal.from_flyte_idl(input_proto)
 
         transformer = cls.get_transformer(expected_python_type)
