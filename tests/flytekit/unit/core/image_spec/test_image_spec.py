@@ -32,7 +32,7 @@ def test_image_spec(mock_image_spec_builder, monkeypatch):
         requirements=REQUIREMENT_FILE,
         registry_config=REGISTRY_CONFIG_FILE,
         entrypoint=["/bin/bash"],
-        copy=[["/src/file1.txt"]]
+        copy=["/src/file1.txt"]
     )
     assert image_spec._is_force_push is False
 
@@ -60,7 +60,7 @@ def test_image_spec(mock_image_spec_builder, monkeypatch):
     assert image_spec.commands == ["echo hello"]
     assert image_spec._is_force_push is True
     assert image_spec.entrypoint == ["/bin/bash"]
-    assert image_spec.copy == [["/src/file1.txt"], ["/src", "/src/file2.txt"]]
+    assert image_spec.copy == ["/src/file1.txt", "/src", "/src/file2.txt"]
 
     assert image_spec.image_name() == f"localhost:30001/flytekit:fYU5EUF6y0b2oFG4tu70tA"
     ctx = context_manager.FlyteContext.current_context()
