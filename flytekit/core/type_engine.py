@@ -1104,7 +1104,7 @@ class TypeEngine(typing.Generic[T]):
             # TODO: Loading a literal from bytes requires writing it to a file
             assert ctx.execution_state
             local_literal_file = os.path.join(ctx.execution_state.working_dir, literal_random_path)
-            assert lv.offloaded_metadata.uri
+            assert lv.offloaded_metadata.uri, "missing offloaded uri"
             ctx.file_access.download(lv.offloaded_metadata.uri, local_literal_file)
             input_proto = load_proto_from_file(literals_pb2.Literal, local_literal_file)
             lv = Literal.from_flyte_idl(input_proto)

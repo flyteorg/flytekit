@@ -855,9 +855,9 @@ class Scalar(_common.FlyteIdlEntity):
 class LiteralOffloadedMetadata(_common.FlyteIdlEntity):
     def __init__(
         self,
-        uri: Optional[str],
-        size_bytes: Optional[int],
-        inferred_type: Optional[LiteralType],
+        uri: Optional[str] = None,
+        size_bytes: Optional[int] = None,
+        inferred_type: Optional[LiteralType] = None,
     ):
         """
         :param Text uri: URI of the offloaded literal
