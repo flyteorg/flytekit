@@ -15,8 +15,9 @@ import typing
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from functools import lru_cache
-from typing import Dict, List, NamedTuple, Optional, Type, cast
+from typing import Any, Dict, List, NamedTuple, Optional, Type, cast
 
+import msgpack
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from flyteidl.core import literals_pb2
 from google.protobuf import json_format as _json_format
@@ -26,6 +27,7 @@ from google.protobuf.json_format import ParseDict as _ParseDict
 from google.protobuf.message import Message
 from google.protobuf.struct_pb2 import Struct
 from mashumaro.codecs.json import JSONDecoder, JSONEncoder
+from mashumaro.codecs.msgpack import MessagePackDecoder, MessagePackEncoder
 from mashumaro.mixins.json import DataClassJSONMixin
 from typing_extensions import Annotated, get_args, get_origin
 
@@ -42,20 +44,19 @@ from flytekit.models import interface as _interface_models
 from flytekit.models import types as _type_models
 from flytekit.models.annotation import TypeAnnotation as TypeAnnotationModel
 from flytekit.models.core import types as _core_types
-from flytekit.models.literals import (
-    Literal,
-    LiteralCollection,
-    LiteralMap,
-    Primitive,
-    Scalar,
-    Union,
-    Void,
-)
+from flytekit.models.literals import Binary, Literal, LiteralCollection, LiteralMap, Primitive, Scalar, Union, Void
 from flytekit.models.types import LiteralType, SimpleType, TypeStructure, UnionType
 
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
 TITLE = "title"
+
+
+# In Mashumaro, the default encoder uses strict_map_key=False, while the default decoder uses strict_map_key=True.
+# This is relevant for cases like Dict[int, str].
+# If strict_map_key=False is not used, the decoder will raise an error when trying to decode keys that are not strictly typed.｀
+def _default_flytekit_decoder(data: bytes) -> Any:
+    return msgpack.unpackb(data, raw=False, strict_map_key=False)
 
 
 class BatchSize:
@@ -129,6 +130,8 @@ class TypeTransformer(typing.Generic[T]):
         self._t = t
         self._name = name
         self._type_assertions_enabled = enable_type_assertions
+        self._msgpack_encoder: Dict[Type, MessagePackEncoder] = {}
+        self._msgpack_decoder: Dict[Type, MessagePackDecoder] = {}
 
     @property
     def name(self):
@@ -221,6 +224,17 @@ class TypeTransformer(typing.Generic[T]):
             f"Conversion to python value expected type {expected_python_type} from literal not implemented"
         )
 
+    def from_binary_idl(self, binary_idl_object: Binary, expected_python_type: Type[T]) -> Optional[T]:
+        if binary_idl_object.tag == "msgpack":
+            try:
+                decoder = self._msgpack_decoder[expected_python_type]
+            except KeyError:
+                decoder = MessagePackDecoder(expected_python_type, pre_decoder_func=_default_flytekit_decoder)
+                self._msgpack_decoder[expected_python_type] = decoder
+            return decoder.decode(binary_idl_object.value)
+        else:
+            raise TypeTransformerFailedError(f"Unsupported binary format {binary_idl_object.tag}")
+
     def to_html(self, ctx: FlyteContext, python_val: T, expected_python_type: Type[T]) -> str:
         """
         Converts any python val (dataframe, int, float) to a html string, and it will be wrapped in the HTML div
@@ -270,6 +284,9 @@ class SimpleTransformer(TypeTransformer[T]):
             raise TypeTransformerFailedError(
                 f"Cannot convert to type {expected_python_type}, only {self._type} is supported"
             )
+
+        if lv.scalar and lv.scalar.binary:
+            return self.from_binary_idl(lv.scalar.binary, expected_python_type)  # type: ignore
 
         try:  # todo(maximsmol): this is quite ugly and each transformer should really check their Literal
             res = self._from_literal_transformer(lv)
