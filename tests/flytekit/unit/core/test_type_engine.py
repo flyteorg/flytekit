@@ -3078,25 +3078,140 @@ def test_union_file_directory():
     assert pv._remote_source == s3_dir
 
 
-def test_offloaded_literal(tmp_path):
+@pytest.mark.parametrize(
+    "pt,pv",
+    [
+        (bool, True),
+        (bool, False),
+        (int, 42),
+        (str, "hello"),
+        (Annotated[int, "tag"], 42),
+        (typing.List[int], [1, 2, 3]),
+        (typing.List[str], ["a", "b", "c"]),
+        (typing.List[Color], [Color.RED, Color.GREEN, Color.BLUE]),
+        (typing.List[Annotated[int, "tag"]], [1, 2, 3]),
+        (typing.List[Annotated[str, "tag"]], ["a", "b", "c"]),
+        (typing.Dict[int, str], {"1": "a", "2": "b", "3": "c"}),
+        (typing.Dict[str, int], {"a": 1, "b": 2, "c": 3}),
+        (typing.Dict[str, typing.List[int]], {"a": [1, 2, 3], "b": [4, 5, 6], "c": [7, 8, 9]}),
+        (typing.Dict[str, typing.Dict[int, str]], {"a": {"1": "a", "2": "b", "3": "c"}, "b": {"4": "d", "5": "e", "6": "f"}}),
+        (typing.Union[int, str], 42),
+        (typing.Union[int, str], "hello"),
+        (typing.Union[typing.List[int], typing.List[str]], [1, 2, 3]),
+        (typing.Union[typing.List[int], typing.List[str]], ["a", "b", "c"]),
+        (typing.Union[typing.List[int], str], [1, 2, 3]),
+        (typing.Union[typing.List[int], str], "hello"),
+    ],
+)
+def test_offloaded_literal(tmp_path, pt, pv):
     ctx = FlyteContext.current_context()
 
-    pt = typing.List[int]
     lt = TypeEngine.to_literal_type(pt)
-    pv = [1, 2, 3]
-    offloaded_lv = TypeEngine.to_literal(ctx, pv, pt, lt)
+    to_be_offloaded_lv = TypeEngine.to_literal(ctx, pv, pt, lt)
 
     # Write offloaded_lv as bytes to a temp file
     with open(f"{tmp_path}/offloaded_proto.pb", "wb") as f:
-        f.write(offloaded_lv.to_flyte_idl().SerializeToString())
+        f.write(to_be_offloaded_lv.to_flyte_idl().SerializeToString())
 
     literal = Literal(
         offloaded_metadata=LiteralOffloadedMetadata(
             uri=f"{tmp_path}/offloaded_proto.pb",
-            size_bytes=100,
             inferred_type=lt,
         ),
     )
 
-    loaded_literal = TypeEngine.to_python_value(ctx, literal, pt)
-    assert loaded_literal == pv
+    loaded_pv = TypeEngine.to_python_value(ctx, literal, pt)
+    assert loaded_pv == pv
+
+
+def test_offloaded_literal_with_inferred_type():
+    ctx = FlyteContext.current_context()
+    lt = TypeEngine.to_literal_type(str)
+    offloaded_literal_missing_uri = Literal(
+        offloaded_metadata=LiteralOffloadedMetadata(
+            inferred_type=lt,
+        ),
+    )
+    with pytest.raises(AssertionError):
+        TypeEngine.to_python_value(ctx, offloaded_literal_missing_uri, str)
+
+
+def test_offloaded_literal_dataclass(tmp_path):
+    @dataclass
+    class InnerDatum(DataClassJsonMixin):
+        x: int
+        y: str
+
+    @dataclass
+    class Datum(DataClassJsonMixin):
+        inner: InnerDatum
+        x: int
+        y: str
+        z: typing.Dict[int, int]
+        w: List[int]
+
+    datum = Datum(
+        inner=InnerDatum(x=1, y="1"),
+        x=1,
+        y="1",
+        z={1: 1},
+        w=[1, 1, 1, 1],
+    )
+
+    ctx = FlyteContext.current_context()
+    lt = TypeEngine.to_literal_type(Datum)
+    to_be_offloaded_lv = TypeEngine.to_literal(ctx, datum, Datum, lt)
+
+    # Write offloaded_lv as bytes to a temp file
+    with open(f"{tmp_path}/offloaded_proto.pb", "wb") as f:
+        f.write(to_be_offloaded_lv.to_flyte_idl().SerializeToString())
+
+    literal = Literal(
+        offloaded_metadata=LiteralOffloadedMetadata(
+            uri=f"{tmp_path}/offloaded_proto.pb",
+            inferred_type=lt,
+        ),
+    )
+
+    loaded_datum = TypeEngine.to_python_value(ctx, literal, Datum)
+    assert loaded_datum == datum
+
+
+def test_offloaded_literal_flytefile(tmp_path):
+    ctx = FlyteContext.current_context()
+    lt = TypeEngine.to_literal_type(FlyteFile)
+    to_be_offloaded_lv = TypeEngine.to_literal(ctx, "s3://my-file", FlyteFile, lt)
+
+    # Write offloaded_lv as bytes to a temp file
+    with open(f"{tmp_path}/offloaded_proto.pb", "wb") as f:
+        f.write(to_be_offloaded_lv.to_flyte_idl().SerializeToString())
+
+    literal = Literal(
+        offloaded_metadata=LiteralOffloadedMetadata(
+            uri=f"{tmp_path}/offloaded_proto.pb",
+            inferred_type=lt,
+        ),
+    )
+
+    loaded_pv = TypeEngine.to_python_value(ctx, literal, FlyteFile)
+    assert loaded_pv._remote_source == "s3://my-file"
+
+
+def test_offloaded_literal_flytedirectory(tmp_path):
+    ctx = FlyteContext.current_context()
+    lt = TypeEngine.to_literal_type(FlyteDirectory)
+    to_be_offloaded_lv = TypeEngine.to_literal(ctx, "s3://my-dir", FlyteDirectory, lt)
+
+    # Write offloaded_lv as bytes to a temp file
+    with open(f"{tmp_path}/offloaded_proto.pb", "wb") as f:
+        f.write(to_be_offloaded_lv.to_flyte_idl().SerializeToString())
+
+    literal = Literal(
+        offloaded_metadata=LiteralOffloadedMetadata(
+            uri=f"{tmp_path}/offloaded_proto.pb",
+            inferred_type=lt,
+        ),
+    )
+
+    loaded_pv: FlyteDirectory = TypeEngine.to_python_value(ctx, literal, FlyteDirectory)
+    assert loaded_pv._remote_source == "s3://my-dir"
