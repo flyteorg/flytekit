@@ -267,7 +267,7 @@ class SyncAgentExecutorMixin:
     ) -> Resource:
         try:
             ctx = FlyteContext.current_context()
-            literal_map = TypeEngine.dict_to_literal_map(ctx, inputs or {}, self.get_input_types())
+            literal_map = await TypeEngine._dict_to_literal_map(ctx, inputs or {}, self.get_input_types())
             return await mirror_async_methods(
                 agent.do, task_template=template, inputs=literal_map, output_prefix=output_prefix
             )
@@ -327,7 +327,7 @@ class AsyncAgentExecutorMixin:
 
             with FlyteContextManager.with_context(cb) as ctx:
                 # Write the inputs to a remote file, so that the remote task can read the inputs from this file.
-                literal_map = TypeEngine.dict_to_literal_map(ctx, inputs or {}, self.get_input_types())
+                literal_map = await TypeEngine._dict_to_literal_map(ctx, inputs or {}, self.get_input_types())
                 path = ctx.file_access.get_random_local_path()
                 utils.write_proto_to_file(literal_map.to_flyte_idl(), path)
                 ctx.file_access.put_data(path, f"{output_prefix}/inputs.pb")

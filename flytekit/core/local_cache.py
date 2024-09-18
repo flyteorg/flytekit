@@ -70,8 +70,9 @@ class LocalTaskCache(object):
     ) -> Optional[LiteralMap]:
         if not LocalTaskCache._initialized:
             LocalTaskCache.initialize()
+        kk = _calculate_cache_key(task_name, cache_version, input_literal_map, cache_ignore_input_vars)
         return LocalTaskCache._cache.get(
-            _calculate_cache_key(task_name, cache_version, input_literal_map, cache_ignore_input_vars)
+            kk
         )
 
     @staticmethod
