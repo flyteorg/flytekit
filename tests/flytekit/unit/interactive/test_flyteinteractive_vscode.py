@@ -96,6 +96,7 @@ def test_vscode_remote_execution(vscode_patches, mock_remote_execution):
     mock_prepare_launch_json.assert_called_once()
 
 
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="asyncio signal behavior diff")
 def test_vscode_remote_execution_but_disable(vscode_patches, mock_remote_execution):
     (
         mock_process,
@@ -223,6 +224,7 @@ def test_vscode_config():
     assert config.extension_remote_paths == DEFAULT_CODE_SERVER_EXTENSIONS
 
 
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="asyncio signal behavior diff")
 def test_vscode_with_args(vscode_patches, mock_remote_execution):
     (
         mock_process,
