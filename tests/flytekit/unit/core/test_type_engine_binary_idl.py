@@ -1,19 +1,10 @@
-import msgpack
 from datetime import datetime, date, timedelta
-from mashumaro.codecs.msgpack import MessagePackDecoder, MessagePackEncoder
+from mashumaro.codecs.msgpack import MessagePackEncoder
 
 from flytekit.models.literals import Binary, Literal, Scalar
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
-"""
-a: int = 1
-b: float = 1.0
-c: bool = True
-d: str = "hello"
-e: datetime = field(default_factory=datetime.now)
-f: date = field(default_factory=date.today)
-g: timedelta = field(default_factory=lambda: timedelta(days=1))
-"""
+
 def test_simple_type_transformer():
     ctx = FlyteContextManager.current_context()
 
