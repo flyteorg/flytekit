@@ -1706,17 +1706,15 @@ class DictTransformer(TypeTransformer[dict]):
         return None, None
 
     @staticmethod
-    def dict_to_generic_literal(ctx: FlyteContext, v: dict, allow_pickle: bool) -> Literal:
+    def dict_to_binary_literal(ctx: FlyteContext, v: dict, allow_pickle: bool) -> Literal:
         """
         Creates a flyte-specific ``Literal`` value from a native python dictionary.
         """
         from flytekit.types.pickle import FlytePickle
 
         try:
-            return Literal(
-                scalar=Scalar(generic=_json_format.Parse(json.dumps(v), _struct.Struct())),
-                metadata={"format": "json"},
-            )
+            msgpack_bytes = msgpack.dumps(v)
+            return Literal(scalar=Scalar(binary=Binary(value=msgpack_bytes, tag="msgpack")))
         except TypeError as e:
             if allow_pickle:
                 remote_path = FlytePickle.to_pickle(ctx, v)
@@ -1726,7 +1724,7 @@ class DictTransformer(TypeTransformer[dict]):
                     ),
                     metadata={"format": "pickle"},
                 )
-            raise e
+            raise TypeTransformerFailedError(f"Cannot convert {v} to Flyte Literal.\n" f"Error Message: {e}")
 
     @staticmethod
     def is_pickle(python_type: Type[dict]) -> typing.Tuple[bool, Type]:
@@ -1777,7 +1775,7 @@ class DictTransformer(TypeTransformer[dict]):
             allow_pickle, base_type = DictTransformer.is_pickle(python_type)
 
         if expected and expected.simple and expected.simple == SimpleType.STRUCT:
-            return self.dict_to_generic_literal(ctx, python_val, allow_pickle)
+            return self.dict_to_binary_literal(ctx, python_val, allow_pickle)
 
         lit_map = {}
         for k, v in python_val.items():
@@ -1794,6 +1792,9 @@ class DictTransformer(TypeTransformer[dict]):
         return Literal(map=LiteralMap(literals=lit_map))
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[dict]) -> dict:
+        if lv and lv.scalar and lv.scalar.binary is not None:
+            return self.from_binary_idl(lv.scalar.binary, expected_python_type)  # type: ignore
+
         if lv and lv.map and lv.map.literals is not None:
             tp = self.dict_types(expected_python_type)
 

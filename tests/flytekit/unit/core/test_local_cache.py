@@ -529,7 +529,7 @@ def test_stable_cache_key():
         }
     )
     key = _calculate_cache_key("task_name_1", "31415", lm)
-    assert key == "task_name_1-31415-189e755a8f41c006889c291fcaedb4eb"
+    assert key == "task_name_1-31415-e3a85f91467d1e1f721ebe8129b2de31"
 
 
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
