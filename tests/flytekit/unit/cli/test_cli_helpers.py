@@ -1,3 +1,4 @@
+import mock
 import flyteidl.admin.launch_plan_pb2 as _launch_plan_pb2
 import flyteidl.admin.task_pb2 as _task_pb2
 import flyteidl.admin.workflow_pb2 as _workflow_pb2
@@ -8,6 +9,8 @@ from flyteidl.core.identifier_pb2 import LAUNCH_PLAN
 
 from flytekit.clis import helpers
 from flytekit.clis.helpers import _hydrate_identifier, _hydrate_workflow_template_nodes, hydrate_registration_parameters
+from flytekit.clis.sdk_in_container.helpers import parse_copy
+from flytekit.constants import CopyFileDetection
 
 
 def test_parse_args_into_dict():
@@ -426,3 +429,9 @@ def test_hydrate_registration_parameters__subworkflows():
         name="subworkflow",
         version="12345",
     )
+
+
+def test_parse_copy():
+    click_current_ctx = mock.MagicMock
+    assert parse_copy(click_current_ctx, None, "auto") == CopyFileDetection.LOADED_MODULES
+    assert parse_copy(click_current_ctx, None, "all") == CopyFileDetection.ALL

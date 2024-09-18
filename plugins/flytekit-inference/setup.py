@@ -15,7 +15,11 @@ setup(
     author_email="admin@flyte.org",
     description="This package enables seamless use of model inference sidecar services within Flyte",
     namespace_packages=["flytekitplugins"],
-    packages=[f"flytekitplugins.{PLUGIN_NAME}", f"flytekitplugins.{PLUGIN_NAME}.nim"],
+    packages=[
+        f"flytekitplugins.{PLUGIN_NAME}",
+        f"flytekitplugins.{PLUGIN_NAME}.nim",
+        f"flytekitplugins.{PLUGIN_NAME}.ollama",
+    ],
     install_requires=plugin_requires,
     license="apache2",
     python_requires=">=3.8",
