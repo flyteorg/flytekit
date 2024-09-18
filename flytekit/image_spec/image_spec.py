@@ -85,7 +85,7 @@ class ImageSpec:
     commands: Optional[List[str]] = None
     tag_format: Optional[str] = None
     source_copy_mode: Optional[CopyFileDetection] = None
-    copy: Optional[List[List[str]]] = None
+    copy: Optional[List[str]] = None
 
     def __post_init__(self):
         self.name = self.name.lower()
@@ -177,7 +177,7 @@ class ImageSpec:
         if self.copy:
             from flytekit.tools.fast_registration import compute_digest
 
-            digest = compute_digest([path for pathlist in self.copy for path in pathlist], None)
+            digest = compute_digest(self.copy, None)
             spec = dataclasses.replace(spec, copy=digest)
 
         if spec.requirements:
@@ -307,7 +307,7 @@ class ImageSpec:
         new_image_spec = self._update_attribute("apt_packages", apt_packages)
         return new_image_spec
 
-    def with_copy(self, src: List[str]) -> "ImageSpec":
+    def with_copy(self, src: Union[str, List[str]]) -> "ImageSpec":
         """
         Builder that returns a new image spec with the source files copied to the destination directory.
         """
@@ -315,7 +315,10 @@ class ImageSpec:
         if new_image_spec.copy is None:
             new_image_spec.copy = []
 
-        new_image_spec.copy.append(src)
+        if isinstance(src, list):
+            new_image_spec.copy.extend(src)
+        else:
+            new_image_spec.copy.append(src)
 
         return new_image_spec
 
