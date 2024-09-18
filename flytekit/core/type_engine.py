@@ -1241,7 +1241,7 @@ class TypeEngine(typing.Generic[T]):
                 res = None
                 try:
                     res = cb_fut.result()
-                except Exception as e:
+                except Exception:
                     logger.debug(f"Skipping callback for: {cb_fut}")
                 if res:
                     modify_literal_uris(res)
@@ -1316,17 +1316,6 @@ class TypeEngine(typing.Generic[T]):
                 executor = ContextExecutor()
                 fut = loop.run_in_executor(executor, transformer.to_python_value, ctx, lv, expected_python_type)  # type: ignore[assignment]
 
-            def cb(cb_fut: asyncio.Future):
-                res = None
-                try:
-                    res = cb_fut.result()
-                except Exception as e:
-                    logger.debug(f"Skipping callback for: {cb_fut}")
-                if res:
-                    modify_literal_uris(res)
-                    res.hash = cls.calculate_hash(python_val, python_type)
-
-            fut.add_done_callback(cb)
             return fut
         else:  # get_running_loop raised
             if isinstance(transformer, AsyncTypeTransformer):
