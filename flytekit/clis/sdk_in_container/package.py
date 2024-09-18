@@ -131,7 +131,7 @@ def package(
     """
     # Ensure that the two flags are consistent
     if fast:
-        click.secho(f"The --fast flag is deprecated, please use --copy all instead", fg="yellow")
+        click.secho("The --fast flag is deprecated, please use --copy all instead", fg="yellow")
         copy = CopyFileDetection.ALL
 
     if os.path.exists(output) and not force:
