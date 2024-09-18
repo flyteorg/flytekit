@@ -15,6 +15,8 @@ class ModelInferenceTemplate:
         mem: str = "1Gi",
         env: Optional[dict[str, str]] = None,
         download_inputs: bool = False,
+        download_inputs_mem: str = "500Mi",
+        download_inputs_cpu: int = 2,
     ):
         from kubernetes.client.models import (
             V1Container,
@@ -34,6 +36,8 @@ class ModelInferenceTemplate:
         self._cpu = cpu
         self._gpu = gpu
         self._mem = mem
+        self._download_inputs_mem = download_inputs_mem
+        self._download_inputs_cpu = download_inputs_cpu
         self._env = env
         self._download_inputs = download_inputs
 
@@ -138,6 +142,16 @@ with open('/shared/inputs.json', 'w') as f:
                         V1VolumeMount(name="shared-data", mount_path="/shared"),
                         V1VolumeMount(name="tmp", mount_path="/tmp"),
                     ],
+                    resources=V1ResourceRequirements(
+                        requests={
+                            "cpu": self._download_inputs_cpu,
+                            "memory": self._download_inputs_mem,
+                        },
+                        limits={
+                            "cpu": self._download_inputs_cpu,
+                            "memory": self._download_inputs_mem,
+                        },
+                    ),
                 ),
             )
 
