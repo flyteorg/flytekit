@@ -2,6 +2,7 @@ from collections import OrderedDict
 
 import mock
 import pytest
+import sys
 from flytekit.interactive import (
     DEFAULT_CODE_SERVER_DIR_NAMES,
     DEFAULT_CODE_SERVER_EXTENSIONS,
@@ -169,6 +170,7 @@ def test_vscode_run_task_first_succeed(mock_remote_execution):
     assert res == 15
 
 
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="asyncio signal behavior diff")
 def test_vscode_run_task_first_fail(vscode_patches, mock_remote_execution):
     (
         mock_process,
