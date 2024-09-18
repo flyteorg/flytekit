@@ -8,7 +8,6 @@ import enum
 import inspect
 import json
 import mimetypes
-import os
 import sys
 import textwrap
 import threading
