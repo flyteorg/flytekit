@@ -1134,6 +1134,7 @@ def create_and_link_node(
     entity: SupportsNodeCreation,
     overridden_interface: Optional[Interface] = None,
     add_node_to_compilation_state: bool = True,
+    node_id: str = "",
     **kwargs,
 ) -> Optional[Union[Tuple[Promise], Promise, VoidPromise]]:
     """
@@ -1146,6 +1147,7 @@ def create_and_link_node(
                 is useful when creating nodes nested under other nodes such as ArrayNode
     :param overridden_interface: utilize this interface instead of the one provided by the entity. This is useful for
                 ArrayNode as there's a mismatch between the underlying interface and inputs
+    :param node_id: str if provided, this will be used as the node id.
     :param kwargs: Dict[str, Any] default inputs passed from the user to this entity. Can be promises.
     :return:  Optional[Union[Tuple[Promise], Promise, VoidPromise]]
     """
@@ -1222,10 +1224,10 @@ def create_and_link_node(
 
     # TODO: Better naming, probably a derivative of the function name.
     # if not adding to compilation state, we don't need to generate a unique node id
-    node_id = (
+    node_id = node_id or (
         f"{ctx.compilation_state.prefix}n{len(ctx.compilation_state.nodes)}"
         if add_node_to_compilation_state and ctx.compilation_state
-        else ""
+        else node_id
     )
 
     flytekit_node = Node(

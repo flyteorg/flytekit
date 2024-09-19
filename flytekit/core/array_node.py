@@ -21,6 +21,8 @@ from flytekit.models import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.literals import Literal, LiteralCollection, Scalar
 
+ARRAY_NODE_SUBNODE_NAME = "array_node_sub_node"
+
 
 class ArrayNode:
     def __init__(
@@ -208,6 +210,7 @@ class ArrayNode:
                 entity=self.flyte_entity,
                 add_node_to_compilation_state=False,
                 overridden_interface=collection_interface,
+                node_id=ARRAY_NODE_SUBNODE_NAME,
                 **kwargs,
             )
             self._bindings = bound_subnode.ref.node.bindings
