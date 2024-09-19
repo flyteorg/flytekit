@@ -5,7 +5,11 @@ from flyteidl.core import workflow_pb2 as _core_workflow
 
 from flytekit.core import interface as flyte_interface
 from flytekit.core.context_manager import ExecutionState, FlyteContext
-from flytekit.core.interface import transform_interface_to_list_interface, transform_interface_to_typed_interface
+from flytekit.core.interface import (
+    transform_interface_to_list_interface,
+    transform_interface_to_typed_interface,
+    transform_typed_interface_to_interface,
+)
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.node import Node
 from flytekit.core.promise import (
@@ -27,7 +31,7 @@ ARRAY_NODE_SUBNODE_NAME = "array_node_subnode"
 class ArrayNode:
     def __init__(
         self,
-        target: LaunchPlan,
+        target: Any,
         execution_mode: _core_workflow.ArrayNode.ExecutionMode = _core_workflow.ArrayNode.FULL_STATE,
         bindings: Optional[List[_literal_models.Binding]] = None,
         concurrency: Optional[int] = None,
@@ -47,6 +51,8 @@ class ArrayNode:
         :param execution_mode: The execution mode for propeller to use when handling ArrayNode
         :param metadata: The metadata for the underlying entity
         """
+        from flytekit.remote import FlyteLaunchPlan
+
         self.target = target
         self._concurrency = concurrency
         self._execution_mode = execution_mode
@@ -60,7 +66,13 @@ class ArrayNode:
             self._min_success_ratio = min_success_ratio if min_success_ratio is not None else 1.0
             self._min_successes = 0
 
-        n_outputs = len(self.target.python_interface.outputs)
+        self._python_interface = self.target.python_interface or transform_typed_interface_to_interface(
+            self.target.interface
+        )
+        if self._python_interface is None:
+            raise ValueError("No interface found for the target entity.")
+
+        n_outputs = len(self._python_interface.outputs)
         if n_outputs > 1:
             raise ValueError("Only tasks with a single output are supported in map tasks.")
 
@@ -69,7 +81,7 @@ class ArrayNode:
 
         output_as_list_of_optionals = min_success_ratio is not None and min_success_ratio != 1 and n_outputs == 1
         collection_interface = transform_interface_to_list_interface(
-            self.target.python_interface, self._bound_inputs, output_as_list_of_optionals
+            self._python_interface, self._bound_inputs, output_as_list_of_optionals
         )
         self._collection_interface = collection_interface
 
@@ -82,6 +94,10 @@ class ArrayNode:
                     self.metadata = metadata
                 else:
                     raise TypeError("Invalid metadata for LaunchPlan. Should be NodeMetadata.")
+        elif isinstance(target, FlyteLaunchPlan):
+            # TODO clean this up...
+            if not metadata:
+                self.metadata = None
         else:
             raise ValueError(f"Only LaunchPlans are supported for now, but got {type(target)}")
 
@@ -199,17 +215,13 @@ class ArrayNode:
         if not self._bindings:
             ctx = FlyteContext.current_context()
             # since a new entity with an updated list interface is not created, we have to work around the mismatch
-            # between the interface and the inputs
-            collection_interface = transform_interface_to_list_interface(
-                self.flyte_entity.python_interface, self._bound_inputs
-            )
-            # don't link the node to the compilation state, since we don't want to add the subnode to the
-            # workflow as a node
+            # between the interface and the inputs. Also, don't link the node to the compilation state,
+            # since we don't want to add the subnode to the workflow as a node
             bound_subnode = create_and_link_node(
                 ctx,
                 entity=self.flyte_entity,
                 add_node_to_compilation_state=False,
-                overridden_interface=collection_interface,
+                overridden_interface=self.python_interface,
                 node_id=ARRAY_NODE_SUBNODE_NAME,
                 **kwargs,
             )
@@ -218,7 +230,7 @@ class ArrayNode:
 
 
 def array_node(
-    target: Union[LaunchPlan],
+    target: Any,
     concurrency: Optional[int] = None,
     min_success_ratio: Optional[float] = None,
     min_successes: Optional[int] = None,
@@ -237,7 +249,9 @@ def array_node(
     :return: A callable function that takes in keyword arguments and returns a Promise created by
         flyte_entity_call_handler
     """
-    if not isinstance(target, LaunchPlan):
+    from flytekit.remote import FlyteLaunchPlan
+
+    if not isinstance(target, LaunchPlan) and not isinstance(target, FlyteLaunchPlan):
         raise ValueError("Only LaunchPlans are supported for now.")
 
     node = ArrayNode(
