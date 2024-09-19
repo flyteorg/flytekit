@@ -31,6 +31,8 @@ class Ollama(ModelInferenceTemplate):
         cpu: int = 1,
         gpu: int = 1,
         mem: str = "15Gi",
+        download_inputs_mem: str = "500Mi",
+        download_inputs_cpu: int = 2,
     ):
         """Initialize Ollama class for managing a Kubernetes pod template.
 
@@ -40,6 +42,8 @@ class Ollama(ModelInferenceTemplate):
         :param cpu: The number of CPU cores requested for the container. Default is 1.
         :param gpu: The number of GPUs requested for the container. Default is 1.
         :param mem: The amount of memory requested for the container, specified as a string. Default is "15Gi".
+        :param download_inputs_mem: The amount of memory requested for downloading inputs, specified as a string. Default is "500Mi".
+        :param download_inputs_cpu: The number of CPU cores requested for downloading inputs. Default is 2.
         """
         self._model_name = model.name
         self._model_mem = model.mem
@@ -52,6 +56,8 @@ class Ollama(ModelInferenceTemplate):
             cpu=cpu,
             gpu=gpu,
             mem=mem,
+            download_inputs_mem=download_inputs_mem,
+            download_inputs_cpu=download_inputs_cpu,
             download_inputs=(True if self._model_modelfile and "{inputs" in self._model_modelfile else False),
         )
 

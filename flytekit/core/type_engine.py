@@ -35,7 +35,7 @@ from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.hash import HashMethod
 from flytekit.core.type_helpers import load_type_from_tag
-from flytekit.core.utils import timeit
+from flytekit.core.utils import load_proto_from_file, timeit
 from flytekit.exceptions import user as user_exceptions
 from flytekit.interaction.string_literals import literal_map_string_repr
 from flytekit.lazy_import.lazy_module import is_imported
@@ -1172,6 +1172,14 @@ class TypeEngine(typing.Generic[T]):
         """
         Converts a Literal value with an expected python type into a python value.
         """
+        # Initiate the process of loading the offloaded literal if offloaded_metadata is set
+        if lv.offloaded_metadata:
+            literal_local_file = ctx.file_access.get_random_local_path()
+            assert lv.offloaded_metadata.uri, "missing offloaded uri"
+            ctx.file_access.download(lv.offloaded_metadata.uri, literal_local_file)
+            input_proto = load_proto_from_file(literals_pb2.Literal, literal_local_file)
+            lv = Literal.from_flyte_idl(input_proto)
+
         transformer = cls.get_transformer(expected_python_type)
         return transformer.to_python_value(ctx, lv, expected_python_type)
 
