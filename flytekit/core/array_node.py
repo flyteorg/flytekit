@@ -21,7 +21,7 @@ from flytekit.models import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.literals import Literal, LiteralCollection, Scalar
 
-ARRAY_NODE_SUBNODE_NAME = "array_node_sub_node"
+ARRAY_NODE_SUBNODE_NAME = "array_node_subnode"
 
 
 class ArrayNode:
