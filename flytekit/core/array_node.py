@@ -27,6 +27,7 @@ class ArrayNode:
         self,
         target: LaunchPlan,
         execution_mode: _core_workflow.ArrayNode.ExecutionMode = _core_workflow.ArrayNode.FULL_STATE,
+        bindings: Optional[List[_literal_models.Binding]] = None,
         concurrency: Optional[int] = None,
         min_successes: Optional[int] = None,
         min_success_ratio: Optional[float] = None,
@@ -48,7 +49,7 @@ class ArrayNode:
         self._concurrency = concurrency
         self._execution_mode = execution_mode
         self.id = target.name
-        self._bindings: List[_literal_models.Binding] = []
+        self._bindings = bindings or []
 
         if min_successes is not None:
             self._min_successes = min_successes
@@ -193,22 +194,23 @@ class ArrayNode:
         return self._execution_mode
 
     def __call__(self, *args, **kwargs):
-        ctx = FlyteContext.current_context()
-        # since a new entity with an updated list interface is not created, we have to work around the mismatch
-        # between the interface and the inputs
-        collection_interface = transform_interface_to_list_interface(
-            self.flyte_entity.python_interface, self._bound_inputs
-        )
-        # don't link the node to the compilation state, since we don't want to add the subnode to the
-        # workflow as a node
-        bound_subnode = create_and_link_node(
-            ctx,
-            entity=self.flyte_entity,
-            add_node_to_compilation_state=False,
-            overridden_interface=collection_interface,
-            **kwargs,
-        )
-        self._bindings = bound_subnode.ref.node.bindings
+        if not self._bindings:
+            ctx = FlyteContext.current_context()
+            # since a new entity with an updated list interface is not created, we have to work around the mismatch
+            # between the interface and the inputs
+            collection_interface = transform_interface_to_list_interface(
+                self.flyte_entity.python_interface, self._bound_inputs
+            )
+            # don't link the node to the compilation state, since we don't want to add the subnode to the
+            # workflow as a node
+            bound_subnode = create_and_link_node(
+                ctx,
+                entity=self.flyte_entity,
+                add_node_to_compilation_state=False,
+                overridden_interface=collection_interface,
+                **kwargs,
+            )
+            self._bindings = bound_subnode.ref.node.bindings
         return flyte_entity_call_handler(self, *args, **kwargs)
 
 
