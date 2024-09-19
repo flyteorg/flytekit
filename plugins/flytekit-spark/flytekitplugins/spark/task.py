@@ -229,8 +229,12 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
         # self.sess.sparkContext.addPyFile("archive.zip")
         files = [f for f in os.listdir('.') if os.path.isfile(f)]
         for f in files:
-            print(f)
-            self.sess.sparkContext.addPyFile(f)
+            _, ext = os.path.splitext(f)
+            if ext == '.py':
+                self.sess.sparkContext.addPyFile(f)
+            else:
+                self.sess.sparkContext.addFile(f)
+
 
 
         return user_params.builder().add_attr("SPARK_SESSION", self.sess).build()
