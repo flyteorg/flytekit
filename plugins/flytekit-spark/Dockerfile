@@ -3,7 +3,11 @@ FROM apache/spark-py:3.3.1
 LABEL org.opencontainers.image.source=https://github.com/flyteorg/flytekit
 
 USER 0
-	@@ -11,10 +11,7 @@ ARG VERSION
+RUN ln -s /usr/bin/python3 /usr/bin/python
+
+RUN apt-get update && apt-get install -y wget
+
+ARG VERSION
 RUN pip install --no-cache-dir flytekitplugins-spark==$VERSION flytekit==$VERSION
 
 RUN wget https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.2.2/hadoop-aws-3.2.2.jar -P /opt/spark/jars && \

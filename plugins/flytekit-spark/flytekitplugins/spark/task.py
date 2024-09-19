@@ -161,13 +161,6 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
             **kwargs,
         )
 
-    def get_image(self, settings: SerializationSettings) -> str:
-        # if isinstance(self.container_image, ImageSpec):
-        #     # Ensure that the code is always copied into the image, even during fast-registration.
-        #     self.container_image.source_root = settings.source_root
-        #
-        return get_registerable_container_image(self.container_image, settings.image_config)
-
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         job = SparkJob(
             spark_conf=self.task_config.spark_conf,
@@ -203,23 +196,13 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
                 spark_conf.setExecutorEnv("PYTHONPATH", os.environ["PYTHONPATH"])
             sess_builder = sess_builder.config(conf=spark_conf)
 
-        print("os.getcwd()", os.getcwd())
-        fast_pattern = os.path.join(os.getcwd(), 'fast*.tar.gz')
-        script_mode_pattern = os.path.join(os.getcwd(), 'script_mode.tar.gz')
-
-        fast_files = glob.glob(fast_pattern)
-        script_mode_files = glob.glob(script_mode_pattern)
-
-        print("fast_files", fast_files)
-        print("script_mode_files", script_mode_files)
-        os.remove("/root/script_mode.tar.gz")
-
         self.sess = sess_builder.getOrCreate()
-        # self.sess.addArtifacts("fast_spark.py", file=True)
-        # self.sess.sparkContext.addPyFile(self.module_file)
 
         current_time = time.time()
         current_dir = os.getcwd()
+        # Set the modification time of all files in the current directory to the current time
+        # since fast register doens't preserve the modification time of the files and make_archive
+        # does not support timestamps before 1980
         for foldername, subfolders, filenames in os.walk(current_dir):
             for filename in filenames:
                 file_path = os.path.join(foldername, filename)
@@ -227,15 +210,6 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
 
         shutil.make_archive("archive", 'zip', current_dir)
         self.sess.sparkContext.addPyFile("archive.zip")
-        # files = [f for f in os.listdir('.') if os.path.isfile(f)]
-        # for f in files:
-        #     _, ext = os.path.splitext(f)
-        #     if ext == '.py':
-        #         self.sess.sparkContext.addPyFile(f)
-        #     else:
-        #         self.sess.sparkContext.addFile(f)
-
-
 
         return user_params.builder().add_attr("SPARK_SESSION", self.sess).build()
 
