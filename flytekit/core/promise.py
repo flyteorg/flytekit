@@ -1158,7 +1158,7 @@ def create_and_link_node(
     bindings = []
     nodes = []
 
-    interface = overridden_interface if overridden_interface else entity.python_interface
+    interface = overridden_interface or entity.python_interface
     typed_interface = flyte_interface.transform_interface_to_typed_interface(
         interface, allow_partial_artifact_id_binding=True
     )
