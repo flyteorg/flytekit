@@ -3,6 +3,7 @@ import contextvars
 import functools
 from concurrent.futures import ThreadPoolExecutor
 from types import CoroutineType
+import sys
 
 from typing_extensions import Any, Callable
 
@@ -22,13 +23,22 @@ def ensure_no_loop(error_msg: str):
             raise
 
 
-def ensure_and_get_running_loop() -> asyncio.AbstractEventLoop:
+def get_or_create_loop(use_windows: bool = False) -> asyncio.AbstractEventLoop:
     try:
-        return asyncio.get_running_loop()
+        running_loop = asyncio.get_running_loop()
+        return running_loop
     except RuntimeError as e:
         if "no running event loop" not in str(e):
-            logger.error(f"Unknown RuntimeError {str(e)}")
+            logger.error(f"Unknown RuntimeError when getting loop {str(e)}")
             raise
+
+    if sys.platform == "win32" and use_windows:
+        loop = asyncio.WindowsSelectorEventLoopPolicy().new_event_loop()
+    else:
+        loop = asyncio.new_event_loop()
+    # Intentionally not calling asyncio.set_event_loop(loop)
+    # maybe add signal handlers
+    return loop
 
 
 def top_level_sync(func: AsyncFuncType, *args, **kwargs):

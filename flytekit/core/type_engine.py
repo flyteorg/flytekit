@@ -250,40 +250,24 @@ class AsyncTypeTransformer(TypeTransformer[T]):
     def to_literal(
         self, ctx: FlyteContext, python_val: typing.Any, python_type: Type[T], expected: LiteralType
     ) -> typing.Union[Literal, asyncio.Future]:
-        loop = None
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError as e:
-            if "no running event loop" not in str(e):
-                logger.error(f"Unknown RuntimeError {str(e)}")
-                raise
-
-        if loop:
+        if ctx.loop.is_running():
             coro = self.async_to_literal(ctx, python_val, python_type, expected)
-            fut = loop.create_task(coro)
+            fut = ctx.loop.create_task(coro)
             return fut
         else:
             coro = self.async_to_literal(ctx, python_val, python_type, expected)
-            return asyncio.run(coro)
+            return ctx.loop.run_until_complete(coro)
 
     def to_python_value(  # type: ignore[override]
         self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]
     ) -> typing.Union[Optional[T], asyncio.Future]:
-        loop = None
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError as e:
-            if "no running event loop" not in str(e):
-                logger.error(f"Unknown RuntimeError {str(e)}")
-                raise
-
-        if loop:
+        if ctx.loop.is_running():
             coro = self.async_to_python_value(ctx, lv, expected_python_type)
-            fut = loop.create_task(coro)
+            fut = ctx.loop.create_task(coro)
             return fut
         else:
             coro = self.async_to_python_value(ctx, lv, expected_python_type)
-            return asyncio.run(coro)
+            return ctx.loop.run_until_complete(coro)
 
 
 class SimpleTransformer(TypeTransformer[T]):
