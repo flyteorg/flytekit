@@ -543,8 +543,8 @@ class DataclassTransformer(TypeTransformer[object]):
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         if isinstance(python_val, dict):
-            json_str = json.dumps(python_val)
-            return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))
+            msgpack_bytes = msgpack.dumps(python_val)
+            return Literal(scalar=Scalar(binary=Binary(value=msgpack_bytes, tag="msgpack")))
 
         if not dataclasses.is_dataclass(python_val):
             raise TypeTransformerFailedError(
@@ -559,17 +559,19 @@ class DataclassTransformer(TypeTransformer[object]):
         # We can't use hasattr(python_val, "to_json") here because we rely on mashumaro's API to customize the serialization behavior for Flyte types.
         if isinstance(python_val, DataClassJSONMixin):
             json_str = python_val.to_json()
+            dict_obj = json.loads(json_str)
+            msgpack_bytes = msgpack.dumps(dict_obj)
         else:
             # The function looks up or creates a JSONEncoder specifically designed for the object's type.
             # This encoder is then used to convert a data class into a JSON string.
             try:
-                encoder = self._encoder[python_type]
+                encoder = self._msgpack_encoder[python_type]
             except KeyError:
-                encoder = JSONEncoder(python_type)
-                self._encoder[python_type] = encoder
+                encoder = MessagePackEncoder(python_type)
+                self._msgpack_encoder[python_type] = encoder
 
             try:
-                json_str = encoder.encode(python_val)
+                msgpack_bytes = encoder.encode(python_val)
             except NotImplementedError:
                 # you can refer FlyteFile, FlyteDirectory and StructuredDataset to see how flyte types can be implemented.
                 raise NotImplementedError(
@@ -577,7 +579,7 @@ class DataclassTransformer(TypeTransformer[object]):
                     f" and implement _serialize and _deserialize methods."
                 )
 
-        return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))  # type: ignore
+        return Literal(scalar=Scalar(binary=Binary(value=msgpack_bytes, tag="msgpack")))
 
     def _get_origin_type_in_annotation(self, python_type: Type[T]) -> Type[T]:
         # dataclass will try to hash python type when calling dataclass.schema(), but some types in the annotation is
@@ -716,12 +718,33 @@ class DataclassTransformer(TypeTransformer[object]):
 
         return dc
 
+    def from_binary_idl(self, binary_idl_object: Binary, expected_python_type: Type[T]) -> T:
+        if binary_idl_object.tag == "msgpack":
+            if issubclass(expected_python_type, DataClassJSONMixin):
+                dict_obj = msgpack.loads(binary_idl_object.value, strict_map_key=False)
+                json_str = json.dumps(dict_obj)
+                dc = expected_python_type.from_json(json_str)  # type: ignore
+            else:
+                try:
+                    decoder = self._msgpack_decoder[expected_python_type]
+                except KeyError:
+                    decoder = MessagePackDecoder(expected_python_type, pre_decoder_func=_default_flytekit_decoder)
+                    self._msgpack_decoder[expected_python_type] = decoder
+                dc = decoder.decode(binary_idl_object.value)
+
+            return self._fix_structured_dataset_type(expected_python_type, dc)
+        else:
+            raise TypeTransformerFailedError(f"Unsupported binary format {binary_idl_object.tag}")
+
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
         if not dataclasses.is_dataclass(expected_python_type):
             raise TypeTransformerFailedError(
                 f"{expected_python_type} is not of type @dataclass, only Dataclasses are supported for "
                 "user defined datatypes in Flytekit"
             )
+
+        if lv.scalar and lv.scalar.binary:
+            return self.from_binary_idl(lv.scalar.binary, expected_python_type)  # type: ignore
 
         json_str = _json_format.MessageToJson(lv.scalar.generic)
 
