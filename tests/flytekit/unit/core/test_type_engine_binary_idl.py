@@ -240,7 +240,7 @@ def test_dict_transformer():
     lv = Literal(scalar=Scalar(binary=Binary(value=dict_str_float_msgpack_bytes, tag="msgpack")))
     dict_str_float_output = TypeEngine.to_python_value(ctx, lv, Dict[str, float])
     assert dict_str_float_input == dict_str_float_output
- 
+
     dict_str_str_input = {"key1": "a", "key2": "b"}
     encoder = MessagePackEncoder(Dict[str, str])
     dict_str_str_msgpack_bytes = encoder.encode(dict_str_str_input)
