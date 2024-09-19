@@ -220,7 +220,14 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
         # self.sess.addArtifacts("fast_spark.py", file=True)
         # self.sess.sparkContext.addPyFile(self.module_file)
 
-        shutil.make_archive("archive", 'zip', os.getcwd())
+        current_time = time.time()
+        current_dir = os.getcwd()
+        for foldername, subfolders, filenames in os.walk(current_dir):
+            for filename in filenames:
+                file_path = os.path.join(foldername, filename)
+                os.utime(file_path, (current_time, current_time))
+
+        shutil.make_archive("archive", 'zip', current_dir)
         self.sess.sparkContext.addPyFile("archive.zip")
 
         return user_params.builder().add_attr("SPARK_SESSION", self.sess).build()
