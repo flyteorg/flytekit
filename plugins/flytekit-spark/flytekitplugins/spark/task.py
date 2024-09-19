@@ -214,22 +214,24 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
         print("script_mode_files", script_mode_files)
         os.remove("/root/script_mode.tar.gz")
 
-        files = [f for f in os.listdir('.') if os.path.isfile(f)]
-        for f in files:
-            print(f)
         self.sess = sess_builder.getOrCreate()
         # self.sess.addArtifacts("fast_spark.py", file=True)
         # self.sess.sparkContext.addPyFile(self.module_file)
 
         current_time = time.time()
         current_dir = os.getcwd()
-        for foldername, subfolders, filenames in os.walk(current_dir):
-            for filename in filenames:
-                file_path = os.path.join(foldername, filename)
-                os.utime(file_path, (current_time, current_time))
+        # for foldername, subfolders, filenames in os.walk(current_dir):
+        #     for filename in filenames:
+        #         file_path = os.path.join(foldername, filename)
+        #         os.utime(file_path, (current_time, current_time))
+        #
+        # shutil.make_archive("archive", 'zip', current_dir)
+        # self.sess.sparkContext.addPyFile("archive.zip")
+        files = [f for f in os.listdir('.') if os.path.isfile(f)]
+        for f in files:
+            print(f)
+            self.sess.sparkContext.addPyFile(f)
 
-        shutil.make_archive("archive", 'zip', current_dir)
-        self.sess.sparkContext.addPyFile("archive.zip")
 
         return user_params.builder().add_attr("SPARK_SESSION", self.sess).build()
 
