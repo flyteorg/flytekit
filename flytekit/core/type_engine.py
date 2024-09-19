@@ -130,8 +130,8 @@ class TypeTransformer(typing.Generic[T]):
         self._t = t
         self._name = name
         self._type_assertions_enabled = enable_type_assertions
-        self._msgpack_encoder: Dict[Type, MessagePackEncoder] = {}
-        self._msgpack_decoder: Dict[Type, MessagePackDecoder] = {}
+        self._msgpack_encoder: Dict[Type, MessagePackEncoder] = dict()
+        self._msgpack_decoder: Dict[Type, MessagePackDecoder] = dict()
 
     @property
     def name(self):
@@ -383,8 +383,8 @@ class DataclassTransformer(TypeTransformer[object]):
 
     def __init__(self):
         super().__init__("Object-Dataclass-Transformer", object)
-        self._encoder: Dict[Type, JSONEncoder] = {}
-        self._decoder: Dict[Type, JSONDecoder] = {}
+        self._encoder: Dict[Type, JSONEncoder] = dict()
+        self._decoder: Dict[Type, JSONDecoder] = dict()
 
     def assert_type(self, expected_type: Type[DataClassJsonMixin], v: T):
         # Skip iterating all attributes in the dataclass if the type of v already matches the expected_type
