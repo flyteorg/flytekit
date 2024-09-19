@@ -274,6 +274,9 @@ class _ModuleSanitizer(object):
         # Let us remove any extensions like .py
         basename = os.path.splitext(basename)[0]
 
+        if not Path(dirname).is_dir():
+            return basename
+
         if dirname == package_root:
             return basename
 

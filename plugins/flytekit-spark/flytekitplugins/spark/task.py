@@ -220,20 +220,20 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
 
         current_time = time.time()
         current_dir = os.getcwd()
-        # for foldername, subfolders, filenames in os.walk(current_dir):
-        #     for filename in filenames:
-        #         file_path = os.path.join(foldername, filename)
-        #         os.utime(file_path, (current_time, current_time))
-        #
-        # shutil.make_archive("archive", 'zip', current_dir)
-        # self.sess.sparkContext.addPyFile("archive.zip")
-        files = [f for f in os.listdir('.') if os.path.isfile(f)]
-        for f in files:
-            _, ext = os.path.splitext(f)
-            if ext == '.py':
-                self.sess.sparkContext.addPyFile(f)
-            else:
-                self.sess.sparkContext.addFile(f)
+        for foldername, subfolders, filenames in os.walk(current_dir):
+            for filename in filenames:
+                file_path = os.path.join(foldername, filename)
+                os.utime(file_path, (current_time, current_time))
+
+        shutil.make_archive("archive", 'zip', current_dir)
+        self.sess.sparkContext.addPyFile("archive.zip")
+        # files = [f for f in os.listdir('.') if os.path.isfile(f)]
+        # for f in files:
+        #     _, ext = os.path.splitext(f)
+        #     if ext == '.py':
+        #         self.sess.sparkContext.addPyFile(f)
+        #     else:
+        #         self.sess.sparkContext.addFile(f)
 
 
 
