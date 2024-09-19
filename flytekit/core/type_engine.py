@@ -1399,6 +1399,9 @@ class ListTransformer(TypeTransformer[T]):
         return Literal(collection=LiteralCollection(literals=lit_list))
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> typing.List[typing.Any]:  # type: ignore
+        if lv and lv.scalar and lv.scalar.binary is not None:
+            return self.from_binary_idl(lv.scalar.binary, expected_python_type)  # type: ignore
+
         try:
             lits = lv.collection.literals
         except AttributeError:
@@ -1680,8 +1683,8 @@ class UnionTransformer(TypeTransformer[T]):
 
 class DictTransformer(TypeTransformer[dict]):
     """
-    Transformer that transforms a univariate dictionary Dict[str, T] to a Literal Map or
-    transforms a untyped dictionary to a JSON (struct/Generic)
+    Transformer that transforms an univariate dictionary Dict[str, T] to a Literal Map or
+    transforms an untyped dictionary to a Binary Scalar Literal with a Struct Literal Type.
     """
 
     def __init__(self):

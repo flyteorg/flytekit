@@ -1,3 +1,4 @@
+from typing import Dict, List
 from datetime import datetime, date, timedelta
 
 import msgpack
@@ -118,3 +119,171 @@ def test_untyped_dict():
         lv = Literal(scalar=Scalar(binary=Binary(value=dict_msgpack_bytes, tag="msgpack")))
         dict_output = TypeEngine.to_python_value(ctx, lv, dict)
         assert dict_input == dict_output
+
+
+def test_list_transformer():
+    ctx = FlyteContextManager.current_context()
+
+    list_int_input = [1, 2, 3]
+    encoder = MessagePackEncoder(List[int])
+    list_int_msgpack_bytes = encoder.encode(list_int_input)
+    lv = Literal(scalar=Scalar(binary=Binary(value=list_int_msgpack_bytes, tag="msgpack")))
+    list_int_output = TypeEngine.to_python_value(ctx, lv, List[int])
+    assert list_int_input == list_int_output
+
+    list_float_input = [1.0, 2.0, 3.0]
+    encoder = MessagePackEncoder(List[float])
+    list_float_msgpack_bytes = encoder.encode(list_float_input)
+    lv = Literal(scalar=Scalar(binary=Binary(value=list_float_msgpack_bytes, tag="msgpack")))
+    list_float_output = TypeEngine.to_python_value(ctx, lv, List[float])
+    assert list_float_input == list_float_output
+
+    list_str_input = ["a", "b", "c"]
+    encoder = MessagePackEncoder(List[str])
+    list_str_msgpack_bytes = encoder.encode(list_str_input)
+    lv = Literal(scalar=Scalar(binary=Binary(value=list_str_msgpack_bytes, tag="msgpack")))
+    list_str_output = TypeEngine.to_python_value(ctx, lv, List[str])
+    assert list_str_input == list_str_output
+
+    list_bool_input = [True, False, True]
+    encoder = MessagePackEncoder(List[bool])
+    list_bool_msgpack_bytes = encoder.encode(list_bool_input)
+    lv = Literal(scalar=Scalar(binary=Binary(value=list_bool_msgpack_bytes, tag="msgpack")))
+    list_bool_output = TypeEngine.to_python_value(ctx, lv, List[bool])
+    assert list_bool_input == list_bool_output
+
+    list_list_int_input = [[1, 2], [3, 4]]
+    encoder = MessagePackEncoder(List[List[int]])
+    list_list_int_msgpack_bytes = encoder.encode(list_list_int_input)
+    lv = Literal(scalar=Scalar(binary=Binary(value=list_list_int_msgpack_bytes, tag="msgpack")))
+    list_list_int_output = TypeEngine.to_python_value(ctx, lv, List[List[int]])
+    assert list_list_int_input == list_list_int_output
+
+    list_list_float_input = [[1.0, 2.0], [3.0, 4.0]]
+    encoder = MessagePackEncoder(List[List[float]])
+    list_list_float_msgpack_bytes = encoder.encode(list_list_float_input)
+    lv = Literal(scalar=Scalar(binary=Binary(value=list_list_float_msgpack_bytes, tag="msgpack")))
+    list_list_float_output = TypeEngine.to_python_value(ctx, lv, List[List[float]])
+    assert list_list_float_input == list_list_float_output
+
+    list_list_str_input = [["a", "b"], ["c", "d"]]
+    encoder = MessagePackEncoder(List[List[str]])
+    list_list_str_msgpack_bytes = encoder.encode(list_list_str_input)
+    lv = Literal(scalar=Scalar(binary=Binary(value=list_list_str_msgpack_bytes, tag="msgpack")))
+    list_list_str_output = TypeEngine.to_python_value(ctx, lv, List[List[str]])
+    assert list_list_str_input == list_list_str_output
+
+    list_list_bool_input = [[True, False], [False, True]]
+    encoder = MessagePackEncoder(List[List[bool]])
+    list_list_bool_msgpack_bytes = encoder.encode(list_list_bool_input)
+    lv = Literal(scalar=Scalar(binary=Binary(value=list_list_bool_msgpack_bytes, tag="msgpack")))
+    list_list_bool_output = TypeEngine.to_python_value(ctx, lv, List[List[bool]])
+    assert list_list_bool_input == list_list_bool_output
+
+    list_dict_str_int_input = [{"key1": 1, "key2": 2}]
+    encoder = MessagePackEncoder(List[Dict[str, int]])
+    list_dict_str_int_msgpack_bytes = encoder.encode(list_dict_str_int_input)
+    lv = Literal(scalar=Scalar(binary=Binary(value=list_dict_str_int_msgpack_bytes, tag="msgpack")))
+    list_dict_str_int_output = TypeEngine.to_python_value(ctx, lv, List[Dict[str, int]])
+    assert list_dict_str_int_input == list_dict_str_int_output
+
+    list_dict_str_float_input = [{"key1": 1.0, "key2": 2.0}]
+    encoder = MessagePackEncoder(List[Dict[str, float]])
+    list_dict_str_float_msgpack_bytes = encoder.encode(list_dict_str_float_input)
+    lv = Literal(scalar=Scalar(binary=Binary(value=list_dict_str_float_msgpack_bytes, tag="msgpack")))
+    list_dict_str_float_output = TypeEngine.to_python_value(ctx, lv, List[Dict[str, float]])
+    assert list_dict_str_float_input == list_dict_str_float_output
+
+    list_dict_str_str_input = [{"key1": "a", "key2": "b"}]
+    encoder = MessagePackEncoder(List[Dict[str, str]])
+    list_dict_str_str_msgpack_bytes = encoder.encode(list_dict_str_str_input)
+    lv = Literal(scalar=Scalar(binary=Binary(value=list_dict_str_str_msgpack_bytes, tag="msgpack")))
+    list_dict_str_str_output = TypeEngine.to_python_value(ctx, lv, List[Dict[str, str]])
+    assert list_dict_str_str_input == list_dict_str_str_output
+
+    list_dict_str_bool_input = [{"key1": True, "key2": False}]
+    encoder = MessagePackEncoder(List[Dict[str, bool]])
+    list_dict_str_bool_msgpack_bytes = encoder.encode(list_dict_str_bool_input)
+    lv = Literal(scalar=Scalar(binary=Binary(value=list_dict_str_bool_msgpack_bytes, tag="msgpack")))
+    list_dict_str_bool_output = TypeEngine.to_python_value(ctx, lv, List[Dict[str, bool]])
+    assert list_dict_str_bool_input == list_dict_str_bool_output
+
+
+
+def test_dict_transformer():
+    ctx = FlyteContextManager.current_context()
+
+    dict_str_int_input = {"key1": 1, "key2": 2}
+    encoder = MessagePackEncoder(Dict[str, int])
+    dict_str_int_msgpack_bytes = encoder.encode(dict_str_int_input)
+    lv = Literal(scalar=Scalar(binary=Binary(value=dict_str_int_msgpack_bytes, tag="msgpack")))
+    dict_str_int_output = TypeEngine.to_python_value(ctx, lv, Dict[str, int])
+    assert dict_str_int_input == dict_str_int_output
+
+    dict_str_float_input = {"key1": 1.0, "key2": 2.0}
+    encoder = MessagePackEncoder(Dict[str, float])
+    dict_str_float_msgpack_bytes = encoder.encode(dict_str_float_input)
+    lv = Literal(scalar=Scalar(binary=Binary(value=dict_str_float_msgpack_bytes, tag="msgpack")))
+    dict_str_float_output = TypeEngine.to_python_value(ctx, lv, Dict[str, float])
+    assert dict_str_float_input == dict_str_float_output
+    """
+    m: Dict[str, List[Dict[str, int]]] = field(default_factory=lambda: {"key1": [{"subkey1": 1}, {"subkey2": 2}]})
+    o: Dict[int, str] = field(default_factory=lambda: {1: "a", 2: "b"})
+    """
+
+    dict_str_str_input = {"key1": "a", "key2": "b"}
+    encoder = MessagePackEncoder(Dict[str, str])
+    dict_str_str_msgpack_bytes = encoder.encode(dict_str_str_input)
+    lv = Literal(scalar=Scalar(binary=Binary(value=dict_str_str_msgpack_bytes, tag="msgpack")))
+    dict_str_str_output = TypeEngine.to_python_value(ctx, lv, Dict[str, str])
+    assert dict_str_str_input == dict_str_str_output
+
+    dict_str_bool_input = {"key1": True, "key2": False}
+    encoder = MessagePackEncoder(Dict[str, bool])
+    dict_str_bool_msgpack_bytes = encoder.encode(dict_str_bool_input)
+    lv = Literal(scalar=Scalar(binary=Binary(value=dict_str_bool_msgpack_bytes, tag="msgpack")))
+    dict_str_bool_output = TypeEngine.to_python_value(ctx, lv, Dict[str, bool])
+    assert dict_str_bool_input == dict_str_bool_output
+
+    dict_str_list_int_input = {"key1": [1, 2, 3]}
+    encoder = MessagePackEncoder(Dict[str, List[int]])
+    dict_str_list_int_msgpack_bytes = encoder.encode(dict_str_list_int_input)
+    lv = Literal(scalar=Scalar(binary=Binary(value=dict_str_list_int_msgpack_bytes, tag="msgpack")))
+    dict_str_list_int_output = TypeEngine.to_python_value(ctx, lv, Dict[str, List[int]])
+    assert dict_str_list_int_input == dict_str_list_int_output
+
+    dict_str_dict_str_int_input = {"key1": {"subkey1": 1, "subkey2": 2}}
+    encoder = MessagePackEncoder(Dict[str, Dict[str, int]])
+    dict_str_dict_str_int_msgpack_bytes = encoder.encode(dict_str_dict_str_int_input)
+    lv = Literal(scalar=Scalar(binary=Binary(value=dict_str_dict_str_int_msgpack_bytes, tag="msgpack")))
+    dict_str_dict_str_int_output = TypeEngine.to_python_value(ctx, lv, Dict[str, Dict[str, int]])
+    assert dict_str_dict_str_int_input == dict_str_dict_str_int_output
+
+    dict_str_dict_str_list_int_input = {"key1": {"subkey1": [1, 2], "subkey2": [3, 4]}}
+    encoder = MessagePackEncoder(Dict[str, Dict[str, List[int]]])
+    dict_str_dict_str_list_int_msgpack_bytes = encoder.encode(dict_str_dict_str_list_int_input)
+    lv = Literal(scalar=Scalar(binary=Binary(value=dict_str_dict_str_list_int_msgpack_bytes, tag="msgpack")))
+    dict_str_dict_str_list_int_output = TypeEngine.to_python_value(ctx, lv, Dict[str, Dict[str, List[int]]])
+    assert dict_str_dict_str_list_int_input == dict_str_dict_str_list_int_output
+
+    dict_str_list_dict_str_int_input = {"key1": [{"subkey1": 1}, {"subkey2": 2}]}
+    encoder = MessagePackEncoder(Dict[str, List[Dict[str, int]]])
+    dict_str_list_dict_str_int_msgpack_bytes = encoder.encode(dict_str_list_dict_str_int_input)
+    lv = Literal(scalar=Scalar(binary=Binary(value=dict_str_list_dict_str_int_msgpack_bytes, tag="msgpack")))
+    dict_str_list_dict_str_int_output = TypeEngine.to_python_value(ctx, lv, Dict[str, List[Dict[str, int]]])
+    assert dict_str_list_dict_str_int_input == dict_str_list_dict_str_int_output
+
+    # non-strict types
+    dict_int_str_input = {1: "a", 2: "b"}
+    encoder = MessagePackEncoder(dict)
+    dict_int_str_msgpack_bytes = encoder.encode(dict_int_str_input)
+    lv = Literal(scalar=Scalar(binary=Binary(value=dict_int_str_msgpack_bytes, tag="msgpack")))
+    dict_int_str_output = TypeEngine.to_python_value(ctx, lv, dict)
+    assert dict_int_str_input == dict_int_str_output
+
+    dict_int_dict_int_list_int_input = {1: {2: [1, 2]}, 3: {4: [3, 4]}}
+    encoder = MessagePackEncoder(Dict[int, Dict[int, List[int]]])
+    dict_int_dict_int_list_int_msgpack_bytes = encoder.encode(dict_int_dict_int_list_int_input)
+    lv = Literal(scalar=Scalar(binary=Binary(value=dict_int_dict_int_list_int_msgpack_bytes, tag="msgpack")))
+    dict_int_dict_int_list_int_output = TypeEngine.to_python_value(ctx, lv, Dict[int, Dict[int, List[int]]])
+    assert dict_int_dict_int_list_int_input == dict_int_dict_int_list_int_output
