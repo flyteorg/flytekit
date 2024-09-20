@@ -33,7 +33,7 @@ from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.hash import HashMethod
 from flytekit.core.type_helpers import load_type_from_tag
-from flytekit.core.utils import timeit
+from flytekit.core.utils import load_proto_from_file, timeit
 from flytekit.exceptions import user as user_exceptions
 from flytekit.interaction.string_literals import literal_map_string_repr
 from flytekit.lazy_import.lazy_module import is_imported
@@ -148,7 +148,37 @@ class TypeTransformer(typing.Generic[T]):
         """
         return self._type_assertions_enabled
 
+    def isinstance_generic(self, obj, generic_alias):
+        origin = get_origin(generic_alias)  # list from list[int])
+        args = get_args(generic_alias)  # (int,) from list[int]
+
+        if not isinstance(obj, origin):
+            raise TypeTransformerFailedError(f"Value '{obj}' is not of container type {origin}")
+
+        # Optionally check the type of elements if it's a collection like list or dict
+        if origin in {list, tuple, set}:
+            for item in obj:
+                self.assert_type(args[0], item)
+                return
+            raise TypeTransformerFailedError(f"Not all items in '{obj}' are of type {args[0]}")
+
+        if origin is dict:
+            key_type, value_type = args
+            for k, v in obj.items():
+                self.assert_type(key_type, k)
+                self.assert_type(value_type, v)
+                return
+            raise TypeTransformerFailedError(f"Not all values in '{obj}' are of type {value_type}")
+
+        return
+
     def assert_type(self, t: Type[T], v: T):
+        if sys.version_info >= (3, 10):
+            import types
+
+            if isinstance(t, types.GenericAlias):
+                return self.isinstance_generic(v, t)
+
         if not hasattr(t, "__origin__") and not isinstance(v, t):
             raise TypeTransformerFailedError(f"Expected value of type {t} but got '{v}' of type {type(v)}")
 
@@ -476,10 +506,13 @@ class DataclassTransformer(TypeTransformer[object]):
         # Recursively construct the dataclass_type which contains the literal type of each field
         literal_type = {}
 
+        hints = typing.get_type_hints(t)
         # Get the type of each field from dataclass
         for field in t.__dataclass_fields__.values():  # type: ignore
             try:
-                literal_type[field.name] = TypeEngine.to_literal_type(field.type)
+                name = field.name
+                python_type = hints.get(name, field.type)
+                literal_type[name] = TypeEngine.to_literal_type(python_type)
             except Exception as e:
                 logger.warning(
                     "Field {} of type {} cannot be converted to a literal type. Error: {}".format(
@@ -1122,6 +1155,14 @@ class TypeEngine(typing.Generic[T]):
         """
         Converts a Literal value with an expected python type into a python value.
         """
+        # Initiate the process of loading the offloaded literal if offloaded_metadata is set
+        if lv.offloaded_metadata:
+            literal_local_file = ctx.file_access.get_random_local_path()
+            assert lv.offloaded_metadata.uri, "missing offloaded uri"
+            ctx.file_access.download(lv.offloaded_metadata.uri, literal_local_file)
+            input_proto = load_proto_from_file(literals_pb2.Literal, literal_local_file)
+            lv = Literal.from_flyte_idl(input_proto)
+
         transformer = cls.get_transformer(expected_python_type)
         return transformer.to_python_value(ctx, lv, expected_python_type)
 
@@ -1505,6 +1546,22 @@ class UnionTransformer(TypeTransformer[T]):
         Return the generic Type T of the Optional type
         """
         return get_args(t)[0]
+
+    def assert_type(self, t: Type[T], v: T):
+        python_type = get_underlying_type(t)
+        if _is_union_type(python_type):
+            for sub_type in get_args(python_type):
+                if sub_type == typing.Any:
+                    # this is an edge case
+                    return
+                try:
+                    super().assert_type(sub_type, v)
+                    return
+                except TypeTransformerFailedError:
+                    continue
+            raise TypeTransformerFailedError(f"Value {v} is not of type {t}")
+        else:
+            super().assert_type(t, v)
 
     def get_literal_type(self, t: Type[T]) -> Optional[LiteralType]:
         t = get_underlying_type(t)

@@ -218,3 +218,29 @@ def test_update_image_spec_copy_handling():
     update_image_spec_copy_handling(image_spec, ss)
     assert image_spec.source_copy_mode is None
     assert image_spec.source_root is None
+
+
+def test_registry_name():
+    invalid_registry_names = [
+        "invalid:port:50000",
+        "ghcr.io/flyteorg:latest",
+        "flyteorg:latest"
+    ]
+    for invalid_registry_name in invalid_registry_names:
+        with pytest.raises(ValueError, match="Invalid container registry name"):
+            ImageSpec(registry=invalid_registry_name)
+
+    valid_registry_names = [
+        "localhost:30000",
+        "localhost:30000/flyte",
+        "192.168.1.1:30000",
+        "192.168.1.1:30000/myimage",
+        "ghcr.io/flyteorg",
+        "my.registry.com/myimage",
+        "my.registry.com:5000/myimage",
+        "myregistry:5000/myimage",
+        "us-west1-docker.pkg.dev/example.com/my-project/my-repo"
+        "flyteorg",
+    ]
+    for valid_registry_name in valid_registry_names:
+        ImageSpec(registry=valid_registry_name)
