@@ -10,7 +10,7 @@ from flytekit.core.pod_template import PodTemplate
 from flytekit.core.python_auto_container import PythonAutoContainerTask, get_registerable_container_image
 from flytekit.core.resources import Resources
 from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec
-from flytekit.tools.translator import get_serializable_task
+from flytekit.tools.translator import get_serializable_task, Options
 
 
 @pytest.fixture
@@ -40,6 +40,13 @@ def minimal_serialization_settings(default_image_config):
 @pytest.fixture
 def minimal_serialization_settings_no_default_image(no_default_image_config):
     return SerializationSettings(project="p", domain="d", version="v", image_config=no_default_image_config)
+
+
+@pytest.fixture
+def interactive_serialization_settings(default_image_config):
+    return SerializationSettings(
+        project="p", domain="d", version="v", image_config=default_image_config, env={"FOO": "bar"}, interactive_mode_enabled=True
+    )
 
 
 @pytest.fixture(
@@ -100,6 +107,31 @@ def test_default_command(default_serialization_settings):
     ]
 
 
+def test_interactive_command(interactive_serialization_settings):
+    cmd = task.get_default_command(settings=interactive_serialization_settings)
+    assert cmd == [
+        "pyflyte-execute",
+        "--inputs",
+        "{{.input}}",
+        "--output-prefix",
+        "{{.outputPrefix}}",
+        "--raw-output-data-prefix",
+        "{{.rawOutputDataPrefix}}",
+        "--checkpoint-path",
+        "{{.checkpointOutputPrefix}}",
+        "--prev-checkpoint",
+        "{{.prevCheckpointPrefix}}",
+        "--resolver",
+        "flytekit.core.python_auto_container.default_task_resolver",
+        "--",
+        "task-module",
+        "tests.flytekit.unit.core.test_python_auto_container",
+        "task-name",
+        "task",
+        "pkl",
+    ]
+
+
 def test_get_container(default_serialization_settings):
     c = task.get_container(default_serialization_settings)
     assert c.image == "docker.io/xyz:some-git-hash"
@@ -131,6 +163,24 @@ def test_get_container_without_serialization_settings_envvars(minimal_serializat
     ts = get_serializable_task(OrderedDict(), minimal_serialization_settings, task_with_env_vars)
     assert ts.template.container.image == "docker.io/xyz:some-git-hash"
     assert ts.template.container.env == {"HAM": "spam"}
+
+def test_get_container_with_interactive_settings(interactive_serialization_settings):
+    c = task_with_env_vars.get_container(interactive_serialization_settings)
+    assert c.image == "docker.io/xyz:some-git-hash"
+    assert c.env == {"FOO": "bar", "HAM": "spam"}
+
+    def mock_file_uploader(dest):
+        return (0, str(dest))
+
+    option = Options()
+    option.file_uploader = mock_file_uploader
+    ts = get_serializable_task(OrderedDict(), interactive_serialization_settings, task_with_env_vars, options=option)
+    assert ts.template.container.image == "docker.io/xyz:some-git-hash"
+    assert ts.template.container.env == {"FOO": "bar", "HAM": "spam"}
+    assert interactive_serialization_settings.fast_serialization_settings is not None
+    assert interactive_serialization_settings.fast_serialization_settings.enabled is True
+    assert interactive_serialization_settings.fast_serialization_settings.destination_dir == "."
+    assert interactive_serialization_settings.fast_serialization_settings.distribution_location.endswith("/pkl.gz")
 
 
 task_with_pod_template = DummyAutoContainerTask(
