@@ -383,7 +383,6 @@ class DataclassTransformer(TypeTransformer[object]):
 
     def __init__(self):
         super().__init__("Object-Dataclass-Transformer", object)
-        self._encoder: Dict[Type, JSONEncoder] = dict()
         self._decoder: Dict[Type, JSONDecoder] = dict()
 
     def assert_type(self, expected_type: Type[DataClassJsonMixin], v: T):
