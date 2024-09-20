@@ -1241,6 +1241,8 @@ class TypeEngine(typing.Generic[T]):
         if isinstance(transformer, AsyncTypeTransformer):
             lv = await transformer.async_to_literal(ctx, python_val, python_type, expected)
         else:
+            # Testing just blocking call
+            # lv = transformer.to_literal(ctx, python_val, python_type, expected)
             loop = asyncio.get_running_loop()
             executor = ContextExecutor()
             fut = loop.run_in_executor(executor, transformer.to_literal, ctx, python_val, python_type, expected)
@@ -1532,11 +1534,7 @@ class ListTransformer(AsyncTypeTransformer[T]):
                 lit_list = []
         else:
             t = self.get_sub_type(python_type)
-            lit_list = [TypeEngine.to_literal(ctx, x, t, expected.collection_type) for x in python_val]  # type: ignore
-            for idx, obj in enumerate(lit_list):
-                if isinstance(obj, asyncio.Future):
-                    await obj
-                    lit_list[idx] = obj.result()
+            lit_list = [await TypeEngine.async_to_literal(ctx, x, t, expected.collection_type) for x in python_val]  # type: ignore
         return Literal(collection=LiteralCollection(literals=lit_list))
 
     async def async_to_python_value(  # type: ignore
@@ -1942,10 +1940,8 @@ class DictTransformer(AsyncTypeTransformer[dict]):
             else:
                 _, v_type = self.extract_types_or_metadata(python_type)
 
-            lit_map[k] = TypeEngine.to_literal(ctx, v, cast(type, v_type), expected.map_value_type)
-            for result_k, result_v in lit_map.items():
-                if isinstance(result_v, asyncio.Future):
-                    lit_map[result_k] = await result_v
+            lit_map[k] = await TypeEngine.async_to_literal(ctx, v, cast(type, v_type), expected.map_value_type)
+
         return Literal(map=LiteralMap(literals=lit_map))
 
     async def async_to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[dict]) -> dict:
