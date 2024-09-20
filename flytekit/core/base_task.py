@@ -604,7 +604,6 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
     ) -> Dict[str, Any]:
         return TypeEngine.literal_map_to_kwargs(ctx, literal_map, self.python_interface.inputs)
 
-    @timeit("base_task._output_to_literal_map")
     async def _output_to_literal_map(self, native_outputs: Dict[int, Any], ctx: FlyteContext):
         expected_output_names = list(self._outputs_interface.keys())
         if len(expected_output_names) == 1:
@@ -782,8 +781,9 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             ):
                 return native_outputs
 
-            synced = run_sync_new_thread(self._output_to_literal_map)
-            literals_map, native_outputs_as_map = synced(native_outputs, exec_ctx)
+            with timeit("dispatch execute"):
+                synced = run_sync_new_thread(self._output_to_literal_map)
+                literals_map, native_outputs_as_map = synced(native_outputs, exec_ctx)
             self._write_decks(native_inputs, native_outputs_as_map, ctx, new_user_params)
 
             # After the execute has been successfully completed
