@@ -3,18 +3,20 @@ import random
 import shutil
 import tempfile
 from uuid import UUID
-
+import typing
 import fsspec
 import mock
 import pytest
 from s3fs import S3FileSystem
 
 from flytekit.configuration import Config, DataConfig, S3Config
-from flytekit.core.context_manager import FlyteContextManager
+from flytekit.core.context_manager import FlyteContextManager, FlyteContext
 from flytekit.core.data_persistence import FileAccessProvider, get_fsspec_storage_options, s3_setup_args
 from flytekit.core.type_engine import TypeEngine
 from flytekit.types.directory.types import FlyteDirectory
 from flytekit.types.file import FlyteFile
+from flytekit.utils.async_utils import run_sync_new_thread
+from flytekit.models.literals import Literal
 
 local = fsspec.filesystem("file")
 root = os.path.abspath(os.sep)
@@ -446,3 +448,49 @@ def test_s3_metadata():
         res = [(x, y) for x, y in res]
         files = [os.path.join(x, y) for x, y in res]
         assert len(files) == 2
+
+
+async def dummy_output_to_literal_map(ctx: FlyteContext, ff: typing.List[FlyteFile]) -> Literal:
+    lt = TypeEngine.to_literal_type(typing.List[FlyteFile])
+    lit = await TypeEngine.async_to_literal(ctx, ff, typing.List[FlyteFile], lt)
+    return lit
+
+
+@pytest.mark.sandbox_test
+def test_walk_local_copy_to_s3():
+    import typing
+    import time
+    import datetime
+
+    f1 = "/Users/ytong/go/src/github.com/unionai/debugyt/user/ytong/src/yt_dbg/fr/rand.file"
+    f2 = "/Users/ytong/go/src/github.com/unionai/debugyt/user/ytong/src/yt_dbg/fr/rand2.file"
+    f3 = "/Users/ytong/go/src/github.com/unionai/debugyt/user/ytong/src/yt_dbg/fr/rand3.file"
+
+    ff1 = FlyteFile(path=f1)
+    ff2 = FlyteFile(path=f2)
+    ff3 = FlyteFile(path=f3)
+    ff = [ff1, ff2, ff3]
+
+    ctx = FlyteContextManager.current_context()
+    dc = Config.for_sandbox().data_config
+    random_folder = UUID(int=random.getrandbits(64)).hex
+    raw_output = f"s3://my-s3-bucket/testing/upload_test/{random_folder}"
+    print(f"Uploading to {raw_output}")
+    provider = FileAccessProvider(local_sandbox_dir="/tmp/unittest", raw_output_prefix=raw_output, data_config=dc)
+
+    start_time = datetime.datetime.now(datetime.timezone.utc)
+    start_wall_time = time.perf_counter()
+    start_process_time = time.process_time()
+
+    with FlyteContextManager.with_context(ctx.with_file_access(provider)) as ctx:
+        synced = run_sync_new_thread(dummy_output_to_literal_map)
+        lit = synced(ctx, ff)
+        print(lit)
+
+    end_time = datetime.datetime.now(datetime.timezone.utc)
+    end_wall_time = time.perf_counter()
+    end_process_time = time.process_time()
+
+    print(f"Time taken: {end_time - start_time}")
+    print(f"Wall time taken: {end_wall_time - start_wall_time}")
+    print(f"Process time taken: {end_process_time - start_process_time}")
