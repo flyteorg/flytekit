@@ -23,7 +23,7 @@ from flytekit.deck.renderer import Renderable
 from flytekit.loggers import developer_logger, logger
 from flytekit.models import literals
 from flytekit.models import types as type_models
-from flytekit.models.literals import Literal, Scalar, StructuredDatasetMetadata, Binary
+from flytekit.models.literals import Binary, Literal, Scalar, StructuredDatasetMetadata
 from flytekit.models.types import LiteralType, SchemaType, StructuredDatasetType
 
 if typing.TYPE_CHECKING:
@@ -716,7 +716,9 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         sd._already_uploaded = True
         return lit
 
-    def from_binary_idl(self, binary_idl_object: Binary, expected_python_type: typing.Type[T]) -> typing.Optional[T]:
+    def from_binary_idl(
+        self, binary_idl_object: Binary, expected_python_type: Type[T] | StructuredDataset
+    ) -> T | StructuredDataset:
         if binary_idl_object.tag == "msgpack":
             python_val = msgpack.loads(binary_idl_object.value)
             uri = python_val.get("uri", None)

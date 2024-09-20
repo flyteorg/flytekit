@@ -732,7 +732,7 @@ class DataclassTransformer(TypeTransformer[object]):
                     self._msgpack_decoder[expected_python_type] = decoder
                 dc = decoder.decode(binary_idl_object.value)
 
-            return self._fix_structured_dataset_type(expected_python_type, dc)
+            return self._fix_structured_dataset_type(expected_python_type, dc)  # type: ignore
         else:
             raise TypeTransformerFailedError(f"Unsupported binary format {binary_idl_object.tag}")
 
@@ -1651,6 +1651,9 @@ class UnionTransformer(TypeTransformer[T]):
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> Optional[typing.Any]:
         expected_python_type = get_underlying_type(expected_python_type)
+
+        if lv.scalar is not None and lv.scalar.binary is not None:
+            return self.from_binary_idl(lv.scalar.binary, expected_python_type)
 
         union_tag = None
         union_type = None

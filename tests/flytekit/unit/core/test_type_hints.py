@@ -1551,9 +1551,8 @@ def test_guess_dict4():
 
     ctx = context_manager.FlyteContextManager.current_context()
     output_lm = t1.dispatch_execute(ctx, _literal_models.LiteralMap(literals={}))
-    expected_struct = Struct()
-    expected_struct.update({"x": 1, "y": "foo", "z": {"hello": "world"}})
-    assert output_lm.literals["o0"].scalar.generic == expected_struct
+    msgpack_bytes = msgpack.dumps({"x": 1, "y": "foo", "z": {"hello": "world"}})
+    assert output_lm.literals["o0"].scalar.binary.value == msgpack_bytes
 
     @task
     def t2() -> Bar:
@@ -1564,8 +1563,8 @@ def test_guess_dict4():
     assert dataclasses.is_dataclass(pt_map["o0"])
 
     output_lm = t2.dispatch_execute(ctx, _literal_models.LiteralMap(literals={}))
-    expected_struct.update({"x": 1, "y": {"hello": "world"}, "z": {"x": 1, "y": "foo", "z": {"hello": "world"}}})
-    assert output_lm.literals["o0"].scalar.generic == expected_struct
+    msgpack_bytes = msgpack.dumps({"x": 1, "y": {"hello": "world"}, "z": {"x": 1, "y": "foo", "z": {"hello": "world"}}})
+    assert output_lm.literals["o0"].scalar.binary.value == msgpack_bytes
 
 
 def test_error_messages(exec_prefix):

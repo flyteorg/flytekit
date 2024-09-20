@@ -21,7 +21,7 @@ from flytekit.exceptions.user import FlyteAssertion
 from flytekit.loggers import logger
 from flytekit.models.core import types as _core_types
 from flytekit.models.core.types import BlobType
-from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar, Binary
+from flytekit.models.literals import Binary, Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 from flytekit.types.pickle.pickle import FlytePickleTransformer
 
@@ -519,7 +519,9 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             return {"ContentEncoding": "gzip"}
         return {}
 
-    def from_binary_idl(self, binary_idl_object: Binary, expected_python_type: typing.Type[T]) -> typing.Optional[T]:
+    def from_binary_idl(
+        self, binary_idl_object: Binary, expected_python_type: typing.Union[typing.Type[FlyteFile], os.PathLike]
+    ) -> FlyteFile:
         if binary_idl_object.tag == "msgpack":
             python_val = msgpack.loads(binary_idl_object.value)
             path = python_val.get("path", None)

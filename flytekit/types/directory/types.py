@@ -22,7 +22,7 @@ from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransform
 from flytekit.exceptions.user import FlyteAssertion
 from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_types
-from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar, Binary
+from flytekit.models.literals import Binary, Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 from flytekit.types.file import FileExt, FlyteFile
 
@@ -505,7 +505,9 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
         else:
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=source_path)))
 
-    def from_binary_idl(self, binary_idl_object: Binary, expected_python_type: typing.Type[T]) -> typing.Optional[T]:
+    def from_binary_idl(
+        self, binary_idl_object: Binary, expected_python_type: typing.Type[FlyteDirectory]
+    ) -> FlyteDirectory:
         if binary_idl_object.tag == "msgpack":
             python_val = msgpack.loads(binary_idl_object.value)
             path = python_val.get("path", None)
