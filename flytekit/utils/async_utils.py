@@ -128,14 +128,6 @@ def run_sync_new_thread(coro_function: Callable[..., Awaitable[T]]) -> Callable[
     return wrapped
 
 
-# def run_async_correctly(loop: asyncio.AbstractEventLoop, coro_function: Callable[..., Awaitable[T]]) -> T:
-#     if loop.is_running():
-#         return run_sync_new_thread(coro_function)
-#     else:
-#         coro = coro_function(ctx, lv, expected_python_type)
-#         return ctx.loop.run_until_complete(coro)
-
-
 class ContextExecutor(ThreadPoolExecutor):
     def __init__(self):
         self.context = copy_context()
