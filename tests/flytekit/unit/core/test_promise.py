@@ -225,7 +225,7 @@ async def test_resolve_attr_path_in_promise():
 
     src = {"a": [Foo(b="foo")]}
 
-    src_lit = await TypeEngine.to_literal(
+    src_lit = TypeEngine.to_literal(
         FlyteContextManager.current_context(),
         src,
         Dict[str, List[Foo]],
@@ -235,7 +235,7 @@ async def test_resolve_attr_path_in_promise():
 
     # happy path
     tgt_promise = await resolve_attr_path_in_promise(src_promise["a"][0]["b"])
-    assert "foo" == await TypeEngine.to_python_value(FlyteContextManager.current_context(), tgt_promise.val, str)
+    assert "foo" == TypeEngine.to_python_value(FlyteContextManager.current_context(), tgt_promise.val, str)
 
     # exception
     with pytest.raises(FlytePromiseAttributeResolveException):

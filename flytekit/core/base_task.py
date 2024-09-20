@@ -81,7 +81,7 @@ from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.documentation import Description, Documentation
 from flytekit.models.interface import Variable
 from flytekit.models.security import SecurityContext
-from flytekit.utils.async_utils import ensure_no_loop
+from flytekit.utils.async_utils import run_sync_new_thread
 
 DYNAMIC_PARTITIONS = "_uap"
 MODEL_CARD = "_ucm"
@@ -781,8 +781,8 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             ):
                 return native_outputs
 
-            ensure_no_loop("Cannot run PythonTask.dispatch_execute from within a loop")
-            literals_map, native_outputs_as_map = asyncio.run(self._output_to_literal_map(native_outputs, exec_ctx))
+            synced = run_sync_new_thread(self._output_to_literal_map)
+            literals_map, native_outputs_as_map = synced(native_outputs, exec_ctx)
             self._write_decks(native_inputs, native_outputs_as_map, ctx, new_user_params)
 
             # After the execute has been successfully completed

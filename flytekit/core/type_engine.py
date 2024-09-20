@@ -53,7 +53,7 @@ from flytekit.models.literals import (
     Void,
 )
 from flytekit.models.types import LiteralType, SimpleType, TypeStructure, UnionType
-from flytekit.utils.async_utils import ContextExecutor, top_level_sync_wrapper
+from flytekit.utils.async_utils import ContextExecutor, get_running_loop_if_exists, run_sync_new_thread
 
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
@@ -249,22 +249,20 @@ class AsyncTypeTransformer(TypeTransformer[T]):
 
     def to_literal(
         self, ctx: FlyteContext, python_val: typing.Any, python_type: Type[T], expected: LiteralType
-    ) -> typing.Union[Literal, asyncio.Future]:
+    ) -> Literal:
         if ctx.loop.is_running():
-            coro = self.async_to_literal(ctx, python_val, python_type, expected)
-            fut = ctx.loop.create_task(coro)
-            return fut
+            synced = run_sync_new_thread(self.async_to_literal)
+            result = synced(ctx, python_val, python_type, expected)
+            return result
         else:
             coro = self.async_to_literal(ctx, python_val, python_type, expected)
             return ctx.loop.run_until_complete(coro)
 
-    def to_python_value(  # type: ignore[override]
-        self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]
-    ) -> typing.Union[Optional[T], asyncio.Future]:
+    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> Optional[T]:
         if ctx.loop.is_running():
-            coro = self.async_to_python_value(ctx, lv, expected_python_type)
-            fut = ctx.loop.create_task(coro)
-            return fut
+            synced = run_sync_new_thread(self.async_to_python_value)
+            result = synced(ctx, lv, expected_python_type)
+            return result
         else:
             coro = self.async_to_python_value(ctx, lv, expected_python_type)
             return ctx.loop.run_until_complete(coro)
@@ -1174,15 +1172,11 @@ class TypeEngine(typing.Generic[T]):
     @classmethod
     def to_literal(
         cls, ctx: FlyteContext, python_val: typing.Any, python_type: Type[T], expected: LiteralType
-    ) -> typing.Union[Literal, asyncio.Future]:
+    ) -> Literal:
         """
         The current dance is because we are allowing users to call from an async function, this synchronous
         to_literal function, and allowing this to_literal function, to then invoke yet another async functionl,
         namely an async transformer.
-
-        We can remove the need for this function to return a future if we always just asyncio.run().
-        That is, if you use this function to call an async transformer, it has to be not within a
-        running loop.
         """
         from flytekit.core.promise import Promise
 
@@ -1204,45 +1198,26 @@ class TypeEngine(typing.Generic[T]):
         if transformer.type_assertions_enabled:
             transformer.assert_type(python_type, python_val)
 
-        loop = None
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError as e:
-            # handle outside of try/catch to avoid nested exceptions
-            if "no running event loop" not in str(e):
-                logger.error(f"Unknown RuntimeError {str(e)}")
-                raise
+        running_loop = get_running_loop_if_exists()
 
-        if loop:  # get_running_loop didn't raise, return a Future
+        # can't have a main loop running either, maybe this is one of the downsides
+        # of not calling set_event_loop.
+        if not ctx.loop.is_running() and not running_loop:
             if isinstance(transformer, AsyncTypeTransformer):
                 coro = transformer.async_to_literal(ctx, python_val, python_type, expected)
-                fut = loop.create_task(coro)
+                lv = ctx.loop.run_until_complete(coro)
             else:
-                executor = ContextExecutor()
-                fut = loop.run_in_executor(executor, transformer.to_literal, ctx, python_val, python_type, expected)  # type: ignore[assignment]
-
-            def cb(cb_fut: asyncio.Future):
-                res = None
-                try:
-                    res = cb_fut.result()
-                except Exception:
-                    logger.debug(f"Skipping callback for: {cb_fut}")
-                if res:
-                    modify_literal_uris(res)
-                    res.hash = cls.calculate_hash(python_val, python_type)
-
-            fut.add_done_callback(cb)
-            return fut
-        else:  # get_running_loop raised
+                lv = transformer.to_literal(ctx, python_val, python_type, expected)
+        else:
             if isinstance(transformer, AsyncTypeTransformer):
-                coro = transformer.async_to_literal(ctx, python_val, python_type, expected)
-                lv = asyncio.run(coro)
+                synced = run_sync_new_thread(transformer.async_to_literal)
+                lv = synced(ctx, python_val, python_type, expected)
             else:
                 lv = transformer.to_literal(ctx, python_val, python_type, expected)
 
-            modify_literal_uris(lv)
-            lv.hash = cls.calculate_hash(python_val, python_type)
-            return lv
+        modify_literal_uris(lv)
+        lv.hash = cls.calculate_hash(python_val, python_type)
+        return lv
 
     @classmethod
     async def async_to_literal(
@@ -1283,31 +1258,23 @@ class TypeEngine(typing.Generic[T]):
         """
         transformer = cls.get_transformer(expected_python_type)
 
-        loop = None
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError as e:
-            # handle outside of try/catch to avoid nested exceptions
-            if "no running event loop" not in str(e):
-                logger.error(f"Unknown RuntimeError {str(e)}")
-                raise
+        # see note in to_literal.
+        running_loop = get_running_loop_if_exists()
 
-        if loop:  # get_running_loop didn't raise, return a Future
+        if not ctx.loop.is_running() and not running_loop:
             if isinstance(transformer, AsyncTypeTransformer):
                 coro = transformer.async_to_python_value(ctx, lv, expected_python_type)
-                fut = loop.create_task(coro)
-            else:
-                executor = ContextExecutor()
-                fut = loop.run_in_executor(executor, transformer.to_python_value, ctx, lv, expected_python_type)  # type: ignore[assignment]
-
-            return fut
-        else:  # get_running_loop raised
-            if isinstance(transformer, AsyncTypeTransformer):
-                coro = transformer.async_to_python_value(ctx, lv, expected_python_type)
-                pv = asyncio.run(coro)
+                pv = ctx.loop.run_until_complete(coro)
             else:
                 pv = transformer.to_python_value(ctx, lv, expected_python_type)
             return pv
+        else:
+            if isinstance(transformer, AsyncTypeTransformer):
+                synced = run_sync_new_thread(transformer.async_to_python_value)
+                return synced(ctx, lv, expected_python_type)
+            else:
+                res = transformer.to_python_value(ctx, lv, expected_python_type)
+                return res
 
     @classmethod
     async def async_to_python_value(cls, ctx: FlyteContext, lv: Literal, expected_python_type: Type) -> typing.Any:
@@ -1479,8 +1446,8 @@ class TypeEngine(typing.Generic[T]):
         raise ValueError(f"No transformers could reverse Flyte literal type {flyte_type}")
 
 
-TypeEngine.literal_map_to_kwargs = top_level_sync_wrapper(TypeEngine._literal_map_to_kwargs)  # type: ignore[method-assign]
-TypeEngine.dict_to_literal_map = top_level_sync_wrapper(TypeEngine._dict_to_literal_map)  # type: ignore[method-assign]
+TypeEngine.literal_map_to_kwargs = run_sync_new_thread(TypeEngine._literal_map_to_kwargs)  # type: ignore[method-assign]
+TypeEngine.dict_to_literal_map = run_sync_new_thread(TypeEngine._dict_to_literal_map)  # type: ignore[method-assign]
 
 
 class ListTransformer(AsyncTypeTransformer[T]):

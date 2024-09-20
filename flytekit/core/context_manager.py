@@ -13,10 +13,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging as _logging
 import os
-import sys
-import asyncio
 import pathlib
 import tempfile
 import traceback
@@ -650,21 +649,9 @@ class FlyteContext(object):
     @property
     def loop(self) -> asyncio.AbstractEventLoop:
         """
-        Can remove this property in the future, just prints a warning for now if the current
-        loop is not the same as the FlyteContext loop.
+        Can remove this property in the future
         """
-        running_loop = None
-        try:
-            running_loop = asyncio.get_running_loop()
-        except RuntimeError as e:
-            if "no running event loop" not in str(e):
-                user_space_logger.error(f"Unknown RuntimeError when getting loop {str(e)}")
-                raise
-        if self._loop and running_loop:
-            if running_loop is not self._loop:
-                user_space_logger.warning(
-                    "Returning FlyteContext loop, but is not running loop."
-                )
+        assert self._loop is not None
         return self._loop
 
     @property
@@ -983,9 +970,13 @@ class FlyteContextManager(object):
             decks=[],
         )
 
-        default_context = default_context.with_execution_state(
-            default_context.new_execution_state().with_params(user_space_params=default_user_space_params)
-        ).with_ensure_loop().build()
+        default_context = (
+            default_context.with_execution_state(
+                default_context.new_execution_state().with_params(user_space_params=default_user_space_params)
+            )
+            .with_ensure_loop()
+            .build()
+        )
         default_context.set_stackframe(s=FlyteContextManager.get_origin_stackframe())
         flyte_context_Var.set([default_context])
 
