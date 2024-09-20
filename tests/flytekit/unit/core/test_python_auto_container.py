@@ -1,3 +1,4 @@
+import pathlib
 from collections import OrderedDict
 from typing import Any
 
@@ -169,8 +170,8 @@ def test_get_container_with_interactive_settings(interactive_serialization_setti
     assert c.image == "docker.io/xyz:some-git-hash"
     assert c.env == {"FOO": "bar", "HAM": "spam"}
 
-    def mock_file_uploader(dest):
-        return (0, str(dest))
+    def mock_file_uploader(dest: pathlib.Path):
+        return (0, dest.name)
 
     option = Options()
     option.file_uploader = mock_file_uploader
@@ -180,7 +181,7 @@ def test_get_container_with_interactive_settings(interactive_serialization_setti
     assert interactive_serialization_settings.fast_serialization_settings is not None
     assert interactive_serialization_settings.fast_serialization_settings.enabled is True
     assert interactive_serialization_settings.fast_serialization_settings.destination_dir == "."
-    assert interactive_serialization_settings.fast_serialization_settings.distribution_location.endswith("/pkl.gz")
+    assert interactive_serialization_settings.fast_serialization_settings.distribution_location == "pkl.gz"
 
 
 task_with_pod_template = DummyAutoContainerTask(
