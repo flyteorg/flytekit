@@ -3,9 +3,9 @@ import atexit
 import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from contextvars import ContextVar, copy_context
+from contextvars import copy_context
 from types import CoroutineType
-from typing import Any, Awaitable, Callable, Dict, List, Optional, TypeVar
+from typing import Any, Awaitable, Callable, Optional, TypeVar
 
 from flytekit.loggers import logger
 
@@ -97,15 +97,6 @@ class _CoroRunner:
 _runner_map: dict[str, _CoroRunner] = {}
 
 
-class MyContext(object):
-    def __init__(self, vals: Optional[Dict[str, int]] = None):
-        self.vals = vals
-
-
-dummy_context: ContextVar[List[MyContext]] = ContextVar("dummy_context", default=[])
-dummy_context.set([MyContext(vals={"depth": 0})])
-
-
 def run_sync_new_thread(coro_function: Callable[..., Awaitable[T]]) -> Callable[..., T]:
     """
     Decorator to run a coroutine function with a loop that runs in a different thread.
@@ -113,6 +104,7 @@ def run_sync_new_thread(coro_function: Callable[..., Awaitable[T]]) -> Callable[
 
     :param coro_function: A coroutine function
     """
+
     # if not inspect.iscoroutinefunction(coro_function):
     #     raise AssertionError
 

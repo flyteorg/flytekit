@@ -1311,7 +1311,6 @@ class TypeEngine(typing.Generic[T]):
             variables[var_name] = _interface_models.Variable(type=literal_type, description=f"{idx}")
         return _interface_models.VariableMap(variables=variables)
 
-    # Declare empty function to get linting to work. Monkeypatched below.
     @classmethod
     def literal_map_to_kwargs(
         cls,
@@ -1320,7 +1319,8 @@ class TypeEngine(typing.Generic[T]):
         python_types: typing.Optional[typing.Dict[str, type]] = None,
         literal_types: typing.Optional[typing.Dict[str, _interface_models.Variable]] = None,
     ) -> typing.Dict[str, typing.Any]:
-        raise NotImplementedError
+        synced = run_sync_new_thread(cls._literal_map_to_kwargs)
+        return synced(ctx, lm, python_types, literal_types)
 
     @classmethod
     @timeit("Translate literal to python value")
@@ -1358,7 +1358,6 @@ class TypeEngine(typing.Generic[T]):
                 raise
         return kwargs
 
-    # Declare empty function to get linting to work. Monkeypatched below.
     @classmethod
     def dict_to_literal_map(
         cls,
@@ -1366,7 +1365,8 @@ class TypeEngine(typing.Generic[T]):
         d: typing.Dict[str, typing.Any],
         type_hints: Optional[typing.Dict[str, type]] = None,
     ) -> LiteralMap:
-        raise NotImplementedError
+        synced = run_sync_new_thread(cls._dict_to_literal_map)
+        return synced(ctx, d, type_hints)
 
     @classmethod
     async def _dict_to_literal_map(
@@ -1444,10 +1444,6 @@ class TypeEngine(typing.Generic[T]):
         except ValueError:
             logger.debug(f"Skipping transformer {cls._DATACLASS_TRANSFORMER.name} for {flyte_type}")
         raise ValueError(f"No transformers could reverse Flyte literal type {flyte_type}")
-
-
-TypeEngine.literal_map_to_kwargs = run_sync_new_thread(TypeEngine._literal_map_to_kwargs)  # type: ignore[method-assign]
-TypeEngine.dict_to_literal_map = run_sync_new_thread(TypeEngine._dict_to_literal_map)  # type: ignore[method-assign]
 
 
 class ListTransformer(AsyncTypeTransformer[T]):
