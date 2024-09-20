@@ -604,6 +604,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
     ) -> Dict[str, Any]:
         return TypeEngine.literal_map_to_kwargs(ctx, literal_map, self.python_interface.inputs)
 
+    @timeit("base_task._output_to_literal_map")
     async def _output_to_literal_map(self, native_outputs: Dict[int, Any], ctx: FlyteContext):
         expected_output_names = list(self._outputs_interface.keys())
         if len(expected_output_names) == 1:

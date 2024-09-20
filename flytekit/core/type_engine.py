@@ -1312,6 +1312,7 @@ class TypeEngine(typing.Generic[T]):
         return _interface_models.VariableMap(variables=variables)
 
     @classmethod
+    @timeit("Translate literal to python value")
     def literal_map_to_kwargs(
         cls,
         ctx: FlyteContext,
@@ -1323,7 +1324,7 @@ class TypeEngine(typing.Generic[T]):
         return synced(ctx, lm, python_types, literal_types)
 
     @classmethod
-    @timeit("Translate literal to python value")
+    @timeit("AsyncTranslate literal to python value")
     async def _literal_map_to_kwargs(
         cls,
         ctx: FlyteContext,
