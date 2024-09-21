@@ -236,10 +236,10 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
 
             if src_path.is_dir():
                 shutil.copytree(src_path, dst_path, dirs_exist_ok=True)
-                copy_commands.append(f"COPY --chown=flytekit {src_path} /root/{src_path}/")
+                copy_commands.append(f"COPY --chown=flytekit {src_path.as_posix()} /root/{src_path.as_posix()}/")
             else:
                 shutil.copy(src_path, dst_path)
-                copy_commands.append(f"COPY --chown=flytekit {src_path} /root/{src_path.parent}/")
+                copy_commands.append(f"COPY --chown=flytekit {src_path.as_posix()} /root/{src_path.parent.as_posix()}/")
 
         extra_copy_cmds = "\n".join(copy_commands)
     else:
