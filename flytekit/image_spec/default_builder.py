@@ -183,11 +183,11 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
         )
 
         for file_to_copy in ls:
-            rel_path = os.path.relpath(file_to_copy, start=str(image_spec.source_root))
-            Path(source_path / rel_path).parent.mkdir(parents=True, exist_ok=True)
+            src_path = os.path.relpath(file_to_copy, start=str(image_spec.source_root))
+            Path(source_path / src_path).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(
                 file_to_copy,
-                source_path / rel_path,
+                source_path / src_path,
             )
 
         copy_command_runtime = "COPY --chown=flytekit ./src /root"
@@ -224,18 +224,24 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
 
     extra_copy_cmds = ""
     if image_spec.copy:
-        dst_file_list = []
+        copy_commands = []
         for src in image_spec.copy:
             src_path = Path(src)
-            dst_path = tmp_dir / src_path.name
+
+            if src_path.is_absolute() or ".." in src_path.parts:
+                raise ValueError("Absolute paths or paths with '..' are not allowed in COPY command.")
+
+            dst_path = tmp_dir / src_path
+            dst_path.parent.mkdir(parents=True, exist_ok=True)
+
             if src_path.is_dir():
-                shutil.copytree(src_path, dst_path)
+                shutil.copytree(src_path, dst_path, dirs_exist_ok=True)
+                copy_commands.append(f"COPY --chown=flytekit {src_path} /root/{src_path}/")
             else:
                 shutil.copy(src_path, dst_path)
+                copy_commands.append(f"COPY --chown=flytekit {src_path} /root/{src_path.parent}/")
 
-            dst_file_list.append(dst_path.name)
-
-        extra_copy_cmds += f'COPY --chown=flytekit {" ".join(dst_file_list)} /root\n'
+        extra_copy_cmds = "\n".join(copy_commands)
     else:
         extra_copy_cmds = ""
 

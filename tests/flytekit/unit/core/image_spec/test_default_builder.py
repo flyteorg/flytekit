@@ -52,7 +52,8 @@ def test_create_docker_context(tmp_path):
     assert "RUN mkdir my_dir" in dockerfile_content
     assert "ENTRYPOINT [\"/bin/bash\"]" in dockerfile_content
     assert "mkdir -p $HOME" in dockerfile_content
-    assert "COPY --chown=flytekit file.txt test_files /root" in dockerfile_content
+    assert "COPY --chown=flytekit tests/flytekit/unit/core/image_spec/test_files/file.txt /root/tests/flytekit/unit/core/image_spec/test_files/" in dockerfile_content
+    assert "COPY --chown=flytekit tests/flytekit/unit/core/image_spec/test_files /root/tests/flytekit/unit/core/image_spec/" in dockerfile_content
 
     requirements_path = docker_context_path / "requirements_uv.txt"
     assert requirements_path.exists()
