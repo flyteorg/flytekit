@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import collections
+import datetime
 import inspect
 import typing
 from copy import deepcopy
@@ -34,6 +35,7 @@ from flytekit.core.type_engine import (
 from flytekit.core.type_helpers import is_namedtuple
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.exceptions.user import FlytePromiseAttributeResolveException
+from flytekit.extras.accelerators import BaseAccelerator
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literals_models
@@ -41,6 +43,7 @@ from flytekit.models import types as _type_models
 from flytekit.models import types as type_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.literals import Primitive
+from flytekit.models.task import Resources
 from flytekit.models.types import SimpleType
 
 
@@ -109,7 +112,8 @@ def translate_inputs_to_literals(
                     v = tuple(new_v)
             result[k] = TypeEngine.to_literal(ctx, v, t, var.type)
         except TypeTransformerFailedError as exc:
-            raise TypeTransformerFailedError(f"Failed argument '{k}': {exc}") from None
+            exc.args = (f"Failed argument '{k}': {exc.args[0]}",)
+            raise
 
     return result
 
@@ -530,10 +534,45 @@ class Promise(object):
     def __or__(self, other):
         raise ValueError("Cannot perform Logical OR of Promise with other")
 
-    def with_overrides(self, *args, **kwargs):
+    def with_overrides(
+        self,
+        node_name: Optional[str] = None,
+        aliases: Optional[Dict[str, str]] = None,
+        requests: Optional[Resources] = None,
+        limits: Optional[Resources] = None,
+        timeout: Optional[Union[int, datetime.timedelta]] = None,
+        retries: Optional[int] = None,
+        interruptible: Optional[bool] = None,
+        name: Optional[str] = None,
+        task_config: Optional[Any] = None,
+        container_image: Optional[str] = None,
+        accelerator: Optional[BaseAccelerator] = None,
+        cache: Optional[bool] = None,
+        cache_version: Optional[str] = None,
+        cache_serialize: Optional[bool] = None,
+        *args,
+        **kwargs,
+    ):
         if not self.is_ready:
             # TODO, this should be forwarded, but right now this results in failure and we want to test this behavior
-            self.ref.node.with_overrides(*args, **kwargs)
+            self.ref.node.with_overrides(  # type: ignore
+                node_name=node_name,
+                aliases=aliases,
+                requests=requests,
+                limits=limits,
+                timeout=timeout,
+                retries=retries,
+                interruptible=interruptible,
+                name=name,
+                task_config=task_config,
+                container_image=container_image,
+                accelerator=accelerator,
+                cache=cache,
+                cache_version=cache_version,
+                cache_serialize=cache_serialize,
+                *args,
+                **kwargs,
+            )
         return self
 
     def __repr__(self):
@@ -767,7 +806,20 @@ def binding_data_from_python_std(
     # This handles the case where the given value is the output of another task
     if isinstance(t_value, Promise):
         if not t_value.is_ready:
-            nodes.append(t_value.ref.node)  # keeps track of upstream nodes
+            node = t_value.ref.node
+            if node.flyte_entity and hasattr(node.flyte_entity, "interface"):
+                upstream_lt_type = node.flyte_entity.interface.outputs[t_value.ref.var].type
+                # if an upstream type is a list of unions, make sure the downstream type is a list of unions
+                # this is just a very limited test case for handling common map task type mis-matches so that we can show
+                # the user more information without relying on the user to register with Admin to trigger the compiler
+                if upstream_lt_type.collection_type and upstream_lt_type.collection_type.union_type:
+                    if not (expected_literal_type.collection_type and expected_literal_type.collection_type.union_type):
+                        upstream_python_type = node.flyte_entity.python_interface.outputs[t_value.ref.var]
+                        raise AssertionError(
+                            f"Expected type '{t_value_type}' does not match upstream type '{upstream_python_type}'"
+                        )
+
+            nodes.append(node)  # keeps track of upstream nodes
             return _literals_models.BindingData(promise=t_value.ref)
 
     elif isinstance(t_value, VoidPromise):
@@ -1123,8 +1175,9 @@ def create_and_link_node_from_remote(
             bindings.append(b)
             nodes.extend(n)
             used_inputs.add(k)
-        except Exception as e:
-            raise AssertionError(f"Failed to Bind variable {k} for function {entity.name}.") from e
+        except Exception as exc:
+            exc.args = (f"Failed to Bind variable '{k}' for function '{entity.name}':\n {exc.args[0]}",)
+            raise
 
     extra_inputs = used_inputs ^ set(kwargs.keys())
     if len(extra_inputs) > 0:
@@ -1162,6 +1215,9 @@ def create_and_link_node_from_remote(
 def create_and_link_node(
     ctx: FlyteContext,
     entity: SupportsNodeCreation,
+    overridden_interface: Optional[Interface] = None,
+    add_node_to_compilation_state: bool = True,
+    node_id: str = "",
     **kwargs,
 ) -> Optional[Union[Tuple[Promise], Promise, VoidPromise]]:
     """
@@ -1170,17 +1226,22 @@ def create_and_link_node(
 
     :param ctx: FlyteContext
     :param entity: RemoteEntity
+    :param add_node_to_compilation_state: bool that enables for nodes to be created but not linked to the workflow. This
+                is useful when creating nodes nested under other nodes such as ArrayNode
+    :param overridden_interface: utilize this interface instead of the one provided by the entity. This is useful for
+                ArrayNode as there's a mismatch between the underlying interface and inputs
+    :param node_id: str if provided, this will be used as the node id.
     :param kwargs: Dict[str, Any] default inputs passed from the user to this entity. Can be promises.
     :return:  Optional[Union[Tuple[Promise], Promise, VoidPromise]]
     """
-    if ctx.compilation_state is None:
+    if ctx.compilation_state is None and add_node_to_compilation_state:
         raise _user_exceptions.FlyteAssertion("Cannot create node when not compiling...")
 
     used_inputs = set()
     bindings = []
     nodes = []
 
-    interface = entity.python_interface
+    interface = overridden_interface or entity.python_interface
     typed_interface = flyte_interface.transform_interface_to_typed_interface(
         interface, allow_partial_artifact_id_binding=True
     )
@@ -1230,8 +1291,9 @@ def create_and_link_node(
             bindings.append(b)
             nodes.extend(n)
             used_inputs.add(k)
-        except Exception as e:
-            raise AssertionError(f"Failed to Bind variable {k} for function {entity.name}.") from e
+        except Exception as exc:
+            exc.args = (f"Failed to Bind variable '{k}' for function '{entity.name}':\n {exc.args[0]}",)
+            raise
 
     extra_inputs = used_inputs ^ set(kwargs.keys())
     if len(extra_inputs) > 0:
@@ -1243,15 +1305,24 @@ def create_and_link_node(
     # These will be our core Nodes until we can amend the Promise to use NodeOutputs that reference our Nodes
     upstream_nodes = list(set([n for n in nodes if n.id != _common_constants.GLOBAL_INPUT_NODE_ID]))
 
+    # TODO: Better naming, probably a derivative of the function name.
+    # if not adding to compilation state, we don't need to generate a unique node id
+    node_id = node_id or (
+        f"{ctx.compilation_state.prefix}n{len(ctx.compilation_state.nodes)}"
+        if add_node_to_compilation_state and ctx.compilation_state
+        else node_id
+    )
+
     flytekit_node = Node(
-        # TODO: Better naming, probably a derivative of the function name.
-        id=f"{ctx.compilation_state.prefix}n{len(ctx.compilation_state.nodes)}",
+        id=node_id,
         metadata=entity.construct_node_metadata(),
         bindings=sorted(bindings, key=lambda b: b.var),
         upstream_nodes=upstream_nodes,
         flyte_entity=entity,
     )
-    ctx.compilation_state.add_node(flytekit_node)
+
+    if add_node_to_compilation_state and ctx.compilation_state:
+        ctx.compilation_state.add_node(flytekit_node)
 
     if len(typed_interface.outputs) == 0:
         return VoidPromise(entity.name, NodeOutput(node=flytekit_node, var="placeholder"))

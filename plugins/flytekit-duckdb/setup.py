@@ -4,7 +4,7 @@ PLUGIN_NAME = "duckdb"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=1.3.0b2,<2.0.0", "duckdb", "pandas"]
+plugin_requires = ["flytekit>=1.3.0b2,<2.0.0", "duckdb<=1.0.0", "pandas"]
 
 __version__ = "0.0.0+develop"
 

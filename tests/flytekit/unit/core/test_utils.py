@@ -5,7 +5,7 @@ import pytest
 import flytekit
 from flytekit import FlyteContextManager, task
 from flytekit.configuration import ImageConfig, SerializationSettings
-from flytekit.core.utils import ClassDecorator, _dnsify, timeit
+from flytekit.core.utils import ClassDecorator, _dnsify, timeit, str2bool
 from flytekit.tools.translator import get_serializable_task
 from tests.flytekit.unit.test_translator import default_img
 
@@ -105,3 +105,12 @@ def test_class_decorator():
 
     ts = get_serializable_task(OrderedDict(), ss, t)
     assert ts.template.config == {"foo": "baz"}
+
+
+def test_str_2_bool():
+    assert str2bool("true")
+    assert not str2bool("false")
+    assert str2bool("True")
+    assert str2bool("t")
+    assert not str2bool("f")
+    assert str2bool("1")

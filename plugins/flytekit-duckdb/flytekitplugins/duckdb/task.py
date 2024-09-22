@@ -1,13 +1,34 @@
 import json
-from typing import Dict, List, NamedTuple, Optional, Union
+from enum import Enum
+from functools import partial
+from typing import Callable, Dict, List, NamedTuple, Optional, Union
 
-from flytekit import PythonInstanceTask, lazy_module
+from flytekit import PythonInstanceTask, Secret, current_context, lazy_module
 from flytekit.extend import Interface
 from flytekit.types.structured.structured_dataset import StructuredDataset
 
 duckdb = lazy_module("duckdb")
 pd = lazy_module("pandas")
 pa = lazy_module("pyarrow")
+
+
+class MissingSecretError(ValueError):
+    pass
+
+
+def connect_local():
+    """Connect to local DuckDB."""
+    return duckdb.connect(":memory:")
+
+
+def connect_motherduck(token: str):
+    """Connect to MotherDuck."""
+    return duckdb.connect("md:", config={"motherduck_token": token})
+
+
+class DuckDBProvider(Enum):
+    LOCAL = partial(connect_local)
+    MOTHERDUCK = partial(connect_motherduck)
 
 
 class QueryOutput(NamedTuple):
@@ -21,19 +42,53 @@ class DuckDBQuery(PythonInstanceTask):
     def __init__(
         self,
         name: str,
-        query: Union[str, List[str]],
+        query: Optional[Union[str, List[str]]] = None,
         inputs: Optional[Dict[str, Union[StructuredDataset, list]]] = None,
+        provider: Union[DuckDBProvider, Callable] = DuckDBProvider.LOCAL,
         **kwargs,
     ):
         """
         This method initializes the DuckDBQuery.
 
+        Note that the provider can be one of the default providers listed in DuckDBProvider or a custom callable like the following:
+
+        def custom_connect_motherduck(token: str):
+            return duckdb.connect("md:", config={"motherduck_token": token, "another_config": "hello"})
+
+        DuckDBQuery(..., provider=custom_connect_motherduck)
+
+        Also note that a query can be provided at runtime if query=None is provided.
+
+        duckdb_query = DuckDBQuery(
+            name="my_duckdb_query",
+            inputs=kwtypes(query=str)
+        )
+
+        @workflow
+        def wf(user_query: str) -> pd.DataFrame:
+            return duckdb_query(query=user_query)
+
         Args:
             name: Name of the task
             query: DuckDB query to execute
             inputs: The query parameters to be used while executing the query
+            provider: DuckDB provider
         """
         self._query = query
+        self._provider = provider
+        secret_requests: Optional[list[Secret]] = kwargs.get("secret_requests", None)
+        self._connect_secret = None
+        if secret_requests:
+            assert len(secret_requests) == 1, "Only one secret can be used for a DuckDBQuery task."
+            self._connect_secret = secret_requests[0]
+
+        if (
+            self._connect_secret is None
+            and isinstance(self._provider, DuckDBProvider)
+            and self._provider != DuckDBProvider.LOCAL
+        ):
+            raise MissingSecretError(f"A secret_requests must be provided for the {self._provider.name} provider.")
+
         outputs = {"result": StructuredDataset}
 
         super(DuckDBQuery, self).__init__(
@@ -43,6 +98,25 @@ class DuckDBQuery(PythonInstanceTask):
             interface=Interface(inputs=inputs, outputs=outputs),
             **kwargs,
         )
+
+    def _connect_to_duckdb(self):
+        """
+        Handles the connection to DuckDB based on the provider.
+
+        Returns:
+            A DuckDB connection object.
+        """
+        connect_token = None
+        if self._connect_secret:
+            connect_token = current_context().secrets.get(
+                group=self._connect_secret.group,
+                key=self._connect_secret.key,
+                group_version=self._connect_secret.group_version,
+            )
+        if isinstance(self._provider, DuckDBProvider):
+            return self._provider.value(connect_token) if connect_token else self._provider.value()
+        else:  # callable
+            return self._provider(connect_token) if connect_token else self._provider()
 
     def _execute_query(
         self, con: duckdb.DuckDBPyConnection, params: list, query: str, counter: int, multiple_params: bool
@@ -76,14 +150,15 @@ class DuckDBQuery(PythonInstanceTask):
 
     def execute(self, **kwargs) -> StructuredDataset:
         # TODO: Enable iterative download after adding the functionality to structured dataset code.
-
-        # create an in-memory database that's non-persistent
-        con = duckdb.connect(":memory:")
+        con = self._connect_to_duckdb()
 
         params = None
         for key in self.python_interface.inputs.keys():
             val = kwargs.get(key)
-            if isinstance(val, StructuredDataset):
+            if key == "query" and val is not None:
+                # Execution query takes priority
+                self._query = val
+            elif isinstance(val, StructuredDataset):
                 # register structured dataset
                 con.register(key, val.open(pa.Table).all())
             elif isinstance(val, (pd.DataFrame, pa.Table)):
@@ -97,6 +172,9 @@ class DuckDBQuery(PythonInstanceTask):
                 params = json.loads(val)
             else:
                 raise ValueError(f"Expected inputs of type StructuredDataset, str or list, received {type(val)}")
+
+        if self._query is None:
+            raise ValueError("A query must be specified when defining or executing a DuckDBQuery.")
 
         final_query = self._query
         query_output = QueryOutput()

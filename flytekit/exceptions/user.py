@@ -12,6 +12,23 @@ class FlyteUserException(_FlyteException):
     _ERROR_CODE = "USER:Unknown"
 
 
+class FlyteUserRuntimeException(_FlyteException):
+    _ERROR_CODE = "USER:RuntimeError"
+
+    def __init__(self, exc_value: Exception):
+        """
+        FlyteUserRuntimeException is thrown when a user code raises an exception.
+
+        :param exc_value: The exception that was raised from user code.
+        """
+        self._exc_value = exc_value
+        super().__init__(str(exc_value))
+
+    @property
+    def value(self):
+        return self._exc_value
+
+
 class FlyteTypeException(FlyteUserException, TypeError):
     _ERROR_CODE = "USER:TypeError"
 
@@ -62,6 +79,15 @@ class FlyteValueException(FlyteUserException, ValueError):
 class FlyteDataNotFoundException(FlyteValueException):
     def __init__(self, path: str):
         super(FlyteDataNotFoundException, self).__init__(path, "File not found")
+
+
+class FlyteEntityNotFoundException(FlyteValueException):
+    def __init__(self, module_name: str, entity_name: str):
+        self._module_name = module_name
+        self._entity_name = entity_name
+
+    def __str__(self):
+        return f"Task/Workflow '{self._entity_name}' not found in module '{self._module_name}'"
 
 
 class FlyteAssertion(FlyteUserException, AssertionError):

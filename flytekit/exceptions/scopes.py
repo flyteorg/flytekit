@@ -4,6 +4,7 @@ import traceback
 from functools import wraps as _wraps
 from sys import exc_info as _exc_info
 from traceback import format_tb as _format_tb
+from warnings import warn
 
 import flytekit
 from flytekit.exceptions import base as _base_exceptions
@@ -15,6 +16,7 @@ from flytekit.models.core import errors as _error_model
 
 class FlyteScopedException(Exception):
     def __init__(self, context, exc_type, exc_value, exc_tb, top_trim=0, bottom_trim=0, kind=None):
+        warn(f"{self.__class__.__name__} is deprecated.", DeprecationWarning, stacklevel=2)
         self._exc_type = exc_type
         self._exc_value = exc_value
         self._exc_tb = exc_tb
@@ -40,7 +42,6 @@ class FlyteScopedException(Exception):
 
         lines = _format_tb(top_tb, limit=limit)
         lines = [line.rstrip() for line in lines]
-        lines = "\n".join(lines).split("\n")
         traceback_str = "\n    ".join([""] + lines)
 
         format_str = "Traceback (most recent call last):\n" "{traceback}\n" "\n" "Message:\n" "\n" "    {message}"
@@ -100,6 +101,7 @@ class FlyteScopedException(Exception):
 
 class FlyteScopedSystemException(FlyteScopedException):
     def __init__(self, exc_type, exc_value, exc_tb, **kwargs):
+        warn(f"{self.__class__.__name__} is deprecated.", DeprecationWarning, stacklevel=2)
         super(FlyteScopedSystemException, self).__init__("SYSTEM", exc_type, exc_value, exc_tb, **kwargs)
 
     @property
@@ -114,6 +116,7 @@ class FlyteScopedSystemException(FlyteScopedException):
 
 class FlyteScopedUserException(FlyteScopedException):
     def __init__(self, exc_type, exc_value, exc_tb, **kwargs):
+        warn(f"{self.__class__.__name__} is deprecated.", DeprecationWarning, stacklevel=2)
         super(FlyteScopedUserException, self).__init__("USER", exc_type, exc_value, exc_tb, **kwargs)
 
     @property
@@ -168,6 +171,7 @@ def system_entry_point(wrapped, args, kwargs):
     user -- allowing them to know if they should take action themselves or pass on to the platform owners.
     We will dispatch metrics and such appropriately.
     """
+    warn("This method is deprecated.", DeprecationWarning, stacklevel=2)
     try:
         _CONTEXT_STACK.append(_SYSTEM_CONTEXT)
         if _is_base_context():
@@ -208,6 +212,7 @@ def user_entry_point(wrapped, args, kwargs):
     we create here will only be handled within our system code so we don't need to worry about leaking weird exceptions
     to the user.
     """
+    warn("This method is deprecated.", DeprecationWarning, stacklevel=2)
     try:
         _CONTEXT_STACK.append(_USER_CONTEXT)
         if _is_base_context():

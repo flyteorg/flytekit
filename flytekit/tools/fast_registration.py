@@ -3,22 +3,28 @@ from __future__ import annotations
 import gzip
 import hashlib
 import os
+import pathlib
 import posixpath
+import shutil
 import subprocess
 import tarfile
 import tempfile
+import time
 import typing
 from dataclasses import dataclass
 from typing import Optional
 
 import click
+from rich import print as rich_print
+from rich.tree import Tree
 
+from flytekit.constants import CopyFileDetection
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.utils import timeit
 from flytekit.exceptions.user import FlyteDataNotFoundException
 from flytekit.loggers import logger
 from flytekit.tools.ignore import DockerIgnore, FlyteIgnore, GitIgnore, Ignore, IgnoreGroup, StandardIgnore
-from flytekit.tools.script_mode import tar_strip_file_attributes
+from flytekit.tools.script_mode import _filehash_update, _pathhash_update, ls_files, tar_strip_file_attributes
 
 FAST_PREFIX = "fast"
 FAST_FILEENDING = ".tar.gz"
@@ -32,6 +38,51 @@ class FastPackageOptions:
 
     ignores: list[Ignore]
     keep_default_ignores: bool = True
+    copy_style: Optional[CopyFileDetection] = None
+    show_files: bool = False
+
+
+def print_ls_tree(source: os.PathLike, ls: typing.List[str]):
+    click.secho("Files to be copied for fast registration...", fg="bright_blue")
+
+    tree_root = Tree(
+        f":open_file_folder: [link file://{source}]{source} (detected source root)",
+        guide_style="bold bright_blue",
+    )
+    trees = {pathlib.Path(source): tree_root}
+
+    for f in ls:
+        fpp = pathlib.Path(f)
+        if fpp.parent not in trees:
+            # add trees for all intermediate folders
+            current = tree_root
+            current_path = pathlib.Path(source)
+            for subdir in fpp.parent.relative_to(source).parts:
+                current = current.add(f"{subdir}", guide_style="bold bright_blue")
+                current_path = current_path / subdir
+                trees[current_path] = current
+        trees[fpp.parent].add(f"{fpp.name}", guide_style="bold bright_blue")
+    rich_print(tree_root)
+
+
+def compress_tarball(source: os.PathLike, output: os.PathLike) -> None:
+    """Compress code tarball using pigz if available, otherwise gzip"""
+    if pigz := shutil.which("pigz"):
+        with open(output, "wb") as gzipped:
+            subprocess.run([pigz, "-c", source], stdout=gzipped, check=True)
+    else:
+        start_time = time.time()
+        with gzip.GzipFile(filename=output, mode="wb", mtime=0) as gzipped:
+            with open(source, "rb") as source_file:
+                gzipped.write(source_file.read())
+
+        end_time = time.time()
+        warning_time = 10
+        if end_time - start_time > warning_time:
+            click.secho(
+                f"Code tarball compression took {end_time - start_time:.0f} seconds. Consider installing `pigz` for faster compression.",
+                fg="yellow",
+            )
 
 
 def fast_package(
@@ -46,6 +97,7 @@ def fast_package(
     :param os.PathLike source:
     :param os.PathLike output_dir:
     :param bool deref_symlinks: Enables dereferencing symlinks when packaging directory
+    :param options: The CopyFileDetection option set to None
     :return os.PathLike:
     """
     default_ignores = [GitIgnore, DockerIgnore, StandardIgnore, FlyteIgnore]
@@ -58,28 +110,62 @@ def fast_package(
         ignores = default_ignores
     ignore = IgnoreGroup(source, ignores)
 
+    # Remove this after original tar command is removed.
     digest = compute_digest(source, ignore.is_ignored)
-    archive_fname = f"{FAST_PREFIX}{digest}{FAST_FILEENDING}"
 
-    if output_dir is None:
-        output_dir = tempfile.mkdtemp()
-        click.secho(f"No output path provided, using a temporary directory at {output_dir} instead", fg="yellow")
+    # This function is temporarily split into two, to support the creation of the tar file in both the old way,
+    # copying the underlying items in the source dir by doing a listdir, and the new way, relying on a list of files.
+    if options and (
+        options.copy_style == CopyFileDetection.LOADED_MODULES or options.copy_style == CopyFileDetection.ALL
+    ):
+        ls, ls_digest = ls_files(str(source), options.copy_style, deref_symlinks, ignore)
+        logger.debug(f"Hash digest: {ls_digest}", fg="green")
 
-    archive_fname = os.path.join(output_dir, archive_fname)
+        if options.show_files:
+            print_ls_tree(source, ls)
 
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        tar_path = os.path.join(tmp_dir, "tmp.tar")
-        with tarfile.open(tar_path, "w", dereference=deref_symlinks) as tar:
-            files: typing.List[str] = os.listdir(source)
-            for ws_file in files:
-                tar.add(
-                    os.path.join(source, ws_file),
-                    arcname=ws_file,
-                    filter=lambda x: ignore.tar_filter(tar_strip_file_attributes(x)),
-                )
-        with gzip.GzipFile(filename=archive_fname, mode="wb", mtime=0) as gzipped:
-            with open(tar_path, "rb") as tar_file:
-                gzipped.write(tar_file.read())
+        # Compute where the archive should be written
+        archive_fname = f"{FAST_PREFIX}{ls_digest}{FAST_FILEENDING}"
+        if output_dir is None:
+            output_dir = tempfile.mkdtemp()
+            click.secho(f"No output path provided, using a temporary directory at {output_dir} instead", fg="yellow")
+        archive_fname = os.path.join(output_dir, archive_fname)
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tar_path = os.path.join(tmp_dir, "tmp.tar")
+            with tarfile.open(tar_path, "w", dereference=True) as tar:
+                for ws_file in ls:
+                    rel_path = os.path.relpath(ws_file, start=source)
+                    tar.add(
+                        os.path.join(source, ws_file),
+                        arcname=rel_path,
+                        filter=lambda x: tar_strip_file_attributes(x),
+                    )
+
+            compress_tarball(tar_path, archive_fname)
+
+    # Original tar command - This condition to be removed in the future.
+    else:
+        # Compute where the archive should be written
+        archive_fname = f"{FAST_PREFIX}{digest}{FAST_FILEENDING}"
+        if output_dir is None:
+            output_dir = tempfile.mkdtemp()
+            click.secho(f"No output path provided, using a temporary directory at {output_dir} instead", fg="yellow")
+        archive_fname = os.path.join(output_dir, archive_fname)
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tar_path = os.path.join(tmp_dir, "tmp.tar")
+            with tarfile.open(tar_path, "w", dereference=deref_symlinks) as tar:
+                files: typing.List[str] = os.listdir(source)
+                for ws_file in files:
+                    tar.add(
+                        os.path.join(source, ws_file),
+                        arcname=ws_file,
+                        filter=lambda x: ignore.tar_filter(tar_strip_file_attributes(x)),
+                    )
+                # tar.list(verbose=True)
+
+            compress_tarball(tar_path, archive_fname)
 
     return archive_fname
 
@@ -110,20 +196,6 @@ def compute_digest(source: os.PathLike, filter: Optional[callable] = None) -> st
             _pathhash_update(relpath, hasher)
 
     return hasher.hexdigest()
-
-
-def _filehash_update(path: os.PathLike, hasher: hashlib._Hash) -> None:
-    blocksize = 65536
-    with open(path, "rb") as f:
-        bytes = f.read(blocksize)
-        while bytes:
-            hasher.update(bytes)
-            bytes = f.read(blocksize)
-
-
-def _pathhash_update(path: os.PathLike, hasher: hashlib._Hash) -> None:
-    path_list = path.split(os.sep)
-    hasher.update("".join(path_list).encode("utf-8"))
 
 
 def get_additional_distribution_loc(remote_location: str, identifier: str) -> str:
