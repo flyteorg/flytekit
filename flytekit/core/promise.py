@@ -155,6 +155,8 @@ def resolve_attr_path_in_promise(p: Promise) -> Promise:
                 v = resolve_attr_path_in_dict(dict_obj, attr_path=p.attr_path[used:])
                 msgpack_bytes = msgpack.dumps(v)
                 curr_val = Literal(scalar=Scalar(binary=Binary(value=msgpack_bytes, tag="msgpack")))
+            else:
+                raise TypeTransformerFailedError(f"Unsupported binary format {binary_idl_obj.tag}")
 
     p._val = curr_val
     return p
