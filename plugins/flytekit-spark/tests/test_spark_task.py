@@ -1,5 +1,3 @@
-import os
-
 import pandas as pd
 import pyspark
 import pytest

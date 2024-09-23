@@ -1,17 +1,15 @@
-import glob
 import os
+import shutil
+import time
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional, Union, cast
 
-import time
 import click
-import shutil
 from google.protobuf.json_format import MessageToDict
 
 from flytekit import FlyteContextManager, PythonFunctionTask, lazy_module, logger
 from flytekit.configuration import DefaultImages, SerializationSettings
 from flytekit.core.context_manager import ExecutionParameters
-from flytekit.core.python_auto_container import get_registerable_container_image
 from flytekit.extend import ExecutionState, TaskPlugins
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 from flytekit.image_spec import ImageSpec
@@ -209,7 +207,7 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
                     file_path = os.path.join(foldername, filename)
                     os.utime(file_path, (current_time, current_time))
 
-            shutil.make_archive("flyte_wf", 'zip', current_dir)
+            shutil.make_archive("flyte_wf", "zip", current_dir)
             self.sess.sparkContext.addPyFile("flyte_wf.zip")
 
         return user_params.builder().add_attr("SPARK_SESSION", self.sess).build()
