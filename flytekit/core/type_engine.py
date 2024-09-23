@@ -330,21 +330,21 @@ class DataclassTransformer(TypeTransformer[object]):
     """
     The Dataclass Transformer provides a type transformer for dataclasses.
 
-    The dataclass is converted to and from a JSON string by the mashumaro library
-    and is transported between tasks using the proto.Structpb representation.
+    The dataclass is converted to and from MessagePack Bytes by the mashumaro library
+    and is transported between tasks using the Binary IDL representation.
     Also, the type declaration will try to extract the JSON Schema for the
     object, if possible, and pass it with the definition.
 
     The lifecycle of the dataclass in the Flyte type system is as follows:
 
-    1. Serialization: The dataclass transformer converts the dataclass to a JSON string.
+    1. Serialization: The dataclass transformer converts the dataclass to MessagePack Bytes.
         (1) Handle dataclass attributes to make them serializable with mashumaro.
-        (2) Use the mashumaro API to serialize the dataclass to a JSON string.
-        (3) Use the JSON string to create a Flyte Literal.
-        (4) Serialize the Flyte Literal to a protobuf.
+        (2) Use the mashumaro API to serialize the dataclass to MessagePack Bytes.
+        (3) Use MessagePack Bytes to create a Flyte Literal.
+        (4) Serialize the Flyte Literal to a Binary IDL Object.
 
-    2. Deserialization: The dataclass transformer converts the JSON string back to a dataclass.
-        (1) Convert the JSON string to a dataclass using mashumaro.
+    2. Deserialization: The dataclass transformer converts the MessagePack Bytes back to a dataclass.
+        (1) Convert MessagePack Bytes to a dataclass using mashumaro.
         (2) Handle dataclass attributes to ensure they are of the correct types.
 
     For Json Schema, we use https://github.com/fuhrysteve/marshmallow-jsonschema library.
@@ -561,8 +561,8 @@ class DataclassTransformer(TypeTransformer[object]):
             dict_obj = json.loads(json_str)
             msgpack_bytes = msgpack.dumps(dict_obj)
         else:
-            # The function looks up or creates a JSONEncoder specifically designed for the object's type.
-            # This encoder is then used to convert a data class into a JSON string.
+            # The function looks up or creates a MessagePackEncoder specifically designed for the object's type.
+            # This encoder is then used to convert a data class into MessagePack Bytes.
             try:
                 encoder = self._msgpack_encoder[python_type]
             except KeyError:
