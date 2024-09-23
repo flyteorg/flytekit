@@ -241,16 +241,16 @@ def test_union_type1(input):
 @pytest.mark.parametrize(
     "extra_cli_args, task_name, expected_output",
     [
-        (("--a",), "test_task_boolean", True),
-        (("--no_a",), "test_task_boolean", False),
+        (("--a",), "test_boolean", True),
+        (("--no_a",), "test_boolean", False),
 
-        (tuple(), "test_task_boolean_default_true", True),
-        (("--a",), "test_task_boolean_default_true", True),
-        (("--no_a",), "test_task_boolean_default_true", False),
+        (tuple(), "test_boolean_default_true", True),
+        (("--a",), "test_boolean_default_true", True),
+        (("--no_a",), "test_boolean_default_true", False),
 
-        (tuple(), "test_task_boolean_default_false", False),
-        (("--a",), "test_task_boolean_default_false", True),
-        (("--no_a",), "test_task_boolean_default_false", False),
+        (tuple(), "test_boolean_default_false", False),
+        (("--a",), "test_boolean_default_false", True),
+        (("--no_a",), "test_boolean_default_false", False),
     ],
 )
 def test_boolean_type(extra_cli_args, task_name, expected_output):
@@ -422,6 +422,9 @@ def test_get_entities_in_file(workflow_file):
         "task_with_env_vars",
         "task_with_list",
         "task_with_optional",
+        "test_boolean",
+        "test_boolean_default_false",
+        "test_boolean_default_true",
         "test_union1",
         "test_union2",
     ]
@@ -436,6 +439,9 @@ def test_get_entities_in_file(workflow_file):
         "task_with_env_vars",
         "task_with_list",
         "task_with_optional",
+        "test_boolean",
+        "test_boolean_default_false",
+        "test_boolean_default_true",
         "test_union1",
         "test_union2",
     ]

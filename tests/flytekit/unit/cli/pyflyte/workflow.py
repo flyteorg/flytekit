@@ -81,15 +81,15 @@ def test_union2(a: typing.Union[float, typing.List[int], MyDataclass]):
     print(a)
 
 @task
-def test_task_boolean(a: bool):
+def test_boolean(a: bool):
     print(a)
 
 @task
-def test_task_boolean_default_true(a: bool = True):
+def test_boolean_default_true(a: bool = True):
     print(a)
 
 @task
-def test_task_boolean_default_false(a: bool = False):
+def test_boolean_default_false(a: bool = False):
     print(a)
 
 
