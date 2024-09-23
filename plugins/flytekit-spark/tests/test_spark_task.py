@@ -1,3 +1,5 @@
+import os
+
 import pandas as pd
 import pyspark
 import pytest
@@ -118,3 +120,7 @@ def test_to_html():
     tf = StructuredDatasetTransformerEngine()
     output = tf.to_html(FlyteContextManager.current_context(), sd, pyspark.sql.DataFrame)
     assert pd.DataFrame(df.schema, columns=["StructField"]).to_html() == output
+
+
+def test_archive_cwd():
+    print(os.getcwd())

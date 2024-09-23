@@ -209,8 +209,8 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
                     file_path = os.path.join(foldername, filename)
                     os.utime(file_path, (current_time, current_time))
 
-            shutil.make_archive("archive", 'zip', current_dir)
-            self.sess.sparkContext.addPyFile("archive.zip")
+            shutil.make_archive("flyte_wf", 'zip', current_dir)
+            self.sess.sparkContext.addPyFile("flyte_wf.zip")
 
         return user_params.builder().add_attr("SPARK_SESSION", self.sess).build()
 
