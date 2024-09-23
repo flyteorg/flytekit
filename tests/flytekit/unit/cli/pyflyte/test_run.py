@@ -241,16 +241,19 @@ def test_union_type1(input):
 @pytest.mark.parametrize(
     "extra_cli_args, task_name, expected_output",
     [
-        (("--a",), "test_boolean", True),
-        (("--no_a",), "test_boolean", False),
+        (("--a_b",), "test_boolean", True),
+        (("--no_a_b",), "test_boolean", False),
+        (("--no-a-b",), "test_boolean", False),
 
         (tuple(), "test_boolean_default_true", True),
-        (("--a",), "test_boolean_default_true", True),
-        (("--no_a",), "test_boolean_default_true", False),
+        (("--a_b",), "test_boolean_default_true", True),
+        (("--no_a_b",), "test_boolean_default_true", False),
+        (("--no-a-b",), "test_boolean_default_true", False),
 
         (tuple(), "test_boolean_default_false", False),
-        (("--a",), "test_boolean_default_false", True),
-        (("--no_a",), "test_boolean_default_false", False),
+        (("--a_b",), "test_boolean_default_false", True),
+        (("--no_a_b",), "test_boolean_default_false", False),
+        (("--no-a-b",), "test_boolean_default_false", False),
     ],
 )
 def test_boolean_type(extra_cli_args, task_name, expected_output):
