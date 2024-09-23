@@ -450,7 +450,10 @@ def to_click_option(
     required = False if default_val and isinstance(default_val, ArtifactQuery) else required
 
     if literal_converter.is_bool():
-        click_cli_parameter_names = [f"--{input_name}/--no_{input_name}", f"--{input_name}/--no-{input_name.replace('_', '-')}"]
+        click_cli_parameter_names = [
+            f"--{input_name}/--no_{input_name}",
+            f"--{input_name}/--no-{input_name.replace('_', '-')}",
+        ]
     else:
         click_cli_parameter_names = [f"--{input_name}"]
 
