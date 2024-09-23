@@ -243,7 +243,7 @@ def test_union_type1(input):
     [
         (("--a",), "test_task_boolean", True),
         (("--no_a",), "test_task_boolean", False),
-        
+
         (tuple(), "test_task_boolean_default_true", True),
         (("--a",), "test_task_boolean_default_true", True),
         (("--no_a",), "test_task_boolean_default_true", False),
