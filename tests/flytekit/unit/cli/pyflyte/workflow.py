@@ -80,6 +80,18 @@ def test_union1(a: typing.Union[int, FlyteFile, typing.Dict[str, float], datetim
 def test_union2(a: typing.Union[float, typing.List[int], MyDataclass]):
     print(a)
 
+@task
+def test_task_boolean(a: bool):
+    print(a)
+
+@task
+def test_task_boolean_default_true(a: bool = True):
+    print(a)
+
+@task
+def test_task_boolean_default_false(a: bool = False):
+    print(a)
+
 
 @workflow
 def my_wf(

@@ -238,6 +238,37 @@ def test_union_type1(input):
     assert result.exit_code == 0
 
 
+@pytest.mark.parametrize(
+    "extra_cli_args, task_name, expected_output",
+    [
+        (("--a",), "test_task_boolean", True),
+        (("--no_a",), "test_task_boolean", False),
+        
+        (tuple(), "test_task_boolean_default_true", True),
+        (("--a",), "test_task_boolean_default_true", True),
+        (("--no_a",), "test_task_boolean_default_true", False),
+
+        (tuple(), "test_task_boolean_default_false", False),
+        (("--a",), "test_task_boolean_default_false", True),
+        (("--no_a",), "test_task_boolean_default_false", False),
+    ],
+)
+def test_boolean_type(extra_cli_args, task_name, expected_output):
+    runner = CliRunner()
+    result = runner.invoke(
+        pyflyte.main,
+        [
+            "run",
+            os.path.join(DIR_NAME, "workflow.py"),
+            task_name,
+            *extra_cli_args,
+        ],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+    assert str(expected_output) in result.stdout
+
+
 def test_all_types_with_json_input():
     runner = CliRunner()
     result = runner.invoke(
