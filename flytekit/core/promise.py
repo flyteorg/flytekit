@@ -1132,6 +1132,9 @@ def create_and_link_node_from_remote(
 def create_and_link_node(
     ctx: FlyteContext,
     entity: SupportsNodeCreation,
+    overridden_interface: Optional[Interface] = None,
+    add_node_to_compilation_state: bool = True,
+    node_id: str = "",
     **kwargs,
 ) -> Optional[Union[Tuple[Promise], Promise, VoidPromise]]:
     """
@@ -1140,17 +1143,22 @@ def create_and_link_node(
 
     :param ctx: FlyteContext
     :param entity: RemoteEntity
+    :param add_node_to_compilation_state: bool that enables for nodes to be created but not linked to the workflow. This
+                is useful when creating nodes nested under other nodes such as ArrayNode
+    :param overridden_interface: utilize this interface instead of the one provided by the entity. This is useful for
+                ArrayNode as there's a mismatch between the underlying interface and inputs
+    :param node_id: str if provided, this will be used as the node id.
     :param kwargs: Dict[str, Any] default inputs passed from the user to this entity. Can be promises.
     :return:  Optional[Union[Tuple[Promise], Promise, VoidPromise]]
     """
-    if ctx.compilation_state is None:
+    if ctx.compilation_state is None and add_node_to_compilation_state:
         raise _user_exceptions.FlyteAssertion("Cannot create node when not compiling...")
 
     used_inputs = set()
     bindings = []
     nodes = []
 
-    interface = entity.python_interface
+    interface = overridden_interface or entity.python_interface
     typed_interface = flyte_interface.transform_interface_to_typed_interface(
         interface, allow_partial_artifact_id_binding=True
     )
@@ -1214,15 +1222,24 @@ def create_and_link_node(
     # These will be our core Nodes until we can amend the Promise to use NodeOutputs that reference our Nodes
     upstream_nodes = list(set([n for n in nodes if n.id != _common_constants.GLOBAL_INPUT_NODE_ID]))
 
+    # TODO: Better naming, probably a derivative of the function name.
+    # if not adding to compilation state, we don't need to generate a unique node id
+    node_id = node_id or (
+        f"{ctx.compilation_state.prefix}n{len(ctx.compilation_state.nodes)}"
+        if add_node_to_compilation_state and ctx.compilation_state
+        else node_id
+    )
+
     flytekit_node = Node(
-        # TODO: Better naming, probably a derivative of the function name.
-        id=f"{ctx.compilation_state.prefix}n{len(ctx.compilation_state.nodes)}",
+        id=node_id,
         metadata=entity.construct_node_metadata(),
         bindings=sorted(bindings, key=lambda b: b.var),
         upstream_nodes=upstream_nodes,
         flyte_entity=entity,
     )
-    ctx.compilation_state.add_node(flytekit_node)
+
+    if add_node_to_compilation_state and ctx.compilation_state:
+        ctx.compilation_state.add_node(flytekit_node)
 
     if len(typed_interface.outputs) == 0:
         return VoidPromise(entity.name, NodeOutput(node=flytekit_node, var="placeholder"))

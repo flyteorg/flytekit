@@ -42,7 +42,7 @@ jobs:
         python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
     steps:
       - uses: actions/checkout@v4
-      - name: 'Clear action cache'
+      - name: "Clear action cache"
         uses: ./.github/actions/clear-action-cache
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
@@ -81,7 +81,7 @@ jobs:
         python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
     steps:
       - uses: actions/checkout@v4
-      - name: 'Clear action cache'
+      - name: "Clear action cache"
         uses: ./.github/actions/clear-action-cache
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
@@ -133,7 +133,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: 'Clear action cache'
+      - name: "Clear action cache"
         uses: ./.github/actions/clear-action-cache
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
@@ -244,15 +244,16 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
-        makefile-cmd: [integration_test_codecov, integration_test_lftransfers_codecov]
+        makefile-cmd:
+          [integration_test_codecov, integration_test_lftransfers_codecov]
     steps:
       # As described in https://github.com/pypa/setuptools_scm/issues/414, SCM needs git history
       # and tags to work.
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: 'Clear action cache'
-        uses: ./.github/actions/clear-action-cache  # sandbox has disk pressure, so we need to clear the cache to get more disk space.
+      - name: "Clear action cache"
+        uses: ./.github/actions/clear-action-cache # sandbox has disk pressure, so we need to clear the cache to get more disk space.
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
@@ -335,6 +336,7 @@ jobs:
           - flytekit-hive
           - flytekit-huggingface
           - flytekit-identity-aware-proxy
+          - flytekit-inference
           - flytekit-k8s-pod
           - flytekit-kf-mpi
           - flytekit-kf-pytorch
@@ -414,7 +416,7 @@ jobs:
             plugin-names: "flytekit-kf-pytorch"
     steps:
       - uses: actions/checkout@v4
-      - name: 'Clear action cache'
+      - name: "Clear action cache"
         uses: ./.github/actions/clear-action-cache
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4

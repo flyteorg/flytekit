@@ -122,22 +122,20 @@ class BotoAgent(SyncAgentBase):
                 )
             )
             with context_manager.FlyteContextManager.with_context(builder) as new_ctx:
-                outputs = LiteralMap(
-                    literals={
-                        "result": TypeEngine.to_literal(
-                            new_ctx,
-                            truncated_result if truncated_result else result,
-                            Annotated[dict, kwtypes(allow_pickle=True)],
-                            TypeEngine.to_literal_type(dict),
-                        ),
-                        "idempotence_token": TypeEngine.to_literal(
-                            new_ctx,
-                            idempotence_token,
-                            str,
-                            TypeEngine.to_literal_type(str),
-                        ),
-                    }
-                )
+                outputs = {
+                    "result": TypeEngine.to_literal(
+                        new_ctx,
+                        truncated_result if truncated_result else result,
+                        Annotated[dict, kwtypes(allow_pickle=True)],
+                        TypeEngine.to_literal_type(dict),
+                    ),
+                    "idempotence_token": TypeEngine.to_literal(
+                        new_ctx,
+                        idempotence_token,
+                        str,
+                        TypeEngine.to_literal_type(str),
+                    ),
+                }
 
         return Resource(phase=TaskExecution.SUCCEEDED, outputs=outputs)
 
