@@ -1,12 +1,19 @@
+import os
+import tempfile
+from dataclasses import dataclass, field
 from typing import Dict, List
 from datetime import datetime, date, timedelta
+import pytest
 
 import msgpack
 from mashumaro.codecs.msgpack import MessagePackEncoder
 
+from flytekit import workflow, task
 from flytekit.models.literals import Binary, Literal, Scalar
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
+from flytekit.types.file import FlyteFile
+
 
 def test_simple_type_transformer():
     ctx = FlyteContextManager.current_context()
@@ -297,3 +304,40 @@ def test_dict_transformer():
     lv = Literal(scalar=Scalar(binary=Binary(value=dict_int_dict_int_list_int_msgpack_bytes, tag="msgpack")))
     dict_int_dict_int_list_int_output = TypeEngine.to_python_value(ctx, lv, Dict[int, Dict[int, List[int]]])
     assert dict_int_dict_int_list_int_input == dict_int_dict_int_list_int_output
+
+
+@pytest.fixture
+def local_dummy_file():
+    fd, path = tempfile.mkstemp()
+    try:
+        with os.fdopen(fd, "w") as tmp:
+            tmp.write("Hello World")
+        yield path
+    finally:
+        os.remove(path)
+
+
+def test_flytefile_in_dataclass_wf(local_dummy_file):
+    @dataclass
+    class InnerDC:
+        flytefile: FlyteFile = field(default_factory=lambda: FlyteFile(local_dummy_file))
+
+    @dataclass
+    class DC:
+        flytefile: FlyteFile = field(default_factory=lambda: FlyteFile(local_dummy_file))
+        inner_dc: InnerDC = field(default_factory=lambda: InnerDC())
+    @task
+    def t1(path: FlyteFile) -> FlyteFile:
+        return path
+    @workflow
+    def wf(dc: DC) -> (FlyteFile, FlyteFile):
+        f1 = t1(path=dc.flytefile)
+        f2 = t1(path=dc.inner_dc.flytefile)
+        return f1, f2
+
+    o1, o2 = wf(dc=DC())
+    with open(o1, "r") as fh:
+        assert fh.read() == "Hello World"
+
+    with open(o2, "r") as fh:
+        assert fh.read() == "Hello World"
