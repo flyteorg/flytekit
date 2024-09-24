@@ -215,6 +215,9 @@ class FlyteRemote(object):
         if config is None or config.platform is None or config.platform.endpoint is None:
             raise user_exceptions.FlyteAssertion("Flyte endpoint should be provided.")
 
+        if interactive_mode_enabled is True:
+            logger.warning("Jupyter notebook and interactive task support is still alpha.")
+
         if data_upload_location is None:
             data_upload_location = FlyteContext.current_context().file_access.raw_output_prefix
         self._kwargs = kwargs

@@ -5,7 +5,6 @@ import tempfile
 import typing
 from collections import OrderedDict
 from dataclasses import dataclass
-from functools import lru_cache
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from flyteidl.admin import schedule_pb2
@@ -173,12 +172,6 @@ def _fast_serialize_command_fn(
     return fn
 
 
-@lru_cache
-def display_ipython_warning(msg: str) -> None:
-    # This is a warning that is only displayed once per python type
-    logger.debug(msg)
-
-
 def _update_serialization_settings_for_ipython(
     entity: FlyteLocalEntity,
     serialization_settings: SerializationSettings,
@@ -214,8 +207,6 @@ def _update_serialization_settings_for_ipython(
 
         from flytekit.configuration import FastSerializationSettings
 
-        display_ipython_warning("Jupyter notebook and interactive task support is still alpha.")
-
         with tempfile.TemporaryDirectory() as tmp_dir:
             dest = pathlib.Path(tmp_dir, "pkl.gz")
             with gzip.GzipFile(filename=dest, mode="wb", mtime=0) as gzipped:
@@ -224,7 +215,7 @@ def _update_serialization_settings_for_ipython(
                 raise ValueError(
                     "The size of the task to pickled exceeds the limit of 150MB. Please reduce the size of the task."
                 )
-            display_ipython_warning("Uploading Pickled representation of Task to remote storage...")
+            logger.debug(f"Uploading Pickled representation of Task `{actual_task.name}` to remote storage...")
             _, native_url = options.file_uploader(dest)
 
             serialization_settings.fast_serialization_settings = FastSerializationSettings(
