@@ -718,23 +718,23 @@ def test_execute_workflow_remote_fn_with_maptask(mock_ipython_check):
     )
     assert out.outputs["o0"] == [4, 5, 6]
 
-# def test_register_wf_fast(register):
-#     from workflows.basic.subworkflows import parent_wf
+def test_register_wf_fast(register):
+    from workflows.basic.subworkflows import parent_wf
 
-#     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
-#     fast_version = f"{VERSION}_fast"
-#     serialization_settings = SerializationSettings(image_config=ImageConfig.auto(img_name=IMAGE))
-#     registered_wf = remote.fast_register_workflow(parent_wf, serialization_settings, version=fast_version)
-#     execution = remote.execute(registered_wf, inputs={"a": 101}, wait=True)
-#     assert registered_wf.name == "workflows.basic.subworkflows.parent_wf"
-#     assert execution.spec.launch_plan.version == fast_version
-#     # check node execution inputs and outputs
-#     assert execution.node_executions["n0"].inputs == {"a": 101}
-#     assert execution.node_executions["n0"].outputs == {"t1_int_output": 103, "c": "world"}
-#     assert execution.node_executions["n1"].inputs == {"a": 103}
-#     assert execution.node_executions["n1"].outputs == {"o0": "world", "o1": "world"}
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    fast_version = f"{VERSION}_fast"
+    serialization_settings = SerializationSettings(image_config=ImageConfig.auto(img_name=IMAGE))
+    registered_wf = remote.fast_register_workflow(parent_wf, serialization_settings, version=fast_version)
+    execution = remote.execute(registered_wf, inputs={"a": 101}, wait=True)
+    assert registered_wf.name == "workflows.basic.subworkflows.parent_wf"
+    assert execution.spec.launch_plan.version == fast_version
+    # check node execution inputs and outputs
+    assert execution.node_executions["n0"].inputs == {"a": 101}
+    assert execution.node_executions["n0"].outputs == {"t1_int_output": 103, "c": "world"}
+    assert execution.node_executions["n1"].inputs == {"a": 103}
+    assert execution.node_executions["n1"].outputs == {"o0": "world", "o1": "world"}
 
-#     # check subworkflow task execution inputs and outputs
-#     subworkflow_node_executions = execution.node_executions["n1"].subworkflow_node_executions
-#     subworkflow_node_executions["n1-0-n0"].inputs == {"a": 103}
-#     subworkflow_node_executions["n1-0-n1"].outputs == {"t1_int_output": 107, "c": "world"}
+    # check subworkflow task execution inputs and outputs
+    subworkflow_node_executions = execution.node_executions["n1"].subworkflow_node_executions
+    subworkflow_node_executions["n1-0-n0"].inputs == {"a": 103}
+    subworkflow_node_executions["n1-0-n1"].outputs == {"t1_int_output": 107, "c": "world"}
