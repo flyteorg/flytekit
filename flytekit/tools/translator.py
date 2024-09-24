@@ -174,9 +174,9 @@ def _fast_serialize_command_fn(
 
 
 @lru_cache
-def display_ipython_warning(input: str) -> None:
+def display_ipython_warning(msg: str) -> None:
     # This is a warning that is only displayed once per python type
-    logger.debug(input)
+    logger.debug(msg)
 
 
 def _update_serialization_settings_for_ipython(
@@ -185,7 +185,7 @@ def _update_serialization_settings_for_ipython(
     options: Optional[Options] = None,
 ) -> SerializationSettings:
     # If the entity is not a PythonAutoContainerTask, we don't need to do anything, as only Tasks with container |
-    # user code in container need to be serialized as pickled objects.
+    # user code in container needs to be serialized as pickled objects.
     if not isinstance(entity, (PythonAutoContainerTask, ArrayNodeMapTask)):
         return serialization_settings
 
@@ -246,7 +246,7 @@ def get_serializable_task(
         settings.version,
     )
 
-    # Try update the serialization settings for ipython / jupyter notebook / interactive mode
+    # Try to update the serialization settings for ipython / jupyter notebook / interactive mode
     _update_serialization_settings_for_ipython(entity, settings, options)
 
     if isinstance(entity, PythonFunctionTask) and entity.execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:

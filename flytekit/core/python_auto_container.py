@@ -264,7 +264,7 @@ class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
 
     @timeit("Load task")
     def load_task(self, loader_args: List[str]) -> PythonAutoContainerTask:
-        _, task_module, _, task_name, *extra_args = loader_args
+        _, task_module, _, task_name, *_ = loader_args
 
         task_module = importlib.import_module(name=task_module)  # type: ignore
         task_def = getattr(task_module, task_name)
