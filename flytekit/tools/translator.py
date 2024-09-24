@@ -185,7 +185,7 @@ def _update_serialization_settings_for_ipython(
     options: Optional[Options] = None,
 ) -> SerializationSettings:
     # Let's check if we are in an interactive environment like Jupyter notebook
-    if serialization_settings.interactive_mode_enabled is False:
+    if not serialization_settings.interactive_mode_enabled:
         return serialization_settings
 
     # If the entity is not a PythonAutoContainerTask, we don't need to do anything, as only Tasks with container |
