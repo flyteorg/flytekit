@@ -9,11 +9,15 @@ if TYPE_CHECKING:
     import pandas as pd
     import PIL.Image
     import plotly.express as px
+    import pygments
+    import ydata_profiling
 else:
     pd = lazy_module("pandas")
     markdown = lazy_module("markdown")
     px = lazy_module("plotly.express")
     PIL = lazy_module("PIL")
+    ydata_profiling = lazy_module("ydata_profiling")
+    pygments = lazy_module("pygments")
 
 
 class SourceCodeRenderer:
@@ -40,13 +44,9 @@ class SourceCodeRenderer:
         Returns:
             str: The resulting HTML as a string, including CSS and highlighted source code.
         """
-        from pygments import highlight
-        from pygments.formatters.html import HtmlFormatter
-        from pygments.lexers.python import PythonLexer
-
-        formatter = HtmlFormatter(style="colorful")
+        formatter = pygments.formatters.html.HtmlFormatter(style="colorful")
         css = formatter.get_style_defs(".highlight").replace("#fff0f0", "#ffffff")
-        html = highlight(source_code, PythonLexer(), formatter)
+        html = pygments.highlight(source_code, pygments.lexers.python.PythonLexer(), formatter)
         return f"<style>{css}</style>{html}"
 
 
@@ -60,8 +60,6 @@ class FrameProfilingRenderer:
 
     def to_html(self, df: "pd.DataFrame") -> str:
         assert isinstance(df, pd.DataFrame)
-        import ydata_profiling
-
         profile = ydata_profiling.ProfileReport(df, title=self._title)
         return profile.to_html()
 

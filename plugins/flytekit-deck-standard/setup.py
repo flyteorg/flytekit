@@ -6,13 +6,6 @@ microlib_name = f"flytekitplugins-{PLUGIN_NAME}-standard"
 
 plugin_requires = [
     "flytekit",
-    "markdown",
-    "plotly",
-    "ydata-profiling",
-    "pandas",
-    "ipywidgets",
-    "pygments",
-    "pillow",
 ]
 
 __version__ = "0.0.0+develop"
