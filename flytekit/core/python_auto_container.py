@@ -21,7 +21,6 @@ from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec
 from flytekit.loggers import logger
 from flytekit.models import task as _task_model
 from flytekit.models.security import Secret, SecurityContext
-from flytekit.tools.interactive import ipython_check
 
 T = TypeVar("T")
 _PRIMARY_CONTAINER_NAME_FIELD = "primary_container_name"
@@ -121,8 +120,6 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
             self._task_resolver = compilation_state.task_resolver
             if self._task_resolver.task_name(self) is not None:
                 self._name = self._task_resolver.task_name(self) or ""
-        elif ipython_check():
-            self._task_resolver = task_resolver or default_notebook_task_resolver
         else:
             self._task_resolver = task_resolver or default_task_resolver
         self._get_command_fn = self.get_default_command
@@ -165,6 +162,13 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         ]
 
         return container_args
+
+    def set_resolver(self, resolver: TaskResolverMixin):
+        """
+        By default, flytekit uses the DefaultTaskResolver to resolve the task. This method allows the user to set a custom
+        task resolver. It can be useful to override the task resolver for specific cases like running tasks in the jupyter notebook.
+        """
+        self._task_resolver = resolver
 
     def set_command_fn(self, get_command_fn: Optional[Callable[[SerializationSettings], List[str]]] = None):
         """

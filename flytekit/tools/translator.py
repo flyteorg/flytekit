@@ -23,7 +23,7 @@ from flytekit.core.gate import Gate
 from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
 from flytekit.core.legacy_map_task import MapPythonTask
 from flytekit.core.node import Node
-from flytekit.core.python_auto_container import PythonAutoContainerTask
+from flytekit.core.python_auto_container import PythonAutoContainerTask, default_notebook_task_resolver
 from flytekit.core.reference_entity import ReferenceEntity, ReferenceSpec, ReferenceTemplate
 from flytekit.core.task import ReferenceTask
 from flytekit.core.utils import ClassDecorator, _dnsify
@@ -270,6 +270,8 @@ def get_serializable_task(
             for entity_hint in entity.node_dependency_hints:
                 get_serializable(entity_mapping, settings, entity_hint, options)
 
+    if isinstance(entity, PythonAutoContainerTask) and settings.interactive_mode_enabled:
+        entity.set_resolver(default_notebook_task_resolver)
     container = entity.get_container(settings)
     # This pod will be incorrect when doing fast serialize
     pod = entity.get_k8s_pod(settings)
