@@ -66,11 +66,10 @@ class ArrayNode:
             self._min_success_ratio = min_success_ratio if min_success_ratio is not None else 1.0
             self._min_successes = 0
 
-        self._python_interface = self.target.python_interface or transform_typed_interface_to_interface(
-            self.target.interface
-        )
-        if self._python_interface is None:
+        target_interface = self.target.python_interface or transform_typed_interface_to_interface(self.target.interface)
+        if target_interface is None:
             raise ValueError("No interface found for the target entity.")
+        self._python_interface: flyte_interface.Interface = target_interface
 
         n_outputs = len(self._python_interface.outputs)
         if n_outputs > 1:

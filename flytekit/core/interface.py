@@ -267,6 +267,10 @@ def transform_inputs_to_parameters(
 def transform_typed_interface_to_interface(
     typed_interface: typing.Optional[_interface_models.TypedInterface],
 ) -> typing.Optional[Interface]:
+    """
+    Transform the given FlyteIDL's typed interface to a simple python native interface
+    :param typed_interface: the interface object
+    """
     if typed_interface is None:
         return None
 
