@@ -184,52 +184,54 @@ def _update_serialization_settings_for_ipython(
     serialization_settings: SerializationSettings,
     options: Optional[Options] = None,
 ) -> SerializationSettings:
+    # Let's check if we are in an interactive environment like Jupyter notebook
+    if serialization_settings.interactive_mode_enabled is False:
+        return serialization_settings
+
     # If the entity is not a PythonAutoContainerTask, we don't need to do anything, as only Tasks with container |
     # user code in container needs to be serialized as pickled objects.
     if not isinstance(entity, (PythonAutoContainerTask, ArrayNodeMapTask)):
         return serialization_settings
 
-    # Let's check if we are in an interactive environment like Jupyter notebook
-    if serialization_settings.interactive_mode_enabled is True:
-        # We are in an interactive environment. We will serialize the task as a pickled object and upload it to remote
-        # storage.
-        if isinstance(entity, PythonFunctionTask):
-            if entity.execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
-                raise FlyteAssertion(
-                    f"Dynamic tasks are not supported in interactive mode. {entity.name} is a dynamic task."
-                )
-
-        if options is None or options.file_uploader is None:
-            raise FlyteAssertion("To work interactively with Flyte, a code transporter/uploader should be configured.")
-
-        # For map tasks, we need to serialize the actual task, not the map task itself
-        if isinstance(entity, ArrayNodeMapTask):
-            actual_task = entity._run_task
-        else:
-            actual_task = entity
-
-        import gzip
-
-        import cloudpickle
-
-        from flytekit.configuration import FastSerializationSettings
-
-        display_ipython_warning("Jupyter notebook and interactive task support is still alpha.")
-
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            dest = pathlib.Path(tmp_dir, "pkl.gz")
-            with gzip.GzipFile(filename=dest, mode="wb", mtime=0) as gzipped:
-                cloudpickle.dump(actual_task, gzipped)
-            if os.path.getsize(dest) > 150 * 1024 * 1024:
-                raise ValueError(
-                    "The size of the task to pickled exceeds the limit of 150MB. Please reduce the size of the task."
-                )
-            display_ipython_warning("Uploading Pickled representation of Task to remote storage...")
-            _, native_url = options.file_uploader(dest)
-
-            serialization_settings.fast_serialization_settings = FastSerializationSettings(
-                enabled=True, distribution_location=native_url, destination_dir="."
+    # We are in an interactive environment. We will serialize the task as a pickled object and upload it to remote
+    # storage.
+    if isinstance(entity, PythonFunctionTask):
+        if entity.execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
+            raise FlyteAssertion(
+                f"Dynamic tasks are not supported in interactive mode. {entity.name} is a dynamic task."
             )
+
+    if options is None or options.file_uploader is None:
+        raise FlyteAssertion("To work interactively with Flyte, a code transporter/uploader should be configured.")
+
+    # For map tasks, we need to serialize the actual task, not the map task itself
+    if isinstance(entity, ArrayNodeMapTask):
+        actual_task = entity._run_task
+    else:
+        actual_task = entity
+
+    import gzip
+
+    import cloudpickle
+
+    from flytekit.configuration import FastSerializationSettings
+
+    display_ipython_warning("Jupyter notebook and interactive task support is still alpha.")
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        dest = pathlib.Path(tmp_dir, "pkl.gz")
+        with gzip.GzipFile(filename=dest, mode="wb", mtime=0) as gzipped:
+            cloudpickle.dump(actual_task, gzipped)
+        if os.path.getsize(dest) > 150 * 1024 * 1024:
+            raise ValueError(
+                "The size of the task to pickled exceeds the limit of 150MB. Please reduce the size of the task."
+            )
+        display_ipython_warning("Uploading Pickled representation of Task to remote storage...")
+        _, native_url = options.file_uploader(dest)
+
+        serialization_settings.fast_serialization_settings = FastSerializationSettings(
+            enabled=True, distribution_location=native_url, destination_dir="."
+        )
 
 
 def get_serializable_task(
