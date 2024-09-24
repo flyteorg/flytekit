@@ -35,6 +35,7 @@ DOMAIN = "development"
 VERSION = f"v{os.getpid()}"
 DEST_DIR = "/tmp"
 
+
 @pytest.fixture(scope="session")
 def register():
     out = subprocess.run(
@@ -137,7 +138,7 @@ def test_monitor_workflow_execution(register):
             break
 
         with pytest.raises(
-            FlyteAssertion, match="Please wait until the execution has completed before requesting the outputs.",
+                FlyteAssertion, match="Please wait until the execution has completed before requesting the outputs.",
         ):
             execution.outputs
 
@@ -387,7 +388,8 @@ def test_execute_with_default_launch_plan(register):
     from workflows.basic.subworkflows import parent_wf
 
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
-    execution = remote.execute(parent_wf, inputs={"a": 101}, version=VERSION, wait=True, image_config=ImageConfig.auto(img_name=IMAGE))
+    execution = remote.execute(parent_wf, inputs={"a": 101}, version=VERSION, wait=True,
+                               image_config=ImageConfig.auto(img_name=IMAGE))
     # check node execution inputs and outputs
     assert execution.node_executions["n0"].inputs == {"a": 101}
     assert execution.node_executions["n0"].outputs == {"t1_int_output": 103, "c": "world"}
@@ -540,7 +542,7 @@ class TestLargeFileTransfers:
         """An ephemeral minio S3 path which is wiped upon the context manager's exit"""
         # Generate a random path in our Minio s3 bucket, under <BUCKET>/PROJECT/DOMAIN/<UUID>
         buckets = s3_client.list_buckets()["Buckets"]
-        assert len(buckets) == 1 # We expect just the default sandbox bucket
+        assert len(buckets) == 1  # We expect just the default sandbox bucket
         bucket = buckets[0]["Name"]
         root = str(uuid.uuid4())
         key = f"{PROJECT}/{DOMAIN}/{root}/"
@@ -550,7 +552,6 @@ class TestLargeFileTransfers:
         if "Contents" in response:
             for obj in response["Contents"]:
                 TestLargeFileTransfers._delete_s3_file(s3_client, bucket, obj["Key"])
-
 
     @staticmethod
     @pytest.mark.parametrize("gigabytes", [2, 3])
@@ -592,13 +593,11 @@ class TestLargeFileTransfers:
             assert s3_md5_bytes == md5_bytes
 
 
-@mock.patch("flytekit.tools.interactive.ipython_check")
-def test_workflow_remote_func(mock_ipython_check):
+def test_workflow_remote_func():
     """Test the logic of the remote execution of workflows and tasks."""
-    mock_ipython_check.return_value = True
     from workflows.basic.child_workflow import parent_wf, double
 
-    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN, interactive_mode_enabled=True)
 
     out0 = remote.execute(
         double,
@@ -627,13 +626,11 @@ def test_workflow_remote_func(mock_ipython_check):
     assert out2.outputs["o0"] == 12
 
 
-@mock.patch("flytekit.tools.interactive.ipython_check")
-def test_execute_task_remote_func_list_of_floats(mock_ipython_check):
+def test_execute_task_remote_func_list_of_floats():
     """Test remote execution of a @task-decorated python function with a list of floats."""
-    mock_ipython_check.return_value = True
     from workflows.basic.list_float_wf import concat_list
 
-    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN, interactive_mode_enabled=True)
 
     xs: typing.List[float] = [0.1, 0.2, 0.3, 0.4, -99999.7]
     out = remote.execute(
@@ -646,13 +643,11 @@ def test_execute_task_remote_func_list_of_floats(mock_ipython_check):
     assert out.outputs["o0"] == "[0.1, 0.2, 0.3, 0.4, -99999.7]"
 
 
-@mock.patch("flytekit.tools.interactive.ipython_check")
-def test_execute_task_remote_func_convert_dict(mock_ipython_check):
+def test_execute_task_remote_func_convert_dict():
     """Test remote execution of a @task-decorated python function with a dict of strings."""
-    mock_ipython_check.return_value = True
     from workflows.basic.dict_str_wf import convert_to_string
 
-    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN, interactive_mode_enabled=True)
 
     d: typing.Dict[str, str] = {"key1": "value1", "key2": "value2"}
     out = remote.execute(
@@ -665,13 +660,11 @@ def test_execute_task_remote_func_convert_dict(mock_ipython_check):
     assert json.loads(out.outputs["o0"]) == {"key1": "value1", "key2": "value2"}
 
 
-@mock.patch("flytekit.tools.interactive.ipython_check")
-def test_execute_python_workflow_remote_func_dict_of_string_to_string(mock_ipython_check):
+def test_execute_python_workflow_remote_func_dict_of_string_to_string():
     """Test remote execution of a @workflow-decorated python function with a dict of strings."""
-    mock_ipython_check.return_value = True
     from workflows.basic.dict_str_wf import my_wf
 
-    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN, interactive_mode_enabled=True)
 
     d: typing.Dict[str, str] = {"k1": "v1", "k2": "v2"}
     out = remote.execute(
@@ -684,14 +677,12 @@ def test_execute_python_workflow_remote_func_dict_of_string_to_string(mock_ipyth
     assert json.loads(out.outputs["o0"]) == {"k1": "v1", "k2": "v2"}
 
 
-@mock.patch("flytekit.tools.interactive.ipython_check")
-def test_execute_python_workflow_remote_func_list_of_floats(mock_ipython_check):
+def test_execute_python_workflow_remote_func_list_of_floats():
     """Test remote execution of a @workflow-decorated python function with a list of floats."""
     """Test execution of a @workflow-decorated python function."""
-    mock_ipython_check.return_value = True
     from workflows.basic.list_float_wf import my_wf
 
-    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN, interactive_mode_enabled=True)
 
     xs: typing.List[float] = [42.24, 999.1, 0.0001]
     out = remote.execute(
@@ -703,13 +694,12 @@ def test_execute_python_workflow_remote_func_list_of_floats(mock_ipython_check):
     )
     assert out.outputs["o0"] == "[42.24, 999.1, 0.0001]"
 
-@mock.patch("flytekit.tools.interactive.ipython_check")
-def test_execute_workflow_remote_fn_with_maptask(mock_ipython_check):
+
+def test_execute_workflow_remote_fn_with_maptask():
     """Test remote execution of a @workflow-decorated python function with a map task."""
-    mock_ipython_check.return_value = True
     from workflows.basic.array_map import workflow_with_maptask
 
-    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN, interactive_mode_enabled=True)
 
     d: typing.List[int] = [1, 2, 3]
     out = remote.execute(
@@ -720,6 +710,7 @@ def test_execute_workflow_remote_fn_with_maptask(mock_ipython_check):
         image_config=ImageConfig.from_images(IMAGE),
     )
     assert out.outputs["o0"] == [4, 5, 6]
+
 
 def test_register_wf_fast(register):
     from workflows.basic.subworkflows import parent_wf
