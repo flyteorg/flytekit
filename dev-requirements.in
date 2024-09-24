@@ -48,17 +48,13 @@ types-decorator
 types-mock
 autoflake
 
-markdown
-ipywidgets
 pillow
 numpy
 pandas
 pyarrow
-pygments
 scikit-learn
 types-requests
 prometheus-client
-ydata-profiling
 
 orjson
 kubernetes>=12.0.1
