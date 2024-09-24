@@ -69,9 +69,9 @@ class ArrayNode:
         target_interface = self.target.python_interface or transform_typed_interface_to_interface(self.target.interface)
         if target_interface is None:
             raise ValueError("No interface found for the target entity.")
-        self._python_interface: flyte_interface.Interface = target_interface
+        self._target_interface: flyte_interface.Interface = target_interface
 
-        n_outputs = len(self._python_interface.outputs)
+        n_outputs = len(self._target_interface.outputs)
         if n_outputs > 1:
             raise ValueError("Only tasks with a single output are supported in map tasks.")
 
@@ -80,7 +80,7 @@ class ArrayNode:
 
         output_as_list_of_optionals = min_success_ratio is not None and min_success_ratio != 1 and n_outputs == 1
         collection_interface = transform_interface_to_list_interface(
-            self._python_interface, self._bound_inputs, output_as_list_of_optionals
+            self._target_interface, self._bound_inputs, output_as_list_of_optionals
         )
         self._collection_interface = collection_interface
 
@@ -135,12 +135,12 @@ class ArrayNode:
             k = binding.var
             if k not in self._bound_inputs:
                 v = kwargs[k]
-                if isinstance(v, list) and len(v) > 0 and isinstance(v[0], self._python_interface.inputs[k]):
+                if isinstance(v, list) and len(v) > 0 and isinstance(v[0], self._target_interface.inputs[k]):
                     mapped_entity_count = len(v)
                     break
                 else:
                     raise ValueError(
-                        f"Expected a list of {self._python_interface.inputs[k]} but got {type(v)} instead."
+                        f"Expected a list of {self._target_interface.inputs[k]} but got {type(v)} instead."
                     )
 
         failed_count = 0
@@ -161,12 +161,12 @@ class ArrayNode:
                     single_instance_inputs[k] = kwargs[k]
 
             # translate Python native inputs to Flyte literals
-            typed_interface = transform_interface_to_typed_interface(self._python_interface)
+            typed_interface = transform_interface_to_typed_interface(self._target_interface)
             literal_map = translate_inputs_to_literals(
                 ctx,
                 incoming_values=single_instance_inputs,
                 flyte_interface_types={} if typed_interface is None else typed_interface.inputs,
-                native_types=self._python_interface.inputs,
+                native_types=self._target_interface.inputs,
             )
             kwargs_literals = {k1: Promise(var=k1, val=v1) for k1, v1 in literal_map.items()}
 
