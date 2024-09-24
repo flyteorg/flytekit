@@ -16,11 +16,9 @@ Take a look at the conceptual `discussion <https://lyft.github.io/flyte/user/con
 behind workflows for additional information.
 
 """
-
 import typing
 
 from flytekit import task, workflow
-
 
 
 @task
@@ -37,7 +35,7 @@ def t2(a: str, b: str) -> str:
 # You can treat the outputs of a task as you normally would a Python function. Assign the output to two variables
 # and use them in subsequent tasks as normal. See :py:func:`flytekit.workflow`
 @workflow
-def my_basic_wf(a: int, b: str) -> (int, str):
+def my_wf(a: int, b: str) -> (int, str):
     x, y = t1(a=a)
     d = t2(a=y, b=b)
     return x, d
@@ -53,4 +51,4 @@ def my_basic_wf(a: int, b: str) -> (int, str):
 #   every argument should be passed in the form ``arg=value``. Failure to do so
 #   will result in an error
 if __name__ == "__main__":
-    print(f"Running my_wf(a=50, b='hello') {my_basic_wf(a=50, b='hello')}")
+    print(f"Running my_wf(a=50, b='hello') {my_wf(a=50, b='hello')}")

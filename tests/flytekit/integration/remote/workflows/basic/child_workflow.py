@@ -1,4 +1,3 @@
-
 from flytekit import LaunchPlan, task, workflow
 from flytekit.models.common import Labels
 
@@ -19,9 +18,7 @@ def my_childwf(a: int = 42) -> int:
     return b
 
 
-child_lp = LaunchPlan.get_or_create(
-    my_childwf, name="my_fixed_child_lp", labels=Labels({"l1": "v1"})
-)
+child_lp = LaunchPlan.get_or_create(my_childwf, name="my_fixed_child_lp", labels=Labels({"l1": "v1"}))
 
 
 @workflow

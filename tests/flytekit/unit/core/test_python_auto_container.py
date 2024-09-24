@@ -108,30 +108,6 @@ def test_default_command(default_serialization_settings):
     ]
 
 
-def test_interactive_command(interactive_serialization_settings):
-    cmd = task.get_default_command(settings=interactive_serialization_settings)
-    assert cmd == [
-        "pyflyte-execute",
-        "--inputs",
-        "{{.input}}",
-        "--output-prefix",
-        "{{.outputPrefix}}",
-        "--raw-output-data-prefix",
-        "{{.rawOutputDataPrefix}}",
-        "--checkpoint-path",
-        "{{.checkpointOutputPrefix}}",
-        "--prev-checkpoint",
-        "{{.prevCheckpointPrefix}}",
-        "--resolver",
-        "flytekit.core.python_auto_container.default_task_resolver",
-        "--",
-        "task-module",
-        "tests.flytekit.unit.core.test_python_auto_container",
-        "task-name",
-        "task",
-        "pkl",
-    ]
-
 
 def test_get_container(default_serialization_settings):
     c = task.get_container(default_serialization_settings)
@@ -179,6 +155,7 @@ def test_get_container_with_interactive_settings(interactive_serialization_setti
     ts = get_serializable_task(OrderedDict(), interactive_serialization_settings, task_with_env_vars, options=option)
     assert ts.template.container.image == "docker.io/xyz:some-git-hash"
     assert ts.template.container.env == {"FOO": "bar", "HAM": "spam"}
+    assert 'flytekit.core.python_auto_container.default_notebook_task_resolver' in ts.template.container.args
     assert interactive_serialization_settings.fast_serialization_settings is not None
     assert interactive_serialization_settings.fast_serialization_settings.enabled is True
     assert interactive_serialization_settings.fast_serialization_settings.destination_dir == "."

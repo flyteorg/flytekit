@@ -10,11 +10,9 @@ def convert_to_string(d: typing.Dict[str, str]) -> str:
 
 
 @workflow
-def my_dict_str_wf(d: typing.Dict[str, str]) -> str:
+def my_wf(d: typing.Dict[str, str]) -> str:
     return convert_to_string(d=d)
 
 
 if __name__ == "__main__":
-    print(
-        f"Running my_wf(d={{'a': 'rwx', 'b': '42'}})={my_dict_str_wf(d={'a': 'rwx', 'b': '42'})}"
-    )
+    print(f"Running my_wf(d={{'a': 'rwx', 'b': '42'}})={my_wf(d={'a': 'rwx', 'b': '42'})}")
