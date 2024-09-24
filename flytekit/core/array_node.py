@@ -1,5 +1,5 @@
 import math
-from typing import Any, List, Optional, Set, Tuple, Union
+from typing import TYPE_CHECKING, Any, List, Optional, Set, Tuple, Union
 
 from flyteidl.core import workflow_pb2 as _core_workflow
 
@@ -27,11 +27,14 @@ from flytekit.models.literals import Literal, LiteralCollection, Scalar
 
 ARRAY_NODE_SUBNODE_NAME = "array_node_subnode"
 
+if TYPE_CHECKING:
+    from flytekit.remote import FlyteLaunchPlan
+
 
 class ArrayNode:
     def __init__(
         self,
-        target: Any,
+        target: Union[LaunchPlan, "FlyteLaunchPlan"],
         execution_mode: _core_workflow.ArrayNode.ExecutionMode = _core_workflow.ArrayNode.FULL_STATE,
         bindings: Optional[List[_literal_models.Binding]] = None,
         concurrency: Optional[int] = None,
@@ -225,7 +228,7 @@ class ArrayNode:
 
 
 def array_node(
-    target: Any,
+    target: Union[LaunchPlan, "FlyteLaunchPlan"],
     concurrency: Optional[int] = None,
     min_success_ratio: Optional[float] = None,
     min_successes: Optional[int] = None,

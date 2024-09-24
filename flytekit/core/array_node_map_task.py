@@ -5,7 +5,7 @@ import logging
 import math
 import os  # TODO: use flytekit logger
 from contextlib import contextmanager
-from typing import Any, Dict, List, Optional, Set, Union, cast
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Union, cast
 
 import typing_extensions
 from flyteidl.core import tasks_pb2
@@ -29,6 +29,9 @@ from flytekit.models.task import Container, K8sPod, Sql, Task
 from flytekit.tools.module_loader import load_object_from_module
 from flytekit.types.pickle import pickle
 from flytekit.types.pickle.pickle import FlytePickleTransformer
+
+if TYPE_CHECKING:
+    from flytekit.remote import FlyteLaunchPlan
 
 
 class ArrayNodeMapTask(PythonTask):
@@ -356,7 +359,7 @@ class ArrayNodeMapTask(PythonTask):
 
 
 def map_task(
-    target: Any,
+    target: Union[LaunchPlan, PythonFunctionTask, "FlyteLaunchPlan"],
     concurrency: Optional[int] = None,
     min_successes: Optional[int] = None,
     min_success_ratio: float = 1.0,
