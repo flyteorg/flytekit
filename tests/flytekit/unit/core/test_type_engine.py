@@ -3232,6 +3232,8 @@ def test_union_file_directory():
         (typing.Union[typing.List[int], typing.List[str]], ["a", "b", "c"]),
         (typing.Union[typing.List[int], str], [1, 2, 3]),
         (typing.Union[typing.List[int], str], "hello"),
+        ((typing.Union[dict, str]), {"a": 1, "b": 2, "c": 3}),
+        ((typing.Union[dict, str]), "hello"),
     ],
 )
 def test_offloaded_literal(tmp_path, pt, pv):

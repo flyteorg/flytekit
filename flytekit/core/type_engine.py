@@ -55,7 +55,7 @@ TITLE = "title"
 # In Mashumaro, the default encoder uses strict_map_key=False, while the default decoder uses strict_map_key=True.
 # This is relevant for cases like Dict[int, str].
 # If strict_map_key=False is not used, the decoder will raise an error when trying to decode keys that are not strictly typed.｀
-def _default_flytekit_decoder(data: bytes) -> Any:
+def _default_msgpack_decoder(data: bytes) -> Any:
     return msgpack.unpackb(data, raw=False, strict_map_key=False)
 
 
@@ -229,11 +229,11 @@ class TypeTransformer(typing.Generic[T]):
             try:
                 decoder = self._msgpack_decoder[expected_python_type]
             except KeyError:
-                decoder = MessagePackDecoder(expected_python_type, pre_decoder_func=_default_flytekit_decoder)
+                decoder = MessagePackDecoder(expected_python_type, pre_decoder_func=_default_msgpack_decoder)
                 self._msgpack_decoder[expected_python_type] = decoder
             return decoder.decode(binary_idl_object.value)
         else:
-            raise TypeTransformerFailedError(f"Unsupported binary format {binary_idl_object.tag}")
+            raise TypeTransformerFailedError(f"Unsupported binary format `{binary_idl_object.tag}`")
 
     def to_html(self, ctx: FlyteContext, python_val: T, expected_python_type: Type[T]) -> str:
         """
@@ -727,7 +727,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 try:
                     decoder = self._msgpack_decoder[expected_python_type]
                 except KeyError:
-                    decoder = MessagePackDecoder(expected_python_type, pre_decoder_func=_default_flytekit_decoder)
+                    decoder = MessagePackDecoder(expected_python_type, pre_decoder_func=_default_msgpack_decoder)
                     self._msgpack_decoder[expected_python_type] = decoder
                 dc = decoder.decode(binary_idl_object.value)
 
@@ -1762,7 +1762,7 @@ class DictTransformer(TypeTransformer[dict]):
                     ),
                     metadata={"format": "pickle"},
                 )
-            raise TypeTransformerFailedError(f"Cannot convert {v} to Flyte Literal.\n" f"Error Message: {e}")
+            raise TypeTransformerFailedError(f"Cannot convert `{v}` to Flyte Literal.\n" f"Error Message: {e}")
 
     @staticmethod
     def is_pickle(python_type: Type[dict]) -> typing.Tuple[bool, Type]:
