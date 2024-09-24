@@ -165,6 +165,7 @@ def test_get_container_without_serialization_settings_envvars(minimal_serializat
     assert ts.template.container.image == "docker.io/xyz:some-git-hash"
     assert ts.template.container.env == {"HAM": "spam"}
 
+
 def test_get_container_with_interactive_settings(interactive_serialization_settings):
     c = task_with_env_vars.get_container(interactive_serialization_settings)
     assert c.image == "docker.io/xyz:some-git-hash"

@@ -18,19 +18,17 @@ behind workflows for additional information.
 """
 
 import typing
-import os
 
 from flytekit import task, workflow
 
-IMAGE = os.environ.get("FLYTEKIT_IMAGE", "localhost:30000/flytekit:dev")
 
 
-@task(container_image=IMAGE)
+@task
 def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
     return a + 2, "world"
 
 
-@task(container_image=IMAGE)
+@task
 def t2(a: str, b: str) -> str:
     return b + a
 

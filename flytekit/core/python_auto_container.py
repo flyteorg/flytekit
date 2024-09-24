@@ -21,6 +21,7 @@ from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec
 from flytekit.loggers import logger
 from flytekit.models import task as _task_model
 from flytekit.models.security import Secret, SecurityContext
+from flytekit.tools.interactive import ipython_check
 
 T = TypeVar("T")
 _PRIMARY_CONTAINER_NAME_FIELD = "primary_container_name"
@@ -120,6 +121,8 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
             self._task_resolver = compilation_state.task_resolver
             if self._task_resolver.task_name(self) is not None:
                 self._name = self._task_resolver.task_name(self) or ""
+        elif ipython_check():
+            self._task_resolver = task_resolver or default_notebook_task_resolver
         else:
             self._task_resolver = task_resolver or default_task_resolver
         self._get_command_fn = self.get_default_command
@@ -259,30 +262,47 @@ class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
     def load_task(self, loader_args: List[str]) -> PythonAutoContainerTask:
         _, task_module, _, task_name, *extra_args = loader_args
 
-        if len(extra_args) >= 1 and extra_args[0] == "pkl":
-            import gzip
-
-            import cloudpickle
-
-            with gzip.open("pkl.gz", "r") as f:
-                return cloudpickle.load(f)
-
         task_module = importlib.import_module(name=task_module)  # type: ignore
         task_def = getattr(task_module, task_name)
         return task_def
 
     def loader_args(self, settings: SerializationSettings, task: PythonAutoContainerTask) -> List[str]:  # type:ignore
         _, m, t, _ = extract_task_module(task)
-        if settings.interactive_mode_enabled:
-            return ["task-module", m, "task-name", t, "pkl"]
-        else:
-            return ["task-module", m, "task-name", t]
+        return ["task-module", m, "task-name", t]
 
     def get_all_tasks(self) -> List[PythonAutoContainerTask]:  # type: ignore
         raise NotImplementedError
 
 
 default_task_resolver = DefaultTaskResolver()
+
+
+class DefaultNotebookTaskResolver(TrackedInstance, TaskResolverMixin):
+    """
+    This resolved is used when the task is defined in a notebook. It is used to load the task from the notebook.
+    """
+
+    def name(self) -> str:
+        return "DefaultNotebookTaskResolver"
+
+    @timeit("Load task")
+    def load_task(self, loader_args: List[str]) -> PythonAutoContainerTask:
+        import gzip
+
+        import cloudpickle
+
+        with gzip.open("pkl.gz", "r") as f:
+            return cloudpickle.load(f)
+
+    def loader_args(self, settings: SerializationSettings, task: PythonAutoContainerTask) -> List[str]:  # type:ignore
+        _, m, t, _ = extract_task_module(task)
+        return ["task-module", m, "task-name", t]
+
+    def get_all_tasks(self) -> List[PythonAutoContainerTask]:  # type: ignore
+        raise NotImplementedError
+
+
+default_notebook_task_resolver = DefaultNotebookTaskResolver()
 
 
 def update_image_spec_copy_handling(image_spec: ImageSpec, settings: SerializationSettings):

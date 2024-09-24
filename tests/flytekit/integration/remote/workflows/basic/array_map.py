@@ -1,13 +1,10 @@
 import typing
 from functools import partial
-import os
 
 from flytekit import map_task, task, workflow
 
-IMAGE = os.environ.get("FLYTEKIT_IMAGE", "localhost:30000/flytekit:dev")
 
-
-@task(container_image=IMAGE)
+@task
 def fn(x: int, y: int) -> int:
     return x + y
 

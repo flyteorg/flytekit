@@ -1,12 +1,9 @@
 import typing
-import os
 
 from flytekit import task, workflow
 
-IMAGE = os.environ.get("FLYTEKIT_IMAGE", "localhost:30000/flytekit:dev")
 
-
-@task(container_image=IMAGE)
+@task
 def concat_list(xs: typing.List[float]) -> str:
     return f'[{", ".join([str(x) for x in xs])}]'
 

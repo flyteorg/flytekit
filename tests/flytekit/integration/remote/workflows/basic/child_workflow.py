@@ -1,17 +1,14 @@
-import os
 
 from flytekit import LaunchPlan, task, workflow
 from flytekit.models.common import Labels
 
-IMAGE = os.environ.get("FLYTEKIT_IMAGE", "localhost:30000/flytekit:dev")
 
-
-@task(container_image=IMAGE)
+@task
 def double(a: int) -> int:
     return a * 2
 
 
-@task(container_image=IMAGE)
+@task
 def add(a: int, b: int) -> int:
     return a + b
 

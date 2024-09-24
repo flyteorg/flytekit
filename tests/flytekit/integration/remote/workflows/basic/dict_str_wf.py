@@ -1,13 +1,10 @@
 import json
 import typing
-import os
 
 from flytekit import task, workflow
 
-IMAGE = os.environ.get("FLYTEKIT_IMAGE", "localhost:30000/flytekit:dev")
 
-
-@task(container_image=IMAGE)
+@task
 def convert_to_string(d: typing.Dict[str, str]) -> str:
     return json.dumps(d)
 
