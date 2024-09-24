@@ -356,7 +356,7 @@ class ArrayNodeMapTask(PythonTask):
 
 
 def map_task(
-    target: Union[LaunchPlan, PythonFunctionTask],
+    target: Any,
     concurrency: Optional[int] = None,
     min_successes: Optional[int] = None,
     min_success_ratio: float = 1.0,

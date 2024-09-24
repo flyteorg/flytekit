@@ -15,11 +15,13 @@ from flytekit.core.interface import (
     transform_inputs_to_parameters,
     transform_interface_to_list_interface,
     transform_interface_to_typed_interface,
+    transform_typed_interface_to_interface,
     transform_variable_map,
 )
 from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Void
 from flytekit.types.file import FlyteFile
+from flytekit.types.pickle.pickle import FlytePickle
 
 
 def test_extract_only():
@@ -409,3 +411,29 @@ def test_map_task_interface(min_success_ratio, expected_type):
     mt = map_task(t, min_success_ratio=min_success_ratio)
 
     assert mt.python_interface.outputs["o0"] == typing.List[expected_type]
+
+
+@pytest.mark.parametrize(
+    "type_interface, expected_python_interface_inputs, expected_python_interface_outputs",
+    [
+        (str, {"a": str}, {"o0": str}),
+        (int, {"a": int}, {"o0": int}),
+        (bool, {"a": bool}, {"o0": bool}),
+        (typing.List[str], {"a": typing.List[str]}, {"o0": typing.List[str]}),
+        (typing.List[typing.List[int]], {"a": typing.List[typing.List[int]]}, {"o0": typing.List[typing.List[int]]}),
+        (typing.Union[str, int], {"a": typing.Union[str, int]}, {"o0": typing.Union[str, int]}),
+        (typing.Dict[str, int], {"a": typing.Dict[str, int]}, {"o0": typing.Dict[str, int]}),
+        (typing.Optional[float], {"a": typing.Optional[float]}, {"o0": typing.Optional[float]}),
+        (bytes, {"a": FlytePickle}, {"o0": FlytePickle}),
+    ],
+)
+def test_transform_typed_interface_to_interface(type_interface, expected_python_interface_inputs, expected_python_interface_outputs):
+    @task
+    def t(a: type_interface) -> type_interface:
+        return a
+
+    typed_interface = transform_interface_to_typed_interface(t.python_interface)
+    python_interface = transform_typed_interface_to_interface(typed_interface)
+
+    assert expected_python_interface_inputs == python_interface.inputs
+    assert expected_python_interface_outputs == python_interface.outputs

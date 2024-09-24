@@ -86,7 +86,7 @@ class ArrayNode:
         self._collection_interface = collection_interface
 
         self.metadata = None
-        if isinstance(target, LaunchPlan):
+        if isinstance(target, LaunchPlan) or isinstance(target, FlyteLaunchPlan):
             if self._execution_mode != _core_workflow.ArrayNode.FULL_STATE:
                 raise ValueError("Only execution version 1 is supported for LaunchPlans.")
             if metadata:
@@ -94,10 +94,6 @@ class ArrayNode:
                     self.metadata = metadata
                 else:
                     raise TypeError("Invalid metadata for LaunchPlan. Should be NodeMetadata.")
-        elif isinstance(target, FlyteLaunchPlan):
-            # TODO clean this up...
-            if not metadata:
-                self.metadata = None
         else:
             raise ValueError(f"Only LaunchPlans are supported for now, but got {type(target)}")
 
@@ -140,12 +136,12 @@ class ArrayNode:
             k = binding.var
             if k not in self._bound_inputs:
                 v = kwargs[k]
-                if isinstance(v, list) and len(v) > 0 and isinstance(v[0], self.target.python_interface.inputs[k]):
+                if isinstance(v, list) and len(v) > 0 and isinstance(v[0], self._python_interface.inputs[k]):
                     mapped_entity_count = len(v)
                     break
                 else:
                     raise ValueError(
-                        f"Expected a list of {self.target.python_interface.inputs[k]} but got {type(v)} instead."
+                        f"Expected a list of {self._python_interface.inputs[k]} but got {type(v)} instead."
                     )
 
         failed_count = 0
@@ -166,12 +162,12 @@ class ArrayNode:
                     single_instance_inputs[k] = kwargs[k]
 
             # translate Python native inputs to Flyte literals
-            typed_interface = transform_interface_to_typed_interface(self.target.python_interface)
+            typed_interface = transform_interface_to_typed_interface(self._python_interface)
             literal_map = translate_inputs_to_literals(
                 ctx,
                 incoming_values=single_instance_inputs,
                 flyte_interface_types={} if typed_interface is None else typed_interface.inputs,
-                native_types=self.target.python_interface.inputs,
+                native_types=self._python_interface.inputs,
             )
             kwargs_literals = {k1: Promise(var=k1, val=v1) for k1, v1 in literal_map.items()}
 
