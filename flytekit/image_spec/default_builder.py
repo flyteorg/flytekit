@@ -183,11 +183,11 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
         )
 
         for file_to_copy in ls:
-            src_path = os.path.relpath(file_to_copy, start=str(image_spec.source_root))
-            Path(source_path / src_path).parent.mkdir(parents=True, exist_ok=True)
+            rel_path = os.path.relpath(file_to_copy, start=str(image_spec.source_root))
+            Path(source_path / rel_path).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(
                 file_to_copy,
-                source_path / src_path,
+                source_path / rel_path,
             )
 
         copy_command_runtime = "COPY --chown=flytekit ./src /root"
@@ -222,7 +222,6 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
     else:
         run_commands = ""
 
-    extra_copy_cmds = ""
     if image_spec.copy:
         copy_commands = []
         for src in image_spec.copy:

@@ -179,7 +179,7 @@ def compute_digest(source: Union[os.PathLike, List[os.PathLike]], filter: Option
     """
     hasher = hashlib.md5()
 
-    def process_file(path: os.PathLike, rel_path: os.PathLike) -> None:
+    def compute_digest_for_file(path: os.PathLike, rel_path: os.PathLike) -> None:
         # Only consider files that exist (e.g. disregard symlinks that point to non-existent files)
         if not os.path.exists(path):
             logger.info(f"Skipping non-existent file {path}")
@@ -192,23 +192,23 @@ def compute_digest(source: Union[os.PathLike, List[os.PathLike]], filter: Option
         _filehash_update(path, hasher)
         _pathhash_update(rel_path, hasher)
 
-    def process_dir(source: os.PathLike) -> None:
+    def compute_digest_for_dir(source: os.PathLike) -> None:
         for root, _, files in os.walk(source, topdown=True):
             files.sort()
 
             for fname in files:
                 abspath = os.path.join(root, fname)
                 relpath = os.path.relpath(abspath, source)
-                process_file(abspath, relpath)
+                compute_digest_for_file(abspath, relpath)
 
     if isinstance(source, list):
         for src in source:
             if os.path.isdir(src):
-                process_dir(src)
+                compute_digest_for_dir(src)
             else:
-                process_file(src, os.path.basename(src))
+                compute_digest_for_file(src, os.path.basename(src))
     else:
-        process_dir(source)
+        compute_digest_for_dir(source)
 
     return hasher.hexdigest()
 
