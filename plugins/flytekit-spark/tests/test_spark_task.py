@@ -11,7 +11,7 @@ from pyspark.sql import SparkSession
 
 import flytekit
 from flytekit import StructuredDataset, StructuredDatasetTransformerEngine, task
-from flytekit.configuration import Image, ImageConfig, SerializationSettings
+from flytekit.configuration import Image, ImageConfig, SerializationSettings, FastSerializationSettings
 from flytekit.core.context_manager import ExecutionParameters, FlyteContextManager, ExecutionState
 
 
@@ -133,9 +133,24 @@ def test_spark_addPyFile():
     def my_spark(a: int) -> int:
         return a
 
+    default_img = Image(name="default", fqn="test", tag="tag")
+    serialization_settings = SerializationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env={"FOO": "baz"},
+        image_config=ImageConfig(default_image=default_img, images=[default_img]),
+        fast_serialization_settings=FastSerializationSettings(
+            enabled=True,
+            destination_dir="/User/flyte/workflows",
+            distribution_location="s3://my-s3-bucket/fast/123",
+        ),
+    )
+
     ctx = context_manager.FlyteContextManager.current_context()
     with context_manager.FlyteContextManager.with_context(
-            ctx.with_execution_state(ctx.new_execution_state().with_params(mode=ExecutionState.Mode.TASK_EXECUTION))
+            ctx.with_execution_state(
+                ctx.new_execution_state().with_params(mode=ExecutionState.Mode.TASK_EXECUTION)).with_serialization_settings(serialization_settings)
     ) as ctx:
         my_spark.pre_execute(ctx.user_space_params)
         os.remove(os.path.join(os.getcwd(), "flyte_wf.zip"))

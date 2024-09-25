@@ -195,7 +195,11 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
 
         self.sess = sess_builder.getOrCreate()
 
-        if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
+        if (
+            ctx.serialization_settings.fast_serialization_settings.enabled
+            and ctx.execution_state
+            and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION
+        ):
             file_name = "flyte_wf"
             file_format = "zip"
             shutil.make_archive(file_name, file_format, os.getcwd())
