@@ -1,23 +1,23 @@
+import json
 import os
 import tempfile
 from dataclasses import dataclass, field
+from datetime import date, datetime, timedelta
 from enum import Enum
 from typing import Dict, List
-from datetime import datetime, date, timedelta
+
 import pytest
-import json
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
-import msgpack
 from mashumaro.codecs.json import JSONEncoder
 from mashumaro.codecs.msgpack import MessagePackEncoder
 
-from flytekit import workflow, task
-from flytekit.models.literals import Binary, Literal, Scalar
+from flytekit import task, workflow
 from flytekit.core.context_manager import FlyteContextManager
-from flytekit.core.type_engine import TypeEngine, DataclassTransformer
-from flytekit.types.file import FlyteFile
+from flytekit.core.type_engine import DataclassTransformer, TypeEngine
+from flytekit.models.literals import Binary, Literal, Scalar
 from flytekit.types.directory import FlyteDirectory
+from flytekit.types.file import FlyteFile
 
 
 class Status(Enum):
