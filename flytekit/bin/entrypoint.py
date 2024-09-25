@@ -18,6 +18,7 @@ from flyteidl.core import literals_pb2 as _literals_pb2
 from flytekit.configuration import (
     SERIALIZED_CONTEXT_ENV_VAR,
     FastSerializationSettings,
+    ImageConfig,
     SerializationSettings,
     StatsConfig,
 )
@@ -325,16 +326,20 @@ def setup_execution(
     if compressed_serialization_settings:
         ss = SerializationSettings.from_transport(compressed_serialization_settings)
         ssb = ss.new_builder()
-        ssb.project = ssb.project or exe_project
-        ssb.domain = ssb.domain or exe_domain
-        ssb.version = tk_version
-        if dynamic_addl_distro:
-            ssb.fast_serialization_settings = FastSerializationSettings(
-                enabled=True,
-                destination_dir=dynamic_dest_dir,
-                distribution_location=dynamic_addl_distro,
-            )
-        cb = cb.with_serialization_settings(ssb.build())
+    else:
+        ss = SerializationSettings(ImageConfig.auto())
+        ssb = ss.new_builder()
+
+    ssb.project = ssb.project or exe_project
+    ssb.domain = ssb.domain or exe_domain
+    ssb.version = tk_version
+    if dynamic_addl_distro:
+        ssb.fast_serialization_settings = FastSerializationSettings(
+            enabled=True,
+            destination_dir=dynamic_dest_dir,
+            distribution_location=dynamic_addl_distro,
+        )
+    cb = cb.with_serialization_settings(ssb.build())
 
     with FlyteContextManager.with_context(cb) as ctx:
         yield ctx
