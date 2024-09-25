@@ -60,6 +60,7 @@ class ImageSpec:
                   Python files into the image.
 
             If the option is set by the user, then that option is of course used.
+        copy: List of files/directories to copy to /root. e.g. ["src/file1.txt", "src/file2.txt"]
     """
 
     name: str = "flytekit"
@@ -84,6 +85,7 @@ class ImageSpec:
     commands: Optional[List[str]] = None
     tag_format: Optional[str] = None
     source_copy_mode: Optional[CopyFileDetection] = None
+    copy: Optional[List[str]] = None
 
     def __post_init__(self):
         self.name = self.name.lower()
@@ -178,6 +180,12 @@ class ImageSpec:
             # Since the source root is supposed to represent the files, store the digest into the source root as a
             # shortcut to represent all the files.
             spec = dataclasses.replace(spec, source_root=ls_digest)
+
+        if self.copy:
+            from flytekit.tools.fast_registration import compute_digest
+
+            digest = compute_digest(self.copy, None)
+            spec = dataclasses.replace(spec, copy=digest)
 
         if spec.requirements:
             requirements = hashlib.sha1(pathlib.Path(spec.requirements).read_bytes().strip()).hexdigest()
@@ -305,6 +313,12 @@ class ImageSpec:
         """
         new_image_spec = self._update_attribute("apt_packages", apt_packages)
         return new_image_spec
+
+    def with_copy(self, src: Union[str, List[str]]) -> "ImageSpec":
+        """
+        Builder that returns a new image spec with the source files copied to the destination directory.
+        """
+        return self._update_attribute("copy", src)
 
     def force_push(self) -> "ImageSpec":
         """
