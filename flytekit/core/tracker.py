@@ -10,6 +10,7 @@ from typing import Callable, Optional, Tuple, Union
 from flytekit.configuration.feature_flags import FeatureFlags
 from flytekit.exceptions import system as _system_exceptions
 from flytekit.loggers import developer_logger, logger
+from flytekit.tools.interactive import ipython_check
 
 
 def import_module_from_file(module_name, file):
@@ -276,6 +277,8 @@ class _ModuleSanitizer(object):
         # Execution in a Jupyter notebook, we cannot resolve the module path
         if not os.path.exists(dirname):
             logger.warning(f"Directory {dirname} does not exist. It is likely that we are in a Jupyter notebook.")
+            if not ipython_check():
+                raise AssertionError(f"Directory {dirname} does not exist, and we are not in a Jupyter notebook.")
             return basename
 
         # If we have reached a directory with no __init__, ignore

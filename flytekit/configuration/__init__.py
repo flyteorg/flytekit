@@ -140,10 +140,10 @@ import tempfile
 import typing
 from dataclasses import dataclass, field
 from io import BytesIO
-from typing import Callable, Dict, List, Optional
+from typing import Dict, List, Optional
 
 import yaml
-from dataclasses_json import DataClassJsonMixin, Exclude, config
+from dataclasses_json import DataClassJsonMixin
 
 from flytekit.configuration import internal as _internal
 from flytekit.configuration.default_images import DefaultImages
