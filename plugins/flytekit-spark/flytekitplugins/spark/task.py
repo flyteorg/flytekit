@@ -196,7 +196,9 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
         self.sess = sess_builder.getOrCreate()
 
         if (
-            ctx.serialization_settings.fast_serialization_settings.enabled
+            ctx.serialization_settings
+            and ctx.serialization_settings.fast_serialization_settings
+            and ctx.serialization_settings.fast_serialization_settings.enabled
             and ctx.execution_state
             and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION
         ):
