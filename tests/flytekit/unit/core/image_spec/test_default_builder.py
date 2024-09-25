@@ -39,7 +39,7 @@ def test_create_docker_context(tmp_path):
             entrypoint=["/bin/bash"],
             pip_extra_index_url=["https://extra-url.com"],
             source_copy_mode=CopyFileDetection.ALL,
-            copy=[tmp_file.relative_to(Path.cwd().as_posix())],
+            copy=[tmp_file.relative_to(Path.cwd()).as_posix()],
         )
 
         create_docker_context(image_spec, docker_context_path)
@@ -57,7 +57,7 @@ def test_create_docker_context(tmp_path):
     assert "RUN mkdir my_dir" in dockerfile_content
     assert "ENTRYPOINT [\"/bin/bash\"]" in dockerfile_content
     assert "mkdir -p $HOME" in dockerfile_content
-    assert f"COPY --chown=flytekit {tmp_file.relative_to(Path.cwd().as_posix())} /root/" in dockerfile_content
+    assert f"COPY --chown=flytekit {tmp_file.relative_to(Path.cwd()).as_posix()} /root/" in dockerfile_content
 
     requirements_path = docker_context_path / "requirements_uv.txt"
     assert requirements_path.exists()
