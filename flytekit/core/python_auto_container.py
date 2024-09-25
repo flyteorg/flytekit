@@ -24,6 +24,7 @@ from flytekit.models.security import Secret, SecurityContext
 
 T = TypeVar("T")
 _PRIMARY_CONTAINER_NAME_FIELD = "primary_container_name"
+PICKLE_FILE_PATH = "pkl.gz"
 
 
 class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
@@ -295,7 +296,7 @@ class DefaultNotebookTaskResolver(TrackedInstance, TaskResolverMixin):
 
         import cloudpickle
 
-        with gzip.open("pkl.gz", "r") as f:
+        with gzip.open(PICKLE_FILE_PATH, "r") as f:
             return cloudpickle.load(f)
 
     def loader_args(self, settings: SerializationSettings, task: PythonAutoContainerTask) -> List[str]:  # type:ignore

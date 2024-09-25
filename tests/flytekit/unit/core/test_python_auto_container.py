@@ -8,7 +8,7 @@ from kubernetes.client.models import V1Container, V1EnvVar, V1PodSpec, V1Resourc
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.base_task import TaskMetadata
 from flytekit.core.pod_template import PodTemplate
-from flytekit.core.python_auto_container import PythonAutoContainerTask, get_registerable_container_image
+from flytekit.core.python_auto_container import PythonAutoContainerTask, get_registerable_container_image, PICKLE_FILE_PATH
 from flytekit.core.resources import Resources
 from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec
 from flytekit.tools.translator import get_serializable_task, Options
@@ -159,7 +159,7 @@ def test_get_container_with_interactive_settings(interactive_serialization_setti
     assert interactive_serialization_settings.fast_serialization_settings is not None
     assert interactive_serialization_settings.fast_serialization_settings.enabled is True
     assert interactive_serialization_settings.fast_serialization_settings.destination_dir == "."
-    assert interactive_serialization_settings.fast_serialization_settings.distribution_location == "pkl.gz"
+    assert interactive_serialization_settings.fast_serialization_settings.distribution_location == PICKLE_FILE_PATH
 
 
 task_with_pod_template = DummyAutoContainerTask(

@@ -20,6 +20,7 @@ from rich.tree import Tree
 
 from flytekit.constants import CopyFileDetection
 from flytekit.core.context_manager import FlyteContextManager
+from flytekit.core.python_auto_container import PICKLE_FILE_PATH
 from flytekit.core.utils import timeit
 from flytekit.exceptions.user import FlyteDataNotFoundException
 from flytekit.loggers import logger
@@ -233,6 +234,6 @@ def download_distribution(additional_distribution: str, destination: str):
             stdout=subprocess.PIPE,
         )
         result.check_returncode()
-    elif tarfile_name != "pkl.gz":
+    elif tarfile_name != PICKLE_FILE_PATH:
         # The distribution is not a pickled file.
         raise RuntimeError("Unrecognized additional distribution format for {}".format(additional_distribution))

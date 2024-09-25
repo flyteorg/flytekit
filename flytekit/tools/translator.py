@@ -22,7 +22,11 @@ from flytekit.core.gate import Gate
 from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
 from flytekit.core.legacy_map_task import MapPythonTask
 from flytekit.core.node import Node
-from flytekit.core.python_auto_container import PythonAutoContainerTask, default_notebook_task_resolver
+from flytekit.core.python_auto_container import (
+    PICKLE_FILE_PATH,
+    PythonAutoContainerTask,
+    default_notebook_task_resolver,
+)
 from flytekit.core.reference_entity import ReferenceEntity, ReferenceSpec, ReferenceTemplate
 from flytekit.core.task import ReferenceTask
 from flytekit.core.utils import ClassDecorator, _dnsify
@@ -208,7 +212,7 @@ def _update_serialization_settings_for_ipython(
         from flytekit.configuration import FastSerializationSettings
 
         with tempfile.TemporaryDirectory() as tmp_dir:
-            dest = pathlib.Path(tmp_dir, "pkl.gz")
+            dest = pathlib.Path(tmp_dir, PICKLE_FILE_PATH)
             with gzip.GzipFile(filename=dest, mode="wb", mtime=0) as gzipped:
                 cloudpickle.dump(actual_task, gzipped)
             if os.path.getsize(dest) > 150 * 1024 * 1024:
