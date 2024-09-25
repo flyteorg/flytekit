@@ -1,4 +1,4 @@
-import sys
+import subprocess
 import typing
 from collections import OrderedDict
 from dataclasses import dataclass
@@ -6,7 +6,7 @@ from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from flyteidl.admin import schedule_pb2
 
-from flytekit import ImageSpec, PythonFunctionTask, SourceCode
+from flytekit import ImageSpec, PythonFunctionTask, SourceCode, logger
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core import constants as _common_constants
 from flytekit.core import context_manager
@@ -30,7 +30,6 @@ from flytekit.models import interface as interface_models
 from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models import security
 from flytekit.models.admin import workflow as admin_workflow_models
-from flytekit.models.admin.workflow import WorkflowSpec
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _core_wf
 from flytekit.models.core import workflow as workflow_model
@@ -820,19 +819,71 @@ def get_serializable(
     else:
         raise ValueError(f"Non serializable type found {type(entity)} Entity {entity}")
 
-    if isinstance(entity, TaskSpec) or isinstance(entity, WorkflowSpec):
-        # 1. Check if the size of long description exceeds 16KB
-        # 2. Extract the repo URL from the git config, and assign it to the link of the source code of the description entity
-        if entity.docs and entity.docs.long_description:
-            if entity.docs.long_description.value:
-                if sys.getsizeof(entity.docs.long_description.value) > 16 * 1024 * 1024:
-                    raise ValueError(
-                        "Long Description of the flyte entity exceeds the 16KB size limit. Please specify the uri in the long description instead."
-                    )
-            entity.docs.source_code = SourceCode(link=settings.git_repo)
-    # This needs to be at the bottom not the top - i.e. dependent tasks get added before the workflow containing it
+    if (
+        isinstance(entity, (PythonTask, WorkflowBase))
+        and not isinstance(entity, ReferenceEntity)
+        and entity.module_file
+    ):
+        # Extract the repo URL from the git config, and assign it to the link of the source code of the description entity
+        entity.docs.source_code = SourceCode(link=_get_git_link(str(entity.module_file), settings))
+    # This needs to be at the bottom, not the top - i.e., dependent tasks get added before the workflow containing it
     entity_mapping[entity] = cp_entity
     return cp_entity
+
+
+def _get_git_link(module: str, settings: SerializationSettings) -> Optional[str]:
+    """
+    Get the git link from the task/workflow.
+    This is used to set the source code link in the description of the entity.
+
+    :param module: the full name of the module
+    :param settings: the serialization settings
+    :return: the git source code link
+    """
+    if not settings.git_repo:
+        return None
+
+    from flytekit.remote.remote import _get_git_root
+
+    if _is_file_pushed(settings.source_root, module):
+        return settings.git_repo + module.removeprefix(_get_git_root(settings.source_root))
+
+    return None
+
+
+def _is_file_pushed(source_root: str, filename: str) -> bool:
+    """
+    Check if a specific file has been pushed to the remote repository.
+
+    Args:
+        source_root: The root directory of the source code.
+        filename: The name of the file to check.
+
+    Returns:
+        True if the file has been pushed, False otherwise.
+    """
+    try:
+        # Check if the file is tracked by Git
+        check_file_command = ["git", "ls-files", filename]
+        result = subprocess.run(
+            check_file_command, cwd=source_root, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        )
+
+        if not result.stdout.strip():
+            return False
+
+        # Compare the file version in the current branch with the remote branch
+        diff_command = ["git", "diff", "--name-only", "@{u}", filename]
+        diff_result = subprocess.run(
+            diff_command, cwd=source_root, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        )
+
+        # If there is no output from diff, the file has been pushed
+        return not bool(diff_result.stdout.strip())
+
+    except Exception as e:
+        logger.debug(f"Error while checking the file's push status: {str(e)}")
+        return False
 
 
 def gather_dependent_entities(

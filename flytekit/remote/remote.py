@@ -13,6 +13,7 @@ import functools
 import hashlib
 import os
 import pathlib
+import subprocess
 import tempfile
 import time
 import typing
@@ -155,12 +156,32 @@ def _get_entity_identifier(
     )
 
 
-def _get_git_repo_url(source_path: str):
+@functools.lru_cache
+def _get_git_root(source_path: str) -> typing.Optional[str]:
+    """
+    Get the root of the git repository in the source path.
+    """
+    return (
+        subprocess.Popen(["git", "rev-parse", "--show-toplevel"], stdout=subprocess.PIPE, cwd=source_path)
+        .communicate()[0]
+        .rstrip()
+        .decode("utf-8")
+    )
+
+
+def _get_git_repo_url(source_path: str) -> typing.Optional[str]:
     """
     Get git repo URL from remote.origin.url
     """
     try:
-        git_config = pathlib.Path(source_path) / ".git" / "config"
+        git_root = _get_git_root(source_path)
+        git_sha = (
+            subprocess.Popen(["git", "rev-parse", "HEAD"], stdout=subprocess.PIPE, cwd=git_root)
+            .communicate()[0]
+            .rstrip()
+            .decode("utf-8")
+        )
+        git_config = pathlib.Path(git_root) / ".git" / "config"
         if not git_config.exists():
             raise ValueError(f"{source_path} is not a git repo")
 
@@ -170,18 +191,19 @@ def _get_git_repo_url(source_path: str):
 
         if url.startswith("git@"):
             # url format: git@github.com:flytekit/flytekit.git
-            prefix_len, suffix_len = len("git@"), len(".git")
-            return url[prefix_len:-suffix_len].replace(":", "/")
+            repo_link = url.removeprefix("git@").removesuffix(".git").replace(":", "/")
         elif url.startswith("https://"):
             # url format: https://github.com/flytekit/flytekit
             prefix_len = len("https://")
-            return url[prefix_len:]
+            repo_link = url[prefix_len:]
         elif url.startswith("http://"):
             # url format: http://github.com/flytekit/flytekit
             prefix_len = len("http://")
-            return url[prefix_len:]
+            repo_link = url[prefix_len:]
         else:
             raise ValueError("Unable to parse url")
+
+        return f"{repo_link}/blob/{git_sha}"
 
     except Exception as e:
         logger.debug(f"unable to find the git config in {source_path} with error: {str(e)}")

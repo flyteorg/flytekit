@@ -63,7 +63,7 @@ class SourceCode(_common_models.FlyteIdlEntity):
 @dataclass
 class Documentation(_common_models.FlyteIdlEntity):
     """
-    DescriptionEntity contains detailed description for the task/workflow/launch plan.
+    DescriptionEntity contains a detailed description for the task/workflow/launch plan.
     Documentation could provide insight into the algorithms, business use case, etc.
     Args:
         short_description (str): One-liner overview of the entity.

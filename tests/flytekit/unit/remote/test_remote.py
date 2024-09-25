@@ -634,7 +634,7 @@ def test_get_git_repo_url(url, host, tmp_path):
     subprocess.check_output([git_exec, "remote", "add", "origin", url], cwd=source_path)
 
     returned_url = _get_git_repo_url(source_path)
-    assert returned_url == f"{host}/flytekit/flytekit"
+    assert returned_url == f"{host}/flytekit/flytekit/blob/HEAD"
 
 
 def test_get_git_report_url_not_a_git_repo(tmp_path):

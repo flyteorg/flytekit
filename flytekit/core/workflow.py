@@ -30,6 +30,7 @@ from flytekit.core.context_manager import (
 from flytekit.core.docstring import Docstring
 from flytekit.core.interface import (
     Interface,
+    get_documentation_from_docstring,
     transform_function_to_interface,
     transform_interface_to_typed_interface,
 )
@@ -57,7 +58,7 @@ from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model
-from flytekit.models.documentation import Description, Documentation
+from flytekit.models.documentation import Documentation
 from flytekit.types.error import FlyteError
 
 GLOBAL_START_NODE = Node(
@@ -207,23 +208,9 @@ class WorkflowBase(object):
         self._output_bindings: List[_literal_models.Binding] = []
         self._on_failure = on_failure
         self._failure_node = None
-        self._docs = docs
-
-        if self._python_interface.docstring:
-            if self.docs is None:
-                self._docs = Documentation(
-                    short_description=self._python_interface.docstring.short_description,
-                    long_description=Description(value=self._python_interface.docstring.long_description),
-                )
-            else:
-                if self._python_interface.docstring.short_description:
-                    cast(
-                        Documentation, self._docs
-                    ).short_description = self._python_interface.docstring.short_description
-                if self._python_interface.docstring.long_description:
-                    self._docs = Description(value=self._python_interface.docstring.long_description)
-
+        self._docs = get_documentation_from_docstring(self._python_interface.docstring, docs)
         FlyteEntities.entities.append(self)
+
         super().__init__(**kwargs)
 
     @property
@@ -422,6 +409,8 @@ class ImperativeWorkflow(WorkflowBase):
         workflow_metadata_defaults = WorkflowMetadataDefaults(interruptible)
         self._compilation_state = CompilationState(prefix="")
         self._inputs = {}
+        # TODO: Get the module file that defines the ImperativeWorkflow
+        self._module_file = None
         # This unbound inputs construct is just here to help workflow authors detect issues a bit earlier. It just
         # keeps track of workflow inputs that you've declared with add_workflow_input but haven't yet consumed. This
         # is an error that Admin would return at compile time anyways, but this allows flytekit to raise
@@ -453,6 +442,13 @@ class ImperativeWorkflow(WorkflowBase):
         the global start node.
         """
         return self._inputs
+
+    @property
+    def module_file(self) -> Optional[str]:
+        """
+        The module file is the file that the ImperativeWorkflow is defined in.
+        """
+        return self._module_file
 
     def __repr__(self):
         return super().__repr__() + f"Nodes ({len(self.compilation_state.nodes)}): {self.compilation_state.nodes}"
