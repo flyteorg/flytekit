@@ -318,16 +318,7 @@ class ImageSpec:
         """
         Builder that returns a new image spec with the source files copied to the destination directory.
         """
-        new_image_spec = copy.deepcopy(self)
-        if new_image_spec.copy is None:
-            new_image_spec.copy = []
-
-        if isinstance(src, list):
-            new_image_spec.copy.extend(src)
-        else:
-            new_image_spec.copy.append(src)
-
-        return new_image_spec
+        return self._update_attribute("copy", src)
 
     def force_push(self) -> "ImageSpec":
         """
