@@ -1745,14 +1745,17 @@ class DictTransformer(TypeTransformer[dict]):
         return None, None
 
     @staticmethod
-    def dict_to_binary_literal(ctx: FlyteContext, v: dict, allow_pickle: bool) -> Literal:
+    def dict_to_binary_literal(ctx: FlyteContext, v: dict, python_type: Type[dict], allow_pickle: bool) -> Literal:
         """
-        Creates a flyte-specific ``Literal`` value from a native python dictionary.
+        Converts a Python dictionary to a Flyte-specific ``Literal`` using MessagePack encoding.
+        Falls back to Pickle if encoding fails and `allow_pickle` is True.
         """
         from flytekit.types.pickle import FlytePickle
 
         try:
-            msgpack_bytes = msgpack.dumps(v)
+            # Handle dictionaries with non-string keys (e.g., Dict[int, Type])
+            encoder = MessagePackEncoder(python_type)
+            msgpack_bytes = encoder.encode(v)
             return Literal(scalar=Scalar(binary=Binary(value=msgpack_bytes, tag="msgpack")))
         except TypeError as e:
             if allow_pickle:
@@ -1814,7 +1817,7 @@ class DictTransformer(TypeTransformer[dict]):
             allow_pickle, base_type = DictTransformer.is_pickle(python_type)
 
         if expected and expected.simple and expected.simple == SimpleType.STRUCT:
-            return self.dict_to_binary_literal(ctx, python_val, allow_pickle)
+            return self.dict_to_binary_literal(ctx, python_val, python_type, allow_pickle)
 
         lit_map = {}
         for k, v in python_val.items():
