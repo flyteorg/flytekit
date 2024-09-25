@@ -647,6 +647,13 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
                     "The --copy_all flag is now deprecated. Please use --copy all instead.",
                     fg="yellow",
                 )
+                if "--copy" in sys.argv:
+                    raise click.BadParameter(
+                        click.style(
+                            "Cannot use both --copy-all and --copy flags together. Please move to --copy.",
+                            fg="red",
+                        )
+                    )
 
             with context_manager.FlyteContextManager.with_context(remote.context.new_builder()):
                 show_files = run_level_params.verbose > 0

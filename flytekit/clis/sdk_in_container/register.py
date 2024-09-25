@@ -1,4 +1,5 @@
 import os
+import sys
 import typing
 
 import rich_click as click
@@ -169,6 +170,13 @@ def register(
     # that the copy flag uses.
     if non_fast:
         click.secho("The --non-fast flag is deprecated, please use --copy none instead", fg="yellow")
+        if "--copy" in sys.argv:
+            raise click.BadParameter(
+                click.style(
+                    "Cannot use both --non-fast and --copy flags together. Please move to --copy.",
+                    fg="red",
+                )
+            )
         copy = CopyFileDetection.NO_COPY
     if copy == CopyFileDetection.NO_COPY and not version:
         raise ValueError("Version is a required parameter in case --copy none is specified.")

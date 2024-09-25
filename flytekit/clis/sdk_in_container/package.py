@@ -1,4 +1,5 @@
 import os
+import sys
 import typing
 
 import rich_click as click
@@ -131,6 +132,13 @@ def package(
     """
     # Ensure that the two flags are consistent
     if fast:
+        if "--copy" in sys.argv:
+            raise click.BadParameter(
+                click.style(
+                    "Cannot use both --fast and --copy flags together. Please move to --copy",
+                    fg="red",
+                )
+            )
         click.secho("The --fast flag is deprecated, please use --copy all instead", fg="yellow")
         copy = CopyFileDetection.ALL
 
