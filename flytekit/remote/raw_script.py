@@ -5,13 +5,11 @@ from typing import Optional, Union, List
 from mashumaro.mixins.json import DataClassJSONMixin
 from mashumaro.mixins.yaml import DataClassYAMLMixin
 
-from flytekit import ImageSpec, Resources, PythonFunctionTask, Secret, FlyteContextManager
+from flytekit import ImageSpec, Resources, PythonFunctionTask, Secret
 from flytekit.configuration import SerializationSettings, ImageConfig
 from flytekit.core.base_task import TaskResolverMixin, Task
 from flytekit.extras.accelerators import GPUAccelerator
-from flytekit.extras.tasks.shell import subproc_execute
 from flytekit.remote import FlyteRemote
-from flytekit.tools.fast_registration import FastPackageOptions
 
 
 class ImageSpecConfig(DataClassYAMLMixin, DataClassJSONMixin, ImageSpec):
