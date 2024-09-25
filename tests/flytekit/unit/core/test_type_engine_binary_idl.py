@@ -20,6 +20,12 @@ from flytekit.types.file import FlyteFile
 from flytekit.types.directory import FlyteDirectory
 
 
+class Status(Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
 def test_simple_type_transformer():
     ctx = FlyteContextManager.current_context()
 
@@ -92,6 +98,7 @@ def test_simple_type_transformer():
         timedelta_output = TypeEngine.to_python_value(ctx, lv, timedelta)
         assert timedelta_input == timedelta_output
 
+
 def test_untyped_dict():
     ctx = FlyteContextManager.current_context()
 
@@ -99,50 +106,52 @@ def test_untyped_dict():
         # Basic key-value combinations with int, str, bool, float
         {1: "a", "key": 2.5, True: False, 3.14: 100},
         {"a": 1, -2: "b", 3.5: True, False: 3.1415},
-
         {
             1: [-1, "a", 2.5, False],
             "key_list": ["str", 3.14, True, 42],
             True: [False, 2.718, "test"],
         },
-
         {
             "nested_dict": {-1: 2, "key": "value", True: 3.14, False: "string"},
             3.14: {"pi": 3.14, "e": 2.718, 42: True},
         },
-
         {
             "list_in_dict": [
                 {"inner_dict_1": [1, -2.5, "a"], "inner_dict_2": [True, False, 3.14]},
                 [1, -2, 3, {"nested_list_dict": [False, "test"]}],
             ]
         },
-
         {
             "complex_nested": {
                 1: {"nested_dict": {True: [-1, "a", 2.5]}},
                 "string_key": {False: {-3.14: {"deep": [1, "deep_value"]}}},
             }
         },
-
         {
             "list_of_dicts": [{"a": 1, "b": -2}, {"key1": "value1", "key2": "value2"}],
             10: [{"nested_list": [-1, "value", 3.14]}, {"another_list": [True, False]}],
         },
-
         # More nested combinations of list and dict
         {
             "outer_list": [
                 [1, -2, 3],
-                {"inner_dict": {"key1": [True, "string", -3.14], "key2": [1, -2.5]}},  # Dict inside list
+                {
+                    "inner_dict": {"key1": [True, "string", -3.14], "key2": [1, -2.5]}
+                },  # Dict inside list
             ],
-            "another_dict": {"key1": {"subkey": [1, -2, "str"]}, "key2": [False, -3.14, "test"]},
+            "another_dict": {
+                "key1": {"subkey": [1, -2, "str"]},
+                "key2": [False, -3.14, "test"],
+            },
         },
     ]
 
     for dict_input in dict_inputs:
-        dict_msgpack_bytes = msgpack.dumps(dict_input)
-        lv = Literal(scalar=Scalar(binary=Binary(value=dict_msgpack_bytes, tag="msgpack")))
+        # dict_msgpack_bytes = msgpack.dumps(dict_input)
+        dict_msgpack_bytes = MessagePackEncoder(dict).encode(dict_input)
+        lv = Literal(
+            scalar=Scalar(binary=Binary(value=dict_msgpack_bytes, tag="msgpack"))
+        )
         dict_output = TypeEngine.to_python_value(ctx, lv, dict)
         assert dict_input == dict_output
 
@@ -153,90 +162,208 @@ def test_list_transformer():
     list_int_input = [1, -2, 3]
     encoder = MessagePackEncoder(List[int])
     list_int_msgpack_bytes = encoder.encode(list_int_input)
-    lv = Literal(scalar=Scalar(binary=Binary(value=list_int_msgpack_bytes, tag="msgpack")))
+    lv = Literal(
+        scalar=Scalar(binary=Binary(value=list_int_msgpack_bytes, tag="msgpack"))
+    )
     list_int_output = TypeEngine.to_python_value(ctx, lv, List[int])
     assert list_int_input == list_int_output
 
     list_float_input = [1.0, -2.0, 3.0]
     encoder = MessagePackEncoder(List[float])
     list_float_msgpack_bytes = encoder.encode(list_float_input)
-    lv = Literal(scalar=Scalar(binary=Binary(value=list_float_msgpack_bytes, tag="msgpack")))
+    lv = Literal(
+        scalar=Scalar(binary=Binary(value=list_float_msgpack_bytes, tag="msgpack"))
+    )
     list_float_output = TypeEngine.to_python_value(ctx, lv, List[float])
     assert list_float_input == list_float_output
 
     list_str_input = ["a", "b", "c"]
     encoder = MessagePackEncoder(List[str])
     list_str_msgpack_bytes = encoder.encode(list_str_input)
-    lv = Literal(scalar=Scalar(binary=Binary(value=list_str_msgpack_bytes, tag="msgpack")))
+    lv = Literal(
+        scalar=Scalar(binary=Binary(value=list_str_msgpack_bytes, tag="msgpack"))
+    )
     list_str_output = TypeEngine.to_python_value(ctx, lv, List[str])
     assert list_str_input == list_str_output
 
     list_bool_input = [True, False, True]
     encoder = MessagePackEncoder(List[bool])
     list_bool_msgpack_bytes = encoder.encode(list_bool_input)
-    lv = Literal(scalar=Scalar(binary=Binary(value=list_bool_msgpack_bytes, tag="msgpack")))
+    lv = Literal(
+        scalar=Scalar(binary=Binary(value=list_bool_msgpack_bytes, tag="msgpack"))
+    )
     list_bool_output = TypeEngine.to_python_value(ctx, lv, List[bool])
     assert list_bool_input == list_bool_output
 
     list_list_int_input = [[1, -2], [-3, 4]]
     encoder = MessagePackEncoder(List[List[int]])
     list_list_int_msgpack_bytes = encoder.encode(list_list_int_input)
-    lv = Literal(scalar=Scalar(binary=Binary(value=list_list_int_msgpack_bytes, tag="msgpack")))
+    lv = Literal(
+        scalar=Scalar(binary=Binary(value=list_list_int_msgpack_bytes, tag="msgpack"))
+    )
     list_list_int_output = TypeEngine.to_python_value(ctx, lv, List[List[int]])
     assert list_list_int_input == list_list_int_output
 
     list_list_float_input = [[1.0, -2.0], [-3.0, 4.0]]
     encoder = MessagePackEncoder(List[List[float]])
     list_list_float_msgpack_bytes = encoder.encode(list_list_float_input)
-    lv = Literal(scalar=Scalar(binary=Binary(value=list_list_float_msgpack_bytes, tag="msgpack")))
+    lv = Literal(
+        scalar=Scalar(binary=Binary(value=list_list_float_msgpack_bytes, tag="msgpack"))
+    )
     list_list_float_output = TypeEngine.to_python_value(ctx, lv, List[List[float]])
     assert list_list_float_input == list_list_float_output
 
     list_list_str_input = [["a", "b"], ["c", "d"]]
     encoder = MessagePackEncoder(List[List[str]])
     list_list_str_msgpack_bytes = encoder.encode(list_list_str_input)
-    lv = Literal(scalar=Scalar(binary=Binary(value=list_list_str_msgpack_bytes, tag="msgpack")))
+    lv = Literal(
+        scalar=Scalar(binary=Binary(value=list_list_str_msgpack_bytes, tag="msgpack"))
+    )
     list_list_str_output = TypeEngine.to_python_value(ctx, lv, List[List[str]])
     assert list_list_str_input == list_list_str_output
 
     list_list_bool_input = [[True, False], [False, True]]
     encoder = MessagePackEncoder(List[List[bool]])
     list_list_bool_msgpack_bytes = encoder.encode(list_list_bool_input)
-    lv = Literal(scalar=Scalar(binary=Binary(value=list_list_bool_msgpack_bytes, tag="msgpack")))
+    lv = Literal(
+        scalar=Scalar(binary=Binary(value=list_list_bool_msgpack_bytes, tag="msgpack"))
+    )
     list_list_bool_output = TypeEngine.to_python_value(ctx, lv, List[List[bool]])
     assert list_list_bool_input == list_list_bool_output
 
     list_dict_str_int_input = [{"key1": -1, "key2": 2}]
     encoder = MessagePackEncoder(List[Dict[str, int]])
     list_dict_str_int_msgpack_bytes = encoder.encode(list_dict_str_int_input)
-    lv = Literal(scalar=Scalar(binary=Binary(value=list_dict_str_int_msgpack_bytes, tag="msgpack")))
+    lv = Literal(
+        scalar=Scalar(
+            binary=Binary(value=list_dict_str_int_msgpack_bytes, tag="msgpack")
+        )
+    )
     list_dict_str_int_output = TypeEngine.to_python_value(ctx, lv, List[Dict[str, int]])
     assert list_dict_str_int_input == list_dict_str_int_output
 
     list_dict_str_float_input = [{"key1": 1.0, "key2": -2.0}]
     encoder = MessagePackEncoder(List[Dict[str, float]])
     list_dict_str_float_msgpack_bytes = encoder.encode(list_dict_str_float_input)
-    lv = Literal(scalar=Scalar(binary=Binary(value=list_dict_str_float_msgpack_bytes, tag="msgpack")))
-    list_dict_str_float_output = TypeEngine.to_python_value(ctx, lv, List[Dict[str, float]])
+    lv = Literal(
+        scalar=Scalar(
+            binary=Binary(value=list_dict_str_float_msgpack_bytes, tag="msgpack")
+        )
+    )
+    list_dict_str_float_output = TypeEngine.to_python_value(
+        ctx, lv, List[Dict[str, float]]
+    )
     assert list_dict_str_float_input == list_dict_str_float_output
 
     list_dict_str_str_input = [{"key1": "a", "key2": "b"}]
     encoder = MessagePackEncoder(List[Dict[str, str]])
     list_dict_str_str_msgpack_bytes = encoder.encode(list_dict_str_str_input)
-    lv = Literal(scalar=Scalar(binary=Binary(value=list_dict_str_str_msgpack_bytes, tag="msgpack")))
+    lv = Literal(
+        scalar=Scalar(
+            binary=Binary(value=list_dict_str_str_msgpack_bytes, tag="msgpack")
+        )
+    )
     list_dict_str_str_output = TypeEngine.to_python_value(ctx, lv, List[Dict[str, str]])
     assert list_dict_str_str_input == list_dict_str_str_output
 
     list_dict_str_bool_input = [{"key1": True, "key2": False}]
     encoder = MessagePackEncoder(List[Dict[str, bool]])
     list_dict_str_bool_msgpack_bytes = encoder.encode(list_dict_str_bool_input)
-    lv = Literal(scalar=Scalar(binary=Binary(value=list_dict_str_bool_msgpack_bytes, tag="msgpack")))
-    list_dict_str_bool_output = TypeEngine.to_python_value(ctx, lv, List[Dict[str, bool]])
+    lv = Literal(
+        scalar=Scalar(
+            binary=Binary(value=list_dict_str_bool_msgpack_bytes, tag="msgpack")
+        )
+    )
+    list_dict_str_bool_output = TypeEngine.to_python_value(
+        ctx, lv, List[Dict[str, bool]]
+    )
     assert list_dict_str_bool_input == list_dict_str_bool_output
 
+    @dataclass
+    class InnerDC:
+        a: int = -1
+        b: float = 2.1
+        c: str = "Hello, Flyte"
+        d: bool = False
+        e: List[int] = field(default_factory=lambda: [0, 1, 2, -1, -2])
+        f: List[List[int]] = field(default_factory=lambda: [[0], [1], [-1]])
+        g: List[Dict[int, bool]] = field(
+            default_factory=lambda: [{0: False}, {1: True}, {-1: True}]
+        )
+        h: Dict[int, bool] = field(
+            default_factory=lambda: {0: False, 1: True, -1: False}
+        )
+        i: Dict[int, List[int]] = field(default_factory=lambda: {0: [0, 1, -1]})
+        j: Dict[int, Dict[int, int]] = field(default_factory=lambda: {1: {-1: 0}})
+        k: dict = field(default_factory=lambda: {"key": "value"})
+        enum_status: Status = field(default=Status.PENDING)
+
+    @dataclass
+    class DC:
+        a: int = -1
+        b: float = 2.1
+        c: str = "Hello, Flyte"
+        d: bool = False
+        e: List[int] = field(default_factory=lambda: [0, 1, 2, -1, -2])
+        f: List[List[int]] = field(default_factory=lambda: [[0], [1], [-1]])
+        g: List[Dict[int, bool]] = field(
+            default_factory=lambda: [{0: False}, {1: True}, {-1: True}]
+        )
+        h: Dict[int, bool] = field(
+            default_factory=lambda: {0: False, 1: True, -1: False}
+        )
+        i: Dict[int, List[int]] = field(default_factory=lambda: {0: [0, 1, -1]})
+        j: Dict[int, Dict[int, int]] = field(default_factory=lambda: {1: {-1: 0}})
+        k: dict = field(default_factory=lambda: {"key": "value"})
+        inner_dc: InnerDC = field(default_factory=lambda: InnerDC())
+        enum_status: Status = field(default=Status.PENDING)
+
+    list_dict_int_inner_dc_input = [{1: InnerDC(), -1: InnerDC(), 0: InnerDC()}]
+    encoder = MessagePackEncoder(List[Dict[int, InnerDC]])
+    list_dict_int_inner_dc_msgpack_bytes = encoder.encode(list_dict_int_inner_dc_input)
+    lv = Literal(
+        scalar=Scalar(
+            binary=Binary(value=list_dict_int_inner_dc_msgpack_bytes, tag="msgpack")
+        )
+    )
+    list_dict_int_inner_dc_output = TypeEngine.to_python_value(
+        ctx, lv, List[Dict[int, InnerDC]]
+    )
+    assert list_dict_int_inner_dc_input == list_dict_int_inner_dc_output
+
+    list_dict_int_dc_input = [{1: DC(), -1: DC(), 0: DC()}]
+    encoder = MessagePackEncoder(List[Dict[int, DC]])
+    list_dict_int_dc_msgpack_bytes = encoder.encode(list_dict_int_dc_input)
+    lv = Literal(
+        scalar=Scalar(
+            binary=Binary(value=list_dict_int_dc_msgpack_bytes, tag="msgpack")
+        )
+    )
+    list_dict_int_dc_output = TypeEngine.to_python_value(ctx, lv, List[Dict[int, DC]])
+    assert list_dict_int_dc_input == list_dict_int_dc_output
+
+    list_list_inner_dc_input = [[InnerDC(), InnerDC(), InnerDC()]]
+    encoder = MessagePackEncoder(List[List[InnerDC]])
+    list_list_inner_dc_msgpack_bytes = encoder.encode(list_list_inner_dc_input)
+    lv = Literal(
+        scalar=Scalar(
+            binary=Binary(value=list_list_inner_dc_msgpack_bytes, tag="msgpack")
+        )
+    )
+    list_list_inner_dc_output = TypeEngine.to_python_value(ctx, lv, List[List[InnerDC]])
+    assert list_list_inner_dc_input == list_list_inner_dc_output
+
+    list_list_dc_input = [[DC(), DC(), DC()]]
+    encoder = MessagePackEncoder(List[List[DC]])
+    list_list_dc_msgpack_bytes = encoder.encode(list_list_dc_input)
+    lv = Literal(
+        scalar=Scalar(binary=Binary(value=list_list_dc_msgpack_bytes, tag="msgpack"))
+    )
+    list_list_dc_output = TypeEngine.to_python_value(ctx, lv, List[List[DC]])
+    assert list_list_dc_input == list_list_dc_output
 
 
-def test_dict_transformer():
+def test_dict_transformer(local_dummy_file, local_dummy_directory):
     ctx = FlyteContextManager.current_context()
 
     dict_str_int_input = {"key1": 1, "key2": -2}
@@ -310,6 +437,65 @@ def test_dict_transformer():
     dict_int_dict_int_list_int_output = TypeEngine.to_python_value(ctx, lv, Dict[int, Dict[int, List[int]]])
     assert dict_int_dict_int_list_int_input == dict_int_dict_int_list_int_output
 
+    @dataclass
+    class InnerDC:
+        a: int = -1
+        b: float = 2.1
+        c: str = "Hello, Flyte"
+        d: bool = False
+        e: List[int] = field(default_factory=lambda: [0, 1, 2, -1, -2])
+        f: List[List[int]] = field(default_factory=lambda: [[0], [1], [-1]])
+        g: List[Dict[int, bool]] = field(
+            default_factory=lambda: [{0: False}, {1: True}, {-1: True}]
+        )
+        h: Dict[int, bool] = field(
+            default_factory=lambda: {0: False, 1: True, -1: False}
+        )
+        i: Dict[int, List[int]] = field(default_factory=lambda: {0: [0, 1, -1]})
+        j: Dict[int, Dict[int, int]] = field(default_factory=lambda: {1: {-1: 0}})
+        k: dict = field(default_factory=lambda: {"key": "value"})
+        enum_status: Status = field(default=Status.PENDING)
+
+    @dataclass
+    class DC:
+        a: int = -1
+        b: float = 2.1
+        c: str = "Hello, Flyte"
+        d: bool = False
+        e: List[int] = field(default_factory=lambda: [0, 1, 2, -1, -2])
+        f: List[List[int]] = field(default_factory=lambda: [[0], [1], [-1]])
+        g: List[Dict[int, bool]] = field(
+            default_factory=lambda: [{0: False}, {1: True}, {-1: True}]
+        )
+        h: Dict[int, bool] = field(
+            default_factory=lambda: {0: False, 1: True, -1: False}
+        )
+        i: Dict[int, List[int]] = field(default_factory=lambda: {0: [0, 1, -1]})
+        j: Dict[int, Dict[int, int]] = field(default_factory=lambda: {1: {-1: 0}})
+        k: dict = field(default_factory=lambda: {"key": "value"})
+        inner_dc: InnerDC = field(default_factory=lambda: InnerDC())
+        enum_status: Status = field(default=Status.PENDING)
+
+    dict_int_inner_dc_input = {1: InnerDC(), -2: InnerDC(), 0: InnerDC()}
+    encoder = MessagePackEncoder(Dict[int, InnerDC])
+    dict_int_inner_dc_msgpack_bytes = encoder.encode(dict_int_inner_dc_input)
+    lv = Literal(
+        scalar=Scalar(
+            binary=Binary(value=dict_int_inner_dc_msgpack_bytes, tag="msgpack")
+        )
+    )
+    dict_int_inner_dc_output = TypeEngine.to_python_value(ctx, lv, Dict[int, InnerDC])
+    assert dict_int_inner_dc_input == dict_int_inner_dc_output
+
+    dict_int_dc = {1: DC(), -2: DC(), 0: DC()}
+    encoder = MessagePackEncoder(Dict[int, DC])
+    dict_int_dc_msgpack_bytes = encoder.encode(dict_int_dc)
+    lv = Literal(
+        scalar=Scalar(binary=Binary(value=dict_int_dc_msgpack_bytes, tag="msgpack"))
+    )
+    dict_int_dc_output = TypeEngine.to_python_value(ctx, lv, Dict[int, DC])
+    assert dict_int_dc == dict_int_dc_output
+
 
 @pytest.fixture
 def local_dummy_file():
@@ -321,6 +507,7 @@ def local_dummy_file():
     finally:
         os.remove(path)
 
+
 @pytest.fixture
 def local_dummy_directory():
     temp_dir = tempfile.TemporaryDirectory()
@@ -330,6 +517,7 @@ def local_dummy_directory():
         yield temp_dir.name
     finally:
         temp_dir.cleanup()
+
 
 def test_flytetypes_in_dataclass_wf(local_dummy_file, local_dummy_directory):
     @dataclass
@@ -349,6 +537,7 @@ def test_flytetypes_in_dataclass_wf(local_dummy_file, local_dummy_directory):
     @task
     def t2(path: FlyteDirectory) -> FlyteDirectory:
         return path
+
     @workflow
     def wf(dc: DC) -> (FlyteFile, FlyteFile, FlyteDirectory, FlyteDirectory):
         f1 = t1(path=dc.flytefile)
@@ -371,11 +560,6 @@ def test_flytetypes_in_dataclass_wf(local_dummy_file, local_dummy_directory):
         assert fh.read() == "Hello FlyteDirectory"
 
 def test_all_types_in_dataclass_wf(local_dummy_file, local_dummy_directory):
-    class Status(Enum):
-        PENDING = "pending"
-        APPROVED = "approved"
-        REJECTED = "rejected"
-
     @dataclass
     class InnerDC:
         a: int = -1
@@ -526,10 +710,6 @@ def test_all_types_in_dataclass_wf(local_dummy_file, local_dummy_directory):
     wf(dc=DC())
 
 def test_backward_compatible_with_dataclass_in_protobuf_struct(local_dummy_file, local_dummy_directory):
-    class Status(Enum):
-        PENDING = "pending"
-        APPROVED = "approved"
-        REJECTED = "rejected"
 
     @dataclass
     class InnerDC:
