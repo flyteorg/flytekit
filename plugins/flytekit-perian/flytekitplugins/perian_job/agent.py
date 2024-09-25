@@ -130,9 +130,9 @@ class PerianAgent(AsyncAgentBase):
 
         docker_registry = None
         try:
-            dr_url = secrets.get("docker_registry_url")
-            dr_username = secrets.get("docker_registry_username")
-            dr_password = secrets.get("docker_registry_password")
+            dr_url = secrets.get(key="docker_registry_url")
+            dr_username = secrets.get(key="docker_registry_username")
+            dr_password = secrets.get(key="docker_registry_password")
             if any([dr_url, dr_username, dr_password]):
                 docker_registry = DockerRegistryCredentials(
                     url=dr_url,
@@ -162,9 +162,9 @@ class PerianAgent(AsyncAgentBase):
         docker_run = DockerRunParameters()
         # AWS
         try:
-            aws_access_key_id = secrets.get("aws_access_key_id")
-            aws_secret_access_key = secrets.get("aws_secret_access_key")
-            docker_run.env_variables = {
+            aws_access_key_id = secrets.get(key="aws_access_key_id")
+            aws_secret_access_key = secrets.get(key="aws_secret_access_key")
+            docker_run.secrets = {
                 "AWS_ACCESS_KEY_ID": aws_access_key_id,
                 "AWS_SECRET_ACCESS_KEY": aws_secret_access_key,
             }
@@ -174,8 +174,8 @@ class PerianAgent(AsyncAgentBase):
         # GCP
         try:
             creds_file = "/data/gcp-credentials.json"  # to be mounted in the container
-            google_application_credentials = secrets.get("google_application_credentials")
-            docker_run.env_variables = {
+            google_application_credentials = secrets.get(key="google_application_credentials")
+            docker_run.secrets = {
                 "GOOGLE_APPLICATION_CREDENTIALS": creds_file,
             }
             docker_run.container_files = [
@@ -195,8 +195,8 @@ class PerianAgent(AsyncAgentBase):
 
     def _build_headers(self) -> dict:
         secrets = current_context().secrets
-        org = secrets.get("perian_organization")
-        token = secrets.get("perian_token")
+        org = secrets.get(key="perian_organization")
+        token = secrets.get(key="perian_token")
         if not org or not token:
             raise FlyteUserException("perian_organization and perian_token must be provided in the secrets")
         return {

@@ -8,6 +8,9 @@
 
    NIM
    NIMSecrets
+   Model
+   Ollama
 """
 
 from .nim.serve import NIM, NIMSecrets
+from .ollama.serve import Model, Ollama

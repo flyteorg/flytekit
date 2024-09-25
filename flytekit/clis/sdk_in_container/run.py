@@ -38,6 +38,7 @@ from flytekit.configuration import (
     SerializationSettings,
 )
 from flytekit.configuration.plugin import get_plugin
+from flytekit.constants import CopyFileDetection
 from flytekit.core import context_manager
 from flytekit.core.artifact import ArtifactQuery
 from flytekit.core.base_task import PythonTask
@@ -66,7 +67,7 @@ from flytekit.remote import (
 )
 from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.tools import module_loader
-from flytekit.tools.fast_registration import CopyFileDetection, FastPackageOptions
+from flytekit.tools.fast_registration import FastPackageOptions
 from flytekit.tools.script_mode import _find_project_root, compress_scripts, get_all_modules
 from flytekit.tools.translator import Options
 
@@ -108,7 +109,7 @@ class RunLevelParams(PyFlyteParams):
             is_flag=True,
             default=False,
             show_default=True,
-            help="[Will be deprecated, see --copy] Copy all files in the source root directory to"
+            help="[Deprecated, see --copy] Copy all files in the source root directory to"
             " the destination directory. You can specify --copy all instead",
         )
     )
@@ -116,12 +117,12 @@ class RunLevelParams(PyFlyteParams):
         click.Option(
             param_decls=["--copy"],
             required=False,
-            default=None,  # this will change to "auto" after removing copy_all option
+            default="auto",
             type=click.Choice(["all", "auto"], case_sensitive=False),
             show_default=True,
             callback=parse_copy,
-            help="[Beta] Specifies how to detect which files to copy into image."
-            " 'all' will behave as the current copy-all flag, 'auto' copies only loaded Python modules",
+            help="Specifies how to detect which files to copy into image."
+            " 'all' will behave as the deprecated copy-all flag, 'auto' copies only loaded Python modules",
         )
     )
     image_config: ImageConfig = make_click_option_field(
@@ -448,10 +449,17 @@ def to_click_option(
     # If a query has been specified, the input is never strictly required at this layer
     required = False if default_val and isinstance(default_val, ArtifactQuery) else required
 
+    if literal_converter.is_bool():
+        click_cli_parameter_names = [
+            f"--{input_name}/--no_{input_name}",
+            f"--{input_name}/--no-{input_name.replace('_', '-')}",
+        ]
+    else:
+        click_cli_parameter_names = [f"--{input_name}"]
+
     return click.Option(
-        param_decls=[f"--{input_name}"],
+        param_decls=click_cli_parameter_names,
         type=literal_converter.click_type,
-        is_flag=literal_converter.is_bool(),
         default=default_val,
         show_default=True,
         required=required,
@@ -641,14 +649,27 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
 
             image_config = run_level_params.image_config
             image_config = patch_image_config(config_file, image_config)
+            if run_level_params.copy_all:
+                click.secho(
+                    "The --copy_all flag is now deprecated. Please use --copy all instead.",
+                    fg="yellow",
+                )
+                if "--copy" in sys.argv:
+                    raise click.BadParameter(
+                        click.style(
+                            "Cannot use both --copy-all and --copy flags together. Please move to --copy.",
+                            fg="red",
+                        )
+                    )
 
             with context_manager.FlyteContextManager.with_context(remote.context.new_builder()):
                 show_files = run_level_params.verbose > 0
                 fast_package_options = FastPackageOptions(
                     [],
-                    copy_style=run_level_params.copy,
+                    copy_style=CopyFileDetection.ALL if run_level_params.copy_all else run_level_params.copy,
                     show_files=show_files,
                 )
+
                 remote_entity = remote.register_script(
                     entity,
                     project=run_level_params.project,
@@ -657,7 +678,6 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
                     destination_dir=run_level_params.destination_dir,
                     source_path=run_level_params.computed_params.project_root,
                     module_name=run_level_params.computed_params.module,
-                    copy_all=run_level_params.copy_all,
                     fast_package_options=fast_package_options,
                 )
 

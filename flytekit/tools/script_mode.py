@@ -13,6 +13,7 @@ from pathlib import Path
 from types import ModuleType
 from typing import List, Optional, Tuple, Union
 
+from flytekit.constants import CopyFileDetection
 from flytekit.loggers import logger
 from flytekit.tools.ignore import IgnoreGroup
 
@@ -86,7 +87,7 @@ def tar_strip_file_attributes(tar_info: tarfile.TarInfo) -> tarfile.TarInfo:
 
 def ls_files(
     source_path: str,
-    modules: List[ModuleType],
+    copy_file_detection: CopyFileDetection,
     deref_symlinks: bool = False,
     ignore_group: Optional[IgnoreGroup] = None,
 ) -> Tuple[List[str], str]:
@@ -101,19 +102,17 @@ def ls_files(
         Then the common root is just the folder a/. The modules list is filtered against this root. Only files
         representing modules under this root are included
 
-
-    If the modules list should be a list of all the
-
-    needs to compute digest as well.
+    If the copy enum is set to loaded_modules, then the loaded sys modules will be used.
     """
 
     # Unlike the below, the value error here is useful and should be returned to the user, like if absolute and
     # relative paths are mixed.
 
     # This is --copy auto
-    if modules:
-        all_files = list_imported_modules_as_files(source_path, modules)
-    # this is --copy all
+    if copy_file_detection == CopyFileDetection.LOADED_MODULES:
+        sys_modules = list(sys.modules.values())
+        all_files = list_imported_modules_as_files(source_path, sys_modules)
+    # this is --copy all (--copy none should never invoke this function)
     else:
         all_files = list_all_files(source_path, deref_symlinks, ignore_group)
 
