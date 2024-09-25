@@ -671,7 +671,7 @@ def test_execute_python_workflow_remote_func_dict_of_string_to_string():
         my_wf,
         inputs={"d": d},
         wait=True,
-        version=VERSION,
+        version=VERSION + "dict_str_wf",
         image_config=ImageConfig.from_images(IMAGE),
     )
     assert json.loads(out.outputs["o0"]) == {"k1": "v1", "k2": "v2"}
@@ -689,7 +689,7 @@ def test_execute_python_workflow_remote_func_list_of_floats():
         my_wf,
         inputs={"xs": xs},
         wait=True,
-        version=VERSION,
+        version=VERSION + "list_float_wf",
         image_config=ImageConfig.from_images(IMAGE),
     )
     assert out.outputs["o0"] == "[42.24, 999.1, 0.0001]"
