@@ -13,7 +13,7 @@ from typing import Iterator, get_args
 
 import rich_click as click
 import yaml
-from click import Context, Command
+from click import Context
 from mashumaro.codecs.json import JSONEncoder
 from rich.progress import Progress
 from typing_extensions import get_origin
@@ -63,7 +63,8 @@ from flytekit.remote import (
     FlyteRemote,
     FlyteTask,
     FlyteWorkflow,
-    remote_fs, raw_script,
+    raw_script,
+    remote_fs,
 )
 from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.tools import module_loader
@@ -696,11 +697,12 @@ def yaml_json_load(stream, param_hint) -> typing.Any:
         except json.JSONDecodeError as e:
             raise click.BadParameter(
                 message=f"Could not load the {param_hint}. Please make sure it is a valid JSON or YAML file."
-                        f"\n json error: {e},"
-                        f"\n yaml error: {yaml_e}",
+                f"\n json error: {e},"
+                f"\n yaml error: {yaml_e}",
                 param_hint=f"--{param_hint}",
             )
     return inputs
+
 
 class RawScriptRunCommand(click.RichCommand):
     _help = """
@@ -734,7 +736,6 @@ class RawScriptRunCommand(click.RichCommand):
     def invoke(self, ctx: click.Context) -> typing.Any:
         run_level_params: RunLevelParams = ctx.obj
         r = run_level_params.remote_instance()
-        print(ctx.params)
         script = ctx.params["script_file"]
         cfg_file = ctx.params["cfg"]
         cfg = None
@@ -742,7 +743,15 @@ class RawScriptRunCommand(click.RichCommand):
             with open(cfg_file, "r") as f:
                 cfg = yaml_json_load(f.read(), "cfg")
                 cfg = raw_script.TaskLaunchConfig.from_dict(cfg)
-        raw_script.run(script=script, cfg=cfg, remote=r, local=not run_level_params.is_remote)
+        exe = raw_script.run(script=script, cfg=cfg, remote=r, local=not run_level_params.is_remote)
+        console_url = r.generate_console_url(exe)
+        s = (
+            click.style("\n[✔] ", fg="green")
+            + "Go to "
+            + click.style(console_url, fg="cyan")
+            + " to see execution in the console."
+        )
+        click.echo(s)
         return None
 
 
@@ -912,6 +921,7 @@ class YamlFileReadingCommand(click.RichCommand):
     A Wrapper command for reading inputs from a YAML file and passing them to the task, workflow or launchplan
     execution.
     """
+
     def __init__(
         self,
         name: str,

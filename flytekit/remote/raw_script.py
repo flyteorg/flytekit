@@ -1,13 +1,13 @@
 import subprocess
 from dataclasses import dataclass
-from typing import Optional, Union, List
+from typing import List, Optional, Union
 
 from mashumaro.mixins.json import DataClassJSONMixin
 from mashumaro.mixins.yaml import DataClassYAMLMixin
 
-from flytekit import ImageSpec, Resources, PythonFunctionTask, Secret
-from flytekit.configuration import SerializationSettings, ImageConfig
-from flytekit.core.base_task import TaskResolverMixin, Task
+from flytekit import ImageSpec, PythonFunctionTask, Resources, Secret
+from flytekit.configuration import SerializationSettings
+from flytekit.core.base_task import Task, TaskResolverMixin
 from flytekit.extras.accelerators import GPUAccelerator
 from flytekit.remote import FlyteRemote
 
@@ -56,8 +56,8 @@ class RawTaskLaunchResolver(TaskResolverMixin):
         return "flytekit.remote.raw_script"
 
     def get_task_for_script(
-            self,
-            config: TaskLaunchConfig,
+        self,
+        config: TaskLaunchConfig,
     ) -> PythonFunctionTask:
         return PythonFunctionTask(
             task_config=None,
@@ -88,8 +88,14 @@ class RawTaskLaunchResolver(TaskResolverMixin):
 resolver = RawTaskLaunchResolver()
 
 
-def run(script: str, cfg: Optional[TaskLaunchConfig] = None, envvars=None,
-        overwrite_cache=False, local=True, remote: Optional[FlyteRemote] = None):
+def run(
+    script: str,
+    cfg: Optional[TaskLaunchConfig] = None,
+    envvars=None,
+    overwrite_cache=False,
+    local=True,
+    remote: Optional[FlyteRemote] = None,
+):
     """
     Entrypoint to run scripts locally or remote.
     """
@@ -97,12 +103,11 @@ def run(script: str, cfg: Optional[TaskLaunchConfig] = None, envvars=None,
         cfg = TaskLaunchConfig()
     tk = resolver.get_task_for_script(cfg)
 
-    ss = SerializationSettings(image_config=ImageConfig.auto_default_image())
-    c = tk.get_container(ss)
     if local:
         # TODO this has to be rationalized with run.pys local execution. Many arguments have to passed
         # We should make a common local run setup method
         import os
+
         if envvars:
             for env_var, value in envvars.items():
                 os.environ[env_var] = value
@@ -112,7 +117,8 @@ def run(script: str, cfg: Optional[TaskLaunchConfig] = None, envvars=None,
         return
 
     # TODO Version needs to include hash of config
-    remote_task = remote.register_script(tk, source_path=script, version="test") #, copy_all=cfg.copy_all)
-    exe = remote.execute_remote_task_lp(remote_task, inputs={"script_file": script, "run_command": cfg.run_command},
-                                  overwrite_cache=overwrite_cache)
-    print(remote.generate_console_url(exe))
+    remote_task = remote.register_script(tk, source_path=script, version="test")  # , copy_all=cfg.copy_all)
+    exe = remote.execute_remote_task_lp(
+        remote_task, inputs={"script_file": script, "run_command": cfg.run_command}, overwrite_cache=overwrite_cache
+    )
+    return exe
