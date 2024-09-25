@@ -329,7 +329,7 @@ def test_node_dependency_hints_are_serialized():
 
     serialised_entities_iterator = iter(entity_mapping.values())
     assert "t1" in next(serialised_entities_iterator).template.id.name
-    assert "t2" in next(serialised_entities_iterator).templatest_mismatching_file_typeste.id.name
+    assert "t2" in next(serialised_entities_iterator).template.id.name
 
 
 def test_iter():
