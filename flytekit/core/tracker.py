@@ -270,6 +270,8 @@ class _ModuleSanitizer(object):
         # Let us remove any extensions like .py
         basename = os.path.splitext(basename)[0]
 
+        # This is an escape hatch for the zipimporter (used by spark).  As this function is called recursively,
+        # it'll eventually reach the zip file, which is not extracted, so we should return.
         if not Path(dirname).is_dir():
             return basename
 
