@@ -16,15 +16,15 @@ Each renderer may require additional modules.
 
 The table below outlines the dependencies for each renderer:
 
-| Renderer               | Required Module(s)                  |
-|------------------------|-------------------------------------|
-| SourceCodeRenderer      | `pygments`                         |
-| FrameProfilingRenderer  | `pandas`, `ydata_profiling`         |
-| MarkdownRenderer        | `markdown`                         |
-| BoxRenderer             | `pandas`, `plotly.express`          |
-| ImageRenderer           | `PIL.Image`, `FlyteFile`           |
-| TableRenderer           | `pandas`                           |
-| GanttChartRenderer      | `pandas`, `plotly.express`          |
+| Renderer               | Required Module(s)          |
+|------------------------|-----------------------------|
+| SourceCodeRenderer      | `pygments`                  |
+| FrameProfilingRenderer  | `pandas`, `ydata-profiling` |
+| MarkdownRenderer        | `markdown`                  |
+| BoxRenderer             | `pandas`, `plotly`          |
+| ImageRenderer           | `pillow`    |
+| TableRenderer           | `pandas`                    |
+| GanttChartRenderer      | `pandas`, `plotly`  |
 
 ## Renderer Descriptions
 

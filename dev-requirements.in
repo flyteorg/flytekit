@@ -56,7 +56,7 @@ plotly
 pyarrow
 pygments
 scikit-learn
-ydata_profiling
+ydata-profiling
 types-requests
 prometheus-client
 
