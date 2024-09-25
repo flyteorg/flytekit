@@ -151,6 +151,6 @@ def test_spark_addPyFile():
     with context_manager.FlyteContextManager.with_context(
             ctx.with_execution_state(
                 ctx.new_execution_state().with_params(mode=ExecutionState.Mode.TASK_EXECUTION)).with_serialization_settings(serialization_settings)
-    ) as ctx:
-        my_spark.pre_execute(ctx.user_space_params)
+    ) as new_ctx:
+        my_spark.pre_execute(new_ctx.user_space_params)
         os.remove(os.path.join(os.getcwd(), "flyte_wf.zip"))
