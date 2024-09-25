@@ -197,18 +197,10 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
         self.sess = sess_builder.getOrCreate()
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
-            # current_time = time.time()
-            # current_dir = os.getcwd()
-            # # Set the modification time of all files in the current directory to the current time
-            # # since fast register doesn't preserve the modification time of the files and make_archive
-            # # does not support timestamps before 1980
-            # for foldername, subfolders, filenames in os.walk(current_dir):
-            #     for filename in filenames:
-            #         file_path = os.path.join(foldername, filename)
-            #         os.utime(file_path, (current_time, current_time))
-
-            shutil.make_archive("flyte_wf", "zip", os.getcwd())
-            self.sess.sparkContext.addPyFile("flyte_wf.zip")
+            file_name = "flyte_wf"
+            file_format = "zip"
+            shutil.make_archive(file_name, file_format, os.getcwd())
+            self.sess.sparkContext.addPyFile(f"{file_name}.{file_format}")
 
         return user_params.builder().add_attr("SPARK_SESSION", self.sess).build()
 
