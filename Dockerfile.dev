@@ -40,7 +40,14 @@ RUN SETUPTOOLS_SCM_PRETEND_VERSION_FOR_FLYTEKIT=$PSEUDO_VERSION \
             -e /flytekit \
             -e /flytekit/plugins/flytekit-deck-standard \
             -e /flytekit/plugins/flytekit-flyteinteractive \
+            markdown \
+            pandas \
+            pillow \
+            plotly \
+            pyarrow \
+            pygments \
             scikit-learn \
+            ydata-profiling \
     && apt-get clean autoclean \
     && apt-get autoremove --yes \
     && rm -rf /var/lib/{apt,dpkg,cache,log}/ \
