@@ -15,6 +15,7 @@ from marshmallow import fields
 from mashumaro.mixins.json import DataClassJSONMixin
 from mashumaro.types import SerializableType
 
+from flytekit.core.constants import MESSAGEPACK
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
 from flytekit.loggers import logger
@@ -441,7 +442,7 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
         return Literal(scalar=Scalar(schema=Schema(schema.remote_path, self._get_schema_type(python_type))))
 
     def from_binary_idl(self, binary_idl_object: Binary, expected_python_type: Type[FlyteSchema]) -> FlyteSchema:
-        if binary_idl_object.tag == "msgpack":
+        if binary_idl_object.tag == MESSAGEPACK:
             python_val = msgpack.loads(binary_idl_object.value)
             remote_path = python_val.get("remote_path", None)
 
@@ -455,7 +456,7 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
                 expected_python_type,
             )
         else:
-            raise TypeTransformerFailedError(f"Unsupported binary format {binary_idl_object.tag}")
+            raise TypeTransformerFailedError(f"Unsupported binary format: `{binary_idl_object.tag}`")
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[FlyteSchema]) -> FlyteSchema:
         # Handle dataclass attribute access

@@ -32,6 +32,7 @@ from mashumaro.mixins.json import DataClassJSONMixin
 from typing_extensions import Annotated, get_args, get_origin
 
 from flytekit.core.annotation import FlyteAnnotation
+from flytekit.core.constants import MESSAGEPACK
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.hash import HashMethod
 from flytekit.core.type_helpers import load_type_from_tag
@@ -225,7 +226,7 @@ class TypeTransformer(typing.Generic[T]):
         )
 
     def from_binary_idl(self, binary_idl_object: Binary, expected_python_type: Type[T]) -> Optional[T]:
-        if binary_idl_object.tag == "msgpack":
+        if binary_idl_object.tag == MESSAGEPACK:
             try:
                 decoder = self._msgpack_decoder[expected_python_type]
             except KeyError:
@@ -718,7 +719,7 @@ class DataclassTransformer(TypeTransformer[object]):
         return dc
 
     def from_binary_idl(self, binary_idl_object: Binary, expected_python_type: Type[T]) -> T:
-        if binary_idl_object.tag == "msgpack":
+        if binary_idl_object.tag == MESSAGEPACK:
             if issubclass(expected_python_type, DataClassJSONMixin):
                 dict_obj = msgpack.loads(binary_idl_object.value, strict_map_key=False)
                 json_str = json.dumps(dict_obj)
@@ -733,7 +734,7 @@ class DataclassTransformer(TypeTransformer[object]):
 
             return self._fix_structured_dataset_type(expected_python_type, dc)  # type: ignore
         else:
-            raise TypeTransformerFailedError(f"Unsupported binary format {binary_idl_object.tag}")
+            raise TypeTransformerFailedError(f"Unsupported binary format: `{binary_idl_object.tag}`")
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
         if not dataclasses.is_dataclass(expected_python_type):

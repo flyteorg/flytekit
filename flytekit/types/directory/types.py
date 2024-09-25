@@ -17,6 +17,7 @@ from marshmallow import fields
 from mashumaro.types import SerializableType
 
 from flytekit import BlobType
+from flytekit.core.constants import MESSAGEPACK
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError, get_batch_size
 from flytekit.exceptions.user import FlyteAssertion
@@ -508,7 +509,7 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
     def from_binary_idl(
         self, binary_idl_object: Binary, expected_python_type: typing.Type[FlyteDirectory]
     ) -> FlyteDirectory:
-        if binary_idl_object.tag == "msgpack":
+        if binary_idl_object.tag == MESSAGEPACK:
             python_val = msgpack.loads(binary_idl_object.value)
             path = python_val.get("path", None)
 
@@ -532,7 +533,7 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
                 expected_python_type,
             )
         else:
-            raise TypeTransformerFailedError(f"Unsupported binary format {binary_idl_object.tag}")
+            raise TypeTransformerFailedError(f"Unsupported binary format: `{binary_idl_object.tag}`")
 
     def to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Type[FlyteDirectory]

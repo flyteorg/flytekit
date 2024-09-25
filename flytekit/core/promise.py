@@ -148,7 +148,7 @@ def resolve_attr_path_in_promise(p: Promise) -> Promise:
             curr_val = TypeEngine.to_literal(FlyteContextManager.current_context(), new_st, type(new_st), literal_type)
         elif type(curr_val.value.value) is Binary:
             binary_idl_obj = curr_val.value.value
-            if binary_idl_obj.tag == "msgpack":
+            if binary_idl_obj.tag == _common_constants.MESSAGEPACK:
                 import msgpack
 
                 dict_obj = msgpack.loads(binary_idl_obj.value, strict_map_key=False)
@@ -169,7 +169,7 @@ def resolve_attr_path_in_dict(d: dict, attr_path: List[Union[str, int]]) -> Any:
             curr_val = curr_val[attr]
         except (KeyError, IndexError, TypeError) as e:
             raise FlytePromiseAttributeResolveException(
-                f"Failed to resolve attribute path {attr_path} in dict {curr_val}, attribute {attr} not found.\n"
+                f"Failed to resolve attribute path {attr_path} in dict `{curr_val}`, attribute `{attr}` not found.\n"
                 f"Error Message: {e}"
             )
     return curr_val
