@@ -1,6 +1,10 @@
+import os.path
+
 import pandas as pd
 import pyspark
 import pytest
+
+from flytekit.core import context_manager
 from flytekitplugins.spark import Spark
 from flytekitplugins.spark.task import Databricks, new_spark_session
 from pyspark.sql import SparkSession
@@ -8,7 +12,7 @@ from pyspark.sql import SparkSession
 import flytekit
 from flytekit import StructuredDataset, StructuredDatasetTransformerEngine, task
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
-from flytekit.core.context_manager import ExecutionParameters, FlyteContextManager
+from flytekit.core.context_manager import ExecutionParameters, FlyteContextManager, ExecutionState
 
 
 @pytest.fixture(scope="function")
@@ -118,3 +122,20 @@ def test_to_html():
     tf = StructuredDatasetTransformerEngine()
     output = tf.to_html(FlyteContextManager.current_context(), sd, pyspark.sql.DataFrame)
     assert pd.DataFrame(df.schema, columns=["StructField"]).to_html() == output
+
+
+def test_spark_addPyFile():
+    @task(
+        task_config=Spark(
+            spark_conf={"spark": "1"},
+        )
+    )
+    def my_spark(a: int) -> int:
+        return a
+
+    ctx = context_manager.FlyteContextManager.current_context()
+    with context_manager.FlyteContextManager.with_context(
+            ctx.with_execution_state(ctx.new_execution_state().with_params(mode=ExecutionState.Mode.TASK_EXECUTION))
+    ) as ctx:
+        my_spark.pre_execute(ctx.user_space_params)
+        os.remove(os.path.join(os.getcwd(), "flyte_wf.zip"))
