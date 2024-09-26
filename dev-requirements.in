@@ -48,15 +48,11 @@ types-decorator
 types-mock
 autoflake
 
-markdown
 pillow
 numpy
 pandas
-plotly
 pyarrow
-pygments
 scikit-learn
-ydata-profiling
 types-requests
 prometheus-client
 
