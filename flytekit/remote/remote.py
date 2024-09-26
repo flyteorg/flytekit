@@ -883,7 +883,7 @@ class FlyteRemote(object):
         :param serialization_settings: The serialization settings to be used
         :param default_launch_plan: This should be true if a default launch plan should be created for the workflow
         :param options: Additional execution options that can be configured for the default launchplan
-        :param fast_package_options: Options to customize copy_all behavior
+        :param fast_package_options: Options to customize copying behavior
         :return:
         """
         if not isinstance(entity, PythonFunctionWorkflow):
