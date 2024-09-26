@@ -276,7 +276,7 @@ class _ModuleSanitizer(object):
 
         # Execution in a Jupyter notebook, we cannot resolve the module path
         if not os.path.exists(dirname):
-            logger.warning(f"Directory {dirname} does not exist. It is likely that we are in a Jupyter notebook.")
+            logger.debug(f"Directory {dirname} does not exist. It is likely that we are in a Jupyter notebook.")
             if not ipython_check():
                 raise AssertionError(f"Directory {dirname} does not exist, and we are not in a Jupyter notebook.")
             return basename
