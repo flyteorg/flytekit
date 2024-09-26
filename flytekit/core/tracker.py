@@ -335,7 +335,11 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
         mod, mod_name, name = _task_module_from_callable(f)
 
     if mod is None:
-        raise AssertionError(f"Unable to determine module of {f}")
+        from flytekit.core.python_auto_container import PICKLE_FILE_PATH
+
+        if not ipython_check() and not os.path.exists(PICKLE_FILE_PATH):
+            raise AssertionError(f"Unable to determine module of {f}")
+        return f"{mod_name}.{name}", mod_name, name, os.path.abspath(PICKLE_FILE_PATH)
 
     if mod_name == "__main__":
         if hasattr(f, "task_function"):
