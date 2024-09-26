@@ -74,7 +74,7 @@ def test_jsons_tasks():
         next(iterator)
 
     # 2
-    with pytest.raises(TypeError, match="The iterator is empty."):
+    with pytest.raises(ValueError, match="The iterator is empty."):
         jsons_loop_task(x=jsons())
 
     # 3
