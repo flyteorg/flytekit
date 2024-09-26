@@ -217,6 +217,8 @@ else:
     from importlib.metadata import entry_points
 
 from flytekit._version import __version__
+# This is for case when we put workflow code under the flytekit's folder
+import flytekit.bin.entrypoint
 from flytekit.core.array_node_map_task import map_task
 from flytekit.core.artifact import Artifact
 from flytekit.core.base_sql_task import SQLTask
