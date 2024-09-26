@@ -1,5 +1,4 @@
 import os.path
-import zipfile
 from unittest import mock
 
 import pandas as pd
