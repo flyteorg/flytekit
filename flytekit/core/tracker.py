@@ -276,9 +276,15 @@ class _ModuleSanitizer(object):
 
         # Execution in a Jupyter notebook, we cannot resolve the module path
         if not os.path.exists(dirname):
-            logger.debug(f"Directory {dirname} does not exist. It is likely that we are in a Jupyter notebook.")
-            if not ipython_check():
-                raise AssertionError(f"Directory {dirname} does not exist, and we are not in a Jupyter notebook.")
+            logger.debug(
+                f"Directory {dirname} does not exist. It is likely that we are in a Jupyter notebook or a pickle file was received."
+            )
+            from flytekit.core.python_auto_container import PICKLE_FILE_PATH
+
+            if not ipython_check() and not os.path.exists(PICKLE_FILE_PATH):
+                raise AssertionError(
+                    f"Directory {dirname} does not exist, and we are not in a Jupyter notebook or received a pickle file."
+                )
             return basename
 
         # If we have reached a directory with no __init__, ignore
