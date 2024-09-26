@@ -126,8 +126,8 @@ def test_to_html():
     assert pd.DataFrame(df.schema, columns=["StructField"]).to_html() == output
 
 
-@mock.patch('shutil.make_archive')
-def test_spark_addPyFile(mock_make_archive):
+@mock.patch('pyspark.context.SparkContext.addPyFile')
+def test_spark_addPyFile(mock_add_pyfile):
     @task(
         task_config=Spark(
             spark_conf={"spark": "1"},
@@ -158,5 +158,5 @@ def test_spark_addPyFile(mock_make_archive):
         with zipfile.ZipFile("flyte_wf.zip", 'w') as zipf:
             zipf.writestr("dummy_file.txt", b'This is some dummy content.')
         my_spark.pre_execute(new_ctx.user_space_params)
-        mock_make_archive.assert_called_once()
+        mock_add_pyfile.assert_called_once()
         os.remove(os.path.join(os.getcwd(), "flyte_wf.zip"))
