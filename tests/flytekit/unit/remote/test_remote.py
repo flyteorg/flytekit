@@ -679,8 +679,8 @@ def test_register_wf_script_mode(compress_scripts_mock, upload_file_mock, regist
         domain=None,
         version="v1",
         default_launch_plan=True,
-        copy_all=False,
         options=None,
+        fast_package_options=None,
         source_path=str(pathlib.Path(flytekit.__file__).parent.parent),
         module_name="tests.flytekit.unit.remote.resources",
     )

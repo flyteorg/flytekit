@@ -874,7 +874,7 @@ class FlyteRemote(object):
         version: typing.Optional[str] = None,
         default_launch_plan: typing.Optional[bool] = True,
         options: typing.Optional[Options] = None,
-        copy_all: bool = False,
+        fast_package_options: typing.Optional[FastPackageOptions] = None,
     ) -> FlyteWorkflow:
         """
         Use this method to register a workflow with zip mode.
@@ -883,6 +883,7 @@ class FlyteRemote(object):
         :param serialization_settings: The serialization settings to be used
         :param default_launch_plan: This should be true if a default launch plan should be created for the workflow
         :param options: Additional execution options that can be configured for the default launchplan
+        :param fast_package_options: Options to customize copy_all behavior
         :return:
         """
         if not isinstance(entity, PythonFunctionWorkflow):
@@ -913,7 +914,7 @@ class FlyteRemote(object):
             options=options,
             source_path=module_root,
             module_name=mod_name,
-            copy_all=copy_all,
+            fast_package_options=fast_package_options,
         )
 
     def fast_package(
