@@ -155,8 +155,6 @@ def test_spark_addPyFile(mock_add_pyfile):
             ctx.with_execution_state(
                 ctx.new_execution_state().with_params(mode=ExecutionState.Mode.TASK_EXECUTION)).with_serialization_settings(serialization_settings)
     ) as new_ctx:
-        with zipfile.ZipFile("flyte_wf.zip", 'w') as zipf:
-            zipf.writestr("dummy_file.txt", b'This is some dummy content.')
         my_spark.pre_execute(new_ctx.user_space_params)
         mock_add_pyfile.assert_called_once()
         os.remove(os.path.join(os.getcwd(), "flyte_wf.zip"))
