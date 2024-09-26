@@ -11,6 +11,7 @@ from flytekit.core.node import Node
 from flytekit.core.promise import (
     Promise,
     VoidPromise,
+    create_and_link_node,
     flyte_entity_call_handler,
     translate_inputs_to_literals,
 )
@@ -20,16 +21,18 @@ from flytekit.models import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.literals import Literal, LiteralCollection, Scalar
 
+ARRAY_NODE_SUBNODE_NAME = "array_node_subnode"
+
 
 class ArrayNode:
     def __init__(
         self,
         target: LaunchPlan,
         execution_mode: _core_workflow.ArrayNode.ExecutionMode = _core_workflow.ArrayNode.FULL_STATE,
+        bindings: Optional[List[_literal_models.Binding]] = None,
         concurrency: Optional[int] = None,
         min_successes: Optional[int] = None,
         min_success_ratio: Optional[float] = None,
-        bound_inputs: Optional[Set[str]] = None,
         metadata: Optional[Union[_workflow_model.NodeMetadata, TaskMetadata]] = None,
     ):
         """
@@ -41,7 +44,6 @@ class ArrayNode:
         :param min_successes: The minimum number of successful executions. If set, this takes precedence over
             min_success_ratio
         :param min_success_ratio: The minimum ratio of successful executions.
-        :param bound_inputs: The set of inputs that should be bound to the map task
         :param execution_mode: The execution mode for propeller to use when handling ArrayNode
         :param metadata: The metadata for the underlying entity
         """
@@ -49,6 +51,7 @@ class ArrayNode:
         self._concurrency = concurrency
         self._execution_mode = execution_mode
         self.id = target.name
+        self._bindings = bindings or []
 
         if min_successes is not None:
             self._min_successes = min_successes
@@ -61,7 +64,8 @@ class ArrayNode:
         if n_outputs > 1:
             raise ValueError("Only tasks with a single output are supported in map tasks.")
 
-        self._bound_inputs: Set[str] = bound_inputs or set(bound_inputs) if bound_inputs else set()
+        # TODO - bound inputs are not supported at the moment
+        self._bound_inputs: Set[str] = set()
 
         output_as_list_of_optionals = min_success_ratio is not None and min_success_ratio != 1 and n_outputs == 1
         collection_interface = transform_interface_to_list_interface(
@@ -99,7 +103,7 @@ class ArrayNode:
     @property
     def bindings(self) -> List[_literal_models.Binding]:
         # Required in get_serializable_node
-        return []
+        return self._bindings
 
     @property
     def upstream_nodes(self) -> List[Node]:
@@ -116,7 +120,8 @@ class ArrayNode:
             outputs_expected = False
 
         mapped_entity_count = 0
-        for k in self.python_interface.inputs.keys():
+        for binding in self.bindings:
+            k = binding.var
             if k not in self._bound_inputs:
                 v = kwargs[k]
                 if isinstance(v, list) and len(v) > 0 and isinstance(v[0], self.target.python_interface.inputs[k]):
@@ -137,7 +142,8 @@ class ArrayNode:
         literals = []
         for i in range(mapped_entity_count):
             single_instance_inputs = {}
-            for k in self.python_interface.inputs.keys():
+            for binding in self.bindings:
+                k = binding.var
                 if k not in self._bound_inputs:
                     single_instance_inputs[k] = kwargs[k][i]
                 else:
@@ -190,6 +196,24 @@ class ArrayNode:
         return self._execution_mode
 
     def __call__(self, *args, **kwargs):
+        if not self._bindings:
+            ctx = FlyteContext.current_context()
+            # since a new entity with an updated list interface is not created, we have to work around the mismatch
+            # between the interface and the inputs
+            collection_interface = transform_interface_to_list_interface(
+                self.flyte_entity.python_interface, self._bound_inputs
+            )
+            # don't link the node to the compilation state, since we don't want to add the subnode to the
+            # workflow as a node
+            bound_subnode = create_and_link_node(
+                ctx,
+                entity=self.flyte_entity,
+                add_node_to_compilation_state=False,
+                overridden_interface=collection_interface,
+                node_id=ARRAY_NODE_SUBNODE_NAME,
+                **kwargs,
+            )
+            self._bindings = bound_subnode.ref.node.bindings
         return flyte_entity_call_handler(self, *args, **kwargs)
 
 

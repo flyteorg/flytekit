@@ -18,6 +18,7 @@ from flyteidl.core import literals_pb2 as _literals_pb2
 from flytekit.configuration import (
     SERIALIZED_CONTEXT_ENV_VAR,
     FastSerializationSettings,
+    ImageConfig,
     SerializationSettings,
     StatsConfig,
 )
@@ -35,6 +36,7 @@ from flytekit.core.context_manager import (
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.promise import VoidPromise
 from flytekit.deck.deck import _output_deck
+from flytekit.exceptions.system import FlyteNonRecoverableSystemException
 from flytekit.exceptions.user import FlyteRecoverableException, FlyteUserRuntimeException
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
 from flytekit.loggers import logger, user_space_logger
@@ -158,7 +160,22 @@ def _dispatch_execute(
         logger.error(exc_str)
         logger.error("!! End Error Captured by Flyte !!")
 
-    # All the Non-user errors are captured here, and are considered system errors
+    except FlyteNonRecoverableSystemException as e:
+        exc_str = get_traceback_str(e.value)
+        output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
+            _error_models.ContainerError(
+                "SYSTEM",
+                exc_str,
+                _error_models.ContainerError.Kind.NON_RECOVERABLE,
+                _execution_models.ExecutionError.ErrorKind.SYSTEM,
+            )
+        )
+
+        logger.error("!! Begin Non-recoverable System Error Captured by Flyte !!")
+        logger.error(exc_str)
+        logger.error("!! End Error Captured by Flyte !!")
+
+    # All other errors are captured here, and are considered system errors
     except Exception as e:
         exc_str = get_traceback_str(e)
         output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
@@ -325,16 +342,20 @@ def setup_execution(
     if compressed_serialization_settings:
         ss = SerializationSettings.from_transport(compressed_serialization_settings)
         ssb = ss.new_builder()
-        ssb.project = ssb.project or exe_project
-        ssb.domain = ssb.domain or exe_domain
-        ssb.version = tk_version
-        if dynamic_addl_distro:
-            ssb.fast_serialization_settings = FastSerializationSettings(
-                enabled=True,
-                destination_dir=dynamic_dest_dir,
-                distribution_location=dynamic_addl_distro,
-            )
-        cb = cb.with_serialization_settings(ssb.build())
+    else:
+        ss = SerializationSettings(ImageConfig.auto())
+        ssb = ss.new_builder()
+
+    ssb.project = ssb.project or exe_project
+    ssb.domain = ssb.domain or exe_domain
+    ssb.version = tk_version
+    if dynamic_addl_distro:
+        ssb.fast_serialization_settings = FastSerializationSettings(
+            enabled=True,
+            destination_dir=dynamic_dest_dir,
+            distribution_location=dynamic_addl_distro,
+        )
+    cb = cb.with_serialization_settings(ssb.build())
 
     with FlyteContextManager.with_context(cb) as ctx:
         yield ctx
@@ -562,7 +583,14 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
 
     # Use the commandline to run the task execute command rather than calling it directly in python code
     # since the current runtime bytecode references the older user code, rather than the downloaded distribution.
-    p = subprocess.Popen(cmd)
+    env = os.environ.copy()
+    if dest_dir is not None:
+        dest_dir_resolved = os.path.realpath(os.path.expanduser(dest_dir))
+        if "PYTHONPATH" in env:
+            env["PYTHONPATH"] += os.pathsep + dest_dir_resolved
+        else:
+            env["PYTHONPATH"] = dest_dir_resolved
+    p = subprocess.Popen(cmd, env=env)
 
     def handle_sigterm(signum, frame):
         logger.info(f"passing signum {signum} [frame={frame}] to subprocess")

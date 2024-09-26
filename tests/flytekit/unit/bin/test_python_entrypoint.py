@@ -349,6 +349,15 @@ def test_setup_disk_prefix():
         }
 
 
+def test_setup_for_fast_register():
+    dynamic_addl_distro = "distro"
+    dynamic_dest_dir = "/root"
+    with setup_execution(raw_output_data_prefix="qwerty", dynamic_addl_distro=dynamic_addl_distro, dynamic_dest_dir=dynamic_dest_dir) as ctx:
+        assert ctx.serialization_settings.fast_serialization_settings.enabled is True
+        assert ctx.serialization_settings.fast_serialization_settings.distribution_location == dynamic_addl_distro
+        assert ctx.serialization_settings.fast_serialization_settings.destination_dir == dynamic_dest_dir
+
+
 @mock.patch("google.auth.compute_engine._metadata")
 def test_setup_cloud_prefix(mock_gcs):
     with setup_execution("s3://", checkpoint_path=None, prev_checkpoint=None) as ctx:
