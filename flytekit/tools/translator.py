@@ -267,6 +267,8 @@ def get_serializable_task(
 
     if isinstance(entity, PythonAutoContainerTask) and settings.interactive_mode_enabled:
         entity.set_resolver(default_notebook_task_resolver)
+    if isinstance(entity, ArrayNodeMapTask) and settings.interactive_mode_enabled:
+        entity._run_task.set_resolver(default_notebook_task_resolver)
     container = entity.get_container(settings)
     # This pod will be incorrect when doing fast serialize
     pod = entity.get_k8s_pod(settings)
