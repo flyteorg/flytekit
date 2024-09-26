@@ -874,6 +874,7 @@ class FlyteRemote(object):
         version: typing.Optional[str] = None,
         default_launch_plan: typing.Optional[bool] = True,
         options: typing.Optional[Options] = None,
+        copy_all: bool = False,
     ) -> FlyteWorkflow:
         """
         Use this method to register a workflow with zip mode.
@@ -912,6 +913,7 @@ class FlyteRemote(object):
             options=options,
             source_path=module_root,
             module_name=mod_name,
+            copy_all=copy_all,
         )
 
     def fast_package(
