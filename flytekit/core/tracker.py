@@ -249,6 +249,24 @@ def istestfunction(func) -> bool:
     return False
 
 
+def is_ipython_or_pickle_exists() -> bool:
+    """
+    Returns true if the code is running in an IPython notebook or if a pickle file exists.
+
+    We skip module path resolution in both cases due to the following reasons:
+
+    1. In an IPython notebook, we cannot resolve the module path in the local file system.
+    2. When the code is serialized (pickled) and executed in a remote environment, only
+       the pickled file exists at PICKLE_FILE_PATH. The remote environment won't have the
+       plain python file and module path resolution will fail.
+
+    This check ensures we avoid attempting module path resolution in both environments.
+    """
+    from flytekit.core.python_auto_container import PICKLE_FILE_PATH
+
+    return ipython_check() or os.path.exists(PICKLE_FILE_PATH)
+
+
 class _ModuleSanitizer(object):
     """
     Sanitizes and finds the absolute module path irrespective of the import location.
@@ -284,9 +302,8 @@ class _ModuleSanitizer(object):
             logger.debug(
                 f"Directory {dirname} does not exist. It is likely that we are in a Jupyter notebook or a pickle file was received."
             )
-            from flytekit.core.python_auto_container import PICKLE_FILE_PATH
 
-            if not ipython_check() and not os.path.exists(PICKLE_FILE_PATH):
+            if not is_ipython_or_pickle_exists():
                 raise AssertionError(
                     f"Directory {dirname} does not exist, and we are not in a Jupyter notebook or received a pickle file."
                 )
@@ -340,11 +357,12 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
         mod, mod_name, name = _task_module_from_callable(f)
 
     if mod is None:
-        from flytekit.core.python_auto_container import PICKLE_FILE_PATH
-
-        if not ipython_check() and not os.path.exists(PICKLE_FILE_PATH):
+        if not is_ipython_or_pickle_exists():
             raise AssertionError(f"Unable to determine module of {f}")
-        return f"{mod_name}.{name}", mod_name, name, os.path.abspath(PICKLE_FILE_PATH)
+        logger.debug(
+            "Could not determine module of function. It is likely that we are in a Jupyter notebook or received a pickle file."
+        )
+        return f"{mod_name}.{name}", mod_name, name, ""
 
     if mod_name == "__main__":
         if hasattr(f, "task_function"):
