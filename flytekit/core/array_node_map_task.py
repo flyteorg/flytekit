@@ -254,9 +254,12 @@ class ArrayNodeMapTask(PythonTask):
 
                 if k not in self.bound_inputs:
                     # assert that v.collection is not None
-                    if not v.collection or not isinstance(v.collection.literals, list):
+                    if not v.offloaded_metadata and (not v.collection or not isinstance(v.collection.literals, list)):
                         raise ValueError(f"Expected a list of literals for {k}")
-                    map_task_inputs[k] = v.collection.literals[task_index]
+                    if v.offloaded_metadata:
+                        map_task_inputs[k] = v
+                    else:
+                        map_task_inputs[k] = v.collection.literals[task_index]
                 else:
                     map_task_inputs[k] = v
             inputs_map = _literal_models.LiteralMap(literals=map_task_inputs)

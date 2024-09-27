@@ -466,6 +466,42 @@ def test_mis_match():
     with pytest.raises(AssertionError):
         wf.compile()
 
+def test_load_offloaded_literal(tmp_path, monkeypatch):
+    @task
+    def say_hello(name: str) -> str:
+        return f"hello {name}!"
+
+    ctx = context_manager.FlyteContextManager.current_context()
+    with context_manager.FlyteContextManager.with_context(
+        ctx.with_execution_state(
+            ctx.execution_state.with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION)
+        )
+    ) as ctx:
+        s = "earth"
+        lt = TypeEngine.to_literal_type(str)
+        to_be_offloaded = TypeEngine.to_literal(ctx, s, str, lt)
+        with open(f"{tmp_path}/literal.pb", "wb") as f:
+            f.write(to_be_offloaded.to_flyte_idl().SerializeToString())
+
+        literal = Literal(
+            offloaded_metadata=LiteralOffloadedMetadata(
+                uri=f"{tmp_path}/literal.pb",
+                inferred_type=lt,
+            ),
+        )
+
+        lm = LiteralMap({
+            "name": literal
+        })
+
+        monkeypatch.setenv("BATCH_JOB_ARRAY_INDEX_VAR_NAME", "name")
+        monkeypatch.setenv("name", "0")
+        t = map_task(say_hello)
+        res = t.dispatch_execute(ctx, lm)
+        assert len(res.literals) == 1
+        assert res.literals["o0"].scalar.primitive.string_value == f"hello {s}!"
+
+
 
 def test_load_collection_of_offloaded_literals(tmp_path, monkeypatch):
     @task
