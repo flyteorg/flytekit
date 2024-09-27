@@ -1,8 +1,16 @@
 from flytekit.exceptions import base as _base_exceptions
+from flytekit.exceptions.base import FlyteException
 
 
 class FlyteSystemException(_base_exceptions.FlyteRecoverableException):
     _ERROR_CODE = "SYSTEM:Unknown"
+
+
+class FlyteSystemUnavailableException(FlyteSystemException):
+    _ERROR_CODE = "SYSTEM:Unavailable"
+
+    def __str__(self):
+        return "Flyte cluster is currently unavailable. Please make sure the cluster is up and running."
 
 
 class FlyteNotImplementedException(FlyteSystemException, NotImplementedError):
@@ -41,3 +49,28 @@ class FlyteSystemAssertion(FlyteSystemException, AssertionError):
 
 class FlyteAgentNotFound(FlyteSystemException, AssertionError):
     _ERROR_CODE = "SYSTEM:AgentNotFound"
+
+
+class FlyteDownloadDataException(FlyteSystemException):
+    _ERROR_CODE = "SYSTEM:DownloadDataError"
+
+
+class FlyteUploadDataException(FlyteSystemException):
+    _ERROR_CODE = "SYSTEM:UploadDataError"
+
+
+class FlyteNonRecoverableSystemException(FlyteException):
+    _ERROR_CODE = "USER:NonRecoverableSystemError"
+
+    def __init__(self, exc_value: Exception):
+        """
+        FlyteNonRecoverableSystemException is thrown when a system code raises an exception.
+
+        :param exc_value: The exception that was raised from system code.
+        """
+        self._exc_value = exc_value
+        super().__init__(str(exc_value))
+
+    @property
+    def value(self):
+        return self._exc_value

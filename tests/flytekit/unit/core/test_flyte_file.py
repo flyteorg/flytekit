@@ -3,7 +3,7 @@ import pathlib
 import tempfile
 import typing
 from unittest.mock import MagicMock, patch
-
+from dataclasses import dataclass
 import pytest
 from typing_extensions import Annotated
 
@@ -105,6 +105,26 @@ def test_file_types_with_naked_flytefile_in_workflow(local_dummy_txt_file):
     with open(res, "r") as fh:
         assert fh.read() == "Hello World"
 
+def test_flytefile_in_dataclass(local_dummy_txt_file):
+    TxtFile = FlyteFile[typing.TypeVar("txt")]
+    @dataclass
+    class DC:
+        f: TxtFile
+    @task
+    def t1(path: TxtFile) -> DC:
+        return DC(f=path)
+    @workflow
+    def my_wf(path: TxtFile) -> DC:
+        dc = t1(path=path)
+        return dc
+
+    txt_file = TxtFile(local_dummy_txt_file)
+    dc1 = my_wf(path=txt_file)
+    with open(dc1.f, "r") as fh:
+        assert fh.read() == "Hello World"
+
+    dc2 = DC(f=txt_file)
+    assert dc1 == dc2
 
 @pytest.mark.skipif(not can_import("magic"), reason="Libmagic is not installed")
 def test_mismatching_file_types(local_dummy_txt_file):
@@ -117,7 +137,7 @@ def test_mismatching_file_types(local_dummy_txt_file):
         f = t1(path=path)
         return f
 
-    with pytest.raises(TypeError) as excinfo:
+    with pytest.raises(ValueError) as excinfo:
         my_wf(path=local_dummy_txt_file)
     assert "Incorrect file type, expected image/jpeg, got text/plain" in str(excinfo.value)
 
@@ -180,7 +200,7 @@ def test_flyte_file_type_annotated_hashmethod(local_dummy_file):
         ff = t1(path=path)
         t2(ff=ff)
 
-    with pytest.raises(TypeError) as excinfo:
+    with pytest.raises(ValueError) as excinfo:
         wf(path=local_dummy_file)
     assert "Incorrect file type, expected image/jpeg, got text/plain" in str(excinfo.value)
 
@@ -205,7 +225,7 @@ def test_file_handling_remote_default_wf_input():
     assert sample_lp.parameters.parameters["fname"].default.scalar.blob.uri == SAMPLE_DATA
 
 
-def test_file_handling_local_file_gets_copied():
+def test_file_handling_local_file_does_not_get_copied():
     @task
     def t1() -> FlyteFile:
         # Use this test file itself, since we know it exists.
@@ -223,12 +243,7 @@ def test_file_handling_local_file_gets_copied():
         assert len(top_level_files) == 1  # the flytekit_local folder
 
         x = my_wf()
-
-        # After running, this test file should've been copied to the mock remote location.
-        mock_remote_files = os.listdir(os.path.join(random_dir, "mock_remote"))
-        assert len(mock_remote_files) == 1  # the file
-        # File should've been copied to the mock remote folder
-        assert x.path.startswith(random_dir)
+        assert x.path == __file__
 
 
 def test_file_handling_local_file_gets_force_no_copy():
@@ -494,7 +509,7 @@ def test_returning_folder_instead_of_file():
     def wf1() -> FlyteFile:
         return t1()
 
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         wf1()
 
     @task
@@ -506,7 +521,7 @@ def test_returning_folder_instead_of_file():
     def wf2() -> FlyteFile:
         return t2()
 
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         wf2()
 
 

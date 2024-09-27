@@ -2,17 +2,29 @@ import os
 import typing
 from dataclasses import dataclass
 from unittest import mock
+from typing_extensions import Annotated, cast
+from flytekitplugins.kfpytorch.task import Elastic
+
+from flytekit import Artifact
 
 import pytest
 import torch
 import torch.distributed as dist
 from dataclasses_json import DataClassJsonMixin
-from flytekitplugins.kfpytorch.task import Elastic
+from flytekitplugins.kfpytorch.task import CleanPodPolicy, Elastic, RunPolicy
 
 import flytekit
 from flytekit import task, workflow
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager, ExecutionState, ExecutionParameters, OutputMetadataTracker
+from flytekit.configuration import SerializationSettings
 from flytekit.exceptions.user import FlyteRecoverableException
 
+@pytest.fixture(autouse=True, scope="function")
+def restore_env():
+    original_env = os.environ.copy()
+    yield
+    os.environ.clear()
+    os.environ.update(original_env)
 
 @dataclass
 class Config(DataClassJsonMixin):
@@ -50,7 +62,7 @@ def test_end_to_end(start_method: str) -> None:
     """Test that the workflow with elastic task runs end to end."""
     world_size = 2
 
-    train_task = task(train, task_config=Elastic(nnodes=1, nproc_per_node=world_size, start_method=start_method))
+    train_task = task(train,task_config=Elastic(nnodes=1, nproc_per_node=world_size, start_method=start_method))
 
     @workflow
     def wf(config: Config = Config()) -> typing.Tuple[str, Config, torch.nn.Module, int]:
@@ -77,9 +89,7 @@ def test_end_to_end(start_method: str) -> None:
         ("fork", "local", False),
     ],
 )
-def test_execution_params(
-    start_method: str, target_exec_id: str, monkeypatch_exec_id_env_var: bool, monkeypatch
-) -> None:
+def test_execution_params(start_method: str, target_exec_id: str, monkeypatch_exec_id_env_var: bool, monkeypatch) -> None:
     """Test that execution parameters are set in the worker processes."""
     if monkeypatch_exec_id_env_var:
         monkeypatch.setenv("FLYTE_INTERNAL_EXECUTION_ID", target_exec_id)
@@ -105,7 +115,7 @@ def test_rdzv_configs(start_method: str) -> None:
 
     rdzv_configs = {"join_timeout": 10}
 
-    @task(task_config=Elastic(nnodes=1, nproc_per_node=2, start_method=start_method, rdzv_configs=rdzv_configs))
+    @task(task_config=Elastic(nnodes=1,nproc_per_node=2,start_method=start_method,rdzv_configs=rdzv_configs))
     def test_task():
         pass
 
@@ -119,15 +129,12 @@ def test_deck(start_method: str) -> None:
     """Test that decks created in the main worker process are transferred to the parent process."""
     world_size = 2
 
-    @task(
-        task_config=Elastic(nnodes=1, nproc_per_node=world_size, start_method=start_method),
-        enable_deck=True,
-    )
+    @task(task_config=Elastic(nnodes=1, nproc_per_node=world_size, start_method=start_method), enable_deck=True)
     def train():
         import os
 
         ctx = flytekit.current_context()
-        deck = flytekit.Deck("test-deck", f"Hello Flyte Deck viewer from worker process {os.environ.get('RANK')}")
+        deck = flytekit.Deck("test-deck", f"Hello Flyte Deck viewer from worker process {os.environ.get('RANK')}",)
         ctx.decks.append(deck)
         default_deck = ctx.default_deck
         default_deck.append("Hello from default deck")
@@ -152,6 +159,39 @@ def test_deck(start_method: str) -> None:
     assert "Hello Flyte Deck viewer from worker process 0" in test_deck.html
 
 
+class Card(object):
+    def __init__(self, text: str):
+        self.text = text
+
+    def serialize_to_string(self, ctx: FlyteContext, variable_name: str):
+        print(f"In serialize_to_string: {id(ctx)}")
+        return "card", "card"
+
+
+@pytest.mark.parametrize("start_method", ["spawn", "fork"])
+def test_output_metadata_passing(start_method: str) -> None:
+    ea = Artifact(name="elastic-artf")
+
+    @task(
+        task_config=Elastic(start_method=start_method),
+    )
+    def train2() -> Annotated[str, ea]:
+        return ea.create_from("hello flyte", Card("## card"))
+
+    @workflow
+    def wf():
+        train2()
+
+    ctx = FlyteContext.current_context()
+    omt = OutputMetadataTracker()
+    with FlyteContextManager.with_context(ctx.with_execution_state(ctx.new_execution_state().with_params(mode=ExecutionState.Mode.LOCAL_TASK_EXECUTION)).with_output_metadata_tracker(omt)) as child_ctx:
+        cast(ExecutionParameters, child_ctx.user_space_params)._decks = []
+        # call execute directly so as to be able to get at the same FlyteContext object.
+        res = train2.execute()
+        om = child_ctx.output_metadata_tracker.get(res)
+        assert len(om.additional_items) == 1
+
+
 @pytest.mark.parametrize(
     "recoverable,start_method",
     [
@@ -168,9 +208,7 @@ def test_recoverable_error(recoverable: bool, start_method: str) -> None:
     class CustomRecoverableException(FlyteRecoverableException):
         pass
 
-    @task(
-        task_config=Elastic(nnodes=1, nproc_per_node=world_size, start_method=start_method),
-    )
+    @task(task_config=Elastic(nnodes=1, nproc_per_node=world_size, start_method=start_method))
     def train(recoverable: bool):
         if recoverable:
             raise CustomRecoverableException("Recoverable error")
@@ -187,3 +225,54 @@ def test_recoverable_error(recoverable: bool, start_method: str) -> None:
     else:
         with pytest.raises(RuntimeError):
             wf(recoverable=recoverable)
+
+
+def test_default_timeouts():
+    """Test that default timeouts are set for the elastic task."""
+    @task(task_config=Elastic(nnodes=1))
+    def test_task():
+        pass
+
+    assert test_task.task_config.rdzv_configs == {"join_timeout": 900, "timeout": 900}
+
+def test_run_policy() -> None:
+    """Test that run policy is propagated to custom spec."""
+
+    run_policy = RunPolicy(
+        clean_pod_policy=CleanPodPolicy.ALL,
+        ttl_seconds_after_finished=10 * 60,
+        active_deadline_seconds=36000,
+        backoff_limit=None,
+    )
+
+    # nnodes must be > 1 to get pytorchjob spec
+    @task(task_config=Elastic(nnodes=2, nproc_per_node=2, run_policy=run_policy))
+    def test_task():
+        pass
+
+    spec = test_task.get_custom(SerializationSettings(image_config=None))
+
+    assert spec["runPolicy"] == {
+        "cleanPodPolicy": "CLEANPOD_POLICY_ALL",
+        "ttlSecondsAfterFinished": 600,
+        "activeDeadlineSeconds": 36000,
+    }
+
+
+@pytest.mark.parametrize("start_method", ["spawn", "fork"])
+def test_omp_num_threads(start_method: str) -> None:
+    """Test that the env var OMP_NUM_THREADS is set by default and not overwritten if set."""
+
+    @task(task_config=Elastic(nnodes=1, nproc_per_node=2, start_method=start_method))
+    def test_task_omp_default():
+        assert os.environ["OMP_NUM_THREADS"] == "1"
+
+    test_task_omp_default()
+
+    os.environ["OMP_NUM_THREADS"] = "42"
+
+    @task(task_config=Elastic(nnodes=1, nproc_per_node=2, start_method=start_method))
+    def test_task_omp_set():
+        assert os.environ["OMP_NUM_THREADS"] == "42"
+
+    test_task_omp_set()

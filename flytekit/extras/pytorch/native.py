@@ -28,6 +28,9 @@ class PyTorchTypeTransformer(TypeTransformer[T]):
         python_type: Type[T],
         expected: LiteralType,
     ) -> Literal:
+        if not isinstance(python_val, torch.Tensor) and not isinstance(python_val, torch.nn.Module):
+            raise TypeTransformerFailedError("Expected a torch.Tensor or nn.Module")
+
         meta = BlobMetadata(
             type=_core_types.BlobType(
                 format=self.PYTORCH_FORMAT,

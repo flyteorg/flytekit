@@ -2,16 +2,21 @@ import os
 import pathlib
 import shutil
 import subprocess
+from dataclasses import asdict
 from importlib import metadata
 
 import click
 from packaging.version import Version
+from rich import print
+from rich.pretty import Pretty
 
 from flytekit.configuration import DefaultImages
+from flytekit.constants import CopyFileDetection
 from flytekit.core import context_manager
 from flytekit.core.constants import REQUIREMENTS_FILE_NAME
 from flytekit.image_spec.image_spec import _F_IMG_ID, ImageBuildEngine, ImageSpec, ImageSpecBuilder
 from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
+from flytekit.tools.script_mode import ls_files
 
 FLYTE_LOCAL_REGISTRY = "localhost:30000"
 FLYTE_ENVD_CONTEXT = "FLYTE_ENVD_CONTEXT"
@@ -35,7 +40,16 @@ class EnvdImageSpecBuilder(ImageSpecBuilder):
         else:
             build_command += f" --tag {image_spec.image_name()}"
         envd_context_switch(image_spec.registry)
-        execute_command(build_command)
+        try:
+            execute_command(build_command)
+        except Exception as e:
+            click.secho("❌ Failed to build image spec:", fg="red")
+            print(
+                Pretty(
+                    asdict(image_spec, dict_factory=lambda x: {k: v for (k, v) in x if v is not None}), indent_size=2
+                )
+            )
+            raise e from None
 
 
 def envd_context_switch(registry: str):
@@ -72,7 +86,7 @@ def execute_command(command: str):
 
     if p.returncode != 0:
         _, stderr = p.communicate()
-        raise Exception(f"failed to run command {command} with error {stderr}")
+        raise RuntimeError(f"failed to run command {command} with error:\n {stderr.decode()}")
 
     return result
 
@@ -87,7 +101,7 @@ def create_envd_config(image_spec: ImageSpec) -> str:
     base_image = DefaultImages.default_image() if image_spec.base_image is None else image_spec.base_image
     if image_spec.cuda:
         if image_spec.python_version is None:
-            raise Exception("python_version is required when cuda and cudnn are specified")
+            raise ValueError("python_version is required when cuda and cudnn are specified")
         base_image = "ubuntu20.04"
 
     python_packages = _create_str_from_package_list(image_spec.packages)
@@ -95,7 +109,7 @@ def create_envd_config(image_spec: ImageSpec) -> str:
     run_commands = _create_str_from_package_list(image_spec.commands)
     conda_channels = _create_str_from_package_list(image_spec.conda_channels)
     apt_packages = _create_str_from_package_list(image_spec.apt_packages)
-    env = {"PYTHONPATH": "/root:", _F_IMG_ID: image_spec.image_name()}
+    env = {"PYTHONPATH": "/root:", _F_IMG_ID: image_spec.id}
 
     if image_spec.env:
         env.update(image_spec.env)
@@ -137,14 +151,23 @@ def build():
         cudnn = image_spec.cudnn if image_spec.cudnn else ""
         envd_config += f'    install.cuda(version="{image_spec.cuda}", cudnn="{cudnn}")\n'
 
-    if image_spec.source_root:
+    if image_spec.source_copy_mode is not None and image_spec.source_copy_mode != CopyFileDetection.NO_COPY:
+        if not image_spec.source_root:
+            raise ValueError(f"Field source_root for {image_spec} must be set when copy is set")
+        # todo: See note in we should pipe through ignores from the command line here at some point.
+        #  what about deref_symlink?
         ignore = IgnoreGroup(image_spec.source_root, [GitIgnore, DockerIgnore, StandardIgnore])
-        shutil.copytree(
-            src=image_spec.source_root,
-            dst=pathlib.Path(cfg_path).parent,
-            ignore=shutil.ignore_patterns(*ignore.list_ignored()),
-            dirs_exist_ok=True,
+
+        dst = pathlib.Path(cfg_path).parent
+
+        ls, _ = ls_files(
+            str(image_spec.source_root), image_spec.source_copy_mode, deref_symlinks=False, ignore_group=ignore
         )
+
+        for file_to_copy in ls:
+            rel_path = os.path.relpath(file_to_copy, start=str(image_spec.source_root))
+            pathlib.Path(dst / rel_path).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy(file_to_copy, dst / rel_path)
 
         envd_version = metadata.version("envd")
         # Indentation is required by envd

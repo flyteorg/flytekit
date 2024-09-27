@@ -12,21 +12,26 @@ from types import FrameType, coroutine
 from typing import Any, Dict, List, Optional, Union
 
 from flyteidl.admin.agent_pb2 import Agent
+from flyteidl.admin.agent_pb2 import Resource as _Resource
 from flyteidl.admin.agent_pb2 import TaskCategory as _TaskCategory
 from flyteidl.core import literals_pb2
 from flyteidl.core.execution_pb2 import TaskExecution, TaskLog
+from google.protobuf import json_format
+from google.protobuf.struct_pb2 import Struct
 from rich.logging import RichHandler
 from rich.progress import Progress
 
-from flytekit import FlyteContext, PythonFunctionTask, logger
+from flytekit import FlyteContext, PythonFunctionTask
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core import utils
 from flytekit.core.base_task import PythonTask
+from flytekit.core.context_manager import ExecutionState, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, dataclass_from_dict
 from flytekit.exceptions.system import FlyteAgentNotFound
 from flytekit.exceptions.user import FlyteUserException
 from flytekit.extend.backend.utils import is_terminal_phase, mirror_async_methods, render_task_template
 from flytekit.loggers import set_flytekit_log_properties
+from flytekit.models import common
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskExecutionMetadata, TaskTemplate
 
@@ -75,7 +80,7 @@ class ResourceMeta:
 
 
 @dataclass
-class Resource:
+class Resource(common.FlyteIdlEntity):
     """
     This is the output resource of the job.
 
@@ -90,6 +95,36 @@ class Resource:
     message: Optional[str] = None
     log_links: Optional[List[TaskLog]] = None
     outputs: Optional[Union[LiteralMap, typing.Dict[str, Any]]] = None
+    custom_info: Optional[typing.Dict[str, Any]] = None
+
+    def to_flyte_idl(self) -> _Resource:
+        if self.outputs is None:
+            outputs = None
+        elif isinstance(self.outputs, LiteralMap):
+            outputs = self.outputs.to_flyte_idl()
+        else:
+            ctx = FlyteContext.current_context()
+            outputs = TypeEngine.dict_to_literal_map_pb(ctx, self.outputs)
+
+        return _Resource(
+            phase=self.phase,
+            message=self.message,
+            log_links=self.log_links,
+            outputs=outputs,
+            custom_info=(json_format.Parse(json.dumps(self.custom_info), Struct()) if self.custom_info else None),
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object: _Resource):
+        return cls(
+            phase=pb2_object.phase,
+            message=pb2_object.message,
+            log_links=pb2_object.log_links,
+            outputs=(LiteralMap.from_flyte_idl(pb2_object.outputs) if pb2_object.outputs else None),
+            custom_info=(
+                json_format.MessageToDict(pb2_object.custom_info) if pb2_object.HasField("custom_info") else None
+            ),
+        )
 
 
 class AgentBase(ABC):
@@ -210,8 +245,6 @@ class AgentRegistry(object):
             )
             AgentRegistry._METADATA[agent.name] = agent_metadata
 
-        logger.info(f"Registering {agent.name} for task type: {agent.task_category}")
-
     @staticmethod
     def get_agent(task_type_name: str, task_type_version: int = 0) -> Union[SyncAgentBase, AsyncAgentBase]:
         task_category = TaskCategory(name=task_type_name, version=task_type_version)
@@ -272,8 +305,9 @@ class SyncAgentExecutorMixin:
             return await mirror_async_methods(
                 agent.do, task_template=template, inputs=literal_map, output_prefix=output_prefix
             )
-        except Exception as error_message:
-            raise FlyteUserException(f"Failed to run the task {self.name} with error: {error_message}")
+        except Exception as e:
+            e.args = (f"Failed to run the task {self.name} with error: {e.args[0]}",)
+            raise
 
 
 class AsyncAgentExecutorMixin:
@@ -321,14 +355,19 @@ class AsyncAgentExecutorMixin:
         self: PythonTask, task_template: TaskTemplate, output_prefix: str, inputs: Dict[str, Any] = None
     ) -> ResourceMeta:
         ctx = FlyteContext.current_context()
-
-        literal_map = TypeEngine.dict_to_literal_map(ctx, inputs or {}, self.get_input_types())
         if isinstance(self, PythonFunctionTask):
-            # Write the inputs to a remote file, so that the remote task can read the inputs from this file.
-            path = ctx.file_access.get_random_local_path()
-            utils.write_proto_to_file(literal_map.to_flyte_idl(), path)
-            ctx.file_access.put_data(path, f"{output_prefix}/inputs.pb")
-            task_template = render_task_template(task_template, output_prefix)
+            es = ctx.new_execution_state().with_params(mode=ExecutionState.Mode.TASK_EXECUTION)
+            cb = ctx.new_builder().with_execution_state(es)
+
+            with FlyteContextManager.with_context(cb) as ctx:
+                # Write the inputs to a remote file, so that the remote task can read the inputs from this file.
+                literal_map = TypeEngine.dict_to_literal_map(ctx, inputs or {}, self.get_input_types())
+                path = ctx.file_access.get_random_local_path()
+                utils.write_proto_to_file(literal_map.to_flyte_idl(), path)
+                ctx.file_access.put_data(path, f"{output_prefix}/inputs.pb")
+                task_template = render_task_template(task_template, output_prefix)
+        else:
+            literal_map = TypeEngine.dict_to_literal_map(ctx, inputs or {}, self.get_input_types())
 
         resource_meta = await mirror_async_methods(
             self._agent.create,

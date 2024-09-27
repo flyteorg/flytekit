@@ -9,7 +9,7 @@ from typing import Callable, Optional, Tuple, Union
 
 from flytekit.configuration.feature_flags import FeatureFlags
 from flytekit.exceptions import system as _system_exceptions
-from flytekit.loggers import logger
+from flytekit.loggers import developer_logger, logger
 
 
 def import_module_from_file(module_name, file):
@@ -62,7 +62,7 @@ class InstanceTrackingMeta(type):
         while frame:
             if frame.f_code.co_name == "<module>" and "__name__" in frame.f_globals:
                 if frame.f_globals["__name__"] != "__main__":
-                    return frame.f_globals["__name__"], None
+                    return frame.f_globals["__name__"], frame.f_globals.get("__file__")
 
                 # Try to find the module and filename in the case that we're in the __main__ module
                 # This is useful in cases that use FlyteRemote to load tasks/workflows that are defined
@@ -81,7 +81,7 @@ class InstanceTrackingMeta(type):
         o = super(InstanceTrackingMeta, cls).__call__(*args, **kwargs)
         mod_name, mod_file = InstanceTrackingMeta._find_instance_module()
         o._instantiated_in = mod_name
-        o._module_file = mod_file
+        o._module_file = Path(mod_file).resolve() if mod_file else None
         return o
 
 
@@ -125,12 +125,12 @@ class TrackedInstance(metaclass=InstanceTrackingMeta):
         if self._instantiated_in is None or self._instantiated_in == "":
             raise _system_exceptions.FlyteSystemException(f"Object {self} does not have an _instantiated in")
 
-        logger.debug(f"Looking for LHS for {self} from {self._instantiated_in}")
+        developer_logger.debug(f"Looking for LHS for {self} from {self._instantiated_in}")
         m = importlib.import_module(self._instantiated_in)
         for k in dir(m):
             try:
                 if getattr(m, k) is self:
-                    logger.debug(f"Found LHS for {self}, {k}")
+                    developer_logger.debug(f"Found LHS for {self}, {k}")
                     self._lhs = k
                     return k
             except ValueError as err:
@@ -270,6 +270,11 @@ class _ModuleSanitizer(object):
         # Let us remove any extensions like .py
         basename = os.path.splitext(basename)[0]
 
+        # This is an escape hatch for the zipimporter (used by spark).  As this function is called recursively,
+        # it'll eventually reach the zip file, which is not extracted, so we should return.
+        if not Path(dirname).is_dir():
+            return basename
+
         if dirname == package_root:
             return basename
 
@@ -330,7 +335,7 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
         inspect_file = inspect.getfile(f)  # type: ignore
         file_name, _ = os.path.splitext(os.path.basename(inspect_file))
         mod_name = get_full_module_path(f, file_name)  # type: ignore
-        return name, mod_name, name, os.path.abspath(inspect_file)
+        return f"{mod_name}.{name}", mod_name, name, os.path.abspath(inspect_file)
 
     mod_name = get_full_module_path(mod, mod_name)
     return f"{mod_name}.{name}", mod_name, name, os.path.abspath(inspect.getfile(mod))

@@ -10,6 +10,7 @@ from flytekit import ImageSpec, PythonFunctionTask, SourceCode
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core import constants as _common_constants
 from flytekit.core import context_manager
+from flytekit.core.array_node import ArrayNode
 from flytekit.core.array_node_map_task import ArrayNodeMapTask
 from flytekit.core.base_task import PythonTask
 from flytekit.core.condition import BranchNode
@@ -23,7 +24,6 @@ from flytekit.core.reference_entity import ReferenceEntity, ReferenceSpec, Refer
 from flytekit.core.task import ReferenceTask
 from flytekit.core.utils import ClassDecorator, _dnsify
 from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase
-from flytekit.image_spec.image_spec import _calculate_deduped_hash_from_image_spec
 from flytekit.models import common as _common_models
 from flytekit.models import common as common_models
 from flytekit.models import interface as interface_models
@@ -49,6 +49,7 @@ FlyteLocalEntity = Union[
     ReferenceTask,
     ReferenceLaunchPlan,
     ReferenceEntity,
+    ArrayNode,
 ]
 FlyteControlPlaneEntity = Union[
     TaskSpec,
@@ -186,9 +187,7 @@ def get_serializable_task(
                     if settings.image_config.images is None:
                         settings.image_config = ImageConfig.create_from(settings.image_config.default_image)
                     settings.image_config.images.append(
-                        Image.look_up_image_info(
-                            _calculate_deduped_hash_from_image_spec(e.container_image), e.get_image(settings)
-                        )
+                        Image.look_up_image_info(e.container_image.id, e.get_image(settings))
                     )
 
         # In case of Dynamic tasks, we want to pass the serialization context, so that they can reconstruct the state
@@ -278,7 +277,7 @@ def get_serializable_workflow(
             # require a network call to flyteadmin to populate the WorkflowTemplate
             # object
             if isinstance(n.flyte_entity, ReferenceWorkflow):
-                raise Exception(
+                raise ValueError(
                     "Reference sub-workflows are currently unsupported. Use reference launch plans instead."
                 )
             sub_wf_spec = get_serializable(entity_mapping, settings, n.flyte_entity, options)
@@ -438,7 +437,7 @@ def get_serializable_node(
     options: Optional[Options] = None,
 ) -> workflow_model.Node:
     if entity.flyte_entity is None:
-        raise Exception(f"Node {entity.id} has no flyte entity")
+        raise ValueError(f"Node {entity.id} has no flyte entity")
 
     upstream_nodes = [
         get_serializable(entity_mapping, settings, n, options=options)
@@ -464,21 +463,30 @@ def get_serializable_node(
         elif ref_template.resource_type == _identifier_model.ResourceType.LAUNCH_PLAN:
             node_model._workflow_node = workflow_model.WorkflowNode(launchplan_ref=ref_template.id)
         else:
-            raise Exception(
+            raise TypeError(
                 f"Unexpected resource type for reference entity {entity.flyte_entity}: {ref_template.resource_type}"
             )
         return node_model
 
     from flytekit.remote import FlyteLaunchPlan, FlyteTask, FlyteWorkflow
 
-    if isinstance(entity.flyte_entity, ArrayNodeMapTask):
+    if isinstance(entity.flyte_entity, ArrayNode):
+        node_model = workflow_model.Node(
+            id=_dnsify(entity.id),
+            metadata=entity.flyte_entity.construct_node_metadata(),
+            inputs=entity.bindings,
+            upstream_node_ids=[n.id for n in upstream_nodes],
+            output_aliases=[],
+            array_node=get_serializable_array_node(entity_mapping, settings, entity, options=options),
+        )
+    elif isinstance(entity.flyte_entity, ArrayNodeMapTask):
         node_model = workflow_model.Node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=entity.bindings,
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
-            array_node=get_serializable_array_node(entity_mapping, settings, entity, options=options),
+            array_node=get_serializable_array_node_map_task(entity_mapping, settings, entity, options=options),
         )
         # TODO: do I need this?
         # if entity._aliases:
@@ -611,12 +619,28 @@ def get_serializable_node(
             workflow_node=workflow_model.WorkflowNode(launchplan_ref=entity.flyte_entity.id),
         )
     else:
-        raise Exception(f"Node contained non-serializable entity {entity._flyte_entity}")
+        raise ValueError(f"Node contained non-serializable entity {entity._flyte_entity}")
 
     return node_model
 
 
 def get_serializable_array_node(
+    entity_mapping: OrderedDict,
+    settings: SerializationSettings,
+    node: FlyteLocalEntity,
+    options: Optional[Options] = None,
+) -> ArrayNodeModel:
+    array_node = node.flyte_entity
+    return ArrayNodeModel(
+        node=get_serializable_node(entity_mapping, settings, array_node, options=options),
+        parallelism=array_node.concurrency,
+        min_successes=array_node.min_successes,
+        min_success_ratio=array_node.min_success_ratio,
+        execution_mode=array_node.execution_mode,
+    )
+
+
+def get_serializable_array_node_map_task(
     entity_mapping: OrderedDict,
     settings: SerializationSettings,
     node: Node,
@@ -790,8 +814,11 @@ def get_serializable(
     elif isinstance(entity, FlyteLaunchPlan):
         cp_entity = entity
 
+    elif isinstance(entity, ArrayNode):
+        cp_entity = get_serializable_array_node(entity_mapping, settings, entity, options)
+
     else:
-        raise Exception(f"Non serializable type found {type(entity)} Entity {entity}")
+        raise ValueError(f"Non serializable type found {type(entity)} Entity {entity}")
 
     if isinstance(entity, TaskSpec) or isinstance(entity, WorkflowSpec):
         # 1. Check if the size of long description exceeds 16KB

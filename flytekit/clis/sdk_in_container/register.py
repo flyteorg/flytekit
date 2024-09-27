@@ -1,14 +1,20 @@
 import os
+import sys
 import typing
 
 import rich_click as click
 
 from flytekit.clis.helpers import display_help_with_error
 from flytekit.clis.sdk_in_container import constants
-from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_click_context, patch_image_config
+from flytekit.clis.sdk_in_container.helpers import (
+    get_and_save_remote_with_click_context,
+    parse_copy,
+    patch_image_config,
+)
 from flytekit.clis.sdk_in_container.utils import domain_option_dec, project_option_dec
 from flytekit.configuration import ImageConfig
 from flytekit.configuration.default_images import DefaultImages
+from flytekit.constants import CopyFileDetection
 from flytekit.interaction.click_types import key_value_callback
 from flytekit.loggers import logger
 from flytekit.tools import repo
@@ -93,7 +99,18 @@ the root of your project, it finds the first folder that does not have a ``__ini
     "--non-fast",
     default=False,
     is_flag=True,
-    help="Skip zipping and uploading the package",
+    help="[Deprecated, see --copy] Skip zipping and uploading the package. You should specify --copy none instead",
+)
+@click.option(
+    "--copy",
+    required=False,
+    type=click.Choice(["all", "auto", "none"], case_sensitive=False),
+    default="all",
+    show_default=True,
+    callback=parse_copy,
+    help="Specify how and whether to use fast register"
+    " 'all' is the current behavior copying all files from root, 'auto' copies only loaded Python modules"
+    " 'none' means no files are copied, i.e. don't use fast register",
 )
 @click.option(
     "--dry-run",
@@ -139,6 +156,7 @@ def register(
     version: typing.Optional[str],
     deref_symlinks: bool,
     non_fast: bool,
+    copy: typing.Optional[CopyFileDetection],
     package_or_module: typing.Tuple[str],
     dry_run: bool,
     activate_launchplans: bool,
@@ -148,14 +166,28 @@ def register(
     """
     see help
     """
+    # Set the relevant copy option if non_fast is set, this enables the individual file listing behavior
+    # that the copy flag uses.
+    if non_fast:
+        click.secho("The --non-fast flag is deprecated, please use --copy none instead", fg="yellow")
+        if "--copy" in sys.argv:
+            raise click.BadParameter(
+                click.style(
+                    "Cannot use both --non-fast and --copy flags together. Please move to --copy.",
+                    fg="red",
+                )
+            )
+        copy = CopyFileDetection.NO_COPY
+    if copy == CopyFileDetection.NO_COPY and not version:
+        raise ValueError("Version is a required parameter in case --copy none is specified.")
+
+    show_files = ctx.obj[constants.CTX_VERBOSE] > 0
+
     pkgs = ctx.obj[constants.CTX_PACKAGES]
     if not pkgs:
         logger.debug("No pkgs")
     if pkgs:
         raise ValueError("Unimplemented, just specify pkgs like folder/files as args at the end of the command")
-
-    if non_fast and not version:
-        raise ValueError("Version is a required parameter in case --non-fast is specified.")
 
     if len(package_or_module) == 0:
         display_help_with_error(
@@ -179,24 +211,22 @@ def register(
     # Create and save FlyteRemote,
     remote = get_and_save_remote_with_click_context(ctx, project, domain, data_upload_location="flyte://data")
     click.secho(f"Registering against {remote.config.platform.endpoint}")
-    try:
-        repo.register(
-            project,
-            domain,
-            image_config,
-            output,
-            destination_dir,
-            service_account,
-            raw_data_prefix,
-            version,
-            deref_symlinks,
-            fast=not non_fast,
-            package_or_module=package_or_module,
-            remote=remote,
-            env=env,
-            dry_run=dry_run,
-            activate_launchplans=activate_launchplans,
-            skip_errors=skip_errors,
-        )
-    except Exception as e:
-        raise e
+    repo.register(
+        project,
+        domain,
+        image_config,
+        output,
+        destination_dir,
+        service_account,
+        raw_data_prefix,
+        version,
+        deref_symlinks,
+        copy_style=copy,
+        package_or_module=package_or_module,
+        remote=remote,
+        env=env,
+        dry_run=dry_run,
+        activate_launchplans=activate_launchplans,
+        skip_errors=skip_errors,
+        show_files=show_files,
+    )

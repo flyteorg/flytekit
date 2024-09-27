@@ -17,6 +17,7 @@ from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions import user as user_exceptions
 from flytekit.exceptions.scopes import system_entry_point
+from flytekit.exceptions.user import FlyteUserRuntimeException
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import errors as error_models
 from flytekit.models.core import execution as execution_models
@@ -47,7 +48,7 @@ def test_dispatch_execute_void(mock_write_to_file, mock_upload_dir, mock_get_dat
             assert args[0] == empty_literal_map
 
         mock_write_to_file.side_effect = verify_output
-        _dispatch_execute(ctx, python_task, "inputs path", "outputs prefix")
+        _dispatch_execute(ctx, lambda: python_task, "inputs path", "outputs prefix")
         assert mock_write_to_file.call_count == 1
 
 
@@ -68,7 +69,7 @@ def test_dispatch_execute_ignore(mock_write_to_file, mock_upload_dir, mock_get_d
         )
     ) as ctx:
         python_task = mock.MagicMock()
-        python_task.dispatch_execute.side_effect = IgnoreOutputs()
+        python_task.dispatch_execute.side_effect = FlyteUserRuntimeException(IgnoreOutputs())
 
         empty_literal_map = _literal_models.LiteralMap({}).to_flyte_idl()
         mock_load_proto.return_value = empty_literal_map
@@ -76,7 +77,7 @@ def test_dispatch_execute_ignore(mock_write_to_file, mock_upload_dir, mock_get_d
         # The system_entry_point decorator does different thing based on whether or not it's the
         # first time it's called. Using it here to mimic the fact that _dispatch_execute is
         # called by _execute_task, which also has a system_entry_point
-        system_entry_point(_dispatch_execute)(ctx, python_task, "inputs path", "outputs prefix")
+        system_entry_point(_dispatch_execute)(ctx, lambda: python_task, "inputs path", "outputs prefix")
         assert mock_write_to_file.call_count == 0
 
 
@@ -105,8 +106,37 @@ def test_dispatch_execute_exception(mock_write_to_file, mock_upload_dir, mock_ge
             assert isinstance(args[0], ErrorDocument)
 
         mock_write_to_file.side_effect = verify_output
-        _dispatch_execute(ctx, python_task, "inputs path", "outputs prefix")
+        _dispatch_execute(ctx, lambda: python_task, "inputs path", "outputs prefix")
         assert mock_write_to_file.call_count == 1
+
+
+@mock.patch("flytekit.core.utils.load_proto_from_file")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_data")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
+@mock.patch("flytekit.core.utils.write_proto_to_file")
+def test_dispatch_execute_load_task_exception(mock_write_to_file, mock_upload_dir, mock_get_data, mock_load_proto):
+    mock_get_data.return_value = True
+    mock_upload_dir.return_value = True
+
+    ctx = context_manager.FlyteContext.current_context()
+    with context_manager.FlyteContextManager.with_context(
+        ctx.with_execution_state(
+            ctx.execution_state.with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION)
+        )
+    ) as ctx:
+        def load_task():
+            raise ModuleNotFoundError("Can not found module")
+
+        empty_literal_map = _literal_models.LiteralMap({}).to_flyte_idl()
+        mock_load_proto.return_value = empty_literal_map
+
+        def verify_output(*args, **kwargs):
+            assert isinstance(args[0], ErrorDocument)
+
+        mock_write_to_file.side_effect = verify_output
+        _dispatch_execute(ctx, load_task, "inputs path", "outputs prefix")
+        assert mock_write_to_file.call_count == 1
+
 
 
 @mock.patch("flytekit.core.utils.load_proto_from_file")
@@ -136,7 +166,7 @@ def test_dispatch_execute_return_error_code(mock_write_to_file, mock_upload_dir,
 
         with mock.patch.dict(os.environ, {"FLYTE_FAIL_ON_ERROR": "True"}):
             with pytest.raises(SystemExit):
-                _dispatch_execute(ctx, python_task, "inputs path", "outputs prefix")
+                _dispatch_execute(ctx, lambda: python_task, "inputs path", "outputs prefix")
 
 
 # This function collects outputs instead of writing them to a file.
@@ -173,7 +203,7 @@ def test_dispatch_execute_normal(mock_write_to_file, mock_upload_dir, mock_get_d
         files = OrderedDict()
         mock_write_to_file.side_effect = get_output_collector(files)
         # See comment in test_dispatch_execute_ignore for why we need to decorate
-        system_entry_point(_dispatch_execute)(ctx, t1, "inputs path", "outputs prefix")
+        system_entry_point(_dispatch_execute)(ctx, lambda: t1, "inputs path", "outputs prefix")
         assert len(files) == 1
 
         # A successful run should've written an outputs file.
@@ -198,6 +228,7 @@ def test_dispatch_execute_user_error_non_recov(mock_write_to_file, mock_upload_d
     def t1(a: int) -> str:
         # Should be interpreted as a non-recoverable user error
         raise ValueError(f"some exception {a}")
+        return "hello"
 
     ctx = context_manager.FlyteContext.current_context()
     with context_manager.FlyteContextManager.with_context(
@@ -211,7 +242,7 @@ def test_dispatch_execute_user_error_non_recov(mock_write_to_file, mock_upload_d
         files = OrderedDict()
         mock_write_to_file.side_effect = get_output_collector(files)
         # See comment in test_dispatch_execute_ignore for why we need to decorate
-        system_entry_point(_dispatch_execute)(ctx, t1, "inputs path", "outputs prefix")
+        system_entry_point(_dispatch_execute)(ctx, lambda: t1, "inputs path", "outputs prefix")
         assert len(files) == 1
 
         # Exception should've caused an error file
@@ -242,6 +273,7 @@ def test_dispatch_execute_user_error_recoverable(mock_write_to_file, mock_upload
     def my_subwf(a: int) -> typing.List[str]:
         # This also tests the dynamic/compile path
         raise user_exceptions.FlyteRecoverableException(f"recoverable {a}")
+        return ["1", "2"]
 
     ctx = context_manager.FlyteContext.current_context()
     with context_manager.FlyteContextManager.with_context(
@@ -255,7 +287,7 @@ def test_dispatch_execute_user_error_recoverable(mock_write_to_file, mock_upload
         files = OrderedDict()
         mock_write_to_file.side_effect = get_output_collector(files)
         # See comment in test_dispatch_execute_ignore for why we need to decorate
-        system_entry_point(_dispatch_execute)(ctx, my_subwf, "inputs path", "outputs prefix")
+        system_entry_point(_dispatch_execute)(ctx, lambda: my_subwf, "inputs path", "outputs prefix")
         assert len(files) == 1
 
         # Exception should've caused an error file
@@ -293,7 +325,7 @@ def test_dispatch_execute_system_error(mock_write_to_file, mock_upload_dir, mock
         files = OrderedDict()
         mock_write_to_file.side_effect = get_output_collector(files)
         # See comment in test_dispatch_execute_ignore for why we need to decorate
-        system_entry_point(_dispatch_execute)(ctx, python_task, "inputs path", "outputs prefix")
+        system_entry_point(_dispatch_execute)(ctx, lambda: python_task, "inputs path", "outputs prefix")
         assert len(files) == 1
 
         # Exception should've caused an error file
@@ -315,6 +347,15 @@ def test_setup_disk_prefix():
             "file",
             "local",
         }
+
+
+def test_setup_for_fast_register():
+    dynamic_addl_distro = "distro"
+    dynamic_dest_dir = "/root"
+    with setup_execution(raw_output_data_prefix="qwerty", dynamic_addl_distro=dynamic_addl_distro, dynamic_dest_dir=dynamic_dest_dir) as ctx:
+        assert ctx.serialization_settings.fast_serialization_settings.enabled is True
+        assert ctx.serialization_settings.fast_serialization_settings.distribution_location == dynamic_addl_distro
+        assert ctx.serialization_settings.fast_serialization_settings.destination_dir == dynamic_dest_dir
 
 
 @mock.patch("google.auth.compute_engine._metadata")

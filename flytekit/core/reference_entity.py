@@ -79,13 +79,13 @@ class ReferenceEntity(object):
             and not isinstance(reference, TaskReference)
             and not isinstance(reference, LaunchPlanReference)
         ):
-            raise Exception("Must be one of task, workflow, or launch plan")
+            raise ValueError(f"Must be one of task, workflow, or launch plan, but got {type(reference)}")
         self._reference = reference
         self._native_interface = Interface(inputs=inputs, outputs=outputs)
         self._interface = transform_interface_to_typed_interface(self._native_interface)
 
     def execute(self, **kwargs) -> Any:
-        raise Exception("Remote reference entities cannot be run locally. You must mock this out.")
+        raise NotImplementedError("Remote reference entities cannot be run locally. You must mock this out.")
 
     @property
     def python_interface(self) -> Interface:
@@ -124,7 +124,6 @@ class ReferenceEntity(object):
         except Exception as e:
             logger.exception(f"Exception when executing {e}")
             raise e
-        logger.debug("Task executed successfully in user level")
 
         expected_output_names = list(self.python_interface.outputs.keys())
         if len(expected_output_names) == 1:

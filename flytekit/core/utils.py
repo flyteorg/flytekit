@@ -1,8 +1,10 @@
 import datetime
+import inspect
 import os
 import shutil
 import tempfile
 import time
+import typing
 from abc import ABC, abstractmethod
 from functools import wraps
 from hashlib import sha224 as _sha224
@@ -335,13 +337,7 @@ class timeit:
             )
         )
 
-        logger.info(
-            "{}. [Wall Time: {}s, Process Time: {}s]".format(
-                self._name,
-                end_wall_time - self._start_wall_time,
-                end_process_time - self._start_process_time,
-            )
-        )
+        logger.info(f"{self._name}. [Time: {end_wall_time - self._start_wall_time:.6f}s]")
 
 
 class ClassDecorator(ABC):
@@ -387,3 +383,24 @@ class ClassDecorator(ABC):
         Get the config of the decorator.
         """
         pass
+
+
+def has_return_statement(func: typing.Callable) -> bool:
+    source_lines = inspect.getsourcelines(func)[0]
+    for line in source_lines:
+        if "return" in line.strip():
+            return True
+        if "yield" in line.strip():
+            return True
+    return False
+
+
+def str2bool(value: typing.Optional[str]) -> bool:
+    """
+    Convert a string to a boolean. This is useful for parsing environment variables.
+    :param value: The string to convert to a boolean
+    :return: the boolean value
+    """
+    if value is None:
+        return False
+    return value.lower() in ("true", "t", "1")

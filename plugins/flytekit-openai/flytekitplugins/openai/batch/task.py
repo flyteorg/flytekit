@@ -32,8 +32,8 @@ class BatchEndpointTask(AsyncAgentExecutorMixin, PythonTask):
     def __init__(
         self,
         name: str,
-        openai_organization: str,
         config: Dict[str, Any],
+        openai_organization: Optional[str] = None,
         **kwargs,
     ):
         super().__init__(
@@ -70,8 +70,8 @@ class OpenAIFileDefaultImages(DefaultImages):
 
 @dataclass
 class OpenAIFileConfig:
-    openai_organization: str
     secret: Secret
+    openai_organization: Optional[str] = None
 
     def _secret_to_dict(self) -> Dict[str, Optional[str]]:
         return {

@@ -5,7 +5,7 @@ import pytest
 import flytekit
 from flytekit import FlyteContextManager, task
 from flytekit.configuration import ImageConfig, SerializationSettings
-from flytekit.core.utils import ClassDecorator, _dnsify, timeit
+from flytekit.core.utils import ClassDecorator, _dnsify, timeit, str2bool
 from flytekit.tools.translator import get_serializable_task
 from tests.flytekit.unit.test_translator import default_img
 
@@ -33,9 +33,12 @@ def test_timeit():
     ctx = FlyteContextManager.current_context()
     ctx.user_space_params._decks = []
 
+    from flytekit.deck import DeckField
+
     with timeit("Set disable_deck to False"):
         kwargs = {}
         kwargs["disable_deck"] = False
+        kwargs["deck_fields"] = (DeckField.TIMELINE.value,)
 
     ctx = FlyteContextManager.current_context()
     time_info_list = ctx.user_space_params.timeline_deck.time_info
@@ -102,3 +105,12 @@ def test_class_decorator():
 
     ts = get_serializable_task(OrderedDict(), ss, t)
     assert ts.template.config == {"foo": "baz"}
+
+
+def test_str_2_bool():
+    assert str2bool("true")
+    assert not str2bool("false")
+    assert str2bool("True")
+    assert str2bool("t")
+    assert not str2bool("f")
+    assert str2bool("1")

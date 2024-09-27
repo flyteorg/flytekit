@@ -1,3 +1,4 @@
+import dataclasses
 import datetime
 import enum
 import json
@@ -5,7 +6,7 @@ import logging
 import os
 import pathlib
 import typing
-from typing import cast
+from typing import cast, get_args
 
 import rich_click as click
 import yaml
@@ -22,6 +23,7 @@ from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import FlyteFile
 from flytekit.types.iterator.json_iterator import JSONIteratorTransformer
 from flytekit.types.pickle.pickle import FlytePickleTransformer
+from flytekit.types.schema.types import FlyteSchema
 
 
 def is_pydantic_basemodel(python_type: typing.Type) -> bool:
@@ -80,13 +82,15 @@ class DirParamType(click.ParamType):
     ) -> typing.Any:
         if isinstance(value, ArtifactQuery):
             return value
-        p = pathlib.Path(value)
+
         # set remote_directory to false if running pyflyte run locally. This makes sure that the original
         # directory is used and not a random one.
         remote_directory = None if getattr(ctx.obj, "is_remote", False) else False
-        if p.exists() and p.is_dir():
-            return FlyteDirectory(path=value, remote_directory=remote_directory)
-        raise click.BadParameter(f"parameter should be a valid directory path, {value}")
+        if not FileAccessProvider.is_remote(value):
+            p = pathlib.Path(value)
+            if not p.exists() or not p.is_dir():
+                raise click.BadParameter(f"parameter should be a valid flytedirectory path, {value}")
+        return FlyteDirectory(path=value, remote_directory=remote_directory)
 
 
 class StructuredDatasetParamType(click.ParamType):
@@ -146,21 +150,55 @@ class JSONIteratorParamType(click.ParamType):
 
 class DateTimeType(click.DateTime):
     _NOW_FMT = "now"
-    _ADDITONAL_FORMATS = [_NOW_FMT]
+    _TODAY_FMT = "today"
+    _FIXED_FORMATS = [_NOW_FMT, _TODAY_FMT]
+    _FLOATING_FORMATS = ["<FORMAT> - <ISO8601 duration>"]
+    _ADDITONAL_FORMATS = _FIXED_FORMATS + _FLOATING_FORMATS
+    _FLOATING_FORMAT_PATTERN = r"(.+)\s+([-+])\s+(.+)"
 
     def __init__(self):
         super().__init__()
         self.formats.extend(self._ADDITONAL_FORMATS)
+
+    def _datetime_from_format(
+        self, value: str, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
+    ) -> datetime.datetime:
+        if value in self._FIXED_FORMATS:
+            if value == self._NOW_FMT:
+                return datetime.datetime.now()
+            if value == self._TODAY_FMT:
+                n = datetime.datetime.now()
+                return datetime.datetime(n.year, n.month, n.day)
+        return super().convert(value, param, ctx)
 
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
         if isinstance(value, ArtifactQuery):
             return value
-        if value in self._ADDITONAL_FORMATS:
-            if value == self._NOW_FMT:
-                return datetime.datetime.now()
-        return super().convert(value, param, ctx)
+
+        if isinstance(value, str) and " " in value:
+            import re
+
+            m = re.match(self._FLOATING_FORMAT_PATTERN, value)
+            if m:
+                parts = m.groups()
+                if len(parts) != 3:
+                    raise click.BadParameter(f"Expected format <FORMAT> - <ISO8601 duration>, got {value}")
+                dt = self._datetime_from_format(parts[0], param, ctx)
+                try:
+                    delta = datetime.timedelta(seconds=parse(parts[2]))
+                except Exception as e:
+                    raise click.BadParameter(
+                        f"Matched format {self._FLOATING_FORMATS}, but failed to parse duration {parts[2]}, error: {e}"
+                    )
+                if parts[1] == "-":
+                    return dt - delta
+                return dt + delta
+            else:
+                value = datetime.datetime.fromisoformat(value)
+
+        return self._datetime_from_format(value, param, ctx)
 
 
 class DurationParamType(click.ParamType):
@@ -269,11 +307,50 @@ class JsonParamType(click.ParamType):
         if value is None:
             raise click.BadParameter("None value cannot be converted to a Json type.")
 
+        FLYTE_TYPES = [FlyteFile, FlyteDirectory, StructuredDataset, FlyteSchema]
+
+        def has_nested_dataclass(t: typing.Type) -> bool:
+            """
+            Recursively checks whether the given type or its nested types contain any dataclass.
+
+            This function is typically called with a dictionary or list type and will return True if
+            any of the nested types within the dictionary or list is a dataclass.
+
+            Note:
+            - A single dataclass will return True.
+            - The function specifically excludes certain Flyte types like FlyteFile, FlyteDirectory,
+            StructuredDataset, and FlyteSchema from being considered as dataclasses. This is because
+            these types are handled separately by Flyte and do not need to be converted to dataclasses.
+
+            Args:
+                t (typing.Type): The type to check for nested dataclasses.
+
+            Returns:
+                bool: True if the type or its nested types contain a dataclass, False otherwise.
+            """
+
+            if dataclasses.is_dataclass(t):
+                # FlyteTypes is not supported now, we can support it in the future.
+                return t not in FLYTE_TYPES
+
+            return any(has_nested_dataclass(arg) for arg in get_args(t))
+
         parsed_value = self._parse(value, param)
 
         # We compare the origin type because the json parsed value for list or dict is always a list or dict without
         # the covariant type information.
         if type(parsed_value) == typing.get_origin(self._python_type) or type(parsed_value) == self._python_type:
+            # Indexing the return value of get_args will raise an error for native dict and list types.
+            # We don't support native list/dict types with nested dataclasses.
+            if get_args(self._python_type) == ():
+                return parsed_value
+            elif isinstance(parsed_value, list) and has_nested_dataclass(get_args(self._python_type)[0]):
+                j = JsonParamType(get_args(self._python_type)[0])
+                return [j.convert(v, param, ctx) for v in parsed_value]
+            elif isinstance(parsed_value, dict) and has_nested_dataclass(get_args(self._python_type)[1]):
+                j = JsonParamType(get_args(self._python_type)[1])
+                return {k: j.convert(v, param, ctx) for k, v in parsed_value.items()}
+
             return parsed_value
 
         if is_pydantic_basemodel(self._python_type):

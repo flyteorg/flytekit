@@ -7,7 +7,7 @@ import pytest
 
 import flytekit.configuration
 from flytekit.configuration import DefaultImages, ImageConfig
-from flytekit.tools.repo import find_common_root, load_packages_and_modules
+from flytekit.tools.repo import find_common_root, list_packages_and_modules
 
 task_text = """
 from flytekit import task
@@ -66,5 +66,5 @@ def test_module_loading(mock_entities, mock_entities_2):
             image_config=ImageConfig.auto(img_name=DefaultImages.default_image()),
         )
 
-        x = load_packages_and_modules(serialization_settings, pathlib.Path(root), [bottom_level])
+        x = list_packages_and_modules(pathlib.Path(root), [bottom_level])
         assert len(x) == 1

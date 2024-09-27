@@ -95,7 +95,15 @@ integration_test_codecov:
 
 .PHONY: integration_test
 integration_test:
-	$(PYTEST_AND_OPTS) tests/flytekit/integration ${CODECOV_OPTS}
+	$(PYTEST_AND_OPTS) tests/flytekit/integration ${CODECOV_OPTS} -m "not lftransfers"
+
+.PHONY: integration_test_lftransfers_codecov
+integration_test_lftransfers_codecov:
+	$(MAKE) CODECOV_OPTS="--cov=./ --cov-report=xml --cov-append" integration_test_lftransfers
+
+.PHONY: integration_test_lftransfers
+integration_test_lftransfers:
+	$(PYTEST) tests/flytekit/integration ${CODECOV_OPTS} -m "lftransfers"
 
 doc-requirements.txt: export CUSTOM_COMPILE_COMMAND := make doc-requirements.txt
 doc-requirements.txt: doc-requirements.in install-piptools
@@ -119,5 +127,6 @@ build-dev: export PLATFORM ?= linux/arm64
 build-dev: export REGISTRY ?= localhost:30000
 build-dev: export PYTHON_VERSION ?= 3.12
 build-dev: export PSEUDO_VERSION ?= $(shell python -m setuptools_scm)
+build-dev: export TAG ?= dev
 build-dev:
 	docker build --platform ${PLATFORM} --push . -f Dockerfile.dev -t ${REGISTRY}/flytekit:${TAG} --build-arg PYTHON_VERSION=${PYTHON_VERSION} --build-arg PSEUDO_VERSION=${PSEUDO_VERSION}

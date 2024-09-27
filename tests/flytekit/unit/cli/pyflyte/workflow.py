@@ -35,6 +35,9 @@ class MyDataclass(DataClassJsonMixin):
     i: int
     a: typing.List[str]
 
+@dataclass
+class NestedDataclass(DataClassJsonMixin):
+    i: typing.List[MyDataclass]
 
 class Color(enum.Enum):
     RED = "RED"
@@ -61,8 +64,11 @@ def print_all(
     o: typing.Dict[str, typing.List[FlyteFile]],
     p: typing.Any,
     q: FlyteDirectory,
+    r: typing.List[MyDataclass],
+    s: typing.Dict[str, MyDataclass],
+    t: NestedDataclass,
 ):
-    print(f"{a}, {b}, {c}, {d}, {e}, {f}, {g}, {h}, {i}, {j}, {k}, {l}, {m}, {n}, {o}, {p}, {q}")
+    print(f"{a}, {b}, {c}, {d}, {e}, {f}, {g}, {h}, {i}, {j}, {k}, {l}, {m}, {n}, {o}, {p}, {q}, {r}, {s}, {t}")
 
 
 @task
@@ -73,6 +79,18 @@ def test_union1(a: typing.Union[int, FlyteFile, typing.Dict[str, float], datetim
 @task
 def test_union2(a: typing.Union[float, typing.List[int], MyDataclass]):
     print(a)
+
+@task
+def test_boolean(a_b: bool):
+    print(a_b)
+
+@task
+def test_boolean_default_true(a_b: bool = True):
+    print(a_b)
+
+@task
+def test_boolean_default_false(a_b: bool = False):
+    print(a_b)
 
 
 @workflow
@@ -93,6 +111,9 @@ def my_wf(
     o: typing.Dict[str, typing.List[FlyteFile]],
     p: typing.Any,
     q: FlyteDirectory,
+    r: typing.List[MyDataclass],
+    s: typing.Dict[str, MyDataclass],
+    t: NestedDataclass,
     remote: pd.DataFrame,
     image: StructuredDataset,
     m: dict = {"hello": "world"},
@@ -100,7 +121,7 @@ def my_wf(
     x = get_subset_df(df=remote)  # noqa: shown for demonstration; users should use the same types between tasks
     show_sd(in_sd=x)
     show_sd(in_sd=image)
-    print_all(a=a, b=b, c=c, d=d, e=e, f=f, g=g, h=h, i=i, j=j, k=k, l=l, m=m, n=n, o=o, p=p, q=q)
+    print_all(a=a, b=b, c=c, d=d, e=e, f=f, g=g, h=h, i=i, j=j, k=k, l=l, m=m, n=n, o=o, p=p, q=q, r=r, s=s, t=t)
     return x
 
 
@@ -125,3 +146,11 @@ def task_with_env_vars(env_vars: typing.List[str]) -> str:
 @workflow
 def wf_with_env_vars(env_vars: typing.List[str]) -> str:
     return task_with_env_vars(env_vars=env_vars)
+
+@task
+def task_with_list(a: typing.List[int]) -> typing.List[int]:
+    return a
+
+@workflow
+def wf_with_list(a: typing.List[int]) -> typing.List[int]:
+    return task_with_list(a=a)

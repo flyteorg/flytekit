@@ -1,3 +1,4 @@
+import typing
 from functools import partial
 
 from flytekit import map_task, task, workflow
@@ -9,6 +10,6 @@ def fn(x: int, y: int) -> int:
 
 
 @workflow
-def workflow_with_maptask(data: list[int], y: int) -> list[int]:
+def workflow_with_maptask(data: typing.List[int], y: int) -> typing.List[int]:
     partial_fn = partial(fn, y=y)
     return map_task(partial_fn)(x=data)
