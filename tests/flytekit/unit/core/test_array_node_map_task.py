@@ -197,17 +197,17 @@ def test_fast_serialization(serialization_settings):
         ({"min_success_ratio": 0.42}, {"min_success_ratio": 0.42}, True),
         ({"min_success_ratio": 0.42}, {"min_success_ratio": 0.42}, True),
         (
-                {
-                    "concurrency": 1,
-                    "min_successes": 2,
-                    "min_success_ratio": 0.42,
-                },
-                {
-                    "concurrency": 1,
-                    "min_successes": 2,
-                    "min_success_ratio": 0.99,
-                },
-                False,
+            {
+                "concurrency": 1,
+                "min_successes": 2,
+                "min_success_ratio": 0.42,
+            },
+            {
+                "concurrency": 1,
+                "min_successes": 2,
+                "min_success_ratio": 0.99,
+            },
+            False,
         ),
     ],
 )
@@ -230,8 +230,8 @@ def test_inputs_outputs_length():
     m = map_task(many_inputs)
     assert m.python_interface.inputs == {"a": List[int], "b": List[str], "c": List[float]}
     assert (
-            m.name
-            == "tests.flytekit.unit.core.test_array_node_map_task.map_many_inputs_6b3bd0353da5de6e84d7982921ead2b3-arraynode"
+        m.name
+        == "tests.flytekit.unit.core.test_array_node_map_task.map_many_inputs_6b3bd0353da5de6e84d7982921ead2b3-arraynode"
     )
     r_m = ArrayNodeMapTask(many_inputs)
     assert str(r_m.python_interface) == str(m.python_interface)
@@ -240,8 +240,8 @@ def test_inputs_outputs_length():
     m = map_task(p1)
     assert m.python_interface.inputs == {"a": List[int], "b": List[str], "c": float}
     assert (
-            m.name
-            == "tests.flytekit.unit.core.test_array_node_map_task.map_many_inputs_7df6892fe8ce5343c76197a0b6127e80-arraynode"
+        m.name
+        == "tests.flytekit.unit.core.test_array_node_map_task.map_many_inputs_7df6892fe8ce5343c76197a0b6127e80-arraynode"
     )
     r_m = ArrayNodeMapTask(many_inputs, bound_inputs=set("c"))
     assert str(r_m.python_interface) == str(m.python_interface)
@@ -250,8 +250,8 @@ def test_inputs_outputs_length():
     m = map_task(p2)
     assert m.python_interface.inputs == {"a": List[int], "b": str, "c": float}
     assert (
-            m.name
-            == "tests.flytekit.unit.core.test_array_node_map_task.map_many_inputs_80fd21f14571026755b99d6b1c045089-arraynode"
+        m.name
+        == "tests.flytekit.unit.core.test_array_node_map_task.map_many_inputs_80fd21f14571026755b99d6b1c045089-arraynode"
     )
     r_m = ArrayNodeMapTask(many_inputs, bound_inputs={"c", "b"})
     assert str(r_m.python_interface) == str(m.python_interface)
@@ -260,8 +260,8 @@ def test_inputs_outputs_length():
     m = map_task(p3)
     assert m.python_interface.inputs == {"a": int, "b": str, "c": float}
     assert (
-            m.name
-            == "tests.flytekit.unit.core.test_array_node_map_task.map_many_inputs_5d2500dc176052a030efda3b8c283f96-arraynode"
+         m.name
+         == "tests.flytekit.unit.core.test_array_node_map_task.map_many_inputs_5d2500dc176052a030efda3b8c283f96-arraynode"
     )
     r_m = ArrayNodeMapTask(many_inputs, bound_inputs={"a", "c", "b"})
     assert str(r_m.python_interface) == str(m.python_interface)
