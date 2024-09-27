@@ -17,6 +17,11 @@ from flytekit.core.task import TaskMetadata
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extras.accelerators import GPUAccelerator
 from flytekit.experimental.eager_function import eager
+from flytekit.models.literals import (
+    Literal,
+    LiteralMap,
+    LiteralOffloadedMetadata,
+)
 from flytekit.tools.translator import get_serializable
 from flytekit.types.pickle import BatchSize
 
@@ -192,17 +197,17 @@ def test_fast_serialization(serialization_settings):
         ({"min_success_ratio": 0.42}, {"min_success_ratio": 0.42}, True),
         ({"min_success_ratio": 0.42}, {"min_success_ratio": 0.42}, True),
         (
-            {
-                "concurrency": 1,
-                "min_successes": 2,
-                "min_success_ratio": 0.42,
-            },
-            {
-                "concurrency": 1,
-                "min_successes": 2,
-                "min_success_ratio": 0.99,
-            },
-            False,
+                {
+                    "concurrency": 1,
+                    "min_successes": 2,
+                    "min_success_ratio": 0.42,
+                },
+                {
+                    "concurrency": 1,
+                    "min_successes": 2,
+                    "min_success_ratio": 0.99,
+                },
+                False,
         ),
     ],
 )
@@ -225,8 +230,8 @@ def test_inputs_outputs_length():
     m = map_task(many_inputs)
     assert m.python_interface.inputs == {"a": List[int], "b": List[str], "c": List[float]}
     assert (
-        m.name
-        == "tests.flytekit.unit.core.test_array_node_map_task.map_many_inputs_6b3bd0353da5de6e84d7982921ead2b3-arraynode"
+            m.name
+            == "tests.flytekit.unit.core.test_array_node_map_task.map_many_inputs_6b3bd0353da5de6e84d7982921ead2b3-arraynode"
     )
     r_m = ArrayNodeMapTask(many_inputs)
     assert str(r_m.python_interface) == str(m.python_interface)
@@ -235,8 +240,8 @@ def test_inputs_outputs_length():
     m = map_task(p1)
     assert m.python_interface.inputs == {"a": List[int], "b": List[str], "c": float}
     assert (
-        m.name
-        == "tests.flytekit.unit.core.test_array_node_map_task.map_many_inputs_7df6892fe8ce5343c76197a0b6127e80-arraynode"
+            m.name
+            == "tests.flytekit.unit.core.test_array_node_map_task.map_many_inputs_7df6892fe8ce5343c76197a0b6127e80-arraynode"
     )
     r_m = ArrayNodeMapTask(many_inputs, bound_inputs=set("c"))
     assert str(r_m.python_interface) == str(m.python_interface)
@@ -245,8 +250,8 @@ def test_inputs_outputs_length():
     m = map_task(p2)
     assert m.python_interface.inputs == {"a": List[int], "b": str, "c": float}
     assert (
-        m.name
-        == "tests.flytekit.unit.core.test_array_node_map_task.map_many_inputs_80fd21f14571026755b99d6b1c045089-arraynode"
+            m.name
+            == "tests.flytekit.unit.core.test_array_node_map_task.map_many_inputs_80fd21f14571026755b99d6b1c045089-arraynode"
     )
     r_m = ArrayNodeMapTask(many_inputs, bound_inputs={"c", "b"})
     assert str(r_m.python_interface) == str(m.python_interface)
@@ -255,8 +260,8 @@ def test_inputs_outputs_length():
     m = map_task(p3)
     assert m.python_interface.inputs == {"a": int, "b": str, "c": float}
     assert (
-        m.name
-        == "tests.flytekit.unit.core.test_array_node_map_task.map_many_inputs_5d2500dc176052a030efda3b8c283f96-arraynode"
+            m.name
+            == "tests.flytekit.unit.core.test_array_node_map_task.map_many_inputs_5d2500dc176052a030efda3b8c283f96-arraynode"
     )
     r_m = ArrayNodeMapTask(many_inputs, bound_inputs={"a", "c", "b"})
     assert str(r_m.python_interface) == str(m.python_interface)
@@ -464,3 +469,39 @@ def test_mis_match():
 
     with pytest.raises(AssertionError):
         wf.compile()
+
+
+def test_load_offloaded_literal(tmp_path, monkeypatch):
+    @task
+    def say_hello(name: str) -> str:
+        return f"hello {name}!"
+
+    ctx = context_manager.FlyteContextManager.current_context()
+    with context_manager.FlyteContextManager.with_context(
+            ctx.with_execution_state(
+                ctx.execution_state.with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION)
+            )
+    ) as ctx:
+        list_ints = ["a", "b", "c"]
+        lt = TypeEngine.to_literal_type(typing.List[str])
+        to_be_offloaded = TypeEngine.to_literal(ctx, list_ints, typing.List[str], lt)
+        with open(f"{tmp_path}/literal.pb", "wb") as f:
+            f.write(to_be_offloaded.to_flyte_idl().SerializeToString())
+
+        literal = Literal(
+            offloaded_metadata=LiteralOffloadedMetadata(
+                uri=f"{tmp_path}/literal.pb",
+                inferred_type=lt,
+            ),
+        )
+
+        lm = LiteralMap({
+            "name": literal
+        })
+
+        monkeypatch.setenv("BATCH_JOB_ARRAY_INDEX_VAR_NAME", "name")
+        monkeypatch.setenv("name", "0")
+        t = map_task(say_hello)
+        res = t.dispatch_execute(ctx, lm)
+        assert len(res.literals) == 1
+        assert res.literals["o0"].scalar.primitive.string_value == "hello a!"

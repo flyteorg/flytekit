@@ -251,14 +251,14 @@ class ArrayNodeMapTask(PythonTask):
             inputs_interface = self._run_task.python_interface.inputs
             for k in self.interface.inputs.keys():
                 v = literal_map.literals[k]
+                # If the input is offloaded, we need to unwrap it
+                if v.offloaded_metadata:
+                    v = TypeEngine.unwrap_offloaded_literal(ctx, v)
                 if k not in self.bound_inputs:
                     # assert that v.collection is not None
-                    if not v.offloaded_metadata and (not v.collection or not isinstance(v.collection.literals, list)):
-                        raise ValueError(f"Expected a list of literals for {k} or an offloaded metadata")
-                    if v.offloaded_metadata:
-                        map_task_inputs[k] = v
-                    else:
-                        map_task_inputs[k] = v.collection.literals[task_index]
+                    if not v.collection or not isinstance(v.collection.literals, list):
+                        raise ValueError(f"Expected a list of literals for {k}")
+                    map_task_inputs[k] = v.collection.literals[task_index]
                 else:
                     map_task_inputs[k] = v
             inputs_map = _literal_models.LiteralMap(literals=map_task_inputs)
