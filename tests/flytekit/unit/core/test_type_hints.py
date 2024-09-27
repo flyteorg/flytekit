@@ -33,7 +33,7 @@ from flytekit.core.task import TaskMetadata, task
 from flytekit.core.testing import patch, task_mock
 from flytekit.core.type_engine import RestrictedTypeError, SimpleTransformer, TypeEngine, TypeTransformerFailedError
 from flytekit.core.workflow import workflow
-from flytekit.exceptions.user import FlyteValidationException, FlyteFailureNodeInputMismatchException
+from flytekit.exceptions.user import FlyteValidationException, FlyteFailureNodeInputMismatchException, FlyteMissingTypeException
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import types as _core_types
 from flytekit.models.interface import Parameter
@@ -2068,9 +2068,10 @@ def test_unsafe_input_wf_and_task():
             return a + 1
         return 0
 
-    @task
-    def t2_wo_unsafe(a) -> int:
-        return a + 1
+    with pytest.raises(FlyteMissingTypeException):
+        @task
+        def t2_wo_unsafe(a) -> int:
+            return a + 1
 
     @workflow(unsafe=True)
     def wf1_with_unsafe(a) -> int:
@@ -2080,19 +2081,10 @@ def test_unsafe_input_wf_and_task():
     assert wf1_with_unsafe(a="1") == 0
     assert wf1_with_unsafe(a=None) == 0
 
-    @workflow
-    def wf1_wo_unsafe(a) -> int:
-        return t1(a=a)
-
-    @workflow
-    def wf1_wo_unsafe2(a: int) -> int:
-        return t2_wo_unsafe(a=a)
-
-    with pytest.raises(TypeError):
-        wf1_wo_unsafe(a=1)
-
-    with pytest.raises(TypeError):
-        wf1_wo_unsafe2(a=1)
+    with pytest.raises(FlyteMissingTypeException):
+        @workflow
+        def wf1_wo_unsafe(a) -> int:
+            return t1(a=a)
 
 
 def test_unsafe_wf_and_task():

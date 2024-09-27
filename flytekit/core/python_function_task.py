@@ -130,7 +130,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         if task_function is None:
             raise ValueError("TaskFunction is a required parameter for PythonFunctionTask")
         self._native_interface = transform_function_to_interface(
-            task_function, Docstring(callable_=task_function), unsafe
+            task_function, Docstring(callable_=task_function), unsafe=unsafe
         )
         mutated_interface = self._native_interface.remove_inputs(ignore_input_vars)
         name, _, _, _ = extract_task_module(task_function)
