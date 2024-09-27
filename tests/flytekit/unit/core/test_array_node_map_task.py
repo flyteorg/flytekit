@@ -260,8 +260,8 @@ def test_inputs_outputs_length():
     m = map_task(p3)
     assert m.python_interface.inputs == {"a": int, "b": str, "c": float}
     assert (
-         m.name
-         == "tests.flytekit.unit.core.test_array_node_map_task.map_many_inputs_5d2500dc176052a030efda3b8c283f96-arraynode"
+        m.name
+        == "tests.flytekit.unit.core.test_array_node_map_task.map_many_inputs_5d2500dc176052a030efda3b8c283f96-arraynode"
     )
     r_m = ArrayNodeMapTask(many_inputs, bound_inputs={"a", "c", "b"})
     assert str(r_m.python_interface) == str(m.python_interface)
@@ -482,9 +482,9 @@ def test_load_offloaded_literal(tmp_path, monkeypatch):
                 ctx.execution_state.with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION)
             )
     ) as ctx:
-        list_ints = ["a", "b", "c"]
+        list_strs = ["a", "b", "c"]
         lt = TypeEngine.to_literal_type(typing.List[str])
-        to_be_offloaded = TypeEngine.to_literal(ctx, list_ints, typing.List[str], lt)
+        to_be_offloaded = TypeEngine.to_literal(ctx, list_strs, typing.List[str], lt)
         with open(f"{tmp_path}/literal.pb", "wb") as f:
             f.write(to_be_offloaded.to_flyte_idl().SerializeToString())
 
@@ -499,9 +499,11 @@ def test_load_offloaded_literal(tmp_path, monkeypatch):
             "name": literal
         })
 
-        monkeypatch.setenv("BATCH_JOB_ARRAY_INDEX_VAR_NAME", "name")
-        monkeypatch.setenv("name", "0")
-        t = map_task(say_hello)
-        res = t.dispatch_execute(ctx, lm)
-        assert len(res.literals) == 1
-        assert res.literals["o0"].scalar.primitive.string_value == "hello a!"
+        for index, map_input_str in enumerate(list_strs):
+            monkeypatch.setenv("BATCH_JOB_ARRAY_INDEX_VAR_NAME", "name")
+            monkeypatch.setenv("name", str(index))
+            t = map_task(say_hello)
+            res = t.dispatch_execute(ctx, lm)
+            assert len(res.literals) == 1
+            assert res.literals[f"o{0}"].scalar.primitive.string_value == f"hello {map_input_str}!"
+            monkeypatch.undo()
