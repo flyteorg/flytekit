@@ -13,7 +13,7 @@ from flytekit.core.workflow import workflow
 from flytekit.models.common import Annotations, AuthRole, Labels, RawOutputDataConfig
 from flytekit.models.core import execution as _execution_model
 from flytekit.models.core import identifier as identifier_models
-from flytekit.tools.translator import get_serializable
+from flytekit.tools.translator import get_serializable, Options
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = flytekit.configuration.SerializationSettings(
@@ -450,3 +450,24 @@ def test_lp_with_docstring():
 
     lp = launch_plan.LaunchPlan.get_or_create(workflow=wf_with_docstring)
     assert lp.parameters.parameters["a"].var.description == "foo"
+
+def test_lp_with_wf_with_default_options():
+    @task
+    def t1(a: int) -> int:
+        return a + 2
+
+    @workflow(
+        default_options=Options(
+            labels=Labels({"label": "foo"}),
+            annotations=Annotations({"anno": "bar"}),
+        )
+    )
+    def wf_with_default_options(a: int) -> int:
+        return t1(a=a)
+
+    lp = launch_plan.LaunchPlan.get_or_create(workflow=wf_with_default_options)
+
+    assert len(lp.labels.values) == 1
+    assert lp.labels.values["label"] == "foo"
+    assert len(lp.annotations.values) == 1
+    assert lp.annotations.values["anno"] == "bar"

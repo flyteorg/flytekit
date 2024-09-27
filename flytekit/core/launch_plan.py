@@ -93,12 +93,22 @@ class LaunchPlan(object):
 
         parameter_map = transform_inputs_to_parameters(ctx, workflow.python_interface)
 
-        lp = LaunchPlan(
-            name=workflow.name,
-            workflow=workflow,
-            parameters=parameter_map,
-            fixed_inputs=_literal_models.LiteralMap(literals={}),
-        )
+        if workflow.default_options is not None:
+            lp = LaunchPlan(
+                name=workflow.name,
+                workflow=workflow,
+                parameters=parameter_map,
+                fixed_inputs=_literal_models.LiteralMap(literals={}),
+                labels=workflow.default_options.labels,
+                annotations=workflow.default_options.annotations,
+            )
+        else:
+            lp = LaunchPlan(
+                name=workflow.name,
+                workflow=workflow,
+                parameters=parameter_map,
+                fixed_inputs=_literal_models.LiteralMap(literals={}),
+            )
 
         # Ensure default parameters are available when using lp.__call__()
         default_inputs = {
