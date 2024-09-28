@@ -14,6 +14,7 @@ from pathlib import Path
 from types import ModuleType
 from typing import List, Optional, Tuple, Union
 
+import flytekit
 from flytekit.constants import CopyFileDetection
 from flytekit.loggers import logger
 from flytekit.tools.ignore import IgnoreGroup
@@ -192,6 +193,7 @@ def list_imported_modules_as_files(source_path: str, modules: List[ModuleType]) 
     site_packages_set = set(site_packages)
     bin_directory = os.path.dirname(sys.executable)
     files = []
+    flytekit_root = os.path.dirname(flytekit.__file__)
 
     for mod in modules:
         try:
@@ -206,6 +208,10 @@ def list_imported_modules_as_files(source_path: str, modules: List[ModuleType]) 
         # installed packages & libraries that are not user files. This happens when
         # there is a virtualenv like `.venv` in the working directory.
         try:
+            # Do not upload code if it is from the flytekit library
+            if os.path.commonpath([flytekit_root, mod_file]) == flytekit_root:
+                continue
+
             if os.path.commonpath(site_packages + [mod_file]) in site_packages_set:
                 # Do not upload files from site-packages
                 continue
