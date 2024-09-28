@@ -661,11 +661,13 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         docstring: Optional[Docstring] = None,
         on_failure: Optional[Union[WorkflowBase, Task]] = None,
         docs: Optional[Documentation] = None,
-        unsafe: bool = False,
+        pickle_untyped: bool = False,
     ):
         name, _, _, _ = extract_task_module(workflow_function)
         self._workflow_function = workflow_function
-        native_interface = transform_function_to_interface(workflow_function, docstring=docstring, unsafe=unsafe)
+        native_interface = transform_function_to_interface(
+            workflow_function, docstring=docstring, pickle_untyped=pickle_untyped
+        )
 
         # TODO do we need this - can this not be in launchplan only?
         #    This can be in launch plan only, but is here only so that we don't have to re-evaluate. Or
@@ -829,7 +831,7 @@ def workflow(
     interruptible: bool = ...,
     on_failure: Optional[Union[WorkflowBase, Task]] = ...,
     docs: Optional[Documentation] = ...,
-    unsafe: bool = ...,
+    pickle_untyped: bool = ...,
 ) -> Callable[[Callable[..., FuncOut]], PythonFunctionWorkflow]: ...
 
 
@@ -849,7 +851,7 @@ def workflow(
     interruptible: bool = False,
     on_failure: Optional[Union[WorkflowBase, Task]] = None,
     docs: Optional[Documentation] = None,
-    unsafe: bool = False,
+    pickle_untyped: bool = False,
 ) -> Union[Callable[P, FuncOut], Callable[[Callable[P, FuncOut]], PythonFunctionWorkflow], PythonFunctionWorkflow]:
     """
     This decorator declares a function to be a Flyte workflow. Workflows are declarative entities that construct a DAG
@@ -881,7 +883,7 @@ def workflow(
     :param on_failure: Invoke this workflow or task on failure. The Workflow / task has to match the signature of
          the current workflow, with an additional parameter called `error` Error
     :param docs: Description entity for the workflow
-    :param unsafe: This is a flag that allows users to bypass the type-checking that Flytekit does when constructing
+    :param pickle_untyped: This is a flag that allows users to bypass the type-checking that Flytekit does when constructing
          the workflow. This is not recommended for general use.
     """
 
@@ -897,7 +899,7 @@ def workflow(
             docstring=Docstring(callable_=fn),
             on_failure=on_failure,
             docs=docs,
-            unsafe=unsafe,
+            pickle_untyped=pickle_untyped,
         )
         update_wrapper(workflow_instance, fn)
         return workflow_instance

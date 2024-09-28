@@ -2061,8 +2061,8 @@ def test_promise_illegal_retries():
         my_wf(a=1, retries=1)
 
 
-def test_unsafe_input_wf_and_task():
-    @task(unsafe=True)
+def test_pickle_untyped_input_wf_and_task():
+    @task(pickle_untyped=True)
     def t1(a) -> int:
         if type(a) == int:
             return a + 1
@@ -2070,47 +2070,47 @@ def test_unsafe_input_wf_and_task():
 
     with pytest.raises(FlyteMissingTypeException):
         @task
-        def t2_wo_unsafe(a) -> int:
+        def t2_wo_pickle_untyped(a) -> int:
             return a + 1
 
-    @workflow(unsafe=True)
-    def wf1_with_unsafe(a) -> int:
+    @workflow(pickle_untyped=True)
+    def wf1_with_pickle_untyped(a) -> int:
         return t1(a=a)
 
-    assert wf1_with_unsafe(a=1) == 2
-    assert wf1_with_unsafe(a="1") == 0
-    assert wf1_with_unsafe(a=None) == 0
+    assert wf1_with_pickle_untyped(a=1) == 2
+    assert wf1_with_pickle_untyped(a="1") == 0
+    assert wf1_with_pickle_untyped(a=None) == 0
 
     with pytest.raises(FlyteMissingTypeException):
         @workflow
-        def wf1_wo_unsafe(a) -> int:
+        def wf1_wo_pickle_untyped(a) -> int:
             return t1(a=a)
 
 
-def test_unsafe_wf_and_task():
-    @task(unsafe=True)
+def test_pickle_untyped_wf_and_task():
+    @task(pickle_untyped=True)
     def t1(a):
         if type(a) != int:
             return None
         return a + 1
 
-    @task(unsafe=True)
+    @task(pickle_untyped=True)
     def t2(a):
         if type(a) != int:
             return None
         return a + 2
 
-    @workflow(unsafe=True)
-    def wf1_with_unsafe(a):
+    @workflow(pickle_untyped=True)
+    def wf1_with_pickle_untyped(a):
         a1 = t1(a=a)
         return t2(a=a1)
 
-    assert wf1_with_unsafe(a=1) == 4
-    assert wf1_with_unsafe(a="1") is None
+    assert wf1_with_pickle_untyped(a=1) == 4
+    assert wf1_with_pickle_untyped(a="1") is None
 
 
-def test_wf_with_unsafe_and_safe_tasks():
-    @task(unsafe=True)
+def test_wf_with_pickle_untyped_and_safe_tasks():
+    @task(pickle_untyped=True)
     def t1(a):
         if type(a) != int:
             return None
@@ -2122,25 +2122,25 @@ def test_wf_with_unsafe_and_safe_tasks():
             return None
         return a + 2
 
-    @workflow(unsafe=True)
-    def wf1_with_unsafe(a):
+    @workflow(pickle_untyped=True)
+    def wf1_with_pickle_untyped(a):
         a1 = t1(a=a)
         return t2(a=a1)
 
-    assert wf1_with_unsafe(a=1) == 4
-    assert wf1_with_unsafe(a="1") is None
+    assert wf1_with_pickle_untyped(a=1) == 4
+    assert wf1_with_pickle_untyped(a="1") is None
 
-    @workflow(unsafe=True)
-    def wf2_with_unsafe(a):
+    @workflow(pickle_untyped=True)
+    def wf2_with_pickle_untyped(a):
         a1 = t2(a=a)
         return t1(a=a1)
 
-    assert wf2_with_unsafe(a=1) == 4
-    assert wf2_with_unsafe(a="1") is None
+    assert wf2_with_pickle_untyped(a=1) == 4
+    assert wf2_with_pickle_untyped(a="1") is None
 
 
-def test_unsafe_task_with_specified_input():
-    @task(unsafe=True)
+def test_pickle_untyped_task_with_specified_input():
+    @task(pickle_untyped=True)
     def t1(a, b: typing.Any):
         if type(a) != int:
             if type(b) != int:
@@ -2151,12 +2151,12 @@ def test_unsafe_task_with_specified_input():
             return a
         return a + b
 
-    @workflow(unsafe=True)
-    def wf1_with_unsafe(a: typing.Any, b):
+    @workflow(pickle_untyped=True)
+    def wf1_with_pickle_untyped(a: typing.Any, b):
         r = t1(a=a, b=b)
         return r
 
-    assert wf1_with_unsafe(a=1, b=2) == 3
-    assert wf1_with_unsafe(a="1", b=2) == 2
-    assert wf1_with_unsafe(a=1, b="2") == 1
-    assert wf1_with_unsafe(a="1", b="2") is None
+    assert wf1_with_pickle_untyped(a=1, b=2) == 3
+    assert wf1_with_pickle_untyped(a="1", b=2) == 2
+    assert wf1_with_pickle_untyped(a=1, b="2") == 1
+    assert wf1_with_pickle_untyped(a="1", b="2") is None
