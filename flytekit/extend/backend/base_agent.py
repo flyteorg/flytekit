@@ -12,9 +12,12 @@ from types import FrameType, coroutine
 from typing import Any, Dict, List, Optional, Union
 
 from flyteidl.admin.agent_pb2 import Agent
+from flyteidl.admin.agent_pb2 import Resource as _Resource
 from flyteidl.admin.agent_pb2 import TaskCategory as _TaskCategory
 from flyteidl.core import literals_pb2
 from flyteidl.core.execution_pb2 import TaskExecution, TaskLog
+from google.protobuf import json_format
+from google.protobuf.struct_pb2 import Struct
 from rich.logging import RichHandler
 from rich.progress import Progress
 
@@ -28,6 +31,7 @@ from flytekit.exceptions.system import FlyteAgentNotFound
 from flytekit.exceptions.user import FlyteUserException
 from flytekit.extend.backend.utils import is_terminal_phase, mirror_async_methods, render_task_template
 from flytekit.loggers import set_flytekit_log_properties
+from flytekit.models import common
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskExecutionMetadata, TaskTemplate
 
@@ -76,7 +80,7 @@ class ResourceMeta:
 
 
 @dataclass
-class Resource:
+class Resource(common.FlyteIdlEntity):
     """
     This is the output resource of the job.
 
@@ -91,6 +95,36 @@ class Resource:
     message: Optional[str] = None
     log_links: Optional[List[TaskLog]] = None
     outputs: Optional[Union[LiteralMap, typing.Dict[str, Any]]] = None
+    custom_info: Optional[typing.Dict[str, Any]] = None
+
+    def to_flyte_idl(self) -> _Resource:
+        if self.outputs is None:
+            outputs = None
+        elif isinstance(self.outputs, LiteralMap):
+            outputs = self.outputs.to_flyte_idl()
+        else:
+            ctx = FlyteContext.current_context()
+            outputs = TypeEngine.dict_to_literal_map_pb(ctx, self.outputs)
+
+        return _Resource(
+            phase=self.phase,
+            message=self.message,
+            log_links=self.log_links,
+            outputs=outputs,
+            custom_info=(json_format.Parse(json.dumps(self.custom_info), Struct()) if self.custom_info else None),
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object: _Resource):
+        return cls(
+            phase=pb2_object.phase,
+            message=pb2_object.message,
+            log_links=pb2_object.log_links,
+            outputs=(LiteralMap.from_flyte_idl(pb2_object.outputs) if pb2_object.outputs else None),
+            custom_info=(
+                json_format.MessageToDict(pb2_object.custom_info) if pb2_object.HasField("custom_info") else None
+            ),
+        )
 
 
 class AgentBase(ABC):
