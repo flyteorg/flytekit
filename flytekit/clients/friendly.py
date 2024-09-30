@@ -1049,7 +1049,6 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         resp = self._dataproxy_stub.GetData(req, metadata=self._metadata)
         return resp
 
-
     def get_download_deck_signed_url(
         self,
         node_id: str,
