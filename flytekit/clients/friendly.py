@@ -13,7 +13,9 @@ from flyteidl.admin import task_execution_pb2 as _task_execution_pb2
 from flyteidl.admin import task_pb2 as _task_pb2
 from flyteidl.admin import workflow_attributes_pb2 as _workflow_attributes_pb2
 from flyteidl.admin import workflow_pb2 as _workflow_pb2
+from flyteidl.core import identifier_pb2 as _identifier_pb2
 from flyteidl.service import dataproxy_pb2 as _data_proxy_pb2
+from flyteidl.service.dataproxy_pb2 import ARTIFACT_TYPE_DECK
 from google.protobuf.duration_pb2 import Duration
 
 from flytekit.clients.raw import RawSynchronousFlyteClient as _RawSynchronousFlyteClient
@@ -1046,3 +1048,36 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
 
         resp = self._dataproxy_stub.GetData(req, metadata=self._metadata)
         return resp
+
+    """
+    This is for Union's Cluster.
+    """
+
+    def get_download_deck_signed_url(
+        self,
+        node_id: str,
+        project: str,
+        domain: str,
+        execution_id: str,
+        org: str = "",
+        expires_in: datetime.timedelta = None,
+    ) -> _data_proxy_pb2.CreateDownloadLinkResponse:
+        expires_in_pb = None
+        if expires_in:
+            expires_in_pb = Duration()
+            expires_in_pb.FromTimedelta(expires_in)
+        return super(SynchronousFlyteClient, self).create_download_link(
+            _data_proxy_pb2.CreateDownloadLinkRequest(
+                artifact_type=ARTIFACT_TYPE_DECK,
+                node_execution_id=_identifier_pb2.NodeExecutionIdentifier(
+                    node_id=node_id,
+                    execution_id=_identifier_pb2.WorkflowExecutionIdentifier(
+                        project=project,
+                        domain=domain,
+                        name=execution_id,
+                        org=org,
+                    ),
+                ),
+                expires_in=expires_in_pb,
+            )
+        )
