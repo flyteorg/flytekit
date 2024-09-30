@@ -1060,7 +1060,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         expires_in: datetime.timedelta = None,
     ) -> _data_proxy_pb2.CreateDownloadLinkResponse:
         """
-        This is new API for flyte and union cluster to get the signed url for the deck artifact.
+        This is a new API for flyte and union cluster to get the signed url for the deck artifact.
         """
         expires_in_pb = None
         if expires_in:
