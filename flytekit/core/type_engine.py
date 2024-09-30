@@ -17,7 +17,6 @@ from collections import OrderedDict
 from functools import lru_cache
 from typing import Dict, List, NamedTuple, Optional, Type, cast
 
-from dataclasses_json import DataClassJsonMixin, dataclass_json
 from flyteidl.core import literals_pb2
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
@@ -29,6 +28,7 @@ from mashumaro.codecs.json import JSONDecoder, JSONEncoder
 from mashumaro.mixins.json import DataClassJSONMixin
 from typing_extensions import Annotated, get_args, get_origin
 
+from flytekit import DataClassBaseClass
 from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.hash import HashMethod
@@ -369,7 +369,7 @@ class DataclassTransformer(TypeTransformer[object]):
         self._encoder: Dict[Type, JSONEncoder] = {}
         self._decoder: Dict[Type, JSONDecoder] = {}
 
-    def assert_type(self, expected_type: Type[DataClassJsonMixin], v: T):
+    def assert_type(self, expected_type: Type[DataClassBaseClass], v: T):
         # Skip iterating all attributes in the dataclass if the type of v already matches the expected_type
         expected_type = get_underlying_type(expected_type)
         if type(v) == expected_type or issubclass(type(v), expected_type):
@@ -471,6 +471,7 @@ class DataclassTransformer(TypeTransformer[object]):
 
         schema = None
         try:
+            from dataclasses_json import DataClassJsonMixin
             from marshmallow_enum import EnumField, LoadDumpOptions
 
             if issubclass(t, DataClassJsonMixin):
@@ -1928,8 +1929,11 @@ def convert_marshmallow_json_schema_to_python_class(
     """
 
     attribute_list = generate_attribute_list_from_dataclass_json(schema, schema_name)
-    return dataclass_json(dataclasses.make_dataclass(schema_name, attribute_list))
-
+    try:
+        from dataclasses_json import dataclass_json
+        return dataclass_json(dataclasses.make_dataclass(schema_name, attribute_list))
+    except ImportError:
+        return dataclasses.make_dataclass(schema_name, attribute_list)
 
 def convert_mashumaro_json_schema_to_python_class(
     schema: dict, schema_name: typing.Any
@@ -1941,8 +1945,11 @@ def convert_mashumaro_json_schema_to_python_class(
     """
 
     attribute_list = generate_attribute_list_from_dataclass_json_mixin(schema, schema_name)
-    return dataclass_json(dataclasses.make_dataclass(schema_name, attribute_list))
-
+    try:
+        from dataclasses_json import dataclass_json
+        return dataclass_json(dataclasses.make_dataclass(schema_name, attribute_list))
+    except ImportError:
+        return dataclasses.make_dataclass(schema_name, attribute_list)
 
 def _get_element_type(element_property: typing.Dict[str, str]) -> Type:
     element_type = (

@@ -143,8 +143,8 @@ from io import BytesIO
 from typing import Dict, List, Optional
 
 import yaml
-from dataclasses_json import DataClassJsonMixin
 
+from flytekit import DataClassBaseClass
 from flytekit.configuration import internal as _internal
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.configuration.file import ConfigEntry, ConfigFile, get_config_file, read_file_if_exists, set_if_exists
@@ -164,7 +164,7 @@ SERIALIZED_CONTEXT_ENV_VAR = "_F_SS_C"
 
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
-class Image(DataClassJsonMixin):
+class Image(DataClassBaseClass):
     """
     Image is a structured wrapper for task container images used in object serialization.
 

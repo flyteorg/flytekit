@@ -319,3 +319,9 @@ load_implicit_plugins()
 # Pretty-print exception messages
 if os.environ.get(LOGGING_RICH_FMT_ENV_VAR) != "0":
     traceback.install(width=None, extra_lines=0)
+
+try:
+    from dataclasses_json import DataClassJsonMixin
+    DataClassBaseClass = DataClassJsonMixin
+except ImportError:
+    DataClassBaseClass = object
