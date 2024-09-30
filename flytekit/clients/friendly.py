@@ -1049,9 +1049,6 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         resp = self._dataproxy_stub.GetData(req, metadata=self._metadata)
         return resp
 
-    """
-    This is for Union's Cluster.
-    """
 
     def get_download_deck_signed_url(
         self,
@@ -1062,6 +1059,9 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         org: str = "",
         expires_in: datetime.timedelta = None,
     ) -> _data_proxy_pb2.CreateDownloadLinkResponse:
+        """
+        This is new API for flyte and union cluster to get the signed url for the deck artifact.
+        """
         expires_in_pb = None
         if expires_in:
             expires_in_pb = Duration()
