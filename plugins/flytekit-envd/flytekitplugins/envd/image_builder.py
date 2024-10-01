@@ -186,13 +186,11 @@ def build():
                         f'    io.copy(host_path="{src_path.as_posix()}", envd_path="/root/{src_path.as_posix()}/")\n'
                     )
                 else:
-                    envd_config += (
-                        f'    io.copy(source="{src_path.as_posix()}", target="/root/{src_path.parent.as_posix()}/")\n'
-                    )
+                    envd_config += f'    io.copy(host_path="{src_path.as_posix()}", envd_path="/root/{src_path.parent.as_posix()}/")\n'
             else:
                 if src_path.is_dir():
                     envd_config += (
-                        f'    io.copy(host_path="{src_path.as_posix()}", envd_path="/root/{src_path.as_posix()}/")\n'
+                        f'    io.copy(source="{src_path.as_posix()}", target="/root/{src_path.as_posix()}/")\n'
                     )
                 else:
                     envd_config += (
