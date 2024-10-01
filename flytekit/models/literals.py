@@ -48,12 +48,12 @@ class RetryStrategy(_common.FlyteIdlEntity):
 class Primitive(_common.FlyteIdlEntity):
     def __init__(
         self,
-        integer=None,
-        float_value=None,
-        string_value=None,
-        boolean=None,
-        datetime=None,
-        duration=None,
+        integer: Optional[int] = None,
+        float_value: Optional[float] = None,
+        string_value: Optional[str] = None,
+        boolean: Optional[bool] = None,
+        datetime: Optional[datetime.timestamp] = None,
+        duration: Optional[datetime.timedelta] = None,
     ):
         """
         This object proxies the primitives supported by the Flyte IDL system.  Only one value can be set.
@@ -77,35 +77,35 @@ class Primitive(_common.FlyteIdlEntity):
         self._duration = duration
 
     @property
-    def integer(self):
+    def integer(self) -> Optional[int]:
         """
         :rtype: int
         """
         return self._integer
 
     @property
-    def float_value(self):
+    def float_value(self) -> Optional[float]:
         """
         :rtype: float
         """
         return self._float_value
 
     @property
-    def string_value(self):
+    def string_value(self) -> Optional[str]:
         """
         :rtype: Text
         """
         return self._string_value
 
     @property
-    def boolean(self):
+    def boolean(self) -> Optional[bool]:
         """
         :rtype: bool
         """
         return self._boolean
 
     @property
-    def datetime(self):
+    def datetime(self) -> Optional[datetime.datetime]:
         """
         :rtype: datetime.datetime
         """
@@ -114,7 +114,7 @@ class Primitive(_common.FlyteIdlEntity):
         return self._datetime.replace(tzinfo=_timezone.utc)
 
     @property
-    def duration(self):
+    def duration(self) -> Optional[datetime.timedelta]:
         """
         :rtype: datetime.timedelta
         """
@@ -703,15 +703,15 @@ class LiteralMap(_common.FlyteIdlEntity):
 class Scalar(_common.FlyteIdlEntity):
     def __init__(
         self,
-        primitive: Primitive = None,
-        blob: Blob = None,
-        binary: Binary = None,
-        schema: Schema = None,
-        union: Union = None,
-        none_type: Void = None,
-        error: Error = None,
-        generic: Struct = None,
-        structured_dataset: StructuredDataset = None,
+        primitive: Optional[Primitive] = None,
+        blob: Optional[Blob] = None,
+        binary: Optional[Binary] = None,
+        schema: Optional[Schema] = None,
+        union: Optional[Union] = None,
+        none_type: Optional[Void] = None,
+        error: Optional[Error] = None,
+        generic: Optional[Struct] = None,
+        structured_dataset: Optional[StructuredDataset] = None,
     ):
         """
         Scalar wrapper around Flyte types.  Only one can be specified.
