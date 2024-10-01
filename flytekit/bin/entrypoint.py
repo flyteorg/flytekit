@@ -7,7 +7,9 @@ import pathlib
 import signal
 import subprocess
 import tempfile
+import time
 import traceback
+import uuid
 from sys import exit
 from typing import List, Optional
 
@@ -69,12 +71,12 @@ def _compute_array_job_index():
     return offset
 
 
-def _build_error_file_name(error_file_name_suffix: Optional[str]) -> str:
-    if error_file_name_suffix is None:
-        return _constants.ERROR_FILE_NAME
-    error_file_name_base, error_file_name_extension = os.path.splitext(_constants.ERROR_FILE_NAME)
-    error_file_name_base += f"-{error_file_name_suffix}"
-    return f"{error_file_name_base}.{error_file_name_extension}"
+def _build_error_file_name() -> str:
+    if os.environ.get("FLYTE_INTERNAL_DIST_ERROR_STRATEGY"):
+        error_file_name_base, error_file_name_extension = os.path.splitext(_constants.ERROR_FILE_NAME)
+        error_file_name_base += f"-{uuid.uuid4().hex}"
+        return f"{error_file_name_base}.{error_file_name_extension}"
+    return _constants.ERROR_FILE_NAME
 
 
 def _dispatch_execute(
@@ -92,7 +94,8 @@ def _dispatch_execute(
             b: OR if IgnoreOutputs is raised, then ignore uploading outputs
             c: OR if an unhandled exception is retrieved - record it as an errors.pb
     """
-    error_file_name = _build_error_file_name(task_def.get_error_file_name_suffix())
+    error_file_name = _build_error_file_name()
+    worker_name = os.environ.get("FLYTE_INTERNAL_WORKER_NAME", "")
 
     output_file_dict = {}
     logger.debug(f"Starting _dispatch_execute for {task_def.name}")
@@ -124,10 +127,12 @@ def _dispatch_execute(
             logger.error(f"SystemError: received unknown outputs from task {outputs}")
             output_file_dict[error_file_name] = _error_models.ErrorDocument(
                 _error_models.ContainerError(
-                    "UNKNOWN_OUTPUT",
-                    f"Type of output received not handled {type(outputs)} outputs: {outputs}",
-                    _error_models.ContainerError.Kind.RECOVERABLE,
-                    _execution_models.ExecutionError.ErrorKind.SYSTEM,
+                    code="UNKNOWN_OUTPUT",
+                    message=f"Type of output received not handled {type(outputs)} outputs: {outputs}",
+                    kind=_error_models.ContainerError.Kind.RECOVERABLE,
+                    origin=_execution_models.ExecutionError.ErrorKind.SYSTEM,
+                    timestamp=int(time.time()),
+                    worker=worker_name,
                 )
             )
 
@@ -138,7 +143,12 @@ def _dispatch_execute(
             return
         output_file_dict[error_file_name] = _error_models.ErrorDocument(
             _error_models.ContainerError(
-                e.error_code, e.verbose_message, e.kind, _execution_models.ExecutionError.ErrorKind.USER
+                code=e.error_code,
+                message=e.verbose_message,
+                kind=e.kind,
+                origin=_execution_models.ExecutionError.ErrorKind.USER,
+                timestamp=int(time.time()),
+                worker=worker_name,
             )
         )
         logger.error("!! Begin User Error Captured by Flyte !!")
@@ -152,7 +162,12 @@ def _dispatch_execute(
             return
         output_file_dict[error_file_name] = _error_models.ErrorDocument(
             _error_models.ContainerError(
-                e.error_code, e.verbose_message, e.kind, _execution_models.ExecutionError.ErrorKind.SYSTEM
+                code=e.error_code,
+                message=e.verbose_message,
+                kind=e.kind,
+                origin=_execution_models.ExecutionError.ErrorKind.SYSTEM,
+                timestamp=int(time.time()),
+                worker=worker_name,
             )
         )
         logger.error("!! Begin System Error Captured by Flyte !!")
@@ -166,10 +181,12 @@ def _dispatch_execute(
         exc_str = traceback.format_exc()
         output_file_dict[error_file_name] = _error_models.ErrorDocument(
             _error_models.ContainerError(
-                "SYSTEM:Unknown",
-                exc_str,
-                _error_models.ContainerError.Kind.RECOVERABLE,
-                _execution_models.ExecutionError.ErrorKind.SYSTEM,
+                code="SYSTEM:Unknown",
+                message=exc_str,
+                kind=_error_models.ContainerError.Kind.RECOVERABLE,
+                origin=_execution_models.ExecutionError.ErrorKind.SYSTEM,
+                timestamp=int(time.time()),
+                worker=worker_name,
             )
         )
         logger.error(f"Exception when executing task {task_def.name or task_def.id.name}, reason {str(e)}")

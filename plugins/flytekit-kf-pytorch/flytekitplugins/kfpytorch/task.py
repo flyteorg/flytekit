@@ -4,7 +4,6 @@ Kubernetes. It leverages `Pytorch Job <https://github.com/kubeflow/pytorch-opera
 """
 
 import os
-import uuid
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Dict, List, NamedTuple, Optional, Union
@@ -339,12 +338,6 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
             if self.pod_template is None:
                 self.pod_template = PodTemplate()
             add_shared_mem_volume_to_pod_template(self.pod_template)
-
-    def get_error_file_name_suffix(self) -> Optional[str]:
-        """
-        Returns error file name suffix for the task worker.
-        """
-        return uuid.uuid4().hex
 
     def _execute(self, **kwargs) -> Any:
         """

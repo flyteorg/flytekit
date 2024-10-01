@@ -559,15 +559,6 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         """
         return self._task_config
 
-    def get_error_file_name_suffix(self) -> Optional[str]:
-        """
-        Returns the error file name suffix for the task. Typically used for customizing the default behavior
-        of using a fixed file name; such as for tasks where multiple pods working on behalf of the task can
-        generate errors that need to be mapped back to an error for the top level task. Such scenarios require
-        customization of the error file name, so that the earliest error can be picked as the final error.
-        """
-        return None
-
     def get_type_for_input_var(self, k: str, v: Any) -> Type[Any]:
         """
         Returns the python type for an input variable by name.
