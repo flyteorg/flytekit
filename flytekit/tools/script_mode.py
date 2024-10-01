@@ -70,7 +70,6 @@ def compress_scripts(source_path: str, destination: str, modules: List[ModuleTyp
 # intended to be passed as a filter to tarfile.add
 # https://docs.python.org/3/library/tarfile.html#tarfile.TarFile.add
 def tar_strip_file_attributes(tar_info: tarfile.TarInfo) -> tarfile.TarInfo:
-    print(f"Tar filter called for: {tar_info.name} {tar_info.size} {tar_info.mtime}")
     # set time to epoch timestamp 0, aka 00:00:00 UTC on 1 January 1980
     # note that when extracting this tarfile, this time will be shown as the modified date
     tar_info.mtime = datetime(1980, 1, 1).timestamp()

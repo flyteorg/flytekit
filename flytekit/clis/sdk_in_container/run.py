@@ -668,7 +668,6 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
                     [],
                     copy_style=CopyFileDetection.ALL if run_level_params.copy_all else run_level_params.copy,
                     show_files=show_files,
-                    keep_default_ignores=True,
                 )
 
                 remote_entity = remote.register_script(
