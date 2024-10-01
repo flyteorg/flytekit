@@ -13,6 +13,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging as _logging
 import os
 import pathlib
@@ -35,6 +36,7 @@ from flytekit.interfaces.cli_identifiers import WorkflowExecutionIdentifier
 from flytekit.interfaces.stats import taggable
 from flytekit.loggers import developer_logger, user_space_logger
 from flytekit.models.core import identifier as _identifier
+from flytekit.utils.async_utils import get_or_create_loop
 
 if typing.TYPE_CHECKING:
     from flytekit import Deck
@@ -642,6 +644,15 @@ class FlyteContext(object):
     in_a_condition: bool = False
     origin_stackframe: Optional[traceback.FrameSummary] = None
     output_metadata_tracker: Optional[OutputMetadataTracker] = None
+    _loop: Optional[asyncio.AbstractEventLoop] = None
+
+    @property
+    def loop(self) -> asyncio.AbstractEventLoop:
+        """
+        Can remove this property in the future
+        """
+        assert self._loop is not None
+        return self._loop
 
     @property
     def user_space_params(self) -> Optional[ExecutionParameters]:
@@ -668,6 +679,7 @@ class FlyteContext(object):
             execution_state=self.execution_state,
             in_a_condition=self.in_a_condition,
             output_metadata_tracker=self.output_metadata_tracker,
+            loop=self._loop,
         )
 
     def enter_conditional_section(self) -> Builder:
@@ -691,6 +703,9 @@ class FlyteContext(object):
 
     def with_output_metadata_tracker(self, t: OutputMetadataTracker) -> Builder:
         return self.new_builder().with_output_metadata_tracker(t)
+
+    def with_ensure_loop(self) -> Builder:
+        return self.new_builder().with_ensure_loop()
 
     def new_compilation_state(self, prefix: str = "") -> CompilationState:
         """
@@ -753,6 +768,7 @@ class FlyteContext(object):
         serialization_settings: Optional[SerializationSettings] = None
         in_a_condition: bool = False
         output_metadata_tracker: Optional[OutputMetadataTracker] = None
+        loop: Optional[asyncio.AbstractEventLoop] = None
 
         def build(self) -> FlyteContext:
             return FlyteContext(
@@ -764,6 +780,7 @@ class FlyteContext(object):
                 serialization_settings=self.serialization_settings,
                 in_a_condition=self.in_a_condition,
                 output_metadata_tracker=self.output_metadata_tracker,
+                _loop=self.loop,
             )
 
         def enter_conditional_section(self) -> FlyteContext.Builder:
@@ -810,6 +827,12 @@ class FlyteContext(object):
 
         def with_output_metadata_tracker(self, t: OutputMetadataTracker) -> FlyteContext.Builder:
             self.output_metadata_tracker = t
+            return self
+
+        def with_ensure_loop(self, use_windows: bool = False) -> FlyteContext.Builder:
+            if not self.loop:
+                # Currently this will use a running system loop.
+                self.loop = get_or_create_loop(use_windows=use_windows)
             return self
 
         def new_compilation_state(self, prefix: str = "") -> CompilationState:
@@ -947,9 +970,13 @@ class FlyteContextManager(object):
             decks=[],
         )
 
-        default_context = default_context.with_execution_state(
-            default_context.new_execution_state().with_params(user_space_params=default_user_space_params)
-        ).build()
+        default_context = (
+            default_context.with_execution_state(
+                default_context.new_execution_state().with_params(user_space_params=default_user_space_params)
+            )
+            .with_ensure_loop()
+            .build()
+        )
         default_context.set_stackframe(s=FlyteContextManager.get_origin_stackframe())
         flyte_context_Var.set([default_context])
 

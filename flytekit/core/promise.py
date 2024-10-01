@@ -45,7 +45,7 @@ from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.literals import Primitive
 from flytekit.models.task import Resources
 from flytekit.models.types import SimpleType
-from flytekit.utils.async_utils import top_level_sync_wrapper
+from flytekit.utils.async_utils import run_sync_new_thread
 
 
 async def _translate_inputs_to_literals(
@@ -105,7 +105,7 @@ async def _translate_inputs_to_literals(
     return result
 
 
-translate_inputs_to_literals = top_level_sync_wrapper(_translate_inputs_to_literals)
+translate_inputs_to_literals = run_sync_new_thread(_translate_inputs_to_literals)
 
 
 async def resolve_attr_path_in_promise(p: Promise) -> Promise:
