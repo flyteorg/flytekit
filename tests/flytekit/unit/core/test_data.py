@@ -457,7 +457,7 @@ async def dummy_output_to_literal_map(ctx: FlyteContext, ff: typing.List[FlyteFi
 
 
 @pytest.mark.sandbox_test
-def test_walk_local_copy_to_s3():
+def test_async_local_copy_to_s3():
     import time
     import datetime
 
