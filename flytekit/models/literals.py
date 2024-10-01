@@ -1,4 +1,5 @@
 from datetime import datetime as _datetime
+from datetime import timedelta as _timedelta
 from datetime import timezone as _timezone
 from typing import Dict, Optional
 
@@ -52,8 +53,8 @@ class Primitive(_common.FlyteIdlEntity):
         float_value: Optional[float] = None,
         string_value: Optional[str] = None,
         boolean: Optional[bool] = None,
-        datetime: Optional[datetime.timestamp] = None,
-        duration: Optional[datetime.timedelta] = None,
+        datetime: Optional[_datetime] = None,
+        duration: Optional[_timedelta] = None,
     ):
         """
         This object proxies the primitives supported by the Flyte IDL system.  Only one value can be set.
@@ -105,7 +106,7 @@ class Primitive(_common.FlyteIdlEntity):
         return self._boolean
 
     @property
-    def datetime(self) -> Optional[datetime.datetime]:
+    def datetime(self) -> Optional[_datetime]:
         """
         :rtype: datetime.datetime
         """
@@ -114,7 +115,7 @@ class Primitive(_common.FlyteIdlEntity):
         return self._datetime.replace(tzinfo=_timezone.utc)
 
     @property
-    def duration(self) -> Optional[datetime.timedelta]:
+    def duration(self) -> Optional[_timedelta]:
         """
         :rtype: datetime.timedelta
         """
