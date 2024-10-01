@@ -1355,10 +1355,15 @@ class TypeEngine(typing.Generic[T]):
         kwargs = {}
         for i, k in enumerate(lm.literals):
             try:
-                kwargs[k] = await TypeEngine.async_to_python_value(ctx, lm.literals[k], python_interface_inputs[k])
+                kwargs[k] = asyncio.create_task(
+                    TypeEngine.async_to_python_value(ctx, lm.literals[k], python_interface_inputs[k])
+                )
+                await asyncio.gather(*kwargs.values())
             except TypeTransformerFailedError as exc:
                 exc.args = (f"Error converting input '{k}' at position {i}:\n  {exc.args[0]}",)
                 raise
+
+        kwargs = {k: v.result() for k, v in kwargs.items() if v is not None}
         return kwargs
 
     @classmethod
@@ -1390,14 +1395,19 @@ class TypeEngine(typing.Generic[T]):
             # `list` and `dict`.
             python_type = type_hints.get(k, type(v))
             try:
-                literal_map[k] = await TypeEngine.async_to_literal(
-                    ctx=ctx,
-                    python_val=v,
-                    python_type=python_type,
-                    expected=TypeEngine.to_literal_type(python_type),
+                literal_map[k] = asyncio.create_task(
+                    TypeEngine.async_to_literal(
+                        ctx=ctx,
+                        python_val=v,
+                        python_type=python_type,
+                        expected=TypeEngine.to_literal_type(python_type),
+                    )
                 )
+                await asyncio.gather(*literal_map.values())
             except TypeError:
                 raise user_exceptions.FlyteTypeException(type(v), python_type, received_value=v)
+
+        literal_map = {k: v.result() for k, v in literal_map.items()}
         return LiteralMap(literal_map)
 
     @classmethod
@@ -1534,7 +1544,9 @@ class ListTransformer(AsyncTypeTransformer[T]):
                 lit_list = []
         else:
             t = self.get_sub_type(python_type)
-            lit_list = [await TypeEngine.async_to_literal(ctx, x, t, expected.collection_type) for x in python_val]  # type: ignore
+            lit_list = [TypeEngine.async_to_literal(ctx, x, t, expected.collection_type) for x in python_val]
+            lit_list = await asyncio.gather(*lit_list)
+
         return Literal(collection=LiteralCollection(literals=lit_list))
 
     async def async_to_python_value(  # type: ignore
@@ -1554,18 +1566,15 @@ class ListTransformer(AsyncTypeTransformer[T]):
 
             batch_list = [TypeEngine.to_python_value(ctx, batch, FlytePickle) for batch in lits]
             if len(batch_list) > 0 and type(batch_list[0]) is list:
-                # Make it have backward compatibility. The upstream task may use old version of Flytekit that
-                # won't merge the elements in the list. Therefore, we should check if the batch_list[0] is the list first.
+                # Make it have backward compatibility. The upstream task may use old version of Flytekit that won't
+                # merge the elements in the list. Therefore, we should check if the batch_list[0] is the list first.
                 return [item for batch in batch_list for item in batch]
             return batch_list
         else:
             st = self.get_sub_type(expected_python_type)
-            result = [TypeEngine.to_python_value(ctx, x, st) for x in lits]
-            for idx, r in enumerate(result):
-                if isinstance(r, asyncio.Future):
-                    await r
-                    result[idx] = r.result()
-            return result
+            result = [TypeEngine.async_to_python_value(ctx, x, st) for x in lits]
+            result = await asyncio.gather(*result)
+            return result  # type: ignore  # should be a list, thinks its a tuple
 
     def guess_python_type(self, literal_type: LiteralType) -> list:  # type: ignore
         if literal_type.collection_type:
@@ -1771,6 +1780,7 @@ class UnionTransformer(AsyncTypeTransformer[T]):
         cur_transformer = ""
         res = None
         res_tag = None
+        # This is serial not really async but should be okay.
         for v in get_args(expected_python_type):
             try:
                 trans: TypeTransformer[T] = TypeEngine.get_transformer(v)
@@ -1940,7 +1950,13 @@ class DictTransformer(AsyncTypeTransformer[dict]):
             else:
                 _, v_type = self.extract_types_or_metadata(python_type)
 
-            lit_map[k] = await TypeEngine.async_to_literal(ctx, v, cast(type, v_type), expected.map_value_type)
+            lit_map[k] = asyncio.create_task(
+                TypeEngine.async_to_literal(ctx, v, cast(type, v_type), expected.map_value_type)
+            )
+
+        await asyncio.gather(*lit_map.values())
+        for k, v in lit_map.items():
+            lit_map[k] = v.result()
 
         return Literal(map=LiteralMap(literals=lit_map))
 
@@ -1958,11 +1974,13 @@ class DictTransformer(AsyncTypeTransformer[dict]):
                 raise TypeError("TypeMismatch. Destination dictionary does not accept 'str' key")
             py_map = {}
             for k, v in lv.map.literals.items():
-                item = TypeEngine.to_python_value(ctx, v, cast(Type, tp[1]))
-                if isinstance(item, asyncio.Future):
-                    py_map[k] = await item
-                else:
-                    py_map[k] = item
+                fut = asyncio.create_task(TypeEngine.async_to_python_value(ctx, v, cast(Type, tp[1])))
+                py_map[k] = fut
+
+            await asyncio.gather(*py_map.values())
+            for k, v in py_map.items():
+                py_map[k] = v.result()
+
             return py_map
 
         # for empty generic we have to explicitly test for lv.scalar.generic is not None as empty dict
