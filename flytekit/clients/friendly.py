@@ -1055,7 +1055,6 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         project: str,
         domain: str,
         name: str,
-        org: str = "",
         expires_in: datetime.timedelta = None,
     ) -> _data_proxy_pb2.CreateDownloadLinkResponse:
         """
@@ -1074,7 +1073,6 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
                         project=project,
                         domain=domain,
                         name=name,
-                        org=org,
                     ),
                 ),
                 expires_in=expires_in_pb,
