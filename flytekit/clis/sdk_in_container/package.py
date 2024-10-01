@@ -168,7 +168,7 @@ def package(
         # verbosity greater than 0 means to print the files
         show_files = ctx.obj[constants.CTX_VERBOSE] > 0
 
-        fast_options = FastPackageOptions([], copy_style=copy, show_files=show_files)
+        fast_options = FastPackageOptions([], copy_style=copy, show_files=show_files, keep_default_ignores=True)
         serialize_and_package(pkgs, serialization_settings, source, output, deref_symlinks, fast_options=fast_options)
     except NoSerializableEntitiesError:
         click.secho(f"No flyte objects found in packages {pkgs}", fg="yellow")

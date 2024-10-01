@@ -70,6 +70,7 @@ def compress_scripts(source_path: str, destination: str, modules: List[ModuleTyp
 # intended to be passed as a filter to tarfile.add
 # https://docs.python.org/3/library/tarfile.html#tarfile.TarFile.add
 def tar_strip_file_attributes(tar_info: tarfile.TarInfo) -> tarfile.TarInfo:
+    print(f"Tar filter called for: {tar_info.name} {tar_info.size} {tar_info.mtime}")
     # set time to epoch timestamp 0, aka 00:00:00 UTC on 1 January 1980
     # note that when extracting this tarfile, this time will be shown as the modified date
     tar_info.mtime = datetime(1980, 1, 1).timestamp()
@@ -143,6 +144,9 @@ def _pathhash_update(path: Union[os.PathLike, str], hasher: hashlib._Hash) -> No
     hasher.update("".join(path_list).encode("utf-8"))
 
 
+EXCLUDE_DIRS = {".git"}
+
+
 def list_all_files(source_path: str, deref_symlinks, ignore_group: Optional[IgnoreGroup] = None) -> List[str]:
     all_files = []
 
@@ -150,6 +154,7 @@ def list_all_files(source_path: str, deref_symlinks, ignore_group: Optional[Igno
     visited_inodes = set()
 
     for root, dirnames, files in os.walk(source_path, topdown=True, followlinks=deref_symlinks):
+        dirnames[:] = [d for d in dirnames if d not in EXCLUDE_DIRS]
         if deref_symlinks:
             inode = os.stat(root).st_ino
             if inode in visited_inodes:

@@ -956,6 +956,10 @@ class FlyteRemote(object):
         if not to_upload.is_file():
             raise ValueError(f"{to_upload} is not a single file, upload arg must be a single file.")
         md5_bytes, str_digest, _ = hash_file(to_upload)
+        import shutil
+        shutil.copyfile(to_upload, "/Users/ytong/test.compress")
+        x, y, _ = hash_file("/Users/ytong/test.compress")
+        print(f"{md5_bytes=} {str_digest=} {x=} {y=}")
 
         upload_location = self.client.get_upload_signed_url(
             project=project or self.default_project,
@@ -964,12 +968,15 @@ class FlyteRemote(object):
             filename=to_upload.name,
             filename_root=filename_root,
         )
+        print(f"{upload_location.signed_url=} {upload_location.native_url=}")
 
         extra_headers = self.get_extra_headers_for_protocol(upload_location.native_url)
         extra_headers.update(upload_location.headers)
         encoded_md5 = b64encode(md5_bytes)
         local_file_path = str(to_upload)
         content_length = os.stat(local_file_path).st_size
+        print(f"{encoded_md5=}, {local_file_path=}, {content_length=}, {extra_headers=}")
+        breakpoint()
         with open(local_file_path, "+rb") as local_file:
             headers = {"Content-Length": str(content_length), "Content-MD5": encoded_md5}
             headers.update(extra_headers)
