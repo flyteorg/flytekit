@@ -1054,7 +1054,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         node_id: str,
         project: str,
         domain: str,
-        execution_id: str,
+        name: str,
         org: str = "",
         expires_in: datetime.timedelta = None,
     ) -> _data_proxy_pb2.CreateDownloadLinkResponse:
@@ -1073,7 +1073,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
                     execution_id=_identifier_pb2.WorkflowExecutionIdentifier(
                         project=project,
                         domain=domain,
-                        name=execution_id,
+                        name=name,
                         org=org,
                     ),
                 ),

@@ -24,6 +24,8 @@ from flytekit.exceptions.user import FlyteAssertion, FlyteEntityNotExistExceptio
 from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
 from flytekit.remote.remote import FlyteRemote
 from flytekit.types.schema import FlyteSchema
+from flytekit.clients.friendly import SynchronousFlyteClient as _SynchronousFlyteClient
+from flytekit.configuration import PlatformConfig
 
 MODULE_PATH = pathlib.Path(__file__).parent / "workflows/basic"
 CONFIG = os.environ.get("FLYTECTL_CONFIG", str(pathlib.Path.home() / ".flyte" / "config-sandbox.yaml"))
@@ -98,6 +100,31 @@ def test_fetch_execute_launch_plan(register):
     execution = remote.execute(flyte_launch_plan, inputs={}, wait=True)
     assert execution.outputs["o0"] == "hello world"
 
+
+def test_get_download_deck_signed_url(register):
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+
+    # Fetch the launch plan for the workflow
+    flyte_launch_plan = remote.fetch_launch_plan(name="basic.basic_workflow.my_wf", version=VERSION)
+
+    # Execute the workflow with required inputs
+    execution = remote.execute(flyte_launch_plan, inputs={"a": 10, "b": "foobar"}, wait=True)
+
+    # Fetch the execution details
+    project, domain, name = execution.id.project, execution.id.domain, execution.id.name
+
+    # Fetch the download deck signed URL for the execution
+    client = _SynchronousFlyteClient(PlatformConfig.for_endpoint("localhost:30080", True))
+    download_link_response = client.get_download_deck_signed_url(
+        node_id="n0",  # Assuming node_id is "n0"
+        project=project,
+        domain=domain,
+        name=name,
+    )
+
+    # Check if the signed URL is valid and starts with the expected prefix
+    signed_url = download_link_response.signed_url[0]
+    assert signed_url.startswith("http://localhost:30002/")
 
 def test_fetch_execute_launch_plan_with_args(register):
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
