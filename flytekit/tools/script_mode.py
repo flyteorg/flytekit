@@ -119,7 +119,8 @@ def ls_files(
         all_files = list_all_files(source_path, deref_symlinks, ignore_group)
 
     hasher = hashlib.md5()
-    for abspath in all_files:
+    # We need to ensure files are sorted so that the digest is consistent
+    for abspath in sorted(all_files):
         relpath = os.path.relpath(abspath, source_path)
         _filehash_update(abspath, hasher)
         _pathhash_update(relpath, hasher)
