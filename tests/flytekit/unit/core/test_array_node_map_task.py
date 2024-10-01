@@ -10,6 +10,7 @@ import pytest
 
 from flytekit import dynamic, map_task, task, workflow
 from flytekit.types.directory import FlyteDirectory
+from flytekit.models.literals import Literal, LiteralCollection, LiteralMap, LiteralOffloadedMetadata
 from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SerializationSettings
 from flytekit.core import context_manager
 from flytekit.core.array_node_map_task import ArrayNodeMapTask, ArrayNodeMapTaskResolver
@@ -464,3 +465,46 @@ def test_mis_match():
 
     with pytest.raises(AssertionError):
         wf.compile()
+
+
+def test_load_collection_of_offloaded_literals(tmp_path, monkeypatch):
+    @task
+    def say_hello(name: str) -> str:
+        return f"hello {name}!"
+
+    ctx = context_manager.FlyteContextManager.current_context()
+    with context_manager.FlyteContextManager.with_context(
+        ctx.with_execution_state(
+            ctx.execution_state.with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION)
+        )
+    ) as ctx:
+        inputs = ["earth", "mars", "jupyter"]
+
+        lt = TypeEngine.to_literal_type(str)
+        offloaded_literals = []
+        for i, s in enumerate(inputs):
+            to_be_offloaded = TypeEngine.to_literal(ctx, s, str, lt)
+            with open(f"{tmp_path}/literal_{i}.pb", "wb") as f:
+                f.write(to_be_offloaded.to_flyte_idl().SerializeToString())
+
+            literal = Literal(
+                offloaded_metadata=LiteralOffloadedMetadata(
+                    uri=f"{tmp_path}/literal_{i}.pb",
+                    inferred_type=lt,
+                ),
+            )
+            offloaded_literals.append(literal)
+
+        lt = TypeEngine.to_literal_type(typing.List[str])
+        lm = LiteralMap({
+            "name": Literal(collection=LiteralCollection(literals=offloaded_literals))
+        })
+
+        monkeypatch.setenv("BATCH_JOB_ARRAY_INDEX_VAR_NAME", "name")
+        for i, s in enumerate(inputs):
+            monkeypatch.setenv("name", f"{i}")
+            t = map_task(say_hello)
+
+            res = t.dispatch_execute(ctx, lm)
+            assert len(res.literals) == 1
+            assert res.literals["o0"].scalar.primitive.string_value == f"hello {s}!"
