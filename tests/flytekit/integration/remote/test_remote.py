@@ -118,7 +118,7 @@ def test_get_download_deck_signed_url(register):
 
     # Check if the signed URL is valid and starts with the expected prefix
     signed_url = download_link_response.signed_url[0]
-    assert signed_url.startswith("http://localhost:30002/")
+    assert signed_url.startswith(f"http://localhost:30002/my-s3-bucket/metadata/propeller/{project}-{domain}-{name}/n0/data/0/deck.html")
 
 def test_fetch_execute_launch_plan_with_args(register):
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
