@@ -103,14 +103,8 @@ def test_fetch_execute_launch_plan(register):
 
 def test_get_download_deck_signed_url(register):
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
-
-    # Fetch the launch plan for the workflow
     flyte_launch_plan = remote.fetch_launch_plan(name="basic.basic_workflow.my_wf", version=VERSION)
-
-    # Execute the workflow with required inputs
     execution = remote.execute(flyte_launch_plan, inputs={"a": 10, "b": "foobar"}, wait=True)
-
-    # Fetch the execution details
     project, domain, name = execution.id.project, execution.id.domain, execution.id.name
 
     # Fetch the download deck signed URL for the execution
