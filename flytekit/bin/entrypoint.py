@@ -107,8 +107,6 @@ def _dispatch_execute(
         if task_def is not None and not getattr(task_def, "disable_deck", True):
             _output_deck(task_def.name.split(".")[-1], ctx.user_space_params)
         print("@@@ OUTPUT DECK @@@")
-        import time
-        time.sleep(15)
 
         # Step2
         # Invoke task - dispatch_execute
