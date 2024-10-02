@@ -4,9 +4,7 @@ PLUGIN_NAME = "deck"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}-standard"
 
-plugin_requires = [
-    "flytekit",
-]
+plugin_requires = ["flytekit"]
 
 __version__ = "0.0.0+develop"
 
