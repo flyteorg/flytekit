@@ -200,10 +200,15 @@ def _get_deck(
     Get flyte deck html string
     If ignore_jupyter is set to True, then it will return a str even in a jupyter environment.
     """
-    # if not new_user_params.decks:
-    #     new_user_params.decks.append(DummyDeck())
 
-    deck_map = {deck.name: deck.html for deck in new_user_params.decks}
+    deck_map = {
+        deck.name: deck.html for deck in new_user_params.decks if deck.name != "dummy_deck"
+    }
+
+    # If deck_map is empty after filtering, add DummyDeck
+    if not deck_map:
+        deck_map = {"dummy_deck": DUMMY_DECK_HTML}
+
     nav_htmls = []
     body_htmls = []
 
