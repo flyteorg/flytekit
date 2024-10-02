@@ -105,7 +105,7 @@ class Deck:
         self._html = html
         if auto_add_to_deck:
             FlyteContextManager.current_context().user_space_params.decks.append(self)
-        FlyteContextManager.current_context().user_space_params.decks.append(DummyDeck)
+        FlyteContextManager.current_context().user_space_params.decks.append(DummyDeck())
 
     def append(self, html: str) -> "Deck":
         assert isinstance(html, str)
@@ -128,6 +128,10 @@ class DummyDeck(Deck):
         name = "dummy_deck"
         html = DUMMY_DECK_HTML
         super().__init__(name, html)
+
+    @property
+    def html(self) -> str:
+        return self._html
 
 
 class TimeLineDeck(Deck):
