@@ -20,6 +20,7 @@ import uuid
 from base64 import b64encode
 from collections import OrderedDict
 from dataclasses import asdict, dataclass
+from dataclasses import replace as dc_replace
 from datetime import datetime, timedelta
 from typing import Dict
 
@@ -34,6 +35,7 @@ from flytekit import ImageSpec
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
+from flytekit.constants import CopyFileDetection
 from flytekit.core import constants, utils
 from flytekit.core.artifact import Artifact
 from flytekit.core.base_task import PythonTask
@@ -872,6 +874,7 @@ class FlyteRemote(object):
         version: typing.Optional[str] = None,
         default_launch_plan: typing.Optional[bool] = True,
         options: typing.Optional[Options] = None,
+        fast_package_options: typing.Optional[FastPackageOptions] = None,
     ) -> FlyteWorkflow:
         """
         Use this method to register a workflow with zip mode.
@@ -880,6 +883,7 @@ class FlyteRemote(object):
         :param serialization_settings: The serialization settings to be used
         :param default_launch_plan: This should be true if a default launch plan should be created for the workflow
         :param options: Additional execution options that can be configured for the default launchplan
+        :param fast_package_options: Options to customize copying behavior
         :return:
         """
         if not isinstance(entity, PythonFunctionWorkflow):
@@ -910,6 +914,7 @@ class FlyteRemote(object):
             options=options,
             source_path=module_root,
             module_name=mod_name,
+            fast_package_options=fast_package_options,
         )
 
     def fast_package(
@@ -1048,7 +1053,7 @@ class FlyteRemote(object):
         """
         Use this method to register a workflow via script mode.
         :param destination_dir: The destination directory where the workflow will be copied to.
-        :param copy_all: If true, the entire source directory will be copied over to the destination directory.
+        :param copy_all: [deprecated] Please use the copy_style field in fast_package_options instead.
         :param domain: The domain to register the workflow in.
         :param project: The project to register the workflow in.
         :param image_config: The image config to use for the workflow.
@@ -1062,11 +1067,21 @@ class FlyteRemote(object):
         :param fast_package_options: Options to customize copy_all behavior, ignored when copy_all is False.
         :return:
         """
+        if copy_all:
+            logger.info(
+                "The copy_all flag to FlyteRemote.register_script is deprecated. Please use"
+                " the copy_style field in fast_package_options instead."
+            )
+            if not fast_package_options:
+                fast_package_options = FastPackageOptions([], copy_style=CopyFileDetection.ALL)
+            else:
+                fast_package_options = dc_replace(fast_package_options, copy_style=CopyFileDetection.ALL)
+
         if image_config is None:
             image_config = ImageConfig.auto_default_image()
 
         with tempfile.TemporaryDirectory() as tmp_dir:
-            if copy_all or (fast_package_options and fast_package_options.copy_style):
+            if fast_package_options and fast_package_options.copy_style != CopyFileDetection.NO_COPY:
                 md5_bytes, upload_native_url = self.fast_package(
                     pathlib.Path(source_path), False, tmp_dir, fast_package_options
                 )

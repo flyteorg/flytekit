@@ -60,6 +60,7 @@ class ImageSpec:
                   Python files into the image.
 
             If the option is set by the user, then that option is of course used.
+        copy: List of files/directories to copy to /root. e.g. ["src/file1.txt", "src/file2.txt"]
     """
 
     name: str = "flytekit"
@@ -84,12 +85,20 @@ class ImageSpec:
     commands: Optional[List[str]] = None
     tag_format: Optional[str] = None
     source_copy_mode: Optional[CopyFileDetection] = None
+    copy: Optional[List[str]] = None
 
     def __post_init__(self):
         self.name = self.name.lower()
         self._is_force_push = os.environ.get(FLYTE_FORCE_PUSH_IMAGE_SPEC, False)  # False by default
         if self.registry:
             self.registry = self.registry.lower()
+            if not validate_container_registry_name(self.registry):
+                raise ValueError(
+                    f"Invalid container registry name: '{self.registry}'.\n Expected formats:\n"
+                    f"- 'localhost:30000' (for local registries)\n"
+                    f"- 'ghcr.io/username' (for GitHub Container Registry)\n"
+                    f"- 'docker.io/username' (for docker hub)\n"
+                )
 
         # If not set, help the user set this option as well, to support the older default behavior where existence
         # of the source root implied that copying of files was needed.
@@ -171,6 +180,12 @@ class ImageSpec:
             # Since the source root is supposed to represent the files, store the digest into the source root as a
             # shortcut to represent all the files.
             spec = dataclasses.replace(spec, source_root=ls_digest)
+
+        if self.copy:
+            from flytekit.tools.fast_registration import compute_digest
+
+            digest = compute_digest(self.copy, None)
+            spec = dataclasses.replace(spec, copy=digest)
 
         if spec.requirements:
             requirements = hashlib.sha1(pathlib.Path(spec.requirements).read_bytes().strip()).hexdigest()
@@ -299,6 +314,12 @@ class ImageSpec:
         new_image_spec = self._update_attribute("apt_packages", apt_packages)
         return new_image_spec
 
+    def with_copy(self, src: Union[str, List[str]]) -> "ImageSpec":
+        """
+        Builder that returns a new image spec with the source files copied to the destination directory.
+        """
+        return self._update_attribute("copy", src)
+
     def force_push(self) -> "ImageSpec":
         """
         Builder that returns a new image spec with force push enabled.
@@ -407,3 +428,12 @@ class ImageBuildEngine:
                     f" Please upgrade envd to v0.3.39+."
                 )
         return cls._REGISTRY[builder][0]
+
+
+def validate_container_registry_name(name: str) -> bool:
+    """Validate Docker container registry name."""
+    # Define the regular expression for the registry name
+    registry_pattern = r"^(localhost:\d{1,5}|([a-z\d\._-]+)(:\d{1,5})?)(/[\w\.-]+)*$"
+
+    # Use regex to validate the given name
+    return bool(re.match(registry_pattern, name))

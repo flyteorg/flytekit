@@ -143,7 +143,7 @@ def test_mismatching_file_types(local_dummy_txt_file):
         f = t1(path=path)
         return f
 
-    with pytest.raises(TypeError) as excinfo:
+    with pytest.raises(ValueError) as excinfo:
         my_wf(path=local_dummy_txt_file)
     assert "Incorrect file type, expected image/jpeg, got text/plain" in str(excinfo.value)
 
@@ -206,7 +206,7 @@ def test_flyte_file_type_annotated_hashmethod(local_dummy_file):
         ff = t1(path=path)
         t2(ff=ff)
 
-    with pytest.raises(TypeError) as excinfo:
+    with pytest.raises(ValueError) as excinfo:
         wf(path=local_dummy_file)
     assert "Incorrect file type, expected image/jpeg, got text/plain" in str(excinfo.value)
 
@@ -515,7 +515,7 @@ def test_returning_folder_instead_of_file():
     def wf1() -> FlyteFile:
         return t1()
 
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         wf1()
 
     @task
@@ -527,7 +527,7 @@ def test_returning_folder_instead_of_file():
     def wf2() -> FlyteFile:
         return t2()
 
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         wf2()
 
 

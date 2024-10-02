@@ -77,6 +77,7 @@ $ENTRYPOINT
 
 $COPY_COMMAND_RUNTIME
 RUN $RUN_COMMANDS
+$EXTRA_COPY_CMDS
 
 WORKDIR /root
 SHELL ["/bin/bash", "-c"]
@@ -221,6 +222,28 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
     else:
         run_commands = ""
 
+    if image_spec.copy:
+        copy_commands = []
+        for src in image_spec.copy:
+            src_path = Path(src)
+
+            if src_path.is_absolute() or ".." in src_path.parts:
+                raise ValueError("Absolute paths or paths with '..' are not allowed in COPY command.")
+
+            dst_path = tmp_dir / src_path
+            dst_path.parent.mkdir(parents=True, exist_ok=True)
+
+            if src_path.is_dir():
+                shutil.copytree(src_path, dst_path, dirs_exist_ok=True)
+                copy_commands.append(f"COPY --chown=flytekit {src_path.as_posix()} /root/{src_path.as_posix()}/")
+            else:
+                shutil.copy(src_path, dst_path)
+                copy_commands.append(f"COPY --chown=flytekit {src_path.as_posix()} /root/{src_path.parent.as_posix()}/")
+
+        extra_copy_cmds = "\n".join(copy_commands)
+    else:
+        extra_copy_cmds = ""
+
     docker_content = DOCKER_FILE_TEMPLATE.substitute(
         PYTHON_VERSION=python_version,
         UV_PYTHON_INSTALL_COMMAND=uv_python_install_command,
@@ -232,6 +255,7 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
         COPY_COMMAND_RUNTIME=copy_command_runtime,
         ENTRYPOINT=entrypoint,
         RUN_COMMANDS=run_commands,
+        EXTRA_COPY_CMDS=extra_copy_cmds,
     )
 
     dockerfile_path = tmp_dir / "Dockerfile"
@@ -247,7 +271,7 @@ class DefaultImageBuilder(ImageSpecBuilder):
         "python_version",
         "builder",
         "source_root",
-        "copy",
+        "source_copy_mode",
         "env",
         "registry",
         "packages",
@@ -263,6 +287,7 @@ class DefaultImageBuilder(ImageSpecBuilder):
         "pip_extra_index_url",
         # "registry_config",
         "commands",
+        "copy",
     }
 
     def build_image(self, image_spec: ImageSpec) -> str:
