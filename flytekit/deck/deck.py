@@ -129,9 +129,6 @@ class DummyDeck(Deck):
         html = DUMMY_DECK_HTML
         super().__init__(name, html)
 
-    @property
-    def html(self) -> str:
-        return self.html
 
 class TimeLineDeck(Deck):
     """
