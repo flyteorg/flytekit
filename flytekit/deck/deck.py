@@ -200,8 +200,7 @@ def _get_deck(
 
     # if len(nav_htmls) == 0 and len(body_htmls) == 0:
     #     body_htmls.append(DUMMY_DECK)
-    nav_htmls = [DUMMY_DECK]
-    body_htmls = [DUMMY_DECK]
+    nav_htmls.append(DUMMY_DECK)
     # body_htmls.append(DUMMY_DECK)
     raw_html = get_deck_template().substitute(NAV_HTML="".join(nav_htmls), BODY_HTML="".join(body_htmls))
     if not ignore_jupyter and ipython_check():
