@@ -6,7 +6,7 @@ import typing
 from dataclasses import dataclass
 from enum import Enum
 from functools import update_wrapper
-from typing import TYPE_CHECKING, Any, Callable, Coroutine, Dict, List, Optional, Tuple, Type, Union, cast, overload
+from typing import Any, Callable, Coroutine, Dict, List, Optional, Tuple, Type, Union, cast, overload
 
 from typing_inspect import is_optional_type
 
@@ -34,6 +34,7 @@ from flytekit.core.interface import (
     transform_interface_to_typed_interface,
 )
 from flytekit.core.node import Node
+from flytekit.core.options import Options
 from flytekit.core.promise import (
     NodeOutput,
     Promise,
@@ -59,9 +60,6 @@ from flytekit.models import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.documentation import Description, Documentation
 from flytekit.types.error import FlyteError
-
-if TYPE_CHECKING:
-    from flytekit.tools.translator import Options
 
 GLOBAL_START_NODE = Node(
     id=_common_constants.GLOBAL_INPUT_NODE_ID,
