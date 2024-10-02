@@ -1,23 +1,15 @@
 import warnings
-from typing import TYPE_CHECKING, List, Optional, Union
+from typing import List, Optional, Union
 
 from flytekit import lazy_module
 from flytekit.types.file import FlyteFile
 
-if TYPE_CHECKING:
-    import markdown
-    import pandas as pd
-    import PIL.Image
-    import plotly.express as px
-    import pygments
-    import ydata_profiling
-else:
-    pd = lazy_module("pandas")
-    markdown = lazy_module("markdown")
-    px = lazy_module("plotly.express")
-    PIL = lazy_module("PIL")
-    ydata_profiling = lazy_module("ydata_profiling")
-    pygments = lazy_module("pygments")
+pd = lazy_module("pandas")
+markdown = lazy_module("markdown")
+plotly = lazy_module("plotly")
+PIL = lazy_module("PIL")
+ydata_profiling = lazy_module("ydata_profiling")
+pygments = lazy_module("pygments")
 
 
 class SourceCodeRenderer:
@@ -96,7 +88,7 @@ class BoxRenderer:
         self._column_name = column_name
 
     def to_html(self, df: "pd.DataFrame") -> str:
-        fig = px.box(df, y=self._column_name)
+        fig = plotly.express.box(df, y=self._column_name)
         return fig.to_html()
 
 
@@ -135,7 +127,7 @@ class TableRenderer:
     Convert a pandas DataFrame into an HTML table.
     """
 
-    def to_html(self, df: pd.DataFrame, header_labels: Optional[List] = None, table_width: Optional[int] = None) -> str:
+    def to_html(self, df: "pd.DataFrame", header_labels: Optional[List] = None, table_width: Optional[int] = None) -> str:
         # Check if custom labels are provided and have the correct length
         if header_labels is not None and len(header_labels) == len(df.columns):
             df = df.copy()
@@ -184,8 +176,8 @@ class GanttChartRenderer:
     - "Name": string (the name of the task or event)
     """
 
-    def to_html(self, df: pd.DataFrame, chart_width: Optional[int] = None) -> str:
-        fig = px.timeline(df, x_start="Start", x_end="Finish", y="Name", color="Name", width=chart_width)
+    def to_html(self, df: "pd.DataFrame", chart_width: Optional[int] = None) -> str:
+        fig = plotly.express.timeline(df, x_start="Start", x_end="Finish", y="Name", color="Name", width=chart_width)
 
         fig.update_xaxes(
             tickangle=90,
