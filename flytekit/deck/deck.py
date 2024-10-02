@@ -11,7 +11,7 @@ from flytekit.tools.interactive import ipython_check
 
 OUTPUT_DIR_JUPYTER_PREFIX = "jupyter"
 DECK_FILE_NAME = "deck.html"
-DUMMY_DECK = """
+DUMMY_DECK_HTML = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -45,7 +45,6 @@ DUMMY_DECK = """
 </body>
 </html>
 """
-
 
 class DeckField(str, enum.Enum):
     """
@@ -106,6 +105,7 @@ class Deck:
         self._html = html
         if auto_add_to_deck:
             FlyteContextManager.current_context().user_space_params.decks.append(self)
+        FlyteContextManager.current_context().user_space_params.decks.append(DummyDeck)
 
     def append(self, html: str) -> "Deck":
         assert isinstance(html, str)
@@ -119,6 +119,15 @@ class Deck:
     @property
     def html(self) -> str:
         return self._html
+
+class DummyDeck(Deck):
+    """
+    The DummyDeck class is designed
+    """
+    def __init__(self):
+        name = "dummy_deck"
+        html = DUMMY_DECK_HTML
+        super().__init__(name, html)
 
 
 class TimeLineDeck(Deck):
@@ -200,7 +209,7 @@ def _get_deck(
 
     # if len(nav_htmls) == 0 and len(body_htmls) == 0:
     #     body_htmls.append(DUMMY_DECK)
-    nav_htmls.append(DUMMY_DECK)
+    # nav_htmls.append(DUMMY_DECK)
     # body_htmls.append(DUMMY_DECK)
     raw_html = get_deck_template().substitute(NAV_HTML="".join(nav_htmls), BODY_HTML="".join(body_htmls))
     if not ignore_jupyter and ipython_check():
