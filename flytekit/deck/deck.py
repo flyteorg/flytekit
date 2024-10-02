@@ -105,7 +105,6 @@ class Deck:
         self._html = html
         if auto_add_to_deck:
             FlyteContextManager.current_context().user_space_params.decks.append(self)
-        FlyteContextManager.current_context().user_space_params.decks.append(DummyDeck())
 
     def append(self, html: str) -> "Deck":
         assert isinstance(html, str)
@@ -201,6 +200,9 @@ def _get_deck(
     Get flyte deck html string
     If ignore_jupyter is set to True, then it will return a str even in a jupyter environment.
     """
+    if not new_user_params.decks:
+        new_user_params.decks.append(DummyDeck())
+
     deck_map = {deck.name: deck.html for deck in new_user_params.decks}
     nav_htmls = []
     body_htmls = []
