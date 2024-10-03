@@ -1,3 +1,5 @@
+import pytest
+import asyncio
 from asyncio import get_running_loop
 from functools import partial
 from flytekit.tools.asyn import sync
@@ -42,3 +44,21 @@ async def async_multiply_outer(a: int, b: int) -> int:
 def test_run_sync_with_nested_async():
     result = sync(async_multiply_outer, a=10, b=12)
     assert result == 120
+
+
+async def too_long():
+    await asyncio.sleep(2)
+
+
+def test_timeout():
+    with pytest.raises(TimeoutError):
+        sync(too_long, timeout=0.2)
+
+
+async def an_error():
+    raise ValueError
+
+
+def test_raise_error():
+    with pytest.raises(ValueError):
+        sync(an_error)
