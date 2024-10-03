@@ -24,3 +24,21 @@ async def async_sub(a: int, b: int) -> int:
 def test_run_sync_in_async():
     result = sync(async_sub, a=10, b=12)
     assert result == -2
+
+
+async def async_multiply_inner(a: int, b: int) -> int:
+    return a * b
+
+
+def sync_sub_that_calls_sync(a: int, b: int) -> int:
+    return sync(async_multiply_inner, a=a, b=b)
+
+
+async def async_multiply_outer(a: int, b: int) -> int:
+    loop = get_running_loop()
+    return await loop.run_in_executor(None, partial(sync_sub_that_calls_sync, a=a, b=b))
+
+
+def test_run_sync_with_nested_async():
+    result = sync(async_multiply_outer, a=10, b=12)
+    assert result == 120
