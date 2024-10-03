@@ -763,7 +763,7 @@ class FlyteRemote(object):
         # concurrent register
         cp_task_entity_map = OrderedDict(filter(lambda x: isinstance(x[1], task_models.TaskSpec), m.items()))
         tasks = []
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         for entity, cp_entity in cp_task_entity_map.items():
             tasks.append(
                 loop.run_in_executor(
