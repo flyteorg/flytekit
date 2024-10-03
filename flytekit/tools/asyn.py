@@ -1,3 +1,14 @@
+"""Manages an async event loop on another thread. Developers should only require to call
+sync to use the managed loop:
+
+from flytekit.tools.async import sync
+
+async def async_add(a: int, b: int) -> int:
+    return a + b
+
+result = sync(async_add, a=10, b=12)
+"""
+
 import asyncio
 import os
 import threading
@@ -61,7 +72,7 @@ class _AsyncLoopManager:
 
         Examples
         --------
-        >>> sync(flytekit.tools.async.get_loop(), func, *args, timeout=timeout, **kwargs)
+        >>> sync(async_func, *args, timeout=timeout, **kwargs)
         """
         timeout = timeout if timeout else None  # convert 0 or 0.0 to None
         # NB: if the loop is not running *yet*, it is OK to submit work
