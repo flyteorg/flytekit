@@ -31,7 +31,6 @@ from flytekit.exceptions.system import FlyteAgentNotFound
 from flytekit.exceptions.user import FlyteUserException
 from flytekit.extend.backend.utils import is_terminal_phase, mirror_async_methods, render_task_template
 from flytekit.loggers import set_flytekit_log_properties
-from flytekit.models import common
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskExecutionMetadata, TaskTemplate
 
@@ -79,7 +78,6 @@ class ResourceMeta:
         return dataclass_from_dict(cls, json.loads(data.decode("utf-8")))
 
 
-# Merge todo: move some logic back out of the to/from idl functions.
 @dataclass
 class Resource:
     """
@@ -98,7 +96,11 @@ class Resource:
     outputs: Optional[Union[LiteralMap, typing.Dict[str, Any]]] = None
     custom_info: Optional[typing.Dict[str, Any]] = None
 
-    def to_flyte_idl(self) -> _Resource:
+    async def to_flyte_idl(self) -> _Resource:
+        """
+        This function is async to call the async type engine functions. This is okay to do because this is not a
+        normal model class that inherits from FlyteIdlEntity
+        """
         if self.outputs is None:
             outputs = None
         elif isinstance(self.outputs, LiteralMap):
@@ -106,7 +108,7 @@ class Resource:
         else:
             ctx = FlyteContext.current_context()
 
-            outputs = TypeEngine.dict_to_literal_map_pb(ctx, self.outputs)
+            outputs = await TypeEngine.dict_to_literal_map_pb(ctx, self.outputs)
 
         return _Resource(
             phase=self.phase,

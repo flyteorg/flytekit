@@ -21,7 +21,6 @@ from flyteidl.core.execution_pb2 import TaskExecution, TaskLog
 from flyteidl.core.identifier_pb2 import ResourceType
 
 from flytekit import PythonFunctionTask, task
-from flytekit.clis.sdk_in_container.serve import print_agents_metadata
 from flytekit.configuration import (
     FastSerializationSettings,
     Image,
@@ -59,6 +58,7 @@ from flytekit.models.literals import LiteralMap
 from flytekit.models.security import Identity
 from flytekit.models.task import TaskExecutionMetadata, TaskTemplate
 from flytekit.tools.translator import get_serializable
+from flytekit.utils.async_utils import run_sync_new_thread
 
 dummy_id = "dummy_id"
 
@@ -440,7 +440,8 @@ def test_resource_type():
     o = Resource(
         phase=TaskExecution.SUCCEEDED,
     )
-    v = o.to_flyte_idl()
+    synced = run_sync_new_thread(o.to_flyte_idl)
+    v = synced()
     assert v
     assert v.phase == TaskExecution.SUCCEEDED
     assert len(v.log_links) == 0
@@ -458,7 +459,8 @@ def test_resource_type():
         outputs={"o0": 1},
         custom_info={"custom": "info", "num": 1},
     )
-    v = o.to_flyte_idl()
+    synced = run_sync_new_thread(o.to_flyte_idl)
+    v = synced()
     assert v
     assert v.phase == TaskExecution.SUCCEEDED
     assert v.log_links[0].name == "console"

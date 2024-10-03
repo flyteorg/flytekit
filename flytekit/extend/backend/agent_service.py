@@ -133,7 +133,8 @@ class AsyncAgentService(AsyncAgentServiceServicer):
             agent = AgentRegistry.get_agent(request.task_type)
         logger.info(f"{agent.name} start checking the status of the job")
         res = await mirror_async_methods(agent.get, resource_meta=agent.metadata_type.decode(request.resource_meta))
-        return GetTaskResponse(resource=res.to_flyte_idl())
+        resource = await res.to_flyte_idl()
+        return GetTaskResponse(resource=resource)
 
     @record_agent_metrics
     async def DeleteTask(self, request: DeleteTaskRequest, context: grpc.ServicerContext) -> DeleteTaskResponse:
@@ -166,7 +167,8 @@ class SyncAgentService(SyncAgentServiceServicer):
                     agent.do, task_template=template, inputs=literal_map, output_prefix=output_prefix
                 )
 
-                header = ExecuteTaskSyncResponseHeader(resource=res.to_flyte_idl())
+                resource = await res.to_flyte_idl()
+                header = ExecuteTaskSyncResponseHeader(resource=resource)
                 yield ExecuteTaskSyncResponse(header=header)
             request_success_count.labels(task_type=task_type, operation=do_operation).inc()
         except Exception as e:

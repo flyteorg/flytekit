@@ -1287,7 +1287,7 @@ class TypeEngine(typing.Generic[T]):
         return lv
 
     @classmethod
-    def unwrap_offloaded_literal(cls, ctx: FlyteContext, lv: Literal) -> Literal:
+    async def unwrap_offloaded_literal(cls, ctx: FlyteContext, lv: Literal) -> Literal:
         if not lv.offloaded_metadata:
             return lv
 
@@ -1304,7 +1304,8 @@ class TypeEngine(typing.Generic[T]):
         """
         # Initiate the process of loading the offloaded literal if offloaded_metadata is set
         if lv.offloaded_metadata:
-            lv = cls.unwrap_offloaded_literal(ctx, lv)
+            synced = run_sync_new_thread(cls.unwrap_offloaded_literal)
+            lv = synced(ctx, lv)
         transformer = cls.get_transformer(expected_python_type)
 
         # see note in to_literal.
@@ -1327,6 +1328,8 @@ class TypeEngine(typing.Generic[T]):
 
     @classmethod
     async def async_to_python_value(cls, ctx: FlyteContext, lv: Literal, expected_python_type: Type) -> typing.Any:
+        if lv.offloaded_metadata:
+            lv = await cls.unwrap_offloaded_literal(ctx, lv)
         transformer = cls.get_transformer(expected_python_type)
         if isinstance(transformer, AsyncTypeTransformer):
             pv = await transformer.async_to_python_value(ctx, lv, expected_python_type)
@@ -1400,15 +1403,15 @@ class TypeEngine(typing.Generic[T]):
                 f" than allowed by the input spec {len(python_interface_inputs)}"
             )
         kwargs = {}
-        for i, k in enumerate(lm.literals):
-            try:
+        try:
+            for i, k in enumerate(lm.literals):
                 kwargs[k] = asyncio.create_task(
                     TypeEngine.async_to_python_value(ctx, lm.literals[k], python_interface_inputs[k])
                 )
-                await asyncio.gather(*kwargs.values())
-            except TypeTransformerFailedError as exc:
-                exc.args = (f"Error converting input '{k}' at position {i}:\n  {exc.args[0]}",)
-                raise
+            await asyncio.gather(*kwargs.values())
+        except TypeTransformerFailedError as exc:
+            exc.args = (f"Error converting input '{k}' at position {i}:\n  {exc.args[0]}",)
+            raise
 
         kwargs = {k: v.result() for k, v in kwargs.items() if v is not None}
         return kwargs

@@ -29,6 +29,7 @@ from flytekit.models.task import Container, K8sPod, Sql, Task
 from flytekit.tools.module_loader import load_object_from_module
 from flytekit.types.pickle import pickle
 from flytekit.types.pickle.pickle import FlytePickleTransformer
+from flytekit.utils.async_utils import run_sync_new_thread
 
 
 class ArrayNodeMapTask(PythonTask):
@@ -253,7 +254,8 @@ class ArrayNodeMapTask(PythonTask):
                 v = literal_map.literals[k]
                 # If the input is offloaded, we need to unwrap it
                 if v.offloaded_metadata:
-                    v = TypeEngine.unwrap_offloaded_literal(ctx, v)
+                    sync_f = run_sync_new_thread(TypeEngine.unwrap_offloaded_literal)
+                    v = sync_f(ctx, v)
                 if k not in self.bound_inputs:
                     # assert that v.collection is not None
                     if not v.collection or not isinstance(v.collection.literals, list):
