@@ -95,10 +95,7 @@ class _AsyncLoopManager:
                     raise TimeoutError
 
         return_result = result[0]
-        if isinstance(return_result, asyncio.TimeoutError):
-            # suppress asyncio.TimeoutError, raise FSTimeoutError
-            raise TimeoutError from return_result
-        elif isinstance(return_result, BaseException):
+        if isinstance(return_result, BaseException):
             raise return_result
         else:
             return return_result
