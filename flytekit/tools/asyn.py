@@ -67,13 +67,7 @@ class _AsyncLoopManager:
         return self._loop
 
     def sync(self, func, *args, timeout=None, **kwargs):
-        """
-        Make loop run coroutine until it returns. Runs in other thread
-
-        Examples
-        --------
-        >>> sync(async_func, *args, timeout=timeout, **kwargs)
-        """
+        """Make loop run coroutine until it returns. Runs in other thread"""
         timeout = timeout if timeout else None  # convert 0 or 0.0 to None
         # NB: if the loop is not running *yet*, it is OK to submit work
         # and we will wait for it
