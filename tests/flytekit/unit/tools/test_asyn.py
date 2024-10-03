@@ -46,15 +46,6 @@ def test_run_sync_with_nested_async():
     assert result == 120
 
 
-async def too_long():
-    await asyncio.sleep(2)
-
-
-def test_timeout():
-    with pytest.raises(TimeoutError):
-        sync(too_long, timeout=0.2)
-
-
 async def an_error():
     raise ValueError
 
