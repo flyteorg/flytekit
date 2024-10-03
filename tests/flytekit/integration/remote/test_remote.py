@@ -23,6 +23,7 @@ from flytekit.core.workflow import reference_workflow
 from flytekit.exceptions.user import FlyteAssertion, FlyteEntityNotExistException
 from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
 from flytekit.remote.remote import FlyteRemote
+from flyteidl.service import dataproxy_pb2 as _data_proxy_pb2
 from flytekit.types.schema import FlyteSchema
 from flytekit.clients.friendly import SynchronousFlyteClient as _SynchronousFlyteClient
 from flytekit.configuration import PlatformConfig
@@ -101,7 +102,7 @@ def test_fetch_execute_launch_plan(register):
     assert execution.outputs["o0"] == "hello world"
 
 
-def test_get_download_deck_signed_url(register):
+def test_get_download_artifact_signed_url(register):
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     flyte_launch_plan = remote.fetch_launch_plan(name="basic.basic_workflow.my_wf", version=VERSION)
     execution = remote.execute(flyte_launch_plan, inputs={"a": 10, "b": "foobar"}, wait=True)
@@ -109,11 +110,12 @@ def test_get_download_deck_signed_url(register):
 
     # Fetch the download deck signed URL for the execution
     client = _SynchronousFlyteClient(PlatformConfig.for_endpoint("localhost:30080", True))
-    download_link_response = client.get_download_deck_signed_url(
+    download_link_response = client.get_download_artifact_signed_url(
         node_id="n0",  # Assuming node_id is "n0"
         project=project,
         domain=domain,
         name=name,
+        artifact_type=_data_proxy_pb2.ARTIFACT_TYPE_DECK,
     )
 
     # Check if the signed URL is valid and starts with the expected prefix
