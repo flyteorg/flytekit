@@ -637,21 +637,28 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
 
                 if isinstance(v, tuple):
                     raise TypeError(f"Output({k}) in task '{self.name}' received a tuple {v}, instead of {py_type}")
-                try:
-                    lit = await TypeEngine.async_to_literal(ctx, v, py_type, literal_type)
-                    literals[k] = lit
-                except Exception as e:
+                literals[k] = asyncio.create_task(TypeEngine.async_to_literal(ctx, v, py_type, literal_type))
+
+            await asyncio.gather(*literals.values(), return_exceptions=True)
+
+            for i, (k, v) in enumerate(literals.items()):
+                if v.exception() is not None:
                     # only show the name of output key if it's user-defined (by default Flyte names these as "o<n>")
                     key = k if k != f"o{i}" else i
+                    e = v.exception()
+                    py_type = self.get_type_for_output_var(k, native_outputs_as_map[k])
                     e.args = (
                         f"Failed to convert outputs of task '{self.name}' at position {key}.\n"
                         f"Failed to convert type {type(native_outputs_as_map[expected_output_names[i]])} to type {py_type}.\n"
                         f"Error Message: {e.args[0]}.",
                     )
-                    raise
-                # Now check if there is any output metadata associated with this output variable and attach it to the
-                # literal
-                if omt is not None:
+                    raise e
+                literals[k] = v.result()
+
+            if omt is not None:
+                for i, (k, v) in enumerate(native_outputs_as_map.items()):
+                    # Now check if there is any output metadata associated with this output variable and attach it to the
+                    # literal
                     om = omt.get(v)
                     if om:
                         metadata = {}
@@ -671,7 +678,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                             encoded = b64encode(s).decode("utf-8")
                             metadata[DYNAMIC_PARTITIONS] = encoded
                         if metadata:
-                            lit.set_metadata(metadata)
+                            literals[k].set_metadata(metadata)
 
         return _literal_models.LiteralMap(literals=literals), native_outputs_as_map
 

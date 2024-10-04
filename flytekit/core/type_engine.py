@@ -1211,32 +1211,15 @@ class TypeEngine(typing.Generic[T]):
             return python_val.val
 
         transformer = cls.get_transformer(python_type)
-        # possible options are:
-        #   a) in a loop (somewhere above, someone called async)
-        #        1) transformer is async - just await the async function.
-        #        2) transformer is not async - since the expectation is for async behavior
-        #           run it in an executor.
-        #   b) not in a loop (async has never been called)
-        #        1) transformer is async - create loop and run it.
-        #        2) transformer is not async - just invoke normally as a blocking function
 
         if transformer.type_assertions_enabled:
             transformer.assert_type(python_type, python_val)
 
-        # can't have a main loop running either, maybe this is one of the downsides
-        # of not calling set_event_loop.
         if isinstance(transformer, AsyncTypeTransformer):
             synced = loop_manager.synced(transformer.async_to_literal)
             lv = synced(ctx, python_val, python_type, expected)
         else:
             lv = transformer.to_literal(ctx, python_val, python_type, expected)
-        # if not ctx.loop.is_running() and not running_loop:
-        #     if isinstance(transformer, AsyncTypeTransformer):
-        #         coro = transformer.async_to_literal(ctx, python_val, python_type, expected)
-        #         lv = ctx.loop.run_until_complete(coro)
-        #     else:
-        #         lv = transformer.to_literal(ctx, python_val, python_type, expected)
-        # else:
 
         modify_literal_uris(lv)
         lv.hash = cls.calculate_hash(python_val, python_type)
@@ -1303,14 +1286,6 @@ class TypeEngine(typing.Generic[T]):
         else:
             res = transformer.to_python_value(ctx, lv, expected_python_type)
             return res
-        # if not ctx.loop.is_running() and not running_loop:
-        #     if isinstance(transformer, AsyncTypeTransformer):
-        #         coro = transformer.async_to_python_value(ctx, lv, expected_python_type)
-        #         pv = ctx.loop.run_until_complete(coro)
-        #     else:
-        #         pv = transformer.to_python_value(ctx, lv, expected_python_type)
-        #     return pv
-        # else:
 
     @classmethod
     async def async_to_python_value(cls, ctx: FlyteContext, lv: Literal, expected_python_type: Type) -> typing.Any:
@@ -1430,20 +1405,25 @@ class TypeEngine(typing.Generic[T]):
             # to account for the type erasure that happens in the case of built-in collection containers, such as
             # `list` and `dict`.
             python_type = type_hints.get(k, type(v))
-            try:
-                literal_map[k] = asyncio.create_task(
-                    TypeEngine.async_to_literal(
-                        ctx=ctx,
-                        python_val=v,
-                        python_type=python_type,
-                        expected=TypeEngine.to_literal_type(python_type),
-                    )
+            literal_map[k] = asyncio.create_task(
+                TypeEngine.async_to_literal(
+                    ctx=ctx,
+                    python_val=v,
+                    python_type=python_type,
+                    expected=TypeEngine.to_literal_type(python_type),
                 )
-                await asyncio.gather(*literal_map.values())
-            except TypeError:
-                raise user_exceptions.FlyteTypeException(type(v), python_type, received_value=v)
+            )
+        await asyncio.gather(*literal_map.values(), return_exceptions=True)
+        for idx, (k, v) in enumerate(literal_map.items()):
+            if literal_map[k].exception() is not None:
+                python_type = type_hints.get(k, type(d[k]))
+                e = literal_map[k].exception()
+                if isinstance(e, TypeError):
+                    raise user_exceptions.FlyteTypeException(type(v), python_type, received_value=v)
+                else:
+                    raise e
+            literal_map[k] = v.result()
 
-        literal_map = {k: v.result() for k, v in literal_map.items()}
         return LiteralMap(literal_map)
 
     @classmethod
@@ -1832,7 +1812,7 @@ class UnionTransformer(AsyncTypeTransformer[T]):
         cur_transformer = ""
         res = None
         res_tag = None
-        # This is serial not really async but should be okay.
+        # This is serial, not actually async, but should be okay since it's more reasonable for Unions.
         for v in get_args(expected_python_type):
             try:
                 trans: TypeTransformer[T] = TypeEngine.get_transformer(v)
