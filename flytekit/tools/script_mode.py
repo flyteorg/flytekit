@@ -14,6 +14,7 @@ from pathlib import Path
 from types import ModuleType
 from typing import List, Optional, Tuple, Union
 
+import flytekit
 from flytekit.constants import CopyFileDetection
 from flytekit.loggers import logger
 from flytekit.tools.ignore import IgnoreGroup
@@ -142,6 +143,9 @@ def _pathhash_update(path: Union[os.PathLike, str], hasher: hashlib._Hash) -> No
     hasher.update("".join(path_list).encode("utf-8"))
 
 
+EXCLUDE_DIRS = {".git"}
+
+
 def list_all_files(source_path: str, deref_symlinks, ignore_group: Optional[IgnoreGroup] = None) -> List[str]:
     all_files = []
 
@@ -149,6 +153,7 @@ def list_all_files(source_path: str, deref_symlinks, ignore_group: Optional[Igno
     visited_inodes = set()
 
     for root, dirnames, files in os.walk(source_path, topdown=True, followlinks=deref_symlinks):
+        dirnames[:] = [d for d in dirnames if d not in EXCLUDE_DIRS]
         if deref_symlinks:
             inode = os.stat(root).st_ino
             if inode in visited_inodes:
@@ -192,6 +197,7 @@ def list_imported_modules_as_files(source_path: str, modules: List[ModuleType]) 
     site_packages_set = set(site_packages)
     bin_directory = os.path.dirname(sys.executable)
     files = []
+    flytekit_root = os.path.dirname(flytekit.__file__)
 
     for mod in modules:
         try:
@@ -206,6 +212,10 @@ def list_imported_modules_as_files(source_path: str, modules: List[ModuleType]) 
         # installed packages & libraries that are not user files. This happens when
         # there is a virtualenv like `.venv` in the working directory.
         try:
+            # Do not upload code if it is from the flytekit library
+            if os.path.commonpath([flytekit_root, mod_file]) == flytekit_root:
+                continue
+
             if os.path.commonpath(site_packages + [mod_file]) in site_packages_set:
                 # Do not upload files from site-packages
                 continue

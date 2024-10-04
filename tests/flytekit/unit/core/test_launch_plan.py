@@ -7,6 +7,7 @@ from flyteidl.admin import launch_plan_pb2 as _launch_plan_idl
 import flytekit.configuration
 from flytekit.configuration import Image, ImageConfig
 from flytekit.core import launch_plan, notification
+from flytekit.core.options import Options
 from flytekit.core.schedule import CronSchedule
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
@@ -450,3 +451,24 @@ def test_lp_with_docstring():
 
     lp = launch_plan.LaunchPlan.get_or_create(workflow=wf_with_docstring)
     assert lp.parameters.parameters["a"].var.description == "foo"
+
+def test_lp_with_wf_with_default_options():
+    @task
+    def t1(a: int) -> int:
+        return a + 2
+
+    @workflow(
+        default_options=Options(
+            labels=Labels({"label": "foo"}),
+            annotations=Annotations({"anno": "bar"}),
+        )
+    )
+    def wf_with_default_options(a: int) -> int:
+        return t1(a=a)
+
+    lp = launch_plan.LaunchPlan.get_or_create(workflow=wf_with_default_options)
+
+    assert len(lp.labels.values) == 1
+    assert lp.labels.values["label"] == "foo"
+    assert len(lp.annotations.values) == 1
+    assert lp.annotations.values["anno"] == "bar"

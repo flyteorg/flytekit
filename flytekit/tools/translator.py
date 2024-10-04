@@ -4,7 +4,6 @@ import sys
 import tempfile
 import typing
 from collections import OrderedDict
-from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from flyteidl.admin import schedule_pb2
@@ -22,6 +21,7 @@ from flytekit.core.gate import Gate
 from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
 from flytekit.core.legacy_map_task import MapPythonTask
 from flytekit.core.node import Node
+from flytekit.core.options import Options
 from flytekit.core.python_auto_container import (
     PICKLE_FILE_PATH,
     PythonAutoContainerTask,
@@ -34,10 +34,8 @@ from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase
 from flytekit.exceptions.user import FlyteAssertion
 from flytekit.loggers import logger
 from flytekit.models import common as _common_models
-from flytekit.models import common as common_models
 from flytekit.models import interface as interface_models
 from flytekit.models import launch_plan as _launch_plan_models
-from flytekit.models import security
 from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.models.admin.workflow import WorkflowSpec
 from flytekit.models.core import identifier as _identifier_model
@@ -68,53 +66,6 @@ FlyteControlPlaneEntity = Union[
     BranchNodeModel,
     ArrayNodeModel,
 ]
-
-
-@dataclass
-class Options(object):
-    """
-    These are options that can be configured for a launchplan during registration or overridden during an execution.
-    For instance two people may want to run the same workflow but have the offloaded data stored in two different
-    buckets. Or you may want labels or annotations to be different. This object is used when launching an execution
-    in a Flyte backend, and also when registering launch plans.
-
-    Args:
-        labels: Custom labels to be applied to the execution resource
-        annotations: Custom annotations to be applied to the execution resource
-        security_context: Indicates security context for permissions triggered with this launch plan
-        raw_output_data_config: Optional location of offloaded data for things like S3, etc.
-            remote prefix for storage location of the form ``s3://<bucket>/key...`` or
-            ``gcs://...`` or ``file://...``. If not specified will use the platform configured default. This is where
-            the data for offloaded types is stored.
-        max_parallelism: Controls the maximum number of tasknodes that can be run in parallel for the entire workflow.
-        notifications: List of notifications for this execution.
-        disable_notifications: This should be set to true if all notifications are intended to be disabled for this execution.
-    """
-
-    labels: typing.Optional[common_models.Labels] = None
-    annotations: typing.Optional[common_models.Annotations] = None
-    raw_output_data_config: typing.Optional[common_models.RawOutputDataConfig] = None
-    security_context: typing.Optional[security.SecurityContext] = None
-    max_parallelism: typing.Optional[int] = None
-    notifications: typing.Optional[typing.List[common_models.Notification]] = None
-    disable_notifications: typing.Optional[bool] = None
-    overwrite_cache: typing.Optional[bool] = None
-    file_uploader: Optional[Callable] = (
-        None  # This is used by the translator to upload task files, like pickled code etc
-    )
-
-    @classmethod
-    def default_from(
-        cls, k8s_service_account: typing.Optional[str] = None, raw_data_prefix: typing.Optional[str] = None
-    ) -> "Options":
-        return cls(
-            security_context=security.SecurityContext(run_as=security.Identity(k8s_service_account=k8s_service_account))
-            if k8s_service_account
-            else None,
-            raw_output_data_config=common_models.RawOutputDataConfig(output_location_prefix=raw_data_prefix)
-            if raw_data_prefix
-            else None,
-        )
 
 
 def to_serializable_case(

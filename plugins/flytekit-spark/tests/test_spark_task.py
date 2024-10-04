@@ -1,4 +1,5 @@
 import os.path
+from unittest import mock
 
 import pandas as pd
 import pyspark
@@ -124,7 +125,8 @@ def test_to_html():
     assert pd.DataFrame(df.schema, columns=["StructField"]).to_html() == output
 
 
-def test_spark_addPyFile():
+@mock.patch('pyspark.context.SparkContext.addPyFile')
+def test_spark_addPyFile(mock_add_pyfile):
     @task(
         task_config=Spark(
             spark_conf={"spark": "1"},
@@ -153,4 +155,5 @@ def test_spark_addPyFile():
                 ctx.new_execution_state().with_params(mode=ExecutionState.Mode.TASK_EXECUTION)).with_serialization_settings(serialization_settings)
     ) as new_ctx:
         my_spark.pre_execute(new_ctx.user_space_params)
+        mock_add_pyfile.assert_called_once()
         os.remove(os.path.join(os.getcwd(), "flyte_wf.zip"))
