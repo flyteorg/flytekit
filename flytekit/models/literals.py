@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 from datetime import datetime as _datetime
 from datetime import timedelta as _timedelta
 from datetime import timezone as _timezone
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 from flyteidl.core import literals_pb2 as _literals_pb2
 from google.protobuf.struct_pb2 import Struct
@@ -363,8 +365,68 @@ class BindingDataCollection(_common.FlyteIdlEntity):
         return cls([BindingData.from_flyte_idl(b) for b in pb2_object.bindings])
 
 
+class BindingDataTupleMap(_common.FlyteIdlEntity):
+    def __init__(self, tuple_name: str, order: List[str], bindings: Dict[str, BindingData]):
+        """
+        A map of BindingData items.  Can be a recursive structure
+
+        :param str tuple_name: The name of the NamedTuple. If tuple, this value should be an empty string.
+        :param list[str] order: The list indicating the order of each field stored in the tuple.
+        :param dict[str, BindingData] bindings: Map of strings to Bindings.
+        """
+        self._tuple_name = tuple_name
+        self._order = order
+        self._bindings = bindings
+
+    @property
+    def tuple_name(self):
+        """
+        The name of the NamedTuple. If tuple, this value should be an empty string.
+        :rtype: str
+        """
+        return self._tuple_name
+
+    @property
+    def order(self):
+        """
+        The list indicating the order of each field stored in the tuple.
+        :rtype: list[str]
+        """
+        return self._order
+
+    @property
+    def bindings(self):
+        """
+        Map of strings to Bindings
+        :rtype: dict[string, BindingData]
+        """
+        return self._bindings
+
+    def to_flyte_idl(self):
+        """
+        :rtype: flyteidl.core.literals_pb2.BindingDataTupleMap
+        """
+        return _literals_pb2.BindingDataTupleMap(
+            tuple_name=self.tuple_name,
+            order=self.order,
+            bindings={k: v.to_flyte_idl() for (k, v) in self.bindings.items()},
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object):
+        """
+        :param flyteidl.core.literals_pb2.BindingDataTupleMap pb2_object:
+        :rtype: flytekit.models.literals.BindingDataTupleMap
+        """
+        return cls(
+            tuple_name=pb2_object.tuple_name,
+            order=pb2_object.order,
+            bindings={k: BindingData.from_flyte_idl(v) for k, v in pb2_object.bindings.items()},
+        )
+
+
 class BindingData(_common.FlyteIdlEntity):
-    def __init__(self, scalar=None, collection=None, promise=None, map=None):
+    def __init__(self, scalar=None, collection=None, promise=None, map=None, tuple=None):
         """
         Specifies either a simple value or a reference to another output. Only one of the input arguments may be
         specified.
@@ -374,11 +436,13 @@ class BindingData(_common.FlyteIdlEntity):
             binding data to any number of levels.
         :param flytekit.models.types.OutputReference promise: [Optional] References an output promised by another node.
         :param BindingDataMap map: [Optional] A map of bindings. The key is always a string.
+        :param BindingDataTupleMap tuple: [Optional] A object contains tuple_name and a map of bindings.
         """
         self._scalar = scalar
         self._collection = collection
         self._promise = promise
         self._map = map
+        self._tuple = tuple
 
     @property
     def scalar(self):
@@ -413,12 +477,20 @@ class BindingData(_common.FlyteIdlEntity):
         return self._map
 
     @property
+    def tuple(self):
+        """
+        [Optional] A object contains tuple_name and a map of bindings.
+        :rtype: BindingDataTupleMap
+        """
+        return self._tuple
+
+    @property
     def value(self):
         """
         Returns whichever value is set
         :rtype: T
         """
-        return self.scalar or self.collection or self.promise or self.map
+        return self.scalar or self.collection or self.promise or self.map or self.tuple
 
     def to_flyte_idl(self):
         """
@@ -429,6 +501,7 @@ class BindingData(_common.FlyteIdlEntity):
             collection=self.collection.to_flyte_idl() if self.collection is not None else None,
             promise=self.promise.to_flyte_idl() if self.promise is not None else None,
             map=self.map.to_flyte_idl() if self.map is not None else None,
+            tuple=self.tuple.to_flyte_idl() if self.tuple is not None else None,
         )
 
     @classmethod
@@ -444,6 +517,7 @@ class BindingData(_common.FlyteIdlEntity):
             else None,
             promise=_OutputReference.from_flyte_idl(pb2_object.promise) if pb2_object.HasField("promise") else None,
             map=BindingDataMap.from_flyte_idl(pb2_object.map) if pb2_object.HasField("map") else None,
+            tuple=BindingDataTupleMap.from_flyte_idl(pb2_object.tuple) if pb2_object.HasField("tuple") else None,
         )
 
     def to_literal_model(self):
@@ -467,6 +541,13 @@ class BindingData(_common.FlyteIdlEntity):
         elif self.map:
             return Literal(
                 map=LiteralMap(literals={k: binding.to_literal_model() for k, binding in self.map.bindings.items()})
+            )
+        elif self.tuple:
+            return Literal(
+                tuple=LiteralTupleMap(
+                    tuple_name=self.tuple.tuple_name,
+                    literals={k: binding.to_literal_model() for k, binding in self.tuple.bindings.items()},
+                )
             )
 
 
@@ -701,6 +782,64 @@ class LiteralMap(_common.FlyteIdlEntity):
         return cls({k: Literal.from_flyte_idl(v) for k, v in pb2_object.literals.items()})
 
 
+class LiteralTupleMap(_common.FlyteIdlEntity):
+    def __init__(self, tuple_name: str, order: List[str], literals: Dict[str, Literal]):
+        """
+        :param str tuple_name: The name of the NamedTuple. If tuple, this value should be an empty string.
+        :param list[str] order: The list indicating the order of each field stored in the tuple.
+        :param dict[str, Literal] literals: A dictionary mapping Text key names to Literal objects.
+        """
+        self._tuple_name = tuple_name
+        self._order = order
+        self._literals = literals
+
+    @property
+    def tuple_name(self):
+        """
+        The name of the NamedTuple. If tuple, this value should be an empty string.
+        :rtype: str
+        """
+        return self._tuple_name
+
+    @property
+    def order(self):
+        """
+        The list indicating the order of each field stored in the tuple.
+        :rtype: list[str]
+        """
+        return self._order
+
+    @property
+    def literals(self):
+        """
+        A dictionary mapping Text key names to Literal objects.
+        :rtype: dict[str, Literal]
+        """
+        return self._literals
+
+    def to_flyte_idl(self):
+        """
+        :rtype: flyteidl.core.literals_pb2.LiteralTupleMap
+        """
+        return _literals_pb2.LiteralTupleMap(
+            tuple_name=self.tuple_name,
+            order=self.order,
+            literals={k: v.to_flyte_idl() for k, v in self.literals.items()},
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object):
+        """
+        :param flyteidl.core.literals_pb2.LiteralTupleMap pb2_object:
+        :rtype: LiteralTupleMap
+        """
+        return cls(
+            tuple_name=pb2_object.tuple_name,
+            order=pb2_object.order,
+            literals={k: Literal.from_flyte_idl(v) for k, v in pb2_object.literals.items()},
+        )
+
+
 class Scalar(_common.FlyteIdlEntity):
     def __init__(
         self,
@@ -905,6 +1044,7 @@ class Literal(_common.FlyteIdlEntity):
         scalar: Optional[Scalar] = None,
         collection: Optional[LiteralCollection] = None,
         map: Optional[LiteralMap] = None,
+        tuple: Optional[LiteralTupleMap] = None,
         hash: Optional[str] = None,
         metadata: Optional[Dict[str, str]] = None,
         offloaded_metadata: Optional[LiteralOffloadedMetadata] = None,
@@ -919,6 +1059,7 @@ class Literal(_common.FlyteIdlEntity):
         self._scalar = scalar
         self._collection = collection
         self._map = map
+        self._tuple = tuple
         self._hash = hash
         self._metadata = metadata
         self._offloaded_metadata = offloaded_metadata
@@ -948,12 +1089,20 @@ class Literal(_common.FlyteIdlEntity):
         return self._map
 
     @property
+    def tuple(self):
+        """
+        If not None, this value holds a name of tuple and a map of Literal values which can be further unpacked.
+        :rtype: LiteralTupleMap
+        """
+        return self._tuple
+
+    @property
     def value(self):
         """
-        Returns one of the scalar, collection, or map properties based on which one is set.
+        Returns one of the scalar, collection, map, or tuple properties based on which one is set.
         :rtype: T
         """
-        return self.scalar or self.collection or self.map
+        return self.scalar or self.collection or self.map or self.tuple
 
     @property
     def hash(self):
@@ -989,6 +1138,7 @@ class Literal(_common.FlyteIdlEntity):
             scalar=self.scalar.to_flyte_idl() if self.scalar is not None else None,
             collection=self.collection.to_flyte_idl() if self.collection is not None else None,
             map=self.map.to_flyte_idl() if self.map is not None else None,
+            tuple=self.tuple.to_flyte_idl() if self.tuple is not None else None,
             hash=self.hash,
             metadata=self.metadata,
             offloaded_metadata=self.offloaded_metadata.to_flyte_idl() if self.offloaded_metadata else None,
@@ -1008,6 +1158,7 @@ class Literal(_common.FlyteIdlEntity):
             scalar=Scalar.from_flyte_idl(pb2_object.scalar) if pb2_object.HasField("scalar") else None,
             collection=collection,
             map=LiteralMap.from_flyte_idl(pb2_object.map) if pb2_object.HasField("map") else None,
+            tuple=LiteralTupleMap.from_flyte_idl(pb2_object.tuple) if pb2_object.HasField("tuple") else None,
             hash=pb2_object.hash if pb2_object.hash else None,
             metadata={k: v for k, v in pb2_object.metadata.items()} if pb2_object.metadata else None,
             offloaded_metadata=LiteralOffloadedMetadata.from_flyte_idl(pb2_object.offloaded_metadata)

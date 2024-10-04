@@ -24,3 +24,14 @@ def load_type_from_tag(tag: str) -> typing.Type[T]:
         raise ValueError(f"Could not find the protobuf named: {name} @ {module}.")
 
     return getattr(pb_module, name)
+
+
+def is_namedtuple(t: typing.Type[T]) -> bool:
+    if hasattr(t, "__bases__") and (
+        isinstance(t, typing.Type) or isinstance(t, typing.TypeVar)  # type: ignore
+    ):
+        bases = t.__bases__
+        if len(bases) == 1 and bases[0] == tuple and hasattr(t, "_fields"):
+            return True
+
+    return False
