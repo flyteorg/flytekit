@@ -87,7 +87,6 @@ from flytekit.remote.interface import TypedInterface
 from flytekit.remote.lazy_entity import LazyEntity
 from flytekit.remote.remote_callable import RemoteEntity
 from flytekit.remote.remote_fs import get_flyte_fs
-from flytekit.tools.asyn import run_sync
 from flytekit.tools.fast_registration import FastPackageOptions, fast_package
 from flytekit.tools.interactive import ipython_check
 from flytekit.tools.script_mode import _find_project_root, compress_scripts, get_all_modules, hash_file
@@ -98,6 +97,7 @@ from flytekit.tools.translator import (
     get_serializable,
     get_serializable_launch_plan,
 )
+from flytekit.utils.asyn import run_sync
 
 if typing.TYPE_CHECKING:
     try:

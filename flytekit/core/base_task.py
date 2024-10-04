@@ -86,7 +86,7 @@ from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.documentation import Description, Documentation
 from flytekit.models.interface import Variable
 from flytekit.models.security import SecurityContext
-from flytekit.utils.async_utils import run_sync_new_thread
+from flytekit.utils.asyn import loop_manager
 
 DYNAMIC_PARTITIONS = "_uap"
 MODEL_CARD = "_ucm"
@@ -790,7 +790,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
 
             try:
                 with timeit("dispatch execute"):
-                    synced = run_sync_new_thread(self._output_to_literal_map)
+                    synced = loop_manager.synced(self._output_to_literal_map)
                     literals_map, native_outputs_as_map = synced(native_outputs, exec_ctx)
                 self._write_decks(native_inputs, native_outputs_as_map, ctx, new_user_params)
             except (FlyteUploadDataException, FlyteDownloadDataException):

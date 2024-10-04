@@ -15,7 +15,7 @@ from flytekit.core.data_persistence import FileAccessProvider, get_fsspec_storag
 from flytekit.core.type_engine import TypeEngine
 from flytekit.types.directory.types import FlyteDirectory
 from flytekit.types.file import FlyteFile
-from flytekit.utils.async_utils import run_sync_new_thread
+from flytekit.utils.asyn import loop_manager
 from flytekit.models.literals import Literal
 
 local = fsspec.filesystem("file")
@@ -482,8 +482,7 @@ def test_async_local_copy_to_s3():
     start_process_time = time.process_time()
 
     with FlyteContextManager.with_context(ctx.with_file_access(provider)) as ctx:
-        synced = run_sync_new_thread(dummy_output_to_literal_map)
-        lit = synced(ctx, ff)
+        lit = loop_manager.run_sync(dummy_output_to_literal_map, ctx, ff)
         print(lit)
 
     end_time = datetime.datetime.now(datetime.timezone.utc)

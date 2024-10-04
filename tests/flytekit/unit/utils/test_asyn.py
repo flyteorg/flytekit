@@ -4,7 +4,7 @@ import asyncio
 from typing import List, Dict, Optional
 from asyncio import get_running_loop
 from functools import partial
-from flytekit.tools.asyn import run_sync, loop_manager
+from flytekit.utils.asyn import run_sync, loop_manager
 
 from contextvars import ContextVar
 

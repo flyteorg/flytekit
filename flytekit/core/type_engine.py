@@ -53,7 +53,7 @@ from flytekit.models.literals import (
     Void,
 )
 from flytekit.models.types import LiteralType, SimpleType, TypeStructure, UnionType
-from flytekit.utils.async_utils import ContextExecutor, get_running_loop_if_exists, run_sync_new_thread
+from flytekit.utils.asyn import ContextExecutor, loop_manager
 
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
@@ -280,22 +280,14 @@ class AsyncTypeTransformer(TypeTransformer[T]):
     def to_literal(
         self, ctx: FlyteContext, python_val: typing.Any, python_type: Type[T], expected: LiteralType
     ) -> Literal:
-        if ctx.loop.is_running():
-            synced = run_sync_new_thread(self.async_to_literal)
-            result = synced(ctx, python_val, python_type, expected)
-            return result
-        else:
-            coro = self.async_to_literal(ctx, python_val, python_type, expected)
-            return ctx.loop.run_until_complete(coro)
+        synced = loop_manager.synced(self.async_to_literal)
+        result = synced(ctx, python_val, python_type, expected)
+        return result
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> Optional[T]:
-        if ctx.loop.is_running():
-            synced = run_sync_new_thread(self.async_to_python_value)
-            result = synced(ctx, lv, expected_python_type)
-            return result
-        else:
-            coro = self.async_to_python_value(ctx, lv, expected_python_type)
-            return ctx.loop.run_until_complete(coro)
+        synced = loop_manager.synced(self.async_to_python_value)
+        result = synced(ctx, lv, expected_python_type)
+        return result
 
 
 class SimpleTransformer(TypeTransformer[T]):
@@ -1231,22 +1223,20 @@ class TypeEngine(typing.Generic[T]):
         if transformer.type_assertions_enabled:
             transformer.assert_type(python_type, python_val)
 
-        running_loop = get_running_loop_if_exists()
-
         # can't have a main loop running either, maybe this is one of the downsides
         # of not calling set_event_loop.
-        if not ctx.loop.is_running() and not running_loop:
-            if isinstance(transformer, AsyncTypeTransformer):
-                coro = transformer.async_to_literal(ctx, python_val, python_type, expected)
-                lv = ctx.loop.run_until_complete(coro)
-            else:
-                lv = transformer.to_literal(ctx, python_val, python_type, expected)
+        if isinstance(transformer, AsyncTypeTransformer):
+            synced = loop_manager.synced(transformer.async_to_literal)
+            lv = synced(ctx, python_val, python_type, expected)
         else:
-            if isinstance(transformer, AsyncTypeTransformer):
-                synced = run_sync_new_thread(transformer.async_to_literal)
-                lv = synced(ctx, python_val, python_type, expected)
-            else:
-                lv = transformer.to_literal(ctx, python_val, python_type, expected)
+            lv = transformer.to_literal(ctx, python_val, python_type, expected)
+        # if not ctx.loop.is_running() and not running_loop:
+        #     if isinstance(transformer, AsyncTypeTransformer):
+        #         coro = transformer.async_to_literal(ctx, python_val, python_type, expected)
+        #         lv = ctx.loop.run_until_complete(coro)
+        #     else:
+        #         lv = transformer.to_literal(ctx, python_val, python_type, expected)
+        # else:
 
         modify_literal_uris(lv)
         lv.hash = cls.calculate_hash(python_val, python_type)
@@ -1275,7 +1265,6 @@ class TypeEngine(typing.Generic[T]):
             lv = await transformer.async_to_literal(ctx, python_val, python_type, expected)
         else:
             # Testing just blocking call
-            # lv = transformer.to_literal(ctx, python_val, python_type, expected)
             loop = asyncio.get_running_loop()
             executor = ContextExecutor()
             fut = loop.run_in_executor(executor, transformer.to_literal, ctx, python_val, python_type, expected)
@@ -1304,27 +1293,24 @@ class TypeEngine(typing.Generic[T]):
         """
         # Initiate the process of loading the offloaded literal if offloaded_metadata is set
         if lv.offloaded_metadata:
-            synced = run_sync_new_thread(cls.unwrap_offloaded_literal)
+            synced = loop_manager.synced(cls.unwrap_offloaded_literal)
             lv = synced(ctx, lv)
         transformer = cls.get_transformer(expected_python_type)
 
-        # see note in to_literal.
-        running_loop = get_running_loop_if_exists()
-
-        if not ctx.loop.is_running() and not running_loop:
-            if isinstance(transformer, AsyncTypeTransformer):
-                coro = transformer.async_to_python_value(ctx, lv, expected_python_type)
-                pv = ctx.loop.run_until_complete(coro)
-            else:
-                pv = transformer.to_python_value(ctx, lv, expected_python_type)
-            return pv
+        if isinstance(transformer, AsyncTypeTransformer):
+            synced = loop_manager.synced(transformer.async_to_python_value)
+            return synced(ctx, lv, expected_python_type)
         else:
-            if isinstance(transformer, AsyncTypeTransformer):
-                synced = run_sync_new_thread(transformer.async_to_python_value)
-                return synced(ctx, lv, expected_python_type)
-            else:
-                res = transformer.to_python_value(ctx, lv, expected_python_type)
-                return res
+            res = transformer.to_python_value(ctx, lv, expected_python_type)
+            return res
+        # if not ctx.loop.is_running() and not running_loop:
+        #     if isinstance(transformer, AsyncTypeTransformer):
+        #         coro = transformer.async_to_python_value(ctx, lv, expected_python_type)
+        #         pv = ctx.loop.run_until_complete(coro)
+        #     else:
+        #         pv = transformer.to_python_value(ctx, lv, expected_python_type)
+        #     return pv
+        # else:
 
     @classmethod
     async def async_to_python_value(cls, ctx: FlyteContext, lv: Literal, expected_python_type: Type) -> typing.Any:
@@ -1372,7 +1358,7 @@ class TypeEngine(typing.Generic[T]):
         python_types: typing.Optional[typing.Dict[str, type]] = None,
         literal_types: typing.Optional[typing.Dict[str, _interface_models.Variable]] = None,
     ) -> typing.Dict[str, typing.Any]:
-        synced = run_sync_new_thread(cls._literal_map_to_kwargs)
+        synced = loop_manager.synced(cls._literal_map_to_kwargs)
         return synced(ctx, lm, python_types, literal_types)
 
     @classmethod
@@ -1423,7 +1409,7 @@ class TypeEngine(typing.Generic[T]):
         d: typing.Dict[str, typing.Any],
         type_hints: Optional[typing.Dict[str, type]] = None,
     ) -> LiteralMap:
-        synced = run_sync_new_thread(cls._dict_to_literal_map)
+        synced = loop_manager.synced(cls._dict_to_literal_map)
         return synced(ctx, d, type_hints)
 
     @classmethod

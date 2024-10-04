@@ -58,7 +58,7 @@ from flytekit.models.literals import LiteralMap
 from flytekit.models.security import Identity
 from flytekit.models.task import TaskExecutionMetadata, TaskTemplate
 from flytekit.tools.translator import get_serializable
-from flytekit.utils.async_utils import run_sync_new_thread
+from flytekit.utils.asyn import loop_manager
 
 dummy_id = "dummy_id"
 
@@ -440,8 +440,7 @@ def test_resource_type():
     o = Resource(
         phase=TaskExecution.SUCCEEDED,
     )
-    synced = run_sync_new_thread(o.to_flyte_idl)
-    v = synced()
+    v = loop_manager.run_sync(o.to_flyte_idl)
     assert v
     assert v.phase == TaskExecution.SUCCEEDED
     assert len(v.log_links) == 0
@@ -459,8 +458,7 @@ def test_resource_type():
         outputs={"o0": 1},
         custom_info={"custom": "info", "num": 1},
     )
-    synced = run_sync_new_thread(o.to_flyte_idl)
-    v = synced()
+    v = loop_manager.run_sync(o.to_flyte_idl)
     assert v
     assert v.phase == TaskExecution.SUCCEEDED
     assert v.log_links[0].name == "console"
