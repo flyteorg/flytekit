@@ -15,14 +15,17 @@ IMAGE = os.environ.get("FLYTEKIT_IMAGE", "localhost:30000/flytekit:dev")
 PROJECT = "flytesnacks"
 DOMAIN = "development"
 VERSION = f"v{os.getpid()}"
+KERNEL_NAME = "python3-flytekit-integration"
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="module", autouse=True)
+def install_kernel():
+    ipykernel.kernelspec.install(user=True, kernel_name=KERNEL_NAME)
+
+
+@pytest.fixture
 def jupyter_kernel():
-    kernel_name = "python3-flytekit-integration"
-    ipykernel.kernelspec.install(user=True, kernel_name=kernel_name)
-
-    km = KernelManager(kernel_name=kernel_name)
+    km = KernelManager(kernel_name=KERNEL_NAME)
     km.start_kernel()
     kc = km.client()
     kc.start_channels()
