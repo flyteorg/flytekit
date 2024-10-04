@@ -87,7 +87,7 @@ from flytekit.remote.interface import TypedInterface
 from flytekit.remote.lazy_entity import LazyEntity
 from flytekit.remote.remote_callable import RemoteEntity
 from flytekit.remote.remote_fs import get_flyte_fs
-from flytekit.tools.asyn import sync
+from flytekit.tools.asyn import run_sync
 from flytekit.tools.fast_registration import FastPackageOptions, fast_package
 from flytekit.tools.interactive import ipython_check
 from flytekit.tools.script_mode import _find_project_root, compress_scripts, get_all_modules, hash_file
@@ -820,7 +820,7 @@ class FlyteRemote(object):
                 domain=self.default_domain,
             )
 
-        ident = sync(self._serialize_and_register, entity=entity, settings=serialization_settings, version=version)
+        ident = run_sync(self._serialize_and_register, entity=entity, settings=serialization_settings, version=version)
 
         ft = self.fetch_task(
             ident.project,
@@ -859,7 +859,7 @@ class FlyteRemote(object):
             )
 
         self._resolve_identifier(ResourceType.WORKFLOW, entity.name, version, serialization_settings)
-        ident = sync(
+        ident = run_sync(
             self._serialize_and_register, entity, serialization_settings, version, options, default_launch_plan
         )
         fwf = self.fetch_workflow(ident.project, ident.domain, ident.name, ident.version)
