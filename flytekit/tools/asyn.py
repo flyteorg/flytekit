@@ -16,6 +16,8 @@ import threading
 from contextlib import contextmanager
 from typing import Any, Awaitable, Callable, TypeVar
 
+from flytekit.loggers import logger
+
 T = TypeVar("T")
 
 
@@ -78,6 +80,10 @@ class _AsyncLoopManager:
         name = threading.current_thread().name
         coro = coro_func(*args, **kwargs)
         if name not in self._runner_map:
+            if len(self._runner_map) > 500:
+                logger.warning(
+                    "More than 500 event loop runners created!!! This could be a case of runaway recursion..."
+                )
             self._runner_map[name] = _TaskRunner()
         return self._runner_map[name].run(coro)
 
