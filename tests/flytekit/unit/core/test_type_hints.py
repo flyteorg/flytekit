@@ -1909,8 +1909,8 @@ def test_tuple_type():
         wf_false(a=(2, "hello"))
 
     @task
-    def t2_1(a: typing.Tuple[int, str], b: str) -> typing.Tuple[typing.Tuple[int, str], str]:
-        return (a[0], a[1]), b
+    def t2_1(a: typing.Tuple[int, str], b: str) -> typing.Tuple[typing.Tuple[str, int], str]:
+        return (a[1], a[0]), b
 
     @task
     def t2_2(a: typing.Tuple[str, int], b: str) -> typing.Tuple[typing.Tuple[int, str], str]:
@@ -1919,21 +1919,31 @@ def test_tuple_type():
     @workflow
     def wf2_1(a: typing.Tuple[int, str], b: str) -> typing.Tuple[typing.Tuple[int, str], str]:
         t, s = t2_1(a=a, b=b)
-        return t2_2(a=(t[1], t[0]), b=s)
-
+        return t2_2(a=t, b=s)
+    
     @workflow
     def wf2_2(a: typing.Tuple[int, str], b: str) -> typing.Tuple[typing.Tuple[int, str], str]:
+        t, s = t2_1(a=a, b=b)
+        return t2_2(a=(t[0], t[1]), b=s)
+
+    @workflow
+    def wf2_3(a: typing.Tuple[int, str], b: str) -> typing.Tuple[typing.Tuple[int, str], str]:
         (at, bt), s = t2_1(a=a, b=b)
-        return t2_2(a=(bt, at), b=s)
+        return t2_2(a=(s, bt), b=at)
 
     assert wf2_1(a=(2, "hello"), b="hello2") == ((2, "hello2"), "hello")
     assert wf2_2(a=(2, "hello"), b="hello2") == ((2, "hello2"), "hello")
+    assert wf2_3(a=(2, "hello"), b="hello2") == ((2, "hello"), "hello2")
 
 
 def test_named_tuple_type():
     class NT(typing.NamedTuple):
         x: int
         y: str
+
+    class RNT(typing.NamedTuple):
+        a: str
+        b: int
 
     @task
     def t1(a: NT) -> typing.Tuple[NT, str]:
@@ -1949,35 +1959,75 @@ def test_named_tuple_type():
         wf(a=(2, "hello"))
 
     @task
-    def t2_1(a: NT, b: str) -> typing.Tuple[NT, str]:
-        return NT(a.x, b), a.y
+    def t2_1(a: NT, b: str) -> typing.Tuple[RNT, str]:
+        return RNT(b, a.x), a.y
 
     @task
-    def t2_2(a: NT) -> typing.Tuple[NT, str]:
-        return a, a.y
+    def t2_2(a: RNT) -> typing.Tuple[RNT, str]:
+        return a, a.a
 
     @workflow
-    def wf2_1(a: NT, b: str) -> typing.Tuple[typing.Tuple[NT, str], str]:
+    def wf2_1(a: NT, b: str) -> typing.Tuple[typing.Tuple[RNT, str], str]:
         t, s = t2_1(a=a, b=b)
         return t2_2(a=t), s
-
-    @workflow
-    def wf2_2(a: NT, b: str) -> typing.Tuple[typing.Tuple[NT, str], str]:
-        (at, bt), s = t2_1(a=a, b=b)
-        return t2_2(a=NT(at, s)), bt
     
     @workflow
-    def wf_fail(a: NT, b: str) -> typing.Tuple[typing.Tuple[NT, str], str]:
+    def wf2_2(a: NT, b: str) -> typing.Tuple[typing.Tuple[RNT, str], str]:
+        t, s = t2_1(a=a, b=b)
+        return t2_2(a=RNT(s, t[1])), t[0]
+
+    @workflow
+    def wf2_3(a: NT, b: str) -> typing.Tuple[typing.Tuple[RNT, str], str]:
+        (at, bt), s = t2_1(a=a, b=b)
+        return t2_2(a=RNT(s, bt)), at
+    
+    @workflow
+    def wf_fail1(a: NT, b: str) -> typing.Tuple[typing.Tuple[RNT, str], str]:
         (at, bt), s = t2_1(a=a, b=b)
         return t2_2(a=(at, s)), bt
 
-    assert wf2_1(a=NT(x=2, y="hello"), b="hello2") == ((NT(x=2, y="hello2"), "hello2"), "hello")
-    assert wf2_1(a=NT(2, "hello"), b="hello2") == ((NT(x=2, y="hello2"), "hello2"), "hello")
-    assert wf2_2(a=NT(x=2, y="hello"), b="hello2") == ((NT(x=2, y="hello"), "hello"), "hello2")
-    assert wf2_2(a=NT(2, "hello"), b="hello2") == ((NT(x=2, y="hello"), "hello"), "hello2")
+    assert wf2_1(a=NT(x=2, y="hello"), b="hello2") == ((RNT(b=2, a="hello2"), "hello2"), "hello")
+    assert wf2_1(a=NT(2, "hello"), b="hello2") == ((RNT(b=2, a="hello2"), "hello2"), "hello")
+    assert wf2_2(a=NT(x=2, y="hello"), b="hello2") == ((RNT(b=2, a="hello"), "hello"), "hello2")
+    assert wf2_2(a=NT(2, "hello"), b="hello2") == ((RNT(b=2, a="hello"), "hello"), "hello2")
+    assert wf2_3(a=NT(x=2, y="hello"), b="hello2") == ((RNT(b=2, a="hello"), "hello"), "hello2")
+    assert wf2_3(a=NT(2, "hello"), b="hello2") == ((RNT(b=2, a="hello"), "hello"), "hello2")
 
     with pytest.raises(AssertionError):
-        wf_fail(a=NT(2, "hello"), b="hello2")
+        wf_fail1(a=NT(2, "hello"), b="hello2")
+
+    @task
+    def t3_1(a: NT, b: str) -> typing.Tuple[RNT, str]:
+        return RNT(b, a[0]), a[1]
+
+    @task
+    def t3_2(a: RNT) -> typing.Tuple[RNT, str]:
+        return a, a[0]
+
+    @workflow
+    def wf3_1(a: NT, b: str) -> typing.Tuple[typing.Tuple[RNT, str], str]:
+        t, s = t3_1(a=a, b=b)
+        return t3_2(a=t), s
+
+    @workflow
+    def wf3_2(a: NT, b: str) -> typing.Tuple[typing.Tuple[RNT, str], str]:
+        t, s = t3_1(a=a, b=b)
+        at, bt = t[0], t[1]
+        return t3_2(a=RNT(s, bt)), at
+    
+    @workflow
+    def wf_fail2(a: NT, b: str) -> typing.Tuple[typing.Tuple[RNT, str], str]:
+        t, s = t3_1(a=a, b=b)
+        at, bt = t[0], t[1]
+        return t3_2(a=(at, s)), bt
+
+    assert wf3_1(a=NT(x=2, y="hello"), b="hello2") == ((RNT(b=2, a="hello2"), "hello2"), "hello")
+    assert wf3_1(a=NT(2, "hello"), b="hello2") == ((RNT(b=2, a="hello2"), "hello2"), "hello")
+    assert wf3_2(a=NT(x=2, y="hello"), b="hello2") == ((RNT(b=2, a="hello"), "hello"), "hello2")
+    assert wf3_2(a=NT(2, "hello"), b="hello2") == ((RNT(b=2, a="hello"), "hello"), "hello2")
+
+    with pytest.raises(AssertionError):
+        wf_fail2(a=NT(2, "hello"), b="hello2")
 
 
 def test_task_annotate_primitive_type_is_allowed():
