@@ -55,6 +55,7 @@ pyarrow
 scikit-learn
 types-requests
 prometheus-client
+jupyter-client
 
 orjson
 kubernetes>=12.0.1
