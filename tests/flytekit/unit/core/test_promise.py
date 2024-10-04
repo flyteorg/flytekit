@@ -265,3 +265,21 @@ async def test_prom_with_union_literals():
     assert bd.scalar.union.stored_type.structure.tag == "int"
     bd = await binding_data_from_python_std(ctx, lt, "hello", pt, [])
     assert bd.scalar.union.stored_type.structure.tag == "str"
+
+def test_pickling_promise_object():
+    @task
+    def t1(a: int) -> int:
+        return a
+
+    ctx = context_manager.FlyteContext.current_context().with_compilation_state(CompilationState(prefix=""))
+    p = create_and_link_node(ctx, t1, a=3)
+    assert p.ref.node_id == "n0"
+    assert p.ref.var == "o0"
+    assert len(p.ref.node.bindings) == 1
+
+    import cloudpickle
+
+    p2 = cloudpickle.loads(cloudpickle.dumps(p))
+    assert p2.ref.node_id == "n0"
+    assert p2.ref.var == "o0"
+    assert len(p2.ref.node.bindings) == 1
