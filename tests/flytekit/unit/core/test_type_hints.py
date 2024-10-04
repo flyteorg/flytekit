@@ -1965,11 +1965,19 @@ def test_named_tuple_type():
     def wf2_2(a: NT, b: str) -> typing.Tuple[typing.Tuple[NT, str], str]:
         (at, bt), s = t2_1(a=a, b=b)
         return t2_2(a=NT(at, s)), bt
+    
+    @workflow
+    def wf_fail(a: NT, b: str) -> typing.Tuple[typing.Tuple[NT, str], str]:
+        (at, bt), s = t2_1(a=a, b=b)
+        return t2_2(a=(at, s)), bt
 
     assert wf2_1(a=NT(x=2, y="hello"), b="hello2") == ((NT(x=2, y="hello2"), "hello2"), "hello")
     assert wf2_1(a=NT(2, "hello"), b="hello2") == ((NT(x=2, y="hello2"), "hello2"), "hello")
     assert wf2_2(a=NT(x=2, y="hello"), b="hello2") == ((NT(x=2, y="hello"), "hello"), "hello2")
     assert wf2_2(a=NT(2, "hello"), b="hello2") == ((NT(x=2, y="hello"), "hello"), "hello2")
+
+    with pytest.raises(AssertionError):
+        wf_fail(a=NT(2, "hello"), b="hello2")
 
 
 def test_task_annotate_primitive_type_is_allowed():

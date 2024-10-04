@@ -1098,10 +1098,10 @@ class Literal(_common.FlyteIdlEntity):
     @property
     def value(self):
         """
-        Returns one of the scalar, collection, or map properties based on which one is set.
+        Returns one of the scalar, collection, map, or tuple properties based on which one is set.
         :rtype: T
         """
-        return self.scalar or self.collection or self.map
+        return self.scalar or self.collection or self.map or self.tuple
 
     @property
     def hash(self):

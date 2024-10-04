@@ -1,7 +1,7 @@
 import sys
 import typing
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Dict, List, NamedTuple
 
 import pytest
 from dataclasses_json import DataClassJsonMixin, dataclass_json
@@ -231,19 +231,25 @@ def test_resolve_attr_path_in_promise():
     class Foo:
         b: str
 
-    src = {"a": [Foo(b="foo")]}
+    class Bar(NamedTuple):
+        a: List[Foo]
+
+    src = {"a": [(Foo(b="foo"), Bar([Foo(b="bar")]))]}
 
     src_lit = TypeEngine.to_literal(
         FlyteContextManager.current_context(),
         src,
-        Dict[str, List[Foo]],
-        TypeEngine.to_literal_type(Dict[str, List[Foo]]),
+        Dict[str, List[tuple[Foo, Bar]]],
+        TypeEngine.to_literal_type(Dict[str, List[tuple[Foo, Bar]]]),
     )
     src_promise = Promise("val1", src_lit)
 
     # happy path
-    tgt_promise = resolve_attr_path_in_promise(src_promise["a"][0]["b"])
-    assert "foo" == TypeEngine.to_python_value(FlyteContextManager.current_context(), tgt_promise.val, str)
+    tgt_promise1 = resolve_attr_path_in_promise(src_promise["a"][0][0]["b"])
+    assert "foo" == TypeEngine.to_python_value(FlyteContextManager.current_context(), tgt_promise1.val, str)
+
+    tgt_promise2 = resolve_attr_path_in_promise(src_promise["a"][0][1].a[0].b)
+    assert "bar" == TypeEngine.to_python_value(FlyteContextManager.current_context(), tgt_promise2.val, str)
 
     # exception
     with pytest.raises(FlytePromiseAttributeResolveException):
