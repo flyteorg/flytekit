@@ -6,6 +6,7 @@ from jupyter_client.manager import KernelManager, BlockingKernelClient
 
 from flytekit.configuration import Config
 from flytekit.remote import FlyteRemote
+import ipykernel.kernelspec
 
 
 CONFIG = os.environ.get("FLYTECTL_CONFIG", str(pathlib.Path.home() / ".flyte" / "config-sandbox.yaml"))
@@ -18,7 +19,10 @@ VERSION = f"v{os.getpid()}"
 
 @pytest.fixture(scope="function")
 def jupyter_kernel():
-    km = KernelManager()
+    kernel_name = "python3-flytekit-integration"
+    ipykernel.kernelspec.install(user=True, kernel_name=kernel_name)
+
+    km = KernelManager(kernel_name=kernel_name)
     km.start_kernel()
     kc = km.client()
     kc.start_channels()
