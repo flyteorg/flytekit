@@ -24,6 +24,7 @@ from flytekit.models.security import Secret, SecurityContext
 
 T = TypeVar("T")
 _PRIMARY_CONTAINER_NAME_FIELD = "primary_container_name"
+PICKLE_FILE_PATH = "pkl.gz"
 
 
 class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
@@ -163,6 +164,13 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
 
         return container_args
 
+    def set_resolver(self, resolver: TaskResolverMixin):
+        """
+        By default, flytekit uses the DefaultTaskResolver to resolve the task. This method allows the user to set a custom
+        task resolver. It can be useful to override the task resolver for specific cases like running tasks in the jupyter notebook.
+        """
+        self._task_resolver = resolver
+
     def set_command_fn(self, get_command_fn: Optional[Callable[[SerializationSettings], List[str]]] = None):
         """
         By default, the task will run on the Flyte platform using the pyflyte-execute command.
@@ -272,6 +280,34 @@ class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
 
 
 default_task_resolver = DefaultTaskResolver()
+
+
+class DefaultNotebookTaskResolver(TrackedInstance, TaskResolverMixin):
+    """
+    This resolved is used when the task is defined in a notebook. It is used to load the task from the notebook.
+    """
+
+    def name(self) -> str:
+        return "DefaultNotebookTaskResolver"
+
+    @timeit("Load task")
+    def load_task(self, loader_args: List[str]) -> PythonAutoContainerTask:
+        import gzip
+
+        import cloudpickle
+
+        with gzip.open(PICKLE_FILE_PATH, "r") as f:
+            return cloudpickle.load(f)
+
+    def loader_args(self, settings: SerializationSettings, task: PythonAutoContainerTask) -> List[str]:  # type:ignore
+        _, m, t, _ = extract_task_module(task)
+        return ["task-module", m, "task-name", t]
+
+    def get_all_tasks(self) -> List[PythonAutoContainerTask]:  # type: ignore
+        raise NotImplementedError
+
+
+default_notebook_task_resolver = DefaultNotebookTaskResolver()
 
 
 def update_image_spec_copy_handling(image_spec: ImageSpec, settings: SerializationSettings):

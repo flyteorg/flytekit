@@ -20,6 +20,7 @@ from rich.tree import Tree
 
 from flytekit.constants import CopyFileDetection
 from flytekit.core.context_manager import FlyteContextManager
+from flytekit.core.python_auto_container import PICKLE_FILE_PATH
 from flytekit.core.utils import timeit
 from flytekit.exceptions.user import FlyteDataNotFoundException
 from flytekit.loggers import logger
@@ -242,12 +243,13 @@ def download_distribution(additional_distribution: str, destination: str):
     except FlyteDataNotFoundException as ex:
         raise RuntimeError("task execution code was not found") from ex
     tarfile_name = os.path.basename(additional_distribution)
-    if not tarfile_name.endswith(".tar.gz"):
+    if tarfile_name.endswith(".tar.gz"):
+        # This will overwrite the existing user flyte workflow code in the current working code dir.
+        result = subprocess.run(
+            ["tar", "-xvf", os.path.join(destination, tarfile_name), "-C", destination],
+            stdout=subprocess.PIPE,
+        )
+        result.check_returncode()
+    elif tarfile_name != PICKLE_FILE_PATH:
+        # The distribution is not a pickled file.
         raise RuntimeError("Unrecognized additional distribution format for {}".format(additional_distribution))
-
-    # This will overwrite the existing user flyte workflow code in the current working code dir.
-    result = subprocess.run(
-        ["tar", "-xvf", os.path.join(destination, tarfile_name), "-C", destination],
-        stdout=subprocess.PIPE,
-    )
-    result.check_returncode()
