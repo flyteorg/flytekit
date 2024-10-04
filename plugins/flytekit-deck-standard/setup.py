@@ -13,7 +13,14 @@ extras = {
     'markdown': ['markdown'],
     'plotly': ['plotly'],
     'pygments': ['pygments'],
-    'all':['pandas', 'pillow', 'ydata-profiling', 'markdown', 'plotly', 'pygments']
+    'all': [
+           'pandas',
+           'pillow',
+           'ydata-profiling',
+           'markdown',
+           'plotly',
+           'pygments'
+]
 }
 
 __version__ = "0.0.0+develop"
