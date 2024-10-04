@@ -87,6 +87,7 @@ from flytekit.remote.interface import TypedInterface
 from flytekit.remote.lazy_entity import LazyEntity
 from flytekit.remote.remote_callable import RemoteEntity
 from flytekit.remote.remote_fs import get_flyte_fs
+from flytekit.tools.asyn import run_sync
 from flytekit.tools.fast_registration import FastPackageOptions, fast_package
 from flytekit.tools.interactive import ipython_check
 from flytekit.tools.script_mode import _find_project_root, compress_scripts, get_all_modules, hash_file
@@ -762,7 +763,7 @@ class FlyteRemote(object):
         # concurrent register
         cp_task_entity_map = OrderedDict(filter(lambda x: isinstance(x[1], task_models.TaskSpec), m.items()))
         tasks = []
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         for entity, cp_entity in cp_task_entity_map.items():
             tasks.append(
                 loop.run_in_executor(
@@ -819,9 +820,7 @@ class FlyteRemote(object):
                 domain=self.default_domain,
             )
 
-        ident = asyncio.run(
-            self._serialize_and_register(entity=entity, settings=serialization_settings, version=version)
-        )
+        ident = run_sync(self._serialize_and_register, entity=entity, settings=serialization_settings, version=version)
 
         ft = self.fetch_task(
             ident.project,
@@ -860,8 +859,8 @@ class FlyteRemote(object):
             )
 
         self._resolve_identifier(ResourceType.WORKFLOW, entity.name, version, serialization_settings)
-        ident = asyncio.run(
-            self._serialize_and_register(entity, serialization_settings, version, options, default_launch_plan)
+        ident = run_sync(
+            self._serialize_and_register, entity, serialization_settings, version, options, default_launch_plan
         )
         fwf = self.fetch_workflow(ident.project, ident.domain, ident.name, ident.version)
         fwf._python_interface = entity.python_interface
