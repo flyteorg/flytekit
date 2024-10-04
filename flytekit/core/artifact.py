@@ -5,14 +5,12 @@ import typing
 from datetime import timedelta
 from typing import Optional, Union
 
-from flyteidl.core import artifact_id_pb2 as art_id
-from flyteidl.core.artifact_id_pb2 import Granularity
-from flyteidl.core.artifact_id_pb2 import Operator as Op
-from google.protobuf.timestamp_pb2 import Timestamp
+import flyteidl_rust as flyteidl
 
 from flytekit.core.context_manager import FlyteContextManager, OutputMetadata, SerializableToString
 from flytekit.core.sentinel import DYNAMIC_INPUT_BINDING
 from flytekit.loggers import logger
+from flytekit.models import utils
 
 TIME_PARTITION_KWARG = "time_partition"
 MAX_PARTITIONS = 10
@@ -25,8 +23,8 @@ class InputsBase(object):
     If there's a good reason to use a metaclass in the future we can, but a simple instance suffices for now
     """
 
-    def __getattr__(self, name: str) -> art_id.InputBindingData:
-        return art_id.InputBindingData(var=name)
+    def __getattr__(self, name: str) -> flyteidl.core.InputBindingData:
+        return flyteidl.core.InputBindingData(var=name)
 
 
 Inputs = InputsBase()
@@ -62,16 +60,15 @@ class ArtifactIDSpecification(object):
                 raise ValueError("Cannot bind time partition to non-time partitioned artifact")
             p = kwargs[TIME_PARTITION_KWARG]
             if isinstance(p, datetime.datetime):
-                t = Timestamp()
-                t.FromDatetime(p)
+                t = utils.convert_from_datetime_to_timestamp(p)
                 self.time_partition = TimePartition(
-                    value=art_id.LabelValue(time_value=t),
-                    granularity=self.artifact.time_partition_granularity or Granularity.DAY,
+                    value=flyteidl.core.LabelValue(value=flyteidl.label_value.Value.TimeValue(t)),
+                    granularity=self.artifact.time_partition_granularity or flyteidl.core.Granularity.Day,
                 )
-            elif isinstance(p, art_id.InputBindingData):
+            elif isinstance(p, flyteidl.core.InputBindingData):
                 self.time_partition = TimePartition(
-                    value=art_id.LabelValue(input_binding=p),
-                    granularity=self.artifact.time_partition_granularity or Granularity.DAY,
+                    value=flyteidl.core.LabelValue(value=flyteidl.label_value.Value.InputBinding(p)),
+                    granularity=self.artifact.time_partition_granularity or flyteidl.core.Granularity.Day,
                 )
             else:
                 raise ValueError(f"Time partition needs to be input binding data or static string, not {p}")
@@ -90,10 +87,14 @@ class ArtifactIDSpecification(object):
             for k, v in kwargs.items():
                 if not self.artifact.partition_keys or k not in self.artifact.partition_keys:
                     raise ValueError(f"Partition key {k} not found in {self.artifact.partition_keys}")
-                if isinstance(v, art_id.InputBindingData):
-                    p.partitions[k] = Partition(art_id.LabelValue(input_binding=v), name=k)
+                if isinstance(v, flyteidl.core.InputBindingData):
+                    p.partitions[k] = Partition(
+                        flyteidl.core.LabelValue(value=flyteidl.label_value.Value.InputBinding(v)), name=k
+                    )
                 elif isinstance(v, str):
-                    p.partitions[k] = Partition(art_id.LabelValue(static_value=v), name=k)
+                    p.partitions[k] = Partition(
+                        flyteidl.core.LabelValue(value=flyteidl.label_value.Value.StaticValue(v)), name=k
+                    )
                 else:
                     raise ValueError(f"Partition key {k} needs to be input binding data or static string, not {v}")
 
@@ -106,7 +107,7 @@ class ArtifactIDSpecification(object):
 
         return self
 
-    def to_partial_artifact_id(self) -> art_id.ArtifactID:
+    def to_partial_artifact_id(self) -> flyteidl.core.ArtifactId:
         # This function should only be called by transform_variable_map
         artifact_id = self.artifact.to_id_idl()
         # Use the partitions from this object, but replacement is not allowed by protobuf, so generate new object
@@ -127,7 +128,7 @@ class ArtifactIDSpecification(object):
                     f"Artifact {artifact_id.artifact_key} requires {required} partitions, but only {fulfilled} are "
                     f"bound."
                 )
-        artifact_id = art_id.ArtifactID(
+        artifact_id = flyteidl.core.ArtifactId(
             artifact_key=artifact_id.artifact_key,
             partitions=p,
             time_partition=tp,
@@ -205,7 +206,7 @@ class ArtifactQuery(object):
     def to_flyte_idl(
         self,
         **kwargs,
-    ) -> art_id.ArtifactQuery:
+    ) -> flyteidl.core.ArtifactQuery:
         return Serializer.artifact_query_to_idl(self, **kwargs)
 
     def get_time_partition_str(self, **kwargs) -> str:
@@ -253,21 +254,20 @@ class ArtifactQuery(object):
 class TimePartition(object):
     def __init__(
         self,
-        value: Union[art_id.LabelValue, art_id.InputBindingData, str, datetime.datetime, None],
-        op: Optional[Op] = None,
+        value: Union[flyteidl.core.LabelValue, flyteidl.core.InputBindingData, str, datetime.datetime, None],
+        op: Optional[flyteidl.core.Operator] = None,
         other: Optional[timedelta] = None,
-        granularity: Granularity = Granularity.DAY,
+        granularity: flyteidl.core.Granularity = flyteidl.core.Granularity.Day,
     ):
         if isinstance(value, str):
             raise ValueError(f"value to a time partition shouldn't be a str {value}")
         elif isinstance(value, datetime.datetime):
-            t = Timestamp()
-            t.FromDatetime(value)
-            value = art_id.LabelValue(time_value=t)
-        elif isinstance(value, art_id.InputBindingData):
-            value = art_id.LabelValue(input_binding=value)
+            t = utils.convert_from_datetime_to_timestamp(value)
+            value = flyteidl.core.LabelValue(flyteidl.label_value.Value.TimeValue(t))
+        elif isinstance(value, flyteidl.core.InputBindingData):
+            value = flyteidl.core.LabelValue(value=flyteidl.label_value.Value.InputBinding(value))
         # else should already be a LabelValue or None
-        self.value: art_id.LabelValue = value
+        self.value: flyteidl.core.LabelValue = value
         self.op = op
         self.other = other
         self.reference_artifact: Optional[Artifact] = None
@@ -275,11 +275,12 @@ class TimePartition(object):
 
     def __rich_repr__(self):
         if self.value:
-            if isinstance(self.value, art_id.LabelValue):
-                if self.value.HasField("time_value"):
-                    yield "Time Partition", str(self.value.time_value.ToDatetime())
-                elif self.value.HasField("input_binding"):
-                    yield "Time Partition (bound to)", self.value.input_binding.var
+            if isinstance(self.value, flyteidl.core.LabelValue):
+                from flytekit.models import utils
+                if isinstance(self.value.value, flyteidl.label_value.Value.TimeValue):
+                    yield "Time Partition", str(utils.convert_to_datetime(seconds=self.value.value[0].seconds, nanos=self.value.value[0].nanos))
+                elif isinstance(self.value.value, flyteidl.label_value.Value.InputBinding):
+                    yield "Time Partition (bound to)", self.value.value[0].var
                 else:
                     yield "Time Partition", "unspecified"
         else:
@@ -292,21 +293,21 @@ class TimePartition(object):
         return "".join([str(x) for x in self.__rich_repr__()])
 
     def __add__(self, other: timedelta) -> TimePartition:
-        tp = TimePartition(self.value, op=Op.PLUS, other=other, granularity=self.granularity)
+        tp = TimePartition(self.value, op=flyteidl.core.Operator.Plus, other=other, granularity=self.granularity)
         tp.reference_artifact = self.reference_artifact
         return tp
 
     def __sub__(self, other: timedelta) -> TimePartition:
-        tp = TimePartition(self.value, op=Op.MINUS, other=other, granularity=self.granularity)
+        tp = TimePartition(self.value, op=flyteidl.core.Operator.Minus, other=other, granularity=self.granularity)
         tp.reference_artifact = self.reference_artifact
         return tp
 
-    def to_flyte_idl(self, **kwargs) -> Optional[art_id.TimePartition]:
+    def to_flyte_idl(self, **kwargs) -> Optional[flyteidl.core.TimePartition]:
         return Serializer.time_partition_to_idl(self, **kwargs)
 
 
 class Partition(object):
-    def __init__(self, value: Optional[art_id.LabelValue], name: str):
+    def __init__(self, value: Optional[flyteidl.core.LabelValue], name: str):
         self.name = name
         self.value = value
         self.reference_artifact: Optional[Artifact] = None
@@ -322,16 +323,22 @@ class Partition(object):
 
 
 class Partitions(object):
-    def __init__(self, partitions: Optional[typing.Mapping[str, Union[str, art_id.InputBindingData, Partition]]]):
+    def __init__(
+        self, partitions: Optional[typing.Mapping[str, Union[str, flyteidl.core.InputBindingData, Partition]]]
+    ):
         self._partitions = {}
         if partitions:
             for k, v in partitions.items():
                 if isinstance(v, Partition):
                     self._partitions[k] = v
-                elif isinstance(v, art_id.InputBindingData):
-                    self._partitions[k] = Partition(art_id.LabelValue(input_binding=v), name=k)
+                elif isinstance(v, flyteidl.core.InputBindingData):
+                    self._partitions[k] = Partition(
+                        flyteidl.core.LabelValue(value=flyteidl.label_value.Value.InputBinding(v)), name=k
+                    )
                 else:
-                    self._partitions[k] = Partition(art_id.LabelValue(static_value=v), name=k)
+                    self._partitions[k] = Partition(
+                        flyteidl.core.LabelValue(value=flyteidl.label_value.Value.StaticValue(v)), name=k
+                    )
         self.reference_artifact: Optional[Artifact] = None
 
     def __rich_repr__(self):
@@ -364,7 +371,7 @@ class Partitions(object):
             return self.partitions[item]
         raise AttributeError(f"Partition {item} not found in {self}")
 
-    def to_flyte_idl(self, **kwargs) -> Optional[art_id.Partitions]:
+    def to_flyte_idl(self, **kwargs) -> Optional[flyteidl.core.Partitions]:
         return Serializer.partitions_to_idl(self, **kwargs)
 
 
@@ -391,7 +398,7 @@ class Artifact(object):
         version: Optional[str] = None,
         time_partitioned: bool = False,
         time_partition: Optional[TimePartition] = None,
-        time_partition_granularity: Optional[Granularity] = None,
+        time_partition_granularity: Optional[flyteidl.core.Granularity] = None,
         partition_keys: Optional[typing.List[str]] = None,
         partitions: Optional[Union[Partitions, typing.Dict[str, str]]] = None,
     ):
@@ -465,7 +472,9 @@ class Artifact(object):
         if not self.time_partitioned:
             raise ValueError(f"Artifact {self.name} is not time partitioned")
         if not self._time_partition and self.time_partitioned:
-            self._time_partition = TimePartition(None, granularity=self.time_partition_granularity or Granularity.DAY)
+            self._time_partition = TimePartition(
+                None, granularity=self.time_partition_granularity or flyteidl.core.Granularity.Day
+            )
             self._time_partition.reference_artifact = self
         return self._time_partition
 
@@ -537,7 +546,7 @@ class Artifact(object):
         self,
         project: Optional[str] = None,
         domain: Optional[str] = None,
-        time_partition: Optional[Union[datetime.datetime, TimePartition, art_id.InputBindingData]] = None,
+        time_partition: Optional[Union[datetime.datetime, TimePartition, flyteidl.core.InputBindingData]] = None,
         partitions: Optional[Union[typing.Dict[str, str], Partitions]] = None,
         **kwargs,
     ) -> ArtifactQuery:
@@ -568,7 +577,7 @@ class Artifact(object):
                     time_partition.value,
                     op=time_partition.op,
                     other=time_partition.other,
-                    granularity=self.time_partition_granularity or Granularity.DAY,
+                    granularity=self.time_partition_granularity or flyteidl.core.Granularity.Day,
                 )
                 tp.reference_artifact = time_partition.reference_artifact
             else:
@@ -588,7 +597,7 @@ class Artifact(object):
         return aq
 
     @property
-    def concrete_artifact_id(self) -> art_id.ArtifactID:
+    def concrete_artifact_id(self) -> flyteidl.core.ArtifactId:
         # This property is used when you want to ensure that this is a materialized artifact, all fields are known.
         if self.name is None or self.project is None or self.domain is None or self.version is None:
             raise ValueError("Cannot create artifact id without name, project, domain, version")
@@ -599,8 +608,8 @@ class Artifact(object):
         partition: Optional[str] = None,
         bind_to_time_partition: Optional[bool] = None,
         expr: Optional[str] = None,
-        op: Optional[Op] = None,
-    ) -> art_id.ArtifactQuery:
+        op: Optional[flyteidl.core.Operator] = None,
+    ) -> flyteidl.core.ArtifactQuery:
         """
         This should only be called in the context of a Trigger. The type of query this returns is different from the
         query() function. This type of query is used to reference the triggering artifact, rather than running a query.
@@ -611,9 +620,9 @@ class Artifact(object):
         """
         t = None
         if expr and (partition or bind_to_time_partition):
-            t = art_id.TimeTransform(transform=expr, op=op)
-        aq = art_id.ArtifactQuery(
-            binding=art_id.ArtifactBindingData(
+            t = flyteidl.core.TimeTransform(transform=expr, op=op)
+        aq = flyteidl.core.ArtifactQuery(
+            binding=flyteidl.core.ArtifactBindingData(
                 partition_key=partition,
                 bind_to_time_partition=bind_to_time_partition,
                 time_transform=t,
@@ -622,7 +631,7 @@ class Artifact(object):
 
         return aq
 
-    def to_id_idl(self) -> art_id.ArtifactID:
+    def to_id_idl(self) -> flyteidl.core.ArtifactId:
         """
         Converts this object to the IDL representation.
         This is here instead of translator because it's in the interface, a relatively simple proto object
@@ -631,8 +640,8 @@ class Artifact(object):
         p = Serializer.partitions_to_idl(self.partitions)
         tp = Serializer.time_partition_to_idl(self.time_partition) if self.time_partitioned else None
 
-        i = art_id.ArtifactID(
-            artifact_key=art_id.ArtifactKey(
+        i = flyteidl.core.ArtifactId(
+            artifact_key=flyteidl.core.ArtifactKey(
                 project=self.project,
                 domain=self.domain,
                 name=self.name,
@@ -650,33 +659,33 @@ class ArtifactSerializationHandler(typing.Protocol):
     This protocol defines the interface for serializing artifact-related entities down to Flyte IDL.
     """
 
-    def partitions_to_idl(self, p: Optional[Partitions], **kwargs) -> Optional[art_id.Partitions]: ...
+    def partitions_to_idl(self, p: Optional[Partitions], **kwargs) -> Optional[flyteidl.core.Partitions]: ...
 
-    def time_partition_to_idl(self, tp: Optional[TimePartition], **kwargs) -> Optional[art_id.TimePartition]: ...
+    def time_partition_to_idl(self, tp: Optional[TimePartition], **kwargs) -> Optional[flyteidl.core.TimePartition]: ...
 
-    def artifact_query_to_idl(self, aq: ArtifactQuery, **kwargs) -> art_id.ArtifactQuery: ...
+    def artifact_query_to_idl(self, aq: ArtifactQuery, **kwargs) -> flyteidl.core.ArtifactQuery: ...
 
 
 class DefaultArtifactSerializationHandler(ArtifactSerializationHandler):
-    def partitions_to_idl(self, p: Optional[Partitions], **kwargs) -> Optional[art_id.Partitions]:
+    def partitions_to_idl(self, p: Optional[Partitions], **kwargs) -> Optional[flyteidl.core.Partitions]:
         if p and p.partitions:
             pp = {}
             for k, v in p.partitions.items():
                 if v.value is None:
                     # For specifying partitions in the Variable partial id
-                    pp[k] = art_id.LabelValue(static_value="")
+                    pp[k] = flyteidl.core.LabelValue(value=flyteidl.label_value.Value.StaticValue(""))
                 else:
                     pp[k] = v.value
-            return art_id.Partitions(value=pp)
+            return flyteidl.core.Partitions(value=pp)
         return None
 
-    def time_partition_to_idl(self, tp: Optional[TimePartition], **kwargs) -> Optional[art_id.TimePartition]:
+    def time_partition_to_idl(self, tp: Optional[TimePartition], **kwargs) -> Optional[flyteidl.core.TimePartition]:
         if tp:
-            return art_id.TimePartition(value=tp.value, granularity=tp.granularity)
+            return flyteidl.core.TimePartition(value=tp.value, granularity=int(tp.granularity))
         return None
 
-    def artifact_query_to_idl(self, aq: ArtifactQuery, **kwargs) -> art_id.ArtifactQuery:
-        ak = art_id.ArtifactKey(
+    def artifact_query_to_idl(self, aq: ArtifactQuery, **kwargs) -> flyteidl.core.ArtifactQuery:
+        ak = flyteidl.core.ArtifactKey(
             name=aq.name,
             project=aq.project,
             domain=aq.domain,
@@ -685,14 +694,14 @@ class DefaultArtifactSerializationHandler(ArtifactSerializationHandler):
         p = self.partitions_to_idl(aq.partitions)
         tp = self.time_partition_to_idl(aq.time_partition)
 
-        i = art_id.ArtifactID(
+        i = flyteidl.core.ArtifactId(
             artifact_key=ak,
             partitions=p,
             time_partition=tp,
         )
 
-        aq = art_id.ArtifactQuery(
-            artifact_id=i,
+        aq = flyteidl.core.ArtifactQuery(
+            identifier=flyteidl.artifact_query.Identifier.ArtifactId(i),
         )
 
         return aq
@@ -706,13 +715,13 @@ class Serializer(object):
         cls.serializer = serializer
 
     @classmethod
-    def partitions_to_idl(cls, p: Optional[Partitions], **kwargs) -> Optional[art_id.Partitions]:
+    def partitions_to_idl(cls, p: Optional[Partitions], **kwargs) -> Optional[flyteidl.core.Partitions]:
         return cls.serializer.partitions_to_idl(p, **kwargs)
 
     @classmethod
-    def time_partition_to_idl(cls, tp: TimePartition, **kwargs) -> Optional[art_id.TimePartition]:
+    def time_partition_to_idl(cls, tp: TimePartition, **kwargs) -> Optional[flyteidl.core.TimePartition]:
         return cls.serializer.time_partition_to_idl(tp, **kwargs)
 
     @classmethod
-    def artifact_query_to_idl(cls, aq: ArtifactQuery, **kwargs) -> art_id.ArtifactQuery:
+    def artifact_query_to_idl(cls, aq: ArtifactQuery, **kwargs) -> flyteidl.core.ArtifactQuery:
         return cls.serializer.artifact_query_to_idl(aq, **kwargs)

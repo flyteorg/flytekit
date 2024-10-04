@@ -1,7 +1,6 @@
 import typing
 
-from flyteidl.core import artifact_id_pb2 as art_id
-from flyteidl.core import interface_pb2 as _interface_pb2
+import flyteidl_rust as flyteidl
 
 from flytekit.models import common as _common
 from flytekit.models import literals as _literals
@@ -13,8 +12,8 @@ class Variable(_common.FlyteIdlEntity):
         self,
         type,
         description,
-        artifact_partial_id: typing.Optional[art_id.ArtifactID] = None,
-        artifact_tag: typing.Optional[art_id.ArtifactTag] = None,
+        artifact_partial_id: typing.Optional[flyteidl.core.ArtifactId] = None,
+        artifact_tag: typing.Optional[flyteidl.core.ArtifactTag] = None,
     ):
         """
         :param flytekit.models.types.LiteralType type: This describes the type of value that must be provided to
@@ -46,18 +45,18 @@ class Variable(_common.FlyteIdlEntity):
         return self._description
 
     @property
-    def artifact_partial_id(self) -> typing.Optional[art_id.ArtifactID]:
+    def artifact_partial_id(self) -> typing.Optional[flyteidl.core.ArtifactId]:
         return self._artifact_partial_id
 
     @property
-    def artifact_tag(self) -> typing.Optional[art_id.ArtifactTag]:
+    def artifact_tag(self) -> typing.Optional[flyteidl.core.ArtifactTag]:
         return self._artifact_tag
 
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.interface_pb2.Variable
         """
-        return _interface_pb2.Variable(
+        return flyteidl.core.Variable(
             type=self.type.to_flyte_idl(),
             description=self.description,
             artifact_partial_id=self.artifact_partial_id,
@@ -65,17 +64,15 @@ class Variable(_common.FlyteIdlEntity):
         )
 
     @classmethod
-    def from_flyte_idl(cls, variable_proto) -> _interface_pb2.Variable:
+    def from_flyte_idl(cls, variable_proto) -> flyteidl.core.Variable:
         """
         :param flyteidl.core.interface_pb2.Variable variable_proto:
         """
         return cls(
             type=_types.LiteralType.from_flyte_idl(variable_proto.type),
             description=variable_proto.description,
-            artifact_partial_id=variable_proto.artifact_partial_id
-            if variable_proto.HasField("artifact_partial_id")
-            else None,
-            artifact_tag=variable_proto.artifact_tag if variable_proto.HasField("artifact_tag") else None,
+            artifact_partial_id=variable_proto.artifact_partial_id or None,
+            artifact_tag=variable_proto.artifact_tag or None,
         )
 
 
@@ -99,7 +96,7 @@ class VariableMap(_common.FlyteIdlEntity):
         """
         :rtype: dict[Text, Variable]
         """
-        return _interface_pb2.VariableMap(variables={k: v.to_flyte_idl() for k, v in self.variables.items()})
+        return flyteidl.core.VariableMap(variables={k: v.to_flyte_idl() for k, v in self.variables.items()})
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -130,14 +127,14 @@ class TypedInterface(_common.FlyteIdlEntity):
     def outputs(self) -> typing.Dict[str, Variable]:
         return self._outputs
 
-    def to_flyte_idl(self) -> _interface_pb2.TypedInterface:
-        return _interface_pb2.TypedInterface(
-            inputs=_interface_pb2.VariableMap(variables={k: v.to_flyte_idl() for k, v in self.inputs.items()}),
-            outputs=_interface_pb2.VariableMap(variables={k: v.to_flyte_idl() for k, v in self.outputs.items()}),
+    def to_flyte_idl(self) -> flyteidl.core.TypedInterface:
+        return flyteidl.core.TypedInterface(
+            inputs=flyteidl.core.VariableMap(variables={k: v.to_flyte_idl() for k, v in self.inputs.items()}),
+            outputs=flyteidl.core.VariableMap(variables={k: v.to_flyte_idl() for k, v in self.outputs.items()}),
         )
 
     @classmethod
-    def from_flyte_idl(cls, proto: _interface_pb2.TypedInterface) -> "TypedInterface":
+    def from_flyte_idl(cls, proto: flyteidl.core.TypedInterface) -> "TypedInterface":
         """
         :param proto:
         """
@@ -153,8 +150,8 @@ class Parameter(_common.FlyteIdlEntity):
         var,
         default=None,
         required=None,
-        artifact_query: typing.Optional[art_id.ArtifactQuery] = None,
-        artifact_id: typing.Optional[art_id.ArtifactID] = None,
+        artifact_query: typing.Optional[flyteidl.core.ArtifactQuery] = None,
+        artifact_id: typing.Optional[flyteidl.core.ArtifactId] = None,
     ):
         """
         Declares an input parameter.  A parameter is used as input to a launch plan and has
@@ -204,23 +201,29 @@ class Parameter(_common.FlyteIdlEntity):
         return self._default or self._required or self._artifact_query
 
     @property
-    def artifact_query(self) -> typing.Optional[art_id.ArtifactQuery]:
+    def artifact_query(self) -> typing.Optional[flyteidl.core.ArtifactQuery]:
         return self._artifact_query
 
     @property
-    def artifact_id(self) -> typing.Optional[art_id.ArtifactID]:
+    def artifact_id(self) -> typing.Optional[flyteidl.core.ArtifactId]:
         return self._artifact_id
 
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.interface_pb2.Parameter
         """
-        return _interface_pb2.Parameter(
+        behavior = None
+        if self.default:
+            behavior = flyteidl.parameter.Behavior.Default(self.default.to_flyte_idl())
+        if self.required:
+            behavior = flyteidl.parameter.Behavior.Required(self.required)
+        if self.artifact_query:
+            behavior = flyteidl.parameter.Behavior.ArtifactQuery(self.artifact_query)
+        if self.artifact_id:
+            behavior = flyteidl.parameter.Behavior.ArtifactId(self.artifact_id)
+        return flyteidl.core.Parameter(
             var=self.var.to_flyte_idl(),
-            default=self.default.to_flyte_idl() if self.default is not None else None,
-            required=self.required if self.default is None and self.artifact_query is None else None,
-            artifact_query=self.artifact_query if self.artifact_query else None,
-            artifact_id=self.artifact_id if self.artifact_id else None,
+            behavior=behavior,
         )
 
     @classmethod
@@ -231,10 +234,16 @@ class Parameter(_common.FlyteIdlEntity):
         """
         return cls(
             Variable.from_flyte_idl(pb2_object.var),
-            _literals.Literal.from_flyte_idl(pb2_object.default) if pb2_object.HasField("default") else None,
-            pb2_object.required if pb2_object.HasField("required") else None,
-            artifact_query=pb2_object.artifact_query if pb2_object.HasField("artifact_query") else None,
-            artifact_id=pb2_object.artifact_id if pb2_object.HasField("artifact_id") else None,
+            _literals.Literal.from_flyte_idl(pb2_object.behavior[0])
+            if isinstance(pb2_object.behavior, flyteidl.parameter.Behavior.Default)
+            else None,
+            pb2_object.behavior if isinstance(pb2_object.behavior, flyteidl.parameter.Behavior.Required) else None,
+            artifact_query=pb2_object.behavior
+            if isinstance(pb2_object.behavior, flyteidl.parameter.Behavior.ArtifactQuery)
+            else None,
+            artifact_id=pb2_object.behavior
+            if isinstance(pb2_object.behavior, flyteidl.parameter.Behavior.ArtifactId)
+            else None,
         )
 
 
@@ -257,7 +266,7 @@ class ParameterMap(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.interface_pb2.ParameterMap
         """
-        return _interface_pb2.ParameterMap(
+        return flyteidl.core.ParameterMap(
             parameters={k: v.to_flyte_idl() for k, v in self.parameters.items()},
         )
 

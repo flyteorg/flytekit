@@ -1,9 +1,8 @@
 from datetime import datetime
 
+import flyteidl_rust as flyteidl
 import rich_click as click
 import yaml
-from flyteidl.admin.execution_pb2 import WorkflowExecutionGetMetricsRequest
-from flyteidl.core.identifier_pb2 import WorkflowExecutionIdentifier
 
 from flytekit.clis.sdk_in_container.constants import CTX_DOMAIN, CTX_PROJECT
 from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_click_context
@@ -73,9 +72,9 @@ def metrics_dump(
     sync_client = remote.client
 
     # retrieve workflow execution metrics
-    workflow_execution_id = WorkflowExecutionIdentifier(project=project, domain=domain, name=execution_id)
+    workflow_execution_id = flyteidl.core.WorkflowExecutionIdentifier(project=project, domain=domain, name=execution_id)
 
-    request = WorkflowExecutionGetMetricsRequest(id=workflow_execution_id, depth=depth)
+    request = flyteidl.admin.WorkflowExecutionGetMetricsRequest(id=workflow_execution_id, depth=depth)
     response = sync_client.get_execution_metrics(request)
 
     # aggregate spans and print
@@ -162,9 +161,9 @@ def metrics_explain(
     sync_client = remote.client
 
     # retrieve workflow execution metrics
-    workflow_execution_id = WorkflowExecutionIdentifier(project=project, domain=domain, name=execution_id)
+    workflow_execution_id = flyteidl.core.WorkflowExecutionIdentifier(project=project, domain=domain, name=execution_id)
 
-    request = WorkflowExecutionGetMetricsRequest(id=workflow_execution_id, depth=depth)
+    request = flyteidl.admin.WorkflowExecutionGetMetricsRequest(id=workflow_execution_id, depth=depth)
     response = sync_client.get_execution_metrics(request)
 
     # print execution spans

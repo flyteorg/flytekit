@@ -1,9 +1,7 @@
 import json
 from typing import Any, Dict
 
-from flyteidl.core import types_pb2 as _types_pb2
-from google.protobuf import json_format as _json_format
-from google.protobuf import struct_pb2 as _struct
+import flyteidl_rust as flyteidl
 
 
 class TypeAnnotation:
@@ -19,17 +17,16 @@ class TypeAnnotation:
         """
         return self._annotations
 
-    def to_flyte_idl(self) -> _types_pb2.TypeAnnotation:
+    def to_flyte_idl(self) -> flyteidl.core.TypeAnnotation:
         """
         :rtype: flyteidl.core.types_pb2.TypeAnnotation
         """
-
         if self._annotations is not None:
-            annotations = _json_format.Parse(json.dumps(self.annotations), _struct.Struct())
+            annotations = flyteidl.ParseStruct(json.dumps(self.annotations))
         else:
             annotations = None
 
-        return _types_pb2.TypeAnnotation(
+        return flyteidl.core.TypeAnnotation(
             annotations=annotations,
         )
 
@@ -39,8 +36,9 @@ class TypeAnnotation:
         :param flyteidl.core.types_pb2.TypeAnnotation proto:
         :rtype: TypeAnnotation
         """
+        import json
 
-        return cls(annotations=_json_format.MessageToDict(proto.annotations))
+        return cls(annotations=json.loads(flyteidl.DumpStruct(proto.annotations)))
 
     def __eq__(self, x: object) -> bool:
         if not isinstance(x, self.__class__):

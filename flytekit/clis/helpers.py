@@ -2,11 +2,7 @@ import sys
 from typing import Tuple, Union
 
 import click
-from flyteidl.admin.launch_plan_pb2 import LaunchPlan
-from flyteidl.admin.task_pb2 import TaskSpec
-from flyteidl.admin.workflow_pb2 import WorkflowSpec
-from flyteidl.core import identifier_pb2 as _identifier_pb2
-from flyteidl.core import workflow_pb2 as _workflow_pb2
+import flyteidl_rust as flyteidl
 
 from flytekit.configuration import DOMAIN_PLACEHOLDER, PROJECT_PLACEHOLDER, VERSION_PLACEHOLDER
 
@@ -34,8 +30,8 @@ def str2bool(str):
 
 # TODO Deprecated delete after deleting flyte_cli register
 def _hydrate_identifier(
-    project: str, domain: str, version: str, identifier: _identifier_pb2.Identifier
-) -> _identifier_pb2.Identifier:
+    project: str, domain: str, version: str, identifier: flyteidl.core.Identifier
+) -> flyteidl.core.Identifier:
     if not identifier.project or identifier.project == PROJECT_PLACEHOLDER:
         identifier.project = project
 
@@ -48,7 +44,7 @@ def _hydrate_identifier(
 
 
 # TODO Deprecated delete after deleting flyte_cli register
-def _hydrate_node(project: str, domain: str, version: str, node: _workflow_pb2.Node) -> _workflow_pb2.Node:
+def _hydrate_node(project: str, domain: str, version: str, node: flyteidl.core.Node) -> flyteidl.core.Node:
     if node.HasField("task_node"):
         task_node = node.task_node
         task_node.reference_id.CopyFrom(_hydrate_identifier(project, domain, version, task_node.reference_id))
@@ -83,8 +79,8 @@ def _hydrate_node(project: str, domain: str, version: str, node: _workflow_pb2.N
 
 # TODO Deprecated delete after deleting flyte_cli register
 def _hydrate_workflow_template_nodes(
-    project: str, domain: str, version: str, template: _workflow_pb2.WorkflowTemplate
-) -> _workflow_pb2.WorkflowTemplate:
+    project: str, domain: str, version: str, template: flyteidl.core.WorkflowTemplate
+) -> flyteidl.core.WorkflowTemplate:
     refreshed_nodes = []
     for node in template.nodes:
         node = _hydrate_node(project, domain, version, node)
@@ -101,20 +97,22 @@ def hydrate_registration_parameters(
     project: str,
     domain: str,
     version: str,
-    entity: Union[LaunchPlan, WorkflowSpec, TaskSpec],
-) -> Tuple[_identifier_pb2.Identifier, Union[LaunchPlan, WorkflowSpec, TaskSpec]]:
+    entity: Union[flyteidl.admin.LaunchPlan, flyteidl.admin.WorkflowSpec, flyteidl.admin.TaskSpec],
+) -> Tuple[
+    flyteidl.core.Identifier, Union[flyteidl.admin.LaunchPlan, flyteidl.admin.WorkflowSpec, flyteidl.admin.TaskSpec]
+]:
     """
     This is called at registration time to fill out identifier fields (e.g. project, domain, version) that are mutable.
     """
 
-    if resource_type == _identifier_pb2.LAUNCH_PLAN:
+    if resource_type == flyteidl.core.ResourceType.LaunchPlan:
         identifier = _hydrate_identifier(project, domain, version, entity.id)
         entity.spec.workflow_id.CopyFrom(_hydrate_identifier(project, domain, version, entity.spec.workflow_id))
         return identifier, entity
 
     identifier = _hydrate_identifier(project, domain, version, entity.template.id)
     entity.template.id.CopyFrom(identifier)
-    if identifier.resource_type == _identifier_pb2.TASK:
+    if identifier.resource_type == flyteidl.core.ResourceType.Task:
         return identifier, entity
 
     # Workflows (the only possible entity type at this point) are a little more complicated.

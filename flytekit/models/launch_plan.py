@@ -1,6 +1,6 @@
 import typing
 
-from flyteidl.admin import launch_plan_pb2 as _launch_plan
+import flyteidl_rust as flyteidl
 from google.protobuf.any_pb2 import Any
 
 from flytekit.models import common as _common
@@ -54,7 +54,7 @@ class LaunchPlanMetadata(_common.FlyteIdlEntity):
             a.Pack(self.launch_conditions)
         else:
             a = None
-        return _launch_plan.LaunchPlanMetadata(
+        return flyteidl.admin.LaunchPlanMetadata(
             schedule=self.schedule.to_flyte_idl() if self.schedule is not None else None,
             notifications=[n.to_flyte_idl() for n in self.notifications],
             launch_conditions=a,
@@ -67,11 +67,9 @@ class LaunchPlanMetadata(_common.FlyteIdlEntity):
         :rtype: LaunchPlanMetadata
         """
         return cls(
-            schedule=_schedule.Schedule.from_flyte_idl(pb2_object.schedule)
-            if pb2_object.HasField("schedule")
-            else None,
+            schedule=_schedule.Schedule.from_flyte_idl(pb2_object.schedule) if pb2_object.schedule else None,
             notifications=[_common.Notification.from_flyte_idl(n) for n in pb2_object.notifications],
-            launch_conditions=pb2_object.launch_conditions if pb2_object.HasField("launch_conditions") else None,
+            launch_conditions=pb2_object.launch_conditions if pb2_object.launch_conditions else None,
         )
 
 
@@ -107,7 +105,7 @@ class Auth(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.launch_plan_pb2.Auth
         """
-        return _launch_plan.Auth(
+        return flyteidl.admin.Auth(
             assumable_iam_role=self.assumable_iam_role if self.assumable_iam_role else None,
             kubernetes_service_account=self.kubernetes_service_account if self.kubernetes_service_account else None,
         )
@@ -138,6 +136,8 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         max_parallelism: typing.Optional[int] = None,
         security_context: typing.Optional[security.SecurityContext] = None,
         overwrite_cache: typing.Optional[bool] = None,
+        role=None,
+        execution_env_assignments=None,
     ):
         """
         The spec for a Launch Plan.
@@ -165,6 +165,8 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         self._fixed_inputs = fixed_inputs
         self._labels = labels
         self._annotations = annotations
+        self._role = role
+        self._execution_env_assignments = execution_env_assignments
         self._auth_role = auth_role
         self._raw_output_data_config = raw_output_data_config
         self._max_parallelism = max_parallelism
@@ -219,6 +221,20 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         return self._annotations
 
     @property
+    def role(self):
+        """
+        :rtype: flytekit.models.common.Role
+        """
+        return self._role
+
+    @property
+    def execution_env_assignments(self):
+        """
+        :rtype: flytekit.models.common.ExecutionEnvAssignment
+        """
+        return self._execution_env_assignments
+
+    @property
     def auth_role(self):
         """
         The authorization method with which to execute the workflow.
@@ -250,18 +266,20 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.launch_plan_pb2.LaunchPlanSpec
         """
-        return _launch_plan.LaunchPlanSpec(
+        return flyteidl.admin.LaunchPlanSpec(
             workflow_id=self.workflow_id.to_flyte_idl(),
             entity_metadata=self.entity_metadata.to_flyte_idl(),
             default_inputs=self.default_inputs.to_flyte_idl(),
             fixed_inputs=self.fixed_inputs.to_flyte_idl(),
             labels=self.labels.to_flyte_idl(),
             annotations=self.annotations.to_flyte_idl(),
+            role=self.role or "",
             auth_role=self.auth_role.to_flyte_idl() if self.auth_role else None,
             raw_output_data_config=self.raw_output_data_config.to_flyte_idl(),
-            max_parallelism=self.max_parallelism,
+            max_parallelism=self.max_parallelism or 0,
             security_context=self.security_context.to_flyte_idl() if self.security_context else None,
-            overwrite_cache=self.overwrite_cache if self.overwrite_cache else None,
+            overwrite_cache=self.overwrite_cache or False,
+            execution_env_assignments=self.execution_env_assignments or [],
         )
 
     @classmethod
@@ -299,8 +317,8 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
 
 
 class LaunchPlanState(object):
-    INACTIVE = _launch_plan.INACTIVE
-    ACTIVE = _launch_plan.ACTIVE
+    INACTIVE = flyteidl.admin.LaunchPlanState.Inactive
+    ACTIVE = flyteidl.admin.LaunchPlanState.Active
 
     @classmethod
     def enum_to_string(cls, val):
@@ -353,7 +371,7 @@ class LaunchPlanClosure(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.launch_plan_pb2.LaunchPlanClosure
         """
-        return _launch_plan.LaunchPlanClosure(
+        return flyteidl.admin.LaunchPlanClosure(
             state=self.state,
             expected_inputs=self.expected_inputs.to_flyte_idl(),
             expected_outputs=self.expected_outputs.to_flyte_idl(),
@@ -413,7 +431,7 @@ class LaunchPlan(_common.FlyteIdlEntity):
             if self.id is not None
             else _identifier.Identifier(_identifier.ResourceType.LAUNCH_PLAN, None, None, None, None)
         )
-        return _launch_plan.LaunchPlan(
+        return flyteidl.admin.LaunchPlan(
             id=identifier.to_flyte_idl(),
             spec=self.spec.to_flyte_idl(),
             closure=self.closure.to_flyte_idl(),

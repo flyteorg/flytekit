@@ -1,4 +1,4 @@
-from flyteidl.core import condition_pb2 as _condition
+import flyteidl_rust as flyteidl
 
 from flytekit.models import common as _common
 from flytekit.models import literals as _literals
@@ -10,12 +10,12 @@ class ComparisonExpression(_common.FlyteIdlEntity):
         Binary Operator for each expression
         """
 
-        EQ = _condition.ComparisonExpression.EQ
-        NEQ = _condition.ComparisonExpression.NEQ
-        GT = _condition.ComparisonExpression.GT
-        GTE = _condition.ComparisonExpression.GTE
-        LT = _condition.ComparisonExpression.LT
-        LTE = _condition.ComparisonExpression.LTE
+        EQ = flyteidl.comparison_expression.Operator.Eq
+        NEQ = flyteidl.comparison_expression.Operator.Neq
+        GT = flyteidl.comparison_expression.Operator.Gt
+        GTE = flyteidl.comparison_expression.Operator.Gte
+        LT = flyteidl.comparison_expression.Operator.Lt
+        LTE = flyteidl.comparison_expression.Operator.Lte
 
     def __init__(self, operator, left_value, right_value):
         """
@@ -58,7 +58,7 @@ class ComparisonExpression(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.condition_pb2.ComparisonExpression
         """
-        return _condition.ComparisonExpression(
+        return flyteidl.core.ComparisonExpression(
             operator=self.operator,
             left_value=self.left_value.to_flyte_idl(),
             right_value=self.right_value.to_flyte_idl(),
@@ -75,8 +75,8 @@ class ComparisonExpression(_common.FlyteIdlEntity):
 
 class ConjunctionExpression(_common.FlyteIdlEntity):
     class LogicalOperator(object):
-        AND = _condition.ConjunctionExpression.AND
-        OR = _condition.ConjunctionExpression.OR
+        AND = flyteidl.conjunction_expression.LogicalOperator.And
+        OR = flyteidl.conjunction_expression.LogicalOperator.Or
 
     def __init__(self, operator, left_expression, right_expression):
         """
@@ -118,7 +118,7 @@ class ConjunctionExpression(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.condition_pb2.ConjunctionExpression
         """
-        return _condition.ConjunctionExpression(
+        return flyteidl.core.ConjunctionExpression(
             operator=self.operator,
             left_expression=self.left_expression.to_flyte_idl(),
             right_expression=self.right_expression.to_flyte_idl(),
@@ -174,7 +174,7 @@ class Operand(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.condition_pb2.Operand
         """
-        return _condition.Operand(
+        return flyteidl.core.Operand(
             primitive=self.primitive.to_flyte_idl() if self.primitive else None,
             var=self.var if self.var else None,
             scalar=self.scalar.to_flyte_idl() if self.scalar else None,
@@ -224,7 +224,7 @@ class BooleanExpression(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.condition_pb2.BooleanExpression
         """
-        return _condition.BooleanExpression(
+        return flyteidl.core.BooleanExpression(
             conjunction=self.conjunction.to_flyte_idl() if self.conjunction else None,
             comparison=self.comparison.to_flyte_idl() if self.comparison else None,
         )
@@ -233,9 +233,7 @@ class BooleanExpression(_common.FlyteIdlEntity):
     def from_flyte_idl(cls, pb2_object):
         return cls(
             conjunction=ConjunctionExpression.from_flyte_idl(pb2_object.conjunction)
-            if pb2_object.HasField("conjunction")
+            if pb2_object.conjunction
             else None,
-            comparison=ComparisonExpression.from_flyte_idl(pb2_object.comparison)
-            if pb2_object.HasField("comparison")
-            else None,
+            comparison=ComparisonExpression.from_flyte_idl(pb2_object.comparison) if pb2_object.comparison else None,
         )

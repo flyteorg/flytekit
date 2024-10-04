@@ -16,14 +16,10 @@ from collections import OrderedDict
 from functools import lru_cache
 from typing import Dict, List, NamedTuple, Optional, Type, cast
 
+import flyteidl_rust as flyteidl
 from dataclasses_json import DataClassJsonMixin, dataclass_json
-from flyteidl.core import literals_pb2
-from google.protobuf import json_format as _json_format
-from google.protobuf import struct_pb2 as _struct
-from google.protobuf.json_format import MessageToDict as _MessageToDict
-from google.protobuf.json_format import ParseDict as _ParseDict
 from google.protobuf.message import Message
-from google.protobuf.struct_pb2 import Struct
+from marshmallow_enum import EnumField, LoadDumpOptions
 from mashumaro.codecs.json import JSONDecoder, JSONEncoder
 from mashumaro.mixins.json import DataClassJSONMixin
 from typing_extensions import Annotated, get_args, get_origin
@@ -492,7 +488,7 @@ class DataclassTransformer(TypeTransformer[object]):
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         if isinstance(python_val, dict):
             json_str = json.dumps(python_val)
-            return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))
+            return Literal(scalar=Scalar(generic=flyteidl.ParseStruct(json_str)))
 
         if not dataclasses.is_dataclass(python_val):
             raise TypeTransformerFailedError(
@@ -519,7 +515,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 f" and implement _serialize and _deserialize methods."
             )
 
-        return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))  # type: ignore
+        return Literal(scalar=Scalar(generic=flyteidl.ParseStruct(json_str)))  # type: ignore
 
     def _get_origin_type_in_annotation(self, python_type: Type[T]) -> Type[T]:
         # dataclass will try to hash python type when calling dataclass.schema(), but some types in the annotation is
@@ -659,7 +655,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 "user defined datatypes in Flytekit"
             )
 
-        json_str = _json_format.MessageToJson(lv.scalar.generic)
+        json_str = flyteidl.DumpStruct(lv.scalar.generic)
 
         # The function looks up or creates a JSONDecoder specifically designed for the object's type.
         # This decoder is then used to convert a JSON string into a data class.
@@ -707,9 +703,11 @@ class ProtobufTransformer(TypeTransformer[Message]):
         return LiteralType(simple=SimpleType.STRUCT, metadata={ProtobufTransformer.PB_FIELD_KEY: self.tag(t)})
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
-        struct = Struct()
+        struct = flyteidl.protobuf.Struct()
         try:
-            struct.update(_MessageToDict(cast(Message, python_val)))
+            # TODO: handle google.protobuf.Message
+            # struct.update(_MessageToDict(cast(Message, python_val)))
+            struct = flyteidl.ParseStruct(flyteidl.DumpStruct(python_val))
         except Exception:
             raise TypeTransformerFailedError("Failed to convert to generic protobuf struct")
         return Literal(scalar=Scalar(generic=struct))
@@ -719,8 +717,9 @@ class ProtobufTransformer(TypeTransformer[Message]):
             raise TypeTransformerFailedError("Can only convert a generic literal to a Protobuf")
 
         pb_obj = expected_python_type()
-        dictionary = _MessageToDict(lv.scalar.generic)
-        pb_obj = _ParseDict(dictionary, pb_obj)  # type: ignore
+        # dictionary = _MessageToDict(lv.scalar.generic)
+        # pb_obj = _ParseDict(dictionary, pb_obj)  # type: ignore
+        pb_obj = flyteidl.ParseStruct(flyteidl.DumpStruct(lv.scalar.generic))
         return pb_obj
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
@@ -1193,7 +1192,7 @@ class TypeEngine(typing.Generic[T]):
         ctx: FlyteContext,
         d: typing.Dict[str, typing.Any],
         type_hints: Optional[typing.Dict[str, type]] = None,
-    ) -> Optional[literals_pb2.LiteralMap]:
+    ) -> Optional[flyteidl.core.LiteralMap]:
         literal_map = cls.dict_to_literal_map(ctx, d, type_hints)
         return literal_map.to_flyte_idl()
 
@@ -1525,7 +1524,6 @@ class UnionTransformer(TypeTransformer[T]):
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> Optional[typing.Any]:
         expected_python_type = get_underlying_type(expected_python_type)
-
         union_tag = None
         union_type = None
         if lv.scalar is not None and lv.scalar.union is not None:
@@ -1622,16 +1620,14 @@ class DictTransformer(TypeTransformer[dict]):
 
         try:
             return Literal(
-                scalar=Scalar(generic=_json_format.Parse(json.dumps(v), _struct.Struct())),
+                scalar=Scalar(generic=flyteidl.ParseStruct(json.dumps(v))),
                 metadata={"format": "json"},
             )
         except TypeError as e:
             if allow_pickle:
                 remote_path = FlytePickle.to_pickle(ctx, v)
                 return Literal(
-                    scalar=Scalar(
-                        generic=_json_format.Parse(json.dumps({"pickle_file": remote_path}), _struct.Struct())
-                    ),
+                    scalar=Scalar(generic=flyteidl.ParseStruct(json.dumps({"pickle_file": remote_path}))),
                     metadata={"format": "pickle"},
                 )
             raise e
@@ -1724,11 +1720,11 @@ class DictTransformer(TypeTransformer[dict]):
             if lv.metadata and lv.metadata.get("format", None) == "pickle":
                 from flytekit.types.pickle import FlytePickle
 
-                uri = json.loads(_json_format.MessageToJson(lv.scalar.generic)).get("pickle_file")
+                uri = json.loads(flyteidl.DumpStruct(lv.scalar.generic)).get("pickle_file")
                 return FlytePickle.from_pickle(uri)
 
             try:
-                return json.loads(_json_format.MessageToJson(lv.scalar.generic))
+                return json.loads(flyteidl.DumpStruct(lv.scalar.generic))
             except TypeError:
                 raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
 

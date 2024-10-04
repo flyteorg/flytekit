@@ -1,15 +1,16 @@
+import flyteidl_rust as flyteidl
 from flyteidl.admin import matchable_resource_pb2 as _matchable_resource
 
 from flytekit.models import common as _common
 
 
 class MatchableResource(object):
-    TASK_RESOURCE = _matchable_resource.TASK_RESOURCE
-    CLUSTER_RESOURCE = _matchable_resource.CLUSTER_RESOURCE
-    EXECUTION_QUEUE = _matchable_resource.EXECUTION_QUEUE
-    EXECUTION_CLUSTER_LABEL = _matchable_resource.EXECUTION_CLUSTER_LABEL
-    QUALITY_OF_SERVICE_SPECIFICATION = _matchable_resource.QUALITY_OF_SERVICE_SPECIFICATION
-    PLUGIN_OVERRIDE = _matchable_resource.PLUGIN_OVERRIDE
+    TASK_RESOURCE = flyteidl.admin.MatchableResource.TaskResource
+    CLUSTER_RESOURCE = flyteidl.admin.MatchableResource.ClusterResource
+    EXECUTION_QUEUE = flyteidl.admin.MatchableResource.ExecutionQueue
+    EXECUTION_CLUSTER_LABEL = flyteidl.admin.MatchableResource.ExecutionClusterLabel
+    QUALITY_OF_SERVICE_SPECIFICATION = flyteidl.admin.MatchableResource.QualityOfServiceSpecification
+    PLUGIN_OVERRIDE = flyteidl.admin.MatchableResource.PluginOverride
 
     @classmethod
     def enum_to_string(cls, val):
@@ -73,7 +74,7 @@ class ClusterResourceAttributes(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.matchable_resource_pb2.ClusterResourceAttributes
         """
-        return _matchable_resource.ClusterResourceAttributes(
+        return flyteidl.admin.ClusterResourceAttributes(
             attributes=self.attributes,
         )
 
@@ -108,7 +109,7 @@ class ExecutionQueueAttributes(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.matchable_resource_pb2.ExecutionQueueAttributes
         """
-        return _matchable_resource.ExecutionQueueAttributes(
+        return flyteidl.admin.ExecutionQueueAttributes(
             tags=self.tags,
         )
 
@@ -143,7 +144,7 @@ class ExecutionClusterLabel(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.matchable_resource_pb2.ExecutionClusterLabel
         """
-        return _matchable_resource.ExecutionClusterLabel(
+        return flyteidl.admin.ExecutionClusterLabel(
             value=self.value,
         )
 
@@ -159,8 +160,8 @@ class ExecutionClusterLabel(_common.FlyteIdlEntity):
 
 
 class PluginOverride(_common.FlyteIdlEntity):
-    FAIL = _matchable_resource.PluginOverride.FAIL
-    USE_DEFAULT = _matchable_resource.PluginOverride.USE_DEFAULT
+    FAIL = flyteidl.plugin_override.MissingPluginBehavior.Fail
+    USE_DEFAULT = flyteidl.plugin_override.MissingPluginBehavior.UseDefault
 
     @classmethod
     def string_to_enum(cls, val):

@@ -1,7 +1,7 @@
 import importlib
 from typing import Optional
 
-from flyteidl.core.execution_pb2 import TaskExecution
+import flyteidl_rust as flyteidl
 
 from flytekit import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
@@ -36,9 +36,9 @@ class SensorEngine(AsyncAgentBase):
 
         inputs = resource_meta.inputs
         cur_phase = (
-            TaskExecution.SUCCEEDED
+            flyteidl.task_execution.Phase.Succeeded
             if await sensor_def("sensor", config=resource_meta.sensor_config).poke(**inputs)
-            else TaskExecution.RUNNING
+            else flyteidl.task_execution.Phase.Running
         )
         return Resource(phase=cur_phase, outputs=None)
 

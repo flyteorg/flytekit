@@ -9,7 +9,7 @@ import re
 from typing import Optional, Protocol, Union
 
 import croniter
-from flyteidl.admin import schedule_pb2
+import flyteidl_rust as flyteidl
 from google.protobuf import message as google_message
 
 from flytekit.models import schedule as _schedule_models
@@ -214,5 +214,5 @@ class OnSchedule(LaunchPlanTriggerBase):
         """
         self._schedule = schedule
 
-    def to_flyte_idl(self) -> schedule_pb2.Schedule:
+    def to_flyte_idl(self) -> flyteidl.admin.Schedule:
         return self._schedule.to_flyte_idl()

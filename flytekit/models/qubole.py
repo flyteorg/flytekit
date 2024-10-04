@@ -3,7 +3,7 @@ This is a deprecated module. Model files for plugins should go alongside the mic
 See ``plugins/flytekit-kf-pytorch/flytekitplugins/kfpytorch/models.py`` as an example.
 """
 
-from flyteidl.plugins import qubole_pb2 as _qubole
+import flyteidl_rust as flyteidl
 
 from flytekit.models import common as _common
 
@@ -48,7 +48,7 @@ class HiveQuery(_common.FlyteIdlEntity):
         """
         :rtype: _qubole.HiveQuery
         """
-        return _qubole.HiveQuery(query=self.query, timeout_sec=self.timeout_sec, retryCount=self.retry_count)
+        return flyteidl.plugins.HiveQuery(query=self.query, timeout_sec=self.timeout_sec, retryCount=self.retry_count)
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -83,7 +83,7 @@ class HiveQueryCollection(_common.FlyteIdlEntity):
         """
         :rtype: _qubole.HiveQueryCollection
         """
-        return _qubole.HiveQueryCollection(
+        return flyteidl.plugins.HiveQueryCollection(
             queries=[query.to_flyte_idl() for query in self.queries] if self.queries else None
         )
 
@@ -147,7 +147,7 @@ class QuboleHiveJob(_common.FlyteIdlEntity):
         """
         :rtype: _qubole.QuboleHiveJob
         """
-        return _qubole.QuboleHiveJob(
+        return flyteidl.plugins.QuboleHiveJob(
             query_collection=self._query_collection.to_flyte_idl() if self._query_collection else None,
             query=self._query.to_flyte_idl() if self._query else None,
             cluster_label=self._cluster_label,

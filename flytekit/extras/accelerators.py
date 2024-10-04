@@ -98,7 +98,7 @@ import abc
 import copy
 from typing import ClassVar, Generic, Optional, Type, TypeVar
 
-from flyteidl.core import tasks_pb2
+import flyteidl_rust as flyteidl
 
 T = TypeVar("T")
 MIG = TypeVar("MIG", bound="MultiInstanceGPUAccelerator")
@@ -123,8 +123,8 @@ class GPUAccelerator(BaseAccelerator):
     def __init__(self, device: str) -> None:
         self._device = device
 
-    def to_flyte_idl(self) -> tasks_pb2.GPUAccelerator:
-        return tasks_pb2.GPUAccelerator(device=self._device)
+    def to_flyte_idl(self) -> flyteidl.core.GpuAccelerator:
+        return flyteidl.core.GpuAccelerator(device=self._device)
 
 
 #: use this constant to specify that the task should run on an
@@ -186,8 +186,8 @@ class MultiInstanceGPUAccelerator(BaseAccelerator):
         instance._partition_size = partition_size
         return instance
 
-    def to_flyte_idl(self) -> tasks_pb2.GPUAccelerator:
-        msg = tasks_pb2.GPUAccelerator(device=self.device)
+    def to_flyte_idl(self) -> flyteidl.core.GpuAccelerator:
+        msg = flyteidl.core.GpuAccelerator(device=self.device)
         if not hasattr(self, "_partition_size"):
             return msg
 

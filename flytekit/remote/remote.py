@@ -25,10 +25,10 @@ from typing import Dict
 
 import click
 import cloudpickle
+import flyteidl_rust as flyteidl
 import fsspec
 import requests
-from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
-from flyteidl.core import literals_pb2
+from flyteidl_rust import FlyteEntityAlreadyExistsException, FlyteEntityNotExistException
 
 from flytekit import ImageSpec
 from flytekit.clients.friendly import SynchronousFlyteClient
@@ -48,8 +48,6 @@ from flytekit.core.type_engine import LiteralsResolver, TypeEngine
 from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase, WorkflowFailurePolicy
 from flytekit.exceptions import user as user_exceptions
 from flytekit.exceptions.user import (
-    FlyteEntityAlreadyExistsException,
-    FlyteEntityNotExistException,
     FlyteValueException,
 )
 from flytekit.loggers import developer_logger, logger
@@ -64,7 +62,7 @@ from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.models.admin.common import Sort
 from flytekit.models.core import identifier as id_models
 from flytekit.models.core import workflow as workflow_model
-from flytekit.models.core.identifier import Identifier, ResourceType, SignalIdentifier, WorkflowExecutionIdentifier
+from flytekit.models.core.identifier import Identifier, ResourceType, WorkflowExecutionIdentifier
 from flytekit.models.core.workflow import BranchNode, Node, NodeMetadata
 from flytekit.models.execution import (
     ClusterAssignment,
@@ -241,7 +239,9 @@ class FlyteRemote(object):
     def client(self) -> SynchronousFlyteClient:
         """Return a SynchronousFlyteClient for additional operations."""
         if not self._client_initialized:
-            self._client = SynchronousFlyteClient(self.config.platform, **self._kwargs)
+            self._client = SynchronousFlyteClient(
+                endpoint=self.config.platform.endpoint, insecure=self.config.platform.insecure, auth_mode=str(self.config.platform.auth_mode), client_id=self.config.platform.client_id or "", client_credentials_secret=self.config.platform.client_credentials_secret or "", **self._kwargs
+            )
             self._client_initialized = True
         return self._client
 
@@ -278,16 +278,15 @@ class FlyteRemote(object):
         ctx = self._ctx or FlyteContextManager.current_context()
         try:
             data_response = self.client.get_data(flyte_uri)
-
-            if data_response.HasField("literal_map"):
-                lm = LiteralMap.from_flyte_idl(data_response.literal_map)
+            if isinstance(data_response.data, flyteidl.get_data_response.Data.LiteralMap):
+                lm = LiteralMap.from_flyte_idl(data_response.data[0])
                 return LiteralsResolver(lm.literals)
-            elif data_response.HasField("literal"):
-                return Literal.from_flyte_idl(data_response.literal)
-            elif data_response.HasField("pre_signed_urls"):
-                if len(data_response.pre_signed_urls.signed_url) == 0:
+            elif isinstance(data_response.data, flyteidl.get_data_response.Data.Literal):
+                return Literal.from_flyte_idl(data_response.data[0])
+            elif isinstance(data_response.data, flyteidl.get_data_response.Data.PreSignedUrls):
+                if len(data_response.data[0].signed_url) == 0:
                     raise ValueError(f"Flyte url {flyte_uri} resolved to empty download link")
-                d = data_response.pre_signed_urls.signed_url[0]
+                d = data_response.data[0].signed_url[0]
                 logger.debug(f"Download link is {d}")
                 fs = ctx.file_access.get_filesystem_for_path(d)
 
@@ -351,6 +350,7 @@ class FlyteRemote(object):
             version,
         )
         admin_task = self.client.get_task(task_id)
+
         flyte_task = FlyteTask.promote_from_model(admin_task.closure.compiled_task.template)
         flyte_task.template._id = task_id
         return flyte_task
@@ -515,7 +515,7 @@ class FlyteRemote(object):
         domain: typing.Optional[str] = None,
         limit: int = 100,
         filters: typing.Optional[typing.List[filter_models.Filter]] = None,
-    ) -> typing.List[Signal]:
+    ) -> typing.List[flyteidl.admin.Signal]:
         """
         :param execution_name: The name of the execution. This is the tailend of the URL when looking at the workflow execution.
         :param project: The execution project, will default to the Remote's default project.
@@ -526,7 +526,9 @@ class FlyteRemote(object):
         wf_exec_id = WorkflowExecutionIdentifier(
             project=project or self.default_project, domain=domain or self.default_domain, name=execution_name
         )
-        req = SignalListRequest(workflow_execution_id=wf_exec_id.to_flyte_idl(), limit=limit, filters=filters)
+        req = flyteidl.admin.SignalListRequest(
+            workflow_execution_id=wf_exec_id.to_flyte_idl(), limit=limit, filters=filters
+        )
         resp = self.client.list_signals(req)
         s = resp.signals
         return s
@@ -566,7 +568,9 @@ class FlyteRemote(object):
             lit = TypeEngine.to_literal(self.context, value, python_type or type(value), lt)
             logger.debug(f"Converted {value} to literal {lit} using literal type {lt}")
 
-        req = SignalSetRequest(id=SignalIdentifier(signal_id, wf_exec_id).to_flyte_idl(), value=lit.to_flyte_idl())
+        req = flyteidl.admin.SignalSetRequest(
+            id=flyteidl.core.SignalIdentifier(signal_id, wf_exec_id).to_flyte_idl(), value=lit.to_flyte_idl()
+        )
 
         # Response is empty currently, nothing to give back to the user.
         self.client.set_signal(req)
@@ -719,7 +723,6 @@ class FlyteRemote(object):
                 except FlyteEntityAlreadyExistsException:
                     logger.debug(f" {lp_entity.id} Already Exists!")
             return ident
-
         if isinstance(cp_entity, launch_plan_models.LaunchPlan):
             ident = self._resolve_identifier(ResourceType.LAUNCH_PLAN, cp_entity.id.name, version, settings)
             try:
@@ -1945,7 +1948,7 @@ class FlyteRemote(object):
         :param poll_interval: sync workflow execution at this interval
         :param sync_nodes: passed along to the sync call for the workflow execution
         """
-        poll_interval = poll_interval or timedelta(seconds=30)
+        poll_interval = poll_interval or timedelta(seconds=10)
         time_to_give_up = datetime.max if timeout is None else datetime.now() + timeout
 
         while datetime.now() < time_to_give_up:
@@ -2264,7 +2267,7 @@ class FlyteRemote(object):
                 tmp_name = os.path.join(ctx.file_access.local_sandbox_dir, "inputs.pb")
                 ctx.file_access.get_data(execution_data.inputs.url, tmp_name)
                 return literal_models.LiteralMap.from_flyte_idl(
-                    utils.load_proto_from_file(literals_pb2.LiteralMap, tmp_name)
+                    utils.load_proto_from_file(flyteidl.core.LiteralMap, tmp_name)
                 )
         return literal_models.LiteralMap({})
 
@@ -2277,7 +2280,7 @@ class FlyteRemote(object):
                 tmp_name = os.path.join(ctx.file_access.local_sandbox_dir, "outputs.pb")
                 ctx.file_access.get_data(execution_data.outputs.url, tmp_name)
                 return literal_models.LiteralMap.from_flyte_idl(
-                    utils.load_proto_from_file(literals_pb2.LiteralMap, tmp_name)
+                    utils.load_proto_from_file(flyteidl.core.LiteralMap, tmp_name)
                 )
         return literal_models.LiteralMap({})
 

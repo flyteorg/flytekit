@@ -2,19 +2,16 @@ from __future__ import annotations
 
 import datetime
 import typing
+from datetime import timedelta
 from datetime import timezone as _timezone
 from typing import Optional
 
-import flyteidl
-import flyteidl.admin.cluster_assignment_pb2 as _cluster_assignment_pb2
-import flyteidl.admin.execution_pb2 as _execution_pb2
-import flyteidl.admin.node_execution_pb2 as _node_execution_pb2
-import flyteidl.admin.task_execution_pb2 as _task_execution_pb2
+import flyteidl_rust as flyteidl
 
 import flytekit
 from flytekit.models import common as _common_models
 from flytekit.models import literals as _literals_models
-from flytekit.models import security
+from flytekit.models import matchable_resource, security, utils
 from flytekit.models.core import execution as _core_execution
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.matchable_resource import ExecutionClusterLabel
@@ -30,7 +27,7 @@ class SystemMetadata(_common_models.FlyteIdlEntity):
         return self._execution_cluster
 
     def to_flyte_idl(self) -> flyteidl.admin.execution_pb2.SystemMetadata:
-        return _execution_pb2.SystemMetadata(execution_cluster=self.execution_cluster)
+        return flyteidl.admin.SystemMetadata(execution_cluster=self.execution_cluster)
 
     @classmethod
     def from_flyte_idl(cls, pb2_object: flyteidl.admin.execution_pb2.SystemMetadata) -> SystemMetadata:
@@ -126,7 +123,7 @@ class ExecutionMetadata(_common_models.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.execution_pb2.ExecutionMetadata
         """
-        p = _execution_pb2.ExecutionMetadata(
+        p = flyteidl.admin.ExecutionMetadata(
             mode=self.mode,
             principal=self.principal,
             nesting=self.nesting,
@@ -137,9 +134,13 @@ class ExecutionMetadata(_common_models.FlyteIdlEntity):
             if self.reference_execution is not None
             else None,
             system_metadata=self.system_metadata.to_flyte_idl() if self.system_metadata is not None else None,
+            artifact_ids=[],
         )
+
         if self.scheduled_at is not None:
-            p.scheduled_at.FromDatetime(self.scheduled_at)
+            p.scheduled_at = flyteidl.protobuf.Timestamp(
+                seconds=self.scheduled_at.seconds, nanos=self.scheduled_at.nanos
+            )
         return p
 
     @classmethod
@@ -152,15 +153,17 @@ class ExecutionMetadata(_common_models.FlyteIdlEntity):
             mode=pb2_object.mode,
             principal=pb2_object.principal,
             nesting=pb2_object.nesting,
-            scheduled_at=pb2_object.scheduled_at.ToDatetime() if pb2_object.HasField("scheduled_at") else None,
+            scheduled_at=utils.convert_to_datetime(pb2_object.scheduled_at.seconds, pb2_object.scheduled_at.nanos)
+            if pb2_object.scheduled_at
+            else utils.convert_to_datetime(0, 0),
             parent_node_execution=_identifier.NodeExecutionIdentifier.from_flyte_idl(pb2_object.parent_node_execution)
-            if pb2_object.HasField("parent_node_execution")
+            if pb2_object.parent_node_execution
             else None,
             reference_execution=_identifier.WorkflowExecutionIdentifier.from_flyte_idl(pb2_object.reference_execution)
-            if pb2_object.HasField("reference_execution")
+            if pb2_object.reference_execution
             else None,
             system_metadata=SystemMetadata.from_flyte_idl(pb2_object.system_metadata)
-            if pb2_object.HasField("system_metadata")
+            if pb2_object.system_metadata
             else None,
         )
 
@@ -182,7 +185,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         envs: Optional[_common_models.Envs] = None,
         tags: Optional[typing.List[str]] = None,
         cluster_assignment: Optional[ClusterAssignment] = None,
-        execution_cluster_label: Optional[ExecutionClusterLabel] = None,
+        execution_cluster_label: Optional[matchable_resource.ExecutionClusterLabel] = None,
     ):
         """
         :param flytekit.models.core.identifier.Identifier launch_plan: Launch plan unique identifier to execute
@@ -307,26 +310,28 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.execution_pb2.ExecutionSpec
         """
-        return _execution_pb2.ExecutionSpec(
+        return flyteidl.admin.ExecutionSpec(
             launch_plan=self.launch_plan.to_flyte_idl(),
             metadata=self.metadata.to_flyte_idl(),
-            notifications=self.notifications.to_flyte_idl() if self.notifications else None,
-            disable_all=self.disable_all,  # type: ignore
+            notification_overrides=self.notifications.to_flyte_idl()
+            if isinstance(self.notifications, flyteidl.execution_spec.NotificationOverrides.Notifications)
+            else flyteidl.execution_spec.NotificationOverrides.DisableAll(self.disable_all or False),
             labels=self.labels.to_flyte_idl(),
             annotations=self.annotations.to_flyte_idl(),
             auth_role=self._auth_role.to_flyte_idl() if self.auth_role else None,
             raw_output_data_config=self._raw_output_data_config.to_flyte_idl()
             if self._raw_output_data_config
             else None,
-            max_parallelism=self.max_parallelism,
+            max_parallelism=self.max_parallelism or 0,
             security_context=self.security_context.to_flyte_idl() if self.security_context else None,
-            overwrite_cache=self.overwrite_cache,
+            overwrite_cache=self.overwrite_cache or False,
             envs=self.envs.to_flyte_idl() if self.envs else None,
-            tags=self.tags,
+            tags=self.tags or [],
             cluster_assignment=self._cluster_assignment.to_flyte_idl() if self._cluster_assignment else None,
             execution_cluster_label=self._execution_cluster_label.to_flyte_idl()
             if self._execution_cluster_label
             else None,
+            execution_env_assignments=[],
         )
 
     @classmethod
@@ -338,26 +343,28 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         return cls(
             launch_plan=_identifier.Identifier.from_flyte_idl(p.launch_plan),
             metadata=ExecutionMetadata.from_flyte_idl(p.metadata),
-            notifications=NotificationList.from_flyte_idl(p.notifications) if p.HasField("notifications") else None,
-            disable_all=p.disable_all if p.HasField("disable_all") else None,
+            notifications=NotificationList.from_flyte_idl(p.notification_overrides[0])
+            if isinstance(p.notification_overrides, flyteidl.execution_spec.NotificationOverrides.Notifications)
+            else None,
+            disable_all=p.notification_overrides[0]
+            if isinstance(p.notification_overrides, flyteidl.execution_spec.NotificationOverrides.DisableAll)
+            else None,
             labels=_common_models.Labels.from_flyte_idl(p.labels),
             annotations=_common_models.Annotations.from_flyte_idl(p.annotations),
-            auth_role=_common_models.AuthRole.from_flyte_idl(p.auth_role),
+            auth_role=_common_models.AuthRole.from_flyte_idl(p.auth_role) if p.auth_role else None,
             raw_output_data_config=_common_models.RawOutputDataConfig.from_flyte_idl(p.raw_output_data_config)
-            if p.HasField("raw_output_data_config")
+            if p.raw_output_data_config
             else None,
             max_parallelism=p.max_parallelism,
             security_context=security.SecurityContext.from_flyte_idl(p.security_context)
             if p.security_context
             else None,
             overwrite_cache=p.overwrite_cache,
-            envs=_common_models.Envs.from_flyte_idl(p.envs) if p.HasField("envs") else None,
+            envs=_common_models.Envs.from_flyte_idl(p.envs) if p.envs else None,
             tags=p.tags,
-            cluster_assignment=ClusterAssignment.from_flyte_idl(p.cluster_assignment)
-            if p.HasField("cluster_assignment")
-            else None,
-            execution_cluster_label=ExecutionClusterLabel.from_flyte_idl(p.execution_cluster_label)
-            if p.HasField("execution_cluster_label")
+            cluster_assignment=ClusterAssignment.from_flyte_idl(p.cluster_assignment) if p.cluster_assignment else None,
+            execution_cluster_label=matchable_resource.ExecutionClusterLabel.from_flyte_idl(p.execution_cluster_label)
+            if p.execution_cluster_label
             else None,
         )
 
@@ -380,7 +387,7 @@ class ClusterAssignment(_common_models.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin._cluster_assignment_pb2.ClusterAssignment
         """
-        return _cluster_assignment_pb2.ClusterAssignment(
+        return flyteidl.admin.ClusterAssignment(
             cluster_pool_name=self._cluster_pool,
         )
 
@@ -420,7 +427,7 @@ class LiteralMapBlob(_common_models.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.execution_pb2.LiteralMapBlob
         """
-        return _execution_pb2.LiteralMapBlob(
+        return flyteidl.admin.LiteralMapBlob(
             values=self.values.to_flyte_idl() if self.values is not None else None,
             uri=self.uri,
         )
@@ -473,7 +480,7 @@ class Execution(_common_models.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.execution_pb2.Execution
         """
-        return _execution_pb2.Execution(
+        return flyteidl.admin.Execution(
             id=self.id.to_flyte_idl(),
             closure=self.closure.to_flyte_idl(),
             spec=self.spec.to_flyte_idl(),
@@ -506,7 +513,7 @@ class AbortMetadata(_common_models.FlyteIdlEntity):
         return self._principal
 
     def to_flyte_idl(self) -> flyteidl.admin.execution_pb2.AbortMetadata:
-        return _execution_pb2.AbortMetadata(cause=self.cause, principal=self.principal)
+        return flyteidl.admin.AbortMetadata(cause=self.cause, principal=self.principal)
 
     @classmethod
     def from_flyte_idl(cls, pb2_object: flyteidl.admin.execution_pb2.AbortMetadata) -> AbortMetadata:
@@ -584,7 +591,7 @@ class ExecutionClosure(_common_models.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.execution_pb2.ExecutionClosure
         """
-        obj = _execution_pb2.ExecutionClosure(
+        obj = flyteidl.admin.ExecutionClosure(
             phase=self.phase,
             error=self.error.to_flyte_idl() if self.error is not None else None,
             outputs=self.outputs.to_flyte_idl() if self.outputs is not None else None,
@@ -605,26 +612,36 @@ class ExecutionClosure(_common_models.FlyteIdlEntity):
         :rtype: ExecutionClosure
         """
         error = None
-        if pb2_object.HasField("error"):
-            error = _core_execution.ExecutionError.from_flyte_idl(pb2_object.error)
+        if isinstance(pb2_object, flyteidl.execution_closure.OutputResult.Error):
+            error = _core_execution.ExecutionError.from_flyte_idl(pb2_object.output_result)
         outputs = None
-        if pb2_object.HasField("outputs"):
-            outputs = LiteralMapBlob.from_flyte_idl(pb2_object.outputs)
+        if isinstance(pb2_object, flyteidl.execution_closure.OutputResult.Outputs):
+            outputs = LiteralMapBlob.from_flyte_idl(pb2_object.output_result)
         abort_metadata = None
-        if pb2_object.HasField("abort_metadata"):
-            abort_metadata = AbortMetadata.from_flyte_idl(pb2_object.abort_metadata)
+        if isinstance(pb2_object, flyteidl.execution_closure.OutputResult.AbortMetadata):
+            abort_metadata = AbortMetadata.from_flyte_idl(pb2_object.output_result)
         return cls(
             error=error,
             outputs=outputs,
             phase=pb2_object.phase,
-            started_at=pb2_object.started_at.ToDatetime().replace(tzinfo=_timezone.utc),
-            duration=pb2_object.duration.ToTimedelta(),
-            abort_metadata=abort_metadata,
-            created_at=pb2_object.created_at.ToDatetime().replace(tzinfo=_timezone.utc)
-            if pb2_object.HasField("created_at")
+            # started_at=pb2_object.started_at.ToDatetime().replace(tzinfo=_timezone.utc),
+            started_at=utils.convert_to_datetime(pb2_object.started_at.seconds, pb2_object.started_at.nanos)
+            if pb2_object.started_at
             else None,
-            updated_at=pb2_object.updated_at.ToDatetime().replace(tzinfo=_timezone.utc)
-            if pb2_object.HasField("updated_at")
+            # duration=pb2_object.duration.ToTimedelta(),
+            duration=timedelta(seconds=pb2_object.duration.seconds, milliseconds=pb2_object.duration.nanos // 1_000_000)
+            if pb2_object.duration
+            else timedelta()
+            if pb2_object.duration
+            else None,
+            abort_metadata=abort_metadata,
+            # created_at=pb2_object.created_at.ToDatetime().replace(tzinfo=_timezone.utc)
+            created_at=utils.convert_to_datetime(pb2_object.created_at.seconds, pb2_object.created_at.nanos)
+            if pb2_object.created_at
+            else None,
+            # updated_at=pb2_object.updated_at.ToDatetime().replace(tzinfo=_timezone.utc)
+            updated_at=utils.convert_to_datetime(pb2_object.updated_at.seconds, pb2_object.updated_at.nanos)
+            if pb2_object.updated_at
             else None,
         )
 
@@ -647,7 +664,7 @@ class NotificationList(_common_models.FlyteIdlEntity):
         """
         :rtype:  flyteidl.admin.execution_pb2.NotificationList
         """
-        return _execution_pb2.NotificationList(notifications=[n.to_flyte_idl() for n in self.notifications])
+        return flyteidl.admin.NotificationList(notifications=[n.to_flyte_idl() for n in self.notifications])
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -723,7 +740,7 @@ class WorkflowExecutionGetDataResponse(_CommonDataResponse):
         """
         :rtype: _execution_pb2.WorkflowExecutionGetDataResponse
         """
-        return _execution_pb2.WorkflowExecutionGetDataResponse(
+        return flyteidl.admin.WorkflowExecutionGetDataResponse(
             inputs=self.inputs.to_flyte_idl(),
             outputs=self.outputs.to_flyte_idl(),
             full_inputs=self.full_inputs.to_flyte_idl(),
@@ -749,7 +766,7 @@ class TaskExecutionGetDataResponse(_CommonDataResponse):
         """
         :rtype: _task_execution_pb2.TaskExecutionGetDataResponse
         """
-        return _task_execution_pb2.TaskExecutionGetDataResponse(
+        return flyteidl.admin.TaskExecutionGetDataResponse(
             inputs=self.inputs.to_flyte_idl(),
             outputs=self.outputs.to_flyte_idl(),
             full_inputs=self.full_inputs.to_flyte_idl(),
@@ -778,7 +795,7 @@ class NodeExecutionGetDataResponse(_CommonDataResponse):
             full_inputs=_literals_models.LiteralMap.from_flyte_idl(pb2_object.full_inputs),
             full_outputs=_literals_models.LiteralMap.from_flyte_idl(pb2_object.full_outputs),
             dynamic_workflow=DynamicWorkflowNodeMetadata.from_flyte_idl(pb2_object.dynamic_workflow)
-            if pb2_object.HasField("dynamic_workflow")
+            if pb2_object.dynamic_workflow
             else None,
         )
 
@@ -786,7 +803,7 @@ class NodeExecutionGetDataResponse(_CommonDataResponse):
         """
         :rtype: _node_execution_pb2.NodeExecutionGetDataResponse
         """
-        return _node_execution_pb2.NodeExecutionGetDataResponse(
+        return flyteidl.admin.NodeExecutionGetDataResponse(
             inputs=self.inputs.to_flyte_idl(),
             outputs=self.outputs.to_flyte_idl(),
             full_inputs=self.full_inputs.to_flyte_idl(),

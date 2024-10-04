@@ -8,7 +8,7 @@ import typing
 from collections import OrderedDict
 from typing import Any, Dict, Generator, List, Optional, Tuple, Type, TypeVar, Union, cast
 
-from flyteidl.core import artifact_id_pb2 as art_id
+import flyteidl_rust as flyteidl
 from typing_extensions import get_args, get_type_hints
 
 from flytekit.core import context_manager
@@ -285,11 +285,7 @@ def verify_outputs_artifact_bindings(
     for k, v in outputs.items():
         # Iterate through output partition values if any and verify that if they're bound to an input, that that input
         # actually exists in the interface.
-        if (
-            v.artifact_partial_id
-            and v.artifact_partial_id.HasField("partitions")
-            and v.artifact_partial_id.partitions.value
-        ):
+        if v.artifact_partial_id and v.artifact_partial_id.partitions and v.artifact_partial_id.partitions.value:
             for pk, pv in v.artifact_partial_id.partitions.value.items():
                 if pv == DYNAMIC_INPUT_BINDING:
                     if not allow_partial_artifact_id_binding:
@@ -298,13 +294,13 @@ def verify_outputs_artifact_bindings(
                         )
                     else:
                         continue
-                if pv.HasField("input_binding"):
-                    input_name = pv.input_binding.var
+                if isinstance(pv.value, flyteidl.label_value.Value.InputBinding):
+                    input_name = pv.value[0].var
                     if input_name not in inputs:
                         raise FlyteValidationException(
                             f"Output partition {k} is bound to input {input_name} which does not exist in the interface"
                         )
-            if v.artifact_partial_id.HasField("time_partition"):
+            if v.artifact_partial_id.time_partition:
                 if (
                     v.artifact_partial_id.time_partition.value == DYNAMIC_INPUT_BINDING
                     and not allow_partial_artifact_id_binding
@@ -312,9 +308,10 @@ def verify_outputs_artifact_bindings(
                     raise FlyteValidationException(
                         "Binding a time partition's value dynamically is not allowed for workflows"
                     )
-
-                if v.artifact_partial_id.time_partition.value.HasField("input_binding"):
-                    input_name = v.artifact_partial_id.time_partition.value.input_binding.var
+                if isinstance(
+                    v.artifact_partial_id.time_partition.value.value, flyteidl.label_value.Value.InputBinding
+                ):
+                    input_name = v.artifact_partial_id.time_partition.value.value[0].var
                     if input_name not in inputs:
                         raise FlyteValidationException(
                             f"Output time partition is bound to input {input_name} which does not exist in the interface"
@@ -442,7 +439,7 @@ def transform_variable_map(
 
 def detect_artifact(
     ts: typing.Tuple[typing.Any, ...],
-) -> Optional[art_id.ArtifactID]:
+) -> Optional[flyteidl.core.ArtifactID]:
     """
     If the user wishes to control how Artifacts are created (i.e. naming them, etc.) this is where we pick it up and
     store it in the interface.

@@ -1,13 +1,13 @@
-from flyteidl.admin import schedule_pb2
+import flyteidl_rust as flyteidl
 
 from flytekit.models import common
 
 
 class Schedule(common.FlyteIdlEntity):
     class FixedRateUnit(object):
-        MINUTE = schedule_pb2.MINUTE
-        HOUR = schedule_pb2.HOUR
-        DAY = schedule_pb2.DAY
+        MINUTE = int(flyteidl.admin.FixedRateUnit.Minute)
+        HOUR = int(flyteidl.admin.FixedRateUnit.Hour)
+        DAY = int(flyteidl.admin.FixedRateUnit.Day)
 
         @classmethod
         def enum_to_string(cls, int_value):
@@ -51,7 +51,7 @@ class Schedule(common.FlyteIdlEntity):
             """
             :rtype: flyteidl.admin.schedule_pb2.FixedRate
             """
-            return schedule_pb2.FixedRate(value=self.value, unit=self.unit)
+            return flyteidl.admin.FixedRate(value=self.value, unit=self.unit)
 
         @classmethod
         def from_flyte_idl(cls, pb2_object):
@@ -88,7 +88,7 @@ class Schedule(common.FlyteIdlEntity):
             """
             :rtype: flyteidl.admin.schedule_pb2.FixedRate
             """
-            return schedule_pb2.CronSchedule(schedule=self.schedule, offset=self.offset)
+            return flyteidl.admin.CronSchedule(schedule=self.schedule, offset=self.offset)
 
         @classmethod
         def from_flyte_idl(cls, pb2_object):
@@ -145,11 +145,17 @@ class Schedule(common.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.schedule_pb2.Schedule
         """
-        return schedule_pb2.Schedule(
+        schedule_expression = None
+        if self.cron_expression:
+            schedule_expression = flyteidl.schedule.ScheduleExpression.CronExpression(self.cron_expression)
+        elif self.rate:
+            schedule_expression = flyteidl.schedule.ScheduleExpression.Rate(self.rate.to_flyte_idl())
+        elif self.cron_schedule:
+            schedule_expression = flyteidl.schedule.ScheduleExpression.CronSchedule(self.cron_schedule.to_flyte_idl())
+
+        return flyteidl.admin.Schedule(
             kickoff_time_input_arg=self.kickoff_time_input_arg,
-            cron_expression=self.cron_expression,
-            rate=self.rate.to_flyte_idl() if self.rate is not None else None,
-            cron_schedule=self.cron_schedule.to_flyte_idl() if self.cron_schedule is not None else None,
+            schedule_expression=schedule_expression,
         )
 
     @classmethod
@@ -158,12 +164,17 @@ class Schedule(common.FlyteIdlEntity):
         :param flyteidl.admin.schedule_pb2.Schedule pb2_object:
         :rtype: Schedule
         """
+
         # Explicitly instantiate a Schedule model rather than a potential sub-class.
         return Schedule(
             pb2_object.kickoff_time_input_arg,
-            cron_expression=pb2_object.cron_expression if pb2_object.HasField("cron_expression") else None,
-            rate=Schedule.FixedRate.from_flyte_idl(pb2_object.rate) if pb2_object.HasField("rate") else None,
-            cron_schedule=Schedule.CronSchedule.from_flyte_idl(pb2_object.cron_schedule)
-            if pb2_object.HasField("cron_schedule")
+            cron_expression=pb2_object.schedule_expression[0]
+            if isinstance(pb2_object.schedule_expression, flyteidl.schedule.ScheduleExpression.CronExpression)
+            else None,
+            rate=Schedule.FixedRate.from_flyte_idl(pb2_object.schedule_expression[0])
+            if isinstance(pb2_object.schedule_expression, flyteidl.schedule.ScheduleExpression.Rate)
+            else None,
+            cron_schedule=Schedule.CronSchedule.from_flyte_idl(pb2_object.schedule_expression[0])
+            if isinstance(pb2_object.schedule_expression, flyteidl.schedule.ScheduleExpression.CronSchedule)
             else None,
         )

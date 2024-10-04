@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 
 import mock
 import pytest
+import flyteidl_rust as flyteidl
 from flyteidl.core import compiler_pb2 as _compiler_pb2
 from flyteidl.service import dataproxy_pb2
 from mock import ANY, MagicMock, patch
@@ -244,8 +245,7 @@ def test_passing_of_kwargs(mock_client):
     }
     FlyteRemote(config=Config.auto(), default_project="project", default_domain="domain", **additional_args).client
     assert mock_client.called
-    assert mock_client.call_args[1] == additional_args
-
+    assert all(item in mock_client.call_args[1].items() for item in additional_args.items())
 
 @patch("flytekit.remote.remote.SynchronousFlyteClient")
 def test_more_stuff(mock_client):
@@ -365,13 +365,14 @@ def get_compiled_workflow_closure():
     """
     :rtype: flytekit.models.core.compiler.CompiledWorkflowClosure
     """
-    cwc_pb = _compiler_pb2.CompiledWorkflowClosure()
+    
+    cwc_pb = flyteidl.core.CompiledWorkflowClosure()
     # So that tests that use this work when run from any directory
     basepath = os.path.dirname(__file__)
     filepath = os.path.abspath(os.path.join(basepath, "responses", "CompiledWorkflowClosure.pb"))
     with open(filepath, "rb") as fh:
-        cwc_pb.ParseFromString(fh.read())
-
+        cwc_pb = cwc_pb.ParseFromString(fh.read())
+    
     return CompiledWorkflowClosure.from_flyte_idl(cwc_pb)
 
 
@@ -380,9 +381,9 @@ def test_fetch_lazy(remote):
     mock_client.get_task.return_value = Task(
         id=Identifier(ResourceType.TASK, "p", "d", "n", "v"), closure=LIST_OF_TASK_CLOSURES[0]
     )
-
+    
     mock_client.get_workflow.return_value = Workflow(
-        id=Identifier(ResourceType.TASK, "p", "d", "n", "v"),
+        id=Identifier(ResourceType.WORKFLOW, "p", "d", "n", "v"),
         closure=WorkflowClosure(compiled_workflow=get_compiled_workflow_closure()),
     )
 
@@ -390,6 +391,7 @@ def test_fetch_lazy(remote):
     assert isinstance(lw, LazyEntity)
     assert lw._getter
     assert lw._entity is None
+    
     assert lw.entity
 
     lt = remote.fetch_task_lazy(name="n", version="v")
@@ -551,7 +553,7 @@ def test_local_server(mock_client):
     lm = TypeEngine.to_literal(ctx, {"hello": 55}, typing.Dict[str, int], lt)
     lm = lm.map.to_flyte_idl()
 
-    mock_client.get_data.return_value = dataproxy_pb2.GetDataResponse(literal_map=lm)
+    mock_client.get_data.return_value = flyteidl.service.GetDataResponse(data=flyteidl.get_data_response.Data.LiteralMap(lm))
 
     rr = FlyteRemote(
         Config.for_sandbox(),

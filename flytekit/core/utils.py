@@ -11,7 +11,7 @@ from hashlib import sha224 as _sha224
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union, cast
 
-from flyteidl.core import tasks_pb2 as _core_task
+import flyteidl_rust as flyteidl
 
 from flytekit.configuration import SerializationSettings
 from flytekit.core.pod_template import PodTemplate
@@ -131,7 +131,7 @@ def _get_container_definition(
 
 
 def _sanitize_resource_name(resource: "task_models.Resources.ResourceEntry") -> str:
-    return _core_task.Resources.ResourceName.Name(resource.name).lower().replace("_", "-")
+    return flyteidl.resources.ResourceName(resource.name).lower().replace("_", "-")
 
 
 def _serialize_pod_spec(
@@ -200,7 +200,7 @@ def _serialize_pod_spec(
 def load_proto_from_file(pb2_type, path):
     with open(path, "rb") as reader:
         out = pb2_type()
-        out.ParseFromString(reader.read())
+        out = out.ParseFromString(reader.read())
         return out
 
 

@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
-from flyteidl.admin import description_entity_pb2
+import flyteidl_rust as flyteidl
 
 from flytekit.models import common as _common_models
 
@@ -27,15 +27,18 @@ class Description(_common_models.FlyteIdlEntity):
     format: DescriptionFormat = DescriptionFormat.RST
 
     def to_flyte_idl(self):
-        return description_entity_pb2.Description(
-            value=self.value if self.value else None,
-            uri=self.uri if self.uri else None,
+        return flyteidl.admin.Description(
+            content=flyteidl.description.Content.Value(self.value)
+            if self.value
+            else flyteidl.description.Content.Uri(self.uri)
+            if self.uri
+            else None,
             format=self.format.value,
-            icon_link=self.icon_link,
+            icon_link=self.icon_link or "",
         )
 
     @classmethod
-    def from_flyte_idl(cls, pb2_object: description_entity_pb2.Description) -> "Description":
+    def from_flyte_idl(cls, pb2_object: flyteidl.admin.Description) -> "Description":
         return cls(
             value=pb2_object.value if pb2_object.value else None,
             uri=pb2_object.uri if pb2_object.uri else None,
@@ -53,10 +56,10 @@ class SourceCode(_common_models.FlyteIdlEntity):
     link: Optional[str] = None
 
     def to_flyte_idl(self):
-        return description_entity_pb2.SourceCode(link=self.link)
+        return flyteidl.admin.SourceCode(link=self.link)
 
     @classmethod
-    def from_flyte_idl(cls, pb2_object: description_entity_pb2.SourceCode) -> "SourceCode":
+    def from_flyte_idl(cls, pb2_object: flyteidl.admin.SourceCode) -> "SourceCode":
         return cls(link=pb2_object.link) if pb2_object.link else None
 
 
@@ -76,14 +79,15 @@ class Documentation(_common_models.FlyteIdlEntity):
     source_code: Optional[SourceCode] = None
 
     def to_flyte_idl(self):
-        return description_entity_pb2.DescriptionEntity(
-            short_description=self.short_description,
+        return flyteidl.admin.DescriptionEntity(
+            short_description=self.short_description or "",
             long_description=self.long_description.to_flyte_idl() if self.long_description else None,
             source_code=self.source_code.to_flyte_idl() if self.source_code else None,
+            tags=[],
         )
 
     @classmethod
-    def from_flyte_idl(cls, pb2_object: description_entity_pb2.DescriptionEntity) -> "Documentation":
+    def from_flyte_idl(cls, pb2_object: flyteidl.admin.DescriptionEntity) -> "Documentation":
         return cls(
             short_description=pb2_object.short_description,
             long_description=Description.from_flyte_idl(pb2_object.long_description)

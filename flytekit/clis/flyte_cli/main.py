@@ -7,14 +7,8 @@ from dataclasses import replace
 from typing import Callable, Dict, List, Tuple, Union
 
 import click
+import flyteidl_rust as flyteidl
 import requests
-from flyteidl.admin import launch_plan_pb2 as _launch_plan_pb2
-from flyteidl.admin import task_pb2 as _task_pb2
-from flyteidl.admin import workflow_pb2 as _workflow_pb2
-from flyteidl.core import identifier_pb2 as _identifier_pb2
-from flyteidl.core import literals_pb2 as _literals_pb2
-from flyteidl.core import tasks_pb2 as _core_tasks_pb2
-from flyteidl.core import workflow_pb2 as _core_workflow_pb2
 from google.protobuf.json_format import MessageToJson
 from google.protobuf.pyext.cpp_message import GeneratedProtocolMessageType as _GeneratedProtocolMessageType
 
@@ -120,7 +114,7 @@ def _fetch_and_stringify_literal_map(path, verbose=False):
             fname = tmp.get_named_tempfile("literalmap.pb")
             ctx.file_access.get_data(path, fname)
             literal_map = _literals.LiteralMap.from_flyte_idl(
-                utils.load_proto_from_file(_literals_pb2.LiteralMap, fname)
+                utils.load_proto_from_file(flyteidl.core.LiteralMap, fname)
             )
             return _get_io_string(literal_map, verbose=verbose)
         except Exception:
@@ -1559,9 +1553,9 @@ def activate_project(identifier, host, insecure):
 
 
 _resource_map = {
-    _identifier_pb2.LAUNCH_PLAN: _launch_plan_pb2.LaunchPlan,
-    _identifier_pb2.WORKFLOW: _workflow_pb2.WorkflowSpec,
-    _identifier_pb2.TASK: _task_pb2.TaskSpec,
+    int(flyteidl.core.ResourceType.LaunchPlan): flyteidl.admin.LaunchPlan,
+    int(flyteidl.core.ResourceType.Workflow): flyteidl.admin.WorkflowSpec,
+    int(flyteidl.core.ResourceType.Task): flyteidl.admin.TaskSpec,
 }
 
 
@@ -1573,8 +1567,8 @@ def _extract_pair(
     version: str,
     patches: Dict[int, Callable[[_GeneratedProtocolMessageType], _GeneratedProtocolMessageType]],
 ) -> Tuple[
-    _identifier_pb2.Identifier,
-    Union[_core_tasks_pb2.TaskTemplate, _core_workflow_pb2.WorkflowTemplate, _launch_plan_pb2.LaunchPlanSpec],
+    flyteidl.core.Identifier,
+    Union[flyteidl.core.TaskTemplate, flyteidl.core.WorkflowTemplate, flyteidl.admin.LaunchPlanSpec],
 ]:
     """
     :param Text identifier_file:
@@ -1665,12 +1659,12 @@ def _extract_and_register(
     for id, flyte_entity in flyte_entities_list:
         click.secho(f"Registering {id}", fg="yellow")
         try:
-            if id.resource_type == _identifier_pb2.LAUNCH_PLAN:
-                client.raw.create_launch_plan(_launch_plan_pb2.LaunchPlanCreateRequest(id=id, spec=flyte_entity.spec))
-            elif id.resource_type == _identifier_pb2.TASK:
-                client.raw.create_task(_task_pb2.TaskCreateRequest(id=id, spec=flyte_entity))
-            elif id.resource_type == _identifier_pb2.WORKFLOW:
-                client.raw.create_workflow(_workflow_pb2.WorkflowCreateRequest(id=id, spec=flyte_entity))
+            if id.resource_type == flyteidl.core.ResourceType.LaunchPlan:
+                client.raw.create_launch_plan(flyteidl.admin.LaunchPlanCreateRequest(id=id, spec=flyte_entity.spec))
+            elif id.resource_type == flyteidl.core.ResourceType.Task:
+                client.raw.create_task(flyteidl.admin.TaskCreateRequest(id=id, spec=flyte_entity))
+            elif id.resource_type == flyteidl.core.ResourceType.Workflow:
+                client.raw.create_workflow(flyteidl.admin.WorkflowCreateRequest(id=id, spec=flyte_entity))
             else:
                 raise _user_exceptions.FlyteAssertion(
                     f"Only tasks, launch plans, and workflows can be called with this function, "
@@ -1728,7 +1722,7 @@ def register_files(
         click.echo(f"  {f}")
 
     patches = {
-        _identifier_pb2.LAUNCH_PLAN: _get_patch_launch_plan_fn(
+        flyteidl.core.ResourceType.LaunchPlan: _get_patch_launch_plan_fn(
             assumable_iam_role, kubernetes_service_account, output_location_prefix
         )
     }
@@ -1852,8 +1846,8 @@ def fast_register_files(
         return entity
 
     patches = {
-        _identifier_pb2.TASK: fast_register_task,
-        _identifier_pb2.LAUNCH_PLAN: _get_patch_launch_plan_fn(
+        flyteidl.core.ResourceType.Task: fast_register_task,
+        flyteidl.core.ResourceType.LaunchPlan: _get_patch_launch_plan_fn(
             assumable_iam_role, kubernetes_service_account, output_location_prefix
         ),
     }

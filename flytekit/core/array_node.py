@@ -1,7 +1,7 @@
 import math
 from typing import Any, List, Optional, Set, Tuple, Union
 
-from flyteidl.core import workflow_pb2 as _core_workflow
+import flyteidl_rust as flyteidl
 
 from flytekit.core import interface as flyte_interface
 from flytekit.core.context_manager import ExecutionState, FlyteContext
@@ -25,7 +25,7 @@ class ArrayNode:
     def __init__(
         self,
         target: LaunchPlan,
-        execution_mode: _core_workflow.ArrayNode.ExecutionMode = _core_workflow.ArrayNode.FULL_STATE,
+        execution_mode: flyteidl.core.ArrayNode.execution_mode = flyteidl.array_node.ExecutionMode.FullState,
         concurrency: Optional[int] = None,
         min_successes: Optional[int] = None,
         min_success_ratio: Optional[float] = None,
@@ -71,15 +71,15 @@ class ArrayNode:
 
         self.metadata = None
         if isinstance(target, LaunchPlan):
-            if self._execution_mode != _core_workflow.ArrayNode.FULL_STATE:
+            if self._execution_mode != flyteidl.core.ArrayNode.FULL_STATE:
                 raise ValueError("Only execution version 1 is supported for LaunchPlans.")
             if metadata:
                 if isinstance(metadata, _workflow_model.NodeMetadata):
                     self.metadata = metadata
                 else:
-                    raise TypeError("Invalid metadata for LaunchPlan. Should be NodeMetadata.")
+                    raise Exception("Invalid metadata for LaunchPlan. Should be NodeMetadata.")
         else:
-            raise ValueError(f"Only LaunchPlans are supported for now, but got {type(target)}")
+            raise Exception("Only LaunchPlans are supported for now.")
 
     def construct_node_metadata(self) -> _workflow_model.NodeMetadata:
         # Part of SupportsNodeCreation interface
@@ -186,7 +186,7 @@ class ArrayNode:
         return self._concurrency
 
     @property
-    def execution_mode(self) -> _core_workflow.ArrayNode.ExecutionMode:
+    def execution_mode(self) -> flyteidl.array_node.ExecutionMode:
         return self._execution_mode
 
     def __call__(self, *args, **kwargs):

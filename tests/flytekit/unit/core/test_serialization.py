@@ -421,7 +421,7 @@ def test_serialization_nested_subwf():
 
     wf_spec = get_serializable(OrderedDict(), serialization_settings, parent_wf)
     assert wf_spec is not None
-    assert len(wf_spec.sub_workflows) == 2
+    assert len(wf_spec.sub_workflows) == 3
     subwf = {v.id.name: v for v in wf_spec.sub_workflows}
     assert subwf.keys() == {
         "tests.flytekit.unit.core.test_serialization.leaf_subwf",

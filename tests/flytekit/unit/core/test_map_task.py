@@ -80,7 +80,7 @@ def test_serialization(serialization_settings):
     task_spec = get_serializable(OrderedDict(), serialization_settings, maptask)
 
     # By default all map_task tasks will have their custom fields set.
-    assert task_spec.template.custom["minSuccessRatio"] == 1.0
+    assert task_spec.template.custom['success_criteria']['MinSuccessRatio'] == 1.0
     assert task_spec.template.type == "container_array"
     assert task_spec.template.task_type_version == 1
     assert task_spec.template.container.args == [
@@ -112,10 +112,10 @@ def test_serialization(serialization_settings):
 @pytest.mark.parametrize(
     "custom_fields_dict, expected_custom_fields",
     [
-        ({}, {"minSuccessRatio": 1.0}),
-        ({"concurrency": 99}, {"parallelism": "99", "minSuccessRatio": 1.0}),
-        ({"min_success_ratio": 0.271828}, {"minSuccessRatio": 0.271828}),
-        ({"concurrency": 42, "min_success_ratio": 0.31415}, {"parallelism": "42", "minSuccessRatio": 0.31415}),
+        ({}, {'parallelism': 0, 'size': 0, 'success_criteria': {"MinSuccessRatio": 1.0}}),
+        ({"concurrency": 99}, {'size': 0, "parallelism": 99, 'success_criteria': {"MinSuccessRatio": 1.0}}),
+        ({"min_success_ratio": 0.271828}, {'parallelism': 0, 'size': 0, 'success_criteria': {"MinSuccessRatio": 0.271828}}),
+        ({"concurrency": 42, "min_success_ratio": 0.31415}, {'size': 0, "parallelism": 42, 'success_criteria': {"MinSuccessRatio": 0.31415}}),
     ],
 )
 def test_serialization_of_custom_fields(custom_fields_dict, expected_custom_fields, serialization_settings):
