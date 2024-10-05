@@ -172,7 +172,7 @@ class TypeTransformer(typing.Generic[T]):
             raise TypeTransformerFailedError(f"Value '{obj}' is not of container type {origin}")
 
         # Optionally check the type of elements if it's a collection like list or dict
-        if origin in {list, tuple, set}:
+        if origin in {list, set}:
             for item in obj:
                 self.assert_type(args[0], item)
                 return
@@ -1472,6 +1472,9 @@ class TupleTransformer(TypeTransformer[T]):
         """
         return t.__annotations__
 
+    def assert_type(self, python_type: Type[T], python_val: T) -> None:
+        pass
+
     def get_literal_type(self, t: Type[T]) -> Optional[LiteralType]:
         """
         Univariate tuples are not supported in Flyte
@@ -1535,8 +1538,6 @@ class TupleTransformer(TypeTransformer[T]):
                 )
         else:
             # We are expected a Tuple
-            # TODO: Maybe we have to deal with single tuple output as input here.
-            # if isinstance(python_val, Output): ...
             if type(python_val) != tuple:
                 raise TypeTransformerFailedError(f"Expected a tuple, got '{type(python_val)}'")
             if expected.tuple_type.tuple_name != TupleTransformer.default_tuple_name():
@@ -1645,114 +1646,6 @@ class TupleTransformer(TypeTransformer[T]):
                 )
                 return Tuple[tuple_types]  # type: ignore
         raise ValueError(f"Tuple transformer cannot reverse {literal_type}")
-
-
-# class NamedTupleTransformer(TypeTransformer[T]):
-#     """
-#     Transformer that handles named typing.NamedTuple[T1, T2, T3].
-#     """
-
-#     def __init__(self):
-#         super().__init__("Typed NamedTuple", typing.NamedTuple)
-
-
-#     def get_literal_type(self, t: Type[T]) -> Optional[LiteralType]:
-#         """
-#         Univariate tuples are not supported in Flyte
-#         """
-#         tuple_name = t.__name__
-#         field_types = {
-#             k: TypeEngine.to_literal_type(v) for k, v in NamedTupleTransformer.get_tuple_fields_type(t).items()
-#         }
-#         order = list(getattr(t, "_fields"))
-
-#         return _type_models.LiteralType(tuple_type=TupleType(tuple_name=tuple_name, order=order, fields=field_types))
-
-#     def to_literal(
-#         self,
-#         ctx: FlyteContext,
-#         python_val: T,
-#         python_type: Type[T],
-#         expected: LiteralType,
-#     ) -> Literal:
-#         if not isinstance(python_val, tuple) or not is_namedtuple(type(python_val)):
-#             raise TypeTransformerFailedError(f"Expected a NamedTuple, got '{type(python_val)}'")
-
-#         fields_type = NamedTupleTransformer.get_tuple_fields_type(python_type)
-#         if len(python_val) != len(fields_type) or len(python_val) != len(expected.tuple_type.order):
-#             raise TypeTransformerFailedError(
-#                 f"Expected a NamedTuple of length {len(expected.tuple_type.order)}, got value of length {len(python_val)}",
-#                 f" and type of length {len(fields_type)}",
-#             )
-
-#         if expected.tuple_type.tuple_name != python_type.__name__:
-#             raise TypeTransformerFailedError(
-#                 f"Expected a NamedTuple with name '{expected.tuple_type.tuple_name}', got '{python_type.__name__}'"
-#             )
-
-#         lits = {}
-#         for k in expected.tuple_type.order:
-#             if k not in fields_type:
-#                 raise TypeTransformerFailedError(f"Key {k} not found in NamedTuple {fields_type}")
-#             lits[k] = TypeEngine.to_literal(
-#                 ctx,
-#                 getattr(python_val, k),
-#                 fields_type[k],
-#                 expected.tuple_type.fields[k],
-#             )
-
-#         return Literal(
-#             tuple=LiteralTupleMap(
-#                 tuple_name=expected.tuple_type.tuple_name,
-#                 order=expected.tuple_type.order,
-#                 literals=lits,
-#             )
-#         )
-
-#     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
-#         try:
-#             tuple_name = lv.tuple.tuple_name
-#             lits = lv.tuple.literals
-#             order = lv.tuple.order
-#         except AttributeError:
-#             raise TypeTransformerFailedError(
-#                 (
-#                     f"The expected python type is '{expected_python_type}' but the received Flyte literal value "
-#                     f"is not a tuple map (Flyte's representation of Python tuples)."
-#                 )
-#             )
-#         if tuple_name != expected_python_type.__name__:
-#             raise TypeTransformerFailedError(
-#                 f"Expected a NamedTuple with name '{expected_python_type.__name__}', got '{tuple_name}'"
-#             )
-#         if order != list(getattr(expected_python_type, "_fields")):
-#             raise TypeTransformerFailedError(
-#                 f"Expected a NamedTuple with order {list(getattr(expected_python_type, '_fields'))}, got {order}"
-#             )
-
-#         fields_type = NamedTupleTransformer.get_tuple_fields_type(expected_python_type)
-#         fields = {}  # type: ignore
-#         for k, v in lits.items():
-#             if k not in fields_type:
-#                 raise TypeTransformerFailedError(f"key {k} not found in NamedTuple {fields_type}")
-#             fields[k] = TypeEngine.to_python_value(ctx, v, fields_type[k])
-#         return expected_python_type(**fields)
-
-#     def guess_python_type(self, literal_type: LiteralType) -> Type[NamedTuple]:  # type: ignore
-#         if literal_type.tuple_type:
-#             fields = []
-#             for k in literal_type.tuple_type.order:
-#                 fields.append(
-#                     (
-#                         k,
-#                         TypeEngine.guess_python_type(literal_type.tuple_type.fields[k]),
-#                     )
-#                 )
-
-#             # Dynamically create NamedTuple class (we ignore the mypy error here)
-#             NamedTupleClass = NamedTuple(str(literal_type.tuple_type.tuple_name), fields)  # type: ignore
-#             return NamedTupleClass
-#         raise ValueError(f"Tuple transformer cannot reverse {literal_type}")
 
 
 @lru_cache

@@ -6,7 +6,18 @@ import inspect
 import typing
 from copy import deepcopy
 from enum import Enum
-from typing import Any, Coroutine, Dict, List, Optional, Set, Tuple, Union, cast, get_args
+from typing import (
+    Any,
+    Coroutine,
+    Dict,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Union,
+    cast,
+    get_args,
+)
 
 from google.protobuf import struct_pb2 as _struct
 from typing_extensions import Protocol
@@ -23,7 +34,7 @@ from flytekit.core.context_manager import (
     FlyteContextManager,
     OutputMetadataTracker,
 )
-from flytekit.core.interface import Interface
+from flytekit.core.interface import Interface, output_name_generator
 from flytekit.core.node import Node
 from flytekit.core.type_engine import (
     DictTransformer,
@@ -97,24 +108,50 @@ def translate_inputs_to_literals(
         try:
             if type(v) is Promise:
                 v = resolve_attr_path_in_promise(v)
-            if isinstance(v, tuple):
+            elif isinstance(v, tuple):
                 # This is used to reconstruct the tuple with multiple promises.
-                new_v = []
-                for elem in v:
-                    if type(elem) is Promise:
-                        new_v.append(resolve_attr_path_in_promise(elem))
-                    else:
-                        new_v.append(elem)
-                if is_namedtuple(t):
-                    v = type(v)(*new_v)
-                else:
-                    v = tuple(new_v)
+                v = resolve_attr_path_in_tuple(v)
             result[k] = TypeEngine.to_literal(ctx, v, t, var.type)
         except TypeTransformerFailedError as exc:
             exc.args = (f"Failed argument '{k}': {exc.args[0]}",)
             raise
 
     return result
+
+
+def output_to_tuple(output: "Output") -> Tuple:  # type: ignore
+    """
+    This function is used to convert an output object to a tuple. This is used to convert the output object to a tuple
+    when the output object is used in a tuple.
+    """
+    if output.__class__.__bases__[0].__name__ == "DefaultNamedTupleOutput" and getattr(output, "_fields") == tuple(
+        output_name_generator(len(getattr(output, "_fields")))
+    ):
+        # Threat the output as a regular tuple
+        return tuple(output)
+    else:
+        # Convert the output to a namedtuple with name as output.__class__.__bases__[0].__name__
+        return output.__class__.__bases__[0](*output)
+
+
+def resolve_attr_path_in_tuple(v: Tuple) -> Tuple:
+    """
+    resolve_attr_path_in_tuple resolves the attribute path of the promise in a tuple or nested tuple and returns a new tuple
+    with the resolved value. This is for local execution only. The remote execution will be resolved in flytepropeller.
+    """
+    if v.__class__.__name__ == "Output":
+        v = output_to_tuple(v)
+    new_v: list = []
+    for elem in v:
+        if type(elem) is Promise:
+            new_v.append(resolve_attr_path_in_promise(elem))
+        elif isinstance(elem, tuple):
+            new_v.append(resolve_attr_path_in_tuple(elem))
+        else:
+            new_v.append(elem)
+    if is_namedtuple(type(v)):
+        return type(v)(*new_v)
+    return tuple(new_v)
 
 
 def resolve_attr_path_in_promise(p: Promise) -> Promise:
@@ -858,7 +895,13 @@ def binding_data_from_python_std(
         sub_type: Optional[type] = ListTransformer.get_sub_type_or_none(t_value_type)
         collection = _literals_models.BindingDataCollection(
             bindings=[
-                binding_data_from_python_std(ctx, expected_literal_type.collection_type, t, sub_type or type(t), nodes)
+                binding_data_from_python_std(
+                    ctx,
+                    expected_literal_type.collection_type,
+                    t,
+                    sub_type or type(t),
+                    nodes,
+                )
                 for t in t_value
             ]
         )
@@ -881,7 +924,11 @@ def binding_data_from_python_std(
             m = _literals_models.BindingDataMap(
                 bindings={
                     k: binding_data_from_python_std(
-                        ctx, expected_literal_type.map_value_type, v, v_type or type(v), nodes
+                        ctx,
+                        expected_literal_type.map_value_type,
+                        v,
+                        v_type or type(v),
+                        nodes,
                     )
                     for k, v in t_value.items()
                 }
@@ -914,7 +961,11 @@ def binding_data_from_python_std(
                         f"Field {field_key} not found in the NamedTuple value {t_value} or type {t_value_type}"
                     )
                 bindings[field_key] = binding_data_from_python_std(
-                    ctx, expected_literal_type.tuple_type.fields[field_key], t_value[i], fields_type[field_key], nodes
+                    ctx,
+                    expected_literal_type.tuple_type.fields[field_key],
+                    t_value[i],
+                    fields_type[field_key],
+                    nodes,
                 )
 
             return _literals_models.BindingData(
@@ -944,7 +995,11 @@ def binding_data_from_python_std(
             bindings = {}
             for i, field_key in enumerate(expected_literal_type.tuple_type.order):
                 bindings[field_key] = binding_data_from_python_std(
-                    ctx, expected_literal_type.tuple_type.fields[field_key], t_value[i], t_types[i], nodes
+                    ctx,
+                    expected_literal_type.tuple_type.fields[field_key],
+                    t_value[i],
+                    t_types[i],
+                    nodes,
                 )
 
             return _literals_models.BindingData(
@@ -1227,7 +1282,11 @@ def create_and_link_node_from_remote(
     node_outputs = []
     for output_name, output_var_model in typed_interface.outputs.items():
         node_outputs.append(
-            Promise(output_name, NodeOutput(node=flytekit_node, var=output_name), type=output_var_model.type)
+            Promise(
+                output_name,
+                NodeOutput(node=flytekit_node, var=output_name),
+                type=output_var_model.type,
+            )
         )
 
     return create_task_output(node_outputs)
@@ -1347,7 +1406,11 @@ def create_and_link_node(
     node_outputs = []
     for output_name, output_var_model in typed_interface.outputs.items():
         node_outputs.append(
-            Promise(output_name, NodeOutput(node=flytekit_node, var=output_name), output_var_model.type)
+            Promise(
+                output_name,
+                NodeOutput(node=flytekit_node, var=output_name),
+                output_var_model.type,
+            )
         )
         # Don't print this, it'll crash cuz sdk_node._upstream_node_ids might be None, but idl code will break
 
