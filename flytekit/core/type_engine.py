@@ -1459,7 +1459,7 @@ class TypeEngine(typing.Generic[T]):
         for idx, (k, v) in enumerate(literal_map.items()):
             if literal_map[k].exception() is not None:
                 python_type = type_hints.get(k, type(d[k]))
-                e = literal_map[k].exception()
+                e: BaseException = literal_map[k].exception()  # type: ignore
                 if isinstance(e, TypeError):
                     raise user_exceptions.FlyteTypeException(type(v), python_type, received_value=v)
                 else:

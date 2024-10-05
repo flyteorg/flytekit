@@ -641,19 +641,19 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
 
             await asyncio.gather(*literals.values(), return_exceptions=True)
 
-            for i, (k, v) in enumerate(literals.items()):
-                if v.exception() is not None:
+            for i, (k2, v2) in enumerate(literals.items()):
+                if v2.exception() is not None:
                     # only show the name of output key if it's user-defined (by default Flyte names these as "o<n>")
-                    key = k if k != f"o{i}" else i
-                    e = v.exception()
-                    py_type = self.get_type_for_output_var(k, native_outputs_as_map[k])
+                    key = k2 if k2 != f"o{i}" else i
+                    e: BaseException = v2.exception()  # type: ignore  # we know this is not optional
+                    py_type = self.get_type_for_output_var(k2, native_outputs_as_map[k2])
                     e.args = (
                         f"Failed to convert outputs of task '{self.name}' at position {key}.\n"
                         f"Failed to convert type {type(native_outputs_as_map[expected_output_names[i]])} to type {py_type}.\n"
                         f"Error Message: {e.args[0]}.",
                     )
                     raise e
-                literals[k] = v.result()
+                literals[k2] = v2.result()
 
             if omt is not None:
                 for i, (k, v) in enumerate(native_outputs_as_map.items()):
@@ -678,7 +678,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                             encoded = b64encode(s).decode("utf-8")
                             metadata[DYNAMIC_PARTITIONS] = encoded
                         if metadata:
-                            literals[k].set_metadata(metadata)
+                            literals[k].set_metadata(metadata)  # type: ignore  # we know these have been resolved
 
         return _literal_models.LiteralMap(literals=literals), native_outputs_as_map
 
