@@ -250,6 +250,14 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
             # See comment on reference entity checking a bit down below in this function.
             # This is the only circular dependency between the translator.py module and the rest of the flytekit
             # authoring experience.
+
+            # TODO: After backend support pickling dynamic task, add fast_register_file_uploader to the FlyteContext,
+            # and pass the fast_registerfile_uploader to serializer via the options.
+            # If during runtime we are execution a dynamic function that is pickled, all subsequent sub-tasks in
+            # dynamic should also be pickled. As this is not possible to do during static compilation, we will have to
+            # upload the pickled file to the metadata store directly during runtime.
+            # If at runtime we are in dynamic task, we will automatically have the fast_register_file_uploader set,
+            # so we can use that to pass the file uploader to the translator.
             workflow_spec: admin_workflow_models.WorkflowSpec = get_serializable(
                 model_entities, ctx.serialization_settings, wf
             )

@@ -143,6 +143,9 @@ def _pathhash_update(path: Union[os.PathLike, str], hasher: hashlib._Hash) -> No
     hasher.update("".join(path_list).encode("utf-8"))
 
 
+EXCLUDE_DIRS = {".git"}
+
+
 def list_all_files(source_path: str, deref_symlinks, ignore_group: Optional[IgnoreGroup] = None) -> List[str]:
     all_files = []
 
@@ -150,6 +153,7 @@ def list_all_files(source_path: str, deref_symlinks, ignore_group: Optional[Igno
     visited_inodes = set()
 
     for root, dirnames, files in os.walk(source_path, topdown=True, followlinks=deref_symlinks):
+        dirnames[:] = [d for d in dirnames if d not in EXCLUDE_DIRS]
         if deref_symlinks:
             inode = os.stat(root).st_ino
             if inode in visited_inodes:

@@ -251,7 +251,9 @@ class ArrayNodeMapTask(PythonTask):
             inputs_interface = self._run_task.python_interface.inputs
             for k in self.interface.inputs.keys():
                 v = literal_map.literals[k]
-
+                # If the input is offloaded, we need to unwrap it
+                if v.offloaded_metadata:
+                    v = TypeEngine.unwrap_offloaded_literal(ctx, v)
                 if k not in self.bound_inputs:
                     # assert that v.collection is not None
                     if not v.collection or not isinstance(v.collection.literals, list):

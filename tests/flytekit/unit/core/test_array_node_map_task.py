@@ -1,5 +1,6 @@
 import functools
 import os
+import pathlib
 import typing
 from collections import OrderedDict
 from typing import List
@@ -13,11 +14,17 @@ from flytekit.types.directory import FlyteDirectory
 from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SerializationSettings
 from flytekit.core import context_manager
 from flytekit.core.array_node_map_task import ArrayNodeMapTask, ArrayNodeMapTaskResolver
+from flytekit.core.python_auto_container import PICKLE_FILE_PATH
 from flytekit.core.task import TaskMetadata
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extras.accelerators import GPUAccelerator
 from flytekit.experimental.eager_function import eager
-from flytekit.tools.translator import get_serializable
+from flytekit.models.literals import (
+    Literal,
+    LiteralMap,
+    LiteralOffloadedMetadata,
+)
+from flytekit.tools.translator import get_serializable, Options
 from flytekit.types.pickle import BatchSize
 
 
@@ -30,6 +37,19 @@ def serialization_settings():
         version="version",
         env=None,
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
+    )
+
+
+@pytest.fixture
+def interactive_serialization_settings():
+    default_img = Image(name="default", fqn="test", tag="tag")
+    return SerializationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env=None,
+        image_config=ImageConfig(default_image=default_img, images=[default_img]),
+        interactive_mode_enabled=True,
     )
 
 
@@ -127,6 +147,55 @@ def test_serialization(serialization_settings):
         "",
         "resolver",
         "flytekit.core.python_auto_container.default_task_resolver",
+        "task-module",
+        "tests.flytekit.unit.core.test_array_node_map_task",
+        "task-name",
+        "t1",
+    ]
+
+
+def test_interactive_serialization(interactive_serialization_settings):
+    @task
+    def t1(a: int) -> int:
+        return a + 1
+
+    def mock_file_uploader(dest: pathlib.Path):
+        return (0, dest.name)
+
+    arraynode_maptask = map_task(t1, metadata=TaskMetadata(retries=2))
+    option = Options()
+    option.file_uploader = mock_file_uploader
+    task_spec = get_serializable(OrderedDict(), interactive_serialization_settings, arraynode_maptask, options=option)
+
+    assert task_spec.template.metadata.retries.retries == 2
+    assert task_spec.template.custom["minSuccessRatio"] == 1.0
+    assert task_spec.template.type == "python-task"
+    assert task_spec.template.task_type_version == 1
+    assert task_spec.template.container.args == [
+        "pyflyte-fast-execute",
+        "--additional-distribution",
+        PICKLE_FILE_PATH,
+        "--dest-dir",
+        ".",
+        "--",
+        "pyflyte-map-execute",
+        "--inputs",
+        "{{.input}}",
+        "--output-prefix",
+        "{{.outputPrefix}}",
+        "--raw-output-data-prefix",
+        "{{.rawOutputDataPrefix}}",
+        "--checkpoint-path",
+        "{{.checkpointOutputPrefix}}",
+        "--prev-checkpoint",
+        "{{.prevCheckpointPrefix}}",
+        "--resolver",
+        "flytekit.core.array_node_map_task.ArrayNodeMapTaskResolver",
+        "--",
+        "vars",
+        "",
+        "resolver",
+        "flytekit.core.python_auto_container.default_notebook_task_resolver",
         "task-module",
         "tests.flytekit.unit.core.test_array_node_map_task",
         "task-name",
@@ -464,3 +533,41 @@ def test_mis_match():
 
     with pytest.raises(AssertionError):
         wf.compile()
+
+
+def test_load_offloaded_literal(tmp_path, monkeypatch):
+    @task
+    def say_hello(name: str) -> str:
+        return f"hello {name}!"
+
+    ctx = context_manager.FlyteContextManager.current_context()
+    with context_manager.FlyteContextManager.with_context(
+            ctx.with_execution_state(
+                ctx.execution_state.with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION)
+            )
+    ) as ctx:
+        list_strs = ["a", "b", "c"]
+        lt = TypeEngine.to_literal_type(typing.List[str])
+        to_be_offloaded = TypeEngine.to_literal(ctx, list_strs, typing.List[str], lt)
+        with open(f"{tmp_path}/literal.pb", "wb") as f:
+            f.write(to_be_offloaded.to_flyte_idl().SerializeToString())
+
+        literal = Literal(
+            offloaded_metadata=LiteralOffloadedMetadata(
+                uri=f"{tmp_path}/literal.pb",
+                inferred_type=lt,
+            ),
+        )
+
+        lm = LiteralMap({
+            "name": literal
+        })
+
+        for index, map_input_str in enumerate(list_strs):
+            monkeypatch.setenv("BATCH_JOB_ARRAY_INDEX_VAR_NAME", "name")
+            monkeypatch.setenv("name", str(index))
+            t = map_task(say_hello)
+            res = t.dispatch_execute(ctx, lm)
+            assert len(res.literals) == 1
+            assert res.literals[f"o{0}"].scalar.primitive.string_value == f"hello {map_input_str}!"
+            monkeypatch.undo()

@@ -11,10 +11,10 @@ from collections import OrderedDict
 from dataclasses import dataclass
 from enum import Enum
 
+import msgpack
 import pytest
 from dataclasses_json import DataClassJsonMixin
 from google.protobuf.struct_pb2 import Struct
-from mashumaro.codecs.json import JSONEncoder, JSONDecoder
 from typing_extensions import Annotated, get_origin
 
 import flytekit
@@ -37,6 +37,7 @@ from flytekit.exceptions.user import FlyteValidationException, FlyteFailureNodeI
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import types as _core_types
 from flytekit.models.interface import Parameter
+from flytekit.models.literals import Binary
 from flytekit.models.task import Resources as _resource_models
 from flytekit.models.types import LiteralType, SimpleType
 from flytekit.tools.translator import get_serializable
@@ -1490,7 +1491,7 @@ def test_guess_dict():
     guessed_types = {"a": pt}
     ctx = context_manager.FlyteContext.current_context()
     lm = TypeEngine.dict_to_literal_map(ctx, d=input_map, type_hints=guessed_types)
-    assert isinstance(lm.literals["a"].scalar.generic, Struct)
+    assert isinstance(lm.literals["a"].scalar.binary, Binary)
 
     output_lm = t2.dispatch_execute(ctx, lm)
     str_value = output_lm.literals["o0"].scalar.primitive.string_value
@@ -1523,9 +1524,9 @@ def test_guess_dict3():
 
     ctx = context_manager.FlyteContextManager.current_context()
     output_lm = t2.dispatch_execute(ctx, _literal_models.LiteralMap(literals={}))
-    expected_struct = Struct()
-    expected_struct.update({"k1": "v1", "k2": 3, "4": {"one": [1, "two", [3]]}})
-    assert output_lm.literals["o0"].scalar.generic == expected_struct
+    msgpack_bytes = msgpack.dumps({"k1": "v1", "k2": 3, 4: {"one": [1, "two", [3]]}})
+    binary_idl_obj = Binary(value=msgpack_bytes, tag="msgpack")
+    assert output_lm.literals["o0"].scalar.binary == binary_idl_obj
 
 
 @pytest.mark.skipif(sys.version_info < (3, 9), reason="Use of dict hints is only supported in Python 3.9+")
@@ -1552,9 +1553,8 @@ def test_guess_dict4():
 
     ctx = context_manager.FlyteContextManager.current_context()
     output_lm = t1.dispatch_execute(ctx, _literal_models.LiteralMap(literals={}))
-    expected_struct = Struct()
-    expected_struct.update({"x": 1, "y": "foo", "z": {"hello": "world"}})
-    assert output_lm.literals["o0"].scalar.generic == expected_struct
+    msgpack_bytes = msgpack.dumps({"x": 1, "y": "foo", "z": {"hello": "world"}})
+    assert output_lm.literals["o0"].scalar.binary.value == msgpack_bytes
 
     @task
     def t2() -> Bar:
@@ -1565,8 +1565,8 @@ def test_guess_dict4():
     assert dataclasses.is_dataclass(pt_map["o0"])
 
     output_lm = t2.dispatch_execute(ctx, _literal_models.LiteralMap(literals={}))
-    expected_struct.update({"x": 1, "y": {"hello": "world"}, "z": {"x": 1, "y": "foo", "z": {"hello": "world"}}})
-    assert output_lm.literals["o0"].scalar.generic == expected_struct
+    msgpack_bytes = msgpack.dumps({"x": 1, "y": {"hello": "world"}, "z": {"x": 1, "y": "foo", "z": {"hello": "world"}}})
+    assert output_lm.literals["o0"].scalar.binary.value == msgpack_bytes
 
 
 def test_error_messages(exec_prefix):
