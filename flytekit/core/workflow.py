@@ -852,6 +852,7 @@ def workflow(
     interruptible: bool = ...,
     on_failure: Optional[Union[WorkflowBase, Task]] = ...,
     docs: Optional[Documentation] = ...,
+    pickle_untyped: bool = ...,
     default_options: Optional[Options] = ...,
 ) -> Union[Callable[P, FuncOut], PythonFunctionWorkflow]: ...
 
