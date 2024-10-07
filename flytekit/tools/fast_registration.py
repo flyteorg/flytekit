@@ -20,6 +20,7 @@ from rich.tree import Tree
 
 from flytekit.constants import CopyFileDetection
 from flytekit.core.context_manager import FlyteContextManager
+from flytekit.core.python_auto_container import PICKLE_FILE_PATH
 from flytekit.core.utils import timeit
 from flytekit.exceptions.user import FlyteDataNotFoundException
 from flytekit.loggers import logger
@@ -69,7 +70,7 @@ def compress_tarball(source: os.PathLike, output: os.PathLike) -> None:
     """Compress code tarball using pigz if available, otherwise gzip"""
     if pigz := shutil.which("pigz"):
         with open(output, "wb") as gzipped:
-            subprocess.run([pigz, "-c", source], stdout=gzipped, check=True)
+            subprocess.run([pigz, "--no-time", "-c", source], stdout=gzipped, check=True)
     else:
         start_time = time.time()
         with gzip.GzipFile(filename=output, mode="wb", mtime=0) as gzipped:
@@ -119,7 +120,7 @@ def fast_package(
         options.copy_style == CopyFileDetection.LOADED_MODULES or options.copy_style == CopyFileDetection.ALL
     ):
         ls, ls_digest = ls_files(str(source), options.copy_style, deref_symlinks, ignore)
-        logger.debug(f"Hash digest: {ls_digest}", fg="green")
+        logger.debug(f"Hash digest: {ls_digest}")
 
         if options.show_files:
             print_ls_tree(source, ls)
@@ -133,11 +134,12 @@ def fast_package(
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             tar_path = os.path.join(tmp_dir, "tmp.tar")
-            with tarfile.open(tar_path, "w", dereference=True) as tar:
+            with tarfile.open(tar_path, "w", dereference=deref_symlinks) as tar:
                 for ws_file in ls:
                     rel_path = os.path.relpath(ws_file, start=source)
                     tar.add(
                         os.path.join(source, ws_file),
+                        recursive=False,
                         arcname=rel_path,
                         filter=lambda x: tar_strip_file_attributes(x),
                     )
@@ -241,12 +243,13 @@ def download_distribution(additional_distribution: str, destination: str):
     except FlyteDataNotFoundException as ex:
         raise RuntimeError("task execution code was not found") from ex
     tarfile_name = os.path.basename(additional_distribution)
-    if not tarfile_name.endswith(".tar.gz"):
+    if tarfile_name.endswith(".tar.gz"):
+        # This will overwrite the existing user flyte workflow code in the current working code dir.
+        result = subprocess.run(
+            ["tar", "-xvf", os.path.join(destination, tarfile_name), "-C", destination],
+            stdout=subprocess.PIPE,
+        )
+        result.check_returncode()
+    elif tarfile_name != PICKLE_FILE_PATH:
+        # The distribution is not a pickled file.
         raise RuntimeError("Unrecognized additional distribution format for {}".format(additional_distribution))
-
-    # This will overwrite the existing user flyte workflow code in the current working code dir.
-    result = subprocess.run(
-        ["tar", "-xvf", os.path.join(destination, tarfile_name), "-C", destination],
-        stdout=subprocess.PIPE,
-    )
-    result.check_returncode()
