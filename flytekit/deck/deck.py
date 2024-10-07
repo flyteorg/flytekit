@@ -46,6 +46,7 @@ DUMMY_DECK_HTML = """
 </html>
 """
 
+
 class DeckField(str, enum.Enum):
     """
     DeckField is used to specify the fields that will be rendered in the deck.
@@ -119,10 +120,18 @@ class Deck:
     def html(self) -> str:
         return self._html
 
+    @classmethod
+    def publish(cls):
+        task_name = FlyteContextManager.current_context().user_space_params.task_id.name
+        new_user_params = FlyteContextManager.current_context().user_space_params
+        _output_deck(task_name, new_user_params)
+
+
 class DummyDeck(Deck):
     """
     The DummyDeck class is designed
     """
+
     def __init__(self):
         name = "dummy_deck"
         html = DUMMY_DECK_HTML
@@ -201,9 +210,7 @@ def _get_deck(
     If ignore_jupyter is set to True, then it will return a str even in a jupyter environment.
     """
 
-    deck_map = {
-        deck.name: deck.html for deck in new_user_params.decks if deck.name != "dummy_deck"
-    }
+    deck_map = {deck.name: deck.html for deck in new_user_params.decks if deck.name != "dummy_deck"}
 
     # If deck_map is empty after filtering, add DummyDeck
     if not deck_map:
