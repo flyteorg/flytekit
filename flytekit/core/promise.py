@@ -45,7 +45,7 @@ from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.literals import Binary, Literal, Primitive, Scalar
 from flytekit.models.task import Resources
 from flytekit.models.types import SimpleType
-from flytekit.utils.asyn import loop_manager
+from flytekit.utils.asyn import loop_manager, run_sync
 
 
 async def _translate_inputs_to_literals(
@@ -913,8 +913,8 @@ def binding_from_python_std(
         if "no running event loop" not in str(e):
             logger.error(f"Unknown RuntimeError {str(e)}")
             raise
-    synced = loop_manager.synced(binding_data_from_python_std)
-    binding_data = synced(
+    binding_data = run_sync(
+        binding_data_from_python_std,
         ctx,
         expected_literal_type,
         t_value,

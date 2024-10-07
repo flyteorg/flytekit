@@ -11,16 +11,19 @@ result = run_sync(async_add, a=10, b=12)
 
 import asyncio
 import atexit
+import functools
 import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from contextvars import copy_context
-from typing import Any, Awaitable, Callable, TypeVar
+from typing import Any, Awaitable, Callable, ParamSpec, TypeVar
 
 from flytekit.loggers import logger
 
 T = TypeVar("T")
+
+P = ParamSpec("P")
 
 
 @contextmanager
@@ -89,13 +92,13 @@ class _AsyncLoopManager:
             self._runner_map[name] = _TaskRunner()
         return self._runner_map[name].run(coro)
 
-    def synced(self, coro_func: Callable[..., Awaitable[T]]) -> Callable[..., T]:
+    def synced(self, coro_func: Callable[P, Awaitable[T]]) -> Callable[P, T]:
         """Make loop run coroutine until it returns. Runs in other thread"""
 
+        @functools.wraps(coro_func)
         def wrapped(*args: Any, **kwargs: Any) -> T:
             return self.run_sync(coro_func, *args, **kwargs)
 
-        wrapped.__doc__ = coro_func.__doc__
         return wrapped
 
 
