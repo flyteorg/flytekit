@@ -913,14 +913,13 @@ def binding_from_python_std(
         if "no running event loop" not in str(e):
             logger.error(f"Unknown RuntimeError {str(e)}")
             raise
-    binding_data = asyncio.run(
-        binding_data_from_python_std(
-            ctx,
-            expected_literal_type,
-            t_value,
-            t_value_type,
-            nodes,
-        )
+    synced = loop_manager.synced(binding_data_from_python_std)
+    binding_data = synced(
+        ctx,
+        expected_literal_type,
+        t_value,
+        t_value_type,
+        nodes,
     )
     return _literals_models.Binding(var=var_name, binding=binding_data), nodes
 
