@@ -86,6 +86,7 @@ from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.documentation import Description, Documentation
 from flytekit.models.interface import Variable
 from flytekit.models.security import SecurityContext
+from flytekit.utils.asyn import run_sync
 
 DYNAMIC_PARTITIONS = "_uap"
 MODEL_CARD = "_ucm"
