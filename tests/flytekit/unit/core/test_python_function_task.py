@@ -8,6 +8,7 @@ from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.pod_template import PodTemplate
 from flytekit.core.python_auto_container import get_registerable_container_image
 from flytekit.core.python_function_task import PythonFunctionTask
+from flytekit.core.task import _deduce_cache_version
 from flytekit.core.tracker import isnested, istestfunction
 from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec
 from flytekit.tools.translator import get_serializable_task
@@ -157,22 +158,77 @@ def test_metadata():
     bar_metadata = bar.metadata
     assert bar_metadata.cache is False
     assert bar_metadata.cache_serialize is False
-    assert bar_metadata.cache_version == ""
-
-    # test missing cache_version
-    with pytest.raises(ValueError):
-
-        @task(cache=True)
-        def foo_missing_cache_version(i: str):
-            print(f"{i}")
+    assert bar_metadata.cache_version == "b870594331edc52bd4691399d9018c2d7c523bf975f115c349b8ff30af6122de"
 
     # test missing cache
     with pytest.raises(ValueError):
-
         @task(cache_serialize=True)
         def foo_missing_cache(i: str):
             print(f"{i}")
 
+def test_deduce_cache_version_functions():
+    def foo(a: int, b: int) -> int:
+        return a + b
+
+    assert _deduce_cache_version(foo) == "3da83f75c1dae9691fc4618f72864b2242782f5eb18e404c1e85485804c94963"
+
+    def t0(a: int, b: int) -> int:
+        """
+        Sample docstring
+        """
+        return a + b
+
+    assert _deduce_cache_version(t0) == "77f42ae196b2948a173363e6c8b3c598bd1892947cc3a5e1d1bc6a8ba50e98cf"
+
+    def t1(a: int, b: int) -> int:
+        """
+        Sample docstring plus a dot.
+        """
+        return a + b
+
+    assert _deduce_cache_version(t1) == "0795ffaa7c25661592b8aeea20c8464e794f6124591e7222572602b89096b0f2"
+
+
+def test_deduced_cache_version():
+    @task(cache=True)
+    def t0(a: int, b: int) -> int:
+        """
+        Sample docstring
+        """
+        return a + b
+
+    t0_metadata = t0.metadata
+    assert t0_metadata.cache is True
+    assert t0_metadata.cache_version == "97d4df6ec0e47c539d0ea49b9312a28c3cc5389e70121ae6efc7fb908eccf928"
+
+    @task(cache=True)
+    def t1(a: int, b: int) -> int:
+        """
+        Sample docstring plus a dot.
+        """
+        return a + b
+
+    t1_metadata = t1.metadata
+    assert t1_metadata.cache is True
+    assert t1_metadata.cache_version == "ff507165c2a93b9542521ef2026c72ed222440393afaef376ce28fe78e1011c3"
+
+
+def test_deduced_cache_version_same_function_but_different_names():
+    @task(cache=True)
+    def t1(a: int, b: int) -> int:
+        return a + b
+
+    t1_metadata = t1.metadata
+    assert t1_metadata.cache is True
+    assert t1_metadata.cache_version == "1d811bdb0e792fae5fee8106c71825103aaf0cae404d424c91b68d2864d0ac58"
+
+    @task(cache=True)
+    def t2(a: int, b: int) -> int:
+        return a + b
+
+    t2_metadata = t2.metadata
+    assert t2_metadata.cache is True
+    assert t2_metadata.cache_version == "a9a0ce739dd77001d9de8932848ffce95695fdb59fa0c39e9b3849be20610201"
 
 def test_pod_template():
     @task(

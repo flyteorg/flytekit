@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import datetime
+import hashlib
+import inspect
 import os
+import sys
 from functools import update_wrapper
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, TypeVar, Union, overload
 
@@ -339,7 +342,7 @@ def task(
         _metadata = TaskMetadata(
             cache=cache,
             cache_serialize=cache_serialize,
-            cache_version=cache_version,
+            cache_version=_deduce_cache_version(fn) if cache_version == "" else cache_version,
             cache_ignore_input_vars=cache_ignore_input_vars,
             retries=retries,
             interruptible=interruptible,
@@ -376,6 +379,21 @@ def task(
         return wrapper(_task_function)
     else:
         return wrapper
+
+
+def _deduce_cache_version(fn: Callable[P, Any]) -> str:
+    """
+    This function is used to deduce the cache version for a task. The cache version is a hash of the function body.
+    """
+    source = inspect.getsource(fn)
+    # We can be a bit more performant by setting `usedforsecurity=False`
+    # TODO: remove after dropping support for python 3.8: https://github.com/flyteorg/flyte/issues/5633
+    if sys.version_info >= (3, 9):
+        m = hashlib.sha256(usedforsecurity=False)
+    else:
+        m = hashlib.sha256()
+    m.update(source.encode("utf-8"))
+    return m.hexdigest()
 
 
 class ReferenceTask(ReferenceEntity, PythonTask):  # type: ignore
