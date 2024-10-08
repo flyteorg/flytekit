@@ -299,14 +299,15 @@ class _ModuleSanitizer(object):
 
         # Execution in a Jupyter notebook, we cannot resolve the module path
         if not os.path.exists(dirname):
-            logger.debug(
-                f"Directory {dirname} does not exist. It is likely that we are in a Jupyter notebook or a pickle file was received."
-            )
-
             if not is_ipython_or_pickle_exists():
                 raise AssertionError(
                     f"Directory {dirname} does not exist, and we are not in a Jupyter notebook or received a pickle file."
                 )
+            
+            logger.debug(
+                f"Directory {dirname} does not exist. It is likely that we are in a Jupyter notebook or a pickle file was received."
+                f"Returning {basename} as the module name."
+            )
             return basename
 
         # If we have reached a directory with no __init__, ignore
