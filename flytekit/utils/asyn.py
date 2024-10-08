@@ -111,7 +111,8 @@ run_sync = loop_manager.run_sync
 class ContextExecutor(ThreadPoolExecutor):
     def __init__(self):
         self.context = copy_context()
-        super().__init__(initializer=self._set_child_context, max_workers=5)
+        num_cores = os.cpu_count()
+        super().__init__(initializer=self._set_child_context, max_workers=num_cores or 1)
 
     def _set_child_context(self):
         for var, value in self.context.items():
