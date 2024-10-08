@@ -7,6 +7,7 @@ from google.protobuf import json_format as _json_format
 from flytekit import FlyteContext
 from flytekit.core.constants import MESSAGEPACK
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
+from flytekit.loggers import logger
 from flytekit.models import types
 from flytekit.models.literals import Binary, Literal, Scalar
 from flytekit.models.types import LiteralType, TypeStructure
@@ -19,7 +20,19 @@ class PydanticTransformer(TypeTransformer[BaseModel]):
 
     def get_literal_type(self, t: Type[BaseModel]) -> LiteralType:
         schema = t.model_json_schema()
-        ts = TypeStructure(tag="", dataclass_type=None)
+        literal_type = {}
+        fields = t.__annotations__.items()
+
+        for name, python_type in fields:
+            try:
+                literal_type[name] = TypeEngine.to_literal_type(python_type)
+            except Exception as e:
+                logger.warning(
+                    "Field {} of type {} cannot be converted to a literal type. Error: {}".format(name, python_type, e)
+                )
+
+        ts = TypeStructure(tag="", dataclass_type=literal_type)
+
         return types.LiteralType(simple=types.SimpleType.STRUCT, metadata=schema, structure=ts)
 
     def to_literal(
