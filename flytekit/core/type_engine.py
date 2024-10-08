@@ -1602,8 +1602,10 @@ class ListTransformer(AsyncTypeTransformer[T]):
                 lit_list = []
         else:
             t = self.get_sub_type(python_type)
-            lit_list = [TypeEngine.async_to_literal(ctx, x, t, expected.collection_type) for x in python_val]
-            lit_list = await asyncio.gather(*lit_list)
+            with timeit("list transformer create tasks"):
+                lit_list = [TypeEngine.async_to_literal(ctx, x, t, expected.collection_type) for x in python_val]
+            with timeit("list transformer gather tasks"):
+                lit_list = await asyncio.gather(*lit_list)
 
         return Literal(collection=LiteralCollection(literals=lit_list))
 
