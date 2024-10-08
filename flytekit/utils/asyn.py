@@ -17,7 +17,9 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from contextvars import copy_context
-from typing import Any, Awaitable, Callable, ParamSpec, TypeVar
+from typing import Any, Awaitable, Callable, TypeVar
+
+from typing_extensions import ParamSpec
 
 from flytekit.loggers import logger
 
