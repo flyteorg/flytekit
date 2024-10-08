@@ -1290,10 +1290,11 @@ class TypeEngine(typing.Generic[T]):
             lv = await transformer.async_to_literal(ctx, python_val, python_type, expected)
         else:
             # Testing just blocking call
-            loop = asyncio.get_running_loop()
-            executor = ContextExecutor()
-            fut = loop.run_in_executor(executor, transformer.to_literal, ctx, python_val, python_type, expected)
-            lv = await fut
+            # loop = asyncio.get_running_loop()
+            # executor = ContextExecutor()
+            # fut = loop.run_in_executor(executor, transformer.to_literal, ctx, python_val, python_type, expected)
+            # lv = await fut
+            lv = transformer.to_literal(ctx, python_val, python_type, expected)
 
         modify_literal_uris(lv)
         lv.hash = cls.calculate_hash(python_val, python_type)
