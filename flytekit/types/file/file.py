@@ -513,7 +513,7 @@ class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
             if remote_path is not None:
                 remote_path = await ctx.file_access._put_data(source_path, remote_path, is_multipart=False, **headers)
             else:
-                remote_path = ctx.file_access.put_raw_data(source_path, **headers)
+                remote_path = await ctx.file_access._put_raw_data(source_path, **headers)
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=unquote(str(remote_path)))))
         # If not uploading, then we can only take the original source path as the uri.
         else:
