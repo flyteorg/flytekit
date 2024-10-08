@@ -950,7 +950,7 @@ def test_dataclass_with_postponed_annotation(mock_put_data):
         assert dict_obj["f"]["path"] == remote_path
 
 
-@mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider._put_data")
 def test_optional_flytefile_in_dataclass(mock_upload_dir):
     mock_upload_dir.return_value = True
 

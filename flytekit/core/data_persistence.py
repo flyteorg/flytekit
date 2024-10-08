@@ -29,6 +29,7 @@ from uuid import UUID
 
 import fsspec
 from decorator import decorator
+from fsspec.asyn import AsyncFileSystem
 from fsspec.utils import get_protocol
 from typing_extensions import Unpack
 
@@ -215,6 +216,10 @@ class FileAccessProvider(object):
         protocol = get_protocol(path)
         return self.get_filesystem(protocol, anonymous=anonymous, path=path, **kwargs)
 
+    def get_async_filesystem_for_path(self, path: str = "", anonymous: bool = False, **kwargs) -> AsyncFileSystem:
+        protocol = get_protocol(path)
+        return self.get_filesystem(protocol, anonymous=anonymous, path=path, asynchronous=True, **kwargs)
+
     @staticmethod
     def is_remote(path: Union[str, os.PathLike]) -> bool:
         """
@@ -328,6 +333,31 @@ class FileAccessProvider(object):
                 kwargs["metadata"] = {}
             kwargs["metadata"].update(self._execution_metadata)
         dst = file_system.put(from_path, to_path, recursive=recursive, **kwargs)
+        if isinstance(dst, (str, pathlib.Path)):
+            return dst
+        else:
+            return to_path
+
+    @retry_request
+    async def _put(self, from_path: str, to_path: str, recursive: bool = False, **kwargs):
+        file_system = self.get_async_filesystem_for_path(to_path)
+        from_path = self.strip_file_header(from_path)
+        if recursive:
+            # Only check this for the local filesystem
+            if file_system.protocol == "file" and not file_system.isdir(from_path):
+                raise FlyteAssertion(f"Source path {from_path} is not a directory")
+            if os.name == "nt" and file_system.protocol == "file":
+                import shutil
+
+                return shutil.copytree(
+                    self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True
+                )
+            from_path, to_path = self.recursive_paths(from_path, to_path)
+        if self._execution_metadata:
+            if "metadata" not in kwargs:
+                kwargs["metadata"] = {}
+            kwargs["metadata"].update(self._execution_metadata)
+        dst = await file_system._put(from_path, to_path, recursive=recursive, **kwargs)
         if isinstance(dst, (str, pathlib.Path)):
             return dst
         else:
@@ -566,6 +596,34 @@ class FileAccessProvider(object):
                 f"Failed to get data from {remote_path} to {local_path} (recursive={is_multipart}).\n\n"
                 f"Original exception: {str(ex)}"
             )
+
+    async def _put_data(
+        self, local_path: Union[str, os.PathLike], remote_path: str, is_multipart: bool = False, **kwargs
+    ) -> str:
+        """
+        The implication here is that we're always going to put data to the remote location, so we .remote to ensure
+        we don't use the true local proxy if the remote path is a file://
+
+        :param local_path:
+        :param remote_path:
+        :param is_multipart:
+        """
+        try:
+            local_path = str(local_path)
+            with timeit(f"Upload data to {remote_path}"):
+                put_result = await self._put(cast(str, local_path), remote_path, recursive=is_multipart, **kwargs)
+                # This is an unfortunate workaround to ensure that we return the correct path for the remote location
+                # Callers of this put_data function in flytekit have been changed to assign the remote path to the
+                # output
+                # of this function, so we want to make sure we don't change it unless we need to.
+                if remote_path.startswith("flyte://"):
+                    return put_result
+                return remote_path
+        except Exception as ex:
+            raise FlyteUploadDataException(
+                f"Failed to put data from {local_path} to {remote_path} (recursive={is_multipart}).\n\n"
+                f"Original exception: {str(ex)}"
+            ) from ex
 
     def put_data(
         self, local_path: Union[str, os.PathLike], remote_path: str, is_multipart: bool = False, **kwargs
