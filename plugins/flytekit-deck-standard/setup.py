@@ -6,6 +6,16 @@ microlib_name = f"flytekitplugins-{PLUGIN_NAME}-standard"
 
 plugin_requires = ["flytekit"]
 
+extras = {
+    "pandas": ["pandas"],
+    "pillow": ["pillow"],
+    "ydata-profiling": ["ydata-profiling"],
+    "markdown": ["markdown"],
+    "plotly": ["plotly"],
+    "pygments": ["pygments"],
+    "all": ["pandas", "pillow", "ydata-profiling", "markdown", "plotly", "pygments"],
+}
+
 __version__ = "0.0.0+develop"
 
 setup(
@@ -20,6 +30,7 @@ setup(
     namespace_packages=["flytekitplugins"],
     packages=[f"flytekitplugins.{PLUGIN_NAME}"],
     install_requires=plugin_requires,
+    extras_require=extras,
     license="apache2",
     python_requires=">=3.8",
     classifiers=[
