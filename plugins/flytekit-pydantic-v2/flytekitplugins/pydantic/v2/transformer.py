@@ -1,5 +1,5 @@
 import json
-from typing import Type, TypeVar
+from typing import Type
 
 import msgpack
 from google.protobuf import json_format as _json_format
@@ -9,10 +9,8 @@ from flytekit.core.constants import MESSAGEPACK
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
 from flytekit.models import types
 from flytekit.models.literals import Binary, Literal, Scalar
-from flytekit.models.types import LiteralType
+from flytekit.models.types import LiteralType, TypeStructure
 from pydantic import BaseModel
-
-T = TypeVar("T")
 
 
 class PydanticTransformer(TypeTransformer[BaseModel]):
@@ -20,7 +18,9 @@ class PydanticTransformer(TypeTransformer[BaseModel]):
         super().__init__("Pydantic Transformer", BaseModel, enable_type_assertions=False)
 
     def get_literal_type(self, t: Type[BaseModel]) -> LiteralType:
-        return types.LiteralType(simple=types.SimpleType.STRUCT)
+        schema = t.model_json_schema()
+        ts = TypeStructure(tag="", dataclass_type=None)
+        return types.LiteralType(simple=types.SimpleType.STRUCT, metadata=schema, structure=ts)
 
     def to_literal(
         self,
@@ -33,7 +33,7 @@ class PydanticTransformer(TypeTransformer[BaseModel]):
         msgpack_bytes = msgpack.dumps(dict_obj)
         return Literal(scalar=Scalar(binary=Binary(value=msgpack_bytes, tag="msgpack")))
 
-    def from_binary_idl(self, binary_idl_object: Binary, expected_python_type: Type[BaseModel]) -> T:
+    def from_binary_idl(self, binary_idl_object: Binary, expected_python_type: Type[BaseModel]) -> BaseModel:
         if binary_idl_object.tag == MESSAGEPACK:
             dict_obj = msgpack.loads(binary_idl_object.value)
             python_val = expected_python_type.model_validate(obj=dict_obj, strict=False)
