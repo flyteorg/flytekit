@@ -10,6 +10,7 @@ This list also contains a bunch of pre-formatted :py:class:`flytekit.types.file.
    :template: file_types.rst
 
    FlyteFile
+   FlyteFilePathTransformer
    HDF5EncodedFile
    HTMLPage
    JoblibSerializedFile
@@ -25,7 +26,7 @@ import typing
 
 from typing_extensions import Annotated, get_args, get_origin
 
-from .file import FlyteFile
+from .file import FlyteFile, FlyteFilePathTransformer
 
 
 class FileExt:
