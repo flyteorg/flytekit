@@ -45,7 +45,7 @@ class PydanticTransformer(TypeTransformer[BaseModel]):
         """
         There will have 2 kinds of literal values:
         1. protobuf Struct (From Flyte Console)
-        2. binary scalar (Ohters)
+        2. binary scalar (Others)
         Hence we have to handle 2 kinds of cases.
         """
         if lv and lv.scalar and lv.scalar.binary is not None:
