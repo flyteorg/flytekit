@@ -14,9 +14,7 @@ import atexit
 import functools
 import os
 import threading
-from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
-from contextvars import copy_context
 from typing import Any, Awaitable, Callable, TypeVar
 
 from typing_extensions import ParamSpec
@@ -106,14 +104,3 @@ class _AsyncLoopManager:
 
 loop_manager = _AsyncLoopManager()
 run_sync = loop_manager.run_sync
-
-
-class ContextExecutor(ThreadPoolExecutor):
-    def __init__(self):
-        self.context = copy_context()
-        num_cores = os.cpu_count()
-        super().__init__(initializer=self._set_child_context, max_workers=num_cores or 1)
-
-    def _set_child_context(self):
-        for var, value in self.context.items():
-            var.set(value)
