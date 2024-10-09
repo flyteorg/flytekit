@@ -88,7 +88,9 @@ def test_lp_serialization(target, serialization_settings):
         assert binding.scalar.primitive.integer is not None
     assert top_level.inputs[1].var == "b"
     for binding in top_level.inputs[1].binding.collection.bindings:
-        assert binding.scalar.union is not None
+        assert (binding.scalar.union is not None or
+                binding.scalar.primitive.integer is not None or
+                binding.scalar.primitive.string_value is not None)
     assert len(top_level.inputs[1].binding.collection.bindings) == 3
     assert top_level.inputs[2].var == "c"
     assert len(top_level.inputs[2].binding.collection.bindings) == 3

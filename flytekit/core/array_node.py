@@ -8,7 +8,6 @@ from flytekit.core.context_manager import ExecutionState, FlyteContext
 from flytekit.core.interface import (
     transform_interface_to_list_interface,
     transform_interface_to_typed_interface,
-    transform_typed_interface_to_interface,
 )
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.node import Node
@@ -16,11 +15,13 @@ from flytekit.core.promise import (
     Promise,
     VoidPromise,
     create_and_link_node,
+    create_and_link_node_from_remote,
     flyte_entity_call_handler,
     translate_inputs_to_literals,
 )
 from flytekit.core.task import TaskMetadata
 from flytekit.loggers import logger
+from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.literals import Literal, LiteralCollection, Scalar
@@ -69,12 +70,10 @@ class ArrayNode:
             self._min_success_ratio = min_success_ratio if min_success_ratio is not None else 1.0
             self._min_successes = 0
 
-        target_interface = self.target.python_interface or transform_typed_interface_to_interface(self.target.interface)
-        if target_interface is None:
-            raise ValueError("No interface found for the target entity.")
-        self._target_interface: flyte_interface.Interface = target_interface
-
-        n_outputs = len(self._target_interface.outputs)
+        if self.target.python_interface:
+            n_outputs = len(self.target.python_interface.outputs)
+        else:
+            n_outputs = len(self.target.interface.outputs)
         if n_outputs > 1:
             raise ValueError("Only tasks with a single output are supported in map tasks.")
 
@@ -82,10 +81,16 @@ class ArrayNode:
         self._bound_inputs: Set[str] = set()
 
         output_as_list_of_optionals = min_success_ratio is not None and min_success_ratio != 1 and n_outputs == 1
-        collection_interface = transform_interface_to_list_interface(
-            self._target_interface, self._bound_inputs, output_as_list_of_optionals
-        )
-        self._collection_interface = collection_interface
+
+        self._remote_interface = None
+        if self.target.python_interface:
+            self._python_interface = transform_interface_to_list_interface(
+                self.target.python_interface, self._bound_inputs, output_as_list_of_optionals
+            )
+        elif self.target.interface:
+            self._remote_interface = self.target.interface.transform_interface_to_list()
+        else:
+            raise ValueError("No interface found for the target entity.")
 
         self.metadata = None
         if isinstance(target, LaunchPlan) or isinstance(target, FlyteLaunchPlan):
@@ -112,7 +117,14 @@ class ArrayNode:
     @property
     def python_interface(self) -> flyte_interface.Interface:
         # Part of SupportsNodeCreation interface
-        return self._collection_interface
+        return self._python_interface
+
+    @property
+    def interface(self) -> _interface_models.TypedInterface:
+        # Required in get_serializable_node
+        if self._remote_interface:
+            return self._remote_interface
+        raise AttributeError("interface attribute is not available")
 
     @property
     def bindings(self) -> List[_literal_models.Binding]:
@@ -129,6 +141,9 @@ class ArrayNode:
         return self.target
 
     def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
+        if self._remote_interface:
+            raise ValueError("Mapping over remote entities is not supported in local execution.")
+
         outputs_expected = True
         if not self.python_interface.outputs:
             outputs_expected = False
@@ -138,13 +153,11 @@ class ArrayNode:
             k = binding.var
             if k not in self._bound_inputs:
                 v = kwargs[k]
-                if isinstance(v, list) and len(v) > 0 and isinstance(v[0], self._target_interface.inputs[k]):
+                if isinstance(v, list) and len(v) > 0 and isinstance(v[0], self.python_interface.inputs[k]):
                     mapped_entity_count = len(v)
                     break
                 else:
-                    raise ValueError(
-                        f"Expected a list of {self._target_interface.inputs[k]} but got {type(v)} instead."
-                    )
+                    raise ValueError(f"Expected a list of {self.python_interface.inputs[k]} but got {type(v)} instead.")
 
         failed_count = 0
         min_successes = mapped_entity_count
@@ -164,12 +177,12 @@ class ArrayNode:
                     single_instance_inputs[k] = kwargs[k]
 
             # translate Python native inputs to Flyte literals
-            typed_interface = transform_interface_to_typed_interface(self._target_interface)
+            typed_interface = transform_interface_to_typed_interface(self.python_interface)
             literal_map = translate_inputs_to_literals(
                 ctx,
                 incoming_values=single_instance_inputs,
                 flyte_interface_types={} if typed_interface is None else typed_interface.inputs,
-                native_types=self._target_interface.inputs,
+                native_types=self.python_interface.inputs,
             )
             kwargs_literals = {k1: Promise(var=k1, val=v1) for k1, v1 in literal_map.items()}
 
@@ -215,6 +228,20 @@ class ArrayNode:
             # since a new entity with an updated list interface is not created, we have to work around the mismatch
             # between the interface and the inputs. Also, don't link the node to the compilation state,
             # since we don't want to add the subnode to the workflow as a node
+            if self._remote_interface:
+                bound_subnode = create_and_link_node_from_remote(
+                    ctx,
+                    entity=self.flyte_entity,
+                    add_node_to_compilation_state=False,
+                    overridden_interface=self._remote_interface,
+                    **kwargs,
+                )
+                self._bindings = bound_subnode.ref.node.bindings
+                return create_and_link_node_from_remote(
+                    ctx,
+                    entity=self,
+                    **kwargs,
+                )
             bound_subnode = create_and_link_node(
                 ctx,
                 entity=self.flyte_entity,

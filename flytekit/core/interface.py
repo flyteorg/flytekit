@@ -264,30 +264,6 @@ def transform_inputs_to_parameters(
     return _interface_models.ParameterMap(params)
 
 
-def transform_typed_interface_to_interface(
-    typed_interface: typing.Optional[_interface_models.TypedInterface],
-) -> typing.Optional[Interface]:
-    """
-    Transform the given FlyteIDL's typed interface to a simple python native interface
-    :param typed_interface: the interface object
-    """
-    if typed_interface is None:
-        return None
-
-    input_map = {}
-    for k, v in typed_interface.inputs.items():
-        input_map[k] = TypeEngine.guess_python_type(v.type)
-
-    output_map = {}
-    for k, v in typed_interface.outputs.items():
-        output_map[k] = TypeEngine.guess_python_type(v.type)
-
-    return Interface(
-        inputs=input_map,
-        outputs=output_map,
-    )
-
-
 def transform_interface_to_typed_interface(
     interface: typing.Optional[Interface],
     allow_partial_artifact_id_binding: bool = False,
