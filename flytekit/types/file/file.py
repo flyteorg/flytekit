@@ -586,6 +586,9 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         if lv.scalar and lv.scalar.binary:
             return self.from_binary_idl(lv.scalar.binary, expected_python_type)
 
+        if lv.scalar and lv.scalar.generic:
+            return self.from_generic_struct(lv.scalar.generic, expected_python_type)
+
         try:
             uri = lv.scalar.blob.uri
         except AttributeError:
