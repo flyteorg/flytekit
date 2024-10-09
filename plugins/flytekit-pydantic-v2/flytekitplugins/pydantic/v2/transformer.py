@@ -48,7 +48,7 @@ class PydanticTransformer(TypeTransformer[BaseModel]):
 
     def from_binary_idl(self, binary_idl_object: Binary, expected_python_type: Type[BaseModel]) -> BaseModel:
         if binary_idl_object.tag == MESSAGEPACK:
-            dict_obj = msgpack.loads(binary_idl_object.value)
+            dict_obj = msgpack.loads(binary_idl_object.value, raw=False, strict_map_key=False)
             python_val = expected_python_type.model_validate(obj=dict_obj, strict=False)
             return python_val
         else:
