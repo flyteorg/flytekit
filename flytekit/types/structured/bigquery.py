@@ -59,9 +59,7 @@ def _read_from_bq(
     if len(frames) > 0:
         df = pd.concat(frames)
     else:
-        import pyarrow
-
-        schema = pyarrow.ipc.read_schema(pyarrow.py_buffer(read_session.arrow_schema.serialized_schema))
+        schema = pa.ipc.read_schema(pa.py_buffer(read_session.arrow_schema.serialized_schema))
         df = schema.empty_table().to_pandas()
 
     return df
