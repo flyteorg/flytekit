@@ -3,7 +3,8 @@ from collections import OrderedDict
 
 import pytest
 
-from flytekit import LaunchPlan, current_context, task, workflow
+from flytekit import LaunchPlan, task, workflow
+from flytekit.core.context_manager import FlyteContextManager
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.array_node import array_node
 from flytekit.core.array_node_map_task import map_task
@@ -35,7 +36,8 @@ def parent_wf(a: int, b: typing.Union[int, str], c: int = 2) -> int:
     return multiply(val=a, val1=b, val2=c)
 
 
-lp = LaunchPlan.get_default_launch_plan(current_context(), parent_wf)
+ctx = FlyteContextManager.current_context()
+lp = LaunchPlan.get_default_launch_plan(ctx, parent_wf)
 
 
 @workflow
@@ -103,7 +105,8 @@ def test_local_exec_lp_min_successes(min_successes, min_success_ratio, should_ra
     def ex_wf(val: int) -> int:
         return ex_task(val=val)
 
-    ex_lp = LaunchPlan.get_default_launch_plan(current_context(), ex_wf)
+    ctx = FlyteContextManager.current_context()
+    ex_lp = LaunchPlan.get_default_launch_plan(ctx, ex_wf)
 
     @workflow
     def grandparent_ex_wf() -> typing.List[typing.Optional[int]]:
