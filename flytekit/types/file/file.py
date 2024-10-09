@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import mimetypes
 import os
 import pathlib
@@ -11,6 +12,8 @@ from urllib.parse import unquote
 
 import msgpack
 from dataclasses_json import config
+from google.protobuf import json_format as _json_format
+from google.protobuf.struct_pb2 import Struct
 from marshmallow import fields
 from mashumaro.mixins.json import DataClassJSONMixin
 from mashumaro.types import SerializableType
@@ -548,6 +551,33 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             )
         else:
             raise TypeTransformerFailedError(f"Unsupported binary format: `{binary_idl_object.tag}`")
+
+    def from_generic_struct(
+        self, generic: Struct, expected_python_type: typing.Union[typing.Type[FlyteFile], os.PathLike]
+    ):
+        json_str = _json_format.MessageToJson(generic)
+        python_val = json.loads(json_str)
+        path = python_val.get("path", None)
+
+        if path is None:
+            raise ValueError("FlyteFile's path should not be None")
+
+        return FlyteFilePathTransformer().to_python_value(
+            FlyteContextManager.current_context(),
+            Literal(
+                scalar=Scalar(
+                    blob=Blob(
+                        metadata=BlobMetadata(
+                            type=_core_types.BlobType(
+                                format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
+                            )
+                        ),
+                        uri=path,
+                    )
+                )
+            ),
+            expected_python_type,
+        )
 
     def to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Union[typing.Type[FlyteFile], os.PathLike]
