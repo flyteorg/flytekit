@@ -153,11 +153,13 @@ class ArrayNode:
             k = binding.var
             if k not in self._bound_inputs:
                 v = kwargs[k]
-                if isinstance(v, list) and len(v) > 0 and isinstance(v[0], self.python_interface.inputs[k]):
+                if isinstance(v, list) and len(v) > 0 and isinstance(v[0], self.target.python_interface.inputs[k]):
                     mapped_entity_count = len(v)
                     break
                 else:
-                    raise ValueError(f"Expected a list of {self.python_interface.inputs[k]} but got {type(v)} instead.")
+                    raise ValueError(
+                        f"Expected a list of {self.target.python_interface.inputs[k]} but got {type(v)} instead."
+                    )
 
         failed_count = 0
         min_successes = mapped_entity_count
@@ -177,12 +179,12 @@ class ArrayNode:
                     single_instance_inputs[k] = kwargs[k]
 
             # translate Python native inputs to Flyte literals
-            typed_interface = transform_interface_to_typed_interface(self.python_interface)
+            typed_interface = transform_interface_to_typed_interface(self.target.python_interface)
             literal_map = translate_inputs_to_literals(
                 ctx,
                 incoming_values=single_instance_inputs,
                 flyte_interface_types={} if typed_interface is None else typed_interface.inputs,
-                native_types=self.python_interface.inputs,
+                native_types=self.target.python_interface.inputs,
             )
             kwargs_literals = {k1: Promise(var=k1, val=v1) for k1, v1 in literal_map.items()}
 
