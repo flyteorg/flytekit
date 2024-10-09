@@ -10,11 +10,8 @@ import sys
 import tempfile
 import time
 import traceback
-<<<<<<< HEAD
 import uuid
-=======
 import warnings
->>>>>>> f759a3c2382f32b304a60212e1192bc73250f769
 from sys import exit
 from typing import Callable, List, Optional
 
