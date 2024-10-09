@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import pathlib
 import random
@@ -13,6 +14,8 @@ import fsspec
 import msgpack
 from dataclasses_json import DataClassJsonMixin, config
 from fsspec.utils import get_protocol
+from google.protobuf import json_format as _json_format
+from google.protobuf.struct_pb2 import Struct
 from marshmallow import fields
 from mashumaro.types import SerializableType
 
@@ -535,11 +538,40 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
         else:
             raise TypeTransformerFailedError(f"Unsupported binary format: `{binary_idl_object.tag}`")
 
+    def from_generic_idl(self, generic: Struct, expected_python_type: typing.Type[FlyteDirectory]):
+        json_str = _json_format.MessageToJson(generic)
+        python_val = json.loads(json_str)
+        path = python_val.get("path", None)
+
+        if path is None:
+            raise ValueError("FlyteDirectory's path should not be None")
+
+        return FlyteDirToMultipartBlobTransformer().to_python_value(
+            FlyteContextManager.current_context(),
+            Literal(
+                scalar=Scalar(
+                    blob=Blob(
+                        metadata=BlobMetadata(
+                            type=_core_types.BlobType(
+                                format="", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
+                            )
+                        ),
+                        uri=path,
+                    )
+                )
+            ),
+            expected_python_type,
+        )
+
     def to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Type[FlyteDirectory]
     ) -> FlyteDirectory:
-        if lv.scalar.binary:
-            return self.from_binary_idl(lv.scalar.binary, expected_python_type)
+        # Handle dataclass attribute access
+        if lv.scalar:
+            if lv.scalar.binary:
+                return self.from_binary_idl(lv.scalar.binary, expected_python_type)
+            if lv.scalar.generic:
+                return self.from_generic_idl(lv.scalar.generic, expected_python_type)
 
         uri = lv.scalar.blob.uri
 
