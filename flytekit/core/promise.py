@@ -897,7 +897,6 @@ async def binding_data_from_python_std(
     return _literals_models.BindingData(scalar=lit.scalar)
 
 
-# This function cannot be called from an async call stack
 def binding_from_python_std(
     ctx: _flyte_context.FlyteContext,
     var_name: str,
@@ -906,13 +905,6 @@ def binding_from_python_std(
     t_value_type: type,
 ) -> Tuple[_literals_models.Binding, List[Node]]:
     nodes: List[Node] = []
-    try:
-        asyncio.get_running_loop()
-        raise AssertionError("binding_from_python_std cannot be run from within an async call stack")
-    except RuntimeError as e:
-        if "no running event loop" not in str(e):
-            logger.error(f"Unknown RuntimeError {str(e)}")
-            raise
     binding_data = run_sync(
         binding_data_from_python_std,
         ctx,
