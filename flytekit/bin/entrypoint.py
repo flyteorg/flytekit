@@ -171,16 +171,6 @@ def _dispatch_execute(
         if isinstance(e.value, IgnoreOutputs):
             logger.warning(f"User-scoped IgnoreOutputs received! Outputs.pb will not be uploaded. reason {e}!!")
             return
-<<<<<<< HEAD
-        output_file_dict[error_file_name] = _error_models.ErrorDocument(
-            _error_models.ContainerError(
-                code=e.error_code,
-                message=e.verbose_message,
-                kind=e.kind,
-                origin=_execution_models.ExecutionError.ErrorKind.USER,
-                timestamp=int(time.time()),
-                worker=worker_name,
-=======
 
         # Step3c
         if isinstance(e.value, FlyteRecoverableException):
@@ -189,13 +179,14 @@ def _dispatch_execute(
             kind = _error_models.ContainerError.Kind.NON_RECOVERABLE
 
         exc_str = get_traceback_str(e)
-        output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
+        output_file_dict[error_file_name] = _error_models.ErrorDocument(
             _error_models.ContainerError(
-                "USER",
-                exc_str,
-                kind,
-                _execution_models.ExecutionError.ErrorKind.USER,
->>>>>>> f759a3c2382f32b304a60212e1192bc73250f769
+                code="USER",
+                message=exc_str,
+                kind=kind,
+                origin=_execution_models.ExecutionError.ErrorKind.USER,
+                timestamp=int(time.time()),
+                worker=worker_name,
             )
         )
         if task_def is not None:
@@ -206,30 +197,16 @@ def _dispatch_execute(
         logger.error(exc_str)
         logger.error("!! End Error Captured by Flyte !!")
 
-<<<<<<< HEAD
-    # Handle system-scoped errors
-    except _scoped_exceptions.FlyteScopedSystemException as e:
-        if isinstance(e.value, IgnoreOutputs):
-            logger.warning(f"System-scoped IgnoreOutputs received! Outputs.pb will not be uploaded. reason {e}!!")
-            return
+    except FlyteNonRecoverableSystemException as e:
+        exc_str = get_traceback_str(e.value)
         output_file_dict[error_file_name] = _error_models.ErrorDocument(
             _error_models.ContainerError(
-                code=e.error_code,
-                message=e.verbose_message,
-                kind=e.kind,
+                code="SYSTEM",
+                message=exc_str,
+                kind=_error_models.ContainerError.Kind.NON_RECOVERABLE,
                 origin=_execution_models.ExecutionError.ErrorKind.SYSTEM,
                 timestamp=int(time.time()),
                 worker=worker_name,
-=======
-    except FlyteNonRecoverableSystemException as e:
-        exc_str = get_traceback_str(e.value)
-        output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
-            _error_models.ContainerError(
-                "SYSTEM",
-                exc_str,
-                _error_models.ContainerError.Kind.NON_RECOVERABLE,
-                _execution_models.ExecutionError.ErrorKind.SYSTEM,
->>>>>>> f759a3c2382f32b304a60212e1192bc73250f769
             )
         )
 
@@ -239,26 +216,15 @@ def _dispatch_execute(
 
     # All other errors are captured here, and are considered system errors
     except Exception as e:
-<<<<<<< HEAD
-        # Step 3c
-        exc_str = traceback.format_exc()
+        exc_str = get_traceback_str(e)
         output_file_dict[error_file_name] = _error_models.ErrorDocument(
             _error_models.ContainerError(
-                code="SYSTEM:Unknown",
+                code="SYSTEM",
                 message=exc_str,
                 kind=_error_models.ContainerError.Kind.RECOVERABLE,
                 origin=_execution_models.ExecutionError.ErrorKind.SYSTEM,
                 timestamp=int(time.time()),
                 worker=worker_name,
-=======
-        exc_str = get_traceback_str(e)
-        output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
-            _error_models.ContainerError(
-                "SYSTEM",
-                exc_str,
-                _error_models.ContainerError.Kind.RECOVERABLE,
-                _execution_models.ExecutionError.ErrorKind.SYSTEM,
->>>>>>> f759a3c2382f32b304a60212e1192bc73250f769
             )
         )
 
