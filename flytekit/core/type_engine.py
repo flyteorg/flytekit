@@ -48,7 +48,7 @@ from flytekit.models.annotation import TypeAnnotation as TypeAnnotationModel
 from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Binary, Literal, LiteralCollection, LiteralMap, Primitive, Scalar, Union, Void
 from flytekit.models.types import LiteralType, SimpleType, TypeStructure, UnionType
-from flytekit.utils.asyn import ContextExecutor, loop_manager
+from flytekit.utils.asyn import loop_manager
 
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
@@ -1289,11 +1289,7 @@ class TypeEngine(typing.Generic[T]):
         if isinstance(transformer, AsyncTypeTransformer):
             lv = await transformer.async_to_literal(ctx, python_val, python_type, expected)
         else:
-            # Testing just blocking call
-            loop = asyncio.get_running_loop()
-            executor = ContextExecutor()
-            fut = loop.run_in_executor(executor, transformer.to_literal, ctx, python_val, python_type, expected)
-            lv = await fut
+            lv = transformer.to_literal(ctx, python_val, python_type, expected)
 
         modify_literal_uris(lv)
         lv.hash = cls.calculate_hash(python_val, python_type)
@@ -1337,10 +1333,7 @@ class TypeEngine(typing.Generic[T]):
         if isinstance(transformer, AsyncTypeTransformer):
             pv = await transformer.async_to_python_value(ctx, lv, expected_python_type)
         else:
-            loop = asyncio.get_running_loop()
-            executor = ContextExecutor()
-            fut = loop.run_in_executor(executor, transformer.to_python_value, ctx, lv, expected_python_type)
-            pv = await fut
+            pv = transformer.to_python_value(ctx, lv, expected_python_type)
         return pv
 
     @classmethod
