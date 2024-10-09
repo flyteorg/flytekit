@@ -3,6 +3,7 @@ import tempfile
 from dataclasses import dataclass
 from typing import List
 
+import msgpack
 import pytest
 from dataclasses_json import DataClassJsonMixin
 
@@ -93,14 +94,19 @@ def test_dataclass_complex_transform(two_sample_inputs):
 
     ctx = FlyteContextManager.current_context()
     literal_type = TypeEngine.to_literal_type(MyInput)
+
     first_literal = TypeEngine.to_literal(ctx, my_input, MyInput, literal_type)
-    assert first_literal.scalar.generic["apriori_config"] is not None
+    msgpack_bytes = first_literal.scalar.binary.value
+    dict_obj = msgpack.loads(msgpack_bytes)
+    assert dict_obj["apriori_config"] is not None
 
     converted_back_1 = TypeEngine.to_python_value(ctx, first_literal, MyInput)
     assert converted_back_1.apriori_config is not None
 
     second_literal = TypeEngine.to_literal(ctx, converted_back_1, MyInput, literal_type)
-    assert second_literal.scalar.generic["apriori_config"] is not None
+    msgpack_bytes = second_literal.scalar.binary.value
+    dict_obj = msgpack.loads(msgpack_bytes)
+    assert dict_obj["apriori_config"] is not None
 
     converted_back_2 = TypeEngine.to_python_value(ctx, second_literal, MyInput)
     assert converted_back_2.apriori_config is not None
@@ -108,9 +114,10 @@ def test_dataclass_complex_transform(two_sample_inputs):
     input_list = [my_input, my_input_2]
     input_list_type = TypeEngine.to_literal_type(List[MyInput])
     literal_list = TypeEngine.to_literal(ctx, input_list, List[MyInput], input_list_type)
-    assert literal_list.collection.literals[0].scalar.generic["apriori_config"] is not None
-    assert literal_list.collection.literals[1].scalar.generic["apriori_config"] is not None
-
+    for literal in literal_list.collection.literals:
+        msgpack_bytes = literal.scalar.binary.value
+        dict_obj = msgpack.loads(msgpack_bytes)
+        assert dict_obj["apriori_config"] is not None
 
 def test_two(two_sample_inputs):
     my_input = two_sample_inputs[0]
@@ -165,7 +172,10 @@ def test_str_input(folders_and_files_setup):
     ctx = FlyteContextManager.current_context()
     literal_type = TypeEngine.to_literal_type(MyInput)
     first_literal = TypeEngine.to_literal(ctx, my_input, MyInput, literal_type)
-    assert first_literal.scalar.generic is not None
+
+    msgpack_bytes = first_literal.scalar.binary.value
+    dict_obj = msgpack.loads(msgpack_bytes)
+    assert dict_obj is not None
 
 
 def test_dc_dyn_directory(folders_and_files_setup):
