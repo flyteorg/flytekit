@@ -105,26 +105,32 @@ def test_file_types_with_naked_flytefile_in_workflow(local_dummy_txt_file):
     with open(res, "r") as fh:
         assert fh.read() == "Hello World"
 
+
 def test_flytefile_in_dataclass(local_dummy_txt_file):
     TxtFile = FlyteFile[typing.TypeVar("txt")]
+
     @dataclass
     class DC:
         f: TxtFile
+
     @task
     def t1(path: TxtFile) -> DC:
         return DC(f=path)
+
     @workflow
     def my_wf(path: TxtFile) -> DC:
         dc = t1(path=path)
         return dc
 
     txt_file = TxtFile(local_dummy_txt_file)
+    my_wf.compile()
     dc1 = my_wf(path=txt_file)
     with open(dc1.f, "r") as fh:
         assert fh.read() == "Hello World"
 
     dc2 = DC(f=txt_file)
     assert dc1 == dc2
+
 
 @pytest.mark.skipif(not can_import("magic"), reason="Libmagic is not installed")
 def test_mismatching_file_types(local_dummy_txt_file):
@@ -137,7 +143,7 @@ def test_mismatching_file_types(local_dummy_txt_file):
         f = t1(path=path)
         return f
 
-    with pytest.raises(TypeError) as excinfo:
+    with pytest.raises(ValueError) as excinfo:
         my_wf(path=local_dummy_txt_file)
     assert "Incorrect file type, expected image/jpeg, got text/plain" in str(excinfo.value)
 
@@ -200,7 +206,7 @@ def test_flyte_file_type_annotated_hashmethod(local_dummy_file):
         ff = t1(path=path)
         t2(ff=ff)
 
-    with pytest.raises(TypeError) as excinfo:
+    with pytest.raises(ValueError) as excinfo:
         wf(path=local_dummy_file)
     assert "Incorrect file type, expected image/jpeg, got text/plain" in str(excinfo.value)
 
@@ -509,7 +515,7 @@ def test_returning_folder_instead_of_file():
     def wf1() -> FlyteFile:
         return t1()
 
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         wf1()
 
     @task
@@ -521,7 +527,7 @@ def test_returning_folder_instead_of_file():
     def wf2() -> FlyteFile:
         return t2()
 
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         wf2()
 
 

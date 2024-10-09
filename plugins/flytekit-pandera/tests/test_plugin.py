@@ -1,8 +1,7 @@
-import os
-
 import pandas
 import pandera
 import pytest
+
 from flytekitplugins.pandera import schema  # noqa: F401
 
 from flytekit import task, workflow
@@ -73,7 +72,7 @@ def test_pandera_dataframe_type_hints():
         return transform2_noop(df=transform1(df=df))
 
     with pytest.raises(
-        TypeError,
+        pandera.errors.SchemaError,
         match=f"Failed to convert type <class 'pandas.core.frame.DataFrame'> to type pandera.typing.pandas.DataFrame",
     ):
         wf_invalid_output(df=valid_df)

@@ -8,9 +8,8 @@ from pathlib import Path
 
 import click
 
-import flytekit.configuration
-import flytekit.constants
 from flytekit.configuration import FastSerializationSettings, ImageConfig, SerializationSettings
+from flytekit.constants import CopyFileDetection
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.loggers import logger
 from flytekit.models import launch_plan, task
@@ -90,7 +89,6 @@ def package(
     serializable_entities: typing.List[FlyteControlPlaneEntity],
     source: str = ".",
     output: str = "./flyte-package.tgz",
-    fast: bool = False,
     deref_symlinks: bool = False,
     fast_options: typing.Optional[fast_registration.FastPackageOptions] = None,
 ):
@@ -99,7 +97,6 @@ def package(
     :param serializable_entities: Entities that can be serialized
     :param source: source folder
     :param output: output package name with suffix
-    :param fast: fast enabled implies source code is bundled
     :param deref_symlinks: if enabled then symlinks are dereferenced during packaging
     :param fast_options:
 
@@ -114,7 +111,7 @@ def package(
         persist_registrable_entities(serializable_entities, output_tmpdir)
 
         # If Fast serialization is enabled, then an archive is also created and packaged
-        if fast:
+        if fast_options and fast_options.copy_style != CopyFileDetection.NO_COPY:
             # If output exists and is a path within source, delete it so as to not re-bundle it again.
             if os.path.abspath(output).startswith(os.path.abspath(source)) and os.path.exists(output):
                 click.secho(f"{output} already exists within {source}, deleting and re-creating it", fg="yellow")
@@ -135,7 +132,6 @@ def serialize_and_package(
     settings: SerializationSettings,
     source: str = ".",
     output: str = "./flyte-package.tgz",
-    fast: bool = False,
     deref_symlinks: bool = False,
     options: typing.Optional[Options] = None,
     fast_options: typing.Optional[fast_registration.FastPackageOptions] = None,
@@ -147,7 +143,7 @@ def serialize_and_package(
     """
     serialize_load_only(pkgs, settings, source)
     serializable_entities = serialize_get_control_plane_entities(settings, source, options=options)
-    package(serializable_entities, source, output, fast, deref_symlinks, fast_options)
+    package(serializable_entities, source, output, deref_symlinks, fast_options)
 
 
 def find_common_root(
@@ -234,10 +230,9 @@ def register(
     raw_data_prefix: str,
     version: typing.Optional[str],
     deref_symlinks: bool,
-    fast: bool,
     package_or_module: typing.Tuple[str],
     remote: FlyteRemote,
-    copy_style: typing.Optional[flytekit.constants.CopyFileDetection],
+    copy_style: CopyFileDetection,
     env: typing.Optional[typing.Dict[str, str]],
     dry_run: bool = False,
     activate_launchplans: bool = False,
@@ -262,7 +257,7 @@ def register(
         env=env,
     )
 
-    if not version and not fast:
+    if not version and copy_style == CopyFileDetection.NO_COPY:
         click.secho("Version is required.", fg="red")
         return
 
@@ -281,7 +276,7 @@ def register(
     serialize_load_only(pkgs_and_modules, serialization_settings, str(detected_root))
 
     # Fast registration is handled after module loading
-    if fast:
+    if copy_style != CopyFileDetection.NO_COPY:
         md5_bytes, native_url = remote.fast_package(
             detected_root,
             deref_symlinks,
@@ -335,7 +330,7 @@ def register(
             secho(og_id, "failed")
 
     async def _register(entities: typing.List[task.TaskSpec]):
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         tasks = []
         for entity in entities:
             tasks.append(loop.run_in_executor(None, functools.partial(_raw_register, entity)))

@@ -20,6 +20,7 @@ import uuid
 from base64 import b64encode
 from collections import OrderedDict
 from dataclasses import asdict, dataclass
+from dataclasses import replace as dc_replace
 from datetime import datetime, timedelta
 from typing import Dict
 
@@ -34,6 +35,7 @@ from flytekit import ImageSpec
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
+from flytekit.constants import CopyFileDetection
 from flytekit.core import constants, utils
 from flytekit.core.artifact import Artifact
 from flytekit.core.base_task import PythonTask
@@ -95,6 +97,7 @@ from flytekit.tools.translator import (
     get_serializable,
     get_serializable_launch_plan,
 )
+from flytekit.utils.asyn import run_sync
 
 if typing.TYPE_CHECKING:
     try:
@@ -199,6 +202,7 @@ class FlyteRemote(object):
         default_project: typing.Optional[str] = None,
         default_domain: typing.Optional[str] = None,
         data_upload_location: str = "flyte://my-s3-bucket/",
+        interactive_mode_enabled: bool = False,
         **kwargs,
     ):
         """Initialize a FlyteRemote object.
@@ -209,9 +213,13 @@ class FlyteRemote(object):
         :param default_domain: default domain to use when fetching or executing flyte entities.
         :param data_upload_location: this is where all the default data will be uploaded when providing inputs.
             The default location - `s3://my-s3-bucket/data` works for sandbox/demo environment. Please override this for non-sandbox cases.
+        :param interactive_mode_enabled: If set to True, the FlyteRemote will pickle the task/workflow.
         """
         if config is None or config.platform is None or config.platform.endpoint is None:
             raise user_exceptions.FlyteAssertion("Flyte endpoint should be provided.")
+
+        if interactive_mode_enabled is True:
+            logger.warning("Jupyter notebook and interactive task support is still alpha.")
 
         if data_upload_location is None:
             data_upload_location = FlyteContext.current_context().file_access.raw_output_prefix
@@ -232,6 +240,7 @@ class FlyteRemote(object):
 
         # Save the file access object locally, build a context for it and save that as well.
         self._ctx = FlyteContextManager.current_context().with_file_access(self._file_access).build()
+        self._interactive_mode_enabled = interactive_mode_enabled
 
     @property
     def context(self) -> FlyteContext:
@@ -264,6 +273,11 @@ class FlyteRemote(object):
     def file_access(self) -> FileAccessProvider:
         """File access provider to use for offloading non-literal inputs/outputs."""
         return self._file_access
+
+    @property
+    def interactive_mode_enabled(self) -> bool:
+        """If set to True, the FlyteRemote will pickle the task/workflow."""
+        return self._interactive_mode_enabled
 
     def get(
         self, flyte_uri: typing.Optional[str] = None
@@ -755,12 +769,16 @@ class FlyteRemote(object):
             )
         if serialization_settings.version is None:
             serialization_settings.version = version
+        serialization_settings.interactive_mode_enabled = self.interactive_mode_enabled
+
+        options = options or Options()
+        options.file_uploader = options.file_uploader or self.upload_file
 
         _ = get_serializable(m, settings=serialization_settings, entity=entity, options=options)
         # concurrent register
         cp_task_entity_map = OrderedDict(filter(lambda x: isinstance(x[1], task_models.TaskSpec), m.items()))
         tasks = []
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         for entity, cp_entity in cp_task_entity_map.items():
             tasks.append(
                 loop.run_in_executor(
@@ -817,9 +835,7 @@ class FlyteRemote(object):
                 domain=self.default_domain,
             )
 
-        ident = asyncio.run(
-            self._serialize_and_register(entity=entity, settings=serialization_settings, version=version)
-        )
+        ident = run_sync(self._serialize_and_register, entity=entity, settings=serialization_settings, version=version)
 
         ft = self.fetch_task(
             ident.project,
@@ -858,9 +874,10 @@ class FlyteRemote(object):
             )
 
         self._resolve_identifier(ResourceType.WORKFLOW, entity.name, version, serialization_settings)
-        ident = asyncio.run(
-            self._serialize_and_register(entity, serialization_settings, version, options, default_launch_plan)
+        ident = run_sync(
+            self._serialize_and_register, entity, serialization_settings, version, options, default_launch_plan
         )
+
         fwf = self.fetch_workflow(ident.project, ident.domain, ident.name, ident.version)
         fwf._python_interface = entity.python_interface
         return fwf
@@ -872,6 +889,7 @@ class FlyteRemote(object):
         version: typing.Optional[str] = None,
         default_launch_plan: typing.Optional[bool] = True,
         options: typing.Optional[Options] = None,
+        fast_package_options: typing.Optional[FastPackageOptions] = None,
     ) -> FlyteWorkflow:
         """
         Use this method to register a workflow with zip mode.
@@ -880,6 +898,7 @@ class FlyteRemote(object):
         :param serialization_settings: The serialization settings to be used
         :param default_launch_plan: This should be true if a default launch plan should be created for the workflow
         :param options: Additional execution options that can be configured for the default launchplan
+        :param fast_package_options: Options to customize copying behavior
         :return:
         """
         if not isinstance(entity, PythonFunctionWorkflow):
@@ -910,6 +929,7 @@ class FlyteRemote(object):
             options=options,
             source_path=module_root,
             module_name=mod_name,
+            fast_package_options=fast_package_options,
         )
 
     def fast_package(
@@ -1048,7 +1068,7 @@ class FlyteRemote(object):
         """
         Use this method to register a workflow via script mode.
         :param destination_dir: The destination directory where the workflow will be copied to.
-        :param copy_all: If true, the entire source directory will be copied over to the destination directory.
+        :param copy_all: [deprecated] Please use the copy_style field in fast_package_options instead.
         :param domain: The domain to register the workflow in.
         :param project: The project to register the workflow in.
         :param image_config: The image config to use for the workflow.
@@ -1062,11 +1082,21 @@ class FlyteRemote(object):
         :param fast_package_options: Options to customize copy_all behavior, ignored when copy_all is False.
         :return:
         """
+        if copy_all:
+            logger.info(
+                "The copy_all flag to FlyteRemote.register_script is deprecated. Please use"
+                " the copy_style field in fast_package_options instead."
+            )
+            if not fast_package_options:
+                fast_package_options = FastPackageOptions([], copy_style=CopyFileDetection.ALL)
+            else:
+                fast_package_options = dc_replace(fast_package_options, copy_style=CopyFileDetection.ALL)
+
         if image_config is None:
             image_config = ImageConfig.auto_default_image()
 
         with tempfile.TemporaryDirectory() as tmp_dir:
-            if copy_all or (fast_package_options and fast_package_options.copy_style):
+            if fast_package_options and fast_package_options.copy_style != CopyFileDetection.NO_COPY:
                 md5_bytes, upload_native_url = self.fast_package(
                     pathlib.Path(source_path), False, tmp_dir, fast_package_options
                 )
@@ -1797,14 +1827,15 @@ class FlyteRemote(object):
         """
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
         resolved_identifiers_dict = asdict(resolved_identifiers)
+        not_found = False
         try:
             flyte_task: FlyteTask = self.fetch_task(**resolved_identifiers_dict)
         except FlyteEntityNotExistException:
-            if isinstance(entity, PythonAutoContainerTask):
-                if not image_config:
-                    raise ValueError(f"PythonTask {entity.name} not already registered, but image_config missing")
+            not_found = True
+
+        if not_found:
             ss = SerializationSettings(
-                image_config=image_config,
+                image_config=image_config or ImageConfig.auto_default_image(),
                 project=project or self.default_project,
                 domain=domain or self._default_domain,
                 version=version,
@@ -1867,6 +1898,9 @@ class FlyteRemote(object):
         """
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
         resolved_identifiers_dict = asdict(resolved_identifiers)
+        if not image_config:
+            image_config = ImageConfig.auto_default_image()
+
         ss = SerializationSettings(
             image_config=image_config,
             project=resolved_identifiers.project,
@@ -1879,8 +1913,6 @@ class FlyteRemote(object):
             self.fetch_workflow(**resolved_identifiers_dict)
         except FlyteEntityNotExistException:
             logger.info("Registering workflow because it wasn't found in Flyte Admin.")
-            if not image_config:
-                raise ValueError("Need image config since we are registering")
             self.register_workflow(entity, ss, version=version, options=options)
 
         try:

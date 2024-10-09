@@ -13,3 +13,6 @@ END_NODE_ID = "end-node"
 
 # If set this environment variable overrides the default container image and the default base image in ImageSpec.
 FLYTE_INTERNAL_IMAGE_ENV_VAR = "FLYTE_INTERNAL_IMAGE"
+
+# Binary IDL Serialization Format
+MESSAGEPACK = "msgpack"

@@ -10,18 +10,20 @@ from typing import Any, Generator, Tuple
 from uuid import UUID
 
 import fsspec
+import msgpack
 from dataclasses_json import DataClassJsonMixin, config
 from fsspec.utils import get_protocol
 from marshmallow import fields
 from mashumaro.types import SerializableType
 
 from flytekit import BlobType
+from flytekit.core.constants import MESSAGEPACK
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError, get_batch_size
 from flytekit.exceptions.user import FlyteAssertion
 from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_types
-from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
+from flytekit.models.literals import Binary, Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 from flytekit.types.file import FileExt, FlyteFile
 
@@ -504,9 +506,41 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
         else:
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=source_path)))
 
+    def from_binary_idl(
+        self, binary_idl_object: Binary, expected_python_type: typing.Type[FlyteDirectory]
+    ) -> FlyteDirectory:
+        if binary_idl_object.tag == MESSAGEPACK:
+            python_val = msgpack.loads(binary_idl_object.value)
+            path = python_val.get("path", None)
+
+            if path is None:
+                raise ValueError("FlyteDirectory's path should not be None")
+
+            return FlyteDirToMultipartBlobTransformer().to_python_value(
+                FlyteContextManager.current_context(),
+                Literal(
+                    scalar=Scalar(
+                        blob=Blob(
+                            metadata=BlobMetadata(
+                                type=_core_types.BlobType(
+                                    format="", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
+                                )
+                            ),
+                            uri=path,
+                        )
+                    )
+                ),
+                expected_python_type,
+            )
+        else:
+            raise TypeTransformerFailedError(f"Unsupported binary format: `{binary_idl_object.tag}`")
+
     def to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Type[FlyteDirectory]
     ) -> FlyteDirectory:
+        if lv.scalar.binary:
+            return self.from_binary_idl(lv.scalar.binary, expected_python_type)
+
         uri = lv.scalar.blob.uri
 
         if lv.scalar.blob.metadata.type.dimensionality != BlobType.BlobDimensionality.MULTIPART:

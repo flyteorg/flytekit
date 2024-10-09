@@ -32,12 +32,14 @@ def test_image_spec(mock_image_spec_builder, monkeypatch):
         requirements=REQUIREMENT_FILE,
         registry_config=REGISTRY_CONFIG_FILE,
         entrypoint=["/bin/bash"],
+        copy=["/src/file1.txt"]
     )
     assert image_spec._is_force_push is False
 
     image_spec = image_spec.with_commands("echo hello")
     image_spec = image_spec.with_packages("numpy")
     image_spec = image_spec.with_apt_packages("wget")
+    image_spec = image_spec.with_copy(["/src", "/src/file2.txt"])
     image_spec = image_spec.force_push()
 
     assert image_spec.python_version == "3.8"
@@ -58,8 +60,9 @@ def test_image_spec(mock_image_spec_builder, monkeypatch):
     assert image_spec.commands == ["echo hello"]
     assert image_spec._is_force_push is True
     assert image_spec.entrypoint == ["/bin/bash"]
+    assert image_spec.copy == ["/src/file1.txt", "/src", "/src/file2.txt"]
 
-    assert image_spec.image_name() == f"localhost:30001/flytekit:nDg0IzEKso7jtbBnpLWTnw"
+    assert image_spec.image_name() == f"localhost:30001/flytekit:fYU5EUF6y0b2oFG4tu70tA"
     ctx = context_manager.FlyteContext.current_context()
     with context_manager.FlyteContextManager.with_context(
         ctx.with_execution_state(ctx.execution_state.with_params(mode=ExecutionState.Mode.TASK_EXECUTION))

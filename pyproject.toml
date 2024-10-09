@@ -35,6 +35,7 @@ dependencies = [
     "marshmallow-enum",
     "marshmallow-jsonschema>=0.12.0",
     "mashumaro>=3.11",
+    "msgpack>=1.1.0",
     "protobuf!=4.25.0",
     "pygments",
     "python-json-logger>=2.0.0",
