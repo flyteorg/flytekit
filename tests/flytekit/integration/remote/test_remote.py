@@ -14,6 +14,7 @@ import joblib
 from urllib.parse import urlparse
 import uuid
 import pytest
+from mock import mock, patch
 
 from flytekit import LaunchPlan, kwtypes
 from flytekit.configuration import Config, ImageConfig, SerializationSettings
@@ -23,14 +24,19 @@ from flytekit.core.workflow import reference_workflow
 from flytekit.exceptions.user import FlyteAssertion, FlyteEntityNotExistException
 from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
 from flytekit.remote.remote import FlyteRemote
+from flyteidl.service import dataproxy_pb2 as _data_proxy_pb2
 from flytekit.types.schema import FlyteSchema
+from flytekit.clients.friendly import SynchronousFlyteClient as _SynchronousFlyteClient
+from flytekit.configuration import PlatformConfig
 
 MODULE_PATH = pathlib.Path(__file__).parent / "workflows/basic"
 CONFIG = os.environ.get("FLYTECTL_CONFIG", str(pathlib.Path.home() / ".flyte" / "config-sandbox.yaml"))
+# Run `make build-dev` to build and push the image to the local registry.
 IMAGE = os.environ.get("FLYTEKIT_IMAGE", "localhost:30000/flytekit:dev")
 PROJECT = "flytesnacks"
 DOMAIN = "development"
 VERSION = f"v{os.getpid()}"
+DEST_DIR = "/tmp"
 
 
 @pytest.fixture(scope="session")
@@ -65,6 +71,8 @@ def run(file_name, wf_name, *args):
             CONFIG,
             "run",
             "--remote",
+            "--destination-dir",
+            DEST_DIR,
             "--image",
             IMAGE,
             "--project",
@@ -95,12 +103,35 @@ def test_fetch_execute_launch_plan(register):
     assert execution.outputs["o0"] == "hello world"
 
 
+def test_get_download_artifact_signed_url(register):
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    flyte_launch_plan = remote.fetch_launch_plan(name="basic.basic_workflow.my_wf", version=VERSION)
+    execution = remote.execute(flyte_launch_plan, inputs={"a": 10, "b": "foobar"}, wait=True)
+    project, domain, name = execution.id.project, execution.id.domain, execution.id.name
+
+    # Fetch the download deck signed URL for the execution
+    client = _SynchronousFlyteClient(PlatformConfig.for_endpoint("localhost:30080", True))
+    download_link_response = client.get_download_artifact_signed_url(
+        node_id="n0",  # Assuming node_id is "n0"
+        project=project,
+        domain=domain,
+        name=name,
+        artifact_type=_data_proxy_pb2.ARTIFACT_TYPE_DECK,
+    )
+
+    # Check if the signed URL is valid and starts with the expected prefix
+    signed_url = download_link_response.signed_url[0]
+    assert signed_url.startswith(f"http://localhost:30002/my-s3-bucket/metadata/propeller/{project}-{domain}-{name}/n0/data/0/deck.html")
+
 def test_fetch_execute_launch_plan_with_args(register):
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     flyte_launch_plan = remote.fetch_launch_plan(name="basic.basic_workflow.my_wf", version=VERSION)
     execution = remote.execute(flyte_launch_plan, inputs={"a": 10, "b": "foobar"}, wait=True)
     assert execution.node_executions["n0"].inputs == {"a": 10}
-    assert execution.node_executions["n0"].outputs == {"t1_int_output": 12, "c": "world"}
+    assert execution.node_executions["n0"].outputs == {
+        "t1_int_output": 12,
+        "c": "world",
+    }
     assert execution.node_executions["n1"].inputs == {"a": "world", "b": "foobar"}
     assert execution.node_executions["n1"].outputs == {"o0": "foobarworld"}
     assert execution.node_executions["n0"].task_executions[0].inputs == {"a": 10}
@@ -130,7 +161,7 @@ def test_monitor_workflow_execution(register):
             break
 
         with pytest.raises(
-            FlyteAssertion, match="Please wait until the execution has completed before requesting the outputs."
+                FlyteAssertion, match="Please wait until the execution has completed before requesting the outputs.",
         ):
             execution.outputs
 
@@ -207,7 +238,7 @@ def test_fetch_execute_task(register):
 
 def test_execute_python_task(register):
     """Test execution of a @task-decorated python function that is already registered."""
-    from .workflows.basic.basic_workflow import t1
+    from workflows.basic.basic_workflow import t1
 
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     execution = remote.execute(
@@ -230,7 +261,7 @@ def test_execute_python_task(register):
 
 def test_execute_python_workflow_and_launch_plan(register):
     """Test execution of a @workflow-decorated python function and launchplan that are already registered."""
-    from .workflows.basic.basic_workflow import my_wf
+    from workflows.basic.basic_workflow import my_wf
 
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     execution = remote.execute(
@@ -241,7 +272,11 @@ def test_execute_python_workflow_and_launch_plan(register):
 
     launch_plan = LaunchPlan.get_or_create(workflow=my_wf, name=my_wf.name)
     execution = remote.execute(
-        launch_plan, name="basic.basic_workflow.my_wf", inputs={"a": 14, "b": "foobar"}, version=VERSION, wait=True
+        launch_plan,
+        name="basic.basic_workflow.my_wf",
+        inputs={"a": 14, "b": "foobar"},
+        version=VERSION,
+        wait=True,
     )
     assert execution.outputs["o0"] == 16
     assert execution.outputs["o1"] == "foobarworld"
@@ -269,7 +304,9 @@ def test_fetch_execute_task_list_of_floats(register):
 
 def test_fetch_execute_task_convert_dict(register):
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
-    flyte_task = remote.fetch_task(name="basic.dict_str_wf.convert_to_string", version=VERSION)
+    flyte_task = remote.fetch_task(
+        name="basic.dict_str_wf.convert_to_string", version=VERSION
+    )
     d: typing.Dict[str, str] = {"key1": "value1", "key2": "value2"}
     execution = remote.execute(flyte_task, inputs={"d": d}, wait=True)
     remote.sync_execution(execution, sync_nodes=True)
@@ -278,7 +315,7 @@ def test_fetch_execute_task_convert_dict(register):
 
 def test_execute_python_workflow_dict_of_string_to_string(register):
     """Test execution of a @workflow-decorated python function and launchplan that are already registered."""
-    from .workflows.basic.dict_str_wf import my_wf
+    from workflows.basic.dict_str_wf import my_wf
 
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     d: typing.Dict[str, str] = {"k1": "v1", "k2": "v2"}
@@ -304,7 +341,7 @@ def test_execute_python_workflow_dict_of_string_to_string(register):
 
 def test_execute_python_workflow_list_of_floats(register):
     """Test execution of a @workflow-decorated python function and launchplan that are already registered."""
-    from .workflows.basic.list_float_wf import my_wf
+    from workflows.basic.list_float_wf import my_wf
 
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
 
@@ -371,12 +408,11 @@ def test_execute_joblib_workflow(register):
 
 
 def test_execute_with_default_launch_plan(register):
-    from .workflows.basic.subworkflows import parent_wf
+    from workflows.basic.subworkflows import parent_wf
 
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
-    execution = remote.execute(
-        parent_wf, inputs={"a": 101}, version=VERSION, wait=True, image_config=ImageConfig.auto(img_name=IMAGE)
-    )
+    execution = remote.execute(parent_wf, inputs={"a": 101}, version=VERSION, wait=True,
+                               image_config=ImageConfig.auto(img_name=IMAGE))
     # check node execution inputs and outputs
     assert execution.node_executions["n0"].inputs == {"a": 101}
     assert execution.node_executions["n0"].outputs == {"t1_int_output": 103, "c": "world"}
@@ -490,6 +526,7 @@ def test_execute_workflow_with_maptask(register):
     )
     assert execution.outputs["o0"] == [4, 5, 6]
 
+
 @pytest.mark.lftransfers
 class TestLargeFileTransfers:
     """A class to capture tests and helper functions for large file transfers."""
@@ -528,7 +565,7 @@ class TestLargeFileTransfers:
         """An ephemeral minio S3 path which is wiped upon the context manager's exit"""
         # Generate a random path in our Minio s3 bucket, under <BUCKET>/PROJECT/DOMAIN/<UUID>
         buckets = s3_client.list_buckets()["Buckets"]
-        assert len(buckets) == 1 # We expect just the default sandbox bucket
+        assert len(buckets) == 1  # We expect just the default sandbox bucket
         bucket = buckets[0]["Name"]
         root = str(uuid.uuid4())
         key = f"{PROJECT}/{DOMAIN}/{root}/"
@@ -538,7 +575,6 @@ class TestLargeFileTransfers:
         if "Contents" in response:
             for obj in response["Contents"]:
                 TestLargeFileTransfers._delete_s3_file(s3_client, bucket, obj["Key"])
-
 
     @staticmethod
     @pytest.mark.parametrize("gigabytes", [2, 3])
@@ -578,3 +614,144 @@ class TestLargeFileTransfers:
             bucket, key = url.netloc, url.path.lstrip("/")
             s3_md5_bytes = TestLargeFileTransfers._get_s3_file_md5_bytes(minio_s3_client, bucket, key)
             assert s3_md5_bytes == md5_bytes
+
+
+def test_workflow_remote_func():
+    """Test the logic of the remote execution of workflows and tasks."""
+    from workflows.basic.child_workflow import parent_wf, double
+
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN, interactive_mode_enabled=True)
+
+    out0 = remote.execute(
+        double,
+        inputs={"a": 3},
+        wait=True,
+        version=VERSION,
+        image_config=ImageConfig.from_images(IMAGE),
+    )
+    out1 = remote.execute(
+        parent_wf,
+        inputs={"a": 3},
+        wait=True,
+        version=VERSION + "-1",
+        image_config=ImageConfig.from_images(IMAGE),
+    )
+    out2 = remote.execute(
+        parent_wf,
+        inputs={"a": 2},
+        wait=True,
+        version=VERSION + "-2",
+        image_config=ImageConfig.from_images(IMAGE),
+    )
+
+    assert out0.outputs["o0"] == 6
+    assert out1.outputs["o0"] == 18
+    assert out2.outputs["o0"] == 12
+
+
+def test_execute_task_remote_func_list_of_floats():
+    """Test remote execution of a @task-decorated python function with a list of floats."""
+    from workflows.basic.list_float_wf import concat_list
+
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN, interactive_mode_enabled=True)
+
+    xs: typing.List[float] = [0.1, 0.2, 0.3, 0.4, -99999.7]
+    out = remote.execute(
+        concat_list,
+        inputs={"xs": xs},
+        wait=True,
+        version=VERSION,
+        image_config=ImageConfig.from_images(IMAGE),
+    )
+    assert out.outputs["o0"] == "[0.1, 0.2, 0.3, 0.4, -99999.7]"
+
+
+def test_execute_task_remote_func_convert_dict():
+    """Test remote execution of a @task-decorated python function with a dict of strings."""
+    from workflows.basic.dict_str_wf import convert_to_string
+
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN, interactive_mode_enabled=True)
+
+    d: typing.Dict[str, str] = {"key1": "value1", "key2": "value2"}
+    out = remote.execute(
+        convert_to_string,
+        inputs={"d": d},
+        wait=True,
+        version=VERSION,
+        image_config=ImageConfig.from_images(IMAGE),
+    )
+    assert json.loads(out.outputs["o0"]) == {"key1": "value1", "key2": "value2"}
+
+
+def test_execute_python_workflow_remote_func_dict_of_string_to_string():
+    """Test remote execution of a @workflow-decorated python function with a dict of strings."""
+    from workflows.basic.dict_str_wf import my_wf
+
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN, interactive_mode_enabled=True)
+
+    d: typing.Dict[str, str] = {"k1": "v1", "k2": "v2"}
+    out = remote.execute(
+        my_wf,
+        inputs={"d": d},
+        wait=True,
+        version=VERSION + "dict_str_wf",
+        image_config=ImageConfig.from_images(IMAGE),
+    )
+    assert json.loads(out.outputs["o0"]) == {"k1": "v1", "k2": "v2"}
+
+
+def test_execute_python_workflow_remote_func_list_of_floats():
+    """Test remote execution of a @workflow-decorated python function with a list of floats."""
+    """Test execution of a @workflow-decorated python function."""
+    from workflows.basic.list_float_wf import my_wf
+
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN, interactive_mode_enabled=True)
+
+    xs: typing.List[float] = [42.24, 999.1, 0.0001]
+    out = remote.execute(
+        my_wf,
+        inputs={"xs": xs},
+        wait=True,
+        version=VERSION + "list_float_wf",
+        image_config=ImageConfig.from_images(IMAGE),
+    )
+    assert out.outputs["o0"] == "[42.24, 999.1, 0.0001]"
+
+
+def test_execute_workflow_remote_fn_with_maptask():
+    """Test remote execution of a @workflow-decorated python function with a map task."""
+    from workflows.basic.array_map import workflow_with_maptask
+
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN, interactive_mode_enabled=True)
+
+    d: typing.List[int] = [1, 2, 3]
+    out = remote.execute(
+        workflow_with_maptask,
+        inputs={"data": d, "y": 3},
+        wait=True,
+        version=VERSION,
+        image_config=ImageConfig.from_images(IMAGE),
+    )
+    assert out.outputs["o0"] == [4, 5, 6]
+
+
+def test_register_wf_fast(register):
+    from workflows.basic.subworkflows import parent_wf
+
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    fast_version = f"{VERSION}_fast"
+    serialization_settings = SerializationSettings(image_config=ImageConfig.auto(img_name=IMAGE))
+    registered_wf = remote.fast_register_workflow(parent_wf, serialization_settings, version=fast_version)
+    execution = remote.execute(registered_wf, inputs={"a": 101}, wait=True)
+    assert registered_wf.name == "workflows.basic.subworkflows.parent_wf"
+    assert execution.spec.launch_plan.version == fast_version
+    # check node execution inputs and outputs
+    assert execution.node_executions["n0"].inputs == {"a": 101}
+    assert execution.node_executions["n0"].outputs == {"t1_int_output": 103, "c": "world"}
+    assert execution.node_executions["n1"].inputs == {"a": 103}
+    assert execution.node_executions["n1"].outputs == {"o0": "world", "o1": "world"}
+
+    # check subworkflow task execution inputs and outputs
+    subworkflow_node_executions = execution.node_executions["n1"].subworkflow_node_executions
+    subworkflow_node_executions["n1-0-n0"].inputs == {"a": 103}
+    subworkflow_node_executions["n1-0-n1"].outputs == {"t1_int_output": 107, "c": "world"}

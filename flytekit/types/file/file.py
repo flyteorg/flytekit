@@ -9,18 +9,25 @@ from dataclasses import dataclass, field
 from typing import cast
 from urllib.parse import unquote
 
+import msgpack
 from dataclasses_json import config
 from marshmallow import fields
 from mashumaro.mixins.json import DataClassJSONMixin
 from mashumaro.types import SerializableType
 
+from flytekit.core.constants import MESSAGEPACK
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError, get_underlying_type
+from flytekit.core.type_engine import (
+    AsyncTypeTransformer,
+    TypeEngine,
+    TypeTransformerFailedError,
+    get_underlying_type,
+)
 from flytekit.exceptions.user import FlyteAssertion
 from flytekit.loggers import logger
 from flytekit.models.core import types as _core_types
 from flytekit.models.core.types import BlobType
-from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
+from flytekit.models.literals import Binary, Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 from flytekit.types.pickle.pickle import FlytePickleTransformer
 
@@ -245,7 +252,7 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
         self,
         path: typing.Union[str, os.PathLike],
         downloader: typing.Callable = noop,
-        remote_path: typing.Optional[typing.Union[os.PathLike, bool]] = None,
+        remote_path: typing.Optional[typing.Union[os.PathLike, str, bool]] = None,
     ):
         """
         FlyteFile's init method.
@@ -348,7 +355,7 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
         return self.path
 
 
-class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
+class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
     def __init__(self):
         super().__init__(name="FlyteFilePath", t=FlyteFile)
 
@@ -426,7 +433,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             if real_type not in expected_type:
                 raise ValueError(f"Incorrect file type, expected {expected_type}, got {real_type}")
 
-    def to_literal(
+    async def async_to_literal(
         self,
         ctx: FlyteContext,
         python_val: typing.Union[FlyteFile, os.PathLike, str],
@@ -518,9 +525,42 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             return {"ContentEncoding": "gzip"}
         return {}
 
-    def to_python_value(
+    def from_binary_idl(
+        self, binary_idl_object: Binary, expected_python_type: typing.Union[typing.Type[FlyteFile], os.PathLike]
+    ) -> FlyteFile:
+        if binary_idl_object.tag == MESSAGEPACK:
+            python_val = msgpack.loads(binary_idl_object.value)
+            path = python_val.get("path", None)
+
+            if path is None:
+                raise ValueError("FlyteFile's path should not be None")
+
+            return FlyteFilePathTransformer().to_python_value(
+                FlyteContextManager.current_context(),
+                Literal(
+                    scalar=Scalar(
+                        blob=Blob(
+                            metadata=BlobMetadata(
+                                type=_core_types.BlobType(
+                                    format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
+                                )
+                            ),
+                            uri=path,
+                        )
+                    )
+                ),
+                expected_python_type,
+            )
+        else:
+            raise TypeTransformerFailedError(f"Unsupported binary format: `{binary_idl_object.tag}`")
+
+    async def async_to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Union[typing.Type[FlyteFile], os.PathLike]
     ) -> FlyteFile:
+        # Handle dataclass attribute access
+        if lv.scalar and lv.scalar.binary:
+            return self.from_binary_idl(lv.scalar.binary, expected_python_type)
+
         try:
             uri = lv.scalar.blob.uri
         except AttributeError:

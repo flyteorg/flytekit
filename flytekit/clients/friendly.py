@@ -1,5 +1,6 @@
 import datetime
 import typing
+from functools import lru_cache
 
 from flyteidl.admin import common_pb2 as _common_pb2
 from flyteidl.admin import execution_pb2 as _execution_pb2
@@ -12,7 +13,9 @@ from flyteidl.admin import task_execution_pb2 as _task_execution_pb2
 from flyteidl.admin import task_pb2 as _task_pb2
 from flyteidl.admin import workflow_attributes_pb2 as _workflow_attributes_pb2
 from flyteidl.admin import workflow_pb2 as _workflow_pb2
+from flyteidl.core import identifier_pb2 as _identifier_pb2
 from flyteidl.service import dataproxy_pb2 as _data_proxy_pb2
+from flyteidl.service.dataproxy_pb2 import ARTIFACT_TYPE_DECK
 from google.protobuf.duration_pb2 import Duration
 
 from flytekit.clients.raw import RawSynchronousFlyteClient as _RawSynchronousFlyteClient
@@ -164,6 +167,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             str(task_list.token),
         )
 
+    @lru_cache
     def get_task(self, id):
         """
         This returns a single task for a given identifier.
@@ -293,6 +297,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             str(wf_list.token),
         )
 
+    @lru_cache
     def get_workflow(self, id):
         """
         This returns a single workflow for a given ID.
@@ -337,6 +342,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             )
         )
 
+    @lru_cache
     def get_launch_plan(self, id):
         """
         Retrieves a launch plan entity.
@@ -1021,7 +1027,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
                 )
             )
         except Exception as e:
-            raise RuntimeError(f"Failed to get signed url for {filename}, reason: {e}")
+            raise RuntimeError(f"Failed to get signed url for {filename}.") from e
 
     def get_download_signed_url(
         self, native_url: str, expires_in: datetime.timedelta = None
@@ -1042,3 +1048,42 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
 
         resp = self._dataproxy_stub.GetData(req, metadata=self._metadata)
         return resp
+
+    def get_download_artifact_signed_url(
+        self,
+        node_id: str,
+        project: str,
+        domain: str,
+        name: str,
+        artifact_type: _data_proxy_pb2.ArtifactType = ARTIFACT_TYPE_DECK,
+        expires_in: datetime.timedelta = None,
+    ) -> _data_proxy_pb2.CreateDownloadLinkResponse:
+        """
+        Get a signed url for an artifact.
+
+        :param node_id: Node id associated with artifact
+        :param project: Name of the project the resource belongs to
+        :param domain: Name of the domain the resource belongs to
+        :param name: User or system provided value for the resource
+        :param artifact_type: ArtifactType of the artifact requested
+        :param expires_in: If provided this defines a requested expiration duration for the generated url
+        :rtype: flyteidl.service.dataproxy_pb2.CreateDownloadLinkResponse
+        """
+        expires_in_pb = None
+        if expires_in:
+            expires_in_pb = Duration()
+            expires_in_pb.FromTimedelta(expires_in)
+        return super(SynchronousFlyteClient, self).create_download_link(
+            _data_proxy_pb2.CreateDownloadLinkRequest(
+                artifact_type=artifact_type,
+                node_execution_id=_identifier_pb2.NodeExecutionIdentifier(
+                    node_id=node_id,
+                    execution_id=_identifier_pb2.WorkflowExecutionIdentifier(
+                        project=project,
+                        domain=domain,
+                        name=name,
+                    ),
+                ),
+                expires_in=expires_in_pb,
+            )
+        )

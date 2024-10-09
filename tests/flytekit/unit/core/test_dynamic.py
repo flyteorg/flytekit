@@ -14,6 +14,7 @@ from flytekit.core.resources import Resources
 from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
+from flytekit.exceptions.user import FlyteUserRuntimeException
 from flytekit.models.literals import LiteralMap
 from flytekit.tools.translator import get_serializable_task
 from flytekit.types.file import FlyteFile
@@ -350,16 +351,25 @@ def test_iter():
 
         return result_files
 
+    ctx = context_manager.FlyteContextManager.current_context()
+    input_literal_map = TypeEngine.dict_to_literal_map(ctx, {})
+
     with context_manager.FlyteContextManager.with_context(
-        context_manager.FlyteContextManager.current_context().with_serialization_settings(settings)
-    ) as ctx:
-        with context_manager.FlyteContextManager.with_context(
-            ctx.with_execution_state(
+            ctx.with_serialization_settings(settings).with_execution_state(
+                ctx.execution_state.with_params(
+                    mode=ExecutionState.Mode.LOCAL_TASK_EXECUTION,
+                )
+            )
+    ) as new_ctx:
+        with pytest.raises(ValueError):
+            dynamic_task.dispatch_execute(new_ctx, input_literal_map)
+
+    with context_manager.FlyteContextManager.with_context(
+        ctx.with_serialization_settings(settings).with_execution_state(
                 ctx.execution_state.with_params(
                     mode=ExecutionState.Mode.TASK_EXECUTION,
                 )
             )
-        ) as ctx:
-            input_literal_map = TypeEngine.dict_to_literal_map(ctx, {})
-            with pytest.raises(ValueError):
-                dynamic_task.dispatch_execute(ctx, input_literal_map)
+    ) as new_ctx:
+        with pytest.raises(FlyteUserRuntimeException):
+            dynamic_task.dispatch_execute(new_ctx, input_literal_map)

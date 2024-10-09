@@ -4,6 +4,7 @@ import os
 import pathlib
 import shutil
 import sys
+import io
 
 import mock
 import pytest
@@ -22,7 +23,6 @@ from flytekit.core.task import task
 from flytekit.image_spec.image_spec import (
     ImageBuildEngine,
     ImageSpec,
-    calculate_hash_from_image_spec,
 )
 from flytekit.interaction.click_types import DirParamType, FileParamType
 from flytekit.remote import FlyteRemote
@@ -38,6 +38,8 @@ IMPERATIVE_WORKFLOW_FILE = os.path.join(
     os.path.dirname(os.path.realpath(__file__)), "imperative_wf.py"
 )
 DIR_NAME = os.path.dirname(os.path.realpath(__file__))
+
+monkeypatch = pytest.MonkeyPatch()
 
 
 class WorkflowFileLocation(enum.Enum):
@@ -198,6 +200,12 @@ def test_pyflyte_run_cli(workflow_file):
             "Any",
             "--q",
             DIR_NAME,
+            "--r",
+            json.dumps([{"i": 1, "a": ["h", "e"]}]),
+            "--s",
+            json.dumps({"x": {"i": 1, "a": ["h", "e"]}}),
+            "--t",
+            json.dumps({"i": [{"i":1,"a":["h","e"]}]}),
         ],
         catch_exceptions=False,
     )
@@ -228,6 +236,126 @@ def test_union_type1(input):
         catch_exceptions=False,
     )
     assert result.exit_code == 0
+
+
+@pytest.mark.parametrize(
+    "extra_cli_args, task_name, expected_output",
+    [
+        (("--a_b",), "test_boolean", True),
+        (("--no_a_b",), "test_boolean", False),
+        (("--no-a-b",), "test_boolean", False),
+
+        (tuple(), "test_boolean_default_true", True),
+        (("--a_b",), "test_boolean_default_true", True),
+        (("--no_a_b",), "test_boolean_default_true", False),
+        (("--no-a-b",), "test_boolean_default_true", False),
+
+        (tuple(), "test_boolean_default_false", False),
+        (("--a_b",), "test_boolean_default_false", True),
+        (("--no_a_b",), "test_boolean_default_false", False),
+        (("--no-a-b",), "test_boolean_default_false", False),
+    ],
+)
+def test_boolean_type(extra_cli_args, task_name, expected_output):
+    runner = CliRunner()
+    result = runner.invoke(
+        pyflyte.main,
+        [
+            "run",
+            os.path.join(DIR_NAME, "workflow.py"),
+            task_name,
+            *extra_cli_args,
+        ],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+    assert str(expected_output) in result.stdout
+
+
+def test_all_types_with_json_input():
+    runner = CliRunner()
+    result = runner.invoke(
+        pyflyte.main,
+        [
+            "run",
+            os.path.join(DIR_NAME, "workflow.py"),
+            "my_wf",
+            "--inputs-file",
+            os.path.join(os.path.dirname(os.path.realpath(__file__)), "my_wf_input.json"),
+        ],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0, result.stdout
+
+
+def test_all_types_with_yaml_input():
+    runner = CliRunner()
+
+    result = runner.invoke(
+        pyflyte.main,
+        ["run", os.path.join(DIR_NAME, "workflow.py"), "my_wf", "--inputs-file", os.path.join(os.path.dirname(os.path.realpath(__file__)), "my_wf_input.yaml")],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0, result.stdout
+
+
+def test_all_types_with_pipe_input(monkeypatch):
+    runner = CliRunner()
+    input= str(json.load(open(os.path.join(os.path.dirname(os.path.realpath(__file__)), "my_wf_input.json"),"r")))
+    monkeypatch.setattr("sys.stdin", io.StringIO(input))
+    result = runner.invoke(
+        pyflyte.main,
+        [
+            "run",
+            os.path.join(DIR_NAME, "workflow.py"),
+            "my_wf",
+        ],
+        input=input,
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0, result.stdout
+
+
+@pytest.mark.parametrize(
+    "pipe_input, option_input",
+    [
+        (
+            str(
+                json.load(
+                    open(
+                        os.path.join(
+                            os.path.dirname(os.path.realpath(__file__)),
+                            "my_wf_input.json",
+                        ),
+                        "r",
+                    )
+                )
+            ),
+            "GREEN",
+        )
+    ],
+)
+def test_replace_file_inputs(monkeypatch, pipe_input, option_input):
+    runner = CliRunner()
+    monkeypatch.setattr("sys.stdin", io.StringIO(pipe_input))
+    result = runner.invoke(
+        pyflyte.main,
+        [
+            "run",
+            os.path.join(DIR_NAME, "workflow.py"),
+            "my_wf",
+            "--inputs-file",
+            os.path.join(
+                os.path.dirname(os.path.realpath(__file__)), "my_wf_input.json"
+            ),
+            "--k",
+            option_input,
+        ],
+        input=pipe_input,
+    )
+
+    assert result.exit_code == 0
+    assert option_input in result.output
 
 
 @pytest.mark.parametrize(
@@ -276,7 +404,9 @@ def test_union_type_with_invalid_input():
     assert result.exit_code == 2
 
 
-@pytest.mark.skipif(sys.version_info < (3, 9), reason="listing entities requires python>=3.9")
+@pytest.mark.skipif(
+    sys.version_info < (3, 9), reason="listing entities requires python>=3.9"
+)
 @pytest.mark.parametrize(
     "workflow_file",
     [
@@ -287,25 +417,34 @@ def test_union_type_with_invalid_input():
 )
 def test_get_entities_in_file(workflow_file):
     e = get_entities_in_file(pathlib.Path(workflow_file), False)
-    assert e.workflows == ["my_wf", "wf_with_env_vars", "wf_with_none"]
+    assert e.workflows == ["my_wf", "wf_with_env_vars", "wf_with_list", "wf_with_none"]
     assert e.tasks == [
         "get_subset_df",
         "print_all",
         "show_sd",
         "task_with_env_vars",
+        "task_with_list",
         "task_with_optional",
+        "test_boolean",
+        "test_boolean_default_false",
+        "test_boolean_default_true",
         "test_union1",
         "test_union2",
     ]
     assert e.all() == [
         "my_wf",
         "wf_with_env_vars",
+        "wf_with_list",
         "wf_with_none",
         "get_subset_df",
         "print_all",
         "show_sd",
         "task_with_env_vars",
+        "task_with_list",
         "task_with_optional",
+        "test_boolean",
+        "test_boolean_default_false",
+        "test_boolean_default_true",
         "test_union1",
         "test_union2",
     ]
@@ -411,12 +550,11 @@ IMAGE_SPEC = os.path.join(os.path.dirname(os.path.realpath(__file__)), "imageSpe
 with open(IMAGE_SPEC, "r") as f:
     image_spec_dict = yaml.safe_load(f)
     image_spec = ImageSpec(**image_spec_dict)
-    tag = calculate_hash_from_image_spec(image_spec)
 
 ic_result_4 = ImageConfig(
-    default_image=Image(name="default", fqn="flytekit", tag=tag),
+    default_image=Image(name="default", fqn="flytekit", tag=image_spec.tag),
     images=[
-        Image(name="default", fqn="flytekit", tag=tag),
+        Image(name="default", fqn="flytekit", tag=image_spec.tag),
         Image(name="xyz", fqn="docker.io/xyz", tag="latest"),
         Image(name="abc", fqn="docker.io/abc", tag=None),
         Image(
@@ -715,3 +853,18 @@ def test_list_default_arguments(task_path):
     )
     assert result.exit_code == 0
     assert result.stdout == "Running Execution on local.\n0 Hello Color.RED\n\n"
+
+
+def test_entity_non_found_in_file():
+    runner = CliRunner()
+    result = runner.invoke(
+        pyflyte.main,
+        [
+            "run",
+            os.path.join(DIR_NAME, "workflow.py"),
+            "my_wffffff",
+        ],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 1
+    assert "FlyteEntityNotFoundException: Task/Workflow \'my_wffffff\' not found in module \n\'pyflyte.workflow\'" in result.stdout

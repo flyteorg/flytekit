@@ -36,6 +36,7 @@ from flytekit import configuration
 from flytekit.configuration import DataConfig
 from flytekit.core.local_fsspec import FlyteLocalFileSystem
 from flytekit.core.utils import timeit
+from flytekit.exceptions.system import FlyteDownloadDataException, FlyteUploadDataException
 from flytekit.exceptions.user import FlyteAssertion, FlyteDataNotFoundException
 from flytekit.interfaces.random import random
 from flytekit.loggers import logger
@@ -561,7 +562,7 @@ class FileAccessProvider(object):
         except FlyteDataNotFoundException:
             raise
         except Exception as ex:
-            raise FlyteAssertion(
+            raise FlyteDownloadDataException(
                 f"Failed to get data from {remote_path} to {local_path} (recursive={is_multipart}).\n\n"
                 f"Original exception: {str(ex)}"
             )
@@ -589,7 +590,7 @@ class FileAccessProvider(object):
                     return put_result
                 return remote_path
         except Exception as ex:
-            raise FlyteAssertion(
+            raise FlyteUploadDataException(
                 f"Failed to put data from {local_path} to {remote_path} (recursive={is_multipart}).\n\n"
                 f"Original exception: {str(ex)}"
             ) from ex

@@ -9,15 +9,17 @@ from enum import Enum
 from pathlib import Path
 from typing import Type
 
+import msgpack
 from dataclasses_json import config
 from marshmallow import fields
 from mashumaro.mixins.json import DataClassJSONMixin
 from mashumaro.types import SerializableType
 
+from flytekit.core.constants import MESSAGEPACK
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
 from flytekit.loggers import logger
-from flytekit.models.literals import Literal, Scalar, Schema
+from flytekit.models.literals import Binary, Literal, Scalar, Schema
 from flytekit.models.types import LiteralType, SchemaType
 
 T = typing.TypeVar("T")
@@ -367,7 +369,7 @@ def _get_numpy_type_mappings() -> typing.Dict[Type, SchemaType.SchemaColumn.Sche
             _np.object_: SchemaType.SchemaColumn.SchemaColumnType.STRING,
         }
     except ImportError as e:
-        logger.warning("Numpy not found, skipping numpy type mappings, error: %s", e)
+        logger.debug("Numpy not found, skipping numpy type mappings, error: %s", e)
         return {}
 
 
@@ -439,7 +441,28 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
             schema.remote_path = ctx.file_access.put_data(schema.local_path, schema.remote_path, is_multipart=True)
         return Literal(scalar=Scalar(schema=Schema(schema.remote_path, self._get_schema_type(python_type))))
 
+    def from_binary_idl(self, binary_idl_object: Binary, expected_python_type: Type[FlyteSchema]) -> FlyteSchema:
+        if binary_idl_object.tag == MESSAGEPACK:
+            python_val = msgpack.loads(binary_idl_object.value)
+            remote_path = python_val.get("remote_path", None)
+
+            if remote_path is None:
+                raise ValueError("FlyteSchema's path should not be None")
+
+            t = FlyteSchemaTransformer()
+            return t.to_python_value(
+                FlyteContextManager.current_context(),
+                Literal(scalar=Scalar(schema=Schema(remote_path, t._get_schema_type(expected_python_type)))),
+                expected_python_type,
+            )
+        else:
+            raise TypeTransformerFailedError(f"Unsupported binary format: `{binary_idl_object.tag}`")
+
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[FlyteSchema]) -> FlyteSchema:
+        # Handle dataclass attribute access
+        if lv.scalar and lv.scalar.binary:
+            return self.from_binary_idl(lv.scalar.binary, expected_python_type)
+
         def downloader(x, y):
             ctx.file_access.get_data(x, y, is_multipart=True)
 

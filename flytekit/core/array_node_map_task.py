@@ -20,7 +20,6 @@ from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanceTask
 from flytekit.core.type_engine import TypeEngine, is_annotated
 from flytekit.core.utils import timeit
-from flytekit.exceptions import scopes as exception_scopes
 from flytekit.loggers import logger
 from flytekit.models import literals as _literal_models
 from flytekit.models.array_job import ArrayJob
@@ -30,6 +29,7 @@ from flytekit.models.task import Container, K8sPod, Sql, Task
 from flytekit.tools.module_loader import load_object_from_module
 from flytekit.types.pickle import pickle
 from flytekit.types.pickle.pickle import FlytePickleTransformer
+from flytekit.utils.asyn import loop_manager
 
 
 class ArrayNodeMapTask(PythonTask):
@@ -63,8 +63,16 @@ class ArrayNodeMapTask(PythonTask):
             actual_task = python_function_task
 
         # TODO: add support for other Flyte entities
-        if not (isinstance(actual_task, PythonFunctionTask) or isinstance(actual_task, PythonInstanceTask)):
-            raise ValueError("Only PythonFunctionTask and PythonInstanceTask are supported in map tasks.")
+        if not (
+            (
+                isinstance(actual_task, PythonFunctionTask)
+                and actual_task.execution_mode == PythonFunctionTask.ExecutionBehavior.DEFAULT
+            )
+            or isinstance(actual_task, PythonInstanceTask)
+        ):
+            raise ValueError(
+                "Only PythonFunctionTask with default execution mode (not @dynamic or @eager) and PythonInstanceTask are supported in map tasks."
+            )
 
         for k, v in actual_task.python_interface.inputs.items():
             if bound_inputs and k in bound_inputs:
@@ -244,7 +252,9 @@ class ArrayNodeMapTask(PythonTask):
             inputs_interface = self._run_task.python_interface.inputs
             for k in self.interface.inputs.keys():
                 v = literal_map.literals[k]
-
+                # If the input is offloaded, we need to unwrap it
+                if v.offloaded_metadata:
+                    v = loop_manager.run_sync(TypeEngine.unwrap_offloaded_literal, ctx, v)
                 if k not in self.bound_inputs:
                     # assert that v.collection is not None
                     if not v.collection or not isinstance(v.collection.literals, list):
@@ -258,7 +268,7 @@ class ArrayNodeMapTask(PythonTask):
     def execute(self, **kwargs) -> Any:
         ctx = FlyteContextManager.current_context()
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
-            return exception_scopes.user_entry_point(self.python_function_task.execute)(**kwargs)
+            return self.python_function_task.execute(**kwargs)
 
         return self._raw_execute(**kwargs)
 
@@ -335,7 +345,7 @@ class ArrayNodeMapTask(PythonTask):
                 else:
                     single_instance_inputs[k] = kwargs[k]
             try:
-                o = exception_scopes.user_entry_point(self._run_task.execute)(**single_instance_inputs)
+                o = self._run_task.execute(**single_instance_inputs)
                 if outputs_expected:
                     outputs.append(o)
             except Exception as exc:
