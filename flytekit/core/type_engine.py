@@ -167,12 +167,16 @@ class TypeTransformer(typing.Generic[T]):
 
         # Optionally check the type of elements if it's a collection like list or dict
         if origin in {list, tuple, set}:
+            if len(obj) == 0:
+                return
             for item in obj:
                 self.assert_type(args[0], item)
                 return
             raise TypeTransformerFailedError(f"Not all items in '{obj}' are of type {args[0]}")
 
         if origin is dict:
+            if len(obj.items()) == 0:
+                return
             key_type, value_type = args
             for k, v in obj.items():
                 self.assert_type(key_type, k)
