@@ -1,4 +1,6 @@
 import os
+import re
+import textwrap
 import typing
 from collections import OrderedDict
 
@@ -7,7 +9,7 @@ import mock
 import pytest
 from flyteidl.core.errors_pb2 import ErrorDocument
 
-from flytekit.bin.entrypoint import _dispatch_execute, normalize_inputs, setup_execution
+from flytekit.bin.entrypoint import _dispatch_execute, normalize_inputs, setup_execution, get_traceback_str
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core import context_manager
 from flytekit.core.base_task import IgnoreOutputs
@@ -17,7 +19,7 @@ from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions import user as user_exceptions
 from flytekit.exceptions.scopes import system_entry_point
-from flytekit.exceptions.user import FlyteUserRuntimeException
+from flytekit.exceptions.user import FlyteRecoverableException, FlyteUserRuntimeException
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import errors as error_models
 from flytekit.models.core import execution as execution_models
@@ -412,3 +414,45 @@ def test_env_reading(mock_os):
         assert ctx.execution_state.user_space_params.task_id.name == "task_name"
         assert ctx.execution_state.user_space_params.task_id.version == "task_ver"
         assert ctx.execution_state.user_space_params.execution_id.name == "exec_name"
+
+
+def test_get_traceback_str():
+    try:
+        try:
+            try:
+                raise RuntimeError("a")
+            except Exception as e:
+                raise FlyteRecoverableException("b") from e
+        except Exception as e:
+            # This is how Flyte wraps user exceptions
+            raise FlyteUserRuntimeException(e) from e
+    except Exception as e:
+        traceback_str = get_traceback_str(e)
+
+    expected_error_pattern = textwrap.dedent(r"""
+        Trace:
+
+            Traceback \(most recent call last\):
+              File ".*flytekit/tests/flytekit/unit/bin/test_python_entrypoint.py", line \d+, in test_get_traceback_str
+                raise RuntimeError\("a"\)
+            RuntimeError: a
+
+            The above exception was the direct cause of the following exception:
+
+            Traceback \(most recent call last\):
+              File ".*flytekit/tests/flytekit/unit/bin/test_python_entrypoint.py", line \d+, in test_get_traceback_str
+                raise FlyteRecoverableException\("b"\) from e
+            flytekit.exceptions.user.FlyteRecoverableException: USER:Recoverable: error=b, cause=a
+
+        Message:
+
+            FlyteRecoverableException: USER:Recoverable: error=b, cause=a""")
+    # remove the initial newline
+    expected_error_pattern = expected_error_pattern[1:]
+
+    expected_error_re = re.compile(expected_error_pattern)
+
+    print(expected_error_pattern)
+    print(traceback_str)
+    assert expected_error_re.match(traceback_str) is not None
+    
