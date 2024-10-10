@@ -737,8 +737,9 @@ def test_comparison_refs():
 
 
 def test_comparison_lits():
-    px = Promise("x", TypeEngine.to_literal(None, 5, int, None))
-    py = Promise("y", TypeEngine.to_literal(None, 8, int, None))
+    ctx = context_manager.FlyteContextManager.current_context()
+    px = Promise("x", TypeEngine.to_literal(ctx, 5, int, None))
+    py = Promise("y", TypeEngine.to_literal(ctx, 8, int, None))
 
     def eval_expr(expr, expected: bool):
         print(f"{expr} evals to {expr.eval()}")
