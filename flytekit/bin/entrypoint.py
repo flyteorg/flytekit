@@ -8,10 +8,10 @@ import signal
 import subprocess
 import sys
 import tempfile
+import textwrap
 import traceback
 import warnings
 from sys import exit
-import textwrap
 from typing import Callable, List, Optional
 
 import click
@@ -236,22 +236,15 @@ def get_traceback_str(e: Exception) -> str:
         # user code, not the Flyte internals.
         root_exception = e.__cause__ if e.__cause__ else e
     indentation = "    "
-    exception_str = textwrap.indent(
-        text="".join(traceback.format_exception(root_exception)),
-        prefix=indentation
-    )
+    exception_str = textwrap.indent(text="".join(traceback.format_exception(root_exception)), prefix=indentation)
     # Second, format a summary exception message
     value = e.value if isinstance(e, FlyteUserRuntimeException) else e
     message = f"{type(value).__name__}: {value}"
-    message_str = textwrap.indent(
-        text=message,
-        prefix=indentation
-    )
+    message_str = textwrap.indent(text=message, prefix=indentation)
     # Last, create the overall traceback string
     format_str = "Trace:\n\n{exception_str}\nMessage:\n\n{message_str}"
     return format_str.format(exception_str=exception_str, message_str=message_str)
 
-    
     if isinstance(e, FlyteUserRuntimeException):
         tb = e.__cause__.__traceback__ if e.__cause__ else e.__traceback__
     else:
