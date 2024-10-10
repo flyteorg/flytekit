@@ -9,7 +9,9 @@ from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.array_node import array_node
 from flytekit.core.array_node_map_task import map_task
 from flytekit.models.core import identifier as identifier_models
-from flytekit.tools.translator import get_serializable
+from flytekit.remote import FlyteLaunchPlan
+from flytekit.remote.interface import TypedInterface
+from flytekit.tools.translator import gather_dependent_entities, get_serializable
 
 
 @pytest.fixture
@@ -40,13 +42,45 @@ ctx = FlyteContextManager.current_context()
 lp = LaunchPlan.get_default_launch_plan(ctx, parent_wf)
 
 
-@workflow
-def grandparent_wf() -> typing.List[int]:
-    return array_node(lp, concurrency=10, min_success_ratio=0.9)(a=[1, 3, 5], b=["two", 4, "six"], c=[7, 8, 9])
+def get_grandparent_wf(serialization_settings):
+    @workflow
+    def grandparent_wf() -> typing.List[int]:
+        return array_node(lp, concurrency=10, min_success_ratio=0.9)(a=[1, 3, 5], b=["two", 4, "six"], c=[7, 8, 9])
+
+    return grandparent_wf
 
 
-def test_lp_serialization(serialization_settings):
-    wf_spec = get_serializable(OrderedDict(), serialization_settings, grandparent_wf)
+def get_grandparent_remote_wf(serialization_settings):
+    serialized = OrderedDict()
+    lp_model = get_serializable(serialized, serialization_settings, lp)
+
+    task_templates, wf_specs, lp_specs = gather_dependent_entities(serialized)
+    for wf_id, spec in wf_specs.items():
+        break
+
+    remote_lp = FlyteLaunchPlan.promote_from_model(lp_model.id, lp_model.spec)
+    # To pretend that we've fetched this launch plan from Admin, also fill in the Flyte interface, which isn't
+    # part of the IDL object but is something FlyteRemote does
+    remote_lp._interface = TypedInterface.promote_from_model(spec.template.interface)
+
+    @workflow
+    def grandparent_remote_wf() -> typing.List[int]:
+        return array_node(
+            remote_lp, concurrency=10, min_success_ratio=0.9
+        )(a=[1, 3, 5], b=["two", 4, "six"], c=[7, 8, 9])
+
+    return grandparent_remote_wf
+
+
+@pytest.mark.parametrize(
+    "target",
+    [
+        get_grandparent_wf,
+        get_grandparent_remote_wf,
+    ],
+)
+def test_lp_serialization(target, serialization_settings):
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, target(serialization_settings))
     assert len(wf_spec.template.nodes) == 1
 
     top_level = wf_spec.template.nodes[0]
@@ -56,7 +90,9 @@ def test_lp_serialization(serialization_settings):
         assert binding.scalar.primitive.integer is not None
     assert top_level.inputs[1].var == "b"
     for binding in top_level.inputs[1].binding.collection.bindings:
-        assert binding.scalar.union is not None
+        assert (binding.scalar.union is not None or
+                binding.scalar.primitive.integer is not None or
+                binding.scalar.primitive.string_value is not None)
     assert len(top_level.inputs[1].binding.collection.bindings) == 3
     assert top_level.inputs[2].var == "c"
     assert len(top_level.inputs[2].binding.collection.bindings) == 3
