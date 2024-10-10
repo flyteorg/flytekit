@@ -13,6 +13,16 @@ def test_variable_type(literal_type):
 
 
 @pytest.mark.parametrize("literal_type", LIST_OF_ALL_LITERAL_TYPES)
+def test_variable_type_list(literal_type):
+    var = interface.Variable(type=literal_type, description="abc")
+    collection_var = interface.Variable(
+        type=types.LiteralType(collection_type=literal_type),
+        description="abc",
+    )
+    assert collection_var == interface.Variable.from_flyte_idl(var.to_flyte_idl_list())
+
+
+@pytest.mark.parametrize("literal_type", LIST_OF_ALL_LITERAL_TYPES)
 def test_typed_interface(literal_type):
     typed_interface = interface.TypedInterface(
         {"a": interface.Variable(literal_type, "description1")},
@@ -40,6 +50,16 @@ def test_typed_interface(literal_type):
     assert deserialized_typed_interface.outputs["c"].description == "description3"
     assert len(deserialized_typed_interface.inputs) == 1
     assert len(deserialized_typed_interface.outputs) == 2
+
+    deserialized_typed_interface_list = typed_interface.transform_interface_to_list()
+    assert deserialized_typed_interface_list.inputs["a"].type == types.LiteralType(collection_type=literal_type)
+    assert deserialized_typed_interface_list.outputs["b"].type == types.LiteralType(collection_type=literal_type)
+    assert deserialized_typed_interface_list.outputs["c"].type == types.LiteralType(collection_type=literal_type)
+    assert deserialized_typed_interface_list.inputs["a"].description == "description1"
+    assert deserialized_typed_interface_list.outputs["b"].description == "description2"
+    assert deserialized_typed_interface_list.outputs["c"].description == "description3"
+    assert len(deserialized_typed_interface_list.inputs) == 1
+    assert len(deserialized_typed_interface_list.outputs) == 2
 
 
 def test_parameter():

@@ -5,7 +5,7 @@ import logging
 import math
 import os  # TODO: use flytekit logger
 from contextlib import contextmanager
-from typing import Any, Dict, List, Optional, Set, Union, cast
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Union, cast
 
 import typing_extensions
 from flyteidl.core import tasks_pb2
@@ -30,6 +30,9 @@ from flytekit.tools.module_loader import load_object_from_module
 from flytekit.types.pickle import pickle
 from flytekit.types.pickle.pickle import FlytePickleTransformer
 from flytekit.utils.asyn import loop_manager
+
+if TYPE_CHECKING:
+    from flytekit.remote import FlyteLaunchPlan
 
 
 class ArrayNodeMapTask(PythonTask):
@@ -359,7 +362,7 @@ class ArrayNodeMapTask(PythonTask):
 
 
 def map_task(
-    target: Union[LaunchPlan, PythonFunctionTask],
+    target: Union[LaunchPlan, PythonFunctionTask, "FlyteLaunchPlan"],
     concurrency: Optional[int] = None,
     min_successes: Optional[int] = None,
     min_success_ratio: float = 1.0,
@@ -377,7 +380,9 @@ def map_task(
     :param min_successes: The minimum number of successful executions
     :param min_success_ratio: The minimum ratio of successful executions
     """
-    if isinstance(target, LaunchPlan):
+    from flytekit.remote import FlyteLaunchPlan
+
+    if isinstance(target, LaunchPlan) or isinstance(target, FlyteLaunchPlan):
         return array_node(
             target=target,
             concurrency=concurrency,
