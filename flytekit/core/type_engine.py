@@ -159,18 +159,14 @@ class TypeTransformer(typing.Generic[T]):
         if origin in {list, tuple, set}:
             for item in obj:
                 self.assert_type(args[0], item)
-                return
-            raise TypeTransformerFailedError(f"Not all items in '{obj}' are of type {args[0]}")
+            return
 
         if origin is dict:
             key_type, value_type = args
             for k, v in obj.items():
                 self.assert_type(key_type, k)
                 self.assert_type(value_type, v)
-                return
-            raise TypeTransformerFailedError(f"Not all values in '{obj}' are of type {value_type}")
-
-        return
+            return
 
     def assert_type(self, t: Type[T], v: T):
         if sys.version_info >= (3, 10):
