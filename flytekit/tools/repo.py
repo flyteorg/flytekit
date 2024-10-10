@@ -210,7 +210,7 @@ def secho(i: Identifier, state: str = "success", reason: str = None, op: str = "
         fg = "green"
         nl = True
         if not reason:
-            reason = f"successful: {console_url}" if console_url else f"version: {i.version}"
+            reason = f"successful: {click.style(console_url, fg="cyan")}" if console_url else f"version: {i.version}"
     elif state == "failed":
         state_ind = "\r[x]"
         fg = "red"
