@@ -1,7 +1,4 @@
-import os
-import pathlib
 import sys
-import tempfile
 import typing
 from collections import OrderedDict
 from typing import Callable, Dict, List, Optional, Tuple, Union
@@ -23,15 +20,12 @@ from flytekit.core.legacy_map_task import MapPythonTask
 from flytekit.core.node import Node
 from flytekit.core.options import Options
 from flytekit.core.python_auto_container import (
-    PICKLE_FILE_PATH,
     PythonAutoContainerTask,
-    default_notebook_task_resolver,
 )
 from flytekit.core.reference_entity import ReferenceEntity, ReferenceSpec, ReferenceTemplate
 from flytekit.core.task import ReferenceTask
 from flytekit.core.utils import ClassDecorator, _dnsify
 from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase
-from flytekit.loggers import logger
 from flytekit.models import common as _common_models
 from flytekit.models import interface as interface_models
 from flytekit.models import launch_plan as _launch_plan_models
@@ -126,52 +120,6 @@ def _fast_serialize_command_fn(
     return fn
 
 
-def _update_serialization_settings_for_ipython(
-    entity: FlyteLocalEntity,
-    serialization_settings: SerializationSettings,
-    options: Optional[Options] = None,
-):
-    # We are in an interactive environment. We will serialize the task as a pickled object and upload it to remote
-    # storage.
-    # if isinstance(entity, PythonFunctionTask):
-    #     if entity.execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
-    #         raise FlyteAssertion(
-    #             f"Dynamic tasks are not supported in interactive mode. {entity.name} is a dynamic task."
-    #         )
-
-    # if options is None or options.file_uploader is None:
-    #     raise FlyteAssertion("To work interactively with Flyte, a code transporter/uploader should be configured.")
-
-    # For map tasks, we need to serialize the actual task, not the map task itself
-    if isinstance(entity, ArrayNodeMapTask):
-        entity._run_task.set_resolver(default_notebook_task_resolver)
-        actual_task = entity._run_task
-    else:
-        entity.set_resolver(default_notebook_task_resolver)
-        actual_task = entity
-
-    import gzip
-
-    import cloudpickle
-
-    from flytekit.configuration import FastSerializationSettings
-
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        dest = pathlib.Path(tmp_dir, PICKLE_FILE_PATH)
-        with gzip.GzipFile(filename=dest, mode="wb", mtime=0) as gzipped:
-            cloudpickle.dump(actual_task, gzipped)
-        if os.path.getsize(dest) > 150 * 1024 * 1024:
-            raise ValueError(
-                "The size of the task to pickled exceeds the limit of 150MB. Please reduce the size of the task."
-            )
-        logger.debug(f"Uploading Pickled representation of Task `{actual_task.name}` to remote storage...")
-        _, native_url = options.file_uploader(dest)
-
-        serialization_settings.fast_serialization_settings = FastSerializationSettings(
-            enabled=True, distribution_location=native_url, destination_dir="."
-        )
-
-
 def get_serializable_task(
     entity_mapping: OrderedDict,
     settings: SerializationSettings,
@@ -185,14 +133,6 @@ def get_serializable_task(
         entity.name,
         settings.version,
     )
-
-    # # Try to update the serialization settings for ipython / jupyter notebook / interactive mode if we are in an
-    # # interactive environment like Jupyter notebook
-    # if settings.interactive_mode_enabled is True:
-    #     # If the entity is not a PythonAutoContainerTask, we don't need to do anything, as only Tasks with container |
-    #     # user code in container needs to be serialized as pickled objects.
-    #     if isinstance(entity, (PythonAutoContainerTask, ArrayNodeMapTask)):
-    #         _update_serialization_settings_for_ipython(entity, settings, options)
 
     if isinstance(entity, PythonFunctionTask) and entity.execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
         for e in context_manager.FlyteEntities.entities:
