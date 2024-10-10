@@ -346,14 +346,10 @@ class SecretsManager(object):
     def __init__(self, secrets_cfg: typing.Optional[SecretsConfig] = None):
         if secrets_cfg is None:
             secrets_cfg = SecretsConfig.auto()
-            is_local_execution = os.getenv("FLYTE_INTERNAL_EXECUTION_ID") is None
-            if is_local_execution:
-                self._env_prefix = ""
-            else:
-                self._env_prefix = secrets_cfg.env_prefix.strip()
 
         self._base_dir = secrets_cfg.default_dir.strip()
         self._file_prefix = secrets_cfg.file_prefix.strip()
+        self._env_prefix = secrets_cfg.env_prefix.strip()
 
     def __getattr__(self, item: str) -> _GroupSecrets:
         """
@@ -378,11 +374,22 @@ class SecretsManager(object):
         if not get_plugin().secret_requires_group():
             group, group_version = None, None
 
-        env_var = self.get_secrets_env_var(group, key, group_version)
+        env_prefixes = [self._env_prefix]
+
+        # During local execution check for the key without a prefix
+        is_local_execution = os.getenv("FLYTE_INTERNAL_EXECUTION_ID") is None
+        if is_local_execution:
+            env_prefixes.append("")
+
+        for env_prefix in env_prefixes:
+            env_var = self._get_secrets_env_var(
+                group=group, key=key, group_version=group_version, env_prefix=env_prefix
+            )
+            v = os.environ.get(env_var)
+            if v is not None:
+                return v.strip()
+
         fpath = self.get_secrets_file(group, key, group_version)
-        v = os.environ.get(env_var)
-        if v is not None:
-            return v.strip()
         if os.path.exists(fpath):
             with open(fpath, encode_mode) as f:
                 return f.read().strip()
@@ -397,8 +404,17 @@ class SecretsManager(object):
         """
         Returns a string that matches the ENV Variable to look for the secrets
         """
+        return self._get_secrets_env_var(group=group, key=key, group_version=group_version, env_prefix=self._env_prefix)
+
+    def _get_secrets_env_var(
+        self,
+        group: Optional[str] = None,
+        key: Optional[str] = None,
+        group_version: Optional[str] = None,
+        env_prefix: str = "",
+    ):
         l = [k.upper() for k in filter(None, (group, group_version, key))]
-        return f"{self._env_prefix}{'_'.join(l)}"
+        return f"{env_prefix}{'_'.join(l)}"
 
     def get_secrets_file(
         self, group: Optional[str] = None, key: Optional[str] = None, group_version: Optional[str] = None

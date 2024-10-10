@@ -239,25 +239,19 @@ def test_secrets_manager_env():
     assert sec.get(group="group", key="key") == "value"
 
 
-@pytest.mark.parametrize("is_local_execution", [True, False])
-def test_secrets_manager_execution(monkeypatch, is_local_execution):
+@pytest.mark.parametrize("is_local_execution, prefix", [(True, ""), (False, "_FSEC_")])
+def test_secrets_manager_execution(monkeypatch, is_local_execution, prefix):
     if not is_local_execution:
         monkeypatch.setenv("FLYTE_INTERNAL_EXECUTION_ID", "my-execution-id")
 
     sec = SecretsManager()
-    prefix = sec._env_prefix
-
-    if not is_local_execution:
-        assert prefix == "_FSEC_"
-    else:
-        assert prefix == ""
 
     monkeypatch.setenv(f"{prefix}ABC_XYZ", "my-abc-secret")
     assert sec.get(group="ABC", key="XYZ") == "my-abc-secret"
 
 
-@pytest.mark.parametrize("is_local_execution", [True, False])
-def test_secrets_manager_execution_no_group_required(monkeypatch, is_local_execution):
+@pytest.mark.parametrize("is_local_execution, prefix", [(True, ""), (False, "_FSEC_")])
+def test_secrets_manager_execution_no_group_required(monkeypatch, is_local_execution, prefix):
     # Remove group requirements
     plugin_mock = Mock()
     plugin_mock.secret_requires_group.return_value = False
@@ -268,12 +262,6 @@ def test_secrets_manager_execution_no_group_required(monkeypatch, is_local_execu
         monkeypatch.setenv("FLYTE_INTERNAL_EXECUTION_ID", "my-execution-id")
 
     sec = SecretsManager()
-    prefix = sec._env_prefix
-
-    if not is_local_execution:
-        assert prefix == "_FSEC_"
-    else:
-        assert prefix == ""
 
     monkeypatch.setenv(f"{prefix}XYZ", "my-abc-secret")
     assert sec.get(key="XYZ") == "my-abc-secret"
