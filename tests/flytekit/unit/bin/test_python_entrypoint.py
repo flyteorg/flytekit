@@ -455,4 +455,3 @@ def test_get_traceback_str():
     print(expected_error_pattern)
     print(traceback_str)
     assert expected_error_re.match(traceback_str) is not None
-    
