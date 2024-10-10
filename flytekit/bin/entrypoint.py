@@ -8,7 +8,9 @@ import signal
 import subprocess
 import sys
 import tempfile
+import time
 import traceback
+import uuid
 import warnings
 from sys import exit
 from typing import Callable, List, Optional
@@ -71,6 +73,15 @@ def _compute_array_job_index():
     return offset
 
 
+def _build_error_file_name() -> str:
+    dist_error_strategy = get_one_of("FLYTE_INTERNAL_DIST_ERROR_STRATEGY", "_F_DES")
+    if not dist_error_strategy:
+        return _constants.ERROR_FILE_NAME
+    error_file_name_base, error_file_name_extension = os.path.splitext(_constants.ERROR_FILE_NAME)
+    error_file_name_base += f"-{uuid.uuid4().hex}"
+    return f"{error_file_name_base}{error_file_name_extension}"
+    
+
 def _get_working_loop():
     """Returns a running event loop."""
     try:
@@ -103,6 +114,9 @@ def _dispatch_execute(
             b: OR if IgnoreOutputs is raised, then ignore uploading outputs
             c: OR if an unhandled exception is retrieved - record it as an errors.pb
     """
+    error_file_name = _build_error_file_name()
+    worker_name = get_one_of("FLYTE_INTERNAL_WORKER_NAME", "_F_WN")
+
     output_file_dict = {}
 
     task_def = None
@@ -139,12 +153,14 @@ def _dispatch_execute(
             output_file_dict = {_constants.FUTURES_FILE_NAME: outputs}
         else:
             logger.error(f"SystemError: received unknown outputs from task {outputs}")
-            output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
+            output_file_dict[error_file_name] = _error_models.ErrorDocument(
                 _error_models.ContainerError(
-                    "UNKNOWN_OUTPUT",
-                    f"Type of output received not handled {type(outputs)} outputs: {outputs}",
-                    _error_models.ContainerError.Kind.RECOVERABLE,
-                    _execution_models.ExecutionError.ErrorKind.SYSTEM,
+                    code="UNKNOWN_OUTPUT",
+                    message=f"Type of output received not handled {type(outputs)} outputs: {outputs}",
+                    kind=_error_models.ContainerError.Kind.RECOVERABLE,
+                    origin=_execution_models.ExecutionError.ErrorKind.SYSTEM,
+                    timestamp=int(time.time()),
+                    worker=worker_name,
                 )
             )
 
@@ -162,12 +178,15 @@ def _dispatch_execute(
             kind = _error_models.ContainerError.Kind.NON_RECOVERABLE
 
         exc_str = get_traceback_str(e)
-        output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
+        output_file_dict[error_file_name] = _error_models.ErrorDocument(
             _error_models.ContainerError(
-                "USER",
-                exc_str,
-                kind,
-                _execution_models.ExecutionError.ErrorKind.USER,
+                code="USER",
+                message=exc_str,
+                kind=kind,
+                origin=_execution_models.ExecutionError.ErrorKind.USER,
+                # TODO: timestamp to be extracted from e.value if present
+                timestamp=int(time.time()),
+                worker=worker_name,
             )
         )
         if task_def is not None:
@@ -180,12 +199,15 @@ def _dispatch_execute(
 
     except FlyteNonRecoverableSystemException as e:
         exc_str = get_traceback_str(e.value)
-        output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
+        output_file_dict[error_file_name] = _error_models.ErrorDocument(
             _error_models.ContainerError(
-                "SYSTEM",
-                exc_str,
-                _error_models.ContainerError.Kind.NON_RECOVERABLE,
-                _execution_models.ExecutionError.ErrorKind.SYSTEM,
+                code="SYSTEM",
+                message=exc_str,
+                kind=_error_models.ContainerError.Kind.NON_RECOVERABLE,
+                origin=_execution_models.ExecutionError.ErrorKind.SYSTEM,
+                # TODO: timestamp to be extracted from e.value if present
+                timestamp=int(time.time()),
+                worker=worker_name,
             )
         )
 
@@ -196,12 +218,15 @@ def _dispatch_execute(
     # All other errors are captured here, and are considered system errors
     except Exception as e:
         exc_str = get_traceback_str(e)
-        output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
+        output_file_dict[error_file_name] = _error_models.ErrorDocument(
             _error_models.ContainerError(
-                "SYSTEM",
-                exc_str,
-                _error_models.ContainerError.Kind.RECOVERABLE,
-                _execution_models.ExecutionError.ErrorKind.SYSTEM,
+                code="SYSTEM",
+                message=exc_str,
+                kind=_error_models.ContainerError.Kind.RECOVERABLE,
+                origin=_execution_models.ExecutionError.ErrorKind.SYSTEM,
+                # TODO: timestamp to be extracted from e if present
+                timestamp=int(time.time()),
+                worker=worker_name,
             )
         )
 
@@ -220,7 +245,7 @@ def _dispatch_execute(
 
     logger.debug("Finished _dispatch_execute")
 
-    if os.environ.get("FLYTE_FAIL_ON_ERROR", "").lower() == "true" and _constants.ERROR_FILE_NAME in output_file_dict:
+    if os.environ.get("FLYTE_FAIL_ON_ERROR", "").lower() == "true" and error_file_name in output_file_dict:
         # This env is set by the flytepropeller
         # AWS batch job get the status from the exit code, so once we catch the error,
         # we should return the error code here
