@@ -1393,6 +1393,9 @@ class TypeEngine(typing.Generic[T]):
         else:
             python_interface_inputs = python_types  # type: ignore
 
+        if not python_interface_inputs or len(python_interface_inputs) == 0:
+            return {}
+
         if len(lm.literals) > len(python_interface_inputs):
             raise ValueError(
                 f"Received more input values {len(lm.literals)}"
