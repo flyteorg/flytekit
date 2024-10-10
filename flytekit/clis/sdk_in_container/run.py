@@ -718,7 +718,7 @@ class DynamicEntityLaunchCommand(click.RichCommand):
         run_level_params: RunLevelParams = ctx.obj
         r = run_level_params.remote_instance()
         if self._launcher == self.LP_LAUNCHER:
-            entity = r.get_active_launchplan(run_level_params.project, run_level_params.domain, self._entity_name)
+            entity = r.fetch_active_launchplan(run_level_params.project, run_level_params.domain, self._entity_name)
             if not entity:
                 click.echo(
                     click.style(

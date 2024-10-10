@@ -475,7 +475,7 @@ class FlyteRemote(object):
         flyte_lp._flyte_workflow = workflow
         return flyte_lp
 
-    def get_active_launchplan(
+    def fetch_active_launchplan(
         self, project: str = None, domain: str = None, name: str = None
     ) -> typing.Optional[FlyteLaunchPlan]:
         """

@@ -755,3 +755,8 @@ def test_register_wf_fast(register):
     subworkflow_node_executions = execution.node_executions["n1"].subworkflow_node_executions
     subworkflow_node_executions["n1-0-n0"].inputs == {"a": 103}
     subworkflow_node_executions["n1-0-n1"].outputs == {"t1_int_output": 107, "c": "world"}
+
+
+def test_fetch_active_launchplan_not_found(register):
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    assert remote.fetch_active_launchplan(name="basic.list_float_wf.fake_wf") is None

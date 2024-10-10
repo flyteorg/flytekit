@@ -21,6 +21,7 @@ from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions import user as user_exceptions
+from flytekit.exceptions.user import FlyteEntityNotExistException
 from flytekit.models import common as common_models
 from flytekit.models import security
 from flytekit.models.admin.workflow import Workflow, WorkflowClosure
@@ -684,3 +685,9 @@ def test_register_wf_script_mode(compress_scripts_mock, upload_file_mock, regist
         source_path=str(pathlib.Path(flytekit.__file__).parent.parent),
         module_name="tests.flytekit.unit.remote.resources",
     )
+
+
+@mock.patch("flytekit.remote.remote.FlyteRemote.client")
+def test_fetch_active_launchplan_not_found(mock_client, remote):
+    mock_client.get_active_launch_plan.side_effect = FlyteEntityNotExistException("not found")
+    assert remote.fetch_active_launchplan(name="basic.list_float_wf.fake_wf") is None
