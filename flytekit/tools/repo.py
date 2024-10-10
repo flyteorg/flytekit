@@ -13,6 +13,8 @@ from flytekit.constants import CopyFileDetection
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.loggers import logger
 from flytekit.models import launch_plan, task
+from flytekit.models import launch_plan as launch_plan_models
+from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.models.core.identifier import Identifier
 from flytekit.remote import FlyteRemote
 from flytekit.remote.remote import RegistrationSkipped, _get_git_repo_url
@@ -199,7 +201,7 @@ def list_packages_and_modules(
     return pkgs_and_modules
 
 
-def secho(i: Identifier, state: str = "success", reason: str = None, op: str = "Registration"):
+def secho(i: Identifier, state: str = "success", reason: str = None, op: str = "Registration", console_url: str = None):
     state_ind = "[ ]"
     fg = "white"
     nl = False
@@ -207,7 +209,8 @@ def secho(i: Identifier, state: str = "success", reason: str = None, op: str = "
         state_ind = "\r[✔]"
         fg = "green"
         nl = True
-        reason = f"successful with version {i.version}" if not reason else reason
+        if not reason:
+            reason = f"successful: {console_url}" if console_url else f"version: {i.version}"
     elif state == "failed":
         state_ind = "\r[x]"
         fg = "red"
@@ -303,6 +306,11 @@ def register(
         return
 
     def _raw_register(cp_entity: FlyteControlPlaneEntity):
+        fetch_methods = {
+            task.TaskSpec: remote.fetch_task,
+            admin_workflow_models.WorkflowSpec: remote.fetch_workflow,
+            launch_plan_models.LaunchPlan: remote.fetch_launch_plan,
+        }
         is_lp = False
         if isinstance(cp_entity, launch_plan.LaunchPlan):
             og_id = cp_entity.id
@@ -315,7 +323,18 @@ def register(
                     i = remote.raw_register(
                         cp_entity, serialization_settings, version=version, create_default_launchplan=False
                     )
-                    secho(i, state="success")
+                    # Get the fetch method based on the type of cp_entity
+                    fetch_method = next(
+                        (method for entity_type, method in fetch_methods.items() if isinstance(cp_entity, entity_type)),
+                        None,
+                    )
+                    # If a valid fetch method was found, fetch the entity and generate the URL
+                    console_url = None
+                    if fetch_method:
+                        entity = fetch_method(i.project, i.domain, i.name, i.version)
+                        console_url = remote.generate_console_url(entity)
+
+                    secho(i, state="success", console_url=console_url)
                     if is_lp and activate_launchplans:
                         secho(og_id, "", op="Activation")
                         remote.activate_launchplan(i)
