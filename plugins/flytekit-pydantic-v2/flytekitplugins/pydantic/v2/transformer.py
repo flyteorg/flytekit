@@ -42,14 +42,22 @@ class PydanticTransformer(TypeTransformer[BaseModel]):
         python_type: Type[BaseModel],
         expected: types.LiteralType,
     ) -> Literal:
-        dict_obj = python_val.model_dump()
+        # dict_obj = python_val.model_dump()
+        # msgpack_bytes = msgpack.dumps(dict_obj)
+        # return Literal(scalar=Scalar(binary=Binary(value=msgpack_bytes, tag=MESSAGEPACK)))
+        json_str = python_val.model_dump_json()
+        dict_obj = json.loads(json_str)
         msgpack_bytes = msgpack.dumps(dict_obj)
-        return Literal(scalar=Scalar(binary=Binary(value=msgpack_bytes, tag="msgpack")))
+        return Literal(scalar=Scalar(binary=Binary(value=msgpack_bytes, tag=MESSAGEPACK)))
 
     def from_binary_idl(self, binary_idl_object: Binary, expected_python_type: Type[BaseModel]) -> BaseModel:
         if binary_idl_object.tag == MESSAGEPACK:
+            # dict_obj = msgpack.loads(binary_idl_object.value, raw=False, strict_map_key=False)
+            # python_val = expected_python_type.model_validate(obj=dict_obj, strict=False)
+            # return python_val
             dict_obj = msgpack.loads(binary_idl_object.value, raw=False, strict_map_key=False)
-            python_val = expected_python_type.model_validate(obj=dict_obj, strict=False)
+            json_str = json.dumps(dict_obj)
+            python_val = expected_python_type.model_validate_json(json_data=json_str, strict=False)
             return python_val
         else:
             raise TypeTransformerFailedError(f"Unsupported binary format: `{binary_idl_object.tag}`")
