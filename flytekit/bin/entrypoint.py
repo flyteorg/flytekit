@@ -79,7 +79,7 @@ def _build_error_file_name() -> str:
         return _constants.ERROR_FILE_NAME
     error_file_name_base, error_file_name_extension = os.path.splitext(_constants.ERROR_FILE_NAME)
     error_file_name_base += f"-{uuid.uuid4().hex}"
-    return f"{error_file_name_base}.{error_file_name_extension}"
+    return f"{error_file_name_base}{error_file_name_extension}"
     
 
 def _get_working_loop():
