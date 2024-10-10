@@ -538,7 +538,7 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
         else:
             raise TypeTransformerFailedError(f"Unsupported binary format: `{binary_idl_object.tag}`")
 
-    def from_generic_idl(self, generic: Struct, expected_python_type: typing.Type[FlyteDirectory]):
+    def from_generic_idl(self, generic: Struct, expected_python_type: typing.Type[FlyteDirectory]) -> FlyteDirectory:
         json_str = _json_format.MessageToJson(generic)
         python_val = json.loads(json_str)
         path = python_val.get("path", None)

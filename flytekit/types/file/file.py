@@ -559,7 +559,7 @@ class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
 
     def from_generic_idl(
         self, generic: Struct, expected_python_type: typing.Union[typing.Type[FlyteFile], os.PathLike]
-    ):
+    ) -> FlyteFile:
         json_str = _json_format.MessageToJson(generic)
         python_val = json.loads(json_str)
         path = python_val.get("path", None)

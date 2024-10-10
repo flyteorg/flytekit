@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import json
 import os
 import typing
 from abc import abstractmethod
@@ -11,6 +12,8 @@ from typing import Type
 
 import msgpack
 from dataclasses_json import config
+from google.protobuf import json_format as _json_format
+from google.protobuf.struct_pb2 import Struct
 from marshmallow import fields
 from mashumaro.mixins.json import DataClassJSONMixin
 from mashumaro.types import SerializableType
@@ -458,10 +461,28 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
         else:
             raise TypeTransformerFailedError(f"Unsupported binary format: `{binary_idl_object.tag}`")
 
+    def from_generic_idl(self, generic: Struct, expected_python_type: Type[FlyteSchema]) -> FlyteSchema:
+        json_str = _json_format.MessageToJson(generic)
+        python_val = json.loads(json_str)
+
+        remote_path = python_val.get("remote_path", None)
+        if remote_path is None:
+            raise ValueError("FlyteSchema's path should not be None")
+
+        t = FlyteSchemaTransformer()
+        return t.to_python_value(
+            FlyteContextManager.current_context(),
+            Literal(scalar=Scalar(schema=Schema(remote_path, t._get_schema_type(expected_python_type)))),
+            expected_python_type,
+        )
+
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[FlyteSchema]) -> FlyteSchema:
         # Handle dataclass attribute access
-        if lv.scalar and lv.scalar.binary:
-            return self.from_binary_idl(lv.scalar.binary, expected_python_type)
+        if lv.scalar:
+            if lv.scalar.binary:
+                return self.from_binary_idl(lv.scalar.binary, expected_python_type)
+            if lv.scalar.generic:
+                return self.from_generic_idl(lv.scalar.generic, expected_python_type)
 
         def downloader(x, y):
             ctx.file_access.get_data(x, y, is_multipart=True)

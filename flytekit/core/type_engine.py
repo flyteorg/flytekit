@@ -232,6 +232,9 @@ class TypeTransformer(typing.Generic[T]):
         )
 
     def from_binary_idl(self, binary_idl_object: Binary, expected_python_type: Type[T]) -> Optional[T]:
+        """
+        This is for dict, dataclass, and dataclass attribute access.
+        """
         if binary_idl_object.tag == MESSAGEPACK:
             try:
                 decoder = self._msgpack_decoder[expected_python_type]
@@ -241,6 +244,12 @@ class TypeTransformer(typing.Generic[T]):
             return decoder.decode(binary_idl_object.value)
         else:
             raise TypeTransformerFailedError(f"Unsupported binary format `{binary_idl_object.tag}`")
+
+    def from_generic_idl(self, generic: Struct, expected_python_type: Type[T]) -> Optional[T]:
+        """
+        This is for dataclass attribute access from input created from the Flyte Console.
+        """
+        raise NotImplementedError(f"Conversion from generic idl to python type {expected_python_type} not implemented")
 
     def to_html(self, ctx: FlyteContext, python_val: T, expected_python_type: Type[T]) -> str:
         """

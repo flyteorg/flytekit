@@ -356,6 +356,7 @@ jobs:
           - flytekit-papermill
           - flytekit-polars
           - flytekit-pydantic
+          - flytekit-pydantic-v2
           - flytekit-ray
           - flytekit-snowflake
           - flytekit-spark
