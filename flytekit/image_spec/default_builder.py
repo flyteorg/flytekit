@@ -2,51 +2,45 @@ import json
 import os
 import re
 import shutil
-import subprocess
 import sys
 import tempfile
 import warnings
 from pathlib import Path
 from string import Template
+from subprocess import run
 from typing import ClassVar
 
 import click
 
+from flytekit.constants import CopyFileDetection
 from flytekit.image_spec.image_spec import (
     _F_IMG_ID,
     ImageSpec,
     ImageSpecBuilder,
 )
 from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
+from flytekit.tools.script_mode import ls_files
 
-UV_PYTHON_INSTALL_COMMAND_TEMPLATE = Template("""\
+UV_PYTHON_INSTALL_COMMAND_TEMPLATE = Template(
+    """\
 RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/uv,id=uv \
     --mount=from=uv,source=/uv,target=/usr/bin/uv \
     --mount=type=bind,target=requirements_uv.txt,src=requirements_uv.txt \
     /usr/bin/uv \
-    pip install --python /opt/micromamba/envs/dev/bin/python $PIP_EXTRA \
+    pip install --python /opt/micromamba/envs/runtime/bin/python $PIP_EXTRA \
     --requirement requirements_uv.txt
-""")
-
-PIP_PYTHON_INSTALL_COMMAND_TEMPLATE = Template("""\
-RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/pip,id=pip \
-    --mount=type=bind,target=requirements_pip.txt,src=requirements_pip.txt \
-    /opt/micromamba/envs/dev/bin/python -m pip install $PIP_EXTRA \
-    --requirement requirements_pip.txt
-""")
-
-APT_INSTALL_COMMAND_TEMPLATE = Template(
-    """\
-RUN --mount=type=cache,sharing=locked,mode=0777,target=/var/cache/apt,id=apt \
-    apt-get update && apt-get install -y --no-install-recommends \
-    $APT_PACKAGES
 """
 )
 
-DOCKER_FILE_TEMPLATE = Template(
-    """\
+APT_INSTALL_COMMAND_TEMPLATE = Template("""\
+RUN --mount=type=cache,sharing=locked,mode=0777,target=/var/cache/apt,id=apt \
+    apt-get update && apt-get install -y --no-install-recommends \
+    $APT_PACKAGES
+""")
+
+DOCKER_FILE_TEMPLATE = Template("""\
 #syntax=docker/dockerfile:1.5
-FROM ghcr.io/astral-sh/uv:0.2.13 as uv
+FROM ghcr.io/astral-sh/uv:0.2.37 as uv
 FROM mambaorg/micromamba:1.5.8-bookworm-slim as micromamba
 
 FROM $BASE_IMAGE
@@ -61,16 +55,19 @@ RUN chown -R flytekit /root && chown -R flytekit /home
 RUN --mount=type=cache,sharing=locked,mode=0777,target=/opt/micromamba/pkgs,\
 id=micromamba \
     --mount=from=micromamba,source=/usr/bin/micromamba,target=/usr/bin/micromamba \
-    /usr/bin/micromamba create -n dev --root-prefix /opt/micromamba \
+    micromamba config set use_lockfiles False && \
+    micromamba create -n runtime --root-prefix /opt/micromamba \
     -c conda-forge $CONDA_CHANNELS \
     python=$PYTHON_VERSION $CONDA_PACKAGES
 
-$UV_PYTHON_INSTALL_COMMAND
-$PIP_PYTHON_INSTALL_COMMAND
-
 # Configure user space
-ENV PATH="/opt/micromamba/envs/dev/bin:$$PATH"
-ENV FLYTE_SDK_RICH_TRACEBACKS=0 SSL_CERT_DIR=/etc/ssl/certs $ENV
+ENV PATH="/opt/micromamba/envs/runtime/bin:$$PATH" \
+    UV_LINK_MODE=copy \
+    FLYTE_SDK_RICH_TRACEBACKS=0 \
+    SSL_CERT_DIR=/etc/ssl/certs \
+    $ENV
+
+$UV_PYTHON_INSTALL_COMMAND
 
 # Adds nvidia just in case it exists
 ENV PATH="$$PATH:/usr/local/nvidia/bin:/usr/local/cuda/bin" \
@@ -80,6 +77,7 @@ $ENTRYPOINT
 
 $COPY_COMMAND_RUNTIME
 RUN $RUN_COMMANDS
+$EXTRA_COPY_CMDS
 
 WORKDIR /root
 SHELL ["/bin/bash", "-c"]
@@ -87,8 +85,7 @@ SHELL ["/bin/bash", "-c"]
 USER flytekit
 RUN mkdir -p $$HOME && \
     echo "export PATH=$$PATH" >> $$HOME/.profile
-"""
-)
+""")
 
 
 def get_flytekit_for_pypi():
@@ -145,32 +142,20 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
     if not any(_is_flytekit(package) for package in requirements):
         requirements.append(get_flytekit_for_pypi())
 
-    uv_requirements = []
-
-    # uv does not support git + subdirectory, so we use pip to install them instead
-    pip_requirements = []
-
-    for requirement in requirements:
-        if "git" in requirement and "subdirectory" in requirement:
-            pip_requirements.append(requirement)
-        else:
-            uv_requirements.append(requirement)
-
     requirements_uv_path = tmp_dir / "requirements_uv.txt"
-    requirements_uv_path.write_text("\n".join(uv_requirements))
+    requirements_uv_path.write_text("\n".join(requirements))
 
-    pip_extra = f"--index-url {image_spec.pip_index}" if image_spec.pip_index else ""
-    uv_python_install_command = UV_PYTHON_INSTALL_COMMAND_TEMPLATE.substitute(PIP_EXTRA=pip_extra)
+    pip_extra_args = ""
 
-    if pip_requirements:
-        requirements_uv_path = tmp_dir / "requirements_pip.txt"
-        requirements_uv_path.write_text(os.linesep.join(pip_requirements))
+    if image_spec.pip_index:
+        pip_extra_args += f"--index-url {image_spec.pip_index}"
+    if image_spec.pip_extra_index_url:
+        extra_urls = [f"--extra-index-url {url}" for url in image_spec.pip_extra_index_url]
+        pip_extra_args += " ".join(extra_urls)
 
-        pip_python_install_command = PIP_PYTHON_INSTALL_COMMAND_TEMPLATE.substitute(PIP_EXTRA=pip_extra)
-    else:
-        pip_python_install_command = ""
+    uv_python_install_command = UV_PYTHON_INSTALL_COMMAND_TEMPLATE.substitute(PIP_EXTRA=pip_extra_args)
 
-    env_dict = {"PYTHONPATH": "/root", _F_IMG_ID: image_spec.image_name()}
+    env_dict = {"PYTHONPATH": "/root", _F_IMG_ID: image_spec.id}
 
     if image_spec.env:
         env_dict.update(image_spec.env)
@@ -183,16 +168,28 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
 
     apt_install_command = APT_INSTALL_COMMAND_TEMPLATE.substitute(APT_PACKAGES=" ".join(apt_packages))
 
-    if image_spec.source_root:
-        source_path = tmp_dir / "src"
+    if image_spec.source_copy_mode is not None and image_spec.source_copy_mode != CopyFileDetection.NO_COPY:
+        if not image_spec.source_root:
+            raise ValueError(f"Field source_root for {image_spec} must be set when copy is set")
 
+        source_path = tmp_dir / "src"
+        source_path.mkdir(parents=True, exist_ok=True)
+        # todo: See note in we should pipe through ignores from the command line here at some point.
+        #  what about deref_symlink?
         ignore = IgnoreGroup(image_spec.source_root, [GitIgnore, DockerIgnore, StandardIgnore])
-        shutil.copytree(
-            image_spec.source_root,
-            source_path,
-            ignore=shutil.ignore_patterns(*ignore.list_ignored()),
-            dirs_exist_ok=True,
+
+        ls, _ = ls_files(
+            str(image_spec.source_root), image_spec.source_copy_mode, deref_symlinks=False, ignore_group=ignore
         )
+
+        for file_to_copy in ls:
+            rel_path = os.path.relpath(file_to_copy, start=str(image_spec.source_root))
+            Path(source_path / rel_path).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy(
+                file_to_copy,
+                source_path / rel_path,
+            )
+
         copy_command_runtime = "COPY --chown=flytekit ./src /root"
     else:
         copy_command_runtime = ""
@@ -225,10 +222,31 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
     else:
         run_commands = ""
 
+    if image_spec.copy:
+        copy_commands = []
+        for src in image_spec.copy:
+            src_path = Path(src)
+
+            if src_path.is_absolute() or ".." in src_path.parts:
+                raise ValueError("Absolute paths or paths with '..' are not allowed in COPY command.")
+
+            dst_path = tmp_dir / src_path
+            dst_path.parent.mkdir(parents=True, exist_ok=True)
+
+            if src_path.is_dir():
+                shutil.copytree(src_path, dst_path, dirs_exist_ok=True)
+                copy_commands.append(f"COPY --chown=flytekit {src_path.as_posix()} /root/{src_path.as_posix()}/")
+            else:
+                shutil.copy(src_path, dst_path)
+                copy_commands.append(f"COPY --chown=flytekit {src_path.as_posix()} /root/{src_path.parent.as_posix()}/")
+
+        extra_copy_cmds = "\n".join(copy_commands)
+    else:
+        extra_copy_cmds = ""
+
     docker_content = DOCKER_FILE_TEMPLATE.substitute(
         PYTHON_VERSION=python_version,
         UV_PYTHON_INSTALL_COMMAND=uv_python_install_command,
-        PIP_PYTHON_INSTALL_COMMAND=pip_python_install_command,
         CONDA_PACKAGES=conda_packages_concat,
         CONDA_CHANNELS=conda_channels_concat,
         APT_INSTALL_COMMAND=apt_install_command,
@@ -237,6 +255,7 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
         COPY_COMMAND_RUNTIME=copy_command_runtime,
         ENTRYPOINT=entrypoint,
         RUN_COMMANDS=run_commands,
+        EXTRA_COPY_CMDS=extra_copy_cmds,
     )
 
     dockerfile_path = tmp_dir / "Dockerfile"
@@ -247,10 +266,12 @@ class DefaultImageBuilder(ImageSpecBuilder):
     """Image builder using Docker and buildkit."""
 
     _SUPPORTED_IMAGE_SPEC_PARAMETERS: ClassVar[set] = {
+        "id",
         "name",
         "python_version",
         "builder",
         "source_root",
+        "source_copy_mode",
         "env",
         "registry",
         "packages",
@@ -263,12 +284,17 @@ class DefaultImageBuilder(ImageSpecBuilder):
         "cudnn",
         "base_image",
         "pip_index",
+        "pip_extra_index_url",
         # "registry_config",
         "commands",
+        "copy",
     }
 
     def build_image(self, image_spec: ImageSpec) -> str:
-        return self._build_image(image_spec)
+        return self._build_image(
+            image_spec,
+            push=os.getenv("FLYTE_PUSH_IMAGE_SPEC", "True").lower() in ("true", "1"),
+        )
 
     def _build_image(self, image_spec: ImageSpec, *, push: bool = True) -> str:
         # For testing, set `push=False`` to just build the image locally and not push to
@@ -302,4 +328,4 @@ class DefaultImageBuilder(ImageSpecBuilder):
 
             concat_command = " ".join(command)
             click.secho(f"Run command: {concat_command} ", fg="blue")
-            subprocess.run(command, check=True)
+            run(command, check=True)

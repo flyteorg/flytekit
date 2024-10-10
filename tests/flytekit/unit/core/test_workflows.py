@@ -236,6 +236,14 @@ def test_unexpected_outputs():
     with pytest.raises(FlyteValueException):
         no_outputs_wf()
 
+
+@pytest.mark.skipif(sys.version_info < (3, 10, 10), reason="inspect module does not work correctly with Python <3.10.10. https://github.com/python/cpython/issues/102647#issuecomment-1466868212")
+def test_missing_return_value():
+    @task
+    def t1(a: int) -> int:
+        a = a + 5
+        return a
+
     # Should raise an exception because it doesn't return something when it should
     with pytest.raises(FlyteMissingReturnValueException):
 
@@ -244,6 +252,29 @@ def test_unexpected_outputs():
             t1(a=3)
 
         one_output_wf()
+
+
+def test_custom_wrapper():
+    def our_task(
+            _task_function: typing.Optional[typing.Callable] = None,
+            **kwargs,
+    ):
+        def wrapped(_func: typing.Callable):
+            return task(_task_function=_func)
+
+        if _task_function:
+            return wrapped(_task_function)
+        else:
+            return wrapped
+
+    @our_task(
+        foo={
+            "bar1": lambda x: print(x),
+            "bar2": lambda x: print(x),
+        },
+    )
+    def missing_func_body() -> str:
+        return "foo"
 
 
 def test_wf_no_output():
@@ -259,7 +290,7 @@ def test_wf_no_output():
     assert no_outputs_wf() is None
 
 
-def test_wf_nested_comp():
+def test_wf_nested_comp(exec_prefix):
     @task
     def t1(a: int) -> int:
         a = a + 5
@@ -283,14 +314,10 @@ def test_wf_nested_comp():
     assert len(model_wf.template.nodes) == 2
     assert model_wf.template.nodes[1].workflow_node is not None
 
-    # pytest-xdist uses `__channelexec__` as the top-level module
-    running_xdist = os.environ.get("PYTEST_XDIST_WORKER") is not None
-    prefix = "__channelexec__." if running_xdist else ""
-
     sub_wf = model_wf.sub_workflows[0]
     assert len(sub_wf.nodes) == 1
     assert sub_wf.nodes[0].id == "n0"
-    assert sub_wf.nodes[0].task_node.reference_id.name == f"{prefix}tests.flytekit.unit.core.test_workflows.t1"
+    assert sub_wf.nodes[0].task_node.reference_id.name == f"{exec_prefix}tests.flytekit.unit.core.test_workflows.t1"
 
 
 @task
@@ -440,7 +467,7 @@ def test_compile_wf_at_compile_time():
 
 
 @patch("builtins.print")
-def test_failure_node_local_execution(mock_print):
+def test_failure_node_local_execution(mock_print, exec_prefix):
     @task
     def clean_up(name: str, err: typing.Optional[FlyteError] = None):
         print(f"Deleting cluster {name} due to {err}")
@@ -472,7 +499,7 @@ def test_failure_node_local_execution(mock_print):
 
     # Adjusted the error message to match the one in the failure
     expected_error_message = str(
-        FlyteError(message="Error encountered while executing 'wf':\n  Fail!", failed_node_id="fn0")
+        FlyteError(message=f"Error encountered while executing '{exec_prefix}tests.flytekit.unit.core.test_workflows.t1':\n  Fail!", failed_node_id="fn0")
     )
 
     assert mock_print.call_count > 0

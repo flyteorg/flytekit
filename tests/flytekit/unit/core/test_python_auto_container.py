@@ -1,3 +1,4 @@
+import pathlib
 from collections import OrderedDict
 from typing import Any
 
@@ -7,10 +8,10 @@ from kubernetes.client.models import V1Container, V1EnvVar, V1PodSpec, V1Resourc
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.base_task import TaskMetadata
 from flytekit.core.pod_template import PodTemplate
-from flytekit.core.python_auto_container import PythonAutoContainerTask, get_registerable_container_image
+from flytekit.core.python_auto_container import PythonAutoContainerTask, get_registerable_container_image, PICKLE_FILE_PATH
 from flytekit.core.resources import Resources
-from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec, _calculate_deduped_hash_from_image_spec
-from flytekit.tools.translator import get_serializable_task
+from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec
+from flytekit.tools.translator import get_serializable_task, Options
 
 
 @pytest.fixture
@@ -42,6 +43,13 @@ def minimal_serialization_settings_no_default_image(no_default_image_config):
     return SerializationSettings(project="p", domain="d", version="v", image_config=no_default_image_config)
 
 
+@pytest.fixture
+def interactive_serialization_settings(default_image_config):
+    return SerializationSettings(
+        project="p", domain="d", version="v", image_config=default_image_config, env={"FOO": "bar"}, interactive_mode_enabled=True
+    )
+
+
 @pytest.fixture(
     params=[
         "default_serialization_settings",
@@ -59,7 +67,7 @@ def test_image_name_interpolation(default_image_config):
 
     new_img_cfg = ImageConfig.create_from(
         default_image_config.default_image,
-        other_images=[Image.look_up_image_info(_calculate_deduped_hash_from_image_spec(image_spec), "flyte/test:d1")],
+        other_images=[Image.look_up_image_info(image_spec.id, "flyte/test:d1")],
     )
     img_to_interpolate = "{{.image.default.fqn}}:{{.image.default.version}}-special"
     img = get_registerable_container_image(img=img_to_interpolate, cfg=new_img_cfg)
@@ -100,6 +108,7 @@ def test_default_command(default_serialization_settings):
     ]
 
 
+
 def test_get_container(default_serialization_settings):
     c = task.get_container(default_serialization_settings)
     assert c.image == "docker.io/xyz:some-git-hash"
@@ -131,6 +140,26 @@ def test_get_container_without_serialization_settings_envvars(minimal_serializat
     ts = get_serializable_task(OrderedDict(), minimal_serialization_settings, task_with_env_vars)
     assert ts.template.container.image == "docker.io/xyz:some-git-hash"
     assert ts.template.container.env == {"HAM": "spam"}
+
+
+def test_get_container_with_interactive_settings(interactive_serialization_settings):
+    c = task_with_env_vars.get_container(interactive_serialization_settings)
+    assert c.image == "docker.io/xyz:some-git-hash"
+    assert c.env == {"FOO": "bar", "HAM": "spam"}
+
+    def mock_file_uploader(dest: pathlib.Path):
+        return (0, dest.name)
+
+    option = Options()
+    option.file_uploader = mock_file_uploader
+    ts = get_serializable_task(OrderedDict(), interactive_serialization_settings, task_with_env_vars, options=option)
+    assert ts.template.container.image == "docker.io/xyz:some-git-hash"
+    assert ts.template.container.env == {"FOO": "bar", "HAM": "spam"}
+    assert 'flytekit.core.python_auto_container.default_notebook_task_resolver' in ts.template.container.args
+    assert interactive_serialization_settings.fast_serialization_settings is not None
+    assert interactive_serialization_settings.fast_serialization_settings.enabled is True
+    assert interactive_serialization_settings.fast_serialization_settings.destination_dir == "."
+    assert interactive_serialization_settings.fast_serialization_settings.distribution_location == PICKLE_FILE_PATH
 
 
 task_with_pod_template = DummyAutoContainerTask(

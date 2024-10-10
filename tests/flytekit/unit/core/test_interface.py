@@ -4,7 +4,7 @@ import typing
 from typing import Dict, List
 
 import pytest
-from typing_extensions import Annotated  # type: ignore
+from typing_extensions import Annotated, TypeVar  # type: ignore
 
 from flytekit import map_task, task
 from flytekit.core import context_manager
@@ -95,6 +95,15 @@ def test_extract_only():
     return_type = extract_return_annotation(typing.get_type_hints(t).get("return", None))
     assert len(return_type) == 1
     assert return_type["o0"] == Dict[str, int]
+
+    VST = TypeVar("VST")
+
+    def t(a: int, b: str) -> VST:  # type: ignore
+        ...
+
+    return_type = extract_return_annotation(typing.get_type_hints(t).get("return", None))
+    assert len(return_type) == 1
+    assert return_type["o0"] == VST
 
 
 def test_named_tuples():
@@ -323,7 +332,7 @@ def test_transform_interface_to_typed_interface_with_docstring():
 def test_init_interface_with_invalid_parameters():
     from flytekit.core.interface import Interface
 
-    with pytest.raises(ValueError, match=r"Input name must be valid Python identifier:"):
+    with pytest.raises(ValueError, match=r"Input name must be a valid Python identifier:"):
         _ = Interface({"my.input": int}, {})
 
     with pytest.raises(ValueError, match=r"Type names and field names must be valid identifiers:"):

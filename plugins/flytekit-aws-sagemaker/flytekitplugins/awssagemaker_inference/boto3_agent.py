@@ -59,6 +59,7 @@ class BotoAgent(SyncAgentBase):
 
         boto3_object = Boto3AgentMixin(service=service, region=region)
 
+        result = None
         try:
             result, idempotence_token = await boto3_object._call(
                 method=method,
@@ -77,10 +78,16 @@ class BotoAgent(SyncAgentBase):
                     error_message,
                 ).group(0)
                 if arn:
+                    arn_result = None
+                    if method == "create_model":
+                        arn_result = {"ModelArn": arn}
+                    elif method == "create_endpoint_config":
+                        arn_result = {"EndpointConfigArn": arn}
+
                     return Resource(
                         phase=TaskExecution.SUCCEEDED,
                         outputs={
-                            "result": {"result": f"Entity already exists: {arn}"},
+                            "result": arn_result if arn_result else {"result": f"Entity already exists {arn}."},
                             "idempotence_token": e.idempotence_token,
                         },
                     )
@@ -100,6 +107,12 @@ class BotoAgent(SyncAgentBase):
 
         outputs = {"result": {"result": None}}
         if result:
+            truncated_result = None
+            if method == "create_model":
+                truncated_result = {"ModelArn": result.get("ModelArn")}
+            elif method == "create_endpoint_config":
+                truncated_result = {"EndpointConfigArn": result.get("EndpointConfigArn")}
+
             ctx = FlyteContextManager.current_context()
             builder = ctx.with_file_access(
                 FileAccessProvider(
@@ -109,22 +122,20 @@ class BotoAgent(SyncAgentBase):
                 )
             )
             with context_manager.FlyteContextManager.with_context(builder) as new_ctx:
-                outputs = LiteralMap(
-                    literals={
-                        "result": TypeEngine.to_literal(
-                            new_ctx,
-                            result,
-                            Annotated[dict, kwtypes(allow_pickle=True)],
-                            TypeEngine.to_literal_type(dict),
-                        ),
-                        "idempotence_token": TypeEngine.to_literal(
-                            new_ctx,
-                            idempotence_token,
-                            str,
-                            TypeEngine.to_literal_type(str),
-                        ),
-                    }
-                )
+                outputs = {
+                    "result": TypeEngine.to_literal(
+                        new_ctx,
+                        truncated_result if truncated_result else result,
+                        Annotated[dict, kwtypes(allow_pickle=True)],
+                        TypeEngine.to_literal_type(dict),
+                    ),
+                    "idempotence_token": TypeEngine.to_literal(
+                        new_ctx,
+                        idempotence_token,
+                        str,
+                        TypeEngine.to_literal_type(str),
+                    ),
+                }
 
         return Resource(phase=TaskExecution.SUCCEEDED, outputs=outputs)
 

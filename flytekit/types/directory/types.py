@@ -10,18 +10,20 @@ from typing import Any, Generator, Tuple
 from uuid import UUID
 
 import fsspec
+import msgpack
 from dataclasses_json import DataClassJsonMixin, config
 from fsspec.utils import get_protocol
 from marshmallow import fields
 from mashumaro.types import SerializableType
 
 from flytekit import BlobType
+from flytekit.core.constants import MESSAGEPACK
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError, get_batch_size
 from flytekit.exceptions.user import FlyteAssertion
 from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_types
-from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
+from flytekit.models.literals import Binary, Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 from flytekit.types.file import FileExt, FlyteFile
 
@@ -123,7 +125,7 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
 
     def _serialize(self) -> typing.Dict[str, str]:
         lv = FlyteDirToMultipartBlobTransformer().to_literal(
-            FlyteContextManager.current_context(), self, FlyteDirectory, None
+            FlyteContextManager.current_context(), self, type(self), None
         )
         return {"path": lv.scalar.blob.uri}
 
@@ -186,18 +188,23 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
         return ""
 
     @classmethod
-    def new_remote(cls) -> FlyteDirectory:
+    def new_remote(cls, stem: typing.Optional[str] = None, alt: typing.Optional[str] = None) -> FlyteDirectory:
         """
         Create a new FlyteDirectory object using the currently configured default remote in the context (i.e.
         the raw_output_prefix configured in the current FileAccessProvider object in the context).
         This is used if you explicitly have a folder somewhere that you want to create files under.
         If you want to write a whole folder, you can let your task return a FlyteDirectory object,
         and let flytekit handle the uploading.
+
+        :param stem: A stem to append to the path as the final prefix "directory".
+        :param alt: An alternate first member of the prefix to use instead of the default.
+        :return FlyteDirectory: A new FlyteDirectory object that points to a remote location.
         """
         ctx = FlyteContextManager.current_context()
-        r = ctx.file_access.get_random_string()
-        d = ctx.file_access.join(ctx.file_access.raw_output_prefix, r)
-        return FlyteDirectory(path=d)
+        if stem and Path(stem).suffix:
+            raise ValueError("Stem should not have a file extension.")
+        remote_path = ctx.file_access.generate_new_custom_path(alt=alt, stem=stem)
+        return cls(path=remote_path)
 
     def __class_getitem__(cls, item: typing.Union[typing.Type, str]) -> typing.Type[FlyteDirectory]:
         if item is None:
@@ -499,9 +506,41 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
         else:
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=source_path)))
 
+    def from_binary_idl(
+        self, binary_idl_object: Binary, expected_python_type: typing.Type[FlyteDirectory]
+    ) -> FlyteDirectory:
+        if binary_idl_object.tag == MESSAGEPACK:
+            python_val = msgpack.loads(binary_idl_object.value)
+            path = python_val.get("path", None)
+
+            if path is None:
+                raise ValueError("FlyteDirectory's path should not be None")
+
+            return FlyteDirToMultipartBlobTransformer().to_python_value(
+                FlyteContextManager.current_context(),
+                Literal(
+                    scalar=Scalar(
+                        blob=Blob(
+                            metadata=BlobMetadata(
+                                type=_core_types.BlobType(
+                                    format="", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
+                                )
+                            ),
+                            uri=path,
+                        )
+                    )
+                ),
+                expected_python_type,
+            )
+        else:
+            raise TypeTransformerFailedError(f"Unsupported binary format: `{binary_idl_object.tag}`")
+
     def to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Type[FlyteDirectory]
     ) -> FlyteDirectory:
+        if lv.scalar.binary:
+            return self.from_binary_idl(lv.scalar.binary, expected_python_type)
+
         uri = lv.scalar.blob.uri
 
         if lv.scalar.blob.metadata.type.dimensionality != BlobType.BlobDimensionality.MULTIPART:

@@ -8,6 +8,13 @@ from enum import Enum
 from functools import update_wrapper
 from typing import Any, Callable, Coroutine, Dict, List, Optional, Tuple, Type, Union, cast, overload
 
+from typing_inspect import is_optional_type
+
+try:
+    from typing import ParamSpec
+except ImportError:
+    from typing_extensions import ParamSpec  # type: ignore
+
 from flytekit.core import constants as _common_constants
 from flytekit.core import launch_plan as _annotated_launch_plan
 from flytekit.core.base_task import PythonTask, Task
@@ -27,6 +34,7 @@ from flytekit.core.interface import (
     transform_interface_to_typed_interface,
 )
 from flytekit.core.node import Node
+from flytekit.core.options import Options
 from flytekit.core.promise import (
     NodeOutput,
     Promise,
@@ -41,8 +49,11 @@ from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceEntity, WorkflowReference
 from flytekit.core.tracker import extract_task_module
 from flytekit.core.type_engine import TypeEngine
-from flytekit.exceptions import scopes as exception_scopes
-from flytekit.exceptions.user import FlyteValidationException, FlyteValueException
+from flytekit.exceptions.user import (
+    FlyteFailureNodeInputMismatchException,
+    FlyteValidationException,
+    FlyteValueException,
+)
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
@@ -58,6 +69,7 @@ GLOBAL_START_NODE = Node(
     flyte_entity=None,
 )
 
+P = ParamSpec("P")
 T = typing.TypeVar("T")
 FuncOut = typing.TypeVar("FuncOut")
 
@@ -183,6 +195,7 @@ class WorkflowBase(object):
         python_interface: Interface,
         on_failure: Optional[Union[WorkflowBase, Task]] = None,
         docs: Optional[Documentation] = None,
+        default_options: Optional[Options] = None,
         **kwargs,
     ):
         self._name = name
@@ -197,6 +210,7 @@ class WorkflowBase(object):
         self._on_failure = on_failure
         self._failure_node = None
         self._docs = docs
+        self._default_options = default_options
 
         if self._python_interface.docstring:
             if self.docs is None:
@@ -261,6 +275,10 @@ class WorkflowBase(object):
     def failure_node(self) -> Optional[Node]:
         return self._failure_node
 
+    @property
+    def default_options(self) -> Optional[Options]:
+        return self._default_options
+
     def __repr__(self):
         return (
             f"WorkflowBase - {self._name} && "
@@ -294,7 +312,7 @@ class WorkflowBase(object):
             raise exc
 
     def execute(self, **kwargs):
-        raise Exception("Should not be called")
+        raise NotImplementedError
 
     def compile(self, **kwargs):
         pass
@@ -524,7 +542,7 @@ class ImperativeWorkflow(WorkflowBase):
     def create_conditional(self, name: str) -> ConditionalSection:
         ctx = FlyteContext.current_context()
         if ctx.compilation_state is not None:
-            raise Exception("Can't already be compiling")
+            raise RuntimeError("Can't already be compiling")
         FlyteContextManager.with_context(ctx.with_compilation_state(self.compilation_state))
         return conditional(name=name)
 
@@ -537,7 +555,7 @@ class ImperativeWorkflow(WorkflowBase):
 
         ctx = FlyteContext.current_context()
         if ctx.compilation_state is not None:
-            raise Exception("Can't already be compiling")
+            raise RuntimeError("Can't already be compiling")
         with FlyteContextManager.with_context(ctx.with_compilation_state(self.compilation_state)) as ctx:
             n = create_node(entity=entity, **kwargs)
 
@@ -599,7 +617,7 @@ class ImperativeWorkflow(WorkflowBase):
 
         ctx = FlyteContext.current_context()
         if ctx.compilation_state is not None:
-            raise Exception("Can't already be compiling")
+            raise RuntimeError("Can't already be compiling")
         with FlyteContextManager.with_context(ctx.with_compilation_state(self.compilation_state)) as ctx:
             b, _ = binding_from_python_std(
                 ctx, output_name, expected_literal_type=flyte_type, t_value=p, t_value_type=python_type
@@ -650,6 +668,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         docstring: Optional[Docstring] = None,
         on_failure: Optional[Union[WorkflowBase, Task]] = None,
         docs: Optional[Documentation] = None,
+        default_options: Optional[Options] = None,
     ):
         name, _, _, _ = extract_task_module(workflow_function)
         self._workflow_function = workflow_function
@@ -666,6 +685,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             python_interface=native_interface,
             on_failure=on_failure,
             docs=docs,
+            default_options=default_options,
         )
         self.compiled = False
 
@@ -683,8 +703,21 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         ) as inner_comp_ctx:
             # Now lets compile the failure-node if it exists
             if self.on_failure:
+                if self.on_failure.python_interface and self.python_interface:
+                    workflow_inputs = self.python_interface.inputs
+                    failure_node_inputs = self.on_failure.python_interface.inputs
+
+                    # Workflow inputs should be a subset of failure node inputs.
+                    if (failure_node_inputs | workflow_inputs) != failure_node_inputs:
+                        raise FlyteFailureNodeInputMismatchException(self.on_failure, self)
+                    additional_keys = failure_node_inputs.keys() - workflow_inputs.keys()
+                    # Raising an error if the additional inputs in the failure node are not optional.
+                    for k in additional_keys:
+                        if not is_optional_type(failure_node_inputs[k]):
+                            raise FlyteFailureNodeInputMismatchException(self.on_failure, self)
+
                 c = wf_args.copy()
-                exception_scopes.user_entry_point(self.on_failure)(**c)
+                self.on_failure(**c)
                 inner_nodes = None
                 if inner_comp_ctx.compilation_state and inner_comp_ctx.compilation_state.nodes:
                     inner_nodes = inner_comp_ctx.compilation_state.nodes
@@ -711,7 +744,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             # Construct the default input promise bindings, but then override with the provided inputs, if any
             input_kwargs = construct_input_promises([k for k in self.interface.inputs.keys()])
             input_kwargs.update(kwargs)
-            workflow_outputs = exception_scopes.user_entry_point(self._workflow_function)(**input_kwargs)
+            workflow_outputs = self._workflow_function(**input_kwargs)
             all_nodes.extend(comp_ctx.compilation_state.nodes)
 
             # This little loop was added as part of the task resolver change. The task resolver interface itself is
@@ -761,7 +794,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             if not isinstance(workflow_outputs, tuple):
                 raise AssertionError("The Workflow specification indicates multiple return values, received only one")
             if len(output_names) != len(workflow_outputs):
-                raise Exception(f"Length mismatch {len(output_names)} vs {len(workflow_outputs)}")
+                raise ValueError(f"Length mismatch {len(output_names)} vs {len(workflow_outputs)}")
             for i, out in enumerate(output_names):
                 if isinstance(workflow_outputs[i], ConditionalSection):
                     raise AssertionError("A Conditional block (if-else) should always end with an `else_()` clause")
@@ -794,7 +827,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         call execute from dispatch_execute which is in local_execute, workflows should also call an execute inside
         local_execute. This makes mocking cleaner.
         """
-        return exception_scopes.user_entry_point(self._workflow_function)(**kwargs)
+        return self._workflow_function(**kwargs)
 
 
 @overload
@@ -804,26 +837,29 @@ def workflow(
     interruptible: bool = ...,
     on_failure: Optional[Union[WorkflowBase, Task]] = ...,
     docs: Optional[Documentation] = ...,
+    default_options: Optional[Options] = ...,
 ) -> Callable[[Callable[..., FuncOut]], PythonFunctionWorkflow]: ...
 
 
 @overload
 def workflow(
-    _workflow_function: Callable[..., FuncOut],
+    _workflow_function: Callable[P, FuncOut],
     failure_policy: Optional[WorkflowFailurePolicy] = ...,
     interruptible: bool = ...,
     on_failure: Optional[Union[WorkflowBase, Task]] = ...,
     docs: Optional[Documentation] = ...,
-) -> Union[PythonFunctionWorkflow, Callable[..., FuncOut]]: ...
+    default_options: Optional[Options] = ...,
+) -> Union[Callable[P, FuncOut], PythonFunctionWorkflow]: ...
 
 
 def workflow(
-    _workflow_function: Optional[Callable[..., Any]] = None,
+    _workflow_function: Optional[Callable[P, FuncOut]] = None,
     failure_policy: Optional[WorkflowFailurePolicy] = None,
     interruptible: bool = False,
     on_failure: Optional[Union[WorkflowBase, Task]] = None,
     docs: Optional[Documentation] = None,
-) -> Union[Callable[[Callable[..., FuncOut]], PythonFunctionWorkflow], PythonFunctionWorkflow, Callable[..., FuncOut]]:
+    default_options: Optional[Options] = None,
+) -> Union[Callable[P, FuncOut], Callable[[Callable[P, FuncOut]], PythonFunctionWorkflow], PythonFunctionWorkflow]:
     """
     This decorator declares a function to be a Flyte workflow. Workflows are declarative entities that construct a DAG
     of tasks using the data flow between tasks.
@@ -854,9 +890,11 @@ def workflow(
     :param on_failure: Invoke this workflow or task on failure. The Workflow / task has to match the signature of
          the current workflow, with an additional parameter called `error` Error
     :param docs: Description entity for the workflow
+    :param default_options: Default options for the workflow when creating a default launch plan. Currently only
+         the labels and annotations are allowed to be set as defaults.
     """
 
-    def wrapper(fn: Callable[..., Any]) -> PythonFunctionWorkflow:
+    def wrapper(fn: Callable[P, FuncOut]) -> PythonFunctionWorkflow:
         workflow_metadata = WorkflowMetadata(on_failure=failure_policy or WorkflowFailurePolicy.FAIL_IMMEDIATELY)
 
         workflow_metadata_defaults = WorkflowMetadataDefaults(interruptible)
@@ -868,6 +906,7 @@ def workflow(
             docstring=Docstring(callable_=fn),
             on_failure=on_failure,
             docs=docs,
+            default_options=default_options,
         )
         update_wrapper(workflow_instance, fn)
         return workflow_instance

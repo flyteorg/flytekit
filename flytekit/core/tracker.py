@@ -10,6 +10,7 @@ from typing import Callable, Optional, Tuple, Union
 from flytekit.configuration.feature_flags import FeatureFlags
 from flytekit.exceptions import system as _system_exceptions
 from flytekit.loggers import developer_logger, logger
+from flytekit.tools.interactive import ipython_check
 
 
 def import_module_from_file(module_name, file):
@@ -62,7 +63,7 @@ class InstanceTrackingMeta(type):
         while frame:
             if frame.f_code.co_name == "<module>" and "__name__" in frame.f_globals:
                 if frame.f_globals["__name__"] != "__main__":
-                    return frame.f_globals["__name__"], None
+                    return frame.f_globals["__name__"], frame.f_globals.get("__file__")
 
                 # Try to find the module and filename in the case that we're in the __main__ module
                 # This is useful in cases that use FlyteRemote to load tasks/workflows that are defined
@@ -81,7 +82,7 @@ class InstanceTrackingMeta(type):
         o = super(InstanceTrackingMeta, cls).__call__(*args, **kwargs)
         mod_name, mod_file = InstanceTrackingMeta._find_instance_module()
         o._instantiated_in = mod_name
-        o._module_file = mod_file
+        o._module_file = Path(mod_file).resolve() if mod_file else None
         return o
 
 
@@ -248,6 +249,24 @@ def istestfunction(func) -> bool:
     return False
 
 
+def is_ipython_or_pickle_exists() -> bool:
+    """
+    Returns true if the code is running in an IPython notebook or if a pickle file exists.
+
+    We skip module path resolution in both cases due to the following reasons:
+
+    1. In an IPython notebook, we cannot resolve the module path in the local file system.
+    2. When the code is serialized (pickled) and executed in a remote environment, only
+       the pickled file exists at PICKLE_FILE_PATH. The remote environment won't have the
+       plain python file and module path resolution will fail.
+
+    This check ensures we avoid attempting module path resolution in both environments.
+    """
+    from flytekit.core.python_auto_container import PICKLE_FILE_PATH
+
+    return ipython_check() or os.path.exists(PICKLE_FILE_PATH)
+
+
 class _ModuleSanitizer(object):
     """
     Sanitizes and finds the absolute module path irrespective of the import location.
@@ -270,7 +289,24 @@ class _ModuleSanitizer(object):
         # Let us remove any extensions like .py
         basename = os.path.splitext(basename)[0]
 
+        # This is an escape hatch for the zipimporter (used by spark).  As this function is called recursively,
+        # it'll eventually reach the zip file, which is not extracted, so we should return.
+        if not Path(dirname).is_dir():
+            return basename
+
         if dirname == package_root:
+            return basename
+
+        # Execution in a Jupyter notebook, we cannot resolve the module path
+        if not os.path.exists(dirname):
+            logger.debug(
+                f"Directory {dirname} does not exist. It is likely that we are in a Jupyter notebook or a pickle file was received."
+            )
+
+            if not is_ipython_or_pickle_exists():
+                raise AssertionError(
+                    f"Directory {dirname} does not exist, and we are not in a Jupyter notebook or received a pickle file."
+                )
             return basename
 
         # If we have reached a directory with no __init__, ignore
@@ -321,7 +357,12 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
         mod, mod_name, name = _task_module_from_callable(f)
 
     if mod is None:
-        raise AssertionError(f"Unable to determine module of {f}")
+        if not is_ipython_or_pickle_exists():
+            raise AssertionError(f"Unable to determine module of {f}")
+        logger.debug(
+            "Could not determine module of function. It is likely that we are in a Jupyter notebook or received a pickle file."
+        )
+        return f"{mod_name}.{name}", mod_name, name, ""
 
     if mod_name == "__main__":
         if hasattr(f, "task_function"):
@@ -330,7 +371,7 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
         inspect_file = inspect.getfile(f)  # type: ignore
         file_name, _ = os.path.splitext(os.path.basename(inspect_file))
         mod_name = get_full_module_path(f, file_name)  # type: ignore
-        return name, mod_name, name, os.path.abspath(inspect_file)
+        return f"{mod_name}.{name}", mod_name, name, os.path.abspath(inspect_file)
 
     mod_name = get_full_module_path(mod, mod_name)
     return f"{mod_name}.{name}", mod_name, name, os.path.abspath(inspect.getfile(mod))

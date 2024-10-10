@@ -4,19 +4,22 @@ import hashlib
 import logging
 import math
 import os  # TODO: use flytekit logger
-import typing
 from contextlib import contextmanager
 from typing import Any, Dict, List, Optional, Set, Union, cast
 
+import typing_extensions
+from flyteidl.core import tasks_pb2
+
 from flytekit.configuration import SerializationSettings
 from flytekit.core import tracker
+from flytekit.core.array_node import array_node
 from flytekit.core.base_task import PythonTask, TaskResolverMixin
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.interface import transform_interface_to_list_interface
+from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanceTask
 from flytekit.core.type_engine import TypeEngine, is_annotated
 from flytekit.core.utils import timeit
-from flytekit.exceptions import scopes as exception_scopes
 from flytekit.loggers import logger
 from flytekit.models import literals as _literal_models
 from flytekit.models.array_job import ArrayJob
@@ -26,6 +29,7 @@ from flytekit.models.task import Container, K8sPod, Sql, Task
 from flytekit.tools.module_loader import load_object_from_module
 from flytekit.types.pickle import pickle
 from flytekit.types.pickle.pickle import FlytePickleTransformer
+from flytekit.utils.asyn import loop_manager
 
 
 class ArrayNodeMapTask(PythonTask):
@@ -59,8 +63,16 @@ class ArrayNodeMapTask(PythonTask):
             actual_task = python_function_task
 
         # TODO: add support for other Flyte entities
-        if not (isinstance(actual_task, PythonFunctionTask) or isinstance(actual_task, PythonInstanceTask)):
-            raise ValueError("Only PythonFunctionTask and PythonInstanceTask are supported in map tasks.")
+        if not (
+            (
+                isinstance(actual_task, PythonFunctionTask)
+                and actual_task.execution_mode == PythonFunctionTask.ExecutionBehavior.DEFAULT
+            )
+            or isinstance(actual_task, PythonInstanceTask)
+        ):
+            raise ValueError(
+                "Only PythonFunctionTask with default execution mode (not @dynamic or @eager) and PythonInstanceTask are supported in map tasks."
+            )
 
         for k, v in actual_task.python_interface.inputs.items():
             if bound_inputs and k in bound_inputs:
@@ -68,7 +80,7 @@ class ArrayNodeMapTask(PythonTask):
             transformer = TypeEngine.get_transformer(v)
             if isinstance(transformer, FlytePickleTransformer):
                 if is_annotated(v):
-                    for annotation in typing.get_args(v)[1:]:
+                    for annotation in typing_extensions.get_args(v)[1:]:
                         if isinstance(annotation, pickle.BatchSize):
                             raise ValueError("Choosing a BatchSize for map tasks inputs is not supported.")
 
@@ -151,6 +163,9 @@ class ArrayNodeMapTask(PythonTask):
     @property
     def bound_inputs(self) -> Set[str]:
         return self._bound_inputs
+
+    def get_extended_resources(self, settings: SerializationSettings) -> Optional[tasks_pb2.ExtendedResources]:
+        return self.python_function_task.get_extended_resources(settings)
 
     @contextmanager
     def prepare_target(self):
@@ -237,7 +252,9 @@ class ArrayNodeMapTask(PythonTask):
             inputs_interface = self._run_task.python_interface.inputs
             for k in self.interface.inputs.keys():
                 v = literal_map.literals[k]
-
+                # If the input is offloaded, we need to unwrap it
+                if v.offloaded_metadata:
+                    v = loop_manager.run_sync(TypeEngine.unwrap_offloaded_literal, ctx, v)
                 if k not in self.bound_inputs:
                     # assert that v.collection is not None
                     if not v.collection or not isinstance(v.collection.literals, list):
@@ -251,7 +268,7 @@ class ArrayNodeMapTask(PythonTask):
     def execute(self, **kwargs) -> Any:
         ctx = FlyteContextManager.current_context()
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
-            return exception_scopes.user_entry_point(self.python_function_task.execute)(**kwargs)
+            return self.python_function_task.execute(**kwargs)
 
         return self._raw_execute(**kwargs)
 
@@ -328,7 +345,7 @@ class ArrayNodeMapTask(PythonTask):
                 else:
                     single_instance_inputs[k] = kwargs[k]
             try:
-                o = exception_scopes.user_entry_point(self._run_task.execute)(**single_instance_inputs)
+                o = self._run_task.execute(**single_instance_inputs)
                 if outputs_expected:
                     outputs.append(o)
             except Exception as exc:
@@ -342,6 +359,41 @@ class ArrayNodeMapTask(PythonTask):
 
 
 def map_task(
+    target: Union[LaunchPlan, PythonFunctionTask],
+    concurrency: Optional[int] = None,
+    min_successes: Optional[int] = None,
+    min_success_ratio: float = 1.0,
+    **kwargs,
+):
+    """
+    Wrapper that creates a map task utilizing either the existing ArrayNodeMapTask
+    or the drop in replacement ArrayNode implementation
+
+    :param target: The Flyte entity of which will be mapped over
+    :param concurrency: If specified, this limits the number of mapped tasks than can run in parallel to the given batch
+        size. If the size of the input exceeds the concurrency value, then multiple batches will be run serially until
+        all inputs are processed. If set to 0, this means unbounded concurrency. If left unspecified, this means the
+        array node will inherit parallelism from the workflow
+    :param min_successes: The minimum number of successful executions
+    :param min_success_ratio: The minimum ratio of successful executions
+    """
+    if isinstance(target, LaunchPlan):
+        return array_node(
+            target=target,
+            concurrency=concurrency,
+            min_successes=min_successes,
+            min_success_ratio=min_success_ratio,
+        )
+    return array_node_map_task(
+        task_function=target,
+        concurrency=concurrency,
+        min_successes=min_successes,
+        min_success_ratio=min_success_ratio,
+        **kwargs,
+    )
+
+
+def array_node_map_task(
     task_function: PythonFunctionTask,
     concurrency: Optional[int] = None,
     # TODO why no min_successes?

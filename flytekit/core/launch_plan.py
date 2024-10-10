@@ -93,11 +93,19 @@ class LaunchPlan(object):
 
         parameter_map = transform_inputs_to_parameters(ctx, workflow.python_interface)
 
+        default_labels = None
+        default_annotations = None
+        if workflow.default_options is not None:
+            default_labels = workflow.default_options.labels
+            default_annotations = workflow.default_options.annotations
+
         lp = LaunchPlan(
             name=workflow.name,
             workflow=workflow,
             parameters=parameter_map,
             fixed_inputs=_literal_models.LiteralMap(literals={}),
+            labels=default_labels,
+            annotations=default_annotations,
         )
 
         # Ensure default parameters are available when using lp.__call__()
@@ -509,7 +517,7 @@ def reference_launch_plan(
     """
 
     def wrapper(fn) -> ReferenceLaunchPlan:
-        interface = transform_function_to_interface(fn)
+        interface = transform_function_to_interface(fn, is_reference_entity=True)
         return ReferenceLaunchPlan(project, domain, name, version, interface.inputs, interface.outputs)
 
     return wrapper

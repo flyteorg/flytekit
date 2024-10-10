@@ -36,7 +36,8 @@ from flytekit import configuration
 from flytekit.configuration import DataConfig
 from flytekit.core.local_fsspec import FlyteLocalFileSystem
 from flytekit.core.utils import timeit
-from flytekit.exceptions.user import FlyteAssertion, FlyteValueException
+from flytekit.exceptions.system import FlyteDownloadDataException, FlyteUploadDataException
+from flytekit.exceptions.user import FlyteAssertion, FlyteDataNotFoundException
 from flytekit.interfaces.random import random
 from flytekit.loggers import logger
 
@@ -300,7 +301,7 @@ class FileAccessProvider(object):
         except OSError as oe:
             logger.debug(f"Error in getting {from_path} to {to_path} rec {recursive} {oe}")
             if not file_system.exists(from_path):
-                raise FlyteValueException(from_path, "File not found")
+                raise FlyteDataNotFoundException(from_path)
             file_system = self.get_filesystem(get_protocol(from_path), anonymous=True)
             if file_system is not None:
                 logger.debug(f"Attempting anonymous get with {file_system}")
@@ -454,6 +455,39 @@ class FileAccessProvider(object):
             f = fs.unstrip_protocol(f)
         return f
 
+    def generate_new_custom_path(
+        self,
+        fs: typing.Optional[fsspec.AbstractFileSystem] = None,
+        alt: typing.Optional[str] = None,
+        stem: typing.Optional[str] = None,
+    ) -> str:
+        """
+        Generates a new path with the raw output prefix and a random string appended to it.
+        Optionally, you can provide an alternate prefix and a stem. If stem is provided, it
+        will be appended to the path instead of a random string. If alt is provided, it will
+        replace the first part of the output prefix, e.g. the S3 or GCS bucket.
+
+        If wanting to write to a non-random prefix in a non-default S3 bucket, this can be
+        called with alt="my-alt-bucket" and stem="my-stem" to generate a path like
+        s3://my-alt-bucket/default-prefix-part/my-stem
+
+        :param fs: The filesystem to use. If None, the context's raw output filesystem is used.
+        :param alt: An alternate first member of the prefix to use instead of the default.
+        :param stem: A stem to append to the path.
+        :return: The new path.
+        """
+        fs = fs or self.raw_output_fs
+        pref = self.raw_output_prefix
+        s_pref = pref.split(fs.sep)[:-1]
+        if alt:
+            s_pref[2] = alt
+        if stem:
+            s_pref.append(stem)
+        else:
+            s_pref.append(self.get_random_string())
+        p = fs.sep.join(s_pref)
+        return p
+
     def get_random_local_path(self, file_path_or_file_name: typing.Optional[str] = None) -> str:
         """
         Use file_path_or_file_name, when you want a random directory, but want to preserve the leaf file name
@@ -525,8 +559,10 @@ class FileAccessProvider(object):
             pathlib.Path(local_path).parent.mkdir(parents=True, exist_ok=True)
             with timeit(f"Download data to local from {remote_path}"):
                 self.get(remote_path, to_path=local_path, recursive=is_multipart, **kwargs)
+        except FlyteDataNotFoundException:
+            raise
         except Exception as ex:
-            raise FlyteAssertion(
+            raise FlyteDownloadDataException(
                 f"Failed to get data from {remote_path} to {local_path} (recursive={is_multipart}).\n\n"
                 f"Original exception: {str(ex)}"
             )
@@ -554,7 +590,7 @@ class FileAccessProvider(object):
                     return put_result
                 return remote_path
         except Exception as ex:
-            raise FlyteAssertion(
+            raise FlyteUploadDataException(
                 f"Failed to put data from {local_path} to {remote_path} (recursive={is_multipart}).\n\n"
                 f"Original exception: {str(ex)}"
             ) from ex

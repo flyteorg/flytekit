@@ -1,7 +1,9 @@
+import os
+import pathlib
 import sys
+import tempfile
 import typing
 from collections import OrderedDict
-from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from flyteidl.admin import schedule_pb2
@@ -10,6 +12,7 @@ from flytekit import ImageSpec, PythonFunctionTask, SourceCode
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core import constants as _common_constants
 from flytekit.core import context_manager
+from flytekit.core.array_node import ArrayNode
 from flytekit.core.array_node_map_task import ArrayNodeMapTask
 from flytekit.core.base_task import PythonTask
 from flytekit.core.condition import BranchNode
@@ -18,17 +21,21 @@ from flytekit.core.gate import Gate
 from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
 from flytekit.core.legacy_map_task import MapPythonTask
 from flytekit.core.node import Node
-from flytekit.core.python_auto_container import PythonAutoContainerTask
+from flytekit.core.options import Options
+from flytekit.core.python_auto_container import (
+    PICKLE_FILE_PATH,
+    PythonAutoContainerTask,
+    default_notebook_task_resolver,
+)
 from flytekit.core.reference_entity import ReferenceEntity, ReferenceSpec, ReferenceTemplate
 from flytekit.core.task import ReferenceTask
 from flytekit.core.utils import ClassDecorator, _dnsify
 from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase
-from flytekit.image_spec.image_spec import _calculate_deduped_hash_from_image_spec
+from flytekit.exceptions.user import FlyteAssertion
+from flytekit.loggers import logger
 from flytekit.models import common as _common_models
-from flytekit.models import common as common_models
 from flytekit.models import interface as interface_models
 from flytekit.models import launch_plan as _launch_plan_models
-from flytekit.models import security
 from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.models.admin.workflow import WorkflowSpec
 from flytekit.models.core import identifier as _identifier_model
@@ -49,6 +56,7 @@ FlyteLocalEntity = Union[
     ReferenceTask,
     ReferenceLaunchPlan,
     ReferenceEntity,
+    ArrayNode,
 ]
 FlyteControlPlaneEntity = Union[
     TaskSpec,
@@ -58,50 +66,6 @@ FlyteControlPlaneEntity = Union[
     BranchNodeModel,
     ArrayNodeModel,
 ]
-
-
-@dataclass
-class Options(object):
-    """
-    These are options that can be configured for a launchplan during registration or overridden during an execution.
-    For instance two people may want to run the same workflow but have the offloaded data stored in two different
-    buckets. Or you may want labels or annotations to be different. This object is used when launching an execution
-    in a Flyte backend, and also when registering launch plans.
-
-    Args:
-        labels: Custom labels to be applied to the execution resource
-        annotations: Custom annotations to be applied to the execution resource
-        security_context: Indicates security context for permissions triggered with this launch plan
-        raw_output_data_config: Optional location of offloaded data for things like S3, etc.
-            remote prefix for storage location of the form ``s3://<bucket>/key...`` or
-            ``gcs://...`` or ``file://...``. If not specified will use the platform configured default. This is where
-            the data for offloaded types is stored.
-        max_parallelism: Controls the maximum number of tasknodes that can be run in parallel for the entire workflow.
-        notifications: List of notifications for this execution.
-        disable_notifications: This should be set to true if all notifications are intended to be disabled for this execution.
-    """
-
-    labels: typing.Optional[common_models.Labels] = None
-    annotations: typing.Optional[common_models.Annotations] = None
-    raw_output_data_config: typing.Optional[common_models.RawOutputDataConfig] = None
-    security_context: typing.Optional[security.SecurityContext] = None
-    max_parallelism: typing.Optional[int] = None
-    notifications: typing.Optional[typing.List[common_models.Notification]] = None
-    disable_notifications: typing.Optional[bool] = None
-    overwrite_cache: typing.Optional[bool] = None
-
-    @classmethod
-    def default_from(
-        cls, k8s_service_account: typing.Optional[str] = None, raw_data_prefix: typing.Optional[str] = None
-    ) -> "Options":
-        return cls(
-            security_context=security.SecurityContext(run_as=security.Identity(k8s_service_account=k8s_service_account))
-            if k8s_service_account
-            else None,
-            raw_output_data_config=common_models.RawOutputDataConfig(output_location_prefix=raw_data_prefix)
-            if raw_data_prefix
-            else None,
-        )
 
 
 def to_serializable_case(
@@ -163,6 +127,52 @@ def _fast_serialize_command_fn(
     return fn
 
 
+def _update_serialization_settings_for_ipython(
+    entity: FlyteLocalEntity,
+    serialization_settings: SerializationSettings,
+    options: Optional[Options] = None,
+):
+    # We are in an interactive environment. We will serialize the task as a pickled object and upload it to remote
+    # storage.
+    if isinstance(entity, PythonFunctionTask):
+        if entity.execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
+            raise FlyteAssertion(
+                f"Dynamic tasks are not supported in interactive mode. {entity.name} is a dynamic task."
+            )
+
+    if options is None or options.file_uploader is None:
+        raise FlyteAssertion("To work interactively with Flyte, a code transporter/uploader should be configured.")
+
+    # For map tasks, we need to serialize the actual task, not the map task itself
+    if isinstance(entity, ArrayNodeMapTask):
+        entity._run_task.set_resolver(default_notebook_task_resolver)
+        actual_task = entity._run_task
+    else:
+        entity.set_resolver(default_notebook_task_resolver)
+        actual_task = entity
+
+    import gzip
+
+    import cloudpickle
+
+    from flytekit.configuration import FastSerializationSettings
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        dest = pathlib.Path(tmp_dir, PICKLE_FILE_PATH)
+        with gzip.GzipFile(filename=dest, mode="wb", mtime=0) as gzipped:
+            cloudpickle.dump(actual_task, gzipped)
+        if os.path.getsize(dest) > 150 * 1024 * 1024:
+            raise ValueError(
+                "The size of the task to pickled exceeds the limit of 150MB. Please reduce the size of the task."
+            )
+        logger.debug(f"Uploading Pickled representation of Task `{actual_task.name}` to remote storage...")
+        _, native_url = options.file_uploader(dest)
+
+        serialization_settings.fast_serialization_settings = FastSerializationSettings(
+            enabled=True, distribution_location=native_url, destination_dir="."
+        )
+
+
 def get_serializable_task(
     entity_mapping: OrderedDict,
     settings: SerializationSettings,
@@ -177,6 +187,14 @@ def get_serializable_task(
         settings.version,
     )
 
+    # Try to update the serialization settings for ipython / jupyter notebook / interactive mode if we are in an
+    # interactive environment like Jupyter notebook
+    if settings.interactive_mode_enabled is True:
+        # If the entity is not a PythonAutoContainerTask, we don't need to do anything, as only Tasks with container |
+        # user code in container needs to be serialized as pickled objects.
+        if isinstance(entity, (PythonAutoContainerTask, ArrayNodeMapTask)):
+            _update_serialization_settings_for_ipython(entity, settings, options)
+
     if isinstance(entity, PythonFunctionTask) and entity.execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
         for e in context_manager.FlyteEntities.entities:
             if isinstance(e, PythonAutoContainerTask):
@@ -186,9 +204,7 @@ def get_serializable_task(
                     if settings.image_config.images is None:
                         settings.image_config = ImageConfig.create_from(settings.image_config.default_image)
                     settings.image_config.images.append(
-                        Image.look_up_image_info(
-                            _calculate_deduped_hash_from_image_spec(e.container_image), e.get_image(settings)
-                        )
+                        Image.look_up_image_info(e.container_image.id, e.get_image(settings))
                     )
 
         # In case of Dynamic tasks, we want to pass the serialization context, so that they can reconstruct the state
@@ -278,7 +294,7 @@ def get_serializable_workflow(
             # require a network call to flyteadmin to populate the WorkflowTemplate
             # object
             if isinstance(n.flyte_entity, ReferenceWorkflow):
-                raise Exception(
+                raise ValueError(
                     "Reference sub-workflows are currently unsupported. Use reference launch plans instead."
                 )
             sub_wf_spec = get_serializable(entity_mapping, settings, n.flyte_entity, options)
@@ -438,7 +454,7 @@ def get_serializable_node(
     options: Optional[Options] = None,
 ) -> workflow_model.Node:
     if entity.flyte_entity is None:
-        raise Exception(f"Node {entity.id} has no flyte entity")
+        raise ValueError(f"Node {entity.id} has no flyte entity")
 
     upstream_nodes = [
         get_serializable(entity_mapping, settings, n, options=options)
@@ -464,21 +480,30 @@ def get_serializable_node(
         elif ref_template.resource_type == _identifier_model.ResourceType.LAUNCH_PLAN:
             node_model._workflow_node = workflow_model.WorkflowNode(launchplan_ref=ref_template.id)
         else:
-            raise Exception(
+            raise TypeError(
                 f"Unexpected resource type for reference entity {entity.flyte_entity}: {ref_template.resource_type}"
             )
         return node_model
 
     from flytekit.remote import FlyteLaunchPlan, FlyteTask, FlyteWorkflow
 
-    if isinstance(entity.flyte_entity, ArrayNodeMapTask):
+    if isinstance(entity.flyte_entity, ArrayNode):
+        node_model = workflow_model.Node(
+            id=_dnsify(entity.id),
+            metadata=entity.flyte_entity.construct_node_metadata(),
+            inputs=entity.bindings,
+            upstream_node_ids=[n.id for n in upstream_nodes],
+            output_aliases=[],
+            array_node=get_serializable_array_node(entity_mapping, settings, entity, options=options),
+        )
+    elif isinstance(entity.flyte_entity, ArrayNodeMapTask):
         node_model = workflow_model.Node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=entity.bindings,
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
-            array_node=get_serializable_array_node(entity_mapping, settings, entity, options=options),
+            array_node=get_serializable_array_node_map_task(entity_mapping, settings, entity, options=options),
         )
         # TODO: do I need this?
         # if entity._aliases:
@@ -611,12 +636,28 @@ def get_serializable_node(
             workflow_node=workflow_model.WorkflowNode(launchplan_ref=entity.flyte_entity.id),
         )
     else:
-        raise Exception(f"Node contained non-serializable entity {entity._flyte_entity}")
+        raise ValueError(f"Node contained non-serializable entity {entity._flyte_entity}")
 
     return node_model
 
 
 def get_serializable_array_node(
+    entity_mapping: OrderedDict,
+    settings: SerializationSettings,
+    node: FlyteLocalEntity,
+    options: Optional[Options] = None,
+) -> ArrayNodeModel:
+    array_node = node.flyte_entity
+    return ArrayNodeModel(
+        node=get_serializable_node(entity_mapping, settings, array_node, options=options),
+        parallelism=array_node.concurrency,
+        min_successes=array_node.min_successes,
+        min_success_ratio=array_node.min_success_ratio,
+        execution_mode=array_node.execution_mode,
+    )
+
+
+def get_serializable_array_node_map_task(
     entity_mapping: OrderedDict,
     settings: SerializationSettings,
     node: Node,
@@ -759,7 +800,7 @@ def get_serializable(
         cp_entity = get_reference_spec(entity_mapping, settings, entity)
 
     elif isinstance(entity, PythonTask):
-        cp_entity = get_serializable_task(entity_mapping, settings, entity)
+        cp_entity = get_serializable_task(entity_mapping, settings, entity, options)
 
     elif isinstance(entity, WorkflowBase):
         cp_entity = get_serializable_workflow(entity_mapping, settings, entity, options)
@@ -790,8 +831,11 @@ def get_serializable(
     elif isinstance(entity, FlyteLaunchPlan):
         cp_entity = entity
 
+    elif isinstance(entity, ArrayNode):
+        cp_entity = get_serializable_array_node(entity_mapping, settings, entity, options)
+
     else:
-        raise Exception(f"Non serializable type found {type(entity)} Entity {entity}")
+        raise ValueError(f"Non serializable type found {type(entity)} Entity {entity}")
 
     if isinstance(entity, TaskSpec) or isinstance(entity, WorkflowSpec):
         # 1. Check if the size of long description exceeds 16KB

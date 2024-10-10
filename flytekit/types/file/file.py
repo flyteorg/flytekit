@@ -9,18 +9,25 @@ from dataclasses import dataclass, field
 from typing import cast
 from urllib.parse import unquote
 
+import msgpack
 from dataclasses_json import config
 from marshmallow import fields
 from mashumaro.mixins.json import DataClassJSONMixin
 from mashumaro.types import SerializableType
 
+from flytekit.core.constants import MESSAGEPACK
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError, get_underlying_type
+from flytekit.core.type_engine import (
+    AsyncTypeTransformer,
+    TypeEngine,
+    TypeTransformerFailedError,
+    get_underlying_type,
+)
 from flytekit.exceptions.user import FlyteAssertion
 from flytekit.loggers import logger
 from flytekit.models.core import types as _core_types
 from flytekit.models.core.types import BlobType
-from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
+from flytekit.models.literals import Binary, Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 from flytekit.types.pickle.pickle import FlytePickleTransformer
 
@@ -147,7 +154,7 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
     """
 
     def _serialize(self) -> typing.Dict[str, str]:
-        lv = FlyteFilePathTransformer().to_literal(FlyteContextManager.current_context(), self, FlyteFile, None)
+        lv = FlyteFilePathTransformer().to_literal(FlyteContextManager.current_context(), self, type(self), None)
         return {"path": lv.scalar.blob.uri}
 
     @classmethod
@@ -179,13 +186,15 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
         return ""
 
     @classmethod
-    def new_remote_file(cls, name: typing.Optional[str] = None) -> FlyteFile:
+    def new_remote_file(cls, name: typing.Optional[str] = None, alt: typing.Optional[str] = None) -> FlyteFile:
         """
         Create a new FlyteFile object with a remote path.
+
+        :param name: If you want to specify a different name for the file, you can specify it here.
+        :param alt: If you want to specify a different prefix head than the default one, you can specify it here.
         """
         ctx = FlyteContextManager.current_context()
-        r = name or ctx.file_access.get_random_string()
-        remote_path = ctx.file_access.join(ctx.file_access.raw_output_prefix, r)
+        remote_path = ctx.file_access.generate_new_custom_path(alt=alt, stem=name)
         return cls(path=remote_path)
 
     @classmethod
@@ -243,7 +252,7 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
         self,
         path: typing.Union[str, os.PathLike],
         downloader: typing.Callable = noop,
-        remote_path: typing.Optional[typing.Union[os.PathLike, bool]] = None,
+        remote_path: typing.Optional[typing.Union[os.PathLike, str, bool]] = None,
     ):
         """
         FlyteFile's init method.
@@ -307,38 +316,26 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
         cache_type: typing.Optional[str] = None,
         cache_options: typing.Optional[typing.Dict[str, typing.Any]] = None,
     ):
-        """
-        Returns a streaming File handle
+        """Returns a streaming File handle
 
         .. code-block:: python
 
             @task
             def copy_file(ff: FlyteFile) -> FlyteFile:
-                new_file = FlyteFile.new_remote_file(ff.name)
-                with ff.open("rb", cache_type="readahead", cache={}) as r:
+                new_file = FlyteFile.new_remote_file()
+                with ff.open("rb", cache_type="readahead") as r:
                     with new_file.open("wb") as w:
                         w.write(r.read())
                 return new_file
 
-        Alternatively,
-
-        .. code-block:: python
-
-            @task
-            def copy_file(ff: FlyteFile) -> FlyteFile:
-                new_file = FlyteFile.new_remote_file(ff.name)
-                with fsspec.open(f"readahead::{ff.remote_path}", "rb", readahead={}) as r:
-                    with new_file.open("wb") as w:
-                        w.write(r.read())
-                return new_file
-
-
-        :param mode: str Open mode like 'rb', 'rt', 'wb', ...
-        :param cache_type: optional str Specify if caching is to be used. Cache protocol can be ones supported by
-            fsspec https://filesystem-spec.readthedocs.io/en/latest/api.html#readbuffering,
-            especially useful for large file reads
-        :param cache_options: optional Dict[str, Any] Refer to fsspec caching options. This is strongly coupled to the
-            cache_protocol
+        :param mode: Open mode. For example: 'r', 'w', 'rb', 'rt', 'wb', etc.
+        :type mode: str
+        :param cache_type: Specifies the cache type. Possible values are "blockcache", "bytes", "mmap", "readahead", "first", or "background".
+            This is especially useful for large file reads. See https://filesystem-spec.readthedocs.io/en/latest/api.html#readbuffering.
+        :type cache_type: str, optional
+        :param cache_options: A Dict corresponding to the parameters for the chosen cache_type.
+             Refer to fsspec caching options above.
+        :type cache_options: Dict[str, Any], optional
         """
         ctx = FlyteContextManager.current_context()
         final_path = self.path
@@ -358,7 +355,7 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
         return self.path
 
 
-class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
+class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
     def __init__(self):
         super().__init__(name="FlyteFilePath", t=FlyteFile)
 
@@ -436,7 +433,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             if real_type not in expected_type:
                 raise ValueError(f"Incorrect file type, expected {expected_type}, got {real_type}")
 
-    def to_literal(
+    async def async_to_literal(
         self,
         ctx: FlyteContext,
         python_val: typing.Union[FlyteFile, os.PathLike, str],
@@ -528,9 +525,42 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             return {"ContentEncoding": "gzip"}
         return {}
 
-    def to_python_value(
+    def from_binary_idl(
+        self, binary_idl_object: Binary, expected_python_type: typing.Union[typing.Type[FlyteFile], os.PathLike]
+    ) -> FlyteFile:
+        if binary_idl_object.tag == MESSAGEPACK:
+            python_val = msgpack.loads(binary_idl_object.value)
+            path = python_val.get("path", None)
+
+            if path is None:
+                raise ValueError("FlyteFile's path should not be None")
+
+            return FlyteFilePathTransformer().to_python_value(
+                FlyteContextManager.current_context(),
+                Literal(
+                    scalar=Scalar(
+                        blob=Blob(
+                            metadata=BlobMetadata(
+                                type=_core_types.BlobType(
+                                    format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
+                                )
+                            ),
+                            uri=path,
+                        )
+                    )
+                ),
+                expected_python_type,
+            )
+        else:
+            raise TypeTransformerFailedError(f"Unsupported binary format: `{binary_idl_object.tag}`")
+
+    async def async_to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Union[typing.Type[FlyteFile], os.PathLike]
     ) -> FlyteFile:
+        # Handle dataclass attribute access
+        if lv.scalar and lv.scalar.binary:
+            return self.from_binary_idl(lv.scalar.binary, expected_python_type)
+
         try:
             uri = lv.scalar.blob.uri
         except AttributeError:

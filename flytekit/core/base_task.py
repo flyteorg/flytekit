@@ -71,6 +71,12 @@ from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
 from flytekit.core.utils import timeit
 from flytekit.deck import DeckField
+from flytekit.exceptions.system import (
+    FlyteDownloadDataException,
+    FlyteNonRecoverableSystemException,
+    FlyteUploadDataException,
+)
+from flytekit.exceptions.user import FlyteUserRuntimeException
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import interface as _interface_models
@@ -80,6 +86,7 @@ from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.documentation import Description, Documentation
 from flytekit.models.interface import Variable
 from flytekit.models.security import SecurityContext
+from flytekit.utils.asyn import run_sync
 
 DYNAMIC_PARTITIONS = "_uap"
 MODEL_CARD = "_ucm"
@@ -290,9 +297,8 @@ class Task(object):
                 native_types=self.get_input_types(),  # type: ignore
             )
         except TypeTransformerFailedError as exc:
-            msg = f"Failed to convert inputs of task '{self.name}':\n  {exc}"
-            logger.error(msg)
-            raise TypeError(msg) from exc
+            exc.args = (f"Failed to convert inputs of task '{self.name}':\n  {exc.args[0]}",)
+            raise
         input_literal_map = _literal_models.LiteralMap(literals=literals)
 
         # if metadata.cache is set, check memoized version
@@ -358,7 +364,7 @@ class Task(object):
         return flyte_entity_call_handler(self, *args, **kwargs)  # type: ignore
 
     def compile(self, ctx: FlyteContext, *args, **kwargs):
-        raise Exception("not implemented")
+        raise NotImplementedError
 
     def get_container(self, settings: SerializationSettings) -> Optional[_task_model.Container]:
         """
@@ -603,7 +609,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
     ) -> Dict[str, Any]:
         return TypeEngine.literal_map_to_kwargs(ctx, literal_map, self.python_interface.inputs)
 
-    def _output_to_literal_map(self, native_outputs: Dict[int, Any], ctx: FlyteContext):
+    async def _output_to_literal_map(self, native_outputs: Dict[int, Any], ctx: FlyteContext):
         expected_output_names = list(self._outputs_interface.keys())
         if len(expected_output_names) == 1:
             # Here we have to handle the fact that the task could've been declared with a typing.NamedTuple of
@@ -624,24 +630,35 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         with timeit("Translate the output to literals"):
             literals = {}
             omt = ctx.output_metadata_tracker
+            # Here is where we iterate through the outputs, need to call new type engine.
             for i, (k, v) in enumerate(native_outputs_as_map.items()):
                 literal_type = self._outputs_interface[k].type
                 py_type = self.get_type_for_output_var(k, v)
 
                 if isinstance(v, tuple):
                     raise TypeError(f"Output({k}) in task '{self.name}' received a tuple {v}, instead of {py_type}")
-                try:
-                    lit = TypeEngine.to_literal(ctx, v, py_type, literal_type)
-                    literals[k] = lit
-                except Exception as e:
+                literals[k] = asyncio.create_task(TypeEngine.async_to_literal(ctx, v, py_type, literal_type))
+
+            await asyncio.gather(*literals.values(), return_exceptions=True)
+
+            for i, (k2, v2) in enumerate(literals.items()):
+                if v2.exception() is not None:
                     # only show the name of output key if it's user-defined (by default Flyte names these as "o<n>")
-                    key = k if k != f"o{i}" else i
-                    msg = f"Failed to convert outputs of task '{self.name}' at position {key}:\n  {e}"
-                    logger.error(msg)
-                    raise TypeError(msg) from e
-                # Now check if there is any output metadata associated with this output variable and attach it to the
-                # literal
-                if omt is not None:
+                    key = k2 if k2 != f"o{i}" else i
+                    e: BaseException = v2.exception()  # type: ignore  # we know this is not optional
+                    py_type = self.get_type_for_output_var(k2, native_outputs_as_map[k2])
+                    e.args = (
+                        f"Failed to convert outputs of task '{self.name}' at position {key}.\n"
+                        f"Failed to convert type {type(native_outputs_as_map[expected_output_names[i]])} to type {py_type}.\n"
+                        f"Error Message: {e.args[0]}.",
+                    )
+                    raise e
+                literals[k2] = v2.result()
+
+            if omt is not None:
+                for i, (k, v) in enumerate(native_outputs_as_map.items()):
+                    # Now check if there is any output metadata associated with this output variable and attach it to the
+                    # literal
                     om = omt.get(v)
                     if om:
                         metadata = {}
@@ -661,7 +678,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                             encoded = b64encode(s).decode("utf-8")
                             metadata[DYNAMIC_PARTITIONS] = encoded
                         if metadata:
-                            lit.set_metadata(metadata)
+                            literals[k].set_metadata(metadata)  # type: ignore  # we know these have been resolved
 
         return _literal_models.LiteralMap(literals=literals), native_outputs_as_map
 
@@ -689,7 +706,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
     async def _async_execute(self, native_inputs, native_outputs, ctx, exec_ctx, new_user_params):
         native_outputs = await native_outputs
         native_outputs = self.post_execute(new_user_params, native_outputs)
-        literals_map, native_outputs_as_map = self._output_to_literal_map(native_outputs, exec_ctx)
+        literals_map, native_outputs_as_map = await self._output_to_literal_map(native_outputs, exec_ctx)
         self._write_decks(native_inputs, native_outputs_as_map, ctx, new_user_params)
         return literals_map
 
@@ -717,20 +734,30 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             )
             # type: ignore
         ) as exec_ctx:
+            is_local_execution = cast(ExecutionState, exec_ctx.execution_state).is_local_execution()
             # TODO We could support default values here too - but not part of the plan right now
             # Translate the input literals to Python native
             try:
                 native_inputs = self._literal_map_to_python_input(input_literal_map, exec_ctx)
-            except Exception as exc:
-                msg = f"Failed to convert inputs of task '{self.name}':\n  {exc}"
-                logger.error(msg)
-                raise type(exc)(msg) from exc
-
+            except (FlyteUploadDataException, FlyteDownloadDataException):
+                raise
+            except Exception as e:
+                if is_local_execution:
+                    e.args = (f"Error encountered while converting inputs of '{self.name}':\n  {e.args[0]}",)
+                    raise
+                raise FlyteNonRecoverableSystemException(e) from e
             # TODO: Logger should auto inject the current context information to indicate if the task is running within
             #   a workflow or a subworkflow etc
             logger.info(f"Invoking {self.name} with inputs: {native_inputs}")
             with timeit("Execute user level code"):
-                native_outputs = self.execute(**native_inputs)
+                try:
+                    native_outputs = self.execute(**native_inputs)
+                except Exception as e:
+                    if is_local_execution:
+                        # If the task is being executed locally, we want to raise the original exception
+                        e.args = (f"Error encountered while executing '{self.name}':\n  {e.args[0]}",)
+                        raise
+                    raise FlyteUserRuntimeException(e) from e
 
             if inspect.iscoroutine(native_outputs):
                 # If native outputs is a coroutine, then this is an eager workflow.
@@ -768,9 +795,20 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             ):
                 return native_outputs
 
-            literals_map, native_outputs_as_map = self._output_to_literal_map(native_outputs, exec_ctx)
-            self._write_decks(native_inputs, native_outputs_as_map, ctx, new_user_params)
-            # After the execute has been successfully completed
+            try:
+                with timeit("dispatch execute"):
+                    literals_map, native_outputs_as_map = run_sync(
+                        self._output_to_literal_map, native_outputs, exec_ctx
+                    )
+                self._write_decks(native_inputs, native_outputs_as_map, ctx, new_user_params)
+            except (FlyteUploadDataException, FlyteDownloadDataException):
+                raise
+            except Exception as e:
+                if is_local_execution:
+                    raise
+                raise FlyteNonRecoverableSystemException(e) from e
+
+            # After the execution has been successfully completed
             return literals_map
 
     def pre_execute(self, user_params: Optional[ExecutionParameters]) -> Optional[ExecutionParameters]:  # type: ignore

@@ -50,15 +50,15 @@ def mock_code_server_info_dict():
 @pytest.fixture
 def vscode_patches():
     with mock.patch("multiprocessing.Process") as mock_process, mock.patch(
-        "flytekitplugins.flyteinteractive.vscode_lib.decorator.prepare_interactive_python"
+        "flytekit.interactive.vscode_lib.decorator.prepare_interactive_python"
     ) as mock_prepare_interactive_python, mock.patch(
-        "flytekitplugins.flyteinteractive.vscode_lib.decorator.exit_handler"
+        "flytekit.interactive.vscode_lib.decorator.exit_handler"
     ) as mock_exit_handler, mock.patch(
-        "flytekitplugins.flyteinteractive.vscode_lib.decorator.download_vscode"
+        "flytekit.interactive.vscode_lib.decorator.download_vscode"
     ) as mock_download_vscode, mock.patch("signal.signal") as mock_signal, mock.patch(
-        "flytekitplugins.flyteinteractive.vscode_lib.decorator.prepare_resume_task_python"
+        "flytekit.interactive.vscode_lib.decorator.prepare_resume_task_python"
     ) as mock_prepare_resume_task_python, mock.patch(
-        "flytekitplugins.flyteinteractive.vscode_lib.decorator.prepare_launch_json"
+        "flytekit.interactive.vscode_lib.decorator.prepare_launch_json"
     ) as mock_prepare_launch_json:
         yield (
             mock_process,
@@ -202,7 +202,7 @@ def test_vscode_run_task_first_fail(vscode_patches, mock_remote_execution):
     mock_process.assert_called_once()
     mock_exit_handler.assert_called_once()
     mock_prepare_interactive_python.assert_called_once()
-    mock_signal.assert_called_once()
+    assert mock_signal.call_count >= 1
     mock_prepare_resume_task_python.assert_called_once()
     mock_prepare_launch_json.assert_called_once()
 

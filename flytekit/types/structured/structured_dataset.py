@@ -6,8 +6,9 @@ import types
 import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field, is_dataclass
-from typing import Dict, Generator, Optional, Type, Union
+from typing import Dict, Generator, List, Optional, Type, Union
 
+import msgpack
 from dataclasses_json import config
 from fsspec.utils import get_protocol
 from marshmallow import fields
@@ -16,13 +17,14 @@ from mashumaro.types import SerializableType
 from typing_extensions import Annotated, TypeAlias, get_args, get_origin
 
 from flytekit import lazy_module
+from flytekit.core.constants import MESSAGEPACK
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-from flytekit.core.type_engine import TypeEngine, TypeTransformer
+from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
 from flytekit.deck.renderer import Renderable
 from flytekit.loggers import developer_logger, logger
 from flytekit.models import literals
 from flytekit.models import types as type_models
-from flytekit.models.literals import Literal, Scalar, StructuredDatasetMetadata
+from flytekit.models.literals import Binary, Literal, Scalar, StructuredDatasetMetadata
 from flytekit.models.types import LiteralType, SchemaType, StructuredDatasetType
 
 if typing.TYPE_CHECKING:
@@ -57,7 +59,7 @@ class StructuredDataset(SerializableType, DataClassJSONMixin):
 
     def _serialize(self) -> Dict[str, Optional[str]]:
         lv = StructuredDatasetTransformerEngine().to_literal(
-            FlyteContextManager.current_context(), self, StructuredDataset, None
+            FlyteContextManager.current_context(), self, type(self), None
         )
         sd = StructuredDataset(uri=lv.scalar.structured_dataset.uri)
         sd.file_format = lv.scalar.structured_dataset.metadata.structured_dataset_type.format
@@ -222,7 +224,12 @@ def extract_cols_and_format(
 
 
 class StructuredDatasetEncoder(ABC):
-    def __init__(self, python_type: Type[T], protocol: Optional[str] = None, supported_format: Optional[str] = None):
+    def __init__(
+        self,
+        python_type: Type[T],
+        protocol: Optional[str] = None,
+        supported_format: Optional[str] = None,
+    ):
         """
         Extend this abstract class, implement the encode function, and register your concrete class with the
         StructuredDatasetTransformerEngine class in order for the core flytekit type engine to handle
@@ -284,7 +291,13 @@ class StructuredDatasetEncoder(ABC):
 
 
 class StructuredDatasetDecoder(ABC):
-    def __init__(self, python_type: Type[DF], protocol: Optional[str] = None, supported_format: Optional[str] = None):
+    def __init__(
+        self,
+        python_type: Type[DF],
+        protocol: Optional[str] = None,
+        supported_format: Optional[str] = None,
+        additional_protocols: Optional[List[str]] = None,
+    ):
         """
         Extend this abstract class, implement the decode function, and register your concrete class with the
         StructuredDatasetTransformerEngine class in order for the core flytekit type engine to handle
@@ -704,6 +717,34 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         sd._already_uploaded = True
         return lit
 
+    def from_binary_idl(
+        self, binary_idl_object: Binary, expected_python_type: Type[T] | StructuredDataset
+    ) -> T | StructuredDataset:
+        if binary_idl_object.tag == MESSAGEPACK:
+            python_val = msgpack.loads(binary_idl_object.value)
+            uri = python_val.get("uri", None)
+            file_format = python_val.get("file_format", None)
+
+            if uri is None:
+                raise ValueError("StructuredDataset's uri and file format should not be None")
+
+            return StructuredDatasetTransformerEngine().to_python_value(
+                FlyteContextManager.current_context(),
+                Literal(
+                    scalar=Scalar(
+                        structured_dataset=StructuredDataset(
+                            metadata=StructuredDatasetMetadata(
+                                structured_dataset_type=StructuredDatasetType(format=file_format)
+                            ),
+                            uri=uri,
+                        )
+                    )
+                ),
+                expected_python_type,
+            )
+        else:
+            raise TypeTransformerFailedError(f"Unsupported binary format: `{binary_idl_object.tag}`")
+
     def to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T] | StructuredDataset
     ) -> T | StructuredDataset:
@@ -737,6 +778,10 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         |                             | the running task's signature.           |                                      |
         +-----------------------------+-----------------------------------------+--------------------------------------+
         """
+        # Handle dataclass attribute access
+        if lv.scalar and lv.scalar.binary:
+            return self.from_binary_idl(lv.scalar.binary, expected_python_type)
+
         # Detect annotations and extract out all the relevant information that the user might supply
         expected_python_type, column_dict, storage_fmt, pa_schema = extract_cols_and_format(expected_python_type)
 

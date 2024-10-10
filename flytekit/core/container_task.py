@@ -8,7 +8,7 @@ from flytekit.core.base_task import PythonTask, TaskMetadata
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.interface import Interface
 from flytekit.core.pod_template import PodTemplate
-from flytekit.core.python_auto_container import get_registerable_container_image
+from flytekit.core.python_auto_container import get_registerable_container_image, update_image_spec_copy_handling
 from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.utils import _get_container_definition, _serialize_pod_spec
 from flytekit.image_spec.image_spec import ImageSpec
@@ -59,6 +59,7 @@ class ContainerTask(PythonTask):
         secret_requests: Optional[List[Secret]] = None,
         pod_template: Optional["PodTemplate"] = None,
         pod_template_name: Optional[str] = None,
+        local_logs: bool = False,
         **kwargs,
     ):
         sec_ctx = None
@@ -93,6 +94,7 @@ class ContainerTask(PythonTask):
             requests=requests if requests else Resources(), limits=limits if limits else Resources()
         )
         self.pod_template = pod_template
+        self.local_logs = local_logs
 
     @property
     def resources(self) -> ResourceSpec:
@@ -249,6 +251,11 @@ class ContainerTask(PythonTask):
         )
         # Wait for the container to finish the task
         # TODO: Add a 'timeout' parameter to control the max wait time for the container to finish the task.
+
+        if self.local_logs:
+            for log in container.logs(stream=True):
+                print(f"[Local Container] {log.strip()}")
+
         container.wait()
 
         output_dict = self._get_output_dict(output_directory)
@@ -272,10 +279,10 @@ class ContainerTask(PythonTask):
         )
 
     def _get_image(self, settings: SerializationSettings) -> str:
-        if settings.fast_serialization_settings is None or not settings.fast_serialization_settings.enabled:
-            if isinstance(self._image, ImageSpec):
-                # Set the source root for the image spec if it's non-fast registration
-                self._image.source_root = settings.source_root
+        """Update image spec based on fast registration usage, and return string representing the image"""
+        if isinstance(self._image, ImageSpec):
+            update_image_spec_copy_handling(self._image, settings)
+
         return get_registerable_container_image(self._image, settings.image_config)
 
     def _get_container(self, settings: SerializationSettings) -> _task_model.Container:

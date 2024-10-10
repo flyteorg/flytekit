@@ -28,7 +28,7 @@ jobs:
           if [[ ${{ github.event_name }} == "schedule" ]]; then
             echo "python_versions=[\"3.8\",\"3.9\",\"3.10\",\"3.11\",\"3.12\"]" >> $GITHUB_ENV
           else
-            echo "python_versions=[\"3.12\"]" >> $GITHUB_ENV
+            echo "python_versions=[\"3.9\", \"3.12\"]" >> $GITHUB_ENV
           fi
 
   build:
@@ -42,7 +42,7 @@ jobs:
         python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
     steps:
       - uses: actions/checkout@v4
-      - name: 'Clear action cache'
+      - name: "Clear action cache"
         uses: ./.github/actions/clear-action-cache
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
@@ -59,7 +59,7 @@ jobs:
         run: |
           pip install uv
           make setup-global-uv
-          uv pip uninstall --system pandas
+          uv pip uninstall --system pandas pyarrow
           uv pip freeze
       - name: Test with coverage
         run: |
@@ -81,7 +81,7 @@ jobs:
         python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
     steps:
       - uses: actions/checkout@v4
-      - name: 'Clear action cache'
+      - name: "Clear action cache"
         uses: ./.github/actions/clear-action-cache
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
@@ -98,7 +98,7 @@ jobs:
         run: |
           pip install uv
           make setup-global-uv
-          uv pip uninstall --system pandas
+          uv pip uninstall --system pandas pyarrow
           uv pip freeze
       - name: Run extras unit tests with coverage
         # Skip this step if running on python 3.12 due to https://github.com/tensorflow/tensorflow/issues/62003
@@ -128,10 +128,12 @@ jobs:
             pandas: "pandas<2.0.0"
           - numpy: "numpy<2.0.0"
             pandas: "pandas>=2.0.0"
+          - numpy: "numpy>=2.0.0"
+            python-version: "3.8"
 
     steps:
       - uses: actions/checkout@v4
-      - name: 'Clear action cache'
+      - name: "Clear action cache"
         uses: ./.github/actions/clear-action-cache
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
@@ -242,12 +244,16 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
+        makefile-cmd:
+          [integration_test_codecov, integration_test_lftransfers_codecov]
     steps:
       # As described in https://github.com/pypa/setuptools_scm/issues/414, SCM needs git history
       # and tags to work.
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: "Clear action cache"
+        uses: ./.github/actions/clear-action-cache # sandbox has disk pressure, so we need to clear the cache to get more disk space.
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
@@ -293,7 +299,7 @@ jobs:
           FLYTEKIT_CI: 1
           PYTEST_OPTS: -n2
         run: |
-          make integration_test_codecov
+          make ${{ matrix.makefile-cmd }}
       - name: Codecov
         uses: codecov/codecov-action@v3.1.0
         with:
@@ -330,6 +336,7 @@ jobs:
           - flytekit-hive
           - flytekit-huggingface
           - flytekit-identity-aware-proxy
+          - flytekit-inference
           - flytekit-k8s-pod
           - flytekit-kf-mpi
           - flytekit-kf-pytorch
@@ -337,11 +344,13 @@ jobs:
           - flytekit-mlflow
           - flytekit-mmcloud
           - flytekit-modin
+          - flytekit-neptune
           - flytekit-onnx-pytorch
           - flytekit-onnx-scikitlearn
           # onnx-tensorflow needs a version of tensorflow that does not work with protobuf>4.
           # The issue is being tracked on the tensorflow side in https://github.com/tensorflow/tensorflow/issues/53234#issuecomment-1330111693
           # flytekit-onnx-tensorflow
+          - flytekit-omegaconf
           - flytekit-openai
           - flytekit-pandera
           - flytekit-papermill
@@ -354,6 +363,10 @@ jobs:
           - flytekit-vaex
           - flytekit-whylogs
         exclude:
+          - python-version: 3.8
+            plugin-names: "flytekit-aws-sagemaker"
+          - python-version: 3.9
+            plugin-names: "flytekit-aws-sagemaker"
           # flytekit-modin depends on ray which does not have a 3.11 wheel yet.
           # Issue tracked in https://github.com/ray-project/ray/issues/27881
           - python-version: 3.11
@@ -383,9 +396,6 @@ jobs:
           # apache-beam, one of flytekit-airflow dependencies, does not support python 3.12: https://github.com/apache/beam/issues/29149
           - python-version: 3.12
             plugin-names: "flytekit-airflow"
-          # ydata-profiling, a dependency of flytekit-deck-standard, does not support python 3.12: https://github.com/ydataai/ydata-profiling/issues/1510
-          - python-version: 3.12
-            plugin-names: "flytekit-deck-standard"
           # Tensorflow is a dependency of flytekit-mlflow tests and that is not supported yet: https://github.com/tensorflow/tensorflow/issues/62003
           - python-version: 3.12
             plugin-names: "flytekit-mlflow"
@@ -403,7 +413,7 @@ jobs:
             plugin-names: "flytekit-kf-pytorch"
     steps:
       - uses: actions/checkout@v4
-      - name: 'Clear action cache'
+      - name: "Clear action cache"
         uses: ./.github/actions/clear-action-cache
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
@@ -426,7 +436,7 @@ jobs:
           uv pip install --system .
           if [ -f dev-requirements.in ]; then uv pip install --system -r dev-requirements.in; fi
           # TODO: move to protobuf>=5. Github issue: https://github.com/flyteorg/flyte/issues/5448
-          uv pip install --system -U $GITHUB_WORKSPACE "protobuf<5"
+          uv pip install --system -U $GITHUB_WORKSPACE "protobuf<5" "git+https://github.com/flyteorg/flyte.git@master#subdirectory=flyteidl"
           # TODO: remove this when numpy v2 in onnx has been resolved
           if [[ ${{ matrix.plugin-names }} == *"onnx"* || ${{ matrix.plugin-names }} == "flytekit-sqlalchemy" || ${{ matrix.plugin-names }} == "flytekit-pandera" ]]; then
             uv pip install --system "numpy<2.0.0"
