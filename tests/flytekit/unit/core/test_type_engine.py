@@ -3468,6 +3468,7 @@ def test_option_list_with_pipe_2():
         TypeEngine.to_literal(ctx, [[{"a": "one"}], None, [{"b": 3}]], pt, lt)
 
 
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="PEP604 requires >=3.10, 585 requires >=3.9")
 def test_generic_errors_and_empty():
     # Test dictionaries
     pt = dict[str, str]
