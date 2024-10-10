@@ -74,11 +74,13 @@ def _compute_array_job_index():
 
 
 def _build_error_file_name() -> str:
-    if os.environ.get("FLYTE_INTERNAL_DIST_ERROR_STRATEGY"):
-        error_file_name_base, error_file_name_extension = os.path.splitext(_constants.ERROR_FILE_NAME)
-        error_file_name_base += f"-{uuid.uuid4().hex}"
-        return f"{error_file_name_base}.{error_file_name_extension}"
-    return _constants.ERROR_FILE_NAME
+    dist_error_strategy = get_one_of("FLYTE_INTERNAL_DIST_ERROR_STRATEGY", "_F_DES")
+    if not dist_error_strategy:
+        return _constants.ERROR_FILE_NAME
+    error_file_name_base, error_file_name_extension = os.path.splitext(_constants.ERROR_FILE_NAME)
+    error_file_name_base += f"-{uuid.uuid4().hex}"
+    return f"{error_file_name_base}.{error_file_name_extension}"
+    
 
 def _get_working_loop():
     """Returns a running event loop."""
@@ -113,7 +115,7 @@ def _dispatch_execute(
             c: OR if an unhandled exception is retrieved - record it as an errors.pb
     """
     error_file_name = _build_error_file_name()
-    worker_name = os.environ.get("FLYTE_INTERNAL_WORKER_NAME", "")
+    worker_name = get_one_of("FLYTE_INTERNAL_WORKER_NAME", "_F_WN")
 
     output_file_dict = {}
 
@@ -182,6 +184,7 @@ def _dispatch_execute(
                 message=exc_str,
                 kind=kind,
                 origin=_execution_models.ExecutionError.ErrorKind.USER,
+                # TODO: timestamp to be extracted from e.value if present
                 timestamp=int(time.time()),
                 worker=worker_name,
             )
@@ -202,6 +205,7 @@ def _dispatch_execute(
                 message=exc_str,
                 kind=_error_models.ContainerError.Kind.NON_RECOVERABLE,
                 origin=_execution_models.ExecutionError.ErrorKind.SYSTEM,
+                # TODO: timestamp to be extracted from e.value if present
                 timestamp=int(time.time()),
                 worker=worker_name,
             )
@@ -220,6 +224,7 @@ def _dispatch_execute(
                 message=exc_str,
                 kind=_error_models.ContainerError.Kind.RECOVERABLE,
                 origin=_execution_models.ExecutionError.ErrorKind.SYSTEM,
+                # TODO: timestamp to be extracted from e if present
                 timestamp=int(time.time()),
                 worker=worker_name,
             )
