@@ -22,7 +22,10 @@ from flytekit.exceptions.user import FlyteAssertion
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import LiteralMap
 from flytekit.types.directory.types import FlyteDirectory, FlyteDirToMultipartBlobTransformer
-
+from google.protobuf import json_format as _json_format
+from google.protobuf import struct_pb2 as _struct
+from flytekit.models.literals import Literal, Scalar
+import json
 
 # Fixture that ensures a dummy local file
 @pytest.fixture
@@ -364,3 +367,13 @@ def test_flytefile_in_dataclass(local_dummy_directory):
     dc1 = my_wf(path=svg_directory)
     dc2 = DC(f=svg_directory)
     assert dc1 == dc2
+
+def test_input_from_flyte_console_attribute_access_flytefile(local_dummy_directory):
+    # Flyte Console will send the input data as protobuf Struct
+
+    dict_obj = {"path": local_dummy_directory}
+    json_str = json.dumps(dict_obj)
+    upstream_output = Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))
+    downstream_input = TypeEngine.to_python_value(FlyteContextManager.current_context(), upstream_output, FlyteDirectory)
+    assert isinstance(downstream_input, FlyteDirectory)
+    assert downstream_input == FlyteDirectory(local_dummy_directory)

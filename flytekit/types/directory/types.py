@@ -573,7 +573,10 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
             if lv.scalar.generic:
                 return self.from_generic_idl(lv.scalar.generic, expected_python_type)
 
-        uri = lv.scalar.blob.uri
+        try:
+            uri = lv.scalar.blob.uri
+        except AttributeError:
+            raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
 
         if lv.scalar.blob.metadata.type.dimensionality != BlobType.BlobDimensionality.MULTIPART:
             raise TypeTransformerFailedError(f"{lv.scalar.blob.uri} is not a directory.")

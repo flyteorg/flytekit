@@ -229,7 +229,7 @@ def test_all_types_in_pydantic_basemodel_wf(local_dummy_file, local_dummy_direct
 
     wf(dc=DC())
 
-def test_input_from_flyte_console(local_dummy_file, local_dummy_directory):
+def test_input_from_flyte_console_pydantic_basemodel(local_dummy_file, local_dummy_directory):
     # Flyte Console will send the input data as protobuf Struct
 
     class InnerDC(BaseModel):

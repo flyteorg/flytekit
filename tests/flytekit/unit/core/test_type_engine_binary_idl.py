@@ -708,6 +708,8 @@ def test_all_types_in_dataclass_wf(local_dummy_file, local_dummy_directory):
     wf(dc=DC())
 
 def test_backward_compatible_with_dataclass_in_protobuf_struct(local_dummy_file, local_dummy_directory):
+    # Flyte Console will send the input data as protobuf Struct
+    # This test also test how Flyte Console with attribute access on the Struct object
 
     @dataclass
     class InnerDC:

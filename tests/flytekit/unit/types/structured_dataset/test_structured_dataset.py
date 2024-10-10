@@ -16,7 +16,6 @@ from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
-from flytekit.exceptions.user import FlyteAssertion
 from flytekit.lazy_import.lazy_module import is_imported
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
@@ -49,7 +48,6 @@ serialization_settings = flytekit.configuration.SerializationSettings(
 )
 df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
 
-
 def test_protocol():
     assert get_protocol("s3://my-s3-bucket/file") == "s3"
     assert get_protocol("/file") == "file"
@@ -57,8 +55,6 @@ def test_protocol():
 
 def generate_pandas() -> pd.DataFrame:
     return pd.DataFrame({"name": ["Tom", "Joseph"], "age": [20, 22]})
-
-
 def test_formats_make_sense():
     @task
     def t1(a: pd.DataFrame) -> pd.DataFrame:
