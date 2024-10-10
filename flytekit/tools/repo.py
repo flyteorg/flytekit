@@ -13,6 +13,8 @@ from flytekit.constants import CopyFileDetection
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.loggers import logger
 from flytekit.models import launch_plan, task
+from flytekit.models import launch_plan as launch_plan_models
+from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.models.core.identifier import Identifier
 from flytekit.remote import FlyteRemote
 from flytekit.remote.remote import RegistrationSkipped, _get_git_repo_url
@@ -199,7 +201,7 @@ def list_packages_and_modules(
     return pkgs_and_modules
 
 
-def secho(i: Identifier, state: str = "success", reason: str = None, op: str = "Registration"):
+def secho(i: Identifier, state: str = "success", reason: str = None, op: str = "Registration", console_url: str = None):
     state_ind = "[ ]"
     fg = "white"
     nl = False
@@ -207,7 +209,7 @@ def secho(i: Identifier, state: str = "success", reason: str = None, op: str = "
         state_ind = "\r[✔]"
         fg = "green"
         nl = True
-        reason = f"successful with version {i.version}" if not reason else reason
+        reason = f"successful: {console_url}" if not reason else reason
     elif state == "failed":
         state_ind = "\r[x]"
         fg = "red"
@@ -315,7 +317,34 @@ def register(
                     i = remote.raw_register(
                         cp_entity, serialization_settings, version=version, create_default_launchplan=False
                     )
-                    secho(i, state="success")
+                    # Get URL
+                    console_url = None
+                    if isinstance(cp_entity, task.TaskSpec):
+                        task_entity = remote.fetch_task(
+                            i.project,
+                            i.domain,
+                            i.name,
+                            i.version,
+                        )
+                        console_url = remote.generate_console_url(task_entity)
+                    if isinstance(cp_entity, admin_workflow_models.WorkflowSpec):
+                        workflow_entity = remote.fetch_workflow(
+                            i.project,
+                            i.domain,
+                            i.name,
+                            i.version,
+                        )
+                        console_url = remote.generate_console_url(workflow_entity)
+                    if isinstance(cp_entity, launch_plan_models.LaunchPlan):
+                        workflow_entity = remote.fetch_launch_plan(
+                            i.project,
+                            i.domain,
+                            i.name,
+                            i.version,
+                        )
+                        console_url = remote.generate_console_url(workflow_entity)
+
+                    secho(i, state="success", console_url=console_url)
                     if is_lp and activate_launchplans:
                         secho(og_id, "", op="Activation")
                         remote.activate_launchplan(i)
