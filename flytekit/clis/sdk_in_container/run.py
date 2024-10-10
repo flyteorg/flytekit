@@ -718,18 +718,26 @@ class DynamicEntityLaunchCommand(click.RichCommand):
         run_level_params: RunLevelParams = ctx.obj
         r = run_level_params.remote_instance()
         if self._launcher == self.LP_LAUNCHER:
-            entity = r.fetch_active_launchplan(run_level_params.project, run_level_params.domain, self._entity_name)
-            if not entity:
-                click.echo(
-                    click.style(
-                        f"No active launch plan found with name {self._entity_name},"
-                        f" using the latest version by created time.",
-                        fg="yellow",
+            parts = self._entity_name.split(":")
+            if len(parts) == 2:
+                entity = r.fetch_launch_plan(run_level_params.project, run_level_params.domain, parts[0], parts[1])
+            else:
+                entity = r.fetch_active_launchplan(run_level_params.project, run_level_params.domain, self._entity_name)
+                if not entity:
+                    click.echo(
+                        click.style(
+                            f"No active launch plan found with name {self._entity_name},"
+                            f" using the latest version by created time.",
+                            fg="yellow",
+                        )
                     )
-                )
-                entity = r.fetch_launch_plan(run_level_params.project, run_level_params.domain, self._entity_name)
+                    entity = r.fetch_launch_plan(run_level_params.project, run_level_params.domain, self._entity_name)
         else:
-            entity = r.fetch_task(run_level_params.project, run_level_params.domain, self._entity_name)
+            parts = self._entity_name.split(":")
+            if len(parts) == 2:
+                entity = r.fetch_task(run_level_params.project, run_level_params.domain, parts[0], parts[1])
+            else:
+                entity = r.fetch_task(run_level_params.project, run_level_params.domain, self._entity_name)
         self._entity = entity
         return entity
 
@@ -807,7 +815,10 @@ class RemoteEntityGroup(click.RichGroup):
     def __init__(self, command_name: str):
         super().__init__(
             name=command_name,
-            help=f"Retrieve {command_name} from a remote flyte instance and execute them.",
+            help=f"Retrieve {command_name} from a remote flyte instance and execute them. The command only lists the "
+            f"names of the entities, but it is possible to pass in a specific version of the entity if known in "
+            f"the format <name>:<version>. If version is not provided, the latest version is used for tasks and "
+            f"active or latest version is used for launchplans.",
         )
         self._command_name = command_name
         self._entities = []
