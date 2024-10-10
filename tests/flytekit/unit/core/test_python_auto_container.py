@@ -8,7 +8,7 @@ from kubernetes.client.models import V1Container, V1EnvVar, V1PodSpec, V1Resourc
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.base_task import TaskMetadata
 from flytekit.core.pod_template import PodTemplate
-from flytekit.core.python_auto_container import PythonAutoContainerTask, get_registerable_container_image, PICKLE_FILE_PATH
+from flytekit.core.python_auto_container import PythonAutoContainerTask, get_registerable_container_image, default_notebook_task_resolver
 from flytekit.core.resources import Resources
 from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec
 from flytekit.tools.translator import get_serializable_task, Options
@@ -41,13 +41,6 @@ def minimal_serialization_settings(default_image_config):
 @pytest.fixture
 def minimal_serialization_settings_no_default_image(no_default_image_config):
     return SerializationSettings(project="p", domain="d", version="v", image_config=no_default_image_config)
-
-
-@pytest.fixture
-def interactive_serialization_settings(default_image_config):
-    return SerializationSettings(
-        project="p", domain="d", version="v", image_config=default_image_config, env={"FOO": "bar"}, interactive_mode_enabled=True
-    )
 
 
 @pytest.fixture(
@@ -140,26 +133,6 @@ def test_get_container_without_serialization_settings_envvars(minimal_serializat
     ts = get_serializable_task(OrderedDict(), minimal_serialization_settings, task_with_env_vars)
     assert ts.template.container.image == "docker.io/xyz:some-git-hash"
     assert ts.template.container.env == {"HAM": "spam"}
-
-
-def test_get_container_with_interactive_settings(interactive_serialization_settings):
-    c = task_with_env_vars.get_container(interactive_serialization_settings)
-    assert c.image == "docker.io/xyz:some-git-hash"
-    assert c.env == {"FOO": "bar", "HAM": "spam"}
-
-    def mock_file_uploader(dest: pathlib.Path):
-        return (0, dest.name)
-
-    option = Options()
-    option.file_uploader = mock_file_uploader
-    ts = get_serializable_task(OrderedDict(), interactive_serialization_settings, task_with_env_vars, options=option)
-    assert ts.template.container.image == "docker.io/xyz:some-git-hash"
-    assert ts.template.container.env == {"FOO": "bar", "HAM": "spam"}
-    assert 'flytekit.core.python_auto_container.default_notebook_task_resolver' in ts.template.container.args
-    assert interactive_serialization_settings.fast_serialization_settings is not None
-    assert interactive_serialization_settings.fast_serialization_settings.enabled is True
-    assert interactive_serialization_settings.fast_serialization_settings.destination_dir == "."
-    assert interactive_serialization_settings.fast_serialization_settings.distribution_location == PICKLE_FILE_PATH
 
 
 task_with_pod_template = DummyAutoContainerTask(
@@ -409,3 +382,7 @@ def test_pod_template_with_image_spec(default_serialization_settings, mock_image
     pod = image_spec_task.get_k8s_pod(default_serialization_settings)
     assert pod.pod_spec["containers"][0]["image"] == image_spec_1.image_name()
     assert pod.pod_spec["containers"][1]["image"] == image_spec_2.image_name()
+
+def test_set_resolver():
+    task.set_resolver(default_notebook_task_resolver)
+    assert task._task_resolver == default_notebook_task_resolver

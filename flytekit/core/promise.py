@@ -666,14 +666,6 @@ class Promise(object):
 
         return new_promise
 
-    def __getstate__(self) -> Dict[str, Any]:
-        # This func is used to pickle the object.
-        return vars(self)
-
-    def __setstate__(self, state: Dict[str, Any]) -> None:
-        # This func is used to unpickle the object without infinite recursion.
-        vars(self).update(state)
-
 
 def create_native_named_tuple(
     ctx: FlyteContext,
