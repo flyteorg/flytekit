@@ -330,7 +330,7 @@ def register(
             secho(og_id, "failed")
 
     async def _register(entities: typing.List[task.TaskSpec]):
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         tasks = []
         for entity in entities:
             tasks.append(loop.run_in_executor(None, functools.partial(_raw_register, entity)))

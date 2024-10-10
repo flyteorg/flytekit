@@ -31,7 +31,6 @@ from flytekit.exceptions.system import FlyteAgentNotFound
 from flytekit.exceptions.user import FlyteUserException
 from flytekit.extend.backend.utils import is_terminal_phase, mirror_async_methods, render_task_template
 from flytekit.loggers import set_flytekit_log_properties
-from flytekit.models import common
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskExecutionMetadata, TaskTemplate
 
@@ -80,7 +79,7 @@ class ResourceMeta:
 
 
 @dataclass
-class Resource(common.FlyteIdlEntity):
+class Resource:
     """
     This is the output resource of the job.
 
@@ -97,14 +96,19 @@ class Resource(common.FlyteIdlEntity):
     outputs: Optional[Union[LiteralMap, typing.Dict[str, Any]]] = None
     custom_info: Optional[typing.Dict[str, Any]] = None
 
-    def to_flyte_idl(self) -> _Resource:
+    async def to_flyte_idl(self) -> _Resource:
+        """
+        This function is async to call the async type engine functions. This is okay to do because this is not a
+        normal model class that inherits from FlyteIdlEntity
+        """
         if self.outputs is None:
             outputs = None
         elif isinstance(self.outputs, LiteralMap):
             outputs = self.outputs.to_flyte_idl()
         else:
             ctx = FlyteContext.current_context()
-            outputs = TypeEngine.dict_to_literal_map_pb(ctx, self.outputs)
+
+            outputs = await TypeEngine.dict_to_literal_map_pb(ctx, self.outputs)
 
         return _Resource(
             phase=self.phase,
@@ -301,7 +305,7 @@ class SyncAgentExecutorMixin:
     ) -> Resource:
         try:
             ctx = FlyteContext.current_context()
-            literal_map = TypeEngine.dict_to_literal_map(ctx, inputs or {}, self.get_input_types())
+            literal_map = await TypeEngine._dict_to_literal_map(ctx, inputs or {}, self.get_input_types())
             return await mirror_async_methods(
                 agent.do, task_template=template, inputs=literal_map, output_prefix=output_prefix
             )
@@ -347,7 +351,7 @@ class AsyncAgentExecutorMixin:
             return LiteralMap.from_flyte_idl(output_proto)
 
         if resource.outputs and not isinstance(resource.outputs, LiteralMap):
-            return TypeEngine.dict_to_literal_map(ctx, resource.outputs)
+            return TypeEngine.dict_to_literal_map(ctx, resource.outputs)  # type: ignore
 
         return resource.outputs
 
@@ -361,7 +365,7 @@ class AsyncAgentExecutorMixin:
 
             with FlyteContextManager.with_context(cb) as ctx:
                 # Write the inputs to a remote file, so that the remote task can read the inputs from this file.
-                literal_map = TypeEngine.dict_to_literal_map(ctx, inputs or {}, self.get_input_types())
+                literal_map = await TypeEngine._dict_to_literal_map(ctx, inputs or {}, self.get_input_types())
                 path = ctx.file_access.get_random_local_path()
                 utils.write_proto_to_file(literal_map.to_flyte_idl(), path)
                 ctx.file_access.put_data(path, f"{output_prefix}/inputs.pb")
