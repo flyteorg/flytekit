@@ -31,7 +31,6 @@ from flytekit.core.reference_entity import ReferenceEntity, ReferenceSpec, Refer
 from flytekit.core.task import ReferenceTask
 from flytekit.core.utils import ClassDecorator, _dnsify
 from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase
-from flytekit.exceptions.user import FlyteAssertion
 from flytekit.loggers import logger
 from flytekit.models import common as _common_models
 from flytekit.models import interface as interface_models
@@ -134,14 +133,14 @@ def _update_serialization_settings_for_ipython(
 ):
     # We are in an interactive environment. We will serialize the task as a pickled object and upload it to remote
     # storage.
-    if isinstance(entity, PythonFunctionTask):
-        if entity.execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
-            raise FlyteAssertion(
-                f"Dynamic tasks are not supported in interactive mode. {entity.name} is a dynamic task."
-            )
+    # if isinstance(entity, PythonFunctionTask):
+    #     if entity.execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
+    #         raise FlyteAssertion(
+    #             f"Dynamic tasks are not supported in interactive mode. {entity.name} is a dynamic task."
+    #         )
 
-    if options is None or options.file_uploader is None:
-        raise FlyteAssertion("To work interactively with Flyte, a code transporter/uploader should be configured.")
+    # if options is None or options.file_uploader is None:
+    #     raise FlyteAssertion("To work interactively with Flyte, a code transporter/uploader should be configured.")
 
     # For map tasks, we need to serialize the actual task, not the map task itself
     if isinstance(entity, ArrayNodeMapTask):
@@ -187,13 +186,13 @@ def get_serializable_task(
         settings.version,
     )
 
-    # Try to update the serialization settings for ipython / jupyter notebook / interactive mode if we are in an
-    # interactive environment like Jupyter notebook
-    if settings.interactive_mode_enabled is True:
-        # If the entity is not a PythonAutoContainerTask, we don't need to do anything, as only Tasks with container |
-        # user code in container needs to be serialized as pickled objects.
-        if isinstance(entity, (PythonAutoContainerTask, ArrayNodeMapTask)):
-            _update_serialization_settings_for_ipython(entity, settings, options)
+    # # Try to update the serialization settings for ipython / jupyter notebook / interactive mode if we are in an
+    # # interactive environment like Jupyter notebook
+    # if settings.interactive_mode_enabled is True:
+    #     # If the entity is not a PythonAutoContainerTask, we don't need to do anything, as only Tasks with container |
+    #     # user code in container needs to be serialized as pickled objects.
+    #     if isinstance(entity, (PythonAutoContainerTask, ArrayNodeMapTask)):
+    #         _update_serialization_settings_for_ipython(entity, settings, options)
 
     if isinstance(entity, PythonFunctionTask) and entity.execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
         for e in context_manager.FlyteEntities.entities:
@@ -800,7 +799,7 @@ def get_serializable(
         cp_entity = get_reference_spec(entity_mapping, settings, entity)
 
     elif isinstance(entity, PythonTask):
-        cp_entity = get_serializable_task(entity_mapping, settings, entity, options)
+        cp_entity = get_serializable_task(entity_mapping, settings, entity)
 
     elif isinstance(entity, WorkflowBase):
         cp_entity = get_serializable_workflow(entity_mapping, settings, entity, options)

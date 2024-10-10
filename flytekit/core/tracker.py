@@ -303,7 +303,7 @@ class _ModuleSanitizer(object):
                 raise AssertionError(
                     f"Directory {dirname} does not exist, and we are not in a Jupyter notebook or received a pickle file."
                 )
-            
+
             logger.debug(
                 f"Directory {dirname} does not exist. It is likely that we are in a Jupyter notebook or a pickle file was received."
                 f"Returning {basename} as the module name."
