@@ -3466,3 +3466,32 @@ def test_option_list_with_pipe_2():
 
     with pytest.raises(TypeTransformerFailedError):
         TypeEngine.to_literal(ctx, [[{"a": "one"}], None, [{"b": 3}]], pt, lt)
+
+
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="PEP604 requires >=3.10, 585 requires >=3.9")
+def test_generic_errors_and_empty():
+    # Test dictionaries
+    pt = dict[str, str]
+    lt = TypeEngine.to_literal_type(pt)
+
+    ctx = FlyteContextManager.current_context()
+    lit = TypeEngine.to_literal(ctx, {}, pt, lt)
+    lit = TypeEngine.to_literal(ctx, {"a": "b"}, pt, lt)
+
+    with pytest.raises(TypeTransformerFailedError):
+        TypeEngine.to_literal(ctx, {"a": 3}, pt, lt)
+
+    with pytest.raises(TypeTransformerFailedError):
+        TypeEngine.to_literal(ctx, {3: "a"}, pt, lt)
+
+    # Test lists
+    pt = list[str]
+    lt = TypeEngine.to_literal_type(pt)
+    lit = TypeEngine.to_literal(ctx, [], pt, lt)
+    lit = TypeEngine.to_literal(ctx, ["a"], pt, lt)
+
+    with pytest.raises(TypeTransformerFailedError):
+        TypeEngine.to_literal(ctx, {"a": 3}, pt, lt)
+
+    with pytest.raises(TypeTransformerFailedError):
+        TypeEngine.to_literal(ctx, [3], pt, lt)

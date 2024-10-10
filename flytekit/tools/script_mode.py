@@ -118,6 +118,7 @@ def ls_files(
     else:
         all_files = list_all_files(source_path, deref_symlinks, ignore_group)
 
+    all_files.sort()
     hasher = hashlib.md5()
     for abspath in all_files:
         relpath = os.path.relpath(abspath, source_path)
