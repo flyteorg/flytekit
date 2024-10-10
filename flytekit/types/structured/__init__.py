@@ -7,9 +7,12 @@ Flytekit StructuredDataset
    :template: custom.rst
    :toctree: generated/
 
-   StructuredDataset
-   StructuredDatasetEncoder
-   StructuredDatasetDecoder
+    StructuredDataset
+    StructuredDatasetDecoder
+    StructuredDatasetEncoder
+    StructuredDatasetMetadata
+    StructuredDatasetTransformerEngine
+    StructuredDatasetType
 """
 
 from flytekit.deck.renderer import ArrowRenderer, TopFrameRenderer
@@ -19,7 +22,9 @@ from .structured_dataset import (
     StructuredDataset,
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
+    StructuredDatasetMetadata,
     StructuredDatasetTransformerEngine,
+    StructuredDatasetType,
 )
 
 

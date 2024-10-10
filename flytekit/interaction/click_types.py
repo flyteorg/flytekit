@@ -36,7 +36,10 @@ def is_pydantic_basemodel(python_type: typing.Type) -> bool:
         return False
     else:
         try:
-            from pydantic.v1 import BaseModel
+            from pydantic import BaseModel as BaseModelV2
+            from pydantic.v1 import BaseModel as BaseModelV1
+
+            return issubclass(python_type, BaseModelV1) or issubclass(python_type, BaseModelV2)
         except ImportError:
             from pydantic import BaseModel
 

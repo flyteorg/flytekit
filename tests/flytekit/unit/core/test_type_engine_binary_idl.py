@@ -627,7 +627,7 @@ def test_all_types_in_dataclass_wf(local_dummy_file, local_dummy_directory):
         with open(os.path.join(inner_dc.o, "file"), "r") as fh:
             assert fh.read() == "Hello FlyteDirectory"
         assert inner_dc.o.downloaded
-        print("Test InnerDC Successfully Passed")
+
         # enum: Status
         assert inner_dc.enum_status == Status.PENDING
 
@@ -690,8 +690,6 @@ def test_all_types_in_dataclass_wf(local_dummy_file, local_dummy_directory):
         # Strict type check for Enum
         assert isinstance(enum_status, Status), "enum_status is not Status"
 
-        print("All attributes passed strict type checks.")
-
     @workflow
     def wf(dc: DC):
         t_inner(dc.inner_dc)
@@ -710,6 +708,8 @@ def test_all_types_in_dataclass_wf(local_dummy_file, local_dummy_directory):
     wf(dc=DC())
 
 def test_backward_compatible_with_dataclass_in_protobuf_struct(local_dummy_file, local_dummy_directory):
+    # Flyte Console will send the input data as protobuf Struct
+    # This test also test how Flyte Console with attribute access on the Struct object
 
     @dataclass
     class InnerDC:
@@ -777,7 +777,7 @@ def test_backward_compatible_with_dataclass_in_protobuf_struct(local_dummy_file,
         with open(os.path.join(inner_dc.o, "file"), "r") as fh:
             assert fh.read() == "Hello FlyteDirectory"
         assert inner_dc.o.downloaded
-        print("Test InnerDC Successfully Passed")
+
         # enum: Status
         assert inner_dc.enum_status == Status.PENDING
 
@@ -837,8 +837,6 @@ def test_backward_compatible_with_dataclass_in_protobuf_struct(local_dummy_file,
 
         # Strict type check for Enum
         assert isinstance(enum_status, Status), "enum_status is not Status"
-
-        print("All attributes passed strict type checks.")
 
     # This is the old dataclass serialization behavior.
     # https://github.com/flyteorg/flytekit/blob/94786cfd4a5c2c3b23ac29dcd6f04d0553fa1beb/flytekit/core/type_engine.py#L702-L728

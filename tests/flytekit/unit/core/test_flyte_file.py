@@ -1,3 +1,4 @@
+import json
 import os
 import pathlib
 import tempfile
@@ -20,7 +21,9 @@ from flytekit.core.workflow import workflow
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import LiteralMap
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
-
+from google.protobuf import json_format as _json_format
+from google.protobuf import struct_pb2 as _struct
+from flytekit.models.literals import Literal, Scalar
 
 # Fixture that ensures a dummy local file
 @pytest.fixture
@@ -705,3 +708,12 @@ def test_new_remote_file():
     nf = FlyteFile.new_remote_file(name="foo.txt")
     assert isinstance(nf, FlyteFile)
     assert nf.path.endswith('foo.txt')
+
+def test_input_from_flyte_console_attribute_access_flytefile(local_dummy_file):
+    # Flyte Console will send the input data as protobuf Struct
+
+    dict_obj = {"path": local_dummy_file}
+    json_str = json.dumps(dict_obj)
+    upstream_output = Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))
+    downstream_input = TypeEngine.to_python_value(FlyteContextManager.current_context(), upstream_output, FlyteFile)
+    assert downstream_input == FlyteFile(local_dummy_file)

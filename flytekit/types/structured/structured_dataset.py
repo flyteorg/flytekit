@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import _datetime
 import collections
+import json
 import types
 import typing
 from abc import ABC, abstractmethod
@@ -11,6 +12,8 @@ from typing import Dict, Generator, List, Optional, Type, Union
 import msgpack
 from dataclasses_json import config
 from fsspec.utils import get_protocol
+from google.protobuf import json_format as _json_format
+from google.protobuf.struct_pb2 import Struct
 from marshmallow import fields
 from mashumaro.mixins.json import DataClassJSONMixin
 from mashumaro.types import SerializableType
@@ -745,6 +748,33 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         else:
             raise TypeTransformerFailedError(f"Unsupported binary format: `{binary_idl_object.tag}`")
 
+    def from_generic_idl(
+        self, generic: Struct, expected_python_type: Type[T] | StructuredDataset
+    ) -> T | StructuredDataset:
+        json_str = _json_format.MessageToJson(generic)
+        python_val = json.loads(json_str)
+
+        uri = python_val.get("uri", None)
+        file_format = python_val.get("file_format", None)
+
+        if uri is None:
+            raise ValueError("StructuredDataset's uri and file format should not be None")
+
+        return StructuredDatasetTransformerEngine().to_python_value(
+            FlyteContextManager.current_context(),
+            Literal(
+                scalar=Scalar(
+                    structured_dataset=StructuredDataset(
+                        metadata=StructuredDatasetMetadata(
+                            structured_dataset_type=StructuredDatasetType(format=file_format)
+                        ),
+                        uri=uri,
+                    )
+                )
+            ),
+            expected_python_type,
+        )
+
     def to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T] | StructuredDataset
     ) -> T | StructuredDataset:
@@ -779,8 +809,11 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         +-----------------------------+-----------------------------------------+--------------------------------------+
         """
         # Handle dataclass attribute access
-        if lv.scalar and lv.scalar.binary:
-            return self.from_binary_idl(lv.scalar.binary, expected_python_type)
+        if lv.scalar:
+            if lv.scalar.binary:
+                return self.from_binary_idl(lv.scalar.binary, expected_python_type)
+            if lv.scalar.generic:
+                return self.from_generic_idl(lv.scalar.generic, expected_python_type)
 
         # Detect annotations and extract out all the relevant information that the user might supply
         expected_python_type, column_dict, storage_fmt, pa_schema = extract_cols_and_format(expected_python_type)

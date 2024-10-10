@@ -232,6 +232,9 @@ class TypeTransformer(typing.Generic[T]):
         )
 
     def from_binary_idl(self, binary_idl_object: Binary, expected_python_type: Type[T]) -> Optional[T]:
+        """
+        This is for dict, dataclass, and dataclass attribute access.
+        """
         if binary_idl_object.tag == MESSAGEPACK:
             try:
                 decoder = self._msgpack_decoder[expected_python_type]
@@ -241,6 +244,12 @@ class TypeTransformer(typing.Generic[T]):
             return decoder.decode(binary_idl_object.value)
         else:
             raise TypeTransformerFailedError(f"Unsupported binary format `{binary_idl_object.tag}`")
+
+    def from_generic_idl(self, generic: Struct, expected_python_type: Type[T]) -> Optional[T]:
+        """
+        This is for dataclass attribute access from input created from the Flyte Console.
+        """
+        raise NotImplementedError(f"Conversion from generic idl to python type {expected_python_type} not implemented")
 
     def to_html(self, ctx: FlyteContext, python_val: T, expected_python_type: Type[T]) -> str:
         """
@@ -2256,6 +2265,17 @@ def _check_and_covert_float(lv: Literal) -> float:
     raise TypeTransformerFailedError(f"Cannot convert literal {lv} to float")
 
 
+def _check_and_covert_int(lv: Literal) -> int:
+    if lv.scalar.primitive.integer is not None:
+        return lv.scalar.primitive.integer
+
+    if lv.scalar.primitive.float_value is not None:
+        logger.info(f"Converting literal float {lv.scalar.primitive.float_value} to int, might have precision loss.")
+        return int(lv.scalar.primitive.float_value)
+
+    raise TypeTransformerFailedError(f"Cannot convert literal {lv} to int")
+
+
 def _check_and_convert_void(lv: Literal) -> None:
     if lv.scalar.none_type is None:
         raise TypeTransformerFailedError(f"Cannot convert literal {lv} to None")
@@ -2269,7 +2289,7 @@ def _register_default_type_transformers():
             int,
             _type_models.LiteralType(simple=_type_models.SimpleType.INTEGER),
             lambda x: Literal(scalar=Scalar(primitive=Primitive(integer=x))),
-            lambda x: x.scalar.primitive.integer,
+            _check_and_covert_int,
         )
     )
 
