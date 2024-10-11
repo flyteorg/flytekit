@@ -1,33 +1,41 @@
 import math
-from typing import Any, List, Optional, Set, Tuple, Union
+from typing import TYPE_CHECKING, Any, List, Optional, Set, Tuple, Union
 
 from flyteidl.core import workflow_pb2 as _core_workflow
 
 from flytekit.core import interface as flyte_interface
 from flytekit.core.context_manager import ExecutionState, FlyteContext
-from flytekit.core.interface import transform_interface_to_list_interface, transform_interface_to_typed_interface
+from flytekit.core.interface import (
+    transform_interface_to_list_interface,
+    transform_interface_to_typed_interface,
+)
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.node import Node
 from flytekit.core.promise import (
     Promise,
     VoidPromise,
     create_and_link_node,
+    create_and_link_node_from_remote,
     flyte_entity_call_handler,
     translate_inputs_to_literals,
 )
 from flytekit.core.task import TaskMetadata
 from flytekit.loggers import logger
+from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.literals import Literal, LiteralCollection, Scalar
 
 ARRAY_NODE_SUBNODE_NAME = "array_node_subnode"
 
+if TYPE_CHECKING:
+    from flytekit.remote import FlyteLaunchPlan
+
 
 class ArrayNode:
     def __init__(
         self,
-        target: LaunchPlan,
+        target: Union[LaunchPlan, "FlyteLaunchPlan"],
         execution_mode: _core_workflow.ArrayNode.ExecutionMode = _core_workflow.ArrayNode.FULL_STATE,
         bindings: Optional[List[_literal_models.Binding]] = None,
         concurrency: Optional[int] = None,
@@ -47,6 +55,8 @@ class ArrayNode:
         :param execution_mode: The execution mode for propeller to use when handling ArrayNode
         :param metadata: The metadata for the underlying entity
         """
+        from flytekit.remote import FlyteLaunchPlan
+
         self.target = target
         self._concurrency = concurrency
         self._execution_mode = execution_mode
@@ -60,7 +70,10 @@ class ArrayNode:
             self._min_success_ratio = min_success_ratio if min_success_ratio is not None else 1.0
             self._min_successes = 0
 
-        n_outputs = len(self.target.python_interface.outputs)
+        if self.target.python_interface:
+            n_outputs = len(self.target.python_interface.outputs)
+        else:
+            n_outputs = len(self.target.interface.outputs)
         if n_outputs > 1:
             raise ValueError("Only tasks with a single output are supported in map tasks.")
 
@@ -68,13 +81,19 @@ class ArrayNode:
         self._bound_inputs: Set[str] = set()
 
         output_as_list_of_optionals = min_success_ratio is not None and min_success_ratio != 1 and n_outputs == 1
-        collection_interface = transform_interface_to_list_interface(
-            self.target.python_interface, self._bound_inputs, output_as_list_of_optionals
-        )
-        self._collection_interface = collection_interface
+
+        self._remote_interface = None
+        if self.target.python_interface:
+            self._python_interface = transform_interface_to_list_interface(
+                self.target.python_interface, self._bound_inputs, output_as_list_of_optionals
+            )
+        elif self.target.interface:
+            self._remote_interface = self.target.interface.transform_interface_to_list()
+        else:
+            raise ValueError("No interface found for the target entity.")
 
         self.metadata = None
-        if isinstance(target, LaunchPlan):
+        if isinstance(target, LaunchPlan) or isinstance(target, FlyteLaunchPlan):
             if self._execution_mode != _core_workflow.ArrayNode.FULL_STATE:
                 raise ValueError("Only execution version 1 is supported for LaunchPlans.")
             if metadata:
@@ -98,7 +117,14 @@ class ArrayNode:
     @property
     def python_interface(self) -> flyte_interface.Interface:
         # Part of SupportsNodeCreation interface
-        return self._collection_interface
+        return self._python_interface
+
+    @property
+    def interface(self) -> _interface_models.TypedInterface:
+        # Required in get_serializable_node
+        if self._remote_interface:
+            return self._remote_interface
+        raise AttributeError("interface attribute is not available")
 
     @property
     def bindings(self) -> List[_literal_models.Binding]:
@@ -115,6 +141,9 @@ class ArrayNode:
         return self.target
 
     def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
+        if self._remote_interface:
+            raise ValueError("Mapping over remote entities is not supported in local execution.")
+
         outputs_expected = True
         if not self.python_interface.outputs:
             outputs_expected = False
@@ -199,17 +228,27 @@ class ArrayNode:
         if not self._bindings:
             ctx = FlyteContext.current_context()
             # since a new entity with an updated list interface is not created, we have to work around the mismatch
-            # between the interface and the inputs
-            collection_interface = transform_interface_to_list_interface(
-                self.flyte_entity.python_interface, self._bound_inputs
-            )
-            # don't link the node to the compilation state, since we don't want to add the subnode to the
-            # workflow as a node
+            # between the interface and the inputs. Also, don't link the node to the compilation state,
+            # since we don't want to add the subnode to the workflow as a node
+            if self._remote_interface:
+                bound_subnode = create_and_link_node_from_remote(
+                    ctx,
+                    entity=self.flyte_entity,
+                    add_node_to_compilation_state=False,
+                    overridden_interface=self._remote_interface,
+                    **kwargs,
+                )
+                self._bindings = bound_subnode.ref.node.bindings
+                return create_and_link_node_from_remote(
+                    ctx,
+                    entity=self,
+                    **kwargs,
+                )
             bound_subnode = create_and_link_node(
                 ctx,
                 entity=self.flyte_entity,
                 add_node_to_compilation_state=False,
-                overridden_interface=collection_interface,
+                overridden_interface=self.python_interface,
                 node_id=ARRAY_NODE_SUBNODE_NAME,
                 **kwargs,
             )
@@ -218,7 +257,7 @@ class ArrayNode:
 
 
 def array_node(
-    target: Union[LaunchPlan],
+    target: Union[LaunchPlan, "FlyteLaunchPlan"],
     concurrency: Optional[int] = None,
     min_success_ratio: Optional[float] = None,
     min_successes: Optional[int] = None,
@@ -237,7 +276,9 @@ def array_node(
     :return: A callable function that takes in keyword arguments and returns a Promise created by
         flyte_entity_call_handler
     """
-    if not isinstance(target, LaunchPlan):
+    from flytekit.remote import FlyteLaunchPlan
+
+    if not isinstance(target, LaunchPlan) and not isinstance(target, FlyteLaunchPlan):
         raise ValueError("Only LaunchPlans are supported for now.")
 
     node = ArrayNode(

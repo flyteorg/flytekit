@@ -77,9 +77,17 @@ def test_create_and_link_node_from_remote():
     def t2(a: int) -> int:
         return a
 
+    ctx = context_manager.FlyteContext.current_context().with_compilation_state(CompilationState(prefix=""))
     p = create_and_link_node_from_remote(ctx, t2, a=3)
     assert p.ref.var == "o0"
     assert len(p.ref.node.bindings) == 1
+    assert len(ctx.compilation_state.nodes) == 1
+
+    ctx = context_manager.FlyteContext.current_context().with_compilation_state(CompilationState(prefix=""))
+    p = create_and_link_node_from_remote(ctx, t2, add_node_to_compilation_state=False, a=3)
+    assert p.ref.var == "o0"
+    assert len(p.ref.node.bindings) == 1
+    assert len(ctx.compilation_state.nodes) == 0
 
 
 def test_create_and_link_node_from_remote_ignore():
@@ -224,8 +232,9 @@ def test_promise_with_attr_path():
     assert o3 == "b"
 
 
+@pytest.mark.asyncio
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
-def test_resolve_attr_path_in_promise():
+async def test_resolve_attr_path_in_promise():
     @dataclass_json
     @dataclass
     class Foo:
@@ -242,15 +251,16 @@ def test_resolve_attr_path_in_promise():
     src_promise = Promise("val1", src_lit)
 
     # happy path
-    tgt_promise = resolve_attr_path_in_promise(src_promise["a"][0]["b"])
+    tgt_promise = await resolve_attr_path_in_promise(src_promise["a"][0]["b"])
     assert "foo" == TypeEngine.to_python_value(FlyteContextManager.current_context(), tgt_promise.val, str)
 
     # exception
     with pytest.raises(FlytePromiseAttributeResolveException):
-        tgt_promise = resolve_attr_path_in_promise(src_promise["c"])
+        await resolve_attr_path_in_promise(src_promise["c"])
 
 
-def test_prom_with_union_literals():
+@pytest.mark.asyncio
+async def test_prom_with_union_literals():
     ctx = FlyteContextManager.current_context()
     pt = typing.Union[str, int]
     lt = TypeEngine.to_literal_type(pt)
@@ -259,9 +269,9 @@ def test_prom_with_union_literals():
         LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
     ]
 
-    bd = binding_data_from_python_std(ctx, lt, 3, pt, [])
+    bd = await binding_data_from_python_std(ctx, lt, 3, pt, [])
     assert bd.scalar.union.stored_type.structure.tag == "int"
-    bd = binding_data_from_python_std(ctx, lt, "hello", pt, [])
+    bd = await binding_data_from_python_std(ctx, lt, "hello", pt, [])
     assert bd.scalar.union.stored_type.structure.tag == "str"
 
 def test_pickling_promise_object():

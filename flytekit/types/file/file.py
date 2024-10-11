@@ -17,7 +17,12 @@ from mashumaro.types import SerializableType
 
 from flytekit.core.constants import MESSAGEPACK
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError, get_underlying_type
+from flytekit.core.type_engine import (
+    AsyncTypeTransformer,
+    TypeEngine,
+    TypeTransformerFailedError,
+    get_underlying_type,
+)
 from flytekit.exceptions.user import FlyteAssertion
 from flytekit.loggers import logger
 from flytekit.models.core import types as _core_types
@@ -350,7 +355,7 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
         return self.path
 
 
-class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
+class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
     def __init__(self):
         super().__init__(name="FlyteFilePath", t=FlyteFile)
 
@@ -428,7 +433,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             if real_type not in expected_type:
                 raise ValueError(f"Incorrect file type, expected {expected_type}, got {real_type}")
 
-    def to_literal(
+    async def async_to_literal(
         self,
         ctx: FlyteContext,
         python_val: typing.Union[FlyteFile, os.PathLike, str],
@@ -549,7 +554,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         else:
             raise TypeTransformerFailedError(f"Unsupported binary format: `{binary_idl_object.tag}`")
 
-    def to_python_value(
+    async def async_to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Union[typing.Type[FlyteFile], os.PathLike]
     ) -> FlyteFile:
         # Handle dataclass attribute access

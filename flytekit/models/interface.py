@@ -2,6 +2,7 @@ import typing
 
 from flyteidl.core import artifact_id_pb2 as art_id
 from flyteidl.core import interface_pb2 as _interface_pb2
+from flyteidl.core import types_pb2 as _types_pb2
 
 from flytekit.models import common as _common
 from flytekit.models import literals as _literals
@@ -59,6 +60,17 @@ class Variable(_common.FlyteIdlEntity):
         """
         return _interface_pb2.Variable(
             type=self.type.to_flyte_idl(),
+            description=self.description,
+            artifact_partial_id=self.artifact_partial_id,
+            artifact_tag=self.artifact_tag,
+        )
+
+    def to_flyte_idl_list(self):
+        """
+        :rtype: flyteidl.core.interface_pb2.Variable
+        """
+        return _interface_pb2.Variable(
+            type=_types_pb2.LiteralType(collection_type=self.type.to_flyte_idl()),
             description=self.description,
             artifact_partial_id=self.artifact_partial_id,
             artifact_tag=self.artifact_tag,
@@ -145,6 +157,17 @@ class TypedInterface(_common.FlyteIdlEntity):
             inputs={k: Variable.from_flyte_idl(v) for k, v in proto.inputs.variables.items()},
             outputs={k: Variable.from_flyte_idl(v) for k, v in proto.outputs.variables.items()},
         )
+
+    def transform_interface_to_list(self) -> "TypedInterface":
+        """
+        Takes a single task interface and interpolates it to an array interface - to allow performing distributed
+        python map like functions
+        """
+        list_interface = _interface_pb2.TypedInterface(
+            inputs=_interface_pb2.VariableMap(variables={k: v.to_flyte_idl_list() for k, v in self.inputs.items()}),
+            outputs=_interface_pb2.VariableMap(variables={k: v.to_flyte_idl_list() for k, v in self.outputs.items()}),
+        )
+        return self.from_flyte_idl(list_interface)
 
 
 class Parameter(_common.FlyteIdlEntity):
