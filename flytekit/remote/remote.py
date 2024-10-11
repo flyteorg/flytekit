@@ -1052,6 +1052,16 @@ class FlyteRemote(object):
         # and does not increase entropy of the hash while making it very inconvenient to copy-and-paste.
         return base64.urlsafe_b64encode(h.digest()).decode("ascii").rstrip("=")
 
+    def _get_image_names(self, entity: typing.Union[PythonAutoContainerTask, WorkflowBase]) -> typing.List[str]:
+        if isinstance(entity, PythonAutoContainerTask) and isinstance(entity.container_image, ImageSpec):
+            return [entity.container_image.image_name()]
+        if isinstance(entity, WorkflowBase):
+            image_names = []
+            for n in entity.nodes:
+                image_names.extend(self._get_image_names(n.flyte_entity))
+            return image_names
+        return []
+
     def register_script(
         self,
         entity: typing.Union[WorkflowBase, PythonTask],
@@ -1125,17 +1135,6 @@ class FlyteRemote(object):
         )
 
         if version is None:
-
-            def _get_image_names(entity: typing.Union[PythonAutoContainerTask, WorkflowBase]) -> typing.List[str]:
-                if isinstance(entity, PythonAutoContainerTask) and isinstance(entity.container_image, ImageSpec):
-                    return [entity.container_image.image_name()]
-                if isinstance(entity, WorkflowBase):
-                    image_names = []
-                    for n in entity.nodes:
-                        image_names.extend(_get_image_names(n.flyte_entity))
-                    return image_names
-                return []
-
             default_inputs = None
             if isinstance(entity, WorkflowBase):
                 default_inputs = entity.python_interface.default_inputs_as_kwargs
@@ -1144,7 +1143,7 @@ class FlyteRemote(object):
             # but we don't have to use it when registering with the Flyte backend.
             # For that add the hash of the compilation settings to hash of file
             version = self._version_from_hash(
-                md5_bytes, serialization_settings, default_inputs, *_get_image_names(entity)
+                md5_bytes, serialization_settings, default_inputs, *self._get_image_names(entity)
             )
 
         if isinstance(entity, PythonTask):
@@ -1839,7 +1838,7 @@ class FlyteRemote(object):
         if not_found:
             fast_serialization_settings = None
             if self.interactive_mode_enabled:
-                fast_serialization_settings = self._pickle_entity(entity)
+                md5_bytes, fast_serialization_settings = self._pickle_and_upload_entity(entity)
 
             ss = SerializationSettings(
                 image_config=image_config or ImageConfig.auto_default_image(),
@@ -1848,7 +1847,12 @@ class FlyteRemote(object):
                 version=version,
                 fast_serialization_settings=fast_serialization_settings,
             )
-            flyte_task: FlyteTask = self.register_task(entity, ss)
+
+            default_inputs = entity.python_interface.default_inputs_as_kwargs
+            if version is None and self.interactive_mode_enabled:
+                version = self._version_from_hash(md5_bytes, ss, default_inputs, *self._get_image_names(entity))
+
+            flyte_task: FlyteTask = self.register_task(entity, ss, version)
 
         return self.execute(
             flyte_task,
@@ -1911,7 +1915,7 @@ class FlyteRemote(object):
 
         fast_serialization_settings = None
         if self.interactive_mode_enabled:
-            fast_serialization_settings = self._pickle_entity(entity)
+            md5_bytes, fast_serialization_settings = self._pickle_and_upload_entity(entity)
 
         ss = SerializationSettings(
             image_config=image_config,
@@ -1926,6 +1930,9 @@ class FlyteRemote(object):
             self.fetch_workflow(**resolved_identifiers_dict)
         except FlyteEntityNotExistException:
             logger.info("Registering workflow because it wasn't found in Flyte Admin.")
+            default_inputs = entity.python_interface.default_inputs_as_kwargs
+            if not version and self.interactive_mode_enabled:
+                version = self._version_from_hash(md5_bytes, ss, default_inputs, *self._get_image_names(entity))
             self.register_workflow(entity, ss, version=version, options=options)
 
         try:
@@ -2565,7 +2572,7 @@ class FlyteRemote(object):
                 queue.append(entity.flyte_entity)
         return pickled_target_dict
 
-    def _pickle_entity(self, entity: typing.Any):
+    def _pickle_and_upload_entity(self, entity: typing.Any) -> typing.Tuple[bytes, FastSerializationSettings]:
         """
         Pickle the entity to the specified location. This is useful for debugging and for sharing entities across
         different environments.
@@ -2582,6 +2589,6 @@ class FlyteRemote(object):
                     "The size of the task to pickled exceeds the limit of 150MB. Please reduce the size of the task."
                 )
             logger.debug(f"Uploading Pickled representation of Workflow `{entity.name}` to remote storage...")
-            _, native_url = self.upload_file(dest)
+            md5_bytes, native_url = self.upload_file(dest)
 
-        return FastSerializationSettings(enabled=True, distribution_location=native_url, destination_dir=".")
+        return md5_bytes, FastSerializationSettings(enabled=True, distribution_location=native_url, destination_dir=".")
