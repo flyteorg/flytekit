@@ -15,10 +15,10 @@ import rich_click as click
 import yaml
 from click import Context
 from mashumaro.codecs.json import JSONEncoder
-from rich.progress import Progress
+from rich.progress import Progress, TextColumn, TimeElapsedColumn
 from typing_extensions import get_origin
 
-from flytekit import Annotations, FlyteContext, FlyteContextManager, Labels, Literal
+from flytekit import Annotations, FlyteContext, FlyteContextManager, Labels, Literal, WorkflowExecutionPhase
 from flytekit.clis.sdk_in_container.helpers import (
     parse_copy,
     patch_image_config,
@@ -499,21 +499,41 @@ def run_remote(
     Helper method that executes the given remote FlyteLaunchplan, FlyteWorkflow or FlyteTask
     """
 
-    execution = remote.execute(
-        entity,
-        inputs=inputs,
-        project=project,
-        domain=domain,
-        execution_name=run_level_params.name,
-        wait=run_level_params.wait_execution,
-        options=options_from_run_params(run_level_params),
-        type_hints=type_hints,
-        overwrite_cache=run_level_params.overwrite_cache,
-        envs=run_level_params.envvars,
-        tags=run_level_params.tags,
-        cluster_pool=run_level_params.cluster_pool,
-        execution_cluster_label=run_level_params.execution_cluster_label,
-    )
+    msg = "Running execution on remote."
+    if run_level_params.wait_execution:
+        msg += " Waiting to complete..."
+    p = Progress(TimeElapsedColumn(), TextColumn(msg), transient=True)
+    t = p.add_task("exec")
+    with p:
+        p.start_task(t)
+        execution = remote.execute(
+            entity,
+            inputs=inputs,
+            project=project,
+            domain=domain,
+            execution_name=run_level_params.name,
+            wait=run_level_params.wait_execution,
+            options=options_from_run_params(run_level_params),
+            type_hints=type_hints,
+            overwrite_cache=run_level_params.overwrite_cache,
+            envs=run_level_params.envvars,
+            tags=run_level_params.tags,
+            cluster_pool=run_level_params.cluster_pool,
+            execution_cluster_label=run_level_params.execution_cluster_label,
+        )
+
+    if run_level_params.wait_execution:
+        if execution.closure.phase != WorkflowExecutionPhase.SUCCEEDED:
+            click.secho(
+                f"Execution {execution.id.name} did not complete successfully, "
+                f"phase {WorkflowExecutionPhase.enum_to_string(execution.closure.phase)}",
+                fg="red",
+            )
+            if execution.closure.error:
+                click.secho(f"{execution.closure.error.message}", fg="red")
+            sys.exit(-1)
+        else:
+            click.secho(f"Execution {execution.id.name} has succeeded.", fg="green")
 
     console_url = remote.generate_console_url(execution)
     s = (
