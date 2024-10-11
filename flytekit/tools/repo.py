@@ -22,8 +22,6 @@ from flytekit.tools.script_mode import _find_project_root
 from flytekit.tools.serialize_helpers import get_registrable_entities, persist_registrable_entities
 from flytekit.tools.translator import FlyteControlPlaneEntity, Options
 
-REGISTRATION = "Registration"
-
 
 class NoSerializableEntitiesError(Exception):
     pass
@@ -69,16 +67,6 @@ def serialize_get_control_plane_entities(
     ctx_builder = FlyteContextManager.current_context().with_serialization_settings(settings)
     with FlyteContextManager.with_context(ctx_builder) as ctx:
         registrable_entities = get_registrable_entities(ctx, options=options)
-        if is_registration:
-            click.secho(
-                f"Serializing and registering {len(registrable_entities)} flyte entities",
-                fg="green",
-            )
-        else:
-            click.secho(
-                f"Successfully serialized {len(registrable_entities)} flyte entities",
-                fg="green",
-            )
         return registrable_entities
 
 
@@ -96,6 +84,10 @@ def serialize_to_folder(
         folder = "."
     serialize_load_only(pkgs, settings, local_source_root)
     loaded_entities = serialize_get_control_plane_entities(settings, local_source_root, options=options)
+    click.secho(
+        f"Successfully serialized {len(loaded_entities)} flyte entities",
+        fg="green",
+    )
     persist_registrable_entities(loaded_entities, folder)
 
 
@@ -157,6 +149,10 @@ def serialize_and_package(
     """
     serialize_load_only(pkgs, settings, source)
     serializable_entities = serialize_get_control_plane_entities(settings, source, options=options)
+    click.secho(
+        f"Successfully serialized {len(serializable_entities)} flyte entities",
+        fg="green",
+    )
     package(serializable_entities, source, output, deref_symlinks, fast_options)
 
 
@@ -319,6 +315,10 @@ def register(
 
     registrable_entities = serialize_get_control_plane_entities(
         serialization_settings, str(detected_root), options, is_registration=True
+    )
+    click.secho(
+        f"Serializing and registering {len(registrable_entities)} flyte entities",
+        fg="green",
     )
 
     FlyteContextManager.pop_context()
