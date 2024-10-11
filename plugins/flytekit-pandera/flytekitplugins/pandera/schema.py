@@ -5,7 +5,7 @@ from typing import Type, TYPE_CHECKING
 from flytekit import Deck, FlyteContext, lazy_module
 from flytekit.extend import TypeEngine, TypeTransformer
 from flytekit.models import literals
-from flytekit.models.literals import Literal, Scalar, Schema
+from flytekit.models.literals import Literal, Scalar
 from flytekit.models.types import LiteralType, SchemaType
 from flytekit.types.schema import SchemaFormat, SchemaOpenMode
 from flytekit.types.structured import StructuredDataset
@@ -34,6 +34,7 @@ class PanderaTransformer(TypeTransformer[pandera.typing.DataFrame]):
 
     def __init__(self):
         super().__init__("Pandera Transformer", pandera.typing.DataFrame)  # type: ignore
+        self._sd_transformer = structured_dataset.StructuredDatasetTransformerEngine()
 
     def _pandera_schema(self, t: Type[pandera.typing.DataFrame]):
         config = PanderaValidationConfig()
@@ -105,10 +106,7 @@ class PanderaTransformer(TypeTransformer[pandera.typing.DataFrame]):
                     renderer = PanderaReportRenderer(title="Pandera Error Report: Input")
                     Deck(renderer._title, renderer.to_html(exc))
                 validated_val = python_val
-
-            w.write(validated_val)
-            remote_path = ctx.file_access.put_raw_data(local_dir)
-            return Literal(scalar=Scalar(schema=Schema(remote_path, self._get_schema_type(python_type))))
+            return self._sd_transformer.to_literal(ctx, validated_val, pandas.DataFrame, expected)
         else:
             raise AssertionError(
                 f"Only Pandas Dataframe object can be returned from a task, returned object type {type(python_val)}"
@@ -117,32 +115,11 @@ class PanderaTransformer(TypeTransformer[pandera.typing.DataFrame]):
     def to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[pandera.typing.DataFrame]
     ) -> pandera.typing.DataFrame:
-        if not (lv and lv.scalar and lv.scalar.schema):
-            raise AssertionError("Can only convert a literal schema to a pandera schema")
+        if not (lv and lv.scalar and lv.scalar.structured_dataset):
+            raise AssertionError("Can only convert a literal structured dataset to a pandera schema")
 
-        def downloader(x, y):
-            ctx.file_access.get_data(x, y, is_multipart=True)
-
-        sdt = literals.StructuredDatasetType(
-            format=structured_dataset.StructuredDatasetTransformerEngine.DEFAULT_FORMATS.get(
-                pandas.DataFrame,
-                structured_dataset.GENERIC_FORMAT,
-            )
-        )
-        sd_metadata = literals.StructuredDatasetMetadata(structured_dataset_type=sdt)
-        sd = StructuredDataset(
-            uri=lv.scalar.schema.uri,
-            downloader=downloader,
-            supported_mode=SchemaOpenMode.READ,
-            metadata=sd_metadata
-        )
-        sd._literal_sd = literals.StructuredDataset(
-            uri=lv.scalar.schema.uri,
-            metadata=sd_metadata
-        )
-
+        df = self._sd_transformer.to_python_value(ctx, lv, pandas.DataFrame)
         schema, config = self._pandera_schema(expected_python_type)
-        df = sd.open(pandas.DataFrame).all()
         try:
             validated_val = schema.validate(df, lazy=config.lazy)
         except (pandera.errors.SchemaError, pandera.errors.SchemaErrors) as exc:

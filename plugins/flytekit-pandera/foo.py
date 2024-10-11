@@ -9,7 +9,14 @@ from pandera.typing import DataFrame, Series
 
 
 
-custom_image = ImageSpec(packages=["flytekitplugins-pandera", "scikit-learn", "pyarrow"])
+custom_image = ImageSpec(
+    apt_packages=["git"],
+    packages=[
+        "git+https://github.com/flyteorg/flytekit@f8e7954da#subdirectory=plugins/flytekit-pandera",
+        "scikit-learn",
+        "pyarrow",
+    ],
+)
 
 
 class InSchema(pa.DataFrameModel):
