@@ -2082,6 +2082,17 @@ class DictTransformer(AsyncTypeTransformer[dict]):
                 return FlytePickle.from_pickle(uri)
 
             try:
+                # TODO: Write a recursive function to solve Flyte Types issue
+                # When input from the flyte console, this will fail.
+                """
+                @dataclass
+                class DC:
+                    ff: FlyteFile
+
+                @workflow
+                def wf(dc: DC):
+                    t_ff(dc.ff)
+                """
                 return json.loads(_json_format.MessageToJson(lv.scalar.generic))
             except TypeError:
                 raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
