@@ -16,6 +16,7 @@ import typing
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from functools import lru_cache
+from types import GenericAlias
 from typing import Any, Dict, List, NamedTuple, Optional, Type, cast
 
 import msgpack
@@ -434,7 +435,7 @@ class DataclassTransformer(TypeTransformer[object]):
 
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__("Object-Dataclass-Transformer", object)
         self._decoder: Dict[Type, JSONDecoder] = dict()
 
@@ -922,7 +923,7 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
 
 
 def generate_attribute_list_from_dataclass_json_mixin(schema: dict, schema_name: typing.Any):
-    attribute_list = []
+    attribute_list: typing.List[tuple[Any, GenericAlias]] = []
     for property_key, property_val in schema["properties"].items():
         if property_val.get("anyOf"):
             property_type = property_val["anyOf"][0]["type"]
@@ -939,7 +940,12 @@ def generate_attribute_list_from_dataclass_json_mixin(schema: dict, schema_name:
                 sub_schemea = property_val["anyOf"][0]
                 sub_schemea_name = sub_schemea["title"]
                 attribute_list.append(
-                    (property_key, convert_mashumaro_json_schema_to_python_class(sub_schemea, sub_schemea_name))
+                    (
+                        property_key,
+                        typing.cast(
+                            GenericAlias, convert_mashumaro_json_schema_to_python_class(sub_schemea, sub_schemea_name)
+                        ),
+                    )
                 )
             elif property_val.get("additionalProperties"):
                 attribute_list.append(
@@ -948,7 +954,12 @@ def generate_attribute_list_from_dataclass_json_mixin(schema: dict, schema_name:
             else:
                 sub_schemea_name = property_val["title"]
                 attribute_list.append(
-                    (property_key, convert_mashumaro_json_schema_to_python_class(property_val, sub_schemea_name))
+                    (
+                        property_key,
+                        typing.cast(
+                            GenericAlias, convert_mashumaro_json_schema_to_python_class(property_val, sub_schemea_name)
+                        ),
+                    )
                 )
         elif property_type == "enum":
             attribute_list.append([property_key, str])  # type: ignore
@@ -2153,7 +2164,7 @@ class BinaryIOTransformer(TypeTransformer[typing.BinaryIO]):
 
 
 def generate_attribute_list_from_dataclass_json(schema: dict, schema_name: typing.Any):
-    attribute_list = []
+    attribute_list: typing.List[tuple[Any, GenericAlias]] = []
     for property_key, property_val in schema[schema_name]["properties"].items():
         property_type = property_val["type"]
         # Handle list
@@ -2163,10 +2174,15 @@ def generate_attribute_list_from_dataclass_json(schema: dict, schema_name: typin
         elif property_type == "object":
             if property_val.get("$ref"):
                 name = property_val["$ref"].split("/")[-1]
-                attribute_list.append((property_key, convert_marshmallow_json_schema_to_python_class(schema, name)))
+                attribute_list.append(
+                    (
+                        property_key,
+                        typing.cast(GenericAlias, convert_marshmallow_json_schema_to_python_class(schema, name)),
+                    )
+                )
             elif property_val.get("additionalProperties"):
                 attribute_list.append(
-                    (property_key, Dict[str, _get_element_type(property_val["additionalProperties"])])  # type: ignore[misc,index]
+                    (property_key, typing.cast(GenericAlias, _get_element_type(property_val["additionalProperties"]))),
                 )
             else:
                 attribute_list.append((property_key, Dict[str, _get_element_type(property_val)]))  # type: ignore[misc,index]

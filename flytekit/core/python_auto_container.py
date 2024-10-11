@@ -208,7 +208,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
             return self._get_container(settings)
 
     def _get_container(self, settings: SerializationSettings) -> _task_model.Container:
-        env = {}
+        env: Dict[str, str] = {}
         for elem in (settings.env, self.environment):
             if elem:
                 env.update(elem)
