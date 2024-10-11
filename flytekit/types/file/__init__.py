@@ -10,7 +10,6 @@ This list also contains a bunch of pre-formatted :py:class:`flytekit.types.file.
    :template: file_types.rst
 
    FlyteFile
-   FlyteFilePathTransformer
    HDF5EncodedFile
    HTMLPage
    JoblibSerializedFile

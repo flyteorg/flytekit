@@ -10,9 +10,6 @@ Flytekit StructuredDataset
     StructuredDataset
     StructuredDatasetDecoder
     StructuredDatasetEncoder
-    StructuredDatasetMetadata
-    StructuredDatasetTransformerEngine
-    StructuredDatasetType
 """
 
 from flytekit.deck.renderer import ArrowRenderer, TopFrameRenderer

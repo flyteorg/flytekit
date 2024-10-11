@@ -10,7 +10,6 @@ Similar to :py:class:`flytekit.types.file.FlyteFile` there are some 'preformatte
    :template: file_types.rst
 
    FlyteDirectory
-   FlyteDirToMultipartBlobTransformer
    TensorboardLogs
    TFRecordsDirectory
 """
