@@ -3,7 +3,8 @@ import tempfile
 from dataclasses import field
 from enum import Enum
 from typing import Dict, List
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
 import pytest
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
@@ -379,3 +380,96 @@ def test_input_from_flyte_console_pydantic_basemodel(local_dummy_file, local_dum
                           j=downstream_input.inner_dc.j, k=downstream_input.inner_dc.k, l=downstream_input.inner_dc.l,
                           m=downstream_input.inner_dc.m, n=downstream_input.inner_dc.n, o=downstream_input.inner_dc.o,
                           enum_status=downstream_input.inner_dc.enum_status)
+
+def test_dataclasss_in_pydantic_basemodel():
+    from dataclasses import dataclass
+    @dataclass
+    class InnerDC:
+        a: int = -1
+        b: float = 3.14
+        c: str = "Hello, Flyte"
+        d: bool = False
+
+    class DC(BaseModel):
+        a: int = -1
+        b: float = 3.14
+        c: str = "Hello, Flyte"
+        d: bool = False
+        inner_dc: InnerDC = Field(default_factory=lambda: InnerDC())
+
+    @task
+    def t_dc(dc: DC):
+        assert isinstance(dc, DC)
+        assert isinstance(dc.inner_dc, InnerDC)
+
+    @task
+    def t_inner(inner_dc: InnerDC):
+        assert isinstance(inner_dc, InnerDC)
+
+    @task
+    def t_test_primitive_attributes(a: int, b: float, c: str, d: bool):
+        assert isinstance(a, int), f"a is not int, it's {type(a)}"
+        assert a == -1
+        assert isinstance(b, float), f"b is not float, it's {type(b)}"
+        assert b == 3.14
+        assert isinstance(c, str), f"c is not str, it's {type(c)}"
+        assert c == "Hello, Flyte"
+        assert isinstance(d, bool), f"d is not bool, it's {type(d)}"
+        assert d is False
+        print("All primitive attributes passed strict type checks.")
+    @workflow
+    def wf(dc: DC):
+        t_dc(dc=dc)
+        t_inner(inner_dc=dc.inner_dc)
+        t_test_primitive_attributes(a=dc.a, b=dc.b, c=dc.c, d=dc.d)
+        t_test_primitive_attributes(a=dc.inner_dc.a, b=dc.inner_dc.b, c=dc.inner_dc.c, d=dc.inner_dc.d)
+
+    dc = DC()
+    wf(dc=dc)
+
+def test_pydantic_dataclasss_in_pydantic_basemodel():
+    from pydantic.dataclasses import dataclass
+    @dataclass
+    class InnerDC:
+        a: int = -1
+        b: float = 3.14
+        c: str = "Hello, Flyte"
+        d: bool = False
+
+    class DC(BaseModel):
+        a: int = -1
+        b: float = 3.14
+        c: str = "Hello, Flyte"
+        d: bool = False
+        inner_dc: InnerDC = Field(default_factory=lambda: InnerDC())
+
+    @task
+    def t_dc(dc: DC):
+        assert isinstance(dc, DC)
+        assert isinstance(dc.inner_dc, InnerDC)
+
+    @task
+    def t_inner(inner_dc: InnerDC):
+        assert isinstance(inner_dc, InnerDC)
+
+    @task
+    def t_test_primitive_attributes(a: int, b: float, c: str, d: bool):
+        assert isinstance(a, int), f"a is not int, it's {type(a)}"
+        assert a == -1
+        assert isinstance(b, float), f"b is not float, it's {type(b)}"
+        assert b == 3.14
+        assert isinstance(c, str), f"c is not str, it's {type(c)}"
+        assert c == "Hello, Flyte"
+        assert isinstance(d, bool), f"d is not bool, it's {type(d)}"
+        assert d is False
+        print("All primitive attributes passed strict type checks.")
+
+    @workflow
+    def wf(dc: DC):
+        t_dc(dc=dc)
+        t_inner(inner_dc=dc.inner_dc)
+        t_test_primitive_attributes(a=dc.a, b=dc.b, c=dc.c, d=dc.d)
+        t_test_primitive_attributes(a=dc.inner_dc.a, b=dc.inner_dc.b, c=dc.inner_dc.c, d=dc.inner_dc.d)
+
+    dc = DC()
+    wf(dc=dc)
