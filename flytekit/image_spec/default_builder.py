@@ -157,9 +157,6 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
 
     uv_python_install_command = UV_PYTHON_INSTALL_COMMAND_TEMPLATE.substitute(PIP_EXTRA=pip_extra_args)
 
-    # Normalize whitespace to remove any extra spaces
-    uv_python_install_command = " ".join(uv_python_install_command.split())
-
     env_dict = {"PYTHONPATH": "/root", _F_IMG_ID: image_spec.id}
 
     if image_spec.env:
