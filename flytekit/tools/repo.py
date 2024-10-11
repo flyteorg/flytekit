@@ -13,8 +13,6 @@ from flytekit.constants import CopyFileDetection
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.loggers import logger
 from flytekit.models import launch_plan, task
-from flytekit.models import launch_plan as launch_plan_models
-from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.models.core.identifier import Identifier
 from flytekit.remote import FlyteRemote
 from flytekit.remote.remote import RegistrationSkipped, _get_git_repo_url
@@ -22,6 +20,8 @@ from flytekit.tools import fast_registration, module_loader
 from flytekit.tools.script_mode import _find_project_root
 from flytekit.tools.serialize_helpers import get_registrable_entities, persist_registrable_entities
 from flytekit.tools.translator import FlyteControlPlaneEntity, Options
+
+REGISTRATION = "Registration"
 
 
 class NoSerializableEntitiesError(Exception):
@@ -53,6 +53,7 @@ def serialize_get_control_plane_entities(
     settings: SerializationSettings,
     local_source_root: typing.Optional[str] = None,
     options: typing.Optional[Options] = None,
+    is_registration: bool = False,
 ) -> typing.List[FlyteControlPlaneEntity]:
     """
     See :py:class:`flytekit.models.core.identifier.ResourceType` to match the trailing index in the file name with the
@@ -61,12 +62,16 @@ def serialize_get_control_plane_entities(
     :param settings: SerializationSettings to be used
     :param pkgs: Dot-delimited Python packages/subpackages to look into for serialization.
     :param local_source_root: Where to start looking for the code.
+    :param is_registration: Whether this is happening for registration.
     """
     settings.source_root = local_source_root
     ctx_builder = FlyteContextManager.current_context().with_serialization_settings(settings)
     with FlyteContextManager.with_context(ctx_builder) as ctx:
         registrable_entities = get_registrable_entities(ctx, options=options)
-        click.secho(f"Successfully serialized {len(registrable_entities)} flyte objects", fg="green")
+        click.secho(
+            f"Successfully serialized{' and registered' if is_registration else ''} {len(registrable_entities)} flyte objects",
+            fg="green",
+        )
         return registrable_entities
 
 
@@ -201,7 +206,7 @@ def list_packages_and_modules(
     return pkgs_and_modules
 
 
-def secho(i: Identifier, state: str = "success", reason: str = None, op: str = "Registration", console_url: str = None):
+def secho(i: Identifier, state: str = "success", reason: str = None, op: str = REGISTRATION, console_url: str = None):
     state_ind = "[ ]"
     fg = "white"
     nl = False
@@ -211,17 +216,26 @@ def secho(i: Identifier, state: str = "success", reason: str = None, op: str = "
         nl = True
         if not reason:
             url_string = click.style(console_url, fg="cyan")
-            reason = f"successful: {url_string}" if console_url else f"successful. Version: {i.version}"
+            reason = f": {url_string}" if console_url else f" at version: {i.version}"
     elif state == "failed":
         state_ind = "\r[x]"
         fg = "red"
         nl = True
         reason = "skipped!"
-    click.secho(
-        click.style(f"{state_ind}", fg=fg) + f" {op} {i.name} type {i.resource_type_name()} {reason}",
-        dim=True,
-        nl=nl,
-    )
+    if op == REGISTRATION:
+        name_words = i.resource_type_name().replace("_", " ").split()
+        name = " ".join(word.capitalize() for word in name_words)
+        click.secho(
+            click.style(f"{state_ind}", fg=fg) + f" {name} {i.name}{reason}",
+            dim=True,
+            nl=nl,
+        )
+    else:
+        click.secho(
+            click.style(f"{state_ind}", fg=fg) + f" {op} {i.name} type {i.resource_type_name()} {reason}",
+            dim=True,
+            nl=nl,
+        )
 
 
 def register(
@@ -299,7 +313,9 @@ def register(
             serialization_settings.version = version
             click.secho(f"Computed version is {version}", fg="yellow")
 
-    registrable_entities = serialize_get_control_plane_entities(serialization_settings, str(detected_root), options)
+    registrable_entities = serialize_get_control_plane_entities(
+        serialization_settings, str(detected_root), options, is_registration=True
+    )
 
     FlyteContextManager.pop_context()
     if len(registrable_entities) == 0:
@@ -307,11 +323,6 @@ def register(
         return
 
     def _raw_register(cp_entity: FlyteControlPlaneEntity):
-        fetch_methods = {
-            task.TaskSpec: remote.fetch_task,
-            admin_workflow_models.WorkflowSpec: remote.fetch_workflow,
-            launch_plan_models.LaunchPlan: remote.fetch_launch_plan,
-        }
         is_lp = False
         if isinstance(cp_entity, launch_plan.LaunchPlan):
             og_id = cp_entity.id
@@ -324,16 +335,7 @@ def register(
                     i = remote.raw_register(
                         cp_entity, serialization_settings, version=version, create_default_launchplan=False
                     )
-                    # Get the fetch method based on the type of cp_entity
-                    fetch_method = next(
-                        (method for entity_type, method in fetch_methods.items() if isinstance(cp_entity, entity_type)),
-                        None,
-                    )
-                    # If a valid fetch method was found, fetch the entity and generate the URL
-                    console_url = None
-                    if fetch_method:
-                        entity = fetch_method(i.project, i.domain, i.name, i.version)
-                        console_url = remote.generate_console_url(entity)
+                    console_url = remote.generate_url_from_id(id=i)
 
                     secho(i, state="success", console_url=console_url)
                     if is_lp and activate_launchplans:
@@ -364,5 +366,3 @@ def register(
     cp_other_entities = list(filter(lambda x: not isinstance(x, task.TaskSpec), registrable_entities))
     for entity in cp_other_entities:
         _raw_register(entity)
-
-    click.secho(f"Successfully registered {len(registrable_entities)} entities", fg="green")
