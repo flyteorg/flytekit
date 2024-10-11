@@ -67,18 +67,10 @@ class PanderaTransformer(TypeTransformer[pandera.typing.DataFrame]):
         schema, _ = self._pandera_schema(t)
         return {k: self._get_pandas_type(v.dtype) for k, v in schema.columns.items()}
 
-    def _get_schema_type(self, t: Type[pandera.typing.DataFrame]) -> SchemaType:
-        converted_cols: typing.List[SchemaType.SchemaColumn] = []
-        schema, _ = self._pandera_schema(t)
-        for k, col in schema.columns.items():
-            pandas_type = self._get_pandas_type(col.dtype)
-            if pandas_type not in self._SUPPORTED_TYPES:
-                raise AssertionError(f"type {pandas_type} is currently not supported by the flytekit-pandera plugin")
-            converted_cols.append(SchemaType.SchemaColumn(name=k, type=self._SUPPORTED_TYPES[pandas_type]))
-        return SchemaType(columns=converted_cols)
-
     def get_literal_type(self, t: Type[pandera.typing.DataFrame]) -> LiteralType:
-        return LiteralType(schema=self._get_schema_type(t))
+        if typing.get_origin(t) is typing.Annotated:
+            t, _ = typing.get_args(t)
+        return self._sd_transformer.get_literal_type(t)
 
     def assert_type(self, t: Type[T], v: T):
         if not hasattr(t, "__origin__") and not isinstance(v, (t, pandas.DataFrame)):

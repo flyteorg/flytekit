@@ -12,7 +12,7 @@ from pandera.typing import DataFrame, Series
 custom_image = ImageSpec(
     apt_packages=["git"],
     packages=[
-        "git+https://github.com/flyteorg/flytekit@f8e7954da#subdirectory=plugins/flytekit-pandera",
+        "git+https://github.com/flyteorg/flytekit@2647e2c5b#subdirectory=plugins/flytekit-pandera",
         "scikit-learn",
         "pyarrow",
     ],
