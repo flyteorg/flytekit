@@ -621,7 +621,7 @@ def test_list_transformer():
     xx = TypeEngine.to_python_value(ctx, lit, typing.List[int])
     assert xx == [3, 4]
 
-@pytest.mark.flyteidl()
+@pytest.mark.flyteidl_rust()
 def test_protos():
     ctx = FlyteContext.current_context()
     import flyteidl_rust as flyteidl
@@ -629,7 +629,7 @@ def test_protos():
     lt = TypeEngine.to_literal_type(flyteidl.core.ContainerError)
     assert isinstance(lt.blob.to_flyte_idl(), flyteidl.core.BlobType)
     assert lt.metadata["python_class_name"] == "<class 'builtins.ContainerError'>"
-
+    # TODO: Check https://github.com/PyO3/pyo3/issues/100 for details on supporting pickle serialization in PyO3.
     lit = TypeEngine.to_literal(ctx, pb, flyteidl.core.ContainerError, lt)
     new_python_val = TypeEngine.to_python_value(ctx, lit, flyteidl.core.ContainerError)
     assert new_python_val == pb
