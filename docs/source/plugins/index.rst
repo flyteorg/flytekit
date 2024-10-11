@@ -38,7 +38,7 @@ Plugin API reference
 
 .. toctree::
    :maxdepth: 2
-   :caption: API reference
+   :hidden:
 
    AWS Athena <athena>
    AWS Batch <awsbatch>
