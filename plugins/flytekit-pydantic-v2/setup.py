@@ -18,7 +18,7 @@ setup(
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
     namespace_packages=["flytekitplugins"],
-    packages=[f"flytekitplugins.{PLUGIN_NAME}.v2"],
+    packages=[f"flytekitplugins.{PLUGIN_NAME}"],
     install_requires=plugin_requires,
     license="apache2",
     python_requires=">=3.9",
@@ -36,5 +36,5 @@ setup(
         "Topic :: Software Development :: Libraries",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
-    entry_points={"flytekit.plugins": [f"{PLUGIN_NAME}.v2=flytekitplugins.{PLUGIN_NAME}.v2"]},
+    entry_points={"flytekit.plugins": [f"{PLUGIN_NAME}=flytekitplugins.{PLUGIN_NAME}"]},
 )
