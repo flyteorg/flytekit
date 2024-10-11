@@ -1,13 +1,19 @@
 import typing
+from dataclasses import dataclass
 from typing import Type, TYPE_CHECKING
 
-from flytekit import FlyteContext, lazy_module
+from flytekit import Deck, FlyteContext, lazy_module
 from flytekit.extend import TypeEngine, TypeTransformer
+from flytekit.models import literals
 from flytekit.models.literals import Literal, Scalar, Schema
 from flytekit.models.types import LiteralType, SchemaType
-from flytekit.types.schema import FlyteSchema, SchemaFormat, SchemaOpenMode
-from flytekit.types.schema.types import FlyteSchemaTransformer
+from flytekit.types.schema import SchemaFormat, SchemaOpenMode
+from flytekit.types.structured import StructuredDataset
+from flytekit.types.structured import structured_dataset
 from flytekit.types.schema.types_pandas import PandasSchemaWriter
+
+from .config import PanderaValidationConfig
+from .renderer import PanderaReportRenderer
 
 
 if TYPE_CHECKING:
@@ -23,13 +29,22 @@ T = typing.TypeVar("T")
 
 class PanderaTransformer(TypeTransformer[pandera.typing.DataFrame]):
     _SUPPORTED_TYPES: typing.Dict[type, SchemaType.SchemaColumn.SchemaColumnType] = (
-        FlyteSchemaTransformer._SUPPORTED_TYPES
+        structured_dataset.get_supported_types()
     )
 
     def __init__(self):
         super().__init__("Pandera Transformer", pandera.typing.DataFrame)  # type: ignore
 
     def _pandera_schema(self, t: Type[pandera.typing.DataFrame]):
+        config = PanderaValidationConfig()
+        if typing.get_origin(t) is typing.Annotated:
+            t, *args = typing.get_args(t)
+            # get pandera config
+            for arg in args:
+                if isinstance(arg, PanderaValidationConfig):
+                    config = arg
+                    break
+
         try:
             type_args = typing.get_args(t)
         except AttributeError:
@@ -41,18 +56,20 @@ class PanderaTransformer(TypeTransformer[pandera.typing.DataFrame]):
             schema = schema_model.to_schema()
         else:
             schema = pandera.DataFrameSchema()  # type: ignore
-        return schema
+        return schema, config
 
     @staticmethod
     def _get_pandas_type(pandera_dtype: pandera.dtypes.DataType):
         return pandera_dtype.type.type
 
     def _get_col_dtypes(self, t: Type[pandera.typing.DataFrame]):
-        return {k: self._get_pandas_type(v.dtype) for k, v in self._pandera_schema(t).columns.items()}
+        schema, _ = self._pandera_schema(t)
+        return {k: self._get_pandas_type(v.dtype) for k, v in schema.columns.items()}
 
     def _get_schema_type(self, t: Type[pandera.typing.DataFrame]) -> SchemaType:
         converted_cols: typing.List[SchemaType.SchemaColumn] = []
-        for k, col in self._pandera_schema(t).columns.items():
+        schema, _ = self._pandera_schema(t)
+        for k, col in schema.columns.items():
             pandas_type = self._get_pandas_type(col.dtype)
             if pandas_type not in self._SUPPORTED_TYPES:
                 raise AssertionError(f"type {pandas_type} is currently not supported by the flytekit-pandera plugin")
@@ -78,12 +95,17 @@ class PanderaTransformer(TypeTransformer[pandera.typing.DataFrame]):
             w = PandasSchemaWriter(
                 local_dir=local_dir, cols=self._get_col_dtypes(python_type), fmt=SchemaFormat.PARQUET
             )
-            schema = self._pandera_schema(python_type)
-            validated_val = schema.validate(python_val, lazy=True)
-            # try:
-            #     validated_val = schema.validate(python_val, lazy=True)
-            # except pandera.errors.SchemaErrors as e:
-            #     raise PanderaValidationError(f"Serialization validation failed for Pandera schema {schema}: {e}") from e
+            schema, config = self._pandera_schema(python_type)
+            try:
+                validated_val = schema.validate(python_val, lazy=config.lazy)
+            except (pandera.errors.SchemaError,pandera.errors.SchemaErrors) as exc:
+                if config.on_error == "raise":
+                    raise exc
+                else:
+                    renderer = PanderaReportRenderer(title="Pandera Error Report: Input")
+                    Deck(renderer._title, renderer.to_html(exc))
+                validated_val = python_val
+
             w.write(validated_val)
             remote_path = ctx.file_access.put_raw_data(local_dir)
             return Literal(scalar=Scalar(schema=Schema(remote_path, self._get_schema_type(python_type))))
@@ -101,14 +123,35 @@ class PanderaTransformer(TypeTransformer[pandera.typing.DataFrame]):
         def downloader(x, y):
             ctx.file_access.get_data(x, y, is_multipart=True)
 
-        df = FlyteSchema(
-            local_path=ctx.file_access.get_random_local_directory(),
-            remote_path=lv.scalar.schema.uri,
+        sdt = literals.StructuredDatasetType(
+            format=structured_dataset.StructuredDatasetTransformerEngine.DEFAULT_FORMATS.get(
+                pandas.DataFrame,
+                structured_dataset.GENERIC_FORMAT,
+            )
+        )
+        sd_metadata = literals.StructuredDatasetMetadata(structured_dataset_type=sdt)
+        sd = StructuredDataset(
+            uri=lv.scalar.schema.uri,
             downloader=downloader,
             supported_mode=SchemaOpenMode.READ,
+            metadata=sd_metadata
         )
-        schema = self._pandera_schema(expected_python_type)
-        validated_val = schema(df.open().all())
+        sd._literal_sd = literals.StructuredDataset(
+            uri=lv.scalar.schema.uri,
+            metadata=sd_metadata
+        )
+
+        schema, config = self._pandera_schema(expected_python_type)
+        df = sd.open(pandas.DataFrame).all()
+        try:
+            validated_val = schema.validate(df, lazy=config.lazy)
+        except (pandera.errors.SchemaError, pandera.errors.SchemaErrors) as exc:
+            if config.on_error == "raise":
+                raise exc
+            else:
+                renderer = PanderaReportRenderer(title="Pandera Error Report: Output")
+                Deck(renderer._title, renderer.to_html(exc))
+            validated_val = df
         return validated_val
 
 
