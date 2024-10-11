@@ -11,7 +11,7 @@ else:
     pandera = lazy_module("pandera")
 
 
-class PanderaReportRenderer:
+class PandasReportRenderer:
     def __init__(self, title: str = "Pandera Error Report"):
         self._title = title
 

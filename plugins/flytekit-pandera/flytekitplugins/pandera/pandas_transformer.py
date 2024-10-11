@@ -1,23 +1,18 @@
 import typing
-from dataclasses import dataclass
-from typing import Type, TYPE_CHECKING
+from typing import TYPE_CHECKING, Type
 
 from flytekit import Deck, FlyteContext, lazy_module
 from flytekit.extend import TypeEngine, TypeTransformer
-from flytekit.models import literals
-from flytekit.models.literals import Literal, Scalar
+from flytekit.models.literals import Literal
 from flytekit.models.types import LiteralType, SchemaType
-from flytekit.types.schema import SchemaFormat, SchemaOpenMode
-from flytekit.types.structured import StructuredDataset
 from flytekit.types.structured import structured_dataset
-from flytekit.types.schema.types_pandas import PandasSchemaWriter
 
 from .config import PanderaValidationConfig
-from .renderer import PanderaReportRenderer
-
+from .pandas_renderer import PandasReportRenderer
 
 if TYPE_CHECKING:
     import pandas
+
     import pandera
 else:
     pandas = lazy_module("pandas")
@@ -27,7 +22,7 @@ else:
 T = typing.TypeVar("T")
 
 
-class PanderaTransformer(TypeTransformer[pandera.typing.DataFrame]):
+class PanderaPandasTransformer(TypeTransformer[pandera.typing.DataFrame]):
     _SUPPORTED_TYPES: typing.Dict[type, SchemaType.SchemaColumn.SchemaColumnType] = (
         structured_dataset.get_supported_types()
     )
@@ -36,7 +31,7 @@ class PanderaTransformer(TypeTransformer[pandera.typing.DataFrame]):
         super().__init__("Pandera Transformer", pandera.typing.DataFrame)  # type: ignore
         self._sd_transformer = structured_dataset.StructuredDatasetTransformerEngine()
 
-    def _pandera_schema(self, t: Type[pandera.typing.DataFrame]):
+    def _get_pandera_schema(self, t: Type[pandera.typing.DataFrame]):
         config = PanderaValidationConfig()
         if typing.get_origin(t) is typing.Annotated:
             t, *args = typing.get_args(t)
@@ -64,7 +59,7 @@ class PanderaTransformer(TypeTransformer[pandera.typing.DataFrame]):
         return pandera_dtype.type.type
 
     def _get_col_dtypes(self, t: Type[pandera.typing.DataFrame]):
-        schema, _ = self._pandera_schema(t)
+        schema, _ = self._get_pandera_schema(t)
         return {k: self._get_pandas_type(v.dtype) for k, v in schema.columns.items()}
 
     def get_literal_type(self, t: Type[pandera.typing.DataFrame]) -> LiteralType:
@@ -83,26 +78,24 @@ class PanderaTransformer(TypeTransformer[pandera.typing.DataFrame]):
         python_type: Type[pandera.typing.DataFrame],
         expected: LiteralType,
     ) -> Literal:
-        if isinstance(python_val, pandas.DataFrame):
-            local_dir = ctx.file_access.get_random_local_directory()
-            w = PandasSchemaWriter(
-                local_dir=local_dir, cols=self._get_col_dtypes(python_type), fmt=SchemaFormat.PARQUET
-            )
-            schema, config = self._pandera_schema(python_type)
-            try:
-                validated_val = schema.validate(python_val, lazy=config.lazy)
-            except (pandera.errors.SchemaError,pandera.errors.SchemaErrors) as exc:
-                if config.on_error == "raise":
-                    raise exc
-                else:
-                    renderer = PanderaReportRenderer(title="Pandera Error Report: Input")
-                    Deck(renderer._title, renderer.to_html(exc))
-                validated_val = python_val
-            return self._sd_transformer.to_literal(ctx, validated_val, pandas.DataFrame, expected)
-        else:
-            raise AssertionError(
-                f"Only Pandas Dataframe object can be returned from a task, returned object type {type(python_val)}"
-            )
+        assert isinstance(python_val, pandas.DataFrame), \
+            f"Only Pandas Dataframe object can be returned from a task, returned object type {type(python_val)}"
+
+        schema, config = self._get_pandera_schema(python_type)
+        renderer = PandasReportRenderer(title="Pandera Report: Output")
+        try:
+            val = schema.validate(python_val, lazy=True)
+        except (pandera.errors.SchemaError, pandera.errors.SchemaErrors) as exc:
+            if config.on_error == "raise":
+                raise exc
+            elif config.on_error == "warn":
+                html = renderer.to_html(exc)
+                Deck(renderer._title, html)
+            else:
+                raise ValueError(f"Invalid on_error value: {config.on_error}")
+            val = python_val
+
+        return self._sd_transformer.to_literal(ctx, val, pandas.DataFrame, expected)
 
     def to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[pandera.typing.DataFrame]
@@ -111,17 +104,21 @@ class PanderaTransformer(TypeTransformer[pandera.typing.DataFrame]):
             raise AssertionError("Can only convert a literal structured dataset to a pandera schema")
 
         df = self._sd_transformer.to_python_value(ctx, lv, pandas.DataFrame)
-        schema, config = self._pandera_schema(expected_python_type)
+        schema, config = self._get_pandera_schema(expected_python_type)
+        renderer = PandasReportRenderer(title="Pandera Report: Input")
         try:
-            validated_val = schema.validate(df, lazy=config.lazy)
+            val = schema.validate(df, lazy=True)
         except (pandera.errors.SchemaError, pandera.errors.SchemaErrors) as exc:
             if config.on_error == "raise":
                 raise exc
+            elif config.on_error == "warn":
+                html = renderer.to_html(exc)
+                Deck(renderer._title, html)
             else:
-                renderer = PanderaReportRenderer(title="Pandera Error Report: Output")
-                Deck(renderer._title, renderer.to_html(exc))
-            validated_val = df
-        return validated_val
+                raise ValueError(f"Invalid on_error value: {config.on_error}")
+            val = df
+
+        return val
 
 
-TypeEngine.register(PanderaTransformer())
+TypeEngine.register(PanderaPandasTransformer())

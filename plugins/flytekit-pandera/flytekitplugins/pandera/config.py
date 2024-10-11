@@ -1,14 +1,10 @@
 """Pandera validation configuration."""
 
 from dataclasses import dataclass
-from typing import Literal, Optional
+from typing import Literal
 
 
 @dataclass
 class PanderaValidationConfig:
-    on_error: Literal["raise", "report"] = "report"
-    head: Optional[int] = None
-    tail: Optional[int] = None
-    sample: Optional[int] = None
-    random_state: Optional[int] = None
-    lazy: bool = True
+    # determine how to handle validation errors in the Flyte type transformer
+    on_error: Literal["raise", "warn"] = "raise"
