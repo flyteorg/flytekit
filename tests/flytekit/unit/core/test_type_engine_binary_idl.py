@@ -605,24 +605,24 @@ def test_all_types_in_dataclass_wf(local_dummy_file, local_dummy_directory):
 
     @task
     def t_inner(inner_dc: InnerDC):
-        assert (type(inner_dc), InnerDC) # type: ignore
+        assert type(inner_dc) is InnerDC
 
         # f: List[FlyteFile]
         for ff in inner_dc.f:
-            assert (type(ff), FlyteFile) # type: ignore
+            assert type(ff) is FlyteFile
             with open(ff, "r") as f:
                 assert f.read() == "Hello FlyteFile"
         # j: Dict[int, FlyteFile]
         for _, ff in inner_dc.j.items():
-            assert (type(ff), FlyteFile) # type: ignore
+            assert type(ff) is FlyteFile
             with open(ff, "r") as f:
                 assert f.read() == "Hello FlyteFile"
         # n: FlyteFile
-        assert (type(inner_dc.n), FlyteFile) # type: ignore
+        assert type(inner_dc.n) is FlyteFile
         with open(inner_dc.n, "r") as f:
             assert f.read() == "Hello FlyteFile"
         # o: FlyteDirectory
-        assert (type(inner_dc.o), FlyteDirectory) # type: ignore
+        assert type(inner_dc.o) is FlyteDirectory
         assert not inner_dc.o.downloaded
         with open(os.path.join(inner_dc.o, "file"), "r") as fh:
             assert fh.read() == "Hello FlyteDirectory"
@@ -755,24 +755,24 @@ def test_backward_compatible_with_dataclass_in_protobuf_struct(local_dummy_file,
         enum_status: Status = field(default=Status.PENDING)
 
     def t_inner(inner_dc: InnerDC):
-        assert (type(inner_dc), InnerDC) # type: ignore
+        assert type(inner_dc) is InnerDC
 
         # f: List[FlyteFile]
         for ff in inner_dc.f:
-            assert (type(ff), FlyteFile) # type: ignore
+            assert type(ff) is FlyteFile
             with open(ff, "r") as f:
                 assert f.read() == "Hello FlyteFile"
         # j: Dict[int, FlyteFile]
         for _, ff in inner_dc.j.items():
-            assert (type(ff), FlyteFile) # type: ignore
+            assert type(ff) is FlyteFile
             with open(ff, "r") as f:
                 assert f.read() == "Hello FlyteFile"
         # n: FlyteFile
-        assert (type(inner_dc.n), FlyteFile) # type: ignore
+        assert type(inner_dc.n) is FlyteFile
         with open(inner_dc.n, "r") as f:
             assert f.read() == "Hello FlyteFile"
         # o: FlyteDirectory
-        assert (type(inner_dc.o), FlyteDirectory) # type: ignore
+        assert type(inner_dc.o) is FlyteDirectory
         assert not inner_dc.o.downloaded
         with open(os.path.join(inner_dc.o, "file"), "r") as fh:
             assert fh.read() == "Hello FlyteDirectory"
