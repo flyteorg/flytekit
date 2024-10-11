@@ -67,8 +67,7 @@ class PydanticTransformer(TypeTransformer[BaseModel]):
             return self.from_binary_idl(lv.scalar.binary, expected_python_type)  # type: ignore
 
         json_str = _json_format.MessageToJson(lv.scalar.generic)
-        dict_obj = json.loads(json_str)
-        python_val = expected_python_type.model_validate(obj=dict_obj, strict=False)
+        python_val = expected_python_type.model_validate_json(json_str, strict=False)
         return python_val
 
 
