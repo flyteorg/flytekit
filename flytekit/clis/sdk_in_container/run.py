@@ -522,6 +522,15 @@ def run_remote(
             execution_cluster_label=run_level_params.execution_cluster_label,
         )
 
+    console_url = remote.generate_console_url(execution)
+    s = (
+        click.style("\n[✔] ", fg="green")
+        + "Go to "
+        + click.style(console_url, fg="cyan")
+        + " to see execution in the console."
+    )
+    click.echo(s)
+
     if run_level_params.wait_execution:
         if execution.closure.phase != WorkflowExecutionPhase.SUCCEEDED:
             click.secho(
@@ -534,15 +543,6 @@ def run_remote(
             sys.exit(-1)
         else:
             click.secho(f"Execution {execution.id.name} has succeeded.", fg="green")
-
-    console_url = remote.generate_console_url(execution)
-    s = (
-        click.style("\n[✔] ", fg="green")
-        + "Go to "
-        + click.style(console_url, fg="cyan")
-        + " to see execution in the console."
-    )
-    click.echo(s)
 
     if run_level_params.dump_snippet:
         dump_flyte_remote_snippet(execution, project, domain)
