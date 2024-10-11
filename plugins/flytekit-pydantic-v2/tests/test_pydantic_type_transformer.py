@@ -127,28 +127,29 @@ def test_all_types_in_pydantic_basemodel_wf(local_dummy_file, local_dummy_direct
 
     @task
     def t_inner(inner_dc: InnerDC):
-        assert (type(inner_dc), InnerDC) # type: ignore
+        assert type(inner_dc) is InnerDC
 
         # f: List[FlyteFile]
         for ff in inner_dc.f:
-            assert (type(ff), FlyteFile) # type: ignore
+            assert type(ff) is FlyteFile
             with open(ff, "r") as f:
                 assert f.read() == "Hello FlyteFile"
         # j: Dict[int, FlyteFile]
         for _, ff in inner_dc.j.items():
-            assert (type(ff), FlyteFile) # type: ignore
+            assert type(ff) is FlyteFile
             with open(ff, "r") as f:
                 assert f.read() == "Hello FlyteFile"
         # n: FlyteFile
-        assert (type(inner_dc.n), FlyteFile) # type: ignore
+        assert type(inner_dc.n) is FlyteFile
         with open(inner_dc.n, "r") as f:
             assert f.read() == "Hello FlyteFile"
         # o: FlyteDirectory
-        assert (type(inner_dc.o), FlyteDirectory) # type: ignore
+        assert type(inner_dc.o) is FlyteDirectory
         assert not inner_dc.o.downloaded
         with open(os.path.join(inner_dc.o, "file"), "r") as fh:
             assert fh.read() == "Hello FlyteDirectory"
         assert inner_dc.o.downloaded
+
         # enum: Status
         assert inner_dc.enum_status == Status.PENDING
 
@@ -274,30 +275,31 @@ def test_input_from_flyte_console_pydantic_basemodel(local_dummy_file, local_dum
         inner_dc: InnerDC = field(default_factory=lambda: InnerDC())
         enum_status: Status = field(default=Status.PENDING)
 
+    @task
     def t_inner(inner_dc: InnerDC):
-        assert (type(inner_dc), InnerDC) # type: ignore
+        assert type(inner_dc) is InnerDC
 
         # f: List[FlyteFile]
         for ff in inner_dc.f:
-            assert (type(ff), FlyteFile) # type: ignore
+            assert type(ff) is FlyteFile
             with open(ff, "r") as f:
                 assert f.read() == "Hello FlyteFile"
         # j: Dict[int, FlyteFile]
         for _, ff in inner_dc.j.items():
-            assert (type(ff), FlyteFile) # type: ignore
+            assert type(ff) is FlyteFile
             with open(ff, "r") as f:
                 assert f.read() == "Hello FlyteFile"
         # n: FlyteFile
-        assert (type(inner_dc.n), FlyteFile) # type: ignore
+        assert type(inner_dc.n) is FlyteFile
         with open(inner_dc.n, "r") as f:
             assert f.read() == "Hello FlyteFile"
         # o: FlyteDirectory
-        assert (type(inner_dc.o), FlyteDirectory) # type: ignore
+        assert type(inner_dc.o) is FlyteDirectory
         assert not inner_dc.o.downloaded
         with open(os.path.join(inner_dc.o, "file"), "r") as fh:
             assert fh.read() == "Hello FlyteDirectory"
         assert inner_dc.o.downloaded
-        print("Test InnerDC Successfully Passed")
+
         # enum: Status
         assert inner_dc.enum_status == Status.PENDING
 
