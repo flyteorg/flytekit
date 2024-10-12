@@ -84,7 +84,7 @@ class NumpyArrayTransformer(TypeTransformer[np.ndarray]):
             arr=python_val,
             allow_pickle=metadata.get("allow_pickle", False),
         )
-        remote_path = ctx.file_access.put_raw_data(local_path)
+        remote_path = ctx.file_access.async_put_raw_data(local_path)
         return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[np.ndarray]) -> np.ndarray:

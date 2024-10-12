@@ -444,7 +444,7 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
     def get_literal_type(self, t: typing.Type[FlyteDirectory]) -> LiteralType:
         return _type_models.LiteralType(blob=self._blob_type(format=FlyteDirToMultipartBlobTransformer.get_format(t)))
 
-    def to_literal(
+    async def async_to_literal(
         self,
         ctx: FlyteContext,
         python_val: FlyteDirectory,
@@ -499,7 +499,7 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
                 remote_directory = ctx.file_access.get_random_remote_directory()
             if not pathlib.Path(source_path).is_dir():
                 raise FlyteAssertion("Expected a directory. {} is not a directory".format(source_path))
-            ctx.file_access.put_data(source_path, remote_directory, is_multipart=True, batch_size=batch_size)
+            await ctx.file_access.async_put_data(source_path, remote_directory, is_multipart=True, batch_size=batch_size)
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_directory)))
 
         # If not uploading, then we can only take the original source path as the uri.

@@ -91,7 +91,7 @@ class PandasDataFrameTransformer(TypeTransformer[pandas.DataFrame]):
     def get_literal_type(self, t: Type[pandas.DataFrame]) -> LiteralType:
         return LiteralType(schema=self._get_schema_type())
 
-    def to_literal(
+    async def to_literal(
         self,
         ctx: FlyteContext,
         python_val: pandas.DataFrame,
@@ -105,7 +105,7 @@ class PandasDataFrameTransformer(TypeTransformer[pandas.DataFrame]):
             ctx.file_access.raw_output_prefix,
             ctx.file_access.get_random_string(),
         )
-        remote_path = ctx.file_access.put_data(local_dir, remote_path, is_multipart=True)
+        remote_path = await ctx.file_access.async_put_data(local_dir, remote_path, is_multipart=True)
         return Literal(scalar=Scalar(schema=Schema(remote_path, self._get_schema_type())))
 
     def to_python_value(

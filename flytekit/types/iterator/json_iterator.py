@@ -83,7 +83,7 @@ class JSONIteratorTransformer(TypeTransformer[Iterator[JSON]]):
             )
         )
 
-        return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=ctx.file_access.put_raw_data(uri))))
+        return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=ctx.file_access.async_put_raw_data(uri))))
 
     def to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[Iterator[JSON]]

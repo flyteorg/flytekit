@@ -647,7 +647,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                 if not uri:
                     raise ValueError(f"If dataframe is not specified, then the uri should be specified. {python_val}")
                 if not ctx.file_access.is_remote(uri):
-                    uri = ctx.file_access.put_raw_data(uri)
+                    uri = ctx.file_access.async_put_raw_data(uri)
                 sd_model = literals.StructuredDataset(
                     uri=uri,
                     metadata=StructuredDatasetMetadata(structured_dataset_type=sdt),

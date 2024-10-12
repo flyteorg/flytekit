@@ -60,7 +60,7 @@ class FlytePickle(typing.Generic[T]):
         with open(uri, "w+b") as outfile:
             cloudpickle.dump(python_val, outfile)
 
-        return ctx.file_access.put_raw_data(uri)
+        return ctx.file_access.async_put_raw_data(uri)
 
     @classmethod
     def from_pickle(cls, uri: str) -> typing.Any:

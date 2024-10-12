@@ -63,17 +63,17 @@ def test_write_folder_put_raw(mock_uuid_class):
     df.to_parquet(bio2, engine="pyarrow")
 
     # Write foo/a.txt by specifying the upload prefix and a file name
-    fs.put_raw_data(sio, upload_prefix="foo", file_name="a.txt")
+    fs.async_put_raw_data(sio, upload_prefix="foo", file_name="a.txt")
 
     # Write bar/00000 by specifying the folder in the filename
-    fs.put_raw_data(bio, file_name="bar/00000")
+    fs.async_put_raw_data(bio, file_name="bar/00000")
 
     # Write pd.parquet and baz by specifying an empty string upload prefix
-    fs.put_raw_data(bio2, upload_prefix="", file_name="pd.parquet")
-    fs.put_raw_data(bio, upload_prefix="", file_name="baz/00000")
+    fs.async_put_raw_data(bio2, upload_prefix="", file_name="pd.parquet")
+    fs.async_put_raw_data(bio, upload_prefix="", file_name="baz/00000")
 
     # Write sio again with known folder but random file name
-    fs.put_raw_data(sio, upload_prefix="baz")
+    fs.async_put_raw_data(sio, upload_prefix="baz")
 
     paths = [str(p) for p in pathlib.Path(raw).rglob("*")]
     assert len(paths) == 9
@@ -107,7 +107,7 @@ def test_write_large_put_raw():
     sio.seek(0)
 
     # Write foo/a.txt by specifying the upload prefix and a file name
-    fs.put_raw_data(sio, upload_prefix="foo", file_name="a.txt", block_size=5, read_chunk_size_bytes=1)
+    fs.async_put_raw_data(sio, upload_prefix="foo", file_name="a.txt", block_size=5, read_chunk_size_bytes=1)
     output_file = os.path.join(raw, "foo", "a.txt")
     with open(output_file, "rb") as f:
         assert f.read() == arbitrary_text.encode("utf-8")
@@ -130,7 +130,7 @@ def test_write_known_location():
     # Write foo/a.txt by specifying the upload prefix and a file name
     known_dest_dir = tempfile.mkdtemp()
     set_path = fs.join(known_dest_dir, "a.txt")
-    output_path = fs.put_raw_data(sio, upload_prefix=known_dest_dir, file_name="a.txt", skip_raw_data_prefix=True)
+    output_path = fs.async_put_raw_data(sio, upload_prefix=known_dest_dir, file_name="a.txt", skip_raw_data_prefix=True)
     assert output_path == set_path
     with open(output_path, "rb") as f:
         assert f.read() == arbitrary_text.encode("utf-8")
