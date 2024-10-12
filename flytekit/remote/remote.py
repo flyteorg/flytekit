@@ -482,7 +482,9 @@ class FlyteRemote(object):
         Returns the active version of the launch plan if it exists or returns None
         """
         try:
-            lp = self.client.get_active_launch_plan(NamedEntityIdentifier(project, domain, name))
+            lp = self.client.get_active_launch_plan(
+                NamedEntityIdentifier(project or self.default_project, domain or self.default_domain, name)
+            )
             if lp is not None:
                 return self._upgrade_launchplan(lp)
         except FlyteEntityNotExistException as e:
