@@ -17,6 +17,7 @@ from flytekit.constants import CopyFileDetection
 from flytekit.interaction.click_types import key_value_callback
 from flytekit.tools.fast_registration import FastPackageOptions
 from flytekit.tools.repo import NoSerializableEntitiesError, serialize_and_package
+from flytekit.clis.sdk_in_container.utils import validate_package
 
 
 @click.command("package")
@@ -41,6 +42,16 @@ from flytekit.tools.repo import NoSerializableEntitiesError, serialize_and_packa
     type=click.Path(exists=True, file_okay=False, readable=True, resolve_path=True, allow_dash=True),
     default=".",
     help="Local filesystem path to the root of the package. Example: --source /path/to/workflows",
+)
+@click.option(
+    "-k",
+    "--pkgs",
+    required=False,
+    multiple=True,
+    callback=validate_package,
+    help="Dot-delineated python packages to operate on. Multiple may be specified (can use commas, or specify the "
+    "switch multiple times. Please note that this "
+    "option will override the option specified in the configuration file, or environment variable",
 )
 @click.option(
     "-o",
@@ -114,6 +125,7 @@ def package(
     ctx,
     image_config,
     source,
+    pkgs,
     output,
     force,
     copy: typing.Optional[CopyFileDetection],
