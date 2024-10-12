@@ -71,7 +71,7 @@ class ArrayNode:
 
         self.metadata = None
         if isinstance(target, LaunchPlan):
-            if self._execution_mode != flyteidl.core.ArrayNode.FULL_STATE:
+            if self._execution_mode != flyteidl.array_node.ExecutionMode.FullState:
                 raise ValueError("Only execution version 1 is supported for LaunchPlans.")
             if metadata:
                 if isinstance(metadata, _workflow_model.NodeMetadata):
