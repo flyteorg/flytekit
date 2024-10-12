@@ -64,6 +64,7 @@ from flytekit.models import types as type_models
 from flytekit.models.admin import common as admin_common_models
 from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.models.admin.common import Sort
+from flytekit.models.common import NamedEntityIdentifier
 from flytekit.models.core import identifier as id_models
 from flytekit.models.core import workflow as workflow_model
 from flytekit.models.core.identifier import Identifier, ResourceType, SignalIdentifier, WorkflowExecutionIdentifier
@@ -462,6 +463,34 @@ class FlyteRemote(object):
                     get_launch_plan_from_branch(node.branch_node, node_launch_plans)
         return FlyteWorkflow.promote_from_closure(compiled_wf, node_launch_plans)
 
+    def _upgrade_launchplan(self, lp: launch_plan_models.LaunchPlan) -> FlyteLaunchPlan:
+        """
+        Given a remote returned launchplan, upgrade it to a FlyteLaunchPlan object that holds the interface and
+        the FlyteWorkflow object. This can be used in the SDK.
+        """
+        flyte_lp = FlyteLaunchPlan.promote_from_model(lp.id, lp.spec)
+        wf_id = flyte_lp.workflow_id
+        workflow = self.fetch_workflow(wf_id.project, wf_id.domain, wf_id.name, wf_id.version)
+        flyte_lp._interface = workflow.interface
+        flyte_lp._flyte_workflow = workflow
+        return flyte_lp
+
+    def fetch_active_launchplan(
+        self, project: str = None, domain: str = None, name: str = None
+    ) -> typing.Optional[FlyteLaunchPlan]:
+        """
+        Returns the active version of the launch plan if it exists or returns None
+        """
+        try:
+            lp = self.client.get_active_launch_plan(
+                NamedEntityIdentifier(project or self.default_project, domain or self.default_domain, name)
+            )
+            if lp is not None:
+                return self._upgrade_launchplan(lp)
+        except FlyteEntityNotExistException as e:
+            logger.debug(f"Launch plan not found, error:{str(e)}")
+        return None
+
     def fetch_launch_plan(
         self, project: str = None, domain: str = None, name: str = None, version: str = None
     ) -> FlyteLaunchPlan:
@@ -486,14 +515,7 @@ class FlyteRemote(object):
             version,
         )
         admin_launch_plan = self.client.get_launch_plan(launch_plan_id)
-        flyte_launch_plan = FlyteLaunchPlan.promote_from_model(launch_plan_id, admin_launch_plan.spec)
-
-        wf_id = flyte_launch_plan.workflow_id
-        workflow = self.fetch_workflow(wf_id.project, wf_id.domain, wf_id.name, wf_id.version)
-        flyte_launch_plan._interface = workflow.interface
-        flyte_launch_plan._flyte_workflow = workflow
-
-        return flyte_launch_plan
+        return self._upgrade_launchplan(admin_launch_plan)
 
     def fetch_execution(self, project: str = None, domain: str = None, name: str = None) -> FlyteWorkflowExecution:
         """Fetch a workflow execution entity from flyte admin.

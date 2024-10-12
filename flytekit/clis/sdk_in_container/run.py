@@ -15,10 +15,10 @@ import rich_click as click
 import yaml
 from click import Context
 from mashumaro.codecs.json import JSONEncoder
-from rich.progress import Progress
+from rich.progress import Progress, TextColumn, TimeElapsedColumn
 from typing_extensions import get_origin
 
-from flytekit import Annotations, FlyteContext, FlyteContextManager, Labels, Literal
+from flytekit import Annotations, FlyteContext, FlyteContextManager, Labels, Literal, WorkflowExecutionPhase
 from flytekit.clis.sdk_in_container.helpers import (
     parse_copy,
     patch_image_config,
@@ -499,21 +499,28 @@ def run_remote(
     Helper method that executes the given remote FlyteLaunchplan, FlyteWorkflow or FlyteTask
     """
 
-    execution = remote.execute(
-        entity,
-        inputs=inputs,
-        project=project,
-        domain=domain,
-        execution_name=run_level_params.name,
-        wait=run_level_params.wait_execution,
-        options=options_from_run_params(run_level_params),
-        type_hints=type_hints,
-        overwrite_cache=run_level_params.overwrite_cache,
-        envs=run_level_params.envvars,
-        tags=run_level_params.tags,
-        cluster_pool=run_level_params.cluster_pool,
-        execution_cluster_label=run_level_params.execution_cluster_label,
-    )
+    msg = "Running execution on remote."
+    if run_level_params.wait_execution:
+        msg += " Waiting to complete..."
+    p = Progress(TimeElapsedColumn(), TextColumn(msg), transient=True)
+    t = p.add_task("exec")
+    with p:
+        p.start_task(t)
+        execution = remote.execute(
+            entity,
+            inputs=inputs,
+            project=project,
+            domain=domain,
+            execution_name=run_level_params.name,
+            wait=run_level_params.wait_execution,
+            options=options_from_run_params(run_level_params),
+            type_hints=type_hints,
+            overwrite_cache=run_level_params.overwrite_cache,
+            envs=run_level_params.envvars,
+            tags=run_level_params.tags,
+            cluster_pool=run_level_params.cluster_pool,
+            execution_cluster_label=run_level_params.execution_cluster_label,
+        )
 
     console_url = remote.generate_console_url(execution)
     s = (
@@ -523,6 +530,19 @@ def run_remote(
         + " to see execution in the console."
     )
     click.echo(s)
+
+    if run_level_params.wait_execution:
+        if execution.closure.phase != WorkflowExecutionPhase.SUCCEEDED:
+            click.secho(
+                f"Execution {execution.id.name} did not complete successfully, "
+                f"phase {WorkflowExecutionPhase.enum_to_string(execution.closure.phase)}",
+                fg="red",
+            )
+            if execution.closure.error:
+                click.secho(f"{execution.closure.error.message}", fg="red")
+            sys.exit(-1)
+        else:
+            click.secho(f"Execution {execution.id.name} has succeeded.", fg="green")
 
     if run_level_params.dump_snippet:
         dump_flyte_remote_snippet(execution, project, domain)
@@ -718,9 +738,26 @@ class DynamicEntityLaunchCommand(click.RichCommand):
         run_level_params: RunLevelParams = ctx.obj
         r = run_level_params.remote_instance()
         if self._launcher == self.LP_LAUNCHER:
-            entity = r.fetch_launch_plan(run_level_params.project, run_level_params.domain, self._entity_name)
+            parts = self._entity_name.split(":")
+            if len(parts) == 2:
+                entity = r.fetch_launch_plan(run_level_params.project, run_level_params.domain, parts[0], parts[1])
+            else:
+                entity = r.fetch_active_launchplan(run_level_params.project, run_level_params.domain, self._entity_name)
+                if not entity:
+                    click.echo(
+                        click.style(
+                            f"No active launch plan found with name {self._entity_name},"
+                            f" using the latest version by created time.",
+                            fg="yellow",
+                        )
+                    )
+                    entity = r.fetch_launch_plan(run_level_params.project, run_level_params.domain, self._entity_name)
         else:
-            entity = r.fetch_task(run_level_params.project, run_level_params.domain, self._entity_name)
+            parts = self._entity_name.split(":")
+            if len(parts) == 2:
+                entity = r.fetch_task(run_level_params.project, run_level_params.domain, parts[0], parts[1])
+            else:
+                entity = r.fetch_task(run_level_params.project, run_level_params.domain, self._entity_name)
         self._entity = entity
         return entity
 
@@ -798,7 +835,10 @@ class RemoteEntityGroup(click.RichGroup):
     def __init__(self, command_name: str):
         super().__init__(
             name=command_name,
-            help=f"Retrieve {command_name} from a remote flyte instance and execute them.",
+            help=f"Retrieve {command_name} from a remote flyte instance and execute them. The command only lists the "
+            f"names of the entities, but it is possible to pass in a specific version of the entity if known in "
+            f"the format <name>:<version>. If version is not provided, the latest version is used for tasks and "
+            f"active or latest version is used for launchplans.",
         )
         self._command_name = command_name
         self._entities = []
