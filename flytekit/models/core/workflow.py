@@ -114,11 +114,16 @@ class IfElseBlock(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.workflow_pb2.IfElseBlock
         """
+        default = None
+        if self.else_node:
+            default = flyteidl.if_else_block.Default.ElseNode(self.else_node.to_flyte_idl())
+        elif self.error:
+            default = flyteidl.if_else_block.Default.Error(self.error.to_flyte_idl())
+
         return flyteidl.core.IfElseBlock(
             case=self.case.to_flyte_idl(),
             other=[a.to_flyte_idl() for a in self.other] if self.other else None,
-            else_node=self.else_node.to_flyte_idl() if self.else_node else None,
-            error=self.error.to_flyte_idl() if self.error else None,
+            default = default,
         )
 
     @classmethod

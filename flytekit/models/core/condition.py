@@ -59,7 +59,7 @@ class ComparisonExpression(_common.FlyteIdlEntity):
         :rtype: flyteidl.core.condition_pb2.ComparisonExpression
         """
         return flyteidl.core.ComparisonExpression(
-            operator=self.operator,
+            operator=int(self.operator),
             left_value=self.left_value.to_flyte_idl(),
             right_value=self.right_value.to_flyte_idl(),
         )
@@ -174,10 +174,16 @@ class Operand(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.condition_pb2.Operand
         """
+        val = None
+        if self.primitive:
+            val = flyteidl.operand.Val.Primitive(self.primitive.to_flyte_idl())
+        elif self.var:
+            val = flyteidl.operand.Val.Var(self.var)
+        elif self.scalar:
+            val = flyteidl.operand.Val.Scalar(self.scalar.to_flyte_idl())
+        
         return flyteidl.core.Operand(
-            primitive=self.primitive.to_flyte_idl() if self.primitive else None,
-            var=self.var if self.var else None,
-            scalar=self.scalar.to_flyte_idl() if self.scalar else None,
+            val = val
         )
 
     @classmethod
@@ -224,9 +230,13 @@ class BooleanExpression(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.condition_pb2.BooleanExpression
         """
+        expr = None
+        if self.conjunction:
+            expr = flyteidl.boolean_expression.Expr.Conjunction(self.conjunction.to_flyte_idl())
+        elif self.comparison:
+            expr = flyteidl.boolean_expression.Expr.Comparison(self.comparison.to_flyte_idl())
         return flyteidl.core.BooleanExpression(
-            conjunction=self.conjunction.to_flyte_idl() if self.conjunction else None,
-            comparison=self.comparison.to_flyte_idl() if self.comparison else None,
+            expr = expr
         )
 
     @classmethod
