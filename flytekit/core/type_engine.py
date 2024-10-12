@@ -654,7 +654,6 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"{expected_python_type} is not of type @dataclass, only Dataclasses are supported for "
                 "user defined datatypes in Flytekit"
             )
-
         json_str = flyteidl.DumpStruct(lv.scalar.generic)
 
         # The function looks up or creates a JSONDecoder specifically designed for the object's type.

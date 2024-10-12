@@ -2895,7 +2895,7 @@ def test_DataclassTransformer_to_literal():
 
     lv_mashumaro = transformer.to_literal(ctx, my_dat_class_mashumaro, MyDataClassMashumaro, MyDataClassMashumaro)
     assert lv_mashumaro is not None
-    assert lv_mashumaro.scalar.generic["x"] == 5
+    assert lv_mashumaro.scalar.generic.fields["x"].kind[0] == 5
 
     lv_mashumaro_orjson = transformer.to_literal(
         ctx,
@@ -2904,11 +2904,11 @@ def test_DataclassTransformer_to_literal():
         MyDataClassMashumaroORJSON,
     )
     assert lv_mashumaro_orjson is not None
-    assert lv_mashumaro_orjson.scalar.generic["x"] == 5
+    assert lv_mashumaro_orjson.scalar.generic.fields["x"].kind[0] == 5
 
     lv = transformer.to_literal(ctx, my_data_class, MyDataClass, MyDataClass)
     assert lv is not None
-    assert lv.scalar.generic["x"] == 5
+    assert lv.scalar.generic.fields["x"].kind[0] == 5
 
 
 def test_DataclassTransformer_to_python_value():
@@ -2928,7 +2928,8 @@ def test_DataclassTransformer_to_python_value():
     de = DataclassTransformer()
 
     json_str = '{ "x" : 5 }'
-    mock_literal = Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))
+    import flyteidl_rust as flyteidl
+    mock_literal = Literal(scalar=Scalar(generic=flyteidl.ParseStruct(json_str)))
 
     result = de.to_python_value(FlyteContext.current_context(), mock_literal, MyDataClass)
     assert isinstance(result, MyDataClass)
