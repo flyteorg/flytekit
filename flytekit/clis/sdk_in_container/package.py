@@ -40,7 +40,7 @@ from flytekit.tools.repo import NoSerializableEntitiesError, serialize_and_packa
     required=False,
     type=click.Path(exists=True, file_okay=False, readable=True, resolve_path=True, allow_dash=True),
     default=".",
-    help="Local filesystem path to the root of the package.",
+    help="Local filesystem path to the root of the package. Example: --source /path/to/workflows",
 )
 @click.option(
     "-o",
