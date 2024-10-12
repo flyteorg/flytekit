@@ -78,6 +78,7 @@ class NotebookTask(PythonInstanceTask[T]):
                                                # idea to use the modulename
             notebook_path="../path/to/my_notebook",
             render_deck=True,
+            enable_deck=True,
             inputs=kwtypes(v=int),
             outputs=kwtypes(x=int, y=str),
             metadata=TaskMetadata(retries=3, cache=True, cache_version="1.0"),

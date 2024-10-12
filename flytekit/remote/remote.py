@@ -2419,12 +2419,15 @@ class FlyteRemote(object):
 
         if not isinstance(entity, (FlyteWorkflow, FlyteTask, FlyteLaunchPlan)):
             raise ValueError(f"Only remote entities can be looked at in the console, got type {type(entity)}")
+        return self.generate_url_from_id(id=entity.id)
+
+    def generate_url_from_id(self, id: Identifier):
         rt = "workflow"
-        if entity.id.resource_type == ResourceType.TASK:
+        if id.resource_type == ResourceType.TASK:
             rt = "task"
-        elif entity.id.resource_type == ResourceType.LAUNCH_PLAN:
+        elif id.resource_type == ResourceType.LAUNCH_PLAN:
             rt = "launch_plan"
-        return f"{self.generate_console_http_domain()}/console/projects/{entity.id.project}/domains/{entity.id.domain}/{rt}/{entity.name}/version/{entity.id.version}"  # noqa
+        return f"{self.generate_console_http_domain()}/console/projects/{id.project}/domains/{id.domain}/{rt}/{id.name}/version/{id.version}"
 
     def launch_backfill(
         self,

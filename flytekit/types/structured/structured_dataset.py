@@ -6,7 +6,7 @@ import types
 import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field, is_dataclass
-from typing import Dict, Generator, List, Optional, Type, Union
+from typing import Dict, Generator, Generic, List, Optional, Type, Union
 
 import msgpack
 from dataclasses_json import config
@@ -223,7 +223,7 @@ def extract_cols_and_format(
     return t, ordered_dict_cols, fmt, pa_schema
 
 
-class StructuredDatasetEncoder(ABC):
+class StructuredDatasetEncoder(ABC, Generic[T]):
     def __init__(
         self,
         python_type: Type[T],
@@ -290,7 +290,7 @@ class StructuredDatasetEncoder(ABC):
         raise NotImplementedError
 
 
-class StructuredDatasetDecoder(ABC):
+class StructuredDatasetDecoder(ABC, Generic[DF]):
     def __init__(
         self,
         python_type: Type[DF],
