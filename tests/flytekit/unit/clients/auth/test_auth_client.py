@@ -1,6 +1,7 @@
 import http.server as _BaseHTTPServer
 import re
 from multiprocessing import Queue as _Queue
+import pytest
 
 from flytekit.clients.auth.auth_client import (
     EndpointMetadata,
@@ -27,7 +28,7 @@ def test_create_code_challenge():
     test_code_verifier = "test_code_verifier"
     assert _create_code_challenge(test_code_verifier) == "Qq1fGD0HhxwbmeMrqaebgn1qhvKeguQPXqLdpmixaM4"
 
-
+@pytest.mark.flyteidl_rust
 def test_oauth_http_server():
     queue = _Queue()
     server = OAuthHTTPServer(

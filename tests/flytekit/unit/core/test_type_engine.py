@@ -621,7 +621,7 @@ def test_list_transformer():
     xx = TypeEngine.to_python_value(ctx, lit, typing.List[int])
     assert xx == [3, 4]
 
-@pytest.mark.flyteidl_rust()
+@pytest.mark.flyteidl_rust
 def test_protos():
     ctx = FlyteContext.current_context()
     import flyteidl_rust as flyteidl

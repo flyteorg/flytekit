@@ -194,7 +194,7 @@ class MultiInstanceGPUAccelerator(BaseAccelerator):
         if self._partition_size is None:
             msg.unpartitioned = flyteidl.gpu_accelerator.PartitionSizeValue.Unpartitioned(True)
         else:
-            msg.partition_size_value =  flyteidl.gpu_accelerator.PartitionSizeValue.PartitionSize(self._partition_size)
+            msg.partition_size_value = flyteidl.gpu_accelerator.PartitionSizeValue.PartitionSize(self._partition_size)
         return msg
 
 

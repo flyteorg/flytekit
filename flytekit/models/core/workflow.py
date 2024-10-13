@@ -123,7 +123,7 @@ class IfElseBlock(_common.FlyteIdlEntity):
         return flyteidl.core.IfElseBlock(
             case=self.case.to_flyte_idl(),
             other=[a.to_flyte_idl() for a in self.other] if self.other else None,
-            default = default,
+            default=default,
         )
 
     @classmethod
@@ -246,7 +246,9 @@ class NodeMetadata(_common.FlyteIdlEntity):
             cache_serializable_value=self.cache_serializable,
         )
         if self.timeout:
-            node_metadata.timeout.FromTimedelta(self.timeout)
+            from flytekit.models import utils
+
+            node_metadata.timeout = utils.convert_from_timedelta_to_duration(self.timeout)
         return node_metadata
 
     @classmethod
@@ -376,14 +378,11 @@ class GateNode(_common.FlyteIdlEntity):
         if self.signal:
             condition = flyteidl.gate_node.Condition.Signal(self.signal.to_flyte_idl())
         elif self.sleep:
-            condition = flyteidl.gate_node.Condition.Sleep(self.signal.to_flyte_idl())
+            condition = flyteidl.gate_node.Condition.Sleep(self.sleep.to_flyte_idl())
         elif self.approve:
-            condition = flyteidl.gate_node.Condition.Approve(self.signal.to_flyte_idl())
+            condition = flyteidl.gate_node.Condition.Approve(self.approve.to_flyte_idl())
         return flyteidl.core.GateNode(
             condition=condition,
-            signal=self.signal.to_flyte_idl() if self.signal else None,
-            sleep=self.sleep.to_flyte_idl() if self.sleep else None,
-            approve=self.approve.to_flyte_idl() if self.approve else None,
         )
 
     @classmethod

@@ -94,13 +94,13 @@ def test_dataclass_complex_transform(two_sample_inputs):
     ctx = FlyteContextManager.current_context()
     literal_type = TypeEngine.to_literal_type(MyInput)
     first_literal = TypeEngine.to_literal(ctx, my_input, MyInput, literal_type)
-    assert first_literal.scalar.generic["apriori_config"] is not None
+    assert first_literal.scalar.generic.fields["apriori_config"] is not None
 
     converted_back_1 = TypeEngine.to_python_value(ctx, first_literal, MyInput)
     assert converted_back_1.apriori_config is not None
 
     second_literal = TypeEngine.to_literal(ctx, converted_back_1, MyInput, literal_type)
-    assert second_literal.scalar.generic["apriori_config"] is not None
+    assert second_literal.scalar.generic.fields["apriori_config"] is not None
 
     converted_back_2 = TypeEngine.to_python_value(ctx, second_literal, MyInput)
     assert converted_back_2.apriori_config is not None
@@ -108,8 +108,8 @@ def test_dataclass_complex_transform(two_sample_inputs):
     input_list = [my_input, my_input_2]
     input_list_type = TypeEngine.to_literal_type(List[MyInput])
     literal_list = TypeEngine.to_literal(ctx, input_list, List[MyInput], input_list_type)
-    assert literal_list.collection.literals[0].scalar.generic["apriori_config"] is not None
-    assert literal_list.collection.literals[1].scalar.generic["apriori_config"] is not None
+    assert literal_list.collection.literals[0].scalar.generic.fields["apriori_config"] is not None
+    assert literal_list.collection.literals[1].scalar.generic.fields["apriori_config"] is not None
 
 
 def test_two(two_sample_inputs):

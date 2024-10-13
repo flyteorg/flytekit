@@ -19,7 +19,6 @@ from typing import Dict, List, NamedTuple, Optional, Type, cast
 import flyteidl_rust as flyteidl
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from google.protobuf.message import Message
-from marshmallow_enum import EnumField, LoadDumpOptions
 from mashumaro.codecs.json import JSONDecoder, JSONEncoder
 from mashumaro.mixins.json import DataClassJSONMixin
 from typing_extensions import Annotated, get_args, get_origin

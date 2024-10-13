@@ -181,10 +181,8 @@ class Operand(_common.FlyteIdlEntity):
             val = flyteidl.operand.Val.Var(self.var)
         elif self.scalar:
             val = flyteidl.operand.Val.Scalar(self.scalar.to_flyte_idl())
-        
-        return flyteidl.core.Operand(
-            val = val
-        )
+
+        return flyteidl.core.Operand(val=val)
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -235,9 +233,7 @@ class BooleanExpression(_common.FlyteIdlEntity):
             expr = flyteidl.boolean_expression.Expr.Conjunction(self.conjunction.to_flyte_idl())
         elif self.comparison:
             expr = flyteidl.boolean_expression.Expr.Comparison(self.comparison.to_flyte_idl())
-        return flyteidl.core.BooleanExpression(
-            expr = expr
-        )
+        return flyteidl.core.BooleanExpression(expr=expr)
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):

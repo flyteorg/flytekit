@@ -1,5 +1,6 @@
 import pytest
 from flyteidl.admin.signal_pb2 import Signal, SignalList
+import flyteidl_rust as flyteidl
 from mock import MagicMock
 
 from flytekit.configuration import Config
@@ -21,14 +22,14 @@ def test_remote_list_signals(remote):
     wfeid = WorkflowExecutionIdentifier("p", "d", "execid")
     signal_id = SignalIdentifier(signal_id="sigid", execution_id=wfeid).to_flyte_idl()
     lt = TypeEngine.to_literal_type(int)
-    signal = Signal(
+    signal = flyteidl.admin.Signal(
         id=signal_id,
         type=lt.to_flyte_idl(),
         value=TypeEngine.to_literal(ctx, 3, int, lt).to_flyte_idl(),
     )
 
     mock_client = MagicMock()
-    mock_client.list_signals.return_value = SignalList(signals=[signal], token="")
+    mock_client.list_signals.return_value = flyteidl.admin.SignalList(signals=[signal], token="")
 
     remote._client = mock_client
     res = remote.list_signals("execid", "p", "d", limit=10)
@@ -40,7 +41,7 @@ def test_remote_set_signal(remote):
 
     def checker(request):
         assert request.id.signal_id == "sigid"
-        assert request.value.scalar.primitive.integer == 3
+        assert request.value.value[0].value[0].value[0] == 3
 
     mock_client.set_signal.side_effect = checker
 
