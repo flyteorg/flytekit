@@ -154,55 +154,6 @@ def test_serialization(serialization_settings):
     ]
 
 
-def test_interactive_serialization(interactive_serialization_settings):
-    @task
-    def t1(a: int) -> int:
-        return a + 1
-
-    def mock_file_uploader(dest: pathlib.Path):
-        return (0, dest.name)
-
-    arraynode_maptask = map_task(t1, metadata=TaskMetadata(retries=2))
-    option = Options()
-    option.file_uploader = mock_file_uploader
-    task_spec = get_serializable(OrderedDict(), interactive_serialization_settings, arraynode_maptask, options=option)
-
-    assert task_spec.template.metadata.retries.retries == 2
-    assert task_spec.template.custom["minSuccessRatio"] == 1.0
-    assert task_spec.template.type == "python-task"
-    assert task_spec.template.task_type_version == 1
-    assert task_spec.template.container.args == [
-        "pyflyte-fast-execute",
-        "--additional-distribution",
-        PICKLE_FILE_PATH,
-        "--dest-dir",
-        ".",
-        "--",
-        "pyflyte-map-execute",
-        "--inputs",
-        "{{.input}}",
-        "--output-prefix",
-        "{{.outputPrefix}}",
-        "--raw-output-data-prefix",
-        "{{.rawOutputDataPrefix}}",
-        "--checkpoint-path",
-        "{{.checkpointOutputPrefix}}",
-        "--prev-checkpoint",
-        "{{.prevCheckpointPrefix}}",
-        "--resolver",
-        "flytekit.core.array_node_map_task.ArrayNodeMapTaskResolver",
-        "--",
-        "vars",
-        "",
-        "resolver",
-        "flytekit.core.python_auto_container.default_notebook_task_resolver",
-        "task-module",
-        "tests.flytekit.unit.core.test_array_node_map_task",
-        "task-name",
-        "t1",
-    ]
-
-
 def test_fast_serialization(serialization_settings):
     serialization_settings.fast_serialization_settings = FastSerializationSettings(enabled=True)
 

@@ -828,7 +828,6 @@ class SerializationSettings(DataClassJsonMixin):
             can be fast registered (and thus omit building a Docker image) this object contains additional parameters
             for serialization.
         source_root (Optional[str]): The root directory of the source code.
-        interactive_mode_enabled (bool): Whether or not the task is being serialized in interactive mode.
     """
 
     image_config: ImageConfig
@@ -841,7 +840,6 @@ class SerializationSettings(DataClassJsonMixin):
     flytekit_virtualenv_root: Optional[str] = None
     fast_serialization_settings: Optional[FastSerializationSettings] = None
     source_root: Optional[str] = None
-    interactive_mode_enabled: bool = False
 
     def __post_init__(self):
         if self.flytekit_virtualenv_root is None:
@@ -916,7 +914,6 @@ class SerializationSettings(DataClassJsonMixin):
             python_interpreter=self.python_interpreter,
             fast_serialization_settings=self.fast_serialization_settings,
             source_root=self.source_root,
-            interactive_mode_enabled=self.interactive_mode_enabled,
         )
 
     def should_fast_serialize(self) -> bool:
@@ -968,7 +965,6 @@ class SerializationSettings(DataClassJsonMixin):
         python_interpreter: Optional[str] = None
         fast_serialization_settings: Optional[FastSerializationSettings] = None
         source_root: Optional[str] = None
-        interactive_mode_enabled: bool = False
 
         def with_fast_serialization_settings(self, fss: fast_serialization_settings) -> SerializationSettings.Builder:
             self.fast_serialization_settings = fss
@@ -986,5 +982,4 @@ class SerializationSettings(DataClassJsonMixin):
                 python_interpreter=self.python_interpreter,
                 fast_serialization_settings=self.fast_serialization_settings,
                 source_root=self.source_root,
-                interactive_mode_enabled=self.interactive_mode_enabled,
             )
