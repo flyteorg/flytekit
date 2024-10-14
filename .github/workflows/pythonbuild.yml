@@ -72,15 +72,15 @@ jobs:
       - name: Install Protobuf (Ubuntu)
         if: runner.os == 'Linux'
         run: |
-          sudo apt update && sudo apt install -y protobuf-compiler libprotobuf-dev
+          sudo apt update && sudo apt install -y protobuf-compiler libprotobuf-dev libssl-dev
       - name: Install Protobuf (macOS)
         if: runner.os == 'macOS'
         run: |
-          brew install protobuf
+          brew install protobuf openssl
       - name: Install Protobuf (Windows)
         if: runner.os == 'Windows'
         run: |
-          choco install protoc
+          choco install protoc openssl
       - name: Generate Rust Protobuf (Ubuntu)
         if: runner.os == 'Linux'
         working-directory: ${{ github.workspace }}/flyte/flyteidl
@@ -93,6 +93,18 @@ jobs:
         run: |
           rm -rf ./gen/pb_rust/*
           cargo run --bin gen_flyteidl
+      # First build attempt to capture OpenSSL path
+      - name: Build the Rust project (first attempt)
+        if: runner.os == 'Windows'
+        id: build-attempt
+        working-directory: ${{ github.workspace }}/flyte/flyteidl
+        run: cargo build --release || true
+      # Set OPENSSL_DIR based on dynamic build path
+      - name: Set OPENSSL_DIR based on dynamic build path
+        if: runner.os == 'Windows'
+        run: |
+          OPENSSL_DIR=$(find target -type d -name 'openssl-sys-*' -print -quit)/out/openssl-build
+          echo "OPENSSL_DIR=$OPENSSL_DIR" >> $GITHUB_ENV
       - name: Generate Rust Protobuf (Windows)
         if: runner.os == 'Windows'
         shell: bash

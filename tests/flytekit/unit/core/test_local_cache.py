@@ -304,6 +304,7 @@ def test_wf_schema_to_df():
 
 
 @pytest.mark.serial
+@pytest.mark.flyteidl_rust
 def test_dict_wf_with_constants():
     @task(cache=True, cache_version="v99")
     def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
