@@ -247,6 +247,7 @@ class TypeTransformer(typing.Generic[T]):
 
     def from_generic_idl(self, generic: Struct, expected_python_type: Type[T]) -> Optional[T]:
         """
+        TODO: Support all Flyte Types.
         This is for dataclass attribute access from input created from the Flyte Console.
         """
         raise NotImplementedError(f"Conversion from generic idl to python type {expected_python_type} not implemented")
@@ -2125,8 +2126,21 @@ class DictTransformer(AsyncTypeTransformer[dict]):
                 def wf(dc: DC):
                     t_ff(dc.ff)
                 """
+                """
+                msgpack_bytes = msgpack.dumps(dict_obj)
+                decoder[expexted_python_type].decode(msgpack_bytes)
+                """
                 dict_obj = json.loads(_json_format.MessageToJson(lv.scalar.generic))
-                return self.handle_flyte_types(dict_obj=dict_obj, expected_python_type=expected_python_type)
+                msgpack_bytes = msgpack.dumps(dict_obj)
+
+                try:
+                    decoder = self._msgpack_decoder[expected_python_type]
+                except KeyError:
+                    decoder = MessagePackDecoder(expected_python_type, pre_decoder_func=_default_msgpack_decoder)
+                    self._msgpack_decoder[expected_python_type] = decoder
+
+                return decoder.decode(msgpack_bytes)
+                # return self.handle_flyte_types(dict_obj=dict_obj, expected_python_type=expected_python_type)
             except TypeError:
                 raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
 
