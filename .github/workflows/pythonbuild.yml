@@ -32,7 +32,6 @@ jobs:
           else
             echo "python_versions=[\"3.9\", \"3.12\"]" >> $GITHUB_ENV
           fi
-
   build:
     needs:
       - detect-python-versions
@@ -67,21 +66,30 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: austin362667/flyte
-          fetch-depth: 0  # Fetch all history for submodules
+          fetch-depth: 0
           ref: flyrs
           path: "${{ github.workspace }}/flyte"
+      - name: Install Protobuf (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt update && sudo apt install -y protobuf-compiler libprotobuf-dev
+      - name: Install Protobuf (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install protobuf
+      - name: Install Protobuf (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          choco install protoc
       - name: Generate Rust Protobuf
         working-directory: ${{ github.workspace }}/flyte/flyteidl
         run: |
-          sudo apt update && sudo apt upgrade -y
-          sudo apt install -y protobuf-compiler libprotobuf-dev
           rm -rf ./gen/pb_rust/*
           cargo run --bin gen_flyteidl
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
-          if: matrix.os == 'ubuntu-latest'
-          target: x86_64
+          target: ${{ matrix.os == 'windows-latest' && 'x86_64-pc-windows-msvc' || matrix.os == 'macos-latest' && 'x86_64-apple-darwin' || 'x86_64' }}
           command: build
           args: --release --out ${{ github.workspace }}/dist --find-interpreter -m flyte/flyteidl/Cargo.toml
       - name: Install built wheel
