@@ -81,10 +81,23 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           choco install protoc
-      - name: Generate Rust Protobuf
+      - name: Generate Rust Protobuf (Ubuntu)
+        if: runner.os == 'Linux'
         working-directory: ${{ github.workspace }}/flyte/flyteidl
         run: |
           rm -rf ./gen/pb_rust/*
+          cargo run --bin gen_flyteidl
+      - name: Generate Rust Protobuf (macOS)
+        if: runner.os == 'macOS'
+        working-directory: ${{ github.workspace }}/flyte/flyteidl
+        run: |
+          rm -rf ./gen/pb_rust/*
+          cargo run --bin gen_flyteidl
+      - name: Generate Rust Protobuf (Windows)
+        if: runner.os == 'Windows'
+        working-directory: ${{ github.workspace }}/flyte/flyteidl
+        run: |
+          rmdir /s /q .\gen\pb_rust\
           cargo run --bin gen_flyteidl
       - name: Build wheels
         uses: PyO3/maturin-action@v1
