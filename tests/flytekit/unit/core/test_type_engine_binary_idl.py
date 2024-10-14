@@ -873,3 +873,83 @@ def test_backward_compatible_with_untyped_dict_in_protobuf_struct():
 
     downstream_input = TypeEngine.to_python_value(FlyteContextManager.current_context(), upstream_output, dict)
     assert dict_input == downstream_input
+
+def test_flyte_console_input_with_typed_dict_with_flyte_types_in_dataclass_in_protobuf_struct(local_dummy_file, local_dummy_directory):
+    # TODO: We can add more nested cases for non-flyte types.
+    """
+    Handles the case where Flyte Console provides input as a protobuf struct.
+    When resolving an attribute like 'dc.dict_int_ff', FlytePropeller retrieves a dictionary.
+    Mashumaro's decoder can convert this dictionary to the expected Python object if the correct type is provided.
+    Since Flyte Types handle their own deserialization, the dictionary is automatically converted to the expected Python object.
+
+    Example Code:
+    @dataclass
+    class DC:
+        dict_int_ff: Dict[int, FlyteFile]
+
+    @workflow
+    def wf(dc: DC):
+        t_ff(dc.dict_int_ff)
+
+    Life Cycle:
+    json str            -> protobuf struct         -> resolved protobuf struct   -> dictionary                -> expected Python object
+    (console user input)   (console output)           (propeller)                   (flytekit dict transformer)  (mashumaro decoder)
+
+    Related PR:
+    - Title: Override Dataclass Serialization/Deserialization Behavior for FlyteTypes via Mashumaro
+    - Link: https://github.com/flyteorg/flytekit/pull/2554
+    - Title: Binary IDL With MessagePack
+    - Link: https://github.com/flyteorg/flytekit/pull/2760
+    """
+
+    dict_int_flyte_file = {"1" : {"path": local_dummy_file}}
+    json_str = json.dumps(dict_int_flyte_file)
+    upstream_output = Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())), metadata={"format": "json"})
+    downstream_input = TypeEngine.to_python_value(FlyteContextManager.current_context(), upstream_output, Dict[int, FlyteFile])
+    assert downstream_input == {1: FlyteFile(local_dummy_file)}
+
+    # FlyteConsole trims trailing ".0" when converting float-like strings
+    dict_float_flyte_file = {"1": {"path": local_dummy_file}}
+    json_str = json.dumps(dict_float_flyte_file)
+    upstream_output = Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())), metadata={"format": "json"})
+    downstream_input = TypeEngine.to_python_value(FlyteContextManager.current_context(), upstream_output, Dict[float, FlyteFile])
+    assert downstream_input == {1.0: FlyteFile(local_dummy_file)}
+
+    dict_float_flyte_file = {"1.0": {"path": local_dummy_file}}
+    json_str = json.dumps(dict_float_flyte_file)
+    upstream_output = Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())), metadata={"format": "json"})
+    downstream_input = TypeEngine.to_python_value(FlyteContextManager.current_context(), upstream_output, Dict[float, FlyteFile])
+    assert downstream_input == {1.0: FlyteFile(local_dummy_file)}
+
+    dict_str_flyte_file = {"1": {"path": local_dummy_file}}
+    json_str = json.dumps(dict_str_flyte_file)
+    upstream_output = Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())), metadata={"format": "json"})
+    downstream_input = TypeEngine.to_python_value(FlyteContextManager.current_context(), upstream_output,  Dict[str, FlyteFile])
+    assert downstream_input == {"1": FlyteFile(local_dummy_file)}
+
+    dict_int_flyte_directory = {"1": {"path": local_dummy_directory}}
+    json_str = json.dumps(dict_int_flyte_directory)
+    upstream_output = Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())), metadata={"format": "json"})
+    downstream_input = TypeEngine.to_python_value(FlyteContextManager.current_context(), upstream_output, Dict[int, FlyteDirectory])
+    assert downstream_input == {1: FlyteDirectory(local_dummy_directory)}
+
+    # FlyteConsole trims trailing ".0" when converting float-like strings
+    dict_float_flyte_directory = {"1": {"path": local_dummy_directory}}
+    json_str = json.dumps(dict_float_flyte_directory)
+    upstream_output = Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())), metadata={"format": "json"})
+    downstream_input = TypeEngine.to_python_value(FlyteContextManager.current_context(), upstream_output, Dict[float, FlyteDirectory])
+    assert downstream_input == {1.0: FlyteDirectory(local_dummy_directory)}
+
+    dict_float_flyte_directory = {"1.0": {"path": local_dummy_directory}}
+    json_str = json.dumps(dict_float_flyte_directory)
+    upstream_output = Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())), metadata={"format": "json"})
+    downstream_input = TypeEngine.to_python_value(FlyteContextManager.current_context(), upstream_output, Dict[float, FlyteDirectory])
+    assert downstream_input == {1.0: FlyteDirectory(local_dummy_directory)}
+
+    dict_str_flyte_file = {"1": {"path": local_dummy_file}}
+    json_str = json.dumps(dict_str_flyte_file)
+    upstream_output = Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())),
+                              metadata={"format": "json"})
+    downstream_input = TypeEngine.to_python_value(FlyteContextManager.current_context(), upstream_output,
+                                                  Dict[str, FlyteFile])
+    assert downstream_input == {"1": FlyteFile(local_dummy_file)}
