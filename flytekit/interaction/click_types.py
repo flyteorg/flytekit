@@ -7,6 +7,7 @@ import logging
 import os
 import pathlib
 import typing
+import typing as t
 from typing import cast, get_args
 
 import rich_click as click
@@ -134,6 +135,9 @@ class FileParamType(click.ParamType):
 class PickleParamType(click.ParamType):
     name = "pickle"
 
+    def get_metavar(self, param: "Parameter") -> t.Optional[str]:
+        return "Python Object <Module>:<Object>"
+
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
@@ -143,7 +147,6 @@ class PickleParamType(click.ParamType):
         if len(parts) != 2:
             raise click.BadParameter(f"Expected format <MODULE>:<VAR>, got {value}")
         m = importlib.import_module(parts[0])
-        print(m)
         return m.__getattribute__(parts[1])
 
 
