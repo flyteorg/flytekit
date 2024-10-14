@@ -95,9 +95,10 @@ jobs:
           cargo run --bin gen_flyteidl
       - name: Generate Rust Protobuf (Windows)
         if: runner.os == 'Windows'
+        shell: bash
         working-directory: ${{ github.workspace }}/flyte/flyteidl
         run: |
-          rmdir /s /q .\gen\pb_rust\
+          rm -rf ./gen/pb_rust/*
           cargo run --bin gen_flyteidl
       - name: Build wheels
         uses: PyO3/maturin-action@v1
