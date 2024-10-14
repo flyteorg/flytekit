@@ -93,6 +93,18 @@ jobs:
         run: |
           rm -rf ./gen/pb_rust/*
           cargo run --bin gen_flyteidl
+      - name: Install Scoop and dependencies
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          iwr -useb get.scoop.sh | iex
+          scoop install perl
+          scoop install openssl
+      - name: Install Perl CPAN modules
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          cpanm Locale::Maketext::Simple
       - name: Generate Rust Protobuf (Windows)
         if: runner.os == 'Windows'
         shell: bash
