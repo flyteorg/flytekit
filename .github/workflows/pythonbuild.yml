@@ -100,11 +100,17 @@ jobs:
         run: |
           rm -rf ./gen/pb_rust/*
           cargo run --bin gen_flyteidl
+      - name: Set up Python virtual environment
+        run: |
+          python -m venv venv
+          source venv/bin/activate
       - name: Build wheels
         run: |
-          maturin build --release --out ${{ github.workspace }}/dist --find-interpreter -m flyte/flyteidl/Cargo.toml -- --system
+          source venv/bin/activate
+          maturin build --release --out ${{ github.workspace }}/dist --find-interpreter -m flyte/flyteidl/Cargo.toml
       - name: Install built wheel
         run: |
+          source venv/bin/activate
           uv pip install ${{ github.workspace }}/dist/*.whl --force-reinstall
           python -c "import flyteidl_rust"
       - name: Clear Flyteidl
