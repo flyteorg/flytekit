@@ -93,52 +93,24 @@ jobs:
         run: |
           rm -rf ./gen/pb_rust/*
           cargo run --bin gen_flyteidl
-      - name: Install Scoop and dependencies
+      - name: Generate Rust Protobuf (Windows)
         if: runner.os == 'Windows'
-        shell: powershell
-        run: |
-          iwr -useb get.scoop.sh | iex
-          scoop install perl
-          scoop install openssl
-      - name: Generate Rust Protobuf and Build OpenSSL (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          $ProgressPreference = 'SilentlyContinue'
-          Invoke-WebRequest -Uri "https://github.com/openssl/openssl/archive/OpenSSL_$env:OPENSSL_VERSION.zip" -OutFile openssl.zip
-          Expand-Archive -Path openssl.zip -DestinationPath .
-          cd openssl-OpenSSL_$env:OPENSSL_VERSION
-          perl Configure VC-WIN64A no-asm no-shared
-          nmake
-          echo "OPENSSL_DIR=$pwd" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          cd ${{ github.workspace }}/flyte/flyteidl
-          rm -rf ./gen/pb_rust/*
-          cargo run --bin gen_flyteidl
-      - name: Set up Python virtual environment
-        run: |
-          python -m venv venv
-          source venv/bin/activate
-      - name: Build wheels
-        run: |
-          source venv/bin/activate
-          maturin build --release --out ${{ github.workspace }}/dist --interpreter python${{ matrix.python-version }} -m flyte/flyteidl/Cargo.toml
-        env:
-          OPENSSL_LIB_DIR: ${{ env.OPENSSL_DIR }}
-          OPENSSL_INCLUDE_DIR: ${{ env.OPENSSL_DIR }}/include
-      - name: Install built wheel
-        run: |
-          source venv/bin/activate
-          uv pip install ${{ github.workspace }}/dist/*.whl --force-reinstall
-          python -c "import flyteidl_rust"
-      - name: Clear Flyteidl
+        shell: bash
         working-directory: ${{ github.workspace }}/flyte/flyteidl
         run: |
-          cargo clean
-      - name: Remove Flyte
+          rm -rf ./gen/pb_rust/*
+          cargo run --bin gen_flyteidl
+      - name: Build wheels # Set up Python virtual environment at first, maturin needs this.
+        working-directory: ${{ github.workspace }}/flyte/flyteidl
         run: |
-          rm -rf ./flyte
-      - name: Test with coverage
+          python -m venv venv 
+          source venv/bin/activate
+          maturin build --release --out ${{ github.workspace }}/dist --interpreter python${{ matrix.python-version }} -m ./Cargo.toml
+      - name: Install built wheel and Test with coverage
         run: |
+          uv pip install --system flyteidl-rust --no-index --find-links dist --force-reinstall
+          uv pip freeze
+          python -c "import flyteidl_rust"
           make unit_test_codecov
       - name: Codecov
         uses: codecov/codecov-action@v3.1.4
