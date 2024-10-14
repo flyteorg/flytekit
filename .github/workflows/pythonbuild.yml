@@ -93,6 +93,18 @@ jobs:
         run: |
           rm -rf ./gen/pb_rust/*
           cargo run --bin gen_flyteidl
+      # Install vcpkg
+      - name: Set up vcpkg
+        if: runner.os == 'Windows'
+        run: |
+          git clone --depth 1 https://github.com/microsoft/vcpkg.git
+          cd vcpkg
+          .\bootstrap-vcpkg.bat
+      - name: Install OpenSSL
+        if: runner.os == 'Windows'
+        run: |
+          cd vcpkg
+          .\vcpkg install openssl
       - name: Generate Rust Protobuf (Windows)
         if: runner.os == 'Windows'
         shell: bash
