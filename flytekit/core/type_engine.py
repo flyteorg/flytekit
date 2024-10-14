@@ -1081,7 +1081,11 @@ class TypeEngine(typing.Generic[T]):
             if python_type.__origin__ in cls._REGISTRY:
                 return cls._REGISTRY[python_type.__origin__]
 
-            raise ValueError(f"Generic Type {python_type.__origin__} not supported currently in Flytekit.")
+            display_pickle_warning(str(python_type))
+            from flytekit.types.pickle.pickle import FlytePickleTransformer
+
+            return FlytePickleTransformer()
+            # raise ValueError(f"Generic Type {python_type.__origin__} not supported currently in Flytekit.")
 
         # Step 4
         # To facilitate cases where users may specify one transformer for multiple types that all inherit from one

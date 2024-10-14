@@ -1,6 +1,7 @@
 import dataclasses
 import datetime
 import enum
+import importlib
 import json
 import logging
 import os
@@ -136,7 +137,14 @@ class PickleParamType(click.ParamType):
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
-        return value
+        if not isinstance(value, str):
+            return value
+        parts = value.split(":")
+        if len(parts) != 2:
+            raise click.BadParameter(f"Expected format <MODULE>:<VAR>, got {value}")
+        m = importlib.import_module(parts[0])
+        print(m)
+        return m.__getattribute__(parts[1])
 
 
 class JSONIteratorParamType(click.ParamType):
