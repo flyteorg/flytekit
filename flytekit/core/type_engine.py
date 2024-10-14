@@ -2064,12 +2064,12 @@ class DictTransformer(AsyncTypeTransformer[dict]):
             # 1. handle flyte types
             # 2. handle nested cases
             for k, v in dict_obj.items():
-                if isinstance(v, dict):
-                    dict_obj[k] = self.handle_flyte_types(v, value_type)
-                elif issubclass(value_type, FlyteFile):
+                if issubclass(value_type, FlyteFile):
                     dict_obj[k] = FlyteFilePathTransformer().dict_to_flyte_file(dict_obj=v, expected_python_type=value_type)
                 elif issubclass(value_type, FlyteDirectory):
                     dict_obj[k] = FlyteDirToMultipartBlobTransformer().dict_to_flyte_directory(dict_obj=v, expected_python_type=value_type)
+                elif isinstance(v, dict):
+                    dict_obj[k] = self.handle_flyte_types(v, value_type)
 
             # if value_type is type(dict):
             #     dict_obj = {k: self.handle_flyte_types(v, value_type) for k, v in dict_obj.items()}
