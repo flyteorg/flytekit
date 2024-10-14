@@ -747,6 +747,30 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
     def from_binary_idl(
         self, binary_idl_object: Binary, expected_python_type: Type[T] | StructuredDataset
     ) -> T | StructuredDataset:
+        """
+        If the input is from flytekit, the Life Cycle will be as follows:
+
+        Life Cycle:
+        binary IDL                 -> resolved binary         -> bytes                   -> expected Python object
+        (flytekit customized          (propeller processing)     (flytekit binary IDL)      (flytekit customized
+        serialization)                                                                       deserialization)
+
+        Example Code:
+        @dataclass
+        class DC:
+            sd: StructuredDataset
+
+        @workflow
+        def wf(dc: DC):
+            t_sd(dc.sd)
+
+        Note:
+        - The deserialization is the same as put a structured dataset in a dataclass, which will deserialize by the mashumaro's API.
+
+        Related PR:
+        - Title: Override Dataclass Serialization/Deserialization Behavior for FlyteTypes via Mashumaro
+        - Link: https://github.com/flyteorg/flytekit/pull/2554
+        """
         if binary_idl_object.tag == MESSAGEPACK:
             python_val = msgpack.loads(binary_idl_object.value)
             return self.dict_to_structured_dataset(dict_obj=python_val, expected_python_type=expected_python_type)
@@ -756,6 +780,29 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
     def from_generic_idl(
         self, generic: Struct, expected_python_type: Type[T] | StructuredDataset
     ) -> T | StructuredDataset:
+        """
+        If the input is from Flyte Console, the Life Cycle will be as follows:
+
+        Life Cycle:
+        json str            -> protobuf struct         -> resolved protobuf struct   -> expected Python object
+        (console user input)   (console output)           (propeller)                   (flytekit customized deserialization)
+
+        Example Code:
+        @dataclass
+        class DC:
+            sd: StructuredDataset
+
+        @workflow
+        def wf(dc: DC):
+            t_sd(dc.sd)
+
+        Note:
+        - The deserialization is the same as put a structured dataset in a dataclass, which will deserialize by the mashumaro's API.
+
+        Related PR:
+        - Title: Override Dataclass Serialization/Deserialization Behavior for FlyteTypes via Mashumaro
+        - Link: https://github.com/flyteorg/flytekit/pull/2554
+        """
         json_str = _json_format.MessageToJson(generic)
         python_val = json.loads(json_str)
         return self.dict_to_structured_dataset(dict_obj=python_val, expected_python_type=expected_python_type)
