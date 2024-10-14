@@ -39,7 +39,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
         python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
     steps:
       - uses: actions/checkout@v4
@@ -56,6 +56,20 @@ jobs:
           path: ~/.cache/pip
           # Look to see if there is a cache hit for the corresponding requirements files
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
+      # Install vcpkg for installing OpenSSL
+      - name: Set up vcpkg
+        if: runner.os == 'Windows'
+        # The `openssl-sys` crate will automatically detect OpenSSL installations via Homebrew on macOS and vcpkg on Windows.
+        run: |
+          git clone --depth 1 https://github.com/microsoft/vcpkg.git
+          cd vcpkg
+          .\bootstrap-vcpkg.bat
+      - name: Install OpenSSL
+        if: runner.os == 'Windows'
+        run: |
+          cd vcpkg
+          .\vcpkg install openssl
+          .\vcpkg integrate install
       - name: Install dependencies
         run: |
           pip install uv maturin
@@ -80,7 +94,7 @@ jobs:
       - name: Install Protobuf (Windows)
         if: runner.os == 'Windows'
         run: |
-          choco install protoc openssl
+          choco install protoc
       - name: Generate Rust Protobuf (Ubuntu)
         if: runner.os == 'Linux'
         working-directory: ${{ github.workspace }}/flyte/flyteidl
@@ -93,31 +107,26 @@ jobs:
         run: |
           rm -rf ./gen/pb_rust/*
           cargo run --bin gen_flyteidl
-      # Install vcpkg
-      - name: Set up vcpkg
-        if: runner.os == 'Windows'
-        run: |
-          git clone --depth 1 https://github.com/microsoft/vcpkg.git
-          cd vcpkg
-          .\bootstrap-vcpkg.bat
-      - name: Install OpenSSL
-        if: runner.os == 'Windows'
-        run: |
-          cd vcpkg
-          .\vcpkg install openssl
       - name: Generate Rust Protobuf (Windows)
         if: runner.os == 'Windows'
         shell: bash
         working-directory: ${{ github.workspace }}/flyte/flyteidl
+        # The `openssl-sys` looks for the statically linked target by default.
+        # For dynamic linking, set VCPKGRS_DYNAMIC=1 in the environment. This will link to libraries built with vcpkg triplet x64-windows. 
         run: |
           rm -rf ./gen/pb_rust/*
-          cargo run --bin gen_flyteidl
+          VCPKGRS_DYNAMIC=1 cargo run --bin gen_flyteidl
       - name: Build wheels # Set up Python virtual environment at first, maturin needs this.
+        shell: bash
         working-directory: ${{ github.workspace }}/flyte/flyteidl
         run: |
           python -m venv venv 
-          source venv/bin/activate
-          maturin build --release --out ${{ github.workspace }}/dist --interpreter python${{ matrix.python-version }} -m ./Cargo.toml
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            ./venv/Scripts/activate
+          else
+            source ./venv/bin/activate
+          fi
+          VCPKGRS_DYNAMIC=1 maturin build --release --out ${{ github.workspace }}/dist --interpreter python${{ matrix.python-version }} -m ./Cargo.toml
       - name: Install built wheel and Test with coverage
         run: |
           uv pip install --system flyteidl-rust --no-index --find-links dist --force-reinstall
