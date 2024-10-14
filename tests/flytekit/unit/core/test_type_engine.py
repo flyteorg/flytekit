@@ -3486,7 +3486,7 @@ def test_generic_errors_and_empty():
     with pytest.raises(TypeTransformerFailedError):
         TypeEngine.to_literal(ctx, {"a": 3}, pt, lt)
 
-    with pytest.raises(TypeTransformerFailedError):
+    with pytest.raises(ValueError):
         TypeEngine.to_literal(ctx, {3: "a"}, pt, lt)
 
     # Test lists
