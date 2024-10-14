@@ -33,10 +33,12 @@ Plugin API reference
 * :ref:`SageMaker Inference <awssagemaker_inference>` - SageMaker Inference API reference
 * :ref:`OpenAI <openai>` - OpenAI API reference
 * :ref:`Inference <inference>` - Inference API reference
+* :ref:`Neptune <neptune>` - Neptune API reference
+* :ref:`Weights & Biases <wandb>` - Weights & Biases API reference
 
 .. toctree::
    :maxdepth: 2
-   :caption: API reference
+   :hidden:
 
    AWS Athena <athena>
    AWS Batch <awsbatch>
@@ -67,3 +69,5 @@ Plugin API reference
    SageMaker Inference <awssagemaker_inference>
    OpenAI <openai>
    Inference <inference>
+   Neptune <neptune>
+   Weights & Biases <wandb>
