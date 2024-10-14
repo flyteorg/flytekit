@@ -2085,7 +2085,7 @@ class DictTransformer(AsyncTypeTransformer[dict]):
             try:
                 """
                 Handles the case where Flyte Console provides input as a protobuf struct.
-                When resolving an attribute like 'dc.dict_int_ff', Propeller retrieves a dictionary.
+                When resolving an attribute like 'dc.dict_int_ff', FlytePropeller retrieves a dictionary.
                 Mashumaro's decoder can convert this dictionary to the expected Python object if the correct type is provided.
                 Since Flyte Types handle their own deserialization, the dictionary is automatically converted to the expected Python object.
 
