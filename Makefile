@@ -70,7 +70,7 @@ unit_test:
 	# library is used to serialize/deserialize protobufs is used.
 	$(PYTEST_AND_OPTS) -m "not (serial or sandbox_test or hypothesis or flyteidl_rust)" tests/flytekit/unit/ --ignore=tests/flytekit/unit/extras/ --ignore=tests/flytekit/unit/models --ignore=tests/flytekit/unit/extend ${CODECOV_OPTS}
 	# Run serial tests without any parallelism
-	$(PYTEST) -m "serial not flyteidl_rust" tests/flytekit/unit/ --ignore=tests/flytekit/unit/extras/ --ignore=tests/flytekit/unit/models --ignore=tests/flytekit/unit/extend ${CODECOV_OPTS}
+	$(PYTEST) -m "serial and not flyteidl_rust" tests/flytekit/unit/ --ignore=tests/flytekit/unit/extras/ --ignore=tests/flytekit/unit/models --ignore=tests/flytekit/unit/extend ${CODECOV_OPTS}
 
 .PHONY: unit_test_hypothesis
 unit_test_hypothesis:
