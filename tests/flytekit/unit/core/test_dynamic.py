@@ -377,7 +377,7 @@ def test_iter():
             dynamic_task.dispatch_execute(new_ctx, input_literal_map)
 
 
-def test_dyn_pryce():
+def test_dyn_pd():
     @task
     def nested_task() -> pd.DataFrame:
         return pd.DataFrame({"a": [1, 2, 3]})
@@ -390,4 +390,4 @@ def test_dyn_pryce():
         return dfs
 
     list_pd = my_dynamic()
-    print(list_pd)
+    assert len(list_pd) == 3
