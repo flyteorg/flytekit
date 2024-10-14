@@ -100,11 +100,6 @@ jobs:
           iwr -useb get.scoop.sh | iex
           scoop install perl
           scoop install openssl
-      - name: Install Perl CPAN modules
-        if: runner.os == 'Windows'
-        shell: bash
-        run: |
-          cpanm Locale::Maketext::Simple
       - name: Generate Rust Protobuf and Build OpenSSL (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
