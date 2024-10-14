@@ -135,27 +135,6 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
     @classmethod
     def _deserialize(cls, value) -> "FlyteDirectory":
         return FlyteDirToMultipartBlobTransformer().dict_to_flyte_directory(dict_obj=value, expected_python_type=cls)
-        # path = value.get("path", None)
-        #
-        # if path is None:
-        #     raise ValueError("FlyteDirectory's path should not be None")
-        #
-        # return FlyteDirToMultipartBlobTransformer().to_python_value(
-        #     FlyteContextManager.current_context(),
-        #     Literal(
-        #         scalar=Scalar(
-        #             blob=Blob(
-        #                 metadata=BlobMetadata(
-        #                     type=_core_types.BlobType(
-        #                         format="", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
-        #                     )
-        #                 ),
-        #                 uri=path,
-        #             )
-        #         )
-        #     ),
-        #     cls,
-        # )
 
     def __init__(
         self,
