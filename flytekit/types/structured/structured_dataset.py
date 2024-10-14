@@ -720,42 +720,11 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         sd._already_uploaded = True
         return lit
 
-    def from_binary_idl(
-        self, binary_idl_object: Binary, expected_python_type: Type[T] | StructuredDataset
+    def dict_to_structured_dataset(
+        self, dict_obj: typing.Dict[str, str], expected_python_type: Type[T] | StructuredDataset
     ) -> T | StructuredDataset:
-        if binary_idl_object.tag == MESSAGEPACK:
-            python_val = msgpack.loads(binary_idl_object.value)
-            uri = python_val.get("uri", None)
-            file_format = python_val.get("file_format", None)
-
-            if uri is None:
-                raise ValueError("StructuredDataset's uri and file format should not be None")
-
-            return StructuredDatasetTransformerEngine().to_python_value(
-                FlyteContextManager.current_context(),
-                Literal(
-                    scalar=Scalar(
-                        structured_dataset=StructuredDataset(
-                            metadata=StructuredDatasetMetadata(
-                                structured_dataset_type=StructuredDatasetType(format=file_format)
-                            ),
-                            uri=uri,
-                        )
-                    )
-                ),
-                expected_python_type,
-            )
-        else:
-            raise TypeTransformerFailedError(f"Unsupported binary format: `{binary_idl_object.tag}`")
-
-    def from_generic_idl(
-        self, generic: Struct, expected_python_type: Type[T] | StructuredDataset
-    ) -> T | StructuredDataset:
-        json_str = _json_format.MessageToJson(generic)
-        python_val = json.loads(json_str)
-
-        uri = python_val.get("uri", None)
-        file_format = python_val.get("file_format", None)
+        uri = dict_obj.get("uri", None)
+        file_format = dict_obj.get("file_format", None)
 
         if uri is None:
             raise ValueError("StructuredDataset's uri and file format should not be None")
@@ -774,6 +743,22 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             ),
             expected_python_type,
         )
+
+    def from_binary_idl(
+        self, binary_idl_object: Binary, expected_python_type: Type[T] | StructuredDataset
+    ) -> T | StructuredDataset:
+        if binary_idl_object.tag == MESSAGEPACK:
+            python_val = msgpack.loads(binary_idl_object.value)
+            return self.dict_to_structured_dataset(dict_obj=python_val, expected_python_type=expected_python_type)
+        else:
+            raise TypeTransformerFailedError(f"Unsupported binary format: `{binary_idl_object.tag}`")
+
+    def from_generic_idl(
+        self, generic: Struct, expected_python_type: Type[T] | StructuredDataset
+    ) -> T | StructuredDataset:
+        json_str = _json_format.MessageToJson(generic)
+        python_val = json.loads(json_str)
+        return self.dict_to_structured_dataset(dict_obj=python_val, expected_python_type=expected_python_type)
 
     def to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T] | StructuredDataset

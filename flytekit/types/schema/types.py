@@ -444,28 +444,11 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
             schema.remote_path = ctx.file_access.put_data(schema.local_path, schema.remote_path, is_multipart=True)
         return Literal(scalar=Scalar(schema=Schema(schema.remote_path, self._get_schema_type(python_type))))
 
-    def from_binary_idl(self, binary_idl_object: Binary, expected_python_type: Type[FlyteSchema]) -> FlyteSchema:
-        if binary_idl_object.tag == MESSAGEPACK:
-            python_val = msgpack.loads(binary_idl_object.value)
-            remote_path = python_val.get("remote_path", None)
+    def dict_to_flyte_schema(
+        self, dict_obj: typing.Dict[str, str], expected_python_type: Type[FlyteSchema]
+    ) -> FlyteSchema:
+        remote_path = dict_obj.get("remote_path", None)
 
-            if remote_path is None:
-                raise ValueError("FlyteSchema's path should not be None")
-
-            t = FlyteSchemaTransformer()
-            return t.to_python_value(
-                FlyteContextManager.current_context(),
-                Literal(scalar=Scalar(schema=Schema(remote_path, t._get_schema_type(expected_python_type)))),
-                expected_python_type,
-            )
-        else:
-            raise TypeTransformerFailedError(f"Unsupported binary format: `{binary_idl_object.tag}`")
-
-    def from_generic_idl(self, generic: Struct, expected_python_type: Type[FlyteSchema]) -> FlyteSchema:
-        json_str = _json_format.MessageToJson(generic)
-        python_val = json.loads(json_str)
-
-        remote_path = python_val.get("remote_path", None)
         if remote_path is None:
             raise ValueError("FlyteSchema's path should not be None")
 
@@ -475,6 +458,18 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
             Literal(scalar=Scalar(schema=Schema(remote_path, t._get_schema_type(expected_python_type)))),
             expected_python_type,
         )
+
+    def from_binary_idl(self, binary_idl_object: Binary, expected_python_type: Type[FlyteSchema]) -> FlyteSchema:
+        if binary_idl_object.tag == MESSAGEPACK:
+            python_val = msgpack.loads(binary_idl_object.value)
+            return self.dict_to_flyte_schema(dict_obj=python_val, expected_python_type=expected_python_type)
+        else:
+            raise TypeTransformerFailedError(f"Unsupported binary format: `{binary_idl_object.tag}`")
+
+    def from_generic_idl(self, generic: Struct, expected_python_type: Type[FlyteSchema]) -> FlyteSchema:
+        json_str = _json_format.MessageToJson(generic)
+        python_val = json.loads(json_str)
+        return self.dict_to_flyte_schema(dict_obj=python_val, expected_python_type=expected_python_type)
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[FlyteSchema]) -> FlyteSchema:
         # Handle dataclass attribute access

@@ -164,28 +164,6 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
     def _deserialize(cls, value) -> "FlyteFile":
         return FlyteFilePathTransformer().dict_to_flyte_file(dict_obj=value, expected_python_type=cls)
 
-        # path = value.get("path", None)
-        #
-        # if path is None:
-        #     raise ValueError("FlyteFile's path should not be None")
-        #
-        # return FlyteFilePathTransformer().to_python_value(
-        #     FlyteContextManager.current_context(),
-        #     Literal(
-        #         scalar=Scalar(
-        #             blob=Blob(
-        #                 metadata=BlobMetadata(
-        #                     type=_core_types.BlobType(
-        #                         format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
-        #                     )
-        #                 ),
-        #                 uri=path,
-        #             )
-        #         )
-        #     ),
-        #     cls,
-        # )
-
     @classmethod
     def extension(cls) -> str:
         return ""
@@ -561,27 +539,6 @@ class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
         if binary_idl_object.tag == MESSAGEPACK:
             python_val = msgpack.loads(binary_idl_object.value)
             return self.dict_to_flyte_file(dict_obj=python_val, expected_python_type=expected_python_type)
-            # path = python_val.get("path", None)
-            #
-            # if path is None:
-            #     raise ValueError("FlyteFile's path should not be None")
-            #
-            # return FlyteFilePathTransformer().to_python_value(
-            #     FlyteContextManager.current_context(),
-            #     Literal(
-            #         scalar=Scalar(
-            #             blob=Blob(
-            #                 metadata=BlobMetadata(
-            #                     type=_core_types.BlobType(
-            #                         format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
-            #                     )
-            #                 ),
-            #                 uri=path,
-            #             )
-            #         )
-            #     ),
-            #     expected_python_type,
-            # )
         else:
             raise TypeTransformerFailedError(f"Unsupported binary format: `{binary_idl_object.tag}`")
 
@@ -591,27 +548,6 @@ class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
         json_str = _json_format.MessageToJson(generic)
         python_val = json.loads(json_str)
         return self.dict_to_flyte_file(dict_obj=python_val, expected_python_type=expected_python_type)
-        # path = python_val.get("path", None)
-        #
-        # if path is None:
-        #     raise ValueError("FlyteFile's path should not be None")
-        #
-        # return FlyteFilePathTransformer().to_python_value(
-        #     FlyteContextManager.current_context(),
-        #     Literal(
-        #         scalar=Scalar(
-        #             blob=Blob(
-        #                 metadata=BlobMetadata(
-        #                     type=_core_types.BlobType(
-        #                         format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
-        #                     )
-        #                 ),
-        #                 uri=path,
-        #             )
-        #         )
-        #     ),
-        #     expected_python_type,
-        # )
 
     async def async_to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Union[typing.Type[FlyteFile], os.PathLike]

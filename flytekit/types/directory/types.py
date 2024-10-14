@@ -541,27 +541,6 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
         if binary_idl_object.tag == MESSAGEPACK:
             python_val = msgpack.loads(binary_idl_object.value)
             return self.dict_to_flyte_directory(python_val, expected_python_type)
-            # path = python_val.get("path", None)
-            #
-            # if path is None:
-            #     raise ValueError("FlyteDirectory's path should not be None")
-            #
-            # return FlyteDirToMultipartBlobTransformer().to_python_value(
-            #     FlyteContextManager.current_context(),
-            #     Literal(
-            #         scalar=Scalar(
-            #             blob=Blob(
-            #                 metadata=BlobMetadata(
-            #                     type=_core_types.BlobType(
-            #                         format="", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
-            #                     )
-            #                 ),
-            #                 uri=path,
-            #             )
-            #         )
-            #     ),
-            #     expected_python_type,
-            # )
         else:
             raise TypeTransformerFailedError(f"Unsupported binary format: `{binary_idl_object.tag}`")
 
@@ -569,27 +548,6 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
         json_str = _json_format.MessageToJson(generic)
         python_val = json.loads(json_str)
         return self.dict_to_flyte_directory(python_val, expected_python_type)
-        # path = python_val.get("path", None)
-        #
-        # if path is None:
-        #     raise ValueError("FlyteDirectory's path should not be None")
-        #
-        # return FlyteDirToMultipartBlobTransformer().to_python_value(
-        #     FlyteContextManager.current_context(),
-        #     Literal(
-        #         scalar=Scalar(
-        #             blob=Blob(
-        #                 metadata=BlobMetadata(
-        #                     type=_core_types.BlobType(
-        #                         format="", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
-        #                     )
-        #                 ),
-        #                 uri=path,
-        #             )
-        #         )
-        #     ),
-        #     expected_python_type,
-        # )
 
     def to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Type[FlyteDirectory]
