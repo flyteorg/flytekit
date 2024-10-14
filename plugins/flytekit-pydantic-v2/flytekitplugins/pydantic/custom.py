@@ -79,9 +79,9 @@ def serialize_flyte_schema(self) -> Dict[str, str]:
 
 @model_validator(mode="after")
 def deserialize_flyte_schema(self) -> FlyteSchema:
-    # If we call the method to_python_value, FlyteSchemaTransformer will overwrite the local_path,
+    # If we call the method to_python_value, FlyteSchemaTransformer will overwrite the argument _local_path,
     # which will lose our data.
-    # If this data is from an existed FlyteSchema, local path will be None.
+    # If this data is from an existed FlyteSchema, _local_path will be None.
 
     if hasattr(self, "_local_path"):
         return self
@@ -107,11 +107,11 @@ def serialize_structured_dataset(self) -> Dict[str, str]:
 
 @model_validator(mode="after")
 def deserialize_structured_dataset(self) -> StructuredDataset:
-    # If we call the method to_python_value, StructuredDatasetTransformerEngine will overwrite the 'dataframe',
+    # If we call the method to_python_value, StructuredDatasetTransformerEngine will overwrite the argument 'dataframe',
     # which will lose our data.
-    # If this data is from an existed StructuredDataset, dataframe will be None.
+    # If this data is from an existed StructuredDataset, 'dataframe' will be None.
 
-    if hasattr(self, "dataframe"):
+    if hasattr(self, "_dataframe"):
         return self
 
     return StructuredDatasetTransformerEngine().to_python_value(
