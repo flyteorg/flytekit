@@ -6,7 +6,7 @@ import pytest
 from flytekitplugins.envd.image_builder import EnvdImageSpecBuilder, create_envd_config
 
 from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec
-
+import tempfile
 
 @pytest.fixture(scope="module", autouse=True)
 def register_envd_higher_priority():
@@ -32,24 +32,29 @@ def test_image_spec():
     # so Envd can find the base image when building imageSpec below
     ImageBuildEngine._IMAGE_NAME_TO_REAL_NAME[base_image.image_name()] = "cr.flyte.org/flyteorg/flytekit:py3.8-latest"
 
-    image_spec = ImageSpec(
-        packages=["pandas"],
-        apt_packages=["git"],
-        python_version="3.8",
-        base_image=base_image,
-        pip_index="https://pypi.python.org/simple",
-        source_root=os.path.dirname(os.path.realpath(__file__)),
-    )
+    with tempfile.TemporaryDirectory(dir=Path.cwd().as_posix()) as temp_dir:
+        copy_file = Path(temp_dir) / "copy_file.txt"
+        copy_file.write_text("copy_file_content")
 
-    image_spec = image_spec.with_commands("echo hello")
-    ImageBuildEngine.build(image_spec)
-    image_spec.base_image = base_image.image_name()
-    config_path = create_envd_config(image_spec)
-    assert image_spec.platform == "linux/amd64"
-    contents = Path(config_path).read_text()
-    assert (
-        contents
-        == f"""# syntax=v1
+        image_spec = ImageSpec(
+            packages=["pandas"],
+            apt_packages=["git"],
+            python_version="3.8",
+            base_image=base_image,
+            pip_index="https://pypi.python.org/simple",
+            source_root=os.path.dirname(os.path.realpath(__file__)),
+            copy=[f"{copy_file.relative_to(Path.cwd()).as_posix()}"],
+        )
+
+        image_spec = image_spec.with_commands("echo hello")
+        ImageBuildEngine.build(image_spec)
+        image_spec.base_image = base_image.image_name()
+        config_path = create_envd_config(image_spec)
+        assert image_spec.platform == "linux/amd64"
+        contents = Path(config_path).read_text()
+        assert (
+            contents
+            == f"""# syntax=v1
 
 def build():
     base(image="cr.flyte.org/flyteorg/flytekit:py3.8-latest", dev=False)
@@ -60,6 +65,7 @@ def build():
     config.pip_index(url="https://pypi.python.org/simple")
     install.python(version="3.8")
     io.copy(source="./", target="/root")
+    io.copy(source="{copy_file.relative_to(Path.cwd()).as_posix()}", target="/root/{copy_file.parent.relative_to(Path.cwd()).as_posix()}/")
 """
     )
 
