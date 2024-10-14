@@ -2047,37 +2047,6 @@ class DictTransformer(AsyncTypeTransformer[dict]):
 
         return Literal(map=LiteralMap(literals=lit_map))
 
-    def handle_flyte_types(self, dict_obj: dict, expected_python_type: Type[dict]) -> dict:
-        """
-        This function is used to handle Flyte types in the dictionary. It will convert the Flyte types to their
-        respective python types.
-        """
-        from flytekit.types.directory import FlyteDirectory, FlyteDirToMultipartBlobTransformer
-        from flytekit.types.file import FlyteFile, FlyteFilePathTransformer
-        from flytekit import StructuredDataset
-        from flytekit.types.schema import FlyteSchema
-
-        print("@@@ Before dict_obj:", dict_obj, "\nvalue type:", expected_python_type)
-        # FLYTE_TYPES = (FlyteFile, FlyteDirectory, StructuredDataset, FlyteSchema)
-
-        if hasattr(expected_python_type, '__args__'):
-            key_type, value_type = expected_python_type.__args__
-            # 1. handle flyte types
-            # 2. handle nested cases
-            for k, v in dict_obj.items():
-                if issubclass(value_type, FlyteFile):
-                    dict_obj[k] = FlyteFilePathTransformer().dict_to_flyte_file(dict_obj=v, expected_python_type=value_type)
-                elif issubclass(value_type, FlyteDirectory):
-                    dict_obj[k] = FlyteDirToMultipartBlobTransformer().dict_to_flyte_directory(dict_obj=v, expected_python_type=value_type)
-                elif isinstance(v, dict):
-                    dict_obj[k] = self.handle_flyte_types(v, value_type)
-
-            # if value_type is type(dict):
-            #     dict_obj = {k: self.handle_flyte_types(v, value_type) for k, v in dict_obj.items()}
-
-        print("@@@ After dict_obj:", dict_obj, "\nvalue type:", expected_python_type)
-        return dict_obj
-
     async def async_to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[dict]) -> dict:
         if lv and lv.scalar and lv.scalar.binary is not None:
             return self.from_binary_idl(lv.scalar.binary, expected_python_type)  # type: ignore
@@ -2114,22 +2083,32 @@ class DictTransformer(AsyncTypeTransformer[dict]):
                 return FlytePickle.from_pickle(uri)
 
             try:
-                # TODO: Write a recursive function to solve Flyte Types issue
-                # When input from the flyte console, this will fail.
                 """
-                Use a recursive function to handle this case.
+                Handles the case where Flyte Console provides input as a protobuf struct.
+                When resolving an attribute like 'dc.dict_int_ff', Propeller retrieves a dictionary.
+                Mashumaro's decoder can convert this dictionary to the expected Python object if the correct type is provided.
+                Since Flyte Types handle their own deserialization, the dictionary is automatically converted to the expected Python object.
+
+                Example Code:
                 @dataclass
                 class DC:
-                    ff: FlyteFile
+                    dict_int_ff: Dict[int, FlyteFile]
 
                 @workflow
                 def wf(dc: DC):
-                    t_ff(dc.ff)
+                    t_ff(dc.dict_int_ff)
+
+                Life Cycle:
+                json str            -> protobuf struct         -> resolved protobuf struct   -> dictionary                -> expected Python object
+                (console user input)   (console output)           (propeller)                   (flytekit dict transformer)  (mashumaro decoder)
+
+                Related PR:
+                - Title: Override Dataclass Serialization/Deserialization Behavior for FlyteTypes via Mashumaro
+                - Link: https://github.com/flyteorg/flytekit/pull/2554
+                - Title: Binary IDL With MessagePack
+                - Link: https://github.com/flyteorg/flytekit/pull/2760
                 """
-                """
-                msgpack_bytes = msgpack.dumps(dict_obj)
-                decoder[expexted_python_type].decode(msgpack_bytes)
-                """
+
                 dict_obj = json.loads(_json_format.MessageToJson(lv.scalar.generic))
                 msgpack_bytes = msgpack.dumps(dict_obj)
 
@@ -2140,7 +2119,6 @@ class DictTransformer(AsyncTypeTransformer[dict]):
                     self._msgpack_decoder[expected_python_type] = decoder
 
                 return decoder.decode(msgpack_bytes)
-                # return self.handle_flyte_types(dict_obj=dict_obj, expected_python_type=expected_python_type)
             except TypeError:
                 raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
 

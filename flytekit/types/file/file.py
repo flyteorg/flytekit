@@ -156,7 +156,6 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
             return "/tmp/local_file.csv"
     """
 
-
     def _serialize(self) -> typing.Dict[str, str]:
         lv = FlyteFilePathTransformer().to_literal(FlyteContextManager.current_context(), self, type(self), None)
         return {"path": lv.scalar.blob.uri}
@@ -531,8 +530,9 @@ class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
             return {"ContentEncoding": "gzip"}
         return {}
 
-
-    def dict_to_flyte_file(self, dict_obj: typing.Dict[str, str], expected_python_type: typing.Union[typing.Type[FlyteFile], os.PathLike]) -> FlyteFile:
+    def dict_to_flyte_file(
+        self, dict_obj: typing.Dict[str, str], expected_python_type: typing.Union[typing.Type[FlyteFile], os.PathLike]
+    ) -> FlyteFile:
         path = dict_obj.get("path", None)
 
         if path is None:

@@ -510,7 +510,9 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
         else:
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=source_path)))
 
-    def dict_to_flyte_directory(self, dict_obj: typing.Dict[str, str], expected_python_type: typing.Type[FlyteDirectory]) -> FlyteDirectory:
+    def dict_to_flyte_directory(
+        self, dict_obj: typing.Dict[str, str], expected_python_type: typing.Type[FlyteDirectory]
+    ) -> FlyteDirectory:
         path = dict_obj.get("path", None)
 
         if path is None:
