@@ -2056,6 +2056,7 @@ class DictTransformer(AsyncTypeTransformer[dict]):
         from flytekit import StructuredDataset
         from flytekit.types.schema import FlyteSchema
 
+        print("@@@ Before dict_obj:", dict_obj)
         # FLYTE_TYPES = (FlyteFile, FlyteDirectory, StructuredDataset, FlyteSchema)
 
         if hasattr(expected_python_type, '__args__'):
@@ -2073,7 +2074,7 @@ class DictTransformer(AsyncTypeTransformer[dict]):
             # if value_type is type(dict):
             #     dict_obj = {k: self.handle_flyte_types(v, value_type) for k, v in dict_obj.items()}
 
-
+        print("@@@ After dict_obj:", dict_obj)
         return dict_obj
 
     async def async_to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[dict]) -> dict:
