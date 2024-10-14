@@ -1,6 +1,7 @@
 import typing
 from datetime import datetime
 from random import seed
+import pytest
 
 import flytekit.configuration
 from flytekit import dynamic, task, workflow
@@ -12,7 +13,7 @@ from flytekit.core.context_manager import ExecutionState
 # seed random number generator
 seed(datetime.now().microsecond)
 
-
+@pytest.mark.flyteidl_rust
 def test_dynamic_conditional():
     @task
     def split(in1: typing.List[int]) -> (typing.List[int], typing.List[int], int):

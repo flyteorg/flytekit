@@ -3090,6 +3090,7 @@ def test_union_file_directory():
 
 
 @pytest.mark.skipif(sys.version_info < (3, 10), reason="PEP604 requires >=3.10.")
+@pytest.mark.flyteidl_rust
 def test_dataclass_none_output_input_deserialization():
     @dataclass
     class OuterWorkflowInput(DataClassJSONMixin):
