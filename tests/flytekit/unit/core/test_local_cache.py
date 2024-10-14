@@ -230,6 +230,7 @@ def test_sql_task():
 
 
 @pytest.mark.serial
+@pytest.mark.flyteidl_rust # Rust PyO3 hasn't support pickling in Python
 def test_wf_custom_types():
     @dataclass
     class MyCustomType(DataClassJsonMixin):
@@ -474,6 +475,7 @@ def test_list_of_pd_dataframe_hash():
 
 
 @pytest.mark.serial
+@pytest.mark.flyteidl_rust # Rust protobuf hasn't support deterministic Prost message encoding
 def test_cache_key_repetition():
     pt = Dict
     lt = TypeEngine.to_literal_type(pt)
@@ -498,6 +500,7 @@ def test_cache_key_repetition():
 
 
 @pytest.mark.serial
+@pytest.mark.flyteidl_rust # Rust protobuf hasn't support deterministic Prost message encoding
 def test_stable_cache_key():
     """
     The intent of this test is to ensure cache keys are stable across releases and python versions.
