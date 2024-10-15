@@ -19,6 +19,7 @@ Plugin API reference
 * :ref:`Modin <modin>` - Modin API reference
 * :ref:`Pandera <pandera>` - Pandera API reference
 * :ref:`Papermill <papermill>` - Papermill API reference
+* :ref:`PERIAN <perian>` - PERIAN Job Platform API reference
 * :ref:`Snowflake <snowflake>` - Snowflake API reference
 * :ref:`Spark <spark>` - Spark API reference
 * :ref:`SQLAlchemy <sqlalchemy>` - SQLAlchemy API reference
@@ -55,6 +56,7 @@ Plugin API reference
    Modin <modin>
    Pandera <pandera>
    Papermill <papermill>
+   PERIAN <perian>
    Snowflake <snowflake>
    Spark <spark>
    SQLAlchemy <sqlalchemy>
