@@ -249,6 +249,7 @@ class TypeTransformer(typing.Generic[T]):
         """
         TODO: Support all Flyte Types.
         This is for dataclass attribute access from input created from the Flyte Console.
+
         Note:
         - This can be removed in the future when the Flyte Console support generate Binary IDL Scalar as input.
         """
