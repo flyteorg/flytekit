@@ -47,13 +47,9 @@ def deserialize_flyte_file(self) -> FlyteFile:
     self._remote_source: typing.Optional[str] = None
     
     """
-    print("self.path:", pv.path)
-    print("self._downloader:", pv._downloader)
-    print("self._downloaded:", pv._downloaded)
-    print("self._remote_path:", pv._remote_path)
-    print("self._remote_source:", pv._remote_source)
 
-    pv._remote_path = None
+
+    # pv._remote_path = None
     return pv
 
 
@@ -81,6 +77,11 @@ def deserialize_flyte_dir(self) -> FlyteDirectory:
         ),
         type(self),
     )
+    print("self.path:", pv.path)
+    print("self._downloader:", pv._downloader)
+    print("self._downloaded:", pv._downloaded)
+    print("self._remote_path:", pv._remote_path)
+    print("self._remote_source:", pv._remote_source)
     pv._remote_directory = None
     return pv
 
