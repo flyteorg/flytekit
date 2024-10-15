@@ -1,13 +1,16 @@
 import typing
-from typing import TYPE_CHECKING, Type
+import warnings
+from functools import lru_cache
+from typing import TYPE_CHECKING, Type, Union
 
 from flytekit import Deck, FlyteContext, lazy_module
 from flytekit.extend import TypeEngine, TypeTransformer
-from flytekit.models.literals import Literal
+from flytekit.models.literals import Literal, StructuredDatasetMetadata
 from flytekit.models.types import LiteralType, SchemaType
-from flytekit.types.structured import structured_dataset
+from flytekit.types.structured import StructuredDataset
+from flytekit.types.structured.structured_dataset import StructuredDatasetTransformerEngine, get_supported_types
 
-from .config import PanderaValidationConfig
+from .config import ValidationConfig
 from .pandas_renderer import PandasReportRenderer
 
 if TYPE_CHECKING:
@@ -23,21 +26,20 @@ T = typing.TypeVar("T")
 
 
 class PanderaPandasTransformer(TypeTransformer[pandera.typing.DataFrame]):
-    _SUPPORTED_TYPES: typing.Dict[type, SchemaType.SchemaColumn.SchemaColumnType] = (
-        structured_dataset.get_supported_types()
-    )
+    _SUPPORTED_TYPES: typing.Dict[type, SchemaType.SchemaColumn.SchemaColumnType] = get_supported_types()
+    _VALIDATION_MEMO = set()
 
     def __init__(self):
         super().__init__("Pandera Transformer", pandera.typing.DataFrame)  # type: ignore
-        self._sd_transformer = structured_dataset.StructuredDatasetTransformerEngine()
+        self._sd_transformer = StructuredDatasetTransformerEngine()
 
     def _get_pandera_schema(self, t: Type[pandera.typing.DataFrame]):
-        config = PanderaValidationConfig()
+        config = ValidationConfig()
         if typing.get_origin(t) is typing.Annotated:
             t, *args = typing.get_args(t)
             # get pandera config
             for arg in args:
-                if isinstance(arg, PanderaValidationConfig):
+                if isinstance(arg, ValidationConfig):
                     config = arg
                     break
 
@@ -74,44 +76,62 @@ class PanderaPandasTransformer(TypeTransformer[pandera.typing.DataFrame]):
     def to_literal(
         self,
         ctx: FlyteContext,
-        python_val: pandas.DataFrame,
+        python_val: Union[pandas.DataFrame, StructuredDataset],
         python_type: Type[pandera.typing.DataFrame],
         expected: LiteralType,
     ) -> Literal:
-        assert isinstance(python_val, pandas.DataFrame), \
+        assert isinstance(python_val, (pandas.DataFrame, StructuredDataset)), \
             f"Only Pandas Dataframe object can be returned from a task, returned object type {type(python_val)}"
+        
+        if isinstance(python_val, StructuredDataset):
+            lv = self._sd_transformer.to_literal(ctx, python_val, pandas.DataFrame, expected)
+            python_val = self._sd_transformer.to_python_value(ctx, lv, pandas.DataFrame)
 
         schema, config = self._get_pandera_schema(python_type)
-        renderer = PandasReportRenderer(title="Pandera Report: Output")
+        renderer = PandasReportRenderer(title=f"Pandera Report: {schema.name}")
         try:
             val = schema.validate(python_val, lazy=True)
         except (pandera.errors.SchemaError, pandera.errors.SchemaErrors) as exc:
             if config.on_error == "raise":
                 raise exc
             elif config.on_error == "warn":
+                warnings.warn(str(exc), RuntimeWarning)
                 html = renderer.to_html(exc)
                 Deck(renderer._title, html)
             else:
                 raise ValueError(f"Invalid on_error value: {config.on_error}")
             val = python_val
 
-        return self._sd_transformer.to_literal(ctx, val, pandas.DataFrame, expected)
+        lv = self._sd_transformer.to_literal(ctx, val, pandas.DataFrame, expected)
+
+        # In cases where a task is being called locally, this method will be invoked to convert the python input value
+        # to a Flyte literal, which is then deserialized back to a python value. In such cases, we can cache the
+        # structured dataset uri and schema name to avoid repeating the validation process in the subsequent
+        # to_python_value call.
+        self._VALIDATION_MEMO.add((lv.scalar.structured_dataset.uri, schema.name))
+        return lv
 
     def to_python_value(
-        self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[pandera.typing.DataFrame]
+        self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[pandas.DataFrame]
     ) -> pandera.typing.DataFrame:
         if not (lv and lv.scalar and lv.scalar.structured_dataset):
             raise AssertionError("Can only convert a literal structured dataset to a pandera schema")
 
         df = self._sd_transformer.to_python_value(ctx, lv, pandas.DataFrame)
         schema, config = self._get_pandera_schema(expected_python_type)
-        renderer = PandasReportRenderer(title="Pandera Report: Input")
+    
+        if (lv.scalar.structured_dataset.uri, schema.name) in self._VALIDATION_MEMO:
+            return df
+
+        renderer = PandasReportRenderer(title=f"Pandera Report: {schema.name}")
         try:
             val = schema.validate(df, lazy=True)
         except (pandera.errors.SchemaError, pandera.errors.SchemaErrors) as exc:
             if config.on_error == "raise":
                 raise exc
             elif config.on_error == "warn":
+                print(ctx.execution_state)
+                warnings.warn(str(exc), RuntimeWarning)
                 html = renderer.to_html(exc)
                 Deck(renderer._title, html)
             else:

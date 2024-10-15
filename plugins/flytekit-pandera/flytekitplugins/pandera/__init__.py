@@ -10,5 +10,6 @@ This package contains things that are useful when extending Flytekit.
    PanderaTransformer
 """
 
-from .config import PanderaValidationConfig
+from .config import ValidationConfig
 from .pandas_transformer import PanderaPandasTransformer
+from .pandas_renderer import PandasReportRenderer
