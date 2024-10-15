@@ -796,9 +796,9 @@ async def binding_data_from_python_std(
     t_value: Any,
     t_value_type: typing.Type[T],
     nodes: List[Node],
-    transformer_override: Optional[TypeTransformer] = None,
 ) -> _literals_models.BindingData:
     literal_type_override = None
+    transformer_override = None
     if get_origin(t_value_type) is Annotated:
         for annotation in get_args(t_value_type)[1:]:
             if isinstance(annotation, TypeTransformer):
