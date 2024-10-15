@@ -239,7 +239,14 @@ class TypeTransformer(typing.Generic[T]):
             except KeyError:
                 decoder = MessagePackDecoder(expected_python_type, pre_decoder_func=_default_msgpack_decoder)
                 self._msgpack_decoder[expected_python_type] = decoder
-            return decoder.decode(binary_idl_object.value)
+            python_val = decoder.decode(binary_idl_object.value)
+
+            if expected_python_type is NoneType:
+                assert python_val is None
+            else:
+                assert python_val is not None
+
+            return python_val
         else:
             raise TypeTransformerFailedError(f"Unsupported binary format `{binary_idl_object.tag}`")
 
@@ -1877,9 +1884,6 @@ class UnionTransformer(AsyncTypeTransformer[T]):
         # This is serial, not actually async, but should be okay since it's more reasonable for Unions.
         for v in get_args(expected_python_type):
             try:
-                if found_res and v is NoneType:
-                    continue
-
                 trans: TypeTransformer[T] = TypeEngine.get_transformer(v)
                 if union_tag is not None:
                     if trans.name != union_tag:

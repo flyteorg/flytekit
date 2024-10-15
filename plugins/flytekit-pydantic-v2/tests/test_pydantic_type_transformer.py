@@ -420,7 +420,9 @@ def test_all_types_with_optional_and_none_in_pydantic_basemodel_wf(local_dummy_f
         return inner_bm
 
     @task
-    def t_test_all_attributes(a: Optional[int], b: Optional[float], c: Optional[str], d: Optional[bool],
+    def t_test_all_attributes(a: Optional[int], b: Optional[float],
+                              c: Optional[str],
+                              d: Optional[bool],
                               e: Optional[List[int]], f: Optional[List[FlyteFile]],
                               g: Optional[List[List[int]]],
                               h: Optional[List[Dict[int, bool]]], i: Optional[Dict[int, bool]],
@@ -434,8 +436,10 @@ def test_all_types_with_optional_and_none_in_pydantic_basemodel_wf(local_dummy_f
     @workflow
     def wf(bm: BM):
         t_inner(bm.inner_bm)
-        t_test_all_attributes(a=bm.a, b=bm.b, c=bm.c,
-                              d=bm.d, e=bm.e, f=bm.f,
+        t_test_all_attributes(a=bm.a, b=bm.b,
+                              c=bm.c,
+                              d=bm.d,
+                              e=bm.e, f=bm.f,
                               g=bm.g, h=bm.h, i=bm.i,
                               j=bm.j, k=bm.k, l=bm.l,
                               m=bm.m, n=bm.n, o=bm.o,
