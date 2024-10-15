@@ -4,7 +4,7 @@ import tempfile
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from enum import Enum
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import pytest
 from google.protobuf import json_format as _json_format
@@ -953,3 +953,219 @@ def test_flyte_console_input_with_typed_dict_with_flyte_types_in_dataclass_in_pr
     downstream_input = TypeEngine.to_python_value(FlyteContextManager.current_context(), upstream_output,
                                                   Dict[str, FlyteFile])
     assert downstream_input == {"1": FlyteFile(local_dummy_file)}
+
+def test_all_types_with_optional_in_dataclass_basemodel_wf(local_dummy_file, local_dummy_directory):
+    @dataclass
+    class InnerDC:
+        a: Optional[int] = -1
+        b: Optional[float] = 2.1
+        c: Optional[str] = "Hello, Flyte"
+        d: Optional[bool] = False
+        e: Optional[List[int]] = field(default_factory=lambda: [0, 1, 2, -1, -2])
+        f: Optional[List[FlyteFile]] = field(default_factory=lambda: [FlyteFile(local_dummy_file)])
+        g: Optional[List[List[int]]] = field(default_factory=lambda: [[0], [1], [-1]])
+        h: Optional[List[Dict[int, bool]]] = field(default_factory=lambda: [{0: False}, {1: True}, {-1: True}])
+        i: Optional[Dict[int, bool]] = field(default_factory=lambda: {0: False, 1: True, -1: False})
+        j: Optional[Dict[int, FlyteFile]] = field(default_factory=lambda: {0: FlyteFile(local_dummy_file),
+                                                                           1: FlyteFile(local_dummy_file),
+                                                                           -1: FlyteFile(local_dummy_file)})
+        k: Optional[Dict[int, List[int]]] = field(default_factory=lambda: {0: [0, 1, -1]})
+        l: Optional[Dict[int, Dict[int, int]]] = field(default_factory=lambda: {1: {-1: 0}})
+        m: Optional[dict] = field(default_factory=lambda: {"key": "value"})
+        n: Optional[FlyteFile] = field(default_factory=lambda: FlyteFile(local_dummy_file))
+        o: Optional[FlyteDirectory] = field(default_factory=lambda: FlyteDirectory(local_dummy_directory))
+        enum_status: Optional[Status] = field(default=Status.PENDING)
+
+    @dataclass
+    class DC:
+        a: Optional[int] = -1
+        b: Optional[float] = 2.1
+        c: Optional[str] = "Hello, Flyte"
+        d: Optional[bool] = False
+        e: Optional[List[int]] = field(default_factory=lambda: [0, 1, 2, -1, -2])
+        f: Optional[List[FlyteFile]] = field(default_factory=lambda: [FlyteFile(local_dummy_file)])
+        g: Optional[List[List[int]]] = field(default_factory=lambda: [[0], [1], [-1]])
+        h: Optional[List[Dict[int, bool]]] = field(default_factory=lambda: [{0: False}, {1: True}, {-1: True}])
+        i: Optional[Dict[int, bool]] = field(default_factory=lambda: {0: False, 1: True, -1: False})
+        j: Optional[Dict[int, FlyteFile]] = field(default_factory=lambda: {0: FlyteFile(local_dummy_file),
+                                                                           1: FlyteFile(local_dummy_file),
+                                                                           -1: FlyteFile(local_dummy_file)})
+        k: Optional[Dict[int, List[int]]] = field(default_factory=lambda: {0: [0, 1, -1]})
+        l: Optional[Dict[int, Dict[int, int]]] = field(default_factory=lambda: {1: {-1: 0}})
+        m: Optional[dict] = field(default_factory=lambda: {"key": "value"})
+        n: Optional[FlyteFile] = field(default_factory=lambda: FlyteFile(local_dummy_file))
+        o: Optional[FlyteDirectory] = field(default_factory=lambda: FlyteDirectory(local_dummy_directory))
+        inner_dc: Optional[InnerDC] = field(default_factory=lambda: InnerDC())
+        enum_status: Optional[Status] = field(default=Status.PENDING)
+
+    @task
+    def t_inner(inner_dc: InnerDC):
+        assert type(inner_dc) is InnerDC
+
+        # f: List[FlyteFile]
+        for ff in inner_dc.f: # type: ignore
+            assert type(ff) is FlyteFile
+            with open(ff, "r") as f:
+                assert f.read() == "Hello FlyteFile"
+        # j: Dict[int, FlyteFile]
+        for _, ff in inner_dc.j.items(): # type: ignore
+            assert type(ff) is FlyteFile
+            with open(ff, "r") as f:
+                assert f.read() == "Hello FlyteFile"
+        # n: FlyteFile
+        assert type(inner_dc.n) is FlyteFile
+        with open(inner_dc.n, "r") as f:
+            assert f.read() == "Hello FlyteFile"
+        # o: FlyteDirectory
+        assert type(inner_dc.o) is FlyteDirectory
+        assert not inner_dc.o.downloaded
+        with open(os.path.join(inner_dc.o, "file"), "r") as fh:
+            assert fh.read() == "Hello FlyteDirectory"
+        assert inner_dc.o.downloaded
+
+        # enum: Status
+        assert inner_dc.enum_status == Status.PENDING
+
+    @task
+    def t_test_all_attributes(a: Optional[int], b: Optional[float], c: Optional[str], d: Optional[bool],
+                              e: Optional[List[int]], f: Optional[List[FlyteFile]],
+                              g: Optional[List[List[int]]],
+                              h: Optional[List[Dict[int, bool]]], i: Optional[Dict[int, bool]],
+                              j: Optional[Dict[int, FlyteFile]],
+                              k: Optional[Dict[int, List[int]]], l: Optional[Dict[int, Dict[int, int]]],
+                              m: Optional[dict],
+                              n: Optional[FlyteFile], o: Optional[FlyteDirectory],
+                              enum_status: Optional[Status]):
+        # Strict type checks for simple types
+        assert isinstance(a, int), f"a is not int, it's {type(a)}"
+        assert a == -1
+        assert isinstance(b, float), f"b is not float, it's {type(b)}"
+        assert isinstance(c, str), f"c is not str, it's {type(c)}"
+        assert isinstance(d, bool), f"d is not bool, it's {type(d)}"
+
+        # Strict type checks for List[int]
+        assert isinstance(e, list) and all(isinstance(i, int) for i in e), "e is not List[int]"
+
+        # Strict type checks for List[FlyteFile]
+        assert isinstance(f, list) and all(isinstance(i, FlyteFile) for i in f), "f is not List[FlyteFile]"
+
+        # Strict type checks for List[List[int]]
+        assert isinstance(g, list) and all(
+            isinstance(i, list) and all(isinstance(j, int) for j in i) for i in g), "g is not List[List[int]]"
+
+        # Strict type checks for List[Dict[int, bool]]
+        assert isinstance(h, list) and all(
+            isinstance(i, dict) and all(isinstance(k, int) and isinstance(v, bool) for k, v in i.items()) for i in h
+        ), "h is not List[Dict[int, bool]]"
+
+        # Strict type checks for Dict[int, bool]
+        assert isinstance(i, dict) and all(
+            isinstance(k, int) and isinstance(v, bool) for k, v in i.items()), "i is not Dict[int, bool]"
+
+        # Strict type checks for Dict[int, FlyteFile]
+        assert isinstance(j, dict) and all(
+            isinstance(k, int) and isinstance(v, FlyteFile) for k, v in j.items()), "j is not Dict[int, FlyteFile]"
+
+        # Strict type checks for Dict[int, List[int]]
+        assert isinstance(k, dict) and all(
+            isinstance(k, int) and isinstance(v, list) and all(isinstance(i, int) for i in v) for k, v in
+            k.items()), "k is not Dict[int, List[int]]"
+
+        # Strict type checks for Dict[int, Dict[int, int]]
+        assert isinstance(l, dict) and all(
+            isinstance(k, int) and isinstance(v, dict) and all(
+                isinstance(sub_k, int) and isinstance(sub_v, int) for sub_k, sub_v in v.items())
+            for k, v in l.items()), "l is not Dict[int, Dict[int, int]]"
+
+        # Strict type check for a generic dict
+        assert isinstance(m, dict), "m is not dict"
+
+        # Strict type check for FlyteFile
+        assert isinstance(n, FlyteFile), "n is not FlyteFile"
+
+        # Strict type check for FlyteDirectory
+        assert isinstance(o, FlyteDirectory), "o is not FlyteDirectory"
+
+        # Strict type check for Enum
+        assert isinstance(enum_status, Status), "enum_status is not Status"
+
+    @workflow
+    def wf(dc: DC):
+        t_inner(dc.inner_dc)
+        t_test_all_attributes(a=dc.a, b=dc.b, c=dc.c,
+                              d=dc.d, e=dc.e, f=dc.f,
+                              g=dc.g, h=dc.h, i=dc.i,
+                              j=dc.j, k=dc.k, l=dc.l,
+                              m=dc.m, n=dc.n, o=dc.o,
+                              enum_status=dc.enum_status)
+
+    wf(dc=DC())
+
+
+def test_all_types_with_optional_and_none_in_dataclass_wf():
+    @dataclass
+    class InnerDC:
+        a: Optional[int] = None
+        b: Optional[float] = None
+        c: Optional[str] = None
+        d: Optional[bool] = None
+        e: Optional[List[int]] = None
+        f: Optional[List[FlyteFile]] = None
+        g: Optional[List[List[int]]] = None
+        h: Optional[List[Dict[int, bool]]] = None
+        i: Optional[Dict[int, bool]] = None
+        j: Optional[Dict[int, FlyteFile]] = None
+        k: Optional[Dict[int, List[int]]] = None
+        l: Optional[Dict[int, Dict[int, int]]] = None
+        m: Optional[dict] = None
+        n: Optional[FlyteFile] = None
+        o: Optional[FlyteDirectory] = None
+        enum_status: Optional[Status] = None
+
+    @dataclass
+    class DC:
+        a: Optional[int] = None
+        b: Optional[float] = None
+        c: Optional[str] = None
+        d: Optional[bool] = None
+        e: Optional[List[int]] = None
+        f: Optional[List[FlyteFile]] = None
+        g: Optional[List[List[int]]] = None
+        h: Optional[List[Dict[int, bool]]] = None
+        i: Optional[Dict[int, bool]] = None
+        j: Optional[Dict[int, FlyteFile]] = None
+        k: Optional[Dict[int, List[int]]] = None
+        l: Optional[Dict[int, Dict[int, int]]] = None
+        m: Optional[dict] = None
+        n: Optional[FlyteFile] = None
+        o: Optional[FlyteDirectory] = None
+        inner_dc: Optional[InnerDC] = None
+        enum_status: Optional[Status] = None
+
+    @task
+    def t_inner(inner_dc: Optional[InnerDC]):
+        return inner_dc
+
+    @task
+    def t_test_all_attributes(a: Optional[int], b: Optional[float], c: Optional[str], d: Optional[bool],
+                              e: Optional[List[int]], f: Optional[List[FlyteFile]],
+                              g: Optional[List[List[int]]],
+                              h: Optional[List[Dict[int, bool]]], i: Optional[Dict[int, bool]],
+                              j: Optional[Dict[int, FlyteFile]],
+                              k: Optional[Dict[int, List[int]]], l: Optional[Dict[int, Dict[int, int]]],
+                              m: Optional[dict],
+                              n: Optional[FlyteFile], o: Optional[FlyteDirectory],
+                              enum_status: Optional[Status]):
+        return
+
+    @workflow
+    def wf(dc: DC):
+        t_inner(dc.inner_dc)
+        t_test_all_attributes(a=dc.a, b=dc.b, c=dc.c,
+                              d=dc.d, e=dc.e, f=dc.f,
+                              g=dc.g, h=dc.h, i=dc.i,
+                              j=dc.j, k=dc.k, l=dc.l,
+                              m=dc.m, n=dc.n, o=dc.o,
+                              enum_status=dc.enum_status)
+
+    wf(dc=DC())
