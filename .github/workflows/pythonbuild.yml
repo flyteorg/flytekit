@@ -94,7 +94,7 @@ jobs:
       - name: Install Protobuf (Windows)
         if: runner.os == 'Windows'
         run: |
-          choco install protoc strawberryperl make -y
+          choco install protoc strawberryperl make openssl -y
       - name: Generate Rust Protobuf (Ubuntu)
         if: runner.os == 'Linux'
         working-directory: ${{ github.workspace }}/flyte/flyteidl
