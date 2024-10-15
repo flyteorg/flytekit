@@ -383,7 +383,7 @@ def test_dyn_pd():
         return pd.DataFrame({"a": [1, 2, 3]})
 
     @dynamic
-    def my_dynamic() -> List[pd.DataFrame]:  # type: ignore
+    def my_dynamic() -> list[pd.DataFrame]:  # type: ignore
         dfs = []
         for i in range(3):
             dfs.append(nested_task())
