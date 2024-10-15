@@ -150,23 +150,9 @@ class TypeTransformer(typing.Generic[T]):
 
     def isinstance_generic(self, obj, generic_alias):
         origin = get_origin(generic_alias)  # list from list[int])
-        args = get_args(generic_alias)  # (int,) from list[int]
 
         if not isinstance(obj, origin):
             raise TypeTransformerFailedError(f"Value '{obj}' is not of container type {origin}")
-
-        # Optionally check the type of elements if it's a collection like list or dict
-        if origin in {list, tuple, set}:
-            for item in obj:
-                self.assert_type(args[0], item)
-            return
-
-        if origin is dict:
-            key_type, value_type = args
-            for k, v in obj.items():
-                self.assert_type(key_type, k)
-                self.assert_type(value_type, v)
-            return
 
     def assert_type(self, t: Type[T], v: T):
         if sys.version_info >= (3, 10):
