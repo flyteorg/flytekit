@@ -3,6 +3,7 @@ import typing
 from collections import OrderedDict
 
 import mock
+import flyteidl_rust as flyteidl
 from flyteidl.admin import launch_plan_pb2, task_pb2, workflow_pb2
 
 import flytekit.configuration
@@ -29,12 +30,12 @@ responses_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "respo
 @mock.patch("flytekit.remote.remote.FlyteRemote.client")
 def test_fetch_wf_wf_lp_pattern(mock_client):
     leaf_lp = load_proto_from_file(
-        launch_plan_pb2.LaunchPlan,
+        flyteidl.admin.LaunchPlan,
         os.path.join(responses_dir, "admin.launch_plan_pb2.LaunchPlan_core.control_flow.subworkflows.leaf_subwf.pb"),
     )
     leaf_lp = launch_plan_models.LaunchPlan.from_flyte_idl(leaf_lp)
     root_wf = load_proto_from_file(
-        workflow_pb2.Workflow,
+        flyteidl.admin.Workflow,
         os.path.join(responses_dir, "admin.workflow_pb2.Workflow_core.control_flow.subworkflows.root_level_wf.pb"),
     )
     root_wf = admin_workflow_models.Workflow.from_flyte_idl(root_wf)
@@ -48,7 +49,7 @@ def test_fetch_wf_wf_lp_pattern(mock_client):
 @mock.patch("flytekit.remote.remote.FlyteRemote.client")
 def test_task(mock_client):
     merge_sort_remotely = load_proto_from_file(
-        task_pb2.Task,
+        flyteidl.admin.Task,
         os.path.join(responses_dir, "admin.task_pb2.Task.pb"),
     )
     admin_task = task_models.Task.from_flyte_idl(merge_sort_remotely)
@@ -61,7 +62,7 @@ def test_task(mock_client):
 @mock.patch("flytekit.remote.remote.FlyteRemote.client")
 def test_normal_task(mock_client):
     merge_sort_remotely = load_proto_from_file(
-        task_pb2.Task,
+        flyteidl.admin.Task,
         os.path.join(responses_dir, "admin.task_pb2.Task.pb"),
     )
     admin_task = task_models.Task.from_flyte_idl(merge_sort_remotely)

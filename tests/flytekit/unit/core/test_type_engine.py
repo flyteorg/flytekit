@@ -621,7 +621,7 @@ def test_list_transformer():
     xx = TypeEngine.to_python_value(ctx, lit, typing.List[int])
     assert xx == [3, 4]
 
-@pytest.mark.flyteidl()
+@pytest.mark.flyteidl_rust
 def test_protos():
     ctx = FlyteContext.current_context()
     import flyteidl_rust as flyteidl
@@ -629,7 +629,7 @@ def test_protos():
     lt = TypeEngine.to_literal_type(flyteidl.core.ContainerError)
     assert isinstance(lt.blob.to_flyte_idl(), flyteidl.core.BlobType)
     assert lt.metadata["python_class_name"] == "<class 'builtins.ContainerError'>"
-
+    # TODO: Check https://github.com/PyO3/pyo3/issues/100 for details on supporting pickle serialization in PyO3.
     lit = TypeEngine.to_literal(ctx, pb, flyteidl.core.ContainerError, lt)
     new_python_val = TypeEngine.to_python_value(ctx, lit, flyteidl.core.ContainerError)
     assert new_python_val == pb
@@ -2895,7 +2895,7 @@ def test_DataclassTransformer_to_literal():
 
     lv_mashumaro = transformer.to_literal(ctx, my_dat_class_mashumaro, MyDataClassMashumaro, MyDataClassMashumaro)
     assert lv_mashumaro is not None
-    assert lv_mashumaro.scalar.generic["x"] == 5
+    assert lv_mashumaro.scalar.generic.fields["x"].kind[0] == 5
 
     lv_mashumaro_orjson = transformer.to_literal(
         ctx,
@@ -2904,11 +2904,11 @@ def test_DataclassTransformer_to_literal():
         MyDataClassMashumaroORJSON,
     )
     assert lv_mashumaro_orjson is not None
-    assert lv_mashumaro_orjson.scalar.generic["x"] == 5
+    assert lv_mashumaro_orjson.scalar.generic.fields["x"].kind[0] == 5
 
     lv = transformer.to_literal(ctx, my_data_class, MyDataClass, MyDataClass)
     assert lv is not None
-    assert lv.scalar.generic["x"] == 5
+    assert lv.scalar.generic.fields["x"].kind[0] == 5
 
 
 def test_DataclassTransformer_to_python_value():
@@ -2928,7 +2928,8 @@ def test_DataclassTransformer_to_python_value():
     de = DataclassTransformer()
 
     json_str = '{ "x" : 5 }'
-    mock_literal = Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))
+    import flyteidl_rust as flyteidl
+    mock_literal = Literal(scalar=Scalar(generic=flyteidl.ParseStruct(json_str)))
 
     result = de.to_python_value(FlyteContext.current_context(), mock_literal, MyDataClass)
     assert isinstance(result, MyDataClass)
@@ -3089,6 +3090,7 @@ def test_union_file_directory():
 
 
 @pytest.mark.skipif(sys.version_info < (3, 10), reason="PEP604 requires >=3.10.")
+@pytest.mark.flyteidl_rust
 def test_dataclass_none_output_input_deserialization():
     @dataclass
     class OuterWorkflowInput(DataClassJSONMixin):

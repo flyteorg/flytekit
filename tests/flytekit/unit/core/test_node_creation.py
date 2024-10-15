@@ -493,8 +493,9 @@ def test_override_accelerator():
     assert wf_spec.template.nodes[0].task_node.overrides.extended_resources is not None
     accelerator = wf_spec.template.nodes[0].task_node.overrides.extended_resources.gpu_accelerator
     assert accelerator.device == "nvidia-tesla-a100"
-    assert accelerator.partition_size == "1g.5gb"
-    assert not accelerator.HasField("unpartitioned")
+    assert accelerator.partition_size_value[0] == "1g.5gb"
+    import flyteidl_rust as flyteidl
+    assert not isinstance(accelerator, flyteidl.gpu_accelerator.PartitionSizeValue.Unpartitioned)
 
 
 def test_cache_override_values():

@@ -6,7 +6,7 @@ from flytekit.exceptions.base import FlyteException as _FlyteException
 from flytekit.exceptions.base import FlyteRecoverableException as _Recoverable
 
 
-class FlyteUserException(_FlyteException):
+class FlyteUserException(_FlyteUserException, _FlyteException):
     _ERROR_CODE = "USER:Unknown"
 
 
@@ -62,7 +62,7 @@ class FlyteDataNotFoundException(FlyteValueException):
         super(FlyteDataNotFoundException, self).__init__(path, "File not found")
 
 
-class FlyteAssertion(_FlyteUserException, AssertionError):
+class FlyteAssertion(FlyteUserException, AssertionError):
     _ERROR_CODE = "USER:AssertionError"
 
 

@@ -227,7 +227,7 @@ def test_basic_dynamic():
     entities = OrderedDict()
     t1_s = get_serializable(entities, serialization_settings, t1)
     assert len(t1_s.template.interface.outputs["o0"].artifact_partial_id.partitions.value) == 2
-    assert (t1_s.template.interface.outputs["o0"].artifact_partial_id.partitions.value["a"].value, flyteidl.label_value.Value.RuntimeBinding)
+    assert t1_s.template.interface.outputs["o0"].artifact_partial_id.partitions.value["a"].value, flyteidl.label_value.Value.RuntimeBinding
     assert (
         not isinstance(t1_s.template.interface.outputs["o0"].artifact_partial_id.partitions.value["b"].value, flyteidl.label_value.Value.RuntimeBinding)
     )
@@ -663,13 +663,13 @@ def test_lims():
     with pytest.raises(ValueError):
         Artifact(name="test artifact", time_partitioned=True, partition_keys=[f"key_{i}" for i in range(11)])
 
-@pytest.mark.flyteidl
+@pytest.mark.flyteidl_rust
 def test_cloudpickle():
     a1_b = Artifact(name="my_data", partition_keys=["b"])
-    
+
     spec = a1_b(b="my_b_value")
     import cloudpickle
-
+    # TODO: Check https://github.com/PyO3/pyo3/issues/100 for details on supporting pickle serialization in PyO3.
     d = cloudpickle.dumps(spec)
     spec2 = cloudpickle.loads(d)
 

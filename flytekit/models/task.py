@@ -840,7 +840,7 @@ class DataLoadingConfig(_common.FlyteIdlEntity):
         return flyteidl.core.DataLoadingConfig(
             input_path=self._input_path,
             output_path=self._output_path,
-            format=self._format,
+            format=int(self._format),
             enabled=self._enabled,
             io_strategy=self._io_strategy.to_flyte_idl() if self._io_strategy is not None else None,
         )

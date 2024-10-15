@@ -67,7 +67,7 @@ class Project(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.project_pb2.Project
         """
-        return flyteidl.admin.Project(id=self.id, name=self.name, description=self.description, state=self._state)
+        return flyteidl.admin.Project(id=self.id, name=self.name, description=self.description, state=int(self._state))
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):

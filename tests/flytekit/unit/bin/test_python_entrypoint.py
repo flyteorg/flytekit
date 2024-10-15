@@ -5,7 +5,7 @@ from collections import OrderedDict
 import fsspec
 import mock
 import pytest
-from flyteidl.core.errors_pb2 import ErrorDocument
+import flyteidl_rust as flyteidl
 
 from flytekit.bin.entrypoint import _dispatch_execute, normalize_inputs, setup_execution
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
@@ -30,7 +30,6 @@ def test_dispatch_execute_void(mock_write_to_file, mock_upload_dir, mock_get_dat
     # Just leave these here, mock them out so nothing happens
     mock_get_data.return_value = True
     mock_upload_dir.return_value = True
-
     ctx = context_manager.FlyteContext.current_context()
     with context_manager.FlyteContextManager.with_context(
         ctx.with_execution_state(
@@ -44,7 +43,7 @@ def test_dispatch_execute_void(mock_write_to_file, mock_upload_dir, mock_get_dat
         mock_load_proto.return_value = empty_literal_map
 
         def verify_output(*args, **kwargs):
-            assert args[0] == empty_literal_map
+            assert args[0].literals == empty_literal_map.literals
 
         mock_write_to_file.side_effect = verify_output
         _dispatch_execute(ctx, python_task, "inputs path", "outputs prefix")
@@ -102,7 +101,7 @@ def test_dispatch_execute_exception(mock_write_to_file, mock_upload_dir, mock_ge
         mock_load_proto.return_value = empty_literal_map
 
         def verify_output(*args, **kwargs):
-            assert isinstance(args[0], ErrorDocument)
+            assert isinstance(args[0], flyteidl.core.ErrorDocument)
 
         mock_write_to_file.side_effect = verify_output
         _dispatch_execute(ctx, python_task, "inputs path", "outputs prefix")
@@ -130,7 +129,7 @@ def test_dispatch_execute_return_error_code(mock_write_to_file, mock_upload_dir,
         mock_load_proto.return_value = empty_literal_map
 
         def verify_output(*args, **kwargs):
-            assert isinstance(args[0], ErrorDocument)
+            assert isinstance(args[0], flyteidl.core.ErrorDocument)
 
         mock_write_to_file.side_effect = verify_output
 

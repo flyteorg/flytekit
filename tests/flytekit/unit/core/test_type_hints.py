@@ -7,14 +7,14 @@ import re
 import sys
 import tempfile
 import typing
+import json
 from collections import OrderedDict
 from dataclasses import dataclass
 from enum import Enum
 
 import pytest
 from dataclasses_json import DataClassJsonMixin
-from google.protobuf.struct_pb2 import Struct
-from mashumaro.codecs.json import JSONEncoder, JSONDecoder
+import flyteidl_rust as flyteidl
 from typing_extensions import Annotated, get_origin
 
 import flytekit
@@ -1488,7 +1488,7 @@ def test_guess_dict():
     guessed_types = {"a": pt}
     ctx = context_manager.FlyteContext.current_context()
     lm = TypeEngine.dict_to_literal_map(ctx, d=input_map, type_hints=guessed_types)
-    assert isinstance(lm.literals["a"].scalar.generic, Struct)
+    assert isinstance(lm.literals["a"].scalar.generic, flyteidl.protobuf.Struct)
 
     output_lm = t2.dispatch_execute(ctx, lm)
     str_value = output_lm.literals["o0"].scalar.primitive.string_value
@@ -1521,9 +1521,8 @@ def test_guess_dict3():
 
     ctx = context_manager.FlyteContextManager.current_context()
     output_lm = t2.dispatch_execute(ctx, _literal_models.LiteralMap(literals={}))
-    expected_struct = Struct()
-    expected_struct.update({"k1": "v1", "k2": 3, "4": {"one": [1, "two", [3]]}})
-    assert output_lm.literals["o0"].scalar.generic == expected_struct
+    expected_struct:flyteidl.protobuf.Struct = flyteidl.ParseStruct(json.dumps({"k1": "v1", "k2": 3, "4": {"one": [1, "two", [3]]}}))
+    assert json.loads(flyteidl.DumpStruct(output_lm.literals["o0"].scalar.generic)) == json.loads(flyteidl.DumpStruct(expected_struct))
 
 
 @pytest.mark.skipif(sys.version_info < (3, 9), reason="Use of dict hints is only supported in Python 3.9+")
@@ -1550,9 +1549,9 @@ def test_guess_dict4():
 
     ctx = context_manager.FlyteContextManager.current_context()
     output_lm = t1.dispatch_execute(ctx, _literal_models.LiteralMap(literals={}))
-    expected_struct = Struct()
-    expected_struct.update({"x": 1, "y": "foo", "z": {"hello": "world"}})
-    assert output_lm.literals["o0"].scalar.generic == expected_struct
+
+    expected_struct:flyteidl.protobuf.Struct = flyteidl.ParseStruct(json.dumps({"x": 1, "y": "foo", "z": {"hello": "world"}}))
+    assert json.loads(flyteidl.DumpStruct(output_lm.literals["o0"].scalar.generic)) == json.loads(flyteidl.DumpStruct(expected_struct))
 
     @task
     def t2() -> Bar:
@@ -1563,8 +1562,8 @@ def test_guess_dict4():
     assert dataclasses.is_dataclass(pt_map["o0"])
 
     output_lm = t2.dispatch_execute(ctx, _literal_models.LiteralMap(literals={}))
-    expected_struct.update({"x": 1, "y": {"hello": "world"}, "z": {"x": 1, "y": "foo", "z": {"hello": "world"}}})
-    assert output_lm.literals["o0"].scalar.generic == expected_struct
+    expected_struct:flyteidl.protobuf.Struct = flyteidl.ParseStruct(json.dumps({"x": 1, "y": {"hello": "world"}, "z": {"x": 1, "y": "foo", "z": {"hello": "world"}}}))
+    assert json.loads(flyteidl.DumpStruct(output_lm.literals["o0"].scalar.generic)) == json.loads(flyteidl.DumpStruct(expected_struct))
 
 
 def test_error_messages():
@@ -1727,12 +1726,13 @@ def test_union_type():
 
     with pytest.raises(
         TypeError,
-        match=re.escape(
-            "Error encountered while executing 'wf2':\n"
-            f"  Failed to convert inputs of task '{prefix}tests.flytekit.unit.core.test_type_hints.t2':\n"
-            '  Cannot convert from [Flyte Serialized object: Type: <Literal> Value: <scalar { union { value { scalar { primitive { string_value: "2" } } } '
-            'type { simple: STRING structure { tag: "str" } } } }>] to typing.Union[float, dict] (using tag str)'
-        ),
+        match=re.compile(
+            r"Error encountered while executing 'wf2':\n"
+            r"  Failed to convert inputs of task 'tests\.flytekit\.unit\.core\.test_type_hints\.t2':\n"
+            r"  Cannot convert from \[Flyte Serialized object: Type: <Literal> Value: <.*?>\] "
+            r"to typing\.Union\[float, dict\] \(using tag str\)",
+            re.DOTALL
+        )
     ):
         assert wf2(a="2") == "2"
 

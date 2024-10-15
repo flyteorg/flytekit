@@ -365,14 +365,14 @@ def get_compiled_workflow_closure():
     """
     :rtype: flytekit.models.core.compiler.CompiledWorkflowClosure
     """
-    
+
     cwc_pb = flyteidl.core.CompiledWorkflowClosure()
     # So that tests that use this work when run from any directory
     basepath = os.path.dirname(__file__)
     filepath = os.path.abspath(os.path.join(basepath, "responses", "CompiledWorkflowClosure.pb"))
     with open(filepath, "rb") as fh:
         cwc_pb = cwc_pb.ParseFromString(fh.read())
-    
+
     return CompiledWorkflowClosure.from_flyte_idl(cwc_pb)
 
 
@@ -381,7 +381,7 @@ def test_fetch_lazy(remote):
     mock_client.get_task.return_value = Task(
         id=Identifier(ResourceType.TASK, "p", "d", "n", "v"), closure=LIST_OF_TASK_CLOSURES[0]
     )
-    
+
     mock_client.get_workflow.return_value = Workflow(
         id=Identifier(ResourceType.WORKFLOW, "p", "d", "n", "v"),
         closure=WorkflowClosure(compiled_workflow=get_compiled_workflow_closure()),
@@ -391,7 +391,7 @@ def test_fetch_lazy(remote):
     assert isinstance(lw, LazyEntity)
     assert lw._getter
     assert lw._entity is None
-    
+
     assert lw.entity
 
     lt = remote.fetch_task_lazy(name="n", version="v")

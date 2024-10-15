@@ -277,8 +277,16 @@ class TimePartition(object):
         if self.value:
             if isinstance(self.value, flyteidl.core.LabelValue):
                 from flytekit.models import utils
+
                 if isinstance(self.value.value, flyteidl.label_value.Value.TimeValue):
-                    yield "Time Partition", str(utils.convert_to_datetime(seconds=self.value.value[0].seconds, nanos=self.value.value[0].nanos))
+                    yield (
+                        "Time Partition",
+                        str(
+                            utils.convert_to_datetime(
+                                seconds=self.value.value[0].seconds, nanos=self.value.value[0].nanos
+                            )
+                        ),
+                    )
                 elif isinstance(self.value.value, flyteidl.label_value.Value.InputBinding):
                     yield "Time Partition (bound to)", self.value.value[0].var
                 else:

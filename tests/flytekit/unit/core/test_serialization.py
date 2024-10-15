@@ -396,7 +396,7 @@ def test_serialization_set_command():
     custom_command = t1.get_command(serialization_settings)
     assert custom_command[0] == "pyflyte-execute"
 
-
+@pytest.mark.flyteidl_rust
 def test_serialization_nested_subwf():
     @task
     def t1(a: int) -> int:

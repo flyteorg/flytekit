@@ -49,6 +49,7 @@ def reset_flytectl_config_env_var() -> pytest.fixture():
 
 
 @mock.patch("flytekit.configuration.plugin.FlyteRemote")
+@pytest.mark.flyteidl_rust
 def test_get_remote(mock_remote, reset_flytectl_config_env_var):
     r = FlytekitPlugin.get_remote(None, "p", "d")
     assert r is not None
@@ -58,6 +59,7 @@ def test_get_remote(mock_remote, reset_flytectl_config_env_var):
 
 
 @mock.patch("flytekit.configuration.plugin.FlyteRemote")
+@pytest.mark.flyteidl_rust
 def test_saving_remote(mock_remote):
     mock_context = mock.MagicMock
     mock_context.obj = {}
