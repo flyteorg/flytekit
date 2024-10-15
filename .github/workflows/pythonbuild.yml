@@ -128,8 +128,14 @@ jobs:
           fi
           VCPKGRS_DYNAMIC=1 maturin build --release --out ${{ github.workspace }}/dist --interpreter python${{ matrix.python-version }} -m ./Cargo.toml
       - name: Install built wheel and Test with coverage
+        shell: bash
         run: |
-          uv pip install --system flyteidl-rust --no-index --find-links ${{ github.workspace }}/dist --force-reinstall
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            out_dir="${{ github.workspace }}\\dist"
+          else
+            out_dir="${{ github.workspace }}/dist"
+          fi
+          uv pip install --system flyteidl-rust --no-index --find-links "$out_dir" --force-reinstall
           uv pip freeze
           python -c "import flyteidl_rust"
           make unit_test_codecov
