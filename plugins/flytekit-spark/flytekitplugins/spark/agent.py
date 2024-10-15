@@ -7,6 +7,7 @@ from typing import Optional
 from flyteidl.core.execution_pb2 import TaskExecution
 
 from flytekit import lazy_module
+from flytekit.core.constants import FLYTE_FAIL_ON_ERROR
 from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource, ResourceMeta
 from flytekit.extend.backend.utils import convert_to_flyte_phase, get_agent_secret
 from flytekit.models.core.execution import TaskLog
@@ -35,6 +36,8 @@ class DatabricksAgent(AsyncAgentBase):
     ) -> DatabricksJobMetadata:
         custom = task_template.custom
         container = task_template.container
+        envs = task_template.container.env
+        envs[FLYTE_FAIL_ON_ERROR] = "true"
         databricks_job = custom["databricksConf"]
         if databricks_job.get("existing_cluster_id") is None:
             new_cluster = databricks_job.get("new_cluster")
@@ -44,6 +47,10 @@ class DatabricksAgent(AsyncAgentBase):
                 new_cluster["docker_image"] = {"url": container.image}
             if not new_cluster.get("spark_conf"):
                 new_cluster["spark_conf"] = custom["sparkConf"]
+            if not new_cluster["spark_env_vars"]:
+                new_cluster["spark_env_vars"] = {k: v for k, v in envs.items()}
+            else:
+                new_cluster["spark_env_vars"].update({k: v for k, v in envs.items()})
         # https://docs.databricks.com/api/workspace/jobs/submit
         databricks_job["spark_python_task"] = {
             "python_file": "flytekitplugins/databricks/entrypoint.py",
