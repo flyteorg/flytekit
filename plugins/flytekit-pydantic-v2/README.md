@@ -12,25 +12,32 @@ pip install flytekitplugins-pydantic-v2
 
 ## Type Example
 ```python
+from enum import Enum
+import os
+from typing import Dict, List, Optional
+
+import pandas as pd
 from pydantic import BaseModel, Field
-from typing import Dict, List
+
+from flytekit.types.schema import FlyteSchema
+from flytekit.types.structured import StructuredDataset
 from flytekit.types.file import FlyteFile
 from flytekit.types.directory import FlyteDirectory
 from flytekit import task, workflow, ImageSpec
-from enum import Enum
-import os
 
-image = ImageSpec(packages=["flytekitplugins-pydantic-v2"],
-                            apt_packages=["git"],
+
+image = ImageSpec(packages=["flytekitplugins-pydantic-v2",
+                            "pandas",
+                            "pyarrow"],
                             registry="localhost:30000",
-                         )
+                            )
 
 class Status(Enum):
     PENDING = "pending"
     APPROVED = "approved"
     REJECTED = "rejected"
 
-class InnerDC(BaseModel):
+class InnerBM(BaseModel):
     a: int = -1
     b: float = 2.1
     c: str = "Hello, Flyte"
@@ -49,9 +56,13 @@ class InnerDC(BaseModel):
     n: FlyteFile = Field(default_factory=lambda: FlyteFile("s3://my-s3-bucket/example.txt"))
     o: FlyteDirectory = Field(default_factory=lambda: FlyteDirectory("s3://my-s3-bucket/s3_flyte_dir"))
     enum_status: Status = Status.PENDING
+    sd: StructuredDataset = Field(default_factory=lambda: StructuredDataset(
+        uri="s3://my-s3-bucket/data/uk/ahlg7qw7q5m4np7vwdqm-n0-0/7f31035fdf92510e40ee9340f9e5bf34",
+        file_format="parquet"))
+    fsc: FlyteSchema = Field(default_factory=lambda: FlyteSchema(
+        remote_path="s3://my-s3-bucket/data/uk/ahlg7qw7q5m4np7vwdqm-n0-0/ab3aef21302d0529daef8c43825c3fdf"))
 
-
-class DC(BaseModel):
+class BM(BaseModel):
     a: int = -1
     b: float = 2.1
     c: str = "Hello, Flyte"
@@ -69,16 +80,20 @@ class DC(BaseModel):
     m: dict = Field(default_factory=lambda: {"key": "value"})
     n: FlyteFile = Field(default_factory=lambda: FlyteFile("s3://my-s3-bucket/example.txt"))
     o: FlyteDirectory = Field(default_factory=lambda: FlyteDirectory("s3://my-s3-bucket/s3_flyte_dir"))
-    inner_dc: InnerDC = Field(default_factory=lambda: InnerDC())
+    inner_dc: InnerBM = Field(default_factory=lambda: InnerBM())
     enum_status: Status = Status.PENDING
-
+    sd: StructuredDataset = Field(default_factory=lambda: StructuredDataset(
+        uri="s3://my-s3-bucket/data/uk/ahlg7qw7q5m4np7vwdqm-n0-0/7f31035fdf92510e40ee9340f9e5bf34",
+        file_format="parquet"))
+    fsc: FlyteSchema = Field(default_factory=lambda: FlyteSchema(remote_path="s3://my-s3-bucket/data/uk/ahlg7qw7q5m4np7vwdqm-n0-0/ab3aef21302d0529daef8c43825c3fdf"))
 
 @task(container_image=image)
-def t_dc(dc: DC) -> DC:
+def t_dc(dc: BM) -> BM:
     return dc
+
 @task(container_image=image)
-def t_inner(inner_dc: InnerDC):
-    assert isinstance(inner_dc, InnerDC)
+def t_inner(inner_dc: InnerBM):
+    assert isinstance(inner_dc, InnerBM)
 
     expected_file_content = "Default content"
 
@@ -102,7 +117,7 @@ def t_inner(inner_dc: InnerDC):
     with open(os.path.join(inner_dc.o, "example.txt"), "r") as fh:
         assert fh.read() == expected_file_content
     assert inner_dc.o.downloaded
-    print("Test InnerDC Successfully Passed")
+    print("Test InnerBM Successfully Passed")
     # enum: Status
     assert inner_dc.enum_status == Status.PENDING
 
@@ -112,7 +127,9 @@ def t_test_all_attributes(a: int, b: float, c: str, d: bool, e: List[int], f: Li
                           h: List[Dict[int, bool]], i: Dict[int, bool], j: Dict[int, FlyteFile],
                           k: Dict[int, List[int]], l: Dict[int, Dict[int, int]], m: dict,
                           n: FlyteFile, o: FlyteDirectory,
-                          enum_status: Status
+                          enum_status: Status,
+                          sd: StructuredDataset,
+                          fsc: FlyteSchema,
                           ):
     # Strict type checks for simple types
     assert isinstance(a, int), f"a is not int, it's {type(a)}"
@@ -164,14 +181,20 @@ def t_test_all_attributes(a: int, b: float, c: str, d: bool, e: List[int], f: Li
     # Strict type check for FlyteDirectory
     assert isinstance(o, FlyteDirectory), "o is not FlyteDirectory"
 
-    # Strict type check for Enum
+    # # Strict type check for Enum
     assert isinstance(enum_status, Status), "enum_status is not Status"
+
+    assert isinstance(sd, StructuredDataset), "sd is not StructuredDataset"
+    print("sd:", sd.open(pd.DataFrame).all())
+
+    assert isinstance(fsc, FlyteSchema), "fsc is not FlyteSchema"
+    print("fsc: ", fsc.open().all())
 
     print("All attributes passed strict type checks.")
 
 
 @workflow
-def wf(dc: DC):
+def wf(dc: BM):
     t_dc(dc=dc)
     t_inner(inner_dc=dc.inner_dc)
     t_test_all_attributes(a=dc.a, b=dc.b, c=dc.c,
@@ -179,7 +202,9 @@ def wf(dc: DC):
                           g=dc.g, h=dc.h, i=dc.i,
                           j=dc.j, k=dc.k, l=dc.l,
                           m=dc.m, n=dc.n, o=dc.o,
-                          enum_status=dc.enum_status
+                          enum_status=dc.enum_status,
+                          sd=dc.sd,
+                          fsc=dc.fsc,
                           )
 
     t_test_all_attributes(a=dc.inner_dc.a, b=dc.inner_dc.b, c=dc.inner_dc.c,
@@ -187,6 +212,8 @@ def wf(dc: DC):
                           g=dc.inner_dc.g, h=dc.inner_dc.h, i=dc.inner_dc.i,
                           j=dc.inner_dc.j, k=dc.inner_dc.k, l=dc.inner_dc.l,
                           m=dc.inner_dc.m, n=dc.inner_dc.n, o=dc.inner_dc.o,
-                          enum_status=dc.inner_dc.enum_status
+                          enum_status=dc.inner_dc.enum_status,
+                          sd=dc.inner_dc.sd,
+                          fsc=dc.inner_dc.fsc,
                           )
 ```
