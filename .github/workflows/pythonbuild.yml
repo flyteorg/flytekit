@@ -126,12 +126,12 @@ jobs:
           else
             source ./venv/bin/activate
           fi
-          VCPKGRS_DYNAMIC=1 maturin build --release --out dist --interpreter python${{ matrix.python-version }} -m ./Cargo.toml
+          VCPKGRS_DYNAMIC=1 maturin build --release --out ./dist --interpreter python${{ matrix.python-version }} -m ./Cargo.toml
       - name: Install built wheel and Test with coverage
         shell: bash
         working-directory: ${{ github.workspace }}/flyte/flyteidl
         run: |
-          pip install dist/*.whl --no-index --force-reinstall
+          pip install ./dist/*.whl --no-index --force-reinstall
           pip freeze
           python -c "import flyteidl_rust"
           make unit_test_codecov
