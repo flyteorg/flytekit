@@ -222,14 +222,14 @@ def _dispatch_execute(
 
     logger.debug("Finished _dispatch_execute")
 
-    """
-    If the environment variable FLYTE_FAIL_ON_ERROR is set to true, the task execution will fail if an error file is
-    generated. This environment variable is set to true by the plugin author if they want the task to fail on error.
-    Otherwise, the task will always succeed, and just write the error file to the blob store.
-    
-    For example, you can see the task fails on Databricks or AWS batch UI by setting this environment variable to true.
-    """
     if str2bool(os.getenv(FLYTE_FAIL_ON_ERROR)) and _constants.ERROR_FILE_NAME in output_file_dict:
+        """
+        If the environment variable FLYTE_FAIL_ON_ERROR is set to true, the task execution will fail if an error file is
+        generated. This environment variable is set to true by the plugin author if they want the task to fail on error.
+        Otherwise, the task will always succeed and just write the error file to the blob store.
+
+        For example, you can see the task fails on Databricks or AWS batch UI by setting this environment variable to true.
+        """
         exit(1)
 
 
