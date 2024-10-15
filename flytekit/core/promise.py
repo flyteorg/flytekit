@@ -787,18 +787,6 @@ def create_task_output(
     return Output(*promises)  # type: ignore
 
 
-def binding_data_from_literal(l: _literals_models.Literal) -> _literals_models.BindingData:
-    if l.scalar:
-        return _literals_models.BindingData(scalar=l.scalar)
-    elif l.collection:
-        coll = [binding_data_from_literal(l) for l in l.collection.literals]
-        return _literals_models.BindingData(collection=_literals_models.BindingDataCollection(bindings=coll))
-    elif l.map:
-        bdm = {lit_k: binding_data_from_literal(lit_v) for lit_k, lit_v in l.map.literals.items()}
-        return _literals_models.BindingData(map=_literals_models.BindingDataMap(bindings=bdm))
-    raise AssertionError(f"Unknown literal type {l}")
-
-
 T = typing.TypeVar("T")
 
 
