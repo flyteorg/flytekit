@@ -16,6 +16,7 @@ import typing
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from functools import lru_cache
+from types import NoneType
 from typing import Any, Dict, List, NamedTuple, Optional, Type, cast
 
 import msgpack
@@ -1854,9 +1855,6 @@ class UnionTransformer(AsyncTypeTransformer[T]):
     ) -> Optional[typing.Any]:
         expected_python_type = get_underlying_type(expected_python_type)
 
-        if lv.scalar is not None and lv.scalar.binary is not None:
-            return self.from_binary_idl(lv.scalar.binary, expected_python_type)
-
         union_tag = None
         union_type = None
         if lv.scalar is not None and lv.scalar.union is not None:
@@ -1872,6 +1870,9 @@ class UnionTransformer(AsyncTypeTransformer[T]):
         # This is serial, not actually async, but should be okay since it's more reasonable for Unions.
         for v in get_args(expected_python_type):
             try:
+                if found_res and v is NoneType:
+                    continue
+
                 trans: TypeTransformer[T] = TypeEngine.get_transformer(v)
                 if union_tag is not None:
                     if trans.name != union_tag:
@@ -1885,9 +1886,15 @@ class UnionTransformer(AsyncTypeTransformer[T]):
                     assert lv.scalar.union is not None  # type checker
 
                     if isinstance(trans, AsyncTypeTransformer):
-                        res = await trans.async_to_python_value(ctx, lv.scalar.union.value, v)
+                        if lv.scalar.binary:
+                            res = await trans.async_to_python_value(ctx, lv, v)
+                        else:
+                            res = await trans.async_to_python_value(ctx, lv.scalar.union.value, v)
                     else:
-                        res = trans.to_python_value(ctx, lv.scalar.union.value, v)
+                        if lv.scalar.binary:
+                            res = trans.to_python_value(ctx, lv, v)
+                        else:
+                            res = trans.to_python_value(ctx, lv.scalar.union.value, v)
                         if isinstance(res, asyncio.Future):
                             res = await res
 
