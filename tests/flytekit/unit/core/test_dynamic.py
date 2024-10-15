@@ -379,11 +379,11 @@ def test_iter():
 
 def test_dyn_pd():
     @task
-    def nested_task() -> pd.DataFrame:
+    def nested_task() -> pd.DataFrame:  # type: ignore
         return pd.DataFrame({"a": [1, 2, 3]})
 
     @dynamic
-    def my_dynamic() -> List[pd.DataFrame]:
+    def my_dynamic() -> List[pd.DataFrame]:  # type: ignore
         dfs = []
         for i in range(3):
             dfs.append(nested_task())
