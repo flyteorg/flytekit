@@ -240,7 +240,25 @@ class TypeTransformer(typing.Generic[T]):
                 decoder = MessagePackDecoder(expected_python_type, pre_decoder_func=_default_msgpack_decoder)
                 self._msgpack_decoder[expected_python_type] = decoder
             python_val = decoder.decode(binary_idl_object.value)
+            """
+            This is to mock the behavior as none type transformer + union transformer
 
+            @dataclass
+            class DC:
+                a: Optional[int]
+
+            When `a` is None, both MessagePackDecoder[int].decode(a) and MessagePackDecoder[None].decode(a) will be None,
+            which will be ambiguous for the union transformer.
+
+            When `a` is int, both MessagePackDecoder[int].decode(a) and MessagePackDecoder[None].decode(a) will be int,
+            which will be ambiguous for the union transformer.
+
+            This assertion will fail when
+            1. `a` is None and MessagePackDecoder[int].decode(a) is None, which should fail.
+            2. `a` is int and MessagePackDecoder[None].decode(a) is int, which should fail.
+
+            This is to avoid the above ambiguity.
+            """
             if expected_python_type is NoneType:
                 assert python_val is None
             else:
