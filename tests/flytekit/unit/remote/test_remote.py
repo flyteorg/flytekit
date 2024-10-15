@@ -21,6 +21,7 @@ from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions import user as user_exceptions
+from flytekit.exceptions.user import FlyteEntityNotExistException
 from flytekit.models import common as common_models
 from flytekit.models import security
 from flytekit.models.admin.workflow import Workflow, WorkflowClosure
@@ -53,7 +54,6 @@ ENTITY_TYPE_TEXT = {
     ResourceType.TASK: "Task",
     ResourceType.LAUNCH_PLAN: "Launch Plan",
 }
-
 
 obj = _workflow.Node(
     id="some:node:id",
@@ -501,7 +501,7 @@ def test_fetch_workflow_with_nested_branch(mock_promote, mock_workflow, remote):
 @mock.patch("flytekit.remote.remote.compress_scripts")
 @pytest.mark.serial
 def test_get_image_names(
-    compress_scripts_mock, upload_file_mock, register_workflow_mock, version_from_hash_mock, read_bytes_mock
+        compress_scripts_mock, upload_file_mock, register_workflow_mock, version_from_hash_mock, read_bytes_mock
 ):
     md5_bytes = bytes([1, 2, 3])
     read_bytes_mock.return_value = bytes([4, 5, 6])
@@ -603,7 +603,7 @@ def test_execution_name(mock_client, mock_uuid):
         ]
     )
     with pytest.raises(
-        ValueError, match="Only one of execution_name and execution_name_prefix can be set, but got both set"
+            ValueError, match="Only one of execution_name and execution_name_prefix can be set, but got both set"
     ):
         remote._execute(
             entity=ft,
@@ -684,3 +684,9 @@ def test_register_wf_script_mode(compress_scripts_mock, upload_file_mock, regist
         source_path=str(pathlib.Path(flytekit.__file__).parent.parent),
         module_name="tests.flytekit.unit.remote.resources",
     )
+
+
+@mock.patch("flytekit.remote.remote.FlyteRemote.client")
+def test_fetch_active_launchplan_not_found(mock_client, remote):
+    mock_client.get_active_launch_plan.side_effect = FlyteEntityNotExistException("not found")
+    assert remote.fetch_active_launchplan(name="basic.list_float_wf.fake_wf") is None
