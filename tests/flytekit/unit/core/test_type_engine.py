@@ -238,11 +238,11 @@ def test_annotated_type():
             return json.loads(lv.scalar.primitive.string_value)
 
         def to_literal(
-            self,
-            ctx: FlyteContext,
-            python_val: T,
-            python_type: typing.Type[T],
-            expected: LiteralType,
+                self,
+                ctx: FlyteContext,
+                python_val: T,
+                python_type: typing.Type[T],
+                expected: LiteralType,
         ) -> Literal:
             return Literal(scalar=Scalar(primitive=Primitive(string_value=json.dumps(python_val))))
 
@@ -260,22 +260,22 @@ def test_annotated_type():
     test_literal = Literal(scalar=Scalar(primitive=Primitive(string_value=json.dumps(test_dict))))
 
     assert (
-        TypeEngine.to_python_value(
-            FlyteContext.current_context(),
-            test_literal,
-            MyJsonDict,
-        )
-        == test_dict
+            TypeEngine.to_python_value(
+                FlyteContext.current_context(),
+                test_literal,
+                MyJsonDict,
+            )
+            == test_dict
     )
 
     assert (
-        TypeEngine.to_literal(
-            FlyteContext.current_context(),
-            test_dict,
-            MyJsonDict,
-            JsonTypeTransformer.LiteralType,
-        )
-        == test_literal
+            TypeEngine.to_literal(
+                FlyteContext.current_context(),
+                test_dict,
+                MyJsonDict,
+                JsonTypeTransformer.LiteralType,
+            )
+            == test_literal
     )
 
 
@@ -461,10 +461,10 @@ def test_dict_transformer():
         assert lit.simple == SimpleType.STRUCT
 
     def recursive_assert(
-        lit: LiteralType,
-        expected: LiteralType,
-        expected_depth: int = 1,
-        curr_depth: int = 0,
+            lit: LiteralType,
+            expected: LiteralType,
+            expected_depth: int = 1,
+            curr_depth: int = 0,
     ):
         assert curr_depth <= expected_depth
         assert lit is not None
@@ -1574,8 +1574,8 @@ def test_assert_dataclass_type():
 
     pv = Bar(x=3)
     with pytest.raises(
-        TypeTransformerFailedError,
-        match="Type of Val '<class 'int'>' is not an instance of <class '.*.ArgsSchema'>",
+            TypeTransformerFailedError,
+            match="Type of Val '<class 'int'>' is not an instance of <class '.*.ArgsSchema'>",
     ):
         DataclassTransformer().assert_type(gt, pv)
 
@@ -1621,8 +1621,8 @@ def test_assert_dict_type():
         "another_dataclass": {"z": 4},
     }
     with pytest.raises(
-        TypeTransformerFailedError,
-        match=re.escape("The original fields are missing the following keys from the dataclass fields: ['x']"),
+            TypeTransformerFailedError,
+            match=re.escape("The original fields are missing the following keys from the dataclass fields: ['x']"),
     ):
         DataclassTransformer().assert_type(Args, md)
 
@@ -1636,8 +1636,9 @@ def test_assert_dict_type():
         "z": "extra",
     }
     with pytest.raises(
-        TypeTransformerFailedError,
-        match=re.escape("The original fields have the following extra keys that are not in dataclass fields: ['z']"),
+            TypeTransformerFailedError,
+            match=re.escape(
+                "The original fields have the following extra keys that are not in dataclass fields: ['z']"),
     ):
         DataclassTransformer().assert_type(Args, ed)
 
@@ -1650,8 +1651,8 @@ def test_assert_dict_type():
         "another_dataclass": {"z": 4},
     }
     with pytest.raises(
-        TypeTransformerFailedError,
-        match="Type of Val '<class 'str'>' is not an instance of <class 'int'>",
+            TypeTransformerFailedError,
+            match="Type of Val '<class 'str'>' is not an instance of <class 'int'>",
     ):
         DataclassTransformer().assert_type(Args, td)
 
@@ -1675,8 +1676,8 @@ def test_to_literal_dict():
     # Test when python_val is not a dict and not a dataclass
     python_val = "not a dict or dataclass"
     with pytest.raises(
-        TypeTransformerFailedError,
-        match="not of type @dataclass, only Dataclasses are supported for user defined datatypes in Flytekit",
+            TypeTransformerFailedError,
+            match="not of type @dataclass, only Dataclasses are supported for user defined datatypes in Flytekit",
     ):
         DataclassTransformer().to_literal(ctx, python_val, python_type, expected)
 
@@ -1706,8 +1707,8 @@ def test_assert_dataclassjsonmixin_type():
 
     pv = Bar(x=3)
     with pytest.raises(
-        TypeTransformerFailedError,
-        match="Type of Val '<class 'int'>' is not an instance of <class '.*.ArgsAssert'>",
+            TypeTransformerFailedError,
+            match="Type of Val '<class 'int'>' is not an instance of <class '.*.ArgsAssert'>",
     ):
         DataclassTransformer().assert_type(gt, pv)
 
@@ -1964,11 +1965,11 @@ def test_union_custom_transformer_sanity_check():
             return LiteralType(simple=SimpleType.INTEGER)
 
         def to_literal(
-            self,
-            ctx: FlyteContext,
-            python_val: T,
-            python_type: typing.Type[T],
-            expected: LiteralType,
+                self,
+                ctx: FlyteContext,
+                python_val: T,
+                python_type: typing.Type[T],
+                expected: LiteralType,
         ) -> Literal:
             if type(python_val) != int:
                 raise TypeTransformerFailedError("Expected an integer")
@@ -2078,8 +2079,8 @@ def test_pickle_type():
         TypeEngine.to_literal(ctx, None, FlytePickle, lt)
 
     with pytest.raises(
-        AssertionError,
-        match="Expected value of type <class 'NoneType'> but got '1' of type <class 'int'>",
+            AssertionError,
+            match="Expected value of type <class 'NoneType'> but got '1' of type <class 'int'>",
     ):
         lt = TypeEngine.to_literal_type(typing.Optional[typing.Any])
         TypeEngine.to_literal(ctx, 1, type(None), lt)
@@ -2135,58 +2136,58 @@ def test_enum_in_dataclassjsonmixin():
     "python_value,python_types,expected_literal_map",
     [
         (
-            {"a": [1, 2, 3]},
-            {"a": typing.List[int]},
-            LiteralMap(
-                literals={
-                    "a": Literal(
-                        collection=LiteralCollection(
-                            literals=[
-                                Literal(scalar=Scalar(primitive=Primitive(integer=1))),
-                                Literal(scalar=Scalar(primitive=Primitive(integer=2))),
-                                Literal(scalar=Scalar(primitive=Primitive(integer=3))),
-                            ]
-                        )
-                    )
-                }
-            ),
-        ),
-        (
-            {"p1": {"k1": "v1", "k2": "2"}},
-            {"p1": typing.Dict[str, str]},
-            LiteralMap(
-                literals={
-                    "p1": Literal(
-                        map=LiteralMap(
-                            literals={
-                                "k1": Literal(scalar=Scalar(primitive=Primitive(string_value="v1"))),
-                                "k2": Literal(scalar=Scalar(primitive=Primitive(string_value="2"))),
-                            },
-                        )
-                    )
-                }
-            ),
-        ),
-        (
-            {"p1": "s3://tmp/file.jpeg"},
-            {"p1": JPEGImageFile},
-            LiteralMap(
-                literals={
-                    "p1": Literal(
-                        scalar=Scalar(
-                            blob=Blob(
-                                metadata=BlobMetadata(
-                                    type=BlobType(
-                                        format="jpeg",
-                                        dimensionality=BlobType.BlobDimensionality.SINGLE,
-                                    )
-                                ),
-                                uri="s3://tmp/file.jpeg",
+                {"a": [1, 2, 3]},
+                {"a": typing.List[int]},
+                LiteralMap(
+                    literals={
+                        "a": Literal(
+                            collection=LiteralCollection(
+                                literals=[
+                                    Literal(scalar=Scalar(primitive=Primitive(integer=1))),
+                                    Literal(scalar=Scalar(primitive=Primitive(integer=2))),
+                                    Literal(scalar=Scalar(primitive=Primitive(integer=3))),
+                                ]
                             )
                         )
-                    )
-                }
-            ),
+                    }
+                ),
+        ),
+        (
+                {"p1": {"k1": "v1", "k2": "2"}},
+                {"p1": typing.Dict[str, str]},
+                LiteralMap(
+                    literals={
+                        "p1": Literal(
+                            map=LiteralMap(
+                                literals={
+                                    "k1": Literal(scalar=Scalar(primitive=Primitive(string_value="v1"))),
+                                    "k2": Literal(scalar=Scalar(primitive=Primitive(string_value="2"))),
+                                },
+                            )
+                        )
+                    }
+                ),
+        ),
+        (
+                {"p1": "s3://tmp/file.jpeg"},
+                {"p1": JPEGImageFile},
+                LiteralMap(
+                    literals={
+                        "p1": Literal(
+                            scalar=Scalar(
+                                blob=Blob(
+                                    metadata=BlobMetadata(
+                                        type=BlobType(
+                                            format="jpeg",
+                                            dimensionality=BlobType.BlobDimensionality.SINGLE,
+                                        )
+                                    ),
+                                    uri="s3://tmp/file.jpeg",
+                                )
+                            )
+                        )
+                    }
+                ),
         ),
     ],
 )
@@ -2214,10 +2215,10 @@ def test_dict_to_literal_map_with_dataclass():
 
     literal = TypeEngine.to_literal(ctx, python_value["p1"], TestStructD, TypeEngine.to_literal_type(TestStructD))
     expected_literal_map = LiteralMap(
-                literals={
-                    "p1": literal
-                }
-            )
+        literals={
+            "p1": literal
+        }
+    )
     assert TypeEngine.dict_to_literal_map(ctx, python_value, python_types) == expected_literal_map
 
 
@@ -2397,11 +2398,11 @@ class Result(DataClassJsonMixin):
 def get_unsupported_complex_literals_tests():
     if sys.version_info < (3, 9):
         return [
-        typing_extensions.Annotated[typing.Dict[int, str], FlyteAnnotation({"foo": "bar"})],
-        typing_extensions.Annotated[typing.Dict[str, str], FlyteAnnotation({"foo": "bar"})],
-        typing_extensions.Annotated[Color, FlyteAnnotation({"foo": "bar"})],
-        typing_extensions.Annotated[Result, FlyteAnnotation({"foo": "bar"})],
-    ]
+            typing_extensions.Annotated[typing.Dict[int, str], FlyteAnnotation({"foo": "bar"})],
+            typing_extensions.Annotated[typing.Dict[str, str], FlyteAnnotation({"foo": "bar"})],
+            typing_extensions.Annotated[Color, FlyteAnnotation({"foo": "bar"})],
+            typing_extensions.Annotated[Result, FlyteAnnotation({"foo": "bar"})],
+        ]
     return [
         typing_extensions.Annotated[dict, FlyteAnnotation({"foo": "bar"})],
         typing_extensions.Annotated[dict[int, str], FlyteAnnotation({"foo": "bar"})],
@@ -2440,117 +2441,117 @@ class AnnotatedDataclassTest(DataClassJsonMixin):
         (dict, LiteralType(simple=SimpleType.STRUCT)),
         # Annotations are not being copied over to the LiteralType
         (
-            typing_extensions.Annotated[dict, "a-tag"],
-            LiteralType(simple=SimpleType.STRUCT),
+                typing_extensions.Annotated[dict, "a-tag"],
+                LiteralType(simple=SimpleType.STRUCT),
         ),
         (typing.Dict[int, str], LiteralType(simple=SimpleType.STRUCT)),
         (
-            typing.Dict[str, int],
-            LiteralType(map_value_type=LiteralType(simple=SimpleType.INTEGER)),
+                typing.Dict[str, int],
+                LiteralType(map_value_type=LiteralType(simple=SimpleType.INTEGER)),
         ),
         (
-            typing.Dict[str, str],
-            LiteralType(map_value_type=LiteralType(simple=SimpleType.STRING)),
+                typing.Dict[str, str],
+                LiteralType(map_value_type=LiteralType(simple=SimpleType.STRING)),
         ),
         (
-            typing.Dict[str, typing.List[int]],
-            LiteralType(map_value_type=LiteralType(collection_type=LiteralType(simple=SimpleType.INTEGER))),
+                typing.Dict[str, typing.List[int]],
+                LiteralType(map_value_type=LiteralType(collection_type=LiteralType(simple=SimpleType.INTEGER))),
         ),
         (typing.Dict[int, typing.List[int]], LiteralType(simple=SimpleType.STRUCT)),
         (
-            typing.Dict[int, typing.Dict[int, int]],
-            LiteralType(simple=SimpleType.STRUCT),
+                typing.Dict[int, typing.Dict[int, int]],
+                LiteralType(simple=SimpleType.STRUCT),
         ),
         (
-            typing.Dict[str, typing.Dict[int, int]],
-            LiteralType(map_value_type=LiteralType(simple=SimpleType.STRUCT)),
+                typing.Dict[str, typing.Dict[int, int]],
+                LiteralType(map_value_type=LiteralType(simple=SimpleType.STRUCT)),
         ),
         (
-            typing.Dict[str, typing.Dict[str, int]],
-            LiteralType(map_value_type=LiteralType(map_value_type=LiteralType(simple=SimpleType.INTEGER))),
+                typing.Dict[str, typing.Dict[str, int]],
+                LiteralType(map_value_type=LiteralType(map_value_type=LiteralType(simple=SimpleType.INTEGER))),
         ),
         (
-            DataclassTest,
-            LiteralType(
-                simple=SimpleType.STRUCT,
-                metadata={
-                    "$schema": "http://json-schema.org/draft-07/schema#",
-                    "definitions": {
-                        "DataclasstestSchema": {
-                            "properties": {
-                                "a": {"title": "a", "type": "integer"},
-                                "b": {"title": "b", "type": "string"},
-                            },
-                            "type": "object",
-                            "additionalProperties": False,
-                        }
+                DataclassTest,
+                LiteralType(
+                    simple=SimpleType.STRUCT,
+                    metadata={
+                        "$schema": "http://json-schema.org/draft-07/schema#",
+                        "definitions": {
+                            "DataclasstestSchema": {
+                                "properties": {
+                                    "a": {"title": "a", "type": "integer"},
+                                    "b": {"title": "b", "type": "string"},
+                                },
+                                "type": "object",
+                                "additionalProperties": False,
+                            }
+                        },
+                        "$ref": "#/definitions/DataclasstestSchema",
                     },
-                    "$ref": "#/definitions/DataclasstestSchema",
-                },
-                structure=TypeStructure(
-                    tag="",
-                    dataclass_type={
-                        "a": LiteralType(simple=SimpleType.INTEGER),
-                        "b": LiteralType(simple=SimpleType.STRING),
-                    },
+                    structure=TypeStructure(
+                        tag="",
+                        dataclass_type={
+                            "a": LiteralType(simple=SimpleType.INTEGER),
+                            "b": LiteralType(simple=SimpleType.STRING),
+                        },
+                    ),
                 ),
-            ),
         ),
         #  Similar to the dict[int, str] case, the annotation is not being copied over to the LiteralType
         (
-            Annotated[DataclassTest, "another-tag"],
-            LiteralType(
-                simple=SimpleType.STRUCT,
-                metadata={
-                    "$schema": "http://json-schema.org/draft-07/schema#",
-                    "definitions": {
-                        "DataclasstestSchema": {
-                            "properties": {
-                                "a": {"title": "a", "type": "integer"},
-                                "b": {"title": "b", "type": "string"},
-                            },
-                            "type": "object",
-                            "additionalProperties": False,
-                        }
+                Annotated[DataclassTest, "another-tag"],
+                LiteralType(
+                    simple=SimpleType.STRUCT,
+                    metadata={
+                        "$schema": "http://json-schema.org/draft-07/schema#",
+                        "definitions": {
+                            "DataclasstestSchema": {
+                                "properties": {
+                                    "a": {"title": "a", "type": "integer"},
+                                    "b": {"title": "b", "type": "string"},
+                                },
+                                "type": "object",
+                                "additionalProperties": False,
+                            }
+                        },
+                        "$ref": "#/definitions/DataclasstestSchema",
                     },
-                    "$ref": "#/definitions/DataclasstestSchema",
-                },
-                structure=TypeStructure(
-                    tag="",
-                    dataclass_type={
-                        "a": LiteralType(simple=SimpleType.INTEGER),
-                        "b": LiteralType(simple=SimpleType.STRING),
-                    },
+                    structure=TypeStructure(
+                        tag="",
+                        dataclass_type={
+                            "a": LiteralType(simple=SimpleType.INTEGER),
+                            "b": LiteralType(simple=SimpleType.STRING),
+                        },
+                    ),
                 ),
-            ),
         ),
         # Notice how the annotation in the field is not carried over either
         (
-            Annotated[AnnotatedDataclassTest, "another-tag"],
-            LiteralType(
-                simple=SimpleType.STRUCT,
-                metadata={
-                    "$schema": "http://json-schema.org/draft-07/schema#",
-                    "definitions": {
-                        "AnnotateddataclasstestSchema": {
-                            "properties": {
-                                "a": {"title": "a", "type": "integer"},
-                                "b": {"title": "b", "type": "string"},
-                            },
-                            "type": "object",
-                            "additionalProperties": False,
-                        }
+                Annotated[AnnotatedDataclassTest, "another-tag"],
+                LiteralType(
+                    simple=SimpleType.STRUCT,
+                    metadata={
+                        "$schema": "http://json-schema.org/draft-07/schema#",
+                        "definitions": {
+                            "AnnotateddataclasstestSchema": {
+                                "properties": {
+                                    "a": {"title": "a", "type": "integer"},
+                                    "b": {"title": "b", "type": "string"},
+                                },
+                                "type": "object",
+                                "additionalProperties": False,
+                            }
+                        },
+                        "$ref": "#/definitions/AnnotateddataclasstestSchema",
                     },
-                    "$ref": "#/definitions/AnnotateddataclasstestSchema",
-                },
-                structure=TypeStructure(
-                    tag="",
-                    dataclass_type={
-                        "a": LiteralType(simple=SimpleType.INTEGER),
-                        "b": LiteralType(simple=SimpleType.STRING),
-                    },
+                    structure=TypeStructure(
+                        tag="",
+                        dataclass_type={
+                            "a": LiteralType(simple=SimpleType.INTEGER),
+                            "b": LiteralType(simple=SimpleType.STRING),
+                        },
+                    ),
                 ),
-            ),
         ),
     ],
 )
@@ -2732,8 +2733,8 @@ def test_is_batchable():
     assert ListTransformer.is_batchable(typing.List[FlytePickle]) is True
     assert ListTransformer.is_batchable(Annotated[typing.List[FlytePickle], BatchSize(3)]) is True
     assert (
-        ListTransformer.is_batchable(Annotated[typing.List[FlytePickle], HashMethod(function=str), BatchSize(3)])
-        is True
+            ListTransformer.is_batchable(Annotated[typing.List[FlytePickle], HashMethod(function=str), BatchSize(3)])
+            is True
     )
 
 
@@ -2750,18 +2751,18 @@ def test_is_batchable():
         # [batched_FlytePickle(2 items), batched_FlytePickle(2 items), batched_FlytePickle(1 item)].
         # Therefore, the expected list length is [3].
         (
-            ["foo"] * 5,
-            Annotated[typing.List[FlytePickle], HashMethod(function=str), BatchSize(2)],
-            [3],
+                ["foo"] * 5,
+                Annotated[typing.List[FlytePickle], HashMethod(function=str), BatchSize(2)],
+                [3],
         ),
         # Case 3: Nested list of FlytePickle objects with batch size 2.
         # After converting to literal, the result will be
         # [[batched_FlytePickle(3 items)], [batched_FlytePickle(3 items)]]
         # Therefore, the expected list length is [2, 1] (the length of the outer list remains the same, the inner list is batched).
         (
-            [["foo", "foo", "foo"]] * 2,
-            typing.List[Annotated[typing.List[FlytePickle], BatchSize(3)]],
-            [2, 1],
+                [["foo", "foo", "foo"]] * 2,
+                typing.List[Annotated[typing.List[FlytePickle], BatchSize(3)]],
+                [2, 1],
         ),
         # Case 4: Empty list
         ([[], typing.List[FlytePickle], []]),
@@ -2826,8 +2827,8 @@ def test_get_underlying_type(t, expected):
         (typing.Dict, ()),
         (typing.Dict[str, str], (str, str)),
         (
-            Annotated[typing.Dict[str, str], kwtypes(allow_pickle=True)],
-            (typing.Dict[str, str], kwtypes(allow_pickle=True)),
+                Annotated[typing.Dict[str, str], kwtypes(allow_pickle=True)],
+                (typing.Dict[str, str], kwtypes(allow_pickle=True)),
         ),
         (typing.Dict[Annotated[str, "a-tag"], int], (Annotated[str, "a-tag"], int)),
     ],
@@ -2977,12 +2978,10 @@ def test_DataclassTransformer_with_discriminated_subtypes():
         subclass_type: SubclassTypes = SubclassTypes.BASE
         base_attribute: int
 
-
     @dataclass(kw_only=True)
     class ClassA(BaseClass):
         subclass_type: SubclassTypes = SubclassTypes.CLASS_A
         class_a_attribute: str
-
 
     @dataclass(kw_only=True)
     class ClassB(BaseClass):
@@ -3014,26 +3013,21 @@ def test_DataclassTransformer_with_sub_dataclasses():
     class Base:
         a: int
 
-
     @dataclass
     class Child1(Base):
         b: int
-
 
     @task
     def get_data() -> Child1:
         return Child1(a=10, b=12)
 
-
     @task
     def read_data(base: Base) -> int:
         return base.a
 
-
     @task
     def read_child(child: Child1) -> int:
         return child.b
-
 
     @workflow
     def wf1() -> Child1:
@@ -3351,6 +3345,8 @@ def test_offloaded_literal_flytedirectory(tmp_path):
 
     loaded_pv: FlyteDirectory = TypeEngine.to_python_value(ctx, literal, FlyteDirectory)
     assert loaded_pv._remote_source == "s3://my-dir"
+
+
 @pytest.mark.skipif(sys.version_info < (3, 10), reason="PEP604 requires >=3.10.")
 def test_dataclass_none_output_input_deserialization():
     @dataclass
@@ -3361,7 +3357,6 @@ def test_dataclass_none_output_input_deserialization():
     class OuterWorkflowOutput(DataClassJSONMixin):
         nullable_output: float | None = None
 
-
     @dataclass
     class InnerWorkflowInput(DataClassJSONMixin):
         input: float
@@ -3369,7 +3364,6 @@ def test_dataclass_none_output_input_deserialization():
     @dataclass
     class InnerWorkflowOutput(DataClassJSONMixin):
         nullable_output: float | None = None
-
 
     @task
     def inner_task(input: float) -> float | None:
@@ -3405,6 +3399,7 @@ def test_dataclass_none_output_input_deserialization():
         return wrap_outer_outputs(
             output=inner_outputs.nullable_output
         )
+
     float_value_output = outer_workflow(OuterWorkflowInput(input=1.0)).nullable_output
     assert float_value_output == 1.0, f"Float value was {float_value_output}, not 1.0 as expected"
     none_value_output = outer_workflow(OuterWorkflowInput(input=0)).nullable_output
@@ -3434,9 +3429,10 @@ def test_lazy_import_transformers_concurrently():
             [f.result() for f in futures]
 
         # Assert that all the register calls come before anything else.
-        assert mock_wrapper.mock_calls[-N:] == [mock.call.after_import_mock()]*N
+        assert mock_wrapper.mock_calls[-N:] == [mock.call.after_import_mock()] * N
         expected_number_of_register_calls = len(mock_wrapper.mock_calls) - N
-        assert all([mock_call[0] == "mock_register" for mock_call in mock_wrapper.mock_calls[:expected_number_of_register_calls]])
+        assert all([mock_call[0] == "mock_register" for mock_call in
+                    mock_wrapper.mock_calls[:expected_number_of_register_calls]])
 
 
 @pytest.mark.skipif(sys.version_info < (3, 10), reason="PEP604 requires >=3.10, 585 requires >=3.9")
@@ -3505,7 +3501,6 @@ def test_generic_errors_and_empty():
         TypeEngine.to_literal(ctx, [3], pt, lt)
 
 
-
 def generate_type_engine_transformer_comprehensive_tests():
     # Test dataclasses
     @dataclass
@@ -3517,8 +3512,8 @@ def generate_type_engine_transformer_comprehensive_tests():
         a: str
         b: int
 
-
     T = typing.TypeVar("T")
+
     class TestGeneric(typing.Generic[T]):
         a: str
         b: int
@@ -3624,13 +3619,29 @@ def test_type_engine_get_transformer_comprehensive(t, expected_transformer):
         assert isinstance(TypeEngine.get_transformer(t), expected_transformer)
 
 
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="PEP604 requires >=3.10.")
 @pytest.mark.parametrize("t, expected_variants", [
-    (typing.Union[int, str], [int, str]),
     (int | float, [int, float]),
     (int | float | None, [int, float, type(None)]),
     (int | float | str, [int, float, str]),
 ])
-def test_union_type_comprehensive(t, expected_variants):
+def test_union_type_comprehensive_604(t, expected_variants):
+    """
+    This test will test various combinations like dataclasses, annotated types, generics and regular types and
+    assert the right transformers are returned.
+    """
+    transformer = TypeEngine.get_transformer(t)
+    assert isinstance(transformer, UnionTransformer)
+    lt = transformer.get_literal_type(t)
+    assert [TypeEngine.guess_python_type(i) for i in lt.union_type.variants] == expected_variants
+
+
+@pytest.mark.parametrize("t, expected_variants", [
+    (typing.Union[int, str], [int, str]),
+    (typing.Union[str, None], [str, type(None)]),
+    (typing.Optional[int], [int, type(None)]),
+])
+def test_union_type(t, expected_variants):
     """
     This test will test various combinations like dataclasses, annotated types, generics and regular types and
     assert the right transformers are returned.
