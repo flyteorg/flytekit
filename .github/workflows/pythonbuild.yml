@@ -112,7 +112,7 @@ jobs:
         shell: bash
         working-directory: ${{ github.workspace }}/flyte/flyteidl
         # The `openssl-sys` looks for the statically linked target by default.
-        # For dynamic linking, set VCPKGRS_DYNAMIC=1 in the environment. This will link to libraries built with vcpkg triplet x64-windows. 
+        # For dynamic linking, set VCPKGRS_DYNAMIC=1 in the environment. This will link to libraries built with vcpkg triplet x64-windows.
         run: |
           rm -rf ./gen/pb_rust/*
           VCPKGRS_DYNAMIC=1 cargo run --bin gen_flyteidl
@@ -120,7 +120,7 @@ jobs:
         shell: bash
         working-directory: ${{ github.workspace }}/flyte/flyteidl
         run: |
-          python -m venv venv 
+          python -m venv venv
           if [[ "$RUNNER_OS" == "Windows" ]]; then
             ./venv/Scripts/activate
           else
