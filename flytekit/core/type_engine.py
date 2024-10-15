@@ -321,6 +321,10 @@ class SimpleTransformer(TypeTransformer[T]):
         self._to_literal_transformer = to_literal_transformer
         self._from_literal_transformer = from_literal_transformer
 
+    @property
+    def base_type(self) -> Type:
+        return self._type
+
     def get_literal_type(self, t: Optional[Type[T]] = None) -> LiteralType:
         return LiteralType.from_flyte_idl(self._lt.to_flyte_idl())
 
@@ -923,7 +927,7 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
 
 
 def generate_attribute_list_from_dataclass_json_mixin(schema: dict, schema_name: typing.Any):
-    attribute_list: typing.List[tuple[Any, GenericAlias]] = []
+    attribute_list: typing.List[typing.Tuple[Any, GenericAlias]] = []
     for property_key, property_val in schema["properties"].items():
         if property_val.get("anyOf"):
             property_type = property_val["anyOf"][0]["type"]
@@ -949,7 +953,7 @@ def generate_attribute_list_from_dataclass_json_mixin(schema: dict, schema_name:
                 )
             elif property_val.get("additionalProperties"):
                 attribute_list.append(
-                    (property_key, typing.Dict[str, _get_element_type(property_val["additionalProperties"])])  # type: ignore
+                    (property_key, typing.Dict[str, _get_element_type(property_val["additionalProperties"])])  # noqa
                 )
             else:
                 sub_schemea_name = property_val["title"]
@@ -1017,6 +1021,60 @@ class TypeEngine(typing.Generic[T]):
             cls._REGISTRY[additional_type] = transformer
 
     @classmethod
+    def _get_transformer(cls, python_type: Type) -> Optional[TypeTransformer[T]]:
+        if is_annotated(python_type):
+            args = get_args(python_type)
+            for annotation in args:
+                if isinstance(annotation, TypeTransformer):
+                    return annotation
+            return cls.get_transformer(args[0])
+
+        if inspect.isclass(python_type) and issubclass(python_type, enum.Enum):
+            # Special case: prevent that for a type `FooEnum(str, Enum)`, the str transformer is used.
+            return cls._ENUM_TRANSFORMER
+
+        if python_type in cls._REGISTRY:
+            return cls._REGISTRY[python_type]
+
+        if hasattr(python_type, "__origin__") and python_type.__origin__ in cls._REGISTRY:
+            return cls._REGISTRY[python_type.__origin__]
+
+        # Handling UnionType specially
+        if sys.version_info >= (3, 10):
+            import types
+
+            if isinstance(python_type, types.UnionType):
+                return cls._REGISTRY[types.UnionType]
+
+        # Step 5
+        if dataclasses.is_dataclass(python_type):
+            return cls._DATACLASS_TRANSFORMER
+
+        return None
+
+    @classmethod
+    def get_transformer2(cls, python_type: Type) -> TypeTransformer[T]:
+        """
+        Implements a recursive search for the transformer.
+        """
+        v = cls._get_transformer(python_type)
+        if v is not None:
+            return v
+
+        if hasattr(python_type, "__mro__"):
+            class_tree = inspect.getmro(python_type)
+            for t in class_tree:
+                v = cls._get_transformer(t)
+                if v is not None:
+                    return v
+
+        # Step 6
+        display_pickle_warning(str(python_type))
+        from flytekit.types.pickle.pickle import FlytePickleTransformer
+
+        return FlytePickleTransformer()
+
+    @classmethod
     def get_transformer(cls, python_type: Type) -> TypeTransformer[T]:
         """
         The TypeEngine hierarchy for flyteKit. This method looks up and selects the type transformer. The algorithm is
@@ -1081,11 +1139,7 @@ class TypeEngine(typing.Generic[T]):
             if python_type.__origin__ in cls._REGISTRY:
                 return cls._REGISTRY[python_type.__origin__]
 
-            display_pickle_warning(str(python_type))
-            from flytekit.types.pickle.pickle import FlytePickleTransformer
-
-            return FlytePickleTransformer()
-            # raise ValueError(f"Generic Type {python_type.__origin__} not supported currently in Flytekit.")
+            raise ValueError(f"Generic Type {python_type.__origin__} not supported currently in Flytekit.")
 
         # Step 4
         # To facilitate cases where users may specify one transformer for multiple types that all inherit from one
@@ -2218,7 +2272,7 @@ def convert_mashumaro_json_schema_to_python_class(schema: dict, schema_name: typ
     return dataclass_json(dataclasses.make_dataclass(schema_name, attribute_list))
 
 
-def _get_element_type(element_property: typing.Dict[str, str]) -> Type:
+def _get_element_type(element_property: typing.Dict[str, str]) -> Type[Any]:
     element_type = (
         [e_property["type"] for e_property in element_property["anyOf"]]  # type: ignore
         if element_property.get("anyOf")
@@ -2226,7 +2280,7 @@ def _get_element_type(element_property: typing.Dict[str, str]) -> Type:
     )
     element_format = element_property["format"] if "format" in element_property else None
 
-    if type(element_type) == list:
+    if isinstance(element_type, list):
         # Element type of Optional[int] is [integer, None]
         return typing.Optional[_get_element_type({"type": element_type[0]})]  # type: ignore
 
@@ -2274,89 +2328,82 @@ def _check_and_convert_void(lv: Literal) -> None:
     return None
 
 
+IntTransformer = SimpleTransformer(
+    "int",
+    int,
+    _type_models.LiteralType(simple=_type_models.SimpleType.INTEGER),
+    lambda x: Literal(scalar=Scalar(primitive=Primitive(integer=x))),
+    lambda x: x.scalar.primitive.integer,
+)
+
+FloatTransformer = SimpleTransformer(
+    "float",
+    float,
+    _type_models.LiteralType(simple=_type_models.SimpleType.FLOAT),
+    lambda x: Literal(scalar=Scalar(primitive=Primitive(float_value=x))),
+    _check_and_covert_float,
+)
+
+BoolTransformer = SimpleTransformer(
+    "bool",
+    bool,
+    _type_models.LiteralType(simple=_type_models.SimpleType.BOOLEAN),
+    lambda x: Literal(scalar=Scalar(primitive=Primitive(boolean=x))),
+    lambda x: x.scalar.primitive.boolean,
+)
+
+StrTransformer = SimpleTransformer(
+    "str",
+    str,
+    _type_models.LiteralType(simple=_type_models.SimpleType.STRING),
+    lambda x: Literal(scalar=Scalar(primitive=Primitive(string_value=x))),
+    lambda x: x.scalar.primitive.string_value,
+)
+
+DatetimeTransformer = SimpleTransformer(
+    "datetime",
+    datetime.datetime,
+    _type_models.LiteralType(simple=_type_models.SimpleType.DATETIME),
+    lambda x: Literal(scalar=Scalar(primitive=Primitive(datetime=x))),
+    lambda x: x.scalar.primitive.datetime,
+)
+
+TimedeltaTransformer = SimpleTransformer(
+    "timedelta",
+    datetime.timedelta,
+    _type_models.LiteralType(simple=_type_models.SimpleType.DURATION),
+    lambda x: Literal(scalar=Scalar(primitive=Primitive(duration=x))),
+    lambda x: x.scalar.primitive.duration,
+)
+
+DateTransformer = SimpleTransformer(
+    "date",
+    datetime.date,
+    _type_models.LiteralType(simple=_type_models.SimpleType.DATETIME),
+    lambda x: Literal(
+        scalar=Scalar(primitive=Primitive(datetime=datetime.datetime.combine(x, datetime.time.min)))
+    ),  # convert datetime to date
+    lambda x: x.scalar.primitive.datetime.date(),  # get date from datetime
+)
+
+NoneTransformer = SimpleTransformer(
+    "none",
+    type(None),
+    _type_models.LiteralType(simple=_type_models.SimpleType.NONE),
+    lambda x: Literal(scalar=Scalar(none_type=Void())),
+    lambda x: _check_and_convert_void(x),
+)
+
+
 def _register_default_type_transformers():
-    TypeEngine.register(
-        SimpleTransformer(
-            "int",
-            int,
-            _type_models.LiteralType(simple=_type_models.SimpleType.INTEGER),
-            lambda x: Literal(scalar=Scalar(primitive=Primitive(integer=x))),
-            lambda x: x.scalar.primitive.integer,
-        )
-    )
-
-    TypeEngine.register(
-        SimpleTransformer(
-            "float",
-            float,
-            _type_models.LiteralType(simple=_type_models.SimpleType.FLOAT),
-            lambda x: Literal(scalar=Scalar(primitive=Primitive(float_value=x))),
-            _check_and_covert_float,
-        )
-    )
-
-    TypeEngine.register(
-        SimpleTransformer(
-            "bool",
-            bool,
-            _type_models.LiteralType(simple=_type_models.SimpleType.BOOLEAN),
-            lambda x: Literal(scalar=Scalar(primitive=Primitive(boolean=x))),
-            lambda x: x.scalar.primitive.boolean,
-        )
-    )
-
-    TypeEngine.register(
-        SimpleTransformer(
-            "str",
-            str,
-            _type_models.LiteralType(simple=_type_models.SimpleType.STRING),
-            lambda x: Literal(scalar=Scalar(primitive=Primitive(string_value=x))),
-            lambda x: x.scalar.primitive.string_value,
-        )
-    )
-
-    TypeEngine.register(
-        SimpleTransformer(
-            "datetime",
-            datetime.datetime,
-            _type_models.LiteralType(simple=_type_models.SimpleType.DATETIME),
-            lambda x: Literal(scalar=Scalar(primitive=Primitive(datetime=x))),
-            lambda x: x.scalar.primitive.datetime,
-        )
-    )
-
-    TypeEngine.register(
-        SimpleTransformer(
-            "timedelta",
-            datetime.timedelta,
-            _type_models.LiteralType(simple=_type_models.SimpleType.DURATION),
-            lambda x: Literal(scalar=Scalar(primitive=Primitive(duration=x))),
-            lambda x: x.scalar.primitive.duration,
-        )
-    )
-
-    TypeEngine.register(
-        SimpleTransformer(
-            "date",
-            datetime.date,
-            _type_models.LiteralType(simple=_type_models.SimpleType.DATETIME),
-            lambda x: Literal(
-                scalar=Scalar(primitive=Primitive(datetime=datetime.datetime.combine(x, datetime.time.min)))
-            ),  # convert datetime to date
-            lambda x: x.scalar.primitive.datetime.date(),  # get date from datetime
-        )
-    )
-
-    TypeEngine.register(
-        SimpleTransformer(
-            "none",
-            type(None),
-            _type_models.LiteralType(simple=_type_models.SimpleType.NONE),
-            lambda x: Literal(scalar=Scalar(none_type=Void())),
-            lambda x: _check_and_convert_void(x),
-        ),
-        [None],
-    )
+    TypeEngine.register(IntTransformer)
+    TypeEngine.register(FloatTransformer)
+    TypeEngine.register(StrTransformer)
+    TypeEngine.register(DatetimeTransformer)
+    TypeEngine.register(DateTransformer)
+    TypeEngine.register(TimedeltaTransformer)
+    TypeEngine.register(BoolTransformer)
+    TypeEngine.register(NoneTransformer, [None])  # noqa
     TypeEngine.register(ListTransformer())
     if sys.version_info >= (3, 10):
         from types import UnionType

@@ -258,13 +258,13 @@ class UnionParamType(click.ParamType):
         unprocessed = []
         str_types = []
         others = []
-        for t in tp:
-            if isinstance(t, type(click.UNPROCESSED)):
-                unprocessed.append(t)
-            elif isinstance(t, type(click.STRING)):
-                str_types.append(t)
+        for p in tp:
+            if isinstance(p, type(click.UNPROCESSED)):
+                unprocessed.append(p)
+            elif isinstance(p, type(click.STRING)):
+                str_types.append(p)
             else:
-                others.append(t)
+                others.append(p)
         return others + str_types + unprocessed
 
     def convert(
@@ -276,11 +276,11 @@ class UnionParamType(click.ParamType):
         """
         if isinstance(value, ArtifactQuery):
             return value
-        for t in self._types:
+        for p in self._types:
             try:
-                return t.convert(value, param, ctx)
+                return p.convert(value, param, ctx)
             except Exception as e:
-                logging.debug(f"Ignoring conversion error for type {t} trying other variants in Union. Error: {e}")
+                logging.debug(f"Ignoring conversion error for type {p} trying other variants in Union. Error: {e}")
         raise click.BadParameter(f"Failed to convert {value} to any of the types {self._types}")
 
 

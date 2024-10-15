@@ -48,8 +48,9 @@ from flytekit.core.type_engine import (
     convert_mashumaro_json_schema_to_python_class,
     dataclass_from_dict,
     get_underlying_type,
-    is_annotated,
+    is_annotated, IntTransformer,
 )
+from flytekit.core.type_engine import *
 from flytekit.exceptions import user as user_exceptions
 from flytekit.models import types as model_types
 from flytekit.models.annotation import TypeAnnotation
@@ -73,6 +74,8 @@ from flytekit.types.directory.types import (
 )
 from flytekit.types.file import FileExt, JPEGImageFile
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer, noop
+from flytekit.types.iterator.iterator import IteratorTransformer
+from flytekit.types.iterator.json_iterator import JSONIterator, JSONIteratorTransformer, JSON
 from flytekit.types.pickle import FlytePickle
 from flytekit.types.pickle.pickle import BatchSize, FlytePickleTransformer
 from flytekit.types.schema import FlyteSchema
@@ -3500,3 +3503,139 @@ def test_generic_errors_and_empty():
 
     with pytest.raises(TypeTransformerFailedError):
         TypeEngine.to_literal(ctx, [3], pt, lt)
+
+
+
+def generate_type_engine_transformer_comprehensive_tests():
+    # Test dataclasses
+    @dataclass
+    class DataClass(DataClassJsonMixin):
+        a: int
+        b: str
+
+    class Test:
+        a: str
+        b: int
+
+
+    T = typing.TypeVar("T")
+    class TestGeneric(typing.Generic[T]):
+        a: str
+        b: int
+
+    # Test annotated types
+    AnnotatedInt = Annotated[int, "tag"]
+    AnnotatedFloat = Annotated[float, "tag"]
+    AnnotatedStr = Annotated[str, "tag"]
+    AnnotatedBool = Annotated[bool, "tag"]
+    AnnotatedList = Annotated[List[str], "tag"]
+    AnnotatedDict = Annotated[Dict[str, str], "tag"]
+    Annotatedx3Int = Annotated[Annotated[Annotated[int, "tag"], "tag2"], "tag3"]
+
+    # Test generics
+    ListInt = List[int]
+    ListStr = List[str]
+    DictIntStr = Dict[str, str]
+    ListAnnotatedInt = List[AnnotatedInt]
+    DictAnnotatedIntStr = Dict[str, AnnotatedStr]
+
+    # Test regular types
+    Int = int
+    Str = str
+
+    CallableType = typing.Callable[[int, str], int]
+    CallableTypeAnnotated = Annotated[CallableType, "tag"]
+    CallableTypeList = List[CallableType]
+
+    IteratorType = typing.Iterator[int]
+    IteratorTypeAnnotated = Annotated[IteratorType, "tag"]
+    IteratorTypeList = List[IteratorType]
+
+    People = Annotated[StructuredDataset, "parquet", kwtypes(Name=str, Age=int), "tag"]
+    PeopleDeepAnnotated = Annotated[Annotated[StructuredDataset, "parquet", kwtypes(Name=str, Age=int)], "tag"]
+
+    AnyType = typing.Any
+    AnyTypeAnnotated = Annotated[AnyType, "tag"]
+
+    UnionType = typing.Union[int, str]
+    UnionTypeAnnotated = Annotated[UnionType, "tag"]
+
+    OptionalType = typing.Optional[int]
+    OptionalTypeAnnotated = Annotated[OptionalType, "tag"]
+
+    AnnotatedTest = Annotated[Test, "tag"]
+
+    IntPickle = Annotated[int, FlytePickleTransformer()]
+    AnnotatedIntPickle = Annotated[Annotated[int, "tag"], FlytePickleTransformer()]
+
+    # Test combinations
+    return [
+        (DataClass, DataclassTransformer),
+        (AnnotatedInt, IntTransformer),
+        (AnnotatedFloat, FloatTransformer),
+        (AnnotatedStr, StrTransformer),
+        (Annotatedx3Int, IntTransformer),
+        (ListInt, ListTransformer),
+        (ListStr, ListTransformer),
+        (DictIntStr, DictTransformer),
+        (Int, IntTransformer),
+        (Str, StrTransformer),
+        (AnnotatedBool, BoolTransformer),
+        (AnnotatedList, ListTransformer),
+        (AnnotatedDict, DictTransformer),
+        (ListAnnotatedInt, ListTransformer),
+        (DictAnnotatedIntStr, DictTransformer),
+        (CallableType, FlytePickleTransformer),
+        (CallableTypeAnnotated, FlytePickleTransformer),
+        (CallableTypeList, ListTransformer),
+        (IteratorType, IteratorTransformer),
+        (IteratorTypeAnnotated, IteratorTransformer),
+        (IteratorTypeList, ListTransformer),
+        (People, StructuredDatasetTransformerEngine),
+        (PeopleDeepAnnotated, StructuredDatasetTransformerEngine),
+        (AnyType, FlytePickleTransformer),
+        (AnyTypeAnnotated, FlytePickleTransformer),
+        (UnionType, UnionTransformer),
+        (UnionTypeAnnotated, UnionTransformer),
+        (OptionalType, UnionTransformer),
+        (OptionalTypeAnnotated, UnionTransformer),
+        (Test, FlytePickleTransformer),
+        (TestGeneric, FlytePickleTransformer),
+        (typing.Iterable[int], FlytePickleTransformer),
+        (typing.Sequence[int], FlytePickleTransformer),
+        (IntPickle, FlytePickleTransformer),
+        (AnnotatedIntPickle, FlytePickleTransformer),
+        (typing.Iterator[JSON], JSONIteratorTransformer),
+        (JSONIterator, JSONIteratorTransformer),
+    ]
+
+
+@pytest.mark.parametrize("t, expected_transformer", generate_type_engine_transformer_comprehensive_tests())
+def test_type_engine_get_transformer_comprehensive(t, expected_transformer):
+    """
+    This test will test various combinations like dataclasses, annotated types, generics and regular types and
+    assert the right transformers are returned.
+    """
+    if isinstance(expected_transformer, SimpleTransformer):
+        underlying_type = expected_transformer.base_type
+        assert isinstance(TypeEngine.get_transformer(t), SimpleTransformer)
+        assert TypeEngine.get_transformer(t).base_type == underlying_type
+    else:
+        assert isinstance(TypeEngine.get_transformer(t), expected_transformer)
+
+
+@pytest.mark.parametrize("t, expected_variants", [
+    (typing.Union[int, str], [int, str]),
+    (int | float, [int, float]),
+    (int | float | None, [int, float, type(None)]),
+    (int | float | str, [int, float, str]),
+])
+def test_union_type_comprehensive(t, expected_variants):
+    """
+    This test will test various combinations like dataclasses, annotated types, generics and regular types and
+    assert the right transformers are returned.
+    """
+    transformer = TypeEngine.get_transformer(t)
+    assert isinstance(transformer, UnionTransformer)
+    lt = transformer.get_literal_type(t)
+    assert [TypeEngine.guess_python_type(i) for i in lt.union_type.variants] == expected_variants
