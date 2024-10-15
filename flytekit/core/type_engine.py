@@ -249,6 +249,8 @@ class TypeTransformer(typing.Generic[T]):
         """
         TODO: Support all Flyte Types.
         This is for dataclass attribute access from input created from the Flyte Console.
+        Note:
+        - This can be removed in the future when the Flyte Console support generate Binary IDL Scalar as input.
         """
         raise NotImplementedError(f"Conversion from generic idl to python type {expected_python_type} not implemented")
 
@@ -2301,7 +2303,24 @@ def _check_and_covert_float(lv: Literal) -> float:
     raise TypeTransformerFailedError(f"Cannot convert literal {lv} to float")
 
 
-def _check_and_covert_int(lv: Literal) -> int:
+def _handle_flyte_console_float_input_to_int(lv: Literal) -> int:
+    """
+    Flyte Console is written by JavaScript and JavaScript has only one number type which is float.
+    We have to convert float to int back in the following example.
+
+    Example Code:
+    @dataclass
+    class DC:
+        a: int
+
+    @workflow
+    def wf(dc: DC):
+        t_int(a=dc.a)
+
+    Life Cycle:
+    json str            -> protobuf struct         -> resolved float    -> float                          -> int
+    (console user input)   (console output)           (propeller)          (flytekit simple transformer)  (_handle_flyte_console_float_input_to_int)
+    """
     if lv.scalar.primitive.integer is not None:
         return lv.scalar.primitive.integer
 
@@ -2325,7 +2344,7 @@ def _register_default_type_transformers():
             int,
             _type_models.LiteralType(simple=_type_models.SimpleType.INTEGER),
             lambda x: Literal(scalar=Scalar(primitive=Primitive(integer=x))),
-            _check_and_covert_int,
+            _handle_flyte_console_float_input_to_int,
         )
     )
 

@@ -67,17 +67,17 @@ def deserialize_flyte_dir(self) -> FlyteDirectory:
         type(self),
     )
     """
-    When constructing a Pydantic BaseModel with a FlyteDirectory, the 'deserialize_flyte_dir' method 
+    When constructing a Pydantic BaseModel with a FlyteDirectory, the 'deserialize_flyte_dir' method
     is called because it is registered as a validator for this BaseModel.
-    
+
     FlyteDirToMultipartBlobTransformer().to_python_value will set the '_remote_directory' attribute to `False`
     if the FlyteDirectory represents a local path (i.e., the directory is local).
-    
-    Later, when we need to upload this directory to remote storage during serialization using the 
-    'serialize_flyte_dir' method, which is our BaseModel serializer, the upload process will be skipped 
+
+    Later, when we need to upload this directory to remote storage during serialization using the
+    'serialize_flyte_dir' method, which is our BaseModel serializer, the upload process will be skipped
     if '_remote_directory' is set to `False`.
-    
-    This is why we need to customize the deserialization logic here, to ensure that the proper behavior 
+
+    This is why we need to customize the deserialization logic here, to ensure that the proper behavior
     for remote directories is maintained.
 
     Related Code:
