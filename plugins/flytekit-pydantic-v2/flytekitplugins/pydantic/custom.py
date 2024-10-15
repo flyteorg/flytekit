@@ -39,6 +39,7 @@ def deserialize_flyte_file(self) -> FlyteFile:
         ),
         type(self),
     )
+    pv._remote_path = None
     return pv
 
 
@@ -66,6 +67,7 @@ def deserialize_flyte_dir(self) -> FlyteDirectory:
         ),
         type(self),
     )
+    pv._remote_directory = None
     return pv
 
 
