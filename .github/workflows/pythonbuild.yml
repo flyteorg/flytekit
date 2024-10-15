@@ -56,20 +56,20 @@ jobs:
           path: ~/.cache/pip
           # Look to see if there is a cache hit for the corresponding requirements files
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
-      # Install vcpkg for installing OpenSSL
-      - name: Set up vcpkg
-        if: runner.os == 'Windows'
-        # The `openssl-sys` crate will automatically detect OpenSSL installations via Homebrew on macOS and vcpkg on Windows.
-        run: |
-          git clone --depth 1 https://github.com/microsoft/vcpkg.git
-          cd vcpkg
-          .\bootstrap-vcpkg.bat
-      - name: Install OpenSSL
-        if: runner.os == 'Windows'
-        run: |
-          cd vcpkg
-          .\vcpkg install openssl
-          .\vcpkg integrate install
+      # # Install vcpkg for installing OpenSSL
+      # - name: Set up vcpkg
+      #   if: runner.os == 'Windows'
+      #   # The `openssl-sys` crate will automatically detect OpenSSL installations via Homebrew on macOS and vcpkg on Windows.
+      #   run: |
+      #     git clone --depth 1 https://github.com/microsoft/vcpkg.git
+      #     cd vcpkg
+      #     .\bootstrap-vcpkg.bat
+      # - name: Install OpenSSL
+      #   if: runner.os == 'Windows'
+      #   run: |
+      #     cd vcpkg
+      #     .\vcpkg install openssl
+      #     .\vcpkg integrate install
       - name: Install dependencies
         run: |
           pip install uv maturin
@@ -94,7 +94,7 @@ jobs:
       - name: Install Protobuf (Windows)
         if: runner.os == 'Windows'
         run: |
-          choco install protoc
+          choco install protoc strawberryperl make -y
       - name: Generate Rust Protobuf (Ubuntu)
         if: runner.os == 'Linux'
         working-directory: ${{ github.workspace }}/flyte/flyteidl
@@ -115,7 +115,7 @@ jobs:
         # For dynamic linking, set VCPKGRS_DYNAMIC=1 in the environment. This will link to libraries built with vcpkg triplet x64-windows.
         run: |
           rm -rf ./gen/pb_rust/*
-          VCPKGRS_DYNAMIC=1 cargo run --bin gen_flyteidl
+          cargo run --bin gen_flyteidl
       - name: Build wheels # Set up Python virtual environment at first, maturin needs this.
         shell: bash
         working-directory: ${{ github.workspace }}/flyte/flyteidl
@@ -126,7 +126,7 @@ jobs:
           else
             source ./venv/bin/activate
           fi
-          VCPKGRS_DYNAMIC=1 maturin build --release --out ./dist --interpreter python${{ matrix.python-version }} -m ./Cargo.toml
+          maturin build --release --out ./dist --interpreter python${{ matrix.python-version }} -m ./Cargo.toml
       - name: Install built wheel
         shell: bash
         working-directory: ${{ github.workspace }}/flyte/flyteidl
