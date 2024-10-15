@@ -1022,6 +1022,7 @@ class TypeEngine(typing.Generic[T]):
 
     @classmethod
     def _get_transformer(cls, python_type: Type) -> Optional[TypeTransformer[T]]:
+        cls.lazy_import_transformers()
         if is_annotated(python_type):
             args = get_args(python_type)
             for annotation in args:
