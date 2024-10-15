@@ -1,28 +1,19 @@
 import asyncio
-import pytest
-from enum import Enum
-from dataclasses_json import DataClassJsonMixin
-from mashumaro.mixins.json import DataClassJSONMixin
-import os
-import sys
-import tempfile
-from dataclasses import dataclass, field
-from typing import List, Dict, Optional, Union, TypeVar, Type
-from flytekit.models.types import LiteralType, SimpleType, TypeStructure, UnionType
+from dataclasses import dataclass
+from typing import List, Optional, TypeVar, Type
+
 from typing_extensions import Annotated
-from flytekit.types.pickle.pickle import FlytePickleTransformer
-from flytekit.types.schema import FlyteSchema
-from flytekit.core.type_engine import TypeEngine
-from flytekit.core.dynamic_workflow_task import dynamic
-from flytekit.core.context_manager import FlyteContextManager, ExecutionState, FlyteContext
-from flytekit.core.type_engine import DataclassTransformer
-from flytekit import task, workflow
-from flytekit.types.directory import FlyteDirectory
-from flytekit.types.file import FlyteFile
-from flytekit.models.literals import Binary, Literal, LiteralCollection, LiteralMap, Primitive, Scalar, Union, Void
-from flytekit.types.structured import StructuredDataset
+
+from flytekit import task
 from flytekit.configuration import SerializationSettings, ImageConfig, Image
+from flytekit.core.context_manager import FlyteContextManager, ExecutionState, FlyteContext
+from flytekit.core.dynamic_workflow_task import dynamic
+from flytekit.core.type_engine import SimpleTransformer
 from flytekit.core.type_engine import TypeEngine, AsyncTypeTransformer, TypeTransformerFailedError
+from flytekit.models import types as type_models
+from flytekit.models.literals import Literal, LiteralCollection, Primitive, Scalar
+from flytekit.models.types import LiteralType
+from flytekit.types.pickle.pickle import FlytePickleTransformer
 
 ss = SerializationSettings(
     project="test_proj",
@@ -64,138 +55,147 @@ def test_cross_type_binding_no_literals():
     foofoo = gen_foo(batch_size=10)
 
     with FlyteContextManager.with_context(
-        FlyteContextManager.current_context().with_serialization_settings(ss        )
+        FlyteContextManager.current_context().with_serialization_settings(ss)
     ) as ctx:
         new_exc_state = ctx.execution_state.with_params(mode=ExecutionState.Mode.TASK_EXECUTION)
         with FlyteContextManager.with_context(ctx.with_execution_state(new_exc_state)):
             dynamic_job_spec = d0.compile_into_workflow(ctx, d0._task_function, ii=foofoo)
-            for xx in dynamic_job_spec.nodes:
-                print(xx)
+            assert len(dynamic_job_spec.nodes) == 3
+            for nn in dynamic_job_spec.nodes:
+                assert len(nn.inputs) == 1
+                assert nn.inputs[0].var == "ii"
+                assert nn.inputs[0].binding.scalar.blob is not None
 
 
-class ListTransformer(AsyncTypeTransformer[T]):
+class MyStr(object):
+    def __init__(self, s: str):
+        self.s = s
+        self.index = None
+
+    def __iter__(self):
+        self.index = 0
+        return self
+
+    def __next__(self):
+        if self.index >= len(self.s):
+            raise StopIteration
+        value = self.s[self.index]
+        self.index += 1
+        return value
+
+
+my_str_simple = SimpleTransformer(
+    "mystr",
+    MyStr,
+    type_models.LiteralType(simple=type_models.SimpleType.STRING),
+    lambda x: Literal(
+        scalar=Scalar(primitive=Primitive(string_value=x.s))
+    ),
+    lambda x: x.s,
+)
+
+
+class MyStrListTransformer(AsyncTypeTransformer[T]):
     """
-    Transformer that handles a univariate typing.List[T]
+    Sample list transformer that should not be written
     """
-
     def __init__(self):
-        super().__init__("Typed List", list)
-
-    @staticmethod
-    def get_sub_type(t: Type[T]) -> Type[T]:
-        """
-        Return the generic Type T of the List
-        """
-        if (sub_type := ListTransformer.get_sub_type_or_none(t)) is not None:
-            return sub_type
-
-        raise ValueError("Only generic univariate typing.List[T] type is supported.")
+        super().__init__("Typed List", MyStr)
 
     @staticmethod
     def get_sub_type_or_none(t: Type[T]) -> Optional[Type[T]]:
-        """
-        Return the generic Type T of the List, or None if the generic type cannot be inferred
-        """
-        if hasattr(t, "__origin__"):
-            # Handle annotation on list generic, eg:
-            # Annotated[typing.List[int], 'foo']
-            if is_annotated(t):
-                return ListTransformer.get_sub_type(get_args(t)[0])
-
-            if getattr(t, "__origin__") is list and hasattr(t, "__args__"):
-                return getattr(t, "__args__")[0]
-
-        return None
+        return str
 
     def get_literal_type(self, t: Type[T]) -> Optional[LiteralType]:
-        """
-        Only univariate Lists are supported in Flyte
-        """
-        try:
-            sub_type = TypeEngine.to_literal_type(self.get_sub_type(t))
-            return _type_models.LiteralType(collection_type=sub_type)
-        except Exception as e:
-            raise ValueError(f"Type of Generic List type is not supported, {e}")
-
-    @staticmethod
-    def is_batchable(t: Type):
-        """
-        This function evaluates whether the provided type is batchable or not.
-        It returns True only if the type is either List or Annotated(List) and the List subtype is FlytePickle.
-        """
-        from flytekit.types.pickle import FlytePickle
-
-        if is_annotated(t):
-            return ListTransformer.is_batchable(get_args(t)[0])
-        if get_origin(t) is list:
-            subtype = get_args(t)[0]
-            if subtype == FlytePickle or (hasattr(subtype, "__origin__") and subtype.__origin__ == FlytePickle):
-                return True
-        return False
+        sub_type = TypeEngine.to_literal_type(str)
+        return type_models.LiteralType(collection_type=sub_type)
 
     async def async_to_literal(
         self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType
     ) -> Literal:
-        if type(python_val) != list:
-            raise TypeTransformerFailedError("Expected a list")
+        if type(python_val) != MyStr:
+            raise TypeTransformerFailedError("Expected a string")
 
-        if ListTransformer.is_batchable(python_type):
-            from flytekit.types.pickle.pickle import BatchSize, FlytePickle
-
-            batch_size = len(python_val)  # default batch size
-            # parse annotated to get the number of items saved in a pickle file.
-            if is_annotated(python_type):
-                for annotation in get_args(python_type)[1:]:
-                    if isinstance(annotation, BatchSize):
-                        batch_size = annotation.val
-                        break
-            if batch_size > 0:
-                lit_list = [
-                    TypeEngine.to_literal(ctx, python_val[i : i + batch_size], FlytePickle, expected.collection_type)
-                    for i in range(0, len(python_val), batch_size)
-                ]  # type: ignore
-            else:
-                lit_list = []
-        else:
-            t = self.get_sub_type(python_type)
-            lit_list = [TypeEngine.async_to_literal(ctx, x, t, expected.collection_type) for x in python_val]
-            lit_list = await asyncio.gather(*lit_list)
+        listified = list(python_val.s)
+        lit_list = [TypeEngine.async_to_literal(ctx, x, str, expected.collection_type) for x in listified]
+        lit_list = await asyncio.gather(*lit_list)
 
         return Literal(collection=LiteralCollection(literals=lit_list))
 
     async def async_to_python_value(  # type: ignore
         self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]
     ) -> Optional[List[T]]:
-        if lv and lv.scalar and lv.scalar.binary is not None:
-            return self.from_binary_idl(lv.scalar.binary, expected_python_type)  # type: ignore
-
-        try:
-            lits = lv.collection.literals
-        except AttributeError:
-            raise TypeTransformerFailedError(
-                (
-                    f"The expected python type is '{expected_python_type}' but the received Flyte literal value "
-                    f"is not a collection (Flyte's representation of Python lists)."
-                )
-            )
-        st = self.get_sub_type(expected_python_type)
-        result = [TypeEngine.async_to_python_value(ctx, x, st) for x in lits]
+        lits = lv.collection.literals
+        result = [TypeEngine.async_to_python_value(ctx, x, str) for x in lits]
         result = await asyncio.gather(*result)
-        return result  # type: ignore  # should be a list, thinks its a tuple
+        result = "".join(result)
+        return MyStr(result)  # type: ignore
 
     def guess_python_type(self, literal_type: LiteralType) -> list:  # type: ignore
-        if literal_type.collection_type:
-            ct: Type = TypeEngine.guess_python_type(literal_type.collection_type)
-            return typing.List[ct]  # type: ignore
-        raise ValueError(f"List transformer cannot reverse {literal_type}")
+        raise NotImplementedError
 
 
-def test_string_to_list():
-    ...
+def test_sample_transformer():
+    ctx = FlyteContext.current_context()
+    tt = MyStrListTransformer()
+    lt = tt.get_literal_type(MyStr)
+    inp = MyStr("hello")
+    lit = tt.to_literal(ctx, inp, MyStr, lt)
+    final = tt.to_python_value(ctx, lit, MyStr)
+    assert final.s == "hello"
 
 
+def test_sample_transformer_wf():
+    TypeEngine.register(my_str_simple)
+
+    @dynamic
+    def d0(ii: MyStr) -> None:
+        t0(ii=ii)
+
+    @task
+    def t0(ii: MyStr) -> None:
+        print(f"Letters: {ii}")
+
+    starting = MyStr("hello")
+
+    with FlyteContextManager.with_context(
+        FlyteContextManager.current_context().with_serialization_settings(ss)
+    ) as ctx:
+        new_exc_state = ctx.execution_state.with_params(mode=ExecutionState.Mode.TASK_EXECUTION)
+        with FlyteContextManager.with_context(ctx.with_execution_state(new_exc_state)):
+            dynamic_job_spec = d0.compile_into_workflow(ctx, d0._task_function, ii=starting)
+            assert len(dynamic_job_spec.nodes) == 1
+            assert len(dynamic_job_spec.nodes[0].inputs) == 1
+            bd = dynamic_job_spec.nodes[0].inputs[0].binding
+            assert bd.scalar is not None
+
+    del TypeEngine._REGISTRY[MyStr]
 
 
-def test_list_to_dict():
-    ...
+def test_sample_transformer_wf_annotated():
+    TypeEngine.register(my_str_simple)
+    tf = MyStrListTransformer()
 
+    @dynamic
+    def d0(ii: MyStr) -> None:
+        t0(ii=ii)
+
+    @task
+    def t0(ii: Annotated[MyStr, tf]) -> None:
+        print(f"Letters: {ii}")
+
+    starting = MyStr("hello")
+
+    with FlyteContextManager.with_context(
+        FlyteContextManager.current_context().with_serialization_settings(ss)
+    ) as ctx:
+        new_exc_state = ctx.execution_state.with_params(mode=ExecutionState.Mode.TASK_EXECUTION)
+        with FlyteContextManager.with_context(ctx.with_execution_state(new_exc_state)):
+            dynamic_job_spec = d0.compile_into_workflow(ctx, d0._task_function, ii=starting)
+            assert len(dynamic_job_spec.nodes) == 1
+            assert len(dynamic_job_spec.nodes[0].inputs) == 1
+            bd = dynamic_job_spec.nodes[0].inputs[0].binding
+            assert bd.collection is not None
+            assert len(bd.collection.bindings) == 5
+
+    del TypeEngine._REGISTRY[MyStr]

@@ -4,6 +4,7 @@ import collections
 import datetime
 import inspect
 import typing
+from collections.abc import Iterable
 from copy import deepcopy
 from enum import Enum
 from typing import Any, Coroutine, Dict, List, Optional, Set, Tuple, Union, cast
@@ -798,11 +799,14 @@ def binding_data_from_literal(l: _literals_models.Literal) -> _literals_models.B
     raise AssertionError(f"Unknown literal type {l}")
 
 
+T = typing.TypeVar("T")
+
+
 async def binding_data_from_python_std(
     ctx: _flyte_context.FlyteContext,
     expected_literal_type: _type_models.LiteralType,
     t_value: Any,
-    t_value_type: Type[T],
+    t_value_type: typing.Type[T],
     nodes: List[Node],
     transformer_override: Optional[TypeTransformer] = None,
 ) -> _literals_models.BindingData:
@@ -861,18 +865,19 @@ async def binding_data_from_python_std(
             f"Failed to bind data {t_value} with literal type {expected_literal_type.union_type.variants}."
         )
 
-    # Check the scenario where there is an embedded transformer in the type.  See
-    # elif get_origin(t_value_type) is Annotated:
-    #     for annotation in get_args(t_value_type)[1:]:
-    #         if isinstance(annotation, TypeTransformer):
-    #             lit = await TypeEngine.async_to_literal(ctx, t_value, t_value_type,
-    #                                                     expected_literal_type)
-    #             return binding_data_from_literal(lit)
-
-    elif isinstance(t_value, list) and (
-        not transformer_override or (literal_type_override and literal_type_override.collection_type is not None)
+    elif (
+        isinstance(t_value, list)
+        and (not transformer_override or (literal_type_override and literal_type_override.collection_type is not None))
+        or (
+            literal_type_override
+            and literal_type_override.collection_type is not None
+            and isinstance(t_value, Iterable)
+        )
     ):
-        sub_type: Optional[type] = ListTransformer.get_sub_type_or_none(t_value_type)
+        if transformer_override and hasattr(transformer_override, "get_sub_type_or_none"):
+            sub_type: Optional[type] = transformer_override.get_sub_type_or_none(t_value_type)
+        else:
+            sub_type: Optional[type] = ListTransformer.get_sub_type_or_none(t_value_type)
         collection = _literals_models.BindingDataCollection(
             bindings=[
                 await binding_data_from_python_std(
@@ -881,7 +886,6 @@ async def binding_data_from_python_std(
                     t,
                     sub_type or type(t),
                     nodes,
-                    transformer_override,
                 )
                 for t in t_value
             ]
@@ -912,7 +916,6 @@ async def binding_data_from_python_std(
                         v,
                         v_type or type(v),
                         nodes,
-                        transformer_override,
                     )
                     for k, v in t_value.items()
                 }
