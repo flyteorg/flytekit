@@ -39,7 +39,6 @@ def deserialize_flyte_file(self) -> FlyteFile:
         ),
         type(self),
     )
-    pv._remote_path = None
     return pv
 
 
@@ -67,7 +66,6 @@ def deserialize_flyte_dir(self) -> FlyteDirectory:
         ),
         type(self),
     )
-    pv._remote_directory = None
     return pv
 
 
@@ -107,9 +105,9 @@ def serialize_structured_dataset(self) -> Dict[str, str]:
 
 @model_validator(mode="after")
 def deserialize_structured_dataset(self) -> StructuredDataset:
-    # If we call the method to_python_value, StructuredDatasetTransformerEngine will overwrite the argument 'dataframe',
+    # If we call the method to_python_value, StructuredDatasetTransformerEngine will overwrite the argument '_dataframe',
     # which will lose our data.
-    # If this data is from an existed StructuredDataset, 'dataframe' will be None.
+    # If this data is from an existed StructuredDataset, '_dataframe' will be None.
 
     if hasattr(self, "_dataframe"):
         return self
