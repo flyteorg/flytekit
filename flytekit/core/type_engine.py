@@ -16,7 +16,7 @@ import typing
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from functools import lru_cache
-from types import GenericAlias, NoneType
+from types import GenericAlias
 from typing import Any, Dict, List, NamedTuple, Optional, Type, cast
 
 import msgpack
@@ -51,6 +51,7 @@ from flytekit.models.literals import Binary, Literal, LiteralCollection, Literal
 from flytekit.models.types import LiteralType, SimpleType, TypeStructure, UnionType
 from flytekit.utils.asyn import loop_manager
 
+NoneType = type(None)
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
 TITLE = "title"
