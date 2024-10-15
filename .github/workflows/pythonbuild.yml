@@ -127,13 +127,15 @@ jobs:
             source ./venv/bin/activate
           fi
           VCPKGRS_DYNAMIC=1 maturin build --release --out ./dist --interpreter python${{ matrix.python-version }} -m ./Cargo.toml
-      - name: Install built wheel and Test with coverage
+      - name: Install built wheel
         shell: bash
         working-directory: ${{ github.workspace }}/flyte/flyteidl
         run: |
           pip install ./dist/*.whl --no-index --force-reinstall
           pip freeze
           python -c "import flyteidl_rust"
+      - name: Test with coverage
+        run: |
           make unit_test_codecov
       - name: Codecov
         uses: codecov/codecov-action@v3.1.4
