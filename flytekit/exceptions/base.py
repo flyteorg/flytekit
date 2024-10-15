@@ -1,3 +1,6 @@
+import time
+
+
 class _FlyteCodedExceptionMetaclass(type):
     @property
     def error_code(cls):
@@ -6,6 +9,17 @@ class _FlyteCodedExceptionMetaclass(type):
 
 class FlyteException(Exception, metaclass=_FlyteCodedExceptionMetaclass):
     _ERROR_CODE = "UnknownFlyteException"
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self._timestamp = time.time()
+
+    @property
+    def timestamp(self) -> float:
+        """
+        The timestamp as fractional seconds since epoch
+        """
+        return self._timestamp
 
     def __str__(self):
         error_message = f"error={','.join(self.args) if self.args else 'None'}"

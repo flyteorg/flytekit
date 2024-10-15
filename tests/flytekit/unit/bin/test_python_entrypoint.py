@@ -17,6 +17,7 @@ from flytekit.core.promise import VoidPromise
 from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions import user as user_exceptions
+from flytekit.exceptions.base import FlyteException
 from flytekit.exceptions.scopes import system_entry_point
 from flytekit.exceptions.user import FlyteUserRuntimeException
 from flytekit.models import literals as _literal_models
@@ -130,7 +131,7 @@ def test_dispatch_execute_exception_with_multi_error_files(mock_write_to_file, m
         )
     ) as ctx:
         python_task = mock.MagicMock()
-        python_task.dispatch_execute.side_effect = Exception("random")
+        python_task.dispatch_execute.side_effect = FlyteUserRuntimeException(FlyteException("exception"))
 
         empty_literal_map = _literal_models.LiteralMap({}).to_flyte_idl()
         mock_load_proto.return_value = empty_literal_map
@@ -138,7 +139,7 @@ def test_dispatch_execute_exception_with_multi_error_files(mock_write_to_file, m
         def verify_output(*args, **kwargs):
             assert isinstance(args[0], ErrorDocument)
             container_error = args[0].error
-            assert container_error.timestamp > 0
+            assert container_error.timestamp.seconds > 0
             assert container_error.worker == "worker" 
             error_file_path = args[1]
             error_filename_base, error_filename_ext = os.path.splitext(os.path.split(error_file_path)[1])

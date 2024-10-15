@@ -14,6 +14,7 @@ import uuid
 import warnings
 from sys import exit
 from typing import Callable, List, Optional
+from google.protobuf.timestamp_pb2 import Timestamp
 
 import click
 from flyteidl.core import literals_pb2 as _literals_pb2
@@ -39,6 +40,7 @@ from flytekit.core.context_manager import (
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.promise import VoidPromise
 from flytekit.deck.deck import _output_deck
+from flytekit.exceptions.base import FlyteException
 from flytekit.exceptions.system import FlyteNonRecoverableSystemException
 from flytekit.exceptions.user import FlyteRecoverableException, FlyteUserRuntimeException
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
@@ -184,8 +186,7 @@ def _dispatch_execute(
                 message=exc_str,
                 kind=kind,
                 origin=_execution_models.ExecutionError.ErrorKind.USER,
-                # TODO: timestamp to be extracted from e.value if present
-                timestamp=int(time.time()),
+                timestamp=extract_timestamp(e.value),
                 worker=worker_name,
             )
         )
@@ -205,8 +206,7 @@ def _dispatch_execute(
                 message=exc_str,
                 kind=_error_models.ContainerError.Kind.NON_RECOVERABLE,
                 origin=_execution_models.ExecutionError.ErrorKind.SYSTEM,
-                # TODO: timestamp to be extracted from e.value if present
-                timestamp=int(time.time()),
+                timestamp=extract_timestamp(e.value),
                 worker=worker_name,
             )
         )
@@ -224,8 +224,7 @@ def _dispatch_execute(
                 message=exc_str,
                 kind=_error_models.ContainerError.Kind.RECOVERABLE,
                 origin=_execution_models.ExecutionError.ErrorKind.SYSTEM,
-                # TODO: timestamp to be extracted from e if present
-                timestamp=int(time.time()),
+                timestamp=extract_timestamp(e),
                 worker=worker_name,
             )
         )
@@ -267,6 +266,13 @@ def get_traceback_str(e: Exception) -> str:
     value = e.value if isinstance(e, FlyteUserRuntimeException) else e
     return format_str.format(traceback=tb_str, message=f"{type(value).__name__}: {value}")
 
+
+def extract_timestamp(e: Exception) -> Timestamp:
+    timestamp = e.timestamp if isinstance(e, FlyteException) else time.time()
+    timstamp_secs = int(timestamp)
+    timestamp_fsecs = timestamp - timstamp_secs
+    timestamp_nanos = int(timestamp_fsecs * 1_000_000_000)
+    return Timestamp(seconds=timstamp_secs, nanos=timestamp_nanos)
 
 def get_one_of(*args) -> str:
     """
