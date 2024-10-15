@@ -3641,7 +3641,7 @@ def test_union_type_comprehensive_604(t, expected_variants):
     (typing.Union[str, None], [str, type(None)]),
     (typing.Optional[int], [int, type(None)]),
 ])
-def test_union_type(t, expected_variants):
+def test_union_comprehensive(t, expected_variants):
     """
     This test will test various combinations like dataclasses, annotated types, generics and regular types and
     assert the right transformers are returned.
