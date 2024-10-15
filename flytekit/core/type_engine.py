@@ -1039,7 +1039,7 @@ class TypeEngine(typing.Generic[T]):
         if hasattr(python_type, "__origin__") and python_type.__origin__ in cls._REGISTRY:
             return cls._REGISTRY[python_type.__origin__]
 
-        # Handling UnionType specially
+        # Handling UnionType specially - PEP 604
         if sys.version_info >= (3, 10):
             import types
 
@@ -1053,7 +1053,7 @@ class TypeEngine(typing.Generic[T]):
         return None
 
     @classmethod
-    def get_transformer2(cls, python_type: Type) -> TypeTransformer[T]:
+    def get_transformer(cls, python_type: Type) -> TypeTransformer[T]:
         """
         Implements a recursive search for the transformer.
         """
@@ -1067,120 +1067,6 @@ class TypeEngine(typing.Generic[T]):
                 v = cls._get_transformer(t)
                 if v is not None:
                     return v
-
-        # Step 6
-        display_pickle_warning(str(python_type))
-        from flytekit.types.pickle.pickle import FlytePickleTransformer
-
-        return FlytePickleTransformer()
-
-    @classmethod
-    def get_transformer(cls, python_type: Type) -> TypeTransformer[T]:
-        """
-        The TypeEngine hierarchy for flyteKit. This method looks up and selects the type transformer. The algorithm is
-        as follows
-
-          d = dictionary of registered transformers, where is a python `type`
-          v = lookup type
-
-        Step 1:
-            If the type is annotated with a TypeTransformer instance, use that.
-
-        Step 2:
-            find a transformer that matches v exactly
-
-        Step 3:
-            find a transformer that matches the generic type of v. e.g List[int], Dict[str, int] etc
-
-        Step 4:
-            Walk the inheritance hierarchy of v and find a transformer that matches the first base class.
-            This is potentially non-deterministic - will depend on the registration pattern.
-
-            Special case:
-                If v inherits from Enum, use the Enum transformer even if Enum is not the first base class.
-
-            TODO lets make this deterministic by using an ordered dict
-
-        Step 5:
-            if v is of type data class, use the dataclass transformer
-
-        Step 6:
-            Pickle transformer is used
-        """
-        cls.lazy_import_transformers()
-        # Step 1
-        if is_annotated(python_type):
-            args = get_args(python_type)
-            for annotation in args:
-                if isinstance(annotation, TypeTransformer):
-                    return annotation
-
-            python_type = args[0]
-
-        # Step 2
-        # this makes sure that if it's a list/dict of annotated types, we hit the unwrapping code in step 2
-        # see test_list_of_annotated in test_structured_dataset.py
-        if (
-            (not hasattr(python_type, "__origin__"))
-            or (
-                hasattr(python_type, "__origin__")
-                and (python_type.__origin__ is not list and python_type.__origin__ is not dict)
-            )
-        ) and python_type in cls._REGISTRY:
-            return cls._REGISTRY[python_type]
-
-        # Step 3
-        if hasattr(python_type, "__origin__"):
-            # Handling of annotated generics, eg:
-            # Annotated[typing.List[int], 'foo']
-            if is_annotated(python_type):
-                return cls.get_transformer(get_args(python_type)[0])
-
-            if python_type.__origin__ in cls._REGISTRY:
-                return cls._REGISTRY[python_type.__origin__]
-
-            raise ValueError(f"Generic Type {python_type.__origin__} not supported currently in Flytekit.")
-
-        # Step 4
-        # To facilitate cases where users may specify one transformer for multiple types that all inherit from one
-        # parent.
-        if inspect.isclass(python_type) and issubclass(python_type, enum.Enum):
-            # Special case: prevent that for a type `FooEnum(str, Enum)`, the str transformer is used.
-            return cls._ENUM_TRANSFORMER
-
-        from flytekit.types.iterator.json_iterator import JSONIterator
-
-        for base_type in cls._REGISTRY.keys():
-            if base_type is None:
-                continue  # None is actually one of the keys, but isinstance/issubclass doesn't work on it
-            try:
-                origin_type: Optional[typing.Any] = base_type
-                if hasattr(base_type, "__args__"):
-                    origin_base_type = get_origin(base_type)
-                    if isinstance(origin_base_type, type) and issubclass(
-                        origin_base_type, typing.Iterator
-                    ):  # Iterator[JSON]
-                        origin_type = origin_base_type
-
-                if isinstance(python_type, origin_type) or (  # type: ignore[arg-type]
-                    inspect.isclass(python_type) and issubclass(python_type, origin_type)  # type: ignore[arg-type]
-                ):
-                    # Consider Iterator[JSON] but not vanilla Iterator when the value is a JSON iterator.
-                    if (
-                        isinstance(python_type, type)
-                        and issubclass(python_type, JSONIterator)
-                        and not get_args(base_type)
-                    ):
-                        continue
-                    return cls._REGISTRY[base_type]
-            except TypeError:
-                # As of python 3.9, calls to isinstance raise a TypeError if the base type is not a valid type, which
-                # is the case for one of the restricted types, namely NamedTuple.
-                logger.debug(f"Invalid base type {base_type} in call to isinstance", exc_info=True)
-
-        # Step 5
-        if dataclasses.is_dataclass(python_type):
-            return cls._DATACLASS_TRANSFORMER
 
         # Step 6
         display_pickle_warning(str(python_type))
