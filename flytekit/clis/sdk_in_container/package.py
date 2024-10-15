@@ -7,6 +7,7 @@ import rich_click as click
 from flytekit.clis.helpers import display_help_with_error
 from flytekit.clis.sdk_in_container import constants
 from flytekit.clis.sdk_in_container.helpers import parse_copy
+from flytekit.clis.sdk_in_container.utils import validate_package
 from flytekit.configuration import (
     DEFAULT_RUNTIME_PYTHON_INTERPRETER,
     FastSerializationSettings,
@@ -17,7 +18,6 @@ from flytekit.constants import CopyFileDetection
 from flytekit.interaction.click_types import key_value_callback
 from flytekit.tools.fast_registration import FastPackageOptions
 from flytekit.tools.repo import NoSerializableEntitiesError, serialize_and_package
-from flytekit.clis.sdk_in_container.utils import validate_package
 
 
 @click.command("package")
