@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Type, Union
 
 from flytekit import Deck, FlyteContext, lazy_module
 from flytekit.extend import TypeEngine, TypeTransformer
-from flytekit.models.literals import Literal, StructuredDatasetMetadata
+from flytekit.models.literals import Literal
 from flytekit.models.types import LiteralType, SchemaType
 from flytekit.types.structured import StructuredDataset
 from flytekit.types.structured.structured_dataset import StructuredDatasetTransformerEngine, get_supported_types
