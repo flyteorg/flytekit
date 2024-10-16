@@ -433,14 +433,14 @@ def test_get_traceback_str():
         Trace:
 
             Traceback \(most recent call last\):
-              File ".*flytekit/tests/flytekit/unit/bin/test_python_entrypoint.py", line \d+, in test_get_traceback_str
+              File ".*test_python_entrypoint.py", line \d+, in test_get_traceback_str
                 raise RuntimeError\("a"\)
             RuntimeError: a
 
             The above exception was the direct cause of the following exception:
 
             Traceback \(most recent call last\):
-              File ".*flytekit/tests/flytekit/unit/bin/test_python_entrypoint.py", line \d+, in test_get_traceback_str
+              File ".*test_python_entrypoint.py", line \d+, in test_get_traceback_str
                 raise FlyteRecoverableException\("b"\) from e
             flytekit.exceptions.user.FlyteRecoverableException: USER:Recoverable: error=b, cause=a
 
@@ -451,5 +451,5 @@ def test_get_traceback_str():
     expected_error_pattern = expected_error_pattern[1:]
 
     expected_error_re = re.compile(expected_error_pattern)
-    print(traceback_str)
+    print(traceback_str)  # helpful for debugging
     assert expected_error_re.match(traceback_str) is not None
