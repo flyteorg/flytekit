@@ -951,3 +951,21 @@ def test_dataclass_with_json_mixin_union_primitive_types_and_enum():
         return dc
 
     my_task(dc=DC())
+
+def test_frozen_dataclass():
+    @dataclass(frozen=True)
+    class FrozenDataclass:
+        a: int = 1
+        b: float = 2.0
+        c: bool = True
+        d: str = "hello"
+
+    @task
+    def t1(dc: FrozenDataclass) -> (int, float, bool, str):
+        return dc.a, dc.b, dc.c, dc.d
+
+    a, b, c, d = t1(dc=FrozenDataclass())
+    assert a == 1
+    assert b == 2.0
+    assert c == True
+    assert d == "hello"
