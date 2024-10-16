@@ -1034,11 +1034,19 @@ class TypeEngine(typing.Generic[T]):
             # Special case: prevent that for a type `FooEnum(str, Enum)`, the str transformer is used.
             return cls._ENUM_TRANSFORMER
 
-        if python_type in cls._REGISTRY:
-            return cls._REGISTRY[python_type]
-
-        if hasattr(python_type, "__origin__") and python_type.__origin__ in cls._REGISTRY:
-            return cls._REGISTRY[python_type.__origin__]
+        if hasattr(python_type, "__origin__"):
+            # If the type is a generic type, we should check the origin type. But consider the case like Iterator[JSON]
+            # or List[int] has been specifically registered, we should check for the entire type.
+            # The challenge is for StructuredDataset, example List[StructuredDataset] the column names is an OrderedDict
+            # are not hashable, thus looking up this type is not possible.
+            # In such as case we will have to skip the "type" lookup and use the origin type only
+            try:
+                if python_type in cls._REGISTRY:
+                    return cls._REGISTRY[python_type]
+            except TypeError:
+                pass
+            if python_type.__origin__ in cls._REGISTRY:
+                return cls._REGISTRY[python_type.__origin__]
 
         # Handling UnionType specially - PEP 604
         if sys.version_info >= (3, 10):
@@ -1046,6 +1054,9 @@ class TypeEngine(typing.Generic[T]):
 
             if isinstance(python_type, types.UnionType):
                 return cls._REGISTRY[types.UnionType]
+
+        if python_type in cls._REGISTRY:
+            return cls._REGISTRY[python_type]
 
         # Step 5
         if dataclasses.is_dataclass(python_type):

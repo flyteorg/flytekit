@@ -3546,7 +3546,7 @@ def generate_type_engine_transformer_comprehensive_tests():
     IteratorTypeAnnotated = Annotated[IteratorType, "tag"]
     IteratorTypeList = List[IteratorType]
 
-    People = Annotated[StructuredDataset, "parquet", kwtypes(Name=str, Age=int), "tag"]
+    People = Annotated[StructuredDataset, "parquet", kwtypes(Name=str, Age=int)]
     PeopleDeepAnnotated = Annotated[Annotated[StructuredDataset, "parquet", kwtypes(Name=str, Age=int)], "tag"]
 
     AnyType = typing.Any
@@ -3558,7 +3558,8 @@ def generate_type_engine_transformer_comprehensive_tests():
     OptionalType = typing.Optional[int]
     OptionalTypeAnnotated = Annotated[OptionalType, "tag"]
 
-    AnnotatedTest = Annotated[Test, "tag"]
+    WineType = Annotated[StructuredDataset, kwtypes(alcohol=float, malic_acid=float)]
+    WineTypeList = List[WineType]
 
     IntPickle = Annotated[int, FlytePickleTransformer()]
     AnnotatedIntPickle = Annotated[Annotated[int, "tag"], FlytePickleTransformer()]
@@ -3588,6 +3589,8 @@ def generate_type_engine_transformer_comprehensive_tests():
         (IteratorTypeList, ListTransformer),
         (People, StructuredDatasetTransformerEngine),
         (PeopleDeepAnnotated, StructuredDatasetTransformerEngine),
+        (WineType, StructuredDatasetTransformerEngine),
+        (WineTypeList, ListTransformer),
         (AnyType, FlytePickleTransformer),
         (AnyTypeAnnotated, FlytePickleTransformer),
         (UnionType, UnionTransformer),
