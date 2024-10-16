@@ -146,8 +146,13 @@ class PickleParamType(click.ParamType):
         parts = value.split(":")
         if len(parts) != 2:
             raise click.BadParameter(f"Expected format <MODULE>:<VAR>, got {value}")
-        m = importlib.import_module(parts[0])
-        return m.__getattribute__(parts[1])
+        try:
+            m = importlib.import_module(parts[0])
+            return m.__getattribute__(parts[1])
+        except ModuleNotFoundError as e:
+            raise click.BadParameter(f"Failed to import module {parts[0]}, error: {e}")
+        except AttributeError as e:
+            raise click.BadParameter(f"Failed to find attribute {parts[1]} in module {parts[0]}, error: {e}")
 
 
 class JSONIteratorParamType(click.ParamType):
