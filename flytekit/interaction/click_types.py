@@ -145,7 +145,8 @@ class PickleParamType(click.ParamType):
             return value
         parts = value.split(":")
         if len(parts) != 2:
-            raise click.BadParameter(f"Expected format <MODULE>:<VAR>, got {value}")
+            logging.info(f"Did not receive a string in the expected format <MODULE>:<VAR>, falling back to: {value}")
+            return value
         try:
             m = importlib.import_module(parts[0])
             return m.__getattribute__(parts[1])
