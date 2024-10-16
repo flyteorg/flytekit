@@ -155,7 +155,7 @@ class MyStrListTransformer(AsyncTypeTransformer[T]):
         super().__init__("Typed List", MyStr)
 
     @staticmethod
-    def get_sub_type_or_none(t: Type[T]) -> Optional[Type[T]]:
+    def get_sub_type_or_none(t: Type[T]) -> Type:
         return str
 
     def get_literal_type(self, t: Type[T]) -> Optional[LiteralType]:
@@ -180,7 +180,7 @@ class MyStrListTransformer(AsyncTypeTransformer[T]):
         lits = lv.collection.literals
         result = [TypeEngine.async_to_python_value(ctx, x, str) for x in lits]
         result = await asyncio.gather(*result)
-        result = "".join(result)
+        result = "".join(result)  # type: ignore
         return MyStr(result)  # type: ignore
 
     def guess_python_type(self, literal_type: LiteralType) -> list:  # type: ignore
@@ -292,8 +292,8 @@ class MyStrDictTransformer(AsyncTypeTransformer[T]):
         for k, v in result.items():
             py_values[k] = v.result()
 
-        result = [v for v in py_values.values()]
-        result = "".join(result)
+        result = [v for v in py_values.values()]  # type: ignore
+        result = "".join(result)  # type: ignore
         return MyStr(result)  # type: ignore
 
     def guess_python_type(self, literal_type: LiteralType) -> list:  # type: ignore

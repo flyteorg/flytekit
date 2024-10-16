@@ -863,9 +863,9 @@ async def binding_data_from_python_std(
         )
     ):
         if transformer_override and hasattr(transformer_override, "get_sub_type_or_none"):
-            sub_type: Optional[type] = transformer_override.get_sub_type_or_none(t_value_type)
+            sub_type = transformer_override.get_sub_type_or_none(t_value_type)
         else:
-            sub_type: Optional[type] = ListTransformer.get_sub_type_or_none(t_value_type)
+            sub_type = ListTransformer.get_sub_type_or_none(t_value_type)
         collection = _literals_models.BindingDataCollection(
             bindings=[
                 await binding_data_from_python_std(
@@ -881,10 +881,10 @@ async def binding_data_from_python_std(
 
         return _literals_models.BindingData(collection=collection)
 
-    elif (isinstance(t_value, dict) and (
-        not transformer_override or (literal_type_override and literal_type_override.map_value_type is not None)) or (
-        literal_type_override and literal_type_override.map_value_type is not None and hasattr(t_value, "items")
-    )
+    elif (
+        isinstance(t_value, dict)
+        and (not transformer_override or (literal_type_override and literal_type_override.map_value_type is not None))
+        or (literal_type_override and literal_type_override.map_value_type is not None and hasattr(t_value, "items"))
     ):
         if (
             expected_literal_type.map_value_type is None
@@ -898,9 +898,9 @@ async def binding_data_from_python_std(
             return _literals_models.BindingData(scalar=lit.scalar)
         else:
             if transformer_override and hasattr(transformer_override, "extract_types_or_metadata"):
-                _, v_type = transformer_override.extract_types_or_metadata(t_value_type)
+                _, v_type = transformer_override.extract_types_or_metadata(t_value_type)  # type: ignore
             else:
-                _, v_type = DictTransformer.extract_types_or_metadata(t_value_type)
+                _, v_type = DictTransformer.extract_types_or_metadata(t_value_type)  # type: ignore
             m = _literals_models.BindingDataMap(
                 bindings={
                     k: await binding_data_from_python_std(
