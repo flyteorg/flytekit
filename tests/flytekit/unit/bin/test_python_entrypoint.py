@@ -451,5 +451,5 @@ def test_get_traceback_str():
     expected_error_pattern = expected_error_pattern[1:]
 
     expected_error_re = re.compile(expected_error_pattern)
-
+    print(traceback_str)
     assert expected_error_re.match(traceback_str) is not None
