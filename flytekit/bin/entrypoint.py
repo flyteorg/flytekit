@@ -14,10 +14,10 @@ import uuid
 import warnings
 from sys import exit
 from typing import Callable, List, Optional
-from google.protobuf.timestamp_pb2 import Timestamp
 
 import click
 from flyteidl.core import literals_pb2 as _literals_pb2
+from google.protobuf.timestamp_pb2 import Timestamp
 
 from flytekit.configuration import (
     SERIALIZED_CONTEXT_ENV_VAR,
@@ -84,7 +84,7 @@ def _build_error_file_name() -> str:
     error_file_name_base, error_file_name_extension = os.path.splitext(_constants.ERROR_FILE_NAME)
     error_file_name_base += f"-{uuid.uuid4().hex}"
     return f"{error_file_name_base}{error_file_name_extension}"
-    
+
 
 def _get_working_loop():
     """Returns a running event loop."""
@@ -246,7 +246,7 @@ def _dispatch_execute(
 
     logger.debug("Finished _dispatch_execute")
 
-    if str2bool(os.getenv(FLYTE_FAIL_ON_ERROR)) and error_file_name  in output_file_dict:
+    if str2bool(os.getenv(FLYTE_FAIL_ON_ERROR)) and error_file_name in output_file_dict:
         """
         If the environment variable FLYTE_FAIL_ON_ERROR is set to true, the task execution will fail if an error file is
         generated. This environment variable is set to true by the plugin author if they want the task to fail on error.
@@ -279,6 +279,7 @@ def get_timestamp(e: Optional[Exception] = None) -> Timestamp:
     timestamp_fsecs = timestamp - timstamp_secs
     timestamp_nanos = int(timestamp_fsecs * 1_000_000_000)
     return Timestamp(seconds=timstamp_secs, nanos=timestamp_nanos)
+
 
 def get_one_of(*args) -> str:
     """

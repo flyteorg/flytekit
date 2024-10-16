@@ -1,14 +1,23 @@
 from flyteidl.core import errors_pb2 as _errors_pb2
+from google.protobuf.timestamp_pb2 import Timestamp
 
 from flytekit.models import common as _common
-from google.protobuf.timestamp_pb2 import Timestamp
+
 
 class ContainerError(_common.FlyteIdlEntity):
     class Kind(object):
         NON_RECOVERABLE = _errors_pb2.ContainerError.NON_RECOVERABLE
         RECOVERABLE = _errors_pb2.ContainerError.RECOVERABLE
 
-    def __init__(self, code: str, message: str, kind: int, origin: int, timestamp: Timestamp = Timestamp(seconds=0, nanos=0), worker: str = ""):
+    def __init__(
+        self,
+        code: str,
+        message: str,
+        kind: int,
+        origin: int,
+        timestamp: Timestamp = Timestamp(seconds=0, nanos=0),
+        worker: str = "",
+    ):
         """
         :param code: A succinct code about the error
         :param message: Whatever message you want to surface about the error
@@ -57,7 +66,7 @@ class ContainerError(_common.FlyteIdlEntity):
         The timestamp of the error, as number of seconds and nanos since Epoch
         """
         return self._timestamp
-    
+
     @property
     def worker(self) -> int:
         """
@@ -69,7 +78,14 @@ class ContainerError(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.errors_pb2.ContainerError
         """
-        return _errors_pb2.ContainerError(code=self.code, message=self.message, kind=self.kind, origin=self.origin, timestamp=self._timestamp, worker=self.worker)
+        return _errors_pb2.ContainerError(
+            code=self.code,
+            message=self.message,
+            kind=self.kind,
+            origin=self.origin,
+            timestamp=self._timestamp,
+            worker=self.worker,
+        )
 
     @classmethod
     def from_flyte_idl(cls, proto):
