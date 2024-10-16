@@ -245,18 +245,6 @@ def get_traceback_str(e: Exception) -> str:
     format_str = "Trace:\n\n{exception_str}\nMessage:\n\n{message_str}"
     return format_str.format(exception_str=exception_str, message_str=message_str)
 
-    if isinstance(e, FlyteUserRuntimeException):
-        tb = e.__cause__.__traceback__ if e.__cause__ else e.__traceback__
-    else:
-        tb = e.__traceback__
-    lines = traceback.format_tb(tb)
-    lines = [line.rstrip() for line in lines]
-    tb_str = "\n    ".join(lines)
-    format_str = "Traceback (most recent call last):\n" "\n    {traceback}\n" "\n" "Message:\n" "\n" "    {message}"
-
-    value = e.value if isinstance(e, FlyteUserRuntimeException) else e
-    return format_str.format(traceback=tb_str, message=f"{type(value).__name__}: {value}")
-
 
 def get_one_of(*args) -> str:
     """
