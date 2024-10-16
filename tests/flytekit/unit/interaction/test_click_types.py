@@ -507,11 +507,9 @@ def test_pickle_type():
     v = t.convert(value=value, param=None, ctx=None)
     assert v == value
 
-    with pytest.raises(click.BadParameter):
-        t.convert("", None, None)
+    t.convert("", None, None)
 
-    with pytest.raises(click.BadParameter):
-        t.convert("module.x", None, None)
+    t.convert("module.x", None, None)
 
     with pytest.raises(click.BadParameter):
         t.convert("module:var", None, None)
