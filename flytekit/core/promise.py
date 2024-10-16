@@ -881,8 +881,10 @@ async def binding_data_from_python_std(
 
         return _literals_models.BindingData(collection=collection)
 
-    elif isinstance(t_value, dict) and (
-        not transformer_override or (literal_type_override and literal_type_override.map_value_type is not None)
+    elif (isinstance(t_value, dict) and (
+        not transformer_override or (literal_type_override and literal_type_override.map_value_type is not None)) or (
+        literal_type_override and literal_type_override.map_value_type is not None and hasattr(t_value, "items")
+    )
     ):
         if (
             expected_literal_type.map_value_type is None
@@ -895,7 +897,10 @@ async def binding_data_from_python_std(
             lit = await TypeEngine.async_to_literal(ctx, t_value, type(t_value), expected_literal_type)
             return _literals_models.BindingData(scalar=lit.scalar)
         else:
-            _, v_type = DictTransformer.extract_types_or_metadata(t_value_type)
+            if transformer_override and hasattr(transformer_override, "extract_types_or_metadata"):
+                _, v_type = transformer_override.extract_types_or_metadata(t_value_type)
+            else:
+                _, v_type = DictTransformer.extract_types_or_metadata(t_value_type)
             m = _literals_models.BindingDataMap(
                 bindings={
                     k: await binding_data_from_python_std(
