@@ -163,7 +163,7 @@ def _dispatch_execute(
                     message=f"Type of output received not handled {type(outputs)} outputs: {outputs}",
                     kind=_error_models.ContainerError.Kind.RECOVERABLE,
                     origin=_execution_models.ExecutionError.ErrorKind.SYSTEM,
-                    timestamp=int(time.time()),
+                    timestamp=get_timestamp(),
                     worker=worker_name,
                 )
             )
@@ -188,7 +188,7 @@ def _dispatch_execute(
                 message=exc_str,
                 kind=kind,
                 origin=_execution_models.ExecutionError.ErrorKind.USER,
-                timestamp=extract_timestamp(e.value),
+                timestamp=get_timestamp(e.value),
                 worker=worker_name,
             )
         )
@@ -208,7 +208,7 @@ def _dispatch_execute(
                 message=exc_str,
                 kind=_error_models.ContainerError.Kind.NON_RECOVERABLE,
                 origin=_execution_models.ExecutionError.ErrorKind.SYSTEM,
-                timestamp=extract_timestamp(e.value),
+                timestamp=get_timestamp(e.value),
                 worker=worker_name,
             )
         )
@@ -226,7 +226,7 @@ def _dispatch_execute(
                 message=exc_str,
                 kind=_error_models.ContainerError.Kind.RECOVERABLE,
                 origin=_execution_models.ExecutionError.ErrorKind.SYSTEM,
-                timestamp=extract_timestamp(e),
+                timestamp=get_timestamp(e),
                 worker=worker_name,
             )
         )
@@ -273,8 +273,8 @@ def get_traceback_str(e: Exception) -> str:
     return format_str.format(traceback=tb_str, message=f"{type(value).__name__}: {value}")
 
 
-def extract_timestamp(e: Exception) -> Timestamp:
-    timestamp = e.timestamp if isinstance(e, FlyteException) else time.time()
+def get_timestamp(e: Optional[Exception] = None) -> Timestamp:
+    timestamp = time.time() if e is None or not isinstance(e, FlyteException) else e.timestamp
     timstamp_secs = int(timestamp)
     timestamp_fsecs = timestamp - timstamp_secs
     timestamp_nanos = int(timestamp_fsecs * 1_000_000_000)
