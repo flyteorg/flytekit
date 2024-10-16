@@ -27,6 +27,7 @@ from flytekit.core import constants as _constants
 from flytekit.core import utils
 from flytekit.core.base_task import IgnoreOutputs, PythonTask
 from flytekit.core.checkpointer import SyncCheckpoint
+from flytekit.core.constants import FLYTE_FAIL_ON_ERROR
 from flytekit.core.context_manager import (
     ExecutionParameters,
     ExecutionState,
@@ -36,6 +37,7 @@ from flytekit.core.context_manager import (
 )
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.promise import VoidPromise
+from flytekit.core.utils import str2bool
 from flytekit.deck.deck import _output_deck
 from flytekit.exceptions.system import FlyteNonRecoverableSystemException
 from flytekit.exceptions.user import FlyteRecoverableException, FlyteUserRuntimeException
@@ -220,10 +222,14 @@ def _dispatch_execute(
 
     logger.debug("Finished _dispatch_execute")
 
-    if os.environ.get("FLYTE_FAIL_ON_ERROR", "").lower() == "true" and _constants.ERROR_FILE_NAME in output_file_dict:
-        # This env is set by the flytepropeller
-        # AWS batch job get the status from the exit code, so once we catch the error,
-        # we should return the error code here
+    if str2bool(os.getenv(FLYTE_FAIL_ON_ERROR)) and _constants.ERROR_FILE_NAME in output_file_dict:
+        """
+        If the environment variable FLYTE_FAIL_ON_ERROR is set to true, the task execution will fail if an error file is
+        generated. This environment variable is set to true by the plugin author if they want the task to fail on error.
+        Otherwise, the task will always succeed and just write the error file to the blob store.
+
+        For example, you can see the task fails on Databricks or AWS batch UI by setting this environment variable to true.
+        """
         exit(1)
 
 
