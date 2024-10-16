@@ -3619,21 +3619,22 @@ def test_type_engine_get_transformer_comprehensive(t, expected_transformer):
         assert isinstance(TypeEngine.get_transformer(t), expected_transformer)
 
 
-@pytest.mark.parametrize("t, expected_variants", [
-    (int | float, [int, float]),
-    (int | float | None, [int, float, type(None)]),
-    (int | float | str, [int, float, str]),
-])
-@pytest.mark.skipif(sys.version_info < (3, 10), reason="PEP604 requires >=3.10.")
-def test_union_type_comprehensive_604(t, expected_variants):
-    """
-    This test will test various combinations like dataclasses, annotated types, generics and regular types and
-    assert the right transformers are returned.
-    """
-    transformer = TypeEngine.get_transformer(t)
-    assert isinstance(transformer, UnionTransformer)
-    lt = transformer.get_literal_type(t)
-    assert [TypeEngine.guess_python_type(i) for i in lt.union_type.variants] == expected_variants
+if sys.version_info >= (3, 10):
+    @pytest.mark.parametrize("t, expected_variants", [
+        (int | float, [int, float]),
+        (int | float | None, [int, float, type(None)]),
+        (int | float | str, [int, float, str]),
+    ])
+    @pytest.mark.skipif(sys.version_info < (3, 10), reason="PEP604 requires >=3.10.")
+    def test_union_type_comprehensive_604(t, expected_variants):
+        """
+        This test will test various combinations like dataclasses, annotated types, generics and regular types and
+        assert the right transformers are returned.
+        """
+        transformer = TypeEngine.get_transformer(t)
+        assert isinstance(transformer, UnionTransformer)
+        lt = transformer.get_literal_type(t)
+        assert [TypeEngine.guess_python_type(i) for i in lt.union_type.variants] == expected_variants
 
 
 @pytest.mark.parametrize("t, expected_variants", [
