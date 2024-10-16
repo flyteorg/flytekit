@@ -1,5 +1,4 @@
 import typing
-import warnings
 from typing import TYPE_CHECKING, Type, Union
 
 from flytekit import Deck, FlyteContext, lazy_module
