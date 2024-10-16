@@ -79,7 +79,7 @@ from flytekit.types.iterator.json_iterator import JSONIterator, JSONIteratorTran
 from flytekit.types.pickle import FlytePickle
 from flytekit.types.pickle.pickle import BatchSize, FlytePickleTransformer
 from flytekit.types.schema import FlyteSchema
-from flytekit.types.structured.structured_dataset import StructuredDataset, StructuredDatasetTransformerEngine
+from flytekit.types.structured.structured_dataset import StructuredDataset, StructuredDatasetTransformerEngine, PARQUET
 
 T = typing.TypeVar("T")
 
@@ -3551,6 +3551,7 @@ def generate_type_engine_transformer_comprehensive_tests():
 
     AnyType = typing.Any
     AnyTypeAnnotated = Annotated[AnyType, "tag"]
+    AnyTypeAnnotatedList = List[AnyTypeAnnotated]
 
     UnionType = typing.Union[int, str]
     UnionTypeAnnotated = Annotated[UnionType, "tag"]
@@ -3560,6 +3561,8 @@ def generate_type_engine_transformer_comprehensive_tests():
 
     WineType = Annotated[StructuredDataset, kwtypes(alcohol=float, malic_acid=float)]
     WineTypeList = List[WineType]
+    WineTypeListList = List[WineTypeList]
+    WineTypeDict = Dict[str, WineType]
 
     IntPickle = Annotated[int, FlytePickleTransformer()]
     AnnotatedIntPickle = Annotated[Annotated[int, "tag"], FlytePickleTransformer()]
@@ -3605,6 +3608,9 @@ def generate_type_engine_transformer_comprehensive_tests():
         (AnnotatedIntPickle, FlytePickleTransformer),
         (typing.Iterator[JSON], JSONIteratorTransformer),
         (JSONIterator, JSONIteratorTransformer),
+        (AnyTypeAnnotatedList, ListTransformer),
+        (WineTypeListList, ListTransformer),
+        (WineTypeDict, DictTransformer),
     ]
 
 
@@ -3654,3 +3660,26 @@ def test_union_comprehensive(t, expected_variants):
     assert isinstance(transformer, UnionTransformer)
     lt = transformer.get_literal_type(t)
     assert [TypeEngine.guess_python_type(i) for i in lt.union_type.variants] == expected_variants
+
+
+def test_structured_dataset_collection():
+    WineType = Annotated[StructuredDataset, kwtypes(alcohol=float, malic_acid=float)]
+    WineTypeList = List[WineType]
+    WineTypeListList = List[WineTypeList]
+
+    transformer = TypeEngine.get_transformer(WineTypeListList)
+    assert isinstance(transformer, ListTransformer)
+    lt = transformer.get_literal_type(WineTypeListList)
+    cols = lt.collection_type.collection_type.structured_dataset_type.columns
+    assert cols[0].name == "alcohol"
+    assert cols[0].literal_type.simple == SimpleType.FLOAT
+    assert cols[1].name == "malic_acid"
+    assert cols[1].literal_type.simple == SimpleType.FLOAT
+
+    import pandas as pd
+    df = pd.DataFrame({"alcohol": [1.0, 2.0], "malic_acid": [2.0, 3.0]})
+    sd = StructuredDataset(df, format="parquet")
+    lv = transformer.to_literal(FlyteContext.current_context(), [[sd]], WineTypeListList, lt)
+    assert lv is not None
+    # lv = transformer.to_literal(FlyteContext.current_context(), [[df]], WineTypeListList, lt)
+
