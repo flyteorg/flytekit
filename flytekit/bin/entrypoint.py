@@ -236,7 +236,10 @@ def get_traceback_str(e: Exception) -> str:
         # user code, not the Flyte internals.
         root_exception = e.__cause__ if e.__cause__ else e
     indentation = "    "
-    exception_str = textwrap.indent(text="".join(traceback.format_exception(root_exception)), prefix=indentation)
+    exception_str = textwrap.indent(
+        text="".join(traceback.format_exception(type(root_exception), root_exception, root_exception.__traceback__)),
+        prefix=indentation,
+    )
     # Second, format a summary exception message
     value = e.value if isinstance(e, FlyteUserRuntimeException) else e
     message = f"{type(value).__name__}: {value}"
