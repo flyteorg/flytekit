@@ -471,7 +471,11 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
         except ChildFailedError as e:
             _, first_failure = e.get_first_failure()
             if is_recoverable_worker_error(first_failure):
-                raise FlyteRecoverableException(e.format_msg())
+                ex =  FlyteRecoverableException(e.format_msg())
+                # keep the timestamp of the original exception, rather than
+                # the automatically assigned timestamp based on exception creation time
+                ex.timestamp = first_failure.timestamp
+                raise ex
             else:
                 raise RuntimeError(e.format_msg())
         except SignalException as e:

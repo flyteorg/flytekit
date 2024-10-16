@@ -21,6 +21,13 @@ class FlyteException(Exception, metaclass=_FlyteCodedExceptionMetaclass):
         """
         return self._timestamp
 
+    @timestamp.setter
+    def timestamp(self, value: float) -> None:
+        """
+        Set the timestamp as fractional seconds since epoch
+        """
+        self._timestamp = value
+
     def __str__(self):
         error_message = f"error={','.join(self.args) if self.args else 'None'}"
         if self.__cause__:
