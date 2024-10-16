@@ -3662,6 +3662,7 @@ def test_union_comprehensive(t, expected_variants):
     assert [TypeEngine.guess_python_type(i) for i in lt.union_type.variants] == expected_variants
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_structured_dataset_collection():
     WineType = Annotated[StructuredDataset, kwtypes(alcohol=float, malic_acid=float)]
     WineTypeList = List[WineType]
@@ -3681,4 +3682,3 @@ def test_structured_dataset_collection():
     sd = StructuredDataset(df, format="parquet")
     lv = transformer.to_literal(FlyteContext.current_context(), [[sd]], WineTypeListList, lt)
     assert lv is not None
-    # lv = transformer.to_literal(FlyteContext.current_context(), [[df]], WineTypeListList, lt)
