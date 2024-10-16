@@ -1751,8 +1751,7 @@ class UnionTransformer(AsyncTypeTransformer[T]):
 
     @staticmethod
     def is_optional_type(t: Type) -> bool:
-        """Return True if `t` is a Union or Optional type."""
-        return _is_union_type(t) or type(None) in get_args(t)
+        return _is_union_type(t) and type(None) in get_args(t)
 
     @staticmethod
     def get_sub_type_in_optional(t: Type[T]) -> Type[T]:
