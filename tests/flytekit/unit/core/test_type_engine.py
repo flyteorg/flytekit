@@ -3682,4 +3682,3 @@ def test_structured_dataset_collection():
     lv = transformer.to_literal(FlyteContext.current_context(), [[sd]], WineTypeListList, lt)
     assert lv is not None
     # lv = transformer.to_literal(FlyteContext.current_context(), [[df]], WineTypeListList, lt)
-
