@@ -132,7 +132,7 @@ def test_pandera_report_renderer():
     class InSchema(pandera.DataFrameModel):
         col1: int
         col2: float
-    
+
     class OutSchema(InSchema):
         col3: str
 
