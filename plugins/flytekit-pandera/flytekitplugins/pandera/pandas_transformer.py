@@ -1,6 +1,5 @@
 import typing
 import warnings
-from functools import lru_cache
 from typing import TYPE_CHECKING, Type, Union
 
 from flytekit import Deck, FlyteContext, lazy_module
@@ -80,9 +79,10 @@ class PanderaPandasTransformer(TypeTransformer[pandera.typing.DataFrame]):
         python_type: Type[pandera.typing.DataFrame],
         expected: LiteralType,
     ) -> Literal:
-        assert isinstance(python_val, (pandas.DataFrame, StructuredDataset)), \
-            f"Only Pandas Dataframe object can be returned from a task, returned object type {type(python_val)}"
-        
+        assert isinstance(
+            python_val, (pandas.DataFrame, StructuredDataset)
+        ), f"Only Pandas Dataframe object can be returned from a task, returned object type {type(python_val)}"
+
         if isinstance(python_val, StructuredDataset):
             lv = self._sd_transformer.to_literal(ctx, python_val, pandas.DataFrame, expected)
             python_val = self._sd_transformer.to_python_value(ctx, lv, pandas.DataFrame)
@@ -119,7 +119,7 @@ class PanderaPandasTransformer(TypeTransformer[pandera.typing.DataFrame]):
 
         df = self._sd_transformer.to_python_value(ctx, lv, pandas.DataFrame)
         schema, config = self._get_pandera_schema(expected_python_type)
-    
+
         if (lv.scalar.structured_dataset.uri, schema.name) in self._VALIDATION_MEMO:
             return df
 

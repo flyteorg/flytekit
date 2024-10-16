@@ -1,10 +1,10 @@
-from typing import Type, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from flytekit import lazy_module
 
-
 if TYPE_CHECKING:
     import pandas
+
     import pandera
 else:
     pandas = lazy_module("pandas")
@@ -19,8 +19,7 @@ class PandasReportRenderer:
         error.failure_cases.groupby(["schema_context"])
         html = (
             error.failure_cases.set_index(["schema_context", "column", "check"])
-            .drop(["check_number"], axis="columns")
-            [["index", "failure_case"]]
+            .drop(["check_number"], axis="columns")[["index", "failure_case"]]
             .to_html()
         )
         return html
