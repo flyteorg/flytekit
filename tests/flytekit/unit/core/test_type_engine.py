@@ -1707,6 +1707,8 @@ def test_union_transformer():
     assert not UnionTransformer.is_optional_type(str)
     assert UnionTransformer.get_sub_type_in_optional(typing.Optional[int]) == int
     assert UnionTransformer.get_sub_type_in_optional(int | None) == int
+    assert not UnionTransformer.is_optional_type(typing.Union[int, str])
+    assert UnionTransformer.is_optional_type(typing.Union[int, None])
 
 
 def test_union_guess_type():
