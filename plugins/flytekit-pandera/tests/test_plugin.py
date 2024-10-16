@@ -102,7 +102,7 @@ def test_pandera_dataframe_no_schema_model(data):
         ValidationConfig(on_error="raise"),
     ],
 )
-def test_pandera_dataframe_warn_on_error(config):
+def test_pandera_dataframe_warn_on_error(config, capsys):
     class Schema(pandera.DataFrameModel):
         col1: int
         col2: float
@@ -118,12 +118,12 @@ def test_pandera_dataframe_warn_on_error(config):
     data = pandas.DataFrame()
 
     for fn in [fn_input, fn_output]:
-        if config.on_error == "warn":
-            with pytest.warns(RuntimeWarning):
-                fn(df=data)
-        elif config.on_error == "raise":
+        if config.on_error == "raise":
             with pytest.raises(pandera.errors.SchemaErrors):
                 fn(df=data)
+        elif config.on_error == "warn":
+            fn(df=data)
+            assert "WARNING" in capsys.readouterr().out
         else:
             raise ValueError(f"Invalid on_error value: {config.on_error}")
 

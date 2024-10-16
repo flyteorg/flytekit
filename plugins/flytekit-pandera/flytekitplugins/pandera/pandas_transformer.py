@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Type, Union
 
 from flytekit import Deck, FlyteContext, lazy_module
 from flytekit.extend import TypeEngine, TypeTransformer
+from flytekit.loggers import logger
 from flytekit.models.literals import Literal
 from flytekit.models.types import LiteralType, SchemaType
 from flytekit.types.structured import StructuredDataset
@@ -42,11 +43,7 @@ class PanderaPandasTransformer(TypeTransformer[pandera.typing.DataFrame]):
                     config = arg
                     break
 
-        try:
-            type_args = typing.get_args(t)
-        except AttributeError:
-            # for python < 3.8
-            type_args = getattr(t, "__args__", None)
+        type_args = typing.get_args(t)
 
         if type_args:
             schema_model, *_ = type_args
@@ -95,7 +92,7 @@ class PanderaPandasTransformer(TypeTransformer[pandera.typing.DataFrame]):
             if config.on_error == "raise":
                 raise exc
             elif config.on_error == "warn":
-                warnings.warn(str(exc), RuntimeWarning)
+                logger.warning(str(exc))
                 html = renderer.to_html(exc)
                 Deck(renderer._title, html)
             else:
@@ -131,7 +128,7 @@ class PanderaPandasTransformer(TypeTransformer[pandera.typing.DataFrame]):
                 raise exc
             elif config.on_error == "warn":
                 print(ctx.execution_state)
-                warnings.warn(str(exc), RuntimeWarning)
+                logger.warning(str(exc))
                 html = renderer.to_html(exc)
                 Deck(renderer._title, html)
             else:
