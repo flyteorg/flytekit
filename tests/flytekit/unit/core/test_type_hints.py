@@ -34,7 +34,7 @@ from flytekit.core.task import TaskMetadata, task
 from flytekit.core.testing import patch, task_mock
 from flytekit.core.type_engine import RestrictedTypeError, SimpleTransformer, TypeEngine, TypeTransformerFailedError
 from flytekit.core.workflow import workflow
-from flytekit.exceptions.user import FlyteValidationException, FlyteFailureNodeInputMismatchException
+from flytekit.exceptions.user import FlyteValidationException, FlyteFailureNodeInputMismatchException, FlyteMissingTypeException
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import types as _core_types
 from flytekit.models.interface import Parameter
@@ -83,7 +83,9 @@ def test_forwardref_namedtuple_output():
     # This test case tests typing.NamedTuple outputs for cases where eg.
     # from __future__ import annotations is enabled, such that all type hints become ForwardRef
     @task
-    def my_task(a: int) -> typing.NamedTuple("OutputsBC", b=typing.ForwardRef("int"), c=typing.ForwardRef("str")):
+    def my_task(
+        a: int,
+    ) -> typing.NamedTuple("OutputsBC", b=typing.ForwardRef("int"), c=typing.ForwardRef("str")):
         ctx = flytekit.current_context()
         assert str(ctx.execution_id) == "ex:local:local:local"
         return a + 2, "hello world"
@@ -2000,7 +2002,12 @@ def test_workflow_containing_multiple_annotated_tasks():
 
     df = wf()
 
-    expected_df = pd.DataFrame(data={"col1": [1 + 10 + 100, 2 + 20 + 200], "col2": [3 + 30 + 300, 4 + 40 + 400]})
+    expected_df = pd.DataFrame(
+        data={
+            "col1": [1 + 10 + 100, 2 + 20 + 200],
+            "col2": [3 + 30 + 300, 4 + 40 + 400],
+        }
+    )
     assert expected_df.equals(df)
 
 
@@ -2085,3 +2092,104 @@ def test_promise_illegal_retries():
 
     with pytest.raises(AssertionError):
         my_wf(a=1, retries=1)
+
+
+def test_pickle_untyped_input_wf_and_task():
+    @task(pickle_untyped=True)
+    def t1(a) -> int:
+        if type(a) == int:
+            return a + 1
+        return 0
+
+    with pytest.raises(FlyteMissingTypeException):
+        @task
+        def t2_wo_pickle_untyped(a) -> int:
+            return a + 1
+
+    @workflow(pickle_untyped=True)
+    def wf1_with_pickle_untyped(a) -> int:
+        return t1(a=a)
+
+    assert wf1_with_pickle_untyped(a=1) == 2
+    assert wf1_with_pickle_untyped(a="1") == 0
+    assert wf1_with_pickle_untyped(a=None) == 0
+
+    with pytest.raises(FlyteMissingTypeException):
+        @workflow
+        def wf1_wo_pickle_untyped(a) -> int:
+            return t1(a=a)
+
+
+def test_pickle_untyped_wf_and_task():
+    @task(pickle_untyped=True)
+    def t1(a):
+        if type(a) != int:
+            return None
+        return a + 1
+
+    @task(pickle_untyped=True)
+    def t2(a):
+        if type(a) != int:
+            return None
+        return a + 2
+
+    @workflow(pickle_untyped=True)
+    def wf1_with_pickle_untyped(a):
+        a1 = t1(a=a)
+        return t2(a=a1)
+
+    assert wf1_with_pickle_untyped(a=1) == 4
+    assert wf1_with_pickle_untyped(a="1") is None
+
+
+def test_wf_with_pickle_untyped_and_safe_tasks():
+    @task(pickle_untyped=True)
+    def t1(a):
+        if type(a) != int:
+            return None
+        return a + 1
+
+    @task
+    def t2(a: typing.Any) -> typing.Any:
+        if type(a) != int:
+            return None
+        return a + 2
+
+    @workflow(pickle_untyped=True)
+    def wf1_with_pickle_untyped(a):
+        a1 = t1(a=a)
+        return t2(a=a1)
+
+    assert wf1_with_pickle_untyped(a=1) == 4
+    assert wf1_with_pickle_untyped(a="1") is None
+
+    @workflow(pickle_untyped=True)
+    def wf2_with_pickle_untyped(a):
+        a1 = t2(a=a)
+        return t1(a=a1)
+
+    assert wf2_with_pickle_untyped(a=1) == 4
+    assert wf2_with_pickle_untyped(a="1") is None
+
+
+def test_pickle_untyped_task_with_specified_input():
+    @task(pickle_untyped=True)
+    def t1(a, b: typing.Any):
+        if type(a) != int:
+            if type(b) != int:
+                return None
+            else:
+                return b
+        elif type(b) != int:
+            return a
+        return a + b
+
+    @workflow(pickle_untyped=True)
+    def wf1_with_pickle_untyped(a: typing.Any, b):
+        r = t1(a=a, b=b)
+        return r
+
+    assert wf1_with_pickle_untyped(a=1, b=2) == 3
+    assert wf1_with_pickle_untyped(a="1", b=2) == 2
+    assert wf1_with_pickle_untyped(a=1, b="2") == 1
+    assert wf1_with_pickle_untyped(a="1", b="2") is None
