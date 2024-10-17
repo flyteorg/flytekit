@@ -215,6 +215,7 @@ class FileAccessProvider(object):
 
     def get_async_filesystem_for_path(self, path: str = "", anonymous: bool = False, **kwargs) -> AsyncFileSystem:
         protocol = get_protocol(path)
+
         return self.get_filesystem(protocol, anonymous=anonymous, path=path, asynchronous=True, **kwargs)
 
     def get_filesystem_for_path(self, path: str = "", anonymous: bool = False, **kwargs) -> fsspec.AbstractFileSystem:
@@ -289,7 +290,7 @@ class FileAccessProvider(object):
 
     @retry_request
     async def get(self, from_path: str, to_path: str, recursive: bool = False, **kwargs):
-        file_system = self.get_filesystem_for_path(from_path)
+        file_system = self.get_async_filesystem_for_path(from_path)
         if recursive:
             from_path, to_path = self.recursive_paths(from_path, to_path)
         try:
