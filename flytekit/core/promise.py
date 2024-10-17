@@ -6,18 +6,7 @@ import inspect
 import typing
 from copy import deepcopy
 from enum import Enum
-from typing import (
-    Any,
-    Coroutine,
-    Dict,
-    List,
-    Optional,
-    Set,
-    Tuple,
-    Union,
-    cast,
-    get_args,
-)
+from typing import Any, Coroutine, Dict, List, Optional, Set, Tuple, Union, cast, get_args
 
 from google.protobuf import struct_pb2 as _struct
 from typing_extensions import Protocol
@@ -187,7 +176,6 @@ def resolve_attr_path_in_promise(p: Promise) -> Promise:
 
             curr_val = curr_val.value.literals[attr]
             used += 1
-
         # Scalar is always the leaf. There can't be a collection or map in a scalar.
         if type(curr_val.value) is _literals_models.Scalar:
             break
@@ -895,13 +883,7 @@ def binding_data_from_python_std(
         sub_type: Optional[type] = ListTransformer.get_sub_type_or_none(t_value_type)
         collection = _literals_models.BindingDataCollection(
             bindings=[
-                binding_data_from_python_std(
-                    ctx,
-                    expected_literal_type.collection_type,
-                    t,
-                    sub_type or type(t),
-                    nodes,
-                )
+                binding_data_from_python_std(ctx, expected_literal_type.collection_type, t, sub_type or type(t), nodes)
                 for t in t_value
             ]
         )
@@ -924,11 +906,7 @@ def binding_data_from_python_std(
             m = _literals_models.BindingDataMap(
                 bindings={
                     k: binding_data_from_python_std(
-                        ctx,
-                        expected_literal_type.map_value_type,
-                        v,
-                        v_type or type(v),
-                        nodes,
+                        ctx, expected_literal_type.map_value_type, v, v_type or type(v), nodes
                     )
                     for k, v in t_value.items()
                 }
@@ -1282,11 +1260,7 @@ def create_and_link_node_from_remote(
     node_outputs = []
     for output_name, output_var_model in typed_interface.outputs.items():
         node_outputs.append(
-            Promise(
-                output_name,
-                NodeOutput(node=flytekit_node, var=output_name),
-                type=output_var_model.type,
-            )
+            Promise(output_name, NodeOutput(node=flytekit_node, var=output_name), type=output_var_model.type)
         )
 
     return create_task_output(node_outputs)
@@ -1406,11 +1380,7 @@ def create_and_link_node(
     node_outputs = []
     for output_name, output_var_model in typed_interface.outputs.items():
         node_outputs.append(
-            Promise(
-                output_name,
-                NodeOutput(node=flytekit_node, var=output_name),
-                output_var_model.type,
-            )
+            Promise(output_name, NodeOutput(node=flytekit_node, var=output_name), output_var_model.type)
         )
         # Don't print this, it'll crash cuz sdk_node._upstream_node_ids might be None, but idl code will break
 
