@@ -97,8 +97,7 @@ async def _translate_inputs_to_literals(
         var = flyte_interface_types[k]
         t = native_types[k]
         try:
-            if type(v) is Promise:
-                v = await resolve_attr_path_in_promise(v)
+            v = await resolve_attr_path_recursively(v)
             result[k] = await TypeEngine.async_to_literal(ctx, v, t, var.type)
         except TypeTransformerFailedError as exc:
             exc.args = (f"Failed argument '{k}': {exc.args[0]}",)
@@ -108,6 +107,21 @@ async def _translate_inputs_to_literals(
 
 
 translate_inputs_to_literals = loop_manager.synced(_translate_inputs_to_literals)
+
+
+async def resolve_attr_path_recursively(v: Any) -> Any:
+    """
+    This function resolves the attribute path in a nested structure recursively.
+    """
+    if isinstance(v, Promise):
+        v = await resolve_attr_path_in_promise(v)
+    elif isinstance(v, list):
+        for i, elem in enumerate(v):
+            v[i] = await resolve_attr_path_recursively(elem)
+    elif isinstance(v, dict):
+        for k, elem in v.items():
+            v[k] = await resolve_attr_path_recursively(elem)
+    return v
 
 
 async def resolve_attr_path_in_promise(p: Promise) -> Promise:
