@@ -462,7 +462,9 @@ class FlyteSchemaTransformer(AsyncTypeTransformer[FlyteSchema]):
         else:
             raise TypeTransformerFailedError(f"Unsupported binary format: `{binary_idl_object.tag}`")
 
-    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[FlyteSchema]) -> FlyteSchema:
+    async def async_to_python_value(
+        self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[FlyteSchema]
+    ) -> FlyteSchema:
         # Handle dataclass attribute access
         if lv.scalar and lv.scalar.binary:
             return self.from_binary_idl(lv.scalar.binary, expected_python_type)

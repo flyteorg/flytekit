@@ -417,8 +417,13 @@ class FileAccessProvider(object):
         # raw bytes
         if isinstance(lpath, bytes):
             fs = self.get_async_filesystem_for_path(to_path)
-            async with fs.open_async(to_path, "wb", **kwargs) as s:
-                s.write(lpath)
+            if isinstance(fs, AsyncFileSystem):
+                async with fs.open_async(to_path, "wb", **kwargs) as s:
+                    s.write(lpath)
+            else:
+                with fs.open(to_path, "wb", **kwargs) as s:
+                    s.write(lpath)
+
             return to_path
 
         # If lpath is a buffered reader of some kind
@@ -427,9 +432,14 @@ class FileAccessProvider(object):
                 raise FlyteAssertion("Buffered reader must be readable")
             fs = self.get_async_filesystem_for_path(to_path)
             lpath.seek(0)
-            async with fs.open_async(to_path, "wb", **kwargs) as s:
-                while data := lpath.read(read_chunk_size_bytes):
-                    s.write(data)
+            if isinstance(fs, AsyncFileSystem):
+                async with fs.open_async(to_path, "wb", **kwargs) as s:
+                    while data := lpath.read(read_chunk_size_bytes):
+                        s.write(data)
+            else:
+                with fs.open(to_path, "wb", **kwargs) as s:
+                    while data := lpath.read(read_chunk_size_bytes):
+                        s.write(data)
             return to_path
 
         if isinstance(lpath, io.StringIO):
@@ -437,12 +447,19 @@ class FileAccessProvider(object):
                 raise FlyteAssertion("Buffered reader must be readable")
             fs = self.get_async_filesystem_for_path(to_path)
             lpath.seek(0)
-            async with fs.open_async(to_path, "wb", **kwargs) as s:
-                while data_str := lpath.read(read_chunk_size_bytes):
-                    s.write(data_str.encode(encoding))
+            if isinstance(fs, AsyncFileSystem):
+                async with fs.open_async(to_path, "wb", **kwargs) as s:
+                    while data_str := lpath.read(read_chunk_size_bytes):
+                        s.write(data_str.encode(encoding))
+            else:
+                with fs.open(to_path, "wb", **kwargs) as s:
+                    while data_str := lpath.read(read_chunk_size_bytes):
+                        s.write(data_str.encode(encoding))
             return to_path
 
         raise FlyteAssertion(f"Unsupported lpath type {type(lpath)}")
+
+    put_raw_data = loop_manager.synced(async_put_raw_data)
 
     @staticmethod
     def get_random_string() -> str:
