@@ -229,4 +229,5 @@ def register(
         activate_launchplans=activate_launchplans,
         skip_errors=skip_errors,
         show_files=show_files,
+        verbosity=ctx.obj[constants.CTX_VERBOSE],
     )

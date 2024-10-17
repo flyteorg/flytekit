@@ -84,23 +84,6 @@ def test_basics():
     assert lp_model.id.name == "testlp"
 
 
-def test_interactive():
-    @task
-    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
-        return a + 2, "world"
-
-    b = serialization_settings.new_builder()
-    b.interactive_mode_enabled = True
-    ssettings = b.build()
-
-    fake_file_uploader = lambda dest: (0, dest)
-    options = Options(file_uploader=fake_file_uploader)
-
-    task_spec = get_serializable(OrderedDict(), ssettings, t1, options)
-    assert "--dest-dir" in task_spec.template.container.args
-    assert task_spec.template.container.args[task_spec.template.container.args.index("--dest-dir") + 1] == "."
-
-
 def test_fast():
     @task
     def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):

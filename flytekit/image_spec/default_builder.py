@@ -145,13 +145,15 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
     requirements_uv_path = tmp_dir / "requirements_uv.txt"
     requirements_uv_path.write_text("\n".join(requirements))
 
-    pip_extra_args = ""
+    pip_extra_args = []
 
     if image_spec.pip_index:
-        pip_extra_args += f"--index-url {image_spec.pip_index}"
+        pip_extra_args.append(f"--index-url {image_spec.pip_index}")
     if image_spec.pip_extra_index_url:
         extra_urls = [f"--extra-index-url {url}" for url in image_spec.pip_extra_index_url]
-        pip_extra_args += " ".join(extra_urls)
+        pip_extra_args.extend(extra_urls)
+
+    pip_extra_args = " ".join(pip_extra_args)
 
     uv_python_install_command = UV_PYTHON_INSTALL_COMMAND_TEMPLATE.substitute(PIP_EXTRA=pip_extra_args)
 

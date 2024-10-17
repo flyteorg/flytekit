@@ -40,35 +40,34 @@ def launchplan(
     remote: FlyteRemote = get_and_save_remote_with_click_context(ctx, project="flytesnacks", domain="development")
 
     console = Console()
+    lps = []
+    title = f"LaunchPlans for {project}/{domain}"
     if launchplan_name:
-        if not version:
+        if version:
+            lp = remote.client.get_launch_plan(
+                Identifier(ResourceType.LAUNCH_PLAN, project, domain, launchplan_name, version)
+            )
+            j = MessageToJson(lp.to_flyte_idl())
+            print(j)
+            return
+        else:
             lps, _ = remote.client.list_launch_plans_paginated(
                 NamedEntityIdentifier(project, domain, name=launchplan_name),
-                limit=1,
+                limit=limit,
                 sort_by=Sort(key="updated_at", direction=Sort.Direction.DESCENDING),
             )
-            if len(lps) > 0:
-                version = lps[0].id.version
-        lp = remote.client.get_launch_plan(
-            Identifier(ResourceType.LAUNCH_PLAN, project, domain, launchplan_name, version)
-        )
-        j = MessageToJson(lp.to_flyte_idl())
-        print(j)
-        return
-
-    title = f"LaunchPlans for {project}/{domain}"
-    if active_only:
-        title += " (active only)"
-        lps, _ = remote.client.list_active_launch_plans_paginated(project, domain, limit=limit)
     else:
-        lps, _ = remote.client.list_launch_plans_paginated(
-            NamedEntityIdentifier(project, domain),
-            limit=limit,
-            sort_by=Sort(key="updated_at", direction=Sort.Direction.DESCENDING),
-        )
+        if active_only:
+            title += " (active only)"
+            lps, _ = remote.client.list_active_launch_plans_paginated(project, domain, limit=limit)
+        else:
+            lps, _ = remote.client.list_launch_plans_paginated(
+                NamedEntityIdentifier(project, domain),
+                limit=limit,
+                sort_by=Sort(key="updated_at", direction=Sort.Direction.DESCENDING),
+            )
 
     table = Table(title=title)
-
     table.add_column("Name", justify="right", style="cyan")
     table.add_column("Version", justify="right", style="cyan")
     table.add_column("State", justify="right", style="green")
