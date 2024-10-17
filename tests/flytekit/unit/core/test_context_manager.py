@@ -17,7 +17,7 @@ from flytekit.configuration import (
     SecretsConfig,
     SerializationSettings,
 )
-from flytekit.core import mock_stats
+from flytekit.core import mock_stats, context_manager
 from flytekit.core.context_manager import ExecutionParameters, FlyteContext, FlyteContextManager, SecretsManager
 from flytekit.models.core import identifier as id_models
 
@@ -237,6 +237,48 @@ def test_secrets_manager_env():
 
     os.environ[sec.get_secrets_env_var(group="group", key="key")] = "value"
     assert sec.get(group="group", key="key") == "value"
+
+
+@pytest.mark.parametrize("is_local_execution, prefix", [(True, ""), (False, "_FSEC_")])
+def test_secrets_manager_execution(monkeypatch, is_local_execution, prefix):
+    if not is_local_execution:
+        execution_state = context_manager.ExecutionState.Mode.TASK_EXECUTION
+    else:
+        execution_state = context_manager.ExecutionState.Mode.LOCAL_TASK_EXECUTION
+
+    sec = SecretsManager()
+
+    monkeypatch.setenv(f"{prefix}ABC_XYZ", "my-abc-secret")
+
+    ctx = FlyteContext.current_context()
+    with FlyteContextManager.with_context(
+        ctx.with_execution_state(ctx.execution_state.with_params(mode=execution_state))
+    ):
+        assert sec.get(group="ABC", key="XYZ") == "my-abc-secret"
+
+
+@pytest.mark.parametrize("is_local_execution, prefix", [(True, ""), (False, "_FSEC_")])
+def test_secrets_manager_execution_no_group_required(monkeypatch, is_local_execution, prefix):
+    # Remove group requirements
+    plugin_mock = Mock()
+    plugin_mock.secret_requires_group.return_value = False
+    mock_global_plugin = {"plugin": plugin_mock}
+    monkeypatch.setattr(flytekit.configuration.plugin, "_GLOBAL_CONFIG", mock_global_plugin)
+
+    if not is_local_execution:
+        execution_state = context_manager.ExecutionState.Mode.TASK_EXECUTION
+    else:
+        execution_state = context_manager.ExecutionState.Mode.LOCAL_TASK_EXECUTION
+
+    sec = SecretsManager()
+
+    monkeypatch.setenv(f"{prefix}XYZ", "my-abc-secret")
+
+    ctx = FlyteContext.current_context()
+    with FlyteContextManager.with_context(
+        ctx.with_execution_state(ctx.execution_state.with_params(mode=execution_state))
+    ):
+        assert sec.get(key="XYZ") == "my-abc-secret"
 
 
 def test_serialization_settings_transport():
