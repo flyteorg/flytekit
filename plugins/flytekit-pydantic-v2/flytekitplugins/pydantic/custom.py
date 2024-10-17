@@ -101,7 +101,7 @@ def deserialize_flyte_dir(self, info) -> FlyteDirectory:
     Related Code:
     - https://github.com/flyteorg/flytekit/blob/6944406e1e3f09aedafb2270c67c532c9ddb98f3/flytekit/types/directory/types.py#L554-L555
     """
-    pv._remote_directory = None
+    # pv._remote_directory = None
     return pv
 
 
