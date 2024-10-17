@@ -3671,8 +3671,8 @@ def test_structured_dataset_collection():
     import pandas as pd
     df = pd.DataFrame({"alcohol": [1.0, 2.0], "malic_acid": [2.0, 3.0]})
 
-    wine_transformer = TypeEngine.get_transformer(WineType)
-    TypeEngine.to_literal(FlyteContext.current_context(), df, WineType, wine_transformer.get_literal_type(WineType))
+    TypeEngine.to_literal(FlyteContext.current_context(), StructuredDataset(df),
+                          WineType, TypeEngine.to_literal_type(WineType))
 
     transformer = TypeEngine.get_transformer(WineTypeListList)
     assert isinstance(transformer, ListTransformer)
@@ -3687,5 +3687,6 @@ def test_structured_dataset_collection():
     lv = TypeEngine.to_literal(FlyteContext.current_context(), [[sd]], WineTypeListList, lt)
     assert lv is not None
 
-    lv = TypeEngine.to_literal(FlyteContext.current_context(), [[df]], WineTypeListList, lt)
+    lv = TypeEngine.to_literal(FlyteContext.current_context(), [[StructuredDataset(df)]],
+                               WineTypeListList, lt)
     assert lv is not None
