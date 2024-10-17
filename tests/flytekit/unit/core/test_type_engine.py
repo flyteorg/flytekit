@@ -1716,6 +1716,8 @@ def test_union_transformer():
     assert not UnionTransformer.is_optional_type(str)
     assert UnionTransformer.get_sub_type_in_optional(typing.Optional[int]) == int
     assert UnionTransformer.get_sub_type_in_optional(int | None) == int
+    assert not UnionTransformer.is_optional_type(typing.Union[int, str])
+    assert UnionTransformer.is_optional_type(typing.Union[int, None])
 
 
 def test_union_guess_type():
@@ -3486,7 +3488,7 @@ def test_generic_errors_and_empty():
     with pytest.raises(TypeTransformerFailedError):
         TypeEngine.to_literal(ctx, {"a": 3}, pt, lt)
 
-    with pytest.raises(TypeTransformerFailedError):
+    with pytest.raises(ValueError):
         TypeEngine.to_literal(ctx, {3: "a"}, pt, lt)
 
     # Test lists

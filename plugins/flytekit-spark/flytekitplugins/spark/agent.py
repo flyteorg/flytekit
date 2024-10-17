@@ -7,6 +7,7 @@ from typing import Optional
 from flyteidl.core.execution_pb2 import TaskExecution
 
 from flytekit import lazy_module
+from flytekit.core.constants import FLYTE_FAIL_ON_ERROR
 from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource, ResourceMeta
 from flytekit.extend.backend.utils import convert_to_flyte_phase, get_agent_secret
 from flytekit.models.core.execution import TaskLog
@@ -24,6 +25,40 @@ class DatabricksJobMetadata(ResourceMeta):
     run_id: str
 
 
+def _get_databricks_job_spec(task_template: TaskTemplate) -> dict:
+    custom = task_template.custom
+    container = task_template.container
+    envs = task_template.container.env
+    envs[FLYTE_FAIL_ON_ERROR] = "true"
+    databricks_job = custom["databricksConf"]
+    if databricks_job.get("existing_cluster_id") is None:
+        new_cluster = databricks_job.get("new_cluster")
+        if new_cluster is None:
+            raise ValueError("Either existing_cluster_id or new_cluster must be specified")
+        if not new_cluster.get("docker_image"):
+            new_cluster["docker_image"] = {"url": container.image}
+        if not new_cluster.get("spark_conf"):
+            new_cluster["spark_conf"] = custom["sparkConf"]
+        if not new_cluster.get("spark_env_vars"):
+            new_cluster["spark_env_vars"] = {k: v for k, v in envs.items()}
+        else:
+            new_cluster["spark_env_vars"].update({k: v for k, v in envs.items()})
+    # https://docs.databricks.com/api/workspace/jobs/submit
+    databricks_job["spark_python_task"] = {
+        "python_file": "flytekitplugins/databricks/entrypoint.py",
+        "source": "GIT",
+        "parameters": container.args,
+    }
+    databricks_job["git_source"] = {
+        "git_url": "https://github.com/flyteorg/flytetools",
+        "git_provider": "gitHub",
+        # https://github.com/flyteorg/flytetools/commit/572298df1f971fb58c258398bd70a6372f811c96
+        "git_commit": "572298df1f971fb58c258398bd70a6372f811c96",
+    }
+
+    return databricks_job
+
+
 class DatabricksAgent(AsyncAgentBase):
     name = "Databricks Agent"
 
@@ -33,33 +68,9 @@ class DatabricksAgent(AsyncAgentBase):
     async def create(
         self, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs
     ) -> DatabricksJobMetadata:
-        custom = task_template.custom
-        container = task_template.container
-        databricks_job = custom["databricksConf"]
-        if databricks_job.get("existing_cluster_id") is None:
-            new_cluster = databricks_job.get("new_cluster")
-            if new_cluster is None:
-                raise ValueError("Either existing_cluster_id or new_cluster must be specified")
-            if not new_cluster.get("docker_image"):
-                new_cluster["docker_image"] = {"url": container.image}
-            if not new_cluster.get("spark_conf"):
-                new_cluster["spark_conf"] = custom["sparkConf"]
-        # https://docs.databricks.com/api/workspace/jobs/submit
-        databricks_job["spark_python_task"] = {
-            "python_file": "flytekitplugins/databricks/entrypoint.py",
-            "source": "GIT",
-            "parameters": container.args,
-        }
-        databricks_job["git_source"] = {
-            "git_url": "https://github.com/flyteorg/flytetools",
-            "git_provider": "gitHub",
-            # https://github.com/flyteorg/flytetools/commit/572298df1f971fb58c258398bd70a6372f811c96
-            "git_commit": "572298df1f971fb58c258398bd70a6372f811c96",
-        }
-
-        databricks_instance = custom["databricksInstance"]
+        data = json.dumps(_get_databricks_job_spec(task_template))
+        databricks_instance = task_template.custom["databricksInstance"]
         databricks_url = f"https://{databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/submit"
-        data = json.dumps(databricks_job)
 
         async with aiohttp.ClientSession() as session:
             async with session.post(databricks_url, headers=get_header(), data=data) as resp:
