@@ -97,10 +97,7 @@ async def _translate_inputs_to_literals(
         var = flyte_interface_types[k]
         t = native_types[k]
         try:
-            if type(v) is Promise:
-                v = await resolve_attr_path_in_promise(v)
-            elif type(v) is list:
-                v = await resolve_attr_path_in_list(v)
+            v = await resolve_attr_path_recursively(v)
             result[k] = await TypeEngine.async_to_literal(ctx, v, t, var.type)
         except TypeTransformerFailedError as exc:
             exc.args = (f"Failed argument '{k}': {exc.args[0]}",)
@@ -173,13 +170,16 @@ async def resolve_attr_path_in_promise(p: Promise) -> Promise:
     return p
 
 
-async def resolve_attr_path_in_list(l: List[Any]) -> List[Any]:
-    for i, elem in enumerate(l):
-        if type(elem) is Promise:
-            l[i] = await resolve_attr_path_in_promise(elem)
-        elif type(elem) is list:
-            l[i] = await resolve_attr_path_in_list(elem)
-    return l
+async def resolve_attr_path_recursively(v: Any) -> Any:
+    """
+    This function resolves the attribute path in a nested structure recursively.
+    """
+    if isinstance(v, Promise):
+        v = await resolve_attr_path_in_promise(v)
+    elif isinstance(v, list):
+        for i, elem in enumerate(v):
+            v[i] = await resolve_attr_path_recursively(elem)
+    return v
 
 
 def resolve_attr_path_in_dict(d: dict, attr_path: List[Union[str, int]]) -> Any:
