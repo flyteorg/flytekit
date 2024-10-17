@@ -102,11 +102,11 @@ def source_folder():
 def test_local_raw_fsspec(source_folder):
     # Test copying using raw fsspec local filesystem, should not create a nested folder
     with tempfile.TemporaryDirectory() as dest_tmpdir:
-        local._put(source_folder, dest_tmpdir, recursive=True)
+        local.put(source_folder, dest_tmpdir, recursive=True)
 
     new_temp_dir_2 = tempfile.mkdtemp()
     new_temp_dir_2 = os.path.join(new_temp_dir_2, "doesnotexist")
-    local._put(source_folder, new_temp_dir_2, recursive=True)
+    local.put(source_folder, new_temp_dir_2, recursive=True)
     files = local.find(new_temp_dir_2)
     assert len(files) == 2
 
@@ -132,7 +132,8 @@ async def test_local_provider(source_folder):
         assert len(files) == 2
 
 
-def test_async_file_system():
+@pytest.mark.asyncio
+async def test_async_file_system():
     remote_path = "test:///tmp/test.py"
     local_path = "test.py"
 
@@ -162,9 +163,9 @@ def test_async_file_system():
     fsspec.register_implementation("test", MockAsyncFileSystem)
 
     ctx = FlyteContextManager.current_context()
-    dst = ctx.file_access._put(local_path, remote_path)
+    dst = await ctx.file_access._put(local_path, remote_path)
     assert dst == remote_path
-    dst = ctx.file_access.get(remote_path, local_path)
+    dst = await ctx.file_access.get(remote_path, local_path)
     assert dst == local_path
 
 
@@ -176,7 +177,7 @@ def test_s3_provider(source_folder):
         local_sandbox_dir="/tmp/unittest", raw_output_prefix="s3://my-s3-bucket/testdata/", data_config=dc
     )
     doesnotexist = provider.join(provider.raw_output_prefix, provider.get_random_string())
-    provider.async_put_data(source_folder, doesnotexist, is_multipart=True)
+    provider.put_data(source_folder, doesnotexist, is_multipart=True)
     fs = provider.get_filesystem_for_path(doesnotexist)
     files = fs.find(doesnotexist)
     assert len(files) == 2
@@ -379,7 +380,7 @@ def test_crawl_s3(source_folder):
         local_sandbox_dir="/tmp/unittest", raw_output_prefix="s3://my-s3-bucket/testdata/", data_config=dc
     )
     s3_random_target = provider.join(provider.raw_output_prefix, provider.get_random_string())
-    provider.async_put_data(source_folder, s3_random_target, is_multipart=True)
+    provider.put_data(source_folder, s3_random_target, is_multipart=True)
     ctx = FlyteContextManager.current_context()
     expected = {f"{s3_random_target}/original.txt", f"{s3_random_target}/nested/more.txt"}
 

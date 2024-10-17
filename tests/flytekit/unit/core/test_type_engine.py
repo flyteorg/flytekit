@@ -924,7 +924,7 @@ def test_dataclass_int_preserving():
     assert ot == o
 
 
-@mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.async_put_data")
 def test_dataclass_with_postponed_annotation(mock_put_data):
     remote_path = "s3://tmp/file"
     mock_put_data.return_value = remote_path
@@ -950,7 +950,7 @@ def test_dataclass_with_postponed_annotation(mock_put_data):
         assert dict_obj["f"]["path"] == remote_path
 
 
-@mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.async_put_data")
 def test_optional_flytefile_in_dataclass(mock_upload_dir):
     mock_upload_dir.return_value = True
 
@@ -1037,7 +1037,7 @@ def test_optional_flytefile_in_dataclass(mock_upload_dir):
         assert o.i_prime == A(a=99)
 
 
-@mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.async_put_data")
 def test_optional_flytefile_in_dataclassjsonmixin(mock_upload_dir):
     @dataclass
     class A_optional_flytefile(DataClassJSONMixin):

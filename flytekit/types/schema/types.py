@@ -17,7 +17,7 @@ from mashumaro.types import SerializableType
 
 from flytekit.core.constants import MESSAGEPACK
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
+from flytekit.core.type_engine import AsyncTypeTransformer, TypeEngine, TypeTransformerFailedError
 from flytekit.loggers import logger
 from flytekit.models.literals import Binary, Literal, Scalar, Schema
 from flytekit.models.types import LiteralType, SchemaType
@@ -373,7 +373,7 @@ def _get_numpy_type_mappings() -> typing.Dict[Type, SchemaType.SchemaColumn.Sche
         return {}
 
 
-class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
+class FlyteSchemaTransformer(AsyncTypeTransformer[FlyteSchema]):
     _SUPPORTED_TYPES: typing.Dict[Type, SchemaType.SchemaColumn.SchemaColumnType] = {
         float: SchemaType.SchemaColumn.SchemaColumnType.FLOAT,
         int: SchemaType.SchemaColumn.SchemaColumnType.INTEGER,
@@ -421,7 +421,9 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
                 # This means the local path is empty. Don't try to overwrite the remote data
                 logger.debug(f"Skipping upload for {python_val} because it was never downloaded.")
             else:
-                remote_path = await ctx.file_access.async_put_data(python_val.local_path, remote_path, is_multipart=True)
+                remote_path = await ctx.file_access.async_put_data(
+                    python_val.local_path, remote_path, is_multipart=True
+                )
             return Literal(scalar=Scalar(schema=Schema(remote_path, self._get_schema_type(python_type))))
 
         remote_path = ctx.file_access.join(ctx.file_access.raw_output_prefix, ctx.file_access.get_random_string())
@@ -438,7 +440,9 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
         writer = schema.open(type(python_val))
         writer.write(python_val)
         if not h.handles_remote_io:
-            schema.remote_path = await ctx.file_access.async_put_data(schema.local_path, schema.remote_path, is_multipart=True)
+            schema.remote_path = await ctx.file_access.async_put_data(
+                schema.local_path, schema.remote_path, is_multipart=True
+            )
         return Literal(scalar=Scalar(schema=Schema(schema.remote_path, self._get_schema_type(python_type))))
 
     def from_binary_idl(self, binary_idl_object: Binary, expected_python_type: Type[FlyteSchema]) -> FlyteSchema:

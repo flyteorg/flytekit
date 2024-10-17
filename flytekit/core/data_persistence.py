@@ -26,10 +26,10 @@ import typing
 from time import sleep
 from typing import Any, Dict, Optional, Union, cast
 from uuid import UUID
-from fsspec.asyn import AsyncFileSystem
 
 import fsspec
 from decorator import decorator
+from fsspec.asyn import AsyncFileSystem
 from fsspec.utils import get_protocol
 from typing_extensions import Unpack
 
@@ -40,8 +40,8 @@ from flytekit.core.utils import timeit
 from flytekit.exceptions.system import FlyteDownloadDataException, FlyteUploadDataException
 from flytekit.exceptions.user import FlyteAssertion, FlyteDataNotFoundException
 from flytekit.interfaces.random import random
-from flytekit.utils.asyn import loop_manager
 from flytekit.loggers import logger
+from flytekit.utils.asyn import loop_manager
 
 # Refer to https://github.com/fsspec/s3fs/blob/50bafe4d8766c3b2a4e1fc09669cf02fb2d71454/s3fs/core.py#L198
 # for key and secret
@@ -288,7 +288,7 @@ class FileAccessProvider(object):
             raise oe
 
     @retry_request
-    def get(self, from_path: str, to_path: str, recursive: bool = False, **kwargs):
+    async def get(self, from_path: str, to_path: str, recursive: bool = False, **kwargs):
         file_system = self.get_filesystem_for_path(from_path)
         if recursive:
             from_path, to_path = self.recursive_paths(from_path, to_path)
@@ -340,7 +340,10 @@ class FileAccessProvider(object):
         """
         Need to check here for async fs or sync
         """
-        dst = await file_system._put(from_path, to_path, recursive=recursive, **kwargs)  # pylint: disable=W0212
+        if isinstance(file_system, AsyncFileSystem):
+            dst = await file_system._put(from_path, to_path, recursive=recursive, **kwargs)  # pylint: disable=W0212
+        else:
+            dst = file_system.put(from_path, to_path, recursive=recursive, **kwargs)
         if isinstance(dst, (str, pathlib.Path)):
             return dst
         else:
@@ -382,9 +385,7 @@ class FileAccessProvider(object):
         """
         # First figure out what the destination path should be, then call put.
         """
-        Make this function work with both sync and async filesystems,
         update maybe delete the get async file system function
-        
         Do this first and then make the local file system async
         """
         upload_prefix = self.get_random_string() if upload_prefix is None else upload_prefix
@@ -568,7 +569,7 @@ class FileAccessProvider(object):
         """
         return self.put_data(local_path, remote_path, is_multipart=True, **kwargs)
 
-    def get_data(self, remote_path: str, local_path: str, is_multipart: bool = False, **kwargs):
+    async def async_get_data(self, remote_path: str, local_path: str, is_multipart: bool = False, **kwargs):
         """
         :param remote_path:
         :param local_path:
@@ -577,7 +578,7 @@ class FileAccessProvider(object):
         try:
             pathlib.Path(local_path).parent.mkdir(parents=True, exist_ok=True)
             with timeit(f"Download data to local from {remote_path}"):
-                self.get(remote_path, to_path=local_path, recursive=is_multipart, **kwargs)
+                await self.get(remote_path, to_path=local_path, recursive=is_multipart, **kwargs)
         except FlyteDataNotFoundException:
             raise
         except Exception as ex:
@@ -585,6 +586,8 @@ class FileAccessProvider(object):
                 f"Failed to get data from {remote_path} to {local_path} (recursive={is_multipart}).\n\n"
                 f"Original exception: {str(ex)}"
             )
+
+    get_data = loop_manager.synced(async_get_data)
 
     async def async_put_data(
         self, local_path: Union[str, os.PathLike], remote_path: str, is_multipart: bool = False, **kwargs
