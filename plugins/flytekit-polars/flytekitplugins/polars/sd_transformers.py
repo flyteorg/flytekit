@@ -75,7 +75,7 @@ class PolarsDataFrameToParquetEncodingHandler(StructuredDatasetEncoder):
             output_uri = structured_dataset.uri
         else:
             remote_fn = "00000"  # 00000 is our default unnamed parquet filename
-            output_uri = ctx.file_access.async_put_raw_data(output_bytes, file_name=remote_fn)
+            output_uri = ctx.file_access.put_raw_data(output_bytes, file_name=remote_fn)
         return literals.StructuredDataset(uri=output_uri, metadata=StructuredDatasetMetadata(structured_dataset_type))
 
 
@@ -137,7 +137,7 @@ class PolarsLazyFrameToParquetEncodingHandler(StructuredDatasetEncoder):
             output_bytes = io.BytesIO()
             remote_fn = "00000"  # 00000 is our default unnamed parquet filename
             _write_method(output_bytes)
-            output_uri = ctx.file_access.async_put_raw_data(output_bytes, file_name=remote_fn)
+            output_uri = ctx.file_access.put_raw_data(output_bytes, file_name=remote_fn)
         return literals.StructuredDataset(uri=output_uri, metadata=StructuredDatasetMetadata(structured_dataset_type))
 
 
