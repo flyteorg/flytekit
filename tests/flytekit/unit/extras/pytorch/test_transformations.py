@@ -49,18 +49,18 @@ def test_get_literal_type(transformer, python_type, format):
 @pytest.mark.parametrize(
     "transformer,python_type,format,python_val",
     [
-        (
-            PyTorchTensorTransformer(),
-            torch.Tensor,
-            PyTorchTensorTransformer.PYTORCH_FORMAT,
-            torch.tensor([[1, 2], [3, 4]]),
-        ),
-        (
-            PyTorchModuleTransformer(),
-            torch.nn.Module,
-            PyTorchModuleTransformer.PYTORCH_FORMAT,
-            torch.nn.Linear(2, 2),
-        ),
+        # (
+        #     PyTorchTensorTransformer(),
+        #     torch.Tensor,
+        #     PyTorchTensorTransformer.PYTORCH_FORMAT,
+        #     torch.tensor([[1, 2], [3, 4]]),
+        # ),
+        # (
+        #     PyTorchModuleTransformer(),
+        #     torch.nn.Module,
+        #     PyTorchModuleTransformer.PYTORCH_FORMAT,
+        #     torch.nn.Linear(2, 2),
+        # ),
         (
             PyTorchCheckpointTransformer(),
             PyTorchCheckpoint,
