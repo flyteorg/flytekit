@@ -187,6 +187,45 @@ def test_translate_inputs_to_literals_with_list():
     assert python_values == ["foo", "bar", "foo", "bar"]
 
 
+def test_translate_inputs_to_literals_with_nested_list():
+    ctx = context_manager.FlyteContext.current_context()
+
+    @dataclass_json
+    @dataclass
+    class Foo:
+        b: str
+
+    @dataclass_json
+    @dataclass
+    class Bar:
+        a: List[Foo]
+        b: str
+
+    src = {"a": [Bar(a=[Foo(b="foo")], b="bar")]}
+    src_lit = TypeEngine.to_literal(
+        ctx,
+        src,
+        Dict[str, List[Bar]],
+        TypeEngine.to_literal_type(Dict[str, List[Bar]]),
+    )
+    src_promise = Promise("val1", src_lit)
+
+    i0 = "foo"
+    i1 = Promise("n1", TypeEngine.to_literal(ctx, "bar", str, TypeEngine.to_literal_type(str)))
+
+    @task
+    def t1(a: List[List[str]]):
+        print(a)
+
+
+    lits = translate_inputs_to_literals(ctx, {"a": [[
+        i0, i1, src_promise["a"][0]["a"][0]["b"], src_promise["a"][0]["b"]
+    ]]}, t1.interface.inputs, t1.python_interface.inputs)
+    literal_map = literal_models.LiteralMap(literals=lits)
+    python_values = TypeEngine.literal_map_to_kwargs(ctx, literal_map, t1.python_interface.inputs)["a"]
+    assert python_values == [["foo", "bar", "foo", "bar"]]
+
+
 def test_translate_inputs_to_literals_with_wrong_types():
     ctx = context_manager.FlyteContext.current_context()
     with pytest.raises(TypeError, match="Cannot convert"):

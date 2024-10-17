@@ -100,9 +100,7 @@ async def _translate_inputs_to_literals(
             if type(v) is Promise:
                 v = await resolve_attr_path_in_promise(v)
             elif type(v) is list:
-                for i, elem in enumerate(v):
-                    if type(elem) is Promise:
-                        v[i] = await resolve_attr_path_in_promise(elem)
+                v = await resolve_attr_path_in_list(v)
             result[k] = await TypeEngine.async_to_literal(ctx, v, t, var.type)
         except TypeTransformerFailedError as exc:
             exc.args = (f"Failed argument '{k}': {exc.args[0]}",)
@@ -173,6 +171,15 @@ async def resolve_attr_path_in_promise(p: Promise) -> Promise:
 
     p._val = curr_val
     return p
+
+
+async def resolve_attr_path_in_list(l: List[Any]) -> List[Any]:
+    for i, elem in enumerate(l):
+        if type(elem) is Promise:
+            l[i] = await resolve_attr_path_in_promise(elem)
+        elif type(elem) is list:
+            l[i] = await resolve_attr_path_in_list(elem)
+    return l
 
 
 def resolve_attr_path_in_dict(d: dict, attr_path: List[Union[str, int]]) -> Any:
