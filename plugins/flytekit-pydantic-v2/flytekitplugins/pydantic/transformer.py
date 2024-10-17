@@ -51,7 +51,9 @@ class PydanticTransformer(TypeTransformer[BaseModel]):
         if binary_idl_object.tag == MESSAGEPACK:
             dict_obj = msgpack.loads(binary_idl_object.value, raw=False, strict_map_key=False)
             json_str = json.dumps(dict_obj)
-            python_val = expected_python_type.model_validate_json(json_data=json_str, strict=False)
+            python_val = expected_python_type.model_validate_json(
+                json_data=json_str, strict=False, context={"deserialize": True}
+            )
             return python_val
         else:
             raise TypeTransformerFailedError(f"Unsupported binary format: `{binary_idl_object.tag}`")
@@ -67,7 +69,7 @@ class PydanticTransformer(TypeTransformer[BaseModel]):
             return self.from_binary_idl(lv.scalar.binary, expected_python_type)  # type: ignore
 
         json_str = _json_format.MessageToJson(lv.scalar.generic)
-        python_val = expected_python_type.model_validate_json(json_str, strict=False)
+        python_val = expected_python_type.model_validate_json(json_str, strict=False, context={"deserialize": True})
         return python_val
 
 

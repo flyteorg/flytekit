@@ -357,7 +357,24 @@ class JsonParamType(click.ParamType):
             return parsed_value
 
         if is_pydantic_basemodel(self._python_type):
-            return self._python_type.parse_raw(json.dumps(parsed_value))  # type: ignore
+            """
+            This function supports backward compatibility for the Pydantic v1 plugin.
+            If the class is a Pydantic BaseModel, it attempts to parse JSON input using
+            the appropriate version of Pydantic (v1 or v2).
+            """
+            try:
+                from pydantic import BaseModel as BaseModelV2
+                from pydantic.v1 import BaseModel as BaseModelV1
+
+                if issubclass(self._python_type, BaseModelV2):
+                    return self._python_type.model_validate_json(
+                        json.dumps(parsed_value), strict=False, context={"deserialize": True}
+                    )
+            except ImportError:
+                pass
+
+            # The behavior of the Pydantic v1 plugin.
+            return self._python_type.parse_raw(json.dumps(parsed_value))
 
         # Ensure that the python type has `from_json` function
         if not hasattr(self._python_type, "from_json"):
