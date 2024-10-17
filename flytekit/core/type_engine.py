@@ -591,7 +591,15 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"user defined datatypes in Flytekit"
             )
 
-        self._make_dataclass_serializable(python_val, python_type)
+        if python_type.__dataclass_params__.frozen:  # type: ignore
+            logger.info(
+                "The dataclass is frozen, which may cause issues:\n"
+                "1) Flyte types may fail to work properly.\n"
+                "2) Integers might be incorrectly converted to floats from protobuf Struct.\n"
+                "Freezing dataclasses is not recommended."
+            )
+        else:
+            self._make_dataclass_serializable(python_val, python_type)
 
         # The `to_json` integrated through mashumaro's `DataClassJSONMixin` allows for more
         # functionality than JSONEncoder
@@ -771,6 +779,15 @@ class DataclassTransformer(TypeTransformer[object]):
                     self._msgpack_decoder[expected_python_type] = decoder
                 dc = decoder.decode(binary_idl_object.value)
 
+            if expected_python_type.__dataclass_params__.frozen:  # type: ignore
+                logger.info(
+                    "The dataclass is frozen, which may cause issues:\n"
+                    "1) Flyte types may fail to work properly.\n"
+                    "2) Integers might be incorrectly converted to floats from protobuf Struct.\n"
+                    "Freezing dataclasses is not recommended."
+                )
+                return dc
+
             return self._fix_structured_dataset_type(expected_python_type, dc)  # type: ignore
         else:
             raise TypeTransformerFailedError(f"Unsupported binary format: `{binary_idl_object.tag}`")
@@ -802,6 +819,15 @@ class DataclassTransformer(TypeTransformer[object]):
                 self._decoder[expected_python_type] = decoder
 
             dc = decoder.decode(json_str)
+
+        if expected_python_type.__dataclass_params__.frozen:  # type: ignore
+            logger.info(
+                "The dataclass is frozen, which may cause issues:\n"
+                "1) Flyte types may fail to work properly.\n"
+                "2) Integers might be incorrectly converted to floats from protobuf Struct.\n"
+                "Freezing dataclasses is not recommended."
+            )
+            return dc
 
         dc = self._fix_structured_dataset_type(expected_python_type, dc)
         return self._fix_dataclass_int(expected_python_type, dc)
