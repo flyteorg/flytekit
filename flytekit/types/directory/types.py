@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import pathlib
 import random
@@ -13,6 +14,8 @@ import fsspec
 import msgpack
 from dataclasses_json import DataClassJsonMixin, config
 from fsspec.utils import get_protocol
+from google.protobuf import json_format as _json_format
+from google.protobuf.struct_pb2 import Struct
 from marshmallow import fields
 from mashumaro.types import SerializableType
 
@@ -131,27 +134,7 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
 
     @classmethod
     def _deserialize(cls, value) -> "FlyteDirectory":
-        path = value.get("path", None)
-
-        if path is None:
-            raise ValueError("FlyteDirectory's path should not be None")
-
-        return FlyteDirToMultipartBlobTransformer().to_python_value(
-            FlyteContextManager.current_context(),
-            Literal(
-                scalar=Scalar(
-                    blob=Blob(
-                        metadata=BlobMetadata(
-                            type=_core_types.BlobType(
-                                format="", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
-                            )
-                        ),
-                        uri=path,
-                    )
-                )
-            ),
-            cls,
-        )
+        return FlyteDirToMultipartBlobTransformer().dict_to_flyte_directory(dict_obj=value, expected_python_type=cls)
 
     def __init__(
         self,
@@ -506,42 +489,106 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
         else:
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=source_path)))
 
+    def dict_to_flyte_directory(
+        self, dict_obj: typing.Dict[str, str], expected_python_type: typing.Type[FlyteDirectory]
+    ) -> FlyteDirectory:
+        path = dict_obj.get("path", None)
+
+        if path is None:
+            raise ValueError("FlyteDirectory's path should not be None")
+
+        return self.to_python_value(
+            FlyteContextManager.current_context(),
+            Literal(
+                scalar=Scalar(
+                    blob=Blob(
+                        metadata=BlobMetadata(
+                            type=_core_types.BlobType(
+                                format="", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
+                            )
+                        ),
+                        uri=path,
+                    )
+                )
+            ),
+            expected_python_type,
+        )
+
     def from_binary_idl(
         self, binary_idl_object: Binary, expected_python_type: typing.Type[FlyteDirectory]
     ) -> FlyteDirectory:
+        """
+        If the input is from flytekit, the Life Cycle will be as follows:
+
+        Life Cycle:
+        binary IDL                 -> resolved binary         -> bytes                   -> expected Python object
+        (flytekit customized          (propeller processing)     (flytekit binary IDL)      (flytekit customized
+        serialization)                                                                       deserialization)
+
+        Example Code:
+        @dataclass
+        class DC:
+            fd: FlyteDirectory
+
+        @workflow
+        def wf(dc: DC):
+            t_fd(dc.fd)
+
+        Note:
+        - The deserialization is the same as put a flyte directory in a dataclass, which will deserialize by the mashumaro's API.
+
+        Related PR:
+        - Title: Override Dataclass Serialization/Deserialization Behavior for FlyteTypes via Mashumaro
+        - Link: https://github.com/flyteorg/flytekit/pull/2554
+        """
         if binary_idl_object.tag == MESSAGEPACK:
             python_val = msgpack.loads(binary_idl_object.value)
-            path = python_val.get("path", None)
-
-            if path is None:
-                raise ValueError("FlyteDirectory's path should not be None")
-
-            return FlyteDirToMultipartBlobTransformer().to_python_value(
-                FlyteContextManager.current_context(),
-                Literal(
-                    scalar=Scalar(
-                        blob=Blob(
-                            metadata=BlobMetadata(
-                                type=_core_types.BlobType(
-                                    format="", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
-                                )
-                            ),
-                            uri=path,
-                        )
-                    )
-                ),
-                expected_python_type,
-            )
+            return self.dict_to_flyte_directory(python_val, expected_python_type)
         else:
             raise TypeTransformerFailedError(f"Unsupported binary format: `{binary_idl_object.tag}`")
+
+    def from_generic_idl(self, generic: Struct, expected_python_type: typing.Type[FlyteDirectory]) -> FlyteDirectory:
+        """
+        If the input is from Flyte Console, the Life Cycle will be as follows:
+
+        Life Cycle:
+        json str            -> protobuf struct         -> resolved protobuf struct   -> expected Python object
+        (console user input)   (console output)           (propeller)                   (flytekit customized deserialization)
+
+        Example Code:
+        @dataclass
+        class DC:
+            fd: FlyteDirectory
+
+        @workflow
+        def wf(dc: DC):
+            t_fd(dc.fd)
+
+        Note:
+        - The deserialization is the same as put a flyte directory in a dataclass, which will deserialize by the mashumaro's API.
+
+        Related PR:
+        - Title: Override Dataclass Serialization/Deserialization Behavior for FlyteTypes via Mashumaro
+        - Link: https://github.com/flyteorg/flytekit/pull/2554
+        """
+        json_str = _json_format.MessageToJson(generic)
+        python_val = json.loads(json_str)
+        return self.dict_to_flyte_directory(python_val, expected_python_type)
 
     def to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Type[FlyteDirectory]
     ) -> FlyteDirectory:
-        if lv.scalar.binary:
-            return self.from_binary_idl(lv.scalar.binary, expected_python_type)
+        # Handle dataclass attribute access
+        if lv.scalar:
+            if lv.scalar.binary:
+                return self.from_binary_idl(lv.scalar.binary, expected_python_type)
+            if lv.scalar.generic:
+                return self.from_generic_idl(lv.scalar.generic, expected_python_type)
 
-        uri = lv.scalar.blob.uri
+        try:
+            uri = lv.scalar.blob.uri
+        except AttributeError:
+            raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
 
         if lv.scalar.blob.metadata.type.dimensionality != BlobType.BlobDimensionality.MULTIPART:
             raise TypeTransformerFailedError(f"{lv.scalar.blob.uri} is not a directory.")
