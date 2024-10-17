@@ -377,8 +377,8 @@ class SecretsManager(object):
         env_prefixes = [self._env_prefix]
 
         # During local execution check for the key without a prefix
-        is_local_execution = os.getenv("FLYTE_INTERNAL_EXECUTION_ID") is None
-        if is_local_execution:
+        ctx = FlyteContextManager.current_context()
+        if ctx.execution_state.is_local_execution():
             env_prefixes.append("")
 
         for env_prefix in env_prefixes:
