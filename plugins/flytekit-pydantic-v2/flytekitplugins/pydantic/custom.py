@@ -22,7 +22,10 @@ def serialize_flyte_file(self) -> Dict[str, str]:
 
 
 @model_validator(mode="after")
-def deserialize_flyte_file(self) -> FlyteFile:
+def deserialize_flyte_file(self, info) -> FlyteFile:
+    if info.context is None or info.context["deserialize"] is not True:
+        return self
+
     pv = FlyteFilePathTransformer().to_python_value(
         FlyteContextManager.current_context(),
         Literal(
@@ -49,7 +52,10 @@ def serialize_flyte_dir(self) -> Dict[str, str]:
 
 
 @model_validator(mode="after")
-def deserialize_flyte_dir(self) -> FlyteDirectory:
+def deserialize_flyte_dir(self, info) -> FlyteDirectory:
+    if info.context is None or info.context["deserialize"] is not True:
+        return self
+
     pv = FlyteDirToMultipartBlobTransformer().to_python_value(
         FlyteContextManager.current_context(),
         Literal(
