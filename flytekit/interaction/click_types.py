@@ -1,6 +1,7 @@
 import dataclasses
 import datetime
 import enum
+import importlib.util
 import json
 import logging
 import os
@@ -363,13 +364,13 @@ class JsonParamType(click.ParamType):
             the appropriate version of Pydantic (v1 or v2).
             """
             try:
-                from pydantic import BaseModel as BaseModelV2
-                from pydantic.v1 import BaseModel as BaseModelV1
+                if importlib.util.find_spec("pydantic.v1") is not None:
+                    from pydantic import BaseModel as BaseModelV2
 
-                if issubclass(self._python_type, BaseModelV2):
-                    return self._python_type.model_validate_json(
-                        json.dumps(parsed_value), strict=False, context={"deserialize": True}
-                    )
+                    if issubclass(self._python_type, BaseModelV2):
+                        return self._python_type.model_validate_json(
+                            json.dumps(parsed_value), strict=False, context={"deserialize": True}
+                        )
             except ImportError:
                 pass
 

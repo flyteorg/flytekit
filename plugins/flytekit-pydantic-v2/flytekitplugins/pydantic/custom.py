@@ -23,6 +23,12 @@ def serialize_flyte_file(self) -> Dict[str, str]:
 
 @model_validator(mode="after")
 def deserialize_flyte_file(self, info) -> FlyteFile:
+    """
+    Pydantic calls this function in two cases:
+    1. When using the constructor, e.g., BM(). In this case, we do not want to deserialize Flyte types.
+    2. When calling the basemodel_type.model_validate_json() method. In this case, we do want to deserialize Flyte types.
+    Therefore, Flyte type deserialization should only occur when model_validate_json() is called.
+    """
     if info.context is None or info.context["deserialize"] is not True:
         return self
 
@@ -53,6 +59,12 @@ def serialize_flyte_dir(self) -> Dict[str, str]:
 
 @model_validator(mode="after")
 def deserialize_flyte_dir(self, info) -> FlyteDirectory:
+    """
+    Pydantic calls this function in two cases:
+    1. When using the constructor, e.g., BM(). In this case, we do not want to deserialize Flyte types.
+    2. When calling the basemodel_type.model_validate_json() method. In this case, we do want to deserialize Flyte types.
+    Therefore, Flyte type deserialization should only occur when model_validate_json() is called.
+    """
     if info.context is None or info.context["deserialize"] is not True:
         return self
 
@@ -101,9 +113,12 @@ def serialize_flyte_schema(self) -> Dict[str, str]:
 
 @model_validator(mode="after")
 def deserialize_flyte_schema(self, info) -> FlyteSchema:
-    # If we call the method to_python_value, FlyteSchemaTransformer will overwrite the argument _local_path,
-    # which will lose our data.
-    # If this data is from an existed FlyteSchema, _local_path will be None.
+    """
+    Pydantic calls this function in two cases:
+    1. When using the constructor, e.g., BM(). In this case, we do not want to deserialize Flyte types.
+    2. When calling the basemodel_type.model_validate_json() method. In this case, we do want to deserialize Flyte types.
+    Therefore, Flyte type deserialization should only occur when model_validate_json() is called.
+    """
 
     if info.context is None or info.context["deserialize"] is not True:
         return self
@@ -129,9 +144,12 @@ def serialize_structured_dataset(self) -> Dict[str, str]:
 
 @model_validator(mode="after")
 def deserialize_structured_dataset(self, info) -> StructuredDataset:
-    # If we call the method to_python_value, StructuredDatasetTransformerEngine will overwrite the argument '_dataframe',
-    # which will lose our data.
-    # If this data is from an existed StructuredDataset, '_dataframe' will be None.
+    """
+    Pydantic calls this function in two cases:
+    1. When using the constructor, e.g., BM(). In this case, we do not want to deserialize Flyte types.
+    2. When calling the basemodel_type.model_validate_json() method. In this case, we do want to deserialize Flyte types.
+    Therefore, Flyte type deserialization should only occur when model_validate_json() is called.
+    """
 
     if info.context is None or info.context["deserialize"] is not True:
         return self
