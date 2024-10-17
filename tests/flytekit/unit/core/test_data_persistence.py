@@ -92,7 +92,8 @@ def test_write_folder_put_raw(mock_uuid_class):
     assert sorted(paths) == sorted(expected)
 
 
-def test_write_large_put_raw():
+@pytest.mark.asyncio
+async def test_write_large_put_raw():
     """
     Test that writes a large'ish file setting block size and read size.
     """
@@ -107,7 +108,7 @@ def test_write_large_put_raw():
     sio.seek(0)
 
     # Write foo/a.txt by specifying the upload prefix and a file name
-    fs.put_raw_data(sio, upload_prefix="foo", file_name="a.txt", block_size=5, read_chunk_size_bytes=1)
+    await fs.async_put_raw_data(sio, upload_prefix="foo", file_name="a.txt", block_size=5, read_chunk_size_bytes=1)
     output_file = os.path.join(raw, "foo", "a.txt")
     with open(output_file, "rb") as f:
         assert f.read() == arbitrary_text.encode("utf-8")

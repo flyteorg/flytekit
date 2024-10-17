@@ -4,13 +4,13 @@ from typing import Type
 import tensorflow as tf
 
 from flytekit.core.context_manager import FlyteContext
-from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
+from flytekit.core.type_engine import AsyncTypeTransformer, TypeEngine, TypeTransformerFailedError
 from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 
 
-class TensorFlowModelTransformer(TypeTransformer[tf.keras.Model]):
+class TensorFlowModelTransformer(AsyncTypeTransformer[tf.keras.Model]):
     TENSORFLOW_FORMAT = "TensorFlowModel"
 
     def __init__(self):
@@ -24,7 +24,7 @@ class TensorFlowModelTransformer(TypeTransformer[tf.keras.Model]):
             )
         )
 
-    def to_literal(
+    async def async_to_literal(
         self,
         ctx: FlyteContext,
         python_val: tf.keras.Model,
@@ -44,10 +44,10 @@ class TensorFlowModelTransformer(TypeTransformer[tf.keras.Model]):
         # save model in SavedModel format
         tf.keras.models.save_model(python_val, local_path)
 
-        remote_path = ctx.file_access.put_raw_data(local_path)
+        remote_path = await ctx.file_access.async_put_raw_data(local_path)
         return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
 
-    def to_python_value(
+    async def async_to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[tf.keras.Model]
     ) -> tf.keras.Model:
         try:
@@ -56,7 +56,7 @@ class TensorFlowModelTransformer(TypeTransformer[tf.keras.Model]):
             TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
 
         local_path = ctx.file_access.get_random_local_path()
-        ctx.file_access.get_data(uri, local_path, is_multipart=True)
+        await ctx.file_access.async_get_data(uri, local_path, is_multipart=True)
 
         # load model
         return tf.keras.models.load_model(local_path)

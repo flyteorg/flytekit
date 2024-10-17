@@ -111,7 +111,8 @@ def test_local_raw_fsspec(source_folder):
     assert len(files) == 2
 
 
-def test_local_provider(source_folder):
+@pytest.mark.asyncio
+async def test_local_provider(source_folder):
     # Test that behavior putting from a local dir to a local remote dir is the same whether or not the local
     # dest folder exists.
     dc = Config.for_sandbox().data_config
@@ -119,19 +120,20 @@ def test_local_provider(source_folder):
         provider = FileAccessProvider(local_sandbox_dir="/tmp/unittest", raw_output_prefix=dest_tmpdir, data_config=dc)
         r = provider.get_random_string()
         doesnotexist = provider.join(provider.raw_output_prefix, r)
-        provider.put_data(source_folder, doesnotexist, is_multipart=True)
+        await provider.async_put_data(source_folder, doesnotexist, is_multipart=True)
         files = provider.raw_output_fs.find(doesnotexist)
         assert len(files) == 2
 
         r = provider.get_random_string()
         exists = provider.join(provider.raw_output_prefix, r)
         provider.raw_output_fs.mkdir(exists)
-        provider.put_data(source_folder, exists, is_multipart=True)
+        await provider.async_put_data(source_folder, exists, is_multipart=True)
         files = provider.raw_output_fs.find(exists)
         assert len(files) == 2
 
 
-def test_async_file_system():
+@pytest.mark.asyncio
+async def test_async_file_system():
     remote_path = "test:///tmp/test.py"
     local_path = "test.py"
 
@@ -161,9 +163,9 @@ def test_async_file_system():
     fsspec.register_implementation("test", MockAsyncFileSystem)
 
     ctx = FlyteContextManager.current_context()
-    dst = ctx.file_access.put(local_path, remote_path)
+    dst = await ctx.file_access._put(local_path, remote_path)
     assert dst == remote_path
-    dst = ctx.file_access.get(remote_path, local_path)
+    dst = await ctx.file_access.get(remote_path, local_path)
     assert dst == local_path
 
 
