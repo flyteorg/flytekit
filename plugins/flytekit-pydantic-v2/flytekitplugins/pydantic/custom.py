@@ -24,7 +24,7 @@ def serialize_flyte_file(self) -> Dict[str, str]:
 @model_validator(mode="after")
 def deserialize_flyte_file(self, info) -> FlyteFile:
     """
-    Pydantic calls this function in two cases:
+    Pydantic calls validator in two cases:
     1. When using the constructor, e.g., BM(). In this case, we do not want to deserialize Flyte types.
     2. When calling the basemodel_type.model_validate_json() method. In this case, we do want to deserialize Flyte types.
     Therefore, Flyte type deserialization should only occur when model_validate_json() is called.
@@ -60,7 +60,7 @@ def serialize_flyte_dir(self) -> Dict[str, str]:
 @model_validator(mode="after")
 def deserialize_flyte_dir(self, info) -> FlyteDirectory:
     """
-    Pydantic calls this function in two cases:
+    Pydantic calls validator in two cases:
     1. When using the constructor, e.g., BM(). In this case, we do not want to deserialize Flyte types.
     2. When calling the basemodel_type.model_validate_json() method. In this case, we do want to deserialize Flyte types.
     Therefore, Flyte type deserialization should only occur when model_validate_json() is called.
@@ -114,7 +114,7 @@ def serialize_flyte_schema(self) -> Dict[str, str]:
 @model_validator(mode="after")
 def deserialize_flyte_schema(self, info) -> FlyteSchema:
     """
-    Pydantic calls this function in two cases:
+    Pydantic calls validator in two cases:
     1. When using the constructor, e.g., BM(). In this case, we do not want to deserialize Flyte types.
     2. When calling the basemodel_type.model_validate_json() method. In this case, we do want to deserialize Flyte types.
     Therefore, Flyte type deserialization should only occur when model_validate_json() is called.
@@ -145,7 +145,7 @@ def serialize_structured_dataset(self) -> Dict[str, str]:
 @model_validator(mode="after")
 def deserialize_structured_dataset(self, info) -> StructuredDataset:
     """
-    Pydantic calls this function in two cases:
+    Pydantic calls validator in two cases:
     1. When using the constructor, e.g., BM(). In this case, we do not want to deserialize Flyte types.
     2. When calling the basemodel_type.model_validate_json() method. In this case, we do want to deserialize Flyte types.
     Therefore, Flyte type deserialization should only occur when model_validate_json() is called.
