@@ -1036,10 +1036,10 @@ class TypeEngine(typing.Generic[T]):
 
         if hasattr(python_type, "__origin__"):
             # If the type is a generic type, we should check the origin type. But consider the case like Iterator[JSON]
-            # or List[int] has been specifically registered, we should check for the entire type.
+            # or List[int] has been specifically registered; we should check for the entire type.
             # The challenge is for StructuredDataset, example List[StructuredDataset] the column names is an OrderedDict
             # are not hashable, thus looking up this type is not possible.
-            # In such as case we will have to skip the "type" lookup and use the origin type only
+            # In such as case, we will have to skip the "type" lookup and use the origin type only
             try:
                 if python_type in cls._REGISTRY:
                     return cls._REGISTRY[python_type]
@@ -1058,7 +1058,6 @@ class TypeEngine(typing.Generic[T]):
         if python_type in cls._REGISTRY:
             return cls._REGISTRY[python_type]
 
-        # Step 5
         if dataclasses.is_dataclass(python_type):
             return cls._DATACLASS_TRANSFORMER
 
@@ -1080,7 +1079,6 @@ class TypeEngine(typing.Generic[T]):
                 if v is not None:
                     return v
 
-        # Step 6
         display_pickle_warning(str(python_type))
         from flytekit.types.pickle.pickle import FlytePickleTransformer
 
