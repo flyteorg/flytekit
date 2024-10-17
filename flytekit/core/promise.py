@@ -99,6 +99,10 @@ async def _translate_inputs_to_literals(
         try:
             if type(v) is Promise:
                 v = await resolve_attr_path_in_promise(v)
+            elif type(v) is list:
+                for i, elem in enumerate(v):
+                    if type(elem) is Promise:
+                        v[i] = await resolve_attr_path_in_promise(elem)
             result[k] = await TypeEngine.async_to_literal(ctx, v, t, var.type)
         except TypeTransformerFailedError as exc:
             exc.args = (f"Failed argument '{k}': {exc.args[0]}",)
