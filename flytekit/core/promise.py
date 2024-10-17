@@ -109,6 +109,21 @@ async def _translate_inputs_to_literals(
 translate_inputs_to_literals = loop_manager.synced(_translate_inputs_to_literals)
 
 
+async def resolve_attr_path_recursively(v: Any) -> Any:
+    """
+    This function resolves the attribute path in a nested structure recursively.
+    """
+    if isinstance(v, Promise):
+        v = await resolve_attr_path_in_promise(v)
+    elif isinstance(v, list):
+        for i, elem in enumerate(v):
+            v[i] = await resolve_attr_path_recursively(elem)
+    elif isinstance(v, dict):
+        for k, elem in v.items():
+            v[k] = await resolve_attr_path_recursively(elem)
+    return v
+
+
 async def resolve_attr_path_in_promise(p: Promise) -> Promise:
     """
     resolve_attr_path_in_promise resolves the attribute path in a promise and returns a new promise with the resolved value
@@ -168,18 +183,6 @@ async def resolve_attr_path_in_promise(p: Promise) -> Promise:
 
     p._val = curr_val
     return p
-
-
-async def resolve_attr_path_recursively(v: Any) -> Any:
-    """
-    This function resolves the attribute path in a nested structure recursively.
-    """
-    if isinstance(v, Promise):
-        v = await resolve_attr_path_in_promise(v)
-    elif isinstance(v, list):
-        for i, elem in enumerate(v):
-            v[i] = await resolve_attr_path_recursively(elem)
-    return v
 
 
 def resolve_attr_path_in_dict(d: dict, attr_path: List[Union[str, int]]) -> Any:
