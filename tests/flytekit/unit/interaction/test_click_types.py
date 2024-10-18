@@ -1,6 +1,7 @@
 import os
 from dataclasses import field
 import json
+import sys
 import tempfile
 import typing
 from datetime import datetime, timedelta
@@ -501,6 +502,9 @@ def test_nested_dataclass_with_optional_fields():
     assert v.w[0].b == "list_item"
 
 
+@pytest.mark.skipif(
+    sys.version_info < (3, 9), reason="handling for windows is nicer with delete_on_close, which doesn't exist in 3.9"
+)
 def test_pickle_type():
     t = PickleParamType()
     value = {"a": "b"}
