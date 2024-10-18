@@ -12,7 +12,7 @@ import textwrap
 import traceback
 import warnings
 from sys import exit
-from typing import Callable, List, Optional
+from typing import Callable, Dict, List, Optional
 
 import click
 from flyteidl.core import literals_pb2 as _literals_pb2
@@ -51,7 +51,6 @@ from flytekit.models.core import execution as _execution_models
 from flytekit.models.core import identifier as _identifier
 from flytekit.tools.fast_registration import download_distribution as _download_distribution
 from flytekit.tools.module_loader import load_object_from_module
-
 
 # MAX_OFFLOADED_LITERAL_SIZE_BYTES = 10 * 1024 * 1024
 MAX_OFFLOADED_LITERAL_SIZE_BYTES = 10
@@ -141,12 +140,11 @@ def _dispatch_execute(
             logger.warning("Task produces no outputs")
             output_file_dict = {_constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(literals={})}
         elif isinstance(outputs, _literal_models.LiteralMap):
-            # output_file_dict = {_constants.OUTPUT_FILE_NAME: outputs}
-            offloaded_literals = {}
+            offloaded_literals: Dict[str, _literal_models.Literal] = {}
             new_outputs = {}
-            # Offload literals if they are too large
+
+            # Go over each output and create a separate offloaded in case its size is too large
             for k, v in outputs.literals.items():
-                assert type(v) == _literal_models.Literal
                 lit = v.to_flyte_idl()
                 if lit.ByteSize() > MAX_OFFLOADED_LITERAL_SIZE_BYTES:
                     logger.debug(f"Literal {k} is too large to be inlined, offloading to metadata bucket")
@@ -154,9 +152,10 @@ def _dispatch_execute(
                     # TODO: hash calculation
 
                     offloaded_filename = f"{k}_offloaded_metadata.pb"
-                    # Offload the literal to a remote file in the metadata bucket
+
                     offloaded_literal = _literal_models.Literal(
                         offloaded_metadata=_literal_models.LiteralOffloadedMetadata(
+                            uri=f"{ctx.user_space_params.output_metadata_prefix}/{offloaded_filename}",
                             uri=offloaded_filename,
                             size_bytes=lit.ByteSize(),
                             # TODO: do I have to set the inferred literal type?
