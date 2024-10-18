@@ -743,9 +743,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 raise
             except Exception as e:
                 if is_local_execution:
-                    e.args = (
-                        f"Error encountered while converting inputs of '{self.name}':\n  {e}",
-                    )
+                    e.args = (f"Error encountered while converting inputs of '{self.name}':\n  {e}",)
                     raise
                 raise FlyteNonRecoverableSystemException(e) from e
             # TODO: Logger should auto inject the current context information to indicate if the task is running within
@@ -757,9 +755,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 except Exception as e:
                     if is_local_execution:
                         # If the task is being executed locally, we want to raise the original exception
-                        e.args = (
-                            f"Error encountered while executing '{self.name}':\n  {e}",
-                        )
+                        e.args = (f"Error encountered while executing '{self.name}':\n  {e}",)
                         raise
                     raise FlyteUserRuntimeException(e) from e
 
