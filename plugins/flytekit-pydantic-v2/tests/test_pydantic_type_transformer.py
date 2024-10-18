@@ -15,6 +15,9 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.models.literals import Literal, Scalar
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import FlyteFile
+from flytekit.types.schema import FlyteSchema
+from flytekit.types.structured import StructuredDataset
+
 
 class Status(Enum):
     PENDING = "pending"
@@ -692,30 +695,32 @@ def test_pydantic_dataclasss_in_pydantic_basemodel():
     bm = BM()
     wf(bm=bm)
 
-
-
-
 def test_flyte_types_deserialization_not_called_when_using_constructor(local_dummy_file, local_dummy_directory):
     # Mocking both FlyteFilePathTransformer and FlyteDirectoryPathTransformer
     with patch('flytekit.types.file.FlyteFilePathTransformer.to_python_value') as mock_file_to_python_value, \
-         patch('flytekit.types.directory.FlyteDirToMultipartBlobTransformer.to_python_value') as mock_directory_to_python_value:
+         patch('flytekit.types.directory.FlyteDirToMultipartBlobTransformer.to_python_value') as mock_directory_to_python_value, \
+         patch('flytekit.types.structured.StructuredDatasetTransformerEngine.to_python_value') as mock_structured_dataset_to_python_value, \
+         patch('flytekit.types.schema.FlyteSchemaTransformer.to_python_value') as mock_schema_to_python_value:
 
         # Define your Pydantic model
         class BM(BaseModel):
             ff: FlyteFile = field(default_factory=lambda: FlyteFile(local_dummy_file))
             fd: FlyteDirectory = field(default_factory=lambda: FlyteDirectory(local_dummy_directory))
+            sd: StructuredDataset = field(default_factory=lambda: StructuredDataset())
+            fsc: FlyteSchema = field(default_factory=lambda: FlyteSchema())
 
         # Create an instance of BM (should not call the deserialization)
         BM()
 
-        # Assert that neither FlyteFilePathTransformer nor FlyteDirectoryPathTransformer's to_python_value was called
         mock_file_to_python_value.assert_not_called()
         mock_directory_to_python_value.assert_not_called()
+        mock_structured_dataset_to_python_value.assert_not_called()
+        mock_schema_to_python_value.assert_not_called()
 
-
-def test_flyte_types_deserialization_called_once_when_using_model_validate_json(local_dummy_file,
-                                                                                local_dummy_directory):
-    # Mocking the FlyteFilePathTransformer's to_python_value method
+def test_flyte_types_deserialization_called_once_when_using_model_validate_json(local_dummy_file, local_dummy_directory):
+    """
+    It's hard to mock flyte schema and structured dataset in tests, so we will only test FlyteFile and FlyteDirectory
+    """
     with patch('flytekit.types.file.FlyteFilePathTransformer.to_python_value') as mock_file_to_python_value, \
             patch('flytekit.types.directory.FlyteDirToMultipartBlobTransformer.to_python_value') as mock_directory_to_python_value:
         # Define your Pydantic model
