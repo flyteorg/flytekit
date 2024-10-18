@@ -3702,3 +3702,6 @@ def test_structured_dataset_mismatch():
     transformer = TypeEngine.get_transformer(StructuredDataset)
     with pytest.raises(TypeTransformerFailedError):
         transformer.to_literal(FlyteContext.current_context(), df, StructuredDataset, TypeEngine.to_literal_type(StructuredDataset))
+
+    with pytest.raises(TypeTransformerFailedError):
+        TypeEngine.to_literal(FlyteContext.current_context(), df, StructuredDataset, TypeEngine.to_literal_type(StructuredDataset))
