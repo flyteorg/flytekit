@@ -62,18 +62,14 @@ class FlytePickle(typing.Generic[T]):
 
         return await ctx.file_access.async_put_raw_data(uri)
 
-    """
-    this also needs to be updated, or both not updated
-    """
-
     @classmethod
-    def from_pickle(cls, uri: str) -> typing.Any:
+    async def from_pickle(cls, uri: str) -> typing.Any:
         ctx = FlyteContextManager.current_context()
         # Deserialize the pickle, and return data in the pickle,
         # and download pickle file to local first if file is not in the local file systems.
         if ctx.file_access.is_remote(uri):
             local_path = ctx.file_access.get_random_local_path()
-            ctx.file_access.get_data(uri, local_path, False)
+            await ctx.file_access.async_get_data(uri, local_path, False)
             uri = local_path
         with open(uri, "rb") as infile:
             data = cloudpickle.load(infile)
@@ -92,7 +88,7 @@ class FlytePickleTransformer(AsyncTypeTransformer[FlytePickle]):
 
     async def async_to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
         uri = lv.scalar.blob.uri
-        return FlytePickle.from_pickle(uri)
+        return await FlytePickle.from_pickle(uri)
 
     async def async_to_literal(
         self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType

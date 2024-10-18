@@ -2064,7 +2064,7 @@ class DictTransformer(AsyncTypeTransformer[dict]):
                 from flytekit.types.pickle import FlytePickle
 
                 uri = json.loads(_json_format.MessageToJson(lv.scalar.generic)).get("pickle_file")
-                return FlytePickle.from_pickle(uri)
+                return await FlytePickle.from_pickle(uri)
 
             try:
                 return json.loads(_json_format.MessageToJson(lv.scalar.generic))
