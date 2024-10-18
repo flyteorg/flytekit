@@ -1,4 +1,5 @@
-from flyteidl.admin import common_pb2 as _common_pb2
+import json
+import flyteidl_rust as flyteidl
 
 from flytekit.core import notification
 from flytekit.core.launch_plan import LaunchPlan
@@ -14,32 +15,26 @@ def test_pager_duty_notification():
     pager_duty_notif = notification.PagerDuty(
         phases=[_workflow_execution_succeeded], recipients_email=["my-team@pagerduty.com"]
     )
-    assert pager_duty_notif.to_flyte_idl() == _common_pb2.Notification(
+    assert json.loads(pager_duty_notif.to_flyte_idl().DumpToJsonString()) == json.loads(flyteidl.admin.Notification(
         phases=[_workflow_execution_succeeded],
-        email=None,
-        pager_duty=_common_model.PagerDutyNotification(["my-team@pagerduty.com"]).to_flyte_idl(),
-        slack=None,
-    )
+        type=flyteidl.notification.Type.PagerDuty(_common_model.PagerDutyNotification(["my-team@pagerduty.com"]).to_flyte_idl()),
+    ).DumpToJsonString())
 
 
 def test_slack_notification():
     slack_notif = notification.Slack(phases=[_workflow_execution_succeeded], recipients_email=["my-team@slack.com"])
-    assert slack_notif.to_flyte_idl() == _common_pb2.Notification(
+    assert json.loads(slack_notif.to_flyte_idl().DumpToJsonString()) == json.loads(flyteidl.admin.Notification(
         phases=[_workflow_execution_succeeded],
-        email=None,
-        pager_duty=None,
-        slack=_common_model.SlackNotification(["my-team@slack.com"]).to_flyte_idl(),
-    )
+        type=flyteidl.notification.Type.Slack(_common_model.SlackNotification(["my-team@slack.com"]).to_flyte_idl()),
+    ).DumpToJsonString())
 
 
 def test_email_notification():
     email_notif = notification.Email(phases=[_workflow_execution_succeeded], recipients_email=["my-team@email.com"])
-    assert email_notif.to_flyte_idl() == _common_pb2.Notification(
+    assert json.loads(email_notif.to_flyte_idl().DumpToJsonString()) == json.loads(flyteidl.admin.Notification(
         phases=[_workflow_execution_succeeded],
-        email=_common_model.EmailNotification(["my-team@email.com"]).to_flyte_idl(),
-        pager_duty=None,
-        slack=None,
-    )
+        type=flyteidl.notification.Type.Email(_common_model.EmailNotification(["my-team@email.com"]).to_flyte_idl()),
+    ).DumpToJsonString())
 
 
 def test_with_launch_plan():

@@ -131,7 +131,22 @@ def _get_container_definition(
 
 
 def _sanitize_resource_name(resource: "task_models.Resources.ResourceEntry") -> str:
-    return flyteidl.resources.ResourceName(resource.name).lower().replace("_", "-")
+    from flytekit.models import task as task_models
+
+    if resource.name == task_models.Resources.ResourceName.UNKNOWN:
+        return str(flyteidl.resources.ResourceName.Unknown).replace("ResourceName.", "").lower()
+    elif resource.name == task_models.Resources.ResourceName.CPU:
+        return str(flyteidl.resources.ResourceName.Cpu).replace("ResourceName.", "").lower()
+    elif resource.name == task_models.Resources.ResourceName.GPU:
+        return str(flyteidl.resources.ResourceName.Gpu).replace("ResourceName.", "").lower()
+    elif resource.name == task_models.Resources.ResourceName.MEMORY:
+        return str(flyteidl.resources.ResourceName.Memory).replace("ResourceName.", "").lower()
+    elif resource.name == task_models.Resources.ResourceName.EPHEMERAL_STORAGE:
+        import re
+
+        s = str(flyteidl.resources.ResourceName.EphemeralStorage).replace("ResourceName.", "")
+        return re.sub(r"(?<!^)(?=[A-Z])", "-", s).lower()
+    return ""
 
 
 def _serialize_pod_spec(

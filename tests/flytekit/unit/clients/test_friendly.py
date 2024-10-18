@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 import mock
+import pytest
 from flyteidl.admin import project_pb2 as _project_pb2
 from flyteidl.service import dataproxy_pb2 as _data_proxy_pb2
 from google.protobuf.duration_pb2 import Duration
@@ -11,6 +12,7 @@ from flytekit.models.project import Project as _Project
 
 
 @mock.patch("flytekit.clients.friendly._RawSynchronousFlyteClient.update_project")
+@pytest.mark.flyteidl_rust
 def test_update_project(mock_raw_update_project):
     client = _SynchronousFlyteClient(PlatformConfig.for_endpoint("a.b.com", True))
     project = _Project("foo", "name", "description", state=_Project.ProjectState.ACTIVE)
@@ -19,6 +21,7 @@ def test_update_project(mock_raw_update_project):
 
 
 @mock.patch("flytekit.clients.friendly._RawSynchronousFlyteClient.list_projects")
+@pytest.mark.flyteidl_rust
 def test_list_projects_paginated(mock_raw_list_projects):
     client = _SynchronousFlyteClient(PlatformConfig.for_endpoint("a.b.com", True))
     client.list_projects_paginated(limit=100, token="")
@@ -27,6 +30,7 @@ def test_list_projects_paginated(mock_raw_list_projects):
 
 
 @mock.patch("flytekit.clients.friendly._RawSynchronousFlyteClient.create_upload_location")
+@pytest.mark.flyteidl_rust
 def test_create_upload_location(mock_raw_create_upload_location):
     client = _SynchronousFlyteClient(PlatformConfig.for_endpoint("a.b.com", True))
     client.get_upload_signed_url("foo", "bar", bytes(), "baz.qux", timedelta(minutes=42), add_content_md5_metadata=True)

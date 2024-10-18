@@ -384,7 +384,7 @@ class LiteralType(_common.FlyteIdlEntity):
         if self.simple:
             type = flyteidl.literal_type.Type.Simple(int(str(self.simple)))
         elif self.schema is not None:
-            type = flyteidl.literal_type.Type.SchemaType(self.schema.to_flyte_idl())
+            type = flyteidl.literal_type.Type.Schema(self.schema.to_flyte_idl())
         elif self.collection_type is not None:
             type = flyteidl.literal_type.Type.CollectionType(self.collection_type.to_flyte_idl())
         elif self.map_value_type is not None:

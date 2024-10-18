@@ -230,6 +230,7 @@ def test_sql_task():
 
 
 @pytest.mark.serial
+@pytest.mark.flyteidl_rust # Rust PyO3 hasn't support pickling in Python
 def test_wf_custom_types():
     @dataclass
     class MyCustomType(DataClassJsonMixin):
@@ -303,6 +304,7 @@ def test_wf_schema_to_df():
 
 
 @pytest.mark.serial
+@pytest.mark.flyteidl_rust
 def test_dict_wf_with_constants():
     @task(cache=True, cache_version="v99")
     def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
@@ -474,6 +476,7 @@ def test_list_of_pd_dataframe_hash():
 
 
 @pytest.mark.serial
+@pytest.mark.flyteidl_rust # Rust protobuf hasn't support deterministic Prost message encoding
 def test_cache_key_repetition():
     pt = Dict
     lt = TypeEngine.to_literal_type(pt)
@@ -498,6 +501,7 @@ def test_cache_key_repetition():
 
 
 @pytest.mark.serial
+@pytest.mark.flyteidl_rust # Rust protobuf hasn't support deterministic Prost message encoding
 def test_stable_cache_key():
     """
     The intent of this test is to ensure cache keys are stable across releases and python versions.
@@ -529,7 +533,7 @@ def test_stable_cache_key():
         }
     )
     key = _calculate_cache_key("task_name_1", "31415", lm)
-    assert key == "task_name_1-31415-189e755a8f41c006889c291fcaedb4eb"
+    assert key == "task_name_1-31415-19c023e5cf857a8e4e57d431fe3b693f"
 
 
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")

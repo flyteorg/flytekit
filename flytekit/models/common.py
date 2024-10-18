@@ -41,9 +41,14 @@ class FlyteIdlEntity(object, metaclass=FlyteType):
     def __eq__(self, other):
         import json
 
-        return isinstance(other, FlyteIdlEntity) and json.loads(other.to_flyte_idl().DumpToJsonString()) == json.loads(
-            self.to_flyte_idl().DumpToJsonString()
-        )
+        other_idl = other.to_flyte_idl()
+        self_idl = self.to_flyte_idl()
+        if isinstance(other_idl, str) and isinstance(self_idl, str):
+            return other_idl == self_idl
+        else:
+            return isinstance(other, FlyteIdlEntity) and json.loads(other_idl.DumpToJsonString()) == json.loads(
+                self_idl.DumpToJsonString()
+            )
 
     def __ne__(self, other):
         return not (self == other)
@@ -305,18 +310,15 @@ class Notification(FlyteIdlEntity):
         """
         _type = None
         if self.email:
-            _type = flytedidl.notification.Type.Email(self.email)
+            _type = flytedidl.notification.Type.Email(self.email.to_flyte_idl())
         elif self.pager_duty:
-            _type = flytedidl.notification.Type.PagerDuty(self.pager_duty)
+            _type = flytedidl.notification.Type.PagerDuty(self.pager_duty.to_flyte_idl())
         elif self.slack:
-            _type = flytedidl.notification.Type.Slack(self.slack)
+            _type = flytedidl.notification.Type.Slack(self.slack.to_flyte_idl())
 
-        return flytedidl.notification.Type(
+        return flytedidl.admin.Notification(
             phases=self.phases,
             type=_type,
-            # email=self.email.to_flyte_idl() if self.email else None,
-            # pager_duty=self.pager_duty.to_flyte_idl() if self.pager_duty else None,
-            # slack=self.slack.to_flyte_idl() if self.slack else None,
         )
 
     @classmethod

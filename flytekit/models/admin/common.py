@@ -34,7 +34,7 @@ class Sort(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.common_pb2.Sort
         """
-        return flyteidl.admin.Sort(key=self.key, direction=self.direction)
+        return flyteidl.admin.Sort(key=self.key, direction=int(self.direction))
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):

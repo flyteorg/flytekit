@@ -1027,7 +1027,5 @@ class SynchronousFlyteClient(flyteidl.RawSynchronousFlyteClient):
         )
 
     def get_data(self, flyte_uri: str) -> flyteidl.service.GetDataResponse:
-        req = flyteidl.service.GetDataRequest(flyte_url=flyte_uri)
-
-        resp = self._dataproxy_stub.GetData(req, metadata=self._metadata)
+        resp = super(SynchronousFlyteClient, self).get_data(flyteidl.service.GetDataRequest(flyte_url=flyte_uri))
         return resp

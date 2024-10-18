@@ -240,7 +240,12 @@ class FlyteRemote(object):
         """Return a SynchronousFlyteClient for additional operations."""
         if not self._client_initialized:
             self._client = SynchronousFlyteClient(
-                endpoint=self.config.platform.endpoint, insecure=self.config.platform.insecure, auth_mode=str(self.config.platform.auth_mode), client_id=self.config.platform.client_id or "", client_credentials_secret=self.config.platform.client_credentials_secret or "", **self._kwargs
+                endpoint=self.config.platform.endpoint,
+                insecure=self.config.platform.insecure,
+                auth_mode=str(self.config.platform.auth_mode),
+                client_id=self.config.platform.client_id or "",
+                client_credentials_secret=self.config.platform.client_credentials_secret or "",
+                **self._kwargs,
             )
             self._client_initialized = True
         return self._client
@@ -569,7 +574,7 @@ class FlyteRemote(object):
             logger.debug(f"Converted {value} to literal {lit} using literal type {lt}")
 
         req = flyteidl.admin.SignalSetRequest(
-            id=flyteidl.core.SignalIdentifier(signal_id, wf_exec_id).to_flyte_idl(), value=lit.to_flyte_idl()
+            id=flyteidl.core.SignalIdentifier(signal_id, wf_exec_id.to_flyte_idl()), value=lit.to_flyte_idl()
         )
 
         # Response is empty currently, nothing to give back to the user.
