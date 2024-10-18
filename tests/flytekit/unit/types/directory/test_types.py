@@ -1,3 +1,4 @@
+from pathlib import Path
 import mock
 
 from flytekit import FlyteContext
@@ -17,6 +18,17 @@ def test_new_file_dir():
     assert isinstance(f, FlyteFile)
     assert f.path == "s3://my-bucket/test/test"
 
+def test_new_file_dir_pathlib():
+    fd = FlyteDirectory(path=Path("s3://my-bucket"))
+    assert fd.sep == "/"
+    inner_dir = fd.new_dir("test")
+    assert inner_dir.path == "s3://my-bucket/test"
+    fd = FlyteDirectory(path=Path("s3://my-bucket"))
+    inner_dir = fd.new_dir("test")
+    assert inner_dir.path == "s3://my-bucket/test"
+    f = inner_dir.new_file("test")
+    assert isinstance(f, FlyteFile)
+    assert f.path == "s3://my-bucket/test/test"
 
 def test_new_remote_dir():
     fd = FlyteDirectory.new_remote()

@@ -168,7 +168,7 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
         """
         # Make this field public, so that the dataclass transformer can set a value for it
         # https://github.com/flyteorg/flytekit/blob/bcc8541bd6227b532f8462563fe8aac902242b21/flytekit/core/type_engine.py#L298
-        self.path = path
+        self.path = path if not isinstance(pathlib.Path, str) else str(path)
         self._downloader = downloader or noop
         self._downloaded = False
         self._remote_directory = remote_directory

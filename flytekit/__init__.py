@@ -205,6 +205,7 @@ Documentation
 
 import os
 import sys
+from pathlib import Path
 from typing import Generator
 
 from rich import traceback
@@ -279,6 +280,15 @@ def current_context() -> ExecutionParameters:
 def new_context() -> Generator[FlyteContext, None, None]:
     return FlyteContextManager.with_context(FlyteContextManager.current_context().new_builder())
 
+def cwd() -> Path:
+    """
+    Use this method to get a pathlib.Path of the current working directory of the task execution.
+
+    Usage
+    .. code-block:: python
+        path = flytekit.cwd() / 'my_file.txt'
+    """
+    return Path(FlyteContextManager.current_context().working_directory)
 
 def load_implicit_plugins():
     """
