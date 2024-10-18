@@ -1,12 +1,14 @@
 import dataclasses
 import datetime
 import enum
+import importlib
 import importlib.util
 import json
 import logging
 import os
 import pathlib
 import typing
+import typing as t
 from typing import cast, get_args
 
 import rich_click as click
@@ -137,10 +139,26 @@ class FileParamType(click.ParamType):
 class PickleParamType(click.ParamType):
     name = "pickle"
 
+    def get_metavar(self, param: "Parameter") -> t.Optional[str]:
+        return "Python Object <Module>:<Object>"
+
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
-        return value
+        if not isinstance(value, str):
+            return value
+        parts = value.split(":")
+        if len(parts) != 2:
+            if ctx and ctx.obj and ctx.obj.verbose > 0:
+                click.echo(f"Did not receive a string in the expected format <MODULE>:<VAR>, falling back to: {value}")
+            return value
+        try:
+            m = importlib.import_module(parts[0])
+            return m.__getattribute__(parts[1])
+        except ModuleNotFoundError as e:
+            raise click.BadParameter(f"Failed to import module {parts[0]}, error: {e}")
+        except AttributeError as e:
+            raise click.BadParameter(f"Failed to find attribute {parts[1]} in module {parts[0]}, error: {e}")
 
 
 class JSONIteratorParamType(click.ParamType):
@@ -251,13 +269,13 @@ class UnionParamType(click.ParamType):
         unprocessed = []
         str_types = []
         others = []
-        for t in tp:
-            if isinstance(t, type(click.UNPROCESSED)):
-                unprocessed.append(t)
-            elif isinstance(t, type(click.STRING)):
-                str_types.append(t)
+        for p in tp:
+            if isinstance(p, type(click.UNPROCESSED)):
+                unprocessed.append(p)
+            elif isinstance(p, type(click.STRING)):
+                str_types.append(p)
             else:
-                others.append(t)
+                others.append(p)
         return others + str_types + unprocessed
 
     def convert(
@@ -269,11 +287,11 @@ class UnionParamType(click.ParamType):
         """
         if isinstance(value, ArtifactQuery):
             return value
-        for t in self._types:
+        for p in self._types:
             try:
-                return t.convert(value, param, ctx)
+                return p.convert(value, param, ctx)
             except Exception as e:
-                logging.debug(f"Ignoring conversion error for type {t} trying other variants in Union. Error: {e}")
+                logging.debug(f"Ignoring conversion error for type {p} trying other variants in Union. Error: {e}")
         raise click.BadParameter(f"Failed to convert {value} to any of the types {self._types}")
 
 
