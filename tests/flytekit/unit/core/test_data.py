@@ -568,4 +568,3 @@ def test_async_download_from_s3():
     print(f"Time taken (async): {end_time - start_time}")
     print(f"Wall time taken (async): {end_wall_time - start_wall_time}")
     print(f"Process time taken (async): {end_process_time - start_process_time}")
-
