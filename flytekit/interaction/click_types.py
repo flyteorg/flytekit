@@ -2,6 +2,7 @@ import dataclasses
 import datetime
 import enum
 import importlib
+import importlib.util
 import json
 import logging
 import os
@@ -39,7 +40,10 @@ def is_pydantic_basemodel(python_type: typing.Type) -> bool:
         return False
     else:
         try:
-            from pydantic.v1 import BaseModel
+            from pydantic import BaseModel as BaseModelV2
+            from pydantic.v1 import BaseModel as BaseModelV1
+
+            return issubclass(python_type, BaseModelV1) or issubclass(python_type, BaseModelV2)
         except ImportError:
             from pydantic import BaseModel
 
@@ -374,7 +378,24 @@ class JsonParamType(click.ParamType):
             return parsed_value
 
         if is_pydantic_basemodel(self._python_type):
-            return self._python_type.parse_raw(json.dumps(parsed_value))  # type: ignore
+            """
+            This function supports backward compatibility for the Pydantic v1 plugin.
+            If the class is a Pydantic BaseModel, it attempts to parse JSON input using
+            the appropriate version of Pydantic (v1 or v2).
+            """
+            try:
+                if importlib.util.find_spec("pydantic.v1") is not None:
+                    from pydantic import BaseModel as BaseModelV2
+
+                    if issubclass(self._python_type, BaseModelV2):
+                        return self._python_type.model_validate_json(
+                            json.dumps(parsed_value), strict=False, context={"deserialize": True}
+                        )
+            except ImportError:
+                pass
+
+            # The behavior of the Pydantic v1 plugin.
+            return self._python_type.parse_raw(json.dumps(parsed_value))
 
         # Ensure that the python type has `from_json` function
         if not hasattr(self._python_type, "from_json"):
