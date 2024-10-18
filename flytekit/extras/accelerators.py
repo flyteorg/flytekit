@@ -285,3 +285,58 @@ class _A100_80GB(_A100_80GB_Base):
 #: .. autoclass:: _A100_80GB
 #:    :members:
 A100_80GB = _A100_80GB()
+
+
+class _V5E_Base(MultiInstanceGPUAccelerator):
+    device = "tpu-v5-lite-podslice"
+
+
+class _V5E(_V5E_Base):
+    """
+    Slices of a `Google Cloud TPU v5e <https://cloud.google.com/tpu/docs/v5e>`_.
+    """
+
+    slice_1x1 = _V5E_Base.partitioned("1x1")
+    """
+    1x1 topology representing 1 TPU chip or 1/8 of a host.
+    """
+    slice_2x2 = _V5E_Base.partitioned("2x2")
+    """
+    2x2 topology representing 4 TPU chip or 1/2 of a host.
+    """
+    slice_2x4 = _V5E_Base.partitioned("2x4")
+    """
+    2x4 topology representing 8 TPU chip or 1 host.
+    """
+    slice_4x4 = _V5E_Base.partitioned("4x4")
+    """
+    4x4 topology representing 16 TPU chip or 2 hosts.
+    """
+    slice_4x8 = _V5E_Base.partitioned("4x8")
+    """
+    4x8 topology representing 32 TPU chip or 4 hosts.
+    """
+    slice_8x8 = _V5E_Base.partitioned("8x8")
+    """
+    8x8 topology representing 64 TPU chip or 8 hosts.
+    """
+    slice_8x16 = _V5E_Base.partitioned("8x16")
+    """
+    8x16 topology representing 128 TPU chip or 16 hosts.
+    """
+    slice_16x16 = _V5E_Base.partitioned("16x16")
+    """
+    16x16 topology representing 256 TPU chip or 32 hosts.
+    """
+
+
+#: use this constant to specify that the task should run on V5E TPU.
+#: `Google V5E Cloud TPU <https://cloud.google.com/tpu/docs/v5e>`_.
+#:
+#: Use pre-defined slices (as instance attributes). For example, to specify a 2x4 slice, use
+#: ``V5E.slice_2x4``.
+#: All available partitions are listed below:
+#:
+#: .. autoclass:: _V5E
+#:    :members:
+V5E = _V5E()
