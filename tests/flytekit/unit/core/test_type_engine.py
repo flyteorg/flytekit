@@ -3692,3 +3692,13 @@ def test_structured_dataset_collection():
     lv = TypeEngine.to_literal(FlyteContext.current_context(), [[StructuredDataset(df)]],
                                WineTypeListList, lt)
     assert lv is not None
+
+
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
+def test_structured_dataset_mismatch():
+    import pandas as pd
+
+    df = pd.DataFrame({"alcohol": [1.0, 2.0], "malic_acid": [2.0, 3.0]})
+    transformer = TypeEngine.get_transformer(StructuredDataset)
+    with pytest.raises(TypeTransformerFailedError):
+        transformer.to_literal(FlyteContext.current_context(), df, StructuredDataset, TypeEngine.to_literal_type(StructuredDataset))
