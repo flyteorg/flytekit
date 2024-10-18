@@ -1,5 +1,6 @@
 import io
 import os
+import fsspec
 import pathlib
 import random
 import string
@@ -11,6 +12,7 @@ import pytest
 from azure.identity import ClientSecretCredential, DefaultAzureCredential
 
 from flytekit.core.data_persistence import FileAccessProvider
+from flytekit.core.local_fsspec import FlyteLocalFileSystem
 
 
 def test_get_manual_random_remote_path():
@@ -190,3 +192,18 @@ def test_initialise_azure_file_provider_with_default_credential():
         fp = FileAccessProvider("/tmp", "abfs://container/path/within/container")
         assert fp.get_filesystem().account_name == "accountname"
         assert isinstance(fp.get_filesystem().sync_credential, DefaultAzureCredential)
+
+
+def test_get_file_system():
+    # Test that custom args are not swallowed by get_filesystem
+
+    class MockFileSystem(FlyteLocalFileSystem):
+        def __init__(self, *args, **kwargs):
+            assert "test_arg" in kwargs
+            del kwargs["test_arg"]
+            super().__init__(*args, **kwargs)
+
+    fsspec.register_implementation("testgetfs", MockFileSystem)
+
+    fp = FileAccessProvider("/tmp", "s3://my-bucket")
+    fp.get_filesystem("testgetfs", test_arg="test_arg")

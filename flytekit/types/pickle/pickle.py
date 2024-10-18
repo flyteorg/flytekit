@@ -62,6 +62,10 @@ class FlytePickle(typing.Generic[T]):
 
         return await ctx.file_access.async_put_raw_data(uri)
 
+    """
+    this also needs to be updated, or both not updated
+    """
+
     @classmethod
     def from_pickle(cls, uri: str) -> typing.Any:
         ctx = FlyteContextManager.current_context()

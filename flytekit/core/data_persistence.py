@@ -347,9 +347,6 @@ class FileAccessProvider(object):
             if "metadata" not in kwargs:
                 kwargs["metadata"] = {}
             kwargs["metadata"].update(self._execution_metadata)
-        """
-        Need to check here for async fs or sync
-        """
         if isinstance(file_system, AsyncFileSystem):
             dst = await file_system._put(from_path, to_path, recursive=recursive, **kwargs)  # pylint: disable=W0212
         else:
@@ -394,10 +391,6 @@ class FileAccessProvider(object):
         :return: Returns the final path data was written to.
         """
         # First figure out what the destination path should be, then call put.
-        """
-        update maybe delete the get async file system function
-        Do this first and then make the local file system async
-        """
         upload_prefix = self.get_random_string() if upload_prefix is None else upload_prefix
         to_path = self.join(self.raw_output_prefix, upload_prefix) if not skip_raw_data_prefix else upload_prefix
         if file_name:
@@ -469,6 +462,7 @@ class FileAccessProvider(object):
 
         raise FlyteAssertion(f"Unsupported lpath type {type(lpath)}")
 
+    # Public synchronous version
     put_raw_data = loop_manager.synced(async_put_raw_data)
 
     @staticmethod
@@ -614,10 +608,7 @@ class FileAccessProvider(object):
                 f"Original exception: {str(ex)}"
             )
 
-    # get_data = loop_manager.synced(async_get_data)
-
-    def get_data(self, remote_path: str, local_path: str, is_multipart: bool = False, **kwargs):
-        loop_manager.run_sync(self.async_get_data, remote_path, local_path, is_multipart, **kwargs)
+    get_data = loop_manager.synced(async_get_data)
 
     async def async_put_data(
         self, local_path: Union[str, os.PathLike], remote_path: str, is_multipart: bool = False, **kwargs
@@ -629,9 +620,6 @@ class FileAccessProvider(object):
         :param local_path:
         :param remote_path:
         :param is_multipart:
-        """
-        """
-        write a test to confirm that a local path that's a folder is using async
         """
         try:
             local_path = str(local_path)
@@ -650,7 +638,7 @@ class FileAccessProvider(object):
                 f"Original exception: {str(ex)}"
             ) from ex
 
-    # Public synchronous version of async_put_data
+    # Public synchronous version
     put_data = loop_manager.synced(async_put_data)
 
 
