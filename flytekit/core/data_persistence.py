@@ -217,7 +217,7 @@ class FileAccessProvider(object):
 
     def get_async_filesystem_for_path(self, path: str = "", anonymous: bool = False, **kwargs) -> AsyncFileSystem:
         protocol = get_protocol(path)
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
 
         return self.get_filesystem(protocol, anonymous=anonymous, path=path, asynchronous=True, loop=loop, **kwargs)
 
