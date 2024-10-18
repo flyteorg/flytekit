@@ -150,11 +150,11 @@ def test_dispatch_execute_exception_with_multi_error_files(mock_write_to_file, m
             assert isinstance(args[0], ErrorDocument)
             container_error = args[0].error
             assert container_error.timestamp.seconds > 0
-            assert container_error.worker == "worker" 
+            assert container_error.worker == "worker"
             error_file_path = args[1]
             error_filename_base, error_filename_ext = os.path.splitext(os.path.split(error_file_path)[1])
             assert error_filename_base.startswith("error-")
-            uuid.UUID(hex=error_filename_base[6:], version=4) 
+            uuid.UUID(hex=error_filename_base[6:], version=4)
             assert error_filename_ext == ".pb"
 
         mock_write_to_file.side_effect = verify_output

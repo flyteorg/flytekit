@@ -297,7 +297,7 @@ def get_container_error_timestamp(e: Optional[Exception] = None) -> Timestamp:
     Parameters
     ----------
     e : Exception, optional
-        Exception that has occured.
+        Exception that has occurred.
 
     Returns
     -------
