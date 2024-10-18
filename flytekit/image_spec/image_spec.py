@@ -37,6 +37,7 @@ class ImageSpec:
         env: environment variables of the image.
         registry: registry of the image.
         packages: list of python packages to install.
+        package_version_overrides: list of python packages with specific versions to install.
         conda_packages: list of conda packages to install.
         conda_channels: list of conda channels.
         requirements: path to the requirements.txt file.
@@ -70,6 +71,7 @@ class ImageSpec:
     env: Optional[typing.Dict[str, str]] = None
     registry: Optional[str] = None
     packages: Optional[List[str]] = None
+    package_version_overrides: Optional[List[str]] = None
     conda_packages: Optional[List[str]] = None
     conda_channels: Optional[List[str]] = None
     requirements: Optional[str] = None
@@ -107,6 +109,7 @@ class ImageSpec:
 
         parameters_str_list = [
             "packages",
+            "package_version_overrides",
             "conda_channels",
             "conda_packages",
             "apt_packages",
@@ -305,6 +308,21 @@ class ImageSpec:
         Builder that returns a new image speck with additional python packages that will be installed during the building process.
         """
         new_image_spec = self._update_attribute("packages", packages)
+        return new_image_spec
+
+    def with_package_version_overrides(self, package_version_overrides: Union[str, List[str]]) -> "ImageSpec":
+        """
+        Builder that returns a new image speck with specific versions of python packages that will be installed during the building process.
+        """
+        new_image_spec = copy.deepcopy(self)
+        if new_image_spec.package_version_overrides is None:
+            new_image_spec.package_version_overrides = []
+
+        if isinstance(package_version_overrides, List):
+            new_image_spec.package_version_overrides.extend(package_version_overrides)
+        else:
+            new_image_spec.package_version_overrides.append(package_version_overrides)
+
         return new_image_spec
 
     def with_apt_packages(self, apt_packages: Union[str, List[str]]) -> "ImageSpec":
