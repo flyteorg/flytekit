@@ -8,6 +8,7 @@ import signal
 import subprocess
 import sys
 import tempfile
+import textwrap
 import time
 import traceback
 import uuid
@@ -268,19 +269,24 @@ def _dispatch_execute(
 
 
 def get_traceback_str(e: Exception) -> str:
+    # First, format the exception stack trace
+    root_exception = e
     if isinstance(e, FlyteUserRuntimeException):
         # If the exception is a user exception, we want to capture the traceback of the exception that was raised by the
         # user code, not the Flyte internals.
-        tb = e.__cause__.__traceback__ if e.__cause__ else e.__traceback__
-    else:
-        tb = e.__traceback__
-    lines = traceback.format_tb(tb)
-    lines = [line.rstrip() for line in lines]
-    tb_str = "\n    ".join(lines)
-    format_str = "Traceback (most recent call last):\n" "\n    {traceback}\n" "\n" "Message:\n" "\n" "    {message}"
-
+        root_exception = e.__cause__ if e.__cause__ else e
+    indentation = "    "
+    exception_str = textwrap.indent(
+        text="".join(traceback.format_exception(type(root_exception), root_exception, root_exception.__traceback__)),
+        prefix=indentation,
+    )
+    # Second, format a summary exception message
     value = e.value if isinstance(e, FlyteUserRuntimeException) else e
-    return format_str.format(traceback=tb_str, message=f"{type(value).__name__}: {value}")
+    message = f"{type(value).__name__}: {value}"
+    message_str = textwrap.indent(text=message, prefix=indentation)
+    # Last, create the overall traceback string
+    format_str = "Trace:\n\n{exception_str}\nMessage:\n\n{message_str}"
+    return format_str.format(exception_str=exception_str, message_str=message_str)
 
 
 def get_container_error_timestamp(e: Optional[Exception] = None) -> Timestamp:
