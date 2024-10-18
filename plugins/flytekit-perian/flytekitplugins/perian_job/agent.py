@@ -35,13 +35,13 @@ PERIAN_API_URL = "https://api.perian.cloud"
 
 @dataclass
 class PerianMetadata(ResourceMeta):
-    """Metadata for Perian jobs"""
+    """Metadata for PERIAN jobs"""
 
     job_id: str
 
 
 class PerianAgent(AsyncAgentBase):
-    """Flyte Agent for executing tasks on Perian"""
+    """Flyte Agent for executing tasks on PERIAN Job Platform"""
 
     name = "Perian Agent"
 

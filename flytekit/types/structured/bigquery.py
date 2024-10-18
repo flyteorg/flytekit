@@ -50,12 +50,19 @@ def _read_from_bq(
     requested_session = types.ReadSession(table=table, data_format=types.DataFormat.ARROW, read_options=read_options)
     read_session = client.create_read_session(parent=parent, read_session=requested_session)
 
-    stream = read_session.streams[0]
-    reader = client.read_rows(stream.name)
     frames = []
-    for message in reader.rows().pages:
-        frames.append(message.to_dataframe())
-    return pd.concat(frames)
+    for stream in read_session.streams:
+        reader = client.read_rows(stream.name)
+        for message in reader.rows().pages:
+            frames.append(message.to_dataframe())
+
+    if len(frames) > 0:
+        df = pd.concat(frames)
+    else:
+        schema = pa.ipc.read_schema(pa.py_buffer(read_session.arrow_schema.serialized_schema))
+        df = schema.empty_table().to_pandas()
+
+    return df
 
 
 class PandasToBQEncodingHandlers(StructuredDatasetEncoder):

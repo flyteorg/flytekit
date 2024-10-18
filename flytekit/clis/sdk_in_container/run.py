@@ -941,7 +941,9 @@ class YamlFileReadingCommand(click.RichCommand):
             f = args.pop(idx)
             with open(f, "r") as f:
                 inputs = load_inputs(f.read())
-        elif not sys.stdin.isatty():
+        # If the last argument is a dash, read from stdin
+        elif len(args) > 0 and args[-1] == "-":
+            args.pop(-1)
             f = sys.stdin.read()
             if f != "":
                 inputs = load_inputs(f)
