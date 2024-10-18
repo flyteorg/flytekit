@@ -55,7 +55,8 @@ class MarkdownRenderer:
     """Convert a markdown string to HTML and return HTML as a unicode string."""
 
     def to_html(self, text: str) -> str:
-        return MarkdownIt().render(text)
+        md = MarkdownIt("gfm-like").enable('table')  # enable table plugin
+        return md.render(text)
 
 
 class SourceCodeRenderer:
