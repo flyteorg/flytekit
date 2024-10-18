@@ -18,7 +18,7 @@ from flytekit.core.promise import VoidPromise
 from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions import user as user_exceptions
-from flytekit.exceptions.scopes import system_entry_point
+from flytekit.exceptions.scopes import system_entry_point, user_entry_point
 from flytekit.exceptions.user import FlyteRecoverableException, FlyteUserRuntimeException
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import errors as error_models
@@ -453,3 +453,52 @@ def test_get_traceback_str():
     expected_error_re = re.compile(expected_error_pattern)
     print(traceback_str)  # helpful for debugging
     assert expected_error_re.match(traceback_str) is not None
+
+# Write a unit test to exercise the offloading of literals in entrypoint.py
+@mock.patch("flytekit.core.utils.load_proto_from_file")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_data")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
+@mock.patch("flytekit.core.utils.write_proto_to_file")
+def test_dispatch_execute_offloaded_literals(mock_write_to_file, mock_upload_dir, mock_get_data, mock_load_proto):
+    # Just leave these here, mock them out so nothing happens
+    mock_get_data.return_value = True
+    mock_upload_dir.return_value = True
+
+    @task
+    def t1(a: typing.List[int]) -> typing.List[str]:
+        return [f"string is: {x}" for x in a]
+
+    ctx = context_manager.FlyteContext.current_context()
+    with context_manager.FlyteContextManager.with_context(
+        ctx.with_execution_state(
+            ctx.execution_state.with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION)
+        )
+    ) as ctx:
+        xs: typing.List[int] = [5]*1_000
+        input_literal_map = _literal_models.LiteralMap(
+            {
+                "a": _literal_models.Literal(
+                    collection=_literal_models.LiteralCollection(
+                        literals=[
+                            _literal_models.Literal(
+                                scalar=_literal_models.Scalar(primitive=_literal_models.Primitive(integer=x)),
+                            ) for x in xs
+                        ]
+                    )
+                )
+            }
+        )
+        mock_load_proto.return_value = input_literal_map.to_flyte_idl()
+
+        files = OrderedDict()
+        mock_write_to_file.side_effect = get_output_collector(files)
+        # See comment in test_dispatch_execute_ignore for why we need to decorate
+        user_entry_point(_dispatch_execute)(ctx, lambda: t1, "inputs path", "outputs prefix")
+        assert len(files) == 2
+
+        k = list(files.keys())[0]
+        assert "outputs.pb" in k
+
+        # v = list(files.values())[0]
+        # lm = _literal_models.LiteralMap.from_flyte_idl(v)
+        # assert lm.literals["o0"].scalar.primitive.string_value == "string is: 5"

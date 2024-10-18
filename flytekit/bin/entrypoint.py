@@ -53,6 +53,10 @@ from flytekit.tools.fast_registration import download_distribution as _download_
 from flytekit.tools.module_loader import load_object_from_module
 
 
+# MAX_OFFLOADED_LITERAL_SIZE_BYTES = 10 * 1024 * 1024
+MAX_OFFLOADED_LITERAL_SIZE_BYTES = 10
+
+
 def get_version_message():
     import flytekit
 
@@ -137,7 +141,34 @@ def _dispatch_execute(
             logger.warning("Task produces no outputs")
             output_file_dict = {_constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(literals={})}
         elif isinstance(outputs, _literal_models.LiteralMap):
-            output_file_dict = {_constants.OUTPUT_FILE_NAME: outputs}
+            # output_file_dict = {_constants.OUTPUT_FILE_NAME: outputs}
+            offloaded_literals = {}
+            new_outputs = {}
+            # Offload literals if they are too large
+            for k, v in outputs.literals.items():
+                assert type(v) == _literal_models.Literal
+                lit = v.to_flyte_idl()
+                if lit.ByteSize() > MAX_OFFLOADED_LITERAL_SIZE_BYTES:
+                    logger.debug(f"Literal {k} is too large to be inlined, offloading to metadata bucket")
+
+                    # TODO: hash calculation
+
+                    offloaded_filename = f"{k}_offloaded_metadata.pb"
+                    # Offload the literal to a remote file in the metadata bucket
+                    offloaded_literal = _literal_models.Literal(
+                        offloaded_metadata=_literal_models.LiteralOffloadedMetadata(
+                            uri=offloaded_filename,
+                            size_bytes=lit.ByteSize(),
+                            # TODO: do I have to set the inferred literal type?
+                        )
+                    )
+                    new_outputs[k] = offloaded_literal
+                    offloaded_literals[offloaded_filename] = v
+                else:
+                    new_outputs[k] = v
+            outputs = _literal_models.LiteralMap(literals=new_outputs)
+
+            output_file_dict = {_constants.OUTPUT_FILE_NAME: outputs, **offloaded_literals}
         elif isinstance(outputs, _dynamic_job.DynamicJobSpec):
             output_file_dict = {_constants.FUTURES_FILE_NAME: outputs}
         else:
