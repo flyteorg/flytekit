@@ -518,9 +518,10 @@ def test_pickle_type():
         t.convert("typing:not_exists", None, None)
 
     # test that it can load a variable from a module
-    with tempfile.NamedTemporaryFile("w", dir=".", suffix=".py") as f:
+    with tempfile.NamedTemporaryFile("w", dir=".", suffix=".py", delete=True, delete_on_close=False) as f:
         f.write("a = 1")
         f.flush()
+        f.close()
         # find the base name of the file
         basename = os.path.basename(f.name).split(".")[0]
         assert t.convert(f"{basename}:a", None, None) == 1
