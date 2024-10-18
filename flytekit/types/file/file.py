@@ -309,6 +309,9 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
     def download(self) -> str:
         return self.__fspath__()
 
+    async def _download(self) -> str:
+        return self.__fspath__()
+
     @contextmanager
     def open(
         self,

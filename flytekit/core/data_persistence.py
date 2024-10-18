@@ -18,6 +18,7 @@ simple implementation that ships with the core.
 
 """
 
+import asyncio
 import io
 import os
 import pathlib
@@ -210,13 +211,15 @@ class FileAccessProvider(object):
         storage_options = get_fsspec_storage_options(
             protocol=protocol, anonymous=anonymous, data_config=self._data_config, **kwargs
         )
+        kwargs.update(storage_options)
 
-        return fsspec.filesystem(protocol, **storage_options)
+        return fsspec.filesystem(protocol, **kwargs)
 
     def get_async_filesystem_for_path(self, path: str = "", anonymous: bool = False, **kwargs) -> AsyncFileSystem:
         protocol = get_protocol(path)
+        loop = asyncio.get_event_loop()
 
-        return self.get_filesystem(protocol, anonymous=anonymous, path=path, asynchronous=True, **kwargs)
+        return self.get_filesystem(protocol, anonymous=anonymous, path=path, asynchronous=True, loop=loop, **kwargs)
 
     def get_filesystem_for_path(self, path: str = "", anonymous: bool = False, **kwargs) -> fsspec.AbstractFileSystem:
         protocol = get_protocol(path)
@@ -301,7 +304,10 @@ class FileAccessProvider(object):
                     self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True
                 )
             logger.info(f"Getting {from_path} to {to_path}")
-            dst = file_system.get(from_path, to_path, recursive=recursive, **kwargs)
+            if isinstance(file_system, AsyncFileSystem):
+                dst = await file_system._get(from_path, to_path, recursive=recursive, **kwargs)  # pylint: disable=W0212
+            else:
+                dst = file_system.get(from_path, to_path, recursive=recursive, **kwargs)
             if isinstance(dst, (str, pathlib.Path)):
                 return dst
             return to_path
@@ -309,10 +315,13 @@ class FileAccessProvider(object):
             logger.debug(f"Error in getting {from_path} to {to_path} rec {recursive} {oe}")
             if not file_system.exists(from_path):
                 raise FlyteDataNotFoundException(from_path)
-            file_system = self.get_filesystem(get_protocol(from_path), anonymous=True)
+            file_system = self.get_filesystem(get_protocol(from_path), anonymous=True, asynchronous=True)
             if file_system is not None:
                 logger.debug(f"Attempting anonymous get with {file_system}")
-                return file_system.get(from_path, to_path, recursive=recursive, **kwargs)
+                if isinstance(file_system, AsyncFileSystem):
+                    return await file_system._get(from_path, to_path, recursive=recursive, **kwargs)  # pylint: disable=W0212
+                else:
+                    return file_system.get(from_path, to_path, recursive=recursive, **kwargs)
             raise oe
 
     @retry_request
@@ -605,7 +614,10 @@ class FileAccessProvider(object):
                 f"Original exception: {str(ex)}"
             )
 
-    get_data = loop_manager.synced(async_get_data)
+    # get_data = loop_manager.synced(async_get_data)
+
+    def get_data(self, remote_path: str, local_path: str, is_multipart: bool = False, **kwargs):
+        loop_manager.run_sync(self.async_get_data, remote_path, local_path, is_multipart, **kwargs)
 
     async def async_put_data(
         self, local_path: Union[str, os.PathLike], remote_path: str, is_multipart: bool = False, **kwargs
