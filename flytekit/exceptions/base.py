@@ -1,4 +1,4 @@
-import time
+from typing import Optional
 
 
 class _FlyteCodedExceptionMetaclass(type):
@@ -10,23 +10,16 @@ class _FlyteCodedExceptionMetaclass(type):
 class FlyteException(Exception, metaclass=_FlyteCodedExceptionMetaclass):
     _ERROR_CODE = "UnknownFlyteException"
 
-    def __init__(self, message: str) -> None:
+    def __init__(self, message: str, timestamp: Optional[float] = None) -> None:
         super().__init__(message)
-        self._timestamp = time.time()
+        self._timestamp = timestamp
 
     @property
-    def timestamp(self) -> float:
+    def timestamp(self) -> Optional[float]:
         """
         The timestamp as fractional seconds since epoch
         """
         return self._timestamp
-
-    @timestamp.setter
-    def timestamp(self, value: float) -> None:
-        """
-        Set the timestamp as fractional seconds since epoch
-        """
-        self._timestamp = value
 
     def __str__(self):
         error_message = f"error={','.join(self.args) if self.args else 'None'}"

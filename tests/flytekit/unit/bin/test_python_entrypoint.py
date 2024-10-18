@@ -112,11 +112,19 @@ def test_dispatch_execute_exception(mock_write_to_file, mock_upload_dir, mock_ge
         _dispatch_execute(ctx, lambda: python_task, "inputs path", "outputs prefix")
         assert mock_write_to_file.call_count == 1
 
+@pytest.mark.parametrize(
+    "exception_value",
+    [
+        FlyteException("exception", timestamp=1),
+        FlyteException("exception"),
+        Exception("exception"),
+    ]
+)
 @mock.patch("flytekit.core.utils.load_proto_from_file")
 @mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_data")
 @mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
 @mock.patch("flytekit.core.utils.write_proto_to_file")
-def test_dispatch_execute_exception_with_multi_error_files(mock_write_to_file, mock_upload_dir, mock_get_data, mock_load_proto, monkeypatch):
+def test_dispatch_execute_exception_with_multi_error_files(mock_write_to_file, mock_upload_dir, mock_get_data, mock_load_proto, exception_value: Exception, monkeypatch):
     monkeypatch.setenv("_F_DES", "1")
     monkeypatch.setenv("_F_WN", "worker")
 
@@ -131,7 +139,7 @@ def test_dispatch_execute_exception_with_multi_error_files(mock_write_to_file, m
         )
     ) as ctx:
         python_task = mock.MagicMock()
-        python_task.dispatch_execute.side_effect = FlyteUserRuntimeException(FlyteException("exception"))
+        python_task.dispatch_execute.side_effect = FlyteUserRuntimeException(exception_value)
 
         empty_literal_map = _literal_models.LiteralMap({}).to_flyte_idl()
         mock_load_proto.return_value = empty_literal_map

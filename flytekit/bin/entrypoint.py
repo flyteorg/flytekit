@@ -78,6 +78,16 @@ def _compute_array_job_index():
 
 
 def _build_error_file_name() -> str:
+    """Get name of error file uploaded to the raw output prefix bucket.
+
+    For distributed tasks, all workers upload error files which must not overwrite each other, leading to a race condition.
+    A uuid is included to prevent this.
+
+    Returns
+    -------
+    str
+        Name of the error file.
+    """
     dist_error_strategy = get_one_of("FLYTE_INTERNAL_DIST_ERROR_STRATEGY", "_F_DES")
     if not dist_error_strategy:
         return _constants.ERROR_FILE_NAME
@@ -163,7 +173,7 @@ def _dispatch_execute(
                     message=f"Type of output received not handled {type(outputs)} outputs: {outputs}",
                     kind=_error_models.ContainerError.Kind.RECOVERABLE,
                     origin=_execution_models.ExecutionError.ErrorKind.SYSTEM,
-                    timestamp=get_timestamp(),
+                    timestamp=get_container_error_timestamp(),
                     worker=worker_name,
                 )
             )
@@ -188,7 +198,7 @@ def _dispatch_execute(
                 message=exc_str,
                 kind=kind,
                 origin=_execution_models.ExecutionError.ErrorKind.USER,
-                timestamp=get_timestamp(e.value),
+                timestamp=get_container_error_timestamp(e.value),
                 worker=worker_name,
             )
         )
@@ -208,7 +218,7 @@ def _dispatch_execute(
                 message=exc_str,
                 kind=_error_models.ContainerError.Kind.NON_RECOVERABLE,
                 origin=_execution_models.ExecutionError.ErrorKind.SYSTEM,
-                timestamp=get_timestamp(e.value),
+                timestamp=get_container_error_timestamp(e.value),
                 worker=worker_name,
             )
         )
@@ -226,7 +236,7 @@ def _dispatch_execute(
                 message=exc_str,
                 kind=_error_models.ContainerError.Kind.RECOVERABLE,
                 origin=_execution_models.ExecutionError.ErrorKind.SYSTEM,
-                timestamp=get_timestamp(e),
+                timestamp=get_container_error_timestamp(e),
                 worker=worker_name,
             )
         )
@@ -273,8 +283,26 @@ def get_traceback_str(e: Exception) -> str:
     return format_str.format(traceback=tb_str, message=f"{type(value).__name__}: {value}")
 
 
-def get_timestamp(e: Optional[Exception] = None) -> Timestamp:
-    timestamp = time.time() if e is None or not isinstance(e, FlyteException) else e.timestamp
+def get_container_error_timestamp(e: Optional[Exception] = None) -> Timestamp:
+    """Get timestamp for ContainerError.
+
+    If a flyte exception is passed, use its timestamp, otherwise, use the current time.
+
+    Parameters
+    ----------
+    e : Exception, optional
+        Exception that has occured.
+
+    Returns
+    -------
+    Timestamp
+        Timestamp to be reported in ContainerError
+    """
+    timestamp = None
+    if isinstance(e, FlyteException):
+        timestamp = e.timestamp
+    if timestamp is None:
+        timestamp = time.time()
     timstamp_secs = int(timestamp)
     timestamp_fsecs = timestamp - timstamp_secs
     timestamp_nanos = int(timestamp_fsecs * 1_000_000_000)
