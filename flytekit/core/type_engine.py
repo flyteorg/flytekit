@@ -227,30 +227,6 @@ class TypeTransformer(typing.Generic[T]):
                 decoder = MessagePackDecoder(expected_python_type, pre_decoder_func=_default_msgpack_decoder)
                 self._msgpack_decoder[expected_python_type] = decoder
             python_val = decoder.decode(binary_idl_object.value)
-            # """
-            # This is to mock the behavior as none type transformer + union transformer
-            #
-            # @dataclass
-            # class DC:
-            #     a: Optional[int]
-            #
-            # When `a` is None, both MessagePackDecoder[int].decode(a) and MessagePackDecoder[None].decode(a) will be None,
-            # which will be ambiguous for the union transformer.
-            #
-            # When `a` is int, both MessagePackDecoder[int].decode(a) and MessagePackDecoder[None].decode(a) will be int,
-            # which will be ambiguous for the union transformer.
-            #
-            # This assertion will fail when
-            # 1. `a` is None and MessagePackDecoder[int].decode(a) is None, which should fail.
-            # 2. `a` is int and MessagePackDecoder[None].decode(a) is int, which should fail.
-            #
-            # This is to avoid the above ambiguity.
-            # """
-            #
-            # if expected_python_type is NoneType:
-            #     assert python_val is None
-            # else:
-            #     assert python_val is not None
 
             return python_val
         else:
@@ -383,7 +359,6 @@ class SimpleTransformer(TypeTransformer[T]):
         This is to avoid the above ambiguity.
         """
         if binary_idl_object.tag == MESSAGEPACK:
-
             if expected_python_type in [datetime.date, datetime.datetime, datetime.timedelta]:
                 try:
                     decoder = self._msgpack_decoder[expected_python_type]
@@ -395,11 +370,6 @@ class SimpleTransformer(TypeTransformer[T]):
                 python_val = msgpack.loads(binary_idl_object.value)
 
             assert type(python_val) == expected_python_type
-
-            # if expected_python_type is NoneType:
-            #     assert python_val is None
-            # else:
-            #     assert python_val is not None
 
             return python_val
         else:
@@ -848,7 +818,7 @@ class DataclassTransformer(TypeTransformer[object]):
     def from_binary_idl(self, binary_idl_object: Binary, expected_python_type: Type[T]) -> T:
         if binary_idl_object.tag == MESSAGEPACK:
             if issubclass(expected_python_type, DataClassJSONMixin):
-                dict_obj = msgpack.loads(binary_idl_object.value, strict_map_key=False)
+                dict_obj = msgpack.loads(binary_idl_object.value, raw=False, strict_map_key=False)
                 json_str = json.dumps(dict_obj)
                 dc = expected_python_type.from_json(json_str)  # type: ignore
             else:

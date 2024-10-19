@@ -1173,15 +1173,19 @@ def test_all_types_with_optional_and_none_in_dataclass_wf():
 def test_union_in_dataclass_wf():
     @dataclass
     class DC:
-        a: Union[int, str]
-        b: Union[int, str]
+        a: Union[int, bool, str, float]
+        b: Union[int, bool, str, float]
 
     @task
-    def add(a: Union[int, str], b: Union[int, str]) -> Union[int, str]:
-        return a + b
+    def add(a: Union[int, bool, str, float], b: Union[int, bool, str, float]) -> Union[int, bool, str, float]:
+        return a + b # type: ignore
 
     @workflow
-    def wf(dc: DC) -> Union[int, str]:
+    def wf(dc: DC) -> Union[int, bool, str, float]:
         return add(dc.a, dc.b)
 
     assert wf(dc=DC(a=1, b=2)) == 3
+    assert wf(dc=DC(a=True, b=False)) == True
+    assert wf(dc=DC(a=False, b=False)) == False
+    assert wf(dc=DC(a="hello", b="world")) == "helloworld"
+    assert wf(dc=DC(a=1.0, b=2.0)) == 3.0

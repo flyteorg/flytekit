@@ -3369,7 +3369,7 @@ def test_dataclass_none_output_input_deserialization():
 
     @task
     def inner_task(input: float) -> float | None:
-        if input == 0:
+        if input == 0.0:
             return None
         return input
 
@@ -3402,9 +3402,9 @@ def test_dataclass_none_output_input_deserialization():
             output=inner_outputs.nullable_output
         )
 
-    # float_value_output = outer_workflow(OuterWorkflowInput(input=1.0)).nullable_output
-    # assert float_value_output == 1.0, f"Float value was {float_value_output}, not 1.0 as expected"
-    none_value_output = outer_workflow(OuterWorkflowInput(input=0)).nullable_output
+    float_value_output = outer_workflow(OuterWorkflowInput(input=1.0)).nullable_output
+    assert float_value_output == 1.0, f"Float value was {float_value_output}, not 1.0 as expected"
+    none_value_output = outer_workflow(OuterWorkflowInput(input=0.0)).nullable_output
     assert none_value_output is None, f"None value was {none_value_output}, not None as expected"
 
 
