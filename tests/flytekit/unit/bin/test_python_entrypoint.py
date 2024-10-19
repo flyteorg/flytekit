@@ -37,6 +37,7 @@ from flytekit.exceptions.user import FlyteRecoverableException, FlyteUserRuntime
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import errors as error_models, execution
 from flytekit.models.core import execution as execution_models
+from flytekit.bin.entrypoint import _compute_array_job_index
 from flytekit.core.utils import write_proto_to_file
 from flytekit.models.types import LiteralType, SimpleType
 
@@ -406,6 +407,16 @@ def test_dispatch_execute_system_error(mock_write_to_file, mock_upload_dir, mock
         assert "some system exception" in ed.error.message
         assert ed.error.origin == execution_models.ExecutionError.ErrorKind.SYSTEM
 
+@pytest.fixture
+def flyte_context():
+    """Fixture to set up a mock Flyte context."""
+    with mock.patch.object(context_manager.FlyteContext, 'current_context', return_value=mock.Mock()):
+        yield
+
+def test_compute_array_job_index(flyte_context):
+    assert _compute_array_job_index() == 0  
+    assert _compute_array_job_index(index=1) == 1 
+    assert _compute_array_job_index(index=2) == 2  
 
 def test_setup_disk_prefix():
     with setup_execution("qwerty") as ctx:

@@ -470,9 +470,9 @@ def setup_execution(
     if checkpoint_path is not None:
         checkpointer = SyncCheckpoint(checkpoint_dest=checkpoint_path, checkpoint_src=prev_checkpoint)
         logger.debug(f"Checkpointer created with source {prev_checkpoint} and dest {checkpoint_path}")
-    
+
     node_index = _compute_array_job_index()
-    
+
     execution_parameters = ExecutionParameters(
         execution_id=_identifier.WorkflowExecutionIdentifier(
             project=exe_project,
