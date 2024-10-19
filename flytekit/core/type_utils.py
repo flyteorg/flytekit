@@ -13,17 +13,6 @@ from flytekit.types.structured import (
     StructuredDatasetType,
 )
 
-# # Conditional import for Pydantic model_serializer
-# try:
-#     from pydantic import model_serializer, model_validator
-# except ImportError:
-#
-#     def model_serializer(f):
-#         raise FlyteAssertion("Pydantic is not installed. Please install it to use this feature.")
-#
-#     def model_validator(*args, **kwargs):
-#         raise FlyteAssertion("Pydantic is not installed. Please install it to use this feature.")
-
 # Conditional import for Pydantic model_serializer and model_validator
 try:
     from pydantic import model_serializer, model_validator
