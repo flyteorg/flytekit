@@ -227,29 +227,30 @@ class TypeTransformer(typing.Generic[T]):
                 decoder = MessagePackDecoder(expected_python_type, pre_decoder_func=_default_msgpack_decoder)
                 self._msgpack_decoder[expected_python_type] = decoder
             python_val = decoder.decode(binary_idl_object.value)
-            """
-            This is to mock the behavior as none type transformer + union transformer
-
-            @dataclass
-            class DC:
-                a: Optional[int]
-
-            When `a` is None, both MessagePackDecoder[int].decode(a) and MessagePackDecoder[None].decode(a) will be None,
-            which will be ambiguous for the union transformer.
-
-            When `a` is int, both MessagePackDecoder[int].decode(a) and MessagePackDecoder[None].decode(a) will be int,
-            which will be ambiguous for the union transformer.
-
-            This assertion will fail when
-            1. `a` is None and MessagePackDecoder[int].decode(a) is None, which should fail.
-            2. `a` is int and MessagePackDecoder[None].decode(a) is int, which should fail.
-
-            This is to avoid the above ambiguity.
-            """
-            if expected_python_type is NoneType:
-                assert python_val is None
-            else:
-                assert python_val is not None
+            # """
+            # This is to mock the behavior as none type transformer + union transformer
+            #
+            # @dataclass
+            # class DC:
+            #     a: Optional[int]
+            #
+            # When `a` is None, both MessagePackDecoder[int].decode(a) and MessagePackDecoder[None].decode(a) will be None,
+            # which will be ambiguous for the union transformer.
+            #
+            # When `a` is int, both MessagePackDecoder[int].decode(a) and MessagePackDecoder[None].decode(a) will be int,
+            # which will be ambiguous for the union transformer.
+            #
+            # This assertion will fail when
+            # 1. `a` is None and MessagePackDecoder[int].decode(a) is None, which should fail.
+            # 2. `a` is int and MessagePackDecoder[None].decode(a) is int, which should fail.
+            #
+            # This is to avoid the above ambiguity.
+            # """
+            #
+            # if expected_python_type is NoneType:
+            #     assert python_val is None
+            # else:
+            #     assert python_val is not None
 
             return python_val
         else:
@@ -360,6 +361,49 @@ class SimpleTransformer(TypeTransformer[T]):
                 f"Expected value of type {self._type} but got '{python_val}' of type {type(python_val)}"
             )
         return self._to_literal_transformer(python_val)
+
+    def from_binary_idl(self, binary_idl_object: Binary, expected_python_type: Type[T]) -> Optional[T]:
+        """
+        This is to mock the behavior as type transformer + union transformer
+
+        @dataclass
+        class DC:
+            a: Optional[int]
+
+        When `a` is None, both MessagePackDecoder[int].decode(a) and MessagePackDecoder[None].decode(a) will be None,
+        which will be ambiguous for the union transformer.
+
+        When `a` is int, both MessagePackDecoder[int].decode(a) and MessagePackDecoder[None].decode(a) will be int,
+        which will be ambiguous for the union transformer.
+
+        This assertion will fail when
+        1. `a` is None and MessagePackDecoder[int].decode(a) is None, which should fail.
+        2. `a` is int and MessagePackDecoder[None].decode(a) is int, which should fail.
+
+        This is to avoid the above ambiguity.
+        """
+        if binary_idl_object.tag == MESSAGEPACK:
+
+            if expected_python_type in [datetime.date, datetime.datetime, datetime.timedelta]:
+                try:
+                    decoder = self._msgpack_decoder[expected_python_type]
+                except KeyError:
+                    decoder = MessagePackDecoder(expected_python_type, pre_decoder_func=_default_msgpack_decoder)
+                    self._msgpack_decoder[expected_python_type] = decoder
+                python_val = decoder.decode(binary_idl_object.value)
+            else:
+                python_val = msgpack.loads(binary_idl_object.value)
+
+            assert type(python_val) == expected_python_type
+
+            # if expected_python_type is NoneType:
+            #     assert python_val is None
+            # else:
+            #     assert python_val is not None
+
+            return python_val
+        else:
+            raise TypeTransformerFailedError(f"Unsupported binary format `{binary_idl_object.tag}`")
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
         expected_python_type = get_underlying_type(expected_python_type)

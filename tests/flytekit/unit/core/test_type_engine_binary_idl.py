@@ -4,7 +4,7 @@ import tempfile
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 import pytest
 from google.protobuf import json_format as _json_format
@@ -1169,3 +1169,19 @@ def test_all_types_with_optional_and_none_in_dataclass_wf():
                               enum_status=dc.enum_status)
 
     wf(dc=DC())
+
+def test_union_in_dataclass_wf():
+    @dataclass
+    class DC:
+        a: Union[int, str]
+        b: Union[int, str]
+
+    @task
+    def add(a: Union[int, str], b: Union[int, str]) -> Union[int, str]:
+        return a + b
+
+    @workflow
+    def wf(dc: DC) -> Union[int, str]:
+        return add(dc.a, dc.b)
+
+    assert wf(dc=DC(a=1, b=2)) == 3
