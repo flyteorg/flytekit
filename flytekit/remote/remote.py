@@ -898,7 +898,6 @@ class FlyteRemote(object):
                 domain=self.default_domain,
             )
 
-        self._resolve_identifier(ResourceType.WORKFLOW, entity.name, version, serialization_settings)
         ident = run_sync(
             self._serialize_and_register, entity, serialization_settings, version, options, default_launch_plan
         )
@@ -1086,7 +1085,7 @@ class FlyteRemote(object):
 
     def register_script(
         self,
-        entity: typing.Union[WorkflowBase, PythonTask],
+        entity: typing.Union[WorkflowBase, PythonTask, LaunchPlan],
         image_config: typing.Optional[ImageConfig] = None,
         version: typing.Optional[str] = None,
         project: typing.Optional[str] = None,
@@ -1099,7 +1098,7 @@ class FlyteRemote(object):
         module_name: typing.Optional[str] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
         fast_package_options: typing.Optional[FastPackageOptions] = None,
-    ) -> typing.Union[FlyteWorkflow, FlyteTask]:
+    ) -> typing.Union[FlyteWorkflow, FlyteTask, FlyteLaunchPlan]:
         """
         Use this method to register a workflow via script mode.
         :param destination_dir: The destination directory where the workflow will be copied to.
@@ -1170,9 +1169,13 @@ class FlyteRemote(object):
 
         if isinstance(entity, PythonTask):
             return self.register_task(entity, serialization_settings, version)
-        fwf = self.register_workflow(entity, serialization_settings, version, default_launch_plan, options)
-        fwf._python_interface = entity.python_interface
-        return fwf
+
+        if isinstance(entity, WorkflowBase):
+            return self.register_workflow(entity, serialization_settings, version, default_launch_plan, options)
+        if isinstance(entity, LaunchPlan):
+            # If it's a launch plan, we need to register the workflow first
+            return self.register_launch_plan(entity, version, project, domain, options, serialization_settings)
+        raise ValueError(f"Unsupported entity type {type(entity)}")
 
     def register_launch_plan(
         self,
@@ -1181,6 +1184,7 @@ class FlyteRemote(object):
         project: typing.Optional[str] = None,
         domain: typing.Optional[str] = None,
         options: typing.Optional[Options] = None,
+        serialization_settings: typing.Optional[SerializationSettings] = None,
     ) -> FlyteLaunchPlan:
         """
         Register a given launchplan, possibly applying overrides from the provided options.
@@ -1188,22 +1192,28 @@ class FlyteRemote(object):
         :param version:
         :param project: Optionally provide a project, if not already provided in flyteremote constructor or a separate one
         :param domain: Optionally provide a domain, if not already provided in FlyteRemote constructor or a separate one
+        :param serialization_settings: Optionally provide serialization settings, if not provided, will use the default
         :param options:
         :return:
         """
-        ss = SerializationSettings(
-            image_config=ImageConfig(),
-            project=project or self.default_project,
-            domain=domain or self.default_domain,
-            version=version,
+        if serialization_settings is None:
+            _, _, _, module_file = extract_task_module(entity)
+            project_root = _find_project_root(module_file)
+            serialization_settings = SerializationSettings(
+                image_config=ImageConfig.auto_default_image(),
+                source_root=project_root,
+                project=project or self.default_project,
+                domain=domain or self.default_domain,
+            )
+
+        ident = run_sync(
+            self._serialize_and_register,
+            entity,
+            serialization_settings,
+            version,
+            options,
+            False,
         )
-        ident = self._resolve_identifier(ResourceType.LAUNCH_PLAN, entity.name, version, ss)
-        m = OrderedDict()
-        idl_lp = get_serializable_launch_plan(m, ss, entity, recurse_downstream=False, options=options)
-        try:
-            self.client.create_launch_plan(ident, idl_lp.spec)
-        except FlyteEntityAlreadyExistsException:
-            logger.debug("Launchplan already exists, ignoring")
         flp = self.fetch_launch_plan(ident.project, ident.domain, ident.name, ident.version)
         flp._python_interface = entity.python_interface
         return flp
