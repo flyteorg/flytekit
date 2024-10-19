@@ -898,7 +898,7 @@ class Container(_common.FlyteIdlEntity):
         return self._resources
 
     @property
-    def env(self):
+    def env(self) -> typing.Dict[str, str]:
         """
         A definition of key-value pairs for environment variables.  Currently, only str->str is
             supported.

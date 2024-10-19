@@ -59,9 +59,12 @@ def print_ls_tree(source: os.PathLike, ls: typing.List[str]):
             current = tree_root
             current_path = pathlib.Path(source)
             for subdir in fpp.parent.relative_to(source).parts:
-                current = current.add(f"{subdir}", guide_style="bold bright_blue")
                 current_path = current_path / subdir
-                trees[current_path] = current
+                if current_path not in trees:
+                    current = current.add(f"{subdir}", guide_style="bold bright_blue")
+                    trees[current_path] = current
+                else:
+                    current = trees[current_path]
         trees[fpp.parent].add(f"{fpp.name}", guide_style="bold bright_blue")
     rich_print(tree_root)
 

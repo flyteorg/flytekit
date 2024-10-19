@@ -32,7 +32,7 @@ class PerianConfig:
 
 
 class PerianTask(AsyncAgentExecutorMixin, PythonFunctionTask):
-    """A special task type for running tasks on Perian Job Platform (perian.io)"""
+    """A special task type for running tasks on PERIAN Job Platform (perian.io)"""
 
     _TASK_TYPE = "perian_task"
 

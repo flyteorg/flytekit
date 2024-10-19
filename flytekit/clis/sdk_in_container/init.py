@@ -58,5 +58,5 @@ def init(template, project_name):
                 dest_file.write(processed_contents)
 
     click.echo(
-        f"Visit the {project_name} directory and follow the next steps in the Getting started guide (https://docs.flyte.org/en/latest/getting_started_with_workflow_development/index.html) to proceed."
+        f"Visit the {project_name} directory and follow the next steps in the Getting started guide (https://docs.flyte.org/en/latest/user_guide/getting_started_with_workflow_development/index.html) to proceed."
     )

@@ -18,7 +18,7 @@ JSONScalar: TypeAlias = Union[bool, float, int, str]
 JSON: TypeAlias = Union[JSONCollection, JSONScalar]
 
 
-class JSONIterator:
+class JSONIterator(Iterator[JSON]):
     def __init__(self, reader: jsonlines.Reader):
         self._reader = reader
         self._reader_iter = reader.iter()
@@ -112,4 +112,4 @@ class JSONIteratorTransformer(TypeTransformer[Iterator[JSON]]):
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}.")
 
 
-TypeEngine.register(JSONIteratorTransformer())
+TypeEngine.register(JSONIteratorTransformer(), additional_types=[JSONIterator])

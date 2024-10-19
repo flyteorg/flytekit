@@ -35,9 +35,11 @@ class MyDataclass(DataClassJsonMixin):
     i: int
     a: typing.List[str]
 
+
 @dataclass
 class NestedDataclass(DataClassJsonMixin):
     i: typing.List[MyDataclass]
+
 
 class Color(enum.Enum):
     RED = "RED"
@@ -80,13 +82,16 @@ def test_union1(a: typing.Union[int, FlyteFile, typing.Dict[str, float], datetim
 def test_union2(a: typing.Union[float, typing.List[int], MyDataclass]):
     print(a)
 
+
 @task
 def test_boolean(a_b: bool):
     print(a_b)
 
+
 @task
 def test_boolean_default_true(a_b: bool = True):
     print(a_b)
+
 
 @task
 def test_boolean_default_false(a_b: bool = False):

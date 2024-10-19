@@ -463,7 +463,7 @@ def test_unsupported_node_types():
 def test_mis_match():
     @task
     def generate_directory(word: str) -> FlyteDirectory:
-        temp_dir1 = tempfile.TemporaryDirectory(delete=False)
+        temp_dir1 = tempfile.TemporaryDirectory()
         with open(os.path.join(temp_dir1.name, "file.txt"), "w") as tmp:
             tmp.write(f"Hello world {word}!\n")
         return FlyteDirectory(path=temp_dir1.name)
