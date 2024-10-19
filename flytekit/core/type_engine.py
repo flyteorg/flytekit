@@ -339,27 +339,13 @@ class SimpleTransformer(TypeTransformer[T]):
         return self._to_literal_transformer(python_val)
 
     def from_binary_idl(self, binary_idl_object: Binary, expected_python_type: Type[T]) -> Optional[T]:
-        """
-        This is to mock the behavior as type transformer + union transformer
-
-        @dataclass
-        class DC:
-            a: Optional[int]
-
-        When `a` is None, both MessagePackDecoder[int].decode(a) and MessagePackDecoder[None].decode(a) will be None,
-        which will be ambiguous for the union transformer.
-
-        When `a` is int, both MessagePackDecoder[int].decode(a) and MessagePackDecoder[None].decode(a) will be int,
-        which will be ambiguous for the union transformer.
-
-        This assertion will fail when
-        1. `a` is None and MessagePackDecoder[int].decode(a) is None, which should fail.
-        2. `a` is int and MessagePackDecoder[None].decode(a) is int, which should fail.
-
-        This is to avoid the above ambiguity.
-        """
         if binary_idl_object.tag == MESSAGEPACK:
             if expected_python_type in [datetime.date, datetime.datetime, datetime.timedelta]:
+                """
+                MessagePack doesn't support datetime, date, and timedelta.
+                However, mashumaro's MessagePackEncoder and MessagePackDecoder can convert them to str and vice versa.
+                That's why we need to use mashumaro's MessagePackDecoder here.
+                """
                 try:
                     decoder = self._msgpack_decoder[expected_python_type]
                 except KeyError:
@@ -368,8 +354,30 @@ class SimpleTransformer(TypeTransformer[T]):
                 python_val = decoder.decode(binary_idl_object.value)
             else:
                 python_val = msgpack.loads(binary_idl_object.value)
+                """
+                In the case below, when using Union Transformer + Simple Transformer, then `a`
+                can be converted to int, bool, str and float if we use MessagePackDecoder[expected_python_type].
 
-            assert type(python_val) == expected_python_type
+                Life Cycle:
+                1 -> msgpack bytes -> (1, true, "1", 1.0)
+
+                Example Code:
+                @dataclass
+                class DC:
+                    a: Union[int, bool, str, float]
+                    b: Union[int, bool, str, float]
+
+                @task(container_image=custom_image)
+                def add(a: Union[int, bool, str, float], b: Union[int, bool, str, float]) -> Union[int, bool, str, float]:
+                    return a + b
+
+                @workflow
+                def wf(dc: DC) -> Union[int, bool, str, float]:
+                    return add(dc.a, dc.b)
+
+                wf(DC(1, 1))
+                """
+                assert type(python_val) == expected_python_type
 
             return python_val
         else:
