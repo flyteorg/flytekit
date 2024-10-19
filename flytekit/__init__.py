@@ -218,6 +218,7 @@ else:
 
 import flytekit.core.type_utils
 from flytekit._version import __version__
+from flytekit.configuration import Config
 from flytekit.core.array_node_map_task import map_task
 from flytekit.core.artifact import Artifact
 from flytekit.core.base_sql_task import SQLTask
@@ -251,8 +252,11 @@ from flytekit.models.core.types import BlobType
 from flytekit.models.documentation import Description, Documentation, SourceCode
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
+from flytekit.remote import FlyteRemote
 from flytekit.sensor.sensor_engine import SensorEngine
 from flytekit.types import directory, file, iterator
+from flytekit.types.directory import FlyteDirectory
+from flytekit.types.file import FlyteFile
 from flytekit.types.structured.structured_dataset import (
     StructuredDataset,
     StructuredDatasetFormat,

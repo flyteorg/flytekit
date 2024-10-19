@@ -154,7 +154,7 @@ class PickleParamType(click.ParamType):
                 click.echo(f"Did not receive a string in the expected format <MODULE>:<VAR>, falling back to: {value}")
             return value
         try:
-            sys.path.insert(0, "")
+            sys.path.insert(0, os.getcwd())
             m = importlib.import_module(parts[0])
             return m.__getattribute__(parts[1])
         except ModuleNotFoundError as e:

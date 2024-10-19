@@ -610,6 +610,13 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         # In case it's a FlyteSchema
         sdt = StructuredDatasetType(format=self.DEFAULT_FORMATS.get(python_type, GENERIC_FORMAT))
 
+        if issubclass(python_type, StructuredDataset) and not isinstance(python_val, StructuredDataset):
+            # Catch a common mistake
+            raise TypeTransformerFailedError(
+                f"Expected a StructuredDataset instance, but got {type(python_val)} instead."
+                f" Did you forget to wrap your dataframe in a StructuredDataset instance?"
+            )
+
         if expected and expected.structured_dataset_type:
             sdt = StructuredDatasetType(
                 columns=expected.structured_dataset_type.columns,
