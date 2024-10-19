@@ -35,7 +35,8 @@ from flyteidl.core import literals_pb2
 from flytekit import ImageSpec
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
-from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
+from flytekit.configuration import Config, DataConfig, FastSerializationSettings, ImageConfig, SerializationSettings
+from flytekit.configuration.file import ConfigFile
 from flytekit.constants import CopyFileDetection
 from flytekit.core import constants, utils
 from flytekit.core.array_node_map_task import ArrayNodeMapTask
@@ -2627,3 +2628,67 @@ class FlyteRemote(object):
             md5_bytes, native_url = self.upload_file(dest)
 
         return md5_bytes, FastSerializationSettings(enabled=True, distribution_location=native_url, destination_dir=".")
+
+    @classmethod
+    def for_endpoint(
+        cls,
+        endpoint: str,
+        insecure: bool = False,
+        data_config: typing.Optional[DataConfig] = None,
+        config_file: typing.Union[str, ConfigFile] = None,
+        default_project: typing.Optional[str] = None,
+        default_domain: typing.Optional[str] = None,
+        data_upload_location: str = "flyte://my-s3-bucket/",
+        interactive_mode_enabled: bool = False,
+        **kwargs,
+    ) -> "FlyteRemote":
+        return cls(
+            config=Config.for_endpoint(
+                endpoint=endpoint,
+                insecure=insecure,
+                data_config=data_config,
+                config_file=config_file,
+            ),
+            default_project=default_project,
+            default_domain=default_domain,
+            data_upload_location=data_upload_location,
+            interactive_mode_enabled=interactive_mode_enabled,
+            **kwargs,
+        )
+
+    @classmethod
+    def auto(
+        cls,
+        config_file: typing.Union[str, ConfigFile] = None,
+        default_project: typing.Optional[str] = None,
+        default_domain: typing.Optional[str] = None,
+        data_upload_location: str = "flyte://my-s3-bucket/",
+        interactive_mode_enabled: bool = False,
+        **kwargs,
+    ) -> "FlyteRemote":
+        return cls(
+            config=Config.auto(config_file=config_file),
+            default_project=default_project,
+            default_domain=default_domain,
+            data_upload_location=data_upload_location,
+            interactive_mode_enabled=interactive_mode_enabled,
+            **kwargs,
+        )
+
+    @classmethod
+    def for_sandbox(
+        cls,
+        default_project: typing.Optional[str] = None,
+        default_domain: typing.Optional[str] = None,
+        data_upload_location: str = "flyte://my-s3-bucket/",
+        interactive_mode_enabled: bool = False,
+        **kwargs,
+    ) -> "FlyteRemote":
+        return cls(
+            config=Config.for_sandbox(),
+            default_project=default_project,
+            default_domain=default_domain,
+            data_upload_location=data_upload_location,
+            interactive_mode_enabled=interactive_mode_enabled,
+            **kwargs,
+        )
