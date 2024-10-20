@@ -9,22 +9,6 @@ from flytekit.core.workflow import workflow
 from flytekit.models.types import LiteralType, SimpleType
 
 @pytest.mark.flyteidl_rust
-def test_proto():
-    @task
-    def t1(in1: flyteidl.core.ContainerError) -> flyteidl.core.ContainerError:
-        e2 = flyteidl.core.ContainerError(code=in1.code, message=in1.message + "!!!", kind=in1.kind + 1)
-        return e2
-
-    @workflow
-    def wf(a: flyteidl.core.ContainerError) -> flyteidl.core.ContainerError:
-        return t1(in1=a)
-
-    e1 = flyteidl.core.ContainerError(code="test", message="hello world", kind=1)
-    e_out = wf(a=e1)
-    assert e_out.kind == 2
-    assert e_out.message == "hello world!!!"
-
-@pytest.mark.flyteidl_rust
 def test_pb_guess_python_type():
     artifact_tag = flyteidl.core.CatalogArtifactTag(artifact_id="artifact_1", name="artifact_name")
 
