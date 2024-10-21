@@ -214,6 +214,21 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
         t = FlyteFilePathTransformer()
         return t.to_python_value(ctx, lit, cls)
 
+    @classmethod
+    def new(cls, path: str | os.PathLike) -> FlyteFile:
+        """
+        Create a new FlyteFile object in the current Flyte working directory
+        """
+
+        if os.path.isabs(path):
+            raise ValueError("Path should be relative.")
+
+        ctx = FlyteContextManager.current_context()
+
+        full_path = os.path.join(ctx.user_space_params.working_directory, path)
+
+        return cls(path=full_path)
+
     def __class_getitem__(cls, item: typing.Union[str, typing.Type]) -> typing.Type[FlyteFile]:
         from flytekit.types.file import FileExt
 

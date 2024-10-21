@@ -206,6 +206,23 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
         remote_path = ctx.file_access.generate_new_custom_path(alt=alt, stem=stem)
         return cls(path=remote_path)
 
+    @classmethod
+    def new(cls, path: str | os.PathLike) -> FlyteFile:
+        """
+        Create a new FlyteDirectory object in current Flyte working directory.
+        """
+
+        if os.path.isabs(path):
+            raise ValueError("Path should be relative.")
+
+        ctx = FlyteContextManager.current_context()
+
+        full_path = os.path.join(ctx.user_space_params.working_directory, path)
+
+        os.makedirs(full_path, exist_ok=False)
+
+        return cls(path=full_path)
+
     def __class_getitem__(cls, item: typing.Union[typing.Type, str]) -> typing.Type[FlyteDirectory]:
         if item is None:
             return cls
