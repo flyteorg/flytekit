@@ -915,7 +915,7 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
             return enum.Enum("DynamicEnum", {f"{i}": i for i in literal_type.enum_type.values})  # type: ignore
         raise ValueError(f"Enum transformer cannot reverse {literal_type}")
 
-    def assert_type(self, t: Type[T], v: T):
+    def assert_type(self, t: Type[enum.Enum], v: T):
         if v not in t:
             raise TypeTransformerFailedError(f"Value {v} is not in Enum {t}")
 
@@ -1342,7 +1342,7 @@ class TypeEngine(typing.Generic[T]):
             raise ValueError("At least one of python_types or literal_types must be provided")
 
         if literal_types:
-            python_interface_inputs = {
+            python_interface_inputs: dict[str, Type[T]] = {
                 name: TypeEngine.guess_python_type(lt.type) for name, lt in literal_types.items()
             }
         else:
@@ -1730,7 +1730,7 @@ class UnionTransformer(AsyncTypeTransformer[T]):
                     # this is an edge case
                     return
                 try:
-                    sub_trans = TypeEngine.get_transformer(sub_type)
+                    sub_trans: TypeTransformer = TypeEngine.get_transformer(sub_type)
                     if sub_trans.type_assertions_enabled:
                         sub_trans.assert_type(sub_type, v)
                         return
@@ -1742,7 +1742,7 @@ class UnionTransformer(AsyncTypeTransformer[T]):
                     continue
             raise TypeTransformerFailedError(f"Value {v} is not of type {t}")
         else:
-            tf = TypeEngine.get_transformer(t)
+            tf: TypeTransformer = TypeEngine.get_transformer(t)
             if tf.type_assertions_enabled:
                 tf.assert_type(t, v)
 
@@ -2043,7 +2043,7 @@ class DictTransformer(AsyncTypeTransformer[dict]):
 
     def guess_python_type(self, literal_type: LiteralType) -> Union[Type[dict], typing.Dict[Type, Type]]:
         if literal_type.map_value_type:
-            mt = TypeEngine.guess_python_type(literal_type.map_value_type)
+            mt: Type = TypeEngine.guess_python_type(literal_type.map_value_type)
             return typing.Dict[str, mt]  # type: ignore
 
         if literal_type.simple == SimpleType.STRUCT:
