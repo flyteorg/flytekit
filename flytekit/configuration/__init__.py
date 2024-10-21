@@ -778,8 +778,11 @@ class Config(object):
         """
         c = cls.auto(config_file)
         from dataclasses import replace
-        pp = replace(c.platform, endpoint=endpoint, insecure=insecure) if config_file and c.platform else PlatformConfig.for_endpoint(
-            endpoint, insecure
+
+        pp = (
+            replace(c.platform, endpoint=endpoint, insecure=insecure)
+            if config_file and c.platform
+            else PlatformConfig.for_endpoint(endpoint, insecure)
         )
         return c.with_params(platform=pp, data_config=data_config)
 
