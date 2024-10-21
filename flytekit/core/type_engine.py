@@ -897,7 +897,7 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
         if type(python_val).__class__ != enum.EnumMeta:
             raise TypeTransformerFailedError("Expected an enum")
         if type(python_val.value) != str:
-            raise TypeTransformerFailedError("Only string-valued enums are supportedd")
+            raise TypeTransformerFailedError("Only string-valued enums are supported")
 
         return Literal(scalar=Scalar(primitive=Primitive(string_value=python_val.value)))  # type: ignore
 
@@ -910,6 +910,10 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
         if literal_type.enum_type:
             return enum.Enum("DynamicEnum", {f"{i}": i for i in literal_type.enum_type.values})  # type: ignore
         raise ValueError(f"Enum transformer cannot reverse {literal_type}")
+
+    def assert_type(self, t: Type[T], v: T):
+        if v not in t:
+            raise TypeTransformerFailedError(f"Value {v} is not in Enum {t}")
 
 
 def generate_attribute_list_from_dataclass_json_mixin(schema: dict, schema_name: typing.Any):
@@ -1441,7 +1445,7 @@ class TypeEngine(typing.Generic[T]):
         return python_types
 
     @classmethod
-    def guess_python_type(cls, flyte_type: LiteralType) -> type:
+    def guess_python_type(cls, flyte_type: LiteralType) -> Type[T]:
         """
         Transforms a flyte-specific ``LiteralType`` to a regular python value.
         """
@@ -1722,13 +1726,21 @@ class UnionTransformer(AsyncTypeTransformer[T]):
                     # this is an edge case
                     return
                 try:
-                    super().assert_type(sub_type, v)
-                    return
+                    sub_trans = TypeEngine.get_transformer(sub_type)
+                    if sub_trans.type_assertions_enabled:
+                        sub_trans.assert_type(sub_type, v)
+                        return
+                    else:
+                        return
                 except TypeTransformerFailedError:
+                    continue
+                except TypeError:
                     continue
             raise TypeTransformerFailedError(f"Value {v} is not of type {t}")
         else:
-            super().assert_type(t, v)
+            tf = TypeEngine.get_transformer(t)
+            if tf.type_assertions_enabled:
+                tf.assert_type(t, v)
 
     def get_literal_type(self, t: Type[T]) -> Optional[LiteralType]:
         t = get_underlying_type(t)
