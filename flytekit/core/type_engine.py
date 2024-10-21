@@ -51,7 +51,6 @@ from flytekit.models.literals import Binary, Literal, LiteralCollection, Literal
 from flytekit.models.types import LiteralType, SimpleType, TypeStructure, UnionType
 from flytekit.utils.asyn import loop_manager
 
-NoneType = type(None)
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
 TITLE = "title"
