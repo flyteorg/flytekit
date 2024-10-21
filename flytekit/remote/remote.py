@@ -2589,8 +2589,14 @@ class FlyteRemote(object):
         :param root_entity: The entity to get the pickled target for.
         :return: The pickled target dictionary.
         """
+        import sys
+
         queue = [root_entity]
-        pickled_target_dict = {}
+        pickled_target_dict = {
+            "metadata": {
+                "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
+            }
+        }
         while queue:
             entity = queue.pop()
             if isinstance(entity, PythonTask):

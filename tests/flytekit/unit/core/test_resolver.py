@@ -4,6 +4,7 @@ from collections import OrderedDict
 import cloudpickle
 import mock
 import pytest
+import sys
 
 import flytekit.configuration
 from flytekit.configuration import Image, ImageConfig
@@ -123,10 +124,28 @@ def test_notebook_resolver(mock_gzip_open, mock_cloudpickle):
 
     assert c.loader_args(None, t1) == ["entity-name", "tests.flytekit.unit.core.test_resolver.t1"]
 
-    pickled_dict = {"tests.flytekit.unit.core.test_resolver.t1": t1}
+    pickled_dict = {
+        "tests.flytekit.unit.core.test_resolver.t1": t1,
+        "metadata": {
+            "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
+        }
+    }
     custom_pickled_object = cloudpickle.dumps(pickled_dict)
     mock_gzip_open.return_value.read.return_value = custom_pickled_object
     mock_cloudpickle.return_value = pickled_dict
 
     t = c.load_task(["entity-name", "tests.flytekit.unit.core.test_resolver.t1"])
     assert t == t1
+
+    mismatched_pickled_dict = {
+        "tests.flytekit.unit.core.test_resolver.t1": t1,
+        "metadata": {
+            "python_version": f"{sys.version_info.major}.{sys.version_info.minor - 1}.{sys.version_info.micro}",
+        }
+    }
+    mismatched_custom_pickled_object = cloudpickle.dumps(mismatched_pickled_dict)
+    mock_gzip_open.return_value.read.return_value = mismatched_custom_pickled_object
+    mock_cloudpickle.return_value = mismatched_pickled_dict
+
+    with pytest.raises(RuntimeError):
+        c.load_task(["entity-name", "tests.flytekit.unit.core.test_resolver.t1"])

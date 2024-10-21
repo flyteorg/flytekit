@@ -43,7 +43,10 @@ class RemoteExecutionBase(object):
                 "Please wait until the execution has completed before requesting the outputs."
             )
         if self.error:
-            raise user_exceptions.FlyteAssertion("Outputs could not be found because the execution ended in failure.")
+            raise user_exceptions.FlyteAssertion(
+                "Outputs could not be found because the execution ended in failure. Error message: "
+                f"{self.error.message}"
+            )
 
         return self._outputs
 
