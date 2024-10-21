@@ -56,20 +56,6 @@ jobs:
           path: ~/.cache/pip
           # Look to see if there is a cache hit for the corresponding requirements files
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
-      # # Install vcpkg for installing OpenSSL
-      # - name: Set up vcpkg
-      #   if: runner.os == 'Windows'
-      #   # The `openssl-sys` crate will automatically detect OpenSSL installations via Homebrew on macOS and vcpkg on Windows.
-      #   run: |
-      #     git clone --depth 1 https://github.com/microsoft/vcpkg.git
-      #     cd vcpkg
-      #     .\bootstrap-vcpkg.bat
-      # - name: Install OpenSSL
-      #   if: runner.os == 'Windows'
-      #   run: |
-      #     cd vcpkg
-      #     .\vcpkg install openssl
-      #     .\vcpkg integrate install
       - name: Install dependencies
         run: |
           pip install uv maturin

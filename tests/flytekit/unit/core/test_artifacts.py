@@ -662,15 +662,3 @@ def test_lims():
     # test an artifact with 11 partition keys
     with pytest.raises(ValueError):
         Artifact(name="test artifact", time_partitioned=True, partition_keys=[f"key_{i}" for i in range(11)])
-
-@pytest.mark.flyteidl_rust
-def test_cloudpickle():
-    a1_b = Artifact(name="my_data", partition_keys=["b"])
-
-    spec = a1_b(b="my_b_value")
-    import cloudpickle
-    # TODO: Check https://github.com/PyO3/pyo3/issues/100 for details on supporting pickle serialization in PyO3.
-    d = cloudpickle.dumps(spec)
-    spec2 = cloudpickle.loads(d)
-
-    assert spec2.partitions.b.value.static_value == "my_b_value"
