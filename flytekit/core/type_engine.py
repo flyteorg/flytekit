@@ -916,6 +916,13 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
         raise ValueError(f"Enum transformer cannot reverse {literal_type}")
 
     def assert_type(self, t: Type[enum.Enum], v: T):
+        if sys.version_info < (3, 10):
+            if not isinstance(v, enum.Enum):
+                raise TypeTransformerFailedError(f"Value {v} needs to be an Enum in 3.9")
+            if not isinstance(v, t):
+                raise TypeTransformerFailedError(f"Value {v} is not in Enum {t}")
+            return
+
         val = v.value if isinstance(v, enum.Enum) else v
         if val not in t:
             raise TypeTransformerFailedError(f"Value {v} is not in Enum {t}")
