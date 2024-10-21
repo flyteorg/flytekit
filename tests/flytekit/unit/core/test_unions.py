@@ -1,5 +1,6 @@
 import typing
 from dataclasses import dataclass
+from enum import Enum
 
 import pytest
 
@@ -36,3 +37,38 @@ def test_asserting():
 
     with pytest.raises(TypeTransformerFailedError):
         TypeEngine.to_literal(ctx, 3, guessed, lt)
+
+
+def test_asserting_enum():
+    class Color(Enum):
+        RED = "one"
+        GREEN = "two"
+        BLUE = "blue"
+
+    lt = TypeEngine.to_literal_type(Color)
+    guessed = TypeEngine.guess_python_type(lt)
+    tf = TypeEngine.get_transformer(guessed)
+    tf.assert_type(guessed, "one")
+    tf.assert_type(guessed, guessed("two"))
+    tf.assert_type(Color, "one")
+
+    guessed2 = TypeEngine.guess_python_type(lt)
+    tf.assert_type(guessed, guessed2("two"))
+
+
+@pytest.mark.sandbox_test
+def test_with_remote():
+    from flytekit.remote.remote import FlyteRemote
+    from typing_extensions import Annotated, get_args
+    from flytekit.configuration import Config, Image, ImageConfig, SerializationSettings
+
+    r = FlyteRemote(
+        Config.auto(config_file="/Users/ytong/.flyte/config-sandbox.yaml"),
+        default_project="flytesnacks",
+        default_domain="development",
+    )
+    lp = r.fetch_launch_plan(name="yt_dbg.scratchpad.union_enums.wf", version="oppOd5jst-LWExhTLM0F2w")
+    guessed_union_type = TypeEngine.guess_python_type(lp.interface.inputs["x"].type)
+    guessed_enum = get_args(guessed_union_type)[0]
+    val = guessed_enum("one")
+    r.execute(lp, inputs={"x": val})
