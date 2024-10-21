@@ -1,7 +1,7 @@
 import typing
 from dataclasses import dataclass
 from enum import Enum
-
+import sys
 import pytest
 
 from flytekit.core.context_manager import FlyteContextManager
@@ -39,6 +39,9 @@ def test_asserting():
         TypeEngine.to_literal(ctx, 3, guessed, lt)
 
 
+@pytest.mark.skipif(
+    sys.version_info < (3, 10), reason="enum checking only works in 3.10+"
+)
 def test_asserting_enum():
     class Color(Enum):
         RED = "one"
@@ -54,6 +57,22 @@ def test_asserting_enum():
 
     guessed2 = TypeEngine.guess_python_type(lt)
     tf.assert_type(guessed, guessed2("two"))
+
+
+@pytest.mark.skipif(
+    sys.version_info >= (3, 10), reason="3.9 enum testing"
+)
+def test_asserting_enum_39():
+    class Color(Enum):
+        RED = "one"
+        GREEN = "two"
+        BLUE = "blue"
+
+    lt = TypeEngine.to_literal_type(Color)
+    guessed = TypeEngine.guess_python_type(lt)
+    tf = TypeEngine.get_transformer(guessed)
+    tf.assert_type(guessed, guessed("two"))
+    tf.assert_type(Color, Color.GREEN)
 
 
 @pytest.mark.sandbox_test
