@@ -108,6 +108,6 @@ def test_fetch():
     guessed_enum = get_args(guessed)[0]
     print(guessed_enum)
     enum_val = guessed_enum("one")
-    TypeEngine.to_literal(ctx, enum_val, guessed, lt)
-
+    # TypeEngine.to_literal(ctx, enum_val, guessed, lt)
+    TypeEngine.to_literal(ctx, "one", guessed, lt)
 

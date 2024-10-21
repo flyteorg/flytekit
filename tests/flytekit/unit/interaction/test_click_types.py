@@ -58,7 +58,7 @@ class Color(Enum):
     "python_type, python_value",
     [
         (typing.Union[typing.List[int], str, Color], "flyte"),
-        (typing.Union[typing.List[int], str, Color], "red"),
+        (typing.Union[typing.List[int], str, Color], "morered"),
         (typing.Union[typing.List[int], str, Color], [1, 2, 3]),
         (typing.List[int], [1, 2, 3]),
         (typing.Dict[str, int], {"flyte": 2}),
