@@ -17,7 +17,6 @@ def test_new_file_dir():
     assert isinstance(f, FlyteFile)
     assert f.path == "s3://my-bucket/test/test"
 
-
 def test_new_remote_dir():
     fd = FlyteDirectory.new_remote()
     assert FlyteContext.current_context().file_access.raw_output_prefix in fd.path
@@ -26,6 +25,14 @@ def test_new_remote_dir_alt():
     ff = FlyteDirectory.new_remote(alt="my-alt-bucket", stem="my-stem")
     assert "my-alt-bucket" in ff.path
     assert "my-stem" in ff.path
+
+def test_new_auto_new_dir():
+    fd = FlyteDirectory.new("my_dir")
+    assert FlyteContext.current_context().working_directory in fd.path
+
+def test_add_path_to_dir():
+    fd = FlyteDirectory.new("my_dir")
+    assert FlyteContext.current_context().working_directory in str(fd / "myfile.txt")
 
 @mock.patch("flytekit.types.directory.types.os.name", "nt")
 def test_sep_nt():
