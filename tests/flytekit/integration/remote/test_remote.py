@@ -762,12 +762,3 @@ def test_register_wf_fast(register):
 def test_fetch_active_launchplan_not_found(register):
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     assert remote.fetch_active_launchplan(name="basic.list_float_wf.fake_wf") is None
-
-
-def test_uiluo9():
-    os.environ["FLYTE_CREDENTIALS_CLIENT_SECRET"] = "testtest"
-    cfg = Config.for_endpoint(
-        endpoint="union-internal.hosted.unionai.cloud",
-        config_file="/Users/ytong/data.yaml"
-    )
-    print(cfg)
