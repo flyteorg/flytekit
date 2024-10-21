@@ -60,7 +60,7 @@ TITLE = "title"
 # This is relevant for cases like Dict[int, str].
 # If strict_map_key=False is not used, the decoder will raise an error when trying to decode keys that are not strictly typed.｀
 def _default_msgpack_decoder(data: bytes) -> Any:
-    return msgpack.unpackb(data, raw=False, strict_map_key=False)
+    return msgpack.unpackb(data, strict_map_key=False)
 
 
 class BatchSize:
@@ -825,7 +825,7 @@ class DataclassTransformer(TypeTransformer[object]):
     def from_binary_idl(self, binary_idl_object: Binary, expected_python_type: Type[T]) -> T:
         if binary_idl_object.tag == MESSAGEPACK:
             if issubclass(expected_python_type, DataClassJSONMixin):
-                dict_obj = msgpack.loads(binary_idl_object.value, raw=False, strict_map_key=False)
+                dict_obj = msgpack.loads(binary_idl_object.value, strict_map_key=False)
                 json_str = json.dumps(dict_obj)
                 dc = expected_python_type.from_json(json_str)  # type: ignore
             else:

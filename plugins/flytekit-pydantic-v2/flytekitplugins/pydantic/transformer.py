@@ -42,6 +42,11 @@ class PydanticTransformer(TypeTransformer[BaseModel]):
         python_type: Type[BaseModel],
         expected: types.LiteralType,
     ) -> Literal:
+        """
+        For pydantic basemodel, we have to go through json first.
+        This is for handling enum in basemodel.
+        More details: https://github.com/flyteorg/flytekit/pull/2792
+        """
         json_str = python_val.model_dump_json()
         dict_obj = json.loads(json_str)
         msgpack_bytes = msgpack.dumps(dict_obj)
@@ -49,7 +54,7 @@ class PydanticTransformer(TypeTransformer[BaseModel]):
 
     def from_binary_idl(self, binary_idl_object: Binary, expected_python_type: Type[BaseModel]) -> BaseModel:
         if binary_idl_object.tag == MESSAGEPACK:
-            dict_obj = msgpack.loads(binary_idl_object.value, raw=False, strict_map_key=False)
+            dict_obj = msgpack.loads(binary_idl_object.value, strict_map_key=False)
             json_str = json.dumps(dict_obj)
             python_val = expected_python_type.model_validate_json(
                 json_data=json_str, strict=False, context={"deserialize": True}
