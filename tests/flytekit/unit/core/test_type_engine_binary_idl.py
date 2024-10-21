@@ -1189,3 +1189,19 @@ def test_union_in_dataclass_wf():
     assert wf(dc=DC(a=False, b=False)) == False
     assert wf(dc=DC(a="hello", b="world")) == "helloworld"
     assert wf(dc=DC(a=1.0, b=2.0)) == 3.0
+
+    @task
+    def add(dc1: DC, dc2: DC) -> Union[int, bool, str, float]:
+        return dc1.a + dc2.b  # type: ignore
+
+    @workflow
+    def wf(dc: DC) -> Union[int, bool, str, float]:
+        return add(dc, dc)
+
+    assert wf(dc=DC(a=1, b=2)) == 3
+
+    @workflow
+    def wf(dc: DC) -> DC:
+        return dc
+
+    assert wf(dc=DC(a=1, b=2)) == DC(a=1, b=2)

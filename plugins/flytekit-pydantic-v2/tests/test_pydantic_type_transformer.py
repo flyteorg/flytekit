@@ -2,7 +2,7 @@ import os
 import tempfile
 from dataclasses import field
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 from pydantic import BaseModel, Field
 from unittest.mock import patch
 import pytest
@@ -738,3 +738,38 @@ def test_flyte_types_deserialization_called_once_when_using_model_validate_json(
         # Assert that the to_python_value method was called once
         mock_file_to_python_value.assert_called_once()
         mock_directory_to_python_value.assert_called_once()
+
+def test_union_in_basemodel_wf():
+    class bm(BaseModel):
+        a: Union[int, bool, str, float]
+        b: Union[int, bool, str, float]
+
+    @task
+    def add(a: Union[int, bool, str, float], b: Union[int, bool, str, float]) -> Union[int, bool, str, float]:
+        return a + b  # type: ignore
+
+    @workflow
+    def wf(bm: bm) -> Union[int, bool, str, float]:
+        return add(bm.a, bm.b)
+
+    assert wf(bm=bm(a=1, b=2)) == 3
+    assert wf(bm=bm(a=True, b=False)) == True
+    assert wf(bm=bm(a=False, b=False)) == False
+    assert wf(bm=bm(a="hello", b="world")) == "helloworld"
+    assert wf(bm=bm(a=1.0, b=2.0)) == 3.0
+
+    @task
+    def add_bm(bm1: bm, bm2: bm) -> Union[int, bool, str, float]:
+        return bm1.a + bm2.b  # type: ignore
+
+    @workflow
+    def wf_add_bm(bm: bm) -> Union[int, bool, str, float]:
+        return add_bm(bm, bm)
+
+    assert wf_add_bm(bm=bm(a=1, b=2)) == 3
+
+    @workflow
+    def wf_return_bm(bm: bm) -> bm:
+        return bm
+
+    assert wf_return_bm(bm=bm(a=1, b=2)) == bm(a=1, b=2)
