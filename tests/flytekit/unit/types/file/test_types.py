@@ -9,4 +9,5 @@ def test_new_remote_alt():
 
 def test_new_auto_file():
     ff = FlyteFile.new("my-file.txt")
-    assert FlyteContext.current_context().working_directory in ff.path
+    cwd = FlyteContextManager.current_context().user_space_params.working_directory
+    assert cwd in ff.path
