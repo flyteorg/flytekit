@@ -169,3 +169,7 @@ def test_config_for_endpoint_with_file():
         cfg = Config.for_endpoint("main", config_file=cfg_path)
         assert cfg.platform.client_id == "propeller"
         assert cfg.platform.endpoint == "main"
+
+        cfg2 = Config.auto(config_file=cfg_path)
+        assert cfg2.platform.client_id == "propeller"
+        assert cfg2.platform.client_credentials_secret == cfg.platform.client_credentials_secret
