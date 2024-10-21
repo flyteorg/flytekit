@@ -496,6 +496,10 @@ class DataclassTransformer(TypeTransformer[object]):
         else:
             for f in dataclasses.fields(type(v)):  # type: ignore
                 original_type = f.type
+                if f.name not in expected_fields_dict:
+                    raise TypeTransformerFailedError(
+                        f"Field '{f.name}' is not present in the expected dataclass fields {expected_type.__name__}"
+                    )
                 expected_type = expected_fields_dict[f.name]
 
                 if UnionTransformer.is_optional_type(original_type):
@@ -892,10 +896,8 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
         return LiteralType(enum_type=_core_types.EnumType(values=values))
 
     def to_literal(
-        self, ctx: FlyteContext, python_val: typing.Union[enum.Enum, str], python_type: Type[T], expected: LiteralType
+        self, ctx: FlyteContext, python_val: enum.Enum, python_type: Type[T], expected: LiteralType
     ) -> Literal:
-        if isinstance(python_val, str):
-            python_val = python_type(python_val)
         if type(python_val).__class__ != enum.EnumMeta:
             raise TypeTransformerFailedError("Expected an enum")
         if type(python_val.value) != str:
