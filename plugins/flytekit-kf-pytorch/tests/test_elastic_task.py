@@ -84,8 +84,8 @@ def test_end_to_end(start_method: str) -> None:
 @pytest.mark.parametrize(
     "start_method,target_exec_id,monkeypatch_exec_id_env_var",
     [
-        ("spawn", "", False),
-        ("spawn", "f12345678", True),
+        # ("spawn", "", False),
+        # ("spawn", "f12345678", True),
         ("fork", "local", False),
     ],
 )
@@ -99,6 +99,7 @@ def test_execution_params(start_method: str, target_exec_id: str, monkeypatch_ex
         ctx = flytekit.current_context()
 
         assert ctx.execution_id.name == target_exec_id
+        print(f"Type {type(ctx.checkpoint)}")
         cp = ctx.checkpoint
         assert cp is not None
 

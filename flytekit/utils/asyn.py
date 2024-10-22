@@ -46,31 +46,46 @@ class _TaskRunner:
         self.__runner_thread: threading.Thread | None = None
         self.__lock = threading.Lock()
         atexit.register(self._close)
+        print(f"Created TaskRunner instance {id(self)} on PID {os.getpid()}!")
 
     def _close(self) -> None:
         if self.__loop:
             self.__loop.stop()
 
     def _execute(self) -> None:
+        print(f"TaskRunner::_execute 1 in {os.getpid()}!")
         loop = self.__loop
+        print(f"TaskRunner::_execute 2 in {os.getpid()}!")
         assert loop is not None
+        print(f"TaskRunner::_execute 3 in {os.getpid()}!")
         try:
+            print(f"Creating loop in {os.getpid()} !!!!!!!!!!!!!!!!!!!!!!!!!!!")
             loop.run_forever()
         finally:
+            print(f"Closing loop!!!!!!!!!!!!!!!!!!!!!!!!!!!")
             loop.close()
 
     def run(self, coro: Any) -> Any:
         """Synchronously run a coroutine on a background thread."""
-        name = f"{threading.current_thread().name} : loop-runner"
+        name = f"{threading.current_thread().name} :{os.getpid()}: loop-runner"
+        print(f"Run in run funct !!!! {os.getpid()}")
         with self.__lock:
+            print(f"Run in run funct 2 ")
             if self.__loop is None:
+                print(f"Run in run funct - loop is none")
                 with _selector_policy():
                     self.__loop = asyncio.new_event_loop()
+                print(f"Run in run funct - about to create thread")
                 self.__runner_thread = threading.Thread(target=self._execute, daemon=True, name=name)
+                print(f"About to start thread in {os.getpid()} {name=}")
                 self.__runner_thread.start()
+            else:
+                print(f"Run in run funct - loop is not none {id(self)} {self.__loop=}")
+        print(f"Run in run funct 3")
         fut = asyncio.run_coroutine_threadsafe(coro, self.__loop)
-        res = fut.result(None)
 
+        res = fut.result(None)
+        print(f"Run in run funct 4")
         return res
 
 
@@ -82,7 +97,8 @@ class _AsyncLoopManager:
         """
         This should be called from synchronous functions to run an async function.
         """
-        name = threading.current_thread().name
+        name = threading.current_thread().name + f"pid:{os.getpid()}"
+        print(f"Running {coro_func} in {name}")
         coro = coro_func(*args, **kwargs)
         if name not in self._runner_map:
             if len(self._runner_map) > 500:

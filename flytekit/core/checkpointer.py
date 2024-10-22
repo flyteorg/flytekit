@@ -138,7 +138,9 @@ class SyncCheckpoint(Checkpoint):
             f.write(cp.read())
 
         rpath = fa._default_remote.sep.join([str(self._checkpoint_dest), self.TMP_DST_PATH])
+        print(f"pre upload {str(dest_cp)} {rpath=}")
         fa.upload(str(dest_cp), rpath)
+        print("after upload")
 
     def read(self) -> typing.Optional[bytes]:
         p = self.restore()

@@ -436,17 +436,21 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
             def fn_partial():
                 """Closure of the task function with kwargs already bound."""
                 try:
+                    print("fn partial - 1")
                     return_val = self._task_function(**kwargs)
                     core_context = FlyteContextManager.current_context()
+                    print("fn partial - 2")
                     omt = core_context.output_metadata_tracker
                     om = None
                     if omt:
                         om = omt.get(return_val)
                 except Exception as e:
+                    print("fn partial - ex 1")
                     # See explanation in `create_recoverable_error_file` why we check
                     # for recoverable errors here in the worker processes.
                     if isinstance(e, FlyteRecoverableException):
                         create_recoverable_error_file()
+                    print("fn partial - ex 2")
                     raise
                 return ElasticWorkerResult(
                     return_value=return_val,
@@ -464,6 +468,8 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
         from torch.distributed.elastic.multiprocessing.errors import ChildFailedError
 
         try:
+            print(f"Main PID !!!!!!{os.getpid()}============")
+            breakpoint()
             out = elastic_launch(
                 config=config,
                 entrypoint=launcher_target_func,

@@ -623,6 +623,7 @@ class FileAccessProvider(object):
         :param remote_path:
         :param is_multipart:
         """
+        print(f"local_path: {local_path}, remote_path: {remote_path}, is_multipart: {is_multipart}")
         try:
             local_path = str(local_path)
             with timeit(f"Upload data to {remote_path}"):
