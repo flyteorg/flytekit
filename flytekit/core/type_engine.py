@@ -1749,10 +1749,6 @@ class UnionTransformer(AsyncTypeTransformer[T]):
                 except TypeError:
                     continue
             raise TypeTransformerFailedError(f"Value {v} is not of type {t}")
-        else:
-            tf: TypeTransformer = TypeEngine.get_transformer(t)
-            if tf.type_assertions_enabled:
-                tf.assert_type(t, v)
 
     def get_literal_type(self, t: Type[T]) -> Optional[LiteralType]:
         t = get_underlying_type(t)
