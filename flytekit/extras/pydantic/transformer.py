@@ -3,6 +3,7 @@ from typing import Type
 
 import msgpack
 from google.protobuf import json_format as _json_format
+from pydantic import BaseModel
 
 from flytekit import FlyteContext
 from flytekit.core.constants import MESSAGEPACK
@@ -11,7 +12,6 @@ from flytekit.loggers import logger
 from flytekit.models import types
 from flytekit.models.literals import Binary, Literal, Scalar
 from flytekit.models.types import LiteralType, TypeStructure
-from pydantic import BaseModel
 
 
 class PydanticTransformer(TypeTransformer[BaseModel]):

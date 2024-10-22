@@ -6,11 +6,11 @@ from flytekit.loggers import logger
 try:
     # isolate the exception to the pydantic import
     # model_validator and model_serializer are only available in pydantic > 2
-    from pydantic import model_validator, model_serializer
+    from pydantic import model_serializer, model_validator
 
     _pydantic_installed = True
 except (ImportError, OSError):
-    _torch_ins_pydantic_installedtalled = False
+    _pydantic_installed = False
 
 
 if _pydantic_installed:
