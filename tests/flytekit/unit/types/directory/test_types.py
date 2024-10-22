@@ -31,7 +31,7 @@ def test_new_auto_new_dir():
     assert FlyteContextManager.current_context().working_directory in fd.path
 
 def test_add_path_to_dir():
-    fd = FlyteDirectory.new("my_dir")
+    fd = FlyteDirectory.new("my_other_dir")
     cwd = FlyteContextManager.current_context().user_space_params.working_directory
     assert cwd in str(fd / "myfile.txt")
 
