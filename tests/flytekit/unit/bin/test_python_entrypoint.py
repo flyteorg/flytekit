@@ -1,3 +1,4 @@
+from datetime import datetime
 import os
 import re
 import textwrap
@@ -8,9 +9,13 @@ import fsspec
 import mock
 import pytest
 from flyteidl.core.errors_pb2 import ErrorDocument
+from flyteidl.core import literals_pb2
+from flyteidl.core.literals_pb2 import Literal, LiteralCollection, Scalar, Primitive
 
 from flytekit.bin.entrypoint import _dispatch_execute, normalize_inputs, setup_execution, get_traceback_str
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
+from flytekit.core import mock_stats
+from flytekit.models.core import identifier as id_models
 from flytekit.core import context_manager
 from flytekit.core.base_task import IgnoreOutputs
 from flytekit.core.dynamic_workflow_task import dynamic
@@ -21,8 +26,9 @@ from flytekit.exceptions import user as user_exceptions
 from flytekit.exceptions.scopes import system_entry_point, user_entry_point
 from flytekit.exceptions.user import FlyteRecoverableException, FlyteUserRuntimeException
 from flytekit.models import literals as _literal_models
-from flytekit.models.core import errors as error_models
+from flytekit.models.core import errors as error_models, execution
 from flytekit.models.core import execution as execution_models
+from flytekit.core.utils import write_proto_to_file
 
 
 @mock.patch("flytekit.core.utils.load_proto_from_file")
@@ -454,27 +460,32 @@ def test_get_traceback_str():
     print(traceback_str)  # helpful for debugging
     assert expected_error_re.match(traceback_str) is not None
 
-# Write a unit test to exercise the offloading of literals in entrypoint.py
-@mock.patch("flytekit.core.utils.load_proto_from_file")
-@mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_data")
-@mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
-@mock.patch("flytekit.core.utils.write_proto_to_file")
-def test_dispatch_execute_offloaded_literals(mock_write_to_file, mock_upload_dir, mock_get_data, mock_load_proto):
-    # Just leave these here, mock them out so nothing happens
-    mock_get_data.return_value = True
-    mock_upload_dir.return_value = True
-
+def test_dispatch_execute_offloaded_literals(tmp_path_factory):
     @task
     def t1(a: typing.List[int]) -> typing.List[str]:
         return [f"string is: {x}" for x in a]
 
+    inputs_path = tmp_path_factory.mktemp("inputs")
+    outputs_path = tmp_path_factory.mktemp("outputs")
+
     ctx = context_manager.FlyteContext.current_context()
     with context_manager.FlyteContextManager.with_context(
-        ctx.with_execution_state(
-            ctx.execution_state.with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION)
-        )
+            ctx.with_execution_state(
+                ctx.execution_state.with_params(
+                    mode=context_manager.ExecutionState.Mode.TASK_EXECUTION,
+                    user_space_params=context_manager.ExecutionParameters(
+                        execution_date=datetime.now(),
+                        tmp_dir="/tmp",
+                        stats=mock_stats.MockStats(),
+                        logging=None,
+                        raw_output_prefix="",
+                        output_metadata_prefix=str(outputs_path.absolute()),
+                        execution_id=id_models.WorkflowExecutionIdentifier("p", "d", "n"),
+                    ),
+                ),
+            ),
     ) as ctx:
-        xs: typing.List[int] = [5]*1_000
+        xs: typing.List[int] = [1, 2, 3]
         input_literal_map = _literal_models.LiteralMap(
             {
                 "a": _literal_models.Literal(
@@ -488,17 +499,38 @@ def test_dispatch_execute_offloaded_literals(mock_write_to_file, mock_upload_dir
                 )
             }
         )
-        mock_load_proto.return_value = input_literal_map.to_flyte_idl()
 
-        files = OrderedDict()
-        mock_write_to_file.side_effect = get_output_collector(files)
-        # See comment in test_dispatch_execute_ignore for why we need to decorate
-        user_entry_point(_dispatch_execute)(ctx, lambda: t1, "inputs path", "outputs prefix")
-        assert len(files) == 2
+        write_proto_to_file(input_literal_map.to_flyte_idl(), str(inputs_path/"inputs.pb"))
 
-        k = list(files.keys())[0]
-        assert "outputs.pb" in k
+        with mock.patch.dict(os.environ, {"FK_L_MIN_SIZE_MB": "0"}):
+            _dispatch_execute(ctx, t1, str(inputs_path/"inputs.pb"), str(outputs_path.absolute()))
 
-        # v = list(files.values())[0]
-        # lm = _literal_models.LiteralMap.from_flyte_idl(v)
-        # assert lm.literals["o0"].scalar.primitive.string_value == "string is: 5"
+            for ff in os.listdir(outputs_path):
+                if ff == "outputs.pb":
+                    with open(outputs_path/ff, "rb") as f:
+                        lit = literals_pb2.LiteralMap()
+                        lit.ParseFromString(f.read())
+                        assert len(lit.literals) == 1
+                        assert "o0" in lit.literals
+                        assert lit.literals["o0"].offloaded_metadata is not None
+                        assert lit.literals["o0"].offloaded_metadata.size_bytes == 62
+                        assert lit.literals["o0"].offloaded_metadata.uri.endswith("/o0_offloaded_metadata.pb")
+                elif ff == "o0_offloaded_metadata.pb":
+                    with open(outputs_path/ff, "rb") as f:
+                        lit = literals_pb2.Literal()
+                        lit.ParseFromString(f.read())
+                        assert lit == Literal(
+                            collection=LiteralCollection(
+                                literals=[
+                                    Literal(
+                                        scalar=Scalar(primitive=Primitive(string_value="string is: 1")),
+                                    ),
+                                    Literal(
+                                        scalar=Scalar(primitive=Primitive(string_value="string is: 2")),
+                                    ),
+                                    Literal(
+                                        scalar=Scalar(primitive=Primitive(string_value="string is: 3")),
+                                    ),
+                                ]
+                            )
+                        )

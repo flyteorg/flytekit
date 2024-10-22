@@ -62,7 +62,7 @@ def literal_string_repr(lit: Literal) -> typing.Any:
     if lit.map:
         return {k: literal_string_repr(v) for k, v in lit.map.literals.items()}
     if lit.offloaded_metadata:
-        # TODO: load literal from offloaded literal
+        # TODO: load literal from offloaded literal?
         return f"Offloaded literal metadata: {lit.offloaded_metadata}"
     raise ValueError(f"Unknown literal type {lit}")
 

@@ -143,10 +143,16 @@ def _dispatch_execute(
             offloaded_literals: Dict[str, _literal_models.Literal] = {}
             new_outputs = {}
 
+            min_offloaded_size = int(os.environ.get("FK_L_MIN_SIZE_MB", "10")) * 1024 * 1024
+            max_offloaded_size = int(os.environ.get("FK_L_MAX_SIZE_MB", "1000")) * 1024 * 1024
+
             # Go over each output and create a separate offloaded in case its size is too large
             for k, v in outputs.literals.items():
                 lit = v.to_flyte_idl()
-                if lit.ByteSize() > MAX_OFFLOADED_LITERAL_SIZE_BYTES:
+                if lit.ByteSize() >= max_offloaded_size:
+                    raise ValueError(f"Literal {k} is too large to be offloaded. Max literal size is {max_offloaded_size} whereas the literal size is {lit.ByteSize()} bytes")
+
+                if lit.ByteSize() >= min_offloaded_size:
                     logger.debug(f"Literal {k} is too large to be inlined, offloading to metadata bucket")
 
                     # TODO: hash calculation
