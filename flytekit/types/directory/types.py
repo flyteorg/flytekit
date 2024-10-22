@@ -423,10 +423,11 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
     def __str__(self):
         return str(self.path)
 
-    def __truedivide__(self, other: str | os.PathLike) -> Path:
+    def __truediv__(self, other: str | os.PathLike) -> Path:
         """
         This is a convenience method to allow for easy concatenation of paths.
         """
+
         return Path(self.path) / other
 
 
