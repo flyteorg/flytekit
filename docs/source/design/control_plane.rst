@@ -30,15 +30,13 @@ A :class:`~flytekit.remote.remote.FlyteRemote` object can be created in various 
 Auto
 ====
 
-The :py:class:`~flytekit.configuration.Config` class's :py:meth:`~flytekit.configuration.Config.auto` method can be used to automatically
-construct the ``Config`` object.
+The :py:class:`~flytekit.remote.remote.FlyteRemote` class's :py:meth:`~flytekit.remote.remote.FlyteRemote.auto` method can be used to automatically construct the ``Config`` object.
 
 .. code-block:: python
 
-    from flytekit.remote import FlyteRemote
-    from flytekit.configuration import Config
+    from flytekit import FlyteRemote
 
-    remote = FlyteRemote(config=Config.auto())
+    remote = FlyteRemote.auto()
 
 ``auto`` also accepts a ``config_file`` argument, which is the path to the configuration file to use.
 The order of precedence that ``auto`` follows is:
@@ -50,17 +48,15 @@ The order of precedence that ``auto`` follows is:
 Sandbox
 =======
 
-The :py:class:`~flytekit.configuration.Config` class's :py:meth:`~flytekit.configuration.Config.for_sandbox` method can be used to
-construct the ``Config`` object, specifically to connect to the Flyte cluster.
+The :py:class:`~flytekit.remote.remote.FlyteRemote` class's :py:meth:`~flytekit.remote.remote.FlyteRemote.for_sandbox` method can be used to construct the ``Config`` object, specifically to connect to the Flyte cluster.
 
 .. code-block:: python
 
-    from flytekit.remote import FlyteRemote
-    from flytekit.configuration import Config
+    from flytekit import FlyteRemote
 
-    remote = FlyteRemote(config=Config.for_sandbox())
+    remote = FlyteRemote.for_sandbox()
 
-The initialization is as simple as calling ``for_sandbox()`` on the ``Config`` class!
+The initialization is as simple as calling ``for_sandbox()`` on the ``FlyteRemote`` class!
 This, by default, uses ``localhost:30081`` as the endpoint, and the default minio credentials.
 
 If the sandbox is in a hosted-like environment, then *port-forward* or *ingress URLs* need to be taken care of.
@@ -68,16 +64,14 @@ If the sandbox is in a hosted-like environment, then *port-forward* or *ingress 
 Any Endpoint
 ============
 
-The :py:class:`~flytekit.configuration.Config` class's :py:meth:`~flytekit.configuration.Config.for_endpoint` method can be used to
-construct the ``Config`` object to connect to a specific endpoint.
+The :py:class:`~flytekit.remote.remote.FlyteRemote` class's :py:meth:`~flytekit.remote.remote.FlyteRemote.for_endpoint` method can be used to construct the ``FlyteRemote`` object to connect to a specific endpoint.
 
 .. code-block:: python
 
-    from flytekit.remote import FlyteRemote
-    from flytekit.configuration import Config
+    from flytekit import FlyteRemote
 
-    remote = FlyteRemote(
-        config=Config.for_endpoint(endpoint="flyte.example.net"),
+    remote = FlyteRemote.for_endpoint(
+        endpoint="flyte.example.net",
         default_project="flytesnacks",
         default_domain="development",
     )
