@@ -264,7 +264,7 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetType,
 )
 
-from flytekit.core import type_utils  # noqa: I001
+from flytekit.extras import pydantic  # noqa: I001
 
 
 def current_context() -> ExecutionParameters:

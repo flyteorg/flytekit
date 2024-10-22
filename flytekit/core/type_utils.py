@@ -18,8 +18,6 @@ from flytekit.types.structured import (
 try:
     from pydantic import model_serializer, model_validator
 
-    from flytekit.extras.pydantic import transformer  # noqa: F401
-
     # Serialize and Deserialize functions
     @model_serializer
     def serialize_flyte_file(self) -> Dict[str, str]:
@@ -29,9 +27,8 @@ try:
     @model_validator(mode="after")
     def deserialize_flyte_file(self, info) -> FlyteFile:
         if info.context is None or info.context.get("deserialize") is not True:
-            print("@@@@ Initializing FlyteFile ")
             return self
-        # print("@@@@ Deserializing FlyteFile ")
+
         pv = FlyteFilePathTransformer().to_python_value(
             FlyteContextManager.current_context(),
             Literal(
@@ -61,6 +58,7 @@ try:
     def deserialize_flyte_dir(self, info) -> FlyteDirectory:
         if info.context is None or info.context.get("deserialize") is not True:
             return self
+
         pv = FlyteDirToMultipartBlobTransformer().to_python_value(
             FlyteContextManager.current_context(),
             Literal(
@@ -87,8 +85,8 @@ try:
     @model_validator(mode="after")
     def deserialize_flyte_schema(self, info) -> FlyteSchema:
         if info.context is None or info.context.get("deserialize") is not True:
-            print("@@@@ INITIALIZING FLYTE SCHEMA")
             return self
+
         t = FlyteSchemaTransformer()
         return t.to_python_value(
             FlyteContextManager.current_context(),
@@ -111,8 +109,8 @@ try:
     @model_validator(mode="after")
     def deserialize_structured_dataset(self, info) -> StructuredDataset:
         if info.context is None or info.context.get("deserialize") is not True:
-            print("@@@@ INITIALIZING SD")
             return self
+
         return StructuredDatasetTransformerEngine().to_python_value(
             FlyteContextManager.current_context(),
             Literal(
@@ -136,7 +134,6 @@ try:
     setattr(FlyteSchema, "deserialize_flyte_schema", deserialize_flyte_schema)
     setattr(StructuredDataset, "serialize_structured_dataset", serialize_structured_dataset)
     setattr(StructuredDataset, "deserialize_structured_dataset", deserialize_structured_dataset)
-except ImportError as e:
+except ImportError:
     logger.info("Pydantic V2 not installed, skipping custom serialization/deserialization.")
-    print("e: ", e)
     pass
