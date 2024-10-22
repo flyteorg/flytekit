@@ -109,7 +109,7 @@ def test_remote_upload_with_data_persistence(sandbox_remote):
         f.write("asdf")
         f.flush()
         # Test uploading a file and folder.
-        res = fp.put(f.name, "flyte://data/", recursive=True)
+        res = fp._put(f.name, "flyte://data/", recursive=True)
         # Unlike using the RemoteFS directly, the trailing slash is automatically added by data persistence,
         # not sure why but preserving the behavior for now.
         only_file = pathlib.Path(f.name).name
