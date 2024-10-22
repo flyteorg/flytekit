@@ -2,6 +2,7 @@ import os
 import pathlib
 import shutil
 import subprocess
+import sys
 import tempfile
 import typing
 import uuid
@@ -707,7 +708,8 @@ def test_get_pickled_target_dict():
         return t2(a=t1())
 
     target_dict = _get_pickled_target_dict(w)
-    assert len(target_dict) == 2
+    assert len(target_dict) == 3
+    assert target_dict["metadata"]["python_version"] == f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
     assert t1.name in target_dict
     assert t2.name in target_dict
     assert target_dict[t1.name] == t1
@@ -723,7 +725,8 @@ def test_get_pickled_target_dict_with_map_task():
         return map_task(partial(t1, y=2))(x=[1, 2, 3])
 
     target_dict = _get_pickled_target_dict(w)
-    assert len(target_dict) == 1
+    assert len(target_dict) == 2
+    assert target_dict["metadata"]["python_version"] == f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
     assert t1.name in target_dict
     assert target_dict[t1.name] == t1
 
