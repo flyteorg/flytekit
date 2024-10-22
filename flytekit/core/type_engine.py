@@ -1157,9 +1157,9 @@ class TypeEngine(typing.Generic[T]):
                 from flytekit.extras import pytorch  # noqa: F401
             if is_imported("sklearn"):
                 from flytekit.extras import sklearn  # noqa: F401
-            if is_imported("pydantic"):
-                print("@@@@ pydantic is imported")
-                from flytekit.extras import pydantic  # noqa: F401
+            # if is_imported("pydantic"):
+            #     print("@@@@ pydantic is imported")
+            #     from flytekit.extras import pydantic  # noqa: F401
             if is_imported("pandas"):
                 try:
                     from flytekit.types.schema.types_pandas import PandasSchemaReader, PandasSchemaWriter  # noqa: F401
