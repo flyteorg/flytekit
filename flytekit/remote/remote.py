@@ -51,6 +51,7 @@ from flytekit.core.python_auto_container import (
     PythonAutoContainerTask,
     default_notebook_task_resolver,
 )
+from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.reference_entity import ReferenceSpec
 from flytekit.core.task import ReferenceTask
 from flytekit.core.tracker import extract_task_module
@@ -58,6 +59,7 @@ from flytekit.core.type_engine import LiteralsResolver, TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow, ReferenceWorkflow, WorkflowBase, WorkflowFailurePolicy
 from flytekit.exceptions import user as user_exceptions
 from flytekit.exceptions.user import (
+    FlyteAssertion,
     FlyteEntityAlreadyExistsException,
     FlyteEntityNotExistException,
     FlyteValueException,
@@ -196,6 +198,38 @@ def _get_git_repo_url(source_path: str):
     except Exception as e:
         logger.debug(f"unable to find the git config in {source_path} with error: {str(e)}")
         return ""
+
+
+def _get_pickled_target_dict(root_entity: typing.Union[WorkflowBase, PythonTask]) -> typing.Dict[str, typing.Any]:
+    """
+    Get the pickled target dictionary for the entity.
+    :param root_entity: The entity to get the pickled target for.
+    :return: The pickled target dictionary.
+    """
+    queue = [root_entity]
+    pickled_target_dict = {}
+    while queue:
+        entity = queue.pop()
+        if isinstance(entity, PythonFunctionTask):
+            if entity.execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
+                raise FlyteAssertion(
+                    f"Dynamic tasks are not supported in interactive mode. {entity.name} is a dynamic task."
+                )
+
+        if isinstance(entity, PythonTask):
+            if isinstance(entity, (PythonAutoContainerTask, ArrayNodeMapTask)):
+                if isinstance(entity, ArrayNodeMapTask):
+                    entity._run_task.set_resolver(default_notebook_task_resolver)
+                    pickled_target_dict[entity._run_task.name] = entity._run_task
+                else:
+                    entity.set_resolver(default_notebook_task_resolver)
+                    pickled_target_dict[entity.name] = entity
+        elif isinstance(entity, WorkflowBase):
+            for task in entity.nodes:
+                queue.append(task)
+        elif isinstance(entity, CoreNode):
+            queue.append(entity.flyte_entity)
+    return pickled_target_dict
 
 
 class FlyteRemote(object):
@@ -2583,39 +2617,16 @@ class FlyteRemote(object):
             for var, literal in lm.items():
                 download_literal(self.file_access, var, literal, download_to)
 
-    def _get_pickled_target_dict(self, root_entity: typing.Any) -> typing.Dict[str, typing.Any]:
-        """
-        Get the pickled target dictionary for the entity.
-        :param root_entity: The entity to get the pickled target for.
-        :return: The pickled target dictionary.
-        """
-        queue = [root_entity]
-        pickled_target_dict = {}
-        while queue:
-            entity = queue.pop()
-            if isinstance(entity, PythonTask):
-                if isinstance(entity, (PythonAutoContainerTask, ArrayNodeMapTask)):
-                    if isinstance(entity, ArrayNodeMapTask):
-                        entity._run_task.set_resolver(default_notebook_task_resolver)
-                        pickled_target_dict[entity._run_task.name] = entity._run_task
-                    else:
-                        entity.set_resolver(default_notebook_task_resolver)
-                        pickled_target_dict[entity.name] = entity
-            elif isinstance(entity, WorkflowBase):
-                for task in entity.nodes:
-                    queue.append(task)
-            elif isinstance(entity, CoreNode):
-                queue.append(entity.flyte_entity)
-        return pickled_target_dict
-
-    def _pickle_and_upload_entity(self, entity: typing.Any) -> typing.Tuple[bytes, FastSerializationSettings]:
+    def _pickle_and_upload_entity(
+        self, entity: typing.Union[WorkflowBase, PythonTask]
+    ) -> typing.Tuple[bytes, FastSerializationSettings]:
         """
         Pickle the entity to the specified location. This is useful for debugging and for sharing entities across
         different environments.
         :param entity: The entity to pickle
         """
         # get all entity tasks
-        pickled_dict = self._get_pickled_target_dict(entity)
+        pickled_dict = _get_pickled_target_dict(entity)
         with tempfile.TemporaryDirectory() as tmp_dir:
             dest = pathlib.Path(tmp_dir, PICKLE_FILE_PATH)
             with gzip.GzipFile(filename=dest, mode="wb", mtime=0) as gzipped:
