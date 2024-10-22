@@ -6,6 +6,7 @@ try:
     from pydantic import model_serializer, model_validator
 
     from . import custom, transformer
+    print("@@@ Pydantic plugin is successfully loaded.")
 except (ImportError, OSError) as e:
     logger.info(f"Meet error when importing pydantic: `{e}`")
     logger.info("Flytekit only support pydantic version > 2.")
