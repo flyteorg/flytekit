@@ -21,6 +21,7 @@ from flytekit.types.structured import (
 @model_serializer
 def serialize_flyte_file(self) -> Dict[str, str]:
     lv = FlyteFilePathTransformer().to_literal(FlyteContextManager.current_context(), self, type(self), None)
+    print(f"@@@@ SERIALIZING FLYTE FILE uploaded to {lv.scalar.blob.uri}")
     return {"path": lv.scalar.blob.uri}
 
 

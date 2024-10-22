@@ -47,6 +47,7 @@ class PydanticTransformer(TypeTransformer[BaseModel]):
         This is for handling enum in basemodel.
         More details: https://github.com/flyteorg/flytekit/pull/2792
         """
+        print("@@@@ PYDANTIC SERIALIZING")
         json_str = python_val.model_dump_json()
         dict_obj = json.loads(json_str)
         msgpack_bytes = msgpack.dumps(dict_obj)
