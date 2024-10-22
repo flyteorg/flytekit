@@ -4,12 +4,13 @@ import collections
 import datetime
 import inspect
 import typing
+from collections.abc import Iterable
 from copy import deepcopy
 from enum import Enum
-from typing import Any, Coroutine, Dict, List, Optional, Set, Tuple, Union, cast, get_args
+from typing import Any, Coroutine, Dict, List, Optional, Set, Tuple, Union, cast
 
 from google.protobuf import struct_pb2 as _struct
-from typing_extensions import Protocol
+from typing_extensions import Annotated, Protocol, get_args, get_origin
 
 from flytekit.core import constants as _common_constants
 from flytekit.core import context_manager as _flyte_context
@@ -26,9 +27,11 @@ from flytekit.core.context_manager import (
 from flytekit.core.interface import Interface
 from flytekit.core.node import Node
 from flytekit.core.type_engine import (
+    AsyncTypeTransformer,
     DictTransformer,
     ListTransformer,
     TypeEngine,
+    TypeTransformer,
     TypeTransformerFailedError,
     UnionTransformer,
 )
@@ -94,8 +97,7 @@ async def _translate_inputs_to_literals(
         var = flyte_interface_types[k]
         t = native_types[k]
         try:
-            if type(v) is Promise:
-                v = await resolve_attr_path_in_promise(v)
+            v = await resolve_attr_path_recursively(v)
             result[k] = await TypeEngine.async_to_literal(ctx, v, t, var.type)
         except TypeTransformerFailedError as exc:
             exc.args = (f"Failed argument '{k}': {exc.args[0]}",)
@@ -105,6 +107,21 @@ async def _translate_inputs_to_literals(
 
 
 translate_inputs_to_literals = loop_manager.synced(_translate_inputs_to_literals)
+
+
+async def resolve_attr_path_recursively(v: Any) -> Any:
+    """
+    This function resolves the attribute path in a nested structure recursively.
+    """
+    if isinstance(v, Promise):
+        v = await resolve_attr_path_in_promise(v)
+    elif isinstance(v, list):
+        for i, elem in enumerate(v):
+            v[i] = await resolve_attr_path_recursively(elem)
+    elif isinstance(v, dict):
+        for k, elem in v.items():
+            v[k] = await resolve_attr_path_recursively(elem)
+    return v
 
 
 async def resolve_attr_path_in_promise(p: Promise) -> Promise:
@@ -784,13 +801,24 @@ def create_task_output(
     return Output(*promises)  # type: ignore
 
 
+T = typing.TypeVar("T")
+
+
 async def binding_data_from_python_std(
     ctx: _flyte_context.FlyteContext,
     expected_literal_type: _type_models.LiteralType,
     t_value: Any,
-    t_value_type: type,
+    t_value_type: typing.Type[T],
     nodes: List[Node],
 ) -> _literals_models.BindingData:
+    literal_type_override = None
+    transformer_override = None
+    if get_origin(t_value_type) is Annotated:
+        for annotation in get_args(t_value_type)[1:]:
+            if isinstance(annotation, TypeTransformer):
+                transformer_override = annotation
+                literal_type_override = annotation.get_literal_type(t_value_type)
+
     # This handles the case where the given value is the output of another task
     if isinstance(t_value, Promise):
         if not t_value.is_ready:
@@ -839,12 +867,27 @@ async def binding_data_from_python_std(
             f"Failed to bind data {t_value} with literal type {expected_literal_type.union_type.variants}."
         )
 
-    elif isinstance(t_value, list):
-        sub_type: Optional[type] = ListTransformer.get_sub_type_or_none(t_value_type)
+    elif (
+        isinstance(t_value, list)
+        and (not transformer_override or (literal_type_override and literal_type_override.collection_type is not None))
+        or (
+            literal_type_override
+            and literal_type_override.collection_type is not None
+            and isinstance(t_value, Iterable)
+        )
+    ):
+        if transformer_override and hasattr(transformer_override, "get_sub_type_or_none"):
+            sub_type = transformer_override.get_sub_type_or_none(t_value_type)
+        else:
+            sub_type = ListTransformer.get_sub_type_or_none(t_value_type)
         collection = _literals_models.BindingDataCollection(
             bindings=[
                 await binding_data_from_python_std(
-                    ctx, expected_literal_type.collection_type, t, sub_type or type(t), nodes
+                    ctx,
+                    expected_literal_type.collection_type,
+                    t,
+                    sub_type or type(t),
+                    nodes,
                 )
                 for t in t_value
             ]
@@ -852,7 +895,11 @@ async def binding_data_from_python_std(
 
         return _literals_models.BindingData(collection=collection)
 
-    elif isinstance(t_value, dict):
+    elif (
+        isinstance(t_value, dict)
+        and (not transformer_override or (literal_type_override and literal_type_override.map_value_type is not None))
+        or (literal_type_override and literal_type_override.map_value_type is not None and hasattr(t_value, "items"))
+    ):
         if (
             expected_literal_type.map_value_type is None
             and expected_literal_type.simple != _type_models.SimpleType.STRUCT
@@ -864,11 +911,18 @@ async def binding_data_from_python_std(
             lit = await TypeEngine.async_to_literal(ctx, t_value, type(t_value), expected_literal_type)
             return _literals_models.BindingData(scalar=lit.scalar)
         else:
-            _, v_type = DictTransformer.extract_types_or_metadata(t_value_type)
+            if transformer_override and hasattr(transformer_override, "extract_types_or_metadata"):
+                _, v_type = transformer_override.extract_types_or_metadata(t_value_type)  # type: ignore
+            else:
+                _, v_type = DictTransformer.extract_types_or_metadata(t_value_type)  # type: ignore
             m = _literals_models.BindingDataMap(
                 bindings={
                     k: await binding_data_from_python_std(
-                        ctx, expected_literal_type.map_value_type, v, v_type or type(v), nodes
+                        ctx,
+                        expected_literal_type.map_value_type,
+                        v,
+                        v_type or type(v),
+                        nodes,
                     )
                     for k, v in t_value.items()
                 }
@@ -884,7 +938,15 @@ async def binding_data_from_python_std(
         )
 
     # This is the scalar case - e.g. my_task(in1=5)
-    lit = await TypeEngine.async_to_literal(ctx, t_value, t_value_type or type(t_value), expected_literal_type)
+    if transformer_override is None:
+        lit = await TypeEngine.async_to_literal(ctx, t_value, t_value_type or type(t_value), expected_literal_type)
+    else:
+        if isinstance(transformer_override, AsyncTypeTransformer):
+            lit = await transformer_override.async_to_literal(
+                ctx, t_value, t_value_type or type(t_value), expected_literal_type
+            )
+        else:
+            lit = transformer_override.to_literal(ctx, t_value, t_value_type or type(t_value), expected_literal_type)
     return _literals_models.BindingData(scalar=lit.scalar)
 
 
