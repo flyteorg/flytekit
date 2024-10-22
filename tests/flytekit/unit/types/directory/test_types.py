@@ -28,7 +28,7 @@ def test_new_remote_dir_alt():
 
 def test_new_auto_new_dir():
     fd = FlyteDirectory.new("my_dir")
-    assert FlyteContext.current_context().working_directory in fd.path
+    assert FlyteContextManager.current_context().working_directory in fd.path
 
 def test_add_path_to_dir():
     fd = FlyteDirectory.new("my_dir")
