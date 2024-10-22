@@ -26,7 +26,9 @@ def serialize_flyte_file(self) -> Dict[str, str]:
 @model_validator(mode="after")
 def deserialize_flyte_file(self, info) -> FlyteFile:
     if info.context is None or info.context.get("deserialize") is not True:
+        print("@@@@ initializing flyte file")
         return self
+    print("@@@@ convert to flyte file")
     pv = FlyteFilePathTransformer().to_python_value(
         FlyteContextManager.current_context(),
         Literal(
