@@ -275,6 +275,7 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
     def __fspath__(self):
         # This is where a delayed downloading of the file will happen
         if not self._downloaded:
+            print(f"inside fspath for {self.path} invoking downloader.")
             self._downloader()
             self._downloaded = True
         return self.path
@@ -310,6 +311,7 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
         return self.__fspath__()
 
     async def _download(self) -> str:
+        print(f"Downloading file {self.path}")
         return self.__fspath__()
 
     @contextmanager
