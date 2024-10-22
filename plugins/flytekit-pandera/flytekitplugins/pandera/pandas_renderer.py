@@ -1,11 +1,12 @@
 from dataclasses import dataclass
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from flytekit import lazy_module
 
 if TYPE_CHECKING:
     import great_tables as gt
     import pandas
+
     import pandera
 else:
     gt = lazy_module("great_tables")
@@ -30,7 +31,6 @@ DATA_ERROR_DISPLAY_ORDER = ["column", "error_code", "percent_valid", "check", "f
 DATA_PREVIEW_HEAD = 5
 FAILURE_CASE_LIMIT = 10
 ERROR_COLUMN_MAX_WIDTH = 200
-
 
 
 class PandasReportRenderer:
@@ -58,17 +58,16 @@ class PandasReportRenderer:
     @staticmethod
     def _reshape_long_failure_cases(long_failure_cases: "pandas.DataFrame"):
         return (
-            long_failure_cases
-            .pivot(index=["schema_context", "check", "index"], columns="column", values="failure_case")
+            long_failure_cases.pivot(
+                index=["schema_context", "check", "index"], columns="column", values="failure_case"
+            )
             .apply(lambda s: s.to_dict(), axis="columns")
             .rename("failure_case")
             .reset_index(["index", "check"])
-            .reset_index(drop=True)
-            [["check", "index", "failure_case"]]
+            .reset_index(drop=True)[["check", "index", "failure_case"]]
         )
 
     def _prepare_data_error_df(self, data: "pandas.DataFrame", data_errors: dict, failure_cases: "pandas.DataFrame"):
-
         def num_failure_cases(series):
             return len(series)
 
@@ -78,26 +77,29 @@ class PandasReportRenderer:
             if len(series) > FAILURE_CASE_LIMIT:
                 out += f" ... (+{len(series) - FAILURE_CASE_LIMIT} more)"
             return out
-        
+
         data_errors = pandas.concat(pandas.DataFrame(v).assign(error_code=k) for k, v in data_errors.items())
         # this is a bit of a hack to get the failure cases into the same format as the data errors
-        long_failure_case_selector = (failure_cases["schema_context"] == "DataFrameSchema") & (failure_cases["column"].notna())
+        long_failure_case_selector = (failure_cases["schema_context"] == "DataFrameSchema") & (
+            failure_cases["column"].notna()
+        )
         long_failure_cases = failure_cases[long_failure_case_selector]
 
         data_error_df = [data_errors.merge(failure_cases, how="inner", on=["column", "check"])]
         if long_failure_cases.shape[0] > 0:
             reshaped_failure_cases = self._reshape_long_failure_cases(long_failure_cases)
-            long_data_errors = data_errors.assign(column=data_errors.column.where(~(data_errors.column == data_errors.schema), "NA"))
+            long_data_errors = data_errors.assign(
+                column=data_errors.column.where(~(data_errors.column == data_errors.schema), "NA")
+            )
             data_error_df.append(
                 long_data_errors.merge(reshaped_failure_cases, how="inner", on=["check"]).assign(column="NA")
             )
-        
+
         data_error_df = pandas.concat(data_error_df)
         out_df = (
             data_error_df[DATA_ERROR_COLUMNS]
             .groupby(["column", "error_code", "check", "error"])
-            .failure_case
-            .agg([num_failure_cases, _failure_cases])
+            .failure_case.agg([num_failure_cases, _failure_cases])
             .reset_index()
             .rename(columns={"_failure_cases": "failure_cases"})
             .assign(percent_valid=lambda df: 1 - (df["num_failure_cases"] / data.shape[0]))
@@ -122,8 +124,7 @@ class PandasReportRenderer:
         else:
             schema_error_df = (
                 pandas.concat(pandas.DataFrame(v).assign(error_code=k) for k, v in schema_errors.items())
-                .merge(failure_cases, how="left", on=["column", "check"])
-                [SCHEMA_ERROR_COLUMNS]
+                .merge(failure_cases, how="left", on=["column", "check"])[SCHEMA_ERROR_COLUMNS]
                 .drop(["schema"], axis="columns")
             )
             total_schema_errors = schema_error_df.shape[0]
