@@ -1,4 +1,5 @@
 from typing import Dict
+from pydantic import model_serializer, model_validator
 
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.models.core import types as _core_types
@@ -13,11 +14,8 @@ from flytekit.types.structured import (
     StructuredDatasetType,
 )
 
+
 # Conditional import for Pydantic model_serializer and model_validator
-# try:
-from pydantic import model_serializer, model_validator
-
-
 # Serialize and Deserialize functions
 @model_serializer
 def serialize_flyte_file(self) -> Dict[str, str]:
@@ -138,6 +136,3 @@ setattr(FlyteSchema, "serialize_flyte_schema", serialize_flyte_schema)
 setattr(FlyteSchema, "deserialize_flyte_schema", deserialize_flyte_schema)
 setattr(StructuredDataset, "serialize_structured_dataset", serialize_structured_dataset)
 setattr(StructuredDataset, "deserialize_structured_dataset", deserialize_structured_dataset)
-# except ImportError:
-#     logger.info("Pydantic V2 not installed, skipping custom serialization/deserialization.")
-#     pass
