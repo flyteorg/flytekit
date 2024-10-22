@@ -4,7 +4,7 @@ from typing import Type, TypeVar
 import torch
 
 from flytekit.core.context_manager import FlyteContext
-from flytekit.core.type_engine import AsyncTypeTransformer, TypeEngine, TypeTransformerFailedError
+from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
 from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
@@ -12,7 +12,7 @@ from flytekit.models.types import LiteralType
 T = TypeVar("T")
 
 
-class PyTorchTypeTransformer(AsyncTypeTransformer[T]):
+class PyTorchTypeTransformer(TypeTransformer[T]):
     def get_literal_type(self, t: Type[T]) -> LiteralType:
         return LiteralType(
             blob=_core_types.BlobType(
@@ -21,7 +21,7 @@ class PyTorchTypeTransformer(AsyncTypeTransformer[T]):
             )
         )
 
-    async def async_to_literal(
+    def to_literal(
         self,
         ctx: FlyteContext,
         python_val: T,
@@ -44,17 +44,17 @@ class PyTorchTypeTransformer(AsyncTypeTransformer[T]):
         # save pytorch tensor/module to a file
         torch.save(python_val, local_path)
 
-        remote_path = await ctx.file_access.async_put_raw_data(local_path)
+        remote_path = ctx.file_access.put_raw_data(local_path)
         return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
 
-    async def async_to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
+    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
         try:
             uri = lv.scalar.blob.uri
         except AttributeError:
             TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
 
         local_path = ctx.file_access.get_random_local_path()
-        await ctx.file_access.async_get_data(uri, local_path, is_multipart=False)
+        ctx.file_access.get_data(uri, local_path, is_multipart=False)
 
         # cpu <-> gpu conversion
         if torch.cuda.is_available():
