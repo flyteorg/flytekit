@@ -460,6 +460,7 @@ def test_get_traceback_str():
     print(traceback_str)  # helpful for debugging
     assert expected_error_re.match(traceback_str) is not None
 
+
 def test_dispatch_execute_offloaded_literals(tmp_path_factory):
     @task
     def t1(a: typing.List[int]) -> typing.List[str]:
@@ -503,7 +504,9 @@ def test_dispatch_execute_offloaded_literals(tmp_path_factory):
         write_proto_to_file(input_literal_map.to_flyte_idl(), str(inputs_path/"inputs.pb"))
 
         with mock.patch.dict(os.environ, {"FK_L_MIN_SIZE_MB": "0"}):
-            _dispatch_execute(ctx, t1, str(inputs_path/"inputs.pb"), str(outputs_path.absolute()))
+            _dispatch_execute(ctx, lambda: t1, str(inputs_path/"inputs.pb"), str(outputs_path.absolute()))
+
+            assert "error.pb" not in os.listdir(outputs_path)
 
             for ff in os.listdir(outputs_path):
                 if ff == "outputs.pb":
@@ -530,6 +533,93 @@ def test_dispatch_execute_offloaded_literals(tmp_path_factory):
                                     ),
                                     Literal(
                                         scalar=Scalar(primitive=Primitive(string_value="string is: 3")),
+                                    ),
+                                ]
+                            )
+                        )
+
+
+
+def test_dispatch_execute_offloaded_literals_only_o1_is_offloaded(tmp_path_factory):
+    @task
+    def t1(xs: typing.List[int]) -> typing.Tuple[int, typing.List[str]]:
+        return sum(xs), [f"string is: {x}" for x in xs]
+
+    inputs_path = tmp_path_factory.mktemp("inputs")
+    outputs_path = tmp_path_factory.mktemp("outputs")
+
+    ctx = context_manager.FlyteContext.current_context()
+    with context_manager.FlyteContextManager.with_context(
+            ctx.with_execution_state(
+                ctx.execution_state.with_params(
+                    mode=context_manager.ExecutionState.Mode.TASK_EXECUTION,
+                    user_space_params=context_manager.ExecutionParameters(
+                        execution_date=datetime.now(),
+                        tmp_dir="/tmp",
+                        stats=mock_stats.MockStats(),
+                        logging=None,
+                        raw_output_prefix="",
+                        output_metadata_prefix=str(outputs_path.absolute()),
+                        execution_id=id_models.WorkflowExecutionIdentifier("p", "d", "n"),
+                    ),
+                ),
+            ),
+    ) as ctx:
+        xs: typing.List[int] = [1, 2, 3, 4]
+        input_literal_map = _literal_models.LiteralMap(
+            {
+                "xs": _literal_models.Literal(
+                    collection=_literal_models.LiteralCollection(
+                        literals=[
+                            _literal_models.Literal(
+                                scalar=_literal_models.Scalar(primitive=_literal_models.Primitive(integer=x)),
+                            ) for x in xs
+                        ]
+                    )
+                )
+            }
+        )
+
+        write_proto_to_file(input_literal_map.to_flyte_idl(), str(inputs_path/"inputs.pb"))
+
+        with mock.patch.dict(os.environ, {"FK_L_MIN_SIZE_MB": "0"}):
+            _dispatch_execute(ctx, lambda: t1, str(inputs_path/"inputs.pb"), str(outputs_path.absolute()))
+
+            assert "error.pb" not in os.listdir(outputs_path)
+
+            for ff in os.listdir(outputs_path):
+                with open(outputs_path/ff, "rb") as f:
+                    if ff == "outputs.pb":
+                        lit = literals_pb2.LiteralMap()
+                        lit.ParseFromString(f.read())
+                        assert len(lit.literals) == 2
+                        assert "o0" in lit.literals
+                        assert lit.literals["o1"].offloaded_metadata is not None
+                        assert lit.literals["o1"].offloaded_metadata.size_bytes == 82
+                        assert lit.literals["o1"].offloaded_metadata.uri.endswith("/o1_offloaded_metadata.pb")
+                    elif ff == "o0_offloaded_metadata.pb":
+                        lit = literals_pb2.Literal()
+                        lit.ParseFromString(f.read())
+                        assert lit == Literal(
+                            scalar=Scalar(primitive=Primitive(integer=10)),
+                        )
+                    elif ff == "o1_offloaded_metadata.pb":
+                        lit = literals_pb2.Literal()
+                        lit.ParseFromString(f.read())
+                        assert lit == Literal(
+                            collection=LiteralCollection(
+                                literals=[
+                                    Literal(
+                                        scalar=Scalar(primitive=Primitive(string_value="string is: 1")),
+                                    ),
+                                    Literal(
+                                        scalar=Scalar(primitive=Primitive(string_value="string is: 2")),
+                                    ),
+                                    Literal(
+                                        scalar=Scalar(primitive=Primitive(string_value="string is: 3")),
+                                    ),
+                                    Literal(
+                                        scalar=Scalar(primitive=Primitive(string_value="string is: 4")),
                                     ),
                                 ]
                             )
