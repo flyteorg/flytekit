@@ -509,8 +509,8 @@ def test_dispatch_execute_offloaded_literals(tmp_path_factory):
             assert "error.pb" not in os.listdir(outputs_path)
 
             for ff in os.listdir(outputs_path):
-                if ff == "outputs.pb":
-                    with open(outputs_path/ff, "rb") as f:
+                with open(outputs_path/ff, "rb") as f:
+                    if ff == "outputs.pb":
                         lit = literals_pb2.LiteralMap()
                         lit.ParseFromString(f.read())
                         assert len(lit.literals) == 1
@@ -518,8 +518,7 @@ def test_dispatch_execute_offloaded_literals(tmp_path_factory):
                         assert lit.literals["o0"].offloaded_metadata is not None
                         assert lit.literals["o0"].offloaded_metadata.size_bytes == 62
                         assert lit.literals["o0"].offloaded_metadata.uri.endswith("/o0_offloaded_metadata.pb")
-                elif ff == "o0_offloaded_metadata.pb":
-                    with open(outputs_path/ff, "rb") as f:
+                    elif ff == "o0_offloaded_metadata.pb":
                         lit = literals_pb2.Literal()
                         lit.ParseFromString(f.read())
                         assert lit == Literal(
@@ -537,10 +536,11 @@ def test_dispatch_execute_offloaded_literals(tmp_path_factory):
                                 ]
                             )
                         )
+                    else:
+                        assert False, f"Unexpected file {ff}"
 
 
-
-def test_dispatch_execute_offloaded_literals_only_o1_is_offloaded(tmp_path_factory):
+def test_dispatch_execute_offloaded_literals_two_outputs_offloaded(tmp_path_factory):
     @task
     def t1(xs: typing.List[int]) -> typing.Tuple[int, typing.List[str]]:
         return sum(xs), [f"string is: {x}" for x in xs]
@@ -594,6 +594,10 @@ def test_dispatch_execute_offloaded_literals_only_o1_is_offloaded(tmp_path_facto
                         lit.ParseFromString(f.read())
                         assert len(lit.literals) == 2
                         assert "o0" in lit.literals
+                        assert lit.literals["o0"].offloaded_metadata is not None
+                        assert lit.literals["o0"].offloaded_metadata.size_bytes == 6
+                        assert lit.literals["o0"].offloaded_metadata.uri.endswith("/o0_offloaded_metadata.pb")
+                        assert "o1" in lit.literals
                         assert lit.literals["o1"].offloaded_metadata is not None
                         assert lit.literals["o1"].offloaded_metadata.size_bytes == 82
                         assert lit.literals["o1"].offloaded_metadata.uri.endswith("/o1_offloaded_metadata.pb")
@@ -624,3 +628,5 @@ def test_dispatch_execute_offloaded_literals_only_o1_is_offloaded(tmp_path_facto
                                 ]
                             )
                         )
+                    else:
+                        assert False, f"Unexpected file {ff}"
