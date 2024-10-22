@@ -215,7 +215,9 @@ class FileAccessProvider(object):
 
         return fsspec.filesystem(protocol, **kwargs)
 
-    def get_async_filesystem_for_path(self, path: str = "", anonymous: bool = False, **kwargs) -> AsyncFileSystem:
+    async def get_async_filesystem_for_path(
+        self, path: str = "", anonymous: bool = False, **kwargs
+    ) -> Union[AsyncFileSystem, fsspec.AbstractFileSystem]:
         protocol = get_protocol(path)
         loop = asyncio.get_running_loop()
 
@@ -293,7 +295,7 @@ class FileAccessProvider(object):
 
     @retry_request
     async def get(self, from_path: str, to_path: str, recursive: bool = False, **kwargs):
-        file_system = self.get_async_filesystem_for_path(from_path)
+        file_system = await self.get_async_filesystem_for_path(from_path)
         if recursive:
             from_path, to_path = self.recursive_paths(from_path, to_path)
         try:
@@ -330,7 +332,7 @@ class FileAccessProvider(object):
         More of an internal function to be called by put_data and put_raw_data
         This does not need a separate sync function.
         """
-        file_system = self.get_async_filesystem_for_path(to_path)
+        file_system = await self.get_async_filesystem_for_path(to_path)
         from_path = self.strip_file_header(from_path)
         if recursive:
             # Only check this for the local filesystem
@@ -419,7 +421,7 @@ class FileAccessProvider(object):
 
         # raw bytes
         if isinstance(lpath, bytes):
-            fs = self.get_async_filesystem_for_path(to_path)
+            fs = await self.get_async_filesystem_for_path(to_path)
             if isinstance(fs, AsyncFileSystem):
                 async with fs.open_async(to_path, "wb", **kwargs) as s:
                     s.write(lpath)
@@ -433,7 +435,7 @@ class FileAccessProvider(object):
         if isinstance(lpath, io.BufferedReader) or isinstance(lpath, io.BytesIO):
             if not lpath.readable():
                 raise FlyteAssertion("Buffered reader must be readable")
-            fs = self.get_async_filesystem_for_path(to_path)
+            fs = await self.get_async_filesystem_for_path(to_path)
             lpath.seek(0)
             if isinstance(fs, AsyncFileSystem):
                 async with fs.open_async(to_path, "wb", **kwargs) as s:
@@ -448,7 +450,7 @@ class FileAccessProvider(object):
         if isinstance(lpath, io.StringIO):
             if not lpath.readable():
                 raise FlyteAssertion("Buffered reader must be readable")
-            fs = self.get_async_filesystem_for_path(to_path)
+            fs = await self.get_async_filesystem_for_path(to_path)
             lpath.seek(0)
             if isinstance(fs, AsyncFileSystem):
                 async with fs.open_async(to_path, "wb", **kwargs) as s:
