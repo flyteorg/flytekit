@@ -7,7 +7,7 @@ import random
 import typing
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Generator, Tuple
+from typing import Any, Dict, Generator, Tuple
 from uuid import UUID
 
 import fsspec
@@ -23,6 +23,7 @@ from flytekit.core.constants import MESSAGEPACK
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError, get_batch_size
 from flytekit.exceptions.user import FlyteAssertion
+from flytekit.extras.pydantic.placeholder import model_serializer, model_validator
 from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_types
 from flytekit.models.core.types import BlobType
@@ -135,6 +136,36 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
     @classmethod
     def _deserialize(cls, value) -> "FlyteDirectory":
         return FlyteDirToMultipartBlobTransformer().dict_to_flyte_directory(dict_obj=value, expected_python_type=cls)
+
+    @model_serializer
+    def serialize_flyte_dir(self) -> Dict[str, str]:
+        lv = FlyteDirToMultipartBlobTransformer().to_literal(
+            FlyteContextManager.current_context(), self, type(self), None
+        )
+        return {"path": lv.scalar.blob.uri}
+
+    @model_validator(mode="after")
+    def deserialize_flyte_dir(self, info) -> FlyteDirectory:
+        if info.context is None or info.context.get("deserialize") is not True:
+            return self
+
+        pv = FlyteDirToMultipartBlobTransformer().to_python_value(
+            FlyteContextManager.current_context(),
+            Literal(
+                scalar=Scalar(
+                    blob=Blob(
+                        metadata=BlobMetadata(
+                            type=_core_types.BlobType(
+                                format="", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
+                            )
+                        ),
+                        uri=self.path,
+                    )
+                )
+            ),
+            type(self),
+        )
+        return pv
 
     def __init__(
         self,

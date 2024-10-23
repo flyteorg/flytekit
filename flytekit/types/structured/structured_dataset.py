@@ -24,6 +24,7 @@ from flytekit.core.constants import MESSAGEPACK
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
 from flytekit.deck.renderer import Renderable
+from flytekit.extras.pydantic.placeholder import model_serializer, model_validator
 from flytekit.loggers import developer_logger, logger
 from flytekit.models import literals
 from flytekit.models import types as type_models
@@ -92,6 +93,38 @@ class StructuredDataset(SerializableType, DataClassJSONMixin):
                 )
             ),
             cls,
+        )
+
+    @model_serializer
+    def serialize_structured_dataset(self) -> Dict[str, Optional[str]]:
+        lv = StructuredDatasetTransformerEngine().to_literal(
+            FlyteContextManager.current_context(), self, type(self), None
+        )
+        sd = StructuredDataset(uri=lv.scalar.structured_dataset.uri)
+        sd.file_format = lv.scalar.structured_dataset.metadata.structured_dataset_type.format
+        return {
+            "uri": sd.uri,
+            "file_format": sd.file_format,
+        }
+
+    @model_validator(mode="after")
+    def deserialize_structured_dataset(self, info) -> StructuredDataset:
+        if info.context is None or info.context.get("deserialize") is not True:
+            return self
+
+        return StructuredDatasetTransformerEngine().to_python_value(
+            FlyteContextManager.current_context(),
+            Literal(
+                scalar=Scalar(
+                    structured_dataset=StructuredDataset(
+                        metadata=StructuredDatasetMetadata(
+                            structured_dataset_type=StructuredDatasetType(format=self.file_format)
+                        ),
+                        uri=self.uri,
+                    )
+                )
+            ),
+            type(self),
         )
 
     @classmethod

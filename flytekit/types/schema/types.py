@@ -8,7 +8,7 @@ from abc import abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Type
+from typing import Dict, Optional, Type
 
 import msgpack
 from dataclasses_json import config
@@ -21,6 +21,7 @@ from mashumaro.types import SerializableType
 from flytekit.core.constants import MESSAGEPACK
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
+from flytekit.extras.pydantic.placeholder import model_serializer, model_validator
 from flytekit.loggers import logger
 from flytekit.models.literals import Binary, Literal, Scalar, Schema
 from flytekit.models.types import LiteralType, SchemaType
@@ -188,7 +189,7 @@ class FlyteSchema(SerializableType, DataClassJSONMixin):
     This is the main schema class that users should use.
     """
 
-    def _serialize(self) -> typing.Dict[str, typing.Optional[str]]:
+    def _serialize(self) -> Dict[str, Optional[str]]:
         FlyteSchemaTransformer().to_literal(FlyteContextManager.current_context(), self, type(self), None)
         return {"remote_path": self.remote_path}
 
@@ -204,6 +205,23 @@ class FlyteSchema(SerializableType, DataClassJSONMixin):
             FlyteContextManager.current_context(),
             Literal(scalar=Scalar(schema=Schema(remote_path, t._get_schema_type(cls)))),
             cls,
+        )
+
+    @model_serializer
+    def serialize_flyte_schema(self) -> Dict[str, Optional[str]]:
+        FlyteSchemaTransformer().to_literal(FlyteContextManager.current_context(), self, type(self), None)
+        return {"remote_path": self.remote_path}
+
+    @model_validator(mode="after")
+    def deserialize_flyte_schema(self, info) -> FlyteSchema:
+        if info.context is None or info.context.get("deserialize") is not True:
+            return self
+
+        t = FlyteSchemaTransformer()
+        return t.to_python_value(
+            FlyteContextManager.current_context(),
+            Literal(scalar=Scalar(schema=Schema(self.remote_path, t._get_schema_type(type(self))))),
+            type(self),
         )
 
     @classmethod
