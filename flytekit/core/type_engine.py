@@ -1563,7 +1563,7 @@ class ListTransformer(AsyncTypeTransformer[T]):
         else:
             t = self.get_sub_type(python_type)
             lit_list = [asyncio.create_task(TypeEngine.async_to_literal(ctx, x, t, expected.collection_type)) for x in python_val]
-            lit_list = await _run_coros_in_chunks(lit_list)
+            lit_list = await _run_coros_in_chunks(lit_list, batch_size=20)
             # lit_list = await asyncio.gather(*lit_list)
 
         return Literal(collection=LiteralCollection(literals=lit_list))
