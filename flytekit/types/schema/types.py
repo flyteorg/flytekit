@@ -21,7 +21,7 @@ from mashumaro.types import SerializableType
 from flytekit.core.constants import MESSAGEPACK
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import AsyncTypeTransformer, TypeEngine, TypeTransformerFailedError
-from flytekit.extras.pydantic.placeholder import model_serializer, model_validator
+from flytekit.extras.pydantic.decorator import model_serializer, model_validator
 from flytekit.loggers import logger
 from flytekit.models.literals import Binary, Literal, Scalar, Schema
 from flytekit.models.types import LiteralType, SchemaType

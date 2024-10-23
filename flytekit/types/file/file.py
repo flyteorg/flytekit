@@ -27,7 +27,7 @@ from flytekit.core.type_engine import (
     get_underlying_type,
 )
 from flytekit.exceptions.user import FlyteAssertion
-from flytekit.extras.pydantic.placeholder import model_serializer, model_validator
+from flytekit.extras.pydantic.decorator import model_serializer, model_validator
 from flytekit.loggers import logger
 from flytekit.models.core import types as _core_types
 from flytekit.models.core.types import BlobType

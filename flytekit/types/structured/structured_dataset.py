@@ -24,7 +24,7 @@ from flytekit.core.constants import MESSAGEPACK
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import AsyncTypeTransformer, TypeEngine, TypeTransformerFailedError
 from flytekit.deck.renderer import Renderable
-from flytekit.extras.pydantic.placeholder import model_serializer, model_validator
+from flytekit.extras.pydantic.decorator import model_serializer, model_validator
 from flytekit.loggers import developer_logger, logger
 from flytekit.models import literals
 from flytekit.models import types as type_models
