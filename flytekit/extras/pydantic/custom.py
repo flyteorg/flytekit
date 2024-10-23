@@ -2,6 +2,7 @@ from typing import Dict
 
 from pydantic import model_serializer, model_validator
 
+from flytekit import logger
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar, Schema
