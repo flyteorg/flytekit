@@ -44,7 +44,7 @@ def deserialize_flyte_file(self, info) -> FlyteFile:
                 )
             )
         ),
-        type(self),
+        FlyteFile,
     )
     return pv
 
