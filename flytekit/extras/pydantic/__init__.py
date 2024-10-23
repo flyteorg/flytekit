@@ -5,7 +5,7 @@ try:
     # model_validator and model_serializer are only available in pydantic > 2
     from pydantic import model_serializer, model_validator
 
-    from . import custom, transformer
+    from . import transformer
 except (ImportError, OSError) as e:
     logger.info(f"Meet error when importing pydantic: `{e}`")
     logger.info("Flytekit only support pydantic version > 2.")
