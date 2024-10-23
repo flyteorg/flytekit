@@ -51,6 +51,7 @@ from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Binary, Literal, LiteralCollection, LiteralMap, Primitive, Scalar, Union, Void
 from flytekit.models.types import LiteralType, SimpleType, TypeStructure, UnionType
 from flytekit.utils.asyn import loop_manager
+from flytekit.core.utils import timeit
 
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
@@ -1566,7 +1567,9 @@ class ListTransformer(AsyncTypeTransformer[T]):
                 asyncio.create_task(TypeEngine.async_to_literal(ctx, x, t, expected.collection_type))
                 for x in python_val
             ]
-            lit_list = await _run_coros_in_chunks(lit_list, batch_size=_DEFAULT_BATCH_SIZE)
+            print("About to run!")
+            with timeit("run coros"):
+                lit_list = await _run_coros_in_chunks(lit_list, batch_size=_DEFAULT_BATCH_SIZE)
             # lit_list = await asyncio.gather(*lit_list)
 
         return Literal(collection=LiteralCollection(literals=lit_list))
