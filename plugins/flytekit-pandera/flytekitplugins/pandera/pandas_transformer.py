@@ -88,15 +88,19 @@ class PanderaPandasTransformer(TypeTransformer[pandera.typing.DataFrame]):
         try:
             val = schema.validate(python_val, lazy=True)
         except (pandera.errors.SchemaError, pandera.errors.SchemaErrors) as exc:
+            html = renderer.to_html(python_val, schema, exc)
+            val = python_val
             if config.on_error == "raise":
+                # render the deck before raising the error
                 raise exc
             elif config.on_error == "warn":
                 logger.warning(str(exc))
-                html = renderer.to_html(exc)
-                Deck(renderer._title, html)
             else:
                 raise ValueError(f"Invalid on_error value: {config.on_error}")
-            val = python_val
+        else:
+            html = renderer.to_html(val, schema)
+        finally:
+            Deck(renderer._title, html)
 
         lv = self._sd_transformer.to_literal(ctx, val, pandas.DataFrame, expected)
 
@@ -123,16 +127,18 @@ class PanderaPandasTransformer(TypeTransformer[pandera.typing.DataFrame]):
         try:
             val = schema.validate(df, lazy=True)
         except (pandera.errors.SchemaError, pandera.errors.SchemaErrors) as exc:
+            html = renderer.to_html(df, schema, exc)
+            val = df
             if config.on_error == "raise":
                 raise exc
             elif config.on_error == "warn":
-                print(ctx.execution_state)
                 logger.warning(str(exc))
-                html = renderer.to_html(exc)
-                Deck(renderer._title, html)
             else:
                 raise ValueError(f"Invalid on_error value: {config.on_error}")
-            val = df
+        else:
+            html = renderer.to_html(val, schema)
+        finally:
+            Deck(renderer._title, html)
 
         return val
 

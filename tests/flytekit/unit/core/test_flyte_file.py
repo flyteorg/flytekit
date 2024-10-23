@@ -650,7 +650,7 @@ def test_file_open_things():
         ctx = FlyteContextManager.current_context()
         r = ctx.file_access.get_random_string()
         dest = ctx.file_access.join(ctx.file_access.raw_output_prefix, r)
-        ctx.file_access.put(__file__, dest)
+        ctx.file_access._put(__file__, dest)
         return FlyteFile(path=dest)
 
     @task

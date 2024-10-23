@@ -777,7 +777,14 @@ class Config(object):
         :return: Config
         """
         c = cls.auto(config_file)
-        return c.with_params(platform=PlatformConfig.for_endpoint(endpoint, insecure), data_config=data_config)
+        from dataclasses import replace
+
+        p = (
+            replace(c.platform, endpoint=endpoint, insecure=insecure)
+            if config_file and c.platform
+            else PlatformConfig.for_endpoint(endpoint, insecure)
+        )
+        return c.with_params(platform=p, data_config=data_config)
 
 
 @dataclass

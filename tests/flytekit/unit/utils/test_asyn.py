@@ -1,3 +1,4 @@
+import os
 import threading
 import pytest
 import asyncio
@@ -116,3 +117,8 @@ def test_recursive_calling():
     main_ctx.vals["depth"] = 0
     assert res == "world"
     sync_function(6, 6)
+
+    # Check to make sure that the names of the runners have the PID in them. This make the loop manager work with
+    # things like pytorch elastic.
+    for k in loop_manager._runner_map.keys():
+        assert str(os.getpid()) in k
