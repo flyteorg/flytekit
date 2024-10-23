@@ -1159,7 +1159,7 @@ class TypeEngine(typing.Generic[T]):
                 from flytekit.extras import sklearn  # noqa: F401
             if is_imported("pydantic"):
                 from flytekit.extras import pydantic  # noqa: F401
-                print("Pydantic transformer registered")
+                logger.info("Pydantic transformer registered")
             if is_imported("pandas"):
                 try:
                     from flytekit.types.schema.types_pandas import PandasSchemaReader, PandasSchemaWriter  # noqa: F401
