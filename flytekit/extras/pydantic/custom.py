@@ -14,7 +14,7 @@ from flytekit.types.structured import (
     StructuredDatasetTransformerEngine,
     StructuredDatasetType,
 )
-
+logger.info("Hello from flytekit/extras/pydantic/custom.py")
 
 # Conditional import for Pydantic model_serializer and model_validator
 # Serialize and Deserialize functions

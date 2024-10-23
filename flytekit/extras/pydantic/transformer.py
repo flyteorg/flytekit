@@ -13,7 +13,7 @@ from flytekit.models import types
 from flytekit.models.literals import Binary, Literal, Scalar
 from flytekit.models.types import LiteralType, TypeStructure
 
-
+logger.info("Hello from flytekit/extras/pydantic/transformer.py")
 class PydanticTransformer(TypeTransformer[BaseModel]):
     def __init__(self):
         super().__init__("Pydantic Transformer", BaseModel, enable_type_assertions=False)
