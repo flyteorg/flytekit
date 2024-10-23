@@ -20,7 +20,7 @@ from mashumaro.types import SerializableType
 
 from flytekit.core.constants import MESSAGEPACK
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
+from flytekit.core.type_engine import AsyncTypeTransformer, TypeEngine, TypeTransformerFailedError
 from flytekit.extras.pydantic.placeholder import model_serializer, model_validator
 from flytekit.loggers import logger
 from flytekit.models.literals import Binary, Literal, Scalar, Schema
@@ -394,7 +394,7 @@ def _get_numpy_type_mappings() -> typing.Dict[Type, SchemaType.SchemaColumn.Sche
         return {}
 
 
-class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
+class FlyteSchemaTransformer(AsyncTypeTransformer[FlyteSchema]):
     _SUPPORTED_TYPES: typing.Dict[Type, SchemaType.SchemaColumn.SchemaColumnType] = {
         float: SchemaType.SchemaColumn.SchemaColumnType.FLOAT,
         int: SchemaType.SchemaColumn.SchemaColumnType.INTEGER,
@@ -427,7 +427,7 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
     def get_literal_type(self, t: Type[FlyteSchema]) -> LiteralType:
         return LiteralType(schema=self._get_schema_type(t))
 
-    def to_literal(
+    async def async_to_literal(
         self, ctx: FlyteContext, python_val: FlyteSchema, python_type: Type[FlyteSchema], expected: LiteralType
     ) -> Literal:
         if isinstance(python_val, FlyteSchema):
@@ -442,7 +442,9 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
                 # This means the local path is empty. Don't try to overwrite the remote data
                 logger.debug(f"Skipping upload for {python_val} because it was never downloaded.")
             else:
-                remote_path = ctx.file_access.put_data(python_val.local_path, remote_path, is_multipart=True)
+                remote_path = await ctx.file_access.async_put_data(
+                    python_val.local_path, remote_path, is_multipart=True
+                )
             return Literal(scalar=Scalar(schema=Schema(remote_path, self._get_schema_type(python_type))))
 
         remote_path = ctx.file_access.join(ctx.file_access.raw_output_prefix, ctx.file_access.get_random_string())
@@ -459,7 +461,9 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
         writer = schema.open(type(python_val))
         writer.write(python_val)
         if not h.handles_remote_io:
-            schema.remote_path = ctx.file_access.put_data(schema.local_path, schema.remote_path, is_multipart=True)
+            schema.remote_path = await ctx.file_access.async_put_data(
+                schema.local_path, schema.remote_path, is_multipart=True
+            )
         return Literal(scalar=Scalar(schema=Schema(schema.remote_path, self._get_schema_type(python_type))))
 
     def dict_to_flyte_schema(
@@ -536,7 +540,9 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
         python_val = json.loads(json_str)
         return self.dict_to_flyte_schema(dict_obj=python_val, expected_python_type=expected_python_type)
 
-    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[FlyteSchema]) -> FlyteSchema:
+    async def async_to_python_value(
+        self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[FlyteSchema]
+    ) -> FlyteSchema:
         # Handle dataclass attribute access
         if lv.scalar:
             if lv.scalar.binary:

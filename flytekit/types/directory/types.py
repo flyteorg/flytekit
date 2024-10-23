@@ -21,7 +21,7 @@ from mashumaro.types import SerializableType
 
 from flytekit.core.constants import MESSAGEPACK
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError, get_batch_size
+from flytekit.core.type_engine import AsyncTypeTransformer, TypeEngine, TypeTransformerFailedError, get_batch_size
 from flytekit.exceptions.user import FlyteAssertion
 from flytekit.extras.pydantic.placeholder import model_serializer, model_validator
 from flytekit.models import types as _type_models
@@ -421,7 +421,7 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
         return str(self.path)
 
 
-class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
+class FlyteDirToMultipartBlobTransformer(AsyncTypeTransformer[FlyteDirectory]):
     """
     This transformer handles conversion between the Python native FlyteDirectory class defined above, and the Flyte
     IDL literal/type of Multipart Blob. Please see the FlyteDirectory comments for additional information.
@@ -458,7 +458,7 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
     def get_literal_type(self, t: typing.Type[FlyteDirectory]) -> LiteralType:
         return _type_models.LiteralType(blob=self._blob_type(format=FlyteDirToMultipartBlobTransformer.get_format(t)))
 
-    def to_literal(
+    async def async_to_literal(
         self,
         ctx: FlyteContext,
         python_val: FlyteDirectory,
@@ -513,7 +513,9 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
                 remote_directory = ctx.file_access.get_random_remote_directory()
             if not pathlib.Path(source_path).is_dir():
                 raise FlyteAssertion("Expected a directory. {} is not a directory".format(source_path))
-            ctx.file_access.put_data(source_path, remote_directory, is_multipart=True, batch_size=batch_size)
+            await ctx.file_access.async_put_data(
+                source_path, remote_directory, is_multipart=True, batch_size=batch_size
+            )
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_directory)))
 
         # If not uploading, then we can only take the original source path as the uri.
@@ -606,7 +608,7 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
         python_val = json.loads(json_str)
         return self.dict_to_flyte_directory(python_val, expected_python_type)
 
-    def to_python_value(
+    async def async_to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Type[FlyteDirectory]
     ) -> FlyteDirectory:
         # Handle dataclass attribute access

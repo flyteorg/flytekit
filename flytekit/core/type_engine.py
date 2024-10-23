@@ -557,6 +557,10 @@ class DataclassTransformer(TypeTransformer[object]):
         else:
             for f in dataclasses.fields(type(v)):  # type: ignore
                 original_type = f.type
+                if f.name not in expected_fields_dict:
+                    raise TypeTransformerFailedError(
+                        f"Field '{f.name}' is not present in the expected dataclass fields {expected_type.__name__}"
+                    )
                 expected_type = expected_fields_dict[f.name]
 
                 if UnionTransformer.is_optional_type(original_type):
@@ -724,7 +728,7 @@ class DataclassTransformer(TypeTransformer[object]):
         elif dataclasses.is_dataclass(python_type):
             for field in dataclasses.fields(python_type):
                 val = python_val.__getattribute__(field.name)
-                python_val.__setattr__(field.name, self._fix_structured_dataset_type(field.type, val))
+                object.__setattr__(python_val, field.name, self._fix_structured_dataset_type(field.type, val))
         return python_val
 
     def _make_dataclass_serializable(self, python_val: T, python_type: Type[T]) -> typing.Any:
@@ -775,7 +779,7 @@ class DataclassTransformer(TypeTransformer[object]):
         dataclass_attributes = typing.get_type_hints(python_type)
         for n, t in dataclass_attributes.items():
             val = python_val.__getattribute__(n)
-            python_val.__setattr__(n, self._make_dataclass_serializable(val, t))
+            object.__setattr__(python_val, n, self._make_dataclass_serializable(val, t))
         return python_val
 
     def _fix_val_int(self, t: typing.Type, val: typing.Any) -> typing.Any:
@@ -818,7 +822,7 @@ class DataclassTransformer(TypeTransformer[object]):
         # Thus we will have to walk the given dataclass and typecast values to int, where expected.
         for f in dataclasses.fields(dc_type):
             val = getattr(dc, f.name)
-            setattr(dc, f.name, self._fix_val_int(f.type, val))
+            object.__setattr__(dc, f.name, self._fix_val_int(f.type, val))
 
         return dc
 
@@ -958,7 +962,7 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
         if type(python_val).__class__ != enum.EnumMeta:
             raise TypeTransformerFailedError("Expected an enum")
         if type(python_val.value) != str:
-            raise TypeTransformerFailedError("Only string-valued enums are supportedd")
+            raise TypeTransformerFailedError("Only string-valued enums are supported")
 
         return Literal(scalar=Scalar(primitive=Primitive(string_value=python_val.value)))  # type: ignore
 
@@ -971,6 +975,18 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
         if literal_type.enum_type:
             return enum.Enum("DynamicEnum", {f"{i}": i for i in literal_type.enum_type.values})  # type: ignore
         raise ValueError(f"Enum transformer cannot reverse {literal_type}")
+
+    def assert_type(self, t: Type[enum.Enum], v: T):
+        if sys.version_info < (3, 10):
+            if not isinstance(v, enum.Enum):
+                raise TypeTransformerFailedError(f"Value {v} needs to be an Enum in 3.9")
+            if not isinstance(v, t):
+                raise TypeTransformerFailedError(f"Value {v} is not in Enum {t}")
+            return
+
+        val = v.value if isinstance(v, enum.Enum) else v
+        if val not in t:
+            raise TypeTransformerFailedError(f"Value {v} is not in Enum {t}")
 
 
 def generate_attribute_list_from_dataclass_json_mixin(schema: dict, schema_name: typing.Any):
@@ -1397,7 +1413,7 @@ class TypeEngine(typing.Generic[T]):
             raise ValueError("At least one of python_types or literal_types must be provided")
 
         if literal_types:
-            python_interface_inputs = {
+            python_interface_inputs: dict[str, Type[T]] = {
                 name: TypeEngine.guess_python_type(lt.type) for name, lt in literal_types.items()
             }
         else:
@@ -1504,7 +1520,7 @@ class TypeEngine(typing.Generic[T]):
         return python_types
 
     @classmethod
-    def guess_python_type(cls, flyte_type: LiteralType) -> type:
+    def guess_python_type(cls, flyte_type: LiteralType) -> Type[T]:
         """
         Transforms a flyte-specific ``LiteralType`` to a regular python value.
         """
@@ -1785,13 +1801,17 @@ class UnionTransformer(AsyncTypeTransformer[T]):
                     # this is an edge case
                     return
                 try:
-                    super().assert_type(sub_type, v)
-                    return
+                    sub_trans: TypeTransformer = TypeEngine.get_transformer(sub_type)
+                    if sub_trans.type_assertions_enabled:
+                        sub_trans.assert_type(sub_type, v)
+                        return
+                    else:
+                        return
                 except TypeTransformerFailedError:
                     continue
+                except TypeError:
+                    continue
             raise TypeTransformerFailedError(f"Value {v} is not of type {t}")
-        else:
-            super().assert_type(t, v)
 
     def get_literal_type(self, t: Type[T]) -> Optional[LiteralType]:
         t = get_underlying_type(t)
@@ -1954,7 +1974,9 @@ class DictTransformer(AsyncTypeTransformer[dict]):
         return None, None
 
     @staticmethod
-    def dict_to_binary_literal(ctx: FlyteContext, v: dict, python_type: Type[dict], allow_pickle: bool) -> Literal:
+    async def dict_to_binary_literal(
+        ctx: FlyteContext, v: dict, python_type: Type[dict], allow_pickle: bool
+    ) -> Literal:
         """
         Converts a Python dictionary to a Flyte-specific ``Literal`` using MessagePack encoding.
         Falls back to Pickle if encoding fails and `allow_pickle` is True.
@@ -1968,7 +1990,7 @@ class DictTransformer(AsyncTypeTransformer[dict]):
             return Literal(scalar=Scalar(binary=Binary(value=msgpack_bytes, tag="msgpack")))
         except TypeError as e:
             if allow_pickle:
-                remote_path = FlytePickle.to_pickle(ctx, v)
+                remote_path = await FlytePickle.to_pickle(ctx, v)
                 return Literal(
                     scalar=Scalar(
                         generic=_json_format.Parse(json.dumps({"pickle_file": remote_path}), _struct.Struct())
@@ -2026,7 +2048,7 @@ class DictTransformer(AsyncTypeTransformer[dict]):
             allow_pickle, base_type = DictTransformer.is_pickle(python_type)
 
         if expected and expected.simple and expected.simple == SimpleType.STRUCT:
-            return self.dict_to_binary_literal(ctx, python_val, python_type, allow_pickle)
+            return await self.dict_to_binary_literal(ctx, python_val, python_type, allow_pickle)
 
         lit_map = {}
         for k, v in python_val.items():
@@ -2082,7 +2104,7 @@ class DictTransformer(AsyncTypeTransformer[dict]):
                 from flytekit.types.pickle import FlytePickle
 
                 uri = json.loads(_json_format.MessageToJson(lv.scalar.generic)).get("pickle_file")
-                return FlytePickle.from_pickle(uri)
+                return await FlytePickle.from_pickle(uri)
 
             try:
                 """
@@ -2128,7 +2150,7 @@ class DictTransformer(AsyncTypeTransformer[dict]):
 
     def guess_python_type(self, literal_type: LiteralType) -> Union[Type[dict], typing.Dict[Type, Type]]:
         if literal_type.map_value_type:
-            mt = TypeEngine.guess_python_type(literal_type.map_value_type)
+            mt: Type = TypeEngine.guess_python_type(literal_type.map_value_type)
             return typing.Dict[str, mt]  # type: ignore
 
         if literal_type.simple == SimpleType.STRUCT:

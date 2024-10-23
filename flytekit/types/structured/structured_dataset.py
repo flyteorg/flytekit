@@ -22,7 +22,7 @@ from typing_extensions import Annotated, TypeAlias, get_args, get_origin
 from flytekit import lazy_module
 from flytekit.core.constants import MESSAGEPACK
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
+from flytekit.core.type_engine import AsyncTypeTransformer, TypeEngine, TypeTransformerFailedError
 from flytekit.deck.renderer import Renderable
 from flytekit.extras.pydantic.placeholder import model_serializer, model_validator
 from flytekit.loggers import developer_logger, logger
@@ -435,7 +435,7 @@ def get_supported_types():
 class DuplicateHandlerError(ValueError): ...
 
 
-class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
+class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]):
     """
     Think of this transformer as a higher-level meta transformer that is used for all the dataframe types.
     If you are bringing a custom data frame type, or any data frame type, to flytekit, instead of
@@ -630,7 +630,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
     def assert_type(self, t: Type[StructuredDataset], v: typing.Any):
         return
 
-    def to_literal(
+    async def async_to_literal(
         self,
         ctx: FlyteContext,
         python_val: Union[StructuredDataset, typing.Any],
@@ -690,7 +690,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                 if not uri:
                     raise ValueError(f"If dataframe is not specified, then the uri should be specified. {python_val}")
                 if not ctx.file_access.is_remote(uri):
-                    uri = ctx.file_access.put_raw_data(uri)
+                    uri = await ctx.file_access.async_put_raw_data(uri)
                 sd_model = literals.StructuredDataset(
                     uri=uri,
                     metadata=StructuredDatasetMetadata(structured_dataset_type=sdt),
@@ -847,7 +847,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         python_val = json.loads(json_str)
         return self.dict_to_structured_dataset(dict_obj=python_val, expected_python_type=expected_python_type)
 
-    def to_python_value(
+    async def async_to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T] | StructuredDataset
     ) -> T | StructuredDataset:
         """
