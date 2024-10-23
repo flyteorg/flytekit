@@ -7,7 +7,7 @@ import pathlib
 import typing
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import cast
+from typing import cast, TypeVar
 from urllib.parse import unquote
 
 import msgpack
@@ -39,6 +39,75 @@ def noop(): ...
 
 
 T = typing.TypeVar("T")
+
+
+try:
+    # isolate the exception to the pydantic import
+    # model_validator and model_serializer are only available in pydantic > 2
+    from pydantic import model_serializer, model_validator
+    from typing import Dict
+
+    # Serialize and Deserialize functions
+
+
+    # @model_validator(mode="after")
+    # def deserialize_flyte_file(self, info) -> FlyteFile:
+    #     if info.context is None or info.context.get("deserialize") is not True:
+    #         return self
+    #
+    #     pv = FlyteFilePathTransformer().to_python_value(
+    #         FlyteContextManager.current_context(),
+    #         Literal(
+    #             scalar=Scalar(
+    #                 blob=Blob(
+    #                     metadata=BlobMetadata(
+    #                         type=_core_types.BlobType(
+    #                             format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
+    #                         )
+    #                     ),
+    #                     uri=self.path,
+    #                 )
+    #             )
+    #         ),
+    #         type(self),
+    #     )
+    #     return pv
+except (ImportError, OSError) as e:
+    logger.info(f"Meet error when importing pydantic: `{e}`")
+    logger.info("Pydantic is not installed.\n"
+                "Please install Pydantic version > 2 to use FlyteFile in pydantic BaseModel.")
+
+    from typing import TYPE_CHECKING, Any, Callable
+
+    FuncType = TypeVar('FuncType', bound=Callable[..., Any])
+
+    from typing_extensions import Annotated, TypeAlias
+    from typing_extensions import Literal as typing_literal
+
+
+    def model_serializer(
+            __f: Callable[..., Any] | None = None,
+            *,
+            mode: typing_literal['plain', 'wrap'] = 'plain',
+            when_used: typing_literal['always', 'unless-none', 'json', 'json-unless-none'] = 'always',
+            return_type: Any = None,
+    ) -> Callable[[Any], Any]:
+        """Placeholder decorator for Pydantic model_serializer."""
+
+        def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
+            def wrapper(*args, **kwargs):
+                raise FlyteAssertion(
+                    "Pydantic is not installed.\n"
+                    "Please install Pydantic version > 2 to use this feature."
+                )
+
+            return wrapper
+
+        # If no function (__f) is provided, return the decorator
+        if __f is None:
+            return decorator
+        # If __f is provided, directly decorate the function
+        return decorator(__f)
 
 
 @dataclass
@@ -336,6 +405,12 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
 
     def __str__(self):
         return self.path
+
+    @model_serializer
+    def serialize_flyte_file(self) -> Dict[str, str]:
+        lv = FlyteFilePathTransformer().to_literal(FlyteContextManager.current_context(), self, type(self), None)
+        return {"path": lv.scalar.blob.uri}
+
 
 
 class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):

@@ -20,10 +20,10 @@ try:
     from pydantic import model_serializer, model_validator
 
     # Serialize and Deserialize functions
-    @model_serializer
-    def serialize_flyte_file(self) -> Dict[str, str]:
-        lv = FlyteFilePathTransformer().to_literal(FlyteContextManager.current_context(), self, type(self), None)
-        return {"path": lv.scalar.blob.uri}
+    # @model_serializer
+    # def serialize_flyte_file(self) -> Dict[str, str]:
+    #     lv = FlyteFilePathTransformer().to_literal(FlyteContextManager.current_context(), self, type(self), None)
+    #     return {"path": lv.scalar.blob.uri}
 
     @model_validator(mode="after")
     def deserialize_flyte_file(self, info) -> FlyteFile:
@@ -127,7 +127,7 @@ try:
             type(self),
         )
 
-    setattr(FlyteFile, "serialize_flyte_file", serialize_flyte_file)
+    # setattr(FlyteFile, "serialize_flyte_file", serialize_flyte_file)
     setattr(FlyteFile, "deserialize_flyte_file", deserialize_flyte_file)
     setattr(FlyteDirectory, "serialize_flyte_dir", serialize_flyte_dir)
     setattr(FlyteDirectory, "deserialize_flyte_dir", deserialize_flyte_dir)
