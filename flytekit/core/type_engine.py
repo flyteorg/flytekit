@@ -22,6 +22,7 @@ from typing import Any, Dict, List, NamedTuple, Optional, Type, cast
 import msgpack
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from flyteidl.core import literals_pb2
+from fsspec.asyn import _run_coros_in_chunks  # pylint: disable=W0212
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 from google.protobuf.json_format import MessageToDict as _MessageToDict
@@ -1561,8 +1562,9 @@ class ListTransformer(AsyncTypeTransformer[T]):
                 lit_list = []
         else:
             t = self.get_sub_type(python_type)
-            lit_list = [TypeEngine.async_to_literal(ctx, x, t, expected.collection_type) for x in python_val]
-            lit_list = await asyncio.gather(*lit_list)
+            lit_list = [asyncio.create_task(TypeEngine.async_to_literal(ctx, x, t, expected.collection_type)) for x in python_val]
+            lit_list = await _run_coros_in_chunks(lit_list)
+            # lit_list = await asyncio.gather(*lit_list)
 
         return Literal(collection=LiteralCollection(literals=lit_list))
 
