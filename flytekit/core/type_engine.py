@@ -667,7 +667,7 @@ class DataclassTransformer(TypeTransformer[object]):
         elif dataclasses.is_dataclass(python_type):
             for field in dataclasses.fields(python_type):
                 val = python_val.__getattribute__(field.name)
-                python_val.__setattr__(field.name, self._fix_structured_dataset_type(field.type, val))
+                object.__setattr__(python_val, field.name, self._fix_structured_dataset_type(field.type, val))
         return python_val
 
     def _make_dataclass_serializable(self, python_val: T, python_type: Type[T]) -> typing.Any:
@@ -718,7 +718,7 @@ class DataclassTransformer(TypeTransformer[object]):
         dataclass_attributes = typing.get_type_hints(python_type)
         for n, t in dataclass_attributes.items():
             val = python_val.__getattribute__(n)
-            python_val.__setattr__(n, self._make_dataclass_serializable(val, t))
+            object.__setattr__(python_val, n, self._make_dataclass_serializable(val, t))
         return python_val
 
     def _fix_val_int(self, t: typing.Type, val: typing.Any) -> typing.Any:
@@ -761,7 +761,7 @@ class DataclassTransformer(TypeTransformer[object]):
         # Thus we will have to walk the given dataclass and typecast values to int, where expected.
         for f in dataclasses.fields(dc_type):
             val = getattr(dc, f.name)
-            setattr(dc, f.name, self._fix_val_int(f.type, val))
+            object.__setattr__(dc, f.name, self._fix_val_int(f.type, val))
 
         return dc
 
