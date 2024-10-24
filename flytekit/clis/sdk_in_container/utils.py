@@ -113,9 +113,9 @@ def pretty_print_traceback(e: Exception, verbosity: int = 1):
     Print the traceback in a nice formatted way if verbose is set to True.
     """
     console = Console()
+    unwanted_module_names = ["importlib", "click", "rich_click"]
 
     if verbosity < 2:
-        unwanted_module_names = ["importlib", "click", "rich_click"]
         click.secho(
             f"Frames from the following modules were removed from the traceback: {unwanted_module_names}."
             f" For more verbose output, use the flags -vv or -vvv.",
