@@ -126,6 +126,7 @@ def pretty_print_traceback(e: Exception, verbosity: int = 1):
             f" For more verbose output, use the flags -vv or -vvv.",
             fg="yellow",
         )
+
         new_tb = remove_unwanted_traceback_frames(e.__traceback__, unwanted_module_names)
         console.print(Traceback.from_exception(type(e), e, new_tb))
     elif verbosity >= 2:
