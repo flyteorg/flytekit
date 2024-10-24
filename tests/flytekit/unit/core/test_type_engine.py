@@ -957,6 +957,7 @@ def test_optional_flytefile_in_dataclass(mock_upload_dir):
         b: typing.Optional[FlyteFile]
         b_prime: typing.Optional[FlyteFile]
         c: typing.Union[FlyteFile, None]
+        c_prime: typing.Union[None, FlyteFile]
         d: typing.List[FlyteFile]
         e: typing.List[typing.Optional[FlyteFile]]
         e_prime: typing.List[typing.Optional[FlyteFile]]
@@ -979,6 +980,7 @@ def test_optional_flytefile_in_dataclass(mock_upload_dir):
             b=f1,
             b_prime=None,
             c=f1,
+            c_prime=f1,
             d=[f1],
             e=[f1],
             e_prime=[None],
@@ -1001,6 +1003,7 @@ def test_optional_flytefile_in_dataclass(mock_upload_dir):
         assert dict_obj["b"]["path"] == remote_path
         assert dict_obj["b_prime"] is None
         assert dict_obj["c"]["path"] == remote_path
+        assert dict_obj["c_prime"]["path"] == remote_path
         assert dict_obj["d"][0]["path"] == remote_path
         assert dict_obj["e"][0]["path"] == remote_path
         assert dict_obj["e_prime"][0] is None
@@ -1018,6 +1021,7 @@ def test_optional_flytefile_in_dataclass(mock_upload_dir):
         assert o.b.remote_path == ot.b.remote_source
         assert ot.b_prime is None
         assert o.c.remote_path == ot.c.remote_source
+        assert o.c_prime.remote_path == ot.c_prime.remote_source
         assert o.d[0].remote_path == ot.d[0].remote_source
         assert o.e[0].remote_path == ot.e[0].remote_source
         assert o.e_prime == [None]
