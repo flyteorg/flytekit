@@ -294,11 +294,31 @@ class DefaultNotebookTaskResolver(TrackedInstance, TaskResolverMixin):
     def load_task(self, loader_args: List[str]) -> PythonAutoContainerTask:
         _, entity_name, *_ = loader_args
         import gzip
+        import sys
 
         import cloudpickle
 
-        with gzip.open(PICKLE_FILE_PATH, "r") as f:
-            entity_dict = cloudpickle.load(f)
+        try:
+            with gzip.open(PICKLE_FILE_PATH, "r") as f:
+                entity_dict = cloudpickle.load(f)
+        except TypeError:
+            raise RuntimeError(
+                "The Python version is smaller than the version used to create the pickle file. "
+                f"Current Python version: {sys.version_info.major}.{sys.version_info.minor}. "
+                "Please try using the same Python version to create the pickle file or use another "
+                "container image with a matching version."
+            )
+
+        pickled_version = entity_dict["metadata"]["python_version"].split(".")
+        if sys.version_info.major != int(pickled_version[0]) or sys.version_info.minor != int(pickled_version[1]):
+            raise RuntimeError(
+                "The Python version used to create the pickle file is different from the current Python version. "
+                f"Current Python version: {sys.version_info.major}.{sys.version_info.minor}. "
+                f"Python version used to create the pickle file: {entity_dict['metadata']['python_version']}. "
+                "Please try using the same Python version to create the pickle file or use another "
+                "container image with a matching version."
+            )
+
         return entity_dict[entity_name]
 
     def loader_args(self, settings: SerializationSettings, task: PythonAutoContainerTask) -> List[str]:  # type:ignore
