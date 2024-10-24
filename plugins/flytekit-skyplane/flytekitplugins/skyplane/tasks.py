@@ -10,6 +10,8 @@ from flytekit import PythonFunctionTask
 from flytekit.configuration import SerializationSettings
 from flytekit.extend import TaskPlugins
 
+import skyplane
+
 @dataclass
 class SkyplaneJob:
     """
