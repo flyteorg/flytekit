@@ -683,8 +683,8 @@ class DataclassTransformer(TypeTransformer[object]):
         @task
         def t1() -> DC:
             return DC(ff="s3://path")
-        
-        Lifecycle: DC(ff="s3://path") -> to_literal() -> DC(ff=FlyteFile(path="s3://path")) -> msgpack -> to_python_value() -> DC(ff=FlyteFile(path="s3://path"))                                                             
+
+        Lifecycle: DC(ff="s3://path") -> to_literal() -> DC(ff=FlyteFile(path="s3://path")) -> msgpack -> to_python_value() -> DC(ff=FlyteFile(path="s3://path"))
         """
         from flytekit.types.directory import FlyteDirectory
         from flytekit.types.file import FlyteFile
