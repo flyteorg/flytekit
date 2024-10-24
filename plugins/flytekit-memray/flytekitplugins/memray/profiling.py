@@ -36,11 +36,13 @@ class mem_profiling(ClassDecorator):
             os.makedirs(dir_name)
 
         bin_filepath = f"{dir_name}/{self.task_function.__name__}.{time.strftime('%Y%m%d%H%M%S')}.bin"
+        html_filepath = bin_filepath.replace(".bin", ".html")
+
         with memray.Tracker(bin_filepath):
             output = self.task_function(*args, **kwargs)
 
-        os.system(f"memray flamegraph {bin_filepath}")
-        with open(bin_filepath, "r", encoding="ISO-8859-1") as file:
+        os.system(f"memray flamegraph -o {html_filepath} {bin_filepath}")
+        with open(html_filepath, "r", encoding="utf-8") as file:
             html_content = file.read()
 
         Deck("flamegraph", html_content)
