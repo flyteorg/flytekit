@@ -673,7 +673,7 @@ class DataclassTransformer(TypeTransformer[object]):
     def _make_dataclass_serializable(self, python_val: T, python_type: Type[T]) -> typing.Any:
         """
         If any field inside the dataclass is flyte type, we should use flyte type transformer for that field.
-        Since other types are already serializable, this function is intended for using strings instead of directly creating Flyte files and directories in the dataclass.
+        Since Flyte types are already serializable, this function is intended for using strings instead of directly creating Flyte files and directories in the dataclass.
         An example shows the lifecycle:
 
         @dataclass
