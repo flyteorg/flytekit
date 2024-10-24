@@ -1569,7 +1569,7 @@ class ListTransformer(AsyncTypeTransformer[T]):
             ]
             print("About to run!")
             with timeit("run coros"):
-                lit_list = await _run_coros_in_chunks(lit_list, batch_size=_DEFAULT_BATCH_SIZE)
+                lit_list = await _run_coros_in_chunks(lit_list, batch_size=5)
             # lit_list = await asyncio.gather(*lit_list)
 
         return Literal(collection=LiteralCollection(literals=lit_list))
