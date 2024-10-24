@@ -43,6 +43,31 @@ class SkyplaneFunctionTask(PythonFunctionTask[SkyplaneJob]):
             **kwargs,
         )
 
+    def execute(self, **kwargs) -> None:
+        """
+        Run the Skyplane data transfer.
+        """
+        # Construct the Skyplane command
+        skyplane_cmd = [
+            "skyplane", 
+            "transfer", 
+            self.task_config.source, 
+            self.task_config.destination
+        ]
+
+        # Add any additional options
+        if self.task_config.options:
+            for key, value in self.task_config.options.items():
+                skyplane_cmd.append(f"--{key}={value}")
+
+        # Execute the Skyplane command
+        try:
+            result = subprocess.run(skyplane_cmd, capture_output=True, text=True, check=True)
+            print(f"Skyplane transfer successful: {result.stdout}")
+        except subprocess.CalledProcessError as e:
+            print(f"Skyplane transfer failed: {e.stderr}")
+            raise
+    
     def get_command(self, settings: SerializationSettings) -> List[str]:
         """
         Constructs the command to be executed for the Skyplane transfer.
