@@ -172,3 +172,14 @@ class FlyteMissingReturnValueException(FlyteCompilationException):
 
     def __str__(self):
         return f"{self.fn.__name__} function must return a value. Please add a return statement at the end of the function."
+
+
+class FlyteTypeTransformerFailedError(FlyteUserException):
+    _ERROR_CODE = "USER:TypeTransformerFailedError"
+
+    def __init__(self, transformer_name: str, value: typing.Any):
+        self.transformer_name = transformer_name
+        self.value = value
+
+    def __str__(self):
+        return f"Failed to transform value {self.value} using transformer {self.transformer_name}"

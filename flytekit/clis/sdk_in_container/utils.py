@@ -114,9 +114,7 @@ def pretty_print_traceback(e: Exception, verbosity: int = 1):
     """
     console = Console()
 
-    if verbosity == 0:
-        console.print(Traceback.from_exception(type(e), e, None))
-    elif verbosity == 1:
+    if verbosity < 2:
         unwanted_module_names = ["importlib", "click", "rich_click"]
         click.secho(
             f"Frames from the following modules were removed from the traceback: {unwanted_module_names}."
@@ -124,6 +122,11 @@ def pretty_print_traceback(e: Exception, verbosity: int = 1):
             fg="yellow",
         )
 
+    if verbosity == 0:
+        tb = e.__cause__.__traceback__ if e.__cause__ else e.__traceback__
+        new_tb = remove_unwanted_traceback_frames(tb, unwanted_module_names)
+        console.print(Traceback.from_exception(type(e), e, new_tb))
+    elif verbosity == 1:
         new_tb = remove_unwanted_traceback_frames(e.__traceback__, unwanted_module_names)
         console.print(Traceback.from_exception(type(e), e, new_tb))
     elif verbosity >= 2:
