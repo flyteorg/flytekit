@@ -673,6 +673,18 @@ class DataclassTransformer(TypeTransformer[object]):
     def _make_dataclass_serializable(self, python_val: T, python_type: Type[T]) -> typing.Any:
         """
         If any field inside the dataclass is flyte type, we should use flyte type transformer for that field.
+        Since Flyte types are already serializable, this function is intended for using strings instead of directly creating Flyte files and directories in the dataclass.
+        An example shows the lifecycle:
+
+        @dataclass
+        class DC:
+            ff: FlyteFile
+
+        @task
+        def t1() -> DC:
+            return DC(ff="s3://path")
+
+        Lifecycle: DC(ff="s3://path") -> to_literal() -> DC(ff=FlyteFile(path="s3://path")) -> msgpack -> to_python_value() -> DC(ff=FlyteFile(path="s3://path"))
         """
         from flytekit.types.directory import FlyteDirectory
         from flytekit.types.file import FlyteFile
