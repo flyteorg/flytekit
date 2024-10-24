@@ -181,13 +181,15 @@ class FlyteWorkflowExecution(RemoteExecutionBase, execution_models.Execution):
 
     def _repr_html_(self) -> str:
         if self.execution_url:
-            v = "<b>Execution is in-progress. </b> "
+            u = f"<a href='{self.execution_url}'>{self.execution_url}</a>"
+            s = "<b>Execution is in-progress. </b> "
+            e = ""
             if self.is_done:
                 p = core_execution_models.WorkflowExecutionPhase.enum_to_string(self.closure.phase)
-                v = f"<b>Execution {p}</b>"
+                s = f"<b>Execution {p}. </b>"
                 if self.error:
-                    v += f"<pre>{self.error.message}</pre>"
-            v += f"<a href='{self.execution_url}'>View Execution: {self.execution_url}</a>"
+                    e = f"<pre>{self.error.message}</pre>"
+            return s + u + e
         return super()._repr_html_()
 
 
