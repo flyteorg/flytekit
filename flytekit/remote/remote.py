@@ -245,7 +245,7 @@ class FlyteRemote(object):
         default_project: typing.Optional[str] = None,
         default_domain: typing.Optional[str] = None,
         data_upload_location: str = "flyte://my-s3-bucket/",
-        interactive_mode_enabled: bool = False,
+        interactive_mode_enabled: typing.Optional[bool] = None,
         **kwargs,
     ):
         """Initialize a FlyteRemote object.
@@ -256,10 +256,15 @@ class FlyteRemote(object):
         :param default_domain: default domain to use when fetching or executing flyte entities.
         :param data_upload_location: this is where all the default data will be uploaded when providing inputs.
             The default location - `s3://my-s3-bucket/data` works for sandbox/demo environment. Please override this for non-sandbox cases.
-        :param interactive_mode_enabled: If set to True, the FlyteRemote will pickle the task/workflow.
+        :param interactive_mode_enabled: If set to True, the FlyteRemote will pickle the task/workflow, if False,
+         it will not. If set to None, then it will automatically detect if it is running in an interactive environment
+         like a Jupyter notebook and enable interactive mode.
         """
         if config is None or config.platform is None or config.platform.endpoint is None:
             raise user_exceptions.FlyteAssertion("Flyte endpoint should be provided.")
+
+        if interactive_mode_enabled is None:
+            interactive_mode_enabled = ipython_check()
 
         if interactive_mode_enabled is True:
             logger.warning("Jupyter notebook and interactive task support is still alpha.")
@@ -1383,7 +1388,7 @@ class FlyteRemote(object):
             exec_id = WorkflowExecutionIdentifier(
                 project=project or self.default_project, domain=domain or self.default_domain, name=execution_name
             )
-        execution = FlyteWorkflowExecution.promote_from_model(self.client.get_execution(exec_id))
+        execution = FlyteWorkflowExecution.promote_from_model(self.client.get_execution(exec_id), remote=self)
 
         if wait:
             return self.wait(execution)
@@ -2106,18 +2111,25 @@ class FlyteRemote(object):
     def wait(
         self,
         execution: FlyteWorkflowExecution,
-        timeout: typing.Optional[timedelta] = None,
-        poll_interval: typing.Optional[timedelta] = None,
+        timeout: typing.Optional[typing.Union[timedelta, int]] = None,
+        poll_interval: typing.Optional[typing.Union[timedelta, int]] = None,
         sync_nodes: bool = True,
     ) -> FlyteWorkflowExecution:
         """Wait for an execution to finish.
 
         :param execution: execution object to wait on
-        :param timeout: maximum amount of time to wait
-        :param poll_interval: sync workflow execution at this interval
+        :param timeout: maximum amount of time to wait. It can be a timedelta or a
+            duration in seconds as int.
+        :param poll_interval: sync workflow execution at this interval. It can be a
+            timedelta or a duration in seconds as int.
         :param sync_nodes: passed along to the sync call for the workflow execution
         """
+        if poll_interval is not None and not isinstance(poll_interval, timedelta):
+            poll_interval = timedelta(seconds=poll_interval)
         poll_interval = poll_interval or timedelta(seconds=30)
+
+        if timeout is not None and not isinstance(timeout, timedelta):
+            timeout = timedelta(seconds=timeout)
         time_to_give_up = datetime.max if timeout is None else datetime.now() + timeout
 
         while datetime.now() < time_to_give_up:
@@ -2474,15 +2486,25 @@ class FlyteRemote(object):
     def generate_console_url(
         self,
         entity: typing.Union[
-            FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution, FlyteWorkflow, FlyteTask, FlyteLaunchPlan
+            FlyteWorkflowExecution,
+            FlyteNodeExecution,
+            FlyteTaskExecution,
+            FlyteWorkflow,
+            FlyteTask,
+            WorkflowExecutionIdentifier,
+            FlyteLaunchPlan,
         ],
     ):
         """
         Generate a Flyteconsole URL for the given Flyte remote endpoint.
         This will automatically determine if this is an execution or an entity and change the type automatically
         """
-        if isinstance(entity, (FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution)):
-            return f"{self.generate_console_http_domain()}/console/projects/{entity.id.project}/domains/{entity.id.domain}/executions/{entity.id.name}"  # noqa
+        if isinstance(
+            entity, (FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution, WorkflowExecutionIdentifier)
+        ):
+            if not isinstance(entity, WorkflowExecutionIdentifier):
+                entity = entity.id
+            return f"{self.generate_console_http_domain()}/console/projects/{entity.project}/domains/{entity.domain}/executions/{entity.name}"  # noqa
 
         if not isinstance(entity, (FlyteWorkflow, FlyteTask, FlyteLaunchPlan)):
             raise ValueError(f"Only remote entities can be looked at in the console, got type {type(entity)}")
