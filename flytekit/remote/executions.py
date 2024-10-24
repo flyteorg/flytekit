@@ -166,17 +166,15 @@ class FlyteWorkflowExecution(RemoteExecutionBase, execution_models.Execution):
     ) -> "FlyteWorkflowExecution":
         """
         Wait for the execution to complete. This is a blocking call.
+
         :param timeout: The maximum amount of time to wait for the execution to complete. It can be a timedelta or
-         a duration in seconds as int.
+            a duration in seconds as int.
         :param poll_interval: The amount of time to wait between polling the state of the execution. It can be a
             timedelta or a duration in seconds as int.
+        :param sync_nodes: Whether to sync the state of the nodes as well.
         """
         if self._remote is None:
             raise user_exceptions.FlyteAssertion("Cannot wait without a remote")
-        if poll_interval is not None and not isinstance(poll_interval, timedelta):
-            poll_interval = timedelta(seconds=poll_interval)
-        if timeout is not None and not isinstance(timeout, timedelta):
-            timeout = timedelta(seconds=timeout)
         return self._remote.wait(self, timeout=timeout, poll_interval=poll_interval, sync_nodes=sync_nodes)
 
     def _repr_html_(self) -> str:
