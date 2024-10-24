@@ -38,6 +38,7 @@ def test_image_spec(mock_image_spec_builder, monkeypatch):
 
     image_spec = image_spec.with_commands("echo hello")
     image_spec = image_spec.with_packages("numpy")
+    image_spec = image_spec.with_package_version_overrides("numpy==2.0.0")
     image_spec = image_spec.with_apt_packages("wget")
     image_spec = image_spec.with_copy(["/src", "/src/file2.txt"])
     image_spec = image_spec.force_push()
@@ -45,6 +46,7 @@ def test_image_spec(mock_image_spec_builder, monkeypatch):
     assert image_spec.python_version == "3.8"
     assert image_spec.base_image == base_image
     assert image_spec.packages == ["pandas", "numpy"]
+    assert image_spec.package_version_overrides == ["numpy==2.0.0"]
     assert image_spec.apt_packages == ["git", "wget"]
     assert image_spec.registry == "localhost:30001"
     assert image_spec.requirements == REQUIREMENT_FILE
@@ -62,7 +64,7 @@ def test_image_spec(mock_image_spec_builder, monkeypatch):
     assert image_spec.entrypoint == ["/bin/bash"]
     assert image_spec.copy == ["/src/file1.txt", "/src", "/src/file2.txt"]
 
-    assert image_spec.image_name() == f"localhost:30001/flytekit:fYU5EUF6y0b2oFG4tu70tA"
+    assert image_spec.image_name() == f"localhost:30001/flytekit:e1WZb_RB31xm8Tkr171BmQ"
     ctx = context_manager.FlyteContext.current_context()
     with context_manager.FlyteContextManager.with_context(
         ctx.with_execution_state(ctx.execution_state.with_params(mode=ExecutionState.Mode.TASK_EXECUTION))
