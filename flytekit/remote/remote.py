@@ -35,7 +35,8 @@ from flyteidl.core import literals_pb2
 from flytekit import ImageSpec
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
-from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
+from flytekit.configuration import Config, DataConfig, FastSerializationSettings, ImageConfig, SerializationSettings
+from flytekit.configuration.file import ConfigFile
 from flytekit.constants import CopyFileDetection
 from flytekit.core import constants, utils
 from flytekit.core.array_node_map_task import ArrayNodeMapTask
@@ -50,6 +51,7 @@ from flytekit.core.python_auto_container import (
     PythonAutoContainerTask,
     default_notebook_task_resolver,
 )
+from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.reference_entity import ReferenceSpec
 from flytekit.core.task import ReferenceTask
 from flytekit.core.tracker import extract_task_module
@@ -57,6 +59,7 @@ from flytekit.core.type_engine import LiteralsResolver, TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow, ReferenceWorkflow, WorkflowBase, WorkflowFailurePolicy
 from flytekit.exceptions import user as user_exceptions
 from flytekit.exceptions.user import (
+    FlyteAssertion,
     FlyteEntityAlreadyExistsException,
     FlyteEntityNotExistException,
     FlyteValueException,
@@ -195,6 +198,38 @@ def _get_git_repo_url(source_path: str):
     except Exception as e:
         logger.debug(f"unable to find the git config in {source_path} with error: {str(e)}")
         return ""
+
+
+def _get_pickled_target_dict(root_entity: typing.Union[WorkflowBase, PythonTask]) -> typing.Dict[str, typing.Any]:
+    """
+    Get the pickled target dictionary for the entity.
+    :param root_entity: The entity to get the pickled target for.
+    :return: The pickled target dictionary.
+    """
+    queue = [root_entity]
+    pickled_target_dict = {}
+    while queue:
+        entity = queue.pop()
+        if isinstance(entity, PythonFunctionTask):
+            if entity.execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
+                raise FlyteAssertion(
+                    f"Dynamic tasks are not supported in interactive mode. {entity.name} is a dynamic task."
+                )
+
+        if isinstance(entity, PythonTask):
+            if isinstance(entity, (PythonAutoContainerTask, ArrayNodeMapTask)):
+                if isinstance(entity, ArrayNodeMapTask):
+                    entity._run_task.set_resolver(default_notebook_task_resolver)
+                    pickled_target_dict[entity._run_task.name] = entity._run_task
+                else:
+                    entity.set_resolver(default_notebook_task_resolver)
+                    pickled_target_dict[entity.name] = entity
+        elif isinstance(entity, WorkflowBase):
+            for task in entity.nodes:
+                queue.append(task)
+        elif isinstance(entity, CoreNode):
+            queue.append(entity.flyte_entity)
+    return pickled_target_dict
 
 
 class FlyteRemote(object):
@@ -898,7 +933,6 @@ class FlyteRemote(object):
                 domain=self.default_domain,
             )
 
-        self._resolve_identifier(ResourceType.WORKFLOW, entity.name, version, serialization_settings)
         ident = run_sync(
             self._serialize_and_register, entity, serialization_settings, version, options, default_launch_plan
         )
@@ -1086,7 +1120,7 @@ class FlyteRemote(object):
 
     def register_script(
         self,
-        entity: typing.Union[WorkflowBase, PythonTask],
+        entity: typing.Union[WorkflowBase, PythonTask, LaunchPlan],
         image_config: typing.Optional[ImageConfig] = None,
         version: typing.Optional[str] = None,
         project: typing.Optional[str] = None,
@@ -1099,7 +1133,7 @@ class FlyteRemote(object):
         module_name: typing.Optional[str] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
         fast_package_options: typing.Optional[FastPackageOptions] = None,
-    ) -> typing.Union[FlyteWorkflow, FlyteTask]:
+    ) -> typing.Union[FlyteWorkflow, FlyteTask, FlyteLaunchPlan]:
         """
         Use this method to register a workflow via script mode.
         :param destination_dir: The destination directory where the workflow will be copied to.
@@ -1170,9 +1204,13 @@ class FlyteRemote(object):
 
         if isinstance(entity, PythonTask):
             return self.register_task(entity, serialization_settings, version)
-        fwf = self.register_workflow(entity, serialization_settings, version, default_launch_plan, options)
-        fwf._python_interface = entity.python_interface
-        return fwf
+
+        if isinstance(entity, WorkflowBase):
+            return self.register_workflow(entity, serialization_settings, version, default_launch_plan, options)
+        if isinstance(entity, LaunchPlan):
+            # If it's a launch plan, we need to register the workflow first
+            return self.register_launch_plan(entity, version, project, domain, options, serialization_settings)
+        raise ValueError(f"Unsupported entity type {type(entity)}")
 
     def register_launch_plan(
         self,
@@ -1181,6 +1219,7 @@ class FlyteRemote(object):
         project: typing.Optional[str] = None,
         domain: typing.Optional[str] = None,
         options: typing.Optional[Options] = None,
+        serialization_settings: typing.Optional[SerializationSettings] = None,
     ) -> FlyteLaunchPlan:
         """
         Register a given launchplan, possibly applying overrides from the provided options.
@@ -1188,22 +1227,28 @@ class FlyteRemote(object):
         :param version:
         :param project: Optionally provide a project, if not already provided in flyteremote constructor or a separate one
         :param domain: Optionally provide a domain, if not already provided in FlyteRemote constructor or a separate one
+        :param serialization_settings: Optionally provide serialization settings, if not provided, will use the default
         :param options:
         :return:
         """
-        ss = SerializationSettings(
-            image_config=ImageConfig(),
-            project=project or self.default_project,
-            domain=domain or self.default_domain,
-            version=version,
+        if serialization_settings is None:
+            _, _, _, module_file = extract_task_module(entity)
+            project_root = _find_project_root(module_file)
+            serialization_settings = SerializationSettings(
+                image_config=ImageConfig.auto_default_image(),
+                source_root=project_root,
+                project=project or self.default_project,
+                domain=domain or self.default_domain,
+            )
+
+        ident = run_sync(
+            self._serialize_and_register,
+            entity,
+            serialization_settings,
+            version,
+            options,
+            False,
         )
-        ident = self._resolve_identifier(ResourceType.LAUNCH_PLAN, entity.name, version, ss)
-        m = OrderedDict()
-        idl_lp = get_serializable_launch_plan(m, ss, entity, recurse_downstream=False, options=options)
-        try:
-            self.client.create_launch_plan(ident, idl_lp.spec)
-        except FlyteEntityAlreadyExistsException:
-            logger.debug("Launchplan already exists, ignoring")
         flp = self.fetch_launch_plan(ident.project, ident.domain, ident.name, ident.version)
         flp._python_interface = entity.python_interface
         return flp
@@ -2572,39 +2617,16 @@ class FlyteRemote(object):
             for var, literal in lm.items():
                 download_literal(self.file_access, var, literal, download_to)
 
-    def _get_pickled_target_dict(self, root_entity: typing.Any) -> typing.Dict[str, typing.Any]:
-        """
-        Get the pickled target dictionary for the entity.
-        :param root_entity: The entity to get the pickled target for.
-        :return: The pickled target dictionary.
-        """
-        queue = [root_entity]
-        pickled_target_dict = {}
-        while queue:
-            entity = queue.pop()
-            if isinstance(entity, PythonTask):
-                if isinstance(entity, (PythonAutoContainerTask, ArrayNodeMapTask)):
-                    if isinstance(entity, ArrayNodeMapTask):
-                        entity._run_task.set_resolver(default_notebook_task_resolver)
-                        pickled_target_dict[entity._run_task.name] = entity._run_task
-                    else:
-                        entity.set_resolver(default_notebook_task_resolver)
-                        pickled_target_dict[entity.name] = entity
-            elif isinstance(entity, WorkflowBase):
-                for task in entity.nodes:
-                    queue.append(task)
-            elif isinstance(entity, CoreNode):
-                queue.append(entity.flyte_entity)
-        return pickled_target_dict
-
-    def _pickle_and_upload_entity(self, entity: typing.Any) -> typing.Tuple[bytes, FastSerializationSettings]:
+    def _pickle_and_upload_entity(
+        self, entity: typing.Union[WorkflowBase, PythonTask]
+    ) -> typing.Tuple[bytes, FastSerializationSettings]:
         """
         Pickle the entity to the specified location. This is useful for debugging and for sharing entities across
         different environments.
         :param entity: The entity to pickle
         """
         # get all entity tasks
-        pickled_dict = self._get_pickled_target_dict(entity)
+        pickled_dict = _get_pickled_target_dict(entity)
         with tempfile.TemporaryDirectory() as tmp_dir:
             dest = pathlib.Path(tmp_dir, PICKLE_FILE_PATH)
             with gzip.GzipFile(filename=dest, mode="wb", mtime=0) as gzipped:
@@ -2617,3 +2639,67 @@ class FlyteRemote(object):
             md5_bytes, native_url = self.upload_file(dest)
 
         return md5_bytes, FastSerializationSettings(enabled=True, distribution_location=native_url, destination_dir=".")
+
+    @classmethod
+    def for_endpoint(
+        cls,
+        endpoint: str,
+        insecure: bool = False,
+        data_config: typing.Optional[DataConfig] = None,
+        config_file: typing.Union[str, ConfigFile] = None,
+        default_project: typing.Optional[str] = None,
+        default_domain: typing.Optional[str] = None,
+        data_upload_location: str = "flyte://my-s3-bucket/",
+        interactive_mode_enabled: bool = False,
+        **kwargs,
+    ) -> "FlyteRemote":
+        return cls(
+            config=Config.for_endpoint(
+                endpoint=endpoint,
+                insecure=insecure,
+                data_config=data_config,
+                config_file=config_file,
+            ),
+            default_project=default_project,
+            default_domain=default_domain,
+            data_upload_location=data_upload_location,
+            interactive_mode_enabled=interactive_mode_enabled,
+            **kwargs,
+        )
+
+    @classmethod
+    def auto(
+        cls,
+        config_file: typing.Union[str, ConfigFile] = None,
+        default_project: typing.Optional[str] = None,
+        default_domain: typing.Optional[str] = None,
+        data_upload_location: str = "flyte://my-s3-bucket/",
+        interactive_mode_enabled: bool = False,
+        **kwargs,
+    ) -> "FlyteRemote":
+        return cls(
+            config=Config.auto(config_file=config_file),
+            default_project=default_project,
+            default_domain=default_domain,
+            data_upload_location=data_upload_location,
+            interactive_mode_enabled=interactive_mode_enabled,
+            **kwargs,
+        )
+
+    @classmethod
+    def for_sandbox(
+        cls,
+        default_project: typing.Optional[str] = None,
+        default_domain: typing.Optional[str] = None,
+        data_upload_location: str = "flyte://my-s3-bucket/",
+        interactive_mode_enabled: bool = False,
+        **kwargs,
+    ) -> "FlyteRemote":
+        return cls(
+            config=Config.for_sandbox(),
+            default_project=default_project,
+            default_domain=default_domain,
+            data_upload_location=data_upload_location,
+            interactive_mode_enabled=interactive_mode_enabled,
+            **kwargs,
+        )

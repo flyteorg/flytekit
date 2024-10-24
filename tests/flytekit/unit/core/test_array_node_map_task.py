@@ -25,7 +25,6 @@ from flytekit.models.literals import (
     LiteralOffloadedMetadata,
 )
 from flytekit.tools.translator import get_serializable, Options
-from flytekit.types.pickle import BatchSize
 
 
 @pytest.fixture
@@ -102,13 +101,6 @@ def test_remote_execution(serialization_settings):
 
 
 def test_map_task_with_pickle():
-    @task
-    def say_hello(name: Annotated[typing.Any, BatchSize(10)]) -> str:
-        return f"hello {name}!"
-
-    with pytest.raises(ValueError, match="Choosing a BatchSize for map tasks inputs is not supported."):
-        map_task(say_hello)(name=["abc", "def"])
-
     @task
     def say_hello(name: typing.Any) -> str:
         return f"hello {name}!"
@@ -463,7 +455,7 @@ def test_unsupported_node_types():
 def test_mis_match():
     @task
     def generate_directory(word: str) -> FlyteDirectory:
-        temp_dir1 = tempfile.TemporaryDirectory(delete=False)
+        temp_dir1 = tempfile.TemporaryDirectory()
         with open(os.path.join(temp_dir1.name, "file.txt"), "w") as tmp:
             tmp.write(f"Hello world {word}!\n")
         return FlyteDirectory(path=temp_dir1.name)

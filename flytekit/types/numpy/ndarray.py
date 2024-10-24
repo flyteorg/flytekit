@@ -9,8 +9,8 @@ from typing_extensions import Annotated, get_args, get_origin
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.hash import HashMethod
 from flytekit.core.type_engine import (
+    AsyncTypeTransformer,
     TypeEngine,
-    TypeTransformer,
     TypeTransformerFailedError,
 )
 from flytekit.models.core import types as _core_types
@@ -41,7 +41,7 @@ def extract_metadata(t: Type[np.ndarray]) -> Tuple[Type[np.ndarray], Dict[str, b
     return t, metadata
 
 
-class NumpyArrayTransformer(TypeTransformer[np.ndarray]):
+class NumpyArrayTransformer(AsyncTypeTransformer[np.ndarray]):
     """
     TypeTransformer that supports np.ndarray as a native type.
     """
@@ -59,7 +59,7 @@ class NumpyArrayTransformer(TypeTransformer[np.ndarray]):
             )
         )
 
-    def to_literal(
+    async def async_to_literal(
         self,
         ctx: FlyteContext,
         python_val: np.ndarray,
@@ -84,10 +84,12 @@ class NumpyArrayTransformer(TypeTransformer[np.ndarray]):
             arr=python_val,
             allow_pickle=metadata.get("allow_pickle", False),
         )
-        remote_path = ctx.file_access.put_raw_data(local_path)
+        remote_path = await ctx.file_access.async_put_raw_data(local_path)
         return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
 
-    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[np.ndarray]) -> np.ndarray:
+    async def async_to_python_value(
+        self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[np.ndarray]
+    ) -> np.ndarray:
         try:
             uri = lv.scalar.blob.uri
         except AttributeError:
@@ -96,7 +98,7 @@ class NumpyArrayTransformer(TypeTransformer[np.ndarray]):
         expected_python_type, metadata = extract_metadata(expected_python_type)
 
         local_path = ctx.file_access.get_random_local_path()
-        ctx.file_access.get_data(uri, local_path, is_multipart=False)
+        await ctx.file_access.async_get_data(uri, local_path, is_multipart=False)
 
         # load numpy array from a file
         return np.load(

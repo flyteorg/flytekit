@@ -307,6 +307,10 @@ class SimpleTransformer(TypeTransformer[T]):
         self._to_literal_transformer = to_literal_transformer
         self._from_literal_transformer = from_literal_transformer
 
+    @property
+    def base_type(self) -> Type:
+        return self._type
+
     def get_literal_type(self, t: Optional[Type[T]] = None) -> LiteralType:
         return LiteralType.from_flyte_idl(self._lt.to_flyte_idl())
 
@@ -492,6 +496,10 @@ class DataclassTransformer(TypeTransformer[object]):
         else:
             for f in dataclasses.fields(type(v)):  # type: ignore
                 original_type = f.type
+                if f.name not in expected_fields_dict:
+                    raise TypeTransformerFailedError(
+                        f"Field '{f.name}' is not present in the expected dataclass fields {expected_type.__name__}"
+                    )
                 expected_type = expected_fields_dict[f.name]
 
                 if UnionTransformer.is_optional_type(original_type):
@@ -659,12 +667,24 @@ class DataclassTransformer(TypeTransformer[object]):
         elif dataclasses.is_dataclass(python_type):
             for field in dataclasses.fields(python_type):
                 val = python_val.__getattribute__(field.name)
-                python_val.__setattr__(field.name, self._fix_structured_dataset_type(field.type, val))
+                object.__setattr__(python_val, field.name, self._fix_structured_dataset_type(field.type, val))
         return python_val
 
     def _make_dataclass_serializable(self, python_val: T, python_type: Type[T]) -> typing.Any:
         """
         If any field inside the dataclass is flyte type, we should use flyte type transformer for that field.
+        Since Flyte types are already serializable, this function is intended for using strings instead of directly creating Flyte files and directories in the dataclass.
+        An example shows the lifecycle:
+
+        @dataclass
+        class DC:
+            ff: FlyteFile
+
+        @task
+        def t1() -> DC:
+            return DC(ff="s3://path")
+
+        Lifecycle: DC(ff="s3://path") -> to_literal() -> DC(ff=FlyteFile(path="s3://path")) -> msgpack -> to_python_value() -> DC(ff=FlyteFile(path="s3://path"))
         """
         from flytekit.types.directory import FlyteDirectory
         from flytekit.types.file import FlyteFile
@@ -710,7 +730,7 @@ class DataclassTransformer(TypeTransformer[object]):
         dataclass_attributes = typing.get_type_hints(python_type)
         for n, t in dataclass_attributes.items():
             val = python_val.__getattribute__(n)
-            python_val.__setattr__(n, self._make_dataclass_serializable(val, t))
+            object.__setattr__(python_val, n, self._make_dataclass_serializable(val, t))
         return python_val
 
     def _fix_val_int(self, t: typing.Type, val: typing.Any) -> typing.Any:
@@ -753,7 +773,7 @@ class DataclassTransformer(TypeTransformer[object]):
         # Thus we will have to walk the given dataclass and typecast values to int, where expected.
         for f in dataclasses.fields(dc_type):
             val = getattr(dc, f.name)
-            setattr(dc, f.name, self._fix_val_int(f.type, val))
+            object.__setattr__(dc, f.name, self._fix_val_int(f.type, val))
 
         return dc
 
@@ -893,7 +913,7 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
         if type(python_val).__class__ != enum.EnumMeta:
             raise TypeTransformerFailedError("Expected an enum")
         if type(python_val.value) != str:
-            raise TypeTransformerFailedError("Only string-valued enums are supportedd")
+            raise TypeTransformerFailedError("Only string-valued enums are supported")
 
         return Literal(scalar=Scalar(primitive=Primitive(string_value=python_val.value)))  # type: ignore
 
@@ -907,10 +927,23 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
             return enum.Enum("DynamicEnum", {f"{i}": i for i in literal_type.enum_type.values})  # type: ignore
         raise ValueError(f"Enum transformer cannot reverse {literal_type}")
 
+    def assert_type(self, t: Type[enum.Enum], v: T):
+        if sys.version_info < (3, 10):
+            if not isinstance(v, enum.Enum):
+                raise TypeTransformerFailedError(f"Value {v} needs to be an Enum in 3.9")
+            if not isinstance(v, t):
+                raise TypeTransformerFailedError(f"Value {v} is not in Enum {t}")
+            return
+
+        val = v.value if isinstance(v, enum.Enum) else v
+        if val not in t:
+            raise TypeTransformerFailedError(f"Value {v} is not in Enum {t}")
+
 
 def generate_attribute_list_from_dataclass_json_mixin(schema: dict, schema_name: typing.Any):
-    attribute_list: typing.List[tuple[Any, GenericAlias]] = []
+    attribute_list: typing.List[typing.Tuple[Any, Any]] = []
     for property_key, property_val in schema["properties"].items():
+        property_type = ""
         if property_val.get("anyOf"):
             property_type = property_val["anyOf"][0]["type"]
         elif property_val.get("enum"):
@@ -934,9 +967,8 @@ def generate_attribute_list_from_dataclass_json_mixin(schema: dict, schema_name:
                     )
                 )
             elif property_val.get("additionalProperties"):
-                attribute_list.append(
-                    (property_key, typing.Dict[str, _get_element_type(property_val["additionalProperties"])])  # type: ignore
-                )
+                elem_type = _get_element_type(property_val["additionalProperties"])
+                attribute_list.append((property_key, typing.Dict[str, elem_type]))  # type: ignore
             else:
                 sub_schemea_name = property_val["title"]
                 attribute_list.append(
@@ -1003,114 +1035,64 @@ class TypeEngine(typing.Generic[T]):
             cls._REGISTRY[additional_type] = transformer
 
     @classmethod
-    def get_transformer(cls, python_type: Type) -> TypeTransformer[T]:
-        """
-        The TypeEngine hierarchy for flyteKit. This method looks up and selects the type transformer. The algorithm is
-        as follows
-
-          d = dictionary of registered transformers, where is a python `type`
-          v = lookup type
-
-        Step 1:
-            If the type is annotated with a TypeTransformer instance, use that.
-
-        Step 2:
-            find a transformer that matches v exactly
-
-        Step 3:
-            find a transformer that matches the generic type of v. e.g List[int], Dict[str, int] etc
-
-        Step 4:
-            Walk the inheritance hierarchy of v and find a transformer that matches the first base class.
-            This is potentially non-deterministic - will depend on the registration pattern.
-
-            Special case:
-                If v inherits from Enum, use the Enum transformer even if Enum is not the first base class.
-
-            TODO lets make this deterministic by using an ordered dict
-
-        Step 5:
-            if v is of type data class, use the dataclass transformer
-
-        Step 6:
-            Pickle transformer is used
-        """
+    def _get_transformer(cls, python_type: Type) -> Optional[TypeTransformer[T]]:
         cls.lazy_import_transformers()
-        # Step 1
         if is_annotated(python_type):
             args = get_args(python_type)
             for annotation in args:
                 if isinstance(annotation, TypeTransformer):
                     return annotation
+            return cls.get_transformer(args[0])
 
-            python_type = args[0]
-
-        # Step 2
-        # this makes sure that if it's a list/dict of annotated types, we hit the unwrapping code in step 2
-        # see test_list_of_annotated in test_structured_dataset.py
-        if (
-            (not hasattr(python_type, "__origin__"))
-            or (
-                hasattr(python_type, "__origin__")
-                and (python_type.__origin__ is not list and python_type.__origin__ is not dict)
-            )
-        ) and python_type in cls._REGISTRY:
-            return cls._REGISTRY[python_type]
-
-        # Step 3
-        if hasattr(python_type, "__origin__"):
-            # Handling of annotated generics, eg:
-            # Annotated[typing.List[int], 'foo']
-            if is_annotated(python_type):
-                return cls.get_transformer(get_args(python_type)[0])
-
-            if python_type.__origin__ in cls._REGISTRY:
-                return cls._REGISTRY[python_type.__origin__]
-
-            raise ValueError(f"Generic Type {python_type.__origin__} not supported currently in Flytekit.")
-
-        # Step 4
-        # To facilitate cases where users may specify one transformer for multiple types that all inherit from one
-        # parent.
         if inspect.isclass(python_type) and issubclass(python_type, enum.Enum):
             # Special case: prevent that for a type `FooEnum(str, Enum)`, the str transformer is used.
             return cls._ENUM_TRANSFORMER
 
-        from flytekit.types.iterator.json_iterator import JSONIterator
-
-        for base_type in cls._REGISTRY.keys():
-            if base_type is None:
-                continue  # None is actually one of the keys, but isinstance/issubclass doesn't work on it
+        if hasattr(python_type, "__origin__"):
+            # If the type is a generic type, we should check the origin type. But consider the case like Iterator[JSON]
+            # or List[int] has been specifically registered; we should check for the entire type.
+            # The challenge is for StructuredDataset, example List[StructuredDataset] the column names is an OrderedDict
+            # are not hashable, thus looking up this type is not possible.
+            # In such as case, we will have to skip the "type" lookup and use the origin type only
             try:
-                origin_type: Optional[typing.Any] = base_type
-                if hasattr(base_type, "__args__"):
-                    origin_base_type = get_origin(base_type)
-                    if isinstance(origin_base_type, type) and issubclass(
-                        origin_base_type, typing.Iterator
-                    ):  # Iterator[JSON]
-                        origin_type = origin_base_type
-
-                if isinstance(python_type, origin_type) or (  # type: ignore[arg-type]
-                    inspect.isclass(python_type) and issubclass(python_type, origin_type)  # type: ignore[arg-type]
-                ):
-                    # Consider Iterator[JSON] but not vanilla Iterator when the value is a JSON iterator.
-                    if (
-                        isinstance(python_type, type)
-                        and issubclass(python_type, JSONIterator)
-                        and not get_args(base_type)
-                    ):
-                        continue
-                    return cls._REGISTRY[base_type]
+                if python_type in cls._REGISTRY:
+                    return cls._REGISTRY[python_type]
             except TypeError:
-                # As of python 3.9, calls to isinstance raise a TypeError if the base type is not a valid type, which
-                # is the case for one of the restricted types, namely NamedTuple.
-                logger.debug(f"Invalid base type {base_type} in call to isinstance", exc_info=True)
+                pass
+            if python_type.__origin__ in cls._REGISTRY:
+                return cls._REGISTRY[python_type.__origin__]
 
-        # Step 5
+        # Handling UnionType specially - PEP 604
+        if sys.version_info >= (3, 10):
+            import types
+
+            if isinstance(python_type, types.UnionType):
+                return cls._REGISTRY[types.UnionType]
+
+        if python_type in cls._REGISTRY:
+            return cls._REGISTRY[python_type]
+
         if dataclasses.is_dataclass(python_type):
             return cls._DATACLASS_TRANSFORMER
 
-        # Step 6
+        return None
+
+    @classmethod
+    def get_transformer(cls, python_type: Type) -> TypeTransformer[T]:
+        """
+        Implements a recursive search for the transformer.
+        """
+        v = cls._get_transformer(python_type)
+        if v is not None:
+            return v
+
+        if hasattr(python_type, "__mro__"):
+            class_tree = inspect.getmro(python_type)
+            for t in class_tree:
+                v = cls._get_transformer(t)
+                if v is not None:
+                    return v
+
         display_pickle_warning(str(python_type))
         from flytekit.types.pickle.pickle import FlytePickleTransformer
 
@@ -1380,7 +1362,7 @@ class TypeEngine(typing.Generic[T]):
             raise ValueError("At least one of python_types or literal_types must be provided")
 
         if literal_types:
-            python_interface_inputs = {
+            python_interface_inputs: dict[str, Type[T]] = {
                 name: TypeEngine.guess_python_type(lt.type) for name, lt in literal_types.items()
             }
         else:
@@ -1487,7 +1469,7 @@ class TypeEngine(typing.Generic[T]):
         return python_types
 
     @classmethod
-    def guess_python_type(cls, flyte_type: LiteralType) -> type:
+    def guess_python_type(cls, flyte_type: LiteralType) -> Type[T]:
         """
         Transforms a flyte-specific ``LiteralType`` to a regular python value.
         """
@@ -1550,49 +1532,15 @@ class ListTransformer(AsyncTypeTransformer[T]):
         except Exception as e:
             raise ValueError(f"Type of Generic List type is not supported, {e}")
 
-    @staticmethod
-    def is_batchable(t: Type):
-        """
-        This function evaluates whether the provided type is batchable or not.
-        It returns True only if the type is either List or Annotated(List) and the List subtype is FlytePickle.
-        """
-        from flytekit.types.pickle import FlytePickle
-
-        if is_annotated(t):
-            return ListTransformer.is_batchable(get_args(t)[0])
-        if get_origin(t) is list:
-            subtype = get_args(t)[0]
-            if subtype == FlytePickle or (hasattr(subtype, "__origin__") and subtype.__origin__ == FlytePickle):
-                return True
-        return False
-
     async def async_to_literal(
         self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType
     ) -> Literal:
         if type(python_val) != list:
             raise TypeTransformerFailedError("Expected a list")
 
-        if ListTransformer.is_batchable(python_type):
-            from flytekit.types.pickle.pickle import BatchSize, FlytePickle
-
-            batch_size = len(python_val)  # default batch size
-            # parse annotated to get the number of items saved in a pickle file.
-            if is_annotated(python_type):
-                for annotation in get_args(python_type)[1:]:
-                    if isinstance(annotation, BatchSize):
-                        batch_size = annotation.val
-                        break
-            if batch_size > 0:
-                lit_list = [
-                    TypeEngine.to_literal(ctx, python_val[i : i + batch_size], FlytePickle, expected.collection_type)
-                    for i in range(0, len(python_val), batch_size)
-                ]  # type: ignore
-            else:
-                lit_list = []
-        else:
-            t = self.get_sub_type(python_type)
-            lit_list = [TypeEngine.async_to_literal(ctx, x, t, expected.collection_type) for x in python_val]
-            lit_list = await asyncio.gather(*lit_list)
+        t = self.get_sub_type(python_type)
+        lit_list = [TypeEngine.async_to_literal(ctx, x, t, expected.collection_type) for x in python_val]
+        lit_list = await asyncio.gather(*lit_list)
 
         return Literal(collection=LiteralCollection(literals=lit_list))
 
@@ -1611,20 +1559,11 @@ class ListTransformer(AsyncTypeTransformer[T]):
                     f"is not a collection (Flyte's representation of Python lists)."
                 )
             )
-        if self.is_batchable(expected_python_type):
-            from flytekit.types.pickle import FlytePickle
 
-            batch_list = [TypeEngine.to_python_value(ctx, batch, FlytePickle) for batch in lits]
-            if len(batch_list) > 0 and type(batch_list[0]) is list:
-                # Make it have backward compatibility. The upstream task may use old version of Flytekit that won't
-                # merge the elements in the list. Therefore, we should check if the batch_list[0] is the list first.
-                return [item for batch in batch_list for item in batch]
-            return batch_list
-        else:
-            st = self.get_sub_type(expected_python_type)
-            result = [TypeEngine.async_to_python_value(ctx, x, st) for x in lits]
-            result = await asyncio.gather(*result)
-            return result  # type: ignore  # should be a list, thinks its a tuple
+        st = self.get_sub_type(expected_python_type)
+        result = [TypeEngine.async_to_python_value(ctx, x, st) for x in lits]
+        result = await asyncio.gather(*result)
+        return result  # type: ignore  # should be a list, thinks its a tuple
 
     def guess_python_type(self, literal_type: LiteralType) -> list:  # type: ignore
         if literal_type.collection_type:
@@ -1768,13 +1707,17 @@ class UnionTransformer(AsyncTypeTransformer[T]):
                     # this is an edge case
                     return
                 try:
-                    super().assert_type(sub_type, v)
-                    return
+                    sub_trans: TypeTransformer = TypeEngine.get_transformer(sub_type)
+                    if sub_trans.type_assertions_enabled:
+                        sub_trans.assert_type(sub_type, v)
+                        return
+                    else:
+                        return
                 except TypeTransformerFailedError:
                     continue
+                except TypeError:
+                    continue
             raise TypeTransformerFailedError(f"Value {v} is not of type {t}")
-        else:
-            super().assert_type(t, v)
 
     def get_literal_type(self, t: Type[T]) -> Optional[LiteralType]:
         t = get_underlying_type(t)
@@ -1934,7 +1877,9 @@ class DictTransformer(AsyncTypeTransformer[dict]):
         return None, None
 
     @staticmethod
-    def dict_to_binary_literal(ctx: FlyteContext, v: dict, python_type: Type[dict], allow_pickle: bool) -> Literal:
+    async def dict_to_binary_literal(
+        ctx: FlyteContext, v: dict, python_type: Type[dict], allow_pickle: bool
+    ) -> Literal:
         """
         Converts a Python dictionary to a Flyte-specific ``Literal`` using MessagePack encoding.
         Falls back to Pickle if encoding fails and `allow_pickle` is True.
@@ -1948,7 +1893,7 @@ class DictTransformer(AsyncTypeTransformer[dict]):
             return Literal(scalar=Scalar(binary=Binary(value=msgpack_bytes, tag="msgpack")))
         except TypeError as e:
             if allow_pickle:
-                remote_path = FlytePickle.to_pickle(ctx, v)
+                remote_path = await FlytePickle.to_pickle(ctx, v)
                 return Literal(
                     scalar=Scalar(
                         generic=_json_format.Parse(json.dumps({"pickle_file": remote_path}), _struct.Struct())
@@ -2006,7 +1951,7 @@ class DictTransformer(AsyncTypeTransformer[dict]):
             allow_pickle, base_type = DictTransformer.is_pickle(python_type)
 
         if expected and expected.simple and expected.simple == SimpleType.STRUCT:
-            return self.dict_to_binary_literal(ctx, python_val, python_type, allow_pickle)
+            return await self.dict_to_binary_literal(ctx, python_val, python_type, allow_pickle)
 
         lit_map = {}
         for k, v in python_val.items():
@@ -2062,7 +2007,7 @@ class DictTransformer(AsyncTypeTransformer[dict]):
                 from flytekit.types.pickle import FlytePickle
 
                 uri = json.loads(_json_format.MessageToJson(lv.scalar.generic)).get("pickle_file")
-                return FlytePickle.from_pickle(uri)
+                return await FlytePickle.from_pickle(uri)
 
             try:
                 return json.loads(_json_format.MessageToJson(lv.scalar.generic))
@@ -2073,7 +2018,7 @@ class DictTransformer(AsyncTypeTransformer[dict]):
 
     def guess_python_type(self, literal_type: LiteralType) -> Union[Type[dict], typing.Dict[Type, Type]]:
         if literal_type.map_value_type:
-            mt = TypeEngine.guess_python_type(literal_type.map_value_type)
+            mt: Type = TypeEngine.guess_python_type(literal_type.map_value_type)
             return typing.Dict[str, mt]  # type: ignore
 
         if literal_type.simple == SimpleType.STRUCT:
@@ -2207,7 +2152,7 @@ def _get_element_type(element_property: typing.Dict[str, str]) -> Type:
     )
     element_format = element_property["format"] if "format" in element_property else None
 
-    if type(element_type) == list:
+    if isinstance(element_type, list):
         # Element type of Optional[int] is [integer, None]
         return typing.Optional[_get_element_type({"type": element_type[0]})]  # type: ignore
 
@@ -2255,89 +2200,82 @@ def _check_and_convert_void(lv: Literal) -> None:
     return None
 
 
+IntTransformer = SimpleTransformer(
+    "int",
+    int,
+    _type_models.LiteralType(simple=_type_models.SimpleType.INTEGER),
+    lambda x: Literal(scalar=Scalar(primitive=Primitive(integer=x))),
+    lambda x: x.scalar.primitive.integer,
+)
+
+FloatTransformer = SimpleTransformer(
+    "float",
+    float,
+    _type_models.LiteralType(simple=_type_models.SimpleType.FLOAT),
+    lambda x: Literal(scalar=Scalar(primitive=Primitive(float_value=x))),
+    _check_and_covert_float,
+)
+
+BoolTransformer = SimpleTransformer(
+    "bool",
+    bool,
+    _type_models.LiteralType(simple=_type_models.SimpleType.BOOLEAN),
+    lambda x: Literal(scalar=Scalar(primitive=Primitive(boolean=x))),
+    lambda x: x.scalar.primitive.boolean,
+)
+
+StrTransformer = SimpleTransformer(
+    "str",
+    str,
+    _type_models.LiteralType(simple=_type_models.SimpleType.STRING),
+    lambda x: Literal(scalar=Scalar(primitive=Primitive(string_value=x))),
+    lambda x: x.scalar.primitive.string_value,
+)
+
+DatetimeTransformer = SimpleTransformer(
+    "datetime",
+    datetime.datetime,
+    _type_models.LiteralType(simple=_type_models.SimpleType.DATETIME),
+    lambda x: Literal(scalar=Scalar(primitive=Primitive(datetime=x))),
+    lambda x: x.scalar.primitive.datetime,
+)
+
+TimedeltaTransformer = SimpleTransformer(
+    "timedelta",
+    datetime.timedelta,
+    _type_models.LiteralType(simple=_type_models.SimpleType.DURATION),
+    lambda x: Literal(scalar=Scalar(primitive=Primitive(duration=x))),
+    lambda x: x.scalar.primitive.duration,
+)
+
+DateTransformer = SimpleTransformer(
+    "date",
+    datetime.date,
+    _type_models.LiteralType(simple=_type_models.SimpleType.DATETIME),
+    lambda x: Literal(
+        scalar=Scalar(primitive=Primitive(datetime=datetime.datetime.combine(x, datetime.time.min)))
+    ),  # convert datetime to date
+    lambda x: x.scalar.primitive.datetime.date(),  # get date from datetime
+)
+
+NoneTransformer = SimpleTransformer(
+    "none",
+    type(None),
+    _type_models.LiteralType(simple=_type_models.SimpleType.NONE),
+    lambda x: Literal(scalar=Scalar(none_type=Void())),
+    lambda x: _check_and_convert_void(x),
+)
+
+
 def _register_default_type_transformers():
-    TypeEngine.register(
-        SimpleTransformer(
-            "int",
-            int,
-            _type_models.LiteralType(simple=_type_models.SimpleType.INTEGER),
-            lambda x: Literal(scalar=Scalar(primitive=Primitive(integer=x))),
-            lambda x: x.scalar.primitive.integer,
-        )
-    )
-
-    TypeEngine.register(
-        SimpleTransformer(
-            "float",
-            float,
-            _type_models.LiteralType(simple=_type_models.SimpleType.FLOAT),
-            lambda x: Literal(scalar=Scalar(primitive=Primitive(float_value=x))),
-            _check_and_covert_float,
-        )
-    )
-
-    TypeEngine.register(
-        SimpleTransformer(
-            "bool",
-            bool,
-            _type_models.LiteralType(simple=_type_models.SimpleType.BOOLEAN),
-            lambda x: Literal(scalar=Scalar(primitive=Primitive(boolean=x))),
-            lambda x: x.scalar.primitive.boolean,
-        )
-    )
-
-    TypeEngine.register(
-        SimpleTransformer(
-            "str",
-            str,
-            _type_models.LiteralType(simple=_type_models.SimpleType.STRING),
-            lambda x: Literal(scalar=Scalar(primitive=Primitive(string_value=x))),
-            lambda x: x.scalar.primitive.string_value,
-        )
-    )
-
-    TypeEngine.register(
-        SimpleTransformer(
-            "datetime",
-            datetime.datetime,
-            _type_models.LiteralType(simple=_type_models.SimpleType.DATETIME),
-            lambda x: Literal(scalar=Scalar(primitive=Primitive(datetime=x))),
-            lambda x: x.scalar.primitive.datetime,
-        )
-    )
-
-    TypeEngine.register(
-        SimpleTransformer(
-            "timedelta",
-            datetime.timedelta,
-            _type_models.LiteralType(simple=_type_models.SimpleType.DURATION),
-            lambda x: Literal(scalar=Scalar(primitive=Primitive(duration=x))),
-            lambda x: x.scalar.primitive.duration,
-        )
-    )
-
-    TypeEngine.register(
-        SimpleTransformer(
-            "date",
-            datetime.date,
-            _type_models.LiteralType(simple=_type_models.SimpleType.DATETIME),
-            lambda x: Literal(
-                scalar=Scalar(primitive=Primitive(datetime=datetime.datetime.combine(x, datetime.time.min)))
-            ),  # convert datetime to date
-            lambda x: x.scalar.primitive.datetime.date(),  # get date from datetime
-        )
-    )
-
-    TypeEngine.register(
-        SimpleTransformer(
-            "none",
-            type(None),
-            _type_models.LiteralType(simple=_type_models.SimpleType.NONE),
-            lambda x: Literal(scalar=Scalar(none_type=Void())),
-            lambda x: _check_and_convert_void(x),
-        ),
-        [None],
-    )
+    TypeEngine.register(IntTransformer)
+    TypeEngine.register(FloatTransformer)
+    TypeEngine.register(StrTransformer)
+    TypeEngine.register(DatetimeTransformer)
+    TypeEngine.register(DateTransformer)
+    TypeEngine.register(TimedeltaTransformer)
+    TypeEngine.register(BoolTransformer)
+    TypeEngine.register(NoneTransformer, [None])  # noqa
     TypeEngine.register(ListTransformer())
     if sys.version_info >= (3, 10):
         from types import UnionType

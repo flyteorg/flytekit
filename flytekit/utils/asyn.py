@@ -82,7 +82,7 @@ class _AsyncLoopManager:
         """
         This should be called from synchronous functions to run an async function.
         """
-        name = threading.current_thread().name
+        name = threading.current_thread().name + f"PID:{os.getpid()}"
         coro = coro_func(*args, **kwargs)
         if name not in self._runner_map:
             if len(self._runner_map) > 500:
