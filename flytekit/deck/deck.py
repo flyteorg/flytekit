@@ -11,6 +11,40 @@ from flytekit.tools.interactive import ipython_check
 
 OUTPUT_DIR_JUPYTER_PREFIX = "jupyter"
 DECK_FILE_NAME = "deck.html"
+DUMMY_DECK_HTML = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flytekit Status</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+        }
+        .message {
+            background-color: #ffffff;
+            padding: 20px;
+            border: 1px solid #cccccc;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="message">
+        <p> Flyte decks have not been created yet. </p>
+    </div>
+</body>
+</html>
+"""
 
 
 class DeckField(str, enum.Enum):
@@ -86,6 +120,27 @@ class Deck:
     def html(self) -> str:
         return self._html
 
+    @classmethod
+    def publish(cls):
+        task_name = FlyteContextManager.current_context().user_space_params.task_id.name
+        new_user_params = FlyteContextManager.current_context().user_space_params
+        _output_deck(task_name, new_user_params)
+
+
+class DummyDeck(Deck):
+    """
+    The DummyDeck class is designed
+    """
+
+    def __init__(self):
+        name = "dummy_deck"
+        html = DUMMY_DECK_HTML
+        super().__init__(name, html)
+
+    @property
+    def html(self) -> str:
+        return self._html
+
 
 class TimeLineDeck(Deck):
     """
@@ -154,7 +209,13 @@ def _get_deck(
     Get flyte deck html string
     If ignore_jupyter is set to True, then it will return a str even in a jupyter environment.
     """
-    deck_map = {deck.name: deck.html for deck in new_user_params.decks}
+
+    deck_map = {deck.name: deck.html for deck in new_user_params.decks if deck.name != "dummy_deck"}
+
+    # If deck_map is empty after filtering, add DummyDeck
+    if not deck_map:
+        deck_map = {"dummy_deck": DUMMY_DECK_HTML}
+
     nav_htmls = []
     body_htmls = []
 
