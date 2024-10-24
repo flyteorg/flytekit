@@ -373,7 +373,7 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
         return self.path
 
     def __hash__(self):
-        return hash(self._serialize()["path"])
+        return hash(str(self.path))
 
 
 class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
