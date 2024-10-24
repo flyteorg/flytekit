@@ -121,13 +121,13 @@ def pretty_print_traceback(e: Exception, verbosity: int = 1):
         new_tb = remove_unwanted_traceback_frames(tb, unwanted_module_names)
         console.print(Traceback.from_exception(type(e), e, new_tb))
     elif verbosity == 1:
-        new_tb = remove_unwanted_traceback_frames(e.__traceback__, unwanted_module_names)
-        console.print(Traceback.from_exception(type(e), e, new_tb))
         click.secho(
             f"Frames from the following modules were removed from the traceback: {unwanted_module_names}."
             f" For more verbose output, use the flags -vv or -vvv.",
             fg="yellow",
         )
+        new_tb = remove_unwanted_traceback_frames(e.__traceback__, unwanted_module_names)
+        console.print(Traceback.from_exception(type(e), e, new_tb))
     elif verbosity >= 2:
         console.print(Traceback.from_exception(type(e), e, e.__traceback__))
     else:
