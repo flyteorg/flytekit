@@ -116,8 +116,8 @@ def pretty_print_traceback(e: Exception, verbosity: int = 1):
     unwanted_module_names = ["importlib", "click", "rich_click"]
 
     if verbosity == 0:
-        tb = e.__cause__.__traceback__ if e.__cause__ else e.__traceback__
         unwanted_module_names.append("flytekit")
+        tb = e.__cause__.__traceback__ if e.__cause__ else e.__traceback__
         new_tb = remove_unwanted_traceback_frames(tb, unwanted_module_names)
         console.print(Traceback.from_exception(type(e), e, new_tb))
     elif verbosity == 1:
