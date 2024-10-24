@@ -1,4 +1,5 @@
 from flyteidl.core import errors_pb2 as _errors_pb2
+from google.protobuf.timestamp_pb2 import Timestamp
 
 from flytekit.models import common as _common
 
@@ -8,7 +9,15 @@ class ContainerError(_common.FlyteIdlEntity):
         NON_RECOVERABLE = _errors_pb2.ContainerError.NON_RECOVERABLE
         RECOVERABLE = _errors_pb2.ContainerError.RECOVERABLE
 
-    def __init__(self, code: str, message: str, kind: int, origin: int):
+    def __init__(
+        self,
+        code: str,
+        message: str,
+        kind: int,
+        origin: int,
+        timestamp: Timestamp = Timestamp(seconds=0, nanos=0),
+        worker: str = "",
+    ):
         """
         :param code: A succinct code about the error
         :param message: Whatever message you want to surface about the error
@@ -20,6 +29,8 @@ class ContainerError(_common.FlyteIdlEntity):
         self._message = message
         self._kind = kind
         self._origin = origin
+        self._timestamp = timestamp
+        self._worker = worker
 
     @property
     def code(self):
@@ -49,11 +60,32 @@ class ContainerError(_common.FlyteIdlEntity):
         """
         return self._origin
 
+    @property
+    def timestamp(self) -> Timestamp:
+        """
+        The timestamp of the error, as number of seconds and nanos since Epoch
+        """
+        return self._timestamp
+
+    @property
+    def worker(self) -> int:
+        """
+        The worker name where the error originated
+        """
+        return self._worker
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.errors_pb2.ContainerError
         """
-        return _errors_pb2.ContainerError(code=self.code, message=self.message, kind=self.kind, origin=self.origin)
+        return _errors_pb2.ContainerError(
+            code=self.code,
+            message=self.message,
+            kind=self.kind,
+            origin=self.origin,
+            timestamp=self._timestamp,
+            worker=self.worker,
+        )
 
     @classmethod
     def from_flyte_idl(cls, proto):
@@ -61,7 +93,7 @@ class ContainerError(_common.FlyteIdlEntity):
         :param flyteidl.core.errors_pb2.ContainerError proto:
         :rtype: ContainerError
         """
-        return cls(proto.code, proto.message, proto.kind, proto.origin)
+        return cls(proto.code, proto.message, proto.kind, proto.origin, proto.timestamp, proto.worker)
 
 
 class ErrorDocument(_common.FlyteIdlEntity):
