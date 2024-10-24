@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Callable, TypeVar
+from typing import Any, Callable, TypeVar, Union
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ except ImportError:
     from typing_extensions import Literal as typing_literal
 
     def model_serializer(
-        __f: Callable[..., Any] | None = None,
+        __f: Union[Callable[..., Any], None] = None,
         *,
         mode: typing_literal["plain", "wrap"] = "plain",
         when_used: typing_literal["always", "unless-none", "json", "json-unless-none"] = "always",
