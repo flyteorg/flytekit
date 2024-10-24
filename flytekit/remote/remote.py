@@ -1383,7 +1383,7 @@ class FlyteRemote(object):
             exec_id = WorkflowExecutionIdentifier(
                 project=project or self.default_project, domain=domain or self.default_domain, name=execution_name
             )
-        execution = FlyteWorkflowExecution.promote_from_model(self.client.get_execution(exec_id))
+        execution = FlyteWorkflowExecution.promote_from_model(self.client.get_execution(exec_id), remote=self)
 
         if wait:
             return self.wait(execution)
@@ -2474,15 +2474,25 @@ class FlyteRemote(object):
     def generate_console_url(
         self,
         entity: typing.Union[
-            FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution, FlyteWorkflow, FlyteTask, FlyteLaunchPlan
+            FlyteWorkflowExecution,
+            FlyteNodeExecution,
+            FlyteTaskExecution,
+            FlyteWorkflow,
+            FlyteTask,
+            WorkflowExecutionIdentifier,
+            FlyteLaunchPlan,
         ],
     ):
         """
         Generate a Flyteconsole URL for the given Flyte remote endpoint.
         This will automatically determine if this is an execution or an entity and change the type automatically
         """
-        if isinstance(entity, (FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution)):
-            return f"{self.generate_console_http_domain()}/console/projects/{entity.id.project}/domains/{entity.id.domain}/executions/{entity.id.name}"  # noqa
+        if isinstance(
+            entity, (FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution, WorkflowExecutionIdentifier)
+        ):
+            if not isinstance(entity, WorkflowExecutionIdentifier):
+                entity = entity.id
+            return f"{self.generate_console_http_domain()}/console/projects/{entity.project}/domains/{entity.domain}/executions/{entity.name}"  # noqa
 
         if not isinstance(entity, (FlyteWorkflow, FlyteTask, FlyteLaunchPlan)):
             raise ValueError(f"Only remote entities can be looked at in the console, got type {type(entity)}")
