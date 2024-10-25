@@ -28,7 +28,7 @@ class mem_profiling(ClassDecorator):
     def execute(self, *args, **kwargs):
 
         dir_name = "memray"
-        memray_html_reporter = ["flamegraph"]
+        memray_html_reporter = ["flamegraph", "table"]
 
         if not os.path.exists(dir_name):
             os.makedirs(dir_name)
@@ -61,8 +61,8 @@ class mem_profiling(ClassDecorator):
         for constant in html_reporter_constants:
             html_content = html_content.replace(f"const {constant}", f"var {constant}")
 
-        with open("output.html", "w") as f:
-            f.write(html_content)
+        # with open("output.html", "w") as f:
+        #     f.write(html_content)
 
         Deck(f"Memray {reporter.capitalize()}", html_content)
 
