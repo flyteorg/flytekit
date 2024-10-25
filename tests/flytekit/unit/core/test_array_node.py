@@ -94,23 +94,23 @@ def test_lp_serialization(target, overrides_metadata, serialization_settings):
     wf_spec = get_serializable(OrderedDict(), serialization_settings, target(serialization_settings))
     assert len(wf_spec.template.nodes) == 1
 
-    top_level = wf_spec.template.nodes[0]
-    assert top_level.inputs[0].var == "a"
-    assert len(top_level.inputs[0].binding.collection.bindings) == 3
-    for binding in top_level.inputs[0].binding.collection.bindings:
+    parent_node = wf_spec.template.nodes[0]
+    assert parent_node.inputs[0].var == "a"
+    assert len(parent_node.inputs[0].binding.collection.bindings) == 3
+    for binding in parent_node.inputs[0].binding.collection.bindings:
         assert binding.scalar.primitive.integer is not None
-    assert top_level.inputs[1].var == "b"
-    for binding in top_level.inputs[1].binding.collection.bindings:
+    assert parent_node.inputs[1].var == "b"
+    for binding in parent_node.inputs[1].binding.collection.bindings:
         assert (binding.scalar.union is not None or
                 binding.scalar.primitive.integer is not None or
                 binding.scalar.primitive.string_value is not None)
-    assert len(top_level.inputs[1].binding.collection.bindings) == 3
-    assert top_level.inputs[2].var == "c"
-    assert len(top_level.inputs[2].binding.collection.bindings) == 3
-    for binding in top_level.inputs[2].binding.collection.bindings:
+    assert len(parent_node.inputs[1].binding.collection.bindings) == 3
+    assert parent_node.inputs[2].var == "c"
+    assert len(parent_node.inputs[2].binding.collection.bindings) == 3
+    for binding in parent_node.inputs[2].binding.collection.bindings:
         assert binding.scalar.primitive.integer is not None
 
-    serialized_array_node = top_level.array_node
+    serialized_array_node = parent_node.array_node
     assert (
             serialized_array_node.node.workflow_node.launchplan_ref.resource_type
             == identifier_models.ResourceType.LAUNCH_PLAN
@@ -123,12 +123,16 @@ def test_lp_serialization(target, overrides_metadata, serialization_settings):
     assert serialized_array_node._parallelism == 10
 
     subnode = serialized_array_node.node
-    assert subnode.inputs == top_level.inputs
+    assert subnode.inputs == parent_node.inputs
 
     if overrides_metadata:
+        assert parent_node.metadata.cacheable
+        assert parent_node.metadata.cache_version == "1.0"
         assert subnode.metadata.cacheable
         assert subnode.metadata.cache_version == "1.0"
     else:
+        assert not parent_node.metadata.cacheable
+        assert not parent_node.metadata.cache_version
         assert not subnode.metadata.cacheable
         assert not subnode.metadata.cache_version
 
