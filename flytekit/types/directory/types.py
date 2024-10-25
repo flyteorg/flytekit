@@ -220,6 +220,23 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
         remote_path = ctx.file_access.generate_new_custom_path(alt=alt, stem=stem)
         return cls(path=remote_path)
 
+    @classmethod
+    def new(cls, dirname: str | os.PathLike) -> FlyteFile:
+        """
+        Create a new FlyteDirectory object in current Flyte working directory.
+        """
+
+        if os.path.isabs(dirname):
+            raise ValueError("Path should be relative.")
+
+        ctx = FlyteContextManager.current_context()
+
+        path = os.path.join(ctx.user_space_params.working_directory, dirname)
+
+        os.makedirs(path, exist_ok=False)
+
+        return cls(path=path)
+
     def __class_getitem__(cls, item: typing.Union[typing.Type, str]) -> typing.Type[FlyteDirectory]:
         if item is None:
             return cls
@@ -419,6 +436,13 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
 
     def __str__(self):
         return str(self.path)
+
+    def __truediv__(self, other: str | os.PathLike) -> Path:
+        """
+        This is a convenience method to allow for easy concatenation of paths.
+        """
+
+        return Path(self.path) / other
 
 
 class FlyteDirToMultipartBlobTransformer(AsyncTypeTransformer[FlyteDirectory]):

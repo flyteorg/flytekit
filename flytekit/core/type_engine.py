@@ -743,6 +743,18 @@ class DataclassTransformer(TypeTransformer[object]):
     def _make_dataclass_serializable(self, python_val: T, python_type: Type[T]) -> typing.Any:
         """
         If any field inside the dataclass is flyte type, we should use flyte type transformer for that field.
+        Since Flyte types are already serializable, this function is intended for using strings instead of directly creating Flyte files and directories in the dataclass.
+        An example shows the lifecycle:
+
+        @dataclass
+        class DC:
+            ff: FlyteFile
+
+        @task
+        def t1() -> DC:
+            return DC(ff="s3://path")
+
+        Lifecycle: DC(ff="s3://path") -> to_literal() -> DC(ff=FlyteFile(path="s3://path")) -> msgpack -> to_python_value() -> DC(ff=FlyteFile(path="s3://path"))
         """
         from flytekit.types.directory import FlyteDirectory
         from flytekit.types.file import FlyteFile
@@ -1592,49 +1604,15 @@ class ListTransformer(AsyncTypeTransformer[T]):
         except Exception as e:
             raise ValueError(f"Type of Generic List type is not supported, {e}")
 
-    @staticmethod
-    def is_batchable(t: Type):
-        """
-        This function evaluates whether the provided type is batchable or not.
-        It returns True only if the type is either List or Annotated(List) and the List subtype is FlytePickle.
-        """
-        from flytekit.types.pickle import FlytePickle
-
-        if is_annotated(t):
-            return ListTransformer.is_batchable(get_args(t)[0])
-        if get_origin(t) is list:
-            subtype = get_args(t)[0]
-            if subtype == FlytePickle or (hasattr(subtype, "__origin__") and subtype.__origin__ == FlytePickle):
-                return True
-        return False
-
     async def async_to_literal(
         self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType
     ) -> Literal:
         if type(python_val) != list:
             raise TypeTransformerFailedError("Expected a list")
 
-        if ListTransformer.is_batchable(python_type):
-            from flytekit.types.pickle.pickle import BatchSize, FlytePickle
-
-            batch_size = len(python_val)  # default batch size
-            # parse annotated to get the number of items saved in a pickle file.
-            if is_annotated(python_type):
-                for annotation in get_args(python_type)[1:]:
-                    if isinstance(annotation, BatchSize):
-                        batch_size = annotation.val
-                        break
-            if batch_size > 0:
-                lit_list = [
-                    TypeEngine.to_literal(ctx, python_val[i : i + batch_size], FlytePickle, expected.collection_type)
-                    for i in range(0, len(python_val), batch_size)
-                ]  # type: ignore
-            else:
-                lit_list = []
-        else:
-            t = self.get_sub_type(python_type)
-            lit_list = [TypeEngine.async_to_literal(ctx, x, t, expected.collection_type) for x in python_val]
-            lit_list = await asyncio.gather(*lit_list)
+        t = self.get_sub_type(python_type)
+        lit_list = [TypeEngine.async_to_literal(ctx, x, t, expected.collection_type) for x in python_val]
+        lit_list = await asyncio.gather(*lit_list)
 
         return Literal(collection=LiteralCollection(literals=lit_list))
 
@@ -1653,20 +1631,11 @@ class ListTransformer(AsyncTypeTransformer[T]):
                     f"is not a collection (Flyte's representation of Python lists)."
                 )
             )
-        if self.is_batchable(expected_python_type):
-            from flytekit.types.pickle import FlytePickle
 
-            batch_list = [TypeEngine.to_python_value(ctx, batch, FlytePickle) for batch in lits]
-            if len(batch_list) > 0 and type(batch_list[0]) is list:
-                # Make it have backward compatibility. The upstream task may use old version of Flytekit that won't
-                # merge the elements in the list. Therefore, we should check if the batch_list[0] is the list first.
-                return [item for batch in batch_list for item in batch]
-            return batch_list
-        else:
-            st = self.get_sub_type(expected_python_type)
-            result = [TypeEngine.async_to_python_value(ctx, x, st) for x in lits]
-            result = await asyncio.gather(*result)
-            return result  # type: ignore  # should be a list, thinks its a tuple
+        st = self.get_sub_type(expected_python_type)
+        result = [TypeEngine.async_to_python_value(ctx, x, st) for x in lits]
+        result = await asyncio.gather(*result)
+        return result  # type: ignore  # should be a list, thinks its a tuple
 
     def guess_python_type(self, literal_type: LiteralType) -> list:  # type: ignore
         if literal_type.collection_type:
