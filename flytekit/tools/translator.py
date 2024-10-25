@@ -587,6 +587,7 @@ def get_serializable_array_node(
     options: Optional[Options] = None,
 ) -> ArrayNodeModel:
     array_node = node.flyte_entity
+    # pass in parent node metadata to be set for subnode
     array_node.metadata = node.metadata
     return ArrayNodeModel(
         node=get_serializable_node(entity_mapping, settings, array_node, options=options),
