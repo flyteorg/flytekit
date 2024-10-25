@@ -44,12 +44,25 @@ class mem_profiling(ClassDecorator):
         return output
 
     def generate_flytedeck_html(self, reporter, bin_filepath):
+        html_reporter_constants = [
+            "packed_data",
+            "merge_threads",
+            "memory_records",
+            "inverted",
+            "temporal",
+        ]
         html_filepath = bin_filepath.replace(
             self.task_function.__name__, f"{reporter}.{self.task_function.__name__}"
         ).replace(".bin", ".html")
         os.system(f"memray {reporter} -o {html_filepath} {bin_filepath}")
         with open(html_filepath, "r", encoding="utf-8") as file:
             html_content = file.read()
+
+        for constant in html_reporter_constants:
+            html_content = html_content.replace(f"const {constant}", f"var {constant}")
+
+        with open("output.html", "w") as f:
+            f.write(html_content)
 
         Deck(f"Memray {reporter.capitalize()}", html_content)
 
