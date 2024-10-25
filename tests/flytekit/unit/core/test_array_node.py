@@ -50,6 +50,16 @@ def get_grandparent_wf(serialization_settings):
     return grandparent_wf
 
 
+def get_grandparent_wf_with_overrides(serialization_settings):
+    @workflow
+    def grandparent_wf_with_overrides() -> typing.List[int]:
+        return array_node(
+            lp, concurrency=10, min_success_ratio=0.9
+        )(a=[1, 3, 5], b=["two", 4, "six"], c=[7, 8, 9]).with_overrides(cache=True, cache_version="1.0")
+
+    return grandparent_wf_with_overrides
+
+
 def get_grandparent_remote_wf(serialization_settings):
     serialized = OrderedDict()
     lp_model = get_serializable(serialized, serialization_settings, lp)
@@ -73,13 +83,14 @@ def get_grandparent_remote_wf(serialization_settings):
 
 
 @pytest.mark.parametrize(
-    "target",
+    ("target", "overrides_metadata"),
     [
-        get_grandparent_wf,
-        get_grandparent_remote_wf,
+        (get_grandparent_wf, False),
+        (get_grandparent_remote_wf, False),
+        (get_grandparent_wf_with_overrides, True),
     ],
 )
-def test_lp_serialization(target, serialization_settings):
+def test_lp_serialization(target, overrides_metadata, serialization_settings):
     wf_spec = get_serializable(OrderedDict(), serialization_settings, target(serialization_settings))
     assert len(wf_spec.template.nodes) == 1
 
@@ -113,6 +124,13 @@ def test_lp_serialization(target, serialization_settings):
 
     subnode = serialized_array_node.node
     assert subnode.inputs == top_level.inputs
+
+    if overrides_metadata:
+        assert subnode.metadata.cacheable
+        assert subnode.metadata.cache_version == "1.0"
+    else:
+        assert not subnode.metadata.cacheable
+        assert not subnode.metadata.cache_version
 
 
 @pytest.mark.parametrize(

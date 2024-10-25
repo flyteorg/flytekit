@@ -429,7 +429,7 @@ def get_serializable_node(
     if isinstance(entity.flyte_entity, ArrayNode):
         node_model = workflow_model.Node(
             id=_dnsify(entity.id),
-            metadata=entity.flyte_entity.construct_node_metadata(),
+            metadata=entity.metadata,
             inputs=entity.bindings,
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
@@ -587,6 +587,7 @@ def get_serializable_array_node(
     options: Optional[Options] = None,
 ) -> ArrayNodeModel:
     array_node = node.flyte_entity
+    array_node.metadata = node.metadata
     return ArrayNodeModel(
         node=get_serializable_node(entity_mapping, settings, array_node, options=options),
         parallelism=array_node.concurrency,
