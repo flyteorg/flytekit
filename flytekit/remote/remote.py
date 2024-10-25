@@ -2492,6 +2492,7 @@ class FlyteRemote(object):
             FlyteWorkflow,
             FlyteTask,
             WorkflowExecutionIdentifier,
+            Identifier,
             FlyteLaunchPlan,
         ],
     ):
@@ -2506,11 +2507,11 @@ class FlyteRemote(object):
                 entity = entity.id
             return f"{self.generate_console_http_domain()}/console/projects/{entity.project}/domains/{entity.domain}/executions/{entity.name}"  # noqa
 
-        if not isinstance(entity, (FlyteWorkflow, FlyteTask, FlyteLaunchPlan)):
+        if not isinstance(entity, (FlyteWorkflow, FlyteTask, FlyteLaunchPlan, Identifier)):
             raise ValueError(f"Only remote entities can be looked at in the console, got type {type(entity)}")
-        return self.generate_url_from_id(id=entity.id)
 
-    def generate_url_from_id(self, id: Identifier):
+        id = entity if isinstance(entity, Identifier) else entity.id
+
         rt = "workflow"
         if id.resource_type == ResourceType.TASK:
             rt = "task"
