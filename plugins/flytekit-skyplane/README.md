@@ -14,8 +14,6 @@ The Flyte Skyplane Plugin provides an interface for transferring data between lo
 
 ## Installation
 
-To install the plugin, you can add it as a dependency in your Flyte project. Make sure to include it in your `setup.py`.
-
 ```python
 setup(
     name='flytekit-skyplane',
@@ -23,6 +21,6 @@ setup(
     packages=['flytekitplugin.skyplane'],
     install_requires=[
         'flytekit',
-        'skyplane',  # Ensure you include the Skyplane package
+        'skyplane',  
     ],
 )
