@@ -339,7 +339,7 @@ def register(
                     i = remote.raw_register(
                         cp_entity, serialization_settings, version=version, create_default_launchplan=False
                     )
-                    console_url = remote.generate_url_from_id(id=i)
+                    console_url = remote.generate_console_url(i)
                     print_activation_message = False
                     if is_lp and activate_launchplans:
                         remote.activate_launchplan(i)
