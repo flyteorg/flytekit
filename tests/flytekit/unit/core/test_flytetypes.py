@@ -14,4 +14,3 @@ def test_dataclass_union_with_multiple_flytetypes_error():
     dc = DC(x="s3://my-bucket/my-file")
     with pytest.raises(ValueError, match="Cannot have two Flyte types in a Union type"):
         DataclassTransformer()._make_dataclass_serializable(dc, DC)
-
