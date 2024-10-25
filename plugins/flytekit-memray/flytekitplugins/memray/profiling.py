@@ -1,8 +1,7 @@
 import os
-from typing import Callable, Optional, Union
+from typing import Callable, Optional
 import memray
 import time
-from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.utils import ClassDecorator
 from flytekit import Deck
 
@@ -27,33 +26,32 @@ class mem_profiling(ClassDecorator):
         )
 
     def execute(self, *args, **kwargs):
-        ctx = FlyteContextManager.current_context()
-        is_local_execution = ctx.execution_state.is_local_execution()
 
         dir_name = "memray"
+        memray_html_reporter = ["flamegraph", "table"]
 
         if not os.path.exists(dir_name):
             os.makedirs(dir_name)
 
         bin_filepath = f"{dir_name}/{self.task_function.__name__}.{time.strftime('%Y%m%d%H%M%S')}.bin"
-        html_filepath = bin_filepath.replace(".bin", ".html")
 
         with memray.Tracker(bin_filepath):
             output = self.task_function(*args, **kwargs)
 
-        os.system(f"memray flamegraph -o {html_filepath} {bin_filepath}")
+        for reporter in memray_html_reporter:
+            self.generate_flytedeck_html(reporter=reporter, bin_filepath=bin_filepath)
+
+        return output
+
+    def generate_flytedeck_html(self, reporter, bin_filepath):
+        html_filepath = bin_filepath.replace(
+            self.task_function.__name__, f"{reporter}.{self.task_function.__name__}"
+        ).replace(".bin", ".html")
+        os.system(f"memray {reporter} -o {html_filepath} {bin_filepath}")
         with open(html_filepath, "r", encoding="utf-8") as file:
             html_content = file.read()
 
-        Deck("flamegraph", html_content)
-
-        # os.system(f"memray flamegraph {bin_filepath}")
-        # with open(bin_filepath, "r", encoding="ISO-8859-1") as file:
-        #     html_content = file.read()
-
-        # Deck("flamegraph", html_content)
-
-        return output
+        Deck(f"Memray {reporter.capitalize()}", html_content)
 
     def get_extra_config(self):
         return {}
