@@ -48,7 +48,7 @@ class mem_profiling(ClassDecorator):
             "packed_data",
             "merge_threads",
             "memory_records",
-            "inverted",
+            # "inverted",
             "temporal",
         ]
         html_filepath = bin_filepath.replace(
@@ -59,7 +59,7 @@ class mem_profiling(ClassDecorator):
             html_content = file.read()
 
         for constant in html_reporter_constants:
-            html_content = html_content.replace(f"const {constant}", f"let {constant}")
+            html_content = html_content.replace(f"{constant}", f"{reporter}_{constant}")
 
         # with open("output.html", "w") as f:
         #     f.write(html_content)
