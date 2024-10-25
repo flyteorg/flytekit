@@ -200,13 +200,15 @@ def _get_git_repo_url(source_path: str):
         return ""
 
 
-def _get_pickled_target_dict(root_entity: typing.Union[WorkflowBase, PythonTask]) -> typing.Tuple[bytes, typing.Dict[str, PythonAutoContainerTask]]:
+def _get_pickled_target_dict(
+    root_entity: typing.Union[WorkflowBase, PythonTask],
+) -> typing.Tuple[bytes, typing.Dict[str, PythonAutoContainerTask]]:
     """
     Get the pickled target dictionary for the entity.
     :param root_entity: The entity to get the pickled target for.
         :return: hashed bytes and the pickled target dictionary.
     """
-    queue = [root_entity]
+    queue: typing.List[typing.Union[WorkflowBase, PythonTask, CoreNode]] = [root_entity]
     pickled_target_dict = {}
     while queue:
         entity = queue.pop()
@@ -229,8 +231,9 @@ def _get_pickled_target_dict(root_entity: typing.Union[WorkflowBase, PythonTask]
                 queue.append(task)
         elif isinstance(entity, CoreNode):
             queue.append(entity.flyte_entity)
-        md5_bytes = hashlib.md5(cloudpickle.dumps(pickled_target_dict)).digest()
-        return md5_bytes, pickled_target_dict
+    md5_bytes = hashlib.md5(cloudpickle.dumps(pickled_target_dict)).digest()
+    return md5_bytes, pickled_target_dict
+
 
 class FlyteRemote(object):
     """Main entrypoint for programmatically accessing a Flyte remote backend.
