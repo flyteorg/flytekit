@@ -306,9 +306,9 @@ class _ModuleSanitizer(object):
 
             logger.debug(
                 f"Directory {dirname} does not exist. It is likely that we are in a Jupyter notebook or a pickle file was received."
-                f"Returning {basename} as the module name."
+                f'Returning "" as the module name.'
             )
-            return basename
+            return ""
 
         # If we have reached a directory with no __init__, ignore
         if "__init__.py" not in os.listdir(dirname):
