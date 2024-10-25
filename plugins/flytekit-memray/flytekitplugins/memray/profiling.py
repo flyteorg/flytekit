@@ -59,7 +59,7 @@ class mem_profiling(ClassDecorator):
             html_content = file.read()
 
         for constant in html_reporter_constants:
-            html_content = html_content.replace(f"const {constant}", f"var {constant}")
+            html_content = html_content.replace(f"const {constant}", f"let {constant}")
 
         # with open("output.html", "w") as f:
         #     f.write(html_content)
