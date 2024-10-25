@@ -71,7 +71,7 @@ You can find the detailed contribution guide [here](https://docs.flyte.org/en/la
 Please see the [contributor's guide](https://docs.flyte.org/en/latest/api/flytekit/contributing.html) for a quick summary of how this code is structured.
 
 ## 🐞 File an Issue
-Refer to the [issues](https://docs.flyte.org/en/latest/community/contribute.html#file-an-issue) section in the contribution guide if you'd like to file an issue.
+Refer to the [issues](https://github.com/flyteorg/flyte/issues) section in the contribution guide if you'd like to file an issue.
 
 ## 🔌 Flytekit Plugins
 Refer to [plugins/README.md](plugins/README.md) for a list of available plugins.
