@@ -9,7 +9,7 @@ try:
     from pydantic import model_serializer, model_validator
 
 except ImportError:
-    logger.info(
+    logger.warning(
         "Pydantic is not installed.\n" "Please install Pydantic version > 2 to use FlyteTypes in pydantic BaseModel."
     )
 

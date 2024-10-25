@@ -216,8 +216,17 @@ class TypeTransformer(typing.Generic[T]):
 
     def from_binary_idl(self, binary_idl_object: Binary, expected_python_type: Type[T]) -> Optional[T]:
         """
-        TODO: Add more comments to explain the lifecycle of attribute access.
-        This is for dict, dataclass, and dataclass attribute access.
+        This function primarily handles deserialization for untyped dicts, dataclasses, Pydantic BaseModels, and attribute access.｀
+
+        For untyped dict, dataclass, and pydantic basemodel:
+        Life Cycle (Untyped Dict as example):
+            python val -> msgpack bytes -> binary literal scalar -> msgpack bytes -> python val
+                          (to_literal)                             (from_binary_idl)
+
+        For attribute access:
+        Life Cycle:
+            python val -> msgpack bytes -> binary literal scalar -> resolved golang value -> binary literal scalar -> msgpack bytes -> python val
+                          (to_literal)                            (propeller attribute access)                       (from_binary_idl)
         """
         if binary_idl_object.tag == MESSAGEPACK:
             try:

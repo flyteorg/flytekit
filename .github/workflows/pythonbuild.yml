@@ -356,8 +356,6 @@ jobs:
           - flytekit-pandera
           - flytekit-papermill
           - flytekit-polars
-          # TODO: remove pydantic v1 plugin, since v2 is in core already
-          # flytekit-pydantic
           - flytekit-ray
           - flytekit-snowflake
           - flytekit-spark

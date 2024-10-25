@@ -7,5 +7,5 @@ try:
 
     from . import transformer
 except (ImportError, OSError) as e:
-    logger.info(f"Meet error when importing pydantic: `{e}`")
-    logger.info("Flytekit only support pydantic version > 2.")
+    logger.warning(f"Meet error when importing pydantic: `{e}`")
+    logger.warning("Flytekit only support pydantic version > 2.")
