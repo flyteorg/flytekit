@@ -214,6 +214,21 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
         t = FlyteFilePathTransformer()
         return t.to_python_value(ctx, lit, cls)
 
+    @classmethod
+    def new(cls, filename: str | os.PathLike) -> FlyteFile:
+        """
+        Create a new FlyteFile object in the current Flyte working directory
+        """
+
+        if os.path.isabs(filename):
+            raise ValueError("Path should be relative.")
+
+        ctx = FlyteContextManager.current_context()
+
+        path = os.path.join(ctx.user_space_params.working_directory, filename)
+
+        return cls(path=path)
+
     def __class_getitem__(cls, item: typing.Union[str, typing.Type]) -> typing.Type[FlyteFile]:
         from flytekit.types.file import FileExt
 
@@ -309,6 +324,9 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
     def download(self) -> str:
         return self.__fspath__()
 
+    async def _download(self) -> str:
+        return self.__fspath__()
+
     @contextmanager
     def open(
         self,
@@ -353,6 +371,9 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
 
     def __str__(self):
         return self.path
+
+    def __hash__(self):
+        return hash(str(self.path))
 
 
 class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
@@ -511,9 +532,11 @@ class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
         if should_upload:
             headers = self.get_additional_headers(source_path)
             if remote_path is not None:
-                remote_path = ctx.file_access.put_data(source_path, remote_path, is_multipart=False, **headers)
+                remote_path = await ctx.file_access.async_put_data(
+                    source_path, remote_path, is_multipart=False, **headers
+                )
             else:
-                remote_path = ctx.file_access.put_raw_data(source_path, **headers)
+                remote_path = await ctx.file_access.async_put_raw_data(source_path, **headers)
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=unquote(str(remote_path)))))
         # If not uploading, then we can only take the original source path as the uri.
         else:
