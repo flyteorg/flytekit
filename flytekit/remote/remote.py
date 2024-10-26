@@ -35,13 +35,7 @@ from flyteidl.core import literals_pb2
 from flytekit import ImageSpec
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
-from flytekit.configuration import (
-    Config,
-    DataConfig,
-    FastSerializationSettings,
-    ImageConfig,
-    SerializationSettings,
-)
+from flytekit.configuration import Config, DataConfig, FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.configuration.file import ConfigFile
 from flytekit.constants import CopyFileDetection
 from flytekit.core import constants, utils
@@ -62,12 +56,7 @@ from flytekit.core.reference_entity import ReferenceSpec
 from flytekit.core.task import ReferenceTask
 from flytekit.core.tracker import extract_task_module
 from flytekit.core.type_engine import LiteralsResolver, TypeEngine
-from flytekit.core.workflow import (
-    PythonFunctionWorkflow,
-    ReferenceWorkflow,
-    WorkflowBase,
-    WorkflowFailurePolicy,
-)
+from flytekit.core.workflow import PythonFunctionWorkflow, ReferenceWorkflow, WorkflowBase, WorkflowFailurePolicy
 from flytekit.exceptions import user as user_exceptions
 from flytekit.exceptions.user import (
     FlyteAssertion,
@@ -88,12 +77,7 @@ from flytekit.models.admin.common import Sort
 from flytekit.models.common import NamedEntityIdentifier
 from flytekit.models.core import identifier as id_models
 from flytekit.models.core import workflow as workflow_model
-from flytekit.models.core.identifier import (
-    Identifier,
-    ResourceType,
-    SignalIdentifier,
-    WorkflowExecutionIdentifier,
-)
+from flytekit.models.core.identifier import Identifier, ResourceType, SignalIdentifier, WorkflowExecutionIdentifier
 from flytekit.models.core.workflow import BranchNode, Node, NodeMetadata
 from flytekit.models.execution import (
     ClusterAssignment,
@@ -108,30 +92,15 @@ from flytekit.models.literals import Literal, LiteralMap
 from flytekit.models.matchable_resource import ExecutionClusterLabel
 from flytekit.remote.backfill import create_backfill_workflow
 from flytekit.remote.data import download_literal
-from flytekit.remote.entities import (
-    FlyteLaunchPlan,
-    FlyteNode,
-    FlyteTask,
-    FlyteTaskNode,
-    FlyteWorkflow,
-)
-from flytekit.remote.executions import (
-    FlyteNodeExecution,
-    FlyteTaskExecution,
-    FlyteWorkflowExecution,
-)
+from flytekit.remote.entities import FlyteLaunchPlan, FlyteNode, FlyteTask, FlyteTaskNode, FlyteWorkflow
+from flytekit.remote.executions import FlyteNodeExecution, FlyteTaskExecution, FlyteWorkflowExecution
 from flytekit.remote.interface import TypedInterface
 from flytekit.remote.lazy_entity import LazyEntity
 from flytekit.remote.remote_callable import RemoteEntity
 from flytekit.remote.remote_fs import get_flyte_fs
 from flytekit.tools.fast_registration import FastPackageOptions, fast_package
 from flytekit.tools.interactive import ipython_check
-from flytekit.tools.script_mode import (
-    _find_project_root,
-    compress_scripts,
-    get_all_modules,
-    hash_file,
-)
+from flytekit.tools.script_mode import _find_project_root, compress_scripts, get_all_modules, hash_file
 from flytekit.tools.translator import (
     FlyteControlPlaneEntity,
     FlyteLocalEntity,
@@ -194,7 +163,7 @@ def _get_entity_identifier(
         project,
         domain,
         name,
-        (version if version is not None else _get_latest_version(list_entities_method, project, domain, name)),
+        version if version is not None else _get_latest_version(list_entities_method, project, domain, name),
     )
 
 
@@ -418,11 +387,7 @@ class FlyteRemote(object):
         )
 
     def fetch_task_lazy(
-        self,
-        project: str = None,
-        domain: str = None,
-        name: str = None,
-        version: str = None,
+        self, project: str = None, domain: str = None, name: str = None, version: str = None
     ) -> LazyEntity:
         """
         Similar to fetch_task, just that it returns a LazyEntity, which will fetch the workflow lazily.
@@ -435,13 +400,7 @@ class FlyteRemote(object):
 
         return LazyEntity(name=name, getter=_fetch)
 
-    def fetch_task(
-        self,
-        project: str = None,
-        domain: str = None,
-        name: str = None,
-        version: str = None,
-    ) -> FlyteTask:
+    def fetch_task(self, project: str = None, domain: str = None, name: str = None, version: str = None) -> FlyteTask:
         """Fetch a task entity from flyte admin.
 
         :param project: fetch entity from this project. If None, uses the default_project attribute.
@@ -468,11 +427,7 @@ class FlyteRemote(object):
         return flyte_task
 
     def fetch_workflow_lazy(
-        self,
-        project: str = None,
-        domain: str = None,
-        name: str = None,
-        version: str = None,
+        self, project: str = None, domain: str = None, name: str = None, version: str = None
     ) -> LazyEntity[FlyteWorkflow]:
         """
         Similar to fetch_workflow, just that it returns a LazyEntity, which will fetch the workflow lazily.
@@ -486,11 +441,7 @@ class FlyteRemote(object):
         return LazyEntity(name=name, getter=_fetch)
 
     def fetch_workflow(
-        self,
-        project: str = None,
-        domain: str = None,
-        name: str = None,
-        version: str = None,
+        self, project: str = None, domain: str = None, name: str = None, version: str = None
     ) -> FlyteWorkflow:
         """
         Fetch a workflow entity from flyte admin.
@@ -520,8 +471,7 @@ class FlyteRemote(object):
         node_launch_plans = {}
 
         def find_launch_plan(
-            lp_ref: id_models,
-            node_launch_plans: Dict[id_models, launch_plan_models.LaunchPlanSpec],
+            lp_ref: id_models, node_launch_plans: Dict[id_models, launch_plan_models.LaunchPlanSpec]
         ) -> None:
             if lp_ref not in node_launch_plans:
                 admin_launch_plan = self.client.get_launch_plan(lp_ref)
@@ -535,12 +485,10 @@ class FlyteRemote(object):
 
                 # Inspect conditional branch nodes for launch plans
                 def get_launch_plan_from_branch(
-                    branch_node: BranchNode,
-                    node_launch_plans: Dict[id_models, launch_plan_models.LaunchPlanSpec],
+                    branch_node: BranchNode, node_launch_plans: Dict[id_models, launch_plan_models.LaunchPlanSpec]
                 ) -> None:
                     def get_launch_plan_from_then_node(
-                        child_then_node: Node,
-                        node_launch_plans: Dict[id_models, launch_plan_models.LaunchPlanSpec],
+                        child_then_node: Node, node_launch_plans: Dict[id_models, launch_plan_models.LaunchPlanSpec]
                     ) -> None:
                         #  then_node could have nested branch_node or be a normal then_node
                         if child_then_node.branch_node:
@@ -600,11 +548,7 @@ class FlyteRemote(object):
         return None
 
     def fetch_launch_plan(
-        self,
-        project: str = None,
-        domain: str = None,
-        name: str = None,
-        version: str = None,
+        self, project: str = None, domain: str = None, name: str = None, version: str = None
     ) -> FlyteLaunchPlan:
         """Fetch a launchplan entity from flyte admin.
 
@@ -672,15 +616,9 @@ class FlyteRemote(object):
         :param filters: Optional list of filters
         """
         wf_exec_id = WorkflowExecutionIdentifier(
-            project=project or self.default_project,
-            domain=domain or self.default_domain,
-            name=execution_name,
+            project=project or self.default_project, domain=domain or self.default_domain, name=execution_name
         )
-        req = SignalListRequest(
-            workflow_execution_id=wf_exec_id.to_flyte_idl(),
-            limit=limit,
-            filters=filters,
-        )
+        req = SignalListRequest(workflow_execution_id=wf_exec_id.to_flyte_idl(), limit=limit, filters=filters)
         resp = self.client.list_signals(req)
         s = resp.signals
         return s
@@ -708,9 +646,7 @@ class FlyteRemote(object):
             is not a Literal
         """
         wf_exec_id = WorkflowExecutionIdentifier(
-            project=project or self.default_project,
-            domain=domain or self.default_domain,
-            name=execution_name,
+            project=project or self.default_project, domain=domain or self.default_domain, name=execution_name
         )
         if isinstance(value, Literal):
             logger.debug(f"Using provided {value} as existing Literal value")
@@ -722,10 +658,7 @@ class FlyteRemote(object):
             lit = TypeEngine.to_literal(self.context, value, python_type or type(value), lt)
             logger.debug(f"Converted {value} to literal {lit} using literal type {lt}")
 
-        req = SignalSetRequest(
-            id=SignalIdentifier(signal_id, wf_exec_id).to_flyte_idl(),
-            value=lit.to_flyte_idl(),
-        )
+        req = SignalSetRequest(id=SignalIdentifier(signal_id, wf_exec_id).to_flyte_idl(), value=lit.to_flyte_idl())
 
         # Response is empty currently, nothing to give back to the user.
         self.client.set_signal(req)
@@ -863,9 +796,7 @@ class FlyteRemote(object):
                 # Let us also create a default launch-plan, ideally the default launchplan should be added
                 # to the orderedDict, but we do not.
                 self.file_access._get_upload_signed_url_fn = functools.partial(
-                    self.client.get_upload_signed_url,
-                    project=settings.project,
-                    domain=settings.domain,
+                    self.client.get_upload_signed_url, project=settings.project, domain=settings.domain
                 )
                 default_lp = LaunchPlan.get_default_launch_plan(self.context, og_entity)
                 lp_entity = get_serializable_launch_plan(
@@ -926,13 +857,7 @@ class FlyteRemote(object):
             tasks.append(
                 loop.run_in_executor(
                     None,
-                    functools.partial(
-                        self.raw_register,
-                        cp_entity,
-                        serialization_settings,
-                        version,
-                        og_entity=entity,
-                    ),
+                    functools.partial(self.raw_register, cp_entity, serialization_settings, version, og_entity=entity),
                 )
             )
 
@@ -984,12 +909,7 @@ class FlyteRemote(object):
                 domain=self.default_domain,
             )
 
-        ident = run_sync(
-            self._serialize_and_register,
-            entity=entity,
-            settings=serialization_settings,
-            version=version,
-        )
+        ident = run_sync(self._serialize_and_register, entity=entity, settings=serialization_settings, version=version)
 
         ft = self.fetch_task(
             ident.project,
@@ -1028,12 +948,7 @@ class FlyteRemote(object):
             )
 
         ident = run_sync(
-            self._serialize_and_register,
-            entity,
-            serialization_settings,
-            version,
-            options,
-            default_launch_plan,
+            self._serialize_and_register, entity, serialization_settings, version, options, default_launch_plan
         )
 
         fwf = self.fetch_workflow(ident.project, ident.domain, ident.name, ident.version)
@@ -1079,7 +994,7 @@ class FlyteRemote(object):
 
         return self.register_script(
             entity,
-            image_config=(serialization_settings.image_config if serialization_settings else None),
+            image_config=serialization_settings.image_config if serialization_settings else None,
             project=serialization_settings.project if serialization_settings else None,
             domain=serialization_settings.domain if serialization_settings else None,
             version=version,
@@ -1144,20 +1059,15 @@ class FlyteRemote(object):
         local_file_path = str(to_upload)
         content_length = os.stat(local_file_path).st_size
         with open(local_file_path, "+rb") as local_file:
-            headers = {
-                "Content-Length": str(content_length),
-                "Content-MD5": encoded_md5,
-            }
+            headers = {"Content-Length": str(content_length), "Content-MD5": encoded_md5}
             headers.update(extra_headers)
             rsp = requests.put(
                 upload_location.signed_url,
                 data=local_file,  # NOTE: We pass the file object directly to stream our upload.
                 headers=headers,
-                verify=(
-                    False
-                    if self._config.platform.insecure_skip_verify is True
-                    else self._config.platform.ca_cert_file_path
-                ),
+                verify=False
+                if self._config.platform.insecure_skip_verify is True
+                else self._config.platform.ca_cert_file_path,
             )
 
             # Check both HTTP 201 and 200, because some storage backends (e.g. Azure) return 201 instead of 200.
@@ -1275,15 +1185,9 @@ class FlyteRemote(object):
                 )
             else:
                 archive_fname = pathlib.Path(os.path.join(tmp_dir, "script_mode.tar.gz"))
-                compress_scripts(
-                    source_path,
-                    str(archive_fname),
-                    get_all_modules(source_path, module_name),
-                )
+                compress_scripts(source_path, str(archive_fname), get_all_modules(source_path, module_name))
                 md5_bytes, upload_native_url = self.upload_file(
-                    archive_fname,
-                    project or self.default_project,
-                    domain or self.default_domain,
+                    archive_fname, project or self.default_project, domain or self.default_domain
                 )
 
         serialization_settings = SerializationSettings(
@@ -1309,10 +1213,7 @@ class FlyteRemote(object):
             # but we don't have to use it when registering with the Flyte backend.
             # For that add the hash of the compilation settings to hash of file
             version = self._version_from_hash(
-                md5_bytes,
-                serialization_settings,
-                default_inputs,
-                *self._get_image_names(entity),
+                md5_bytes, serialization_settings, default_inputs, *self._get_image_names(entity)
             )
 
         if isinstance(entity, PythonTask):
@@ -1429,8 +1330,7 @@ class FlyteRemote(object):
             for k, v in inputs.items():
                 if input_flyte_type_map.get(k) is None:
                     raise user_exceptions.FlyteValueException(
-                        k,
-                        f"The {entity.__class__.__name__} doesn't have this input key.",
+                        k, f"The {entity.__class__.__name__} doesn't have this input key."
                     )
                 if isinstance(v, Literal):
                     lit = v
@@ -1482,10 +1382,10 @@ class FlyteRemote(object):
                     security_context=options.security_context,
                     envs=common_models.Envs(envs) if envs else None,
                     tags=tags,
-                    cluster_assignment=(ClusterAssignment(cluster_pool=cluster_pool) if cluster_pool else None),
-                    execution_cluster_label=(
-                        ExecutionClusterLabel(execution_cluster_label) if execution_cluster_label else None
-                    ),
+                    cluster_assignment=ClusterAssignment(cluster_pool=cluster_pool) if cluster_pool else None,
+                    execution_cluster_label=ExecutionClusterLabel(execution_cluster_label)
+                    if execution_cluster_label
+                    else None,
                 ),
                 literal_inputs,
             )
@@ -1495,9 +1395,7 @@ class FlyteRemote(object):
                 f"Assuming this is the same execution, returning!"
             )
             exec_id = WorkflowExecutionIdentifier(
-                project=project or self.default_project,
-                domain=domain or self.default_domain,
-                name=execution_name,
+                project=project or self.default_project, domain=domain or self.default_domain, name=execution_name
             )
         execution = FlyteWorkflowExecution.promote_from_model(self.client.get_execution(exec_id), remote=self)
 
@@ -1532,14 +1430,7 @@ class FlyteRemote(object):
 
     def execute(
         self,
-        entity: typing.Union[
-            FlyteTask,
-            FlyteLaunchPlan,
-            FlyteWorkflow,
-            PythonTask,
-            WorkflowBase,
-            LaunchPlan,
-        ],
+        entity: typing.Union[FlyteTask, FlyteLaunchPlan, FlyteWorkflow, PythonTask, WorkflowBase, LaunchPlan],
         inputs: typing.Dict[str, typing.Any],
         project: str = None,
         domain: str = None,
@@ -2027,10 +1918,7 @@ class FlyteRemote(object):
         if version is None and self.interactive_mode_enabled:
             md5_bytes, pickled_target_dict = _get_pickled_target_dict(entity)
             version = self._version_from_hash(
-                md5_bytes,
-                ss,
-                entity.python_interface.default_inputs_as_kwargs,
-                *self._get_image_names(entity),
+                md5_bytes, ss, entity.python_interface.default_inputs_as_kwargs, *self._get_image_names(entity)
             )
 
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
@@ -2109,10 +1997,7 @@ class FlyteRemote(object):
         if version is None and self.interactive_mode_enabled:
             md5_bytes, pickled_target_dict = _get_pickled_target_dict(entity)
             version = self._version_from_hash(
-                md5_bytes,
-                ss,
-                entity.python_interface.default_inputs_as_kwargs,
-                *self._get_image_names(entity),
+                md5_bytes, ss, entity.python_interface.default_inputs_as_kwargs, *self._get_image_names(entity)
             )
 
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
@@ -2413,9 +2298,7 @@ class FlyteRemote(object):
             # This is a recursive call, basically going through the same process that brought us here in the first
             # place, but on the launched execution.
             launched_exec = self.fetch_execution(
-                project=launched_exec_id.project,
-                domain=launched_exec_id.domain,
-                name=launched_exec_id.name,
+                project=launched_exec_id.project, domain=launched_exec_id.domain, name=launched_exec_id.name
             )
             self.sync_execution(launched_exec)
             if launched_exec.is_done:
@@ -2455,10 +2338,7 @@ class FlyteRemote(object):
 
                 dynamic_flyte_wf = FlyteWorkflow.promote_from_closure(compiled_wf, node_launch_plans)
                 execution._underlying_node_executions = [
-                    self.sync_node_execution(
-                        FlyteNodeExecution.promote_from_model(cne),
-                        dynamic_flyte_wf._node_map,
-                    )
+                    self.sync_node_execution(FlyteNodeExecution.promote_from_model(cne), dynamic_flyte_wf._node_map)
                     for cne in child_node_executions
                 ]
                 execution._task_executions = [
@@ -2510,8 +2390,7 @@ class FlyteRemote(object):
         else:
             execution._task_executions = [
                 self.sync_task_execution(
-                    FlyteTaskExecution.promote_from_model(t),
-                    node_mapping[node_id].task_node.flyte_task,
+                    FlyteTaskExecution.promote_from_model(t), node_mapping[node_id].task_node.flyte_task
                 )
                 for t in iterate_task_executions(self.client, execution.id)
             ]
@@ -2526,9 +2405,7 @@ class FlyteRemote(object):
         return execution
 
     def sync_task_execution(
-        self,
-        execution: FlyteTaskExecution,
-        entity_definition: typing.Optional[FlyteTask] = None,
+        self, execution: FlyteTaskExecution, entity_definition: typing.Optional[FlyteTask] = None
     ) -> FlyteTaskExecution:
         """Sync a FlyteTaskExecution object with its corresponding remote state."""
         execution._closure = self.client.get_task_execution(execution.id).closure
@@ -2630,13 +2507,7 @@ class FlyteRemote(object):
         This will automatically determine if this is an execution or an entity and change the type automatically
         """
         if isinstance(
-            entity,
-            (
-                FlyteWorkflowExecution,
-                FlyteNodeExecution,
-                FlyteTaskExecution,
-                WorkflowExecutionIdentifier,
-            ),
+            entity, (FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution, WorkflowExecutionIdentifier)
         ):
             if not isinstance(entity, WorkflowExecutionIdentifier):
                 entity = entity.id
@@ -2702,11 +2573,7 @@ class FlyteRemote(object):
         """
         lp = self.fetch_launch_plan(project=project, domain=domain, name=launchplan, version=launchplan_version)
         wf, start, end = create_backfill_workflow(
-            start_date=from_date,
-            end_date=to_date,
-            for_lp=lp,
-            parallel=parallel,
-            failure_policy=failure_policy,
+            start_date=from_date, end_date=to_date, for_lp=lp, parallel=parallel, failure_policy=failure_policy
         )
         if dry_run:
             logger.warning("Dry Run enabled. Workflow will not be registered and or executed.")
@@ -2751,10 +2618,7 @@ class FlyteRemote(object):
         self.client.update_launch_plan(id=ident, state=LaunchPlanState.ACTIVE)
 
     def download(
-        self,
-        data: typing.Union[LiteralsResolver, Literal, LiteralMap],
-        download_to: str,
-        recursive: bool = True,
+        self, data: typing.Union[LiteralsResolver, Literal, LiteralMap], download_to: str, recursive: bool = True
     ):
         """
         Download the data to the specified location. If the data is a LiteralsResolver, LiteralMap and if recursive is
