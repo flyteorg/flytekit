@@ -706,7 +706,7 @@ def test_get_pickled_target_dict():
     def w() -> int:
         return t2(a=t1())
 
-    target_dict = _get_pickled_target_dict(w)
+    _, target_dict = _get_pickled_target_dict(w)
     assert len(target_dict) == 2
     assert t1.name in target_dict
     assert t2.name in target_dict
@@ -722,7 +722,7 @@ def test_get_pickled_target_dict_with_map_task():
     def w() -> int:
         return map_task(partial(t1, y=2))(x=[1, 2, 3])
 
-    target_dict = _get_pickled_target_dict(w)
+    _, target_dict = _get_pickled_target_dict(w)
     assert len(target_dict) == 1
     assert t1.name in target_dict
     assert target_dict[t1.name] == t1

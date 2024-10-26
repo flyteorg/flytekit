@@ -306,9 +306,9 @@ class _ModuleSanitizer(object):
 
             logger.debug(
                 f"Directory {dirname} does not exist. It is likely that we are in a Jupyter notebook or a pickle file was received."
-                f"Returning {basename} as the module name."
+                f'Returning "" as the module name.'
             )
-            return basename
+            return ""
 
         # If we have reached a directory with no __init__, ignore
         if "__init__.py" not in os.listdir(dirname):
@@ -372,6 +372,11 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
         inspect_file = inspect.getfile(f)  # type: ignore
         file_name, _ = os.path.splitext(os.path.basename(inspect_file))
         mod_name = get_full_module_path(f, file_name)  # type: ignore
+        if is_ipython_or_pickle_exists():
+            logger.debug(
+                f"We are in a Jupyter notebook or received a pickle file. Returning the name to use as {name}."
+            )
+            return name, "", name, os.path.abspath(inspect_file)
         return f"{mod_name}.{name}", mod_name, name, os.path.abspath(inspect_file)
 
     mod_name = get_full_module_path(mod, mod_name)
