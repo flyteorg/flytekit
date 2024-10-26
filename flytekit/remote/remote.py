@@ -1908,8 +1908,9 @@ class FlyteRemote(object):
             domain=domain or self._default_domain,
             version=version,
         )
+        pickled_target_dict = None
         if version is None and self.interactive_mode_enabled:
-            md5_bytes, _ = _get_pickled_target_dict(entity)
+            md5_bytes, pickled_target_dict = _get_pickled_target_dict(entity)
             version = self._version_from_hash(
                 md5_bytes, ss, entity.python_interface.default_inputs_as_kwargs, *self._get_image_names(entity)
             )
@@ -1920,7 +1921,7 @@ class FlyteRemote(object):
             flyte_task: FlyteTask = self.fetch_task(**resolved_identifiers_dict)
         except FlyteEntityNotExistException:
             if self.interactive_mode_enabled:
-                ss.fast_serialization_settings = self._pickle_and_upload_entity(entity)
+                ss.fast_serialization_settings = self._pickle_and_upload_entity(entity, pickled_target_dict)
 
             flyte_task: FlyteTask = self.register_task(entity, ss, version)
 
@@ -1986,8 +1987,9 @@ class FlyteRemote(object):
             domain=domain or self._default_domain,
             version=version,
         )
+        pickled_target_dict = None
         if version is None and self.interactive_mode_enabled:
-            md5_bytes, _ = _get_pickled_target_dict(entity)
+            md5_bytes, pickled_target_dict = _get_pickled_target_dict(entity)
             version = self._version_from_hash(
                 md5_bytes, ss, entity.python_interface.default_inputs_as_kwargs, *self._get_image_names(entity)
             )
@@ -2002,7 +2004,7 @@ class FlyteRemote(object):
         except FlyteEntityNotExistException:
             logger.info("Registering workflow because it wasn't found in Flyte Admin.")
             if self.interactive_mode_enabled:
-                ss.fast_serialization_settings = self._pickle_and_upload_entity(entity)
+                ss.fast_serialization_settings = self._pickle_and_upload_entity(entity, pickled_target_dict)
             self.register_workflow(entity, ss, version=version, options=options)
 
         try:
@@ -2637,14 +2639,20 @@ class FlyteRemote(object):
             for var, literal in lm.items():
                 download_literal(self.file_access, var, literal, download_to)
 
-    def _pickle_and_upload_entity(self, entity: typing.Union[PythonTask, WorkflowBase]) -> FastSerializationSettings:
+    def _pickle_and_upload_entity(
+        self,
+        entity: typing.Union[PythonTask, WorkflowBase],
+        pickled_dict: typing.Optional[typing.Dict[str, PythonAutoContainerTask]] = None,
+    ) -> FastSerializationSettings:
         """
         Pickle the entity to the specified location. This is useful for debugging and for sharing entities across
         different environments.
         :param entity: The entity to pickle
+        :param pickled_dict: The pickled target dict that was already generated
         """
         # get all entity tasks
-        _, pickled_dict = _get_pickled_target_dict(entity)
+        if pickled_dict is None:
+            _, pickled_dict = _get_pickled_target_dict(entity)
         with tempfile.TemporaryDirectory() as tmp_dir:
             dest = pathlib.Path(tmp_dir, PICKLE_FILE_PATH)
             with gzip.GzipFile(filename=dest, mode="wb", mtime=0) as gzipped:
