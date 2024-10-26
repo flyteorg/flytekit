@@ -17,8 +17,24 @@ from flyteidl.service import dataproxy_pb2
 from mock import ANY, MagicMock, patch
 
 import flytekit.configuration
-from flytekit import CronSchedule, ImageSpec, LaunchPlan, WorkflowFailurePolicy, task, workflow, reference_task, map_task, dynamic
-from flytekit.configuration import Config, DefaultImages, Image, ImageConfig, SerializationSettings
+from flytekit import (
+    CronSchedule,
+    ImageSpec,
+    LaunchPlan,
+    WorkflowFailurePolicy,
+    task,
+    workflow,
+    reference_task,
+    map_task,
+    dynamic,
+)
+from flytekit.configuration import (
+    Config,
+    DefaultImages,
+    Image,
+    ImageConfig,
+    SerializationSettings,
+)
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
@@ -30,13 +46,25 @@ from flytekit.models.admin.workflow import Workflow, WorkflowClosure
 from flytekit.models.core import condition as _condition
 from flytekit.models.core import workflow as _workflow
 from flytekit.models.core.compiler import CompiledWorkflowClosure
-from flytekit.models.core.identifier import Identifier, ResourceType, WorkflowExecutionIdentifier
+from flytekit.models.core.identifier import (
+    Identifier,
+    ResourceType,
+    WorkflowExecutionIdentifier,
+)
 from flytekit.models.execution import Execution
 from flytekit.models.task import Task
 from flytekit.remote import FlyteTask
 from flytekit.remote.lazy_entity import LazyEntity
-from flytekit.remote.remote import FlyteRemote, _get_git_repo_url, _get_pickled_target_dict
-from flytekit.tools.translator import Options, get_serializable, get_serializable_launch_plan
+from flytekit.remote.remote import (
+    FlyteRemote,
+    _get_git_repo_url,
+    _get_pickled_target_dict,
+)
+from flytekit.tools.translator import (
+    Options,
+    get_serializable,
+    get_serializable_launch_plan,
+)
 from tests.flytekit.common.parameterizers import LIST_OF_TASK_CLOSURES
 
 CLIENT_METHODS = {
@@ -82,7 +110,9 @@ node1 = _workflow.Node(
 )
 nodes = [node1]
 
-obj2 = _workflow.Node(id="some:node:id", metadata="1", inputs=[], upstream_node_ids=[], output_aliases=[])
+obj2 = _workflow.Node(
+    id="some:node:id", metadata="1", inputs=[], upstream_node_ids=[], output_aliases=[]
+)
 
 node2 = node1 = _workflow.Node(
     id="some:node:id",
@@ -106,7 +136,9 @@ nodes2 = [node2]
 @pytest.fixture
 def remote():
     with patch("flytekit.clients.friendly.SynchronousFlyteClient") as mock_client:
-        flyte_remote = FlyteRemote(config=Config.auto(), default_project="p1", default_domain="d1")
+        flyte_remote = FlyteRemote(
+            config=Config.auto(), default_project="p1", default_domain="d1"
+        )
         flyte_remote._client_initialized = True
         flyte_remote._client = mock_client
         return flyte_remote
@@ -139,7 +171,9 @@ def test_underscore_execute_uses_launch_plan_attributes(remote, mock_wf_exec):
         execution_spec = args[3]
         assert execution_spec.security_context.run_as.k8s_service_account == "svc"
         assert execution_spec.labels == common_models.Labels({"a": "my_label_value"})
-        assert execution_spec.annotations == common_models.Annotations({"b": "my_annotation_value"})
+        assert execution_spec.annotations == common_models.Annotations(
+            {"b": "my_annotation_value"}
+        )
 
     mock_client.create_execution.side_effect = local_assertions
 
@@ -147,7 +181,9 @@ def test_underscore_execute_uses_launch_plan_attributes(remote, mock_wf_exec):
     options = Options(
         labels=common_models.Labels({"a": "my_label_value"}),
         annotations=common_models.Annotations({"b": "my_annotation_value"}),
-        security_context=security.SecurityContext(run_as=security.Identity(k8s_service_account="svc")),
+        security_context=security.SecurityContext(
+            run_as=security.Identity(k8s_service_account="svc")
+        ),
     )
 
     remote._execute(
@@ -187,14 +223,20 @@ def test_underscore_execute_fall_back_remote_attributes(remote, mock_wf_exec):
     remote._client = mock_client
 
     options = Options(
-        raw_output_data_config=common_models.RawOutputDataConfig(output_location_prefix="raw_output"),
-        security_context=security.SecurityContext(run_as=security.Identity(iam_role="iam:some:role")),
+        raw_output_data_config=common_models.RawOutputDataConfig(
+            output_location_prefix="raw_output"
+        ),
+        security_context=security.SecurityContext(
+            run_as=security.Identity(iam_role="iam:some:role")
+        ),
     )
 
     def local_assertions(*args, **kwargs):
         execution_spec = args[3]
         assert execution_spec.security_context.run_as.iam_role == "iam:some:role"
-        assert execution_spec.raw_output_data_config.output_location_prefix == "raw_output"
+        assert (
+            execution_spec.raw_output_data_config.output_location_prefix == "raw_output"
+        )
 
     mock_client.create_execution.side_effect = local_assertions
 
@@ -229,7 +271,9 @@ def test_execute_with_wrong_input_key(remote, mock_wf_exec):
 
 
 def test_form_config():
-    remote = FlyteRemote(config=Config.auto(), default_project="p1", default_domain="d1")
+    remote = FlyteRemote(
+        config=Config.auto(), default_project="p1", default_domain="d1"
+    )
     assert remote.default_project == "p1"
     assert remote.default_domain == "d1"
 
@@ -244,14 +288,21 @@ def test_passing_of_kwargs(mock_client):
         "root_certificates": 5,
         "certificate_chain": 6,
     }
-    FlyteRemote(config=Config.auto(), default_project="project", default_domain="domain", **additional_args).client
+    FlyteRemote(
+        config=Config.auto(),
+        default_project="project",
+        default_domain="domain",
+        **additional_args,
+    ).client
     assert mock_client.called
     assert mock_client.call_args[1] == additional_args
 
 
 @patch("flytekit.remote.remote.SynchronousFlyteClient")
 def test_more_stuff(mock_client):
-    r = FlyteRemote(config=Config.auto(), default_project="project", default_domain="domain")
+    r = FlyteRemote(
+        config=Config.auto(), default_project="project", default_domain="domain"
+    )
 
     # Can't upload a folder
     with pytest.raises(ValueError):
@@ -281,7 +332,9 @@ def test_more_stuff(mock_client):
 
 @patch("flytekit.remote.remote.SynchronousFlyteClient")
 def test_version_hash_special_characters(mock_client):
-    r = FlyteRemote(config=Config.auto(), default_project="project", default_domain="domain")
+    r = FlyteRemote(
+        config=Config.auto(), default_project="project", default_domain="domain"
+    )
 
     serialization_settings = flytekit.configuration.SerializationSettings(
         project="project",
@@ -321,7 +374,9 @@ def test_generate_console_http_domain_sandbox_rewrite(mock_client):
             f.write(flytectl_config_file)
 
         remote = FlyteRemote(
-            config=Config.auto(config_file=temp_filename), default_project="project", default_domain="domain"
+            config=Config.auto(config_file=temp_filename),
+            default_project="project",
+            default_domain="domain",
         )
         assert remote.generate_console_http_domain() == "https://example.com"
 
@@ -336,7 +391,9 @@ def test_generate_console_http_domain_sandbox_rewrite(mock_client):
             f.write(flytectl_config_file)
 
         remote = FlyteRemote(
-            config=Config.auto(config_file=temp_filename), default_project="project", default_domain="domain"
+            config=Config.auto(config_file=temp_filename),
+            default_project="project",
+            default_domain="domain",
         )
         assert remote.generate_console_http_domain() == "http://localhost:30081"
 
@@ -353,7 +410,9 @@ console:
             f.write(flytectl_config_file)
 
         remote = FlyteRemote(
-            config=Config.auto(config_file=temp_filename), default_project="project", default_domain="domain"
+            config=Config.auto(config_file=temp_filename),
+            default_project="project",
+            default_domain="domain",
         )
         assert remote.generate_console_http_domain() == "http://localhost:30090"
     finally:
@@ -370,7 +429,9 @@ def get_compiled_workflow_closure():
     cwc_pb = _compiler_pb2.CompiledWorkflowClosure()
     # So that tests that use this work when run from any directory
     basepath = os.path.dirname(__file__)
-    filepath = os.path.abspath(os.path.join(basepath, "responses", "CompiledWorkflowClosure.pb"))
+    filepath = os.path.abspath(
+        os.path.join(basepath, "responses", "CompiledWorkflowClosure.pb")
+    )
     with open(filepath, "rb") as fh:
         cwc_pb.ParseFromString(fh.read())
 
@@ -380,7 +441,8 @@ def get_compiled_workflow_closure():
 def test_fetch_lazy(remote):
     mock_client = remote._client
     mock_client.get_task.return_value = Task(
-        id=Identifier(ResourceType.TASK, "p", "d", "n", "v"), closure=LIST_OF_TASK_CLOSURES[0]
+        id=Identifier(ResourceType.TASK, "p", "d", "n", "v"),
+        closure=LIST_OF_TASK_CLOSURES[0],
     )
 
     mock_client.get_workflow.return_value = Workflow(
@@ -431,7 +493,9 @@ def test_launch_backfill(remote):
     start_date = datetime(2022, 12, 1, 8)
     end_date = start_date + timedelta(days=10)
 
-    ser_lp = get_serializable_launch_plan(OrderedDict(), serialization_settings, daily_lp, recurse_downstream=False)
+    ser_lp = get_serializable_launch_plan(
+        OrderedDict(), serialization_settings, daily_lp, recurse_downstream=False
+    )
     m = OrderedDict()
     ser_wf = get_serializable(m, serialization_settings, example_wf)
     tasks = []
@@ -443,7 +507,9 @@ def test_launch_backfill(remote):
     mock_client.get_workflow.return_value = Workflow(
         id=Identifier(ResourceType.WORKFLOW, "p", "d", "daily2", "v"),
         closure=WorkflowClosure(
-            compiled_workflow=CompiledWorkflowClosure(primary=ser_wf, sub_workflows=[], tasks=tasks)
+            compiled_workflow=CompiledWorkflowClosure(
+                primary=ser_wf, sub_workflows=[], tasks=tasks
+            )
         ),
     )
 
@@ -461,7 +527,9 @@ def test_launch_backfill(remote):
     assert wf.workflow_metadata.on_failure == WorkflowFailurePolicy.FAIL_IMMEDIATELY
 
 
-@patch("flytekit.remote.entities.FlyteWorkflow.get_non_system_nodes", return_value=nodes)
+@patch(
+    "flytekit.remote.entities.FlyteWorkflow.get_non_system_nodes", return_value=nodes
+)
 @patch("flytekit.remote.entities.FlyteWorkflow.promote_from_closure")
 def test_fetch_workflow_with_branch(mock_promote, mock_workflow, remote):
     mock_client = remote._client
@@ -479,7 +547,9 @@ def test_fetch_workflow_with_branch(mock_promote, mock_workflow, remote):
     mock_promote.assert_called_with(ANY, node_launch_plans)
 
 
-@patch("flytekit.remote.entities.FlyteWorkflow.get_non_system_nodes", return_value=nodes2)
+@patch(
+    "flytekit.remote.entities.FlyteWorkflow.get_non_system_nodes", return_value=nodes2
+)
 @patch("flytekit.remote.entities.FlyteWorkflow.promote_from_closure")
 def test_fetch_workflow_with_nested_branch(mock_promote, mock_workflow, remote):
     mock_client = remote._client
@@ -503,7 +573,11 @@ def test_fetch_workflow_with_nested_branch(mock_promote, mock_workflow, remote):
 @mock.patch("flytekit.remote.remote.compress_scripts")
 @pytest.mark.serial
 def test_get_image_names(
-        compress_scripts_mock, upload_file_mock, register_workflow_mock, version_from_hash_mock, read_bytes_mock
+    compress_scripts_mock,
+    upload_file_mock,
+    register_workflow_mock,
+    version_from_hash_mock,
+    read_bytes_mock,
 ):
     md5_bytes = bytes([1, 2, 3])
     read_bytes_mock.return_value = bytes([4, 5, 6])
@@ -524,10 +598,14 @@ def test_get_image_names(
     def wf(name: str = "union"):
         sub_wf(name=name)
 
-    flyte_remote = FlyteRemote(config=Config.auto(), default_project="p1", default_domain="d1")
+    flyte_remote = FlyteRemote(
+        config=Config.auto(), default_project="p1", default_domain="d1"
+    )
     flyte_remote.register_script(wf)
 
-    version_from_hash_mock.assert_called_once_with(md5_bytes, mock.ANY, mock.ANY, image_spec.image_name())
+    version_from_hash_mock.assert_called_once_with(
+        md5_bytes, mock.ANY, mock.ANY, image_spec.image_name()
+    )
     register_workflow_mock.assert_called_once()
 
     @reference_task(
@@ -536,14 +614,15 @@ def test_get_image_names(
         name="flytesnacks.examples.basics.basics.workflow.slope",
         version="v1",
     )
-    def ref_basic(x: typing.List[int], y: typing.List[int]) -> float:
-        ...
+    def ref_basic(x: typing.List[int], y: typing.List[int]) -> float: ...
 
     @workflow
     def wf1(name: str = "union") -> float:
         return ref_basic(x=[1, 2, 3], y=[4, 5, 6])
 
-    flyte_remote = FlyteRemote(config=Config.auto(), default_project="p1", default_domain="d1")
+    flyte_remote = FlyteRemote(
+        config=Config.auto(), default_project="p1", default_domain="d1"
+    )
     flyte_remote.register_script(wf1)
 
 
@@ -570,7 +649,9 @@ def test_local_server(mock_client):
 def test_execution_name(mock_client, mock_uuid):
     test_uuid = uuid.UUID("16fd2706-8baf-433b-82eb-8c7fada847da")
     mock_uuid.uuid4.return_value = test_uuid
-    remote = FlyteRemote(config=Config.auto(), default_project="project", default_domain="domain")
+    remote = FlyteRemote(
+        config=Config.auto(), default_project="project", default_domain="domain"
+    )
 
     default_img = Image(name="default", fqn="test", tag="tag")
     serialization_settings = SerializationSettings(
@@ -605,7 +686,8 @@ def test_execution_name(mock_client, mock_uuid):
         ]
     )
     with pytest.raises(
-            ValueError, match="Only one of execution_name and execution_name_prefix can be set, but got both set"
+        ValueError,
+        match="Only one of execution_name and execution_name_prefix can be set, but got both set",
     ):
         remote._execute(
             entity=ft,
@@ -655,7 +737,9 @@ def test_get_git_report_url_unknown_url(tmp_path):
     source_path = tmp_path / "repo_source"
     source_path.mkdir()
     subprocess.check_output([git_exec, "init"], cwd=source_path)
-    subprocess.check_output([git_exec, "remote", "add", "origin", "unknown"], cwd=source_path)
+    subprocess.check_output(
+        [git_exec, "remote", "add", "origin", "unknown"], cwd=source_path
+    )
 
     returned_url = _get_git_repo_url(source_path)
     assert returned_url == ""
@@ -665,7 +749,9 @@ def test_get_git_report_url_unknown_url(tmp_path):
 @mock.patch("flytekit.remote.remote.FlyteRemote.register_script")
 @mock.patch("flytekit.remote.remote.FlyteRemote.upload_file")
 @mock.patch("flytekit.remote.remote.compress_scripts")
-def test_register_wf_script_mode(compress_scripts_mock, upload_file_mock, register_workflow_mock, read_bytes_mock):
+def test_register_wf_script_mode(
+    compress_scripts_mock, upload_file_mock, register_workflow_mock, read_bytes_mock
+):
     from .resources import hello_wf
 
     md5_bytes = bytes([1, 2, 3])
@@ -690,7 +776,9 @@ def test_register_wf_script_mode(compress_scripts_mock, upload_file_mock, regist
 
 @mock.patch("flytekit.remote.remote.FlyteRemote.client")
 def test_fetch_active_launchplan_not_found(mock_client, remote):
-    mock_client.get_active_launch_plan.side_effect = FlyteEntityNotExistException("not found")
+    mock_client.get_active_launch_plan.side_effect = FlyteEntityNotExistException(
+        "not found"
+    )
     assert remote.fetch_active_launchplan(name="basic.list_float_wf.fake_wf") is None
 
 
@@ -707,13 +795,17 @@ def test_get_pickled_target_dict():
     def w() -> int:
         return t2(a=t1())
 
-    target_dict = _get_pickled_target_dict(w)
+    _, target_dict = _get_pickled_target_dict(w)
     assert len(target_dict) == 3
-    assert target_dict["metadata"]["python_version"] == f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+    assert (
+        target_dict["metadata"]["python_version"]
+        == f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+    )
     assert t1.name in target_dict
     assert t2.name in target_dict
     assert target_dict[t1.name] == t1
     assert target_dict[t2.name] == t2
+
 
 def test_get_pickled_target_dict_with_map_task():
     @task
@@ -724,11 +816,15 @@ def test_get_pickled_target_dict_with_map_task():
     def w() -> int:
         return map_task(partial(t1, y=2))(x=[1, 2, 3])
 
-    target_dict = _get_pickled_target_dict(w)
+    _, target_dict = _get_pickled_target_dict(w)
     assert len(target_dict) == 2
-    assert target_dict["metadata"]["python_version"] == f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+    assert (
+        target_dict["metadata"]["python_version"]
+        == f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+    )
     assert t1.name in target_dict
     assert target_dict[t1.name] == t1
+
 
 def test_get_pickled_target_dict_with_dynamic():
     @task

@@ -25,7 +25,6 @@ from flytekit.models.literals import (
     LiteralOffloadedMetadata,
 )
 from flytekit.tools.translator import get_serializable, Options
-from flytekit.types.pickle import BatchSize
 
 
 @pytest.fixture
@@ -102,13 +101,6 @@ def test_remote_execution(serialization_settings):
 
 
 def test_map_task_with_pickle():
-    @task
-    def say_hello(name: Annotated[typing.Any, BatchSize(10)]) -> str:
-        return f"hello {name}!"
-
-    with pytest.raises(ValueError, match="Choosing a BatchSize for map tasks inputs is not supported."):
-        map_task(say_hello)(name=["abc", "def"])
-
     @task
     def say_hello(name: typing.Any) -> str:
         return f"hello {name}!"

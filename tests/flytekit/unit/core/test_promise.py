@@ -23,7 +23,6 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions.user import FlyteAssertion, FlytePromiseAttributeResolveException
 from flytekit.models import literals as literal_models
 from flytekit.models.types import LiteralType, SimpleType, TypeStructure
-from flytekit.types.pickle.pickle import BatchSize
 
 
 def test_create_and_link_node():
@@ -141,7 +140,7 @@ class MyDataclass(DataClassJsonMixin):
 )
 def test_translate_inputs_to_literals(input):
     @task
-    def t1(a: typing.Union[float, MyDataclass, Annotated[typing.List[typing.Any], BatchSize(2)]]):
+    def t1(a: typing.Union[float, MyDataclass, typing.List[typing.Any]]):
         print(a)
 
     ctx = context_manager.FlyteContext.current_context()
