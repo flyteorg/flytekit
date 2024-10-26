@@ -683,7 +683,9 @@ class DataclassTransformer(TypeTransformer[object]):
 
             def get_expected_type(python_val: T, types: tuple) -> Type[T | None]:
                 if len(set(types) & {FlyteFile, FlyteDirectory, StructuredDataset}) > 1:
-                    raise ValueError("Cannot have two Flyte types in a Union type")
+                    raise ValueError(
+                        "Cannot have more than one Flyte type in the Union when attempting to use the string shortcut. Please specify the full object (e.g. FlyteFile(...)) instead of just passing a string."
+                    )
 
                 for t in types:
                     try:
