@@ -72,3 +72,7 @@ class RemoteEntity(ABC):
     @property
     def python_interface(self) -> Optional["Interface"]:
         return self._python_interface
+
+    @python_interface.setter
+    def python_interface(self, i: Optional["Interface"]):
+        self._python_interface = i

@@ -908,7 +908,7 @@ class FlyteRemote(object):
             ident.name,
             ident.version,
         )
-        ft._python_interface = entity.python_interface
+        ft.python_interface = entity.python_interface
         return ft
 
     def register_workflow(
@@ -943,7 +943,7 @@ class FlyteRemote(object):
         )
 
         fwf = self.fetch_workflow(ident.project, ident.domain, ident.name, ident.version)
-        fwf._python_interface = entity.python_interface
+        fwf.python_interface = entity.python_interface
         return fwf
 
     def fast_register_workflow(
@@ -1255,7 +1255,7 @@ class FlyteRemote(object):
             False,
         )
         flp = self.fetch_launch_plan(ident.project, ident.domain, ident.name, ident.version)
-        flp._python_interface = entity.python_interface
+        flp.python_interface = entity.python_interface
         return flp
 
     ####################
@@ -1909,7 +1909,7 @@ class FlyteRemote(object):
         not_found = False
         try:
             flyte_task: FlyteTask = self.fetch_task(**resolved_identifiers_dict)
-            flyte_task._python_interface = entity.python_interface
+            flyte_task.python_interface = entity.python_interface
         except FlyteEntityNotExistException:
             not_found = True
 
@@ -2015,7 +2015,7 @@ class FlyteRemote(object):
 
         try:
             flyte_lp = self.fetch_launch_plan(**resolved_identifiers_dict)
-            flyte_lp._python_interface = entity.python_interface
+            flyte_lp.python_interface = entity.python_interface
         except FlyteEntityNotExistException:
             logger.info("Try to register default launch plan because it wasn't found in Flyte Admin!")
             default_lp = LaunchPlan.get_default_launch_plan(self.context, entity)
@@ -2087,7 +2087,7 @@ class FlyteRemote(object):
         domain = resolved_identifiers.domain
         try:
             flyte_launchplan: FlyteLaunchPlan = self.fetch_launch_plan(**resolved_identifiers_dict)
-            flyte_launchplan._python_interface = entity.python_interface
+            flyte_launchplan.python_interface = entity.python_interface
         except FlyteEntityNotExistException:
             flyte_launchplan: FlyteLaunchPlan = self.register_launch_plan(
                 entity,
