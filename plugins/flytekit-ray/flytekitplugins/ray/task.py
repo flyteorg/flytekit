@@ -43,7 +43,6 @@ class RayJobConfig:
     head_node_config: typing.Optional[HeadNodeConfig] = None
     enable_autoscaling: bool = False
     runtime_env: typing.Optional[dict] = None
-    address: typing.Optional[str] = None
     shutdown_after_job_finishes: bool = False
     ttl_seconds_after_finished: typing.Optional[int] = None
 
@@ -65,7 +64,7 @@ class RayFunctionTask(PythonFunctionTask):
         self._task_config = task_config
 
     def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
-        init_params = {"address": self._task_config.address}
+        init_params = {}
 
         ctx = FlyteContextManager.current_context()
         if not ctx.execution_state.is_local_execution():
