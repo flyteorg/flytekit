@@ -911,7 +911,7 @@ class FlyteRemote(object):
             ident.name,
             ident.version,
         )
-        ft._python_interface = entity.python_interface
+        ft.python_interface = entity.python_interface
         return ft
 
     def register_workflow(
@@ -946,7 +946,7 @@ class FlyteRemote(object):
         )
 
         fwf = self.fetch_workflow(ident.project, ident.domain, ident.name, ident.version)
-        fwf._python_interface = entity.python_interface
+        fwf.python_interface = entity.python_interface
         return fwf
 
     def fast_register_workflow(
@@ -1258,7 +1258,7 @@ class FlyteRemote(object):
             False,
         )
         flp = self.fetch_launch_plan(ident.project, ident.domain, ident.name, ident.version)
-        flp._python_interface = entity.python_interface
+        flp.python_interface = entity.python_interface
         return flp
 
     ####################
@@ -1391,7 +1391,12 @@ class FlyteRemote(object):
             exec_id = WorkflowExecutionIdentifier(
                 project=project or self.default_project, domain=domain or self.default_domain, name=execution_name
             )
-        execution = FlyteWorkflowExecution.promote_from_model(self.client.get_execution(exec_id), remote=self)
+        type_hints = None
+        if entity.python_interface:
+            type_hints = entity.python_interface.outputs
+        execution = FlyteWorkflowExecution.promote_from_model(
+            self.client.get_execution(exec_id), remote=self, type_hints=type_hints
+        )
 
         if wait:
             return self.wait(execution)
@@ -1919,6 +1924,7 @@ class FlyteRemote(object):
         resolved_identifiers_dict = asdict(resolved_identifiers)
         try:
             flyte_task: FlyteTask = self.fetch_task(**resolved_identifiers_dict)
+            flyte_task.python_interface = entity.python_interface
         except FlyteEntityNotExistException:
             if self.interactive_mode_enabled:
                 ss.fast_serialization_settings = self._pickle_and_upload_entity(entity, pickled_target_dict)
@@ -2009,6 +2015,7 @@ class FlyteRemote(object):
 
         try:
             flyte_lp = self.fetch_launch_plan(**resolved_identifiers_dict)
+            flyte_lp.python_interface = entity.python_interface
         except FlyteEntityNotExistException:
             logger.info("Try to register default launch plan because it wasn't found in Flyte Admin!")
             default_lp = LaunchPlan.get_default_launch_plan(self.context, entity)
@@ -2080,6 +2087,7 @@ class FlyteRemote(object):
         domain = resolved_identifiers.domain
         try:
             flyte_launchplan: FlyteLaunchPlan = self.fetch_launch_plan(**resolved_identifiers_dict)
+            flyte_launchplan.python_interface = entity.python_interface
         except FlyteEntityNotExistException:
             flyte_launchplan: FlyteLaunchPlan = self.register_launch_plan(
                 entity,

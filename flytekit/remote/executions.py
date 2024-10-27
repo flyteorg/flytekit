@@ -94,11 +94,18 @@ class FlyteTaskExecution(RemoteExecutionBase, admin_task_execution_models.TaskEx
 class FlyteWorkflowExecution(RemoteExecutionBase, execution_models.Execution):
     """A class encapsulating a workflow execution being run on a Flyte remote backend."""
 
-    def __init__(self, remote: Optional["FlyteRemote"] = None, *args, **kwargs):
+    def __init__(
+        self,
+        type_hints: Optional[Dict[str, typing.Type]] = None,
+        remote: Optional["FlyteRemote"] = None,
+        *args,
+        **kwargs,
+    ):
         super(FlyteWorkflowExecution, self).__init__(*args, **kwargs)
         self._node_executions = None
         self._flyte_workflow: Optional[FlyteWorkflow] = None
         self._remote = remote
+        self._type_hints = type_hints
 
     @property
     def flyte_workflow(self) -> Optional[FlyteWorkflow]:
@@ -139,12 +146,23 @@ class FlyteWorkflowExecution(RemoteExecutionBase, execution_models.Execution):
             core_execution_models.WorkflowExecutionPhase.TIMED_OUT,
         }
 
+    @property
+    def outputs(self):
+        outputs = super().outputs
+        if outputs and self._type_hints:
+            outputs.update_type_hints(self._type_hints)
+        return outputs
+
     @classmethod
     def promote_from_model(
-        cls, base_model: execution_models.Execution, remote: Optional["FlyteRemote"] = None
+        cls,
+        base_model: execution_models.Execution,
+        remote: Optional["FlyteRemote"] = None,
+        type_hints: Optional[Dict[str, typing.Type]] = None,
     ) -> "FlyteWorkflowExecution":
         return cls(
             remote=remote,
+            type_hints=type_hints,
             closure=base_model.closure,
             id=base_model.id,
             spec=base_model.spec,
