@@ -52,9 +52,6 @@ from flytekit.models.core import identifier as _identifier
 from flytekit.tools.fast_registration import download_distribution as _download_distribution
 from flytekit.tools.module_loader import load_object_from_module
 
-# MAX_OFFLOADED_LITERAL_SIZE_BYTES = 10 * 1024 * 1024
-MAX_OFFLOADED_LITERAL_SIZE_BYTES = 10
-
 
 def get_version_message():
     import flytekit
