@@ -47,10 +47,8 @@ def test_dataclasss_in_pydantic_basemodel():
         t_inner(inner_bm=bm.inner_bm)
         t_test_primitive_attributes(a=bm.a, b=bm.b, c=bm.c, d=bm.d)
         t_test_primitive_attributes(
-            a=bm.inner_bm.a,
-            b=bm.inner_bm.b,
-            c=bm.inner_bm.c,
-            d=bm.inner_bm.d)
+            a=bm.inner_bm.a, b=bm.inner_bm.b, c=bm.inner_bm.c, d=bm.inner_bm.d
+        )
 
     bm = BM()
     wf(bm=bm)
@@ -100,10 +98,8 @@ def test_pydantic_dataclasss_in_pydantic_basemodel():
         t_inner(inner_bm=bm.inner_bm)
         t_test_primitive_attributes(a=bm.a, b=bm.b, c=bm.c, d=bm.d)
         t_test_primitive_attributes(
-            a=bm.inner_bm.a,
-            b=bm.inner_bm.b,
-            c=bm.inner_bm.c,
-            d=bm.inner_bm.d)
+            a=bm.inner_bm.a, b=bm.inner_bm.b, c=bm.inner_bm.c, d=bm.inner_bm.d
+        )
 
     bm = BM()
     wf(bm=bm)

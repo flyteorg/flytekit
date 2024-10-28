@@ -1,6 +1,13 @@
 import pytest
 from pydantic import BaseModel
+
 from flytekit import task, workflow
+
+"""
+This should be supported in the future.
+Issue Link: https://github.com/flyteorg/flyte/issues/5925
+"""
+
 
 def test_pydantic_basemodel_in_dataclass():
     from dataclasses import dataclass, field
@@ -52,10 +59,8 @@ def test_pydantic_basemodel_in_dataclass():
         t_inner(inner_bm=dc.inner_bm)
         t_test_primitive_attributes(a=dc.a, b=dc.b, c=dc.c, d=dc.d)
         t_test_primitive_attributes(
-            a=dc.inner_bm.a,
-            b=dc.inner_bm.b,
-            c=dc.inner_bm.c,
-            d=dc.inner_bm.d)
+            a=dc.inner_bm.a, b=dc.inner_bm.b, c=dc.inner_bm.c, d=dc.inner_bm.d
+        )
 
     # Create an instance of DC and run the workflow
     dc_instance = DC()
@@ -63,7 +68,10 @@ def test_pydantic_basemodel_in_dataclass():
         wf(dc=dc_instance)
 
     # Assert that the error message contains "UnserializableField"
-    assert "is not serializable" in str(excinfo.value), f"Unexpected error: {excinfo.value}"
+    assert "is not serializable" in str(
+        excinfo.value
+    ), f"Unexpected error: {excinfo.value}"
+
 
 def test_pydantic_basemodel_in_pydantic_dataclass():
     from pydantic import Field
@@ -116,10 +124,8 @@ def test_pydantic_basemodel_in_pydantic_dataclass():
         t_inner(inner_bm=dc.inner_bm)
         t_test_primitive_attributes(a=dc.a, b=dc.b, c=dc.c, d=dc.d)
         t_test_primitive_attributes(
-            a=dc.inner_bm.a,
-            b=dc.inner_bm.b,
-            c=dc.inner_bm.c,
-            d=dc.inner_bm.d)
+            a=dc.inner_bm.a, b=dc.inner_bm.b, c=dc.inner_bm.c, d=dc.inner_bm.d
+        )
 
     # Create an instance of DC and run the workflow
     dc_instance = DC()
@@ -127,4 +133,6 @@ def test_pydantic_basemodel_in_pydantic_dataclass():
         wf(dc=dc_instance)
 
     # Assert that the error message contains "UnserializableField"
-    assert "is not serializable" in str(excinfo.value), f"Unexpected error: {excinfo.value}"
+    assert "is not serializable" in str(
+        excinfo.value
+    ), f"Unexpected error: {excinfo.value}"
