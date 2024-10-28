@@ -23,6 +23,7 @@ from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions import user as user_exceptions
 from flytekit.exceptions.user import FlyteEntityNotExistException, FlyteAssertion
+from flytekit.experimental.eager_function import eager
 from flytekit.models import common as common_models
 from flytekit.models import security
 from flytekit.models.admin.workflow import Workflow, WorkflowClosure
@@ -752,3 +753,22 @@ def test_get_pickled_target_dict_with_dynamic():
 
     with pytest.raises(FlyteAssertion):
         _get_pickled_target_dict(my_wf)
+
+def test_get_pickled_target_dict_with_eager():
+    @task
+    def t1(a: int) -> int:
+        return a + 1
+
+    @task
+    def t2(a: int) -> int:
+        return a * 2
+
+    @eager
+    async def eager_wf(a: int) -> int:
+        out = await t1(a=a)
+        if out < 0:
+            return -1
+        return await t2(a=out)
+
+    with pytest.raises(FlyteAssertion):
+        _get_pickled_target_dict(eager_wf)
