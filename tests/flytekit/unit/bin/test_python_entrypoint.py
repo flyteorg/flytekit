@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import datetime
 import os
 import re
@@ -628,5 +629,81 @@ def test_dispatch_execute_offloaded_literals_two_outputs_offloaded(tmp_path_fact
                                 ]
                             )
                         )
+                    else:
+                        assert False, f"Unexpected file {ff}"
+
+
+def test_dispatch_execute_offloaded_literals_two_outputs_only_second_one_offloaded(tmp_path_factory):
+    @dataclass
+    class DC:
+        a: typing.List[int]
+        b: typing.List[str]
+
+    @task
+    def t1(n: int) -> typing.Tuple[int, DC]:
+        return n, DC(a=list(range(n)), b=[f"string is: {x}" for x in range(n)])
+
+    inputs_path = tmp_path_factory.mktemp("inputs")
+    outputs_path = tmp_path_factory.mktemp("outputs")
+
+    ctx = context_manager.FlyteContext.current_context()
+    with context_manager.FlyteContextManager.with_context(
+            ctx.with_execution_state(
+                ctx.execution_state.with_params(
+                    mode=context_manager.ExecutionState.Mode.TASK_EXECUTION,
+                    user_space_params=context_manager.ExecutionParameters(
+                        execution_date=datetime.now(),
+                        tmp_dir="/tmp",
+                        stats=mock_stats.MockStats(),
+                        logging=None,
+                        raw_output_prefix="",
+                        output_metadata_prefix=str(outputs_path.absolute()),
+                        execution_id=id_models.WorkflowExecutionIdentifier("p", "d", "n"),
+                    ),
+                ),
+            ),
+    ) as ctx:
+        input_literal_map = _literal_models.LiteralMap(
+            {
+                "n": _literal_models.Literal(
+                    scalar=_literal_models.Scalar(primitive=_literal_models.Primitive(integer=56_000)),
+                )
+            }
+        )
+
+        write_proto_to_file(input_literal_map.to_flyte_idl(), str(inputs_path/"inputs.pb"))
+
+        # Notice how the threshold is set to 1MB
+        with mock.patch.dict(os.environ, {"FK_L_MIN_SIZE_MB": "1"}):
+            _dispatch_execute(ctx, lambda: t1, str(inputs_path/"inputs.pb"), str(outputs_path.absolute()))
+
+            assert "error.pb" not in os.listdir(outputs_path)
+
+            # o0 is not offloaded
+            assert "o0_offloaded_metadata.pb" not in os.listdir(outputs_path)
+
+            for ff in os.listdir(outputs_path):
+                with open(outputs_path/ff, "rb") as f:
+                    if ff == "outputs.pb":
+                        lit = literals_pb2.LiteralMap()
+                        lit.ParseFromString(f.read())
+                        assert len(lit.literals) == 2
+
+                        # o0 is not offloaded
+                        assert "o0" in lit.literals
+                        assert lit.literals["o0"].HasField("offloaded_metadata") is False
+
+                        # o1 is offloaded
+                        assert "o1" in lit.literals
+                        assert lit.literals["o1"].HasField("offloaded_metadata") is True
+                        assert lit.literals["o1"].offloaded_metadata.size_bytes == 1108538
+                        assert lit.literals["o1"].offloaded_metadata.uri.endswith("/o1_offloaded_metadata.pb")
+                    elif ff == "o1_offloaded_metadata.pb":
+                        lit = literals_pb2.Literal()
+                        lit.ParseFromString(f.read())
+                        # Load the dataclass from the proto
+                        transformer = TypeEngine.get_transformer(DC)
+                        dc = transformer.to_python_value(ctx, _literal_models.Literal.from_flyte_idl(lit), DC)
+                        assert dc.a == list(range(56_000))
                     else:
                         assert False, f"Unexpected file {ff}"

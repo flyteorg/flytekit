@@ -150,7 +150,9 @@ def _dispatch_execute(
             for k, v in outputs.literals.items():
                 lit = v.to_flyte_idl()
                 if lit.ByteSize() >= max_offloaded_size:
-                    raise ValueError(f"Literal {k} is too large to be offloaded. Max literal size is {max_offloaded_size} whereas the literal size is {lit.ByteSize()} bytes")
+                    raise ValueError(
+                        f"Literal {k} is too large to be offloaded. Max literal size is {max_offloaded_size} whereas the literal size is {lit.ByteSize()} bytes"
+                    )
 
                 if lit.ByteSize() >= min_offloaded_size:
                     logger.debug(f"Literal {k} is too large to be inlined, offloading to metadata bucket")
