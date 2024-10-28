@@ -11,7 +11,7 @@ try:
 except ImportError:
     """
     It's to support the case where pydantic is not installed at all.
-    It looks nicer in the real File/Directory class, but we also want it to not fail.
+    It looks nicer in the real Flyte File/Directory class, but we also want it to not fail.
     """
 
     logger.warning(
