@@ -141,7 +141,7 @@ def _dispatch_execute(
             output_file_dict = {_constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(literals={})}
         elif isinstance(outputs, _literal_models.LiteralMap):
             offloaded_literals: Dict[str, _literal_models.Literal] = {}
-            new_outputs = {}
+            literal_map_copy = {}
 
             min_offloaded_size = int(os.environ.get("FK_L_MIN_SIZE_MB", "10")) * 1024 * 1024
             max_offloaded_size = int(os.environ.get("FK_L_MAX_SIZE_MB", "1000")) * 1024 * 1024
@@ -168,11 +168,11 @@ def _dispatch_execute(
                             # TODO: do I have to set the inferred literal type?
                         )
                     )
-                    new_outputs[k] = offloaded_literal
+                    literal_map_copy[k] = offloaded_literal
                     offloaded_literals[offloaded_filename] = v
                 else:
-                    new_outputs[k] = v
-            outputs = _literal_models.LiteralMap(literals=new_outputs)
+                    literal_map_copy[k] = v
+            outputs = _literal_models.LiteralMap(literals=literal_map_copy)
 
             output_file_dict = {_constants.OUTPUT_FILE_NAME: outputs, **offloaded_literals}
         elif isinstance(outputs, _dynamic_job.DynamicJobSpec):
