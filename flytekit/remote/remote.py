@@ -217,6 +217,10 @@ def _get_pickled_target_dict(
                 raise FlyteAssertion(
                     f"Dynamic tasks are not supported in interactive mode. {entity.name} is a dynamic task."
                 )
+            if entity.execution_mode == PythonFunctionTask.ExecutionBehavior.EAGER:
+                raise FlyteAssertion(
+                    f"Eager tasks are not supported in interactive mode. {entity.name} is an eager task."
+                )
 
         if isinstance(entity, PythonTask):
             if isinstance(entity, (PythonAutoContainerTask, ArrayNodeMapTask)):
