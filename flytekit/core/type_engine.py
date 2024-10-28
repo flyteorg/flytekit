@@ -61,7 +61,7 @@ TITLE = "title"
 # This is relevant for cases like Dict[int, str].
 # If strict_map_key=False is not used, the decoder will raise an error when trying to decode keys that are not strictly typed.｀
 def _default_msgpack_decoder(data: bytes) -> Any:
-    return msgpack.unpackb(data, raw=False, strict_map_key=False)
+    return msgpack.unpackb(data, strict_map_key=False)
 
 
 class BatchSize:
@@ -216,15 +216,40 @@ class TypeTransformer(typing.Generic[T]):
         )
 
     def from_binary_idl(self, binary_idl_object: Binary, expected_python_type: Type[T]) -> Optional[T]:
+        """
+        This function primarily handles deserialization for untyped dicts, dataclasses, Pydantic BaseModels, and attribute access.｀
+
+        For untyped dict, dataclass, and pydantic basemodel:
+        Life Cycle (Untyped Dict as example):
+            python val -> msgpack bytes -> binary literal scalar -> msgpack bytes -> python val
+                          (to_literal)                             (from_binary_idl)
+
+        For attribute access:
+        Life Cycle:
+            python val -> msgpack bytes -> binary literal scalar -> resolved golang value -> binary literal scalar -> msgpack bytes -> python val
+                          (to_literal)                            (propeller attribute access)                       (from_binary_idl)
+        """
         if binary_idl_object.tag == MESSAGEPACK:
             try:
                 decoder = self._msgpack_decoder[expected_python_type]
             except KeyError:
                 decoder = MessagePackDecoder(expected_python_type, pre_decoder_func=_default_msgpack_decoder)
                 self._msgpack_decoder[expected_python_type] = decoder
-            return decoder.decode(binary_idl_object.value)
+            python_val = decoder.decode(binary_idl_object.value)
+
+            return python_val
         else:
             raise TypeTransformerFailedError(f"Unsupported binary format `{binary_idl_object.tag}`")
+
+    def from_generic_idl(self, generic: Struct, expected_python_type: Type[T]) -> Optional[T]:
+        """
+        TODO: Support all Flyte Types.
+        This is for dataclass attribute access from input created from the Flyte Console.
+
+        Note:
+        - This can be removed in the future when the Flyte Console support generate Binary IDL Scalar as input.
+        """
+        raise NotImplementedError(f"Conversion from generic idl to python type {expected_python_type} not implemented")
 
     def to_html(self, ctx: FlyteContext, python_val: T, expected_python_type: Type[T]) -> str:
         """
@@ -321,6 +346,51 @@ class SimpleTransformer(TypeTransformer[T]):
                 f"Expected value of type {self._type} but got '{python_val}' of type {type(python_val)}"
             )
         return self._to_literal_transformer(python_val)
+
+    def from_binary_idl(self, binary_idl_object: Binary, expected_python_type: Type[T]) -> Optional[T]:
+        if binary_idl_object.tag == MESSAGEPACK:
+            if expected_python_type in [datetime.date, datetime.datetime, datetime.timedelta]:
+                """
+                MessagePack doesn't support datetime, date, and timedelta.
+                However, mashumaro's MessagePackEncoder and MessagePackDecoder can convert them to str and vice versa.
+                That's why we need to use mashumaro's MessagePackDecoder here.
+                """
+                try:
+                    decoder = self._msgpack_decoder[expected_python_type]
+                except KeyError:
+                    decoder = MessagePackDecoder(expected_python_type, pre_decoder_func=_default_msgpack_decoder)
+                    self._msgpack_decoder[expected_python_type] = decoder
+                python_val = decoder.decode(binary_idl_object.value)
+            else:
+                python_val = msgpack.loads(binary_idl_object.value)
+                """
+                In the case below, when using Union Transformer + Simple Transformer, then `a`
+                can be converted to int, bool, str and float if we use MessagePackDecoder[expected_python_type].
+
+                Life Cycle:
+                1 -> msgpack bytes -> (1, true, "1", 1.0)
+
+                Example Code:
+                @dataclass
+                class DC:
+                    a: Union[int, bool, str, float]
+                    b: Union[int, bool, str, float]
+
+                @task(container_image=custom_image)
+                def add(a: Union[int, bool, str, float], b: Union[int, bool, str, float]) -> Union[int, bool, str, float]:
+                    return a + b
+
+                @workflow
+                def wf(dc: DC) -> Union[int, bool, str, float]:
+                    return add(dc.a, dc.b)
+
+                wf(DC(1, 1))
+                """
+                assert type(python_val) == expected_python_type
+
+            return python_val
+        else:
+            raise TypeTransformerFailedError(f"Unsupported binary format `{binary_idl_object.tag}`")
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
         expected_python_type = get_underlying_type(expected_python_type)
@@ -1125,6 +1195,8 @@ class TypeEngine(typing.Generic[T]):
                 from flytekit.extras import pytorch  # noqa: F401
             if is_imported("sklearn"):
                 from flytekit.extras import sklearn  # noqa: F401
+            if is_imported("pydantic"):
+                from flytekit.extras import pydantic_transformer  # noqa: F401
             if is_imported("pandas"):
                 try:
                     from flytekit.types.schema.types_pandas import PandasSchemaReader, PandasSchemaWriter  # noqa: F401
@@ -1779,9 +1851,6 @@ class UnionTransformer(AsyncTypeTransformer[T]):
     ) -> Optional[typing.Any]:
         expected_python_type = get_underlying_type(expected_python_type)
 
-        if lv.scalar is not None and lv.scalar.binary is not None:
-            return self.from_binary_idl(lv.scalar.binary, expected_python_type)
-
         union_tag = None
         union_type = None
         if lv.scalar is not None and lv.scalar.union is not None:
@@ -1810,9 +1879,15 @@ class UnionTransformer(AsyncTypeTransformer[T]):
                     assert lv.scalar.union is not None  # type checker
 
                     if isinstance(trans, AsyncTypeTransformer):
-                        res = await trans.async_to_python_value(ctx, lv.scalar.union.value, v)
+                        if lv.scalar.binary:
+                            res = await trans.async_to_python_value(ctx, lv, v)
+                        else:
+                            res = await trans.async_to_python_value(ctx, lv.scalar.union.value, v)
                     else:
-                        res = trans.to_python_value(ctx, lv.scalar.union.value, v)
+                        if lv.scalar.binary:
+                            res = trans.to_python_value(ctx, lv, v)
+                        else:
+                            res = trans.to_python_value(ctx, lv.scalar.union.value, v)
                         if isinstance(res, asyncio.Future):
                             res = await res
 
@@ -2013,7 +2088,42 @@ class DictTransformer(AsyncTypeTransformer[dict]):
                 return await FlytePickle.from_pickle(uri)
 
             try:
-                return json.loads(_json_format.MessageToJson(lv.scalar.generic))
+                """
+                Handles the case where Flyte Console provides input as a protobuf struct.
+                When resolving an attribute like 'dc.dict_int_ff', FlytePropeller retrieves a dictionary.
+                Mashumaro's decoder can convert this dictionary to the expected Python object if the correct type is provided.
+                Since Flyte Types handle their own deserialization, the dictionary is automatically converted to the expected Python object.
+
+                Example Code:
+                @dataclass
+                class DC:
+                    dict_int_ff: Dict[int, FlyteFile]
+
+                @workflow
+                def wf(dc: DC):
+                    t_ff(dc.dict_int_ff)
+
+                Life Cycle:
+                json str            -> protobuf struct         -> resolved protobuf struct   -> dictionary                -> expected Python object
+                (console user input)   (console output)           (propeller)                   (flytekit dict transformer)  (mashumaro decoder)
+
+                Related PR:
+                - Title: Override Dataclass Serialization/Deserialization Behavior for FlyteTypes via Mashumaro
+                - Link: https://github.com/flyteorg/flytekit/pull/2554
+                - Title: Binary IDL With MessagePack
+                - Link: https://github.com/flyteorg/flytekit/pull/2760
+                """
+
+                dict_obj = json.loads(_json_format.MessageToJson(lv.scalar.generic))
+                msgpack_bytes = msgpack.dumps(dict_obj)
+
+                try:
+                    decoder = self._msgpack_decoder[expected_python_type]
+                except KeyError:
+                    decoder = MessagePackDecoder(expected_python_type, pre_decoder_func=_default_msgpack_decoder)
+                    self._msgpack_decoder[expected_python_type] = decoder
+
+                return decoder.decode(msgpack_bytes)
             except TypeError:
                 raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
 
@@ -2197,6 +2307,35 @@ def _check_and_covert_float(lv: Literal) -> float:
     raise TypeTransformerFailedError(f"Cannot convert literal {lv} to float")
 
 
+def _handle_flyte_console_float_input_to_int(lv: Literal) -> int:
+    """
+    Flyte Console is written by JavaScript and JavaScript has only one number type which is Number.
+    Sometimes it keeps track of trailing 0s and sometimes it doesn't.
+    We have to convert float to int back in the following example.
+
+    Example Code:
+    @dataclass
+    class DC:
+        a: int
+
+    @workflow
+    def wf(dc: DC):
+        t_int(a=dc.a)
+
+    Life Cycle:
+    json str            -> protobuf struct         -> resolved float    -> float                          -> int
+    (console user input)   (console output)           (propeller)          (flytekit simple transformer)  (_handle_flyte_console_float_input_to_int)
+    """
+    if lv.scalar.primitive.integer is not None:
+        return lv.scalar.primitive.integer
+
+    if lv.scalar.primitive.float_value is not None:
+        logger.info(f"Converting literal float {lv.scalar.primitive.float_value} to int, might have precision loss.")
+        return int(lv.scalar.primitive.float_value)
+
+    raise TypeTransformerFailedError(f"Cannot convert literal {lv} to int")
+
+
 def _check_and_convert_void(lv: Literal) -> None:
     if lv.scalar.none_type is None:
         raise TypeTransformerFailedError(f"Cannot convert literal {lv} to None")
@@ -2208,7 +2347,7 @@ IntTransformer = SimpleTransformer(
     int,
     _type_models.LiteralType(simple=_type_models.SimpleType.INTEGER),
     lambda x: Literal(scalar=Scalar(primitive=Primitive(integer=x))),
-    lambda x: x.scalar.primitive.integer,
+    _handle_flyte_console_float_input_to_int,
 )
 
 FloatTransformer = SimpleTransformer(

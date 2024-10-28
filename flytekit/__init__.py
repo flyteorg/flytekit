@@ -216,6 +216,7 @@ if sys.version_info < (3, 10):
 else:
     from importlib.metadata import entry_points
 
+
 from flytekit._version import __version__
 from flytekit.configuration import Config
 from flytekit.core.array_node_map_task import map_task
