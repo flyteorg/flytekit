@@ -1195,7 +1195,7 @@ class TypeEngine(typing.Generic[T]):
             if is_imported("sklearn"):
                 from flytekit.extras import sklearn  # noqa: F401
             if is_imported("pydantic"):
-                from flytekit.extras import pydantic  # noqa: F401
+                from flytekit.extras import pydantic_transformer  # noqa: F401
             if is_imported("pandas"):
                 try:
                     from flytekit.types.schema.types_pandas import PandasSchemaReader, PandasSchemaWriter  # noqa: F401
@@ -2306,7 +2306,8 @@ def _check_and_covert_float(lv: Literal) -> float:
 
 def _handle_flyte_console_float_input_to_int(lv: Literal) -> int:
     """
-    Flyte Console is written by JavaScript and JavaScript has only one number type which is float.
+    Flyte Console is written by JavaScript and JavaScript has only one number type which is Number.
+    Sometimes it keeps track of trailing 0s and sometimes it doesn't.
     We have to convert float to int back in the following example.
 
     Example Code:

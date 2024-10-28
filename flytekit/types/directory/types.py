@@ -23,7 +23,7 @@ from flytekit.core.constants import MESSAGEPACK
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import AsyncTypeTransformer, TypeEngine, TypeTransformerFailedError, get_batch_size
 from flytekit.exceptions.user import FlyteAssertion
-from flytekit.extras.pydantic.decorator import model_serializer, model_validator
+from flytekit.extras.pydantic_transformer.decorator import model_serializer, model_validator
 from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_types
 from flytekit.models.core.types import BlobType

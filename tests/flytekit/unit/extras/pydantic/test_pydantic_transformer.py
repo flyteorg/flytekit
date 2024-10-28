@@ -1,13 +1,13 @@
 import os
 import tempfile
-from dataclasses import field
 from enum import Enum
 from typing import Dict, List, Optional, Union
-from pydantic import BaseModel, Field
 from unittest.mock import patch
+
 import pytest
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
+from pydantic import BaseModel, Field
 
 from flytekit import task, workflow
 from flytekit.core.context_manager import FlyteContextManager
@@ -47,15 +47,20 @@ def local_dummy_directory():
         temp_dir.cleanup()
 
 
-def test_flytetypes_in_pydantic_basemodel_wf(local_dummy_file, local_dummy_directory):
+def test_flytetypes_in_pydantic_basemodel_wf(
+        local_dummy_file, local_dummy_directory):
     class InnerBM(BaseModel):
-        flytefile: FlyteFile = field(default_factory=lambda: FlyteFile(local_dummy_file))
-        flytedir: FlyteDirectory = field(default_factory=lambda: FlyteDirectory(local_dummy_directory))
+        flytefile: FlyteFile = Field(
+            default_factory=lambda: FlyteFile(local_dummy_file))
+        flytedir: FlyteDirectory = Field(
+            default_factory=lambda: FlyteDirectory(local_dummy_directory))
 
     class BM(BaseModel):
-        flytefile: FlyteFile = field(default_factory=lambda: FlyteFile(local_dummy_file))
-        flytedir: FlyteDirectory = field(default_factory=lambda: FlyteDirectory(local_dummy_directory))
-        inner_bm: InnerBM = field(default_factory=lambda: InnerBM())
+        flytefile: FlyteFile = Field(
+            default_factory=lambda: FlyteFile(local_dummy_file))
+        flytedir: FlyteDirectory = Field(
+            default_factory=lambda: FlyteDirectory(local_dummy_directory))
+        inner_bm: InnerBM = Field(default_factory=lambda: InnerBM())
 
     @task
     def t1(path: FlyteFile) -> FlyteFile:
@@ -86,47 +91,65 @@ def test_flytetypes_in_pydantic_basemodel_wf(local_dummy_file, local_dummy_direc
     with open(os.path.join(o4, "file"), "r") as fh:
         assert fh.read() == "Hello FlyteDirectory"
 
-def test_all_types_in_pydantic_basemodel_wf(local_dummy_file, local_dummy_directory):
+
+def test_all_types_in_pydantic_basemodel_wf(
+        local_dummy_file, local_dummy_directory):
     class InnerBM(BaseModel):
         a: int = -1
         b: float = 2.1
         c: str = "Hello, Flyte"
         d: bool = False
-        e: List[int] = field(default_factory=lambda: [0, 1, 2, -1, -2])
-        f: List[FlyteFile] = field(default_factory=lambda: [FlyteFile(local_dummy_file)])
-        g: List[List[int]] = field(default_factory=lambda: [[0], [1], [-1]])
-        h: List[Dict[int, bool]] = field(default_factory=lambda: [{0: False}, {1: True}, {-1: True}])
-        i: Dict[int, bool] = field(default_factory=lambda: {0: False, 1: True, -1: False})
-        j: Dict[int, FlyteFile] = field(default_factory=lambda: {0: FlyteFile(local_dummy_file),
+        e: List[int] = Field(default_factory=lambda: [0, 1, 2, -1, -2])
+        f: List[FlyteFile] = Field(
+            default_factory=lambda: [
+                FlyteFile(local_dummy_file)])
+        g: List[List[int]] = Field(default_factory=lambda: [[0], [1], [-1]])
+        h: List[Dict[int, bool]] = Field(default_factory=lambda: [
+                                         {0: False}, {1: True}, {-1: True}])
+        i: Dict[int, bool] = Field(default_factory=lambda: {
+                                   0: False, 1: True, -1: False})
+        j: Dict[int, FlyteFile] = Field(default_factory=lambda: {0: FlyteFile(local_dummy_file),
                                                                  1: FlyteFile(local_dummy_file),
                                                                  -1: FlyteFile(local_dummy_file)})
-        k: Dict[int, List[int]] = field(default_factory=lambda: {0: [0, 1, -1]})
-        l: Dict[int, Dict[int, int]] = field(default_factory=lambda: {1: {-1: 0}})
-        m: dict = field(default_factory=lambda: {"key": "value"})
-        n: FlyteFile = field(default_factory=lambda: FlyteFile(local_dummy_file))
-        o: FlyteDirectory = field(default_factory=lambda: FlyteDirectory(local_dummy_directory))
-        enum_status: Status = field(default=Status.PENDING)
+        k: Dict[int, List[int]] = Field(
+            default_factory=lambda: {0: [0, 1, -1]})
+        l: Dict[int, Dict[int, int]] = Field(
+            default_factory=lambda: {1: {-1: 0}})
+        m: dict = Field(default_factory=lambda: {"key": "value"})
+        n: FlyteFile = Field(
+            default_factory=lambda: FlyteFile(local_dummy_file))
+        o: FlyteDirectory = Field(
+            default_factory=lambda: FlyteDirectory(local_dummy_directory))
+        enum_status: Status = Field(default=Status.PENDING)
 
     class BM(BaseModel):
         a: int = -1
         b: float = 2.1
         c: str = "Hello, Flyte"
         d: bool = False
-        e: List[int] = field(default_factory=lambda: [0, 1, 2, -1, -2])
-        f: List[FlyteFile] = field(default_factory=lambda: [FlyteFile(local_dummy_file), ])
-        g: List[List[int]] = field(default_factory=lambda: [[0], [1], [-1]])
-        h: List[Dict[int, bool]] = field(default_factory=lambda: [{0: False}, {1: True}, {-1: True}])
-        i: Dict[int, bool] = field(default_factory=lambda: {0: False, 1: True, -1: False})
-        j: Dict[int, FlyteFile] = field(default_factory=lambda: {0: FlyteFile(local_dummy_file),
+        e: List[int] = Field(default_factory=lambda: [0, 1, 2, -1, -2])
+        f: List[FlyteFile] = Field(
+            default_factory=lambda: [
+                FlyteFile(local_dummy_file), ])
+        g: List[List[int]] = Field(default_factory=lambda: [[0], [1], [-1]])
+        h: List[Dict[int, bool]] = Field(default_factory=lambda: [
+                                         {0: False}, {1: True}, {-1: True}])
+        i: Dict[int, bool] = Field(default_factory=lambda: {
+                                   0: False, 1: True, -1: False})
+        j: Dict[int, FlyteFile] = Field(default_factory=lambda: {0: FlyteFile(local_dummy_file),
                                                                  1: FlyteFile(local_dummy_file),
                                                                  -1: FlyteFile(local_dummy_file)})
-        k: Dict[int, List[int]] = field(default_factory=lambda: {0: [0, 1, -1]})
-        l: Dict[int, Dict[int, int]] = field(default_factory=lambda: {1: {-1: 0}})
-        m: dict = field(default_factory=lambda: {"key": "value"})
-        n: FlyteFile = field(default_factory=lambda: FlyteFile(local_dummy_file))
-        o: FlyteDirectory = field(default_factory=lambda: FlyteDirectory(local_dummy_directory))
-        inner_bm: InnerBM = field(default_factory=lambda: InnerBM())
-        enum_status: Status = field(default=Status.PENDING)
+        k: Dict[int, List[int]] = Field(
+            default_factory=lambda: {0: [0, 1, -1]})
+        l: Dict[int, Dict[int, int]] = Field(
+            default_factory=lambda: {1: {-1: 0}})
+        m: dict = Field(default_factory=lambda: {"key": "value"})
+        n: FlyteFile = Field(
+            default_factory=lambda: FlyteFile(local_dummy_file))
+        o: FlyteDirectory = Field(
+            default_factory=lambda: FlyteDirectory(local_dummy_directory))
+        inner_bm: InnerBM = Field(default_factory=lambda: InnerBM())
+        enum_status: Status = Field(default=Status.PENDING)
 
     @task
     def t_inner(inner_bm: InnerBM):
@@ -156,7 +179,6 @@ def test_all_types_in_pydantic_basemodel_wf(local_dummy_file, local_dummy_direct
         # enum: Status
         assert inner_bm.enum_status == Status.PENDING
 
-
     @task
     def t_test_all_attributes(a: int, b: float, c: str, d: bool, e: List[int], f: List[FlyteFile], g: List[List[int]],
                               h: List[Dict[int, bool]], i: Dict[int, bool], j: Dict[int, FlyteFile],
@@ -170,10 +192,12 @@ def test_all_types_in_pydantic_basemodel_wf(local_dummy_file, local_dummy_direct
         assert isinstance(d, bool), f"d is not bool, it's {type(d)}"
 
         # Strict type checks for List[int]
-        assert isinstance(e, list) and all(isinstance(i, int) for i in e), "e is not List[int]"
+        assert isinstance(e, list) and all(isinstance(i, int)
+                                           for i in e), "e is not List[int]"
 
         # Strict type checks for List[FlyteFile]
-        assert isinstance(f, list) and all(isinstance(i, FlyteFile) for i in f), "f is not List[FlyteFile]"
+        assert isinstance(f, list) and all(isinstance(i, FlyteFile)
+                                           for i in f), "f is not List[FlyteFile]"
 
         # Strict type checks for List[List[int]]
         assert isinstance(g, list) and all(
@@ -234,47 +258,67 @@ def test_all_types_in_pydantic_basemodel_wf(local_dummy_file, local_dummy_direct
 
     wf(bm=BM())
 
-def test_all_types_with_optional_in_pydantic_basemodel_wf(local_dummy_file, local_dummy_directory):
+
+def test_all_types_with_optional_in_pydantic_basemodel_wf(
+        local_dummy_file, local_dummy_directory):
     class InnerBM(BaseModel):
         a: Optional[int] = -1
         b: Optional[float] = 2.1
         c: Optional[str] = "Hello, Flyte"
         d: Optional[bool] = False
-        e: Optional[List[int]] = field(default_factory=lambda: [0, 1, 2, -1, -2])
-        f: Optional[List[FlyteFile]] = field(default_factory=lambda: [FlyteFile(local_dummy_file)])
-        g: Optional[List[List[int]]] = field(default_factory=lambda: [[0], [1], [-1]])
-        h: Optional[List[Dict[int, bool]]] = field(default_factory=lambda: [{0: False}, {1: True}, {-1: True}])
-        i: Optional[Dict[int, bool]] = field(default_factory=lambda: {0: False, 1: True, -1: False})
-        j: Optional[Dict[int, FlyteFile]] = field(default_factory=lambda: {0: FlyteFile(local_dummy_file),
+        e: Optional[List[int]] = Field(
+            default_factory=lambda: [0, 1, 2, -1, -2])
+        f: Optional[List[FlyteFile]] = Field(
+            default_factory=lambda: [FlyteFile(local_dummy_file)])
+        g: Optional[List[List[int]]] = Field(
+            default_factory=lambda: [[0], [1], [-1]])
+        h: Optional[List[Dict[int, bool]]] = Field(
+            default_factory=lambda: [{0: False}, {1: True}, {-1: True}])
+        i: Optional[Dict[int, bool]] = Field(
+            default_factory=lambda: {0: False, 1: True, -1: False})
+        j: Optional[Dict[int, FlyteFile]] = Field(default_factory=lambda: {0: FlyteFile(local_dummy_file),
                                                                            1: FlyteFile(local_dummy_file),
                                                                            -1: FlyteFile(local_dummy_file)})
-        k: Optional[Dict[int, List[int]]] = field(default_factory=lambda: {0: [0, 1, -1]})
-        l: Optional[Dict[int, Dict[int, int]]] = field(default_factory=lambda: {1: {-1: 0}})
-        m: Optional[dict] = field(default_factory=lambda: {"key": "value"})
-        n: Optional[FlyteFile] = field(default_factory=lambda: FlyteFile(local_dummy_file))
-        o: Optional[FlyteDirectory] = field(default_factory=lambda: FlyteDirectory(local_dummy_directory))
-        enum_status: Optional[Status] = field(default=Status.PENDING)
+        k: Optional[Dict[int, List[int]]] = Field(
+            default_factory=lambda: {0: [0, 1, -1]})
+        l: Optional[Dict[int, Dict[int, int]]] = Field(
+            default_factory=lambda: {1: {-1: 0}})
+        m: Optional[dict] = Field(default_factory=lambda: {"key": "value"})
+        n: Optional[FlyteFile] = Field(
+            default_factory=lambda: FlyteFile(local_dummy_file))
+        o: Optional[FlyteDirectory] = Field(
+            default_factory=lambda: FlyteDirectory(local_dummy_directory))
+        enum_status: Optional[Status] = Field(default=Status.PENDING)
 
     class BM(BaseModel):
         a: Optional[int] = -1
         b: Optional[float] = 2.1
         c: Optional[str] = "Hello, Flyte"
         d: Optional[bool] = False
-        e: Optional[List[int]] = field(default_factory=lambda: [0, 1, 2, -1, -2])
-        f: Optional[List[FlyteFile]] = field(default_factory=lambda: [FlyteFile(local_dummy_file)])
-        g: Optional[List[List[int]]] = field(default_factory=lambda: [[0], [1], [-1]])
-        h: Optional[List[Dict[int, bool]]] = field(default_factory=lambda: [{0: False}, {1: True}, {-1: True}])
-        i: Optional[Dict[int, bool]] = field(default_factory=lambda: {0: False, 1: True, -1: False})
-        j: Optional[Dict[int, FlyteFile]] = field(default_factory=lambda: {0: FlyteFile(local_dummy_file),
+        e: Optional[List[int]] = Field(
+            default_factory=lambda: [0, 1, 2, -1, -2])
+        f: Optional[List[FlyteFile]] = Field(
+            default_factory=lambda: [FlyteFile(local_dummy_file)])
+        g: Optional[List[List[int]]] = Field(
+            default_factory=lambda: [[0], [1], [-1]])
+        h: Optional[List[Dict[int, bool]]] = Field(
+            default_factory=lambda: [{0: False}, {1: True}, {-1: True}])
+        i: Optional[Dict[int, bool]] = Field(
+            default_factory=lambda: {0: False, 1: True, -1: False})
+        j: Optional[Dict[int, FlyteFile]] = Field(default_factory=lambda: {0: FlyteFile(local_dummy_file),
                                                                            1: FlyteFile(local_dummy_file),
                                                                            -1: FlyteFile(local_dummy_file)})
-        k: Optional[Dict[int, List[int]]] = field(default_factory=lambda: {0: [0, 1, -1]})
-        l: Optional[Dict[int, Dict[int, int]]] = field(default_factory=lambda: {1: {-1: 0}})
-        m: Optional[dict] = field(default_factory=lambda: {"key": "value"})
-        n: Optional[FlyteFile] = field(default_factory=lambda: FlyteFile(local_dummy_file))
-        o: Optional[FlyteDirectory] = field(default_factory=lambda: FlyteDirectory(local_dummy_directory))
-        inner_bm: Optional[InnerBM] = field(default_factory=lambda: InnerBM())
-        enum_status: Optional[Status] = field(default=Status.PENDING)
+        k: Optional[Dict[int, List[int]]] = Field(
+            default_factory=lambda: {0: [0, 1, -1]})
+        l: Optional[Dict[int, Dict[int, int]]] = Field(
+            default_factory=lambda: {1: {-1: 0}})
+        m: Optional[dict] = Field(default_factory=lambda: {"key": "value"})
+        n: Optional[FlyteFile] = Field(
+            default_factory=lambda: FlyteFile(local_dummy_file))
+        o: Optional[FlyteDirectory] = Field(
+            default_factory=lambda: FlyteDirectory(local_dummy_directory))
+        inner_bm: Optional[InnerBM] = Field(default_factory=lambda: InnerBM())
+        enum_status: Optional[Status] = Field(default=Status.PENDING)
 
     @task
     def t_inner(inner_bm: InnerBM):
@@ -322,10 +366,12 @@ def test_all_types_with_optional_in_pydantic_basemodel_wf(local_dummy_file, loca
         assert isinstance(d, bool), f"d is not bool, it's {type(d)}"
 
         # Strict type checks for List[int]
-        assert isinstance(e, list) and all(isinstance(i, int) for i in e), "e is not List[int]"
+        assert isinstance(e, list) and all(isinstance(i, int)
+                                           for i in e), "e is not List[int]"
 
         # Strict type checks for List[FlyteFile]
-        assert isinstance(f, list) and all(isinstance(i, FlyteFile) for i in f), "f is not List[FlyteFile]"
+        assert isinstance(f, list) and all(isinstance(i, FlyteFile)
+                                           for i in f), "f is not List[FlyteFile]"
 
         # Strict type checks for List[List[int]]
         assert isinstance(g, list) and all(
@@ -380,7 +426,8 @@ def test_all_types_with_optional_in_pydantic_basemodel_wf(local_dummy_file, loca
     wf(bm=BM())
 
 
-def test_all_types_with_optional_and_none_in_pydantic_basemodel_wf(local_dummy_file, local_dummy_directory):
+def test_all_types_with_optional_and_none_in_pydantic_basemodel_wf(
+        local_dummy_file, local_dummy_directory):
     class InnerBM(BaseModel):
         a: Optional[int] = None
         b: Optional[float] = None
@@ -450,7 +497,9 @@ def test_all_types_with_optional_and_none_in_pydantic_basemodel_wf(local_dummy_f
 
     wf(bm=BM())
 
-def test_input_from_flyte_console_pydantic_basemodel(local_dummy_file, local_dummy_directory):
+
+def test_input_from_flyte_console_pydantic_basemodel(
+        local_dummy_file, local_dummy_directory):
     # Flyte Console will send the input data as protobuf Struct
 
     class InnerBM(BaseModel):
@@ -458,41 +507,57 @@ def test_input_from_flyte_console_pydantic_basemodel(local_dummy_file, local_dum
         b: float = 2.1
         c: str = "Hello, Flyte"
         d: bool = False
-        e: List[int] = field(default_factory=lambda: [0, 1, 2, -1, -2])
-        f: List[FlyteFile] = field(default_factory=lambda: [FlyteFile(local_dummy_file)])
-        g: List[List[int]] = field(default_factory=lambda: [[0], [1], [-1]])
-        h: List[Dict[int, bool]] = field(default_factory=lambda: [{0: False}, {1: True}, {-1: True}])
-        i: Dict[int, bool] = field(default_factory=lambda: {0: False, 1: True, -1: False})
-        j: Dict[int, FlyteFile] = field(default_factory=lambda: {0: FlyteFile(local_dummy_file),
+        e: List[int] = Field(default_factory=lambda: [0, 1, 2, -1, -2])
+        f: List[FlyteFile] = Field(
+            default_factory=lambda: [
+                FlyteFile(local_dummy_file)])
+        g: List[List[int]] = Field(default_factory=lambda: [[0], [1], [-1]])
+        h: List[Dict[int, bool]] = Field(default_factory=lambda: [
+                                         {0: False}, {1: True}, {-1: True}])
+        i: Dict[int, bool] = Field(default_factory=lambda: {
+                                   0: False, 1: True, -1: False})
+        j: Dict[int, FlyteFile] = Field(default_factory=lambda: {0: FlyteFile(local_dummy_file),
                                                                  1: FlyteFile(local_dummy_file),
                                                                  -1: FlyteFile(local_dummy_file)})
-        k: Dict[int, List[int]] = field(default_factory=lambda: {0: [0, 1, -1]})
-        l: Dict[int, Dict[int, int]] = field(default_factory=lambda: {1: {-1: 0}})
-        m: dict = field(default_factory=lambda: {"key": "value"})
-        n: FlyteFile = field(default_factory=lambda: FlyteFile(local_dummy_file))
-        o: FlyteDirectory = field(default_factory=lambda: FlyteDirectory(local_dummy_directory))
-        enum_status: Status = field(default=Status.PENDING)
+        k: Dict[int, List[int]] = Field(
+            default_factory=lambda: {0: [0, 1, -1]})
+        l: Dict[int, Dict[int, int]] = Field(
+            default_factory=lambda: {1: {-1: 0}})
+        m: dict = Field(default_factory=lambda: {"key": "value"})
+        n: FlyteFile = Field(
+            default_factory=lambda: FlyteFile(local_dummy_file))
+        o: FlyteDirectory = Field(
+            default_factory=lambda: FlyteDirectory(local_dummy_directory))
+        enum_status: Status = Field(default=Status.PENDING)
 
     class BM(BaseModel):
         a: int = -1
         b: float = 2.1
         c: str = "Hello, Flyte"
         d: bool = False
-        e: List[int] = field(default_factory=lambda: [0, 1, 2, -1, -2])
-        f: List[FlyteFile] = field(default_factory=lambda: [FlyteFile(local_dummy_file), ])
-        g: List[List[int]] = field(default_factory=lambda: [[0], [1], [-1]])
-        h: List[Dict[int, bool]] = field(default_factory=lambda: [{0: False}, {1: True}, {-1: True}])
-        i: Dict[int, bool] = field(default_factory=lambda: {0: False, 1: True, -1: False})
-        j: Dict[int, FlyteFile] = field(default_factory=lambda: {0: FlyteFile(local_dummy_file),
+        e: List[int] = Field(default_factory=lambda: [0, 1, 2, -1, -2])
+        f: List[FlyteFile] = Field(
+            default_factory=lambda: [
+                FlyteFile(local_dummy_file), ])
+        g: List[List[int]] = Field(default_factory=lambda: [[0], [1], [-1]])
+        h: List[Dict[int, bool]] = Field(default_factory=lambda: [
+                                         {0: False}, {1: True}, {-1: True}])
+        i: Dict[int, bool] = Field(default_factory=lambda: {
+                                   0: False, 1: True, -1: False})
+        j: Dict[int, FlyteFile] = Field(default_factory=lambda: {0: FlyteFile(local_dummy_file),
                                                                  1: FlyteFile(local_dummy_file),
                                                                  -1: FlyteFile(local_dummy_file)})
-        k: Dict[int, List[int]] = field(default_factory=lambda: {0: [0, 1, -1]})
-        l: Dict[int, Dict[int, int]] = field(default_factory=lambda: {1: {-1: 0}})
-        m: dict = field(default_factory=lambda: {"key": "value"})
-        n: FlyteFile = field(default_factory=lambda: FlyteFile(local_dummy_file))
-        o: FlyteDirectory = field(default_factory=lambda: FlyteDirectory(local_dummy_directory))
-        inner_bm: InnerBM = field(default_factory=lambda: InnerBM())
-        enum_status: Status = field(default=Status.PENDING)
+        k: Dict[int, List[int]] = Field(
+            default_factory=lambda: {0: [0, 1, -1]})
+        l: Dict[int, Dict[int, int]] = Field(
+            default_factory=lambda: {1: {-1: 0}})
+        m: dict = Field(default_factory=lambda: {"key": "value"})
+        n: FlyteFile = Field(
+            default_factory=lambda: FlyteFile(local_dummy_file))
+        o: FlyteDirectory = Field(
+            default_factory=lambda: FlyteDirectory(local_dummy_directory))
+        inner_bm: InnerBM = Field(default_factory=lambda: InnerBM())
+        enum_status: Status = Field(default=Status.PENDING)
 
     @task
     def t_inner(inner_bm: InnerBM):
@@ -534,10 +599,12 @@ def test_input_from_flyte_console_pydantic_basemodel(local_dummy_file, local_dum
         assert isinstance(d, bool), f"d is not bool, it's {type(d)}"
 
         # Strict type checks for List[int]
-        assert isinstance(e, list) and all(isinstance(i, int) for i in e), "e is not List[int]"
+        assert isinstance(e, list) and all(isinstance(i, int)
+                                           for i in e), "e is not List[int]"
 
         # Strict type checks for List[FlyteFile]
-        assert isinstance(f, list) and all(isinstance(i, FlyteFile) for i in f), "f is not List[FlyteFile]"
+        assert isinstance(f, list) and all(isinstance(i, FlyteFile)
+                                           for i in f), "f is not List[FlyteFile]"
 
         # Strict type checks for List[List[int]]
         assert isinstance(g, list) and all(
@@ -585,9 +652,14 @@ def test_input_from_flyte_console_pydantic_basemodel(local_dummy_file, local_dum
     # https://github.com/flyteorg/flytekit/blob/94786cfd4a5c2c3b23ac29bmd6f04d0553fa1beb/flytekit/core/type_engine.py#L702-L728
     bm = BM()
     json_str = bm.model_dump_json()
-    upstream_output = Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))
+    upstream_output = Literal(
+        scalar=Scalar(
+            generic=_json_format.Parse(
+                json_str,
+                _struct.Struct())))
 
-    downstream_input = TypeEngine.to_python_value(FlyteContextManager.current_context(), upstream_output, BM)
+    downstream_input = TypeEngine.to_python_value(
+        FlyteContextManager.current_context(), upstream_output, BM)
     t_inner(downstream_input.inner_bm)
     t_test_all_attributes(a=downstream_input.a, b=downstream_input.b, c=downstream_input.c,
                           d=downstream_input.d, e=downstream_input.e, f=downstream_input.f,
@@ -602,8 +674,10 @@ def test_input_from_flyte_console_pydantic_basemodel(local_dummy_file, local_dum
                           m=downstream_input.inner_bm.m, n=downstream_input.inner_bm.n, o=downstream_input.inner_bm.o,
                           enum_status=downstream_input.inner_bm.enum_status)
 
+
 def test_dataclasss_in_pydantic_basemodel():
     from dataclasses import dataclass
+
     @dataclass
     class InnerBM:
         a: int = -1
@@ -638,18 +712,25 @@ def test_dataclasss_in_pydantic_basemodel():
         assert isinstance(d, bool), f"d is not bool, it's {type(d)}"
         assert d is False
         print("All primitive attributes passed strict type checks.")
+
     @workflow
     def wf(bm: BM):
         t_bm(bm=bm)
         t_inner(inner_bm=bm.inner_bm)
         t_test_primitive_attributes(a=bm.a, b=bm.b, c=bm.c, d=bm.d)
-        t_test_primitive_attributes(a=bm.inner_bm.a, b=bm.inner_bm.b, c=bm.inner_bm.c, d=bm.inner_bm.d)
+        t_test_primitive_attributes(
+            a=bm.inner_bm.a,
+            b=bm.inner_bm.b,
+            c=bm.inner_bm.c,
+            d=bm.inner_bm.d)
 
     bm = BM()
     wf(bm=bm)
+
 
 def test_pydantic_dataclasss_in_pydantic_basemodel():
     from pydantic.dataclasses import dataclass
+
     @dataclass
     class InnerBM:
         a: int = -1
@@ -690,24 +771,33 @@ def test_pydantic_dataclasss_in_pydantic_basemodel():
         t_bm(bm=bm)
         t_inner(inner_bm=bm.inner_bm)
         t_test_primitive_attributes(a=bm.a, b=bm.b, c=bm.c, d=bm.d)
-        t_test_primitive_attributes(a=bm.inner_bm.a, b=bm.inner_bm.b, c=bm.inner_bm.c, d=bm.inner_bm.d)
+        t_test_primitive_attributes(
+            a=bm.inner_bm.a,
+            b=bm.inner_bm.b,
+            c=bm.inner_bm.c,
+            d=bm.inner_bm.d)
 
     bm = BM()
     wf(bm=bm)
 
-def test_flyte_types_deserialization_not_called_when_using_constructor(local_dummy_file, local_dummy_directory):
+
+def test_flyte_types_deserialization_not_called_when_using_constructor(
+        local_dummy_file, local_dummy_directory):
     # Mocking both FlyteFilePathTransformer and FlyteDirectoryPathTransformer
     with patch('flytekit.types.file.FlyteFilePathTransformer.to_python_value') as mock_file_to_python_value, \
-         patch('flytekit.types.directory.FlyteDirToMultipartBlobTransformer.to_python_value') as mock_directory_to_python_value, \
-         patch('flytekit.types.structured.StructuredDatasetTransformerEngine.to_python_value') as mock_structured_dataset_to_python_value, \
-         patch('flytekit.types.schema.FlyteSchemaTransformer.to_python_value') as mock_schema_to_python_value:
+            patch('flytekit.types.directory.FlyteDirToMultipartBlobTransformer.to_python_value') as mock_directory_to_python_value, \
+            patch('flytekit.types.structured.StructuredDatasetTransformerEngine.to_python_value') as mock_structured_dataset_to_python_value, \
+            patch('flytekit.types.schema.FlyteSchemaTransformer.to_python_value') as mock_schema_to_python_value:
 
         # Define your Pydantic model
         class BM(BaseModel):
-            ff: FlyteFile = field(default_factory=lambda: FlyteFile(local_dummy_file))
-            fd: FlyteDirectory = field(default_factory=lambda: FlyteDirectory(local_dummy_directory))
-            sd: StructuredDataset = field(default_factory=lambda: StructuredDataset())
-            fsc: FlyteSchema = field(default_factory=lambda: FlyteSchema())
+            ff: FlyteFile = Field(
+                default_factory=lambda: FlyteFile(local_dummy_file))
+            fd: FlyteDirectory = Field(
+                default_factory=lambda: FlyteDirectory(local_dummy_directory))
+            sd: StructuredDataset = Field(
+                default_factory=lambda: StructuredDataset())
+            fsc: FlyteSchema = Field(default_factory=lambda: FlyteSchema())
 
         # Create an instance of BM (should not call the deserialization)
         BM()
@@ -717,7 +807,9 @@ def test_flyte_types_deserialization_not_called_when_using_constructor(local_dum
         mock_structured_dataset_to_python_value.assert_not_called()
         mock_schema_to_python_value.assert_not_called()
 
-def test_flyte_types_deserialization_called_once_when_using_model_validate_json(local_dummy_file, local_dummy_directory):
+
+def test_flyte_types_deserialization_called_once_when_using_model_validate_json(
+        local_dummy_file, local_dummy_directory):
     """
     It's hard to mock flyte schema and structured dataset in tests, so we will only test FlyteFile and FlyteDirectory
     """
@@ -725,19 +817,27 @@ def test_flyte_types_deserialization_called_once_when_using_model_validate_json(
             patch('flytekit.types.directory.FlyteDirToMultipartBlobTransformer.to_python_value') as mock_directory_to_python_value:
         # Define your Pydantic model
         class BM(BaseModel):
-            ff: FlyteFile = field(default_factory=lambda: FlyteFile(local_dummy_file))
-            fd: FlyteDirectory = field(default_factory=lambda: FlyteDirectory(local_dummy_directory))
+            ff: FlyteFile = Field(
+                default_factory=lambda: FlyteFile(local_dummy_file))
+            fd: FlyteDirectory = Field(
+                default_factory=lambda: FlyteDirectory(local_dummy_directory))
 
         # Create instances of FlyteFile and FlyteDirectory
-        bm = BM(ff=FlyteFile(local_dummy_file), fd=FlyteDirectory(local_dummy_directory))
+        bm = BM(ff=FlyteFile(local_dummy_file),
+                fd=FlyteDirectory(local_dummy_directory))
 
         # Serialize and Deserialize with model_validate_json
         json_str = bm.model_dump_json()
-        bm.model_validate_json(json_data=json_str, strict=False, context={"deserialize": True})
+        bm.model_validate_json(
+            json_data=json_str,
+            strict=False,
+            context={
+                "deserialize": True})
 
         # Assert that the to_python_value method was called once
         mock_file_to_python_value.assert_called_once()
         mock_directory_to_python_value.assert_called_once()
+
 
 def test_union_in_basemodel_wf():
     class bm(BaseModel):
@@ -745,7 +845,8 @@ def test_union_in_basemodel_wf():
         b: Union[int, bool, str, float]
 
     @task
-    def add(a: Union[int, bool, str, float], b: Union[int, bool, str, float]) -> Union[int, bool, str, float]:
+    def add(a: Union[int, bool, str, float], b: Union[int,
+            bool, str, float]) -> Union[int, bool, str, float]:
         return a + b  # type: ignore
 
     @workflow

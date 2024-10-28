@@ -33,7 +33,11 @@ def test_simple_type_transformer():
     encoder = MessagePackEncoder(int)
     for int_input in int_inputs:
         int_msgpack_bytes = encoder.encode(int_input)
-        lv = Literal(scalar=Scalar(binary=Binary(value=int_msgpack_bytes, tag="msgpack")))
+        lv = Literal(
+            scalar=Scalar(
+                binary=Binary(
+                    value=int_msgpack_bytes,
+                    tag="msgpack")))
         int_output = TypeEngine.to_python_value(ctx, lv, int)
         assert int_input == int_output
 
@@ -41,7 +45,11 @@ def test_simple_type_transformer():
     encoder = MessagePackEncoder(float)
     for float_input in float_inputs:
         float_msgpack_bytes = encoder.encode(float_input)
-        lv = Literal(scalar=Scalar(binary=Binary(value=float_msgpack_bytes, tag="msgpack")))
+        lv = Literal(
+            scalar=Scalar(
+                binary=Binary(
+                    value=float_msgpack_bytes,
+                    tag="msgpack")))
         float_output = TypeEngine.to_python_value(ctx, lv, float)
         assert float_input == float_output
 
@@ -49,7 +57,11 @@ def test_simple_type_transformer():
     encoder = MessagePackEncoder(bool)
     for bool_input in bool_inputs:
         bool_msgpack_bytes = encoder.encode(bool_input)
-        lv = Literal(scalar=Scalar(binary=Binary(value=bool_msgpack_bytes, tag="msgpack")))
+        lv = Literal(
+            scalar=Scalar(
+                binary=Binary(
+                    value=bool_msgpack_bytes,
+                    tag="msgpack")))
         bool_output = TypeEngine.to_python_value(ctx, lv, bool)
         assert bool_input == bool_output
 
@@ -57,20 +69,28 @@ def test_simple_type_transformer():
     encoder = MessagePackEncoder(str)
     for str_input in str_inputs:
         str_msgpack_bytes = encoder.encode(str_input)
-        lv = Literal(scalar=Scalar(binary=Binary(value=str_msgpack_bytes, tag="msgpack")))
+        lv = Literal(
+            scalar=Scalar(
+                binary=Binary(
+                    value=str_msgpack_bytes,
+                    tag="msgpack")))
         str_output = TypeEngine.to_python_value(ctx, lv, str)
         assert str_input == str_output
 
     datetime_inputs = [datetime.now(),
-                        datetime(2024, 9, 18),
-                        datetime(2024, 9, 18, 1),
-                        datetime(2024, 9, 18, 1, 1),
-                        datetime(2024, 9, 18, 1, 1, 1),
-                        datetime(2024, 9, 18, 1, 1, 1, 1)]
+                       datetime(2024, 9, 18),
+                       datetime(2024, 9, 18, 1),
+                       datetime(2024, 9, 18, 1, 1),
+                       datetime(2024, 9, 18, 1, 1, 1),
+                       datetime(2024, 9, 18, 1, 1, 1, 1)]
     encoder = MessagePackEncoder(datetime)
     for datetime_input in datetime_inputs:
         datetime_msgpack_bytes = encoder.encode(datetime_input)
-        lv = Literal(scalar=Scalar(binary=Binary(value=datetime_msgpack_bytes, tag="msgpack")))
+        lv = Literal(
+            scalar=Scalar(
+                binary=Binary(
+                    value=datetime_msgpack_bytes,
+                    tag="msgpack")))
         datetime_output = TypeEngine.to_python_value(ctx, lv, datetime)
         assert datetime_input == datetime_output
 
@@ -79,22 +99,52 @@ def test_simple_type_transformer():
     encoder = MessagePackEncoder(date)
     for date_input in date_inputs:
         date_msgpack_bytes = encoder.encode(date_input)
-        lv = Literal(scalar=Scalar(binary=Binary(value=date_msgpack_bytes, tag="msgpack")))
+        lv = Literal(
+            scalar=Scalar(
+                binary=Binary(
+                    value=date_msgpack_bytes,
+                    tag="msgpack")))
         date_output = TypeEngine.to_python_value(ctx, lv, date)
         assert date_input == date_output
 
     timedelta_inputs = [timedelta(days=1),
                         timedelta(days=1, seconds=1),
                         timedelta(days=1, seconds=1, microseconds=1),
-                        timedelta(days=1, seconds=1, microseconds=1, milliseconds=1),
-                        timedelta(days=1, seconds=1, microseconds=1, milliseconds=1, minutes=1),
-                        timedelta(days=1, seconds=1, microseconds=1, milliseconds=1, minutes=1, hours=1),
-                        timedelta(days=1, seconds=1, microseconds=1, milliseconds=1, minutes=1, hours=1, weeks=1),
-                        timedelta(days=-1, seconds=-1, microseconds=-1, milliseconds=-1, minutes=-1, hours=-1, weeks=-1)]
+                        timedelta(
+        days=1,
+        seconds=1,
+        microseconds=1,
+        milliseconds=1),
+        timedelta(
+        days=1,
+        seconds=1,
+        microseconds=1,
+        milliseconds=1,
+        minutes=1),
+        timedelta(
+        days=1,
+        seconds=1,
+        microseconds=1,
+        milliseconds=1,
+        minutes=1,
+        hours=1),
+        timedelta(
+        days=1,
+        seconds=1,
+        microseconds=1,
+        milliseconds=1,
+        minutes=1,
+        hours=1,
+        weeks=1),
+        timedelta(days=-1, seconds=-1, microseconds=-1, milliseconds=-1, minutes=-1, hours=-1, weeks=-1)]
     encoder = MessagePackEncoder(timedelta)
     for timedelta_input in timedelta_inputs:
         timedelta_msgpack_bytes = encoder.encode(timedelta_input)
-        lv = Literal(scalar=Scalar(binary=Binary(value=timedelta_msgpack_bytes, tag="msgpack")))
+        lv = Literal(
+            scalar=Scalar(
+                binary=Binary(
+                    value=timedelta_msgpack_bytes,
+                    tag="msgpack")))
         timedelta_output = TypeEngine.to_python_value(ctx, lv, timedelta)
         assert timedelta_input == timedelta_output
 
@@ -117,7 +167,8 @@ def test_untyped_dict():
         },
         {
             "list_in_dict": [
-                {"inner_dict_1": [1, -2.5, "a"], "inner_dict_2": [True, False, 3.14]},
+                {"inner_dict_1": [1, -2.5, "a"],
+                    "inner_dict_2": [True, False, 3.14]},
                 [1, -2, 3, {"nested_list_dict": [False, "test"]}],
             ]
         },
@@ -150,7 +201,10 @@ def test_untyped_dict():
         # dict_msgpack_bytes = msgpack.dumps(dict_input)
         dict_msgpack_bytes = MessagePackEncoder(dict).encode(dict_input)
         lv = Literal(
-            scalar=Scalar(binary=Binary(value=dict_msgpack_bytes, tag="msgpack"))
+            scalar=Scalar(
+                binary=Binary(
+                    value=dict_msgpack_bytes,
+                    tag="msgpack"))
         )
         dict_output = TypeEngine.to_python_value(ctx, lv, dict)
         assert dict_input == dict_output
@@ -163,7 +217,10 @@ def test_list_transformer():
     encoder = MessagePackEncoder(List[int])
     list_int_msgpack_bytes = encoder.encode(list_int_input)
     lv = Literal(
-        scalar=Scalar(binary=Binary(value=list_int_msgpack_bytes, tag="msgpack"))
+        scalar=Scalar(
+            binary=Binary(
+                value=list_int_msgpack_bytes,
+                tag="msgpack"))
     )
     list_int_output = TypeEngine.to_python_value(ctx, lv, List[int])
     assert list_int_input == list_int_output
@@ -172,7 +229,10 @@ def test_list_transformer():
     encoder = MessagePackEncoder(List[float])
     list_float_msgpack_bytes = encoder.encode(list_float_input)
     lv = Literal(
-        scalar=Scalar(binary=Binary(value=list_float_msgpack_bytes, tag="msgpack"))
+        scalar=Scalar(
+            binary=Binary(
+                value=list_float_msgpack_bytes,
+                tag="msgpack"))
     )
     list_float_output = TypeEngine.to_python_value(ctx, lv, List[float])
     assert list_float_input == list_float_output
@@ -181,7 +241,10 @@ def test_list_transformer():
     encoder = MessagePackEncoder(List[str])
     list_str_msgpack_bytes = encoder.encode(list_str_input)
     lv = Literal(
-        scalar=Scalar(binary=Binary(value=list_str_msgpack_bytes, tag="msgpack"))
+        scalar=Scalar(
+            binary=Binary(
+                value=list_str_msgpack_bytes,
+                tag="msgpack"))
     )
     list_str_output = TypeEngine.to_python_value(ctx, lv, List[str])
     assert list_str_input == list_str_output
@@ -190,7 +253,10 @@ def test_list_transformer():
     encoder = MessagePackEncoder(List[bool])
     list_bool_msgpack_bytes = encoder.encode(list_bool_input)
     lv = Literal(
-        scalar=Scalar(binary=Binary(value=list_bool_msgpack_bytes, tag="msgpack"))
+        scalar=Scalar(
+            binary=Binary(
+                value=list_bool_msgpack_bytes,
+                tag="msgpack"))
     )
     list_bool_output = TypeEngine.to_python_value(ctx, lv, List[bool])
     assert list_bool_input == list_bool_output
@@ -199,7 +265,10 @@ def test_list_transformer():
     encoder = MessagePackEncoder(List[List[int]])
     list_list_int_msgpack_bytes = encoder.encode(list_list_int_input)
     lv = Literal(
-        scalar=Scalar(binary=Binary(value=list_list_int_msgpack_bytes, tag="msgpack"))
+        scalar=Scalar(
+            binary=Binary(
+                value=list_list_int_msgpack_bytes,
+                tag="msgpack"))
     )
     list_list_int_output = TypeEngine.to_python_value(ctx, lv, List[List[int]])
     assert list_list_int_input == list_list_int_output
@@ -208,16 +277,23 @@ def test_list_transformer():
     encoder = MessagePackEncoder(List[List[float]])
     list_list_float_msgpack_bytes = encoder.encode(list_list_float_input)
     lv = Literal(
-        scalar=Scalar(binary=Binary(value=list_list_float_msgpack_bytes, tag="msgpack"))
+        scalar=Scalar(
+            binary=Binary(
+                value=list_list_float_msgpack_bytes,
+                tag="msgpack"))
     )
-    list_list_float_output = TypeEngine.to_python_value(ctx, lv, List[List[float]])
+    list_list_float_output = TypeEngine.to_python_value(
+        ctx, lv, List[List[float]])
     assert list_list_float_input == list_list_float_output
 
     list_list_str_input = [["a", "b"], ["c", "d"]]
     encoder = MessagePackEncoder(List[List[str]])
     list_list_str_msgpack_bytes = encoder.encode(list_list_str_input)
     lv = Literal(
-        scalar=Scalar(binary=Binary(value=list_list_str_msgpack_bytes, tag="msgpack"))
+        scalar=Scalar(
+            binary=Binary(
+                value=list_list_str_msgpack_bytes,
+                tag="msgpack"))
     )
     list_list_str_output = TypeEngine.to_python_value(ctx, lv, List[List[str]])
     assert list_list_str_input == list_list_str_output
@@ -226,9 +302,13 @@ def test_list_transformer():
     encoder = MessagePackEncoder(List[List[bool]])
     list_list_bool_msgpack_bytes = encoder.encode(list_list_bool_input)
     lv = Literal(
-        scalar=Scalar(binary=Binary(value=list_list_bool_msgpack_bytes, tag="msgpack"))
+        scalar=Scalar(
+            binary=Binary(
+                value=list_list_bool_msgpack_bytes,
+                tag="msgpack"))
     )
-    list_list_bool_output = TypeEngine.to_python_value(ctx, lv, List[List[bool]])
+    list_list_bool_output = TypeEngine.to_python_value(
+        ctx, lv, List[List[bool]])
     assert list_list_bool_input == list_list_bool_output
 
     list_dict_str_int_input = [{"key1": -1, "key2": 2}]
@@ -239,15 +319,19 @@ def test_list_transformer():
             binary=Binary(value=list_dict_str_int_msgpack_bytes, tag="msgpack")
         )
     )
-    list_dict_str_int_output = TypeEngine.to_python_value(ctx, lv, List[Dict[str, int]])
+    list_dict_str_int_output = TypeEngine.to_python_value(
+        ctx, lv, List[Dict[str, int]])
     assert list_dict_str_int_input == list_dict_str_int_output
 
     list_dict_str_float_input = [{"key1": 1.0, "key2": -2.0}]
     encoder = MessagePackEncoder(List[Dict[str, float]])
-    list_dict_str_float_msgpack_bytes = encoder.encode(list_dict_str_float_input)
+    list_dict_str_float_msgpack_bytes = encoder.encode(
+        list_dict_str_float_input)
     lv = Literal(
         scalar=Scalar(
-            binary=Binary(value=list_dict_str_float_msgpack_bytes, tag="msgpack")
+            binary=Binary(
+                value=list_dict_str_float_msgpack_bytes,
+                tag="msgpack")
         )
     )
     list_dict_str_float_output = TypeEngine.to_python_value(
@@ -263,7 +347,8 @@ def test_list_transformer():
             binary=Binary(value=list_dict_str_str_msgpack_bytes, tag="msgpack")
         )
     )
-    list_dict_str_str_output = TypeEngine.to_python_value(ctx, lv, List[Dict[str, str]])
+    list_dict_str_str_output = TypeEngine.to_python_value(
+        ctx, lv, List[Dict[str, str]])
     assert list_dict_str_str_input == list_dict_str_str_output
 
     list_dict_str_bool_input = [{"key1": True, "key2": False}]
@@ -271,7 +356,9 @@ def test_list_transformer():
     list_dict_str_bool_msgpack_bytes = encoder.encode(list_dict_str_bool_input)
     lv = Literal(
         scalar=Scalar(
-            binary=Binary(value=list_dict_str_bool_msgpack_bytes, tag="msgpack")
+            binary=Binary(
+                value=list_dict_str_bool_msgpack_bytes,
+                tag="msgpack")
         )
     )
     list_dict_str_bool_output = TypeEngine.to_python_value(
@@ -293,8 +380,10 @@ def test_list_transformer():
         h: Dict[int, bool] = field(
             default_factory=lambda: {0: False, 1: True, -1: False}
         )
-        i: Dict[int, List[int]] = field(default_factory=lambda: {0: [0, 1, -1]})
-        j: Dict[int, Dict[int, int]] = field(default_factory=lambda: {1: {-1: 0}})
+        i: Dict[int, List[int]] = field(
+            default_factory=lambda: {0: [0, 1, -1]})
+        j: Dict[int, Dict[int, int]] = field(
+            default_factory=lambda: {1: {-1: 0}})
         k: dict = field(default_factory=lambda: {"key": "value"})
         enum_status: Status = field(default=Status.PENDING)
 
@@ -312,18 +401,24 @@ def test_list_transformer():
         h: Dict[int, bool] = field(
             default_factory=lambda: {0: False, 1: True, -1: False}
         )
-        i: Dict[int, List[int]] = field(default_factory=lambda: {0: [0, 1, -1]})
-        j: Dict[int, Dict[int, int]] = field(default_factory=lambda: {1: {-1: 0}})
+        i: Dict[int, List[int]] = field(
+            default_factory=lambda: {0: [0, 1, -1]})
+        j: Dict[int, Dict[int, int]] = field(
+            default_factory=lambda: {1: {-1: 0}})
         k: dict = field(default_factory=lambda: {"key": "value"})
         inner_dc: InnerDC = field(default_factory=lambda: InnerDC())
         enum_status: Status = field(default=Status.PENDING)
 
-    list_dict_int_inner_dc_input = [{1: InnerDC(), -1: InnerDC(), 0: InnerDC()}]
+    list_dict_int_inner_dc_input = [
+        {1: InnerDC(), -1: InnerDC(), 0: InnerDC()}]
     encoder = MessagePackEncoder(List[Dict[int, InnerDC]])
-    list_dict_int_inner_dc_msgpack_bytes = encoder.encode(list_dict_int_inner_dc_input)
+    list_dict_int_inner_dc_msgpack_bytes = encoder.encode(
+        list_dict_int_inner_dc_input)
     lv = Literal(
         scalar=Scalar(
-            binary=Binary(value=list_dict_int_inner_dc_msgpack_bytes, tag="msgpack")
+            binary=Binary(
+                value=list_dict_int_inner_dc_msgpack_bytes,
+                tag="msgpack")
         )
     )
     list_dict_int_inner_dc_output = TypeEngine.to_python_value(
@@ -339,7 +434,8 @@ def test_list_transformer():
             binary=Binary(value=list_dict_int_dc_msgpack_bytes, tag="msgpack")
         )
     )
-    list_dict_int_dc_output = TypeEngine.to_python_value(ctx, lv, List[Dict[int, DC]])
+    list_dict_int_dc_output = TypeEngine.to_python_value(
+        ctx, lv, List[Dict[int, DC]])
     assert list_dict_int_dc_input == list_dict_int_dc_output
 
     list_list_inner_dc_input = [[InnerDC(), InnerDC(), InnerDC()]]
@@ -347,17 +443,23 @@ def test_list_transformer():
     list_list_inner_dc_msgpack_bytes = encoder.encode(list_list_inner_dc_input)
     lv = Literal(
         scalar=Scalar(
-            binary=Binary(value=list_list_inner_dc_msgpack_bytes, tag="msgpack")
+            binary=Binary(
+                value=list_list_inner_dc_msgpack_bytes,
+                tag="msgpack")
         )
     )
-    list_list_inner_dc_output = TypeEngine.to_python_value(ctx, lv, List[List[InnerDC]])
+    list_list_inner_dc_output = TypeEngine.to_python_value(
+        ctx, lv, List[List[InnerDC]])
     assert list_list_inner_dc_input == list_list_inner_dc_output
 
     list_list_dc_input = [[DC(), DC(), DC()]]
     encoder = MessagePackEncoder(List[List[DC]])
     list_list_dc_msgpack_bytes = encoder.encode(list_list_dc_input)
     lv = Literal(
-        scalar=Scalar(binary=Binary(value=list_list_dc_msgpack_bytes, tag="msgpack"))
+        scalar=Scalar(
+            binary=Binary(
+                value=list_list_dc_msgpack_bytes,
+                tag="msgpack"))
     )
     list_list_dc_output = TypeEngine.to_python_value(ctx, lv, List[List[DC]])
     assert list_list_dc_input == list_list_dc_output
@@ -369,72 +471,124 @@ def test_dict_transformer(local_dummy_file, local_dummy_directory):
     dict_str_int_input = {"key1": 1, "key2": -2}
     encoder = MessagePackEncoder(Dict[str, int])
     dict_str_int_msgpack_bytes = encoder.encode(dict_str_int_input)
-    lv = Literal(scalar=Scalar(binary=Binary(value=dict_str_int_msgpack_bytes, tag="msgpack")))
+    lv = Literal(
+        scalar=Scalar(
+            binary=Binary(
+                value=dict_str_int_msgpack_bytes,
+                tag="msgpack")))
     dict_str_int_output = TypeEngine.to_python_value(ctx, lv, Dict[str, int])
     assert dict_str_int_input == dict_str_int_output
 
     dict_str_float_input = {"key1": 1.0, "key2": -2.0}
     encoder = MessagePackEncoder(Dict[str, float])
     dict_str_float_msgpack_bytes = encoder.encode(dict_str_float_input)
-    lv = Literal(scalar=Scalar(binary=Binary(value=dict_str_float_msgpack_bytes, tag="msgpack")))
-    dict_str_float_output = TypeEngine.to_python_value(ctx, lv, Dict[str, float])
+    lv = Literal(
+        scalar=Scalar(
+            binary=Binary(
+                value=dict_str_float_msgpack_bytes,
+                tag="msgpack")))
+    dict_str_float_output = TypeEngine.to_python_value(
+        ctx, lv, Dict[str, float])
     assert dict_str_float_input == dict_str_float_output
 
     dict_str_str_input = {"key1": "a", "key2": "b"}
     encoder = MessagePackEncoder(Dict[str, str])
     dict_str_str_msgpack_bytes = encoder.encode(dict_str_str_input)
-    lv = Literal(scalar=Scalar(binary=Binary(value=dict_str_str_msgpack_bytes, tag="msgpack")))
+    lv = Literal(
+        scalar=Scalar(
+            binary=Binary(
+                value=dict_str_str_msgpack_bytes,
+                tag="msgpack")))
     dict_str_str_output = TypeEngine.to_python_value(ctx, lv, Dict[str, str])
     assert dict_str_str_input == dict_str_str_output
 
     dict_str_bool_input = {"key1": True, "key2": False}
     encoder = MessagePackEncoder(Dict[str, bool])
     dict_str_bool_msgpack_bytes = encoder.encode(dict_str_bool_input)
-    lv = Literal(scalar=Scalar(binary=Binary(value=dict_str_bool_msgpack_bytes, tag="msgpack")))
+    lv = Literal(
+        scalar=Scalar(
+            binary=Binary(
+                value=dict_str_bool_msgpack_bytes,
+                tag="msgpack")))
     dict_str_bool_output = TypeEngine.to_python_value(ctx, lv, Dict[str, bool])
     assert dict_str_bool_input == dict_str_bool_output
 
     dict_str_list_int_input = {"key1": [1, -2, 3]}
     encoder = MessagePackEncoder(Dict[str, List[int]])
     dict_str_list_int_msgpack_bytes = encoder.encode(dict_str_list_int_input)
-    lv = Literal(scalar=Scalar(binary=Binary(value=dict_str_list_int_msgpack_bytes, tag="msgpack")))
-    dict_str_list_int_output = TypeEngine.to_python_value(ctx, lv, Dict[str, List[int]])
+    lv = Literal(
+        scalar=Scalar(
+            binary=Binary(
+                value=dict_str_list_int_msgpack_bytes,
+                tag="msgpack")))
+    dict_str_list_int_output = TypeEngine.to_python_value(
+        ctx, lv, Dict[str, List[int]])
     assert dict_str_list_int_input == dict_str_list_int_output
 
     dict_str_dict_str_int_input = {"key1": {"subkey1": 1, "subkey2": -2}}
     encoder = MessagePackEncoder(Dict[str, Dict[str, int]])
-    dict_str_dict_str_int_msgpack_bytes = encoder.encode(dict_str_dict_str_int_input)
-    lv = Literal(scalar=Scalar(binary=Binary(value=dict_str_dict_str_int_msgpack_bytes, tag="msgpack")))
-    dict_str_dict_str_int_output = TypeEngine.to_python_value(ctx, lv, Dict[str, Dict[str, int]])
+    dict_str_dict_str_int_msgpack_bytes = encoder.encode(
+        dict_str_dict_str_int_input)
+    lv = Literal(
+        scalar=Scalar(
+            binary=Binary(
+                value=dict_str_dict_str_int_msgpack_bytes,
+                tag="msgpack")))
+    dict_str_dict_str_int_output = TypeEngine.to_python_value(
+        ctx, lv, Dict[str, Dict[str, int]])
     assert dict_str_dict_str_int_input == dict_str_dict_str_int_output
 
-    dict_str_dict_str_list_int_input = {"key1": {"subkey1": [1, -2], "subkey2": [-3, 4]}}
+    dict_str_dict_str_list_int_input = {
+        "key1": {"subkey1": [1, -2], "subkey2": [-3, 4]}}
     encoder = MessagePackEncoder(Dict[str, Dict[str, List[int]]])
-    dict_str_dict_str_list_int_msgpack_bytes = encoder.encode(dict_str_dict_str_list_int_input)
-    lv = Literal(scalar=Scalar(binary=Binary(value=dict_str_dict_str_list_int_msgpack_bytes, tag="msgpack")))
-    dict_str_dict_str_list_int_output = TypeEngine.to_python_value(ctx, lv, Dict[str, Dict[str, List[int]]])
+    dict_str_dict_str_list_int_msgpack_bytes = encoder.encode(
+        dict_str_dict_str_list_int_input)
+    lv = Literal(
+        scalar=Scalar(
+            binary=Binary(
+                value=dict_str_dict_str_list_int_msgpack_bytes,
+                tag="msgpack")))
+    dict_str_dict_str_list_int_output = TypeEngine.to_python_value(
+        ctx, lv, Dict[str, Dict[str, List[int]]])
     assert dict_str_dict_str_list_int_input == dict_str_dict_str_list_int_output
 
-    dict_str_list_dict_str_int_input = {"key1": [{"subkey1": -1}, {"subkey2": 2}]}
+    dict_str_list_dict_str_int_input = {
+        "key1": [{"subkey1": -1}, {"subkey2": 2}]}
     encoder = MessagePackEncoder(Dict[str, List[Dict[str, int]]])
-    dict_str_list_dict_str_int_msgpack_bytes = encoder.encode(dict_str_list_dict_str_int_input)
-    lv = Literal(scalar=Scalar(binary=Binary(value=dict_str_list_dict_str_int_msgpack_bytes, tag="msgpack")))
-    dict_str_list_dict_str_int_output = TypeEngine.to_python_value(ctx, lv, Dict[str, List[Dict[str, int]]])
+    dict_str_list_dict_str_int_msgpack_bytes = encoder.encode(
+        dict_str_list_dict_str_int_input)
+    lv = Literal(
+        scalar=Scalar(
+            binary=Binary(
+                value=dict_str_list_dict_str_int_msgpack_bytes,
+                tag="msgpack")))
+    dict_str_list_dict_str_int_output = TypeEngine.to_python_value(
+        ctx, lv, Dict[str, List[Dict[str, int]]])
     assert dict_str_list_dict_str_int_input == dict_str_list_dict_str_int_output
 
     # non-strict types
     dict_int_str_input = {1: "a", -2: "b"}
     encoder = MessagePackEncoder(dict)
     dict_int_str_msgpack_bytes = encoder.encode(dict_int_str_input)
-    lv = Literal(scalar=Scalar(binary=Binary(value=dict_int_str_msgpack_bytes, tag="msgpack")))
+    lv = Literal(
+        scalar=Scalar(
+            binary=Binary(
+                value=dict_int_str_msgpack_bytes,
+                tag="msgpack")))
     dict_int_str_output = TypeEngine.to_python_value(ctx, lv, dict)
     assert dict_int_str_input == dict_int_str_output
 
     dict_int_dict_int_list_int_input = {1: {-2: [1, -2]}, -3: {4: [-3, 4]}}
     encoder = MessagePackEncoder(Dict[int, Dict[int, List[int]]])
-    dict_int_dict_int_list_int_msgpack_bytes = encoder.encode(dict_int_dict_int_list_int_input)
-    lv = Literal(scalar=Scalar(binary=Binary(value=dict_int_dict_int_list_int_msgpack_bytes, tag="msgpack")))
-    dict_int_dict_int_list_int_output = TypeEngine.to_python_value(ctx, lv, Dict[int, Dict[int, List[int]]])
+    dict_int_dict_int_list_int_msgpack_bytes = encoder.encode(
+        dict_int_dict_int_list_int_input)
+    lv = Literal(
+        scalar=Scalar(
+            binary=Binary(
+                value=dict_int_dict_int_list_int_msgpack_bytes,
+                tag="msgpack")))
+    dict_int_dict_int_list_int_output = TypeEngine.to_python_value(
+        ctx, lv, Dict[int, Dict[int, List[int]]])
     assert dict_int_dict_int_list_int_input == dict_int_dict_int_list_int_output
 
     @dataclass
@@ -451,8 +605,10 @@ def test_dict_transformer(local_dummy_file, local_dummy_directory):
         h: Dict[int, bool] = field(
             default_factory=lambda: {0: False, 1: True, -1: False}
         )
-        i: Dict[int, List[int]] = field(default_factory=lambda: {0: [0, 1, -1]})
-        j: Dict[int, Dict[int, int]] = field(default_factory=lambda: {1: {-1: 0}})
+        i: Dict[int, List[int]] = field(
+            default_factory=lambda: {0: [0, 1, -1]})
+        j: Dict[int, Dict[int, int]] = field(
+            default_factory=lambda: {1: {-1: 0}})
         k: dict = field(default_factory=lambda: {"key": "value"})
         enum_status: Status = field(default=Status.PENDING)
 
@@ -470,8 +626,10 @@ def test_dict_transformer(local_dummy_file, local_dummy_directory):
         h: Dict[int, bool] = field(
             default_factory=lambda: {0: False, 1: True, -1: False}
         )
-        i: Dict[int, List[int]] = field(default_factory=lambda: {0: [0, 1, -1]})
-        j: Dict[int, Dict[int, int]] = field(default_factory=lambda: {1: {-1: 0}})
+        i: Dict[int, List[int]] = field(
+            default_factory=lambda: {0: [0, 1, -1]})
+        j: Dict[int, Dict[int, int]] = field(
+            default_factory=lambda: {1: {-1: 0}})
         k: dict = field(default_factory=lambda: {"key": "value"})
         inner_dc: InnerDC = field(default_factory=lambda: InnerDC())
         enum_status: Status = field(default=Status.PENDING)
@@ -484,14 +642,18 @@ def test_dict_transformer(local_dummy_file, local_dummy_directory):
             binary=Binary(value=dict_int_inner_dc_msgpack_bytes, tag="msgpack")
         )
     )
-    dict_int_inner_dc_output = TypeEngine.to_python_value(ctx, lv, Dict[int, InnerDC])
+    dict_int_inner_dc_output = TypeEngine.to_python_value(
+        ctx, lv, Dict[int, InnerDC])
     assert dict_int_inner_dc_input == dict_int_inner_dc_output
 
     dict_int_dc = {1: DC(), -2: DC(), 0: DC()}
     encoder = MessagePackEncoder(Dict[int, DC])
     dict_int_dc_msgpack_bytes = encoder.encode(dict_int_dc)
     lv = Literal(
-        scalar=Scalar(binary=Binary(value=dict_int_dc_msgpack_bytes, tag="msgpack"))
+        scalar=Scalar(
+            binary=Binary(
+                value=dict_int_dc_msgpack_bytes,
+                tag="msgpack"))
     )
     dict_int_dc_output = TypeEngine.to_python_value(ctx, lv, Dict[int, DC])
     assert dict_int_dc == dict_int_dc_output
@@ -522,12 +684,17 @@ def local_dummy_directory():
 def test_flytetypes_in_dataclass_wf(local_dummy_file, local_dummy_directory):
     @dataclass
     class InnerDC:
-        flytefile: FlyteFile = field(default_factory=lambda: FlyteFile(local_dummy_file))
-        flytedir: FlyteDirectory = field(default_factory=lambda: FlyteDirectory(local_dummy_directory))
+        flytefile: FlyteFile = field(
+            default_factory=lambda: FlyteFile(local_dummy_file))
+        flytedir: FlyteDirectory = field(
+            default_factory=lambda: FlyteDirectory(local_dummy_directory))
+
     @dataclass
     class DC:
-        flytefile: FlyteFile = field(default_factory=lambda: FlyteFile(local_dummy_file))
-        flytedir: FlyteDirectory = field(default_factory=lambda: FlyteDirectory(local_dummy_directory))
+        flytefile: FlyteFile = field(
+            default_factory=lambda: FlyteFile(local_dummy_file))
+        flytedir: FlyteDirectory = field(
+            default_factory=lambda: FlyteDirectory(local_dummy_directory))
         inner_dc: InnerDC = field(default_factory=lambda: InnerDC())
 
     @task
@@ -559,6 +726,7 @@ def test_flytetypes_in_dataclass_wf(local_dummy_file, local_dummy_directory):
     with open(os.path.join(o4, "file"), "r") as fh:
         assert fh.read() == "Hello FlyteDirectory"
 
+
 def test_all_types_in_dataclass_wf(local_dummy_file, local_dummy_directory):
     @dataclass
     class InnerDC:
@@ -567,18 +735,26 @@ def test_all_types_in_dataclass_wf(local_dummy_file, local_dummy_directory):
         c: str = "Hello, Flyte"
         d: bool = False
         e: List[int] = field(default_factory=lambda: [0, 1, 2, -1, -2])
-        f: List[FlyteFile] = field(default_factory=lambda: [FlyteFile(local_dummy_file)])
+        f: List[FlyteFile] = field(
+            default_factory=lambda: [
+                FlyteFile(local_dummy_file)])
         g: List[List[int]] = field(default_factory=lambda: [[0], [1], [-1]])
-        h: List[Dict[int, bool]] = field(default_factory=lambda: [{0: False}, {1: True}, {-1: True}])
-        i: Dict[int, bool] = field(default_factory=lambda: {0: False, 1: True, -1: False})
+        h: List[Dict[int, bool]] = field(default_factory=lambda: [
+                                         {0: False}, {1: True}, {-1: True}])
+        i: Dict[int, bool] = field(default_factory=lambda: {
+                                   0: False, 1: True, -1: False})
         j: Dict[int, FlyteFile] = field(default_factory=lambda: {0: FlyteFile(local_dummy_file),
                                                                  1: FlyteFile(local_dummy_file),
                                                                  -1: FlyteFile(local_dummy_file)})
-        k: Dict[int, List[int]] = field(default_factory=lambda: {0: [0, 1, -1]})
-        l: Dict[int, Dict[int, int]] = field(default_factory=lambda: {1: {-1: 0}})
+        k: Dict[int, List[int]] = field(
+            default_factory=lambda: {0: [0, 1, -1]})
+        l: Dict[int, Dict[int, int]] = field(
+            default_factory=lambda: {1: {-1: 0}})
         m: dict = field(default_factory=lambda: {"key": "value"})
-        n: FlyteFile = field(default_factory=lambda: FlyteFile(local_dummy_file))
-        o: FlyteDirectory = field(default_factory=lambda: FlyteDirectory(local_dummy_directory))
+        n: FlyteFile = field(
+            default_factory=lambda: FlyteFile(local_dummy_file))
+        o: FlyteDirectory = field(
+            default_factory=lambda: FlyteDirectory(local_dummy_directory))
         enum_status: Status = field(default=Status.PENDING)
 
     @dataclass
@@ -588,18 +764,26 @@ def test_all_types_in_dataclass_wf(local_dummy_file, local_dummy_directory):
         c: str = "Hello, Flyte"
         d: bool = False
         e: List[int] = field(default_factory=lambda: [0, 1, 2, -1, -2])
-        f: List[FlyteFile] = field(default_factory=lambda: [FlyteFile(local_dummy_file), ])
+        f: List[FlyteFile] = field(
+            default_factory=lambda: [
+                FlyteFile(local_dummy_file), ])
         g: List[List[int]] = field(default_factory=lambda: [[0], [1], [-1]])
-        h: List[Dict[int, bool]] = field(default_factory=lambda: [{0: False}, {1: True}, {-1: True}])
-        i: Dict[int, bool] = field(default_factory=lambda: {0: False, 1: True, -1: False})
+        h: List[Dict[int, bool]] = field(default_factory=lambda: [
+                                         {0: False}, {1: True}, {-1: True}])
+        i: Dict[int, bool] = field(default_factory=lambda: {
+                                   0: False, 1: True, -1: False})
         j: Dict[int, FlyteFile] = field(default_factory=lambda: {0: FlyteFile(local_dummy_file),
                                                                  1: FlyteFile(local_dummy_file),
                                                                  -1: FlyteFile(local_dummy_file)})
-        k: Dict[int, List[int]] = field(default_factory=lambda: {0: [0, 1, -1]})
-        l: Dict[int, Dict[int, int]] = field(default_factory=lambda: {1: {-1: 0}})
+        k: Dict[int, List[int]] = field(
+            default_factory=lambda: {0: [0, 1, -1]})
+        l: Dict[int, Dict[int, int]] = field(
+            default_factory=lambda: {1: {-1: 0}})
         m: dict = field(default_factory=lambda: {"key": "value"})
-        n: FlyteFile = field(default_factory=lambda: FlyteFile(local_dummy_file))
-        o: FlyteDirectory = field(default_factory=lambda: FlyteDirectory(local_dummy_directory))
+        n: FlyteFile = field(
+            default_factory=lambda: FlyteFile(local_dummy_file))
+        o: FlyteDirectory = field(
+            default_factory=lambda: FlyteDirectory(local_dummy_directory))
         inner_dc: InnerDC = field(default_factory=lambda: InnerDC())
         enum_status: Status = field(default=Status.PENDING)
 
@@ -631,7 +815,6 @@ def test_all_types_in_dataclass_wf(local_dummy_file, local_dummy_directory):
         # enum: Status
         assert inner_dc.enum_status == Status.PENDING
 
-
     @task
     def t_test_all_attributes(a: int, b: float, c: str, d: bool, e: List[int], f: List[FlyteFile], g: List[List[int]],
                               h: List[Dict[int, bool]], i: Dict[int, bool], j: Dict[int, FlyteFile],
@@ -645,10 +828,12 @@ def test_all_types_in_dataclass_wf(local_dummy_file, local_dummy_directory):
         assert isinstance(d, bool), f"d is not bool, it's {type(d)}"
 
         # Strict type checks for List[int]
-        assert isinstance(e, list) and all(isinstance(i, int) for i in e), "e is not List[int]"
+        assert isinstance(e, list) and all(isinstance(i, int)
+                                           for i in e), "e is not List[int]"
 
         # Strict type checks for List[FlyteFile]
-        assert isinstance(f, list) and all(isinstance(i, FlyteFile) for i in f), "f is not List[FlyteFile]"
+        assert isinstance(f, list) and all(isinstance(i, FlyteFile)
+                                           for i in f), "f is not List[FlyteFile]"
 
         # Strict type checks for List[List[int]]
         assert isinstance(g, list) and all(
@@ -707,9 +892,12 @@ def test_all_types_in_dataclass_wf(local_dummy_file, local_dummy_directory):
 
     wf(dc=DC())
 
-def test_backward_compatible_with_dataclass_in_protobuf_struct(local_dummy_file, local_dummy_directory):
+
+def test_backward_compatible_with_dataclass_in_protobuf_struct(
+        local_dummy_file, local_dummy_directory):
     # Flyte Console will send the input data as protobuf Struct
-    # This test also test how Flyte Console with attribute access on the Struct object
+    # This test also test how Flyte Console with attribute access on the
+    # Struct object
 
     @dataclass
     class InnerDC:
@@ -718,18 +906,26 @@ def test_backward_compatible_with_dataclass_in_protobuf_struct(local_dummy_file,
         c: str = "Hello, Flyte"
         d: bool = False
         e: List[int] = field(default_factory=lambda: [0, 1, 2, -1, -2])
-        f: List[FlyteFile] = field(default_factory=lambda: [FlyteFile(local_dummy_file)])
+        f: List[FlyteFile] = field(
+            default_factory=lambda: [
+                FlyteFile(local_dummy_file)])
         g: List[List[int]] = field(default_factory=lambda: [[0], [1], [-1]])
-        h: List[Dict[int, bool]] = field(default_factory=lambda: [{0: False}, {1: True}, {-1: True}])
-        i: Dict[int, bool] = field(default_factory=lambda: {0: False, 1: True, -1: False})
+        h: List[Dict[int, bool]] = field(default_factory=lambda: [
+                                         {0: False}, {1: True}, {-1: True}])
+        i: Dict[int, bool] = field(default_factory=lambda: {
+                                   0: False, 1: True, -1: False})
         j: Dict[int, FlyteFile] = field(default_factory=lambda: {0: FlyteFile(local_dummy_file),
                                                                  1: FlyteFile(local_dummy_file),
                                                                  -1: FlyteFile(local_dummy_file)})
-        k: Dict[int, List[int]] = field(default_factory=lambda: {0: [0, 1, -1]})
-        l: Dict[int, Dict[int, int]] = field(default_factory=lambda: {1: {-1: 0}})
+        k: Dict[int, List[int]] = field(
+            default_factory=lambda: {0: [0, 1, -1]})
+        l: Dict[int, Dict[int, int]] = field(
+            default_factory=lambda: {1: {-1: 0}})
         m: dict = field(default_factory=lambda: {"key": "value"})
-        n: FlyteFile = field(default_factory=lambda: FlyteFile(local_dummy_file))
-        o: FlyteDirectory = field(default_factory=lambda: FlyteDirectory(local_dummy_directory))
+        n: FlyteFile = field(
+            default_factory=lambda: FlyteFile(local_dummy_file))
+        o: FlyteDirectory = field(
+            default_factory=lambda: FlyteDirectory(local_dummy_directory))
         enum_status: Status = field(default=Status.PENDING)
 
     @dataclass
@@ -739,18 +935,26 @@ def test_backward_compatible_with_dataclass_in_protobuf_struct(local_dummy_file,
         c: str = "Hello, Flyte"
         d: bool = False
         e: List[int] = field(default_factory=lambda: [0, 1, 2, -1, -2])
-        f: List[FlyteFile] = field(default_factory=lambda: [FlyteFile(local_dummy_file), ])
+        f: List[FlyteFile] = field(
+            default_factory=lambda: [
+                FlyteFile(local_dummy_file), ])
         g: List[List[int]] = field(default_factory=lambda: [[0], [1], [-1]])
-        h: List[Dict[int, bool]] = field(default_factory=lambda: [{0: False}, {1: True}, {-1: True}])
-        i: Dict[int, bool] = field(default_factory=lambda: {0: False, 1: True, -1: False})
+        h: List[Dict[int, bool]] = field(default_factory=lambda: [
+                                         {0: False}, {1: True}, {-1: True}])
+        i: Dict[int, bool] = field(default_factory=lambda: {
+                                   0: False, 1: True, -1: False})
         j: Dict[int, FlyteFile] = field(default_factory=lambda: {0: FlyteFile(local_dummy_file),
                                                                  1: FlyteFile(local_dummy_file),
                                                                  -1: FlyteFile(local_dummy_file)})
-        k: Dict[int, List[int]] = field(default_factory=lambda: {0: [0, 1, -1]})
-        l: Dict[int, Dict[int, int]] = field(default_factory=lambda: {1: {-1: 0}})
+        k: Dict[int, List[int]] = field(
+            default_factory=lambda: {0: [0, 1, -1]})
+        l: Dict[int, Dict[int, int]] = field(
+            default_factory=lambda: {1: {-1: 0}})
         m: dict = field(default_factory=lambda: {"key": "value"})
-        n: FlyteFile = field(default_factory=lambda: FlyteFile(local_dummy_file))
-        o: FlyteDirectory = field(default_factory=lambda: FlyteDirectory(local_dummy_directory))
+        n: FlyteFile = field(
+            default_factory=lambda: FlyteFile(local_dummy_file))
+        o: FlyteDirectory = field(
+            default_factory=lambda: FlyteDirectory(local_dummy_directory))
         inner_dc: InnerDC = field(default_factory=lambda: InnerDC())
         enum_status: Status = field(default=Status.PENDING)
 
@@ -793,10 +997,12 @@ def test_backward_compatible_with_dataclass_in_protobuf_struct(local_dummy_file,
         assert isinstance(d, bool), f"d is not bool, it's {type(d)}"
 
         # Strict type checks for List[int]
-        assert isinstance(e, list) and all(isinstance(i, int) for i in e), "e is not List[int]"
+        assert isinstance(e, list) and all(isinstance(i, int)
+                                           for i in e), "e is not List[int]"
 
         # Strict type checks for List[FlyteFile]
-        assert isinstance(f, list) and all(isinstance(i, FlyteFile) for i in f), "f is not List[FlyteFile]"
+        assert isinstance(f, list) and all(isinstance(i, FlyteFile)
+                                           for i in f), "f is not List[FlyteFile]"
 
         # Strict type checks for List[List[int]]
         assert isinstance(g, list) and all(
@@ -843,9 +1049,14 @@ def test_backward_compatible_with_dataclass_in_protobuf_struct(local_dummy_file,
     dc = DC()
     DataclassTransformer()._make_dataclass_serializable(python_val=dc, python_type=DC)
     json_str = JSONEncoder(DC).encode(dc)
-    upstream_output = Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))
+    upstream_output = Literal(
+        scalar=Scalar(
+            generic=_json_format.Parse(
+                json_str,
+                _struct.Struct())))
 
-    downstream_input = TypeEngine.to_python_value(FlyteContextManager.current_context(), upstream_output, DC)
+    downstream_input = TypeEngine.to_python_value(
+        FlyteContextManager.current_context(), upstream_output, DC)
     t_inner(downstream_input.inner_dc)
     t_test_all_attributes(a=downstream_input.a, b=downstream_input.b, c=downstream_input.c,
                           d=downstream_input.d, e=downstream_input.e, f=downstream_input.f,
@@ -860,10 +1071,11 @@ def test_backward_compatible_with_dataclass_in_protobuf_struct(local_dummy_file,
                           m=downstream_input.inner_dc.m, n=downstream_input.inner_dc.n, o=downstream_input.inner_dc.o,
                           enum_status=downstream_input.inner_dc.enum_status)
 
+
 def test_backward_compatible_with_untyped_dict_in_protobuf_struct():
     # This is the old dataclass serialization behavior.
     # https://github.com/flyteorg/flytekit/blob/94786cfd4a5c2c3b23ac29dcd6f04d0553fa1beb/flytekit/core/type_engine.py#L1699-L1720
-    dict_input = {"a" : 1.0, "b": "str",
+    dict_input = {"a": 1.0, "b": "str",
                   "c": False, "d": True,
                   "e": [1.0, 2.0, -1.0, 0.0],
                   "f": {"a": {"b": [1.0, -1.0]}}}
@@ -871,10 +1083,13 @@ def test_backward_compatible_with_untyped_dict_in_protobuf_struct():
     upstream_output = Literal(scalar=Scalar(generic=_json_format.Parse(json.dumps(dict_input), _struct.Struct())),
                               metadata={"format": "json"})
 
-    downstream_input = TypeEngine.to_python_value(FlyteContextManager.current_context(), upstream_output, dict)
+    downstream_input = TypeEngine.to_python_value(
+        FlyteContextManager.current_context(), upstream_output, dict)
     assert dict_input == downstream_input
 
-def test_flyte_console_input_with_typed_dict_with_flyte_types_in_dataclass_in_protobuf_struct(local_dummy_file, local_dummy_directory):
+
+def test_flyte_console_input_with_typed_dict_with_flyte_types_in_dataclass_in_protobuf_struct(
+        local_dummy_file, local_dummy_directory):
     # TODO: We can add more nested cases for non-flyte types.
     """
     Handles the case where Flyte Console provides input as a protobuf struct.
@@ -902,48 +1117,97 @@ def test_flyte_console_input_with_typed_dict_with_flyte_types_in_dataclass_in_pr
     - Link: https://github.com/flyteorg/flytekit/pull/2760
     """
 
-    dict_int_flyte_file = {"1" : {"path": local_dummy_file}}
+    dict_int_flyte_file = {"1": {"path": local_dummy_file}}
     json_str = json.dumps(dict_int_flyte_file)
-    upstream_output = Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())), metadata={"format": "json"})
-    downstream_input = TypeEngine.to_python_value(FlyteContextManager.current_context(), upstream_output, Dict[int, FlyteFile])
+    upstream_output = Literal(
+        scalar=Scalar(
+            generic=_json_format.Parse(
+                json_str,
+                _struct.Struct())),
+        metadata={
+            "format": "json"})
+    downstream_input = TypeEngine.to_python_value(
+        FlyteContextManager.current_context(), upstream_output, Dict[int, FlyteFile])
     assert downstream_input == {1: FlyteFile(local_dummy_file)}
 
     # FlyteConsole trims trailing ".0" when converting float-like strings
     dict_float_flyte_file = {"1": {"path": local_dummy_file}}
     json_str = json.dumps(dict_float_flyte_file)
-    upstream_output = Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())), metadata={"format": "json"})
-    downstream_input = TypeEngine.to_python_value(FlyteContextManager.current_context(), upstream_output, Dict[float, FlyteFile])
+    upstream_output = Literal(
+        scalar=Scalar(
+            generic=_json_format.Parse(
+                json_str,
+                _struct.Struct())),
+        metadata={
+            "format": "json"})
+    downstream_input = TypeEngine.to_python_value(
+        FlyteContextManager.current_context(), upstream_output, Dict[float, FlyteFile])
     assert downstream_input == {1.0: FlyteFile(local_dummy_file)}
 
     dict_float_flyte_file = {"1.0": {"path": local_dummy_file}}
     json_str = json.dumps(dict_float_flyte_file)
-    upstream_output = Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())), metadata={"format": "json"})
-    downstream_input = TypeEngine.to_python_value(FlyteContextManager.current_context(), upstream_output, Dict[float, FlyteFile])
+    upstream_output = Literal(
+        scalar=Scalar(
+            generic=_json_format.Parse(
+                json_str,
+                _struct.Struct())),
+        metadata={
+            "format": "json"})
+    downstream_input = TypeEngine.to_python_value(
+        FlyteContextManager.current_context(), upstream_output, Dict[float, FlyteFile])
     assert downstream_input == {1.0: FlyteFile(local_dummy_file)}
 
     dict_str_flyte_file = {"1": {"path": local_dummy_file}}
     json_str = json.dumps(dict_str_flyte_file)
-    upstream_output = Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())), metadata={"format": "json"})
-    downstream_input = TypeEngine.to_python_value(FlyteContextManager.current_context(), upstream_output,  Dict[str, FlyteFile])
+    upstream_output = Literal(
+        scalar=Scalar(
+            generic=_json_format.Parse(
+                json_str,
+                _struct.Struct())),
+        metadata={
+            "format": "json"})
+    downstream_input = TypeEngine.to_python_value(
+        FlyteContextManager.current_context(), upstream_output, Dict[str, FlyteFile])
     assert downstream_input == {"1": FlyteFile(local_dummy_file)}
 
     dict_int_flyte_directory = {"1": {"path": local_dummy_directory}}
     json_str = json.dumps(dict_int_flyte_directory)
-    upstream_output = Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())), metadata={"format": "json"})
-    downstream_input = TypeEngine.to_python_value(FlyteContextManager.current_context(), upstream_output, Dict[int, FlyteDirectory])
+    upstream_output = Literal(
+        scalar=Scalar(
+            generic=_json_format.Parse(
+                json_str,
+                _struct.Struct())),
+        metadata={
+            "format": "json"})
+    downstream_input = TypeEngine.to_python_value(
+        FlyteContextManager.current_context(), upstream_output, Dict[int, FlyteDirectory])
     assert downstream_input == {1: FlyteDirectory(local_dummy_directory)}
 
     # FlyteConsole trims trailing ".0" when converting float-like strings
     dict_float_flyte_directory = {"1": {"path": local_dummy_directory}}
     json_str = json.dumps(dict_float_flyte_directory)
-    upstream_output = Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())), metadata={"format": "json"})
-    downstream_input = TypeEngine.to_python_value(FlyteContextManager.current_context(), upstream_output, Dict[float, FlyteDirectory])
+    upstream_output = Literal(
+        scalar=Scalar(
+            generic=_json_format.Parse(
+                json_str,
+                _struct.Struct())),
+        metadata={
+            "format": "json"})
+    downstream_input = TypeEngine.to_python_value(
+        FlyteContextManager.current_context(), upstream_output, Dict[float, FlyteDirectory])
     assert downstream_input == {1.0: FlyteDirectory(local_dummy_directory)}
 
     dict_float_flyte_directory = {"1.0": {"path": local_dummy_directory}}
     json_str = json.dumps(dict_float_flyte_directory)
-    upstream_output = Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())), metadata={"format": "json"})
-    downstream_input = TypeEngine.to_python_value(FlyteContextManager.current_context(), upstream_output, Dict[float, FlyteDirectory])
+    upstream_output = Literal(
+        scalar=Scalar(
+            generic=_json_format.Parse(
+                json_str,
+                _struct.Struct())),
+        metadata={
+            "format": "json"})
+    downstream_input = TypeEngine.to_python_value(
+        FlyteContextManager.current_context(), upstream_output, Dict[float, FlyteDirectory])
     assert downstream_input == {1.0: FlyteDirectory(local_dummy_directory)}
 
     dict_str_flyte_file = {"1": {"path": local_dummy_file}}
@@ -954,26 +1218,37 @@ def test_flyte_console_input_with_typed_dict_with_flyte_types_in_dataclass_in_pr
                                                   Dict[str, FlyteFile])
     assert downstream_input == {"1": FlyteFile(local_dummy_file)}
 
-def test_all_types_with_optional_in_dataclass_basemodel_wf(local_dummy_file, local_dummy_directory):
+
+def test_all_types_with_optional_in_dataclass_basemodel_wf(
+        local_dummy_file, local_dummy_directory):
     @dataclass
     class InnerDC:
         a: Optional[int] = -1
         b: Optional[float] = 2.1
         c: Optional[str] = "Hello, Flyte"
         d: Optional[bool] = False
-        e: Optional[List[int]] = field(default_factory=lambda: [0, 1, 2, -1, -2])
-        f: Optional[List[FlyteFile]] = field(default_factory=lambda: [FlyteFile(local_dummy_file)])
-        g: Optional[List[List[int]]] = field(default_factory=lambda: [[0], [1], [-1]])
-        h: Optional[List[Dict[int, bool]]] = field(default_factory=lambda: [{0: False}, {1: True}, {-1: True}])
-        i: Optional[Dict[int, bool]] = field(default_factory=lambda: {0: False, 1: True, -1: False})
+        e: Optional[List[int]] = field(
+            default_factory=lambda: [0, 1, 2, -1, -2])
+        f: Optional[List[FlyteFile]] = field(
+            default_factory=lambda: [FlyteFile(local_dummy_file)])
+        g: Optional[List[List[int]]] = field(
+            default_factory=lambda: [[0], [1], [-1]])
+        h: Optional[List[Dict[int, bool]]] = field(
+            default_factory=lambda: [{0: False}, {1: True}, {-1: True}])
+        i: Optional[Dict[int, bool]] = field(
+            default_factory=lambda: {0: False, 1: True, -1: False})
         j: Optional[Dict[int, FlyteFile]] = field(default_factory=lambda: {0: FlyteFile(local_dummy_file),
                                                                            1: FlyteFile(local_dummy_file),
                                                                            -1: FlyteFile(local_dummy_file)})
-        k: Optional[Dict[int, List[int]]] = field(default_factory=lambda: {0: [0, 1, -1]})
-        l: Optional[Dict[int, Dict[int, int]]] = field(default_factory=lambda: {1: {-1: 0}})
+        k: Optional[Dict[int, List[int]]] = field(
+            default_factory=lambda: {0: [0, 1, -1]})
+        l: Optional[Dict[int, Dict[int, int]]] = field(
+            default_factory=lambda: {1: {-1: 0}})
         m: Optional[dict] = field(default_factory=lambda: {"key": "value"})
-        n: Optional[FlyteFile] = field(default_factory=lambda: FlyteFile(local_dummy_file))
-        o: Optional[FlyteDirectory] = field(default_factory=lambda: FlyteDirectory(local_dummy_directory))
+        n: Optional[FlyteFile] = field(
+            default_factory=lambda: FlyteFile(local_dummy_file))
+        o: Optional[FlyteDirectory] = field(
+            default_factory=lambda: FlyteDirectory(local_dummy_directory))
         enum_status: Optional[Status] = field(default=Status.PENDING)
 
     @dataclass
@@ -982,19 +1257,28 @@ def test_all_types_with_optional_in_dataclass_basemodel_wf(local_dummy_file, loc
         b: Optional[float] = 2.1
         c: Optional[str] = "Hello, Flyte"
         d: Optional[bool] = False
-        e: Optional[List[int]] = field(default_factory=lambda: [0, 1, 2, -1, -2])
-        f: Optional[List[FlyteFile]] = field(default_factory=lambda: [FlyteFile(local_dummy_file)])
-        g: Optional[List[List[int]]] = field(default_factory=lambda: [[0], [1], [-1]])
-        h: Optional[List[Dict[int, bool]]] = field(default_factory=lambda: [{0: False}, {1: True}, {-1: True}])
-        i: Optional[Dict[int, bool]] = field(default_factory=lambda: {0: False, 1: True, -1: False})
+        e: Optional[List[int]] = field(
+            default_factory=lambda: [0, 1, 2, -1, -2])
+        f: Optional[List[FlyteFile]] = field(
+            default_factory=lambda: [FlyteFile(local_dummy_file)])
+        g: Optional[List[List[int]]] = field(
+            default_factory=lambda: [[0], [1], [-1]])
+        h: Optional[List[Dict[int, bool]]] = field(
+            default_factory=lambda: [{0: False}, {1: True}, {-1: True}])
+        i: Optional[Dict[int, bool]] = field(
+            default_factory=lambda: {0: False, 1: True, -1: False})
         j: Optional[Dict[int, FlyteFile]] = field(default_factory=lambda: {0: FlyteFile(local_dummy_file),
                                                                            1: FlyteFile(local_dummy_file),
                                                                            -1: FlyteFile(local_dummy_file)})
-        k: Optional[Dict[int, List[int]]] = field(default_factory=lambda: {0: [0, 1, -1]})
-        l: Optional[Dict[int, Dict[int, int]]] = field(default_factory=lambda: {1: {-1: 0}})
+        k: Optional[Dict[int, List[int]]] = field(
+            default_factory=lambda: {0: [0, 1, -1]})
+        l: Optional[Dict[int, Dict[int, int]]] = field(
+            default_factory=lambda: {1: {-1: 0}})
         m: Optional[dict] = field(default_factory=lambda: {"key": "value"})
-        n: Optional[FlyteFile] = field(default_factory=lambda: FlyteFile(local_dummy_file))
-        o: Optional[FlyteDirectory] = field(default_factory=lambda: FlyteDirectory(local_dummy_directory))
+        n: Optional[FlyteFile] = field(
+            default_factory=lambda: FlyteFile(local_dummy_file))
+        o: Optional[FlyteDirectory] = field(
+            default_factory=lambda: FlyteDirectory(local_dummy_directory))
         inner_dc: Optional[InnerDC] = field(default_factory=lambda: InnerDC())
         enum_status: Optional[Status] = field(default=Status.PENDING)
 
@@ -1003,12 +1287,12 @@ def test_all_types_with_optional_in_dataclass_basemodel_wf(local_dummy_file, loc
         assert type(inner_dc) is InnerDC
 
         # f: List[FlyteFile]
-        for ff in inner_dc.f: # type: ignore
+        for ff in inner_dc.f:  # type: ignore
             assert type(ff) is FlyteFile
             with open(ff, "r") as f:
                 assert f.read() == "Hello FlyteFile"
         # j: Dict[int, FlyteFile]
-        for _, ff in inner_dc.j.items(): # type: ignore
+        for _, ff in inner_dc.j.items():  # type: ignore
             assert type(ff) is FlyteFile
             with open(ff, "r") as f:
                 assert f.read() == "Hello FlyteFile"
@@ -1044,10 +1328,12 @@ def test_all_types_with_optional_in_dataclass_basemodel_wf(local_dummy_file, loc
         assert isinstance(d, bool), f"d is not bool, it's {type(d)}"
 
         # Strict type checks for List[int]
-        assert isinstance(e, list) and all(isinstance(i, int) for i in e), "e is not List[int]"
+        assert isinstance(e, list) and all(isinstance(i, int)
+                                           for i in e), "e is not List[int]"
 
         # Strict type checks for List[FlyteFile]
-        assert isinstance(f, list) and all(isinstance(i, FlyteFile) for i in f), "f is not List[FlyteFile]"
+        assert isinstance(f, list) and all(isinstance(i, FlyteFile)
+                                           for i in f), "f is not List[FlyteFile]"
 
         # Strict type checks for List[List[int]]
         assert isinstance(g, list) and all(
@@ -1170,6 +1456,7 @@ def test_all_types_with_optional_and_none_in_dataclass_wf():
 
     wf(dc=DC())
 
+
 def test_union_in_dataclass_wf():
     @dataclass
     class DC:
@@ -1177,8 +1464,9 @@ def test_union_in_dataclass_wf():
         b: Union[int, bool, str, float]
 
     @task
-    def add(a: Union[int, bool, str, float], b: Union[int, bool, str, float]) -> Union[int, bool, str, float]:
-        return a + b # type: ignore
+    def add(a: Union[int, bool, str, float], b: Union[int,
+            bool, str, float]) -> Union[int, bool, str, float]:
+        return a + b  # type: ignore
 
     @workflow
     def wf(dc: DC) -> Union[int, bool, str, float]:

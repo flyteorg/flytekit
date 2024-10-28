@@ -9,6 +9,11 @@ try:
     from pydantic import model_serializer, model_validator
 
 except ImportError:
+    """
+    It's to support the case where pydantic is not installed at all.
+    It looks nicer in the real File/Directory class, but we also want it to not fail.
+    """
+
     logger.warning(
         "Pydantic is not installed.\n" "Please install Pydantic version > 2 to use FlyteTypes in pydantic BaseModel."
     )
