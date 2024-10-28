@@ -77,7 +77,7 @@ from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer, noop
 from flytekit.types.iterator.iterator import IteratorTransformer
 from flytekit.types.iterator.json_iterator import JSONIterator, JSONIteratorTransformer, JSON
 from flytekit.types.pickle import FlytePickle
-from flytekit.types.pickle.pickle import BatchSize, FlytePickleTransformer
+from flytekit.types.pickle.pickle import FlytePickleTransformer
 from flytekit.types.schema import FlyteSchema
 from flytekit.types.structured.structured_dataset import StructuredDataset, StructuredDatasetTransformerEngine, PARQUET
 
@@ -441,16 +441,6 @@ def test_dir_no_downloader_default():
     pv = transformer.to_python_value(ctx, lv, expected_python_type=FlyteDirectory)
     assert isinstance(pv, FlyteDirectory)
     assert pv.download() == local_dir
-
-
-def test_dir_with_batch_size():
-    flyte_dir = Annotated[FlyteDirectory, BatchSize(100)]
-    val = flyte_dir("s3://bucket/key")
-    transformer = TypeEngine.get_transformer(flyte_dir)
-    ctx = FlyteContext.current_context()
-    lt = transformer.get_literal_type(flyte_dir)
-    lv = transformer.to_literal(ctx, val, flyte_dir, lt)
-    assert val.path == transformer.to_python_value(ctx, lv, flyte_dir).remote_source
 
 
 def test_dict_transformer():
@@ -927,7 +917,7 @@ def test_dataclass_int_preserving():
     assert ot == o
 
 
-@mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.async_put_data")
 def test_dataclass_with_postponed_annotation(mock_put_data):
     remote_path = "s3://tmp/file"
     mock_put_data.return_value = remote_path
@@ -953,7 +943,7 @@ def test_dataclass_with_postponed_annotation(mock_put_data):
         assert dict_obj["f"]["path"] == remote_path
 
 
-@mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.async_put_data")
 def test_optional_flytefile_in_dataclass(mock_upload_dir):
     mock_upload_dir.return_value = True
 
@@ -1040,7 +1030,7 @@ def test_optional_flytefile_in_dataclass(mock_upload_dir):
         assert o.i_prime == A(a=99)
 
 
-@mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.async_put_data")
 def test_optional_flytefile_in_dataclassjsonmixin(mock_upload_dir):
     @dataclass
     class A_optional_flytefile(DataClassJSONMixin):
@@ -2725,78 +2715,6 @@ def test_file_ext_with_flyte_file_wrong_type():
     assert str(e.value) == "Underlying type of File Extension must be of type <str>"
 
 
-def test_is_batchable():
-    assert ListTransformer.is_batchable(typing.List[int]) is False
-    assert ListTransformer.is_batchable(typing.List[str]) is False
-    assert ListTransformer.is_batchable(typing.List[typing.Dict]) is False
-    assert ListTransformer.is_batchable(typing.List[typing.Dict[str, FlytePickle]]) is False
-    assert ListTransformer.is_batchable(typing.List[typing.List[FlytePickle]]) is False
-
-    assert ListTransformer.is_batchable(typing.List[FlytePickle]) is True
-    assert ListTransformer.is_batchable(Annotated[typing.List[FlytePickle], BatchSize(3)]) is True
-    assert (
-            ListTransformer.is_batchable(Annotated[typing.List[FlytePickle], HashMethod(function=str), BatchSize(3)])
-            is True
-    )
-
-
-@pytest.mark.parametrize(
-    "python_val, python_type, expected_list_length",
-    [
-        # Case 1: List of FlytePickle objects with default batch size.
-        # (By default, the batch_size is set to the length of the whole list.)
-        # After converting to literal, the result will be [batched_FlytePickle(5 items)].
-        # Therefore, the expected list length is [1].
-        ([{"foo"}] * 5, typing.List[FlytePickle], [1]),
-        # Case 2: List of FlytePickle objects with batch size 2.
-        # After converting to literal, the result will be
-        # [batched_FlytePickle(2 items), batched_FlytePickle(2 items), batched_FlytePickle(1 item)].
-        # Therefore, the expected list length is [3].
-        (
-                ["foo"] * 5,
-                Annotated[typing.List[FlytePickle], HashMethod(function=str), BatchSize(2)],
-                [3],
-        ),
-        # Case 3: Nested list of FlytePickle objects with batch size 2.
-        # After converting to literal, the result will be
-        # [[batched_FlytePickle(3 items)], [batched_FlytePickle(3 items)]]
-        # Therefore, the expected list length is [2, 1] (the length of the outer list remains the same, the inner list is batched).
-        (
-                [["foo", "foo", "foo"]] * 2,
-                typing.List[Annotated[typing.List[FlytePickle], BatchSize(3)]],
-                [2, 1],
-        ),
-        # Case 4: Empty list
-        ([[], typing.List[FlytePickle], []]),
-    ],
-)
-def test_batch_pickle_list(python_val, python_type, expected_list_length):
-    ctx = FlyteContext.current_context()
-    expected = TypeEngine.to_literal_type(python_type)
-    lv = TypeEngine.to_literal(ctx, python_val, python_type, expected)
-
-    tmp_lv = lv
-    for length in expected_list_length:
-        # Check that after converting to literal, the length of the literal list is equal to:
-        # - the length of the original list divided by the batch size if not nested
-        # - the length of the original list if it contains a nested list
-        assert len(tmp_lv.collection.literals) == length
-        tmp_lv = tmp_lv.collection.literals[0]
-
-    pv = TypeEngine.to_python_value(ctx, lv, python_type)
-    # Check that after converting literal to Python value, the result is equal to the original python values.
-    assert pv == python_val
-    if get_origin(python_type) is Annotated:
-        pv = TypeEngine.to_python_value(ctx, lv, get_args(python_type)[0])
-        # Remove the annotation and check that after converting to Python value, the result is equal
-        # to the original input values. This is used to simulate the following case:
-        # @workflow
-        # def wf():
-        #     data = task0()  # task0() -> Annotated[typing.List[FlytePickle], BatchSize(2)]
-        #     task1(data=data)  # task1(data: typing.List[FlytePickle])
-        assert pv == python_val
-
-
 @pytest.mark.parametrize(
     "t,expected",
     [
@@ -3692,3 +3610,16 @@ def test_structured_dataset_collection():
     lv = TypeEngine.to_literal(FlyteContext.current_context(), [[StructuredDataset(df)]],
                                WineTypeListList, lt)
     assert lv is not None
+
+
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
+def test_structured_dataset_mismatch():
+    import pandas as pd
+
+    df = pd.DataFrame({"alcohol": [1.0, 2.0], "malic_acid": [2.0, 3.0]})
+    transformer = TypeEngine.get_transformer(StructuredDataset)
+    with pytest.raises(TypeTransformerFailedError):
+        transformer.to_literal(FlyteContext.current_context(), df, StructuredDataset, TypeEngine.to_literal_type(StructuredDataset))
+
+    with pytest.raises(TypeTransformerFailedError):
+        TypeEngine.to_literal(FlyteContext.current_context(), df, StructuredDataset, TypeEngine.to_literal_type(StructuredDataset))

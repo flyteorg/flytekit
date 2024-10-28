@@ -302,6 +302,13 @@ def task(
                      Possible options for secret stores are - Vault, Confidant, Kube secrets, AWS KMS etc
                      Refer to :py:class:`Secret` to understand how to specify the request for a secret. It
                      may change based on the backend provider.
+
+                     .. note::
+
+                         During local execution, the secrets will be pulled from the local environment variables
+                         with the format `{GROUP}_{GROUP_VERSION}_{KEY}`, where all the characters are capitalized
+                         and the prefix is not used.
+
     :param execution_mode: This is mainly for internal use. Please ignore. It is filled in automatically.
     :param node_dependency_hints: A list of tasks, launchplans, or workflows that this task depends on. This is only
         for dynamic tasks/workflows, where flyte cannot automatically determine the dependencies prior to runtime.

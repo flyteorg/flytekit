@@ -7,6 +7,7 @@ import typing
 import uuid
 from collections import OrderedDict
 from datetime import datetime, timedelta
+from functools import partial
 
 import mock
 import pytest
@@ -15,13 +16,14 @@ from flyteidl.service import dataproxy_pb2
 from mock import ANY, MagicMock, patch
 
 import flytekit.configuration
-from flytekit import CronSchedule, ImageSpec, LaunchPlan, WorkflowFailurePolicy, task, workflow, reference_task
+from flytekit import CronSchedule, ImageSpec, LaunchPlan, WorkflowFailurePolicy, task, workflow, reference_task, map_task, dynamic
 from flytekit.configuration import Config, DefaultImages, Image, ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions import user as user_exceptions
-from flytekit.exceptions.user import FlyteEntityNotExistException
+from flytekit.exceptions.user import FlyteEntityNotExistException, FlyteAssertion
+from flytekit.experimental.eager_function import eager
 from flytekit.models import common as common_models
 from flytekit.models import security
 from flytekit.models.admin.workflow import Workflow, WorkflowClosure
@@ -33,7 +35,7 @@ from flytekit.models.execution import Execution
 from flytekit.models.task import Task
 from flytekit.remote import FlyteTask
 from flytekit.remote.lazy_entity import LazyEntity
-from flytekit.remote.remote import FlyteRemote, _get_git_repo_url
+from flytekit.remote.remote import FlyteRemote, _get_git_repo_url, _get_pickled_target_dict
 from flytekit.tools.translator import Options, get_serializable, get_serializable_launch_plan
 from tests.flytekit.common.parameterizers import LIST_OF_TASK_CLOSURES
 
@@ -690,3 +692,83 @@ def test_register_wf_script_mode(compress_scripts_mock, upload_file_mock, regist
 def test_fetch_active_launchplan_not_found(mock_client, remote):
     mock_client.get_active_launch_plan.side_effect = FlyteEntityNotExistException("not found")
     assert remote.fetch_active_launchplan(name="basic.list_float_wf.fake_wf") is None
+
+
+def test_get_pickled_target_dict():
+    @task
+    def t1() -> int:
+        return 1
+
+    @task
+    def t2(a: int) -> int:
+        return a + 2
+
+    @workflow
+    def w() -> int:
+        return t2(a=t1())
+
+    _, target_dict = _get_pickled_target_dict(w)
+    assert len(target_dict) == 2
+    assert t1.name in target_dict
+    assert t2.name in target_dict
+    assert target_dict[t1.name] == t1
+    assert target_dict[t2.name] == t2
+
+def test_get_pickled_target_dict_with_map_task():
+    @task
+    def t1(x: int, y: int) -> int:
+        return x + y
+
+    @workflow
+    def w() -> int:
+        return map_task(partial(t1, y=2))(x=[1, 2, 3])
+
+    _, target_dict = _get_pickled_target_dict(w)
+    assert len(target_dict) == 1
+    assert t1.name in target_dict
+    assert target_dict[t1.name] == t1
+
+def test_get_pickled_target_dict_with_dynamic():
+    @task
+    def t1(a: int) -> str:
+        a = a + 2
+        return "fast-" + str(a)
+
+    @workflow
+    def subwf(a: int):
+        t1(a=a)
+
+    @dynamic
+    def my_subwf(a: int) -> typing.List[str]:
+        s = []
+        for i in range(a):
+            s.append(t1(a=i))
+        subwf(a=a)
+        return s
+
+    @workflow
+    def my_wf(a: int) -> typing.List[str]:
+        v = my_subwf(a=a)
+        return v
+
+    with pytest.raises(FlyteAssertion):
+        _get_pickled_target_dict(my_wf)
+
+def test_get_pickled_target_dict_with_eager():
+    @task
+    def t1(a: int) -> int:
+        return a + 1
+
+    @task
+    def t2(a: int) -> int:
+        return a * 2
+
+    @eager
+    async def eager_wf(a: int) -> int:
+        out = await t1(a=a)
+        if out < 0:
+            return -1
+        return await t2(a=out)
+
+    with pytest.raises(FlyteAssertion):
+        _get_pickled_target_dict(eager_wf)
