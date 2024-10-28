@@ -821,7 +821,7 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
             return
 
         val = v.value if isinstance(v, enum.Enum) else v
-        if val not in t:
+        if val not in [t_item.value for t_item in t]:
             raise TypeTransformerFailedError(f"Value {v} is not in Enum {t}")
 
 
