@@ -474,6 +474,7 @@ def test_dispatch_execute_offloaded_literals(tmp_path_factory):
     with context_manager.FlyteContextManager.with_context(
             ctx.with_execution_state(
                 ctx.execution_state.with_params(
+                    engine_dir=tmp_path_factory.mktemp("engine_dir"),
                     mode=context_manager.ExecutionState.Mode.TASK_EXECUTION,
                     user_space_params=context_manager.ExecutionParameters(
                         execution_date=datetime.now(),
@@ -553,6 +554,7 @@ def test_dispatch_execute_offloaded_literals_two_outputs_offloaded(tmp_path_fact
     with context_manager.FlyteContextManager.with_context(
             ctx.with_execution_state(
                 ctx.execution_state.with_params(
+                    engine_dir=tmp_path_factory.mktemp("engine_dir"),
                     mode=context_manager.ExecutionState.Mode.TASK_EXECUTION,
                     user_space_params=context_manager.ExecutionParameters(
                         execution_date=datetime.now(),
@@ -650,6 +652,7 @@ def test_dispatch_execute_offloaded_literals_two_outputs_only_second_one_offload
     with context_manager.FlyteContextManager.with_context(
             ctx.with_execution_state(
                 ctx.execution_state.with_params(
+                    engine_dir=tmp_path_factory.mktemp("engine_dir"),
                     mode=context_manager.ExecutionState.Mode.TASK_EXECUTION,
                     user_space_params=context_manager.ExecutionParameters(
                         execution_date=datetime.now(),
