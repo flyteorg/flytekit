@@ -1,9 +1,10 @@
 import os
-from typing import Callable, Optional, List
-import memray
 import time
-from flytekit.core.utils import ClassDecorator
+from typing import Callable, List, Optional
+
+import memray
 from flytekit import Deck
+from flytekit.core.utils import ClassDecorator
 
 
 class memray_profiling(ClassDecorator):
