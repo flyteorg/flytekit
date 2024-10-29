@@ -12,22 +12,34 @@ class memray_profiling(ClassDecorator):
         self,
         task_function: Optional[Callable] = None,
         memray_html_reporter: str = "flamegraph",
-        memray_reporter_args: Optional[List[str]] = [],
+        memray_reporter_args: List[str] = [],
     ):
-        """Memray Profiling Plugin.
+        """Memray profiling plugin.
         Args:
+            task_function (function, optional): The user function to be decorated. Defaults to None.
+            memray_html_reporter (str): The name of the memray reporter which generates an html report.
+                Today there is only 'flamegraph' & 'table'.
+            memray_reporter_args (List[str], optional): A list of arguments to pass to the reporter commands.
+                See the [flamegraph](https://bloomberg.github.io/memray/flamegraph.html#reference)
+                and [table](https://bloomberg.github.io/memray/table.html#cli-reference) docs for details on supported arguments.
         """
+
         if memray_html_reporter not in ["flamegraph", "table"]:
             raise ValueError(
                 f"{memray_html_reporter} is not a supported html reporter."
+            )
+
+        if not all(
+            isinstance(arg, str) and "--" in arg for arg in memray_reporter_args
+        ):
+            raise ValueError(
+                f"unrecognized arguments for {memray_html_reporter} reporter. Please check https://bloomberg.github.io/memray/{memray_html_reporter}.html"
             )
 
         self.dir_name = "memray"
         self.memray_html_reporter = memray_html_reporter
         self.memray_reporter_args = memray_reporter_args
 
-        # All kwargs need to be passed up so that the function wrapping works for both
-        # `@wandb_init` and `@wandb_init(...)`
         super().__init__(
             task_function,
             memray_html_reporter=memray_html_reporter,
