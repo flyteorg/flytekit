@@ -708,15 +708,15 @@ def test_get_pickled_target_dict():
         return t2(a=t1())
 
     _, target_dict = _get_pickled_target_dict(w)
-    assert len(target_dict) == 3
     assert (
-        target_dict["metadata"]["python_version"]
+        target_dict.metadata.python_version
         == f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
     )
-    assert t1.name in target_dict
-    assert t2.name in target_dict
-    assert target_dict[t1.name] == t1
-    assert target_dict[t2.name] == t2
+    assert len(target_dict.entities) == 2
+    assert t1.name in target_dict.entities
+    assert t2.name in target_dict.entities
+    assert target_dict.entities[t1.name] == t1
+    assert target_dict.entities[t2.name] == t2
 
 def test_get_pickled_target_dict_with_map_task():
     @task
@@ -728,13 +728,13 @@ def test_get_pickled_target_dict_with_map_task():
         return map_task(partial(t1, y=2))(x=[1, 2, 3])
 
     _, target_dict = _get_pickled_target_dict(w)
-    assert len(target_dict) == 2
     assert (
-        target_dict["metadata"]["python_version"]
+        target_dict.metadata.python_version
         == f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
     )
-    assert t1.name in target_dict
-    assert target_dict[t1.name] == t1
+    assert len(target_dict.entities) == 1
+    assert t1.name in target_dict.entities
+    assert target_dict.entities[t1.name] == t1
 
 def test_get_pickled_target_dict_with_dynamic():
     @task

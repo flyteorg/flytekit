@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib
 import re
 from abc import ABC
+from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, TypeVar, Union
 
 from flyteidl.core import tasks_pb2
@@ -282,6 +283,32 @@ class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
 default_task_resolver = DefaultTaskResolver()
 
 
+@dataclass
+class PickledEntityMetadata:
+    """
+    Metadata for a pickled entity containing version information.
+
+    Attributes:
+        python_version: The Python version string (e.g. "3.12.0") used to create the pickle
+    """
+
+    python_version: str
+
+
+@dataclass
+class PickledEntity:
+    """
+    Represents the structure of the pickled object stored in the .pkl file for interactive mode.
+
+    Attributes:
+        metadata: Metadata about the pickled entities including Python version
+        entities: Dictionary mapping entity names to their PythonAutoContainerTask instances
+    """
+
+    metadata: PickledEntityMetadata
+    entities: Dict[str, PythonAutoContainerTask]
+
+
 class DefaultNotebookTaskResolver(TrackedInstance, TaskResolverMixin):
     """
     This resolved is used when the task is defined in a notebook. It is used to load the task from the notebook.
@@ -300,7 +327,7 @@ class DefaultNotebookTaskResolver(TrackedInstance, TaskResolverMixin):
 
         try:
             with gzip.open(PICKLE_FILE_PATH, "r") as f:
-                entity_dict = cloudpickle.load(f)
+                loaded_data = cloudpickle.load(f)
         except TypeError:
             raise RuntimeError(
                 "The Python version is smaller than the version used to create the pickle file. "
@@ -309,17 +336,26 @@ class DefaultNotebookTaskResolver(TrackedInstance, TaskResolverMixin):
                 "container image with a matching version."
             )
 
-        pickled_version = entity_dict["metadata"]["python_version"].split(".")
+        # verify the loaded_data is of the correct type
+        if not isinstance(loaded_data, PickledEntity):
+            raise RuntimeError(
+                "The loaded data is not of the correct type. Please ensure that the pickle file is not corrupted."
+            )
+        pickled_object: PickledEntity = loaded_data
+
+        pickled_version = pickled_object.metadata.python_version.split(".")
         if sys.version_info.major != int(pickled_version[0]) or sys.version_info.minor != int(pickled_version[1]):
             raise RuntimeError(
                 "The Python version used to create the pickle file is different from the current Python version. "
                 f"Current Python version: {sys.version_info.major}.{sys.version_info.minor}. "
-                f"Python version used to create the pickle file: {entity_dict['metadata']['python_version']}. "
+                f"Python version used to create the pickle file: {pickled_object.metadata.python_version}. "
                 "Please try using the same Python version to create the pickle file or use another "
                 "container image with a matching version."
             )
 
-        return entity_dict[entity_name]
+        if entity_name not in pickled_object.entities:
+            raise ValueError(f"Entity {entity_name} not found in the pickled object")
+        return pickled_object.entities[entity_name]
 
     def loader_args(self, settings: SerializationSettings, task: PythonAutoContainerTask) -> List[str]:  # type:ignore
         n, _, _, _ = extract_task_module(task)

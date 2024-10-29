@@ -10,7 +10,7 @@ import flytekit.configuration
 from flytekit.configuration import Image, ImageConfig
 from flytekit.core.base_task import TaskResolverMixin
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
-from flytekit.core.python_auto_container import default_task_resolver, default_notebook_task_resolver, PICKLE_FILE_PATH
+from flytekit.core.python_auto_container import default_task_resolver, default_notebook_task_resolver, PickledEntity, PickledEntityMetadata
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
 from flytekit.tools.translator import get_serializable
@@ -124,12 +124,15 @@ def test_notebook_resolver(mock_gzip_open, mock_cloudpickle):
 
     assert c.loader_args(None, t1) == ["entity-name", "tests.flytekit.unit.core.test_resolver.t1"]
 
-    pickled_dict = {
-        "tests.flytekit.unit.core.test_resolver.t1": t1,
-        "metadata": {
-            "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
-        }
-    }
+    pickled_dict = PickledEntity(
+        metadata=PickledEntityMetadata(
+            python_version=f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+        ),
+        entities={
+            "tests.flytekit.unit.core.test_resolver.t1": t1,
+        },
+    )
+
     custom_pickled_object = cloudpickle.dumps(pickled_dict)
     mock_gzip_open.return_value.read.return_value = custom_pickled_object
     mock_cloudpickle.return_value = pickled_dict
@@ -137,12 +140,14 @@ def test_notebook_resolver(mock_gzip_open, mock_cloudpickle):
     t = c.load_task(["entity-name", "tests.flytekit.unit.core.test_resolver.t1"])
     assert t == t1
 
-    mismatched_pickled_dict = {
-        "tests.flytekit.unit.core.test_resolver.t1": t1,
-        "metadata": {
-            "python_version": f"{sys.version_info.major}.{sys.version_info.minor - 1}.{sys.version_info.micro}",
-        }
-    }
+    mismatched_pickled_dict = PickledEntity(
+        metadata=PickledEntityMetadata(
+            python_version=f"{sys.version_info.major}.{sys.version_info.minor - 1}.{sys.version_info.micro}"
+        ),
+        entities={
+            "tests.flytekit.unit.core.test_resolver.t1": t1,
+        },
+    )
     mismatched_custom_pickled_object = cloudpickle.dumps(mismatched_pickled_dict)
     mock_gzip_open.return_value.read.return_value = mismatched_custom_pickled_object
     mock_cloudpickle.return_value = mismatched_pickled_dict
