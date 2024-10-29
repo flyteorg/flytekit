@@ -160,7 +160,7 @@ def _dispatch_execute(
 
                     offloaded_literal = _literal_models.Literal(
                         offloaded_metadata=_literal_models.LiteralOffloadedMetadata(
-                            uri=f"{ctx.user_space_params.output_metadata_prefix}/{offloaded_filename}",
+                            uri=f"{output_prefix}/{offloaded_filename}",
                             size_bytes=lit.ByteSize(),
                             # TODO: do I have to set the inferred literal type?
                         )
