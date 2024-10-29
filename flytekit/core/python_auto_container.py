@@ -292,16 +292,18 @@ class DefaultNotebookTaskResolver(TrackedInstance, TaskResolverMixin):
 
     @timeit("Load task")
     def load_task(self, loader_args: List[str]) -> PythonAutoContainerTask:
+        _, entity_name, *_ = loader_args
         import gzip
 
         import cloudpickle
 
         with gzip.open(PICKLE_FILE_PATH, "r") as f:
-            return cloudpickle.load(f)
+            entity_dict = cloudpickle.load(f)
+        return entity_dict[entity_name]
 
     def loader_args(self, settings: SerializationSettings, task: PythonAutoContainerTask) -> List[str]:  # type:ignore
-        _, m, t, _ = extract_task_module(task)
-        return ["task-module", m, "task-name", t]
+        n, _, _, _ = extract_task_module(task)
+        return ["entity-name", n]
 
     def get_all_tasks(self) -> List[PythonAutoContainerTask]:  # type: ignore
         raise NotImplementedError
