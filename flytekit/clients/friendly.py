@@ -11,6 +11,7 @@ from flyteidl.admin import project_domain_attributes_pb2 as _project_domain_attr
 from flyteidl.admin import project_pb2 as _project_pb2
 from flyteidl.admin import task_execution_pb2 as _task_execution_pb2
 from flyteidl.admin import task_pb2 as _task_pb2
+from flyteidl.admin import version_pb2 as _version_pb2
 from flyteidl.admin import workflow_attributes_pb2 as _workflow_attributes_pb2
 from flyteidl.admin import workflow_pb2 as _workflow_pb2
 from flyteidl.core import identifier_pb2 as _identifier_pb2
@@ -1087,3 +1088,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
                 expires_in=expires_in_pb,
             )
         )
+
+    def get_control_plane_version(self) -> str:
+        version_response = self._stub.GetVersion(_version_pb2.GetVersionRequest(), metadata=self._metadata)
+        return version_response.control_plane_version.Version
