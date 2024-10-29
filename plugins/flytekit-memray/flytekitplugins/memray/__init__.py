@@ -10,6 +10,6 @@ This package contains things that are useful when extending Flytekit.
    wandb_init
 """
 
-from .profiling import mem_profiling
+from .profiling import memray_profiling
 
-__all__ = ["mem_profiling"]
+__all__ = ["memray_profiling"]
