@@ -22,6 +22,7 @@ from typing import Any, Dict, List, NamedTuple, Optional, Type, cast
 import msgpack
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from flyteidl.core import literals_pb2
+from fsspec.asyn import _run_coros_in_chunks  # pylint: disable=W0212
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 from google.protobuf.json_format import MessageToDict as _MessageToDict
@@ -60,7 +61,7 @@ TITLE = "title"
 # This is relevant for cases like Dict[int, str].
 # If strict_map_key=False is not used, the decoder will raise an error when trying to decode keys that are not strictly typed.｀
 def _default_msgpack_decoder(data: bytes) -> Any:
-    return msgpack.unpackb(data, raw=False, strict_map_key=False)
+    return msgpack.unpackb(data, strict_map_key=False)
 
 
 class BatchSize:
@@ -215,15 +216,40 @@ class TypeTransformer(typing.Generic[T]):
         )
 
     def from_binary_idl(self, binary_idl_object: Binary, expected_python_type: Type[T]) -> Optional[T]:
+        """
+        This function primarily handles deserialization for untyped dicts, dataclasses, Pydantic BaseModels, and attribute access.｀
+
+        For untyped dict, dataclass, and pydantic basemodel:
+        Life Cycle (Untyped Dict as example):
+            python val -> msgpack bytes -> binary literal scalar -> msgpack bytes -> python val
+                          (to_literal)                             (from_binary_idl)
+
+        For attribute access:
+        Life Cycle:
+            python val -> msgpack bytes -> binary literal scalar -> resolved golang value -> binary literal scalar -> msgpack bytes -> python val
+                          (to_literal)                            (propeller attribute access)                       (from_binary_idl)
+        """
         if binary_idl_object.tag == MESSAGEPACK:
             try:
                 decoder = self._msgpack_decoder[expected_python_type]
             except KeyError:
                 decoder = MessagePackDecoder(expected_python_type, pre_decoder_func=_default_msgpack_decoder)
                 self._msgpack_decoder[expected_python_type] = decoder
-            return decoder.decode(binary_idl_object.value)
+            python_val = decoder.decode(binary_idl_object.value)
+
+            return python_val
         else:
             raise TypeTransformerFailedError(f"Unsupported binary format `{binary_idl_object.tag}`")
+
+    def from_generic_idl(self, generic: Struct, expected_python_type: Type[T]) -> Optional[T]:
+        """
+        TODO: Support all Flyte Types.
+        This is for dataclass attribute access from input created from the Flyte Console.
+
+        Note:
+        - This can be removed in the future when the Flyte Console support generate Binary IDL Scalar as input.
+        """
+        raise NotImplementedError(f"Conversion from generic idl to python type {expected_python_type} not implemented")
 
     def to_html(self, ctx: FlyteContext, python_val: T, expected_python_type: Type[T]) -> str:
         """
@@ -320,6 +346,51 @@ class SimpleTransformer(TypeTransformer[T]):
                 f"Expected value of type {self._type} but got '{python_val}' of type {type(python_val)}"
             )
         return self._to_literal_transformer(python_val)
+
+    def from_binary_idl(self, binary_idl_object: Binary, expected_python_type: Type[T]) -> Optional[T]:
+        if binary_idl_object.tag == MESSAGEPACK:
+            if expected_python_type in [datetime.date, datetime.datetime, datetime.timedelta]:
+                """
+                MessagePack doesn't support datetime, date, and timedelta.
+                However, mashumaro's MessagePackEncoder and MessagePackDecoder can convert them to str and vice versa.
+                That's why we need to use mashumaro's MessagePackDecoder here.
+                """
+                try:
+                    decoder = self._msgpack_decoder[expected_python_type]
+                except KeyError:
+                    decoder = MessagePackDecoder(expected_python_type, pre_decoder_func=_default_msgpack_decoder)
+                    self._msgpack_decoder[expected_python_type] = decoder
+                python_val = decoder.decode(binary_idl_object.value)
+            else:
+                python_val = msgpack.loads(binary_idl_object.value)
+                """
+                In the case below, when using Union Transformer + Simple Transformer, then `a`
+                can be converted to int, bool, str and float if we use MessagePackDecoder[expected_python_type].
+
+                Life Cycle:
+                1 -> msgpack bytes -> (1, true, "1", 1.0)
+
+                Example Code:
+                @dataclass
+                class DC:
+                    a: Union[int, bool, str, float]
+                    b: Union[int, bool, str, float]
+
+                @task(container_image=custom_image)
+                def add(a: Union[int, bool, str, float], b: Union[int, bool, str, float]) -> Union[int, bool, str, float]:
+                    return a + b
+
+                @workflow
+                def wf(dc: DC) -> Union[int, bool, str, float]:
+                    return add(dc.a, dc.b)
+
+                wf(DC(1, 1))
+                """
+                assert type(python_val) == expected_python_type
+
+            return python_val
+        else:
+            raise TypeTransformerFailedError(f"Unsupported binary format `{binary_idl_object.tag}`")
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
         expected_python_type = get_underlying_type(expected_python_type)
@@ -496,6 +567,10 @@ class DataclassTransformer(TypeTransformer[object]):
         else:
             for f in dataclasses.fields(type(v)):  # type: ignore
                 original_type = f.type
+                if f.name not in expected_fields_dict:
+                    raise TypeTransformerFailedError(
+                        f"Field '{f.name}' is not present in the expected dataclass fields {expected_type.__name__}"
+                    )
                 expected_type = expected_fields_dict[f.name]
 
                 if UnionTransformer.is_optional_type(original_type):
@@ -663,12 +738,24 @@ class DataclassTransformer(TypeTransformer[object]):
         elif dataclasses.is_dataclass(python_type):
             for field in dataclasses.fields(python_type):
                 val = python_val.__getattribute__(field.name)
-                python_val.__setattr__(field.name, self._fix_structured_dataset_type(field.type, val))
+                object.__setattr__(python_val, field.name, self._fix_structured_dataset_type(field.type, val))
         return python_val
 
     def _make_dataclass_serializable(self, python_val: T, python_type: Type[T]) -> typing.Any:
         """
         If any field inside the dataclass is flyte type, we should use flyte type transformer for that field.
+        Since Flyte types are already serializable, this function is intended for using strings instead of directly creating Flyte files and directories in the dataclass.
+        An example shows the lifecycle:
+
+        @dataclass
+        class DC:
+            ff: FlyteFile
+
+        @task
+        def t1() -> DC:
+            return DC(ff="s3://path")
+
+        Lifecycle: DC(ff="s3://path") -> to_literal() -> DC(ff=FlyteFile(path="s3://path")) -> msgpack -> to_python_value() -> DC(ff=FlyteFile(path="s3://path"))
         """
         from flytekit.types.directory import FlyteDirectory
         from flytekit.types.file import FlyteFile
@@ -714,7 +801,7 @@ class DataclassTransformer(TypeTransformer[object]):
         dataclass_attributes = typing.get_type_hints(python_type)
         for n, t in dataclass_attributes.items():
             val = python_val.__getattribute__(n)
-            python_val.__setattr__(n, self._make_dataclass_serializable(val, t))
+            object.__setattr__(python_val, n, self._make_dataclass_serializable(val, t))
         return python_val
 
     def _fix_val_int(self, t: typing.Type, val: typing.Any) -> typing.Any:
@@ -757,7 +844,7 @@ class DataclassTransformer(TypeTransformer[object]):
         # Thus we will have to walk the given dataclass and typecast values to int, where expected.
         for f in dataclasses.fields(dc_type):
             val = getattr(dc, f.name)
-            setattr(dc, f.name, self._fix_val_int(f.type, val))
+            object.__setattr__(dc, f.name, self._fix_val_int(f.type, val))
 
         return dc
 
@@ -897,7 +984,7 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
         if type(python_val).__class__ != enum.EnumMeta:
             raise TypeTransformerFailedError("Expected an enum")
         if type(python_val.value) != str:
-            raise TypeTransformerFailedError("Only string-valued enums are supportedd")
+            raise TypeTransformerFailedError("Only string-valued enums are supported")
 
         return Literal(scalar=Scalar(primitive=Primitive(string_value=python_val.value)))  # type: ignore
 
@@ -910,6 +997,18 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
         if literal_type.enum_type:
             return enum.Enum("DynamicEnum", {f"{i}": i for i in literal_type.enum_type.values})  # type: ignore
         raise ValueError(f"Enum transformer cannot reverse {literal_type}")
+
+    def assert_type(self, t: Type[enum.Enum], v: T):
+        if sys.version_info < (3, 10):
+            if not isinstance(v, enum.Enum):
+                raise TypeTransformerFailedError(f"Value {v} needs to be an Enum in 3.9")
+            if not isinstance(v, t):
+                raise TypeTransformerFailedError(f"Value {v} is not in Enum {t}")
+            return
+
+        val = v.value if isinstance(v, enum.Enum) else v
+        if val not in [t_item.value for t_item in t]:
+            raise TypeTransformerFailedError(f"Value {v} is not in Enum {t}")
 
 
 def generate_attribute_list_from_dataclass_json_mixin(schema: dict, schema_name: typing.Any):
@@ -1096,6 +1195,8 @@ class TypeEngine(typing.Generic[T]):
                 from flytekit.extras import pytorch  # noqa: F401
             if is_imported("sklearn"):
                 from flytekit.extras import sklearn  # noqa: F401
+            if is_imported("pydantic"):
+                from flytekit.extras import pydantic_transformer  # noqa: F401
             if is_imported("pandas"):
                 try:
                     from flytekit.types.schema.types_pandas import PandasSchemaReader, PandasSchemaWriter  # noqa: F401
@@ -1334,7 +1435,7 @@ class TypeEngine(typing.Generic[T]):
             raise ValueError("At least one of python_types or literal_types must be provided")
 
         if literal_types:
-            python_interface_inputs = {
+            python_interface_inputs: dict[str, Type[T]] = {
                 name: TypeEngine.guess_python_type(lt.type) for name, lt in literal_types.items()
             }
         else:
@@ -1441,7 +1542,7 @@ class TypeEngine(typing.Generic[T]):
         return python_types
 
     @classmethod
-    def guess_python_type(cls, flyte_type: LiteralType) -> type:
+    def guess_python_type(cls, flyte_type: LiteralType) -> Type[T]:
         """
         Transforms a flyte-specific ``LiteralType`` to a regular python value.
         """
@@ -1504,49 +1605,17 @@ class ListTransformer(AsyncTypeTransformer[T]):
         except Exception as e:
             raise ValueError(f"Type of Generic List type is not supported, {e}")
 
-    @staticmethod
-    def is_batchable(t: Type):
-        """
-        This function evaluates whether the provided type is batchable or not.
-        It returns True only if the type is either List or Annotated(List) and the List subtype is FlytePickle.
-        """
-        from flytekit.types.pickle import FlytePickle
-
-        if is_annotated(t):
-            return ListTransformer.is_batchable(get_args(t)[0])
-        if get_origin(t) is list:
-            subtype = get_args(t)[0]
-            if subtype == FlytePickle or (hasattr(subtype, "__origin__") and subtype.__origin__ == FlytePickle):
-                return True
-        return False
-
     async def async_to_literal(
         self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType
     ) -> Literal:
         if type(python_val) != list:
             raise TypeTransformerFailedError("Expected a list")
 
-        if ListTransformer.is_batchable(python_type):
-            from flytekit.types.pickle.pickle import BatchSize, FlytePickle
-
-            batch_size = len(python_val)  # default batch size
-            # parse annotated to get the number of items saved in a pickle file.
-            if is_annotated(python_type):
-                for annotation in get_args(python_type)[1:]:
-                    if isinstance(annotation, BatchSize):
-                        batch_size = annotation.val
-                        break
-            if batch_size > 0:
-                lit_list = [
-                    TypeEngine.to_literal(ctx, python_val[i : i + batch_size], FlytePickle, expected.collection_type)
-                    for i in range(0, len(python_val), batch_size)
-                ]  # type: ignore
-            else:
-                lit_list = []
-        else:
-            t = self.get_sub_type(python_type)
-            lit_list = [TypeEngine.async_to_literal(ctx, x, t, expected.collection_type) for x in python_val]
-            lit_list = await asyncio.gather(*lit_list)
+        t = self.get_sub_type(python_type)
+        lit_list = [
+            asyncio.create_task(TypeEngine.async_to_literal(ctx, x, t, expected.collection_type)) for x in python_val
+        ]
+        lit_list = await _run_coros_in_chunks(lit_list)
 
         return Literal(collection=LiteralCollection(literals=lit_list))
 
@@ -1565,20 +1634,11 @@ class ListTransformer(AsyncTypeTransformer[T]):
                     f"is not a collection (Flyte's representation of Python lists)."
                 )
             )
-        if self.is_batchable(expected_python_type):
-            from flytekit.types.pickle import FlytePickle
 
-            batch_list = [TypeEngine.to_python_value(ctx, batch, FlytePickle) for batch in lits]
-            if len(batch_list) > 0 and type(batch_list[0]) is list:
-                # Make it have backward compatibility. The upstream task may use old version of Flytekit that won't
-                # merge the elements in the list. Therefore, we should check if the batch_list[0] is the list first.
-                return [item for batch in batch_list for item in batch]
-            return batch_list
-        else:
-            st = self.get_sub_type(expected_python_type)
-            result = [TypeEngine.async_to_python_value(ctx, x, st) for x in lits]
-            result = await asyncio.gather(*result)
-            return result  # type: ignore  # should be a list, thinks its a tuple
+        st = self.get_sub_type(expected_python_type)
+        result = [TypeEngine.async_to_python_value(ctx, x, st) for x in lits]
+        result = await _run_coros_in_chunks(result)
+        return result  # type: ignore  # should be a list, thinks its a tuple
 
     def guess_python_type(self, literal_type: LiteralType) -> list:  # type: ignore
         if literal_type.collection_type:
@@ -1722,13 +1782,17 @@ class UnionTransformer(AsyncTypeTransformer[T]):
                     # this is an edge case
                     return
                 try:
-                    super().assert_type(sub_type, v)
-                    return
+                    sub_trans: TypeTransformer = TypeEngine.get_transformer(sub_type)
+                    if sub_trans.type_assertions_enabled:
+                        sub_trans.assert_type(sub_type, v)
+                        return
+                    else:
+                        return
                 except TypeTransformerFailedError:
                     continue
+                except TypeError:
+                    continue
             raise TypeTransformerFailedError(f"Value {v} is not of type {t}")
-        else:
-            super().assert_type(t, v)
 
     def get_literal_type(self, t: Type[T]) -> Optional[LiteralType]:
         t = get_underlying_type(t)
@@ -1787,9 +1851,6 @@ class UnionTransformer(AsyncTypeTransformer[T]):
     ) -> Optional[typing.Any]:
         expected_python_type = get_underlying_type(expected_python_type)
 
-        if lv.scalar is not None and lv.scalar.binary is not None:
-            return self.from_binary_idl(lv.scalar.binary, expected_python_type)
-
         union_tag = None
         union_type = None
         if lv.scalar is not None and lv.scalar.union is not None:
@@ -1818,9 +1879,15 @@ class UnionTransformer(AsyncTypeTransformer[T]):
                     assert lv.scalar.union is not None  # type checker
 
                     if isinstance(trans, AsyncTypeTransformer):
-                        res = await trans.async_to_python_value(ctx, lv.scalar.union.value, v)
+                        if lv.scalar.binary:
+                            res = await trans.async_to_python_value(ctx, lv, v)
+                        else:
+                            res = await trans.async_to_python_value(ctx, lv.scalar.union.value, v)
                     else:
-                        res = trans.to_python_value(ctx, lv.scalar.union.value, v)
+                        if lv.scalar.binary:
+                            res = trans.to_python_value(ctx, lv, v)
+                        else:
+                            res = trans.to_python_value(ctx, lv.scalar.union.value, v)
                         if isinstance(res, asyncio.Future):
                             res = await res
 
@@ -1888,7 +1955,9 @@ class DictTransformer(AsyncTypeTransformer[dict]):
         return None, None
 
     @staticmethod
-    def dict_to_binary_literal(ctx: FlyteContext, v: dict, python_type: Type[dict], allow_pickle: bool) -> Literal:
+    async def dict_to_binary_literal(
+        ctx: FlyteContext, v: dict, python_type: Type[dict], allow_pickle: bool
+    ) -> Literal:
         """
         Converts a Python dictionary to a Flyte-specific ``Literal`` using MessagePack encoding.
         Falls back to Pickle if encoding fails and `allow_pickle` is True.
@@ -1902,7 +1971,7 @@ class DictTransformer(AsyncTypeTransformer[dict]):
             return Literal(scalar=Scalar(binary=Binary(value=msgpack_bytes, tag="msgpack")))
         except TypeError as e:
             if allow_pickle:
-                remote_path = FlytePickle.to_pickle(ctx, v)
+                remote_path = await FlytePickle.to_pickle(ctx, v)
                 return Literal(
                     scalar=Scalar(
                         generic=_json_format.Parse(json.dumps({"pickle_file": remote_path}), _struct.Struct())
@@ -1960,7 +2029,7 @@ class DictTransformer(AsyncTypeTransformer[dict]):
             allow_pickle, base_type = DictTransformer.is_pickle(python_type)
 
         if expected and expected.simple and expected.simple == SimpleType.STRUCT:
-            return self.dict_to_binary_literal(ctx, python_val, python_type, allow_pickle)
+            return await self.dict_to_binary_literal(ctx, python_val, python_type, allow_pickle)
 
         lit_map = {}
         for k, v in python_val.items():
@@ -1977,7 +2046,7 @@ class DictTransformer(AsyncTypeTransformer[dict]):
                 TypeEngine.async_to_literal(ctx, v, cast(type, v_type), expected.map_value_type)
             )
 
-        await asyncio.gather(*lit_map.values())
+        await _run_coros_in_chunks([c for c in lit_map.values()])
         for k, v in lit_map.items():
             lit_map[k] = v.result()
 
@@ -2003,7 +2072,7 @@ class DictTransformer(AsyncTypeTransformer[dict]):
                 fut = asyncio.create_task(TypeEngine.async_to_python_value(ctx, v, cast(Type, tp[1])))
                 py_map[k] = fut
 
-            await asyncio.gather(*py_map.values())
+            await _run_coros_in_chunks([c for c in py_map.values()])
             for k, v in py_map.items():
                 py_map[k] = v.result()
 
@@ -2016,10 +2085,45 @@ class DictTransformer(AsyncTypeTransformer[dict]):
                 from flytekit.types.pickle import FlytePickle
 
                 uri = json.loads(_json_format.MessageToJson(lv.scalar.generic)).get("pickle_file")
-                return FlytePickle.from_pickle(uri)
+                return await FlytePickle.from_pickle(uri)
 
             try:
-                return json.loads(_json_format.MessageToJson(lv.scalar.generic))
+                """
+                Handles the case where Flyte Console provides input as a protobuf struct.
+                When resolving an attribute like 'dc.dict_int_ff', FlytePropeller retrieves a dictionary.
+                Mashumaro's decoder can convert this dictionary to the expected Python object if the correct type is provided.
+                Since Flyte Types handle their own deserialization, the dictionary is automatically converted to the expected Python object.
+
+                Example Code:
+                @dataclass
+                class DC:
+                    dict_int_ff: Dict[int, FlyteFile]
+
+                @workflow
+                def wf(dc: DC):
+                    t_ff(dc.dict_int_ff)
+
+                Life Cycle:
+                json str            -> protobuf struct         -> resolved protobuf struct   -> dictionary                -> expected Python object
+                (console user input)   (console output)           (propeller)                   (flytekit dict transformer)  (mashumaro decoder)
+
+                Related PR:
+                - Title: Override Dataclass Serialization/Deserialization Behavior for FlyteTypes via Mashumaro
+                - Link: https://github.com/flyteorg/flytekit/pull/2554
+                - Title: Binary IDL With MessagePack
+                - Link: https://github.com/flyteorg/flytekit/pull/2760
+                """
+
+                dict_obj = json.loads(_json_format.MessageToJson(lv.scalar.generic))
+                msgpack_bytes = msgpack.dumps(dict_obj)
+
+                try:
+                    decoder = self._msgpack_decoder[expected_python_type]
+                except KeyError:
+                    decoder = MessagePackDecoder(expected_python_type, pre_decoder_func=_default_msgpack_decoder)
+                    self._msgpack_decoder[expected_python_type] = decoder
+
+                return decoder.decode(msgpack_bytes)
             except TypeError:
                 raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
 
@@ -2027,7 +2131,7 @@ class DictTransformer(AsyncTypeTransformer[dict]):
 
     def guess_python_type(self, literal_type: LiteralType) -> Union[Type[dict], typing.Dict[Type, Type]]:
         if literal_type.map_value_type:
-            mt = TypeEngine.guess_python_type(literal_type.map_value_type)
+            mt: Type = TypeEngine.guess_python_type(literal_type.map_value_type)
             return typing.Dict[str, mt]  # type: ignore
 
         if literal_type.simple == SimpleType.STRUCT:
@@ -2203,6 +2307,35 @@ def _check_and_covert_float(lv: Literal) -> float:
     raise TypeTransformerFailedError(f"Cannot convert literal {lv} to float")
 
 
+def _handle_flyte_console_float_input_to_int(lv: Literal) -> int:
+    """
+    Flyte Console is written by JavaScript and JavaScript has only one number type which is Number.
+    Sometimes it keeps track of trailing 0s and sometimes it doesn't.
+    We have to convert float to int back in the following example.
+
+    Example Code:
+    @dataclass
+    class DC:
+        a: int
+
+    @workflow
+    def wf(dc: DC):
+        t_int(a=dc.a)
+
+    Life Cycle:
+    json str            -> protobuf struct         -> resolved float    -> float                          -> int
+    (console user input)   (console output)           (propeller)          (flytekit simple transformer)  (_handle_flyte_console_float_input_to_int)
+    """
+    if lv.scalar.primitive.integer is not None:
+        return lv.scalar.primitive.integer
+
+    if lv.scalar.primitive.float_value is not None:
+        logger.info(f"Converting literal float {lv.scalar.primitive.float_value} to int, might have precision loss.")
+        return int(lv.scalar.primitive.float_value)
+
+    raise TypeTransformerFailedError(f"Cannot convert literal {lv} to int")
+
+
 def _check_and_convert_void(lv: Literal) -> None:
     if lv.scalar.none_type is None:
         raise TypeTransformerFailedError(f"Cannot convert literal {lv} to None")
@@ -2214,7 +2347,7 @@ IntTransformer = SimpleTransformer(
     int,
     _type_models.LiteralType(simple=_type_models.SimpleType.INTEGER),
     lambda x: Literal(scalar=Scalar(primitive=Primitive(integer=x))),
-    lambda x: x.scalar.primitive.integer,
+    _handle_flyte_console_float_input_to_int,
 )
 
 FloatTransformer = SimpleTransformer(

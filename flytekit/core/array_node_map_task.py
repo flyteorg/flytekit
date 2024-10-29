@@ -7,7 +7,6 @@ import os  # TODO: use flytekit logger
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Union, cast
 
-import typing_extensions
 from flyteidl.core import tasks_pb2
 
 from flytekit.configuration import SerializationSettings
@@ -18,7 +17,7 @@ from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteCon
 from flytekit.core.interface import transform_interface_to_list_interface
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanceTask
-from flytekit.core.type_engine import TypeEngine, TypeTransformer, is_annotated
+from flytekit.core.type_engine import TypeEngine
 from flytekit.core.utils import timeit
 from flytekit.loggers import logger
 from flytekit.models import literals as _literal_models
@@ -27,8 +26,6 @@ from flytekit.models.core.workflow import NodeMetadata
 from flytekit.models.interface import Variable
 from flytekit.models.task import Container, K8sPod, Sql, Task
 from flytekit.tools.module_loader import load_object_from_module
-from flytekit.types.pickle import pickle
-from flytekit.types.pickle.pickle import FlytePickleTransformer
 from flytekit.utils.asyn import loop_manager
 
 if TYPE_CHECKING:
@@ -76,16 +73,6 @@ class ArrayNodeMapTask(PythonTask):
             raise ValueError(
                 "Only PythonFunctionTask with default execution mode (not @dynamic or @eager) and PythonInstanceTask are supported in map tasks."
             )
-
-        for k, v in actual_task.python_interface.inputs.items():
-            if bound_inputs and k in bound_inputs:
-                continue
-            transformer: TypeTransformer = TypeEngine.get_transformer(v)
-            if isinstance(transformer, FlytePickleTransformer):
-                if is_annotated(v):
-                    for annotation in typing_extensions.get_args(v)[1:]:
-                        if isinstance(annotation, pickle.BatchSize):
-                            raise ValueError("Choosing a BatchSize for map tasks inputs is not supported.")
 
         n_outputs = len(actual_task.python_interface.outputs)
         if n_outputs > 1:
