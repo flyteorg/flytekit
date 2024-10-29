@@ -158,6 +158,7 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
     """
 
     def _serialize(self) -> typing.Dict[str, str]:
+
         lv = FlyteFilePathTransformer().to_literal(FlyteContextManager.current_context(), self, type(self), None)
         return {"path": lv.scalar.blob.uri}
 
@@ -549,9 +550,11 @@ class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
                 )
             else:
                 remote_path = await ctx.file_access.async_put_raw_data(source_path, **headers)
+            print(f"Uploaded to {remote_path}----------------")
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=unquote(str(remote_path)))))
         # If not uploading, then we can only take the original source path as the uri.
         else:
+            print(f"Not uploaded, path is {source_path  }----------------")
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=source_path)))
 
     @staticmethod

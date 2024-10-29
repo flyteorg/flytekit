@@ -461,8 +461,10 @@ def to_click_option(
             if type(default_val) == dict or type(default_val) == list:
                 default_val = json.dumps(default_val)
             else:
-                encoder = JSONEncoder(python_type)
-                default_val = encoder.encode(default_val)
+                # should be msgpack?
+                with FlyteContextManager.with_context(flyte_ctx.new_builder()):
+                    encoder = JSONEncoder(python_type)
+                    default_val = encoder.encode(default_val)
         if literal_var.type.metadata:
             description_extra = f": {json.dumps(literal_var.type.metadata)}"
 
