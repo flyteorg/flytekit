@@ -8,7 +8,6 @@ from flytekit.core.utils import ClassDecorator
 
 
 class memray_profiling(ClassDecorator):
-
     def __init__(
         self,
         task_function: Optional[Callable] = None,
@@ -26,9 +25,7 @@ class memray_profiling(ClassDecorator):
         """
 
         if memray_html_reporter not in ["flamegraph", "table"]:
-            raise ValueError(
-                f"{memray_html_reporter} is not a supported html reporter."
-            )
+            raise ValueError(f"{memray_html_reporter} is not a supported html reporter.")
 
         if memray_reporter_args is not None and not all(
             isinstance(arg, str) and "--" in arg for arg in memray_reporter_args
@@ -48,7 +45,6 @@ class memray_profiling(ClassDecorator):
         )
 
     def execute(self, *args, **kwargs):
-
         if not os.path.exists(self.dir_name):
             os.makedirs(self.dir_name)
 
@@ -57,9 +53,7 @@ class memray_profiling(ClassDecorator):
         with memray.Tracker(bin_filepath):
             output = self.task_function(*args, **kwargs)
 
-        self.generate_flytedeck_html(
-            reporter=self.memray_html_reporter, bin_filepath=bin_filepath
-        )
+        self.generate_flytedeck_html(reporter=self.memray_html_reporter, bin_filepath=bin_filepath)
 
         return output
 
@@ -70,12 +64,7 @@ class memray_profiling(ClassDecorator):
 
         memray_reporter_args_str = " ".join(self.memray_reporter_args)
 
-        if (
-            os.system(
-                f"memray {reporter} -o {html_filepath} {memray_reporter_args_str} {bin_filepath}"
-            )
-            == 0
-        ):
+        if os.system(f"memray {reporter} -o {html_filepath} {memray_reporter_args_str} {bin_filepath}") == 0:
             with open(html_filepath, "r", encoding="utf-8") as file:
                 html_content = file.read()
 
