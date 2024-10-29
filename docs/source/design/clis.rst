@@ -125,31 +125,3 @@ Beyond the options, the ``package`` command differs in that
 
 * Whether or not to use fast register should be specified by the ``--copy auto`` or ``--copy all`` flags, rather than ``fast`` being a subcommand.
 * The serialized file output by default is in a .tgz file, rather than being separate files. This means that any subsequent ``flytectl register`` command will need to be updated with the ``--archive`` flag.
-
-Pyflyte CLI working code example
-================================
-
-Here is a simple working code snippet for using `pyflyte` to register and run a Flyte workflow that returns a greeting along with the provided name.
-
-.. code-block:: python
-
-    # task.py
-    from flytekit import task, workflow
-
-    @task
-    def my_task(name: str) -> str:
-        return f"Hello, {name}!"
-
-    @workflow
-    def my_workflow(name: str) -> str:
-        return my_task(name=name)
-
-Next, use `pyflyte` to register and run this workflow:
-
-.. code-block:: bash
-
-    # Register the task and workflow
-    pyflyte register --project flytesnacks --domain development --python-package task --version v1.0.0
-
-    # Execute the workflow
-    pyflyte run --project flytesnacks --domain development --name task.my_workflow --inputs '{"name": "Flyte"}'
