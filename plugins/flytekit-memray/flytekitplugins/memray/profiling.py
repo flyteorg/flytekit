@@ -12,7 +12,7 @@ class memray_profiling(ClassDecorator):
         self,
         task_function: Optional[Callable] = None,
         memray_html_reporter: str = "flamegraph",
-        memray_reporter_args: List[str] = [],
+        memray_reporter_args: Optional[List[str]] = None,
     ):
         """Memray profiling plugin.
         Args:
@@ -29,7 +29,7 @@ class memray_profiling(ClassDecorator):
                 f"{memray_html_reporter} is not a supported html reporter."
             )
 
-        if not all(
+        if memray_reporter_args is not None and not all(
             isinstance(arg, str) and "--" in arg for arg in memray_reporter_args
         ):
             raise ValueError(
@@ -38,7 +38,7 @@ class memray_profiling(ClassDecorator):
 
         self.dir_name = "memray"
         self.memray_html_reporter = memray_html_reporter
-        self.memray_reporter_args = memray_reporter_args
+        self.memray_reporter_args = memray_reporter_args if memray_reporter_args else []
 
         super().__init__(
             task_function,
