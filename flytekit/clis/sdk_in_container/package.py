@@ -7,7 +7,6 @@ import rich_click as click
 from flytekit.clis.helpers import display_help_with_error
 from flytekit.clis.sdk_in_container import constants
 from flytekit.clis.sdk_in_container.helpers import parse_copy
-from flytekit.clis.sdk_in_container.utils import validate_package
 from flytekit.configuration import (
     DEFAULT_RUNTIME_PYTHON_INTERPRETER,
     FastSerializationSettings,
@@ -42,16 +41,6 @@ from flytekit.tools.repo import NoSerializableEntitiesError, serialize_and_packa
     type=click.Path(exists=True, file_okay=False, readable=True, resolve_path=True, allow_dash=True),
     default=".",
     help="Local filesystem path to the root of the package. Example: --source /path/to/workflows",
-)
-@click.option(
-    "-k",
-    "--pkgs",
-    required=False,
-    multiple=True,
-    callback=validate_package,
-    help="Dot-delineated python packages to operate on. Multiple may be specified (can use commas, or specify the "
-    "switch multiple times. Please note that this "
-    "option will override the option specified in the configuration file, or environment variable",
 )
 @click.option(
     "-o",
@@ -125,7 +114,6 @@ def package(
     ctx,
     image_config,
     source,
-    pkgs,
     output,
     force,
     copy: typing.Optional[CopyFileDetection],
@@ -141,6 +129,21 @@ def package(
     For workflows, one pb file is produced for each workflow, representing a WorkflowClosure object. The closure
     object contains the WorkflowTemplate, along with the relevant tasks for that workflow.
     This serialization step will set the name of the tasks to the fully qualified name of the task function.
+
+     Given a Python package containing Flyte entities with a structure like this:
+
+    .
+    └── some_package
+        ├── __init__.py
+        └── some_module
+            ├── __init__.py
+            └── wf.py
+
+    You can package the Flyte entities contained in this package by executing the following command:
+
+    pyflyte --pkgs some_package package
+
+    This command will create a Flyte backend registrable package of all entities in the specified package.
     """
     # Ensure that the two flags are consistent
     if fast:
