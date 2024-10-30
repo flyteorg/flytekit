@@ -239,6 +239,8 @@ class ArrayNodeMapTask(PythonTask):
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
             map_task_inputs = {}
             task_index = self._compute_array_job_index()
+            print("@@@ task_index:", task_index)
+            print("@@@ self.interface.inputs.keys():", self.interface.inputs.keys())
             inputs_interface = self._run_task.python_interface.inputs
             for k in self.interface.inputs.keys():
                 v = literal_map.literals[k]
