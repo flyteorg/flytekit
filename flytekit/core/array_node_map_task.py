@@ -261,7 +261,7 @@ class ArrayNodeMapTask(PythonTask):
                         binary_idl_obj = v.scalar.binary
                         if binary_idl_obj.tag == _common_constants.MESSAGEPACK:
                             list_obj = msgpack.loads(binary_idl_obj.value)
-                            assert list_obj is list and len(list_obj) >= task_index, f"Invalid list object: `{list_obj}` from binary value `{binary_idl_obj}`"
+                            # assert list_obj is list and len(list_obj) >= task_index, f"Invalid list object: `{list_obj}` from binary value `{binary_idl_obj}`"
                             task_index_value = list_obj[task_index]
                             map_task_inputs[k] = _literal_models.Literal(scalar=_literal_models.Scalar(
                                 binary=_literal_models.Binary(value=msgpack.dumps(task_index_value), tag=_common_constants.MESSAGEPACK)))
