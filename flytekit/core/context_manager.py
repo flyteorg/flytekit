@@ -19,6 +19,7 @@ import pathlib
 import tempfile
 import traceback
 import typing
+import warnings
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field
@@ -359,11 +360,19 @@ class SecretsManager(object):
 
     def get(
         self,
+        *,
         group: Optional[str] = None,
         key: Optional[str] = None,
         group_version: Optional[str] = None,
         encode_mode: str = "r",
     ) -> str:
+        # Raise a warning if this method is called without keyword arguments
+        if (group is not None and key is not None) and (not isinstance(group, str) or not isinstance(key, str)):
+            warnings.warn(
+            "The use of positional arguments for SecretsManager.get is deprecated. "
+            "Please use keyword arguments instead. This will be removed in a future version.",
+            DeprecationWarning
+        )
         """
         Retrieves a secret using the resolution order -> Env followed by file. If not found raises a ValueError
         param encode_mode, defines the mode to open files, it can either be "r" to read file, or "rb" to read binary file
