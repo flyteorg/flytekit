@@ -241,7 +241,9 @@ class ArrayNodeMapTask(PythonTask):
             task_index = self._compute_array_job_index()
             print("@@@ task_index:", task_index)
             print("@@@ self.interface.inputs.keys():", self.interface.inputs.keys())
+            print("@@@ self.interface.inputs.values():", self.interface.inputs.values())
             inputs_interface = self._run_task.python_interface.inputs
+            print("@@@ inputs_interface:", inputs_interface)
             for k in self.interface.inputs.keys():
                 v = literal_map.literals[k]
                 # If the input is offloaded, we need to unwrap it
