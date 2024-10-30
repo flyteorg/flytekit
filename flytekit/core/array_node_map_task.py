@@ -248,7 +248,7 @@ class ArrayNodeMapTask(PythonTask):
                 if k not in self.bound_inputs:
                     # assert that v.collection is not None
                     if not v.collection or not isinstance(v.collection.literals, list):
-                        raise ValueError(f"Expected a list of literals for {k}")
+                        raise ValueError(f"Expected a list of literals for `{k}`, get literal value {v}")
                     map_task_inputs[k] = v.collection.literals[task_index]
                 else:
                     map_task_inputs[k] = v
