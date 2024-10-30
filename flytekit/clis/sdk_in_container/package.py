@@ -129,6 +129,21 @@ def package(
     For workflows, one pb file is produced for each workflow, representing a WorkflowClosure object. The closure
     object contains the WorkflowTemplate, along with the relevant tasks for that workflow.
     This serialization step will set the name of the tasks to the fully qualified name of the task function.
+
+    Given a Python package containing Flyte entities with a structure like this:
+
+    .
+    └── some_package
+        ├── __init__.py
+        └── some_module
+            ├── __init__.py
+            └── wf.py
+
+    You can package the Flyte entities contained in this package by executing the following command:
+
+    pyflyte --pkgs some_package package
+    
+    This command will create a Flyte backend registrable package of all entities in the specified package.
     """
     # Ensure that the two flags are consistent
     if fast:
