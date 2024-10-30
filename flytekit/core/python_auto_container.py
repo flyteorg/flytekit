@@ -330,7 +330,7 @@ class DefaultNotebookTaskResolver(TrackedInstance, TaskResolverMixin):
                 loaded_data = cloudpickle.load(f)
         except TypeError:
             raise RuntimeError(
-                "The Python version is smaller than the version used to create the pickle file. "
+                "The Python version is different from the version used to create the pickle file. "
                 f"Current Python version: {sys.version_info.major}.{sys.version_info.minor}. "
                 "Please try using the same Python version to create the pickle file or use another "
                 "container image with a matching version."
