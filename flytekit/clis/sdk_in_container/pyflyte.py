@@ -56,6 +56,7 @@ from flytekit.loggers import logger
 )
 @click.pass_context
 def main(ctx, pkgs: typing.List[str], config: str, verbose: int):
+    # TODO: put context here
     """
     Entrypoint for all the user commands.
     """
