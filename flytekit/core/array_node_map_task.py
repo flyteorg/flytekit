@@ -6,9 +6,9 @@ import math
 import os  # TODO: use flytekit logger
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Union, cast
-
+import msgpack
 from flyteidl.core import tasks_pb2
-
+from flytekit.core import constants as _common_constants
 from flytekit.configuration import SerializationSettings
 from flytekit.core import tracker
 from flytekit.core.array_node import array_node
@@ -17,7 +17,7 @@ from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteCon
 from flytekit.core.interface import transform_interface_to_list_interface
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanceTask
-from flytekit.core.type_engine import TypeEngine
+from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
 from flytekit.core.utils import timeit
 from flytekit.loggers import logger
 from flytekit.models import literals as _literal_models
@@ -250,10 +250,27 @@ class ArrayNodeMapTask(PythonTask):
                 if v.offloaded_metadata:
                     v = loop_manager.run_sync(TypeEngine.unwrap_offloaded_literal, ctx, v)
                 if k not in self.bound_inputs:
-                    # assert that v.collection is not None
-                    if not v.collection or not isinstance(v.collection.literals, list):
+                    if v.scalar and v.scalar.binary:
+                        """
+                        1. decode it by msgpack, and get a list
+                        2. use task index to retrieve the value from the list
+                        3. encode it back by msgpack and turn it a binary value
+                        4. map_task_inputs[k] = encoded binary value
+                        """
+
+                        binary_idl_obj = v.scalar.binary
+                        if binary_idl_obj.tag == _common_constants.MESSAGEPACK:
+                            list_obj = msgpack.loads(binary_idl_obj.value)
+                            assert list_obj is list and len(list_obj) >= task_index, f"Invalid list object: `{list_obj}` from binary value `{binary_idl_obj}`"
+                            task_index_value = list_obj[task_index]
+                            map_task_inputs[k] = _literal_models.Literal(scalar=_literal_models.Scalar(
+                                binary=_literal_models.Binary(value=msgpack.dumps(task_index_value), tag=_common_constants.MESSAGEPACK)))
+                        else:
+                            raise TypeTransformerFailedError(f"Unsupported binary format `{binary_idl_obj.tag}` for map task.")
+                    elif not v.collection or not isinstance(v.collection.literals, list):
                         raise ValueError(f"Expected a list of literals for `{k}`, get literal value {v}")
-                    map_task_inputs[k] = v.collection.literals[task_index]
+                    else:
+                        map_task_inputs[k] = v.collection.literals[task_index]
                 else:
                     map_task_inputs[k] = v
             inputs_map = _literal_models.LiteralMap(literals=map_task_inputs)
