@@ -187,7 +187,9 @@ def register(
     if not pkgs:
         logger.debug("No pkgs")
     if pkgs:
-        raise ValueError("The 'pkgs' argument is unimplemented. Please specify directories as arguments at the end of the command.")
+        raise ValueError(
+            "The 'pkgs' argument is unimplemented. Please specify directories as arguments at the end of the command."
+        )
 
     if len(package_or_module) == 0:
         display_help_with_error(

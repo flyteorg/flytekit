@@ -142,7 +142,7 @@ def package(
     You can package the Flyte entities contained in this package by executing the following command:
 
     pyflyte --pkgs some_package package
-    
+
     This command will create a Flyte backend registrable package of all entities in the specified package.
     """
     # Ensure that the two flags are consistent
