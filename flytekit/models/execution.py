@@ -200,7 +200,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             parallelism/concurrency of MapTasks is independent from this.
         :param security_context: Optional security context to use for this execution.
         :param overwrite_cache: Optional flag to overwrite the cache for this execution.
-        :param interruptible: Optional flag to interrupt the execution.
+        :param interruptible: Optional flag to override the default interruptible flag of the executed entity.
         :param envs: flytekit.models.common.Envs environment variables to set for this execution.
         :param tags: Optional list of tags to apply to the execution.
         :param execution_cluster_label: Optional execution cluster label to use for this execution.
