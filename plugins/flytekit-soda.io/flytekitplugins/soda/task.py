@@ -9,6 +9,10 @@ API credentials to run these scans in an automated fashion within Flyte.
 from dataclasses import dataclass
 from flytekit import PythonFunctionTask
 from typing import Any, Dict, Callable, Optional
+from flytekit.configuration import SecretsManager
+import requests
+import os
+import subprocess
 
 # This would be the main task configuration class for Soda.io
 @dataclass
@@ -64,11 +68,43 @@ class SodaCheckTask(PythonFunctionTask[SodaCheckConfig]):
         Returns:
             dict: A dictionary containing the results of the Soda.io scan.
         """
-        # Example code to invoke Soda.io data scan
-        scan_definition = self.task_config.scan_definition
-        # Integrate with Soda.io here, such as by calling a scan API with scan_definition
+        # Retrieve the Soda Cloud API key from environment or Flyte's SecretsManager
+        api_key = (
+            self.task_config.soda_cloud_api_key
+            or os.getenv("SODA_CLOUD_API_KEY")
+            or SecretsManager.get_secrets("soda", "api_key")
+        )
 
-        # You would actually integrate with the Soda API here, using soda-cloud-api-key and other configurations
-        result = {}  # Placeholder for API result
+        if not api_key:
+            raise ValueError("Soda Cloud API key is required but not provided.")
+
+        scan_definition = self.task_config.scan_definition
+        data_source = self.task_config.data_source
+        scan_name = self.task_config.scan_name
+
+        # Placeholder for API request to Soda.io
+        url = "https://api.soda.io/v1/scan"  # Replace with actual Soda.io API endpoint
+
+        # Prepare the request payload
+        payload = {
+            "scan_definition": scan_definition,
+            "data_source": data_source,
+            "scan_name": scan_name,
+            "api_key": api_key
+        }
+        
+        # Placeholder for API result
+        result = {}
+
+        # Make the API call (using POST method as an example)
+        try:
+            response = requests.post(url, json=payload)
+            response.raise_for_status()  # Raise an error for bad responses (4xx or 5xx)
+            
+            # Assuming the API returns a JSON response
+            result = response.json()
+
+        except requests.exceptions.RequestException as e:
+            raise RuntimeError(f"API call failed: {e}")
 
         return {"scan_result": result}
