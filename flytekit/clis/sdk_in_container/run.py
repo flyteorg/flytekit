@@ -337,6 +337,7 @@ def load_naive_entity(module_name: str, entity_name: str, project_root: str) -> 
     Load the workflow of a script file.
     N.B.: it assumes that the file is self-contained, in other words, there are no relative imports.
     """
+    # FlyteContextManager.with_context(flyte_ctx.new_builder()):
     flyte_ctx_builder = context_manager.FlyteContextManager.current_context().new_builder()
     with context_manager.FlyteContextManager.with_context(flyte_ctx_builder):
         with module_loader.add_sys_path(project_root):
@@ -467,11 +468,11 @@ def to_click_option(
                 # encoder = JSONEncoder(python_type)
                 # default_val = encoder.encode(default_val)
 
-                with FlyteContextManager.with_context(flyte_ctx.new_builder()):
-                    encoder = JSONEncoder(python_type)
-                    print("@@@ Before default input:", json.dumps(asdict(default_val)))
-                    default_val = encoder.encode(default_val)
-                    print("@@@ After input:", default_val)
+                # with FlyteContextManager.with_context(flyte_ctx.new_builder()):
+                #     encoder = JSONEncoder(python_type)
+                #     print("@@@ Before default input:", json.dumps(asdict(default_val)))
+                #     default_val = encoder.encode(default_val)
+                #     print("@@@ After input:", default_val)
 
                 encoder = JSONEncoder(python_type)
                 print("@@@ Before default input:", json.dumps(asdict(default_val)))
@@ -533,7 +534,7 @@ def run_remote(
     """
     Helper method that executes the given remote FlyteLaunchplan, FlyteWorkflow or FlyteTask
     """
-
+    print("@@@ run remote inputs:", inputs)
     msg = "Running execution on remote."
     if run_level_params.wait_execution:
         msg += " Waiting to complete..."
@@ -652,6 +653,7 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
         )
         try:
             inputs = {}
+            print("@@@ entity.python_interface.inputs_with_defaults.items()", entity.python_interface.inputs_with_defaults.items())
             for input_name, v in entity.python_interface.inputs_with_defaults.items():
                 processed_click_value = kwargs.get(input_name)
                 optional_v = False
@@ -684,6 +686,7 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
                         raise click.UsageError(
                             f"Default for '{input_name}' is a query, which must be specified when running locally."
                         )
+                print("@@@ processed_click_value:", processed_click_value)
                 if processed_click_value is not None or optional_v:
                     inputs[input_name] = processed_click_value
                 if processed_click_value is None and v[0] == bool:

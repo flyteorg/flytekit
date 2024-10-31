@@ -473,6 +473,7 @@ class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
         python_type: typing.Type[FlyteFile],
         expected: LiteralType,
     ) -> Literal:
+        print("@@@ to literal called")
         remote_path = None
         should_upload = True
 

@@ -1286,6 +1286,7 @@ class FlyteRemote(object):
         cluster_pool: typing.Optional[str] = None,
         execution_cluster_label: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
+        print("@@@ flyte remote called:", )
         """Common method for execution across all entities.
 
         :param flyte_id: entity identifier
@@ -1326,6 +1327,11 @@ class FlyteRemote(object):
             input_flyte_type_map = entity.interface.inputs
 
             for k, v in inputs.items():
+                print("==========================")
+                print(k, v)
+                import msgpack
+                print(msgpack.unpackb(v.scalar.binary.value))
+                print("==========================")
                 if input_flyte_type_map.get(k) is None:
                     raise user_exceptions.FlyteValueException(
                         k, f"The {entity.__class__.__name__} doesn't have this input key."
@@ -1351,6 +1357,10 @@ class FlyteRemote(object):
                 literal_map[k] = lit
 
             literal_inputs = literal_models.LiteralMap(literals=literal_map)
+            import msgpack
+
+            print("@@@ literal_inputs:", literal_map["dc"])
+            print(msgpack.unpackb(literal_map["dc"].scalar.binary.value))
 
         try:
             # Currently, this will only execute the flyte entity referenced by

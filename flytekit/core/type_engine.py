@@ -672,6 +672,7 @@ class DataclassTransformer(TypeTransformer[object]):
 
         self._make_dataclass_serializable(python_val, python_type)
 
+        print("@@@ before python_val:", python_val)
         # The `to_json` integrated through mashumaro's `DataClassJSONMixin` allows for more
         # functionality than JSONEncoder
         # We can't use hasattr(python_val, "to_json") here because we rely on mashumaro's API to customize the serialization behavior for Flyte types.
@@ -696,6 +697,8 @@ class DataclassTransformer(TypeTransformer[object]):
                     f"{python_type} should inherit from mashumaro.types.SerializableType"
                     f" and implement _serialize and _deserialize methods."
                 )
+
+        print("@@@ after python_val:", msgpack.unpackb(msgpack_bytes))
 
         return Literal(scalar=Scalar(binary=Binary(value=msgpack_bytes, tag="msgpack")))
 
