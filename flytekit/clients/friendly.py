@@ -1090,5 +1090,14 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         )
 
     def get_control_plane_version(self) -> str:
+        """
+        Retrieve the Control Plane version from Flyteadmin.
+
+        This method calls Flyteadmin's GetVersion API to obtain the current version information of the control plane.
+        The retrieved version can be used to enable or disable specific features based on the Flyteadmin version.
+
+        Returns:
+            str: The version string of the control plane.
+        """
         version_response = self._stub.GetVersion(_version_pb2.GetVersionRequest(), metadata=self._metadata)
         return version_response.control_plane_version.Version
