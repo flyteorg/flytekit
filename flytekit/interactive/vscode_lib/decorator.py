@@ -195,14 +195,14 @@ def download_vscode(config: VscodeConfig):
 
     # If the code server already exists in the container, skip downloading
     executable_path = shutil.which(EXECUTABLE_NAME)
-    if executable_path is not None:
+    if executable_path is not None or os.path.exists(DOWNLOAD_DIR):
         logger.info(f"Code server binary already exists at {executable_path}")
         logger.info("Skipping downloading code server...")
     else:
         logger.info("Code server is not in $PATH, start downloading code server...")
         # Create DOWNLOAD_DIR if not exist
         logger.info(f"DOWNLOAD_DIR: {DOWNLOAD_DIR}")
-        os.makedirs(DOWNLOAD_DIR, exist_ok=True)
+        os.makedirs(DOWNLOAD_DIR)
 
         logger.info(f"Start downloading files to {DOWNLOAD_DIR}")
         # Download remote file to local
@@ -213,9 +213,9 @@ def download_vscode(config: VscodeConfig):
         with tarfile.open(code_server_tar_path, "r:gz") as tar:
             tar.extractall(path=DOWNLOAD_DIR)
 
+    if os.path.exists(DOWNLOAD_DIR):
         code_server_dir_name = get_code_server_info(config.code_server_dir_names)
         code_server_bin_dir = os.path.join(DOWNLOAD_DIR, code_server_dir_name, "bin")
-
         # Add the directory of code-server binary to $PATH
         os.environ["PATH"] = code_server_bin_dir + os.pathsep + os.environ["PATH"]
 
