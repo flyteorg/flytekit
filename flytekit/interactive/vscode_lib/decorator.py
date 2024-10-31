@@ -439,6 +439,7 @@ class vscode(ClassDecorator):
         # 2. Prepare the interactive debugging Python script and launch.json.
         prepare_interactive_python(self.task_function)  # type: ignore
 
+        logger.info(f"pid, {os.getpid()}")
         # 3. Prepare the task resumption Python script.
         prepare_resume_task_python()
 
