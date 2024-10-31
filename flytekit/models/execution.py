@@ -330,7 +330,9 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             security_context=self.security_context.to_flyte_idl() if self.security_context else None,
             overwrite_cache=self.overwrite_cache,
             # NOTE: Pass BoolValue ONLY if interruptible is not None - otherwise this overrides the default value
-            interruptible=None if self.interruptible is None else _google_wrappers_pb2.BoolValue(value=self.interruptible),
+            interruptible=None
+            if self.interruptible is None
+            else _google_wrappers_pb2.BoolValue(value=self.interruptible),
             envs=self.envs.to_flyte_idl() if self.envs else None,
             tags=self.tags,
             cluster_assignment=self._cluster_assignment.to_flyte_idl() if self._cluster_assignment else None,
