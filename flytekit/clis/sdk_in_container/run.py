@@ -461,8 +461,23 @@ def to_click_option(
             if type(default_val) == dict or type(default_val) == list:
                 default_val = json.dumps(default_val)
             else:
+                from dataclasses import asdict
+                # print("@@@ default inptut:", json.dumps(asdict(default_val)))
+                # default_val = json.dumps(asdict(default_val))
+                # encoder = JSONEncoder(python_type)
+                # default_val = encoder.encode(default_val)
+
+                with FlyteContextManager.with_context(flyte_ctx.new_builder()):
+                    encoder = JSONEncoder(python_type)
+                    print("@@@ Before default input:", json.dumps(asdict(default_val)))
+                    default_val = encoder.encode(default_val)
+                    print("@@@ After input:", default_val)
+
                 encoder = JSONEncoder(python_type)
+                print("@@@ Before default input:", json.dumps(asdict(default_val)))
                 default_val = encoder.encode(default_val)
+                print("@@@ After input:", default_val)
+
         if literal_var.type.metadata:
             description_extra = f": {json.dumps(literal_var.type.metadata)}"
 

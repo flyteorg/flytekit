@@ -541,14 +541,23 @@ class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
             raise TypeTransformerFailedError(f"Expected FlyteFile or os.PathLike object, received {type(python_val)}")
 
         # If we're uploading something, that means that the uri should always point to the upload destination.
+        print("@@@ should_upload: ", should_upload)
         if should_upload:
             headers = self.get_additional_headers(source_path)
+            print("@@@ source_path: ", source_path)
+            print("@@@ headers: ", headers)
+            print("@@@ remote_path: ", remote_path)
+            print("@@@ ctx.file_access", ctx.file_access)
             if remote_path is not None:
+                print("@@@ go up remote path")
                 remote_path = await ctx.file_access.async_put_data(
                     source_path, remote_path, is_multipart=False, **headers
                 )
+                print("@@@ go up remote path result: ", remote_path)
             else:
+                print("@@@ go down remote path")
                 remote_path = await ctx.file_access.async_put_raw_data(source_path, **headers)
+                print("@@@ go down remote path resule: ", remote_path)
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=unquote(str(remote_path)))))
         # If not uploading, then we can only take the original source path as the uri.
         else:
