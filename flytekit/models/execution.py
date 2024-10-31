@@ -329,10 +329,9 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             max_parallelism=self.max_parallelism,
             security_context=self.security_context.to_flyte_idl() if self.security_context else None,
             overwrite_cache=self.overwrite_cache,
-            # NOTE: Pass BoolValue ONLY if interruptible is not None - otherwise this overrides the default value
-            interruptible=None
-            if self.interruptible is None
-            else _google_wrappers_pb2.BoolValue(value=self.interruptible),
+            interruptible=_google_wrappers_pb2.BoolValue(value=self.interruptible)
+            if self.interruptible is not None
+            else None,
             envs=self.envs.to_flyte_idl() if self.envs else None,
             tags=self.tags,
             cluster_assignment=self._cluster_assignment.to_flyte_idl() if self._cluster_assignment else None,
@@ -363,7 +362,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             if p.security_context
             else None,
             overwrite_cache=p.overwrite_cache,
-            interruptible=p.interruptible.value,  # NOTE: p.interruptible is always a BoolValue here no matter what - cannot make distinction between None and False
+            interruptible=p.interruptible.value if p.HasField("interruptible") else None,
             envs=_common_models.Envs.from_flyte_idl(p.envs) if p.HasField("envs") else None,
             tags=p.tags,
             cluster_assignment=ClusterAssignment.from_flyte_idl(p.cluster_assignment)
