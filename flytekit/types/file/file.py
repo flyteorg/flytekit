@@ -552,7 +552,7 @@ class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=unquote(str(remote_path)))))
         # If not uploading, then we can only take the original source path as the uri.
         else:
-            return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=source_path)))
+            return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=str(source_path))))
 
     @staticmethod
     def get_additional_headers(source_path: str | os.PathLike) -> typing.Dict[str, str]:
