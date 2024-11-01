@@ -58,14 +58,16 @@ def exit_handler(
         if post_execute is not None:
             post_execute()
             logger.info("Post execute function executed successfully!")
-        child_process.terminate()
+        if child_process.is_alive():
+            child_process.terminate()
         child_process.join()
 
     logger = flytekit.current_context().logging
     start_time = time.time()
     delta = 0
 
-    while not resume_task.is_set():
+    logger.info("waiting for task to resume...")
+    while child_process.is_alive() and not resume_task.is_set():
         if not os.path.exists(HEARTBEAT_PATH):
             delta = time.time() - start_time
             logger.info(f"Code server has not been connected since {delta} seconds ago.")
@@ -285,7 +287,7 @@ if __name__ == "__main__":
     print("Terminating server and resuming task.")
     answer = input("This operation will kill the server. All unsaved data will be lost, and you will no longer be able to connect to it. Do you really want to terminate? (Y/N): ").strip().upper()
     if answer == 'Y':
-        PID = {os.getpid()}
+        PID = os.getpid()
         os.kill(PID, signal.SIGTERM)
         print(f"The server has been terminated and the task has been resumed.")
     else:
