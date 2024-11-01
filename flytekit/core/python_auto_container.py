@@ -339,8 +339,8 @@ class DefaultNotebookTaskResolver(TrackedInstance, TaskResolverMixin):
         # verify the loaded_data is of the correct type
         if not isinstance(loaded_data, PickledEntity):
             raise RuntimeError(
-                f"The loaded data is not of the correct type. Expected PickledEntity, found {type(loaded_data)}. "
-                "Please ensure that the pickle file is not corrupted."
+                f"The loaded data is not of the correct type. Expected PickledEntity, found {loaded_data} of type "
+                f"{type(loaded_data)}. Please ensure that the pickle file is not corrupted."
             )
         pickled_object: PickledEntity = loaded_data
 
