@@ -118,6 +118,7 @@ class ContainerTask(PythonTask):
         """
         import re
 
+        input_data_dir = input_data_dir or ""
         input_regex = fr"{re.escape(input_data_dir)}/(.+)$"
         match = re.match(input_regex, cmd)
         if match:
