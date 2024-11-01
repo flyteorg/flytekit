@@ -86,9 +86,6 @@ def exit_handler(
 
         time.sleep(1)
 
-        # Wait for HEARTBEAT_CHECK_SECONDS seconds, but return immediately when resume_task is set.
-        # resume_task.wait(timeout=HEARTBEAT_CHECK_SECONDS)
-
     # User has resumed the task.
     terminate_process()
 
@@ -441,17 +438,7 @@ class vscode(ClassDecorator):
         # 1. Downloads the VSCode server from Internet to local.
         download_vscode(self._config)
 
-        # 2. Prepare the interactive debugging Python script and launch.json.
-        prepare_interactive_python(self.task_function)  # type: ignore
-
-        logger.info(f"pid, {os.getpid()}")
-        # 3. Prepare the task resumption Python script.
-        # prepare_resume_task_python()
-
-        # 4. Prepare the launch.json
-        prepare_launch_json()
-
-        # 5. Launches and monitors the VSCode server.
+        # 2. Launches and monitors the VSCode server.
         #    Run the function in the background.
         #    Make the task function's source file directory the default directory.
         task_function_source_dir = os.path.dirname(
@@ -465,10 +452,14 @@ class vscode(ClassDecorator):
         )
         child_process.start()
 
+        # 3. Prepare the interactive debugging Python script and launch.json.
+        prepare_interactive_python(self.task_function)  # type: ignore
+
+        # 4. Prepare the task resumption Python script
         prepare_resume_task_python(child_process.pid)
 
-        # 6. Register the signal handler for task resumption. This should be after creating the subprocess so that the subprocess won't inherit the signal handler.
-        # signal.signal(signal.SIGTERM, resume_task_handler)
+        # 5. Prepare the launch.json
+        prepare_launch_json()
 
         return exit_handler(
             child_process=child_process,
