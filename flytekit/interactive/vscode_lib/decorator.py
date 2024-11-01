@@ -275,7 +275,7 @@ if __name__ == "__main__":
         file.write(python_script)
 
 
-def prepare_resume_task_python():
+def prepare_resume_task_python(pid: int):
     """
     Generate a Python script for users to resume the task.
     """
@@ -287,8 +287,7 @@ if __name__ == "__main__":
     print("Terminating server and resuming task.")
     answer = input("This operation will kill the server. All unsaved data will be lost, and you will no longer be able to connect to it. Do you really want to terminate? (Y/N): ").strip().upper()
     if answer == 'Y':
-        PID = os.getpid()
-        os.kill(PID, signal.SIGTERM)
+        os.kill({pid}, signal.SIGTERM)
         print(f"The server has been terminated and the task has been resumed.")
     else:
         print("Operation canceled.")
@@ -443,7 +442,7 @@ class vscode(ClassDecorator):
 
         logger.info(f"pid, {os.getpid()}")
         # 3. Prepare the task resumption Python script.
-        prepare_resume_task_python()
+        # prepare_resume_task_python()
 
         # 4. Prepare the launch.json
         prepare_launch_json()
@@ -461,6 +460,8 @@ class vscode(ClassDecorator):
             },
         )
         child_process.start()
+
+        prepare_resume_task_python(child_process.pid)
 
         # 6. Register the signal handler for task resumption. This should be after creating the subprocess so that the subprocess won't inherit the signal handler.
         signal.signal(signal.SIGTERM, resume_task_handler)
