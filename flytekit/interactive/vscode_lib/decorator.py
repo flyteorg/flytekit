@@ -68,6 +68,7 @@ def exit_handler(
     while child_process.is_alive():
         current_time = time.time()
         if current_time - last_heartbeat_check >= check_interval:
+            last_heartbeat_check = current_time
             if not os.path.exists(HEARTBEAT_PATH):
                 delta = current_time - start_time
                 logger.info(f"Code server has not been connected since {delta} seconds ago.")
