@@ -67,7 +67,7 @@ def exit_handler(
     delta = 0
 
     logger.info("waiting for task to resume...")
-    while child_process.is_alive() and not resume_task.is_set():
+    while child_process.is_alive():
         if not os.path.exists(HEARTBEAT_PATH):
             delta = time.time() - start_time
             logger.info(f"Code server has not been connected since {delta} seconds ago.")
@@ -464,7 +464,7 @@ class vscode(ClassDecorator):
         prepare_resume_task_python(child_process.pid)
 
         # 6. Register the signal handler for task resumption. This should be after creating the subprocess so that the subprocess won't inherit the signal handler.
-        signal.signal(signal.SIGTERM, resume_task_handler)
+        # signal.signal(signal.SIGTERM, resume_task_handler)
 
         return exit_handler(
             child_process=child_process,
