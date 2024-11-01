@@ -4,12 +4,11 @@ import multiprocessing
 import os
 import platform
 import shutil
-import signal
 import subprocess
 import sys
 import tarfile
 import time
-from threading import Event
+from multiprocessing import Event
 from typing import Callable, List, Optional
 
 import fsspec
@@ -64,26 +63,31 @@ def exit_handler(
 
     logger = flytekit.current_context().logging
     start_time = time.time()
-    delta = 0
+    check_interval = 60  # Interval for heartbeat checking in seconds
+    last_heartbeat_check = time.time() - check_interval
 
     logger.info("waiting for task to resume...")
     while child_process.is_alive():
-        if not os.path.exists(HEARTBEAT_PATH):
-            delta = time.time() - start_time
-            logger.info(f"Code server has not been connected since {delta} seconds ago.")
-            logger.info("Please open the browser to connect to the running server.")
-        else:
-            delta = time.time() - os.path.getmtime(HEARTBEAT_PATH)
-            logger.info(f"The latest activity on code server is {delta} seconds ago.")
+        current_time = time.time()
+        if current_time - last_heartbeat_check >= check_interval:
+            if not os.path.exists(HEARTBEAT_PATH):
+                delta = current_time - start_time
+                logger.info(f"Code server has not been connected since {delta} seconds ago.")
+                logger.info("Please open the browser to connect to the running server.")
+            else:
+                delta = current_time - os.path.getmtime(HEARTBEAT_PATH)
+                logger.info(f"The latest activity on code server is {delta} seconds ago.")
 
-        # If the time from last connection is longer than max idle seconds, terminate the vscode server.
-        if delta > max_idle_seconds:
-            logger.info(f"VSCode server is idle for more than {max_idle_seconds} seconds. Terminating...")
-            terminate_process()
-            sys.exit()
+            # If the time from last connection is longer than max idle seconds, terminate the vscode server.
+            if delta > max_idle_seconds:
+                logger.info(f"VSCode server is idle for more than {max_idle_seconds} seconds. Terminating...")
+                terminate_process()
+                sys.exit()
+
+        time.sleep(1)
 
         # Wait for HEARTBEAT_CHECK_SECONDS seconds, but return immediately when resume_task is set.
-        resume_task.wait(timeout=HEARTBEAT_CHECK_SECONDS)
+        # resume_task.wait(timeout=HEARTBEAT_CHECK_SECONDS)
 
     # User has resumed the task.
     terminate_process()
