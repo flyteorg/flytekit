@@ -119,7 +119,7 @@ class ContainerTask(PythonTask):
         import re
 
         input_data_dir = input_data_dir or ""
-        input_regex = fr"{re.escape(input_data_dir)}/(.+)$"
+        input_regex = rf"{re.escape(input_data_dir)}/(.+)$"
         match = re.match(input_regex, cmd)
         if match:
             return match.group(1)
@@ -143,9 +143,11 @@ class ContainerTask(PythonTask):
             input_val = kwargs.get(k)
             if type(input_val) in [FlyteFile, FlyteDirectory]:
                 if not path_k:
-                    raise AssertionError("FlyteFile and FlyteDirectory commands should not use the syntax: {{.inputs.infile}}")
+                    raise AssertionError(
+                        "FlyteFile and FlyteDirectory commands should not use the syntax: {{.inputs.infile}}"
+                    )
                 local_flyte_file_or_dir_path = str(input_val)
-                remote_flyte_file_or_dir_path = os.path.join(self._input_data_dir, k) # type: ignore
+                remote_flyte_file_or_dir_path = os.path.join(self._input_data_dir, k)  # type: ignore
                 volume_binding[local_flyte_file_or_dir_path] = {
                     "bind": remote_flyte_file_or_dir_path,
                     "mode": "rw",
