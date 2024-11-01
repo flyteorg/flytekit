@@ -33,7 +33,7 @@ def test_flytefile_wf():
         command=[
             "python",
             "write_flytefile.py",
-            "{{.inputs.inputs}}",
+            "/var/inputs/inputs",
             "/var/outputs/out",
         ],
     )
@@ -80,7 +80,7 @@ def test_flytedir_wf():
         command=[
             "python",
             "write_flytedir.py",
-            "{{.inputs.inputs}}",
+            "/var/inputs/inputs",
             "/var/outputs/out",
         ],
     )
