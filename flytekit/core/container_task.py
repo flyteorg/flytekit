@@ -129,8 +129,7 @@ class ContainerTask(PythonTask):
         """
         We support template-style references to inputs, e.g., "{{.inputs.infile}}".
 
-        For FlyteFile and FlyteDirectory commands, e.g., "/var/inputs/inputs", we extract the key from strings that begin with the specified 
-        `input_data_dir`.
+        For FlyteFile and FlyteDirectory commands, e.g., "/var/inputs/inputs", we extract the key from strings that begin with the specified `input_data_dir`.
         """
         from flytekit.types.directory import FlyteDirectory
         from flytekit.types.file import FlyteFile
