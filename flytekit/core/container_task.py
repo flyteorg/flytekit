@@ -112,7 +112,7 @@ class ContainerTask(PythonTask):
             return match.group(1)
         return None
 
-    def _extract_path_command_key(self, cmd: str, input_data_dir: str) -> Optional[str]:
+    def _extract_path_command_key(self, cmd: str, input_data_dir: Optional[str]) -> Optional[str]:
         """
         Extract the key from the path-like command using regex.
         """
@@ -145,7 +145,7 @@ class ContainerTask(PythonTask):
                 if not path_k:
                     raise AssertionError("FlyteFile and FlyteDirectory commands should not use the syntax: {{.inputs.infile}}")
                 local_flyte_file_or_dir_path = str(input_val)
-                remote_flyte_file_or_dir_path = os.path.join(self._input_data_dir, k)
+                remote_flyte_file_or_dir_path = os.path.join(self._input_data_dir, k) # type: ignore
                 volume_binding[local_flyte_file_or_dir_path] = {
                     "bind": remote_flyte_file_or_dir_path,
                     "mode": "rw",
