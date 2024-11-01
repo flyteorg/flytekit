@@ -8,7 +8,6 @@ import subprocess
 import sys
 import tarfile
 import time
-from multiprocessing import Event
 from typing import Callable, List, Optional
 
 import fsspec
@@ -25,7 +24,6 @@ from flytekit.interactive.vscode_lib.config import VscodeConfig
 from flytekit.interactive.vscode_lib.vscode_constants import (
     DOWNLOAD_DIR,
     EXECUTABLE_NAME,
-    HEARTBEAT_CHECK_SECONDS,
     HEARTBEAT_PATH,
     INTERACTIVE_DEBUGGING_FILE_NAME,
     RESUME_TASK_FILE_NAME,
@@ -339,14 +337,6 @@ def prepare_launch_json():
         json.dump(launch_json, file, indent=4)
 
 
-def resume_task_handler(signum, frame):
-    """
-    The signal handler for task resumption.
-    """
-    resume_task.set()
-
-
-resume_task = Event()
 VSCODE_TYPE_VALUE = "vscode"
 
 
