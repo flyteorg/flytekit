@@ -317,6 +317,8 @@ def test_promote():
 
         return y, z, q
 
+    wf(a=3)
+
     entries = OrderedDict()
     wf_spec = get_serializable(entries, serialization_settings, wf)
     tts, wf_specs, lp_specs = gather_dependent_entities(entries)

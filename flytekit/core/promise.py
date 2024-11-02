@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import collections
 import datetime
 import inspect
@@ -1373,7 +1374,8 @@ class LocallyExecutable(Protocol):
     def local_execution_mode(self) -> ExecutionState.Mode: ...
 
 
-def flyte_entity_call_handler(
+# change this to async?
+async def async_flyte_entity_call_handler(
     entity: SupportsNodeCreation, *args, **kwargs
 ) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, Coroutine, None]:
     """
@@ -1408,6 +1410,37 @@ def flyte_entity_call_handler(
         kwargs[input_name] = arg
 
     ctx = FlyteContextManager.current_context()
+    # todo: add condition here to let sync/async tasks be called during eager execution
+    # conditions to take care of
+    # 1. you are an eager task, and are starting local execution
+    #    eager() -> self.local_execute() -> self.sandbox_execute() -> self.dispatch_execute(literals) ->
+    #        self.execute(native) a) -> task function() b) -> self.run_with_backend()
+    # 2. you are in an eager task local execution, calling a normal async task
+    #    await normal() -> detect in eager, self.local_execute()
+    # 3. you are an eager task, starting backend execution
+    #    entrypoint -> self.dispatch_execute(literals) -> ...
+    # 3. you are in an eager task, calling a normal sync task
+    # 4. you are in an eager task, calling another eager task
+    # 5. you are in a normal task, calling any other kind of task (disallow)
+    if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.EAGER_EXECUTION:
+        # if the entity is a nested eager workflow, then we need to handle it specially
+        from flytekit.core.python_function_task import EagerAsyncPythonFunctionTask
+        if isinstance(entity, EagerAsyncPythonFunctionTask):
+            return entity.run_with_backend(ctx, **kwargs)
+
+        # otherwise, ship it off to a worker since we are in a real execution environment.
+        else:
+            if not ctx.worker_queue:
+                raise AssertionError("Worker queue missing, must be set when trying to execute tasks in an eager workflow")
+            loop = asyncio.get_running_loop()
+            fut = ctx.worker_queue.add(loop, entity, input_kwargs=kwargs)
+            result = await fut
+
+        # todo: skip length checks for now. also convert output to the appropriate named tuple if present.
+        return result
+
+    # if this is eager local execution, the proceed with normal local execution below
+
     if ctx.execution_state and (
         ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION
         or ctx.execution_state.mode == ExecutionState.Mode.LOCAL_TASK_EXECUTION
@@ -1415,6 +1448,8 @@ def flyte_entity_call_handler(
         logger.error("You are not supposed to nest @Task/@Workflow inside a @Task!")
     if ctx.compilation_state is not None and ctx.compilation_state.mode == 1:
         return create_and_link_node(ctx, entity=entity, **kwargs)
+
+    # This handles the case for when we're already in a local execution state
     if ctx.execution_state and ctx.execution_state.is_local_execution():
         mode = cast(LocallyExecutable, entity).local_execution_mode()
         omt = OutputMetadataTracker()
@@ -1434,6 +1469,8 @@ def flyte_entity_call_handler(
                 else:
                     return None
             return cast(LocallyExecutable, entity).local_execute(ctx, **kwargs)
+
+    # This condition kicks off a new local execution.
     else:
         mode = cast(LocallyExecutable, entity).local_execution_mode()
         omt = OutputMetadataTracker()
@@ -1450,8 +1487,8 @@ def flyte_entity_call_handler(
             else:
                 raise ValueError(f"Received an output when workflow local execution expected None. Received: {result}")
 
-        if inspect.iscoroutine(result):
-            return result
+        # if inspect.iscoroutine(result):
+        #     return result
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.DYNAMIC_TASK_EXECUTION:
             return result
@@ -1466,3 +1503,5 @@ def flyte_entity_call_handler(
             f"Result {result}. "
             f"Python interface: {entity.python_interface}"
         )
+
+flyte_entity_call_handler = loop_manager.synced(async_flyte_entity_call_handler)

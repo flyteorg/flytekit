@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import inspect
 import os
 from functools import update_wrapper
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, TypeVar, Union, overload
@@ -17,7 +18,7 @@ from flytekit.core import workflow as _annotated_workflow
 from flytekit.core.base_task import PythonTask, TaskMetadata, TaskResolverMixin
 from flytekit.core.interface import Interface, output_name_generator, transform_function_to_interface
 from flytekit.core.pod_template import PodTemplate
-from flytekit.core.python_function_task import PythonFunctionTask
+from flytekit.core.python_function_task import PythonFunctionTask, EagerAsyncPythonFunctionTask
 from flytekit.core.reference_entity import ReferenceEntity, TaskReference
 from flytekit.core.resources import Resources
 from flytekit.deck import DeckField
@@ -88,6 +89,9 @@ class TaskPlugins(object):
             return cls._PYTHONFUNCTION_TASK_PLUGINS[plugin_config_type]
         # Defaults to returning Base PythonFunctionTask
         return PythonFunctionTask
+
+
+# TaskPlugins.register_pythontask_plugin(EagerAsyncPythonFunctionTask, EagerAsyncPythonFunctionTask)
 
 
 P = ParamSpec("P")
@@ -354,7 +358,11 @@ def task(
             timeout=timeout,
         )
 
-        decorated_fn = decorate_function(fn)
+        if inspect.iscoroutine(fn):
+            # todo:async figure out vscode decoration for async tasks
+            decorated_fn = fn
+        else:
+            decorated_fn = decorate_function(fn)
 
         task_instance = TaskPlugins.find_pythontask_plugin(type(task_config))(
             task_config,

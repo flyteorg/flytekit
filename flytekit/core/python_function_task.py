@@ -22,14 +22,20 @@ from abc import ABC
 from collections import OrderedDict
 from contextlib import suppress
 from enum import Enum
-from typing import Any, Callable, Iterable, List, Optional, TypeVar, Union, cast
+from typing import Any, Callable, Iterable, List, Optional, OrderedDict, Tuple, TypeVar, Union, cast
+from flytekit.core.worker_queue import WorkerQueue
 
 from flytekit.core import launch_plan as _annotated_launch_plan
 from flytekit.core.base_task import Task, TaskResolverMixin
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.docstring import Docstring
 from flytekit.core.interface import transform_function_to_interface
-from flytekit.core.promise import VoidPromise, translate_inputs_to_literals
+from flytekit.core.promise import (
+    Promise,
+    VoidPromise,
+    translate_inputs_to_literals,
+)
+from flytekit.utils.asyn import loop_manager
 from flytekit.core.python_auto_container import PythonAutoContainerTask, default_task_resolver
 from flytekit.core.tracker import extract_task_module, is_functools_wrapped_module_level, isnested, istestfunction
 from flytekit.core.workflow import (
@@ -117,12 +123,14 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         """
         :param T task_config: Configuration object for Task. Should be a unique type for that specific Task
         :param Callable task_function: Python function that has type annotations and works for the task
-        :param Optional[List[str]] ignore_input_vars: When supplied, these input variables will be removed from the interface. This
+        :param Optional[List[str]] ignore_input_vars: When supplied, these input variables will be removed from the
+        interface. This
                                   can be used to inject some client side variables only. Prefer using ExecutionParams
         :param Optional[ExecutionBehavior] execution_mode: Defines how the execution should behave, for example
             executing normally or specially handling a dynamic case.
         :param str task_type: String task type to be associated with this Task
-        :param Optional[Iterable[Union["PythonFunctionTask", "_annotated_launch_plan.LaunchPlan", WorkflowBase]]] node_dependency_hints:
+        :param Optional[Iterable[Union["PythonFunctionTask", "_annotated_launch_plan.LaunchPlan", WorkflowBase]]]
+        node_dependency_hints:
             A list of tasks, launchplans, or workflows that this task depends on. This is only
             for dynamic tasks/workflows, where flyte cannot automatically determine the dependencies prior to runtime.
         """
@@ -195,11 +203,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         handle dynamic tasks or you will no longer be able to use the task as a dynamic task generator.
         """
         if self.execution_mode == self.ExecutionBehavior.DEFAULT:
-            return self._task_function(**kwargs)
-        elif self.execution_mode == self.ExecutionBehavior.EAGER:
-            # if the task is a coroutine function, inject the context object so that the async_entity
-            # has access to the FlyteContext.
-            kwargs["async_ctx"] = FlyteContextManager.current_context()
+            # todo:async run task function in a runner if necessary.
             return self._task_function(**kwargs)
         elif self.execution_mode == self.ExecutionBehavior.DYNAMIC:
             return self.dynamic_execute(self._task_function, **kwargs)
@@ -280,7 +284,8 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
 
                 if not isinstance(model, task_models.TaskSpec):
                     raise TypeError(
-                        f"Unexpected type for serialized form of task. Expected {task_models.TaskSpec}, but got {type(model)}"
+                        f"Unexpected type for serialized form of task. Expected {task_models.TaskSpec}, "
+                        f"but got {type(model)}"
                     )
 
                 # Store the valid task template so that we can pass it to the
@@ -383,3 +388,104 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
                 python_dependencies_deck.append(renderer.to_html())
 
         return super()._write_decks(native_inputs, native_outputs_as_map, ctx, new_user_params)
+
+
+class AsyncPythonFunctionTask(PythonFunctionTask[T]):
+    """
+    This is the base task for eager tasks, as well as normal async tasks
+    Really only need to override the call function.
+    """
+
+    async def __call__(
+        self, *args: object, **kwargs: object
+    ) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, None]:
+        return await async_flyte_entity_call_handler(self, *args, **kwargs)  # type: ignore
+
+
+class EagerAsyncPythonFunctionTask(PythonFunctionTask[T]):
+    def __init__(
+        self,
+        task_config: T,
+        task_function: Callable,
+        task_type="python-task",
+        ignore_input_vars: Optional[List[str]] = None,
+        task_resolver: Optional[TaskResolverMixin] = None,
+        node_dependency_hints: Optional[
+            Iterable[Union["PythonFunctionTask", "_annotated_launch_plan.LaunchPlan", WorkflowBase]]
+        ] = None,
+        **kwargs,
+    ):
+        # delete execution mode from kwargs
+        if "execution_mode" in kwargs:
+            del kwargs["execution_mode"]
+
+        super().__init__(task_config, task_function, task_type, ignore_input_vars, PythonFunctionTask.ExecutionBehavior.EAGER, task_resolver, node_dependency_hints, **kwargs)
+
+    def local_execution_mode(self) -> ExecutionState.Mode:
+        return ExecutionState.Mode.EAGER_LOCAL_EXECUTION
+
+    async def async_execute(self, **kwargs) -> Any:
+        """
+        Overrides the base execute function. This function does not handle dynamic at all. Eager and dynamic don't mix.
+        """
+        ctx = FlyteContextManager.current_context()
+        is_local_execution = cast(ExecutionState, ctx.execution_state).is_local_execution()
+        if not is_local_execution:
+
+            await self.run_with_backend(ctx, **kwargs)
+        else:
+            # set local mode and proceed with running the function.  This makes the
+            mode = self.local_execution_mode()
+            with FlyteContextManager.with_context(
+                    ctx.with_execution_state(ctx.execution_state.with_params(mode=mode))):
+                return await self._task_function(**kwargs)
+
+    execute = loop_manager.synced(async_execute)
+
+    async def run_with_backend(self, ctx: FlyteContext, **kwargs):
+        """
+        This is the main entry point to kick off a live run. Like if you're running locally, but want to use a
+        Flyte backend, or running for real on a Flyte backend.
+        """
+        # if already a worker queue, then get the execution prefix, and append a new one.
+        remote = ctx.flyte_client
+        if remote is None:
+            raise AssertionError("Remote client needs to be present in the context for cluster-based execution"
+                                 " of an eager task.")
+
+        # set up context
+        mode = ExecutionState.Mode.EAGER_EXECUTION
+        builder = ctx.with_execution_state(ctx.execution_state.with_params(mode=mode))
+
+        # ensure that the worker queue is in context
+        if not ctx.worker_queue:
+            builder = builder.with_worker_queue(WorkerQueue(remote))
+
+        with FlyteContextManager.with_context(builder):
+            return await self._task_function(**kwargs)
+
+
+"""
+figure out loop location, add worker, add to context, hook up decorator.
+testing local eager with no tasks, local eager, remote eager, local nested eager, remote nested eager
+
+to enable the async pattern the __call__ function needs to be async or sync. One task type can't be both because it has
+to be this function. You can't overload functions in Python, so we have to differentiate at all levels.
+
+eager tasks should run locally - when running a task/workflow, it should be run as if embedded in a workflow context,
+with the outputs converted into literals and then back.
+
+first time we're allowing tasks to be called inside other tasks
+
+
+when a workflow kicks off, if it's an eager workflow,
+ - remote: dispatch tasks to a remote worker engine
+ 
+ - local: run tasks 
+
+a normal task that runs inside an eager task.
+ - remote: what's the current flow?
+     - use ExecutionState.Mode.TASK_EXECUTION
+"""
+
+

@@ -11,7 +11,7 @@ from flytekit import Deck, Secret, current_context
 from flytekit.configuration import DataConfig, PlatformConfig, S3Config
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
-from flytekit.core.python_function_task import PythonFunctionTask
+from flytekit.core.python_function_task import PythonFunctionTask, EagerAsyncPythonFunctionTask
 from flytekit.core.task import task
 from flytekit.core.workflow import WorkflowBase
 from flytekit.loggers import logger
@@ -489,71 +489,77 @@ def eager(
     if _fn is None:
         return partial(
             eager,
-            remote=remote,
-            client_secret_group=client_secret_group,
-            client_secret_key=client_secret_key,
-            timeout=timeout,
-            poll_interval=poll_interval,
-            local_entrypoint=local_entrypoint,
-            client_secret_env_var=client_secret_env_var,
+            # remote=remote,
+            # client_secret_group=client_secret_group,
+            # client_secret_key=client_secret_key,
+            # timeout=timeout,
+            # poll_interval=poll_interval,
+            # local_entrypoint=local_entrypoint,
+            # client_secret_env_var=client_secret_env_var,
             **kwargs,
         )
 
-    if local_entrypoint and remote is None:
-        raise ValueError("Must specify remote argument if local_entrypoint is True")
+    # if local_entrypoint and remote is None:
+    #     raise ValueError("Must specify remote argument if local_entrypoint is True")
 
-    @wraps(_fn)
-    async def wrapper(*args, **kws):
+    # @wraps(_fn)
+    # async def wrapper(*args, **kws):
         # grab the "async_ctx" argument injected by PythonFunctionTask.execute
-        logger.debug("Starting")
-        _remote = remote
-
-        # locally executed nested eager workflows won't have async_ctx injected into the **kws input
-        ctx = kws.pop("async_ctx", None)
-        task_id, execution_id = None, None
-        if ctx:
-            exec_params = ctx.user_space_params
-            task_id = exec_params.task_id
-            execution_id = exec_params.execution_id
-
-        async_stack = AsyncStack(task_id, execution_id)
-        _remote = _prepare_remote(
-            _remote, ctx, client_secret_group, client_secret_key, local_entrypoint, client_secret_env_var
-        )
+        # logger.debug("Starting")
+        # _remote = remote
+        #
+        # # locally executed nested eager workflows won't have async_ctx injected into the **kws input
+        # ctx = kws.pop("async_ctx", None)
+        # task_id, execution_id = None, None
+        # if ctx:
+        #     exec_params = ctx.user_space_params
+        #     task_id = exec_params.task_id
+        #     execution_id = exec_params.execution_id
+        #
+        # async_stack = AsyncStack(task_id, execution_id)
+        # _remote = _prepare_remote(
+        #     _remote, ctx, client_secret_group, client_secret_key, local_entrypoint, client_secret_env_var
+        # )
 
         # make sure sub-nodes as cleaned up on termination signal
-        loop = asyncio.get_event_loop()
-        node_cleanup_partial = partial(node_cleanup_async, async_stack=async_stack)
-        cleanup_fn = partial(asyncio.ensure_future, node_cleanup_partial(signal.SIGTERM, loop))
-        signal.signal(signal.SIGTERM, partial(node_cleanup, loop=loop, async_stack=async_stack))
+        # loop = asyncio.get_event_loop()
+        # node_cleanup_partial = partial(node_cleanup_async, async_stack=async_stack)
+        # cleanup_fn = partial(asyncio.ensure_future, node_cleanup_partial(signal.SIGTERM, loop))
+        # signal.signal(signal.SIGTERM, partial(node_cleanup, loop=loop, async_stack=async_stack))
 
-        async with eager_context(_fn, _remote, ctx, async_stack, timeout, poll_interval, local_entrypoint):
-            try:
-                if _remote is not None:
-                    with _remote.remote_context():
-                        out = await _fn(*args, **kws)
-                else:
-                    out = await _fn(*args, **kws)
-                # need to await for _fn to complete, then invoke the deck
-                await render_deck(async_stack)
-                return out
-            finally:
-                # in case the cleanup function hasn't been called yet, call it at the end of the eager workflow
-                await cleanup_fn()
+    #     async with eager_context(_fn, _remote, ctx, async_stack, timeout, poll_interval, local_entrypoint):
+    #         try:
+    #             if _remote is not None:
+    #                 with _remote.remote_context():
+    #                     out = await _fn(*args, **kws)
+    #             else:
+    #                 out = await _fn(*args, **kws)
+    #             # need to await for _fn to complete, then invoke the deck
+    #             await render_deck(async_stack)
+    #             return out
+    #         finally:
+    #             # in case the cleanup function hasn't been called yet, call it at the end of the eager workflow
+    #             await cleanup_fn()
+    #
+    # secret_requests = kwargs.pop("secret_requests", None) or []
+    # try:
+    #     secret_requests.append(Secret(group=client_secret_group, key=client_secret_key))
+    # except ValueError:
+    #     pass
 
-    secret_requests = kwargs.pop("secret_requests", None) or []
-    try:
-        secret_requests.append(Secret(group=client_secret_group, key=client_secret_key))
-    except ValueError:
-        pass
+    if "enable_deck" in kwargs:
+        del kwargs["enable_deck"]
 
-    return task(
-        wrapper,
-        secret_requests=secret_requests,
-        enable_deck=True,
-        execution_mode=PythonFunctionTask.ExecutionBehavior.EAGER,
-        **kwargs,
-    )
+    et = EagerAsyncPythonFunctionTask(task_config=None, task_function=_fn, enable_deck=True, **kwargs)
+    return et
+
+    # return task(
+    #     wrapper,
+    #     secret_requests=secret_requests,
+    #     enable_deck=True,
+    #     execution_mode=PythonFunctionTask.ExecutionBehavior.EAGER,
+    #     **kwargs,
+    # )
 
 
 def _prepare_remote(

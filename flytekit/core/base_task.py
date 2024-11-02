@@ -361,6 +361,8 @@ class Task(object):
         return create_task_output(vals, self.python_interface)
 
     def __call__(self, *args: object, **kwargs: object) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, None]:
+        # add loop manager.run_sync
+        # this will make this hang.
         return flyte_entity_call_handler(self, *args, **kwargs)  # type: ignore
 
     def compile(self, ctx: FlyteContext, *args, **kwargs):
@@ -759,28 +761,28 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                         raise
                     raise FlyteUserRuntimeException(e) from e
 
-            if inspect.iscoroutine(native_outputs):
-                # If native outputs is a coroutine, then this is an eager workflow.
-                if exec_ctx.execution_state:
-                    if exec_ctx.execution_state.mode == ExecutionState.Mode.LOCAL_TASK_EXECUTION:
-                        # Just return task outputs as a coroutine if the eager workflow is being executed locally,
-                        # outside of a workflow. This preserves the expectation that the eager workflow is an async
-                        # function.
-                        return native_outputs
-                    elif exec_ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
-                        # If executed inside of a workflow being executed locally, then run the coroutine to get the
-                        # actual results.
-                        return asyncio.run(
-                            self._async_execute(
-                                native_inputs,
-                                native_outputs,
-                                ctx,
-                                exec_ctx,
-                                new_user_params,
-                            )
-                        )
-
-                return self._async_execute(native_inputs, native_outputs, ctx, exec_ctx, new_user_params)
+            # if inspect.iscoroutine(native_outputs):
+            #     # If native outputs is a coroutine, then this is an eager workflow.
+            #     if exec_ctx.execution_state:
+            #         if exec_ctx.execution_state.mode == ExecutionState.Mode.LOCAL_TASK_EXECUTION:
+            #             # Just return task outputs as a coroutine if the eager workflow is being executed locally,
+            #             # outside of a workflow. This preserves the expectation that the eager workflow is an async
+            #             # function.
+            #             return native_outputs
+            #         elif exec_ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+            #             # If executed inside of a workflow being executed locally, then run the coroutine to get the
+            #             # actual results.
+            #             return asyncio.run(
+            #                 self._async_execute(
+            #                     native_inputs,
+            #                     native_outputs,
+            #                     ctx,
+            #                     exec_ctx,
+            #                     new_user_params,
+            #                 )
+            #             )
+            #
+            #     return self._async_execute(native_inputs, native_outputs, ctx, exec_ctx, new_user_params)
 
             # Lets run the post_execute method. This may result in a IgnoreOutputs Exception, which is
             # bubbled up to be handled at the callee layer.
