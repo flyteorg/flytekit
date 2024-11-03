@@ -28,6 +28,8 @@ from flyteidl.service import dataproxy_pb2 as _data_proxy_pb2
 from flytekit.types.schema import FlyteSchema
 from flytekit.clients.friendly import SynchronousFlyteClient as _SynchronousFlyteClient
 from flytekit.configuration import PlatformConfig
+from flytekit.types.file import FlyteFile
+from flytekit.types.directory import FlyteDirectory
 
 MODULE_PATH = pathlib.Path(__file__).parent / "workflows/basic"
 CONFIG = os.environ.get("FLYTECTL_CONFIG", str(pathlib.Path.home() / ".flyte" / "config-sandbox.yaml"))
@@ -762,3 +764,34 @@ def test_register_wf_fast(register):
 def test_fetch_active_launchplan_not_found(register):
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     assert remote.fetch_active_launchplan(name="basic.list_float_wf.fake_wf") is None
+
+def test_execute_flytefile_wf():
+    """Test remote execution of a FlyteFile container task."""
+    from workflows.basic.container_workflow import flyte_file_io_wf
+
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN, interactive_mode_enabled=True)
+
+    out = remote.execute(
+        flyte_file_io_wf,
+        inputs=None,
+        wait=True,
+        version=VERSION,
+        image_config=ImageConfig.from_images(IMAGE),
+    )
+    assert type(out.outputs["o0"]) is FlyteFile
+
+
+def test_execute_flytedir_wf():
+    """Test remote execution of a FlyteDirectory container task."""
+    from workflows.basic.container_workflow import flyte_dir_io_wf
+
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN, interactive_mode_enabled=True)
+
+    out = remote.execute(
+        flyte_dir_io_wf,
+        inputs=None,
+        wait=True,
+        version=VERSION,
+        image_config=ImageConfig.from_images(IMAGE),
+    )
+    assert type(out.outputs["o0"]) is FlyteDirectory
