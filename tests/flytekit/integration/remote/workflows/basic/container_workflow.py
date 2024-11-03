@@ -22,16 +22,16 @@ flyte_file_io = ContainerTask(
 )
 
 flyte_dir_io = ContainerTask(
-    name="flyte_file_io",
+    name="flyte_dir_io",
     input_data_dir="/var/inputs",
     output_data_dir="/var/outputs",
-    inputs=kwtypes(inputs=FlyteFile),
-    outputs=kwtypes(out=FlyteFile),
+    inputs=kwtypes(inputs=FlyteDirectory),
+    outputs=kwtypes(out=FlyteDirectory),
     image="flytekit:rawcontainer",
     command=[
         "python",
-        "write_flytefile.py",
-        "{{.inputs.inputs}}",
+        "write_flytedir.py",
+        "/var/inputs/inputs",
         "/var/outputs/out",
     ],
 )
