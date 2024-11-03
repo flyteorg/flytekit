@@ -58,7 +58,3 @@ def test_src_path_with_different_types() -> None:
 
     ff_4 = wf(use_str_src_path=False, remote_dir="./my_txt_files2")
     _verify_files(ff_4)
-
-
-if __name__ == "__main__":
-    test_src_path_with_different_types()
