@@ -767,6 +767,7 @@ def test_execute_flytefile_wf():
 
     out = remote.execute(
         flyte_file_io_wf,
+        inputs=None,
         wait=True,
         version=VERSION,
         image_config=ImageConfig.from_images(IMAGE),
@@ -782,6 +783,7 @@ def test_execute_flytedir_wf():
 
     out = remote.execute(
         flyte_dir_io_wf,
+        inputs=None,
         wait=True,
         version=VERSION,
         image_config=ImageConfig.from_images(IMAGE),
