@@ -64,6 +64,35 @@ def test_flytefile_wf():
     sys.platform in ["darwin", "win32"],
     reason="Skip if running on windows or macos due to CI Docker environment setup failure",
 )
+def test_flytefile_wrong_syntax():
+    client = docker.from_env()
+    path_to_dockerfile = "tests/flytekit/unit/core/"
+    dockerfile_name = "Dockerfile.raw_container"
+    client.images.build(path=path_to_dockerfile, dockerfile=dockerfile_name, tag="flytekit:rawcontainer")
+
+    with pytest.raises(
+        AssertionError, match="FlyteFile and FlyteDirectory commands should not use the syntax: {{.inputs.infile}}"
+    ):
+        ContainerTask(
+            name="flyte_file_io",
+            input_data_dir="/var/inputs",
+            output_data_dir="/var/outputs",
+            inputs=kwtypes(inputs=FlyteFile),
+            outputs=kwtypes(out=FlyteFile),
+            image="flytekit:rawcontainer",
+            command=[
+                "python",
+                "write_flytefile.py",
+                "{{.inputs.inputs}}",
+                "/var/outputs/out",
+            ],
+        )
+
+
+@pytest.mark.skipif(
+    sys.platform in ["darwin", "win32"],
+    reason="Skip if running on windows or macos due to CI Docker environment setup failure",
+)
 def test_flytedir_wf():
     client = docker.from_env()
     path_to_dockerfile = "tests/flytekit/unit/core/"
@@ -108,6 +137,35 @@ def test_flytedir_wf():
         content = file.read()
 
     assert content == "This is for flyte dir."
+
+
+@pytest.mark.skipif(
+    sys.platform in ["darwin", "win32"],
+    reason="Skip if running on windows or macos due to CI Docker environment setup failure",
+)
+def test_flytedir_wrong_syntax():
+    client = docker.from_env()
+    path_to_dockerfile = "tests/flytekit/unit/core/"
+    dockerfile_name = "Dockerfile.raw_container"
+    client.images.build(path=path_to_dockerfile, dockerfile=dockerfile_name, tag="flytekit:rawcontainer")
+
+    with pytest.raises(
+        AssertionError, match="FlyteFile and FlyteDirectory commands should not use the syntax: {{.inputs.infile}}"
+    ):
+        ContainerTask(
+            name="flyte_dir_io",
+            input_data_dir="/var/inputs",
+            output_data_dir="/var/outputs",
+            inputs=kwtypes(inputs=FlyteDirectory),
+            outputs=kwtypes(out=FlyteDirectory),
+            image="flytekit:rawcontainer",
+            command=[
+                "python",
+                "write_flytedir.py",
+                "{{.inputs.inputs}}",
+                "/var/outputs/out",
+            ],
+        )
 
 
 @pytest.mark.skipif(
