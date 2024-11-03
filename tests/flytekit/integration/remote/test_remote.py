@@ -28,6 +28,8 @@ from flyteidl.service import dataproxy_pb2 as _data_proxy_pb2
 from flytekit.types.schema import FlyteSchema
 from flytekit.clients.friendly import SynchronousFlyteClient as _SynchronousFlyteClient
 from flytekit.configuration import PlatformConfig
+from flytekit.types.directory import FlyteDirectory
+from flytekit.types.file import FlyteFile
 
 MODULE_PATH = pathlib.Path(__file__).parent / "workflows/basic"
 CONFIG = os.environ.get("FLYTECTL_CONFIG", str(pathlib.Path.home() / ".flyte" / "config-sandbox.yaml"))
@@ -122,7 +124,8 @@ def test_get_download_artifact_signed_url(register):
     # Check if the signed URL is valid and starts with the expected prefix
     signed_url = download_link_response.signed_url[0]
     assert signed_url.startswith(
-        f"http://localhost:30002/my-s3-bucket/metadata/propeller/{project}-{domain}-{name}/n0/data/0/deck.html")
+        f"http://localhost:30002/my-s3-bucket/metadata/propeller/{project}-{domain}-{name}/n0/data/0/deck.html"
+    )
 
 
 def test_fetch_execute_launch_plan_with_args(register):
@@ -163,7 +166,8 @@ def test_monitor_workflow_execution(register):
             break
 
         with pytest.raises(
-                FlyteAssertion, match="Please wait until the execution has completed before requesting the outputs.",
+            FlyteAssertion,
+            match="Please wait until the execution has completed before requesting the outputs.",
         ):
             execution.outputs
 
@@ -306,9 +310,7 @@ def test_fetch_execute_task_list_of_floats(register):
 
 def test_fetch_execute_task_convert_dict(register):
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
-    flyte_task = remote.fetch_task(
-        name="basic.dict_str_wf.convert_to_string", version=VERSION
-    )
+    flyte_task = remote.fetch_task(name="basic.dict_str_wf.convert_to_string", version=VERSION)
     d: typing.Dict[str, str] = {"key1": "value1", "key2": "value2"}
     execution = remote.execute(flyte_task, inputs={"d": d}, wait=True)
     remote.sync_execution(execution, sync_nodes=True)
@@ -413,8 +415,9 @@ def test_execute_with_default_launch_plan(register):
     from workflows.basic.subworkflows import parent_wf
 
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
-    execution = remote.execute(parent_wf, inputs={"a": 101}, version=VERSION, wait=True,
-                               image_config=ImageConfig.auto(img_name=IMAGE))
+    execution = remote.execute(
+        parent_wf, inputs={"a": 101}, version=VERSION, wait=True, image_config=ImageConfig.auto(img_name=IMAGE)
+    )
     # check node execution inputs and outputs
     assert execution.node_executions["n0"].inputs == {"a": 101}
     assert execution.node_executions["n0"].outputs == {"t1_int_output": 103, "c": "world"}
@@ -442,8 +445,7 @@ def test_execute_reference_task(register):
         name="basic.basic_workflow.t1",
         version=VERSION,
     )
-    def t1(a: int) -> nt:
-        ...
+    def t1(a: int) -> nt: ...
 
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     execution = remote.execute(
@@ -548,9 +550,9 @@ class TestLargeFileTransfers:
     def _get_s3_file_md5_bytes(s3_client, bucket, key):
         md5_hash = hashlib.md5()
         response = s3_client.get_object(Bucket=bucket, Key=key)
-        body = response['Body']
+        body = response["Body"]
         # Read the object in chunks and update the hash (this keeps memory usage low)
-        for chunk in iter(lambda: body.read(4096), b''):
+        for chunk in iter(lambda: body.read(4096), b""):
             md5_hash.update(chunk)
         return md5_hash.digest()
 
@@ -597,19 +599,12 @@ class TestLargeFileTransfers:
             # Step 2 - Create an ephemeral S3 storage location. This will be wiped
             #  on context exit to not overload the sandbox's storage
             _, ephemeral_filename_root = stack.enter_context(
-                TestLargeFileTransfers._ephemeral_minio_project_domain_filename_root(
-                    minio_s3_client,
-                    PROJECT,
-                    DOMAIN
-                )
+                TestLargeFileTransfers._ephemeral_minio_project_domain_filename_root(minio_s3_client, PROJECT, DOMAIN)
             )
 
             # Step 3 - Upload our large file and check whether the uploaded file's md5 checksum matches our local file's
             md5_bytes, upload_location = remote.upload_file(
-                to_upload=file_path,
-                project=PROJECT,
-                domain=DOMAIN,
-                filename_root=ephemeral_filename_root
+                to_upload=file_path, project=PROJECT, domain=DOMAIN, filename_root=ephemeral_filename_root
             )
 
             url = urlparse(upload_location)
@@ -762,3 +757,33 @@ def test_register_wf_fast(register):
 def test_fetch_active_launchplan_not_found(register):
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     assert remote.fetch_active_launchplan(name="basic.list_float_wf.fake_wf") is None
+
+
+def test_execute_flytefile_wf():
+    """Test remote execution of a FlyteFile container task."""
+    from workflows.basic.container_workflow import flyte_file_io_wf
+
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN, interactive_mode_enabled=True)
+
+    out = remote.execute(
+        flyte_file_io_wf,
+        wait=True,
+        version=VERSION,
+        image_config=ImageConfig.from_images(IMAGE),
+    )
+    assert type(out.outputs["o0"]) is FlyteFile
+
+
+def test_execute_flytedir_wf():
+    """Test remote execution of a FlyteDirectory container task."""
+    from workflows.basic.container_workflow import flyte_dir_io_wf
+
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN, interactive_mode_enabled=True)
+
+    out = remote.execute(
+        flyte_dir_io_wf,
+        wait=True,
+        version=VERSION,
+        image_config=ImageConfig.from_images(IMAGE),
+    )
+    assert type(out.outputs["o0"]) is FlyteDirectory
