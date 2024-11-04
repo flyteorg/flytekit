@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import datetime
 import os
 from functools import update_wrapper
@@ -372,7 +373,7 @@ def task(
             enable_deck=enable_deck,
             deck_fields=deck_fields,
             docs=docs,
-            pod_template=pod_template,
+            pod_template=copy.deepcopy(pod_template),
             pod_template_name=pod_template_name,
             accelerator=accelerator,
         )
