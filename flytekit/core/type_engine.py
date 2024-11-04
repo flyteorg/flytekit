@@ -717,30 +717,6 @@ class DataclassTransformer(TypeTransformer[object]):
                 field.type = self._get_origin_type_in_annotation(field.type)
         return python_type
 
-    def _fix_structured_dataset_type(self, python_type: Type[T], python_val: typing.Any) -> T | None:
-        # In python 3.7, 3.8, DataclassJson will deserialize Annotated[StructuredDataset, kwtypes(..)] to a dict,
-        # so here we convert it back to the Structured Dataset.
-        from flytekit.types.structured import StructuredDataset
-
-        if python_val is None:
-            return python_val
-        if python_type == StructuredDataset and type(python_val) == dict:
-            return StructuredDataset(**python_val)
-        elif get_origin(python_type) is list:
-            return [self._fix_structured_dataset_type(get_args(python_type)[0], v) for v in python_val]  # type: ignore
-        elif get_origin(python_type) is dict:
-            return {  # type: ignore
-                self._fix_structured_dataset_type(get_args(python_type)[0], k): self._fix_structured_dataset_type(
-                    get_args(python_type)[1], v
-                )
-                for k, v in python_val.items()
-            }
-        elif dataclasses.is_dataclass(python_type):
-            for field in dataclasses.fields(python_type):
-                val = python_val.__getattribute__(field.name)
-                object.__setattr__(python_val, field.name, self._fix_structured_dataset_type(field.type, val))
-        return python_val
-
     def _make_dataclass_serializable(self, python_val: T, python_type: Type[T]) -> typing.Any:
         """
         If any field inside the dataclass is flyte type, we should use flyte type transformer for that field.
@@ -862,7 +838,7 @@ class DataclassTransformer(TypeTransformer[object]):
                     self._msgpack_decoder[expected_python_type] = decoder
                 dc = decoder.decode(binary_idl_object.value)
 
-            return self._fix_structured_dataset_type(expected_python_type, dc)  # type: ignore
+            return dc
         else:
             raise TypeTransformerFailedError(f"Unsupported binary format: `{binary_idl_object.tag}`")
 
@@ -894,7 +870,6 @@ class DataclassTransformer(TypeTransformer[object]):
 
             dc = decoder.decode(json_str)
 
-        dc = self._fix_structured_dataset_type(expected_python_type, dc)
         return self._fix_dataclass_int(expected_python_type, dc)
 
     # This ensures that calls with the same literal type returns the same dataclass. For example, `pyflyte run``
