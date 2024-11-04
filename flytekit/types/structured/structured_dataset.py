@@ -765,7 +765,8 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
     ) -> T | StructuredDataset:
         uri = dict_obj.get("uri", None)
         file_format = dict_obj.get("file_format", None)
-
+        print("@@@ sd uri: ", uri)
+        print("@@@ sd file_format: ", file_format)
         if uri is None:
             raise ValueError("StructuredDataset's uri and file format should not be None")
 
