@@ -466,7 +466,7 @@ class EagerAsyncPythonFunctionTask(PythonFunctionTask[T]):
 
 
 """
-figure out loop location, add worker, add to context, hook up decorator.
+hook up flyte remote, export deck.
 testing local eager with no tasks, local eager, remote eager, local nested eager, remote nested eager
 
 to enable the async pattern the __call__ function needs to be async or sync. One task type can't be both because it has
@@ -477,15 +477,6 @@ with the outputs converted into literals and then back.
 
 first time we're allowing tasks to be called inside other tasks
 
-
-when a workflow kicks off, if it's an eager workflow,
- - remote: dispatch tasks to a remote worker engine
- 
- - local: run tasks 
-
-a normal task that runs inside an eager task.
- - remote: what's the current flow?
-     - use ExecutionState.Mode.TASK_EXECUTION
 """
 
 
