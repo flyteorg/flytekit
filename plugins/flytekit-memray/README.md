@@ -19,7 +19,6 @@ import time
 image = ImageSpec(
     name="memray_demo",
     packages=["flytekitplugins_memray"],
-    env={"PYTHONMALLOC": "malloc"},
     registry="<your_cr_registry>",
 )
 
@@ -41,7 +40,7 @@ def memory_usage(n: int) -> str:
 
 
 @task(container_image=image, enable_deck=True)
-@memray_profiling(memray_reporter_args=["--leaks"])
+@memray_profiling(trace_python_allocators=True, memray_reporter_args=["--leaks"])
 def memory_leakage(n: int) -> str:
     generate_data(n=n)
 
