@@ -77,8 +77,7 @@ $ENTRYPOINT
 $COPY_COMMAND_RUNTIME
 
 RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/uv,id=uv \
-    --mount=from=uv,source=/uv,target=/usr/bin/uv \
-    $RUN_COMMANDS
+    --mount=from=uv,source=/uv,target=/usr/bin/uv $RUN_COMMANDS
 
 $EXTRA_COPY_CMDS
 
