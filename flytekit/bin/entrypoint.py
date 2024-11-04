@@ -665,6 +665,7 @@ def map_execute_task_cmd(
     raw_output_data_prefix, checkpoint_path, prev_checkpoint = normalize_inputs(
         raw_output_data_prefix, checkpoint_path, prev_checkpoint
     )
+
     _execute_map_task(
         inputs=inputs,
         output_prefix=output_prefix,
