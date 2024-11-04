@@ -1,10 +1,20 @@
+import os
+import docker
 import logging
+from pathlib import Path
+
+import flytekit
 from flytekit import ContainerTask, kwtypes, workflow, task
 from flytekit.types.file import FlyteFile
 from flytekit.types.directory import FlyteDirectory
 
 
 logger = logging.getLogger(__file__)
+
+client = docker.from_env()
+path_to_dockerfile = "tests/flytekit/unit/core/"
+dockerfile_name = "Dockerfile.raw_container"
+client.images.build(path=path_to_dockerfile, dockerfile=dockerfile_name, tag="flytekit:rawcontainer")
 
 flyte_file_io = ContainerTask(
     name="flyte_file_io",
@@ -39,9 +49,11 @@ flyte_dir_io = ContainerTask(
 
 @task
 def flyte_file_task() -> FlyteFile:
-    with open("./a.txt", "w") as file:
-        file.write("This is a.txt file.")
-    return FlyteFile(path="./a.txt")
+    working_dir = flytekit.current_context().working_directory
+    write_file = os.path.join(working_dir, "flyte_file.txt")
+    with open(write_file, "w") as file:
+        file.write("This is flyte_file.txt file.")
+    return FlyteFile(path=write_file)
 
 
 @workflow
@@ -52,14 +64,10 @@ def flyte_file_io_wf() -> FlyteFile:
 
 @task
 def flyte_dir_task() -> FlyteDirectory:
-    from pathlib import Path
-    import flytekit
-    import os
-
     working_dir = flytekit.current_context().working_directory
     local_dir = Path(os.path.join(working_dir, "csv_files"))
     local_dir.mkdir(exist_ok=True)
-    write_file = local_dir / "a.txt"
+    write_file = os.path.join(local_dir, "flyte_dir.txt")
     with open(write_file, "w") as file:
         file.write("This is for flyte dir.")
 

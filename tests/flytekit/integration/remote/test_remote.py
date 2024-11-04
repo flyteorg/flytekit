@@ -778,7 +778,13 @@ def test_execute_flytefile_wf():
         version=VERSION,
         image_config=ImageConfig.from_images(IMAGE),
     )
-    assert type(out.outputs["o0"]) is FlyteFile
+    flytefile = out.outputs["o0"]
+    assert isinstance(flytefile, FlyteFile)
+
+    with open(flytefile.path, "r") as file:
+        content = file.read()
+
+    assert content == "This is flyte_file.txt file."
 
 
 def test_execute_flytedir_wf():
@@ -794,4 +800,10 @@ def test_execute_flytedir_wf():
         version=VERSION,
         image_config=ImageConfig.from_images(IMAGE),
     )
-    assert type(out.outputs["o0"]) is FlyteDirectory
+    flytyedir = out.outputs["o0"]
+    assert isinstance(flytyedir, FlyteDirectory)
+
+    with open(os.path.join(flytyedir.path, "flyte_dir.txt"), "r") as file:
+        content = file.read()
+
+    assert content == "This is for flyte dir."
