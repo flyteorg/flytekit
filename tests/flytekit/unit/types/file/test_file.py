@@ -6,14 +6,12 @@ from flytekit import task, workflow
 from flytekit.types.file import FlyteFile
 
 
-
 def test_src_path_with_different_types() -> None:
     MSG = "Hello!"
 
     @task
     def write_hello_task(
-            use_str_src_path: bool,
-            remote_path: Optional[str] = None
+        use_str_src_path: bool, remote_path: Optional[str] = None
     ) -> FlyteFile:
         """Write a greeting message to the source path."""
         source_path = Path(flytekit.current_context().working_directory) / "hello.txt"
@@ -30,11 +28,10 @@ def test_src_path_with_different_types() -> None:
         return ff
 
     @workflow
-    def wf(
-            use_str_src_path: bool,
-            remote_path: Optional[str] = None
-    ) -> FlyteFile:
-        return write_hello_task(use_str_src_path=use_str_src_path, remote_path=remote_path)
+    def wf(use_str_src_path: bool, remote_path: Optional[str] = None) -> FlyteFile:
+        return write_hello_task(
+            use_str_src_path=use_str_src_path, remote_path=remote_path
+        )
 
     def _verify_msg(msg: str) -> None:
         assert msg == MSG
@@ -47,7 +44,6 @@ def test_src_path_with_different_types() -> None:
     ff_2 = wf(use_str_src_path=True, remote_path="./my_hello.txt")
     with open(ff_2, "r") as f:
         _verify_msg(f.read())
-
 
     # Source path is of type pathlib.PosixPath
     ff_3 = wf(use_str_src_path=False, remote_path=None)
