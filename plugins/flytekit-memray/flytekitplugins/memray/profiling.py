@@ -21,6 +21,13 @@ class memray_profiling(ClassDecorator):
         """Memray profiling plugin.
         Args:
             task_function (function, optional): The user function to be decorated. Defaults to None.
+            native_traces (bool): Whether or not to capture native stack frames, in addition to Python stack frames (see [Native tracking](https://bloomberg.github.io/memray/run.html#native-tracking))
+            trace_python_allocators (bool): Whether or not to trace Python allocators as independent allocations. (see [Python allocators](https://bloomberg.github.io/memray/python_allocators.html#python-allocators))
+            follow_fork (bool): Whether or not to continue tracking in a subprocess that is forked from the tracked process (see [Tracking across forks](https://bloomberg.github.io/memray/run.html#tracking-across-forks))
+            memory_interval_ms (int): How many milliseconds to wait between sending periodic resident set size updates.
+                By default, every 10 milliseconds a record is written that contains the current timestamp and the total number of bytes of virtual memory allocated by the process.
+                These records are used to create the graph of memory usage over time that appears at the top of the flame graph, for instance.
+                This parameter lets you adjust the frequency between updates, though you shouldnt need to change it.
             memray_html_reporter (str): The name of the memray reporter which generates an html report.
                 Today there is only 'flamegraph' & 'table'.
             memray_reporter_args (List[str], optional): A list of arguments to pass to the reporter commands.
