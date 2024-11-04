@@ -475,3 +475,49 @@ def test_resource_type():
     # round-tripping creates a literal map out of outputs
     assert o2.outputs.literals["o0"].scalar.primitive.integer == 1
     assert o2.custom_info == o.custom_info
+
+
+def test_agent_complex_type():
+    @dataclass
+    class Foo:
+        val: str
+
+    class FooAgent(SyncAgentBase):
+        def __init__(self) -> None:
+            super().__init__(task_type_name="foo")
+
+        def do(
+                self,
+                task_template: TaskTemplate,
+                inputs: typing.Optional[LiteralMap] = None,
+                **kwargs: typing.Any,
+        ) -> Resource:
+            return Resource(
+                phase=TaskExecution.SUCCEEDED, outputs={"foos": [Foo(val="a"), Foo(val="b")], "has_foos": True}
+            )
+
+    AgentRegistry.register(FooAgent(), override=True)
+
+    class FooTask(SyncAgentExecutorMixin, PythonTask):  # type: ignore
+        _TASK_TYPE = "foo"
+
+        def __init__(self, name: str, **kwargs: typing.Any) -> None:
+            task_config: dict[str, typing.Any] = {}
+
+            outputs = {"has_foos": bool, "foos": typing.Optional[typing.List[Foo]]}
+
+            super().__init__(
+                task_type=self._TASK_TYPE,
+                name=name,
+                task_config=task_config,
+                interface=Interface(outputs=outputs),
+                **kwargs,
+            )
+
+        def get_custom(self, settings: SerializationSettings) -> typing.Dict[str, typing.Any]:
+            return {}
+
+    foo_task = FooTask(name="foo_task")
+    res = foo_task()
+    assert res.has_foos
+    assert res.foos[1].val == "b"
