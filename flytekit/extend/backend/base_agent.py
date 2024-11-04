@@ -289,7 +289,7 @@ class SyncAgentExecutorMixin:
             raise FlyteUserException(f"Failed to run the task {self.name} with error: {resource.message}")
 
         if resource.outputs and not isinstance(resource.outputs, LiteralMap):
-            return TypeEngine.dict_to_literal_map(ctx, resource.outputs)
+            return TypeEngine.dict_to_literal_map(ctx, resource.outputs, type_hints=self.python_interface.outputs)
         return resource.outputs
 
     async def _do(
