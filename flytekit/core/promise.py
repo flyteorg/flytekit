@@ -16,6 +16,7 @@ from flytekit.core import constants as _common_constants
 from flytekit.core import context_manager as _flyte_context
 from flytekit.core import interface as flyte_interface
 from flytekit.core import type_engine
+from flytekit.core.constants import MESSAGEPACK
 from flytekit.core.context_manager import (
     BranchEvalMode,
     ExecutionParameters,
@@ -177,7 +178,7 @@ async def resolve_attr_path_in_promise(p: Promise) -> Promise:
                 dict_obj = msgpack.loads(binary_idl_obj.value, strict_map_key=False)
                 v = resolve_attr_path_in_dict(dict_obj, attr_path=p.attr_path[used:])
                 msgpack_bytes = msgpack.dumps(v)
-                curr_val = Literal(scalar=Scalar(binary=Binary(value=msgpack_bytes, tag="msgpack")))
+                curr_val = Literal(scalar=Scalar(binary=Binary(value=msgpack_bytes, tag=MESSAGEPACK)))
             else:
                 raise TypeTransformerFailedError(f"Unsupported binary format {binary_idl_obj.tag}")
 

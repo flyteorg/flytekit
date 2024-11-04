@@ -1,6 +1,7 @@
 import json
+import os
 from typing import Type
-
+from google.protobuf import struct_pb2 as _struct
 import msgpack
 from google.protobuf import json_format as _json_format
 from pydantic import BaseModel
@@ -31,9 +32,23 @@ class PydanticTransformer(TypeTransformer[BaseModel]):
                     "Field {} of type {} cannot be converted to a literal type. Error: {}".format(name, python_type, e)
                 )
 
+        # This is for attribute access in FlytePropeller.
         ts = TypeStructure(tag="", dataclass_type=literal_type)
 
         return types.LiteralType(simple=types.SimpleType.STRUCT, metadata=schema, structure=ts)
+
+    def to_old_generic_literal(
+        self,
+        ctx: FlyteContext,
+        python_val: BaseModel,
+        python_type: Type[BaseModel],
+        expected: types.LiteralType,
+    ) -> Literal:
+        """
+        This is for users who don't want to upgrade the flytepropeller.
+        """
+        json_str = python_val.model_dump_json()
+        return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))
 
     def to_literal(
         self,
@@ -47,6 +62,9 @@ class PydanticTransformer(TypeTransformer[BaseModel]):
         This is for handling enum in basemodel.
         More details: https://github.com/flyteorg/flytekit/pull/2792
         """
+        if os.getenv("FLYTE_USE_OLD_DC_FORMAT", "false").lower() == "true":
+            return self.to_old_generic_literal(ctx, python_val, python_type, expected)
+
         json_str = python_val.model_dump_json()
         dict_obj = json.loads(json_str)
         msgpack_bytes = msgpack.dumps(dict_obj)
