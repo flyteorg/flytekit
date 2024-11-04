@@ -488,7 +488,7 @@ def _execute_map_task(
         raise ValueError(f"Resolver args cannot be <1, got {resolver_args}")
 
     with setup_execution(
-        raw_output_data_prefix, checkpoint_path, prev_checkpoint, dynamic_addl_distro, dynamic_dest_dir
+        raw_output_data_prefix, output_prefix, checkpoint_path, prev_checkpoint, dynamic_addl_distro, dynamic_dest_dir
     ) as ctx:
         working_dir = os.getcwd()
         if all(os.path.realpath(path) != working_dir for path in sys.path):
@@ -665,7 +665,6 @@ def map_execute_task_cmd(
     raw_output_data_prefix, checkpoint_path, prev_checkpoint = normalize_inputs(
         raw_output_data_prefix, checkpoint_path, prev_checkpoint
     )
-
     _execute_map_task(
         inputs=inputs,
         output_prefix=output_prefix,
