@@ -489,7 +489,9 @@ class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
         meta = BlobMetadata(type=self._blob_type(format=FlyteFilePathTransformer.get_format(python_type)))
 
         if isinstance(python_val, FlyteFile):
-            source_path = python_val.path
+            # Cast the source path to str type to avoid error raised when the source path is used as the blob uri,
+            # please refer to this issue: https://github.com/flyteorg/flyte/issues/5872.
+            source_path = str(python_val.path)
             self.validate_file_type(python_type, source_path)
 
             # If the object has a remote source, then we just convert it back. This means that if someone is just
