@@ -1998,7 +1998,7 @@ class DictTransformer(AsyncTypeTransformer[dict]):
         return None, None
 
     @staticmethod
-    def dict_to_old_generic_literal(ctx: FlyteContext, v: dict, python_type: Type[dict], allow_pickle: bool) -> Literal:
+    async def dict_to_old_generic_literal(ctx: FlyteContext, v: dict, python_type: Type[dict], allow_pickle: bool) -> Literal:
         """
         This is deprecated from flytekit 1.14.0.
         Creates a flyte-specific ``Literal`` value from a native python dictionary.

@@ -165,11 +165,14 @@ async def resolve_attr_path_in_promise(p: Promise) -> Promise:
         if type(curr_val.value.value) is _struct.Struct:
             st = curr_val.value.value
             new_st = resolve_attr_path_in_pb_struct(st, attr_path=p.attr_path[used:])
-            literal_type = TypeEngine.to_literal_type(type(new_st))
-            # Reconstruct the resolved result to flyte literal (because the resolved result might not be struct)
-            curr_val = await TypeEngine.async_to_literal(
-                FlyteContextManager.current_context(), new_st, type(new_st), literal_type
-            )
+            if type(new_st) == _struct.Struct:
+                curr_val = Literal(scalar=Scalar(generic=new_st))
+            else:
+                literal_type = TypeEngine.to_literal_type(type(new_st))
+                # Reconstruct the resolved result to flyte literal (because the resolved result might not be struct)
+                curr_val = await TypeEngine.async_to_literal(
+                    FlyteContextManager.current_context(), new_st, type(new_st), literal_type
+                )
         elif type(curr_val.value.value) is Binary:
             binary_idl_obj = curr_val.value.value
             if binary_idl_obj.tag == _common_constants.MESSAGEPACK:
