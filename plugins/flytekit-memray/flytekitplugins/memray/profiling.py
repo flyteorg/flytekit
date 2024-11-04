@@ -11,6 +11,10 @@ class memray_profiling(ClassDecorator):
     def __init__(
         self,
         task_function: Optional[Callable] = None,
+        native_traces: bool = False,
+        trace_python_allocators: bool = False,
+        follow_fork: bool = False,
+        memory_interval_ms: int = 10,
         memray_html_reporter: str = "flamegraph",
         memray_reporter_args: Optional[List[str]] = None,
     ):
@@ -34,12 +38,20 @@ class memray_profiling(ClassDecorator):
                 f"unrecognized arguments for {memray_html_reporter} reporter. Please check https://bloomberg.github.io/memray/{memray_html_reporter}.html"
             )
 
+        self.native_traces = native_traces
+        self.trace_python_allocators = trace_python_allocators
+        self.follow_fork = follow_fork
+        self.memory_interval_ms = memory_interval_ms
         self.dir_name = "memray"
         self.memray_html_reporter = memray_html_reporter
         self.memray_reporter_args = memray_reporter_args if memray_reporter_args else []
 
         super().__init__(
             task_function,
+            native_traces=native_traces,
+            trace_python_allocators=trace_python_allocators,
+            follow_fork=follow_fork,
+            memory_interval_ms=memory_interval_ms,
             memray_html_reporter=memray_html_reporter,
             memray_reporter_args=memray_reporter_args,
         )
@@ -50,7 +62,13 @@ class memray_profiling(ClassDecorator):
 
         bin_filepath = f"{self.dir_name}/{self.task_function.__name__}.{time.strftime('%Y%m%d%H%M%S')}.bin"
 
-        with memray.Tracker(bin_filepath):
+        with memray.Tracker(
+            bin_filepath,
+            native_traces=self.native_traces,
+            trace_python_allocators=self.trace_python_allocators,
+            follow_fork=self.follow_fork,
+            memory_interval_ms=self.memory_interval_ms,
+        ):
             output = self.task_function(*args, **kwargs)
 
         self.generate_flytedeck_html(reporter=self.memray_html_reporter, bin_filepath=bin_filepath)
