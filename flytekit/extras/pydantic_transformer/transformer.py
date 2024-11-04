@@ -1,9 +1,10 @@
 import json
 import os
 from typing import Type
-from google.protobuf import struct_pb2 as _struct
+
 import msgpack
 from google.protobuf import json_format as _json_format
+from google.protobuf import struct_pb2 as _struct
 from pydantic import BaseModel
 
 from flytekit import FlyteContext
