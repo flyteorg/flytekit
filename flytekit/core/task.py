@@ -94,6 +94,10 @@ P = ParamSpec("P")
 T = TypeVar("T")
 FuncOut = TypeVar("FuncOut")
 
+# This is a workaround to get @task to type correctly. This means that APIs that
+# require promises will not work.
+PythonFunctionTaskType = Callable[P, FuncOut]
+
 
 @overload
 def task(
@@ -130,7 +134,7 @@ def task(
     pod_template: Optional["PodTemplate"] = ...,
     pod_template_name: Optional[str] = ...,
     accelerator: Optional[BaseAccelerator] = ...,
-) -> Callable[[Callable[..., FuncOut]], PythonFunctionTask[T]]: ...
+) -> Callable[[Callable[..., FuncOut]], PythonFunctionTaskType]: ...
 
 
 @overload
@@ -168,7 +172,7 @@ def task(
     pod_template: Optional["PodTemplate"] = ...,
     pod_template_name: Optional[str] = ...,
     accelerator: Optional[BaseAccelerator] = ...,
-) -> Union[Callable[P, FuncOut], PythonFunctionTask[T]]: ...
+) -> Union[Callable[P, FuncOut], PythonFunctionTaskType]: ...
 
 
 def task(
@@ -213,8 +217,8 @@ def task(
     accelerator: Optional[BaseAccelerator] = None,
 ) -> Union[
     Callable[P, FuncOut],
-    Callable[[Callable[P, FuncOut]], PythonFunctionTask[T]],
-    PythonFunctionTask[T],
+    Callable[[Callable[P, FuncOut]], PythonFunctionTaskType],
+    PythonFunctionTaskType,
 ]:
     """
     This is the core decorator to use for any task type in flytekit.
@@ -342,7 +346,7 @@ def task(
     :param accelerator: The accelerator to use for this task.
     """
 
-    def wrapper(fn: Callable[P, Any]) -> PythonFunctionTask[T]:
+    def wrapper(fn: Callable[P, Any]) -> PythonFunctionTaskType:
         _metadata = TaskMetadata(
             cache=cache,
             cache_serialize=cache_serialize,

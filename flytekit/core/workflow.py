@@ -73,6 +73,10 @@ P = ParamSpec("P")
 T = typing.TypeVar("T")
 FuncOut = typing.TypeVar("FuncOut")
 
+# This is a workaround to get @owrkflow to type correctly. This means that APIs that
+# require promises will not work.
+PythonFunctionWorkflowType = Callable[P, FuncOut]
+
 
 class WorkflowFailurePolicy(Enum):
     """
@@ -838,7 +842,7 @@ def workflow(
     on_failure: Optional[Union[WorkflowBase, Task]] = ...,
     docs: Optional[Documentation] = ...,
     default_options: Optional[Options] = ...,
-) -> Callable[[Callable[..., FuncOut]], PythonFunctionWorkflow]: ...
+) -> Callable[[Callable[..., FuncOut]], PythonFunctionWorkflowType]: ...
 
 
 @overload
@@ -849,7 +853,7 @@ def workflow(
     on_failure: Optional[Union[WorkflowBase, Task]] = ...,
     docs: Optional[Documentation] = ...,
     default_options: Optional[Options] = ...,
-) -> Union[Callable[P, FuncOut], PythonFunctionWorkflow]: ...
+) -> Union[Callable[P, FuncOut], PythonFunctionWorkflowType]: ...
 
 
 def workflow(
@@ -859,7 +863,9 @@ def workflow(
     on_failure: Optional[Union[WorkflowBase, Task]] = None,
     docs: Optional[Documentation] = None,
     default_options: Optional[Options] = None,
-) -> Union[Callable[P, FuncOut], Callable[[Callable[P, FuncOut]], PythonFunctionWorkflow], PythonFunctionWorkflow]:
+) -> Union[
+    Callable[P, FuncOut], Callable[[Callable[P, FuncOut]], PythonFunctionWorkflowType], PythonFunctionWorkflowType
+]:
     """
     This decorator declares a function to be a Flyte workflow. Workflows are declarative entities that construct a DAG
     of tasks using the data flow between tasks.
@@ -894,7 +900,7 @@ def workflow(
          the labels and annotations are allowed to be set as defaults.
     """
 
-    def wrapper(fn: Callable[P, FuncOut]) -> PythonFunctionWorkflow:
+    def wrapper(fn: Callable[P, FuncOut]) -> PythonFunctionWorkflowType:
         workflow_metadata = WorkflowMetadata(on_failure=failure_policy or WorkflowFailurePolicy.FAIL_IMMEDIATELY)
 
         workflow_metadata_defaults = WorkflowMetadataDefaults(interruptible)
