@@ -762,3 +762,8 @@ def test_register_wf_fast(register):
 def test_fetch_active_launchplan_not_found(register):
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     assert remote.fetch_active_launchplan(name="basic.list_float_wf.fake_wf") is None
+
+def test_get_control_plane_version():
+    client = _SynchronousFlyteClient(PlatformConfig.for_endpoint("localhost:30080", True))
+    version = client.get_control_plane_version()
+    assert version == "unknown" or version.startswith("v")
