@@ -38,7 +38,7 @@ class PydanticTransformer(TypeTransformer[BaseModel]):
 
         return types.LiteralType(simple=types.SimpleType.STRUCT, metadata=schema, structure=ts)
 
-    def to_old_generic_literal(
+    def to_generic_literal(
         self,
         ctx: FlyteContext,
         python_val: BaseModel,
@@ -64,7 +64,7 @@ class PydanticTransformer(TypeTransformer[BaseModel]):
         More details: https://github.com/flyteorg/flytekit/pull/2792
         """
         if os.getenv("FLYTE_USE_OLD_DC_FORMAT", "false").lower() == "true":
-            return self.to_old_generic_literal(ctx, python_val, python_type, expected)
+            return self.to_generic_literal(ctx, python_val, python_type, expected)
 
         json_str = python_val.model_dump_json()
         dict_obj = json.loads(json_str)

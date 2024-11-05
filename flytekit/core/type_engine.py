@@ -662,7 +662,7 @@ class DataclassTransformer(TypeTransformer[object]):
 
         return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT, metadata=schema, structure=ts)
 
-    def to_old_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
+    def to_generic_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         """
         Serializes a dataclass or dictionary to a Flyte literal, handling both JSON and MessagePack formats.
         Set `FLYTE_USE_OLD_DC_FORMAT=true` to use the old JSON-based format.
@@ -702,7 +702,7 @@ class DataclassTransformer(TypeTransformer[object]):
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         if os.getenv("FLYTE_USE_OLD_DC_FORMAT", "false").lower() == "true":
-            return self.to_old_literal(ctx, python_val, python_type, expected)
+            return self.to_generic_literal(ctx, python_val, python_type, expected)
 
         if isinstance(python_val, dict):
             msgpack_bytes = msgpack.dumps(python_val)
@@ -1999,7 +1999,7 @@ class DictTransformer(AsyncTypeTransformer[dict]):
         return None, None
 
     @staticmethod
-    async def dict_to_old_generic_literal(
+    async def dict_to_generic_literal(
         ctx: FlyteContext, v: dict, python_type: Type[dict], allow_pickle: bool
     ) -> Literal:
         """
@@ -2111,7 +2111,7 @@ class DictTransformer(AsyncTypeTransformer[dict]):
 
         if expected and expected.simple and expected.simple == SimpleType.STRUCT:
             if os.getenv("FLYTE_USE_OLD_DC_FORMAT", "false").lower() == "true":
-                return await self.dict_to_old_generic_literal(ctx, python_val, python_type, allow_pickle)
+                return await self.dict_to_generic_literal(ctx, python_val, python_type, allow_pickle)
             return await self.dict_to_binary_literal(ctx, python_val, python_type, allow_pickle)
 
         lit_map = {}
