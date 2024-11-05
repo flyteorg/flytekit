@@ -1288,7 +1288,7 @@ def test_flyte_console_input_with_typed_dict_with_flyte_types_in_dataclass_in_pr
     assert downstream_input == {"1": FlyteFile(local_dummy_file)}
 
 
-def test_all_types_with_optional_in_dataclass_basemodel_wf(
+def test_all_types_with_optional_in_dataclass_wf(
     local_dummy_file, local_dummy_directory
 ):
     @dataclass

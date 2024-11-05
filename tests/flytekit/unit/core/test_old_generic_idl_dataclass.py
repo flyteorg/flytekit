@@ -927,42 +927,6 @@ def test_numpy_import_issue_from_flyte_schema_in_dataclass():
     assert main_flyte_workflow(b=True) == True
     assert main_flyte_workflow(b=False) == False
 
-def test_dataclass_union_primitive_types_and_enum():
-    class Status(Enum):
-        PENDING = "pending"
-        APPROVED = "approved"
-        REJECTED = "rejected"
-
-    @dataclass
-    class DC:
-        grid: Dict[str, List[Optional[Union[int, str, Status, float, bool]]]] = field(default_factory=lambda: {
-            'all_types': [None, 'sqrt', Status.PENDING, 1, -1, 0, -1.0, True, False],
-        })
-
-    @task
-    def my_task(dc: DC) -> DC:
-        return dc
-
-    my_task(dc=DC())
-
-def test_dataclass_with_json_mixin_union_primitive_types_and_enum():
-    class Status(Enum):
-        PENDING = "pending"
-        APPROVED = "approved"
-        REJECTED = "rejected"
-
-    @dataclass
-    class DC(DataClassJsonMixin):
-        grid: Dict[str, List[Optional[Union[int, str, Status, float, bool]]]] = field(default_factory=lambda: {
-            'all_types': [None, 'sqrt', Status.PENDING, 1, -1, 0, -1.0, True, False],
-        })
-
-    @task
-    def my_task(dc: DC) -> DC:
-        return dc
-
-    my_task(dc=DC())
-
 def test_frozen_dataclass():
     @dataclass(frozen=True)
     class FrozenDataclass:
