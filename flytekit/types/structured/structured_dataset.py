@@ -63,7 +63,7 @@ class StructuredDataset(SerializableType, DataClassJSONMixin):
 
     def _serialize(self) -> Dict[str, Optional[str]]:
         lv = StructuredDatasetTransformerEngine().to_literal(
-            FlyteContextManager.current_context(), self, type(self), None
+            FlyteContextManager.current_context(), self, type(self), StructuredDatasetTransformerEngine()._get_dataset_column_literal_type(self)
         )
         sd = StructuredDataset(uri=lv.scalar.structured_dataset.uri)
         sd.file_format = lv.scalar.structured_dataset.metadata.structured_dataset_type.format
@@ -670,13 +670,19 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
             #   def t1(dataset: Annotated[StructuredDataset, my_cols]) -> Annotated[StructuredDataset, my_cols]:
             #       return dataset
             if python_val._literal_sd is not None:
-                if python_val._already_uploaded:
+                if type(python_val._literal_sd) == literals.StructuredDataset:
+                    if python_val._already_uploaded:
+                        return Literal(scalar=Scalar(structured_dataset=python_val._literal_sd))
+                    if python_val.dataframe is not None:
+                        raise ValueError(
+                            f"Shouldn't have specified both literal {python_val._literal_sd} and dataframe {python_val.dataframe}"
+                        )
                     return Literal(scalar=Scalar(structured_dataset=python_val._literal_sd))
-                if python_val.dataframe is not None:
-                    raise ValueError(
-                        f"Shouldn't have specified both literal {python_val._literal_sd} and dataframe {python_val.dataframe}"
-                    )
-                return Literal(scalar=Scalar(structured_dataset=python_val._literal_sd))
+                elif type(python_val._literal_sd) == StructuredDataset:
+                    """
+                    TODO: There is an unknown reason that strucutred dataset's literal_sd will become a structured dataset.
+                    """
+                    return Literal(scalar=Scalar(structured_dataset=python_val._literal_sd._literal_sd)) # type: ignore
 
             # 2. A task returns a python StructuredDataset with an uri.
             # Note: this case is also what happens we start a local execution of a task with a python StructuredDataset.
@@ -701,6 +707,7 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
             # that we will need to invoke an encoder for. Figure out which encoder to call and invoke it.
             df_type = type(python_val.dataframe)
             protocol = self._protocol_from_type_or_prefix(ctx, df_type, python_val.uri)
+            breakpoint()
             return self.encode(
                 ctx,
                 python_val,
@@ -716,6 +723,7 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
         meta = StructuredDatasetMetadata(structured_dataset_type=expected.structured_dataset_type if expected else None)
 
         sd = StructuredDataset(dataframe=python_val, metadata=meta)
+        breakpoint()
         return self.encode(ctx, sd, python_type, protocol, fmt, sdt)
 
     def _protocol_from_type_or_prefix(self, ctx: FlyteContext, df_type: Type, uri: Optional[str] = None) -> str:
@@ -765,8 +773,7 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
     ) -> T | StructuredDataset:
         uri = dict_obj.get("uri", None)
         file_format = dict_obj.get("file_format", None)
-        print("@@@ sd uri: ", uri)
-        print("@@@ sd file_format: ", file_format)
+
         if uri is None:
             raise ValueError("StructuredDataset's uri and file format should not be None")
 
@@ -814,6 +821,7 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
         """
         if binary_idl_object.tag == MESSAGEPACK:
             python_val = msgpack.loads(binary_idl_object.value)
+            breakpoint()
             return self.dict_to_structured_dataset(dict_obj=python_val, expected_python_type=expected_python_type)
         else:
             raise TypeTransformerFailedError(f"Unsupported binary format: `{binary_idl_object.tag}`")
@@ -926,6 +934,7 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
             if issubclass(expected_python_type, StructuredDataset):
                 sd = StructuredDataset(dataframe=None, metadata=metad)
                 sd._literal_sd = sd_literal
+                breakpoint()
                 return sd
             else:
                 return self.open_as(ctx, sd_literal, expected_python_type, metad)

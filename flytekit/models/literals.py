@@ -985,6 +985,8 @@ class Literal(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.literals_pb2.Literal
         """
+        if self.scalar:
+            breakpoint()
         return _literals_pb2.Literal(
             scalar=self.scalar.to_flyte_idl() if self.scalar is not None else None,
             collection=self.collection.to_flyte_idl() if self.collection is not None else None,

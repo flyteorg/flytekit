@@ -1,5 +1,5 @@
 from __future__ import annotations
-
+from google.protobuf.struct_pb2 import Struct
 import collections
 import datetime
 import inspect
@@ -165,14 +165,9 @@ async def resolve_attr_path_in_promise(p: Promise) -> Promise:
         if type(curr_val.value.value) is _struct.Struct:
             st = curr_val.value.value
             new_st = resolve_attr_path_in_pb_struct(st, attr_path=p.attr_path[used:])
-            if type(new_st) == _struct.Struct:
-                curr_val = Literal(scalar=Scalar(generic=new_st))
-            else:
-                literal_type = TypeEngine.to_literal_type(type(new_st))
-                # Reconstruct the resolved result to flyte literal (because the resolved result might not be struct)
-                curr_val = await TypeEngine.async_to_literal(
-                    FlyteContextManager.current_context(), new_st, type(new_st), literal_type
-                )
+            # literal_type = TypeEngine.to_literal_type(type(new_st))
+            # Reconstruct the resolved result to flyte literal (because the resolved result might not be struct)
+            curr_val = convert_interface_to_literal(new_st)
         elif type(curr_val.value.value) is Binary:
             binary_idl_obj = curr_val.value.value
             if binary_idl_obj.tag == _common_constants.MESSAGEPACK:
@@ -211,6 +206,40 @@ def resolve_attr_path_in_pb_struct(st: _struct.Struct, attr_path: List[Union[str
             )
         curr_val = curr_val[attr]
     return curr_val
+
+def convert_interface_to_literal(obj):
+    literal = Literal()
+
+    if isinstance(obj, dict):
+        new_st = Struct()
+        new_st.update(obj)
+        literal.value = Scalar(generic=new_st)
+    elif isinstance(obj, list):
+        literals = [convert_interface_to_literal(v) for v in obj]
+        literal.value = Scalar(collection=literals)
+    elif isinstance(obj, (str, int, float, bool)):
+        literal.value = convert_interface_to_literal_scalar( obj)
+    else:
+        raise ValueError(f"Failed to resolve interface to literal for unsupported type: {type(obj)}")
+
+    return literal
+
+def convert_interface_to_literal_scalar(obj):
+    primitive = Primitive()
+
+    if isinstance(obj, str):
+        primitive.value = Primitive(string_value=obj)
+    elif isinstance(obj, int):
+        primitive.value = Primitive(integer=obj)
+    elif isinstance(obj, float):
+        primitive.value = Primitive(float_value=obj)
+    elif isinstance(obj, bool):
+        primitive.value = Primitive(boolean=obj)
+    else:
+        raise ValueError(f"Failed to resolve interface to literal scalar for unsupported type: {type(obj)}")
+
+    return Scalar(primitive=primitive)
+
 
 
 def get_primitive_val(prim: Primitive) -> Any:
