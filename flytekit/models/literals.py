@@ -1,6 +1,7 @@
 from datetime import datetime as _datetime
 from datetime import timedelta as _timedelta
 from datetime import timezone as _timezone
+from textwrap import shorten
 from typing import Dict, Optional
 
 from flyteidl.core import literals_pb2 as _literals_pb2
@@ -8,6 +9,7 @@ from google.protobuf.struct_pb2 import Struct
 
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.models import common as _common
+from flytekit.models.common import DEFAULT_REPR_MAX_LENGTH
 from flytekit.models.core import types as _core_types
 from flytekit.models.types import Error, LiteralType, StructuredDatasetType
 from flytekit.models.types import LiteralType as _LiteralType
@@ -169,6 +171,12 @@ class Primitive(_common.FlyteIdlEntity):
             datetime=proto.datetime.ToDatetime().replace(tzinfo=_timezone.utc) if proto.HasField("datetime") else None,
             duration=proto.duration.ToTimedelta() if proto.HasField("duration") else None,
         )
+
+    def short_string(self) -> str:
+        """
+        :rtype: Text
+        """
+        return str(self.value)
 
 
 class Binary(_common.FlyteIdlEntity):
@@ -1021,3 +1029,31 @@ class Literal(_common.FlyteIdlEntity):
         :param Dict[str, str] metadata: Metadata to be added
         """
         self._metadata = metadata
+
+    def _short_string(self) -> str:
+        """
+        :rtype: Text
+        """
+        if self.scalar:
+            if self.scalar.union:
+                return self.scalar.union.value._short_string()
+            return "scalar", str(self.scalar.value)
+        elif self.collection:
+            return shorten(str(self.collection.literals), width=DEFAULT_REPR_MAX_LENGTH)
+        elif self.map:
+            return shorten(str(self.map.literals), width=DEFAULT_REPR_MAX_LENGTH)
+        return "Unknown Literal"
+
+    def short_string(self) -> str:
+        """
+        :rtype: Text
+        """
+        if self.scalar:
+            if self.scalar.union:
+                return f"Flyte Serialized object {self.scalar.union.value.short_string()}"
+            return str(self.scalar.value)
+        elif self.collection:
+            return shorten(str(self.collection.literals), width=DEFAULT_REPR_MAX_LENGTH)
+        elif self.map:
+            return shorten(str(self.map.literals), width=DEFAULT_REPR_MAX_LENGTH)
+        return super().short_string()
