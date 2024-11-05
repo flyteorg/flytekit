@@ -1030,30 +1030,38 @@ class Literal(_common.FlyteIdlEntity):
         """
         self._metadata = metadata
 
-    def _short_string(self) -> str:
+    def _get_literal_value_str(self) -> str:
         """
-        :rtype: Text
+        :rtype: str
         """
         if self.scalar:
             if self.scalar.union:
-                return self.scalar.union.value._short_string()
-            return "scalar", str(self.scalar.value)
+                return self.scalar.union.value._get_literal_value_str()
+            return str(self.scalar.value)
         elif self.collection:
-            return shorten(str(self.collection.literals), width=DEFAULT_REPR_MAX_LENGTH)
+            return shorten(str([literal._get_literal_value_str() for literal in self.collection.literals]), width=DEFAULT_REPR_MAX_LENGTH)
         elif self.map:
-            return shorten(str(self.map.literals), width=DEFAULT_REPR_MAX_LENGTH)
+            return shorten(str({k: v._get_literal_value_str() for k, v in self.map.literals.items()}), width=DEFAULT_REPR_MAX_LENGTH)
         return "Unknown Literal"
+
+    def _get_literal_type_str(self) -> str:
+        """
+        :rtype: str
+        """
+        if self.scalar:
+            if self.scalar.union:
+                return f"Union[{self.scalar.union.value._get_literal_type_str()}]"
+            if self.scalar.primitive:
+                return f"{self.scalar.primitive.value.__class__.__name__}"
+            return str(self.scalar.value.__class__.__name__)
+        elif self.collection:
+            return f"List[{self.collection.literals[0]._get_literal_type_str()}]"
+        elif self.map:
+            return f"Dict[str, {list(self.map.literals.values())[0]._get_literal_type_str()}]"
+        return "Unknown Literal Type"
 
     def short_string(self) -> str:
         """
         :rtype: Text
         """
-        if self.scalar:
-            if self.scalar.union:
-                return f"Flyte Serialized object {self.scalar.union.value.short_string()}"
-            return str(self.scalar.value)
-        elif self.collection:
-            return shorten(str(self.collection.literals), width=DEFAULT_REPR_MAX_LENGTH)
-        elif self.map:
-            return shorten(str(self.map.literals), width=DEFAULT_REPR_MAX_LENGTH)
-        return super().short_string()
+        return f"Flyte Serialized object ({self._get_literal_type_str()}): {self._get_literal_value_str()}"
