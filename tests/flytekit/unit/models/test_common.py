@@ -191,23 +191,23 @@ def test_short_string_literal():
 
     small_list = Literal(collection=LiteralCollection([Literal(scalar=Scalar(primitive=Primitive(integer=1))), Literal(scalar=Scalar(primitive=Primitive(integer=2)))]))
     assert repr(small_list) == small_list.short_string()
-    assert repr(small_list) == "Flyte Serialized object (List[int]): ['1', '2']"
+    assert repr(small_list) == "Flyte Serialized object (Collection[int]): [1, 2]"
 
     large_list = Literal(collection=LiteralCollection([Literal(scalar=Scalar(primitive=Primitive(integer=i))) for i in range(100)]))
     assert repr(large_list) == large_list.short_string()
-    assert repr(large_list) == "Flyte Serialized object (List[int]): ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', [...]"
+    assert repr(large_list) == "Flyte Serialized object (Collection[int]): [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, [...]"
 
     small_dict = Literal(map=LiteralMap({"a": Literal(scalar=Scalar(primitive=Primitive(integer=1))), "b": Literal(scalar=Scalar(primitive=Primitive(integer=2)))}))
     assert repr(small_dict) == small_dict.short_string()
-    assert repr(small_dict) == "Flyte Serialized object (Dict[str, int]): {'a': '1', 'b': '2'}"
+    assert repr(small_dict) == "Flyte Serialized object (Map[str, int]): {'a': 1, 'b': 2}"
 
     large_dict = Literal(map=LiteralMap({str(i): Literal(scalar=Scalar(primitive=Primitive(integer=i))) for i in range(100)}))
     assert repr(large_dict) == large_dict.short_string()
-    assert repr(large_dict) == "Flyte Serialized object (Dict[str, int]): {'0': '0', '1': '1', '2': '2', '3': '3', '4': '4', '5': '5', '6': '6', [...]"
+    assert repr(large_dict) == "Flyte Serialized object (Map[str, int]): {'0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, [...]"
 
     union_literal = Literal(scalar=Scalar(union=Union(large_list, LiteralType(collection_type=SimpleType.INTEGER))))
     assert repr(union_literal) == union_literal.short_string()
-    assert repr(union_literal) == "Flyte Serialized object (Union[List[int]]): ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', [...]"
+    assert repr(union_literal) == "Flyte Serialized object (Union[Collection[int]]): [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, [...]"
 
 
 def test_short_string_entities_TaskMetadata():
