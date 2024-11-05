@@ -2110,10 +2110,6 @@ class DictTransformer(AsyncTypeTransformer[dict]):
             allow_pickle, base_type = DictTransformer.is_pickle(python_type)
 
         if expected and expected.simple and expected.simple == SimpleType.STRUCT:
-            """
-            TODO: add more comments
-            if FLYTE_USE_OLD_DC_FORMAT = true, then the old format is used, which is a binary literal with a struct
-            """
             if os.getenv("FLYTE_USE_OLD_DC_FORMAT", "false").lower() == "true":
                 return await self.dict_to_old_generic_literal(ctx, python_val, python_type, allow_pickle)
             return await self.dict_to_binary_literal(ctx, python_val, python_type, allow_pickle)

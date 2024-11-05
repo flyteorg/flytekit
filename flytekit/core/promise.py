@@ -162,6 +162,12 @@ async def resolve_attr_path_in_promise(p: Promise) -> Promise:
     if len(p.attr_path) > 0 and type(curr_val.value) is _literals_models.Scalar:
         # We keep it for reference task local execution in the future.
         if type(curr_val.value.value) is _struct.Struct:
+            """
+            Local execution currently has issues with struct attribute resolution.
+            This works correctly in remote execution.
+            Issue Link: https://github.com/flyteorg/flyte/issues/5959
+            """
+
             st = curr_val.value.value
             new_st = resolve_attr_path_in_pb_struct(st, attr_path=p.attr_path[used:])
             literal_type = TypeEngine.to_literal_type(type(new_st))
