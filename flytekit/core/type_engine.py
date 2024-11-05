@@ -40,7 +40,7 @@ from flytekit.core.constants import MESSAGEPACK
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.hash import HashMethod
 from flytekit.core.type_helpers import load_type_from_tag
-from flytekit.core.utils import load_proto_from_file, timeit
+from flytekit.core.utils import load_proto_from_file, str2bool, timeit
 from flytekit.exceptions import user as user_exceptions
 from flytekit.interaction.string_literals import literal_map_string_repr
 from flytekit.lazy_import.lazy_module import is_imported
@@ -662,7 +662,9 @@ class DataclassTransformer(TypeTransformer[object]):
 
         return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT, metadata=schema, structure=ts)
 
-    def to_generic_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
+    def to_generic_literal(
+        self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType
+    ) -> Literal:
         """
         Serializes a dataclass or dictionary to a Flyte literal, handling both JSON and MessagePack formats.
         Set `FLYTE_USE_OLD_DC_FORMAT=true` to use the old JSON-based format.
@@ -701,7 +703,7 @@ class DataclassTransformer(TypeTransformer[object]):
         return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))  # type: ignore
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
-        if os.getenv("FLYTE_USE_OLD_DC_FORMAT", "false").lower() == "true":
+        if str2bool(os.getenv("FLYTE_USE_OLD_DC_FORMAT")):
             return self.to_generic_literal(ctx, python_val, python_type, expected)
 
         if isinstance(python_val, dict):
@@ -2110,7 +2112,7 @@ class DictTransformer(AsyncTypeTransformer[dict]):
             allow_pickle, base_type = DictTransformer.is_pickle(python_type)
 
         if expected and expected.simple and expected.simple == SimpleType.STRUCT:
-            if os.getenv("FLYTE_USE_OLD_DC_FORMAT", "false").lower() == "true":
+            if str2bool(os.getenv("FLYTE_USE_OLD_DC_FORMAT")):
                 return await self.dict_to_generic_literal(ctx, python_val, python_type, allow_pickle)
             return await self.dict_to_binary_literal(ctx, python_val, python_type, allow_pickle)
 

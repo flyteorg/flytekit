@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from flytekit import FlyteContext
 from flytekit.core.constants import MESSAGEPACK
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
+from flytekit.core.utils import str2bool
 from flytekit.loggers import logger
 from flytekit.models import types
 from flytekit.models.literals import Binary, Literal, Scalar
@@ -63,7 +64,7 @@ class PydanticTransformer(TypeTransformer[BaseModel]):
         This is for handling enum in basemodel.
         More details: https://github.com/flyteorg/flytekit/pull/2792
         """
-        if os.getenv("FLYTE_USE_OLD_DC_FORMAT", "false").lower() == "true":
+        if str2bool(os.getenv("FLYTE_USE_OLD_DC_FORMAT")):
             return self.to_generic_literal(ctx, python_val, python_type, expected)
 
         json_str = python_val.model_dump_json()
