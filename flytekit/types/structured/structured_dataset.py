@@ -63,7 +63,7 @@ class StructuredDataset(SerializableType, DataClassJSONMixin):
 
     def _serialize(self) -> Dict[str, Optional[str]]:
         lv = StructuredDatasetTransformerEngine().to_literal(
-            FlyteContextManager.current_context(), self, type(self), StructuredDatasetTransformerEngine()._get_dataset_column_literal_type(self)
+            FlyteContextManager.current_context(), self, type(self), None
         )
         sd = StructuredDataset(uri=lv.scalar.structured_dataset.uri)
         sd.file_format = lv.scalar.structured_dataset.metadata.structured_dataset_type.format
@@ -670,19 +670,13 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
             #   def t1(dataset: Annotated[StructuredDataset, my_cols]) -> Annotated[StructuredDataset, my_cols]:
             #       return dataset
             if python_val._literal_sd is not None:
-                if type(python_val._literal_sd) == literals.StructuredDataset:
-                    if python_val._already_uploaded:
-                        return Literal(scalar=Scalar(structured_dataset=python_val._literal_sd))
-                    if python_val.dataframe is not None:
-                        raise ValueError(
-                            f"Shouldn't have specified both literal {python_val._literal_sd} and dataframe {python_val.dataframe}"
-                        )
+                if python_val._already_uploaded:
                     return Literal(scalar=Scalar(structured_dataset=python_val._literal_sd))
-                elif type(python_val._literal_sd) == StructuredDataset:
-                    """
-                    TODO: There is an unknown reason that strucutred dataset's literal_sd will become a structured dataset.
-                    """
-                    return Literal(scalar=Scalar(structured_dataset=python_val._literal_sd._literal_sd)) # type: ignore
+                if python_val.dataframe is not None:
+                    raise ValueError(
+                        f"Shouldn't have specified both literal {python_val._literal_sd} and dataframe {python_val.dataframe}"
+                    )
+                return Literal(scalar=Scalar(structured_dataset=python_val._literal_sd))
 
             # 2. A task returns a python StructuredDataset with an uri.
             # Note: this case is also what happens we start a local execution of a task with a python StructuredDataset.
