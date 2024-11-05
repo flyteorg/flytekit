@@ -707,7 +707,7 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
             # that we will need to invoke an encoder for. Figure out which encoder to call and invoke it.
             df_type = type(python_val.dataframe)
             protocol = self._protocol_from_type_or_prefix(ctx, df_type, python_val.uri)
-            breakpoint()
+
             return self.encode(
                 ctx,
                 python_val,
@@ -723,7 +723,6 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
         meta = StructuredDatasetMetadata(structured_dataset_type=expected.structured_dataset_type if expected else None)
 
         sd = StructuredDataset(dataframe=python_val, metadata=meta)
-        breakpoint()
         return self.encode(ctx, sd, python_type, protocol, fmt, sdt)
 
     def _protocol_from_type_or_prefix(self, ctx: FlyteContext, df_type: Type, uri: Optional[str] = None) -> str:
@@ -822,7 +821,6 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
         """
         if binary_idl_object.tag == MESSAGEPACK:
             python_val = msgpack.loads(binary_idl_object.value)
-            breakpoint()
             return self.dict_to_structured_dataset(dict_obj=python_val, expected_python_type=expected_python_type)
         else:
             raise TypeTransformerFailedError(f"Unsupported binary format: `{binary_idl_object.tag}`")
@@ -935,7 +933,6 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
             if issubclass(expected_python_type, StructuredDataset):
                 sd = StructuredDataset(dataframe=None, metadata=metad)
                 sd._literal_sd = sd_literal
-                breakpoint()
                 return sd
             else:
                 return self.open_as(ctx, sd_literal, expected_python_type, metad)
