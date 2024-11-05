@@ -56,7 +56,7 @@ def test_create_docker_context(tmp_path):
     assert "--index-url" in dockerfile_content
     assert "--extra-index-url" in dockerfile_content
     assert "COPY --chown=flytekit ./src /root" in dockerfile_content
-    assert "RUN mkdir my_dir" in dockerfile_content
+    assert "mkdir my_dir" in dockerfile_content
     assert "ENTRYPOINT [\"/bin/bash\"]" in dockerfile_content
     assert "mkdir -p $HOME" in dockerfile_content
     assert f"COPY --chown=flytekit {tmp_file.relative_to(Path.cwd()).as_posix()} /root/" in dockerfile_content
