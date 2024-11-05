@@ -764,7 +764,6 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
     def dict_to_structured_dataset(
         self, dict_obj: typing.Dict[str, str], expected_python_type: Type[T] | StructuredDataset
     ) -> T | StructuredDataset:
-        print("@@@ input dict_obj")
         uri = dict_obj.get("uri", None)
         file_format = dict_obj.get("file_format", None)
 
