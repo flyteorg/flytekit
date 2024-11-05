@@ -46,7 +46,7 @@ class PydanticTransformer(TypeTransformer[BaseModel]):
         expected: types.LiteralType,
     ) -> Literal:
         """
-        This is for users who don't want to upgrade the flytepropeller.
+        Note: This is deprecated and will be removed in the future.
         """
         json_str = python_val.model_dump_json()
         return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))

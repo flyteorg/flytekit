@@ -666,6 +666,7 @@ class DataclassTransformer(TypeTransformer[object]):
         """
         Serializes a dataclass or dictionary to a Flyte literal, handling both JSON and MessagePack formats.
         Set `FLYTE_USE_OLD_DC_FORMAT=true` to use the old JSON-based format.
+        Note: This is deprecated and will be removed in the future.
         """
         if isinstance(python_val, dict):
             json_str = json.dumps(python_val)
@@ -2004,6 +2005,7 @@ class DictTransformer(AsyncTypeTransformer[dict]):
         """
         This is deprecated from flytekit 1.14.0.
         Creates a flyte-specific ``Literal`` value from a native python dictionary.
+        Note: This is deprecated and will be removed in the future.
         """
         from flytekit.types.pickle import FlytePickle
 
