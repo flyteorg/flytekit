@@ -89,7 +89,7 @@ class memray_profiling(ClassDecorator):
 
         memray_reporter_args_str = " ".join(self.memray_reporter_args)
 
-        if os.system(f"memray {reporter} -o {html_filepath} {memray_reporter_args_str} {bin_filepath}") == 0:
+        if os.system(f"{sys.executable} -m memray {reporter} -o {html_filepath} {memray_reporter_args_str} {bin_filepath}") == 0:
             with open(html_filepath, "r", encoding="utf-8") as file:
                 html_content = file.read()
 
