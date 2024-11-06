@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 from typing import Callable, List, Optional
 
@@ -67,7 +68,10 @@ class memray_profiling(ClassDecorator):
         if not os.path.exists(self.dir_name):
             os.makedirs(self.dir_name)
 
-        bin_filepath = os.path.join(self.dir_name, f"{self.task_function.__name__}.{time.strftime('%Y%m%d%H%M%S')}.bin")
+        bin_filepath = os.path.join(
+            self.dir_name,
+            f"{self.task_function.__name__}.{time.strftime('%Y%m%d%H%M%S')}.bin",
+        )
 
         with memray.Tracker(
             bin_filepath,
@@ -89,7 +93,12 @@ class memray_profiling(ClassDecorator):
 
         memray_reporter_args_str = " ".join(self.memray_reporter_args)
 
-        if os.system(f"{sys.executable} -m memray {reporter} -o {html_filepath} {memray_reporter_args_str} {bin_filepath}") == 0:
+        if (
+            os.system(
+                f"{sys.executable} -m memray {reporter} -o {html_filepath} {memray_reporter_args_str} {bin_filepath}"
+            )
+            == 0
+        ):
             with open(html_filepath, "r", encoding="utf-8") as file:
                 html_content = file.read()
 
