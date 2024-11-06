@@ -38,6 +38,7 @@ from flytekit.core.promise import (
     translate_inputs_to_native,
 )
 from flytekit.core.python_auto_container import PythonAutoContainerTask, default_task_resolver
+from flytekit.core.tracked_abc import FlyteTrackedABC
 from flytekit.core.tracker import extract_task_module, is_functools_wrapped_module_level, isnested, istestfunction
 from flytekit.core.worker_queue import WorkerQueue
 from flytekit.core.workflow import (
@@ -393,7 +394,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         return super()._write_decks(native_inputs, native_outputs_as_map, ctx, new_user_params)
 
 
-class AsyncPythonFunctionTask(PythonFunctionTask[T]):
+class AsyncPythonFunctionTask(PythonFunctionTask[T], metaclass=FlyteTrackedABC):
     """
     This is the base task for eager tasks, as well as normal async tasks
     Really only need to override the call function.
@@ -404,8 +405,20 @@ class AsyncPythonFunctionTask(PythonFunctionTask[T]):
     ) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, None]:
         return await async_flyte_entity_call_handler(self, *args, **kwargs)  # type: ignore
 
+    async def async_execute(self, *args, **kwargs) -> Any:
+        """
+        Overrides the base execute function. This function does not handle dynamic at all. Eager and dynamic don't mix.
+        """
+        if self.execution_mode == self.ExecutionBehavior.DEFAULT:
+            # todo:async run task function in a runner if necessary.
+            return await self._task_function(**kwargs)
+        elif self.execution_mode == self.ExecutionBehavior.DYNAMIC:
+            raise NotImplementedError
 
-class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T]):
+    execute = loop_manager.synced(async_execute)
+
+
+class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTrackedABC):
     def __init__(
         self,
         task_config: T,
@@ -472,7 +485,9 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T]):
         else:
             # set local mode and proceed with running the function.  This makes the
             mode = self.local_execution_mode()
-            with FlyteContextManager.with_context(ctx.with_execution_state(ctx.execution_state.with_params(mode=mode))):
+            with FlyteContextManager.with_context(
+                ctx.with_execution_state(cast(ExecutionState, ctx.execution_state).with_params(mode=mode))
+            ):
                 return await self._task_function(**kwargs)
 
     execute = loop_manager.synced(async_execute)
@@ -491,7 +506,7 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T]):
 
         # set up context
         mode = ExecutionState.Mode.EAGER_EXECUTION
-        builder = ctx.with_execution_state(ctx.execution_state.with_params(mode=mode))
+        builder = ctx.with_execution_state(cast(ExecutionState, ctx.execution_state).with_params(mode=mode))
 
         # ensure that the worker queue is in context
         if not ctx.worker_queue:
@@ -502,8 +517,8 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T]):
 
 
 """
-export deck.
-testing local eager with no tasks, local eager, remote eager, local nested eager, remote nested eager
+async tasks, figure out args, dynamic nested, workflows and launch plans, export deck
+test remote
 
 to enable the async pattern the __call__ function needs to be async or sync. One task type can't be both because it has
 to be this function. You can't overload functions in Python, so we have to differentiate at all levels.

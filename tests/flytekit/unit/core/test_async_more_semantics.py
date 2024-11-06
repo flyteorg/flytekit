@@ -16,10 +16,10 @@ def add_one(x: int) -> int:
     return x + 1
 
 
-# enable in the future
-# @task
-# async def a_double(x: int) -> int:
-#     return x * 2
+@task
+async def a_double(x: int) -> int:
+    return x * 2
+
 
 @task
 def double(x: int) -> int:
@@ -29,10 +29,11 @@ def double(x: int) -> int:
 @eager
 async def base_wf(x: int) -> int:
     out = add_one(x=x)
-    doubled = double(x=x)
+    doubled = await a_double(x=x)
     if out - doubled < 0:
         return -1
-    return double(x=out)
+    final = double(x=out)
+    return final
 
 
 @eager

@@ -18,7 +18,7 @@ from flytekit.core import workflow as _annotated_workflow
 from flytekit.core.base_task import PythonTask, TaskMetadata, TaskResolverMixin
 from flytekit.core.interface import Interface, output_name_generator, transform_function_to_interface
 from flytekit.core.pod_template import PodTemplate
-from flytekit.core.python_function_task import PythonFunctionTask
+from flytekit.core.python_function_task import AsyncPythonFunctionTask, PythonFunctionTask
 from flytekit.core.reference_entity import ReferenceEntity, TaskReference
 from flytekit.core.resources import Resources
 from flytekit.deck import DeckField
@@ -358,13 +358,20 @@ def task(
             timeout=timeout,
         )
 
-        if inspect.iscoroutine(fn):
+        if inspect.iscoroutinefunction(fn):
             # todo:async figure out vscode decoration for async tasks
             decorated_fn = fn
         else:
             decorated_fn = decorate_function(fn)
+        task_plugin = TaskPlugins.find_pythontask_plugin(type(task_config))
+        if inspect.iscoroutinefunction(fn):
+            if task_plugin is PythonFunctionTask:
+                task_plugin = AsyncPythonFunctionTask
+            else:
+                if not issubclass(task_plugin, AsyncPythonFunctionTask):
+                    raise AssertionError(f"Task plugin {task_plugin} is not compatible with async functions")
 
-        task_instance = TaskPlugins.find_pythontask_plugin(type(task_config))(
+        task_instance = task_plugin(
             task_config,
             decorated_fn,
             metadata=_metadata,

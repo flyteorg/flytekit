@@ -21,7 +21,7 @@ if typing.TYPE_CHECKING:
 class WorkItem:
     loop: asyncio.AbstractEventLoop
     entity: RunnableEntity
-    input_kwargs: dict[str, any]
+    input_kwargs: dict[str, typing.Any]
     fut: asyncio.Future
 
 
@@ -77,7 +77,7 @@ class WorkerQueue:
             logger.warning(f"WorkerQueue stopped unexpectedly. Queue items: {self.queue}")
 
     def add(
-        self, loop: asyncio.AbstractEventLoop, entity: RunnableEntity, input_kwargs: dict[str, any]
+        self, loop: asyncio.AbstractEventLoop, entity: RunnableEntity, input_kwargs: dict[str, typing.Any]
     ) -> asyncio.Future:
         fut = loop.create_future()
         i = WorkItem(loop=loop, entity=entity, input_kwargs=input_kwargs, fut=fut)

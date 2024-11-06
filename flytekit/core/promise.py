@@ -7,7 +7,7 @@ import typing
 from collections.abc import Iterable
 from copy import deepcopy
 from enum import Enum
-from typing import Any, Coroutine, Dict, List, Optional, Set, Tuple, Union, cast
+from typing import Any, Dict, List, Optional, Set, Tuple, Union, cast
 
 from google.protobuf import struct_pb2 as _struct
 from typing_extensions import Annotated, Protocol, get_args, get_origin
@@ -1397,7 +1397,7 @@ class LocallyExecutable(Protocol):
 # change this to async?
 async def async_flyte_entity_call_handler(
     entity: SupportsNodeCreation, *args, **kwargs
-) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, Coroutine, None]:
+) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, None]:
     """
     This function is the call handler for tasks, workflows, and launch plans (which redirects to the underlying
     workflow). The logic is the same for all three, but we did not want to create base class, hence this separate
