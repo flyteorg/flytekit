@@ -121,7 +121,9 @@ def test_get_download_artifact_signed_url(register):
 
     # Check if the signed URL is valid and starts with the expected prefix
     signed_url = download_link_response.signed_url[0]
-    assert signed_url.startswith(f"http://localhost:30002/my-s3-bucket/metadata/propeller/{project}-{domain}-{name}/n0/data/0/deck.html")
+    assert signed_url.startswith(
+        f"http://localhost:30002/my-s3-bucket/metadata/propeller/{project}-{domain}-{name}/n0/data/0/deck.html")
+
 
 def test_fetch_execute_launch_plan_with_args(register):
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
@@ -755,3 +757,13 @@ def test_register_wf_fast(register):
     subworkflow_node_executions = execution.node_executions["n1"].subworkflow_node_executions
     subworkflow_node_executions["n1-0-n0"].inputs == {"a": 103}
     subworkflow_node_executions["n1-0-n1"].outputs == {"t1_int_output": 107, "c": "world"}
+
+
+def test_fetch_active_launchplan_not_found(register):
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    assert remote.fetch_active_launchplan(name="basic.list_float_wf.fake_wf") is None
+
+def test_get_control_plane_version():
+    client = _SynchronousFlyteClient(PlatformConfig.for_endpoint("localhost:30080", True))
+    version = client.get_control_plane_version()
+    assert version == "unknown" or version.startswith("v")

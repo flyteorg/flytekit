@@ -6,8 +6,8 @@ from typing_extensions import TypeAlias
 
 from flytekit import FlyteContext, Literal, LiteralType
 from flytekit.core.type_engine import (
+    AsyncTypeTransformer,
     TypeEngine,
-    TypeTransformer,
     TypeTransformerFailedError,
 )
 from flytekit.models.core import types as _core_types
@@ -18,7 +18,7 @@ JSONScalar: TypeAlias = Union[bool, float, int, str]
 JSON: TypeAlias = Union[JSONCollection, JSONScalar]
 
 
-class JSONIterator:
+class JSONIterator(Iterator[JSON]):
     def __init__(self, reader: jsonlines.Reader):
         self._reader = reader
         self._reader_iter = reader.iter()
@@ -34,7 +34,7 @@ class JSONIterator:
             raise StopIteration("File handler is exhausted")
 
 
-class JSONIteratorTransformer(TypeTransformer[Iterator[JSON]]):
+class JSONIteratorTransformer(AsyncTypeTransformer[Iterator[JSON]]):
     """
     A JSON iterator that handles conversion between an iterator/generator and a JSONL file.
     """
@@ -54,7 +54,7 @@ class JSONIteratorTransformer(TypeTransformer[Iterator[JSON]]):
             metadata={"format": self.JSON_ITERATOR_METADATA},
         )
 
-    def to_literal(
+    async def async_to_literal(
         self,
         ctx: FlyteContext,
         python_val: Iterator[JSON],
@@ -83,9 +83,10 @@ class JSONIteratorTransformer(TypeTransformer[Iterator[JSON]]):
             )
         )
 
-        return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=ctx.file_access.put_raw_data(uri))))
+        uri = await ctx.file_access.async_put_raw_data(uri)
+        return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=uri)))
 
-    def to_python_value(
+    async def async_to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[Iterator[JSON]]
     ) -> JSONIterator:
         try:
@@ -112,4 +113,4 @@ class JSONIteratorTransformer(TypeTransformer[Iterator[JSON]]):
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}.")
 
 
-TypeEngine.register(JSONIteratorTransformer())
+TypeEngine.register(JSONIteratorTransformer(), additional_types=[JSONIterator])

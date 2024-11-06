@@ -1,3 +1,4 @@
+import re
 import os
 from unittest.mock import patch, Mock
 
@@ -37,6 +38,7 @@ def test_create_docker_context(tmp_path):
             source_root=os.fspath(source_root),
             commands=["mkdir my_dir"],
             entrypoint=["/bin/bash"],
+            pip_index="https://url.com",
             pip_extra_index_url=["https://extra-url.com"],
             source_copy_mode=CopyFileDetection.ALL,
             copy=[tmp_file.relative_to(Path.cwd()).as_posix()],
@@ -52,9 +54,12 @@ def test_create_docker_context(tmp_path):
     assert "scipy==1.13.0 numpy" in dockerfile_content
     assert "python=3.12" in dockerfile_content
     assert "--requirement requirements_uv.txt" in dockerfile_content
+    assert "--index-url" in dockerfile_content
     assert "--extra-index-url" in dockerfile_content
     assert "COPY --chown=flytekit ./src /root" in dockerfile_content
-    assert "RUN mkdir my_dir" in dockerfile_content
+
+    run_match = re.search(r"RUN.+mkdir my_dir", dockerfile_content)
+    assert run_match
     assert "ENTRYPOINT [\"/bin/bash\"]" in dockerfile_content
     assert "mkdir -p $HOME" in dockerfile_content
     assert f"COPY --chown=flytekit {tmp_file.relative_to(Path.cwd()).as_posix()} /root/" in dockerfile_content

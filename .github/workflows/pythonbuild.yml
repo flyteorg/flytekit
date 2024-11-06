@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - master
+      - 'release-v**'
   pull_request:
   schedule:
     - cron: "0 13 * * *" # This schedule runs at 1pm UTC every day
@@ -355,7 +356,6 @@ jobs:
           - flytekit-pandera
           - flytekit-papermill
           - flytekit-polars
-          - flytekit-pydantic
           - flytekit-ray
           - flytekit-snowflake
           - flytekit-spark

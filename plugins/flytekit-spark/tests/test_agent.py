@@ -1,11 +1,15 @@
 import http
+import json
 from datetime import timedelta
 from unittest import mock
 
 import pytest
 from aioresponses import aioresponses
 from flyteidl.core.execution_pb2 import TaskExecution
-from flytekitplugins.spark.agent import DATABRICKS_API_ENDPOINT, DatabricksJobMetadata, get_header
+
+from flytekit.core.constants import FLYTE_FAIL_ON_ERROR
+from flytekitplugins.spark.agent import DATABRICKS_API_ENDPOINT, DatabricksJobMetadata, get_header, \
+    _get_databricks_job_spec
 
 from flytekit.extend.backend.base_agent import AgentRegistry
 from flytekit.interfaces.cli_identifiers import Identifier
@@ -87,7 +91,7 @@ async def test_databricks_agent():
             requests=[],
             limits=[],
         ),
-        env={},
+        env={"foo": "bar"},
         config={},
     )
 
@@ -121,6 +125,12 @@ async def test_databricks_agent():
     with aioresponses() as mocked:
         mocked.post(create_url, status=http.HTTPStatus.OK, payload=mock_create_response)
         res = await agent.create(dummy_template, None)
+        spec = _get_databricks_job_spec(dummy_template)
+        data = json.dumps(spec)
+        mocked.assert_called_with(create_url, method="POST", data=data, headers=get_header())
+        spark_envs = spec["new_cluster"]["spark_env_vars"]
+        assert spark_envs["foo"] == "bar"
+        assert spark_envs[FLYTE_FAIL_ON_ERROR] == "true"
         assert res == databricks_metadata
 
         mocked.get(get_url, status=http.HTTPStatus.OK, payload=mock_get_response)

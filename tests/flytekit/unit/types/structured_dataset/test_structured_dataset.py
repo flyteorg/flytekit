@@ -16,7 +16,6 @@ from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
-from flytekit.exceptions.user import FlyteAssertion
 from flytekit.lazy_import.lazy_module import is_imported
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
@@ -35,7 +34,8 @@ from flytekit.types.structured.structured_dataset import (
 pd = pytest.importorskip("pandas")
 pa = pytest.importorskip("pyarrow")
 
-my_cols = kwtypes(w=typing.Dict[str, typing.Dict[str, int]], x=typing.List[typing.List[int]], y=int, z=str)
+my_cols = kwtypes(w=typing.Dict[str, typing.Dict[str, int]],
+                  x=typing.List[typing.List[int]], y=int, z=str)
 
 fields = [("some_int", pa.int32()), ("some_string", pa.string())]
 arrow_schema = pa.schema(fields)
@@ -72,7 +72,8 @@ def test_formats_make_sense():
     ctx = FlyteContextManager.current_context()
     with FlyteContextManager.with_context(
         ctx.with_execution_state(
-            ctx.new_execution_state().with_params(mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION)
+            ctx.new_execution_state().with_params(
+                mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION)
         )
     ):
         result = t1(a=generate_pandas())
@@ -143,7 +144,8 @@ def test_types_annotated():
     pt = Annotated[pd.DataFrame, PARQUET, arrow_schema]
     lt = TypeEngine.to_literal_type(pt)
     assert lt.structured_dataset_type.external_schema_type == "arrow"
-    assert "some_string" in str(lt.structured_dataset_type.external_schema_bytes)
+    assert "some_string" in str(
+        lt.structured_dataset_type.external_schema_bytes)
 
     pt = Annotated[pd.DataFrame, kwtypes(a=None)]
     with pytest.raises(AssertionError, match="type None is currently not supported by StructuredDataset"):
@@ -171,8 +173,10 @@ def test_types_sd():
 
 
 def test_retrieving():
-    assert StructuredDatasetTransformerEngine.get_encoder(pd.DataFrame, "file", PARQUET) is not None
-    # Asking for a generic means you're okay with any one registered for that type assuming there's just one.
+    assert StructuredDatasetTransformerEngine.get_encoder(
+        pd.DataFrame, "file", PARQUET) is not None
+    # Asking for a generic means you're okay with any one registered for that
+    # type assuming there's just one.
     assert StructuredDatasetTransformerEngine.get_encoder(
         pd.DataFrame, "file", ""
     ) is StructuredDatasetTransformerEngine.get_encoder(pd.DataFrame, "file", PARQUET)
@@ -184,9 +188,11 @@ def test_retrieving():
         def encode(self):
             ...
 
-    StructuredDatasetTransformerEngine.register(TempEncoder("gs"), default_for_type=False)
+    StructuredDatasetTransformerEngine.register(
+        TempEncoder("gs"), default_for_type=False)
     with pytest.raises(ValueError):
-        StructuredDatasetTransformerEngine.register(TempEncoder("gs://"), default_for_type=False)
+        StructuredDatasetTransformerEngine.register(
+            TempEncoder("gs://"), default_for_type=False)
 
     with pytest.raises(ValueError, match="Use None instead"):
         e = TempEncoder("")
@@ -197,7 +203,8 @@ def test_retrieving():
         pass
 
     with pytest.raises(TypeError, match="We don't support this type of handler"):
-        StructuredDatasetTransformerEngine.register(TempEncoder, default_for_type=False)
+        StructuredDatasetTransformerEngine.register(
+            TempEncoder, default_for_type=False)
 
 
 def test_to_literal():
@@ -215,16 +222,29 @@ def test_to_literal():
     sd_with_literal_and_df._literal_sd = lit
 
     with pytest.raises(ValueError, match="Shouldn't have specified both literal"):
-        fdt.to_literal(ctx, sd_with_literal_and_df, python_type=StructuredDataset, expected=lt)
+        fdt.to_literal(
+            ctx,
+            sd_with_literal_and_df,
+            python_type=StructuredDataset,
+            expected=lt)
 
     sd_with_nothing = StructuredDataset()
     with pytest.raises(ValueError, match="If dataframe is not specified"):
-        fdt.to_literal(ctx, sd_with_nothing, python_type=StructuredDataset, expected=lt)
+        fdt.to_literal(
+            ctx,
+            sd_with_nothing,
+            python_type=StructuredDataset,
+            expected=lt)
 
     sd_with_uri = StructuredDataset(uri="s3://some/extant/df.parquet")
 
-    lt = TypeEngine.to_literal_type(Annotated[StructuredDataset, {}, "new-df-format"])
-    lit = fdt.to_literal(ctx, sd_with_uri, python_type=StructuredDataset, expected=lt)
+    lt = TypeEngine.to_literal_type(
+        Annotated[StructuredDataset, {}, "new-df-format"])
+    lit = fdt.to_literal(
+        ctx,
+        sd_with_uri,
+        python_type=StructuredDataset,
+        expected=lt)
     assert lit.scalar.structured_dataset.uri == "s3://some/extant/df.parquet"
     assert lit.scalar.structured_dataset.metadata.structured_dataset_type.format == "new-df-format"
 
@@ -247,7 +267,8 @@ def test_fill_in_literal_type():
             return literals.StructuredDataset(uri="")
 
     default_encoder = TempEncoder("myavro")
-    StructuredDatasetTransformerEngine.register(default_encoder, default_for_type=True)
+    StructuredDatasetTransformerEngine.register(
+        default_encoder, default_for_type=True)
     lt = TypeEngine.to_literal_type(MyDF)
     assert lt.structured_dataset_type.format == ""
 
@@ -255,14 +276,18 @@ def test_fill_in_literal_type():
     fdt = StructuredDatasetTransformerEngine()
     sd = StructuredDataset(dataframe=MyDF())
     l = fdt.to_literal(ctx, sd, MyDF, lt)
-    # Test that the literal type is filled in even though the encode function above doesn't do it.
+    # Test that the literal type is filled in even though the encode function
+    # above doesn't do it.
     assert l.scalar.structured_dataset.metadata.structured_dataset_type.format == "myavro"
 
-    # Test that looking up encoders/decoders falls back to the "" encoder/decoder
+    # Test that looking up encoders/decoders falls back to the ""
+    # encoder/decoder
     empty_format_temp_encoder = TempEncoder("")
-    StructuredDatasetTransformerEngine.register(empty_format_temp_encoder, default_for_type=False)
+    StructuredDatasetTransformerEngine.register(
+        empty_format_temp_encoder, default_for_type=False)
 
-    res = StructuredDatasetTransformerEngine.get_encoder(MyDF, "tmpfs", "rando")
+    res = StructuredDatasetTransformerEngine.get_encoder(
+        MyDF, "tmpfs", "rando")
     assert res is empty_format_temp_encoder
 
 
@@ -283,7 +308,8 @@ def test_slash_register():
     StructuredDatasetTransformerEngine.register(TempEncoder("/"))
     res = StructuredDatasetTransformerEngine.get_encoder(MyDF, "file", "/")
     # Test that the one we got was registered under fsspec
-    assert res is StructuredDatasetTransformerEngine.ENCODERS[MyDF].get("fsspec")["/"]
+    assert res is StructuredDatasetTransformerEngine.ENCODERS[MyDF].get("fsspec")[
+        "/"]
     assert res is not None
 
 
@@ -342,12 +368,18 @@ def test_sd():
 
 def test_convert_schema_type_to_structured_dataset_type():
     schema_ct = SchemaType.SchemaColumn.SchemaColumnType
-    assert convert_schema_type_to_structured_dataset_type(schema_ct.INTEGER) == SimpleType.INTEGER
-    assert convert_schema_type_to_structured_dataset_type(schema_ct.FLOAT) == SimpleType.FLOAT
-    assert convert_schema_type_to_structured_dataset_type(schema_ct.STRING) == SimpleType.STRING
-    assert convert_schema_type_to_structured_dataset_type(schema_ct.DATETIME) == SimpleType.DATETIME
-    assert convert_schema_type_to_structured_dataset_type(schema_ct.DURATION) == SimpleType.DURATION
-    assert convert_schema_type_to_structured_dataset_type(schema_ct.BOOLEAN) == SimpleType.BOOLEAN
+    assert convert_schema_type_to_structured_dataset_type(
+        schema_ct.INTEGER) == SimpleType.INTEGER
+    assert convert_schema_type_to_structured_dataset_type(
+        schema_ct.FLOAT) == SimpleType.FLOAT
+    assert convert_schema_type_to_structured_dataset_type(
+        schema_ct.STRING) == SimpleType.STRING
+    assert convert_schema_type_to_structured_dataset_type(
+        schema_ct.DATETIME) == SimpleType.DATETIME
+    assert convert_schema_type_to_structured_dataset_type(
+        schema_ct.DURATION) == SimpleType.DURATION
+    assert convert_schema_type_to_structured_dataset_type(
+        schema_ct.BOOLEAN) == SimpleType.BOOLEAN
     with pytest.raises(AssertionError, match="Unrecognized SchemaColumnType"):
         convert_schema_type_to_structured_dataset_type(int)
 
@@ -363,7 +395,8 @@ def test_to_python_value_with_incoming_columns():
     df = generate_pandas()
     fdt = StructuredDatasetTransformerEngine()
     lit = fdt.to_literal(ctx, df, python_type=original_type, expected=lt)
-    assert len(lit.scalar.structured_dataset.metadata.structured_dataset_type.columns) == 2
+    assert len(
+        lit.scalar.structured_dataset.metadata.structured_dataset_type.columns) == 2
 
     # declare a new type that only has one column
     # get the dataframe, make sure it has the column that was asked for.
@@ -373,7 +406,8 @@ def test_to_python_value_with_incoming_columns():
     sub_df = sd.open(pd.DataFrame).all()
     assert sub_df.shape[1] == 1
 
-    # check when columns are not specified, should pull both and add column information.
+    # check when columns are not specified, should pull both and add column
+    # information.
     sd = fdt.to_python_value(ctx, lit, StructuredDataset)
     assert len(sd.metadata.structured_dataset_type.columns) == 2
 
@@ -390,7 +424,8 @@ def test_to_python_value_without_incoming_columns():
     df = generate_pandas()
     fdt = StructuredDatasetTransformerEngine()
     lit = fdt.to_literal(ctx, df, python_type=pd.DataFrame, expected=lt)
-    assert len(lit.scalar.structured_dataset.metadata.structured_dataset_type.columns) == 0
+    assert len(
+        lit.scalar.structured_dataset.metadata.structured_dataset_type.columns) == 0
 
     # declare a new type that only has one column
     # get the dataframe, make sure it has the column that was asked for.
@@ -402,7 +437,8 @@ def test_to_python_value_without_incoming_columns():
 
     # check when columns are not specified, should pull both and add column information.
     # todo: see the todos in the open_as, and iter_as functions in StructuredDatasetTransformerEngine
-    #  we have to recreate the literal because the test case above filled in the metadata
+    # we have to recreate the literal because the test case above filled in
+    # the metadata
     lit = fdt.to_literal(ctx, df, python_type=pd.DataFrame, expected=lt)
     sd = fdt.to_python_value(ctx, lit, StructuredDataset)
     assert sd.metadata.structured_dataset_type.columns == []
@@ -434,7 +470,8 @@ def test_format_correct():
     ctx = FlyteContextManager.current_context()
     df = pd.DataFrame({"name": ["Tom", "Joseph"], "age": [20, 22]})
 
-    annotated_sd_type = Annotated[StructuredDataset, "avro", kwtypes(name=str, age=int)]
+    annotated_sd_type = Annotated[StructuredDataset,
+                                  "avro", kwtypes(name=str, age=int)]
     df_literal_type = TypeEngine.to_literal_type(annotated_sd_type)
     assert df_literal_type.structured_dataset_type is not None
     assert len(df_literal_type.structured_dataset_type.columns) == 2
@@ -446,11 +483,20 @@ def test_format_correct():
 
     sd = annotated_sd_type(df)
     with pytest.raises(ValueError, match="Failed to find a handler"):
-        TypeEngine.to_literal(ctx, sd, python_type=annotated_sd_type, expected=df_literal_type)
+        TypeEngine.to_literal(
+            ctx,
+            sd,
+            python_type=annotated_sd_type,
+            expected=df_literal_type)
 
-    StructuredDatasetTransformerEngine.register(TempEncoder(), default_for_type=False)
+    StructuredDatasetTransformerEngine.register(
+        TempEncoder(), default_for_type=False)
     sd2 = annotated_sd_type(df)
-    sd_literal = TypeEngine.to_literal(ctx, sd2, python_type=annotated_sd_type, expected=df_literal_type)
+    sd_literal = TypeEngine.to_literal(
+        ctx,
+        sd2,
+        python_type=annotated_sd_type,
+        expected=df_literal_type)
     assert sd_literal.scalar.structured_dataset.metadata.structured_dataset_type.format == "avro"
 
     @task
@@ -469,12 +515,15 @@ def test_protocol_detection():
     assert protocol == "file"
 
     with tempfile.TemporaryDirectory() as tmp_dir:
-        fs = FileAccessProvider(local_sandbox_dir=tmp_dir, raw_output_prefix="s3://fdsa")
+        fs = FileAccessProvider(
+            local_sandbox_dir=tmp_dir,
+            raw_output_prefix="s3://fdsa")
         ctx2 = ctx.with_file_access(fs).build()
         protocol = e._protocol_from_type_or_prefix(ctx2, pd.DataFrame)
         assert protocol == "s3"
 
-        protocol = e._protocol_from_type_or_prefix(ctx2, pd.DataFrame, "bq://foo")
+        protocol = e._protocol_from_type_or_prefix(
+            ctx2, pd.DataFrame, "bq://foo")
         assert protocol == "bq"
 
 
@@ -490,7 +539,8 @@ def test_register_renderers():
     assert pa.Table in renderers
 
     with pytest.raises(NotImplementedError, match="Could not find a renderer for <class 'int'> in"):
-        StructuredDatasetTransformerEngine().to_html(FlyteContextManager.current_context(), 3, int)
+        StructuredDatasetTransformerEngine().to_html(
+            FlyteContextManager.current_context(), 3, int)
 
 
 def test_list_of_annotated():
@@ -524,7 +574,8 @@ class PrivatePandasToBQEncodingHandlers(StructuredDatasetEncoder):
 
 def test_reregister_encoder():
     # Test that lazy import can run after a user has already registered a custom handler.
-    # The default handlers don't have override=True (and should not) but the call should not fail.
+    # The default handlers don't have override=True (and should not) but the
+    # call should not fail.
     dir(google.cloud.bigquery)
     assert is_imported("google.cloud.bigquery")
 
@@ -533,13 +584,18 @@ def test_reregister_encoder():
     )
     TypeEngine.lazy_import_transformers()
 
-    sd = StructuredDataset(dataframe=pd.DataFrame({"a": [1, 2], "b": [3, 4]}), uri="bq://blah", file_format="bq")
+    sd = StructuredDataset(dataframe=pd.DataFrame(
+        {"a": [1, 2], "b": [3, 4]}), uri="bq://blah", file_format="bq")
 
     ctx = FlyteContextManager.current_context()
 
     df_literal_type = TypeEngine.to_literal_type(pd.DataFrame)
 
-    TypeEngine.to_literal(ctx, sd, python_type=pd.DataFrame, expected=df_literal_type)
+    TypeEngine.to_literal(
+        ctx,
+        sd,
+        python_type=pd.DataFrame,
+        expected=df_literal_type)
 
 
 def test_default_args_task():
@@ -558,8 +614,10 @@ def test_default_args_task():
     def wf_with_input() -> pd.DataFrame:
         return t1(a=input_val)
 
-    wf_no_input_spec = get_serializable(OrderedDict(), serialization_settings, wf_no_input)
-    wf_with_input_spec = get_serializable(OrderedDict(), serialization_settings, wf_with_input)
+    wf_no_input_spec = get_serializable(
+        OrderedDict(), serialization_settings, wf_no_input)
+    wf_with_input_spec = get_serializable(
+        OrderedDict(), serialization_settings, wf_with_input)
 
     assert wf_no_input_spec.template.nodes[0].inputs[
         0

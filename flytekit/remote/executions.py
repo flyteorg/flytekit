@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import typing
 from abc import abstractmethod
+from datetime import timedelta
 from typing import Dict, List, Optional, Union
 
 from flytekit.core.type_engine import LiteralsResolver
@@ -43,7 +44,10 @@ class RemoteExecutionBase(object):
                 "Please wait until the execution has completed before requesting the outputs."
             )
         if self.error:
-            raise user_exceptions.FlyteAssertion("Outputs could not be found because the execution ended in failure.")
+            raise user_exceptions.FlyteAssertion(
+                "Outputs could not be found because the execution ended in failure. Error message: "
+                f"{self.error.message}"
+            )
 
         return self._outputs
 
@@ -93,10 +97,18 @@ class FlyteTaskExecution(RemoteExecutionBase, admin_task_execution_models.TaskEx
 class FlyteWorkflowExecution(RemoteExecutionBase, execution_models.Execution):
     """A class encapsulating a workflow execution being run on a Flyte remote backend."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(
+        self,
+        type_hints: Optional[Dict[str, typing.Type]] = None,
+        remote: Optional["FlyteRemote"] = None,
+        *args,
+        **kwargs,
+    ):
         super(FlyteWorkflowExecution, self).__init__(*args, **kwargs)
         self._node_executions = None
         self._flyte_workflow: Optional[FlyteWorkflow] = None
+        self._remote = remote
+        self._type_hints = type_hints
 
     @property
     def flyte_workflow(self) -> Optional[FlyteWorkflow]:
@@ -120,6 +132,12 @@ class FlyteWorkflowExecution(RemoteExecutionBase, execution_models.Execution):
         return self.closure.error
 
     @property
+    def execution_url(self) -> Optional[str]:
+        if self._remote is None:
+            return None
+        return self._remote.generate_console_url(self)
+
+    @property
     def is_done(self) -> bool:
         """
         Whether or not the execution is complete.
@@ -131,13 +149,67 @@ class FlyteWorkflowExecution(RemoteExecutionBase, execution_models.Execution):
             core_execution_models.WorkflowExecutionPhase.TIMED_OUT,
         }
 
+    @property
+    def outputs(self):
+        outputs = super().outputs
+        if outputs and self._type_hints:
+            outputs.update_type_hints(self._type_hints)
+        return outputs
+
     @classmethod
-    def promote_from_model(cls, base_model: execution_models.Execution) -> "FlyteWorkflowExecution":
+    def promote_from_model(
+        cls,
+        base_model: execution_models.Execution,
+        remote: Optional["FlyteRemote"] = None,
+        type_hints: Optional[Dict[str, typing.Type]] = None,
+    ) -> "FlyteWorkflowExecution":
         return cls(
+            remote=remote,
+            type_hints=type_hints,
             closure=base_model.closure,
             id=base_model.id,
             spec=base_model.spec,
         )
+
+    def sync(self, sync_nodes: bool = False) -> "FlyteWorkflowExecution":
+        """
+        Sync the state of the current execution and returns a new object with the updated state.
+        """
+        if self._remote is None:
+            raise user_exceptions.FlyteAssertion("Cannot sync without a remote")
+        return self._remote.sync_execution(self, sync_nodes=sync_nodes)
+
+    def wait(
+        self,
+        timeout: Optional[Union[timedelta, int]] = None,
+        poll_interval: Optional[Union[timedelta, int]] = None,
+        sync_nodes: bool = True,
+    ) -> "FlyteWorkflowExecution":
+        """
+        Wait for the execution to complete. This is a blocking call.
+
+        :param timeout: The maximum amount of time to wait for the execution to complete. It can be a timedelta or
+            a duration in seconds as int.
+        :param poll_interval: The amount of time to wait between polling the state of the execution. It can be a
+            timedelta or a duration in seconds as int.
+        :param sync_nodes: Whether to sync the state of the nodes as well.
+        """
+        if self._remote is None:
+            raise user_exceptions.FlyteAssertion("Cannot wait without a remote")
+        return self._remote.wait(self, timeout=timeout, poll_interval=poll_interval, sync_nodes=sync_nodes)
+
+    def _repr_html_(self) -> str:
+        if self.execution_url:
+            u = f"<a href='{self.execution_url}'>{self.execution_url}</a>"
+            s = "<b>Execution is in-progress. </b> "
+            e = ""
+            if self.is_done:
+                p = core_execution_models.WorkflowExecutionPhase.enum_to_string(self.closure.phase)
+                s = f"<b>Execution {p}. </b>"
+                if self.error:
+                    e = f"<pre>{self.error.message}</pre>"
+            return s + u + e
+        return super()._repr_html_()
 
 
 class FlyteNodeExecution(RemoteExecutionBase, node_execution_models.NodeExecution):
