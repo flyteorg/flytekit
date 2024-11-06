@@ -1054,9 +1054,15 @@ class Literal(_common.FlyteIdlEntity):
             if self.scalar.structured_dataset:
                 return self.scalar.structured_dataset.uri
         elif self.collection:
-            return shorten(str([literal._get_literal_value_str() for literal in self.collection.literals]), width=DEFAULT_REPR_MAX_LENGTH)
+            return shorten(
+                str([literal._get_literal_value_str() for literal in self.collection.literals]),
+                width=DEFAULT_REPR_MAX_LENGTH,
+            )
         elif self.map:
-            return shorten(str({k: v._get_literal_value_str() for k, v in self.map.literals.items()}), width=DEFAULT_REPR_MAX_LENGTH)
+            return shorten(
+                str({k: v._get_literal_value_str() for k, v in self.map.literals.items()}),
+                width=DEFAULT_REPR_MAX_LENGTH,
+            )
         return "Unknown Literal"
 
     def _get_literal_type_str(self) -> str:
@@ -1080,4 +1086,3 @@ class Literal(_common.FlyteIdlEntity):
         :rtype: Text
         """
         return f"Flyte Serialized object ({self._get_literal_type_str()}): {self._get_literal_value_str()}"
-
