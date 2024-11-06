@@ -172,12 +172,6 @@ class Primitive(_common.FlyteIdlEntity):
             duration=proto.duration.ToTimedelta() if proto.HasField("duration") else None,
         )
 
-    def short_string(self) -> str:
-        """
-        :rtype: Text
-        """
-        return str(self.value)
-
 
 class Binary(_common.FlyteIdlEntity):
     def __init__(self, value, tag):
