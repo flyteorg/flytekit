@@ -7,7 +7,7 @@ import pytest
 from flytekit.core import context_manager
 from flytekit.core.context_manager import ExecutionState
 from flytekit.image_spec import ImageSpec
-from flytekit.image_spec.image_spec import _F_IMG_ID, ImageBuildEngine, FLYTE_FORCE_PUSH_IMAGE_SPEC
+from flytekit.image_spec.image_spec import _F_IMG_ID, ImageBuildEngine
 from flytekit.core.python_auto_container import update_image_spec_copy_handling
 from flytekit.configuration import SerializationSettings, FastSerializationSettings, ImageConfig
 from flytekit.constants import CopyFileDetection
@@ -24,7 +24,7 @@ def test_image_spec(mock_image_spec_builder, monkeypatch):
         builder="dummy",
         packages=["pandas"],
         apt_packages=["git"],
-        python_version="3.8",
+        python_version="3.9",
         registry="localhost:30001",
         base_image=base_image,
         cuda="11.2.2",
@@ -42,7 +42,7 @@ def test_image_spec(mock_image_spec_builder, monkeypatch):
     image_spec = image_spec.with_copy(["/src", "/src/file2.txt"])
     image_spec = image_spec.force_push()
 
-    assert image_spec.python_version == "3.8"
+    assert image_spec.python_version == "3.9"
     assert image_spec.base_image == base_image
     assert image_spec.packages == ["pandas", "numpy"]
     assert image_spec.apt_packages == ["git", "wget"]
