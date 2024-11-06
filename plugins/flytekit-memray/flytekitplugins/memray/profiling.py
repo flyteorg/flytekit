@@ -67,7 +67,7 @@ class memray_profiling(ClassDecorator):
         if not os.path.exists(self.dir_name):
             os.makedirs(self.dir_name)
 
-        bin_filepath = f"{self.dir_name}/{self.task_function.__name__}.{time.strftime('%Y%m%d%H%M%S')}.bin"
+        bin_filepath = os.path.join(self.dir_name, f"{self.task_function.__name__}.{time.strftime('%Y%m%d%H%M%S')}.bin")
 
         with memray.Tracker(
             bin_filepath,
