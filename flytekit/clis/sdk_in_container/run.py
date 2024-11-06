@@ -461,7 +461,7 @@ def to_click_option(
             """
             1. Convert default_val to a JSON string for click.Option, which uses json.loads to parse it.
             2. Set a new context with remote access to allow Flyte types (e.g., files) to be uploaded.
-            3. Use FlyteContextManager for Flyte Types with custom serialization. 
+            3. Use FlyteContextManager for Flyte Types with custom serialization.
                 If no custom logic exists, fall back to json.dumps.
             """
             with FlyteContextManager.with_context(flyte_ctx.new_builder()):
