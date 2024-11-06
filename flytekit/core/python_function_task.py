@@ -409,6 +409,8 @@ class AsyncPythonFunctionTask(PythonFunctionTask[T], metaclass=FlyteTrackedABC):
         """
         Overrides the base execute function. This function does not handle dynamic at all. Eager and dynamic don't mix.
         """
+        # Args is present because the asyn helper function passes it, but everything should be in kwargs by this point
+        assert not args
         if self.execution_mode == self.ExecutionBehavior.DEFAULT:
             # todo:async run task function in a runner if necessary.
             return await self._task_function(**kwargs)
@@ -468,15 +470,16 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
             # todo:async Handle local caching
             raise NotImplementedError
         else:
-            output_native_values = self.execute(ctx, **native_values)
+            output_native_values = self.execute(**native_values)
 
             return output_native_values
 
-    # todo:async remove args
     async def async_execute(self, *args, **kwargs) -> Any:
         """
         Overrides the base execute function. This function does not handle dynamic at all. Eager and dynamic don't mix.
         """
+        # Args is present because the asyn helper function passes it, but everything should be in kwargs by this point
+        assert not args
         ctx = FlyteContextManager.current_context()
         is_local_execution = cast(ExecutionState, ctx.execution_state).is_local_execution()
         if not is_local_execution:
@@ -517,8 +520,9 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
 
 
 """
-async tasks, figure out args, dynamic nested, workflows and launch plans, export deck
+workflows and launch plans, add assertions, update the call pattern for eager itself, export deck
 test remote
+signal handling
 
 to enable the async pattern the __call__ function needs to be async or sync. One task type can't be both because it has
 to be this function. You can't overload functions in Python, so we have to differentiate at all levels.
