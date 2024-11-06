@@ -94,7 +94,6 @@ class FlytePickleTransformer(TypeTransformer[FlytePickle]):
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         if python_val is None:
-            # raise AssertionError("Cannot pickle None Value.")
             return Literal(scalar=Scalar(none_type=Void()))
         meta = BlobMetadata(
             type=_core_types.BlobType(
