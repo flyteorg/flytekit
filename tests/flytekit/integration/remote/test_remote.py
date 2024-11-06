@@ -100,11 +100,7 @@ def test_flytetypes():
 
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     execution = remote.recent_executions(limit=1)[0]
-
-    while not execution.is_done:
-        time.sleep(5)
-        execution = remote.recent_executions(limit=1)[0]
-
+    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=3))
     assert execution.closure.phase == WorkflowExecutionPhase.SUCCEEDED, f"Execution failed with phase: {execution.closure.phase}"
 
 
