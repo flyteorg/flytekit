@@ -62,7 +62,7 @@ def test_image_spec(mock_image_spec_builder, monkeypatch):
     assert image_spec.entrypoint == ["/bin/bash"]
     assert image_spec.copy == ["/src/file1.txt", "/src", "/src/file2.txt"]
 
-    assert image_spec.image_name() == f"localhost:30001/flytekit:fYU5EUF6y0b2oFG4tu70tA"
+    assert image_spec.image_name() == f"localhost:30001/flytekit:AjLtng9gJfYzLnjbNy70gA"
     ctx = context_manager.FlyteContext.current_context()
     with context_manager.FlyteContextManager.with_context(
         ctx.with_execution_state(ctx.execution_state.with_params(mode=ExecutionState.Mode.TASK_EXECUTION))
