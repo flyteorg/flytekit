@@ -1,3 +1,5 @@
+import copy
+
 import pytest
 from enum import Enum
 from dataclasses_json import DataClassJsonMixin
@@ -16,6 +18,15 @@ from flytekit import task, workflow
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import FlyteFile
 from flytekit.types.structured import StructuredDataset
+
+@pytest.fixture(autouse=True)
+def prepare_env_variable():
+    try:
+        origin_env = copy.deepcopy(os.environ.copy())
+        os.environ["FLYTE_USE_OLD_DC_FORMAT"] = "True"
+        yield
+    finally:
+        os.environ = origin_env
 
 @pytest.fixture
 def local_dummy_txt_file():
@@ -916,42 +927,6 @@ def test_numpy_import_issue_from_flyte_schema_in_dataclass():
     assert main_flyte_workflow(b=True) == True
     assert main_flyte_workflow(b=False) == False
 
-def test_dataclass_union_primitive_types_and_enum():
-    class Status(Enum):
-        PENDING = "pending"
-        APPROVED = "approved"
-        REJECTED = "rejected"
-
-    @dataclass
-    class DC:
-        grid: Dict[str, List[Optional[Union[int, str, Status, float, bool]]]] = field(default_factory=lambda: {
-            'all_types': [None, 'sqrt', Status.PENDING, 1, -1, 0, -1.0, True, False],
-        })
-
-    @task
-    def my_task(dc: DC) -> DC:
-        return dc
-
-    my_task(dc=DC())
-
-def test_dataclass_with_json_mixin_union_primitive_types_and_enum():
-    class Status(Enum):
-        PENDING = "pending"
-        APPROVED = "approved"
-        REJECTED = "rejected"
-
-    @dataclass
-    class DC(DataClassJsonMixin):
-        grid: Dict[str, List[Optional[Union[int, str, Status, float, bool]]]] = field(default_factory=lambda: {
-            'all_types': [None, 'sqrt', Status.PENDING, 1, -1, 0, -1.0, True, False],
-        })
-
-    @task
-    def my_task(dc: DC) -> DC:
-        return dc
-
-    my_task(dc=DC())
-
 def test_frozen_dataclass():
     @dataclass(frozen=True)
     class FrozenDataclass:
@@ -1118,17 +1093,3 @@ def test_pure_frozen_dataclasses_with_flyte_types(local_dummy_txt_file, local_du
 
     empty_nested_flyte_types = empty_nested_dc_wf()
     DataclassTransformer().assert_type(NestedFlyteTypes, empty_nested_flyte_types)
-
-def test_dataclass_serialize_with_multiple_dataclass_union():
-    @dataclass
-    class A():
-        x: int
-
-    @dataclass
-    class B():
-        x: FlyteFile
-
-    b = B(x="s3://my-bucket/my-file")
-    res = DataclassTransformer()._make_dataclass_serializable(b, Union[None, A, B])
-
-    assert res.x.path == "s3://my-bucket/my-file"

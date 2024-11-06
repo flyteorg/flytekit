@@ -12,7 +12,6 @@ from enum import Enum, auto
 from typing import List, Optional, Type
 
 import mock
-import msgpack
 import pytest
 import typing_extensions
 from concurrent.futures import ThreadPoolExecutor
@@ -80,6 +79,17 @@ from flytekit.types.pickle import FlytePickle
 from flytekit.types.pickle.pickle import FlytePickleTransformer
 from flytekit.types.schema import FlyteSchema
 from flytekit.types.structured.structured_dataset import StructuredDataset, StructuredDatasetTransformerEngine, PARQUET
+
+@pytest.fixture(autouse=True)
+def prepare_env_variable():
+    try:
+        origin_env = copy.deepcopy(os.environ.copy())
+        os.environ["FLYTE_USE_OLD_DC_FORMAT"] = "True"
+        yield
+    finally:
+        os.environ = origin_env
+
+
 
 T = typing.TypeVar("T")
 
@@ -938,10 +948,7 @@ def test_dataclass_with_postponed_annotation(mock_put_data):
 
         pv = Data(a=1, f=FlyteFile(test_file, remote_path=remote_path))
         lt = tf.to_literal(ctx, pv, Data, t)
-        msgpack_bytes = lt.scalar.binary.value
-        dict_obj = msgpack.loads(msgpack_bytes)
-        assert dict_obj["f"]["path"] == remote_path
-
+        assert lt.scalar.generic.fields["f"].struct_value.fields["path"].string_value == remote_path
 
 @mock.patch("flytekit.core.data_persistence.FileAccessProvider.async_put_data")
 def test_optional_flytefile_in_dataclass(mock_upload_dir):
@@ -957,7 +964,6 @@ def test_optional_flytefile_in_dataclass(mock_upload_dir):
         b: typing.Optional[FlyteFile]
         b_prime: typing.Optional[FlyteFile]
         c: typing.Union[FlyteFile, None]
-        c_prime: typing.Union[None, FlyteFile]
         d: typing.List[FlyteFile]
         e: typing.List[typing.Optional[FlyteFile]]
         e_prime: typing.List[typing.Optional[FlyteFile]]
@@ -980,7 +986,6 @@ def test_optional_flytefile_in_dataclass(mock_upload_dir):
             b=f1,
             b_prime=None,
             c=f1,
-            c_prime=f1,
             d=[f1],
             e=[f1],
             e_prime=[None],
@@ -996,24 +1001,20 @@ def test_optional_flytefile_in_dataclass(mock_upload_dir):
         lt = tf.get_literal_type(TestFileStruct)
         lv = tf.to_literal(ctx, o, TestFileStruct, lt)
 
-        msgpack_bytes = lv.scalar.binary.value
-        dict_obj = msgpack.loads(msgpack_bytes)
-
-        assert dict_obj["a"]["path"] == remote_path
-        assert dict_obj["b"]["path"] == remote_path
-        assert dict_obj["b_prime"] is None
-        assert dict_obj["c"]["path"] == remote_path
-        assert dict_obj["c_prime"]["path"] == remote_path
-        assert dict_obj["d"][0]["path"] == remote_path
-        assert dict_obj["e"][0]["path"] == remote_path
-        assert dict_obj["e_prime"][0] is None
-        assert dict_obj["f"]["a"]["path"] == remote_path
-        assert dict_obj["g"]["a"]["path"] == remote_path
-        assert dict_obj["g_prime"]["a"] is None
-        assert dict_obj["h"]["path"] == remote_path
-        assert dict_obj["h_prime"] is None
-        assert dict_obj["i"]["a"] == 42
-        assert dict_obj["i_prime"]["a"] == 99
+        assert lv.scalar.generic["a"].fields["path"].string_value == remote_path
+        assert lv.scalar.generic["b"].fields["path"].string_value == remote_path
+        assert lv.scalar.generic["b_prime"] is None
+        assert lv.scalar.generic["c"].fields["path"].string_value == remote_path
+        assert lv.scalar.generic["d"].values[0].struct_value.fields["path"].string_value == remote_path
+        assert lv.scalar.generic["e"].values[0].struct_value.fields["path"].string_value == remote_path
+        assert lv.scalar.generic["e_prime"].values[0].WhichOneof("kind") == "null_value"
+        assert lv.scalar.generic["f"]["a"].fields["path"].string_value == remote_path
+        assert lv.scalar.generic["g"]["a"].fields["path"].string_value == remote_path
+        assert lv.scalar.generic["g_prime"]["a"] is None
+        assert lv.scalar.generic["h"].fields["path"].string_value == remote_path
+        assert lv.scalar.generic["h_prime"] is None
+        assert lv.scalar.generic["i"].fields["a"].number_value == 42
+        assert lv.scalar.generic["i_prime"].fields["a"].number_value == 99
 
         ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestFileStruct)
 
@@ -1021,7 +1022,6 @@ def test_optional_flytefile_in_dataclass(mock_upload_dir):
         assert o.b.remote_path == ot.b.remote_source
         assert ot.b_prime is None
         assert o.c.remote_path == ot.c.remote_source
-        assert o.c_prime.remote_path == ot.c_prime.remote_source
         assert o.d[0].remote_path == ot.d[0].remote_source
         assert o.e[0].remote_path == ot.e[0].remote_source
         assert o.e_prime == [None]
@@ -1083,23 +1083,20 @@ def test_optional_flytefile_in_dataclassjsonmixin(mock_upload_dir):
         lt = tf.get_literal_type(TestFileStruct_optional_flytefile)
         lv = tf.to_literal(ctx, o, TestFileStruct_optional_flytefile, lt)
 
-        msgpack_bytes = lv.scalar.binary.value
-        dict_obj = msgpack.loads(msgpack_bytes)
-
-        assert dict_obj["a"]["path"] == remote_path
-        assert dict_obj["b"]["path"] == remote_path
-        assert dict_obj["b_prime"] is None
-        assert dict_obj["c"]["path"] == remote_path
-        assert dict_obj["d"][0]["path"] == remote_path
-        assert dict_obj["e"][0]["path"] == remote_path
-        assert dict_obj["e_prime"][0] is None
-        assert dict_obj["f"]["a"]["path"] == remote_path
-        assert dict_obj["g"]["a"]["path"] == remote_path
-        assert dict_obj["g_prime"]["a"] is None
-        assert dict_obj["h"]["path"] == remote_path
-        assert dict_obj["h_prime"] is None
-        assert dict_obj["i"]["a"] == 42
-        assert dict_obj["i_prime"]["a"] == 99
+        assert lv.scalar.generic["a"].fields["path"].string_value == remote_path
+        assert lv.scalar.generic["b"].fields["path"].string_value == remote_path
+        assert lv.scalar.generic["b_prime"] is None
+        assert lv.scalar.generic["c"].fields["path"].string_value == remote_path
+        assert lv.scalar.generic["d"].values[0].struct_value.fields["path"].string_value == remote_path
+        assert lv.scalar.generic["e"].values[0].struct_value.fields["path"].string_value == remote_path
+        assert lv.scalar.generic["e_prime"].values[0].WhichOneof("kind") == "null_value"
+        assert lv.scalar.generic["f"]["a"].fields["path"].string_value == remote_path
+        assert lv.scalar.generic["g"]["a"].fields["path"].string_value == remote_path
+        assert lv.scalar.generic["g_prime"]["a"] is None
+        assert lv.scalar.generic["h"].fields["path"].string_value == remote_path
+        assert lv.scalar.generic["h_prime"] is None
+        assert lv.scalar.generic["i"].fields["a"].number_value == 42
+        assert lv.scalar.generic["i_prime"].fields["a"].number_value == 99
 
         ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestFileStruct_optional_flytefile)
 
@@ -1664,14 +1661,14 @@ def test_to_literal_dict():
     # Test when python_val is a dict
     python_val = {"x": 3, "y": "hello"}
     literal = DataclassTransformer().to_literal(ctx, python_val, python_type, expected)
-    msgpack_bytes = literal.scalar.binary.value
-    dict_obj = msgpack.loads(msgpack_bytes)
-    assert python_val == dict_obj
+    literal_json = _json_format.MessageToJson(literal.scalar.generic)
+    assert json.loads(literal_json) == python_val
+
     # Test when python_val is not a dict and not a dataclass
     python_val = "not a dict or dataclass"
     with pytest.raises(
-            TypeTransformerFailedError,
-            match="not of type @dataclass, only Dataclasses are supported for user defined datatypes in Flytekit",
+        TypeTransformerFailedError,
+        match="not of type @dataclass, only Dataclasses are supported for user defined datatypes in Flytekit",
     ):
         DataclassTransformer().to_literal(ctx, python_val, python_type, expected)
 
@@ -2830,9 +2827,7 @@ def test_DataclassTransformer_to_literal():
 
     lv_mashumaro = transformer.to_literal(ctx, my_dat_class_mashumaro, MyDataClassMashumaro, MyDataClassMashumaro)
     assert lv_mashumaro is not None
-    msgpack_bytes = lv_mashumaro.scalar.binary.value
-    dict_obj = msgpack.loads(msgpack_bytes)
-    assert dict_obj["x"] == 5
+    assert lv_mashumaro.scalar.generic["x"] == 5
 
     lv_mashumaro_orjson = transformer.to_literal(
         ctx,
@@ -2841,15 +2836,12 @@ def test_DataclassTransformer_to_literal():
         MyDataClassMashumaroORJSON,
     )
     assert lv_mashumaro_orjson is not None
-    msgpack_bytes = lv_mashumaro_orjson.scalar.binary.value
-    dict_obj = msgpack.loads(msgpack_bytes)
-    assert dict_obj["x"] == 5
+    assert lv_mashumaro_orjson.scalar.generic["x"] == 5
 
     lv = transformer.to_literal(ctx, my_data_class, MyDataClass, MyDataClass)
     assert lv is not None
-    msgpack_bytes = lv.scalar.binary.value
-    dict_obj = msgpack.loads(msgpack_bytes)
-    assert dict_obj["x"] == 5
+    assert lv.scalar.generic["x"] == 5
+
 
 
 def test_DataclassTransformer_to_python_value():
@@ -3097,8 +3089,8 @@ def test_dataclass_encoder_and_decoder_registry():
     assert len(datum_list) == iterations
 
     transformer = TypeEngine.get_transformer(Datum)
-    assert transformer._msgpack_encoder.get(Datum)
-    assert transformer._msgpack_decoder.get(Datum)
+    assert transformer._json_encoder.get(Datum)
+    assert transformer._json_decoder.get(Datum)
 
 
 def test_ListTransformer_get_sub_type():
