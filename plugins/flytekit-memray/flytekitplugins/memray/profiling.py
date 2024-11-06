@@ -49,7 +49,7 @@ class memray_profiling(ClassDecorator):
         self.trace_python_allocators = trace_python_allocators
         self.follow_fork = follow_fork
         self.memory_interval_ms = memory_interval_ms
-        self.dir_name = "memray"
+        self.dir_name = "memray_bin"
         self.memray_html_reporter = memray_html_reporter
         self.memray_reporter_args = memray_reporter_args if memray_reporter_args else []
 
