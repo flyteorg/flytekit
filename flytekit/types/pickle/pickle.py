@@ -73,9 +73,7 @@ class FlytePickleTransformer(AsyncTypeTransformer[FlytePickle]):
         # Every type can serialize to pickle, so we don't need to check the type here.
         ...
 
-    async def async_to_python_value(
-        self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]
-    ) -> Optional[T]:
+    async def async_to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> Optional[T]:
         if lv.scalar.blob is None:
             return None
         uri = lv.scalar.blob.uri
@@ -99,13 +97,10 @@ class FlytePickleTransformer(AsyncTypeTransformer[FlytePickle]):
         remote_path = await FlytePickle.to_pickle(ctx, python_val)
         return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
 
-    def guess_python_type(
-        self, literal_type: LiteralType
-    ) -> typing.Type[FlytePickle[typing.Any]]:
+    def guess_python_type(self, literal_type: LiteralType) -> typing.Type[FlytePickle[typing.Any]]:
         if (
             literal_type.blob is not None
-            and literal_type.blob.dimensionality
-            == _core_types.BlobType.BlobDimensionality.SINGLE
+            and literal_type.blob.dimensionality == _core_types.BlobType.BlobDimensionality.SINGLE
             and literal_type.blob.format == FlytePickleTransformer.PYTHON_PICKLE_FORMAT
         ):
             return FlytePickle
