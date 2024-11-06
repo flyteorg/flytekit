@@ -95,6 +95,9 @@ def test_remote_run():
     run("default_lp.py", "my_wf")
     run("default_lp.py", "my_wf")
 
+    # flyte types default inputs
+    run("flytetypes.py", "wf")
+
 
 def test_fetch_execute_launch_plan(register):
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
@@ -736,19 +739,6 @@ def test_execute_workflow_remote_fn_with_maptask():
         image_config=ImageConfig.from_images(IMAGE),
     )
     assert out.outputs["o0"] == [4, 5, 6]
-
-def test_execute_flytetypes_default_input_workflow():
-    from workflows.basic.flytetypes import wf
-
-    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN, interactive_mode_enabled=True)
-    remote.execute(
-        wf,
-        inputs={},
-        wait=True,
-        version=VERSION,
-        image_config=ImageConfig.from_images(IMAGE),
-    )
-
 
 def test_register_wf_fast(register):
     from workflows.basic.subworkflows import parent_wf
