@@ -781,12 +781,33 @@ class DataclassTransformer(TypeTransformer[object]):
         """
         from flytekit.types.directory import FlyteDirectory
         from flytekit.types.file import FlyteFile
+        from flytekit.types.structured import StructuredDataset
 
         # Handle Optional
         if UnionTransformer.is_optional_type(python_type):
-            if python_val is None:
-                return None
-            return self._make_dataclass_serializable(python_val, get_args(python_type)[0])
+
+            def get_expected_type(python_val: T, types: tuple) -> Type[T | None]:
+                if len(set(types) & {FlyteFile, FlyteDirectory, StructuredDataset}) > 1:
+                    raise ValueError(
+                        "Cannot have more than one Flyte type in the Union when attempting to use the string shortcut. Please specify the full object (e.g. FlyteFile(...)) instead of just passing a string."
+                    )
+
+                for t in types:
+                    try:
+                        trans = TypeEngine.get_transformer(t)  # type: ignore
+                        if trans:
+                            trans.assert_type(t, python_val)
+                            return t
+                    except Exception:
+                        continue
+                return type(None)
+
+            # Get the expected type in the Union type
+            expected_type = type(None)
+            if python_val is not None:
+                expected_type = get_expected_type(python_val, get_args(python_type))  # type: ignore
+
+            return self._make_dataclass_serializable(python_val, expected_type)
 
         if hasattr(python_type, "__origin__") and get_origin(python_type) is list:
             if python_val is None:
