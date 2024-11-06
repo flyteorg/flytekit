@@ -16,7 +16,7 @@ import uuid
 import pytest
 from mock import mock, patch
 
-from flytekit import LaunchPlan, kwtypes
+from flytekit import LaunchPlan, kwtypes, WorkflowExecutionPhase
 from flytekit.configuration import Config, ImageConfig, SerializationSettings
 from flytekit.core.launch_plan import reference_launch_plan
 from flytekit.core.task import reference_task
@@ -93,10 +93,19 @@ def test_remote_run():
 
     # run twice to make sure it will register a new version of the workflow.
     run("default_lp.py", "my_wf")
-    run("default_lp.py", "my_wf")
 
-    # flyte types default inputs
+def test_flytetypes():
+    # default inputs for flyte types in dataclass
     run("flytetypes.py", "wf")
+
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    execution = remote.recent_executions(limit=1)[0]
+
+    while not execution.is_done:
+        time.sleep(5)
+        execution = remote.recent_executions(limit=1)[0]
+
+    assert execution.closure.phase == WorkflowExecutionPhase.SUCCEEDED, f"Execution failed with phase: {execution.closure.phase}"
 
 
 def test_fetch_execute_launch_plan(register):
