@@ -95,6 +95,7 @@ async def level_1() -> typing.Tuple[int, int]:
 async def test_nested_level_1_local():
     res = await level_1()
     print(res)
+    assert res == (6, 6)
 
 
 @pytest.mark.sandbox
@@ -109,3 +110,4 @@ def test_nested_local_backend():
     with FlyteContextManager.with_context(ctx.with_file_access(provider).with_client(remote.client)) as ctx:
         res = loop_manager.run_sync(level_1.run_with_backend, ctx)
         print(res)
+        assert res == (42, 43)

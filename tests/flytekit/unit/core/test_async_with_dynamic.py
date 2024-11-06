@@ -44,7 +44,7 @@ async def level_2(x: int) -> int:
 
 @eager
 async def level_1() -> typing.Tuple[int, int]:
-    i1 = add_one(x=5)
+    i1 = add_one(x=10)
     t2 = asyncio.create_task(level_2(x=1))
 
     # don't forget the comma
@@ -56,6 +56,7 @@ async def level_1() -> typing.Tuple[int, int]:
 async def test_nested_level_1_local():
     res = await level_1()
     print(res)
+    assert res == (11, 6)
 
 
 @pytest.mark.sandbox
@@ -70,6 +71,4 @@ def test_nested_local_backend():
     with FlyteContextManager.with_context(ctx.with_file_access(provider).with_client(remote.client)) as ctx:
         res = loop_manager.run_sync(level_1.run_with_backend, ctx)
         print(res)
-
-
-
+        assert res == (43, 43)

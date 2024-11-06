@@ -520,7 +520,7 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
 
 
 """
-workflows and launch plans, add assertions, update the call pattern for eager itself, export deck
+update the call pattern for eager itself, export deck
 test remote
 signal handling
 
