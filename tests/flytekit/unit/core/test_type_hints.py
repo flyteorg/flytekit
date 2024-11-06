@@ -2234,7 +2234,6 @@ def test_pickle_untyped_input_wf_and_task():
 
     assert wf1_with_pickle_untyped(a=1) == 2
     assert wf1_with_pickle_untyped(a="1") == 0
-    assert wf1_with_pickle_untyped(a=None) == 0
 
     with pytest.raises(FlyteMissingTypeException):
 
@@ -2247,13 +2246,13 @@ def test_pickle_untyped_wf_and_task():
     @task(pickle_untyped=True)
     def t1(a):
         if type(a) != int:
-            return None
+            return "t1"
         return a + 1
 
     @task(pickle_untyped=True)
     def t2(a):
         if type(a) != int:
-            return None
+            return "t2"
         return a + 2
 
     @workflow(pickle_untyped=True)
@@ -2262,20 +2261,20 @@ def test_pickle_untyped_wf_and_task():
         return t2(a=a1)
 
     assert wf1_with_pickle_untyped(a=1) == 4
-    assert wf1_with_pickle_untyped(a="1") is None
+    assert wf1_with_pickle_untyped(a="1") == "t2"
 
 
-def test_wf_with_pickle_untyped_and_safe_tasks():
+def test_wf_with_pickle_untyped_and_regular_tasks():
     @task(pickle_untyped=True)
     def t1(a):
         if type(a) != int:
-            return None
+            return "t1"
         return a + 1
 
     @task
     def t2(a: typing.Any) -> typing.Any:
         if type(a) != int:
-            return None
+            return "t2"
         return a + 2
 
     @workflow(pickle_untyped=True)
@@ -2284,7 +2283,7 @@ def test_wf_with_pickle_untyped_and_safe_tasks():
         return t2(a=a1)
 
     assert wf1_with_pickle_untyped(a=1) == 4
-    assert wf1_with_pickle_untyped(a="1") is None
+    assert wf1_with_pickle_untyped(a="1") == "t2"
 
     @workflow(pickle_untyped=True)
     def wf2_with_pickle_untyped(a):
@@ -2292,7 +2291,7 @@ def test_wf_with_pickle_untyped_and_safe_tasks():
         return t1(a=a1)
 
     assert wf2_with_pickle_untyped(a=1) == 4
-    assert wf2_with_pickle_untyped(a="1") is None
+    assert wf2_with_pickle_untyped(a="1") == "t1"
 
 
 def test_pickle_untyped_task_with_specified_input():
@@ -2300,7 +2299,7 @@ def test_pickle_untyped_task_with_specified_input():
     def t1(a, b: typing.Any):
         if type(a) != int:
             if type(b) != int:
-                return None
+                return "t1"
             else:
                 return b
         elif type(b) != int:
@@ -2315,4 +2314,4 @@ def test_pickle_untyped_task_with_specified_input():
     assert wf1_with_pickle_untyped(a=1, b=2) == 3
     assert wf1_with_pickle_untyped(a="1", b=2) == 2
     assert wf1_with_pickle_untyped(a=1, b="2") == 1
-    assert wf1_with_pickle_untyped(a="1", b="2") is None
+    assert wf1_with_pickle_untyped(a="1", b="2") == "t1"

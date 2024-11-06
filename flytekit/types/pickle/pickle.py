@@ -1,13 +1,13 @@
 import os
 import typing
-from typing import Optional, Type
+from typing import Type
 
 import cloudpickle
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import AsyncTypeTransformer, TypeEngine
 from flytekit.models.core import types as _core_types
-from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar, Void
+from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 
 T = typing.TypeVar("T")
@@ -73,9 +73,7 @@ class FlytePickleTransformer(AsyncTypeTransformer[FlytePickle]):
         # Every type can serialize to pickle, so we don't need to check the type here.
         ...
 
-    async def async_to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> Optional[T]:
-        if lv.scalar.blob is None:
-            return None
+    async def async_to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
         uri = lv.scalar.blob.uri
         return await FlytePickle.from_pickle(uri)
 
@@ -87,11 +85,10 @@ class FlytePickleTransformer(AsyncTypeTransformer[FlytePickle]):
         expected: LiteralType,
     ) -> Literal:
         if python_val is None:
-            return Literal(scalar=Scalar(none_type=Void()))
+            raise AssertionError("Cannot pickle None Value.")
         meta = BlobMetadata(
             type=_core_types.BlobType(
-                format=self.PYTHON_PICKLE_FORMAT,
-                dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
+                format=self.PYTHON_PICKLE_FORMAT, dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
             )
         )
         remote_path = await FlytePickle.to_pickle(ctx, python_val)
@@ -110,8 +107,7 @@ class FlytePickleTransformer(AsyncTypeTransformer[FlytePickle]):
     def get_literal_type(self, t: Type[T]) -> LiteralType:
         lt = LiteralType(
             blob=_core_types.BlobType(
-                format=self.PYTHON_PICKLE_FORMAT,
-                dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
+                format=self.PYTHON_PICKLE_FORMAT, dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
             )
         )
         lt.metadata = {"python_class_name": str(t)}
