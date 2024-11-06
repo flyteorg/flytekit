@@ -1495,6 +1495,7 @@ async def async_flyte_entity_call_handler(
                 local_execute_results = cast(LocallyExecutable, entity).local_execute(ctx, **kwargs)
                 if mode == ExecutionState.Mode.EAGER_LOCAL_EXECUTION:
                     return local_execute_results
+
                 return create_native_named_tuple(ctx, local_execute_results, entity.python_interface)
             else:
                 return cast(LocallyExecutable, entity).local_execute(ctx, **kwargs)
@@ -1515,9 +1516,6 @@ async def async_flyte_entity_call_handler(
                 return None
             else:
                 raise ValueError(f"Received an output when workflow local execution expected None. Received: {result}")
-
-        # if inspect.iscoroutine(result):
-        #     return result
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.DYNAMIC_TASK_EXECUTION:
             return result

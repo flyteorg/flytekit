@@ -85,5 +85,26 @@ async def level_1() -> typing.Tuple[int, int]:
     i1 = add_one(x=5)
     t2 = asyncio.create_task(level_2(x=1))
 
-    i2 = await asyncio.gather(t2)
+    # don't forget the comma
+    i2, = await asyncio.gather(t2)
     return i1, i2
+
+
+@pytest.mark.asyncio
+async def test_nested_level_1_local():
+    res = await level_1()
+    print(res)
+
+
+@pytest.mark.sandbox
+def test_nested_local_backend():
+    ctx = FlyteContextManager.current_context()
+    remote = FlyteRemote(Config.for_sandbox())
+    dc = Config.for_sandbox().data_config
+    raw_output = f"s3://my-s3-bucket/testing/async_test/raw_output/"
+    print(f"Using raw output location: {raw_output}")
+    provider = FileAccessProvider(local_sandbox_dir="/tmp/unittest", raw_output_prefix=raw_output, data_config=dc)
+
+    with FlyteContextManager.with_context(ctx.with_file_access(provider).with_client(remote.client)) as ctx:
+        res = loop_manager.run_sync(level_1.run_with_backend, ctx)
+        print(res)
