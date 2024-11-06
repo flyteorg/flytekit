@@ -356,6 +356,10 @@ def task(
 
         decorated_fn = decorate_function(fn)
 
+        carried_task_args = {}
+        if hasattr(fn, "_fk_task_args"):
+            carried_task_args = fn._fk_task_args
+
         task_instance = TaskPlugins.find_pythontask_plugin(type(task_config))(
             task_config,
             decorated_fn,
@@ -369,7 +373,7 @@ def task(
             node_dependency_hints=node_dependency_hints,
             task_resolver=task_resolver,
             disable_deck=disable_deck,
-            enable_deck=enable_deck,
+            enable_deck=enable_deck if enable_deck is not None else carried_task_args.get("enable_deck"),
             deck_fields=deck_fields,
             docs=docs,
             pod_template=pod_template,

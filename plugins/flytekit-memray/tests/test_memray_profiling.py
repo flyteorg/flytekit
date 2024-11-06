@@ -4,7 +4,8 @@ from flytekit import task, current_context
 from flytekitplugins.memray import memray_profiling
 
 
-@task(enable_deck=True)
+# Notice how we no longer set enable_deck=True
+@task
 @memray_profiling
 def heavy_compute(i: int) -> int:
     return i + 1
