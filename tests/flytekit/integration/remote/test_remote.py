@@ -261,6 +261,8 @@ def test_execute_python_task(register):
     assert execution.spec.cluster_assignment.cluster_pool == "gpu"
 
 
+
+
 def test_execute_python_workflow_and_launch_plan(register):
     """Test execution of a @workflow-decorated python function and launchplan that are already registered."""
     from workflows.basic.basic_workflow import my_wf
@@ -313,7 +315,6 @@ def test_fetch_execute_task_convert_dict(register):
     execution = remote.execute(flyte_task, inputs={"d": d}, wait=True)
     remote.sync_execution(execution, sync_nodes=True)
     assert json.loads(execution.outputs["o0"]) == {"key1": "value1", "key2": "value2"}
-
 
 def test_execute_python_workflow_dict_of_string_to_string(register):
     """Test execution of a @workflow-decorated python function and launchplan that are already registered."""
