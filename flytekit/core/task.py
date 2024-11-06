@@ -5,6 +5,7 @@ import os
 from functools import update_wrapper
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, TypeVar, Union, overload
 
+from flytekit.core.auto_cache import AutoCache
 from flytekit.core.utils import str2bool
 
 try:
@@ -99,7 +100,7 @@ FuncOut = TypeVar("FuncOut")
 def task(
     _task_function: None = ...,
     task_config: Optional[T] = ...,
-    cache: bool = ...,
+    cache: Union[bool, list[AutoCache]] = ...,
     cache_serialize: bool = ...,
     cache_version: str = ...,
     cache_ignore_input_vars: Tuple[str, ...] = ...,
@@ -137,7 +138,7 @@ def task(
 def task(
     _task_function: Callable[P, FuncOut],
     task_config: Optional[T] = ...,
-    cache: bool = ...,
+    cache: Union[bool, list[AutoCache]] = ...,
     cache_serialize: bool = ...,
     cache_version: str = ...,
     cache_ignore_input_vars: Tuple[str, ...] = ...,
@@ -174,7 +175,7 @@ def task(
 def task(
     _task_function: Optional[Callable[P, FuncOut]] = None,
     task_config: Optional[T] = None,
-    cache: bool = False,
+    cache: Union[bool, list[AutoCache]] = False,
     cache_serialize: bool = False,
     cache_version: str = "",
     cache_ignore_input_vars: Tuple[str, ...] = (),
@@ -248,7 +249,7 @@ def task(
     :param _task_function: This argument is implicitly passed and represents the decorated function
     :param task_config: This argument provides configuration for a specific task types.
                         Please refer to the plugins documentation for the right object to use.
-    :param cache: Boolean that indicates if caching should be enabled
+    :param cache: Boolean that indicates if caching should be enabled or a list of AutoCache implementations
     :param cache_serialize: Boolean that indicates if identical (ie. same inputs) instances of this task should be
           executed in serial when caching is enabled. This means that given multiple concurrent executions over
           identical inputs, only a single instance executes and the rest wait to reuse the cached results. This
@@ -343,10 +344,16 @@ def task(
     """
 
     def wrapper(fn: Callable[P, Any]) -> PythonFunctionTask[T]:
+        if isinstance(cache, list) and all(isinstance(item, AutoCache) for item in cache):
+            cache_versions = [item.get_version() for item in cache]
+            task_hash = "".join(cache_versions)
+        else:
+            task_hash = ""
+
         _metadata = TaskMetadata(
             cache=cache,
             cache_serialize=cache_serialize,
-            cache_version=cache_version,
+            cache_version=cache_version if not task_hash else task_hash,
             cache_ignore_input_vars=cache_ignore_input_vars,
             retries=retries,
             interruptible=interruptible,
