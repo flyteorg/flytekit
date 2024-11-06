@@ -78,7 +78,11 @@ class FlytePickleTransformer(AsyncTypeTransformer[FlytePickle]):
         return await FlytePickle.from_pickle(uri)
 
     async def async_to_literal(
-        self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType
+        self,
+        ctx: FlyteContext,
+        python_val: T,
+        python_type: Type[T],
+        expected: LiteralType,
     ) -> Literal:
         if python_val is None:
             raise AssertionError("Cannot pickle None Value.")
