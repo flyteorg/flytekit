@@ -36,7 +36,7 @@ from mashumaro.mixins.json import DataClassJSONMixin
 from typing_extensions import Annotated, get_args, get_origin
 
 from flytekit.core.annotation import FlyteAnnotation
-from flytekit.core.constants import MESSAGEPACK
+from flytekit.core.constants import FLYTE_USE_OLD_DC_FORMAT, MESSAGEPACK
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.hash import HashMethod
 from flytekit.core.type_helpers import load_type_from_tag
@@ -703,7 +703,7 @@ class DataclassTransformer(TypeTransformer[object]):
         return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))  # type: ignore
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
-        if str2bool(os.getenv("FLYTE_USE_OLD_DC_FORMAT")):
+        if str2bool(os.getenv(FLYTE_USE_OLD_DC_FORMAT)):
             return self.to_generic_literal(ctx, python_val, python_type, expected)
 
         if isinstance(python_val, dict):
@@ -2112,7 +2112,7 @@ class DictTransformer(AsyncTypeTransformer[dict]):
             allow_pickle, base_type = DictTransformer.is_pickle(python_type)
 
         if expected and expected.simple and expected.simple == SimpleType.STRUCT:
-            if str2bool(os.getenv("FLYTE_USE_OLD_DC_FORMAT")):
+            if str2bool(os.getenv(FLYTE_USE_OLD_DC_FORMAT)):
                 return await self.dict_to_generic_literal(ctx, python_val, python_type, allow_pickle)
             return await self.dict_to_binary_literal(ctx, python_val, python_type, allow_pickle)
 
