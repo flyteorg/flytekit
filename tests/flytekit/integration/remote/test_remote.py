@@ -263,9 +263,6 @@ def test_execute_python_task(register):
     assert execution.spec.tags == ["flyte"]
     assert execution.spec.cluster_assignment.cluster_pool == "gpu"
 
-
-
-
 def test_execute_python_workflow_and_launch_plan(register):
     """Test execution of a @workflow-decorated python function and launchplan that are already registered."""
     from workflows.basic.basic_workflow import my_wf
