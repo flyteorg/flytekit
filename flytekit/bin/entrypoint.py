@@ -1,7 +1,6 @@
 import asyncio
 import contextlib
 import datetime
-import inspect
 import os
 import pathlib
 import signal

@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import collections
 import datetime
-import inspect
 import typing
 from collections.abc import Iterable
 from copy import deepcopy
@@ -108,6 +107,27 @@ async def _translate_inputs_to_literals(
 
 
 translate_inputs_to_literals = loop_manager.synced(_translate_inputs_to_literals)
+
+
+async def _translate_inputs_to_native(
+    ctx: FlyteContext,
+    incoming_values: Dict[str, Any],
+    flyte_interface_types: Dict[str, _interface_models.Variable],
+) -> Dict[str, _literals_models.Literal]:
+    if incoming_values is None:
+        raise AssertionError("Incoming values cannot be None, must be a dict")
+
+    result = {}  # So as to not overwrite the input_kwargs
+    for k, v in incoming_values.items():
+        if k not in flyte_interface_types:
+            raise AssertionError(f"Received unexpected keyword argument {k}")
+        v = await resolve_attr_path_recursively(v)
+        result[k] = v
+
+    return result
+
+
+translate_inputs_to_native = loop_manager.synced(_translate_inputs_to_native)
 
 
 async def resolve_attr_path_recursively(v: Any) -> Any:
@@ -1413,8 +1433,7 @@ async def async_flyte_entity_call_handler(
     # todo: add condition here to let sync/async tasks be called during eager execution
     # conditions to take care of
     # 1. you are an eager task, and are starting local execution
-    #    eager() -> self.local_execute() -> self.sandbox_execute() -> self.dispatch_execute(literals) ->
-    #        self.execute(native) a) -> task function() b) -> self.run_with_backend()
+    #    eager() -> self.local_execute() -> self.execute(native) a) -> task function() b) -> self.run_with_backend()
     # 2. you are in an eager task local execution, calling a normal async task
     #    await normal() -> detect in eager, self.local_execute()
     # 3. you are an eager task, starting backend execution
@@ -1425,13 +1444,16 @@ async def async_flyte_entity_call_handler(
     if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.EAGER_EXECUTION:
         # if the entity is a nested eager workflow, then we need to handle it specially
         from flytekit.core.python_function_task import EagerAsyncPythonFunctionTask
+
         if isinstance(entity, EagerAsyncPythonFunctionTask):
-            return entity.run_with_backend(ctx, **kwargs)
+            return await entity.run_with_backend(ctx, **kwargs)
 
         # otherwise, ship it off to a worker since we are in a real execution environment.
         else:
             if not ctx.worker_queue:
-                raise AssertionError("Worker queue missing, must be set when trying to execute tasks in an eager workflow")
+                raise AssertionError(
+                    "Worker queue missing, must be set when trying to execute tasks in an eager workflow"
+                )
             loop = asyncio.get_running_loop()
             fut = ctx.worker_queue.add(loop, entity, input_kwargs=kwargs)
             result = await fut
@@ -1451,6 +1473,7 @@ async def async_flyte_entity_call_handler(
 
     # This handles the case for when we're already in a local execution state
     if ctx.execution_state and ctx.execution_state.is_local_execution():
+        original_mode = ctx.execution_state.mode
         mode = cast(LocallyExecutable, entity).local_execution_mode()
         omt = OutputMetadataTracker()
         with FlyteContextManager.with_context(
@@ -1468,7 +1491,13 @@ async def async_flyte_entity_call_handler(
                     return create_task_output(vals, entity.python_interface)
                 else:
                     return None
-            return cast(LocallyExecutable, entity).local_execute(ctx, **kwargs)
+            if original_mode == ExecutionState.Mode.EAGER_LOCAL_EXECUTION:
+                local_execute_results = cast(LocallyExecutable, entity).local_execute(ctx, **kwargs)
+                if mode == ExecutionState.Mode.EAGER_LOCAL_EXECUTION:
+                    return local_execute_results
+                return create_native_named_tuple(ctx, local_execute_results, entity.python_interface)
+            else:
+                return cast(LocallyExecutable, entity).local_execute(ctx, **kwargs)
 
     # This condition kicks off a new local execution.
     else:
@@ -1493,6 +1522,9 @@ async def async_flyte_entity_call_handler(
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.DYNAMIC_TASK_EXECUTION:
             return result
 
+        if mode == ExecutionState.Mode.EAGER_LOCAL_EXECUTION:
+            return result
+
         if (1 < expected_outputs == len(cast(Tuple[Promise], result))) or (
             result is not None and expected_outputs == 1
         ):
@@ -1503,5 +1535,6 @@ async def async_flyte_entity_call_handler(
             f"Result {result}. "
             f"Python interface: {entity.python_interface}"
         )
+
 
 flyte_entity_call_handler = loop_manager.synced(async_flyte_entity_call_handler)

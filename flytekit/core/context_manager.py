@@ -38,8 +38,9 @@ from flytekit.loggers import developer_logger, user_space_logger
 from flytekit.models.core import identifier as _identifier
 
 if typing.TYPE_CHECKING:
-    from flytekit import Deck
     from flytekit.clients import friendly as friendly_client  # noqa
+    from flytekit.clients.friendly import SynchronousFlyteClient
+    from flytekit.deck.deck import Deck
 
 # TODO: resolve circular import from flytekit.core.python_auto_container import TaskResolverMixin
 
@@ -724,6 +725,9 @@ class FlyteContext(object):
     def with_worker_queue(self, wq: WorkerQueue) -> Builder:
         return self.new_builder().with_worker_queue(wq)
 
+    def with_client(self, c: SynchronousFlyteClient) -> Builder:
+        return self.new_builder().with_client(c)
+
     def new_compilation_state(self, prefix: str = "") -> CompilationState:
         """
         Creates and returns a default compilation state. For most of the code this should be the entrypoint
@@ -848,6 +852,10 @@ class FlyteContext(object):
 
         def with_worker_queue(self, wq: WorkerQueue) -> FlyteContext.Builder:
             self.worker_queue = wq
+            return self
+
+        def with_client(self, c: SynchronousFlyteClient) -> FlyteContext.Builder:
+            self.flyte_client = c
             return self
 
         def new_compilation_state(self, prefix: str = "") -> CompilationState:

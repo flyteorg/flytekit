@@ -22,9 +22,9 @@ from abc import ABC
 from collections import OrderedDict
 from contextlib import suppress
 from enum import Enum
-from typing import Any, Callable, Iterable, List, Optional, OrderedDict, Tuple, TypeVar, Union, cast
-from flytekit.core.worker_queue import WorkerQueue
+from typing import Any, Callable, Iterable, List, Optional, Tuple, TypeVar, Union, cast
 
+from flytekit.configuration import LocalConfig
 from flytekit.core import launch_plan as _annotated_launch_plan
 from flytekit.core.base_task import Task, TaskResolverMixin
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
@@ -33,11 +33,13 @@ from flytekit.core.interface import transform_function_to_interface
 from flytekit.core.promise import (
     Promise,
     VoidPromise,
+    async_flyte_entity_call_handler,
     translate_inputs_to_literals,
+    translate_inputs_to_native,
 )
-from flytekit.utils.asyn import loop_manager
 from flytekit.core.python_auto_container import PythonAutoContainerTask, default_task_resolver
 from flytekit.core.tracker import extract_task_module, is_functools_wrapped_module_level, isnested, istestfunction
+from flytekit.core.worker_queue import WorkerQueue
 from flytekit.core.workflow import (
     PythonFunctionWorkflow,
     WorkflowBase,
@@ -51,6 +53,7 @@ from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as task_models
 from flytekit.models.admin import workflow as admin_workflow_models
+from flytekit.utils.asyn import loop_manager
 
 T = TypeVar("T")
 
@@ -402,7 +405,7 @@ class AsyncPythonFunctionTask(PythonFunctionTask[T]):
         return await async_flyte_entity_call_handler(self, *args, **kwargs)  # type: ignore
 
 
-class EagerAsyncPythonFunctionTask(PythonFunctionTask[T]):
+class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T]):
     def __init__(
         self,
         task_config: T,
@@ -419,25 +422,56 @@ class EagerAsyncPythonFunctionTask(PythonFunctionTask[T]):
         if "execution_mode" in kwargs:
             del kwargs["execution_mode"]
 
-        super().__init__(task_config, task_function, task_type, ignore_input_vars, PythonFunctionTask.ExecutionBehavior.EAGER, task_resolver, node_dependency_hints, **kwargs)
+        super().__init__(
+            task_config,
+            task_function,
+            task_type,
+            ignore_input_vars,
+            PythonFunctionTask.ExecutionBehavior.EAGER,
+            task_resolver,
+            node_dependency_hints,
+            **kwargs,
+        )
 
     def local_execution_mode(self) -> ExecutionState.Mode:
         return ExecutionState.Mode.EAGER_LOCAL_EXECUTION
 
-    async def async_execute(self, **kwargs) -> Any:
+    def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, None]:
+        """
+        update this comment.
+        This function is used only in the local execution path and is responsible for calling dispatch execute.
+        Use this function when calling a task with native values (or Promises containing Flyte literals derived from
+        Python native values).
+        """
+        native_values = translate_inputs_to_native(
+            ctx,
+            incoming_values=kwargs,
+            flyte_interface_types=self.interface.inputs,
+        )
+
+        # if metadata.cache is set, check memoized version
+        local_config = LocalConfig.auto()
+        if self.metadata.cache and local_config.cache_enabled:
+            # todo:async Handle local caching
+            raise NotImplementedError
+        else:
+            output_native_values = self.execute(ctx, **native_values)
+
+            return output_native_values
+
+    async def async_execute(self, *args, **kwargs) -> Any:
         """
         Overrides the base execute function. This function does not handle dynamic at all. Eager and dynamic don't mix.
         """
         ctx = FlyteContextManager.current_context()
         is_local_execution = cast(ExecutionState, ctx.execution_state).is_local_execution()
         if not is_local_execution:
-
+            # a real execution
             await self.run_with_backend(ctx, **kwargs)
         else:
             # set local mode and proceed with running the function.  This makes the
             mode = self.local_execution_mode()
-            with FlyteContextManager.with_context(
-                    ctx.with_execution_state(ctx.execution_state.with_params(mode=mode))):
+            with FlyteContextManager.with_context(ctx.with_execution_state(ctx.execution_state.with_params(mode=mode))):
                 return await self._task_function(**kwargs)
 
     execute = loop_manager.synced(async_execute)
@@ -450,8 +484,9 @@ class EagerAsyncPythonFunctionTask(PythonFunctionTask[T]):
         # if already a worker queue, then get the execution prefix, and append a new one.
         remote = ctx.flyte_client
         if remote is None:
-            raise AssertionError("Remote client needs to be present in the context for cluster-based execution"
-                                 " of an eager task.")
+            raise AssertionError(
+                "Remote client needs to be present in the context for cluster-based execution" " of an eager task."
+            )
 
         # set up context
         mode = ExecutionState.Mode.EAGER_EXECUTION
@@ -466,7 +501,7 @@ class EagerAsyncPythonFunctionTask(PythonFunctionTask[T]):
 
 
 """
-hook up flyte remote, export deck.
+export deck.
 testing local eager with no tasks, local eager, remote eager, local nested eager, remote nested eager
 
 to enable the async pattern the __call__ function needs to be async or sync. One task type can't be both because it has
@@ -477,6 +512,10 @@ with the outputs converted into literals and then back.
 
 first time we're allowing tasks to be called inside other tasks
 
+
+if i run an eager task, i see it in the console as an execution.
+if i run an eager task inside another eager task, do i want to see a separate console link?
+yes - inputs to eager tasks should be translated to literals
+no - nested eager tasks should handle native inputs.
+
 """
-
-

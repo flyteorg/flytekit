@@ -1,6 +1,11 @@
+import pytest
 from flytekit.core.task import task
-from flytekit.core.workflow import workflow
+from flytekit.utils.asyn import loop_manager
 from flytekit.experimental.eager_function import eager
+from flytekit.core.context_manager import FlyteContextManager
+from flytekit.configuration import Config, DataConfig, S3Config
+from flytekit.core.data_persistence import FileAccessProvider
+from flytekit.remote.remote import FlyteRemote
 
 
 @task
@@ -29,7 +34,22 @@ async def simple_eager_workflow(x: int) -> int:
     # return await double(x=out)
 
 
-def test_easy_1():
+@pytest.mark.asyncio
+async def test_easy_1():
     print('hi')
-    res = simple_eager_workflow(x=1)
+    res = await simple_eager_workflow(x=1)
     print(res)
+
+
+@pytest.mark.sandbox
+def test_easy_2():
+    ctx = FlyteContextManager.current_context()
+    remote = FlyteRemote(Config.for_sandbox())
+    dc = Config.for_sandbox().data_config
+    raw_output = f"s3://my-s3-bucket/testing/async_test/raw_output/"
+    print(f"Using raw output location: {raw_output}")
+    provider = FileAccessProvider(local_sandbox_dir="/tmp/unittest", raw_output_prefix=raw_output, data_config=dc)
+
+    with FlyteContextManager.with_context(ctx.with_file_access(provider).with_client(remote.client)) as ctx:
+        res = loop_manager.run_sync(simple_eager_workflow.run_with_backend, ctx, x=1)
+        print(res)

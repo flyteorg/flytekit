@@ -1,18 +1,16 @@
 import asyncio
 import inspect
 import os
-import signal
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
-from functools import partial, wraps
+from functools import partial
 from typing import List, Optional
 
-from flytekit import Deck, Secret, current_context
+from flytekit import Deck, current_context
 from flytekit.configuration import DataConfig, PlatformConfig, S3Config
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
-from flytekit.core.python_function_task import PythonFunctionTask, EagerAsyncPythonFunctionTask
-from flytekit.core.task import task
+from flytekit.core.python_function_task import EagerAsyncPythonFunctionTask, PythonFunctionTask
 from flytekit.core.workflow import WorkflowBase
 from flytekit.loggers import logger
 from flytekit.models.core.execution import WorkflowExecutionPhase
@@ -385,7 +383,7 @@ def eager(
     local_entrypoint: bool = False,
     client_secret_env_var: Optional[str] = None,
     **kwargs,
-):
+) -> EagerAsyncPythonFunctionTask:
     """Eager workflow decorator.
 
     :param remote: A :py:class:`~flytekit.remote.FlyteRemote` object to use for executing Flyte entities.
@@ -504,28 +502,28 @@ def eager(
 
     # @wraps(_fn)
     # async def wrapper(*args, **kws):
-        # grab the "async_ctx" argument injected by PythonFunctionTask.execute
-        # logger.debug("Starting")
-        # _remote = remote
-        #
-        # # locally executed nested eager workflows won't have async_ctx injected into the **kws input
-        # ctx = kws.pop("async_ctx", None)
-        # task_id, execution_id = None, None
-        # if ctx:
-        #     exec_params = ctx.user_space_params
-        #     task_id = exec_params.task_id
-        #     execution_id = exec_params.execution_id
-        #
-        # async_stack = AsyncStack(task_id, execution_id)
-        # _remote = _prepare_remote(
-        #     _remote, ctx, client_secret_group, client_secret_key, local_entrypoint, client_secret_env_var
-        # )
+    # grab the "async_ctx" argument injected by PythonFunctionTask.execute
+    # logger.debug("Starting")
+    # _remote = remote
+    #
+    # # locally executed nested eager workflows won't have async_ctx injected into the **kws input
+    # ctx = kws.pop("async_ctx", None)
+    # task_id, execution_id = None, None
+    # if ctx:
+    #     exec_params = ctx.user_space_params
+    #     task_id = exec_params.task_id
+    #     execution_id = exec_params.execution_id
+    #
+    # async_stack = AsyncStack(task_id, execution_id)
+    # _remote = _prepare_remote(
+    #     _remote, ctx, client_secret_group, client_secret_key, local_entrypoint, client_secret_env_var
+    # )
 
-        # make sure sub-nodes as cleaned up on termination signal
-        # loop = asyncio.get_event_loop()
-        # node_cleanup_partial = partial(node_cleanup_async, async_stack=async_stack)
-        # cleanup_fn = partial(asyncio.ensure_future, node_cleanup_partial(signal.SIGTERM, loop))
-        # signal.signal(signal.SIGTERM, partial(node_cleanup, loop=loop, async_stack=async_stack))
+    # make sure sub-nodes as cleaned up on termination signal
+    # loop = asyncio.get_event_loop()
+    # node_cleanup_partial = partial(node_cleanup_async, async_stack=async_stack)
+    # cleanup_fn = partial(asyncio.ensure_future, node_cleanup_partial(signal.SIGTERM, loop))
+    # signal.signal(signal.SIGTERM, partial(node_cleanup, loop=loop, async_stack=async_stack))
 
     #     async with eager_context(_fn, _remote, ctx, async_stack, timeout, poll_interval, local_entrypoint):
     #         try:
