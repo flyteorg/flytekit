@@ -92,7 +92,7 @@ exclude = ["boilerplate", "docs", "plugins", "tests*"]
 
 [tool.pytest.ini_options]
 norecursedirs = ["common", "workflows", "spark", "fsspec"]
-log_cli = true
+log_cli = false
 log_cli_level = 20
 markers = [
     "sandbox_test: fake integration tests",               # unit tests that are really integration tests that run on a sandbox environment

@@ -1,13 +1,16 @@
 import json
+import os
 from typing import Type
 
 import msgpack
 from google.protobuf import json_format as _json_format
+from google.protobuf import struct_pb2 as _struct
 from pydantic import BaseModel
 
 from flytekit import FlyteContext
-from flytekit.core.constants import MESSAGEPACK
+from flytekit.core.constants import FLYTE_USE_OLD_DC_FORMAT, MESSAGEPACK
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
+from flytekit.core.utils import str2bool
 from flytekit.loggers import logger
 from flytekit.models import types
 from flytekit.models.literals import Binary, Literal, Scalar
@@ -31,9 +34,23 @@ class PydanticTransformer(TypeTransformer[BaseModel]):
                     "Field {} of type {} cannot be converted to a literal type. Error: {}".format(name, python_type, e)
                 )
 
+        # This is for attribute access in FlytePropeller.
         ts = TypeStructure(tag="", dataclass_type=literal_type)
 
         return types.LiteralType(simple=types.SimpleType.STRUCT, metadata=schema, structure=ts)
+
+    def to_generic_literal(
+        self,
+        ctx: FlyteContext,
+        python_val: BaseModel,
+        python_type: Type[BaseModel],
+        expected: types.LiteralType,
+    ) -> Literal:
+        """
+        Note: This is deprecated and will be removed in the future.
+        """
+        json_str = python_val.model_dump_json()
+        return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))
 
     def to_literal(
         self,
@@ -47,6 +64,9 @@ class PydanticTransformer(TypeTransformer[BaseModel]):
         This is for handling enum in basemodel.
         More details: https://github.com/flyteorg/flytekit/pull/2792
         """
+        if str2bool(os.getenv(FLYTE_USE_OLD_DC_FORMAT)):
+            return self.to_generic_literal(ctx, python_val, python_type, expected)
+
         json_str = python_val.model_dump_json()
         dict_obj = json.loads(json_str)
         msgpack_bytes = msgpack.dumps(dict_obj)

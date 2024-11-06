@@ -11,6 +11,7 @@ from flyteidl.admin import project_domain_attributes_pb2 as _project_domain_attr
 from flyteidl.admin import project_pb2 as _project_pb2
 from flyteidl.admin import task_execution_pb2 as _task_execution_pb2
 from flyteidl.admin import task_pb2 as _task_pb2
+from flyteidl.admin import version_pb2 as _version_pb2
 from flyteidl.admin import workflow_attributes_pb2 as _workflow_attributes_pb2
 from flyteidl.admin import workflow_pb2 as _workflow_pb2
 from flyteidl.core import identifier_pb2 as _identifier_pb2
@@ -1087,3 +1088,16 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
                 expires_in=expires_in_pb,
             )
         )
+
+    def get_control_plane_version(self) -> str:
+        """
+        Retrieve the Control Plane version from Flyteadmin.
+
+        This method calls Flyteadmin's GetVersion API to obtain the current version information of the control plane.
+        The retrieved version can be used to enable or disable specific features based on the Flyteadmin version.
+
+        Returns:
+            str: The version string of the control plane.
+        """
+        version_response = self._stub.GetVersion(_version_pb2.GetVersionRequest(), metadata=self._metadata)
+        return version_response.control_plane_version.Version
