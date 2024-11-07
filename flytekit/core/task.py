@@ -7,10 +7,7 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, T
 
 from flytekit.core.utils import str2bool
 
-try:
-    from typing import ParamSpec
-except ImportError:
-    from typing_extensions import ParamSpec  # type: ignore
+from typing_extensions import ParamSpec  # type: ignore
 
 from flytekit.core import launch_plan as _annotated_launchplan
 from flytekit.core import workflow as _annotated_workflow

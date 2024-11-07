@@ -10,10 +10,7 @@ from typing import Any, Callable, Coroutine, Dict, List, Optional, Tuple, Type, 
 
 from typing_inspect import is_optional_type
 
-try:
-    from typing import ParamSpec
-except ImportError:
-    from typing_extensions import ParamSpec  # type: ignore
+from typing_extensions import ParamSpec  # type: ignore
 
 from flytekit.core import constants as _common_constants
 from flytekit.core import launch_plan as _annotated_launch_plan
