@@ -551,10 +551,10 @@ def run_remote(
             execution_cluster_label=run_level_params.execution_cluster_label,
         )
         s = (
-                click.style("\n[✔] ", fg="green")
-                + "Go to "
-                + click.style(execution.execution_url, fg="cyan")
-                + " to see execution in the console."
+            click.style("\n[✔] ", fg="green")
+            + "Go to "
+            + click.style(execution.execution_url, fg="cyan")
+            + " to see execution in the console."
         )
         click.echo(s)
 
