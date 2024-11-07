@@ -20,7 +20,7 @@ from flytekit.core.utils import ClassDecorator
 from flytekit.interactive.constants import EXIT_CODE_SUCCESS, MAX_IDLE_SECONDS
 from flytekit.interactive.utils import (
     execute_command,
-    load_module_from_path,
+    load_module_from_path, run_dummy_server,
 )
 from flytekit.interactive.vscode_lib.config import VscodeConfig
 from flytekit.interactive.vscode_lib.vscode_constants import (
@@ -428,6 +428,9 @@ class vscode(ClassDecorator):
                 logger.error(f"Task Error: {e}")
                 logger.info("Launching VSCode server")
 
+        dummy_server_process = multiprocessing.Process(target=run_dummy_server)
+        dummy_server_process.start()
+
         # 0. Executes the pre_execute function if provided.
         if self._pre_execute is not None:
             self._pre_execute()
@@ -451,19 +454,21 @@ class vscode(ClassDecorator):
         task_function_source_dir = os.path.dirname(
             FlyteContextManager.current_context().user_space_params.TASK_FUNCTION_SOURCE_PATH
         )
-        child_process = multiprocessing.Process(
+        vscode_process = multiprocessing.Process(
             target=execute_command,
             kwargs={
                 "cmd": f"code-server --bind-addr 0.0.0.0:{self.port} --disable-workspace-trust --auth none {task_function_source_dir}"
             },
         )
-        child_process.start()
+        dummy_server_process.terminate()
+        dummy_server_process.join()
+        vscode_process.start()
 
         # 6. Register the signal handler for task resumption. This should be after creating the subprocess so that the subprocess won't inherit the signal handler.
         signal.signal(signal.SIGTERM, resume_task_handler)
 
         return exit_handler(
-            child_process=child_process,
+            child_process=vscode_process,
             task_function=self.task_function,
             args=args,
             kwargs=kwargs,

@@ -1,5 +1,7 @@
+import http
 import importlib
 import os
+import socketserver
 import subprocess
 import sys
 
@@ -77,3 +79,49 @@ def execute_command(cmd):
         raise RuntimeError(f"Command {cmd} failed with error: {stderr}")
     logger.info(f"stdout: {stdout}")
     logger.info(f"stderr: {stderr}")
+
+
+def run_dummy_server():
+    PORT = 8080
+    HTML_CONTENT = """
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Loading VSCode Server</title>
+        <style>
+            body { 
+                font-family: Arial, sans-serif; 
+                display: flex; 
+                justify-content: center; 
+                align-items: center; 
+                height: 100vh;
+                background-color: #f3f4f6;
+                margin: 0;
+            }
+            .message {
+                text-align: center;
+                font-size: 24px;
+                color: #333;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="message">
+            Loading VSCode Server...
+        </div>
+    </body>
+    </html>
+    """
+
+    class SimpleHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.send_header("Content-type", "text/html")
+            self.end_headers()
+            self.wfile.write(HTML_CONTENT.encode('utf-8'))
+
+    with socketserver.TCPServer(("", PORT), SimpleHTTPRequestHandler) as httpd:
+        print(f"Serving on port {PORT}")
+        httpd.serve_forever()
