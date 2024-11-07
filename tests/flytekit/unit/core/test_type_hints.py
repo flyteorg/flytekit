@@ -20,8 +20,7 @@ from typing_extensions import Annotated, get_origin
 import flytekit
 import flytekit.configuration
 from flytekit import Secret, SQLTask, dynamic, kwtypes, map_task
-from flytekit.configuration import (FastSerializationSettings, Image,
-                                    ImageConfig)
+from flytekit.configuration import FastSerializationSettings, Image, ImageConfig
 from flytekit.core import context_manager, launch_plan, promise
 from flytekit.core.condition import conditional
 from flytekit.core.constants import MESSAGEPACK
@@ -33,11 +32,18 @@ from flytekit.core.promise import NodeOutput, Promise, VoidPromise
 from flytekit.core.resources import Resources
 from flytekit.core.task import TaskMetadata, task
 from flytekit.core.testing import patch, task_mock
-from flytekit.core.type_engine import (RestrictedTypeError, SimpleTransformer,
-                                       TypeEngine, TypeTransformerFailedError)
+from flytekit.core.type_engine import (
+    RestrictedTypeError,
+    SimpleTransformer,
+    TypeEngine,
+    TypeTransformerFailedError,
+)
 from flytekit.core.workflow import workflow
-from flytekit.exceptions.user import (FlyteFailureNodeInputMismatchException,
-                                      FlyteValidationException)
+from flytekit.exceptions.user import (
+    FlyteFailureNodeInputMismatchException,
+    FlyteValidationException,
+    FlyteMissingTypeException,
+)
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import types as _core_types
 from flytekit.models.interface import Parameter
@@ -2207,3 +2213,105 @@ def test_promise_illegal_retries():
 
     with pytest.raises(AssertionError):
         my_wf(a=1, retries=1)
+
+
+def test_pickle_untyped_input_wf_and_task():
+    @task(pickle_untyped=True)
+    def t1(a) -> int:
+        if type(a) == int:
+            return a + 1
+        return 0
+
+    with pytest.raises(FlyteMissingTypeException):
+
+        @task
+        def t2_wo_pickle_untyped(a) -> int:
+            return a + 1
+
+    @workflow(pickle_untyped=True)
+    def wf1_with_pickle_untyped(a) -> int:
+        return t1(a=a)
+
+    assert wf1_with_pickle_untyped(a=1) == 2
+    assert wf1_with_pickle_untyped(a="1") == 0
+
+    with pytest.raises(FlyteMissingTypeException):
+
+        @workflow
+        def wf1_wo_pickle_untyped(a) -> int:
+            return t1(a=a)
+
+
+def test_pickle_untyped_wf_and_task():
+    @task(pickle_untyped=True)
+    def t1(a):
+        if type(a) != int:
+            return "t1"
+        return a + 1
+
+    @task(pickle_untyped=True)
+    def t2(a):
+        if type(a) != int:
+            return "t2"
+        return a + 2
+
+    @workflow(pickle_untyped=True)
+    def wf1_with_pickle_untyped(a):
+        a1 = t1(a=a)
+        return t2(a=a1)
+
+    assert wf1_with_pickle_untyped(a=1) == 4
+    assert wf1_with_pickle_untyped(a="1") == "t2"
+
+
+def test_wf_with_pickle_untyped_and_regular_tasks():
+    @task(pickle_untyped=True)
+    def t1(a):
+        if type(a) != int:
+            return "t1"
+        return a + 1
+
+    @task
+    def t2(a: typing.Any) -> typing.Any:
+        if type(a) != int:
+            return "t2"
+        return a + 2
+
+    @workflow(pickle_untyped=True)
+    def wf1_with_pickle_untyped(a):
+        a1 = t1(a=a)
+        return t2(a=a1)
+
+    assert wf1_with_pickle_untyped(a=1) == 4
+    assert wf1_with_pickle_untyped(a="1") == "t2"
+
+    @workflow(pickle_untyped=True)
+    def wf2_with_pickle_untyped(a):
+        a1 = t2(a=a)
+        return t1(a=a1)
+
+    assert wf2_with_pickle_untyped(a=1) == 4
+    assert wf2_with_pickle_untyped(a="1") == "t1"
+
+
+def test_pickle_untyped_task_with_specified_input():
+    @task(pickle_untyped=True)
+    def t1(a, b: typing.Any):
+        if type(a) != int:
+            if type(b) != int:
+                return "t1"
+            else:
+                return b
+        elif type(b) != int:
+            return a
+        return a + b
+
+    @workflow(pickle_untyped=True)
+    def wf1_with_pickle_untyped(a: typing.Any, b):
+        r = t1(a=a, b=b)
+        return r
+
+    assert wf1_with_pickle_untyped(a=1, b=2) == 3
+    assert wf1_with_pickle_untyped(a="1", b=2) == 2
+    assert wf1_with_pickle_untyped(a=1, b="2") == 1
+    assert wf1_with_pickle_untyped(a="1", b="2") == "t1"

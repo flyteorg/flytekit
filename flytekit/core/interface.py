@@ -384,6 +384,7 @@ def transform_function_to_interface(
     fn: typing.Callable,
     docstring: Optional[Docstring] = None,
     is_reference_entity: bool = False,
+    pickle_untyped: bool = False,
 ) -> Interface:
     """
     From the annotations on a task function that the user should have provided, and the output names they want to use
@@ -395,6 +396,9 @@ def transform_function_to_interface(
     type_hints = get_type_hints(fn, include_extras=True)
     signature = inspect.signature(fn)
     return_annotation = type_hints.get("return", None)
+    # If the return annotation is None and the pickle_untyped is True, we will use it as Any
+    if return_annotation is None and pickle_untyped:
+        return_annotation = Any
 
     ctx = FlyteContextManager.current_context()
 
@@ -420,7 +424,10 @@ def transform_function_to_interface(
     for k, v in signature.parameters.items():  # type: ignore
         annotation = type_hints.get(k, None)
         if annotation is None:
-            raise FlyteMissingTypeException(fn=fn, param_name=k)
+            if not pickle_untyped:
+                raise FlyteMissingTypeException(fn=fn, param_name=k)
+            # If the pickle_untyped is True, we will use it as Any
+            annotation = Any
         default = v.default if v.default is not inspect.Parameter.empty else None
         # Inputs with default values are currently ignored, we may want to look into that in the future
         inputs[k] = (annotation, default)  # type: ignore
