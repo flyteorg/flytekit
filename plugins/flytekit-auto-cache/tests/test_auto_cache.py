@@ -1,24 +1,7 @@
+from dummy_functions.dummy_function import dummy_function
+from dummy_functions.dummy_function_comments_formatting_change import dummy_function as dummy_function_comments_formatting_change
+from dummy_functions.dummy_function_logic_change import dummy_function as dummy_function_logic_change
 from flytekitplugins.auto_cache import CacheFunctionBody
-
-
-# Dummy functions
-def dummy_function(x: int, y: int) -> int:
-    result = x + y
-    return result
-
-def dummy_function_modified(x: int, y: int) -> int:
-    result = x * y
-    return result
-
-
-def dummy_function_with_comments_and_formatting(x: int, y: int) -> int:
-    # Adding a new line here
-    result = (
-            x + y
-    )
-    # Another new line
-    return result
-
 
 
 def test_get_version_with_same_function_and_salt():
@@ -49,32 +32,54 @@ def test_get_version_with_different_salt():
     assert version1 != version2, f"Expected different hashes but got the same: {version1}"
 
 
-def test_get_version_with_different_function_source():
+
+def test_get_version_with_different_logic():
     """
-    Test that calling get_version with different function sources returns different hashes.
+    Test that functions with the same name but different logic produce different hashes.
     """
     cache = CacheFunctionBody(salt="salt")
-
-    # The hash should be different because the function source has changed
     version1 = cache.get_version(dummy_function)
-    version2 = cache.get_version(dummy_function_modified)
+    version2 = cache.get_version(dummy_function_logic_change)
 
-    assert version1 != version2, f"Expected different hashes but got the same: {version1} and {version2}"
+    assert version1 != version2, (
+        f"Hashes should be different for functions with same name but different logic. "
+        f"Got {version1} and {version2}"
+    )
 
+# Test functions with different names but same logic
+def function_one(x: int, y: int) -> int:
+    result = x + y
+    return result
 
-def test_get_version_with_comments_and_formatting_changes():
+def function_two(x: int, y: int) -> int:
+    result = x + y
+    return result
+
+def test_get_version_with_different_function_names():
     """
-    Test that adding comments, changing formatting, or modifying the function signature
-    results in a different hash.
+    Test that functions with different names but same logic produce different hashes.
     """
-    # Modify the function by adding comments and changing the formatting
     cache = CacheFunctionBody(salt="salt")
 
-    # Get the hash for the original dummy function
-    original_version = cache.get_version(dummy_function)
+    version1 = cache.get_version(function_one)
+    version2 = cache.get_version(function_two)
 
-    # Get the hash for the function with comments and formatting changes
-    version_with_comments_and_formatting = cache.get_version(dummy_function_with_comments_and_formatting)
+    assert version1 != version2, (
+        f"Hashes should be different for functions with different names. "
+        f"Got {version1} and {version2}"
+    )
 
-    # Assert that the hashes are different
-    assert original_version != version_with_comments_and_formatting, f"Expected different hashes but got the same: {original_version} and {version_with_comments_and_formatting}"
+def test_get_version_with_formatting_changes():
+    """
+    Test that changing formatting and comments but keeping the same function name
+    results in the same hash.
+    """
+
+    cache = CacheFunctionBody(salt="salt")
+    version1 = cache.get_version(dummy_function)
+    version2 = cache.get_version(dummy_function_comments_formatting_change)
+
+    assert version1 == version2, (
+        f"Hashes should be the same for functions with same name but different formatting. "
+        f"Got {version1} and {version2}"
+    )
