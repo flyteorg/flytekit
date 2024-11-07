@@ -520,7 +520,7 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
 
 
 """
-update the call pattern for eager itself, update assertions,
+merge master
 export deck, hook up and test with remote
 update comments about call pattern and move
 signal handling

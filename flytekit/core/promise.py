@@ -1442,7 +1442,7 @@ async def async_flyte_entity_call_handler(
     # 4. you are in an eager task, calling another eager task
     # 5. you are in a normal task, calling any other kind of task (disallow)
     if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.EAGER_EXECUTION:
-        # for both nested eager, async, and sync tasks,
+        # for both nested eager, async, and sync tasks, submit to the informer.
         if not ctx.worker_queue:
             raise AssertionError("Worker queue missing, must be set when trying to execute tasks in an eager workflow")
         loop = asyncio.get_running_loop()
