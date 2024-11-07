@@ -1118,3 +1118,17 @@ def test_pure_frozen_dataclasses_with_flyte_types(local_dummy_txt_file, local_du
 
     empty_nested_flyte_types = empty_nested_dc_wf()
     DataclassTransformer().assert_type(NestedFlyteTypes, empty_nested_flyte_types)
+
+def test_dataclass_serialize_with_multiple_dataclass_union():
+    @dataclass
+    class A():
+        x: int
+
+    @dataclass
+    class B():
+        x: FlyteFile
+
+    b = B(x="s3://my-bucket/my-file")
+    res = DataclassTransformer()._make_dataclass_serializable(b, Union[None, A, B])
+
+    assert res.x.path == "s3://my-bucket/my-file"

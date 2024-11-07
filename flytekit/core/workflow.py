@@ -664,11 +664,14 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         docstring: Optional[Docstring] = None,
         on_failure: Optional[Union[WorkflowBase, Task]] = None,
         docs: Optional[Documentation] = None,
+        pickle_untyped: bool = False,
         default_options: Optional[Options] = None,
     ):
         name, _, _, _ = extract_task_module(workflow_function)
         self._workflow_function = workflow_function
-        native_interface = transform_function_to_interface(workflow_function, docstring=docstring)
+        native_interface = transform_function_to_interface(
+            workflow_function, docstring=docstring, pickle_untyped=pickle_untyped
+        )
 
         # TODO do we need this - can this not be in launchplan only?
         #    This can be in launch plan only, but is here only so that we don't have to re-evaluate. Or
@@ -833,6 +836,7 @@ def workflow(
     interruptible: bool = ...,
     on_failure: Optional[Union[WorkflowBase, Task]] = ...,
     docs: Optional[Documentation] = ...,
+    pickle_untyped: bool = ...,
     default_options: Optional[Options] = ...,
 ) -> Callable[[Callable[..., FuncOut]], PythonFunctionWorkflow]: ...
 
@@ -844,6 +848,7 @@ def workflow(
     interruptible: bool = ...,
     on_failure: Optional[Union[WorkflowBase, Task]] = ...,
     docs: Optional[Documentation] = ...,
+    pickle_untyped: bool = ...,
     default_options: Optional[Options] = ...,
 ) -> Union[Callable[P, FuncOut], PythonFunctionWorkflow]: ...
 
@@ -854,6 +859,7 @@ def workflow(
     interruptible: bool = False,
     on_failure: Optional[Union[WorkflowBase, Task]] = None,
     docs: Optional[Documentation] = None,
+    pickle_untyped: bool = False,
     default_options: Optional[Options] = None,
 ) -> Union[Callable[P, FuncOut], Callable[[Callable[P, FuncOut]], PythonFunctionWorkflow], PythonFunctionWorkflow]:
     """
@@ -886,6 +892,8 @@ def workflow(
     :param on_failure: Invoke this workflow or task on failure. The Workflow / task has to match the signature of
          the current workflow, with an additional parameter called `error` Error
     :param docs: Description entity for the workflow
+    :param pickle_untyped: This is a flag that allows users to bypass the type-checking that Flytekit does when constructing
+         the workflow. This is not recommended for general use.
     :param default_options: Default options for the workflow when creating a default launch plan. Currently only
          the labels and annotations are allowed to be set as defaults.
     """
@@ -902,6 +910,7 @@ def workflow(
             docstring=Docstring(callable_=fn),
             on_failure=on_failure,
             docs=docs,
+            pickle_untyped=pickle_untyped,
             default_options=default_options,
         )
         update_wrapper(workflow_instance, fn)

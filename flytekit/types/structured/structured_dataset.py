@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import _datetime
 import collections
+import json
 import types
 import typing
 from abc import ABC, abstractmethod
@@ -11,6 +12,8 @@ from typing import Dict, Generator, Generic, List, Optional, Type, Union
 import msgpack
 from dataclasses_json import config
 from fsspec.utils import get_protocol
+from google.protobuf import json_format as _json_format
+from google.protobuf.struct_pb2 import Struct
 from marshmallow import fields
 from mashumaro.mixins.json import DataClassJSONMixin
 from mashumaro.types import SerializableType
@@ -21,6 +24,7 @@ from flytekit.core.constants import MESSAGEPACK
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import AsyncTypeTransformer, TypeEngine, TypeTransformerFailedError
 from flytekit.deck.renderer import Renderable
+from flytekit.extras.pydantic_transformer.decorator import model_serializer, model_validator
 from flytekit.loggers import developer_logger, logger
 from flytekit.models import literals
 from flytekit.models import types as type_models
@@ -89,6 +93,38 @@ class StructuredDataset(SerializableType, DataClassJSONMixin):
                 )
             ),
             cls,
+        )
+
+    @model_serializer
+    def serialize_structured_dataset(self) -> Dict[str, Optional[str]]:
+        lv = StructuredDatasetTransformerEngine().to_literal(
+            FlyteContextManager.current_context(), self, type(self), None
+        )
+        sd = StructuredDataset(uri=lv.scalar.structured_dataset.uri)
+        sd.file_format = lv.scalar.structured_dataset.metadata.structured_dataset_type.format
+        return {
+            "uri": sd.uri,
+            "file_format": sd.file_format,
+        }
+
+    @model_validator(mode="after")
+    def deserialize_structured_dataset(self, info) -> StructuredDataset:
+        if info.context is None or info.context.get("deserialize") is not True:
+            return self
+
+        return StructuredDatasetTransformerEngine().to_python_value(
+            FlyteContextManager.current_context(),
+            Literal(
+                scalar=Scalar(
+                    structured_dataset=StructuredDataset(
+                        metadata=StructuredDatasetMetadata(
+                            structured_dataset_type=StructuredDatasetType(format=self.file_format)
+                        ),
+                        uri=self.uri,
+                    )
+                )
+            ),
+            type(self),
         )
 
     @classmethod
@@ -665,6 +701,7 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
             # that we will need to invoke an encoder for. Figure out which encoder to call and invoke it.
             df_type = type(python_val.dataframe)
             protocol = self._protocol_from_type_or_prefix(ctx, df_type, python_val.uri)
+
             return self.encode(
                 ctx,
                 python_val,
@@ -724,33 +761,92 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
         sd._already_uploaded = True
         return lit
 
+    def dict_to_structured_dataset(
+        self, dict_obj: typing.Dict[str, str], expected_python_type: Type[T] | StructuredDataset
+    ) -> T | StructuredDataset:
+        uri = dict_obj.get("uri", None)
+        file_format = dict_obj.get("file_format", None)
+
+        if uri is None:
+            raise ValueError("StructuredDataset's uri and file format should not be None")
+
+        return StructuredDatasetTransformerEngine().to_python_value(
+            FlyteContextManager.current_context(),
+            Literal(
+                scalar=Scalar(
+                    structured_dataset=StructuredDataset(
+                        metadata=StructuredDatasetMetadata(
+                            structured_dataset_type=StructuredDatasetType(format=file_format)
+                        ),
+                        uri=uri,
+                    )
+                )
+            ),
+            expected_python_type,
+        )
+
     def from_binary_idl(
         self, binary_idl_object: Binary, expected_python_type: Type[T] | StructuredDataset
     ) -> T | StructuredDataset:
+        """
+        If the input is from flytekit, the Life Cycle will be as follows:
+
+        Life Cycle:
+        binary IDL                 -> resolved binary         -> bytes                   -> expected Python object
+        (flytekit customized          (propeller processing)     (flytekit binary IDL)      (flytekit customized
+        serialization)                                                                       deserialization)
+
+        Example Code:
+        @dataclass
+        class DC:
+            sd: StructuredDataset
+
+        @workflow
+        def wf(dc: DC):
+            t_sd(dc.sd)
+
+        Note:
+        - The deserialization is the same as put a structured dataset in a dataclass, which will deserialize by the mashumaro's API.
+
+        Related PR:
+        - Title: Override Dataclass Serialization/Deserialization Behavior for FlyteTypes via Mashumaro
+        - Link: https://github.com/flyteorg/flytekit/pull/2554
+        """
         if binary_idl_object.tag == MESSAGEPACK:
             python_val = msgpack.loads(binary_idl_object.value)
-            uri = python_val.get("uri", None)
-            file_format = python_val.get("file_format", None)
-
-            if uri is None:
-                raise ValueError("StructuredDataset's uri and file format should not be None")
-
-            return StructuredDatasetTransformerEngine().to_python_value(
-                FlyteContextManager.current_context(),
-                Literal(
-                    scalar=Scalar(
-                        structured_dataset=StructuredDataset(
-                            metadata=StructuredDatasetMetadata(
-                                structured_dataset_type=StructuredDatasetType(format=file_format)
-                            ),
-                            uri=uri,
-                        )
-                    )
-                ),
-                expected_python_type,
-            )
+            return self.dict_to_structured_dataset(dict_obj=python_val, expected_python_type=expected_python_type)
         else:
             raise TypeTransformerFailedError(f"Unsupported binary format: `{binary_idl_object.tag}`")
+
+    def from_generic_idl(
+        self, generic: Struct, expected_python_type: Type[T] | StructuredDataset
+    ) -> T | StructuredDataset:
+        """
+        If the input is from Flyte Console, the Life Cycle will be as follows:
+
+        Life Cycle:
+        json str            -> protobuf struct         -> resolved protobuf struct   -> expected Python object
+        (console user input)   (console output)           (propeller)                   (flytekit customized deserialization)
+
+        Example Code:
+        @dataclass
+        class DC:
+            sd: StructuredDataset
+
+        @workflow
+        def wf(dc: DC):
+            t_sd(dc.sd)
+
+        Note:
+        - The deserialization is the same as put a structured dataset in a dataclass, which will deserialize by the mashumaro's API.
+
+        Related PR:
+        - Title: Override Dataclass Serialization/Deserialization Behavior for FlyteTypes via Mashumaro
+        - Link: https://github.com/flyteorg/flytekit/pull/2554
+        """
+        json_str = _json_format.MessageToJson(generic)
+        python_val = json.loads(json_str)
+        return self.dict_to_structured_dataset(dict_obj=python_val, expected_python_type=expected_python_type)
 
     async def async_to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T] | StructuredDataset
@@ -786,8 +882,11 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
         +-----------------------------+-----------------------------------------+--------------------------------------+
         """
         # Handle dataclass attribute access
-        if lv.scalar and lv.scalar.binary:
-            return self.from_binary_idl(lv.scalar.binary, expected_python_type)
+        if lv.scalar:
+            if lv.scalar.binary:
+                return self.from_binary_idl(lv.scalar.binary, expected_python_type)
+            if lv.scalar.generic:
+                return self.from_generic_idl(lv.scalar.generic, expected_python_type)
 
         # Detect annotations and extract out all the relevant information that the user might supply
         expected_python_type, column_dict, storage_fmt, pa_schema = extract_cols_and_format(expected_python_type)

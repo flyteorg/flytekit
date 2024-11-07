@@ -1,5 +1,10 @@
 # Flytekit Pydantic Plugin
+## Warning
+This plugin is deprecated and will be removed in the future.
 
+Please directly install `pydantic` and use `BaseModel` in your Flyte tasks.
+
+## Introduction
 Pydantic is a data validation and settings management library that uses Python type annotations to enforce type hints at runtime and provide user-friendly errors when data is invalid. Pydantic models are classes that inherit from `pydantic.BaseModel` and are used to define the structure and validation of data using Python type annotations.
 
 The plugin adds type support for pydantic models.

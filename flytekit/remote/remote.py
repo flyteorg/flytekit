@@ -48,6 +48,8 @@ from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
 from flytekit.core.node import Node as CoreNode
 from flytekit.core.python_auto_container import (
     PICKLE_FILE_PATH,
+    PickledEntity,
+    PickledEntityMetadata,
     PythonAutoContainerTask,
     default_notebook_task_resolver,
 )
@@ -202,14 +204,21 @@ def _get_git_repo_url(source_path: str):
 
 def _get_pickled_target_dict(
     root_entity: typing.Union[WorkflowBase, PythonTask],
-) -> typing.Tuple[bytes, typing.Dict[str, PythonAutoContainerTask]]:
+) -> typing.Tuple[bytes, PickledEntity]:
     """
     Get the pickled target dictionary for the entity.
     :param root_entity: The entity to get the pickled target for.
         :return: hashed bytes and the pickled target dictionary.
     """
+    import sys
+
     queue: typing.List[typing.Union[WorkflowBase, PythonTask, CoreNode]] = [root_entity]
-    pickled_target_dict = {}
+    pickled_target_dict = PickledEntity(
+        metadata=PickledEntityMetadata(
+            python_version=f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+        ),
+        entities={},
+    )
     while queue:
         entity = queue.pop()
         if isinstance(entity, PythonFunctionTask):
@@ -226,10 +235,10 @@ def _get_pickled_target_dict(
             if isinstance(entity, (PythonAutoContainerTask, ArrayNodeMapTask)):
                 if isinstance(entity, ArrayNodeMapTask):
                     entity._run_task.set_resolver(default_notebook_task_resolver)
-                    pickled_target_dict[entity._run_task.name] = entity._run_task
+                    pickled_target_dict.entities[entity._run_task.name] = entity._run_task
                 else:
                     entity.set_resolver(default_notebook_task_resolver)
-                    pickled_target_dict[entity.name] = entity
+                    pickled_target_dict.entities[entity.name] = entity
         elif isinstance(entity, WorkflowBase):
             for task in entity.nodes:
                 queue.append(task)
@@ -2655,7 +2664,7 @@ class FlyteRemote(object):
     def _pickle_and_upload_entity(
         self,
         entity: typing.Union[PythonTask, WorkflowBase],
-        pickled_dict: typing.Optional[typing.Dict[str, PythonAutoContainerTask]] = None,
+        pickled_dict: typing.Optional[PickledEntity] = None,
     ) -> FastSerializationSettings:
         """
         Pickle the entity to the specified location. This is useful for debugging and for sharing entities across
