@@ -123,5 +123,14 @@ def run_dummy_server():
             self.wfile.write(HTML_CONTENT.encode('utf-8'))
 
     with socketserver.TCPServer(("", PORT), SimpleHTTPRequestHandler) as httpd:
+        def signal_handler(sig, frame):
+            print('Terminating server...')
+            httpd.shutdown()  # Gracefully shutdown the server
+            sys.exit(0)
+
+        import signal
+
+        signal.signal(signal.SIGINT, signal_handler)  # Handle Ctrl+C
+        signal.signal(signal.SIGTERM, signal_handler)  # Handle termination signal
         print(f"Serving on port {PORT}")
         httpd.serve_forever()
