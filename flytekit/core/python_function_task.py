@@ -520,9 +520,11 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
 
 
 """
-update the call pattern for eager itself, export deck
-test remote
+update the call pattern for eager itself, update assertions,
+export deck, hook up and test with remote
+update comments about call pattern and move
 signal handling
+investigate shelve as stand-in
 
 to enable the async pattern the __call__ function needs to be async or sync. One task type can't be both because it has
 to be this function. You can't overload functions in Python, so we have to differentiate at all levels.
@@ -537,5 +539,4 @@ if i run an eager task, i see it in the console as an execution.
 if i run an eager task inside another eager task, do i want to see a separate console link?
 yes - inputs to eager tasks should be translated to literals
 no - nested eager tasks should handle native inputs.
-
 """

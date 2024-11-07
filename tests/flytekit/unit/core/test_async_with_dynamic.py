@@ -69,6 +69,6 @@ def test_nested_local_backend():
     provider = FileAccessProvider(local_sandbox_dir="/tmp/unittest", raw_output_prefix=raw_output, data_config=dc)
 
     with FlyteContextManager.with_context(ctx.with_file_access(provider).with_client(remote.client)) as ctx:
-        res = loop_manager.run_sync(level_1.run_with_backend, ctx)
+        res = loop_manager.run_sync(level_2.run_with_backend, ctx, x=1000)
         print(res)
-        assert res == (43, 43)
+        assert res == 43

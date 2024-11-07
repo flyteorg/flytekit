@@ -1442,21 +1442,12 @@ async def async_flyte_entity_call_handler(
     # 4. you are in an eager task, calling another eager task
     # 5. you are in a normal task, calling any other kind of task (disallow)
     if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.EAGER_EXECUTION:
-        # if the entity is a nested eager workflow, then we need to handle it specially
-        from flytekit.core.python_function_task import EagerAsyncPythonFunctionTask
-
-        if isinstance(entity, EagerAsyncPythonFunctionTask):
-            return await entity.run_with_backend(ctx, **kwargs)
-
-        # otherwise, ship it off to a worker since we are in a real execution environment.
-        else:
-            if not ctx.worker_queue:
-                raise AssertionError(
-                    "Worker queue missing, must be set when trying to execute tasks in an eager workflow"
-                )
-            loop = asyncio.get_running_loop()
-            fut = ctx.worker_queue.add(loop, entity, input_kwargs=kwargs)
-            result = await fut
+        # for both nested eager, async, and sync tasks,
+        if not ctx.worker_queue:
+            raise AssertionError("Worker queue missing, must be set when trying to execute tasks in an eager workflow")
+        loop = asyncio.get_running_loop()
+        fut = ctx.worker_queue.add(loop, entity, input_kwargs=kwargs)
+        result = await fut
 
         # todo: skip length checks for now. also convert output to the appropriate named tuple if present.
         return result
