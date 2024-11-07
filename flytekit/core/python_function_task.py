@@ -524,6 +524,7 @@ merge master
 export deck, hook up and test with remote
 update comments about call pattern and move
 signal handling
+add error to nested call, worker queue must be empty
 investigate shelve as stand-in
 
 to enable the async pattern the __call__ function needs to be async or sync. One task type can't be both because it has
