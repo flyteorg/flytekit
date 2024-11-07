@@ -391,7 +391,7 @@ class FlyteRemote(object):
         """
         :param uri: This URI can be retrireved from the Flyte Console or by invoking the get_data API.
         :param download_to: Local path to download to
-        :param recursive:
+        :param recursive: Fetch recursively, all variables in the URI.
         Much like `pyflyte fetch` this downloads the literals from a "flyte://..." flyte data URI.
         """
         literal = self.get(uri)
