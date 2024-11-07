@@ -51,6 +51,7 @@ from flytekit.models.core import execution as _execution_models
 from flytekit.models.core import identifier as _identifier
 from flytekit.tools.fast_registration import download_distribution as _download_distribution
 from flytekit.tools.module_loader import load_object_from_module
+from flytekit.utils.pbhash import compute_hash_string
 
 
 def get_version_message():
@@ -140,8 +141,8 @@ def _dispatch_execute(
             offloaded_literals: Dict[str, _literal_models.Literal] = {}
             literal_map_copy = {}
 
-            min_offloaded_size = int(os.environ.get("FK_L_MIN_SIZE_MB", "10")) * 1024 * 1024
-            max_offloaded_size = int(os.environ.get("FK_L_MAX_SIZE_MB", "1000")) * 1024 * 1024
+            min_offloaded_size = int(os.environ.get("_F_L_MIN_SIZE_MB", "10")) * 1024 * 1024
+            max_offloaded_size = int(os.environ.get("_F_L_MAX_SIZE_MB", "1000")) * 1024 * 1024
 
             # Go over each output and create a separate offloaded in case its size is too large
             for k, v in outputs.literals.items():
@@ -154,8 +155,6 @@ def _dispatch_execute(
                 if lit.ByteSize() >= min_offloaded_size:
                     logger.debug(f"Literal {k} is too large to be inlined, offloading to metadata bucket")
 
-                    # TODO: hash calculation
-
                     offloaded_filename = f"{k}_offloaded_metadata.pb"
 
                     offloaded_literal = _literal_models.Literal(
@@ -163,7 +162,8 @@ def _dispatch_execute(
                             uri=f"{output_prefix}/{offloaded_filename}",
                             size_bytes=lit.ByteSize(),
                             # TODO: do I have to set the inferred literal type?
-                        )
+                        ),
+                        hash=v.hash if v.hash is not None else compute_hash_string(lit),
                     )
                     literal_map_copy[k] = offloaded_literal
                     offloaded_literals[offloaded_filename] = v

@@ -16,6 +16,7 @@ from flyteidl.core.literals_pb2 import Literal, LiteralCollection, Scalar, Primi
 from flytekit.bin.entrypoint import _dispatch_execute, normalize_inputs, setup_execution, get_traceback_str
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core import mock_stats
+from flytekit.core.hash import HashMethod
 from flytekit.models.core import identifier as id_models
 from flytekit.core import context_manager
 from flytekit.core.base_task import IgnoreOutputs
@@ -462,6 +463,30 @@ def test_get_traceback_str():
     assert expected_error_re.match(traceback_str) is not None
 
 
+def get_flyte_context(tmp_path_factory, outputs_path):
+    """
+    This is a helper function to create a flyte context with the right parameters for testing offloading of literals.
+    """
+    ctx = context_manager.FlyteContext.current_context()
+    return context_manager.FlyteContextManager.with_context(
+        ctx.with_execution_state(
+            ctx.execution_state.with_params(
+                engine_dir=tmp_path_factory.mktemp("engine_dir"),
+                mode=context_manager.ExecutionState.Mode.TASK_EXECUTION,
+                user_space_params=context_manager.ExecutionParameters(
+                    execution_date=datetime.now(),
+                    tmp_dir="/tmp",
+                    stats=mock_stats.MockStats(),
+                    logging=None,
+                    raw_output_prefix="",
+                    output_metadata_prefix=str(outputs_path.absolute()),
+                    execution_id=id_models.WorkflowExecutionIdentifier("p", "d", "n"),
+                ),
+            ),
+        ),
+    )
+
+
 def test_dispatch_execute_offloaded_literals(tmp_path_factory):
     @task
     def t1(a: typing.List[int]) -> typing.List[str]:
@@ -471,23 +496,7 @@ def test_dispatch_execute_offloaded_literals(tmp_path_factory):
     outputs_path = tmp_path_factory.mktemp("outputs")
 
     ctx = context_manager.FlyteContext.current_context()
-    with context_manager.FlyteContextManager.with_context(
-            ctx.with_execution_state(
-                ctx.execution_state.with_params(
-                    engine_dir=tmp_path_factory.mktemp("engine_dir"),
-                    mode=context_manager.ExecutionState.Mode.TASK_EXECUTION,
-                    user_space_params=context_manager.ExecutionParameters(
-                        execution_date=datetime.now(),
-                        tmp_dir="/tmp",
-                        stats=mock_stats.MockStats(),
-                        logging=None,
-                        raw_output_prefix="",
-                        output_metadata_prefix=str(outputs_path.absolute()),
-                        execution_id=id_models.WorkflowExecutionIdentifier("p", "d", "n"),
-                    ),
-                ),
-            ),
-    ) as ctx:
+    with get_flyte_context(tmp_path_factory, outputs_path) as ctx:
         xs: typing.List[int] = [1, 2, 3]
         input_literal_map = _literal_models.LiteralMap(
             {
@@ -505,7 +514,7 @@ def test_dispatch_execute_offloaded_literals(tmp_path_factory):
 
         write_proto_to_file(input_literal_map.to_flyte_idl(), str(inputs_path/"inputs.pb"))
 
-        with mock.patch.dict(os.environ, {"FK_L_MIN_SIZE_MB": "0"}):
+        with mock.patch.dict(os.environ, {"_F_L_MIN_SIZE_MB": "0"}):
             _dispatch_execute(ctx, lambda: t1, str(inputs_path/"inputs.pb"), str(outputs_path.absolute()))
 
             assert "error.pb" not in os.listdir(outputs_path)
@@ -551,23 +560,7 @@ def test_dispatch_execute_offloaded_literals_two_outputs_offloaded(tmp_path_fact
     outputs_path = tmp_path_factory.mktemp("outputs")
 
     ctx = context_manager.FlyteContext.current_context()
-    with context_manager.FlyteContextManager.with_context(
-            ctx.with_execution_state(
-                ctx.execution_state.with_params(
-                    engine_dir=tmp_path_factory.mktemp("engine_dir"),
-                    mode=context_manager.ExecutionState.Mode.TASK_EXECUTION,
-                    user_space_params=context_manager.ExecutionParameters(
-                        execution_date=datetime.now(),
-                        tmp_dir="/tmp",
-                        stats=mock_stats.MockStats(),
-                        logging=None,
-                        raw_output_prefix="",
-                        output_metadata_prefix=str(outputs_path.absolute()),
-                        execution_id=id_models.WorkflowExecutionIdentifier("p", "d", "n"),
-                    ),
-                ),
-            ),
-    ) as ctx:
+    with get_flyte_context(tmp_path_factory, outputs_path) as ctx:
         xs: typing.List[int] = [1, 2, 3, 4]
         input_literal_map = _literal_models.LiteralMap(
             {
@@ -585,7 +578,7 @@ def test_dispatch_execute_offloaded_literals_two_outputs_offloaded(tmp_path_fact
 
         write_proto_to_file(input_literal_map.to_flyte_idl(), str(inputs_path/"inputs.pb"))
 
-        with mock.patch.dict(os.environ, {"FK_L_MIN_SIZE_MB": "0"}):
+        with mock.patch.dict(os.environ, {"_F_L_MIN_SIZE_MB": "0"}):
             _dispatch_execute(ctx, lambda: t1, str(inputs_path/"inputs.pb"), str(outputs_path.absolute()))
 
             assert "error.pb" not in os.listdir(outputs_path)
@@ -648,24 +641,7 @@ def test_dispatch_execute_offloaded_literals_two_outputs_only_second_one_offload
     inputs_path = tmp_path_factory.mktemp("inputs")
     outputs_path = tmp_path_factory.mktemp("outputs")
 
-    ctx = context_manager.FlyteContext.current_context()
-    with context_manager.FlyteContextManager.with_context(
-            ctx.with_execution_state(
-                ctx.execution_state.with_params(
-                    engine_dir=tmp_path_factory.mktemp("engine_dir"),
-                    mode=context_manager.ExecutionState.Mode.TASK_EXECUTION,
-                    user_space_params=context_manager.ExecutionParameters(
-                        execution_date=datetime.now(),
-                        tmp_dir="/tmp",
-                        stats=mock_stats.MockStats(),
-                        logging=None,
-                        raw_output_prefix="",
-                        output_metadata_prefix=str(outputs_path.absolute()),
-                        execution_id=id_models.WorkflowExecutionIdentifier("p", "d", "n"),
-                    ),
-                ),
-            ),
-    ) as ctx:
+    with get_flyte_context(tmp_path_factory, outputs_path) as ctx:
         input_literal_map = _literal_models.LiteralMap(
             {
                 "n": _literal_models.Literal(
@@ -677,7 +653,7 @@ def test_dispatch_execute_offloaded_literals_two_outputs_only_second_one_offload
         write_proto_to_file(input_literal_map.to_flyte_idl(), str(inputs_path/"inputs.pb"))
 
         # Notice how the threshold is set to 1MB
-        with mock.patch.dict(os.environ, {"FK_L_MIN_SIZE_MB": "1"}):
+        with mock.patch.dict(os.environ, {"_F_L_MIN_SIZE_MB": "1"}):
             _dispatch_execute(ctx, lambda: t1, str(inputs_path/"inputs.pb"), str(outputs_path.absolute()))
 
             assert "error.pb" not in os.listdir(outputs_path)
@@ -695,18 +671,75 @@ def test_dispatch_execute_offloaded_literals_two_outputs_only_second_one_offload
                         # o0 is not offloaded
                         assert "o0" in lit.literals
                         assert lit.literals["o0"].HasField("offloaded_metadata") is False
+                        assert lit.literals["o0"].hash == ""
 
                         # o1 is offloaded
                         assert "o1" in lit.literals
                         assert lit.literals["o1"].HasField("offloaded_metadata") is True
                         assert lit.literals["o1"].offloaded_metadata.size_bytes == 1108538
                         assert lit.literals["o1"].offloaded_metadata.uri.endswith("/o1_offloaded_metadata.pb")
+                        assert lit.literals["o1"].hash == "VS9bthLslGa8tjuVBCcmO3UdGHrkpyOBXzJlmY47fw8="
                     elif ff == "o1_offloaded_metadata.pb":
                         lit = literals_pb2.Literal()
                         lit.ParseFromString(f.read())
+                        assert lit.hash == ""
                         # Load the dataclass from the proto
                         transformer = TypeEngine.get_transformer(DC)
                         dc = transformer.to_python_value(ctx, _literal_models.Literal.from_flyte_idl(lit), DC)
                         assert dc.a == list(range(56_000))
+                    else:
+                        assert False, f"Unexpected file {ff}"
+
+
+
+def test_dispatch_execute_offloaded_literals_annotated_hash(tmp_path_factory):
+    class A:
+        def __init__(self, a: int):
+            self.a = a
+
+    @task
+    def t1(n: int) -> typing.Annotated[A, HashMethod(lambda x: str(x.a))]:
+        return A(a=n)
+
+    inputs_path = tmp_path_factory.mktemp("inputs")
+    outputs_path = tmp_path_factory.mktemp("outputs")
+
+    with get_flyte_context(tmp_path_factory, outputs_path) as ctx:
+        input_literal_map = _literal_models.LiteralMap(
+            {
+                "n": _literal_models.Literal(
+                    scalar=_literal_models.Scalar(primitive=_literal_models.Primitive(integer=1234)),
+                )
+            }
+        )
+
+        write_proto_to_file(input_literal_map.to_flyte_idl(), str(inputs_path/"inputs.pb"))
+
+        # All literals should be offloaded
+        with mock.patch.dict(os.environ, {"_F_L_MIN_SIZE_MB": "0"}):
+            _dispatch_execute(ctx, lambda: t1, str(inputs_path/"inputs.pb"), str(outputs_path.absolute()))
+
+            assert "error.pb" not in os.listdir(outputs_path)
+
+            for ff in os.listdir(outputs_path):
+                with open(outputs_path/ff, "rb") as f:
+                    if ff == "outputs.pb":
+                        lit = literals_pb2.LiteralMap()
+                        lit.ParseFromString(f.read())
+                        assert len(lit.literals) == 1
+
+                        # o1 is offloaded
+                        assert "o0" in lit.literals
+                        assert lit.literals["o0"].HasField("offloaded_metadata") is True
+                        assert lit.literals["o0"].offloaded_metadata.size_bytes > 0
+                        assert lit.literals["o0"].offloaded_metadata.uri.endswith("/o0_offloaded_metadata.pb")
+                        assert lit.literals["o0"].hash == "1234"
+                    elif ff == "o0_offloaded_metadata.pb":
+                        lit = literals_pb2.Literal()
+                        lit.ParseFromString(f.read())
+                        assert lit.hash == "1234"
+                        transformer = TypeEngine.get_transformer(A)
+                        a = transformer.to_python_value(ctx, _literal_models.Literal.from_flyte_idl(lit), A)
+                        assert a.a == 1234
                     else:
                         assert False, f"Unexpected file {ff}"
