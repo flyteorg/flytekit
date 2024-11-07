@@ -130,7 +130,7 @@ def package(
     object contains the WorkflowTemplate, along with the relevant tasks for that workflow.
     This serialization step will set the name of the tasks to the fully qualified name of the task function.
 
-    Given a Python package containing Flyte entities with a structure like this:
+    Given a Python package containing Flyte entities with a structure like this ...
 
     .
     └── some_package
@@ -139,11 +139,10 @@ def package(
             ├── __init__.py
             └── wf.py
 
-    You can package the Flyte entities contained in this package by executing the following command:
-
+    ... you can package the Flyte entities contained in this Python package by executing the following command:
     pyflyte --pkgs some_package package
 
-    This command will create a Flyte backend registrable package of all entities in the specified package.
+    This command parses and compiles the user’s Python code into Flyte protobuf objects that can be registered with the backend.
     """
     # Ensure that the two flags are consistent
     if fast:
