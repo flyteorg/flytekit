@@ -5,8 +5,6 @@ import os
 from functools import update_wrapper
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, TypeVar, Union, overload
 
-from flytekit.core.utils import str2bool
-
 from typing_extensions import ParamSpec  # type: ignore
 
 from flytekit.core import launch_plan as _annotated_launchplan
@@ -17,6 +15,7 @@ from flytekit.core.pod_template import PodTemplate
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.reference_entity import ReferenceEntity, TaskReference
 from flytekit.core.resources import Resources
+from flytekit.core.utils import str2bool
 from flytekit.deck import DeckField
 from flytekit.extras.accelerators import BaseAccelerator
 from flytekit.image_spec.image_spec import ImageSpec
