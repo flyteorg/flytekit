@@ -29,6 +29,7 @@ Plugin API reference
 * :ref:`Ray <ray>` - Ray API reference
 * :ref:`DBT <dbt>` - DBT API reference
 * :ref:`Vaex <vaex>` - Vaex API reference
+* :ref:`Memray <memray>` - Memray API reference
 * :ref:`MLflow <mlflow>` - MLflow API reference
 * :ref:`DuckDB <duckdb>` - DuckDB API reference
 * :ref:`SageMaker Inference <awssagemaker_inference>` - SageMaker Inference API reference
@@ -66,6 +67,7 @@ Plugin API reference
    Ray <ray>
    DBT <dbt>
    Vaex <vaex>
+   Memray <memray>
    MLflow <mlflow>
    DuckDB <duckdb>
    SageMaker Inference <awssagemaker_inference>
