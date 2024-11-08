@@ -19,7 +19,7 @@ annotated-types==0.7.0
     # via pydantic
 anyio==4.6.0
     # via httpx
-apache-airflow==2.10.2
+apache-airflow[google]==2.10.3
     # via
     #   -r dev-requirements.in
     #   apache-airflow-providers-apache-beam
@@ -33,7 +33,7 @@ apache-airflow==2.10.2
     #   apache-airflow-providers-imap
     #   apache-airflow-providers-smtp
     #   apache-airflow-providers-sqlite
-apache-airflow-providers-apache-beam==5.8.0
+apache-airflow-providers-apache-beam[google]==5.8.0
     # via -r dev-requirements.in
 apache-airflow-providers-common-compat==1.2.0
     # via
@@ -62,9 +62,9 @@ apache-airflow-providers-smtp==1.8.0
     # via apache-airflow
 apache-airflow-providers-sqlite==3.9.0
     # via apache-airflow
-apache-beam==2.59.0
+apache-beam[gcp]==2.59.0
     # via apache-airflow-providers-apache-beam
-apispec==6.6.1
+apispec[yaml]==6.6.1
     # via flask-appbuilder
 argcomplete==3.5.1
     # via apache-airflow
@@ -73,10 +73,6 @@ asgiref==3.8.1
     #   apache-airflow
     #   apache-airflow-providers-google
     #   apache-airflow-providers-http
-async-timeout==4.0.3
-    # via
-    #   aiohttp
-    #   redis
 attrs==24.2.0
     # via
     #   aiohttp
@@ -130,7 +126,7 @@ colorlog==6.8.2
     # via apache-airflow
 configupdater==3.2
     # via apache-airflow
-connexion==2.14.2
+connexion[flask]==2.14.2
     # via apache-airflow
 crcmod==1.7
     # via apache-beam
@@ -169,10 +165,6 @@ docutils==0.21.2
     # via python-daemon
 email-validator==2.2.0
     # via flask-appbuilder
-exceptiongroup==1.2.2
-    # via
-    #   anyio
-    #   cattrs
 fastavro==1.9.7
     # via apache-beam
 fasteners==0.19
@@ -239,7 +231,7 @@ google-ads==25.0.0
     # via apache-airflow-providers-google
 google-analytics-admin==0.23.0
     # via apache-airflow-providers-google
-google-api-core==2.21.0
+google-api-core[grpc]==2.21.0
     # via
     #   apache-airflow-providers-google
     #   apache-beam
@@ -499,7 +491,7 @@ google-resumable-media==2.7.2
     # via
     #   google-cloud-bigquery
     #   google-cloud-storage
-googleapis-common-protos==1.65.0
+googleapis-common-protos[grpc]==1.65.0
     # via
     #   google-ads
     #   google-api-core
@@ -508,6 +500,8 @@ googleapis-common-protos==1.65.0
     #   grpcio-status
     #   opentelemetry-exporter-otlp-proto-grpc
     #   opentelemetry-exporter-otlp-proto-http
+greenlet==3.1.1
+    # via sqlalchemy
 grpc-google-iam-v1==0.13.1
     # via
     #   google-cloud-bigtable
@@ -577,8 +571,6 @@ idna==3.10
     #   yarl
 immutabledict==4.2.0
     # via apache-airflow-providers-google
-importlib-metadata==8.5.0
-    # via apache-airflow
 importlib-resources==6.4.5
     # via limits
 inflection==0.5.1
@@ -597,8 +589,6 @@ jinja2==3.1.4
     #   python-nvd3
 jmespath==1.0.1
     # via apache-airflow-providers-fab
-js2py==0.74
-    # via apache-beam
 json-merge-patch==0.2
     # via apache-airflow-providers-google
 jsonpickle==3.3.0
@@ -868,8 +858,6 @@ pygments==2.18.0
     # via
     #   apache-airflow
     #   rich
-pyjsparser==2.7.1
-    # via js2py
 pyjwt==2.9.0
     # via
     #   apache-airflow
@@ -964,20 +952,12 @@ rsa==4.9
     #   oauth2client
 setproctitle==1.3.3
     # via apache-airflow
-setuptools==75.1.0
-    # via
-    #   opentelemetry-api
-    #   opentelemetry-sdk
-    #   pandas-gbq
-    #   pydata-google-auth
-    #   python-daemon
 shapely==2.0.6
     # via google-cloud-aiplatform
 six==1.16.0
     # via
     #   google-apitools
     #   hdfs
-    #   js2py
     #   oauth2client
     #   prison
     #   python-dateutil
@@ -1025,28 +1005,19 @@ time-machine==2.16.0
 typing-extensions==4.12.2
     # via
     #   alembic
-    #   anyio
     #   apache-beam
-    #   asgiref
-    #   cattrs
     #   flask-limiter
     #   limits
     #   looker-sdk
-    #   multidict
     #   opentelemetry-sdk
     #   pydantic
     #   pydantic-core
-    #   rich
 tzdata==2024.2
     # via
     #   pandas
     #   pendulum
-tzlocal==5.2
-    # via js2py
 uc-micro-py==1.0.3
     # via linkify-it-py
-unicodecsv==0.14.1
-    # via apache-airflow
 universal-pathlib==0.2.5
     # via apache-airflow
 uritemplate==4.1.1
@@ -1071,7 +1042,5 @@ wtforms==3.1.2
     #   flask-wtf
 yarl==1.14.0
     # via aiohttp
-zipp==3.20.2
-    # via importlib-metadata
 zstandard==0.23.0
     # via apache-beam
