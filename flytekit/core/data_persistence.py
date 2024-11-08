@@ -18,6 +18,7 @@ simple implementation that ships with the core.
 
 """
 
+import asyncio
 import io
 import os
 import pathlib
@@ -29,6 +30,7 @@ from uuid import UUID
 
 import fsspec
 from decorator import decorator
+from fsspec.asyn import AsyncFileSystem
 from fsspec.utils import get_protocol
 from typing_extensions import Unpack
 
@@ -36,9 +38,11 @@ from flytekit import configuration
 from flytekit.configuration import DataConfig
 from flytekit.core.local_fsspec import FlyteLocalFileSystem
 from flytekit.core.utils import timeit
+from flytekit.exceptions.system import FlyteDownloadDataException, FlyteUploadDataException
 from flytekit.exceptions.user import FlyteAssertion, FlyteDataNotFoundException
 from flytekit.interfaces.random import random
 from flytekit.loggers import logger
+from flytekit.utils.asyn import loop_manager
 
 # Refer to https://github.com/fsspec/s3fs/blob/50bafe4d8766c3b2a4e1fc09669cf02fb2d71454/s3fs/core.py#L198
 # for key and secret
@@ -207,8 +211,17 @@ class FileAccessProvider(object):
         storage_options = get_fsspec_storage_options(
             protocol=protocol, anonymous=anonymous, data_config=self._data_config, **kwargs
         )
+        kwargs.update(storage_options)
 
-        return fsspec.filesystem(protocol, **storage_options)
+        return fsspec.filesystem(protocol, **kwargs)
+
+    async def get_async_filesystem_for_path(
+        self, path: str = "", anonymous: bool = False, **kwargs
+    ) -> Union[AsyncFileSystem, fsspec.AbstractFileSystem]:
+        protocol = get_protocol(path)
+        loop = asyncio.get_running_loop()
+
+        return self.get_filesystem(protocol, anonymous=anonymous, path=path, asynchronous=True, loop=loop, **kwargs)
 
     def get_filesystem_for_path(self, path: str = "", anonymous: bool = False, **kwargs) -> fsspec.AbstractFileSystem:
         protocol = get_protocol(path)
@@ -281,8 +294,8 @@ class FileAccessProvider(object):
             raise oe
 
     @retry_request
-    def get(self, from_path: str, to_path: str, recursive: bool = False, **kwargs):
-        file_system = self.get_filesystem_for_path(from_path)
+    async def get(self, from_path: str, to_path: str, recursive: bool = False, **kwargs):
+        file_system = await self.get_async_filesystem_for_path(from_path)
         if recursive:
             from_path, to_path = self.recursive_paths(from_path, to_path)
         try:
@@ -293,23 +306,37 @@ class FileAccessProvider(object):
                     self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True
                 )
             logger.info(f"Getting {from_path} to {to_path}")
-            dst = file_system.get(from_path, to_path, recursive=recursive, **kwargs)
+            if isinstance(file_system, AsyncFileSystem):
+                dst = await file_system._get(from_path, to_path, recursive=recursive, **kwargs)  # pylint: disable=W0212
+            else:
+                dst = file_system.get(from_path, to_path, recursive=recursive, **kwargs)
             if isinstance(dst, (str, pathlib.Path)):
                 return dst
             return to_path
         except OSError as oe:
             logger.debug(f"Error in getting {from_path} to {to_path} rec {recursive} {oe}")
-            if not file_system.exists(from_path):
+            if isinstance(file_system, AsyncFileSystem):
+                exists = await file_system._exists(from_path)  # pylint: disable=W0212
+            else:
+                exists = file_system.exists(from_path)
+            if not exists:
                 raise FlyteDataNotFoundException(from_path)
-            file_system = self.get_filesystem(get_protocol(from_path), anonymous=True)
+            file_system = self.get_filesystem(get_protocol(from_path), anonymous=True, asynchronous=True)
             if file_system is not None:
                 logger.debug(f"Attempting anonymous get with {file_system}")
-                return file_system.get(from_path, to_path, recursive=recursive, **kwargs)
+                if isinstance(file_system, AsyncFileSystem):
+                    return await file_system._get(from_path, to_path, recursive=recursive, **kwargs)  # pylint: disable=W0212
+                else:
+                    return file_system.get(from_path, to_path, recursive=recursive, **kwargs)
             raise oe
 
     @retry_request
-    def put(self, from_path: str, to_path: str, recursive: bool = False, **kwargs):
-        file_system = self.get_filesystem_for_path(to_path)
+    async def _put(self, from_path: str, to_path: str, recursive: bool = False, **kwargs):
+        """
+        More of an internal function to be called by put_data and put_raw_data
+        This does not need a separate sync function.
+        """
+        file_system = await self.get_async_filesystem_for_path(to_path)
         from_path = self.strip_file_header(from_path)
         if recursive:
             # Only check this for the local filesystem
@@ -326,13 +353,16 @@ class FileAccessProvider(object):
             if "metadata" not in kwargs:
                 kwargs["metadata"] = {}
             kwargs["metadata"].update(self._execution_metadata)
-        dst = file_system.put(from_path, to_path, recursive=recursive, **kwargs)
+        if isinstance(file_system, AsyncFileSystem):
+            dst = await file_system._put(from_path, to_path, recursive=recursive, **kwargs)  # pylint: disable=W0212
+        else:
+            dst = file_system.put(from_path, to_path, recursive=recursive, **kwargs)
         if isinstance(dst, (str, pathlib.Path)):
             return dst
         else:
             return to_path
 
-    def put_raw_data(
+    async def async_put_raw_data(
         self,
         lpath: Uploadable,
         upload_prefix: Optional[str] = None,
@@ -363,7 +393,7 @@ class FileAccessProvider(object):
         :param read_chunk_size_bytes: If lpath is a buffer, this is the chunk size to read from it
         :param encoding: If lpath is a io.StringIO, this is the encoding to use to encode it to binary.
         :param skip_raw_data_prefix: If True, the raw data prefix will not be prepended to the upload_prefix
-        :param kwargs: Additional kwargs are passed into the the fsspec put() call or the open() call
+        :param kwargs: Additional kwargs are passed into the fsspec put() call or the open() call
         :return: Returns the final path data was written to.
         """
         # First figure out what the destination path should be, then call put.
@@ -387,41 +417,59 @@ class FileAccessProvider(object):
                 raise FlyteAssertion(f"File {from_path} is a symlink, can't upload")
             if p.is_dir():
                 logger.debug(f"Detected directory {from_path}, using recursive put")
-                r = self.put(from_path, to_path, recursive=True, **kwargs)
+                r = await self._put(from_path, to_path, recursive=True, **kwargs)
             else:
                 logger.debug(f"Detected file {from_path}, call put non-recursive")
-                r = self.put(from_path, to_path, **kwargs)
+                r = await self._put(from_path, to_path, **kwargs)
             return r or to_path
 
         # raw bytes
         if isinstance(lpath, bytes):
-            fs = self.get_filesystem_for_path(to_path)
-            with fs.open(to_path, "wb", **kwargs) as s:
-                s.write(lpath)
+            fs = await self.get_async_filesystem_for_path(to_path)
+            if isinstance(fs, AsyncFileSystem):
+                async with fs.open_async(to_path, "wb", **kwargs) as s:
+                    s.write(lpath)
+            else:
+                with fs.open(to_path, "wb", **kwargs) as s:
+                    s.write(lpath)
+
             return to_path
 
         # If lpath is a buffered reader of some kind
         if isinstance(lpath, io.BufferedReader) or isinstance(lpath, io.BytesIO):
             if not lpath.readable():
                 raise FlyteAssertion("Buffered reader must be readable")
-            fs = self.get_filesystem_for_path(to_path)
+            fs = await self.get_async_filesystem_for_path(to_path)
             lpath.seek(0)
-            with fs.open(to_path, "wb", **kwargs) as s:
-                while data := lpath.read(read_chunk_size_bytes):
-                    s.write(data)
+            if isinstance(fs, AsyncFileSystem):
+                async with fs.open_async(to_path, "wb", **kwargs) as s:
+                    while data := lpath.read(read_chunk_size_bytes):
+                        s.write(data)
+            else:
+                with fs.open(to_path, "wb", **kwargs) as s:
+                    while data := lpath.read(read_chunk_size_bytes):
+                        s.write(data)
             return to_path
 
         if isinstance(lpath, io.StringIO):
             if not lpath.readable():
                 raise FlyteAssertion("Buffered reader must be readable")
-            fs = self.get_filesystem_for_path(to_path)
+            fs = await self.get_async_filesystem_for_path(to_path)
             lpath.seek(0)
-            with fs.open(to_path, "wb", **kwargs) as s:
-                while data_str := lpath.read(read_chunk_size_bytes):
-                    s.write(data_str.encode(encoding))
+            if isinstance(fs, AsyncFileSystem):
+                async with fs.open_async(to_path, "wb", **kwargs) as s:
+                    while data_str := lpath.read(read_chunk_size_bytes):
+                        s.write(data_str.encode(encoding))
+            else:
+                with fs.open(to_path, "wb", **kwargs) as s:
+                    while data_str := lpath.read(read_chunk_size_bytes):
+                        s.write(data_str.encode(encoding))
             return to_path
 
         raise FlyteAssertion(f"Unsupported lpath type {type(lpath)}")
+
+    # Public synchronous version
+    put_raw_data = loop_manager.synced(async_put_raw_data)
 
     @staticmethod
     def get_random_string() -> str:
@@ -548,7 +596,7 @@ class FileAccessProvider(object):
         """
         return self.put_data(local_path, remote_path, is_multipart=True, **kwargs)
 
-    def get_data(self, remote_path: str, local_path: str, is_multipart: bool = False, **kwargs):
+    async def async_get_data(self, remote_path: str, local_path: str, is_multipart: bool = False, **kwargs):
         """
         :param remote_path:
         :param local_path:
@@ -557,16 +605,18 @@ class FileAccessProvider(object):
         try:
             pathlib.Path(local_path).parent.mkdir(parents=True, exist_ok=True)
             with timeit(f"Download data to local from {remote_path}"):
-                self.get(remote_path, to_path=local_path, recursive=is_multipart, **kwargs)
+                await self.get(remote_path, to_path=local_path, recursive=is_multipart, **kwargs)
         except FlyteDataNotFoundException:
             raise
         except Exception as ex:
-            raise FlyteAssertion(
+            raise FlyteDownloadDataException(
                 f"Failed to get data from {remote_path} to {local_path} (recursive={is_multipart}).\n\n"
                 f"Original exception: {str(ex)}"
             )
 
-    def put_data(
+    get_data = loop_manager.synced(async_get_data)
+
+    async def async_put_data(
         self, local_path: Union[str, os.PathLike], remote_path: str, is_multipart: bool = False, **kwargs
     ) -> str:
         """
@@ -580,7 +630,7 @@ class FileAccessProvider(object):
         try:
             local_path = str(local_path)
             with timeit(f"Upload data to {remote_path}"):
-                put_result = self.put(cast(str, local_path), remote_path, recursive=is_multipart, **kwargs)
+                put_result = await self._put(cast(str, local_path), remote_path, recursive=is_multipart, **kwargs)
                 # This is an unfortunate workaround to ensure that we return the correct path for the remote location
                 # Callers of this put_data function in flytekit have been changed to assign the remote path to the
                 # output
@@ -589,10 +639,13 @@ class FileAccessProvider(object):
                     return put_result
                 return remote_path
         except Exception as ex:
-            raise FlyteAssertion(
+            raise FlyteUploadDataException(
                 f"Failed to put data from {local_path} to {remote_path} (recursive={is_multipart}).\n\n"
                 f"Original exception: {str(ex)}"
             ) from ex
+
+    # Public synchronous version
+    put_data = loop_manager.synced(async_put_data)
 
 
 flyte_tmp_dir = tempfile.mkdtemp(prefix="flyte-")

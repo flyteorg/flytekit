@@ -13,3 +13,12 @@ END_NODE_ID = "end-node"
 
 # If set this environment variable overrides the default container image and the default base image in ImageSpec.
 FLYTE_INTERNAL_IMAGE_ENV_VAR = "FLYTE_INTERNAL_IMAGE"
+
+# Binary IDL Serialization Format
+MESSAGEPACK = "msgpack"
+
+# Use the old way to create protobuf struct for dict, dataclass, and pydantic basemodel.
+FLYTE_USE_OLD_DC_FORMAT = "FLYTE_USE_OLD_DC_FORMAT"
+
+# Set this environment variable to true to force the task to return non-zero exit code on failure.
+FLYTE_FAIL_ON_ERROR = "FLYTE_FAIL_ON_ERROR"

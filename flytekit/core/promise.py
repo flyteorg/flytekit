@@ -4,12 +4,13 @@ import collections
 import datetime
 import inspect
 import typing
+from collections.abc import Iterable
 from copy import deepcopy
 from enum import Enum
-from typing import Any, Coroutine, Dict, List, Optional, Set, Tuple, Union, cast, get_args
+from typing import Any, Coroutine, Dict, List, Optional, Set, Tuple, Union, cast
 
 from google.protobuf import struct_pb2 as _struct
-from typing_extensions import Protocol
+from typing_extensions import Annotated, Protocol, get_args, get_origin
 
 from flytekit.core import constants as _common_constants
 from flytekit.core import context_manager as _flyte_context
@@ -26,9 +27,11 @@ from flytekit.core.context_manager import (
 from flytekit.core.interface import Interface
 from flytekit.core.node import Node
 from flytekit.core.type_engine import (
+    AsyncTypeTransformer,
     DictTransformer,
     ListTransformer,
     TypeEngine,
+    TypeTransformer,
     TypeTransformerFailedError,
     UnionTransformer,
 )
@@ -41,12 +44,13 @@ from flytekit.models import literals as _literals_models
 from flytekit.models import types as _type_models
 from flytekit.models import types as type_models
 from flytekit.models.core import workflow as _workflow_model
-from flytekit.models.literals import Primitive
+from flytekit.models.literals import Binary, Literal, Primitive, Scalar
 from flytekit.models.task import Resources
 from flytekit.models.types import SimpleType
+from flytekit.utils.asyn import loop_manager, run_sync
 
 
-def translate_inputs_to_literals(
+async def _translate_inputs_to_literals(
     ctx: FlyteContext,
     incoming_values: Dict[str, Any],
     flyte_interface_types: Dict[str, _interface_models.Variable],
@@ -93,9 +97,8 @@ def translate_inputs_to_literals(
         var = flyte_interface_types[k]
         t = native_types[k]
         try:
-            if type(v) is Promise:
-                v = resolve_attr_path_in_promise(v)
-            result[k] = TypeEngine.to_literal(ctx, v, t, var.type)
+            v = await resolve_attr_path_recursively(v)
+            result[k] = await TypeEngine.async_to_literal(ctx, v, t, var.type)
         except TypeTransformerFailedError as exc:
             exc.args = (f"Failed argument '{k}': {exc.args[0]}",)
             raise
@@ -103,7 +106,25 @@ def translate_inputs_to_literals(
     return result
 
 
-def resolve_attr_path_in_promise(p: Promise) -> Promise:
+translate_inputs_to_literals = loop_manager.synced(_translate_inputs_to_literals)
+
+
+async def resolve_attr_path_recursively(v: Any) -> Any:
+    """
+    This function resolves the attribute path in a nested structure recursively.
+    """
+    if isinstance(v, Promise):
+        v = await resolve_attr_path_in_promise(v)
+    elif isinstance(v, list):
+        for i, elem in enumerate(v):
+            v[i] = await resolve_attr_path_recursively(elem)
+    elif isinstance(v, dict):
+        for k, elem in v.items():
+            v[k] = await resolve_attr_path_recursively(elem)
+    return v
+
+
+async def resolve_attr_path_in_promise(p: Promise) -> Promise:
     """
     resolve_attr_path_in_promise resolves the attribute path in a promise and returns a new promise with the resolved value
     This is for local execution only. The remote execution will be resolved in flytepropeller.
@@ -138,19 +159,49 @@ def resolve_attr_path_in_promise(p: Promise) -> Promise:
             break
 
     # If the current value is a dataclass, resolve the dataclass with the remaining path
-    if (
-        len(p.attr_path) > 0
-        and type(curr_val.value) is _literals_models.Scalar
-        and type(curr_val.value.value) is _struct.Struct
-    ):
-        st = curr_val.value.value
-        new_st = resolve_attr_path_in_pb_struct(st, attr_path=p.attr_path[used:])
-        literal_type = TypeEngine.to_literal_type(type(new_st))
-        # Reconstruct the resolved result to flyte literal (because the resolved result might not be struct)
-        curr_val = TypeEngine.to_literal(FlyteContextManager.current_context(), new_st, type(new_st), literal_type)
+    if len(p.attr_path) > 0 and type(curr_val.value) is _literals_models.Scalar:
+        # We keep it for reference task local execution in the future.
+        if type(curr_val.value.value) is _struct.Struct:
+            """
+            Local execution currently has issues with struct attribute resolution.
+            This works correctly in remote execution.
+            Issue Link: https://github.com/flyteorg/flyte/issues/5959
+            """
+
+            st = curr_val.value.value
+            new_st = resolve_attr_path_in_pb_struct(st, attr_path=p.attr_path[used:])
+            literal_type = TypeEngine.to_literal_type(type(new_st))
+            # Reconstruct the resolved result to flyte literal (because the resolved result might not be struct)
+            curr_val = await TypeEngine.async_to_literal(
+                FlyteContextManager.current_context(), new_st, type(new_st), literal_type
+            )
+        elif type(curr_val.value.value) is Binary:
+            binary_idl_obj = curr_val.value.value
+            if binary_idl_obj.tag == _common_constants.MESSAGEPACK:
+                import msgpack
+
+                dict_obj = msgpack.loads(binary_idl_obj.value, strict_map_key=False)
+                v = resolve_attr_path_in_dict(dict_obj, attr_path=p.attr_path[used:])
+                msgpack_bytes = msgpack.dumps(v)
+                curr_val = Literal(scalar=Scalar(binary=Binary(value=msgpack_bytes, tag="msgpack")))
+            else:
+                raise TypeTransformerFailedError(f"Unsupported binary format {binary_idl_obj.tag}")
 
     p._val = curr_val
     return p
+
+
+def resolve_attr_path_in_dict(d: dict, attr_path: List[Union[str, int]]) -> Any:
+    curr_val = d
+    for attr in attr_path:
+        try:
+            curr_val = curr_val[attr]
+        except (KeyError, IndexError, TypeError) as e:
+            raise FlytePromiseAttributeResolveException(
+                f"Failed to resolve attribute path {attr_path} in dict `{curr_val}`, attribute `{attr}` not found.\n"
+                f"Error Message: {e}"
+            )
+    return curr_val
 
 
 def resolve_attr_path_in_pb_struct(st: _struct.Struct, attr_path: List[Union[str, int]]) -> _struct.Struct:
@@ -211,6 +262,7 @@ class ComparisonExpression(object):
         self._op = op
         self._lhs = None
         self._rhs = None
+
         if isinstance(lhs, Promise):
             self._lhs = lhs
             if lhs.is_ready:
@@ -755,13 +807,24 @@ def create_task_output(
     return Output(*promises)  # type: ignore
 
 
-def binding_data_from_python_std(
+T = typing.TypeVar("T")
+
+
+async def binding_data_from_python_std(
     ctx: _flyte_context.FlyteContext,
     expected_literal_type: _type_models.LiteralType,
     t_value: Any,
-    t_value_type: type,
+    t_value_type: typing.Type[T],
     nodes: List[Node],
 ) -> _literals_models.BindingData:
+    literal_type_override = None
+    transformer_override = None
+    if get_origin(t_value_type) is Annotated:
+        for annotation in get_args(t_value_type)[1:]:
+            if isinstance(annotation, TypeTransformer):
+                transformer_override = annotation
+                literal_type_override = annotation.get_literal_type(t_value_type)
+
     # This handles the case where the given value is the output of another task
     if isinstance(t_value, Promise):
         if not t_value.is_ready:
@@ -790,7 +853,8 @@ def binding_data_from_python_std(
         # If the value is not a container type, then we can directly convert it to a scalar in the Union case.
         # This pushes the handling of the Union types to the type engine.
         if not isinstance(t_value, list) and not isinstance(t_value, dict):
-            scalar = TypeEngine.to_literal(ctx, t_value, t_value_type or type(t_value), expected_literal_type).scalar
+            lit = await TypeEngine.async_to_literal(ctx, t_value, t_value_type or type(t_value), expected_literal_type)
+            scalar = lit.scalar
             return _literals_models.BindingData(scalar=scalar)
 
         # If it is a container type, then we need to iterate over the variants in the Union type, try each one. This is
@@ -800,7 +864,7 @@ def binding_data_from_python_std(
             try:
                 lt_type = expected_literal_type.union_type.variants[i]
                 python_type = get_args(t_value_type)[i] if t_value_type else None
-                return binding_data_from_python_std(ctx, lt_type, t_value, python_type, nodes)
+                return await binding_data_from_python_std(ctx, lt_type, t_value, python_type, nodes)
             except Exception:
                 logger.debug(
                     f"failed to bind data {t_value} with literal type {expected_literal_type.union_type.variants[i]}."
@@ -809,18 +873,39 @@ def binding_data_from_python_std(
             f"Failed to bind data {t_value} with literal type {expected_literal_type.union_type.variants}."
         )
 
-    elif isinstance(t_value, list):
-        sub_type: Optional[type] = ListTransformer.get_sub_type_or_none(t_value_type)
+    elif (
+        isinstance(t_value, list)
+        and (not transformer_override or (literal_type_override and literal_type_override.collection_type is not None))
+        or (
+            literal_type_override
+            and literal_type_override.collection_type is not None
+            and isinstance(t_value, Iterable)
+        )
+    ):
+        if transformer_override and hasattr(transformer_override, "get_sub_type_or_none"):
+            sub_type = transformer_override.get_sub_type_or_none(t_value_type)
+        else:
+            sub_type = ListTransformer.get_sub_type_or_none(t_value_type)
         collection = _literals_models.BindingDataCollection(
             bindings=[
-                binding_data_from_python_std(ctx, expected_literal_type.collection_type, t, sub_type or type(t), nodes)
+                await binding_data_from_python_std(
+                    ctx,
+                    expected_literal_type.collection_type,
+                    t,
+                    sub_type or type(t),
+                    nodes,
+                )
                 for t in t_value
             ]
         )
 
         return _literals_models.BindingData(collection=collection)
 
-    elif isinstance(t_value, dict):
+    elif (
+        isinstance(t_value, dict)
+        and (not transformer_override or (literal_type_override and literal_type_override.map_value_type is not None))
+        or (literal_type_override and literal_type_override.map_value_type is not None and hasattr(t_value, "items"))
+    ):
         if (
             expected_literal_type.map_value_type is None
             and expected_literal_type.simple != _type_models.SimpleType.STRUCT
@@ -829,14 +914,21 @@ def binding_data_from_python_std(
                 f"this should be a Dictionary type and it is not: {type(t_value)} vs {expected_literal_type}"
             )
         if expected_literal_type.simple == _type_models.SimpleType.STRUCT:
-            lit = TypeEngine.to_literal(ctx, t_value, type(t_value), expected_literal_type)
+            lit = await TypeEngine.async_to_literal(ctx, t_value, type(t_value), expected_literal_type)
             return _literals_models.BindingData(scalar=lit.scalar)
         else:
-            _, v_type = DictTransformer.extract_types_or_metadata(t_value_type)
+            if transformer_override and hasattr(transformer_override, "extract_types_or_metadata"):
+                _, v_type = transformer_override.extract_types_or_metadata(t_value_type)  # type: ignore
+            else:
+                _, v_type = DictTransformer.extract_types_or_metadata(t_value_type)  # type: ignore
             m = _literals_models.BindingDataMap(
                 bindings={
-                    k: binding_data_from_python_std(
-                        ctx, expected_literal_type.map_value_type, v, v_type or type(v), nodes
+                    k: await binding_data_from_python_std(
+                        ctx,
+                        expected_literal_type.map_value_type,
+                        v,
+                        v_type or type(v),
+                        nodes,
                     )
                     for k, v in t_value.items()
                 }
@@ -852,8 +944,16 @@ def binding_data_from_python_std(
         )
 
     # This is the scalar case - e.g. my_task(in1=5)
-    scalar = TypeEngine.to_literal(ctx, t_value, t_value_type or type(t_value), expected_literal_type).scalar
-    return _literals_models.BindingData(scalar=scalar)
+    if transformer_override is None:
+        lit = await TypeEngine.async_to_literal(ctx, t_value, t_value_type or type(t_value), expected_literal_type)
+    else:
+        if isinstance(transformer_override, AsyncTypeTransformer):
+            lit = await transformer_override.async_to_literal(
+                ctx, t_value, t_value_type or type(t_value), expected_literal_type
+            )
+        else:
+            lit = transformer_override.to_literal(ctx, t_value, t_value_type or type(t_value), expected_literal_type)
+    return _literals_models.BindingData(scalar=lit.scalar)
 
 
 def binding_from_python_std(
@@ -864,7 +964,8 @@ def binding_from_python_std(
     t_value_type: type,
 ) -> Tuple[_literals_models.Binding, List[Node]]:
     nodes: List[Node] = []
-    binding_data = binding_data_from_python_std(
+    binding_data = run_sync(
+        binding_data_from_python_std,
         ctx,
         expected_literal_type,
         t_value,
@@ -1029,6 +1130,9 @@ def extract_obj_name(name: str) -> str:
 def create_and_link_node_from_remote(
     ctx: FlyteContext,
     entity: HasFlyteInterface,
+    overridden_interface: Optional[_interface_models.TypedInterface] = None,
+    add_node_to_compilation_state: bool = True,
+    node_id: str = "",
     _inputs_not_allowed: Optional[Set[str]] = None,
     _ignorable_inputs: Optional[Set[str]] = None,
     **kwargs,
@@ -1043,6 +1147,11 @@ def create_and_link_node_from_remote(
 
     :param ctx: FlyteContext
     :param entity: RemoteEntity
+    :param overridden_interface: utilize this interface instead of the one provided by the entity. This is useful for
+                ArrayNode as there's a mismatch between the underlying interface and inputs
+    :param add_node_to_compilation_state: bool that enables for nodes to be created but not linked to the workflow. This
+                is useful when creating nodes nested under other nodes such as ArrayNode
+    :param node_id: str if provided, this will be used as the node id.
     :param _inputs_not_allowed: Set of all variable names that should not be provided when using this entity.
                      Useful for Launchplans with `fixed` inputs
     :param _ignorable_inputs: Set of all variable names that are optional, but if provided will be overridden. Useful
@@ -1050,13 +1159,13 @@ def create_and_link_node_from_remote(
     :param kwargs: Dict[str, Any] default inputs passed from the user to this entity. Can be promises.
     :return:  Optional[Union[Tuple[Promise], Promise, VoidPromise]]
     """
-    if ctx.compilation_state is None:
+    if ctx.compilation_state is None and add_node_to_compilation_state:
         raise _user_exceptions.FlyteAssertion("Cannot create node when not compiling...")
 
     used_inputs = set()
     bindings = []
 
-    typed_interface = entity.interface
+    typed_interface = overridden_interface or entity.interface
 
     if _inputs_not_allowed:
         inputs_not_allowed_specified = _inputs_not_allowed.intersection(kwargs.keys())
@@ -1107,14 +1216,23 @@ def create_and_link_node_from_remote(
     # These will be our core Nodes until we can amend the Promise to use NodeOutputs that reference our Nodes
     upstream_nodes = list(set([n for n in nodes if n.id != _common_constants.GLOBAL_INPUT_NODE_ID]))
 
+    # if not adding to compilation state, we don't need to generate a unique node id
+    node_id = node_id or (
+        f"{ctx.compilation_state.prefix}n{len(ctx.compilation_state.nodes)}"
+        if add_node_to_compilation_state and ctx.compilation_state
+        else node_id
+    )
+
     flytekit_node = Node(
-        id=f"{ctx.compilation_state.prefix}n{len(ctx.compilation_state.nodes)}",
+        id=node_id,
         metadata=entity.construct_node_metadata(),
         bindings=sorted(bindings, key=lambda b: b.var),
         upstream_nodes=upstream_nodes,
         flyte_entity=entity,
     )
-    ctx.compilation_state.add_node(flytekit_node)
+
+    if add_node_to_compilation_state and ctx.compilation_state:
+        ctx.compilation_state.add_node(flytekit_node)
 
     if len(typed_interface.outputs) == 0:
         return VoidPromise(entity.name, NodeOutput(node=flytekit_node, var="placeholder"))

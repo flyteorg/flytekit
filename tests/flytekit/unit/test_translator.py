@@ -11,7 +11,7 @@ from flytekit.core.task import ReferenceTask, task
 from flytekit.core.workflow import ReferenceWorkflow, workflow
 from flytekit.models.core import identifier as identifier_models
 from flytekit.models.task import Resources as resource_model
-from flytekit.tools.translator import get_serializable
+from flytekit.tools.translator import get_serializable, Options
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = flytekit.configuration.SerializationSettings(

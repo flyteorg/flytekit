@@ -26,9 +26,7 @@ UV_PYTHON_INSTALL_COMMAND_TEMPLATE = Template(
 RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/uv,id=uv \
     --mount=from=uv,source=/uv,target=/usr/bin/uv \
     --mount=type=bind,target=requirements_uv.txt,src=requirements_uv.txt \
-    /usr/bin/uv \
-    pip install --python /opt/micromamba/envs/runtime/bin/python $PIP_EXTRA \
-    --requirement requirements_uv.txt
+    uv pip install $PIP_INSTALL_ARGS
 """
 )
 
@@ -65,6 +63,7 @@ ENV PATH="/opt/micromamba/envs/runtime/bin:$$PATH" \
     UV_LINK_MODE=copy \
     FLYTE_SDK_RICH_TRACEBACKS=0 \
     SSL_CERT_DIR=/etc/ssl/certs \
+    UV_PYTHON=/opt/micromamba/envs/runtime/bin/python \
     $ENV
 
 $UV_PYTHON_INSTALL_COMMAND
@@ -76,7 +75,11 @@ ENV PATH="$$PATH:/usr/local/nvidia/bin:/usr/local/cuda/bin" \
 $ENTRYPOINT
 
 $COPY_COMMAND_RUNTIME
-RUN $RUN_COMMANDS
+
+RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/uv,id=uv \
+    --mount=from=uv,source=/uv,target=/usr/bin/uv $RUN_COMMANDS
+
+$EXTRA_COPY_CMDS
 
 WORKDIR /root
 SHELL ["/bin/bash", "-c"]
@@ -144,15 +147,17 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
     requirements_uv_path = tmp_dir / "requirements_uv.txt"
     requirements_uv_path.write_text("\n".join(requirements))
 
-    pip_extra_args = ""
+    pip_install_args = ["--requirement", "requirements_uv.txt"]
 
     if image_spec.pip_index:
-        pip_extra_args += f"--index-url {image_spec.pip_index}"
+        pip_install_args.append(f"--index-url {image_spec.pip_index}")
     if image_spec.pip_extra_index_url:
         extra_urls = [f"--extra-index-url {url}" for url in image_spec.pip_extra_index_url]
-        pip_extra_args += " ".join(extra_urls)
+        pip_install_args.extend(extra_urls)
 
-    uv_python_install_command = UV_PYTHON_INSTALL_COMMAND_TEMPLATE.substitute(PIP_EXTRA=pip_extra_args)
+    pip_install_args = " ".join(pip_install_args)
+
+    uv_python_install_command = UV_PYTHON_INSTALL_COMMAND_TEMPLATE.substitute(PIP_INSTALL_ARGS=pip_install_args)
 
     env_dict = {"PYTHONPATH": "/root", _F_IMG_ID: image_spec.id}
 
@@ -221,6 +226,28 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
     else:
         run_commands = ""
 
+    if image_spec.copy:
+        copy_commands = []
+        for src in image_spec.copy:
+            src_path = Path(src)
+
+            if src_path.is_absolute() or ".." in src_path.parts:
+                raise ValueError("Absolute paths or paths with '..' are not allowed in COPY command.")
+
+            dst_path = tmp_dir / src_path
+            dst_path.parent.mkdir(parents=True, exist_ok=True)
+
+            if src_path.is_dir():
+                shutil.copytree(src_path, dst_path, dirs_exist_ok=True)
+                copy_commands.append(f"COPY --chown=flytekit {src_path.as_posix()} /root/{src_path.as_posix()}/")
+            else:
+                shutil.copy(src_path, dst_path)
+                copy_commands.append(f"COPY --chown=flytekit {src_path.as_posix()} /root/{src_path.parent.as_posix()}/")
+
+        extra_copy_cmds = "\n".join(copy_commands)
+    else:
+        extra_copy_cmds = ""
+
     docker_content = DOCKER_FILE_TEMPLATE.substitute(
         PYTHON_VERSION=python_version,
         UV_PYTHON_INSTALL_COMMAND=uv_python_install_command,
@@ -232,6 +259,7 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
         COPY_COMMAND_RUNTIME=copy_command_runtime,
         ENTRYPOINT=entrypoint,
         RUN_COMMANDS=run_commands,
+        EXTRA_COPY_CMDS=extra_copy_cmds,
     )
 
     dockerfile_path = tmp_dir / "Dockerfile"
@@ -247,7 +275,7 @@ class DefaultImageBuilder(ImageSpecBuilder):
         "python_version",
         "builder",
         "source_root",
-        "copy",
+        "source_copy_mode",
         "env",
         "registry",
         "packages",
@@ -263,6 +291,7 @@ class DefaultImageBuilder(ImageSpecBuilder):
         "pip_extra_index_url",
         # "registry_config",
         "commands",
+        "copy",
     }
 
     def build_image(self, image_spec: ImageSpec) -> str:

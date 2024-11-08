@@ -8,7 +8,9 @@ import signal
 import subprocess
 import sys
 import tempfile
+import textwrap
 import traceback
+import warnings
 from sys import exit
 from typing import Callable, List, Optional
 
@@ -18,6 +20,7 @@ from flyteidl.core import literals_pb2 as _literals_pb2
 from flytekit.configuration import (
     SERIALIZED_CONTEXT_ENV_VAR,
     FastSerializationSettings,
+    ImageConfig,
     SerializationSettings,
     StatsConfig,
 )
@@ -25,6 +28,7 @@ from flytekit.core import constants as _constants
 from flytekit.core import utils
 from flytekit.core.base_task import IgnoreOutputs, PythonTask
 from flytekit.core.checkpointer import SyncCheckpoint
+from flytekit.core.constants import FLYTE_FAIL_ON_ERROR
 from flytekit.core.context_manager import (
     ExecutionParameters,
     ExecutionState,
@@ -34,7 +38,9 @@ from flytekit.core.context_manager import (
 )
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.promise import VoidPromise
+from flytekit.core.utils import str2bool
 from flytekit.deck.deck import _output_deck
+from flytekit.exceptions.system import FlyteNonRecoverableSystemException
 from flytekit.exceptions.user import FlyteRecoverableException, FlyteUserRuntimeException
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
 from flytekit.loggers import logger, user_space_logger
@@ -66,6 +72,23 @@ def _compute_array_job_index():
     if os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME"):
         return offset + int(os.environ.get(os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME")))
     return offset
+
+
+def _get_working_loop():
+    """Returns a running event loop."""
+    try:
+        return asyncio.get_running_loop()
+    except RuntimeError:
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", DeprecationWarning)
+            try:
+                return asyncio.get_event_loop_policy().get_event_loop()
+            # Since version 3.12, DeprecationWarning is emitted if there is no
+            # current event loop.
+            except DeprecationWarning:
+                loop = asyncio.get_event_loop_policy().new_event_loop()
+                asyncio.set_event_loop(loop)
+                return loop
 
 
 def _dispatch_execute(
@@ -107,7 +130,7 @@ def _dispatch_execute(
         if inspect.iscoroutine(outputs):
             # Handle eager-mode (async) tasks
             logger.info("Output is a coroutine")
-            outputs = asyncio.run(outputs)
+            outputs = _get_working_loop().run_until_complete(outputs)
 
         # Step3a
         if isinstance(outputs, VoidPromise):
@@ -158,7 +181,22 @@ def _dispatch_execute(
         logger.error(exc_str)
         logger.error("!! End Error Captured by Flyte !!")
 
-    # All the Non-user errors are captured here, and are considered system errors
+    except FlyteNonRecoverableSystemException as e:
+        exc_str = get_traceback_str(e.value)
+        output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
+            _error_models.ContainerError(
+                "SYSTEM",
+                exc_str,
+                _error_models.ContainerError.Kind.NON_RECOVERABLE,
+                _execution_models.ExecutionError.ErrorKind.SYSTEM,
+            )
+        )
+
+        logger.error("!! Begin Non-recoverable System Error Captured by Flyte !!")
+        logger.error(exc_str)
+        logger.error("!! End Error Captured by Flyte !!")
+
+    # All other errors are captured here, and are considered system errors
     except Exception as e:
         exc_str = get_traceback_str(e)
         output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
@@ -185,27 +223,36 @@ def _dispatch_execute(
 
     logger.debug("Finished _dispatch_execute")
 
-    if os.environ.get("FLYTE_FAIL_ON_ERROR", "").lower() == "true" and _constants.ERROR_FILE_NAME in output_file_dict:
-        # This env is set by the flytepropeller
-        # AWS batch job get the status from the exit code, so once we catch the error,
-        # we should return the error code here
+    if str2bool(os.getenv(FLYTE_FAIL_ON_ERROR)) and _constants.ERROR_FILE_NAME in output_file_dict:
+        """
+        If the environment variable FLYTE_FAIL_ON_ERROR is set to true, the task execution will fail if an error file is
+        generated. This environment variable is set to true by the plugin author if they want the task to fail on error.
+        Otherwise, the task will always succeed and just write the error file to the blob store.
+
+        For example, you can see the task fails on Databricks or AWS batch UI by setting this environment variable to true.
+        """
         exit(1)
 
 
 def get_traceback_str(e: Exception) -> str:
+    # First, format the exception stack trace
+    root_exception = e
     if isinstance(e, FlyteUserRuntimeException):
         # If the exception is a user exception, we want to capture the traceback of the exception that was raised by the
         # user code, not the Flyte internals.
-        tb = e.__cause__.__traceback__ if e.__cause__ else e.__traceback__
-    else:
-        tb = e.__traceback__
-    lines = traceback.format_tb(tb)
-    lines = [line.rstrip() for line in lines]
-    tb_str = "\n    ".join(lines)
-    format_str = "Traceback (most recent call last):\n" "\n    {traceback}\n" "\n" "Message:\n" "\n" "    {message}"
-
+        root_exception = e.__cause__ if e.__cause__ else e
+    indentation = "    "
+    exception_str = textwrap.indent(
+        text="".join(traceback.format_exception(type(root_exception), root_exception, root_exception.__traceback__)),
+        prefix=indentation,
+    )
+    # Second, format a summary exception message
     value = e.value if isinstance(e, FlyteUserRuntimeException) else e
-    return format_str.format(traceback=tb_str, message=f"{type(value).__name__}: {value}")
+    message = f"{type(value).__name__}: {value}"
+    message_str = textwrap.indent(text=message, prefix=indentation)
+    # Last, create the overall traceback string
+    format_str = "Trace:\n\n{exception_str}\nMessage:\n\n{message_str}"
+    return format_str.format(exception_str=exception_str, message_str=message_str)
 
 
 def get_one_of(*args) -> str:
@@ -325,16 +372,20 @@ def setup_execution(
     if compressed_serialization_settings:
         ss = SerializationSettings.from_transport(compressed_serialization_settings)
         ssb = ss.new_builder()
-        ssb.project = ssb.project or exe_project
-        ssb.domain = ssb.domain or exe_domain
-        ssb.version = tk_version
-        if dynamic_addl_distro:
-            ssb.fast_serialization_settings = FastSerializationSettings(
-                enabled=True,
-                destination_dir=dynamic_dest_dir,
-                distribution_location=dynamic_addl_distro,
-            )
-        cb = cb.with_serialization_settings(ssb.build())
+    else:
+        ss = SerializationSettings(ImageConfig.auto())
+        ssb = ss.new_builder()
+
+    ssb.project = ssb.project or exe_project
+    ssb.domain = ssb.domain or exe_domain
+    ssb.version = tk_version
+    if dynamic_addl_distro:
+        ssb.fast_serialization_settings = FastSerializationSettings(
+            enabled=True,
+            destination_dir=dynamic_dest_dir,
+            distribution_location=dynamic_addl_distro,
+        )
+    cb = cb.with_serialization_settings(ssb.build())
 
     with FlyteContextManager.with_context(cb) as ctx:
         yield ctx
@@ -437,7 +488,7 @@ def _execute_map_task(
         raise ValueError(f"Resolver args cannot be <1, got {resolver_args}")
 
     with setup_execution(
-        raw_output_data_prefix, checkpoint_path, prev_checkpoint, dynamic_addl_distro, dynamic_dest_dir
+        raw_output_data_prefix, output_prefix, checkpoint_path, prev_checkpoint, dynamic_addl_distro, dynamic_dest_dir
     ) as ctx:
         working_dir = os.getcwd()
         if all(os.path.realpath(path) != working_dir for path in sys.path):
@@ -562,7 +613,14 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
 
     # Use the commandline to run the task execute command rather than calling it directly in python code
     # since the current runtime bytecode references the older user code, rather than the downloaded distribution.
-    p = subprocess.Popen(cmd)
+    env = os.environ.copy()
+    if dest_dir is not None:
+        dest_dir_resolved = os.path.realpath(os.path.expanduser(dest_dir))
+        if "PYTHONPATH" in env:
+            env["PYTHONPATH"] += os.pathsep + dest_dir_resolved
+        else:
+            env["PYTHONPATH"] = dest_dir_resolved
+    p = subprocess.Popen(cmd, env=env)
 
     def handle_sigterm(signum, frame):
         logger.info(f"passing signum {signum} [frame={frame}] to subprocess")

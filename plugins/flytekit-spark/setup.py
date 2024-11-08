@@ -4,7 +4,7 @@ PLUGIN_NAME = "spark"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>1.10.7", "pyspark>=3.0.0", "aiohttp", "flyteidl>=1.11.0b1", "pandas"]
+plugin_requires = ["flytekit>1.13.8", "pyspark>=3.0.0", "aiohttp", "flyteidl>=1.11.0b1", "pandas"]
 
 __version__ = "0.0.0+develop"
 
@@ -18,12 +18,11 @@ setup(
     packages=[f"flytekitplugins.{PLUGIN_NAME}"],
     install_requires=plugin_requires,
     license="apache2",
-    python_requires=">=3.8",
+    python_requires=">=3.9",
     classifiers=[
         "Intended Audience :: Science/Research",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: Apache Software License",
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",

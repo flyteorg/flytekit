@@ -1,3 +1,4 @@
+import json
 import os
 import pathlib
 import tempfile
@@ -20,9 +21,13 @@ from flytekit.core.workflow import workflow
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import LiteralMap
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
-
+from google.protobuf import json_format as _json_format
+from google.protobuf import struct_pb2 as _struct
+from flytekit.models.literals import Literal, Scalar
 
 # Fixture that ensures a dummy local file
+
+
 @pytest.fixture
 def local_dummy_file():
     fd, path = tempfile.mkstemp()
@@ -78,11 +83,13 @@ def test_file_type_in_workflow_with_bad_format():
 def test_matching_file_types_in_workflow(local_dummy_txt_file):
     # TXT
     @task
-    def t1(path: FlyteFile[typing.TypeVar("txt")]) -> FlyteFile[typing.TypeVar("txt")]:
+    def t1(path: FlyteFile[typing.TypeVar("txt")]
+           ) -> FlyteFile[typing.TypeVar("txt")]:
         return path
 
     @workflow
-    def my_wf(path: FlyteFile[typing.TypeVar("txt")]) -> FlyteFile[typing.TypeVar("txt")]:
+    def my_wf(path: FlyteFile[typing.TypeVar("txt")]
+              ) -> FlyteFile[typing.TypeVar("txt")]:
         f = t1(path=path)
         return f
 
@@ -105,20 +112,25 @@ def test_file_types_with_naked_flytefile_in_workflow(local_dummy_txt_file):
     with open(res, "r") as fh:
         assert fh.read() == "Hello World"
 
+
 def test_flytefile_in_dataclass(local_dummy_txt_file):
     TxtFile = FlyteFile[typing.TypeVar("txt")]
+
     @dataclass
     class DC:
         f: TxtFile
+
     @task
     def t1(path: TxtFile) -> DC:
         return DC(f=path)
+
     @workflow
     def my_wf(path: TxtFile) -> DC:
         dc = t1(path=path)
         return dc
 
     txt_file = TxtFile(local_dummy_txt_file)
+    my_wf.compile()
     dc1 = my_wf(path=txt_file)
     with open(dc1.f, "r") as fh:
         assert fh.read() == "Hello World"
@@ -126,20 +138,25 @@ def test_flytefile_in_dataclass(local_dummy_txt_file):
     dc2 = DC(f=txt_file)
     assert dc1 == dc2
 
-@pytest.mark.skipif(not can_import("magic"), reason="Libmagic is not installed")
+
+@pytest.mark.skipif(not can_import("magic"),
+                    reason="Libmagic is not installed")
 def test_mismatching_file_types(local_dummy_txt_file):
     @task
-    def t1(path: FlyteFile[typing.TypeVar("txt")]) -> FlyteFile[typing.TypeVar("jpeg")]:
+    def t1(path: FlyteFile[typing.TypeVar("txt")]
+           ) -> FlyteFile[typing.TypeVar("jpeg")]:
         return path
 
     @workflow
-    def my_wf(path: FlyteFile[typing.TypeVar("txt")]) -> FlyteFile[typing.TypeVar("jpeg")]:
+    def my_wf(path: FlyteFile[typing.TypeVar("txt")]
+              ) -> FlyteFile[typing.TypeVar("jpeg")]:
         f = t1(path=path)
         return f
 
-    with pytest.raises(TypeError) as excinfo:
+    with pytest.raises(ValueError) as excinfo:
         my_wf(path=local_dummy_txt_file)
-    assert "Incorrect file type, expected image/jpeg, got text/plain" in str(excinfo.value)
+    assert "Incorrect file type, expected image/jpeg, got text/plain" in str(
+        excinfo.value)
 
 
 def test_get_mime_type_from_extension_success():
@@ -148,14 +165,19 @@ def test_get_mime_type_from_extension_success():
     assert transformer.get_mime_type_from_extension("jpeg") == "image/jpeg"
     assert transformer.get_mime_type_from_extension("png") == "image/png"
     assert transformer.get_mime_type_from_extension("hdf5") == "text/plain"
-    assert transformer.get_mime_type_from_extension("joblib") == "application/octet-stream"
+    assert transformer.get_mime_type_from_extension(
+        "joblib") == "application/octet-stream"
     assert transformer.get_mime_type_from_extension("pdf") == "application/pdf"
-    assert transformer.get_mime_type_from_extension("python_pickle") == "application/octet-stream"
-    assert transformer.get_mime_type_from_extension("ipynb") == "application/json"
+    assert transformer.get_mime_type_from_extension(
+        "python_pickle") == "application/octet-stream"
+    assert transformer.get_mime_type_from_extension(
+        "ipynb") == "application/json"
     assert transformer.get_mime_type_from_extension("svg") == "image/svg+xml"
     assert transformer.get_mime_type_from_extension("csv") == "text/csv"
-    assert transformer.get_mime_type_from_extension("onnx") == "application/json"
-    assert transformer.get_mime_type_from_extension("tfrecord") == "application/octet-stream"
+    assert transformer.get_mime_type_from_extension(
+        "onnx") == "application/json"
+    assert transformer.get_mime_type_from_extension(
+        "tfrecord") == "application/octet-stream"
     assert transformer.get_mime_type_from_extension("txt") == "text/plain"
 
 
@@ -165,7 +187,8 @@ def test_get_mime_type_from_extension_failure():
         transformer.get_mime_type_from_extension("unknown_extension")
 
 
-@pytest.mark.skipif(not can_import("magic"), reason="Libmagic is not installed")
+@pytest.mark.skipif(not can_import("magic"),
+                    reason="Libmagic is not installed")
 def test_validate_file_type_incorrect():
     transformer = TypeEngine.get_transformer(FlyteFile)
     source_path = "/tmp/flytekit_test.png"
@@ -177,10 +200,12 @@ def test_validate_file_type_incorrect():
             with pytest.raises(
                 ValueError, match=f"Incorrect file type, expected image/jpeg, got {source_file_mime_type}"
             ):
-                transformer.validate_file_type(user_defined_format, source_path)
+                transformer.validate_file_type(
+                    user_defined_format, source_path)
 
 
-@pytest.mark.skipif(not can_import("magic"), reason="Libmagic is not installed")
+@pytest.mark.skipif(not can_import("magic"),
+                    reason="Libmagic is not installed")
 def test_flyte_file_type_annotated_hashmethod(local_dummy_file):
     def calc_hash(ff: FlyteFile) -> str:
         return str(ff.path)
@@ -200,9 +225,10 @@ def test_flyte_file_type_annotated_hashmethod(local_dummy_file):
         ff = t1(path=path)
         t2(ff=ff)
 
-    with pytest.raises(TypeError) as excinfo:
+    with pytest.raises(ValueError) as excinfo:
         wf(path=local_dummy_file)
-    assert "Incorrect file type, expected image/jpeg, got text/plain" in str(excinfo.value)
+    assert "Incorrect file type, expected image/jpeg, got text/plain" in str(
+        excinfo.value)
 
 
 def test_file_handling_remote_default_wf_input():
@@ -235,8 +261,13 @@ def test_file_handling_local_file_does_not_get_copied():
     def my_wf() -> FlyteFile:
         return t1()
 
-    random_dir = FlyteContextManager.current_context().file_access.get_random_local_directory()
-    fs = FileAccessProvider(local_sandbox_dir=random_dir, raw_output_prefix=os.path.join(random_dir, "mock_remote"))
+    random_dir = FlyteContextManager.current_context(
+    ).file_access.get_random_local_directory()
+    fs = FileAccessProvider(
+        local_sandbox_dir=random_dir,
+        raw_output_prefix=os.path.join(
+            random_dir,
+            "mock_remote"))
     ctx = FlyteContextManager.current_context()
     with FlyteContextManager.with_context(ctx.with_file_access(fs)):
         top_level_files = os.listdir(random_dir)
@@ -256,8 +287,13 @@ def test_file_handling_local_file_gets_force_no_copy():
     def my_wf() -> FlyteFile:
         return t1()
 
-    random_dir = FlyteContextManager.current_context().file_access.get_random_local_directory()
-    fs = FileAccessProvider(local_sandbox_dir=random_dir, raw_output_prefix=os.path.join(random_dir, "mock_remote"))
+    random_dir = FlyteContextManager.current_context(
+    ).file_access.get_random_local_directory()
+    fs = FileAccessProvider(
+        local_sandbox_dir=random_dir,
+        raw_output_prefix=os.path.join(
+            random_dir,
+            "mock_remote"))
     ctx = FlyteContextManager.current_context()
     with FlyteContextManager.with_context(ctx.with_file_access(fs)):
         top_level_files = os.listdir(random_dir)
@@ -265,7 +301,8 @@ def test_file_handling_local_file_gets_force_no_copy():
 
         workflow_output = my_wf()
 
-        # After running, this test file should've been copied to the mock remote location.
+        # After running, this test file should've been copied to the mock
+        # remote location.
         assert not os.path.exists(os.path.join(random_dir, "mock_remote"))
 
         # Because Flyte doesn't presume to handle a uri that look like a raw path, the path that is returned is
@@ -285,10 +322,15 @@ def test_file_handling_remote_file_handling():
         return t1()
 
     # This creates a random directory that we know is empty.
-    random_dir = FlyteContextManager.current_context().file_access.get_random_local_directory()
+    random_dir = FlyteContextManager.current_context(
+    ).file_access.get_random_local_directory()
     # Creating a new FileAccessProvider will add two folderst to the random dir
     print(f"Random {random_dir}")
-    fs = FileAccessProvider(local_sandbox_dir=random_dir, raw_output_prefix=os.path.join(random_dir, "mock_remote"))
+    fs = FileAccessProvider(
+        local_sandbox_dir=random_dir,
+        raw_output_prefix=os.path.join(
+            random_dir,
+            "mock_remote"))
     ctx = FlyteContextManager.current_context()
     with FlyteContextManager.with_context(ctx.with_file_access(fs)):
         working_dir = os.listdir(random_dir)
@@ -296,12 +338,14 @@ def test_file_handling_remote_file_handling():
 
         workflow_output = my_wf()
 
-        # After running the mock remote dir should still be empty, since the workflow_output has not been used
+        # After running the mock remote dir should still be empty, since the
+        # workflow_output has not been used
         with pytest.raises(FileNotFoundError):
             os.listdir(os.path.join(random_dir, "mock_remote"))
 
         # While the literal returned by t1 does contain the web address as the uri, because it's a remote address,
-        # flytekit will translate it back into a FlyteFile object on the local drive (but not download it)
+        # flytekit will translate it back into a FlyteFile object on the local
+        # drive (but not download it)
         assert workflow_output.path.startswith(random_dir)
         # But the remote source should still be the https address
         assert workflow_output.remote_source == SAMPLE_DATA
@@ -329,7 +373,8 @@ def test_file_handling_remote_file_handling_flyte_file():
 
     @task
     def t1() -> FlyteFile:
-        # Unlike the test above, this returns the remote path wrapped in a FlyteFile object
+        # Unlike the test above, this returns the remote path wrapped in a
+        # FlyteFile object
         return FlyteFile(SAMPLE_DATA)
 
     @workflow
@@ -337,25 +382,34 @@ def test_file_handling_remote_file_handling_flyte_file():
         return t1()
 
     # This creates a random directory that we know is empty.
-    random_dir = FlyteContextManager.current_context().file_access.get_random_local_directory()
+    random_dir = FlyteContextManager.current_context(
+    ).file_access.get_random_local_directory()
     # Creating a new FileAccessProvider will add two folderst to the random dir
-    fs = FileAccessProvider(local_sandbox_dir=random_dir, raw_output_prefix=os.path.join(random_dir, "mock_remote"))
+    fs = FileAccessProvider(
+        local_sandbox_dir=random_dir,
+        raw_output_prefix=os.path.join(
+            random_dir,
+            "mock_remote"))
     ctx = FlyteContextManager.current_context()
     with FlyteContextManager.with_context(ctx.with_file_access(fs)):
         working_dir = os.listdir(random_dir)
         assert len(working_dir) == 1  # the local_flytekit dir
 
         mock_remote_path = os.path.join(random_dir, "mock_remote")
-        assert not os.path.exists(mock_remote_path)  # the persistence layer won't create the folder yet
+        # the persistence layer won't create the folder yet
+        assert not os.path.exists(mock_remote_path)
 
         workflow_output = my_wf()
 
-        # After running the mock remote dir should still be empty, since the workflow_output has not been used
+        # After running the mock remote dir should still be empty, since the
+        # workflow_output has not been used
         assert not os.path.exists(mock_remote_path)
 
         # While the literal returned by t1 does contain the web address as the uri, because it's a remote address,
-        # flytekit will translate it back into a FlyteFile object on the local drive (but not download it)
-        assert workflow_output.path.startswith(f"{random_dir}{os.sep}local_flytekit")
+        # flytekit will translate it back into a FlyteFile object on the local
+        # drive (but not download it)
+        assert workflow_output.path.startswith(
+            f"{random_dir}{os.sep}local_flytekit")
         # But the remote source should still be the https address
         assert workflow_output.remote_source == SAMPLE_DATA
 
@@ -397,17 +451,24 @@ def test_dont_convert_remotes():
                 project="test_proj",
                 domain="test_domain",
                 version="abc",
-                image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+                image_config=ImageConfig(
+                    Image(
+                        name="name",
+                        fqn="image",
+                        tag="name")),
                 env={},
             )
         )
     ):
         ctx = FlyteContextManager.current_context()
         with FlyteContextManager.with_context(
-            ctx.with_execution_state(ctx.new_execution_state().with_params(mode=ExecutionState.Mode.TASK_EXECUTION))
+            ctx.with_execution_state(
+                ctx.new_execution_state().with_params(
+                    mode=ExecutionState.Mode.TASK_EXECUTION))
         ) as ctx:
             lit = TypeEngine.to_literal(
-                ctx, fd, FlyteFile, BlobType("", dimensionality=BlobType.BlobDimensionality.SINGLE)
+                ctx, fd, FlyteFile, BlobType(
+                    "", dimensionality=BlobType.BlobDimensionality.SINGLE)
             )
             lm = LiteralMap(literals={"in1": lit})
             wf = dyn.dispatch_execute(ctx, lm)
@@ -415,7 +476,8 @@ def test_dont_convert_remotes():
 
             with pytest.raises(TypeError, match="No automatic conversion found from type <class 'int'>"):
                 TypeEngine.to_literal(
-                    ctx, 3, FlyteFile, BlobType("", dimensionality=BlobType.BlobDimensionality.SINGLE)
+                    ctx, 3, FlyteFile, BlobType(
+                        "", dimensionality=BlobType.BlobDimensionality.SINGLE)
                 )
 
 
@@ -447,7 +509,8 @@ def test_returning_a_pathlib_path(local_dummy_file):
         assert fh.read() == "Hello world"
     assert wf_out._downloaded
 
-    # Remove the file, then call download again, it should not because _downloaded was already set.
+    # Remove the file, then call download again, it should not because
+    # _downloaded was already set.
     os.remove(wf_out.path)
     p = wf_out.download()
     assert not os.path.exists(wf_out.path)
@@ -509,7 +572,7 @@ def test_returning_folder_instead_of_file():
     def wf1() -> FlyteFile:
         return t1()
 
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         wf1()
 
     @task
@@ -521,7 +584,7 @@ def test_returning_folder_instead_of_file():
     def wf2() -> FlyteFile:
         return t2()
 
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         wf2()
 
 
@@ -585,6 +648,7 @@ def test_flyte_file_in_dyn():
 
     assert flyte_tmp_dir in wf(path="s3://somewhere").path
 
+
 def test_flyte_file_name_with_special_chars():
     temp_dir = tempfile.TemporaryDirectory()
     file_path = os.path.join(temp_dir.name, "foo bar")
@@ -603,6 +667,7 @@ def test_flyte_file_name_with_special_chars():
         wf(f=file_path)
     finally:
         temp_dir.cleanup()
+
 
 def test_flyte_file_annotated_hashmethod(local_dummy_file):
     def calc_hash(ff: FlyteFile) -> str:
@@ -644,7 +709,7 @@ def test_file_open_things():
         ctx = FlyteContextManager.current_context()
         r = ctx.file_access.get_random_string()
         dest = ctx.file_access.join(ctx.file_access.raw_output_prefix, r)
-        ctx.file_access.put(__file__, dest)
+        ctx.file_access._put(__file__, dest)
         return FlyteFile(path=dest)
 
     @task
@@ -666,15 +731,18 @@ def test_file_open_things():
             local_sandbox_dir=new_sandbox, raw_output_prefix="s3://my-s3-bucket/testdata/", data_config=dc
         )
         ctx = FlyteContextManager.current_context()
-        local = ctx.file_access.get_filesystem("file")  # get a local file system.
+        # get a local file system.
+        local = ctx.file_access.get_filesystem("file")
         with FlyteContextManager.with_context(ctx.with_file_access(provider)):
             f = write_this_file_to_s3()
             copy_file(ff=f)
             files = local.find(new_sandbox)
-            # copy_file was done via streaming so no files should have been written
+            # copy_file was done via streaming so no files should have been
+            # written
             assert len(files) == 0
             print_file(ff=f)
-            # print_file uses traditional download semantics so now a file should have been created
+            # print_file uses traditional download semantics so now a file
+            # should have been created
             files = local.find(new_sandbox)
             assert len(files) == 1
 
@@ -699,3 +767,18 @@ def test_new_remote_file():
     nf = FlyteFile.new_remote_file(name="foo.txt")
     assert isinstance(nf, FlyteFile)
     assert nf.path.endswith('foo.txt')
+
+
+def test_input_from_flyte_console_attribute_access_flytefile(local_dummy_file):
+    # Flyte Console will send the input data as protobuf Struct
+
+    dict_obj = {"path": local_dummy_file}
+    json_str = json.dumps(dict_obj)
+    upstream_output = Literal(
+        scalar=Scalar(
+            generic=_json_format.Parse(
+                json_str,
+                _struct.Struct())))
+    downstream_input = TypeEngine.to_python_value(
+        FlyteContextManager.current_context(), upstream_output, FlyteFile)
+    assert downstream_input == FlyteFile(local_dummy_file)

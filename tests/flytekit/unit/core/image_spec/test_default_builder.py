@@ -1,3 +1,4 @@
+import re
 import os
 from unittest.mock import patch, Mock
 
@@ -7,7 +8,8 @@ import flytekit
 from flytekit.image_spec import ImageSpec
 from flytekit.image_spec.default_builder import DefaultImageBuilder, create_docker_context
 from flytekit.constants import CopyFileDetection
-
+from pathlib import Path
+import tempfile
 
 def test_create_docker_context(tmp_path):
     docker_context_path = tmp_path / "builder_root"
@@ -21,22 +23,28 @@ def test_create_docker_context(tmp_path):
     other_requirements_path = tmp_path / "requirements.txt"
     other_requirements_path.write_text("threadpoolctl\n")
 
-    image_spec = ImageSpec(
-        name="FLYTEKIT",
-        python_version="3.12",
-        env={"MY_ENV": "MY_VALUE"},
-        apt_packages=["curl"],
-        conda_packages=["scipy==1.13.0", "numpy"],
-        packages=["pandas==2.2.1"],
-        requirements=os.fspath(other_requirements_path),
-        source_root=os.fspath(source_root),
-        commands=["mkdir my_dir"],
-        entrypoint=["/bin/bash"],
-        pip_extra_index_url=["https://extra-url.com"],
-        source_copy_mode=CopyFileDetection.ALL,
-    )
+    with tempfile.TemporaryDirectory(dir=Path.cwd().as_posix()) as tmp_dir:
+        tmp_file = Path(tmp_dir) / "copy_file.txt"
+        tmp_file.write_text("copy_file_content")
 
-    create_docker_context(image_spec, docker_context_path)
+        image_spec = ImageSpec(
+            name="FLYTEKIT",
+            python_version="3.12",
+            env={"MY_ENV": "MY_VALUE"},
+            apt_packages=["curl"],
+            conda_packages=["scipy==1.13.0", "numpy"],
+            packages=["pandas==2.2.1"],
+            requirements=os.fspath(other_requirements_path),
+            source_root=os.fspath(source_root),
+            commands=["mkdir my_dir"],
+            entrypoint=["/bin/bash"],
+            pip_index="https://url.com",
+            pip_extra_index_url=["https://extra-url.com"],
+            source_copy_mode=CopyFileDetection.ALL,
+            copy=[tmp_file.relative_to(Path.cwd()).as_posix()],
+        )
+
+        create_docker_context(image_spec, docker_context_path)
 
     dockerfile_path = docker_context_path / "Dockerfile"
     assert dockerfile_path.exists()
@@ -46,11 +54,15 @@ def test_create_docker_context(tmp_path):
     assert "scipy==1.13.0 numpy" in dockerfile_content
     assert "python=3.12" in dockerfile_content
     assert "--requirement requirements_uv.txt" in dockerfile_content
+    assert "--index-url" in dockerfile_content
     assert "--extra-index-url" in dockerfile_content
     assert "COPY --chown=flytekit ./src /root" in dockerfile_content
-    assert "RUN mkdir my_dir" in dockerfile_content
+
+    run_match = re.search(r"RUN.+mkdir my_dir", dockerfile_content)
+    assert run_match
     assert "ENTRYPOINT [\"/bin/bash\"]" in dockerfile_content
     assert "mkdir -p $HOME" in dockerfile_content
+    assert f"COPY --chown=flytekit {tmp_file.relative_to(Path.cwd()).as_posix()} /root/" in dockerfile_content
 
     requirements_path = docker_context_path / "requirements_uv.txt"
     assert requirements_path.exists()
@@ -179,6 +191,7 @@ def test_build(tmp_path):
         requirements=os.fspath(other_requirements_path),
         source_root=os.fspath(source_root),
         commands=["mkdir my_dir"],
+        copy=[f"{tmp_path}/hello_world.txt", f"{tmp_path}/requirements.txt"]
     )
 
     builder = DefaultImageBuilder()

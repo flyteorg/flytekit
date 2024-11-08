@@ -1,4 +1,5 @@
 import os
+import shutil
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional, Union, cast
 
@@ -8,7 +9,6 @@ from google.protobuf.json_format import MessageToDict
 from flytekit import FlyteContextManager, PythonFunctionTask, lazy_module, logger
 from flytekit.configuration import DefaultImages, SerializationSettings
 from flytekit.core.context_manager import ExecutionParameters
-from flytekit.core.python_auto_container import get_registerable_container_image
 from flytekit.extend import ExecutionState, TaskPlugins
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 from flytekit.image_spec import ImageSpec
@@ -158,13 +158,6 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
             **kwargs,
         )
 
-    def get_image(self, settings: SerializationSettings) -> str:
-        if isinstance(self.container_image, ImageSpec):
-            # Ensure that the code is always copied into the image, even during fast-registration.
-            self.container_image.source_root = settings.source_root
-
-        return get_registerable_container_image(self.container_image, settings.image_config)
-
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         job = SparkJob(
             spark_conf=self.task_config.spark_conf,
@@ -201,6 +194,19 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
             sess_builder = sess_builder.config(conf=spark_conf)
 
         self.sess = sess_builder.getOrCreate()
+
+        if (
+            ctx.serialization_settings
+            and ctx.serialization_settings.fast_serialization_settings
+            and ctx.serialization_settings.fast_serialization_settings.enabled
+            and ctx.execution_state
+            and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION
+        ):
+            file_name = "flyte_wf"
+            file_format = "zip"
+            shutil.make_archive(file_name, file_format, os.getcwd())
+            self.sess.sparkContext.addPyFile(f"{file_name}.{file_format}")
+
         return user_params.builder().add_attr("SPARK_SESSION", self.sess).build()
 
     def execute(self, **kwargs) -> Any:

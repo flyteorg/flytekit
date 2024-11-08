@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - master
+      - 'release-v**'
   pull_request:
   schedule:
     - cron: "0 13 * * *" # This schedule runs at 1pm UTC every day
@@ -26,7 +27,7 @@ jobs:
       - name: Set Python versions for run
         run: |
           if [[ ${{ github.event_name }} == "schedule" ]]; then
-            echo "python_versions=[\"3.8\",\"3.9\",\"3.10\",\"3.11\",\"3.12\"]" >> $GITHUB_ENV
+            echo "python_versions=[\"3.9\",\"3.10\",\"3.11\",\"3.12\"]" >> $GITHUB_ENV
           else
             echo "python_versions=[\"3.9\", \"3.12\"]" >> $GITHUB_ENV
           fi
@@ -355,7 +356,6 @@ jobs:
           - flytekit-pandera
           - flytekit-papermill
           - flytekit-polars
-          - flytekit-pydantic
           - flytekit-ray
           - flytekit-snowflake
           - flytekit-spark
@@ -363,8 +363,6 @@ jobs:
           - flytekit-vaex
           - flytekit-whylogs
         exclude:
-          - python-version: 3.8
-            plugin-names: "flytekit-aws-sagemaker"
           - python-version: 3.9
             plugin-names: "flytekit-aws-sagemaker"
           # flytekit-modin depends on ray which does not have a 3.11 wheel yet.
@@ -396,9 +394,6 @@ jobs:
           # apache-beam, one of flytekit-airflow dependencies, does not support python 3.12: https://github.com/apache/beam/issues/29149
           - python-version: 3.12
             plugin-names: "flytekit-airflow"
-          # ydata-profiling, a dependency of flytekit-deck-standard, does not support python 3.12: https://github.com/ydataai/ydata-profiling/issues/1510
-          - python-version: 3.12
-            plugin-names: "flytekit-deck-standard"
           # Tensorflow is a dependency of flytekit-mlflow tests and that is not supported yet: https://github.com/tensorflow/tensorflow/issues/62003
           - python-version: 3.12
             plugin-names: "flytekit-mlflow"

@@ -34,6 +34,7 @@ from flytekit.core.interface import (
     transform_interface_to_typed_interface,
 )
 from flytekit.core.node import Node
+from flytekit.core.options import Options
 from flytekit.core.promise import (
     NodeOutput,
     Promise,
@@ -194,6 +195,7 @@ class WorkflowBase(object):
         python_interface: Interface,
         on_failure: Optional[Union[WorkflowBase, Task]] = None,
         docs: Optional[Documentation] = None,
+        default_options: Optional[Options] = None,
         **kwargs,
     ):
         self._name = name
@@ -208,6 +210,7 @@ class WorkflowBase(object):
         self._on_failure = on_failure
         self._failure_node = None
         self._docs = docs
+        self._default_options = default_options
 
         if self._python_interface.docstring:
             if self.docs is None:
@@ -271,6 +274,10 @@ class WorkflowBase(object):
     @property
     def failure_node(self) -> Optional[Node]:
         return self._failure_node
+
+    @property
+    def default_options(self) -> Optional[Options]:
+        return self._default_options
 
     def __repr__(self):
         return (
@@ -661,10 +668,14 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         docstring: Optional[Docstring] = None,
         on_failure: Optional[Union[WorkflowBase, Task]] = None,
         docs: Optional[Documentation] = None,
+        pickle_untyped: bool = False,
+        default_options: Optional[Options] = None,
     ):
         name, _, _, _ = extract_task_module(workflow_function)
         self._workflow_function = workflow_function
-        native_interface = transform_function_to_interface(workflow_function, docstring=docstring)
+        native_interface = transform_function_to_interface(
+            workflow_function, docstring=docstring, pickle_untyped=pickle_untyped
+        )
 
         # TODO do we need this - can this not be in launchplan only?
         #    This can be in launch plan only, but is here only so that we don't have to re-evaluate. Or
@@ -677,6 +688,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             python_interface=native_interface,
             on_failure=on_failure,
             docs=docs,
+            default_options=default_options,
         )
         self.compiled = False
 
@@ -828,6 +840,8 @@ def workflow(
     interruptible: bool = ...,
     on_failure: Optional[Union[WorkflowBase, Task]] = ...,
     docs: Optional[Documentation] = ...,
+    pickle_untyped: bool = ...,
+    default_options: Optional[Options] = ...,
 ) -> Callable[[Callable[..., FuncOut]], PythonFunctionWorkflow]: ...
 
 
@@ -838,6 +852,8 @@ def workflow(
     interruptible: bool = ...,
     on_failure: Optional[Union[WorkflowBase, Task]] = ...,
     docs: Optional[Documentation] = ...,
+    pickle_untyped: bool = ...,
+    default_options: Optional[Options] = ...,
 ) -> Union[Callable[P, FuncOut], PythonFunctionWorkflow]: ...
 
 
@@ -847,6 +863,8 @@ def workflow(
     interruptible: bool = False,
     on_failure: Optional[Union[WorkflowBase, Task]] = None,
     docs: Optional[Documentation] = None,
+    pickle_untyped: bool = False,
+    default_options: Optional[Options] = None,
 ) -> Union[Callable[P, FuncOut], Callable[[Callable[P, FuncOut]], PythonFunctionWorkflow], PythonFunctionWorkflow]:
     """
     This decorator declares a function to be a Flyte workflow. Workflows are declarative entities that construct a DAG
@@ -878,6 +896,10 @@ def workflow(
     :param on_failure: Invoke this workflow or task on failure. The Workflow / task has to match the signature of
          the current workflow, with an additional parameter called `error` Error
     :param docs: Description entity for the workflow
+    :param pickle_untyped: This is a flag that allows users to bypass the type-checking that Flytekit does when constructing
+         the workflow. This is not recommended for general use.
+    :param default_options: Default options for the workflow when creating a default launch plan. Currently only
+         the labels and annotations are allowed to be set as defaults.
     """
 
     def wrapper(fn: Callable[P, FuncOut]) -> PythonFunctionWorkflow:
@@ -892,6 +914,8 @@ def workflow(
             docstring=Docstring(callable_=fn),
             on_failure=on_failure,
             docs=docs,
+            pickle_untyped=pickle_untyped,
+            default_options=default_options,
         )
         update_wrapper(workflow_instance, fn)
         return workflow_instance

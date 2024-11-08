@@ -238,6 +238,40 @@ def test_union_type1(input):
     assert result.exit_code == 0
 
 
+@pytest.mark.parametrize(
+    "extra_cli_args, task_name, expected_output",
+    [
+        (("--a_b",), "test_boolean", True),
+        (("--no_a_b",), "test_boolean", False),
+        (("--no-a-b",), "test_boolean", False),
+
+        (tuple(), "test_boolean_default_true", True),
+        (("--a_b",), "test_boolean_default_true", True),
+        (("--no_a_b",), "test_boolean_default_true", False),
+        (("--no-a-b",), "test_boolean_default_true", False),
+
+        (tuple(), "test_boolean_default_false", False),
+        (("--a_b",), "test_boolean_default_false", True),
+        (("--no_a_b",), "test_boolean_default_false", False),
+        (("--no-a-b",), "test_boolean_default_false", False),
+    ],
+)
+def test_boolean_type(extra_cli_args, task_name, expected_output):
+    runner = CliRunner()
+    result = runner.invoke(
+        pyflyte.main,
+        [
+            "run",
+            os.path.join(DIR_NAME, "workflow.py"),
+            task_name,
+            *extra_cli_args,
+        ],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+    assert str(expected_output) in result.stdout
+
+
 def test_all_types_with_json_input():
     runner = CliRunner()
     result = runner.invoke(
@@ -275,6 +309,7 @@ def test_all_types_with_pipe_input(monkeypatch):
             "run",
             os.path.join(DIR_NAME, "workflow.py"),
             "my_wf",
+            "-",
         ],
         input=input,
         catch_exceptions=False,
@@ -391,6 +426,9 @@ def test_get_entities_in_file(workflow_file):
         "task_with_env_vars",
         "task_with_list",
         "task_with_optional",
+        "test_boolean",
+        "test_boolean_default_false",
+        "test_boolean_default_true",
         "test_union1",
         "test_union2",
     ]
@@ -405,6 +443,9 @@ def test_get_entities_in_file(workflow_file):
         "task_with_env_vars",
         "task_with_list",
         "task_with_optional",
+        "test_boolean",
+        "test_boolean_default_false",
+        "test_boolean_default_true",
         "test_union1",
         "test_union2",
     ]

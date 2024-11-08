@@ -2,11 +2,13 @@ import os
 import pathlib
 import shutil
 import subprocess
+import sys
 import tempfile
 import typing
 import uuid
 from collections import OrderedDict
 from datetime import datetime, timedelta
+from functools import partial
 
 import mock
 import pytest
@@ -15,12 +17,14 @@ from flyteidl.service import dataproxy_pb2
 from mock import ANY, MagicMock, patch
 
 import flytekit.configuration
-from flytekit import CronSchedule, ImageSpec, LaunchPlan, WorkflowFailurePolicy, task, workflow, reference_task
+from flytekit import CronSchedule, ImageSpec, LaunchPlan, WorkflowFailurePolicy, task, workflow, reference_task, map_task, dynamic
 from flytekit.configuration import Config, DefaultImages, Image, ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions import user as user_exceptions
+from flytekit.exceptions.user import FlyteEntityNotExistException, FlyteAssertion
+from flytekit.experimental.eager_function import eager
 from flytekit.models import common as common_models
 from flytekit.models import security
 from flytekit.models.admin.workflow import Workflow, WorkflowClosure
@@ -32,7 +36,7 @@ from flytekit.models.execution import Execution
 from flytekit.models.task import Task
 from flytekit.remote import FlyteTask
 from flytekit.remote.lazy_entity import LazyEntity
-from flytekit.remote.remote import FlyteRemote, _get_git_repo_url
+from flytekit.remote.remote import FlyteRemote, _get_git_repo_url, _get_pickled_target_dict
 from flytekit.tools.translator import Options, get_serializable, get_serializable_launch_plan
 from tests.flytekit.common.parameterizers import LIST_OF_TASK_CLOSURES
 
@@ -53,7 +57,6 @@ ENTITY_TYPE_TEXT = {
     ResourceType.TASK: "Task",
     ResourceType.LAUNCH_PLAN: "Launch Plan",
 }
-
 
 obj = _workflow.Node(
     id="some:node:id",
@@ -501,7 +504,7 @@ def test_fetch_workflow_with_nested_branch(mock_promote, mock_workflow, remote):
 @mock.patch("flytekit.remote.remote.compress_scripts")
 @pytest.mark.serial
 def test_get_image_names(
-    compress_scripts_mock, upload_file_mock, register_workflow_mock, version_from_hash_mock, read_bytes_mock
+        compress_scripts_mock, upload_file_mock, register_workflow_mock, version_from_hash_mock, read_bytes_mock
 ):
     md5_bytes = bytes([1, 2, 3])
     read_bytes_mock.return_value = bytes([4, 5, 6])
@@ -603,7 +606,7 @@ def test_execution_name(mock_client, mock_uuid):
         ]
     )
     with pytest.raises(
-        ValueError, match="Only one of execution_name and execution_name_prefix can be set, but got both set"
+            ValueError, match="Only one of execution_name and execution_name_prefix can be set, but got both set"
     ):
         remote._execute(
             entity=ft,
@@ -680,6 +683,101 @@ def test_register_wf_script_mode(compress_scripts_mock, upload_file_mock, regist
         version="v1",
         default_launch_plan=True,
         options=None,
+        fast_package_options=None,
         source_path=str(pathlib.Path(flytekit.__file__).parent.parent),
         module_name="tests.flytekit.unit.remote.resources",
     )
+
+
+@mock.patch("flytekit.remote.remote.FlyteRemote.client")
+def test_fetch_active_launchplan_not_found(mock_client, remote):
+    mock_client.get_active_launch_plan.side_effect = FlyteEntityNotExistException("not found")
+    assert remote.fetch_active_launchplan(name="basic.list_float_wf.fake_wf") is None
+
+
+def test_get_pickled_target_dict():
+    @task
+    def t1() -> int:
+        return 1
+
+    @task
+    def t2(a: int) -> int:
+        return a + 2
+
+    @workflow
+    def w() -> int:
+        return t2(a=t1())
+
+    _, target_dict = _get_pickled_target_dict(w)
+    assert (
+        target_dict.metadata.python_version
+        == f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+    )
+    assert len(target_dict.entities) == 2
+    assert t1.name in target_dict.entities
+    assert t2.name in target_dict.entities
+    assert target_dict.entities[t1.name] == t1
+    assert target_dict.entities[t2.name] == t2
+
+def test_get_pickled_target_dict_with_map_task():
+    @task
+    def t1(x: int, y: int) -> int:
+        return x + y
+
+    @workflow
+    def w() -> int:
+        return map_task(partial(t1, y=2))(x=[1, 2, 3])
+
+    _, target_dict = _get_pickled_target_dict(w)
+    assert (
+        target_dict.metadata.python_version
+        == f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+    )
+    assert len(target_dict.entities) == 1
+    assert t1.name in target_dict.entities
+    assert target_dict.entities[t1.name] == t1
+
+def test_get_pickled_target_dict_with_dynamic():
+    @task
+    def t1(a: int) -> str:
+        a = a + 2
+        return "fast-" + str(a)
+
+    @workflow
+    def subwf(a: int):
+        t1(a=a)
+
+    @dynamic
+    def my_subwf(a: int) -> typing.List[str]:
+        s = []
+        for i in range(a):
+            s.append(t1(a=i))
+        subwf(a=a)
+        return s
+
+    @workflow
+    def my_wf(a: int) -> typing.List[str]:
+        v = my_subwf(a=a)
+        return v
+
+    with pytest.raises(FlyteAssertion):
+        _get_pickled_target_dict(my_wf)
+
+def test_get_pickled_target_dict_with_eager():
+    @task
+    def t1(a: int) -> int:
+        return a + 1
+
+    @task
+    def t2(a: int) -> int:
+        return a * 2
+
+    @eager
+    async def eager_wf(a: int) -> int:
+        out = await t1(a=a)
+        if out < 0:
+            return -1
+        return await t2(a=out)
+
+    with pytest.raises(FlyteAssertion):
+        _get_pickled_target_dict(eager_wf)

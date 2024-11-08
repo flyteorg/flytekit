@@ -112,6 +112,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         node_dependency_hints: Optional[
             Iterable[Union["PythonFunctionTask", "_annotated_launch_plan.LaunchPlan", WorkflowBase]]
         ] = None,
+        pickle_untyped: bool = False,
         **kwargs,
     ):
         """
@@ -125,10 +126,15 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         :param Optional[Iterable[Union["PythonFunctionTask", "_annotated_launch_plan.LaunchPlan", WorkflowBase]]] node_dependency_hints:
             A list of tasks, launchplans, or workflows that this task depends on. This is only
             for dynamic tasks/workflows, where flyte cannot automatically determine the dependencies prior to runtime.
+        :param bool pickle_untyped: If set to True, the task will pickle untyped outputs. This is just a convenience
+            flag to avoid having to specify the output types in the interface. This is not recommended for production
+            use.
         """
         if task_function is None:
             raise ValueError("TaskFunction is a required parameter for PythonFunctionTask")
-        self._native_interface = transform_function_to_interface(task_function, Docstring(callable_=task_function))
+        self._native_interface = transform_function_to_interface(
+            task_function, Docstring(callable_=task_function), pickle_untyped=pickle_untyped
+        )
         mutated_interface = self._native_interface.remove_inputs(ignore_input_vars)
         name, _, _, _ = extract_task_module(task_function)
         super().__init__(
@@ -244,6 +250,14 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
             # See comment on reference entity checking a bit down below in this function.
             # This is the only circular dependency between the translator.py module and the rest of the flytekit
             # authoring experience.
+
+            # TODO: After backend support pickling dynamic task, add fast_register_file_uploader to the FlyteContext,
+            # and pass the fast_registerfile_uploader to serializer via the options.
+            # If during runtime we are execution a dynamic function that is pickled, all subsequent sub-tasks in
+            # dynamic should also be pickled. As this is not possible to do during static compilation, we will have to
+            # upload the pickled file to the metadata store directly during runtime.
+            # If at runtime we are in dynamic task, we will automatically have the fast_register_file_uploader set,
+            # so we can use that to pass the file uploader to the translator.
             workflow_spec: admin_workflow_models.WorkflowSpec = get_serializable(
                 model_entities, ctx.serialization_settings, wf
             )

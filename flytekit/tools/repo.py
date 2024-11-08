@@ -7,10 +7,10 @@ import typing
 from pathlib import Path
 
 import click
+from rich import print as rprint
 
-import flytekit.configuration
-import flytekit.constants
 from flytekit.configuration import FastSerializationSettings, ImageConfig, SerializationSettings
+from flytekit.constants import CopyFileDetection
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.loggers import logger
 from flytekit.models import launch_plan, task
@@ -52,6 +52,7 @@ def serialize_get_control_plane_entities(
     settings: SerializationSettings,
     local_source_root: typing.Optional[str] = None,
     options: typing.Optional[Options] = None,
+    is_registration: bool = False,
 ) -> typing.List[FlyteControlPlaneEntity]:
     """
     See :py:class:`flytekit.models.core.identifier.ResourceType` to match the trailing index in the file name with the
@@ -60,12 +61,12 @@ def serialize_get_control_plane_entities(
     :param settings: SerializationSettings to be used
     :param pkgs: Dot-delimited Python packages/subpackages to look into for serialization.
     :param local_source_root: Where to start looking for the code.
+    :param is_registration: Whether this is happening for registration.
     """
     settings.source_root = local_source_root
     ctx_builder = FlyteContextManager.current_context().with_serialization_settings(settings)
     with FlyteContextManager.with_context(ctx_builder) as ctx:
         registrable_entities = get_registrable_entities(ctx, options=options)
-        click.secho(f"Successfully serialized {len(registrable_entities)} flyte objects", fg="green")
         return registrable_entities
 
 
@@ -83,6 +84,10 @@ def serialize_to_folder(
         folder = "."
     serialize_load_only(pkgs, settings, local_source_root)
     loaded_entities = serialize_get_control_plane_entities(settings, local_source_root, options=options)
+    click.secho(
+        f"Successfully serialized {len(loaded_entities)} flyte entities",
+        fg="green",
+    )
     persist_registrable_entities(loaded_entities, folder)
 
 
@@ -90,7 +95,6 @@ def package(
     serializable_entities: typing.List[FlyteControlPlaneEntity],
     source: str = ".",
     output: str = "./flyte-package.tgz",
-    fast: bool = False,
     deref_symlinks: bool = False,
     fast_options: typing.Optional[fast_registration.FastPackageOptions] = None,
 ):
@@ -99,7 +103,6 @@ def package(
     :param serializable_entities: Entities that can be serialized
     :param source: source folder
     :param output: output package name with suffix
-    :param fast: fast enabled implies source code is bundled
     :param deref_symlinks: if enabled then symlinks are dereferenced during packaging
     :param fast_options:
 
@@ -114,7 +117,7 @@ def package(
         persist_registrable_entities(serializable_entities, output_tmpdir)
 
         # If Fast serialization is enabled, then an archive is also created and packaged
-        if fast:
+        if fast_options and fast_options.copy_style != CopyFileDetection.NO_COPY:
             # If output exists and is a path within source, delete it so as to not re-bundle it again.
             if os.path.abspath(output).startswith(os.path.abspath(source)) and os.path.exists(output):
                 click.secho(f"{output} already exists within {source}, deleting and re-creating it", fg="yellow")
@@ -135,7 +138,6 @@ def serialize_and_package(
     settings: SerializationSettings,
     source: str = ".",
     output: str = "./flyte-package.tgz",
-    fast: bool = False,
     deref_symlinks: bool = False,
     options: typing.Optional[Options] = None,
     fast_options: typing.Optional[fast_registration.FastPackageOptions] = None,
@@ -147,7 +149,11 @@ def serialize_and_package(
     """
     serialize_load_only(pkgs, settings, source)
     serializable_entities = serialize_get_control_plane_entities(settings, source, options=options)
-    package(serializable_entities, source, output, fast, deref_symlinks, fast_options)
+    click.secho(
+        f"Successfully serialized {len(serializable_entities)} flyte entities",
+        fg="green",
+    )
+    package(serializable_entities, source, output, deref_symlinks, fast_options)
 
 
 def find_common_root(
@@ -203,25 +209,32 @@ def list_packages_and_modules(
     return pkgs_and_modules
 
 
-def secho(i: Identifier, state: str = "success", reason: str = None, op: str = "Registration"):
-    state_ind = "[ ]"
-    fg = "white"
-    nl = False
-    if state == "success":
-        state_ind = "\r[✔]"
-        fg = "green"
-        nl = True
-        reason = f"successful with version {i.version}" if not reason else reason
-    elif state == "failed":
-        state_ind = "\r[x]"
-        fg = "red"
-        nl = True
-        reason = "skipped!"
-    click.secho(
-        click.style(f"{state_ind}", fg=fg) + f" {op} {i.name} type {i.resource_type_name()} {reason}",
-        dim=True,
-        nl=nl,
-    )
+def print_registration_status(
+    i: Identifier,
+    success: bool = True,
+    activation: bool = False,
+    dry_run: bool = False,
+    console_url: str = None,
+    verbosity: int = 0,
+) -> None:
+    color = "green" if success else "red"
+    state_ind = "\r[✔]" if success else "\r[✘]"
+    activation_note = " (Activated)" if activation else ""
+
+    name_words = i.resource_type_name().replace("_", " ").split()
+    name = " ".join(word.capitalize() for word in name_words)
+
+    if success and not dry_run:
+        if verbosity > 0:
+            rprint(f"[{color}]{state_ind} {name}: [cyan underline]{console_url}[/]" + activation_note)
+        else:
+            rprint(
+                f"[{color}]{state_ind} {name}: [cyan underline][link={console_url}]{i.name}[/link][/]" + activation_note
+            )
+    elif success and dry_run:
+        rprint(f"[{color}]{state_ind} {name}: {i.name} (Dry run Mode)")
+    elif not success:
+        rprint(f"[{color}]{state_ind} {name}: {i.name} (Failed)")
 
 
 def register(
@@ -234,15 +247,15 @@ def register(
     raw_data_prefix: str,
     version: typing.Optional[str],
     deref_symlinks: bool,
-    fast: bool,
     package_or_module: typing.Tuple[str],
     remote: FlyteRemote,
-    copy_style: typing.Optional[flytekit.constants.CopyFileDetection],
+    copy_style: CopyFileDetection,
     env: typing.Optional[typing.Dict[str, str]],
     dry_run: bool = False,
     activate_launchplans: bool = False,
     skip_errors: bool = False,
     show_files: bool = False,
+    verbosity: int = 0,
 ):
     """
     Temporarily, for fast register, specify both the fast arg as well as copy_style.
@@ -262,7 +275,7 @@ def register(
         env=env,
     )
 
-    if not version and not fast:
+    if not version and copy_style == CopyFileDetection.NO_COPY:
         click.secho("Version is required.", fg="red")
         return
 
@@ -281,7 +294,7 @@ def register(
     serialize_load_only(pkgs_and_modules, serialization_settings, str(detected_root))
 
     # Fast registration is handled after module loading
-    if fast:
+    if copy_style != CopyFileDetection.NO_COPY:
         md5_bytes, native_url = remote.fast_package(
             detected_root,
             deref_symlinks,
@@ -300,7 +313,13 @@ def register(
             serialization_settings.version = version
             click.secho(f"Computed version is {version}", fg="yellow")
 
-    registrable_entities = serialize_get_control_plane_entities(serialization_settings, str(detected_root), options)
+    registrable_entities = serialize_get_control_plane_entities(
+        serialization_settings, str(detected_root), options, is_registration=True
+    )
+    click.secho(
+        f"Serializing and registering {len(registrable_entities)} flyte entities",
+        fg="green",
+    )
 
     FlyteContextManager.pop_context()
     if len(registrable_entities) == 0:
@@ -320,22 +339,26 @@ def register(
                     i = remote.raw_register(
                         cp_entity, serialization_settings, version=version, create_default_launchplan=False
                     )
-                    secho(i, state="success")
+                    console_url = remote.generate_console_url(i)
+                    print_activation_message = False
                     if is_lp and activate_launchplans:
-                        secho(og_id, "", op="Activation")
                         remote.activate_launchplan(i)
-                        secho(i, reason="activated", op="Activation")
+                        print_activation_message = True
+                    print_registration_status(
+                        i, console_url=console_url, verbosity=verbosity, activation=print_activation_message
+                    )
+
                 except Exception as e:
                     if not skip_errors:
                         raise e
-                    secho(og_id, state="failed")
+                    print_registration_status(og_id, success=False)
             else:
-                secho(og_id, reason="Dry run Mode!")
+                print_registration_status(og_id, dry_run=True)
         except RegistrationSkipped:
-            secho(og_id, "failed")
+            print_registration_status(og_id, success=False)
 
     async def _register(entities: typing.List[task.TaskSpec]):
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         tasks = []
         for entity in entities:
             tasks.append(loop.run_in_executor(None, functools.partial(_raw_register, entity)))

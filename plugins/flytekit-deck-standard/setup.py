@@ -4,16 +4,17 @@ PLUGIN_NAME = "deck"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}-standard"
 
-plugin_requires = [
-    "flytekit",
-    "markdown",
-    "plotly",
-    # ydata-profiling is not compatible with python 3.12 yet: https://github.com/ydataai/ydata-profiling/issues/1510
-    "ydata-profiling; python_version<'3.12'",
-    "pandas",
-    "ipywidgets",
-    "pygments",
-]
+plugin_requires = ["flytekit"]
+
+extras = {
+    "pandas": ["pandas"],
+    "pillow": ["pillow"],
+    "ydata-profiling": ["ydata-profiling"],
+    "markdown": ["markdown"],
+    "plotly": ["plotly"],
+    "pygments": ["pygments"],
+    "all": ["pandas", "pillow", "ydata-profiling", "markdown", "plotly", "pygments"],
+}
 
 __version__ = "0.0.0+develop"
 
@@ -29,15 +30,17 @@ setup(
     namespace_packages=["flytekitplugins"],
     packages=[f"flytekitplugins.{PLUGIN_NAME}"],
     install_requires=plugin_requires,
+    extras_require=extras,
     license="apache2",
-    python_requires=">=3.8",
+    python_requires=">=3.9",
     classifiers=[
         "Intended Audience :: Science/Research",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: Apache Software License",
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
         "Topic :: Scientific/Engineering",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Software Development",

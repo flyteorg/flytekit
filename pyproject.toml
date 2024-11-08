@@ -9,7 +9,7 @@ authors = [{ name = "Flyte Contributors", email = "admin@flyte.org" }]
 description = "Flyte SDK for Python"
 license = { text = "Apache-2.0" }
 readme = { file = "README.md", content-type = "text/markdown" }
-requires-python = ">=3.8,<3.13"
+requires-python = ">=3.9,<3.13"
 dependencies = [
     # Please maintain an alphabetical order in the following list
     "adlfs>=2023.3.0",
@@ -35,6 +35,7 @@ dependencies = [
     "marshmallow-enum",
     "marshmallow-jsonschema>=0.12.0",
     "mashumaro>=3.11",
+    "msgpack>=1.1.0",
     "protobuf!=4.25.0",
     "pygments",
     "python-json-logger>=2.0.0",
@@ -52,7 +53,6 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -91,7 +91,7 @@ exclude = ["boilerplate", "docs", "plugins", "tests*"]
 
 [tool.pytest.ini_options]
 norecursedirs = ["common", "workflows", "spark", "fsspec"]
-log_cli = true
+log_cli = false
 log_cli_level = 20
 markers = [
     "sandbox_test: fake integration tests",               # unit tests that are really integration tests that run on a sandbox environment
