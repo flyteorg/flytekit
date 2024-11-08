@@ -155,8 +155,10 @@ def _dispatch_execute(
                 if lit.ByteSize() >= min_offloaded_size:
                     logger.debug(f"Literal {k} is too large to be inlined, offloading to metadata bucket")
 
+                    # This file will hold the offloaded literal and will be written to the output prefix
+                    # alongside the regular outputs.pb, deck.pb, etc.
+                    # N.B.: by construction `offloaded_filename` is guaranteed to be unique
                     offloaded_filename = f"{k}_offloaded_metadata.pb"
-
                     offloaded_literal = _literal_models.Literal(
                         offloaded_metadata=_literal_models.LiteralOffloadedMetadata(
                             uri=f"{output_prefix}/{offloaded_filename}",
