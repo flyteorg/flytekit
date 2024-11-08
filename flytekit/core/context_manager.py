@@ -26,6 +26,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Generator, List, Optional, Union
+from functools import wraps
+from inspect import signature, Parameter
 
 from flytekit.configuration import Config, SecretsConfig, SerializationSettings
 from flytekit.core import mock_stats, utils
@@ -315,6 +317,54 @@ class ExecutionParameters(object):
         """
         return self.__getattr__(attr_name=key)  # type: ignore
 
+def _deprecate_positional_args(func=None, *, version="1.15.0"):
+    """Decorator for methods that issue warnings for positional arguments."""
+
+    def _inner_deprecate_positional_args(f):
+        sig = signature(f)
+        kwonly_args = []
+        all_args = []
+
+        for name, param in sig.parameters.items():
+            if param.kind == Parameter.POSITIONAL_OR_KEYWORD:
+                all_args.append(name)
+            elif param.kind == Parameter.KEYWORD_ONLY:
+                kwonly_args.append(name)
+
+        @wraps(f)
+        def inner_f(*args, **kwargs):
+            # Determine how many extra positional arguments are present
+            extra_args = len(args) - len(all_args)
+            if extra_args <= 0:
+                # No extra positional args, so proceed without warning
+                return f(*args, **kwargs)
+
+            # extra_args > 0, handling positional arguments as keyword arguments
+            args_msg = [
+                "{}={}".format(name, arg)
+                for name, arg in zip(kwonly_args[:extra_args], args[-extra_args:])
+            ]
+            args_msg = ", ".join(args_msg)
+            
+            # Warning message issued for positional args
+            warnings.warn(
+                (
+                    f"Pass {args_msg} as keyword args. From version "
+                    f"{version} passing these as positional arguments "
+                    "will result in an error"
+                ),
+                FutureWarning,  # Use FutureWarning as intended
+            )
+
+            kwargs.update(zip(sig.parameters, args))
+            return f(**kwargs)
+
+        return inner_f
+
+    if func is not None:
+        return _inner_deprecate_positional_args(func)
+
+    return _inner_deprecate_positional_args
 
 class SecretsManager(object):
     """
@@ -358,6 +408,7 @@ class SecretsManager(object):
         """
         return self._GroupSecrets(item, self)
 
+    @_deprecate_positional_args(version="1.15.0")
     def get(
         self,
         *,
@@ -366,13 +417,6 @@ class SecretsManager(object):
         group_version: Optional[str] = None,
         encode_mode: str = "r",
     ) -> str:
-        # Raise a warning if this method is called without keyword arguments
-        if (group is not None and key is not None) and (not isinstance(group, str) or not isinstance(key, str)):
-            warnings.warn(
-            "The use of positional arguments for SecretsManager.get is deprecated. "
-            "Please use keyword arguments instead. This will be removed in a future version.",
-            DeprecationWarning
-        )
         """
         Retrieves a secret using the resolution order -> Env followed by file. If not found raises a ValueError
         param encode_mode, defines the mode to open files, it can either be "r" to read file, or "rb" to read binary file
