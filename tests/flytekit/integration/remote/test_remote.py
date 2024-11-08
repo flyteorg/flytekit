@@ -9,7 +9,7 @@ import subprocess
 import tempfile
 import time
 import typing
-
+import re
 import joblib
 from urllib.parse import urlparse
 import uuid
@@ -62,7 +62,7 @@ def register():
     assert out.returncode == 0
 
 
-def run(file_name, wf_name, *args):
+def run(file_name, wf_name, *args) -> str:
     out = subprocess.run(
         [
             "pyflyte",
@@ -82,9 +82,18 @@ def run(file_name, wf_name, *args):
             MODULE_PATH / file_name,
             wf_name,
             *args,
-        ]
+        ],
+        capture_output=True,  # Capture the output streams
+        text=True  # Return outputs as strings (not bytes)
     )
     assert out.returncode == 0
+
+    match = re.search(r'executions/([a-zA-Z0-9]+)', out.stdout)
+    if match:
+        execution_id = match.group(1)
+        return execution_id
+
+    return "Unknown"
 
 
 def test_remote_run():
@@ -96,10 +105,9 @@ def test_remote_run():
 
 def test_flytetypes():
     # default inputs for flyte types in dataclass
-    run("flytetypes.py", "wf")
-
+    execution_id = run("flytetypes.py", "wf")
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
-    execution = remote.recent_executions(limit=1)[0]
+    execution = remote.fetch_execution(name=execution_id)
     execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
     assert execution.closure.phase == WorkflowExecutionPhase.SUCCEEDED, f"Execution failed with phase: {execution.closure.phase}"
 
