@@ -293,7 +293,7 @@ class SyncAgentExecutorMixin:
             raise FlyteUserException(f"Failed to run the task {self.name} with error: {resource.message}")
 
         if resource.outputs and not isinstance(resource.outputs, LiteralMap):
-            return TypeEngine.dict_to_literal_map(ctx, resource.outputs)
+            return TypeEngine.dict_to_literal_map(ctx, resource.outputs, type_hints=self.python_interface.outputs)
         return resource.outputs
 
     async def _do(
@@ -368,7 +368,7 @@ class AsyncAgentExecutorMixin:
                 literal_map = await TypeEngine._dict_to_literal_map(ctx, inputs or {}, self.get_input_types())
                 path = ctx.file_access.get_random_local_path()
                 utils.write_proto_to_file(literal_map.to_flyte_idl(), path)
-                ctx.file_access.put_data(path, f"{output_prefix}/inputs.pb")
+                await ctx.file_access.async_put_data(path, f"{output_prefix}/inputs.pb")
                 task_template = render_task_template(task_template, output_prefix)
         else:
             literal_map = TypeEngine.dict_to_literal_map(ctx, inputs or {}, self.get_input_types())

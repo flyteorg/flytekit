@@ -4,12 +4,10 @@ import multiprocessing
 import os
 import platform
 import shutil
-import signal
 import subprocess
 import sys
 import tarfile
 import time
-from threading import Event
 from typing import Callable, List, Optional
 
 import fsspec
@@ -26,7 +24,6 @@ from flytekit.interactive.vscode_lib.config import VscodeConfig
 from flytekit.interactive.vscode_lib.vscode_constants import (
     DOWNLOAD_DIR,
     EXECUTABLE_NAME,
-    HEARTBEAT_CHECK_SECONDS,
     HEARTBEAT_PATH,
     INTERACTIVE_DEBUGGING_FILE_NAME,
     RESUME_TASK_FILE_NAME,
@@ -58,30 +55,35 @@ def exit_handler(
         if post_execute is not None:
             post_execute()
             logger.info("Post execute function executed successfully!")
-        child_process.terminate()
+        if child_process.is_alive():
+            child_process.terminate()
         child_process.join()
 
     logger = flytekit.current_context().logging
     start_time = time.time()
-    delta = 0
+    check_interval = 60  # Interval for heartbeat checking in seconds
+    last_heartbeat_check = time.time() - check_interval
 
-    while not resume_task.is_set():
-        if not os.path.exists(HEARTBEAT_PATH):
-            delta = time.time() - start_time
-            logger.info(f"Code server has not been connected since {delta} seconds ago.")
-            logger.info("Please open the browser to connect to the running server.")
-        else:
-            delta = time.time() - os.path.getmtime(HEARTBEAT_PATH)
-            logger.info(f"The latest activity on code server is {delta} seconds ago.")
+    logger.info("waiting for task to resume...")
+    while child_process.is_alive():
+        current_time = time.time()
+        if current_time - last_heartbeat_check >= check_interval:
+            last_heartbeat_check = current_time
+            if not os.path.exists(HEARTBEAT_PATH):
+                delta = current_time - start_time
+                logger.info(f"Code server has not been connected since {delta} seconds ago.")
+                logger.info("Please open the browser to connect to the running server.")
+            else:
+                delta = current_time - os.path.getmtime(HEARTBEAT_PATH)
+                logger.info(f"The latest activity on code server is {delta} seconds ago.")
 
-        # If the time from last connection is longer than max idle seconds, terminate the vscode server.
-        if delta > max_idle_seconds:
-            logger.info(f"VSCode server is idle for more than {max_idle_seconds} seconds. Terminating...")
-            terminate_process()
-            sys.exit()
+            # If the time from last connection is longer than max idle seconds, terminate the vscode server.
+            if delta > max_idle_seconds:
+                logger.info(f"VSCode server is idle for more than {max_idle_seconds} seconds. Terminating...")
+                terminate_process()
+                sys.exit()
 
-        # Wait for HEARTBEAT_CHECK_SECONDS seconds, but return immediately when resume_task is set.
-        resume_task.wait(timeout=HEARTBEAT_CHECK_SECONDS)
+        time.sleep(1)
 
     # User has resumed the task.
     terminate_process()
@@ -195,14 +197,14 @@ def download_vscode(config: VscodeConfig):
 
     # If the code server already exists in the container, skip downloading
     executable_path = shutil.which(EXECUTABLE_NAME)
-    if executable_path is not None:
+    if executable_path is not None or os.path.exists(DOWNLOAD_DIR):
         logger.info(f"Code server binary already exists at {executable_path}")
         logger.info("Skipping downloading code server...")
     else:
         logger.info("Code server is not in $PATH, start downloading code server...")
         # Create DOWNLOAD_DIR if not exist
         logger.info(f"DOWNLOAD_DIR: {DOWNLOAD_DIR}")
-        os.makedirs(DOWNLOAD_DIR, exist_ok=True)
+        os.makedirs(DOWNLOAD_DIR)
 
         logger.info(f"Start downloading files to {DOWNLOAD_DIR}")
         # Download remote file to local
@@ -213,9 +215,9 @@ def download_vscode(config: VscodeConfig):
         with tarfile.open(code_server_tar_path, "r:gz") as tar:
             tar.extractall(path=DOWNLOAD_DIR)
 
+    if os.path.exists(DOWNLOAD_DIR):
         code_server_dir_name = get_code_server_info(config.code_server_dir_names)
         code_server_bin_dir = os.path.join(DOWNLOAD_DIR, code_server_dir_name, "bin")
-
         # Add the directory of code-server binary to $PATH
         os.environ["PATH"] = code_server_bin_dir + os.pathsep + os.environ["PATH"]
 
@@ -273,7 +275,7 @@ if __name__ == "__main__":
         file.write(python_script)
 
 
-def prepare_resume_task_python():
+def prepare_resume_task_python(pid: int):
     """
     Generate a Python script for users to resume the task.
     """
@@ -285,8 +287,7 @@ if __name__ == "__main__":
     print("Terminating server and resuming task.")
     answer = input("This operation will kill the server. All unsaved data will be lost, and you will no longer be able to connect to it. Do you really want to terminate? (Y/N): ").strip().upper()
     if answer == 'Y':
-        PID = {os.getpid()}
-        os.kill(PID, signal.SIGTERM)
+        os.kill({pid}, signal.SIGTERM)
         print(f"The server has been terminated and the task has been resumed.")
     else:
         print("Operation canceled.")
@@ -337,14 +338,6 @@ def prepare_launch_json():
         json.dump(launch_json, file, indent=4)
 
 
-def resume_task_handler(signum, frame):
-    """
-    The signal handler for task resumption.
-    """
-    resume_task.set()
-
-
-resume_task = Event()
 VSCODE_TYPE_VALUE = "vscode"
 
 
@@ -436,16 +429,7 @@ class vscode(ClassDecorator):
         # 1. Downloads the VSCode server from Internet to local.
         download_vscode(self._config)
 
-        # 2. Prepare the interactive debugging Python script and launch.json.
-        prepare_interactive_python(self.task_function)  # type: ignore
-
-        # 3. Prepare the task resumption Python script.
-        prepare_resume_task_python()
-
-        # 4. Prepare the launch.json
-        prepare_launch_json()
-
-        # 5. Launches and monitors the VSCode server.
+        # 2. Launches and monitors the VSCode server.
         #    Run the function in the background.
         #    Make the task function's source file directory the default directory.
         task_function_source_dir = os.path.dirname(
@@ -459,8 +443,14 @@ class vscode(ClassDecorator):
         )
         child_process.start()
 
-        # 6. Register the signal handler for task resumption. This should be after creating the subprocess so that the subprocess won't inherit the signal handler.
-        signal.signal(signal.SIGTERM, resume_task_handler)
+        # 3. Prepare the interactive debugging Python script and launch.json.
+        prepare_interactive_python(self.task_function)  # type: ignore
+
+        # 4. Prepare the task resumption Python script
+        prepare_resume_task_python(child_process.pid)
+
+        # 5. Prepare the launch.json
+        prepare_launch_json()
 
         return exit_handler(
             child_process=child_process,

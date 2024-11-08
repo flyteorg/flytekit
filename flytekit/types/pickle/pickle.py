@@ -5,25 +5,12 @@ from typing import Type
 import cloudpickle
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-from flytekit.core.type_engine import TypeEngine, TypeTransformer
+from flytekit.core.type_engine import AsyncTypeTransformer, TypeEngine
 from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 
 T = typing.TypeVar("T")
-
-
-class BatchSize:
-    """
-    Flyte-specific object used to wrap the hash function for a specific type
-    """
-
-    def __init__(self, val: int):
-        self._val = val
-
-    @property
-    def val(self) -> int:
-        return self._val
 
 
 class FlytePickle(typing.Generic[T]):
@@ -52,7 +39,7 @@ class FlytePickle(typing.Generic[T]):
         return _SpecificFormatClass
 
     @classmethod
-    def to_pickle(cls, ctx: FlyteContext, python_val: typing.Any) -> str:
+    async def to_pickle(cls, ctx: FlyteContext, python_val: typing.Any) -> str:
         local_dir = ctx.file_access.get_random_local_directory()
         os.makedirs(local_dir, exist_ok=True)
         local_path = ctx.file_access.get_random_local_path()
@@ -60,23 +47,23 @@ class FlytePickle(typing.Generic[T]):
         with open(uri, "w+b") as outfile:
             cloudpickle.dump(python_val, outfile)
 
-        return ctx.file_access.put_raw_data(uri)
+        return await ctx.file_access.async_put_raw_data(uri)
 
     @classmethod
-    def from_pickle(cls, uri: str) -> typing.Any:
+    async def from_pickle(cls, uri: str) -> typing.Any:
         ctx = FlyteContextManager.current_context()
         # Deserialize the pickle, and return data in the pickle,
         # and download pickle file to local first if file is not in the local file systems.
         if ctx.file_access.is_remote(uri):
             local_path = ctx.file_access.get_random_local_path()
-            ctx.file_access.get_data(uri, local_path, False)
+            await ctx.file_access.async_get_data(uri, local_path, False)
             uri = local_path
         with open(uri, "rb") as infile:
             data = cloudpickle.load(infile)
         return data
 
 
-class FlytePickleTransformer(TypeTransformer[FlytePickle]):
+class FlytePickleTransformer(AsyncTypeTransformer[FlytePickle]):
     PYTHON_PICKLE_FORMAT = "PythonPickle"
 
     def __init__(self):
@@ -86,11 +73,17 @@ class FlytePickleTransformer(TypeTransformer[FlytePickle]):
         # Every type can serialize to pickle, so we don't need to check the type here.
         ...
 
-    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
+    async def async_to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
         uri = lv.scalar.blob.uri
-        return FlytePickle.from_pickle(uri)
+        return await FlytePickle.from_pickle(uri)
 
-    def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
+    async def async_to_literal(
+        self,
+        ctx: FlyteContext,
+        python_val: T,
+        python_type: Type[T],
+        expected: LiteralType,
+    ) -> Literal:
         if python_val is None:
             raise AssertionError("Cannot pickle None Value.")
         meta = BlobMetadata(
@@ -98,7 +91,7 @@ class FlytePickleTransformer(TypeTransformer[FlytePickle]):
                 format=self.PYTHON_PICKLE_FORMAT, dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
             )
         )
-        remote_path = FlytePickle.to_pickle(ctx, python_val)
+        remote_path = await FlytePickle.to_pickle(ctx, python_val)
         return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
 
     def guess_python_type(self, literal_type: LiteralType) -> typing.Type[FlytePickle[typing.Any]]:
