@@ -176,6 +176,22 @@ class StructuredDataset(SerializableType, DataClassJSONMixin):
         if self._dataframe_type is None:
             raise ValueError("No dataframe type set. Use open() to set the local dataframe type you want to use.")
         ctx = FlyteContextManager.current_context()
+
+        if self.uri is not None and self.dataframe is None:
+            expected = TypeEngine.to_literal_type(StructuredDataset)
+            sdt = StructuredDatasetType(
+                columns=expected.structured_dataset_type.columns,
+                format=expected.structured_dataset_type.format,
+                external_schema_type=expected.structured_dataset_type.external_schema_type,
+                external_schema_bytes=expected.structured_dataset_type.external_schema_bytes,
+            )
+            sd_model = literals.StructuredDataset(
+                uri=self.uri,
+                metadata=StructuredDatasetMetadata(structured_dataset_type=sdt),
+            )
+            self._literal_sd = Literal(scalar=Scalar(structured_dataset=sd_model)).scalar.structured_dataset
+            self._metadata = StructuredDatasetMetadata(structured_dataset_type=sdt)
+
         return flyte_dataset_transformer.open_as(ctx, self.literal, self._dataframe_type, self.metadata)
 
     def iter(self) -> Generator[DF, None, None]:
