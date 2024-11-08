@@ -1,3 +1,5 @@
+import copy
+
 import botocore.session
 from contextlib import ExitStack, contextmanager
 import datetime
@@ -62,7 +64,12 @@ def register():
     assert out.returncode == 0
 
 
+import os
+import re
+import subprocess
+
 def run(file_name, wf_name, *args) -> str:
+    # Copy the environment and set the environment variable
     out = subprocess.run(
         [
             "pyflyte",
@@ -84,9 +91,9 @@ def run(file_name, wf_name, *args) -> str:
             *args,
         ],
         capture_output=True,  # Capture the output streams
-        text=True  # Return outputs as strings (not bytes)
+        text=True,  # Return outputs as strings (not bytes)
     )
-    assert out.returncode == 0
+    assert out.returncode == 0, f"Command failed with return code {out.returncode}. Output: {out.stderr}"
 
     match = re.search(r'executions/([a-zA-Z0-9]+)', out.stdout)
     if match:
@@ -104,13 +111,14 @@ def test_remote_run():
     run("default_lp.py", "my_wf")
 
 def test_flytetypes():
+    os.environ["FLYTE_USE_OLD_DC_FORMAT"] = "true"
     # default inputs for flyte types in dataclass
     execution_id = run("flytetypes.py", "wf")
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     execution = remote.fetch_execution(name=execution_id)
     execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
     assert execution.closure.phase == WorkflowExecutionPhase.SUCCEEDED, f"Execution failed with phase: {execution.closure.phase}"
-
+    os.environ["FLYTE_USE_OLD_DC_FORMAT"] = "false"
 
 def test_fetch_execute_launch_plan(register):
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
