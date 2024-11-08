@@ -161,7 +161,7 @@ def _dispatch_execute(
                         offloaded_metadata=_literal_models.LiteralOffloadedMetadata(
                             uri=f"{output_prefix}/{offloaded_filename}",
                             size_bytes=lit.ByteSize(),
-                            # TODO: do I have to set the inferred literal type?
+                            inferred_type=task_def.interface.outputs[k].type,
                         ),
                         hash=v.hash if v.hash is not None else compute_hash_string(lit),
                     )

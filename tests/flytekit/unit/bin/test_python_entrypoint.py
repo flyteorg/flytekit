@@ -23,7 +23,7 @@ from flytekit.core.base_task import IgnoreOutputs
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.promise import VoidPromise
 from flytekit.core.task import task
-from flytekit.core.type_engine import TypeEngine
+from flytekit.core.type_engine import TypeEngine, DataclassTransformer
 from flytekit.exceptions import user as user_exceptions
 from flytekit.exceptions.scopes import system_entry_point, user_entry_point
 from flytekit.exceptions.user import FlyteRecoverableException, FlyteUserRuntimeException
@@ -31,6 +31,7 @@ from flytekit.models import literals as _literal_models
 from flytekit.models.core import errors as error_models, execution
 from flytekit.models.core import execution as execution_models
 from flytekit.core.utils import write_proto_to_file
+from flytekit.models.types import LiteralType, SimpleType
 
 
 @mock.patch("flytekit.core.utils.load_proto_from_file")
@@ -529,6 +530,7 @@ def test_dispatch_execute_offloaded_literals(tmp_path_factory):
                         assert lit.literals["o0"].offloaded_metadata is not None
                         assert lit.literals["o0"].offloaded_metadata.size_bytes == 62
                         assert lit.literals["o0"].offloaded_metadata.uri.endswith("/o0_offloaded_metadata.pb")
+                        assert lit.literals["o0"].offloaded_metadata.inferred_type == LiteralType(collection_type=LiteralType(simple=SimpleType.STRING)).to_flyte_idl()
                     elif ff == "o0_offloaded_metadata.pb":
                         lit = literals_pb2.Literal()
                         lit.ParseFromString(f.read())
@@ -593,10 +595,12 @@ def test_dispatch_execute_offloaded_literals_two_outputs_offloaded(tmp_path_fact
                         assert lit.literals["o0"].offloaded_metadata is not None
                         assert lit.literals["o0"].offloaded_metadata.size_bytes == 6
                         assert lit.literals["o0"].offloaded_metadata.uri.endswith("/o0_offloaded_metadata.pb")
+                        assert lit.literals["o0"].offloaded_metadata.inferred_type == LiteralType(simple=SimpleType.INTEGER).to_flyte_idl()
                         assert "o1" in lit.literals
                         assert lit.literals["o1"].offloaded_metadata is not None
                         assert lit.literals["o1"].offloaded_metadata.size_bytes == 82
                         assert lit.literals["o1"].offloaded_metadata.uri.endswith("/o1_offloaded_metadata.pb")
+                        assert lit.literals["o1"].offloaded_metadata.inferred_type == LiteralType(collection_type=LiteralType(simple=SimpleType.STRING)).to_flyte_idl()
                     elif ff == "o0_offloaded_metadata.pb":
                         lit = literals_pb2.Literal()
                         lit.ParseFromString(f.read())
@@ -679,6 +683,7 @@ def test_dispatch_execute_offloaded_literals_two_outputs_only_second_one_offload
                         assert lit.literals["o1"].offloaded_metadata.size_bytes == 1108538
                         assert lit.literals["o1"].offloaded_metadata.uri.endswith("/o1_offloaded_metadata.pb")
                         assert lit.literals["o1"].hash == "VS9bthLslGa8tjuVBCcmO3UdGHrkpyOBXzJlmY47fw8="
+                        assert lit.literals["o1"].offloaded_metadata.inferred_type == DataclassTransformer().get_literal_type(DC).to_flyte_idl()
                     elif ff == "o1_offloaded_metadata.pb":
                         lit = literals_pb2.Literal()
                         lit.ParseFromString(f.read())
@@ -728,12 +733,13 @@ def test_dispatch_execute_offloaded_literals_annotated_hash(tmp_path_factory):
                         lit.ParseFromString(f.read())
                         assert len(lit.literals) == 1
 
-                        # o1 is offloaded
+                        # o0 is offloaded
                         assert "o0" in lit.literals
                         assert lit.literals["o0"].HasField("offloaded_metadata") is True
                         assert lit.literals["o0"].offloaded_metadata.size_bytes > 0
                         assert lit.literals["o0"].offloaded_metadata.uri.endswith("/o0_offloaded_metadata.pb")
                         assert lit.literals["o0"].hash == "1234"
+                        assert lit.literals["o0"].offloaded_metadata.inferred_type == t1.interface.outputs["o0"].type.to_flyte_idl()
                     elif ff == "o0_offloaded_metadata.pb":
                         lit = literals_pb2.Literal()
                         lit.ParseFromString(f.read())
