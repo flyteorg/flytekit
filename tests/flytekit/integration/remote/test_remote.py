@@ -1,5 +1,3 @@
-import copy
-
 import botocore.session
 from contextlib import ExitStack, contextmanager
 import datetime
