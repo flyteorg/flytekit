@@ -46,6 +46,10 @@ class memray_profiling(ClassDecorator):
                 f"unrecognized arguments for {memray_html_reporter} reporter. Please check https://bloomberg.github.io/memray/{memray_html_reporter}.html"
             )
 
+        carried_task_args = {}
+        if hasattr(task_function, "_fk_task_args"):
+            carried_task_args = task_function._fk_task_args
+        self._fk_task_args = {**carried_task_args, **{"enable_deck": True}}
         self.native_traces = native_traces
         self.trace_python_allocators = trace_python_allocators
         self.follow_fork = follow_fork
