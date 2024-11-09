@@ -111,7 +111,7 @@ def test_remote_run():
 def test_generic_idl_flytetypes():
     os.environ["FLYTE_USE_OLD_DC_FORMAT"] = "true"
     # default inputs for flyte types in dataclass
-    execution_id = run("flytetypes.py", "wf")
+    execution_id = run("generic_idl_flytetypes.py", "wf")
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     execution = remote.fetch_execution(name=execution_id)
     execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
@@ -121,7 +121,7 @@ def test_generic_idl_flytetypes():
 
 def test_msgpack_idl_flytetypes():
     # default inputs for flyte types in dataclass
-    execution_id = run("flytetypes.py", "wf")
+    execution_id = run("msgpack_idl_flytetypes.py", "wf")
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     execution = remote.fetch_execution(name=execution_id)
     execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
