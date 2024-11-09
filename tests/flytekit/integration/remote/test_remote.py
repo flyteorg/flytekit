@@ -115,6 +115,7 @@ def test_generic_idl_flytetypes():
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     execution = remote.fetch_execution(name=execution_id)
     execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
+    print("Execution Error:", execution.error)
     assert execution.closure.phase == WorkflowExecutionPhase.SUCCEEDED, f"Execution failed with phase: {execution.closure.phase}"
     os.environ["FLYTE_USE_OLD_DC_FORMAT"] = "false"
 
@@ -124,6 +125,7 @@ def test_msgpack_idl_flytetypes():
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     execution = remote.fetch_execution(name=execution_id)
     execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
+    print("Execution Error:", execution.error)
     assert execution.closure.phase == WorkflowExecutionPhase.SUCCEEDED, f"Execution failed with phase: {execution.closure.phase}"
 
 def test_fetch_execute_launch_plan(register):
