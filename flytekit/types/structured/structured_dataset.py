@@ -30,6 +30,7 @@ from flytekit.models import literals
 from flytekit.models import types as type_models
 from flytekit.models.literals import Binary, Literal, Scalar, StructuredDatasetMetadata
 from flytekit.models.types import LiteralType, SchemaType, StructuredDatasetType
+from flytekit.utils.asyn import loop_manager
 
 if typing.TYPE_CHECKING:
     import pandas as pd
@@ -179,20 +180,28 @@ class StructuredDataset(SerializableType, DataClassJSONMixin):
 
         if self.uri is not None and self.dataframe is None:
             expected = TypeEngine.to_literal_type(StructuredDataset)
-            sdt = StructuredDatasetType(
-                columns=expected.structured_dataset_type.columns,
-                format=expected.structured_dataset_type.format,
-                external_schema_type=expected.structured_dataset_type.external_schema_type,
-                external_schema_bytes=expected.structured_dataset_type.external_schema_bytes,
-            )
-            sd_model = literals.StructuredDataset(
-                uri=self.uri,
-                metadata=StructuredDatasetMetadata(structured_dataset_type=sdt),
-            )
-            self._literal_sd = Literal(scalar=Scalar(structured_dataset=sd_model)).scalar.structured_dataset
-            self._metadata = StructuredDatasetMetadata(structured_dataset_type=sdt)
+            self._set_literal(ctx, expected)
 
         return flyte_dataset_transformer.open_as(ctx, self.literal, self._dataframe_type, self.metadata)
+
+    def _set_literal(self, ctx: FlyteContext, expected: LiteralType) -> None:
+        """
+        Explicitly set the StructuredDataset Literal to handle the following cases:
+
+        1. Read a dataframe from a StructuredDataset with an uri, for example:
+
+        @task
+        def return_sd() -> StructuredDataset:
+            sd = StructuredDataset(uri="s3://my-s3-bucket/s3_flyte_dir/df.parquet", file_format="parquet")
+            df = sd.open(pd.DataFrame).all()
+            return df
+
+        For details, please refer to this issue: https://github.com/flyteorg/flyte/issues/5954.
+        """
+        to_literal = loop_manager.synced(flyte_dataset_transformer.async_to_literal)
+        self._literal_sd = to_literal(ctx, self, StructuredDataset, expected).scalar.structured_dataset
+        if self.metadata is None:
+            self._metadata = self._literal_sd.metadata
 
     def iter(self) -> Generator[DF, None, None]:
         if self._dataframe_type is None:
