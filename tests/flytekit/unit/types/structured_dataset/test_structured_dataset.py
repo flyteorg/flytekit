@@ -2,6 +2,7 @@ import os
 import tempfile
 import typing
 from collections import OrderedDict
+from pathlib import Path
 
 import google.cloud.bigquery
 import pytest
@@ -21,6 +22,7 @@ from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import LiteralType, SchemaType, SimpleType, StructuredDatasetType
 from flytekit.tools.translator import get_serializable
+from flytekit.types.file import FlyteFile
 from flytekit.types.structured.structured_dataset import (
     PARQUET,
     StructuredDataset,
@@ -57,6 +59,21 @@ def test_protocol():
 
 def generate_pandas() -> pd.DataFrame:
     return pd.DataFrame({"name": ["Tom", "Joseph"], "age": [20, 22]})
+
+
+@pytest.fixture
+def local_tmp_pqt_file():
+    df = generate_pandas()
+
+    # Create a temporary parquet file
+    with tempfile.NamedTemporaryFile(delete=False, mode="w+b", suffix=".parquet") as pqt_file:
+        pqt_path = pqt_file.name
+        df.to_parquet(pqt_path)
+
+    yield pqt_path
+
+    # Cleanup
+    Path(pqt_path).unlink(missing_ok=True)
 
 
 def test_formats_make_sense():
@@ -643,3 +660,43 @@ def test_default_args_task():
 
     pd.testing.assert_frame_equal(wf_no_input(), default_val)
     pd.testing.assert_frame_equal(wf_with_input(), input_val)
+
+
+
+def test_read_sd_from_uri(local_tmp_pqt_file):
+
+    @task
+    def upload_pqt_to_s3(local_path: str, remote_path: str) -> None:
+        """Upload local temp parquet file to s3 object storage"""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            fs = FileAccessProvider(
+                local_sandbox_dir=tmp_dir,
+                raw_output_prefix="s3://my-s3-bucket"
+            )
+            fs.upload(local_path, remote_path)
+
+    @task
+    def read_sd_from_uri(uri: str) -> pd.DataFrame:
+        sd = StructuredDataset(uri=uri, file_format="parquet")
+        df = sd.open(pd.DataFrame).all()
+
+        return df
+
+
+    REMOTE_PATH = "s3://my-s3-bucket/my-test/df.parquet"
+    df = generate_pandas()
+
+    # Upload parqut to s3
+    upload_pqt_to_s3(local_path=local_tmp_pqt_file, remote_path=REMOTE_PATH)
+    ff = FlyteFile(path=REMOTE_PATH)
+    with ff.open(mode="rb") as f:
+        df_s3 = pd.read_parquet(f)
+    pd.testing.assert_frame_equal(df, df_s3)
+
+    # Read sd from local uri
+    df1 = read_sd_from_uri(uri=local_tmp_pqt_file)
+    pd.testing.assert_frame_equal(df, df1)
+
+    # Read sd from remote uri
+    df2 = read_sd_from_uri(uri=REMOTE_PATH)
+    pd.testing.assert_frame_equal(df, df2)
