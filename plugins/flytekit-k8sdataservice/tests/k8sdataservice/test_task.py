@@ -17,9 +17,9 @@ def mock_k8s_manager():
         yield mock_k8s_manager
 
 
-@patch("flytekitplugins.k8sdataservice.agent.yaml.safe_load", new_callable=mock_open, read_data="task_logs: {}")
-@patch("flytekitplugins.k8sdataservice.agent.open", return_value={"task_logs": {"templates": [{"templateUris": ["https://some-log-url"]}]}})
-def test_gnn_task(mock_open, mock_load):
+# @patch("flytekitplugins.k8sdataservice.agent.yaml.safe_load", new_callable=mock_open, read_data="task_logs: {}")
+# @patch("flytekitplugins.k8sdataservice.agent.open", return_value={"task_logs": {"templates": [{"templateUris": ["https://some-log-url"]}]}})
+def test_gnn_task():
     gnn_config = DataServiceConfig(
         Name="test",
         Replicas=8,
@@ -57,23 +57,21 @@ def test_gnn_task(mock_open, mock_load):
             "cpu": "1",
             "mem": "2",
             "gpu": "4",
-            "storage": None,
             "ephemeral_storage": None
         },
         "Limits": {
             "cpu": "1",
             "mem": "2",
             "gpu": "4",
-            "storage": None,
             "ephemeral_storage": None
         },
     })
     assert task_spec.template.custom == json_format.MessageToDict(s)
 
 
-@patch("flytekitplugins.k8sdataservice.agent.yaml.safe_load", new_callable=mock_open, read_data="task_logs: {}")
-@patch("flytekitplugins.k8sdataservice.agent.open", return_value={"task_logs": {"templates": [{"templateUris": ["https://some-log-url"]}]}})
-def test_gnn_task_optional_field(mock_open, mock_load):
+# @patch("flytekitplugins.k8sdataservice.agent.yaml.safe_load", new_callable=mock_open, read_data="task_logs: {}")
+# @patch("flytekitplugins.k8sdataservice.agent.open", return_value={"task_logs": {"templates": [{"templateUris": ["https://some-log-url"]}]}})
+def test_gnn_task_optional_field():
     gnn_config = DataServiceConfig(
         Name="test",
         Replicas=8,
