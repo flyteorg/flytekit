@@ -3008,18 +3008,18 @@ def test_DataclassTransformer_with_discriminated_subtypes():
                 include_subtypes=True,
             )
 
-        subclass_type: SubclassTypes = SubclassTypes.BASE
         base_attribute: int
+        subclass_type: SubclassTypes = SubclassTypes.BASE
 
     @dataclass(kw_only=True)
     class ClassA(BaseClass):
+        class_a_attribute: str # type: ignore[misc]
         subclass_type: SubclassTypes = SubclassTypes.CLASS_A
-        class_a_attribute: str
 
     @dataclass(kw_only=True)
     class ClassB(BaseClass):
+        class_b_attribute: float # type: ignore[misc]
         subclass_type: SubclassTypes = SubclassTypes.CLASS_B
-        class_b_attribute: float
 
     @task
     def assert_class_and_return(instance: BaseClass) -> BaseClass:
