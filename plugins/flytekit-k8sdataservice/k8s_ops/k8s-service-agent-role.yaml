@@ -1,0 +1,86 @@
+# Example of the role/binding set up for the data service to create/update/delete resources in the sandbox flyte namespace
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: flyte-flyteagent-role
+  namespace: flyte
+  labels:
+    app.kubernetes.io/name: flyteagent
+    app.kubernetes.io/instance: flyte
+rules:
+- apiGroups:
+      - apps
+  resources:
+    - statefulsets
+    - statefulsets/status
+    - statefulsets/scale
+    - statefulsets/finalizers
+  verbs:
+    - get
+    - list
+    - watch
+    - create
+    - update
+    - delete
+    - patch
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - configmaps
+  - serviceaccounts
+  - secrets
+  - pods/exec
+  - pods/log
+  - pods/status
+  - services
+  verbs:
+  - '*'
+# Allow Event recording access
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - update
+  - delete
+  - patch
+# Allow Access to Podtemplates
+- apiGroups:
+  - ""
+  resources:
+  - podtemplates
+  verbs:
+  - get
+  - list
+  - watch
+# Allow Access to all resources under flyte.lyft.com
+- apiGroups:
+  - flyte.lyft.com
+  resources:
+  - flyteworkflows
+  - flyteworkflows/finalizers
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - delete
+  - patch
+  - post
+  - deletecollection
+# Allow Access to plugin objects.
+- apiGroups:
+  - 'kubeflow.org'
+  resources:
+  - "*"
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - delete
+  - patch
