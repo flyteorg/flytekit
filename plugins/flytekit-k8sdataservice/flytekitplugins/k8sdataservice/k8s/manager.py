@@ -3,7 +3,7 @@ from flytekit import logger
 from kubernetes import client
 from kubernetes.client.rest import ApiException
 from flytekitplugins.k8sdataservice.k8s.kube_config import KubeConfig
-from kingkong.execution import create_king_kong_execution_label
+# from kingkong.execution import create_king_kong_execution_label
 from kingkong.utils import union_maps
 from utils.cluster_namespace import get_execution_namespace
 from utils.resources import cleanup_resources, convert_flyte_to_k8s_fields
@@ -34,7 +34,7 @@ class K8sManager:
             self.name = 'gnn-nofirsthash'
 
     def create_data_service(self, kk_execution_id: Optional[str] = None) -> str:
-        self.labels = create_king_kong_execution_label(kk_execution_id)
+        # self.labels = create_king_kong_execution_label(kk_execution_id)
         svc_name = self.create_service()
         logger.info(f'Created service: {svc_name}')
         stateful_set_obj = self.create_stateful_set_object()

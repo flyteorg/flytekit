@@ -1,0 +1,14 @@
+FROM python:3.10-slim-bookworm
+
+MAINTAINER shuliang@linkedin.com
+LABEL org.opencontainers.image.source=https://github.com/flyteorg/flytekit
+
+ARG CODE_DIR=/home/jobuser/code
+COPY plugins/flytekit-k8sdataservice $CODE_DIR/flytekit-k8sdataservice
+RUN ls -ls $CODE_DIR
+# additional dependencies for running in k8s
+RUN pip install prometheus-client grpcio-health-checking
+RUN cd $CODE_DIR/flytekit-k8sdataservice && pip install .
+# flytekit will autoload the agent if package is installed.
+RUN pip install flytekitplugins-k8sdataservice
+CMD pyflyte serve agent --port 8000

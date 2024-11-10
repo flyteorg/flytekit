@@ -161,5 +161,5 @@ AgentRegistry.register(DataServiceAgent())
 # here we force to remove the sensor to avoid the mess up completely.
 # The better approach is to chase the flyte team to keep the flyte backend and frontend upgrade
 # as soon as possible!
-del AgentRegistry._REGISTRY["sensor"]
-del AgentRegistry._METADATA["Sensor"]
+# del AgentRegistry._REGISTRY["sensor"]
+# del AgentRegistry._METADATA["Sensor"]
