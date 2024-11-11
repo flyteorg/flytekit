@@ -22,8 +22,6 @@ aiosignal==1.3.1
     # via aiohttp
 annotated-types==0.7.0
     # via pydantic
-appnope==0.1.4
-    # via ipykernel
 asn1crypto==1.5.1
     # via snowflake-connector-python
 asttokens==2.4.1
@@ -89,6 +87,7 @@ cryptography==43.0.1
     #   msal
     #   pyjwt
     #   pyopenssl
+    #   secretstorage
     #   snowflake-connector-python
 dataclasses-json==0.5.9
     # via flytekit
@@ -217,6 +216,10 @@ jaraco-functools==4.0.1
     # via keyring
 jedi==0.19.1
     # via ipython
+jeepney==0.8.0
+    # via
+    #   keyring
+    #   secretstorage
 jmespath==1.0.1
     # via botocore
 joblib==1.4.2
@@ -473,6 +476,8 @@ scikit-learn==1.5.0
     # via -r dev-requirements.in
 scipy==1.13.1
     # via scikit-learn
+secretstorage==3.3.3
+    # via keyring
 setuptools-scm==8.1.0
     # via -r dev-requirements.in
 six==1.16.0
@@ -482,7 +487,7 @@ six==1.16.0
     #   isodate
     #   kubernetes
     #   python-dateutil
-snowflake-connector-python==3.12.1
+snowflake-connector-python==3.12.3
     # via -r dev-requirements.in
 sortedcontainers==2.4.0
     # via
