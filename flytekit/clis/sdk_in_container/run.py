@@ -148,12 +148,22 @@ class RunLevelParams(PyFlyteParams):
     )
     wait_execution: bool = make_click_option_field(
         click.Option(
-            param_decls=["--wait-execution", "wait_execution"],
+            param_decls=["--wait", "--wait-execution", "wait_execution"],
             required=False,
             is_flag=True,
             default=False,
             show_default=True,
             help="Whether to wait for the execution to finish",
+        )
+    )
+    poll_interval: int = make_click_option_field(
+        click.Option(
+            param_decls=["-i", "--poll-interval", "poll_interval"],
+            required=False,
+            type=int,
+            default=None,
+            show_default=True,
+            help="Poll interval in seconds to check the status of the execution",
         )
     )
     dump_snippet: bool = make_click_option_field(
@@ -458,9 +468,13 @@ def to_click_option(
     description_extra = ""
     if literal_var.type.simple == SimpleType.STRUCT:
         if default_val and not isinstance(default_val, ArtifactQuery):
-            if type(default_val) == dict or type(default_val) == list:
-                default_val = json.dumps(default_val)
-            else:
+            """
+            1. Convert default_val to a JSON string for click.Option, which uses json.loads to parse it.
+            2. Set a new context with remote access to allow Flyte types (e.g., files) to be uploaded.
+            3. Use FlyteContextManager for Flyte Types with custom serialization.
+                If no custom logic exists, fall back to json.dumps.
+            """
+            with FlyteContextManager.with_context(flyte_ctx.new_builder()):
                 encoder = JSONEncoder(python_type)
                 default_val = encoder.encode(default_val)
         if literal_var.type.metadata:
@@ -532,7 +546,6 @@ def run_remote(
             project=project,
             domain=domain,
             execution_name=run_level_params.name,
-            wait=run_level_params.wait_execution,
             options=options_from_run_params(run_level_params),
             type_hints=type_hints,
             overwrite_cache=run_level_params.overwrite_cache,
@@ -541,15 +554,16 @@ def run_remote(
             cluster_pool=run_level_params.cluster_pool,
             execution_cluster_label=run_level_params.execution_cluster_label,
         )
+        s = (
+            click.style("\n[✔] ", fg="green")
+            + "Go to "
+            + click.style(execution.execution_url, fg="cyan")
+            + " to see execution in the console."
+        )
+        click.echo(s)
 
-    console_url = remote.generate_console_url(execution)
-    s = (
-        click.style("\n[✔] ", fg="green")
-        + "Go to "
-        + click.style(console_url, fg="cyan")
-        + " to see execution in the console."
-    )
-    click.echo(s)
+        if run_level_params.wait_execution:
+            execution = remote.wait(execution, poll_interval=run_level_params.poll_interval)
 
     if run_level_params.wait_execution:
         if execution.closure.phase != WorkflowExecutionPhase.SUCCEEDED:
