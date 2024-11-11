@@ -11,4 +11,6 @@ RUN pip install prometheus-client grpcio-health-checking
 RUN cd $CODE_DIR/flytekit-k8sdataservice && pip install .
 # flytekit will autoload the agent if package is installed.
 RUN pip install flytekitplugins-k8sdataservice
-CMD pyflyte serve agent --port 8000
+ENV PYTHONPATH=/usr/local/lib/python3.10/site-packages
+
+CMD pyflyte --verbose serve agent --port 8000

@@ -1,21 +1,22 @@
-from setuptools import setup
+from setuptools import setup, find_namespace_packages
 
 PLUGIN_NAME = "k8sdataservice"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=1.11.0", "aioboto3>=12.3.0", "xxhash"]
+plugin_requires = ["flytekit>=1.11.0", "kubernetes>=23.6.0", "flyteidl>=1.11.0"]
 
 __version__ = "0.0.0+develop"
 
 setup(
     name=microlib_name,
     version=__version__,
-    author="flyteorg",
-    author_email="admin@flyte.org",
+    author="LinkedIn",
+    author_email="shuliang@linkedin.com",
     description="Flytekit K8s Data Service Plugin",
      #namespace_packages=["flytekitplugins"],
-    packages=[f"flytekitplugins.{PLUGIN_NAME}"],
+    packages=find_namespace_packages(where='.'),
+    include_package_data=True,
     install_requires=plugin_requires,
     license="apache2",
     python_requires=">=3.9",
