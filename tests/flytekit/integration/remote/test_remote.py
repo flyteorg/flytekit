@@ -62,10 +62,6 @@ def register():
     assert out.returncode == 0
 
 
-import os
-import re
-import subprocess
-
 def run(file_name, wf_name, *args) -> str:
     # Copy the environment and set the environment variable
     out = subprocess.run(
@@ -91,7 +87,9 @@ def run(file_name, wf_name, *args) -> str:
         capture_output=True,  # Capture the output streams
         text=True,  # Return outputs as strings (not bytes)
     )
-    assert out.returncode == 0, f"Command failed with return code {out.returncode}. Output: {out.stderr}"
+    assert out.returncode == 0, (f"Command failed with return code {out.returncode}.\n"
+                                 f"Standard Output: {out.stdout}\n"
+                                 f"Standard Error: {out.stderr}\n")
 
     match = re.search(r'executions/([a-zA-Z0-9]+)', out.stdout)
     if match:
@@ -108,6 +106,7 @@ def test_remote_run():
     # run twice to make sure it will register a new version of the workflow.
     run("default_lp.py", "my_wf")
 
+
 def test_generic_idl_flytetypes():
     os.environ["FLYTE_USE_OLD_DC_FORMAT"] = "true"
     # default inputs for flyte types in dataclass
@@ -119,6 +118,7 @@ def test_generic_idl_flytetypes():
     assert execution.closure.phase == WorkflowExecutionPhase.SUCCEEDED, f"Execution failed with phase: {execution.closure.phase}"
     os.environ["FLYTE_USE_OLD_DC_FORMAT"] = "false"
 
+
 def test_msgpack_idl_flytetypes():
     # default inputs for flyte types in dataclass
     execution_id = run("msgpack_idl_flytetypes.py", "wf")
@@ -127,6 +127,7 @@ def test_msgpack_idl_flytetypes():
     execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
     print("Execution Error:", execution.error)
     assert execution.closure.phase == WorkflowExecutionPhase.SUCCEEDED, f"Execution failed with phase: {execution.closure.phase}"
+
 
 def test_fetch_execute_launch_plan(register):
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
