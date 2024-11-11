@@ -97,6 +97,22 @@ def _build_error_file_name() -> str:
     return f"{error_file_name_base}{error_file_name_extension}"
 
 
+def _get_worker_name() -> str:
+    """Get the name of the worker
+
+    For distributed tasks, the backend plugin can set a worker name to be used for error reporting.
+
+    Returns
+    -------
+    str
+        Name of the worker
+    """
+    dist_error_strategy = get_one_of("FLYTE_INTERNAL_DIST_ERROR_STRATEGY", "_F_DES")
+    if not dist_error_strategy:
+        return ""
+    return get_one_of("FLYTE_INTERNAL_WORKER_NAME", "_F_WN")
+
+
 def _get_working_loop():
     """Returns a running event loop."""
     try:
@@ -130,7 +146,7 @@ def _dispatch_execute(
             c: OR if an unhandled exception is retrieved - record it as an errors.pb
     """
     error_file_name = _build_error_file_name()
-    worker_name = get_one_of("FLYTE_INTERNAL_WORKER_NAME", "_F_WN")
+    worker_name = _get_worker_name()
 
     output_file_dict = {}
 
