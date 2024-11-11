@@ -537,7 +537,8 @@ class FlyteDirToMultipartBlobTransformer(AsyncTypeTransformer[FlyteDirectory]):
                 remote_directory = ctx.file_access.get_random_remote_directory()
             if not pathlib.Path(source_path).is_dir():
                 raise FlyteAssertion("Expected a directory. {} is not a directory".format(source_path))
-            await ctx.file_access.async_put_data(
+            # remote_directory will convert the path from `flyte://` to `s3://` or `gs://`
+            remote_directory = await ctx.file_access.async_put_data(
                 source_path, remote_directory, is_multipart=True, batch_size=batch_size
             )
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_directory)))
