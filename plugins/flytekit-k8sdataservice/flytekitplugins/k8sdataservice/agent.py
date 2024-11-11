@@ -89,7 +89,7 @@ class DataServiceAgent(AsyncAgentBase):
         data_dict = data.__dict__ if isinstance(data, DataServiceConfig) else data
         logger.info(f"The data_dict is {data_dict}")
         self.k8s_manager.set_configs(data_dict)
-        name = data.get('name')
+        name = data.Name
         logger.info(f'Get the stateful set name {name}')
 
         ctx = FlyteContextManager.current_context()
