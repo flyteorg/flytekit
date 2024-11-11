@@ -15,7 +15,7 @@ class CleanupSensor(BaseSensor):
         """
         Initialize the CleanupSensor class with relevant configurations for monitoring and managing the k8s data service.
         """
-        super().__init__(name=name, task_type='dssensor', **kwargs)
+        super().__init__(name=name, task_type='sensor', **kwargs)
 
     async def poke(self,
                    release_name: str,
@@ -35,7 +35,7 @@ class CleanupSensor(BaseSensor):
         self.custom_api = client.CustomObjectsApi()
         self.release_name = release_name
         self.cleanup_data_service = cleanup_data_service
-        self.namespace = get_execution_namespace(cluster=cluster)
+        self.namespace = 'flyte' # get_execution_namespace(cluster=cluster)
         self.cluster = cluster
         if not self.cleanup_data_service:
             logger.info(f'User decides to not to clean up the graph engine: {self.release_name} in cluster {self.cluster}, namespace {self.namespace}')

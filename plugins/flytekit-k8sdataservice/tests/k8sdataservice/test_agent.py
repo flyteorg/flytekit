@@ -4,15 +4,10 @@ from datetime import timedelta
 from unittest.mock import patch, MagicMock
 import grpc
 from google.protobuf import json_format
-from flyteidl.admin.agent_pb2 import (
-    SUCCEEDED,
-    RUNNING,
-    PENDING,
-    PERMANENT_FAILURE
-)
 from flytekitplugins.k8sdataservice.task import DataServiceConfig
 from flytekitplugins.k8sdataservice.agent import DataServiceMetadata
 from google.protobuf.struct_pb2 import Struct
+from flyteidl.core.execution_pb2 import TaskExecution
 import flytekit.models.interface as interface_models
 from flytekit.extend.backend.base_agent import AgentRegistry
 from flytekit.interfaces.cli_identifiers import Identifier
@@ -90,7 +85,8 @@ def test_gnn_agent(mock_delete_service, mock_delete_stateful_set, mock_check_sta
 
     # Test get method
     res = agent.get(res_resource_metadata)
-    assert res.state == SUCCEEDED
+    assert res.phase == TaskExecution.SUCCEEDED
+    assert res.outputs.get("data_service_name") == 'gnn-1234'
     mock_check_status.assert_called_once_with("gnn-1234")
 
     # # Test delete method
@@ -173,7 +169,7 @@ def test_gnn_agent_reuse_data_service(mock_delete_service, mock_delete_stateful_
 
     # Test get method
     res = agent.get(res_resource_metadata)
-    assert res.state == SUCCEEDED
+    assert res.phase == TaskExecution.SUCCEEDED
     mock_check_status.assert_called_once_with("gnn-2345")
 
     # # Test delete method
@@ -255,7 +251,7 @@ def test_gnn_agent_status(mock_delete_service, mock_delete_stateful_set,
 
     # Test get method
     res = agent.get(res_resource_metadata)
-    assert res.state == RUNNING
+    assert res.phase == TaskExecution.RUNNING
     mock_check_status.assert_called_once_with("gnn-2345")
 
     # # Test delete methods are not called
@@ -338,7 +334,7 @@ def test_gnn_agent_no_configmap(mock_delete_service, mock_delete_stateful_set,
 
     # Test get method
     res = agent.get(res_resource_metadata)
-    assert res.state == SUCCEEDED
+    assert res.phase == TaskExecution.SUCCEEDED
     mock_check_status.assert_called_once_with("gnn-2345")
 
     # # Test delete methods are not called
@@ -421,11 +417,11 @@ def test_gnn_agent_status_failed(mock_delete_service, mock_delete_stateful_set,
 
     # Test get method
     res = agent.get(res_resource_metadata)
-    assert res.state == PENDING
+    assert res.phase == TaskExecution.RUNNING
     mock_check_status.assert_called_once_with("gnn-2345")
 
     mock_check_status.return_value = "failed"
-    res.state == PERMANENT_FAILURE
+    res.phase == TaskExecution.FAILED
 
     # # Test delete methods are not called
     agent.delete(res_resource_metadata)

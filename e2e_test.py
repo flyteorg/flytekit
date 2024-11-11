@@ -16,6 +16,7 @@ def graph_data_service():
             "-c",
             "sleep 15m",
         ],
+        ExistingReleaseName='new-api',
         Cluster="grid2",
     )
     gnn_task = DataServiceTask(

@@ -13,4 +13,6 @@ RUN cd $CODE_DIR/flytekit-k8sdataservice && pip install .
 RUN pip install flytekitplugins-k8sdataservice
 ENV PYTHONPATH=/usr/local/lib/python3.10/site-packages
 
+ENV FLYTE_SDK_LOGGING_LEVEL=20
+
 CMD pyflyte --verbose serve agent --port 8000

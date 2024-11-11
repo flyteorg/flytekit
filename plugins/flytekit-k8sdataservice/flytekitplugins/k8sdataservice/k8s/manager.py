@@ -27,7 +27,7 @@ class K8sManager:
     def set_configs(self, data_service_config):
         self.data_service_config = data_service_config
         self.labels = {}
-        self.namespace = get_execution_namespace(data_service_config["Cluster"])
+        self.namespace = "flyte" # get_execution_namespace(data_service_config["Cluster"])
         self.name = None
         self.name = data_service_config.get("Name", None)
         if self.name is None:

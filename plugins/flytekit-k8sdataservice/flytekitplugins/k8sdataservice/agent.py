@@ -4,23 +4,14 @@ import datetime
 import json
 import grpc
 # import yaml
-from flyteidl.admin.agent_pb2 import (
-    PERMANENT_FAILURE,
-    RUNNING,
-    SUCCEEDED,
-    PENDING,
-    CreateTaskResponse,
-    DeleteTaskResponse,
-    GetTaskResponse,
-    Resource,
-)
-from flytekit.models.core.execution import TaskLog
-from flytekit.models import literals
+# from flytekit.models.core.execution import TaskLog
+# from flytekit.models import literals
 from flytekitplugins.k8sdataservice.task import DataServiceConfig
 from flytekitplugins.k8sdataservice.k8s.manager import K8sManager
 from flytekit import FlyteContextManager, logger
 from flytekit.core.type_engine import TypeEngine
-from flytekit.extend.backend.base_agent import AsyncAgentBase, AgentRegistry, ResourceMeta
+from flyteidl.core.execution_pb2 import TaskExecution
+from flytekit.extend.backend.base_agent import AsyncAgentBase, AgentRegistry, Resource, ResourceMeta
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 # from kingkong.execution import create_kingkong_execution_id
@@ -45,7 +36,9 @@ class DataServiceAgent(AsyncAgentBase):
     def create(
         self,
         task_template: TaskTemplate,
+        output_prefix: str,
         inputs: Optional[LiteralMap] = None,
+         **kwargs
     ) -> DataServiceMetadata:
         graph_engine_config = task_template.custom
         self.k8s_manager.set_configs(graph_engine_config)
@@ -96,26 +89,16 @@ class DataServiceAgent(AsyncAgentBase):
         k8s_status = self.k8s_manager.check_stateful_set_status(name)
         flyte_state = None
         if k8s_status in ["failed", "timeout", "timedout", "canceled", "skipped", "internal_error"]:
-            flyte_state = PERMANENT_FAILURE
+            flyte_state = TaskExecution.FAILED
         elif k8s_status in ["done", "succeeded", "success"]:
-            flyte_state = SUCCEEDED
-        elif k8s_status in ["running", "terminating"]:
-            flyte_state = RUNNING
-        elif k8s_status in ["pending"]:
-            flyte_state = PENDING
+            flyte_state = TaskExecution.SUCCEEDED
+        elif k8s_status in ["running", "terminating", "pending"]:
+            flyte_state = TaskExecution.RUNNING
         else:
             logger.error(f"Unrecognized state: {k8s_status}")
-        outputs = None
-        outputs = literals.LiteralMap(
-            {
-                "name": TypeEngine.to_literal(
-                    ctx,
-                    name,
-                    str,
-                    TypeEngine.to_literal_type(str),
-                )
-            }
-        ).to_flyte_idl()
+        outputs = {
+            "data_service_name": name,
+        }
         # template logs
         # template_uri = (
         #     self.config.get('task_logs', {})
@@ -133,12 +116,12 @@ class DataServiceAgent(AsyncAgentBase):
         #     .get('templates', [{}])[0]
         #     .get('displayName', 'default_display_name')
         # )
-        log_links = [
-            TaskLog(uri="placeholder", name="Service log",
-                    message_format=TaskLog.MessageFormat.JSON, ttl=datetime.timedelta(days=90)).to_flyte_idl()
-        ]
-        logger.info(f"the log_links are {log_links}")
-        return Resource(state=flyte_state, outputs=outputs, log_links=log_links)
+        # log_links = [
+        #     TaskLog(uri="placeholder", name="Service log",
+        #             message_format=TaskLog.MessageFormat.JSON, ttl=datetime.timedelta(days=90)).to_flyte_idl()
+        # ]
+        # logger.info(f"the log_links are {log_links}")
+        return Resource(phase=flyte_state, outputs=outputs)
 
     def delete(self, resource_meta: DataServiceMetadata):
         logger.info("DataService delete is called")
