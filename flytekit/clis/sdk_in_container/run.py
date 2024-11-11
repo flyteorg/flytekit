@@ -468,9 +468,13 @@ def to_click_option(
     description_extra = ""
     if literal_var.type.simple == SimpleType.STRUCT:
         if default_val and not isinstance(default_val, ArtifactQuery):
-            if type(default_val) == dict or type(default_val) == list:
-                default_val = json.dumps(default_val)
-            else:
+            """
+            1. Convert default_val to a JSON string for click.Option, which uses json.loads to parse it.
+            2. Set a new context with remote access to allow Flyte types (e.g., files) to be uploaded.
+            3. Use FlyteContextManager for Flyte Types with custom serialization.
+                If no custom logic exists, fall back to json.dumps.
+            """
+            with FlyteContextManager.with_context(flyte_ctx.new_builder()):
                 encoder = JSONEncoder(python_type)
                 default_val = encoder.encode(default_val)
         if literal_var.type.metadata:
