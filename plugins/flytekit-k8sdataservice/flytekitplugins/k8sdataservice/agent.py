@@ -52,7 +52,7 @@ class DataServiceAgent(AsyncAgentBase):
         if existing_release_name is None or existing_release_name == "":
             logger.info('Creating K8s data service resources...')
             # self.kk_execution_id = create_kingkong_execution_id(cluster=graph_engine_config["Cluster"])
-            logger.info(f'The created KingKong execution ID: {self.kk_execution_id}.')
+            # logger.info(f'The created KingKong execution ID: {self.kk_execution_id}.')
             name = self.k8s_manager.create_data_service(self.kk_execution_id)
             logger.info(f'Data service {name} with image {graph_engine_config["Image"]} completed')
         else:

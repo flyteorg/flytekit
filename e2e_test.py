@@ -1,11 +1,14 @@
 import os
 from flytekitplugins.k8sdataservice import DataServiceConfig, DataServiceTask, CleanupSensor
+from utils.infra import gen_infra_name
 from flytekit import kwtypes, Resources, task, workflow
 
 
+name = gen_infra_name()
+
 def graph_data_service():
     gnn_config = DataServiceConfig(
-        Name="new-api",
+        Name=name,
         Requests=Resources(cpu='1', mem='1Gi'),
         Limits=Resources(cpu='2', mem='2Gi'),
         Replicas=1,
@@ -16,7 +19,7 @@ def graph_data_service():
             "-c",
             "sleep 15m",
         ],
-        ExistingReleaseName='new-api',
+        # ExistingReleaseName=name,
         Cluster="grid2",
     )
     gnn_task = DataServiceTask(
@@ -57,7 +60,7 @@ gnn_sensor = CleanupSensor(name="Cleanup")
 @workflow
 def test_dataservice_wf():
     graph_data_service()(ds="demo Ads 3X") >> gnn_sensor(
-        release_name="new-api",
+        release_name=name,
         cleanup_data_service=True,
         cluster='grid2')
     

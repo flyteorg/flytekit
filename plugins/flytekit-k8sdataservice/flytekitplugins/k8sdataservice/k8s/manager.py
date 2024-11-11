@@ -9,8 +9,6 @@ from utils.cluster_namespace import get_execution_namespace
 from utils.resources import cleanup_resources, convert_flyte_to_k8s_fields
 
 
-# Default image if the user did not set it
-# DEFAULT_IMAGE = "container-image-registry.corp.linkedin.com:8083/lps-image/linkedin/lpm-gnn/deepgraph-ge:3.0.82"
 PORT = 40000
 APPNAME = "service-name"
 DEFAULT_RESOURCES = client.V1ResourceRequirements(
@@ -33,7 +31,7 @@ class K8sManager:
         if self.name is None:
             self.name = 'gnn-nofirsthash'
 
-    def create_data_service(self, kk_execution_id: Optional[str] = None) -> str:
+    def create_data_service(self) -> str:
         # self.labels = create_king_kong_execution_label(kk_execution_id)
         svc_name = self.create_service()
         logger.info(f'Created service: {svc_name}')
