@@ -342,6 +342,7 @@ jobs:
           - flytekit-kf-mpi
           - flytekit-kf-pytorch
           - flytekit-kf-tensorflow
+          - flytekit-memray
           - flytekit-mlflow
           - flytekit-mmcloud
           - flytekit-modin
