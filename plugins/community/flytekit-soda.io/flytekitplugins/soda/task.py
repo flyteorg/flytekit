@@ -6,13 +6,17 @@ data quality by defining customizable scan configurations.
 This plugin allows setting various parameters like scan definition files, data sources, and Soda Cloud
 API credentials to run these scans in an automated fashion within Flyte.
 """
-from dataclasses import dataclass
-from flytekit import PythonFunctionTask
-from typing import Any, Dict, Callable, Optional
-from flytekit.configuration import SecretsManager
-import requests
+
 import os
 import subprocess
+from dataclasses import dataclass
+from typing import Any, Callable, Dict, Optional
+
+import requests
+
+from flytekit import PythonFunctionTask
+from flytekit.configuration import SecretsManager
+
 
 # This would be the main task configuration class for Soda.io
 @dataclass
@@ -26,10 +30,12 @@ class SodaCheckConfig:
         data_source (Optional[str]): Name of the data source in Soda.io to use for the scan.
         scan_name (Optional[str]): Name of the scan job for organizational purposes.
     """
+
     scan_definition: str
     soda_cloud_api_key: Optional[str] = None
     data_source: Optional[str] = None  # Name of the data source in Soda.io
     scan_name: Optional[str] = "default_scan"  # Name for the scan job
+
 
 class SodaCheckTask(PythonFunctionTask[SodaCheckConfig]):
     """
@@ -42,6 +48,7 @@ class SodaCheckTask(PythonFunctionTask[SodaCheckConfig]):
     Attributes:
         _TASK_TYPE (str): The task type identifier for Soda.io checks within Flyte.
     """
+
     _TASK_TYPE = "soda_check_task"
 
     def __init__(self, task_config: SodaCheckConfig, task_function: Callable, **kwargs):
@@ -90,9 +97,9 @@ class SodaCheckTask(PythonFunctionTask[SodaCheckConfig]):
             "scan_definition": scan_definition,
             "data_source": data_source,
             "scan_name": scan_name,
-            "api_key": api_key
+            "api_key": api_key,
         }
-        
+
         # Placeholder for API result
         result = {}
 
@@ -100,7 +107,7 @@ class SodaCheckTask(PythonFunctionTask[SodaCheckConfig]):
         try:
             response = requests.post(url, json=payload)
             response.raise_for_status()  # Raise an error for bad responses (4xx or 5xx)
-            
+
             # Assuming the API returns a JSON response
             result = response.json()
 

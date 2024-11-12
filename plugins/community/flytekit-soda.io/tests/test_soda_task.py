@@ -1,9 +1,10 @@
 import unittest
-from unittest.mock import patch, MagicMock
-from typing import NamedTuple, Dict
+from typing import Dict, NamedTuple
+from unittest.mock import MagicMock, patch
+
+from flytekitplugins.soda import SodaTask
 
 from flytekit import task, workflow
-from flytekitplugins.soda import SodaTask
 
 # Define a NamedTuple to represent the expected output from the SodaTask
 SodaTaskOutput = NamedTuple("SodaTaskOutput", [("scan_result", Dict[str, any])])
@@ -13,7 +14,10 @@ MOCK_SCAN_DEFINITION = "mock_scan_definition.yaml"
 MOCK_DATA_SOURCE = "mock_data_source"
 MOCK_SCAN_NAME = "mock_scan_name"
 MOCK_API_KEY = "mock_api_key"
-MOCK_RESPONSE = {"scan_result": {"status": "success", "findings": []}}  # Example response structure
+MOCK_RESPONSE = {
+    "scan_result": {"status": "success", "findings": []}
+}  # Example response structure
+
 
 # Define a Flyte task to initialize the SodaTask and execute it
 @task
@@ -23,16 +27,18 @@ def setup_soda_task() -> SodaTaskOutput:
         scan_definition=MOCK_SCAN_DEFINITION,
         data_source=MOCK_DATA_SOURCE,
         scan_name=MOCK_SCAN_NAME,
-        soda_cloud_api_key=MOCK_API_KEY
+        soda_cloud_api_key=MOCK_API_KEY,
     )
 
     # Execute the task and return the mock response
     return soda_task.execute()
 
+
 # Define a Flyte workflow to test the setup task
 @workflow
 def test_soda_workflow() -> SodaTaskOutput:
     return setup_soda_task()
+
 
 # Define the test class for the SodaTask plugin
 class TestSodaTask(unittest.TestCase):
@@ -55,9 +61,10 @@ class TestSodaTask(unittest.TestCase):
                 "scan_definition": MOCK_SCAN_DEFINITION,
                 "data_source": MOCK_DATA_SOURCE,
                 "scan_name": MOCK_SCAN_NAME,
-                "api_key": MOCK_API_KEY
-            }
+                "api_key": MOCK_API_KEY,
+            },
         )
+
 
 if __name__ == "__main__":
     unittest.main()

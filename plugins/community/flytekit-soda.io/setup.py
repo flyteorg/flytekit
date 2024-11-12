@@ -2,7 +2,11 @@ from setuptools import setup
 
 PLUGIN_NAME = "kfsoda"
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
-plugin_requires = ["flytekit>=1.6.1", "soda-spark", "requests>=2.25.1"]  # Update as per Soda.io requirements
+plugin_requires = [
+    "flytekit>=1.6.1",
+    "soda-spark",
+    "requests>=2.25.1",
+]  # Update as per Soda.io requirements
 __version__ = "0.0.0+develop"
 
 setup(
