@@ -968,7 +968,7 @@ def test_optional_flytefile_in_dataclass(mock_upload_dir):
         h_prime: typing.Optional[FlyteFile] = None
         i: typing.Optional[A] = None
         i_prime: typing.Optional[A] = field(default_factory=lambda: A(a=99))
-        j: typing.Union[int, FlyteFile] = None
+        j: typing.Union[int, FlyteFile] = 0
 
     remote_path = "s3://tmp/file"
     # set the return value to the remote path since that's what put_data does
