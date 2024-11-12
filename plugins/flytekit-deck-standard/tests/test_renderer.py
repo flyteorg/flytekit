@@ -14,6 +14,7 @@ from flytekitplugins.deck.renderer import (
     TableRenderer,
 )
 from PIL import Image
+from lxml import html
 
 from flytekit.types.file import FlyteFile, JPEGImageFile, PNGImageFile
 
@@ -31,10 +32,29 @@ time_info_df = pd.DataFrame(
 )
 
 
-def test_frame_profiling_renderer():
-    renderer = FrameProfilingRenderer()
-    assert "Pandas Profiling Report" in renderer.to_html(df).title()
+@pytest.mark.parametrize(
+    "title, kwargs, expected_title",
+    [
+        (None, {}, "Pandas Profiling Report"),
+        ("Custom Title", {}, "Custom Title"),
+        (None, {"title": "from-kwargs"}, "from-kwargs"),
+        (None, {"minimal": False}, "Pandas Profiling Report"),
+        ("Custom Title", {"minimal": False}, "Custom Title"),
+        (None, {"minimal": True}, "Pandas Profiling Report"),
+        ("Custom Title", {"minimal": True}, "Custom Title"),
+        ("Custom Title", { "minimal": True}, "Custom Title"),
+        ("Custom Title", {"missing_diagrams":{"heatmap": False}}, "Custom Title"),
+        # Test that title in kwargs takes precedence over title in constructor
+        ("title in constructor", {"title": "title in kwargs"}, "title in kwargs")
+    ],
+)
+def test_frame_profiling_renderer(title, kwargs, expected_title):
+    fpr_kwargs = {"title": title} if title else {}
+    renderer = FrameProfilingRenderer(**fpr_kwargs)
+    profile_report = renderer.to_html(df, **kwargs)
 
+    tree = html.fromstring(profile_report)
+    assert expected_title == tree.xpath('//title/text()')[0]
 
 def test_markdown_renderer():
     md_text = "#Hello Flyte\n##Hello Flyte\n###Hello Flyte"

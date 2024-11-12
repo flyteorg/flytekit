@@ -53,12 +53,21 @@ class FrameProfilingRenderer:
     Generate a ProfileReport based on a pandas DataFrame
     """
 
-    def __init__(self, title: str = "Pandas Profiling Report"):
+    def __init__(self, title: Optional[str] = None):
         self._title = title
 
-    def to_html(self, df: "pd.DataFrame") -> str:
+    def to_html(self, df: "pd.DataFrame", **kwargs) -> str:
+        """
+        Generate a ydata_profiling.ProfileReport based on a pandas DataFrame
+        """
         assert isinstance(df, pd.DataFrame)
-        profile = ydata_profiling.ProfileReport(df, title=self._title)
+        if kwargs is None:
+            kwargs = {}
+        # For backwards compatibility, if title is None, it will be set to "Pandas Profiling Report".
+        # Also, if title in kwargs, it will overwrite the title in the constructor.
+        if "title" not in kwargs:
+            kwargs["title"] = "Pandas Profiling Report" if self._title is None else self._title
+        profile = ydata_profiling.ProfileReport(df, **kwargs)
         return profile.to_html()
 
 

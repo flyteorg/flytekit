@@ -9,11 +9,11 @@ plugin_requires = ["flytekit"]
 extras = {
     "pandas": ["pandas"],
     "pillow": ["pillow"],
-    "ydata-profiling": ["ydata-profiling"],
+    "ydata-profiling": ["ydata-profiling>=2.4.0"],
     "markdown": ["markdown"],
     "plotly": ["plotly"],
     "pygments": ["pygments"],
-    "all": ["pandas", "pillow", "ydata-profiling", "markdown", "plotly", "pygments"],
+    "all": ["pandas", "pillow", "ydata-profiling>=2.4.0", "markdown", "plotly", "pygments"],
 }
 
 __version__ = "0.0.0+develop"
