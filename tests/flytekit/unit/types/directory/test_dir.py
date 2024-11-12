@@ -12,20 +12,14 @@ N_FILES_PER_DIR = 3
 
 @pytest.fixture
 def local_tmp_dirs():
-    # Create a source directory
-    src_dir = tempfile.TemporaryDirectory()
-    for file_idx in range(N_FILES_PER_DIR):
-        with open(Path(src_dir.name) / f"{file_idx}.txt", "w") as f:
-            f.write(str(file_idx))
+    # Create a source and an empty destination directory
+    with (tempfile.TemporaryDirectory() as src_dir,
+          tempfile.TemporaryDirectory() as dst_dir):
+        for file_idx in range(N_FILES_PER_DIR):
+            with open(Path(src_dir) / f"{file_idx}.txt", "w") as f:
+                f.write(str(file_idx))
 
-    # Create an empty directory as the destination
-    dst_dir = tempfile.TemporaryDirectory()
-
-    yield src_dir.name, dst_dir.name
-
-    # Cleanup
-    src_dir.cleanup()
-    dst_dir.cleanup()
+        yield src_dir, dst_dir
 
 
 def test_src_path_with_different_types(local_tmp_dirs) -> None:
