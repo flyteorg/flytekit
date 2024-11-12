@@ -1,8 +1,11 @@
 import os
 import subprocess
 import sys
+import unittest.mock as mock
+from types import ModuleType
 
-from flytekit.tools.script_mode import compress_scripts, hash_file, add_imported_modules_from_source, get_all_modules
+import flytekit
+from flytekit.tools.script_mode import compress_scripts, hash_file, add_imported_modules_from_source, get_all_modules, list_imported_modules_as_files
 from flytekit.core.tracker import import_module_from_file
 
 MAIN_WORKFLOW = """
@@ -237,3 +240,70 @@ def test_get_all_modules(tmp_path):
     # Workflow exists, so it is imported
     workflow_file.write_text(WORKFLOW_CONTENT)
     assert n_sys_modules + 1 == len(get_all_modules(os.fspath(source_dir), "my_workflows.main"))
+
+
+def test_list_imported_modules_as_files():
+
+    source_path = "/home/username/project"
+    bin_directory = os.path.dirname(sys.executable)
+    flytekit_root = os.path.dirname(flytekit.__file__)
+
+    site_packages = [
+        f"{source_path}/.venv/lib/python3.10/site-packages",
+        f"{source_path}/.venv/local/lib/python3.10/dist-packages",
+        f"{source_path}/.venv/lib/python3/dist-packages",
+        f"{source_path}/.venv/lib/python3.10/dist-packages",
+    ]
+
+    # Setup mock module objects
+    # Local modules that should be included
+    local_modules = [
+        ModuleType("local_module_1"),
+        ModuleType("local_module_2"),
+        ModuleType("local_module_3"),
+        ModuleType("local_module_4")
+    ]
+    local_module_paths = [
+        f"{source_path}/package_a/module_1.py",
+        f"{source_path}/package_a/module_2.py",
+        f"{source_path}/package_b/module_3.py",
+        f"{source_path}/package_b/module_4.py"
+    ]
+    # Flyte module that should be excluded
+    flyte_modules = [
+        ModuleType("flyte_module")
+    ]
+    flyte_module_paths = [
+        f"{flytekit_root}/package/module.py"
+    ]
+    # bin module that should be excluded
+    bin_modules = [
+        ModuleType("bin_module")
+    ]
+    bin_module_paths = [
+        f"{bin_directory}/package/module.py",
+    ]
+    # site modules that should be excluded
+    site_modules = [
+        ModuleType("site_module_1"),
+        ModuleType("site_module_2"),
+        ModuleType("site_module_3"),
+        ModuleType("site_module_4"),
+    ]
+    site_module_paths = [
+        f"{site_packages[0]}/package/module_1.py",
+        f"{site_packages[1]}/package/module_2.py",
+        f"{site_packages[2]}/package/module_3.py",
+        f"{site_packages[3]}/package/module_4.py",
+    ]
+
+    modules = local_modules + flyte_modules + bin_modules + site_modules
+    module_paths = local_module_paths + flyte_module_paths + bin_module_paths + site_module_paths
+
+    for m, p in zip(modules, module_paths, strict=True):
+        m.__file__ = p
+
+    with mock.patch("site.getsitepackages", new=lambda: site_packages):
+        file_list = list_imported_modules_as_files(source_path, modules)
+
+    assert sorted(file_list) == sorted(local_module_paths)
