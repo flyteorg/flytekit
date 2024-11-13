@@ -300,7 +300,7 @@ def test_list_imported_modules_as_files():
     modules = local_modules + flyte_modules + bin_modules + site_modules
     module_paths = local_module_paths + flyte_module_paths + bin_module_paths + site_module_paths
 
-    for m, p in zip(modules, module_paths, strict=True):
+    for m, p in zip(modules, module_paths):
         m.__file__ = p
 
     with mock.patch("site.getsitepackages", new=lambda: site_packages):
