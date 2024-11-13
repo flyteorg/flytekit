@@ -1,7 +1,9 @@
 import os
+import platform
 import subprocess
 import sys
 import unittest.mock as mock
+from pathlib import Path
 from types import ModuleType
 
 import flytekit
@@ -244,15 +246,16 @@ def test_get_all_modules(tmp_path):
 
 def test_list_imported_modules_as_files():
 
-    source_path = "/home/username/project"
-    bin_directory = os.path.dirname(sys.executable)
-    flytekit_root = os.path.dirname(flytekit.__file__)
+    bin_directory = Path(os.path.dirname(sys.executable))
+    flytekit_root = Path(os.path.dirname(flytekit.__file__))
+    root_dir = Path("C:\\") if platform.system() == "Windows" else Path("/")
+    source_path = root_dir / "home" / "username" / "project"
 
     site_packages = [
-        f"{source_path}/.venv/lib/python3.10/site-packages",
-        f"{source_path}/.venv/local/lib/python3.10/dist-packages",
-        f"{source_path}/.venv/lib/python3/dist-packages",
-        f"{source_path}/.venv/lib/python3.10/dist-packages",
+        str(source_path / ".venv" / "lib" / "python3.10" / "site-packages"),
+        str(source_path / ".venv" / "local" / "lib" / "python3.10" / "dist-packages"),
+        str(source_path / ".venv" / "lib" / "python3" / "dist-packages"),
+        str(source_path / ".venv" / "lib" / "python3.10" / "dist-packages"),
     ]
 
     # Setup mock module objects
@@ -264,24 +267,24 @@ def test_list_imported_modules_as_files():
         ModuleType("local_module_4")
     ]
     local_module_paths = [
-        f"{source_path}/package_a/module_1.py",
-        f"{source_path}/package_a/module_2.py",
-        f"{source_path}/package_b/module_3.py",
-        f"{source_path}/package_b/module_4.py"
+        str(source_path / "package_a" / "module_1.py"),
+        str(source_path / "package_a" / "module_2.py"),
+        str(source_path / "package_b" / "module_3.py"),
+        str(source_path / "package_b" / "module_4.py"),
     ]
     # Flyte module that should be excluded
     flyte_modules = [
         ModuleType("flyte_module")
     ]
     flyte_module_paths = [
-        f"{flytekit_root}/package/module.py"
+        str(flytekit_root / "package" / "module.py"),
     ]
     # bin module that should be excluded
     bin_modules = [
         ModuleType("bin_module")
     ]
     bin_module_paths = [
-        f"{bin_directory}/package/module.py",
+        str(bin_directory / "package" / "module.py"),
     ]
     # site modules that should be excluded
     site_modules = [
@@ -291,10 +294,10 @@ def test_list_imported_modules_as_files():
         ModuleType("site_module_4"),
     ]
     site_module_paths = [
-        f"{site_packages[0]}/package/module_1.py",
-        f"{site_packages[1]}/package/module_2.py",
-        f"{site_packages[2]}/package/module_3.py",
-        f"{site_packages[3]}/package/module_4.py",
+        str(Path(site_packages[0]) / "package" / "module_1.py"),
+        str(Path(site_packages[1]) / "package" / "module_2.py"),
+        str(Path(site_packages[2]) / "package" / "module_3.py"),
+        str(Path(site_packages[3]) / "package" / "module_4.py"),
     ]
 
     modules = local_modules + flyte_modules + bin_modules + site_modules
@@ -304,6 +307,6 @@ def test_list_imported_modules_as_files():
         m.__file__ = p
 
     with mock.patch("site.getsitepackages", new=lambda: site_packages):
-        file_list = list_imported_modules_as_files(source_path, modules)
+        file_list = list_imported_modules_as_files(str(source_path), modules)
 
     assert sorted(file_list) == sorted(local_module_paths)
