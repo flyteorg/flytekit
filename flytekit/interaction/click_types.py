@@ -308,7 +308,7 @@ class JsonParamType(click.ParamType):
         if type(value) == dict or type(value) == list:
             return value
         try:
-            return json.loads(value)
+            return json.loads(json.dumps(value, default=lambda o: o.__dict__))
         except Exception:  # noqa
             try:
                 # We failed to load the json, so we'll try to load it as a file
