@@ -1,6 +1,7 @@
 import ast
 import hashlib
 import inspect
+import textwrap
 from typing import Any, Callable
 
 
@@ -27,6 +28,9 @@ class CacheFunctionBody:
         self.salt = salt
 
     def get_version(self, func: Callable[..., Any]) -> str:
+        return self._get_version(func=func)
+
+    def _get_version(self, func: Callable[..., Any]) -> str:
         """
         Generate a version hash for the provided function by parsing its source code
         and adding a salt before applying the SHA-256 hash function.
@@ -37,11 +41,12 @@ class CacheFunctionBody:
         Returns:
             str: The SHA-256 hash of the function's source code combined with the salt.
         """
-        # Get the source code of the function
+        # Get the source code of the function and dedent
         source = inspect.getsource(func)
+        dedented_source = textwrap.dedent(source)
 
         # Parse the source code into an Abstract Syntax Tree (AST)
-        parsed_ast = ast.parse(source)
+        parsed_ast = ast.parse(dedented_source)
 
         # Convert the AST into a string representation (dump it)
         ast_bytes = ast.dump(parsed_ast).encode("utf-8")

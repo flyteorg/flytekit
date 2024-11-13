@@ -8,6 +8,8 @@ This package contains things that are useful when extending Flytekit.
    :toctree: generated/
 
    CacheFunctionBody
+   CachePrivateModules
 """
 
 from .cache_function_body import CacheFunctionBody
+from .cache_private_modules import CachePrivateModules
