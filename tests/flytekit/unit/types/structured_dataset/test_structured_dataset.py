@@ -682,21 +682,42 @@ def test_read_sd_from_uri(local_tmp_pqt_file):
 
         return df
 
+    @workflow
+    def read_sd_from_local_uri(uri: str) -> pd.DataFrame:
+        df = read_sd_from_uri(uri=uri)
+
+        return df
+
+    @workflow
+    def read_sd_from_remote_uri(
+        local_path: str,
+        remote_path: str,
+        read_uri: str
+    ) -> typing.Tuple[pd.DataFrame, pd.DataFrame]:
+        # Upload parqut to s3
+        upload_pqt_to_s3(local_path=local_path, remote_path=remote_path)
+        ff = FlyteFile(path=REMOTE_PATH)
+        with ff.open(mode="rb") as f:
+            df_s3 = pd.read_parquet(f)
+
+        # Read sd from remote uri
+        df_remote = read_sd_from_uri(uri=read_uri)
+
+        return df_s3, df_remote
+
 
     REMOTE_PATH = "s3://my-s3-bucket/my-test/df.parquet"
     df = generate_pandas()
 
-    # Upload parqut to s3
-    upload_pqt_to_s3(local_path=local_tmp_pqt_file, remote_path=REMOTE_PATH)
-    ff = FlyteFile(path=REMOTE_PATH)
-    with ff.open(mode="rb") as f:
-        df_s3 = pd.read_parquet(f)
-    pd.testing.assert_frame_equal(df, df_s3)
-
     # Read sd from local uri
-    df1 = read_sd_from_uri(uri=local_tmp_pqt_file)
-    pd.testing.assert_frame_equal(df, df1)
+    df_local = read_sd_from_local_uri(uri=local_tmp_pqt_file)
+    pd.testing.assert_frame_equal(df, df_local)
 
     # Read sd from remote uri
-    df2 = read_sd_from_uri(uri=REMOTE_PATH)
-    pd.testing.assert_frame_equal(df, df2)
+    df_s3, df_remote = read_sd_from_remote_uri(
+        local_path=local_tmp_pqt_file,
+        remote_path=REMOTE_PATH,
+        read_uri=REMOTE_PATH
+    )
+    pd.testing.assert_frame_equal(df, df_s3)
+    pd.testing.assert_frame_equal(df, df_remote)
