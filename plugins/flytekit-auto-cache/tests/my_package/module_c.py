@@ -1,10 +1,3 @@
-# import sys
-# from pathlib import Path
-#
-# # Add the parent directory of `my_package` to sys.path
-# sys.path.append(str(Path(__file__).resolve().parent))
-
-# from module_d import fourth_helper
 import my_dir
 
 def third_helper():
