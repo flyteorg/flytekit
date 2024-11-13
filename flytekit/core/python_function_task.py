@@ -526,12 +526,13 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
 
 
 """
-merge master
 export deck, hook up and test with remote
 update comments about call pattern and move
 signal handling
 add error to nested call, worker queue must be empty
-investigate shelve as stand-in
+investigate shelve as the thing that can be persisted
+semantics for prefix deciding
+actual remote handling, other handling
 
 to enable the async pattern the __call__ function needs to be async or sync. One task type can't be both because it has
 to be this function. You can't overload functions in Python, so we have to differentiate at all levels.
@@ -544,6 +545,7 @@ first time we're allowing tasks to be called inside other tasks
 
 if i run an eager task, i see it in the console as an execution.
 if i run an eager task inside another eager task, do i want to see a separate console link?
-yes - inputs to eager tasks should be translated to literals
-no - nested eager tasks should handle native inputs.
+yes - inputs to eager tasks should be translated to literals (by the underlying eager task) and then fetched by remote
+and translated back (by the parent eager)
+
 """

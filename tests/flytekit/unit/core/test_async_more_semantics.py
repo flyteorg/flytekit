@@ -35,13 +35,17 @@ async def base_wf(x: int) -> int:
     final = double(x=out)
     return final
 
-
+# import time
 @eager
 async def parent_wf(a: int, b: int) -> typing.Tuple[int, int]:
     print("hi")
     t1 = asyncio.create_task(base_wf(x=a))
     t2 = asyncio.create_task(base_wf(x=b))
-
+    # Test this again in the future
+    # currently behaving as python does.
+    # print("hi2", flush=True)
+    # await asyncio.sleep(0.01)
+    # time.sleep(5)
     # Since eager workflows are also async tasks, we can use the general async pattern with them.
     i1, i2 = await asyncio.gather(t1, t2)
     return i1, i2
