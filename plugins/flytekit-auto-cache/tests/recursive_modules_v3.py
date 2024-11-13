@@ -6,8 +6,7 @@ import sys
 import textwrap
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Callable, Set, Union
-
+from typing import Callable, Any, Set, Union
 
 @contextmanager
 def temporarily_add_to_syspath(path):
@@ -19,22 +18,14 @@ def temporarily_add_to_syspath(path):
         sys.path.pop(0)
 
 
-class CachePrivateModules:
+class VersionHasher:
     def __init__(self, salt: str, root_dir: str):
         self.salt = salt
         self.root_dir = Path(root_dir).resolve()
 
     def get_version(self, func: Callable[..., Any]) -> str:
-        hash_components = [self._get_version(func)]
-        dependencies = self._get_function_dependencies(func, set())
-        for dep in dependencies:
-            hash_components.append(self._get_version(dep))
-        # Combine all component hashes into a single version hash
-        combined_hash = hashlib.sha256("".join(hash_components).encode("utf-8")).hexdigest()
-        return combined_hash
-
-    def _get_version(self, func: Callable[..., Any]) -> str:
         source = inspect.getsource(func)
+        # Dedent the source code to handle class method indentation
         dedented_source = textwrap.dedent(source)
         parsed_ast = ast.parse(dedented_source)
         ast_bytes = ast.dump(parsed_ast).encode("utf-8")
@@ -79,14 +70,12 @@ class CachePrivateModules:
                                     dependencies.add(method)
                                     dependencies.update(self._get_function_dependencies(method, visited))
                         elif (inspect.isfunction(func_obj) or inspect.ismethod(func_obj)) and self._is_user_defined(
-                            func_obj
-                        ):
+                                func_obj):
                             dependencies.add(func_obj)
                             dependencies.update(self._get_function_dependencies(func_obj, visited))
                     except (NameError, AttributeError):
                         pass
         return dependencies
-
     def _get_callable_name(self, node: ast.AST) -> Union[str, None]:
         """Retrieve the name of the callable from an AST node."""
         if isinstance(node, ast.Name):
@@ -94,6 +83,16 @@ class CachePrivateModules:
         elif isinstance(node, ast.Attribute):
             return f"{node.value.id}.{node.attr}" if isinstance(node.value, ast.Name) else node.attr
         return None
+
+    def __resolve_callable(self, func_name: str, globals_dict: dict) -> Callable[..., Any]:
+        """Resolve a callable from its name within the given globals dictionary."""
+        parts = func_name.split(".")
+        obj = globals_dict.get(parts[0], None)
+        for part in parts[1:]:
+            obj = getattr(obj, part, None)
+            if obj is None:
+                break
+        return obj
 
     def _resolve_callable(self, func_name: str, globals_dict: dict) -> Callable[..., Any]:
         """Resolve a callable from its name within the given globals dictionary, handling modules as entry points."""
@@ -125,24 +124,35 @@ class CachePrivateModules:
     def _is_user_defined(self, obj: Any) -> bool:
         """Check if a callable or class is user-defined within the package."""
         module_name = getattr(obj, "__module__", None)
-        if not module_name:
-            return False
+        return module_name and self._can_import_module(module_name)
 
-        # Retrieve the module specification to get its path
+    def _can_import_module(self, module_name: str) -> bool:
+        """
+        Check if a module with the given name can be imported from the specified root package directory.
+
+        Args:
+            module_name (str): The module name to check for import.
+
+        Returns:
+            bool: True if the module can be imported from the root directory, False otherwise.
+        """
         with temporarily_add_to_syspath(self.root_dir):
             spec = importlib.util.find_spec(module_name)
-            if not spec or not spec.origin:
-                return False
-
-            module_path = Path(spec.origin).resolve()
-
-            # Check if the module is within the root directory but not in site-packages
-            if self.root_dir in module_path.parents:
-                # Exclude standard library or site-packages by checking common paths
-                site_packages_paths = {Path(p).resolve() for p in sys.path if "site-packages" in p}
-                is_in_site_packages = any(sp in module_path.parents for sp in site_packages_paths)
-
-                # Return True if within root_dir but not in site-packages
-                return not is_in_site_packages
-
+            if spec and spec.origin:
+                # Check if the module's path is within the root directory
+                module_path = Path(spec.origin).resolve()
+                return self.root_dir in module_path.parents
             return False
+
+from my_package.main import my_main_function as func
+
+vh = VersionHasher(salt="salt", root_dir="./my_package")
+
+hash_components = [vh.get_version(func)]
+# Gather dependencies and add their hashes
+dependencies = vh._get_function_dependencies(func, set())
+for dep in dependencies:
+    hash_components.append(vh.get_version(dep))
+# Combine all component hashes into a single version hash
+combined_hash = hashlib.sha256("".join(hash_components).encode("utf-8")).hexdigest()
+print(combined_hash)

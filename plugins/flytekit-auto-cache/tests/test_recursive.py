@@ -16,14 +16,15 @@ def test_dependencies():
     }
 
     cache = CachePrivateModules(salt="salt", root_dir="./my_package")
+    actual_dependencies = cache._get_function_dependencies(func, set())
 
-    actual_dependencies = {
+    actual_dependencies_str = {
         f"{dep.__module__}.{dep.__qualname__}".replace("my_package.", "")
-        for dep in cache.dependencies
+        for dep in actual_dependencies
     }
 
-    assert actual_dependencies == expected_dependencies, (
+    assert actual_dependencies_str == expected_dependencies, (
         f"Dependencies do not match:\n"
         f"Expected: {expected_dependencies}\n"
-        f"Actual: {actual_dependencies}"
+        f"Actual: {actual_dependencies_str}"
     )
