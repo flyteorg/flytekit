@@ -144,7 +144,9 @@ class ContainerTask(PythonTask):
             if type(input_val) in [FlyteFile, FlyteDirectory]:
                 if not path_k:
                     raise AssertionError(
-                        "FlyteFile and FlyteDirectory commands should not use the syntax: {{.inputs.infile}}"
+                        "FlyteFile and FlyteDirectory commands should not use the template syntax like this: {{.inputs.infile}}\n"
+                        "Please use a path-like syntax, such as: /var/inputs/infile.\n"
+                        "This requirement is due to how Flyte Propeller processes template syntax inputs."
                     )
                 local_flyte_file_or_dir_path = str(input_val)
                 remote_flyte_file_or_dir_path = os.path.join(self._input_data_dir, k)  # type: ignore

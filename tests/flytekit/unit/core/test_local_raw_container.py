@@ -99,7 +99,10 @@ def test_flytefile_wrong_syntax():
         return flyte_file_io(inputs=ff)
 
     with pytest.raises(
-        AssertionError, match="FlyteFile and FlyteDirectory commands should not use the syntax: {{.inputs.infile}}"
+            AssertionError,
+            match="FlyteFile and FlyteDirectory commands should not use the template syntax like this: {{.inputs.infile}}\n"
+                  "Please use a path-like syntax, such as: /var/inputs/infile.\n"
+                  "This requirement is due to how Flyte Propeller processes template syntax inputs."
     ):
         flyte_file_io_wf()
 
