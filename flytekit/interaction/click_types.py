@@ -308,6 +308,8 @@ class JsonParamType(click.ParamType):
         if type(value) == dict or type(value) == list:
             return value
         try:
+            if type(value) == str:
+                return json.loads(value)
             return json.loads(json.dumps(value, default=lambda o: o.__dict__))
         except Exception:  # noqa
             try:
