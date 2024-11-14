@@ -1418,7 +1418,9 @@ def flyte_entity_call_handler(
         ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION
         or ctx.execution_state.mode == ExecutionState.Mode.LOCAL_TASK_EXECUTION
     ):
-        logger.error("You are not supposed to nest @Task/@Workflow inside a @Task!")
+        logger.error(
+            "You are not supposed to nest @task/@workflow because the nested task or workflow will run in the same container."
+        )
     if ctx.compilation_state is not None and ctx.compilation_state.mode == 1:
         return create_and_link_node(ctx, entity=entity, **kwargs)
     if ctx.execution_state and ctx.execution_state.is_local_execution():
