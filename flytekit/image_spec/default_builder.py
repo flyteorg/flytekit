@@ -28,6 +28,10 @@ RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/uv,id=uv \
     --mount=type=bind,target=uv.lock,src=uv.lock \
     --mount=type=bind,target=pyproject.toml,src=pyproject.toml \
     uv sync $PIP_INSTALL_ARGS
+
+# Update PATH and UV_PYTHON to point to the venv created by uv sync
+ENV PATH="/.venv/bin:$$PATH" \
+    UV_PYTHON=/.venv/bin/python
 """
 )
 
@@ -69,7 +73,7 @@ id=micromamba \
     python=$PYTHON_VERSION $CONDA_PACKAGES
 
 # Configure user space
-ENV PATH="/.venv/bin:/opt/micromamba/envs/runtime/bin:$$PATH" \
+ENV PATH="/opt/micromamba/envs/runtime/bin:$$PATH" \
     UV_LINK_MODE=copy \
     FLYTE_SDK_RICH_TRACEBACKS=0 \
     SSL_CERT_DIR=/etc/ssl/certs \
