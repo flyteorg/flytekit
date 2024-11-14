@@ -507,6 +507,7 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
         Flyte backend, or running for real on a Flyte backend.
         """
         from flytekit.remote.remote import FlyteRemote
+        from flytekit.experimental.eager_function import _internal_demo_remote
 
         # if already a worker queue, then get the execution prefix, and append a new one.
         client = ctx.flyte_client
@@ -515,9 +516,11 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
             #     "Remote client needs to be present in the context for cluster-based execution" " of an eager task."
             # )
             remote = FlyteRemote.for_sandbox(default_project="flytesnacks", default_domain="development")
+            remote = _internal_demo_remote(remote)
         else:
             # todo:async, figure this out after we figure out auth pattern
             remote = FlyteRemote.for_sandbox(default_project="flytesnacks", default_domain="development")
+            remote = _internal_demo_remote(remote)
 
         # set up context
         mode = ExecutionState.Mode.EAGER_EXECUTION
