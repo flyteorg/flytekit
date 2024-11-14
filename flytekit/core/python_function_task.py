@@ -490,7 +490,7 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
         is_local_execution = cast(ExecutionState, ctx.execution_state).is_local_execution()
         if not is_local_execution:
             # a real execution
-            await self.run_with_backend(ctx, **kwargs)
+            return await self.run_with_backend(ctx, **kwargs)
         else:
             # set local mode and proceed with running the function.  This makes the
             mode = self.local_execution_mode()
