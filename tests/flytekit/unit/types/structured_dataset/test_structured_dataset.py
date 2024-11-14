@@ -682,6 +682,15 @@ def test_read_sd_from_uri(local_tmp_pqt_file):
             fs.upload(local_path, remote_path)
 
     @task
+    def read_df_with_ff(remote_path: str) -> pd.DataFrame:
+        """Read pandas DataFrame from remote with FlyteFile."""
+        ff = FlyteFile(path=REMOTE_PATH)
+        with ff.open(mode="rb") as f:
+            df = pd.read_parquet(f)
+
+        return df
+
+    @task
     def read_sd_from_uri(uri: str) -> pd.DataFrame:
         sd = StructuredDataset(uri=uri, file_format="parquet")
         df = sd.open(pd.DataFrame).all()
@@ -702,9 +711,9 @@ def test_read_sd_from_uri(local_tmp_pqt_file):
     ) -> typing.Tuple[pd.DataFrame, pd.DataFrame]:
         # Upload parqut to s3
         upload_pqt_to_s3(local_path=local_path, remote_path=remote_path)
-        ff = FlyteFile(path=REMOTE_PATH)
-        with ff.open(mode="rb") as f:
-            df_s3 = pd.read_parquet(f)
+
+        # Read pd DataFrame from remote with FlyteFile
+        df_s3 = read_df_with_ff(remote_path=remote_path)
 
         # Read sd from remote uri
         df_remote = read_sd_from_uri(uri=read_uri)
@@ -712,7 +721,7 @@ def test_read_sd_from_uri(local_tmp_pqt_file):
         return df_s3, df_remote
 
 
-    REMOTE_PATH = "s3://my-s3-bucket/my-test/df.parquet"
+    REMOTE_PATH = "s3://my-s3-bucket/df.parquet"
     df = generate_pandas()
 
     # Read sd from local uri
@@ -720,6 +729,8 @@ def test_read_sd_from_uri(local_tmp_pqt_file):
     pd.testing.assert_frame_equal(df, df_local)
 
     # Read sd from remote uri
+    # We check remote reading with one more path - FlyteFile to make sure that
+    # reading StructuredDataset from a remote uri aligns with our desired behavior
     df_s3, df_remote = read_sd_from_remote_uri(
         local_path=local_tmp_pqt_file,
         remote_path=REMOTE_PATH,
