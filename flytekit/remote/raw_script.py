@@ -7,8 +7,8 @@ from mashumaro.mixins.yaml import DataClassYAMLMixin
 
 from flytekit import ImageSpec, PythonFunctionTask, Resources, Secret
 from flytekit.configuration import SerializationSettings
+from flytekit.constants import CopyFileDetection
 from flytekit.core.base_task import Task, TaskResolverMixin
-from flytekit.extras.accelerators import GPUAccelerator
 from flytekit.remote import FlyteRemote
 
 
@@ -34,8 +34,8 @@ class TaskLaunchConfig(DataClassYAMLMixin, DataClassJSONMixin):
     run_command: Optional[str] = None
     container_image: Optional[Union[ImageSpecConfig, str]] = None
     resources: Optional[ResourceConfig] = None
-    secrets: Optional[List[Secret]] = None
-    copy_all: bool = False
+    secrets: Optional[List[SecretsConfig]] = None
+    copy: Optional[CopyFileDetection] = None
 
 
 def runner(script_file: str, run_command: str):
@@ -62,19 +62,19 @@ class RawTaskLaunchResolver(TaskResolverMixin):
         return PythonFunctionTask(
             task_config=None,
             task_function=runner,
-            task_type="raw_script",
+            task_type="raw-script",
             task_resolver=self,
             requests=config.resources,
             container_image=config.container_image,
             secret_requests=config.secrets,
-            accelerator=GPUAccelerator(config.resources.accelerator) if config.resources.accelerator else None,
+            # accelerator=GPUAccelerator(config.resources.accelerator) if config.resources.accelerator else None,
         )
 
     def load_task(self, loader_args: List[str]) -> PythonFunctionTask:
         return PythonFunctionTask(
             task_config=None,
             task_function=runner,
-            task_type="workspace",
+            task_type="raw-script",
             task_resolver=self,
         )
 
@@ -103,6 +103,8 @@ def run(
         cfg = TaskLaunchConfig()
     tk = resolver.get_task_for_script(cfg)
 
+    print(f"{cfg}, Script: {script}")
+
     if local:
         # TODO this has to be rationalized with run.pys local execution. Many arguments have to passed
         # We should make a common local run setup method
@@ -117,7 +119,7 @@ def run(
         return
 
     # TODO Version needs to include hash of config
-    remote_task = remote.register_script(tk, source_path=script, version="test")  # , copy_all=cfg.copy_all)
+    remote_task = remote.register_script(tk, source_path=script)  # , copy_all=cfg.copy_all)
     exe = remote.execute_remote_task_lp(
         remote_task, inputs={"script_file": script, "run_command": cfg.run_command}, overwrite_cache=overwrite_cache
     )
