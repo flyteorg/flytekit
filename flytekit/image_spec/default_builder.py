@@ -140,6 +140,7 @@ def prepare_uv_lock_command(image_spec: ImageSpec, pip_install_args: List[str], 
     uv_lock_path = tmp_dir / "uv.lock"
     shutil.copy2(image_spec.requirements, uv_lock_path)
 
+    # uv.lock requires pyproject.toml to be included
     pyproject_toml_path = tmp_dir / "pyproject.toml"
     dir_name = os.path.dirname(image_spec.requirements)
 
