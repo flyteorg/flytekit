@@ -1,12 +1,11 @@
 import asyncio
 import inspect
 import os
-from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from functools import partial
-from typing import List, Optional
+from typing import Optional
 
-from flytekit import Deck, current_context
+from flytekit import current_context
 from flytekit.configuration import DataConfig, PlatformConfig, S3Config
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
@@ -18,40 +17,6 @@ from flytekit.remote import FlyteRemote
 
 FLYTE_SANDBOX_INTERNAL_ENDPOINT = "flyte-sandbox-grpc.flyte:8089"
 FLYTE_SANDBOX_MINIO_ENDPOINT = "http://flyte-sandbox-minio.flyte:9000"
-
-NODE_HTML_TEMPLATE = """
-<style>
-    #flyte-frame-container > div.active {{font-family: Open sans;}}
-</style>
-
-<style>
-    #flyte-frame-container div.input-output {{
-        font-family: monospace;
-        background: #f0f0f0;
-        padding: 10px 15px;
-        margin: 15px 0;
-    }}
-</style>
-
-<h3>{entity_type}: {entity_name}</h3>
-
-<p>
-    <strong>Execution:</strong>
-    <a target="_blank" href="{url}">{execution_name}</a>
-</p>
-
-<details>
-<summary>Inputs</summary>
-<div class="input-output">{inputs}</div>
-</details>
-
-<details>
-<summary>Outputs</summary>
-<div class="input-output">{outputs}</div>
-</details>
-
-<hr>
-"""
 
 
 class EagerException(Exception):
@@ -268,110 +233,6 @@ class AsyncNode:
         )
 
 
-class AsyncStack:
-    """A stack of async nodes that are executed in chronological order."""
-
-    def __init__(self, parent_task_id: Optional[str], parent_execution_id: Optional[str]):
-        self.parent_task_id = parent_task_id
-        self.parent_execution_id = parent_execution_id
-        self._call_stack: List[AsyncNode] = []
-
-    def __repr__(self):
-        return f"<parent_task_id: '{self.parent_task_id}' call_stack: {self._call_stack}>"
-
-    @property
-    def call_stack(self) -> List[AsyncNode]:
-        return self._call_stack
-
-    def set_node(self, node: AsyncNode):
-        self._call_stack.append(node)
-
-
-async def render_deck(async_stack):
-    """Render the callstack as a deck presentation to be shown after eager workflow execution."""
-
-    def get_io(dict_like):
-        try:
-            return {k: dict_like.get(k) for k in dict_like}
-        except Exception:
-            return dict_like
-
-    output = "<h2>Nodes</h2><hr>"
-    for node in async_stack.call_stack:
-        node_inputs = get_io(node.execution.inputs)
-        if node.execution.closure.phase in {WorkflowExecutionPhase.FAILED}:
-            node_outputs = None
-        else:
-            node_outputs = get_io(node.execution.outputs)
-
-        output = f"{output}\n" + NODE_HTML_TEMPLATE.format(
-            entity_type=node.entity_type,
-            entity_name=node.entity_name,
-            execution_name=node.execution.id.name,
-            url=node.url,
-            inputs=node_inputs,
-            outputs=node_outputs,
-        )
-
-    Deck("eager workflow", output)
-
-
-@asynccontextmanager
-async def eager_context(
-    fn,
-    remote: Optional[FlyteRemote],
-    ctx: FlyteContext,
-    async_stack: AsyncStack,
-    timeout: Optional[timedelta] = None,
-    poll_interval: Optional[timedelta] = None,
-    local_entrypoint: bool = False,
-):
-    """This context manager overrides all tasks in the global namespace with async versions."""
-
-    _original_cache = {}
-
-    # override tasks with async version
-    for k, v in fn.__globals__.items():
-        if isinstance(v, (PythonTask, WorkflowBase)):
-            _original_cache[k] = v
-            fn.__globals__[k] = AsyncEntity(v, remote, ctx, async_stack, timeout, poll_interval, local_entrypoint)
-
-    try:
-        yield
-    finally:
-        # restore old tasks
-        for k, v in _original_cache.items():
-            fn.__globals__[k] = v
-
-
-async def node_cleanup_async(sig, loop, async_stack: AsyncStack):
-    """Clean up subtasks when eager workflow parent is done.
-
-    This applies either if the eager workflow completes successfully, fails, or is cancelled by the user.
-    """
-    logger.debug(f"Cleaning up async nodes on signal: {sig}")
-    terminations = []
-    for node in async_stack.call_stack:
-        terminations.append(node.async_entity.terminate())
-    results = await asyncio.gather(*terminations)
-    logger.debug(f"Successfully terminated subtasks {results}")
-
-
-def node_cleanup(sig, frame, loop, async_stack: AsyncStack):
-    """Clean up subtasks when eager workflow parent is done.
-
-    This applies either if the eager workflow completes successfully, fails, or is cancelled by the user.
-    """
-    logger.debug(f"Cleaning up async nodes on signal: {sig}")
-    terminations = []
-    for node in async_stack.call_stack:
-        terminations.append(node.async_entity.terminate())
-    results = asyncio.gather(*terminations)
-    results = asyncio.run(results)
-    logger.debug(f"Successfully terminated subtasks {results}")
-    loop.close()
-
-
 def eager(
     _fn=None,
     *,
@@ -497,67 +358,17 @@ def eager(
             **kwargs,
         )
 
-    # if local_entrypoint and remote is None:
-    #     raise ValueError("Must specify remote argument if local_entrypoint is True")
-
-    # @wraps(_fn)
-    # async def wrapper(*args, **kws):
-    # grab the "async_ctx" argument injected by PythonFunctionTask.execute
-    # logger.debug("Starting")
-    # _remote = remote
-    #
-    # # locally executed nested eager workflows won't have async_ctx injected into the **kws input
-    # ctx = kws.pop("async_ctx", None)
-    # task_id, execution_id = None, None
-    # if ctx:
-    #     exec_params = ctx.user_space_params
-    #     task_id = exec_params.task_id
-    #     execution_id = exec_params.execution_id
-    #
-    # async_stack = AsyncStack(task_id, execution_id)
-    # _remote = _prepare_remote(
-    #     _remote, ctx, client_secret_group, client_secret_key, local_entrypoint, client_secret_env_var
-    # )
-
     # make sure sub-nodes as cleaned up on termination signal
     # loop = asyncio.get_event_loop()
     # node_cleanup_partial = partial(node_cleanup_async, async_stack=async_stack)
     # cleanup_fn = partial(asyncio.ensure_future, node_cleanup_partial(signal.SIGTERM, loop))
     # signal.signal(signal.SIGTERM, partial(node_cleanup, loop=loop, async_stack=async_stack))
 
-    #     async with eager_context(_fn, _remote, ctx, async_stack, timeout, poll_interval, local_entrypoint):
-    #         try:
-    #             if _remote is not None:
-    #                 with _remote.remote_context():
-    #                     out = await _fn(*args, **kws)
-    #             else:
-    #                 out = await _fn(*args, **kws)
-    #             # need to await for _fn to complete, then invoke the deck
-    #             await render_deck(async_stack)
-    #             return out
-    #         finally:
-    #             # in case the cleanup function hasn't been called yet, call it at the end of the eager workflow
-    #             await cleanup_fn()
-    #
-    # secret_requests = kwargs.pop("secret_requests", None) or []
-    # try:
-    #     secret_requests.append(Secret(group=client_secret_group, key=client_secret_key))
-    # except ValueError:
-    #     pass
-
     if "enable_deck" in kwargs:
         del kwargs["enable_deck"]
 
     et = EagerAsyncPythonFunctionTask(task_config=None, task_function=_fn, enable_deck=True, **kwargs)
     return et
-
-    # return task(
-    #     wrapper,
-    #     secret_requests=secret_requests,
-    #     enable_deck=True,
-    #     execution_mode=PythonFunctionTask.ExecutionBehavior.EAGER,
-    #     **kwargs,
-    # )
 
 
 def _prepare_remote(

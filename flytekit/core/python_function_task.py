@@ -540,6 +540,7 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
 
 
 """
+
 export deck, hook up and test with remote
 update comments about call pattern and move
 signal handling
@@ -547,6 +548,9 @@ add error to nested call, worker queue must be empty
 investigate shelve as the thing that can be persisted
 semantics for prefix deciding
 actual remote handling, other handling
+
+priority for flytekit - fix naming, depending on src
+priority for main async - investigate fut.result behavior when there's an exception.
 
 to enable the async pattern the __call__ function needs to be async or sync. One task type can't be both because it has
 to be this function. You can't overload functions in Python, so we have to differentiate at all levels.

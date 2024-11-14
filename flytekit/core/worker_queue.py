@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import atexit
+import re
 import threading
 import typing
 from dataclasses import dataclass
@@ -19,6 +20,8 @@ if typing.TYPE_CHECKING:
 
     RunnableEntity = typing.Union[WorkflowBase, LaunchPlan, PythonTask, ReferenceEntity, RemoteEntity]
     from flytekit.remote import FlyteRemote, FlyteWorkflowExecution
+
+standard_output_format = re.compile(r"^o\d+$")
 
 
 @dataclass
@@ -67,9 +70,32 @@ class PollingInformer:
             await asyncio.sleep(2)
 
         # set results
+        # but first need to convert from literals resolver to literals and then to python native.
         if work.wf_exec.closure.phase == WorkflowExecutionPhase.SUCCEEDED:
-            # need to convert from literals resolver to literals and then to python native.
-            results = work.wf_exec.outputs
+            from flytekit.core.interface import Interface
+            from flytekit.core.type_engine import TypeEngine
+
+            if not work.entity.python_interface:
+                for k, _ in work.entity.interface.outputs.items():
+                    if not re.match(standard_output_format, k):
+                        raise AssertionError(
+                            f"Entity without python interface found, and output name {k} does not match standard format o[0-9]+"
+                        )
+
+                num_outputs = len(work.entity.interface.outputs)
+                python_outputs_interface = {}
+                # Iterate in order so that we add to the interface in the correct order
+                for i in range(num_outputs):
+                    key = f"o{i}"
+                    # todo:async add a nicer error here
+                    var_type = work.entity.interface.outputs[key].type
+                    python_outputs_interface[key] = TypeEngine.guess_python_type(var_type)
+                py_iface = Interface(inputs={}, outputs=python_outputs_interface)
+            else:
+                py_iface = work.entity.python_interface
+
+            results = work.wf_exec.outputs.as_python_native(py_iface)
+
             work.set_result(results)
         else:
             # set an exception on the future, read the error from the execution object if any.
@@ -173,3 +199,31 @@ class Controller:
         self.__loop.call_soon_threadsafe(self.launch_and_start_watch, entity.name, idx)
 
         return fut
+
+    def render_html(self) -> str:
+        """Render the callstack as a deck presentation to be shown after eager workflow execution."""
+
+        def get_io(dict_like):
+            try:
+                return {k: dict_like.get(k) for k in dict_like}
+            except Exception:
+                return dict_like
+
+        output = "<h2>Nodes</h2><hr>"
+        for node in async_stack.call_stack:
+            node_inputs = get_io(node.execution.inputs)
+            if node.execution.closure.phase in {WorkflowExecutionPhase.FAILED}:
+                node_outputs = None
+            else:
+                node_outputs = get_io(node.execution.outputs)
+
+            output = f"{output}\n" + NODE_HTML_TEMPLATE.format(
+                entity_type=node.entity_type,
+                entity_name=node.entity_name,
+                execution_name=node.execution.id.name,
+                url=node.url,
+                inputs=node_inputs,
+                outputs=node_outputs,
+            )
+
+        return output
