@@ -305,10 +305,10 @@ class JsonParamType(click.ParamType):
         self._python_type = python_type
 
     def _parse(self, value: typing.Any, param: typing.Optional[click.Parameter]):
-        if type(value) == dict or type(value) == list:
+        if isinstance(value, dict) or isinstance(value, list):
             return value
         try:
-            if type(value) == str:
+            if isinstance(value, str):
                 return json.loads(value)
             return json.loads(json.dumps(value, default=lambda o: o.__dict__))
         except Exception:  # noqa
