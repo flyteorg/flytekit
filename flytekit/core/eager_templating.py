@@ -1,4 +1,3 @@
-
 NODE_HTML_TEMPLATE = """
 <style>
     #flyte-frame-container > div.active {{font-family: Open sans;}}

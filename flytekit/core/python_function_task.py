@@ -514,6 +514,10 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
             raise AssertionError(
                 "Remote client needs to be present in the context for cluster-based execution" " of an eager task."
             )
+            remote = FlyteRemote.for_sandbox(default_project="flytesnacks", default_domain="development")
+        else:
+            # todo:async, figure this out after we figure out auth pattern
+            remote = FlyteRemote.for_sandbox(default_project="flytesnacks", default_domain="development")
 
         # set up context
         mode = ExecutionState.Mode.EAGER_EXECUTION
@@ -521,7 +525,6 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
 
         # ensure that the worker queue is in context
         if not ctx.worker_queue:
-            remote = FlyteRemote.for_sandbox(default_project="flytesnacks", default_domain="development")
             # remote = _internal_demo_remote(remote)
             # This should be read from transport at real runtime if available, but if not, we should either run
             # remote in interactive mode, or let users configure the version to use.
