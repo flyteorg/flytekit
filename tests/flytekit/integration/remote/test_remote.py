@@ -9,14 +9,14 @@ import subprocess
 import tempfile
 import time
 import typing
-
+import re
 import joblib
 from urllib.parse import urlparse
 import uuid
 import pytest
 from mock import mock, patch
 
-from flytekit import LaunchPlan, kwtypes
+from flytekit import LaunchPlan, kwtypes, WorkflowExecutionPhase
 from flytekit.configuration import Config, ImageConfig, SerializationSettings
 from flytekit.core.launch_plan import reference_launch_plan
 from flytekit.core.task import reference_task
@@ -62,7 +62,8 @@ def register():
     assert out.returncode == 0
 
 
-def run(file_name, wf_name, *args):
+def run(file_name, wf_name, *args) -> str:
+    # Copy the environment and set the environment variable
     out = subprocess.run(
         [
             "pyflyte",
@@ -82,9 +83,20 @@ def run(file_name, wf_name, *args):
             MODULE_PATH / file_name,
             wf_name,
             *args,
-        ]
+        ],
+        capture_output=True,  # Capture the output streams
+        text=True,  # Return outputs as strings (not bytes)
     )
-    assert out.returncode == 0
+    assert out.returncode == 0, (f"Command failed with return code {out.returncode}.\n"
+                                 f"Standard Output: {out.stdout}\n"
+                                 f"Standard Error: {out.stderr}\n")
+
+    match = re.search(r'executions/([a-zA-Z0-9]+)', out.stdout)
+    if match:
+        execution_id = match.group(1)
+        return execution_id
+
+    return "Unknown"
 
 
 def test_remote_run():
@@ -93,7 +105,28 @@ def test_remote_run():
 
     # run twice to make sure it will register a new version of the workflow.
     run("default_lp.py", "my_wf")
-    run("default_lp.py", "my_wf")
+
+
+def test_generic_idl_flytetypes():
+    os.environ["FLYTE_USE_OLD_DC_FORMAT"] = "true"
+    # default inputs for flyte types in dataclass
+    execution_id = run("generic_idl_flytetypes.py", "wf")
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    execution = remote.fetch_execution(name=execution_id)
+    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
+    print("Execution Error:", execution.error)
+    assert execution.closure.phase == WorkflowExecutionPhase.SUCCEEDED, f"Execution failed with phase: {execution.closure.phase}"
+    os.environ["FLYTE_USE_OLD_DC_FORMAT"] = "false"
+
+
+def test_msgpack_idl_flytetypes():
+    # default inputs for flyte types in dataclass
+    execution_id = run("msgpack_idl_flytetypes.py", "wf")
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    execution = remote.fetch_execution(name=execution_id)
+    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
+    print("Execution Error:", execution.error)
+    assert execution.closure.phase == WorkflowExecutionPhase.SUCCEEDED, f"Execution failed with phase: {execution.closure.phase}"
 
 
 def test_fetch_execute_launch_plan(register):
@@ -735,7 +768,6 @@ def test_execute_workflow_remote_fn_with_maptask():
         image_config=ImageConfig.from_images(IMAGE),
     )
     assert out.outputs["o0"] == [4, 5, 6]
-
 
 def test_register_wf_fast(register):
     from workflows.basic.subworkflows import parent_wf
