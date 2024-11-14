@@ -348,21 +348,8 @@ def eager(
     if _fn is None:
         return partial(
             eager,
-            # remote=remote,
-            # client_secret_group=client_secret_group,
-            # client_secret_key=client_secret_key,
-            # timeout=timeout,
-            # poll_interval=poll_interval,
-            # local_entrypoint=local_entrypoint,
-            # client_secret_env_var=client_secret_env_var,
             **kwargs,
         )
-
-    # make sure sub-nodes as cleaned up on termination signal
-    # loop = asyncio.get_event_loop()
-    # node_cleanup_partial = partial(node_cleanup_async, async_stack=async_stack)
-    # cleanup_fn = partial(asyncio.ensure_future, node_cleanup_partial(signal.SIGTERM, loop))
-    # signal.signal(signal.SIGTERM, partial(node_cleanup, loop=loop, async_stack=async_stack))
 
     if "enable_deck" in kwargs:
         del kwargs["enable_deck"]

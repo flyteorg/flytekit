@@ -339,9 +339,6 @@ class Task(object):
             # if one is changed and not the other.
             outputs_literal_map = self.sandbox_execute(ctx, input_literal_map)
 
-        # if inspect.iscoroutine(outputs_literal_map):
-        #     return outputs_literal_map
-
         outputs_literals = outputs_literal_map.literals
 
         # TODO maybe this is the part that should be done for local execution, we pass the outputs to some special
@@ -360,8 +357,6 @@ class Task(object):
         return create_task_output(vals, self.python_interface)
 
     def __call__(self, *args: object, **kwargs: object) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, None]:
-        # add loop manager.run_sync
-        # this will make this hang.
         return flyte_entity_call_handler(self, *args, **kwargs)  # type: ignore
 
     def compile(self, ctx: FlyteContext, *args, **kwargs):

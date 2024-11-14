@@ -506,8 +506,8 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
         This is the main entry point to kick off a live run. Like if you're running locally, but want to use a
         Flyte backend, or running for real on a Flyte backend.
         """
-        from flytekit.remote.remote import FlyteRemote
         from flytekit.experimental.eager_function import _internal_demo_remote
+        from flytekit.remote.remote import FlyteRemote
 
         # if already a worker queue, then get the execution prefix, and append a new one.
         client = ctx.flyte_client
