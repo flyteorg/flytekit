@@ -100,12 +100,13 @@ def test_flytefile_wrong_syntax():
 
     with pytest.raises(
             AssertionError,
-            match=r"FlyteFile and FlyteDirectory commands should not use the template syntax like this: {{.inputs.infile}}\n"
+            match=(
+                    r"FlyteFile and FlyteDirectory commands should not use the template syntax like this: \{\{\.inputs\.infile\}\}\n"
                     r"Please use a path-like syntax, such as: /var/inputs/infile.\n"
                     r"This requirement is due to how Flyte Propeller processes template syntax inputs."
+            )
     ):
         flyte_file_io_wf()
-
 
 @pytest.mark.skipif(
     sys.platform in ["darwin", "win32"],
