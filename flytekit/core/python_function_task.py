@@ -24,7 +24,7 @@ from contextlib import suppress
 from enum import Enum
 from typing import Any, Callable, Iterable, List, Optional, Tuple, TypeVar, Union, cast
 
-from flytekit.configuration import LocalConfig
+from flytekit.configuration import ImageConfig, LocalConfig, SerializationSettings
 from flytekit.core import launch_plan as _annotated_launch_plan
 from flytekit.core.base_task import Task, TaskResolverMixin
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
@@ -40,7 +40,7 @@ from flytekit.core.promise import (
 from flytekit.core.python_auto_container import PythonAutoContainerTask, default_task_resolver
 from flytekit.core.tracked_abc import FlyteTrackedABC
 from flytekit.core.tracker import extract_task_module, is_functools_wrapped_module_level, isnested, istestfunction
-from flytekit.core.worker_queue import WorkerQueue
+from flytekit.core.worker_queue import Controller
 from flytekit.core.workflow import (
     PythonFunctionWorkflow,
     WorkflowBase,
@@ -506,9 +506,11 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
         This is the main entry point to kick off a live run. Like if you're running locally, but want to use a
         Flyte backend, or running for real on a Flyte backend.
         """
+        from flytekit.remote.remote import FlyteRemote
+
         # if already a worker queue, then get the execution prefix, and append a new one.
-        remote = ctx.flyte_client
-        if remote is None:
+        client = ctx.flyte_client
+        if client is None:
             raise AssertionError(
                 "Remote client needs to be present in the context for cluster-based execution" " of an eager task."
             )
@@ -519,7 +521,19 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
 
         # ensure that the worker queue is in context
         if not ctx.worker_queue:
-            builder = builder.with_worker_queue(WorkerQueue(remote))
+            remote = FlyteRemote.for_sandbox(default_project="flytesnacks", default_domain="development")
+            # remote = _internal_demo_remote(remote)
+            # This should be read from transport at real runtime if available, but if not, we should either run
+            # remote in interactive mode, or let users configure the version to use.
+            ss = ctx.serialization_settings
+            if not ss:
+                ss = SerializationSettings(
+                    image_config=ImageConfig.auto_default_image(),
+                )
+            c = Controller(remote=remote, ss=ss)
+            builder = builder.with_worker_queue(c)
+        else:
+            raise AssertionError("Worker queue should not be already present in the context for eager execution")
 
         with FlyteContextManager.with_context(builder):
             return await self._task_function(**kwargs)

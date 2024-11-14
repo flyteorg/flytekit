@@ -31,7 +31,7 @@ from flytekit.core import mock_stats, utils
 from flytekit.core.checkpointer import Checkpoint, SyncCheckpoint
 from flytekit.core.data_persistence import FileAccessProvider, default_local_file_access_provider
 from flytekit.core.node import Node
-from flytekit.core.worker_queue import WorkerQueue
+from flytekit.core.worker_queue import Controller
 from flytekit.interfaces.cli_identifiers import WorkflowExecutionIdentifier
 from flytekit.interfaces.stats import taggable
 from flytekit.loggers import developer_logger, user_space_logger
@@ -670,7 +670,7 @@ class FlyteContext(object):
     in_a_condition: bool = False
     origin_stackframe: Optional[traceback.FrameSummary] = None
     output_metadata_tracker: Optional[OutputMetadataTracker] = None
-    worker_queue: Optional[WorkerQueue] = None
+    worker_queue: Optional[Controller] = None
 
     @property
     def user_space_params(self) -> Optional[ExecutionParameters]:
@@ -722,7 +722,7 @@ class FlyteContext(object):
     def with_output_metadata_tracker(self, t: OutputMetadataTracker) -> Builder:
         return self.new_builder().with_output_metadata_tracker(t)
 
-    def with_worker_queue(self, wq: WorkerQueue) -> Builder:
+    def with_worker_queue(self, wq: Controller) -> Builder:
         return self.new_builder().with_worker_queue(wq)
 
     def with_client(self, c: SynchronousFlyteClient) -> Builder:
@@ -789,7 +789,7 @@ class FlyteContext(object):
         serialization_settings: Optional[SerializationSettings] = None
         in_a_condition: bool = False
         output_metadata_tracker: Optional[OutputMetadataTracker] = None
-        worker_queue: Optional[WorkerQueue] = None
+        worker_queue: Optional[Controller] = None
 
         def build(self) -> FlyteContext:
             return FlyteContext(
@@ -850,7 +850,7 @@ class FlyteContext(object):
             self.output_metadata_tracker = t
             return self
 
-        def with_worker_queue(self, wq: WorkerQueue) -> FlyteContext.Builder:
+        def with_worker_queue(self, wq: Controller) -> FlyteContext.Builder:
             self.worker_queue = wq
             return self
 

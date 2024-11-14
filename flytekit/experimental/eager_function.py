@@ -603,8 +603,6 @@ def _internal_demo_remote(remote: FlyteRemote) -> FlyteRemote:
             platform=PlatformConfig(
                 endpoint=FLYTE_SANDBOX_INTERNAL_ENDPOINT,
                 insecure=True,
-                auth_mode="Pkce",
-                client_id=remote.config.platform.client_id,
             ),
             data_config=DataConfig(
                 s3=S3Config(
