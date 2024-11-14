@@ -69,7 +69,7 @@ id=micromamba \
     python=$PYTHON_VERSION $CONDA_PACKAGES
 
 # Configure user space
-ENV PATH="/opt/micromamba/envs/runtime/bin:/.venv/bin:$$PATH" \
+ENV PATH="/.venv/bin:/opt/micromamba/envs/runtime/bin:$$PATH" \
     UV_LINK_MODE=copy \
     FLYTE_SDK_RICH_TRACEBACKS=0 \
     SSL_CERT_DIR=/etc/ssl/certs \
