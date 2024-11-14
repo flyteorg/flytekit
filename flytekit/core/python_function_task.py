@@ -511,9 +511,9 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
         # if already a worker queue, then get the execution prefix, and append a new one.
         client = ctx.flyte_client
         if client is None:
-            raise AssertionError(
-                "Remote client needs to be present in the context for cluster-based execution" " of an eager task."
-            )
+            # raise AssertionError(
+            #     "Remote client needs to be present in the context for cluster-based execution" " of an eager task."
+            # )
             remote = FlyteRemote.for_sandbox(default_project="flytesnacks", default_domain="development")
         else:
             # todo:async, figure this out after we figure out auth pattern
