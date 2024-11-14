@@ -684,7 +684,7 @@ def test_read_sd_from_uri(local_tmp_pqt_file):
     @task
     def read_df_with_ff(remote_path: str) -> pd.DataFrame:
         """Read pandas DataFrame from remote with FlyteFile."""
-        ff = FlyteFile(path=REMOTE_PATH)
+        ff = FlyteFile(path=remote_path)
         with ff.open(mode="rb") as f:
             df = pd.read_parquet(f)
 
