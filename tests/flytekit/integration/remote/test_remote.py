@@ -786,24 +786,24 @@ def test_execute_flytefile_wf():
 
     assert content == "This is flyte_file.txt file."
 
-
-def test_execute_flytedir_wf():
-    """Test remote execution of a FlyteDirectory container task."""
-    from workflows.basic.container_workflow import flyte_dir_io_wf
-
-    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN, interactive_mode_enabled=True)
-
-    out = remote.execute(
-        flyte_dir_io_wf,
-        inputs={},
-        wait=True,
-        version=VERSION,
-        image_config=ImageConfig.from_images(IMAGE),
-    )
-    flytyedir = out.outputs["o0"]
-    assert isinstance(flytyedir, FlyteDirectory)
-
-    with open(os.path.join(flytyedir.path, "flyte_dir.txt"), "r") as file:
-        content = file.read()
-
-    assert content == "This is for flyte dir."
+# TODO: Uncomment this after flyte 1.14 release
+# def test_execute_flytedir_wf():
+#     """Test remote execution of a FlyteDirectory container task."""
+#     from workflows.basic.container_workflow import flyte_dir_io_wf
+#
+#     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN, interactive_mode_enabled=True)
+#
+#     out = remote.execute(
+#         flyte_dir_io_wf,
+#         inputs={},
+#         wait=True,
+#         version=VERSION,
+#         image_config=ImageConfig.from_images(IMAGE),
+#     )
+#     flytyedir = out.outputs["o0"]
+#     assert isinstance(flytyedir, FlyteDirectory)
+#
+#     with open(os.path.join(flytyedir.path, "flyte_dir.txt"), "r") as file:
+#         content = file.read()
+#
+#     assert content == "This is for flyte dir."
