@@ -188,6 +188,7 @@ def prepare_python_install(image_spec: ImageSpec, tmp_dir: Path) -> str:
 
     requirements_uv_path = tmp_dir / "requirements_uv.txt"
     requirements_uv_path.write_text("\n".join(requirements))
+    pip_install_args.extend(["--requirement", "requirements_uv.txt"])
 
     pip_install_args = " ".join(pip_install_args)
 
