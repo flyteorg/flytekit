@@ -664,15 +664,15 @@ def test_default_args_task():
 
 
 def test_read_sd_from_uri(local_tmp_pqt_file):
+    import os
+
+    os.environ['FLYTE_AWS_ENDPOINT'] = 'http://localhost:30002/'
+    os.environ['FLYTE_AWS_ACCESS_KEY_ID'] = 'minio'
+    os.environ['FLYTE_AWS_SECRET_ACCESS_KEY'] = 'miniostorage'
 
     @task
     def upload_pqt_to_s3(local_path: str, remote_path: str) -> None:
         """Upload local temp parquet file to s3 object storage"""
-        import os
-
-        os.environ['FLYTE_AWS_ENDPOINT'] = 'http://localhost:30002/'
-        os.environ['FLYTE_AWS_ACCESS_KEY_ID'] = 'minio'
-        os.environ['FLYTE_AWS_SECRET_ACCESS_KEY'] = 'miniostorage'
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             fs = FileAccessProvider(
@@ -683,12 +683,6 @@ def test_read_sd_from_uri(local_tmp_pqt_file):
 
     @task
     def read_sd_from_uri(uri: str) -> pd.DataFrame:
-        import os
-
-        os.environ['FLYTE_AWS_ENDPOINT'] = 'http://localhost:30002/'
-        os.environ['FLYTE_AWS_ACCESS_KEY_ID'] = 'minio'
-        os.environ['FLYTE_AWS_SECRET_ACCESS_KEY'] = 'miniostorage'
-
         sd = StructuredDataset(uri=uri, file_format="parquet")
         df = sd.open(pd.DataFrame).all()
 
