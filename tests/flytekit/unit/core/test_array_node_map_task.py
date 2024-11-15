@@ -29,9 +29,6 @@ class PythonFunctionTaskExtension(PythonFunctionTask):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def __call__(self, *args, **kwargs):
-        return super().__call__(*args, **kwargs)
-
 
 @pytest.fixture
 def serialization_settings():
