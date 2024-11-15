@@ -21,7 +21,6 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.core.utils import timeit
 from flytekit.loggers import logger
 from flytekit.models import literals as _literal_models
-from flytekit.models.array_job import ArrayJob
 from flytekit.models.core.workflow import NodeMetadata
 from flytekit.models.interface import Variable
 from flytekit.models.task import Container, K8sPod, Sql, Task
@@ -169,7 +168,7 @@ class ArrayNodeMapTask(PythonTask):
             self.python_function_task.reset_command_fn()
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
-        return ArrayJob(parallelism=self._concurrency, min_success_ratio=self._min_success_ratio).to_dict()
+        return self._run_task.get_custom(settings)
 
     def get_config(self, settings: SerializationSettings) -> Optional[Dict[str, str]]:
         return self.python_function_task.get_config(settings)
