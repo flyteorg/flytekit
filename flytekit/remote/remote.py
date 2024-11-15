@@ -650,7 +650,7 @@ class FlyteRemote(object):
         # Response is empty currently, nothing to give back to the user.
         self.client.set_signal(req)
 
-    def reject(self, signal_id: str, execution_name: str, project: str = None, domain: str = None): 
+    def reject(self, signal_id: str, execution_name: str, project: str = None, domain: str = None):
         """
         :param signal_id: The name of the signal, this is the key used in the approve() or wait_for_input() call.
         :param execution_name: The name of the execution. This is the tail-end of the URL when looking
@@ -665,21 +665,23 @@ class FlyteRemote(object):
 
         false_literal = Literal(scalar=literals_pb2.Scalar(primitive=literals_pb2.Primitive(boolean=False)))
 
-        req = SignalSetRequest(id=SignalIdentifier(signal_id, wf_exec_id).to_flyte_idl(), value=false_literal.to_flyte_idl())
+        req = SignalSetRequest(
+            id=SignalIdentifier(signal_id, wf_exec_id).to_flyte_idl(), value=false_literal.to_flyte_idl()
+        )
 
         # Response is empty currently, nothing to give back to the user.
         self.client.set_signal(req)
 
     def set_input(
-            self, 
-            signal_id: str,  
-            execution_name: str, 
-            value: typing.Union[literal_models.Literal, typing.Any], 
-            project=None, 
-            domain=None, 
-            python_type=None, 
-            literal_type=None
-        ):
+        self,
+        signal_id: str,
+        execution_name: str,
+        value: typing.Union[literal_models.Literal, typing.Any],
+        project=None,
+        domain=None,
+        python_type=None,
+        literal_type=None,
+    ):
         """
         :param signal_id: The name of the signal, this is the key used in the approve() or wait_for_input() call.
         :param execution_name: The name of the execution. This is the tail-end of the URL when looking
@@ -700,7 +702,9 @@ class FlyteRemote(object):
             logger.debug(f"Using provided {value} as existing Literal value")
             lit = value
         else:
-            lt = literal_type or (TypeEngine.to_literal_type(python_type) if python_type else TypeEngine.to_literal_type(type(value)))
+            lt = literal_type or (
+                TypeEngine.to_literal_type(python_type) if python_type else TypeEngine.to_literal_type(type(value))
+            )
             lit = TypeEngine.to_literal(self.context, value, python_type or type(value), lt)
             logger.debug(f"Converted {value} to literal {lit} using literal type {lt}")
 
@@ -708,7 +712,7 @@ class FlyteRemote(object):
 
         # Response is empty currently, nothing to give back to the user.
         self.client.set_signal(req)
-        
+
     def set_signal(
         self,
         signal_id: str,
