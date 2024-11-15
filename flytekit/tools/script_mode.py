@@ -183,6 +183,14 @@ def list_all_files(source_path: str, deref_symlinks, ignore_group: Optional[Igno
     return all_files
 
 
+def __drive_safe_commonpath(paths):
+    """A wrapper aound os.path.commonpath that defaults to returning an empty string instead of raising a ValueError"""
+    try:
+        return os.path.commonpath(paths)
+    except ValueError:
+        return ""
+
+
 def list_imported_modules_as_files(source_path: str, modules: List[ModuleType]) -> List[str]:
     """Copies modules into destination that are in modules. The module files are copied only if:
 
@@ -217,12 +225,6 @@ def list_imported_modules_as_files(source_path: str, modules: List[ModuleType]) 
             if os.path.commonpath([flytekit_root, mod_file]) == flytekit_root:
                 continue
 
-            if any(
-                (os.path.commonpath([site_package, mod_file]) == site_package for site_package in site_packages_set)
-            ):
-                # Do not upload files from site-packages
-                continue
-
             if os.path.commonpath([bin_directory, mod_file]) == bin_directory:
                 # Do not upload from the bin directory
                 continue
@@ -232,6 +234,12 @@ def list_imported_modules_as_files(source_path: str, modules: List[ModuleType]) 
             # If the files are not in the same drive, then mod_file is not
             # in the site-packages or bin directory.
             pass
+
+        if any(
+            (__drive_safe_commonpath([site_package, mod_file]) == site_package for site_package in site_packages_set)
+        ):
+            # Do not upload files from site-packages
+            continue
 
         try:
             common_path = os.path.commonpath([mod_file, source_path])
