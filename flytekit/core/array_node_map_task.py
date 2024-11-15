@@ -106,14 +106,13 @@ class ArrayNodeMapTask(PythonTask):
         self._min_success_ratio: Optional[float] = min_success_ratio
         self._collection_interface = collection_interface
 
+        self._execution_mode: _core_workflow.ArrayNode.ExecutionMode = _core_workflow.ArrayNode.FULL_STATE
         if (
             type(python_function_task) in {PythonFunctionTask, PythonInstanceTask}
             or isinstance(python_function_task, functools.partial)
             and type(python_function_task.func) in {PythonFunctionTask, PythonInstanceTask}
         ):
             self._execution_mode = _core_workflow.ArrayNode.MINIMAL_STATE
-        else:
-            self._execution_mode = _core_workflow.ArrayNode.FULL_STATE
 
         if "metadata" not in kwargs and actual_task.metadata:
             kwargs["metadata"] = actual_task.metadata
@@ -186,7 +185,7 @@ class ArrayNodeMapTask(PythonTask):
             self.python_function_task.reset_command_fn()
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
-        return self._run_task.get_custom(settings)
+        return self._run_task.get_custom(settings) or {}
 
     def get_config(self, settings: SerializationSettings) -> Optional[Dict[str, str]]:
         return self.python_function_task.get_config(settings)
