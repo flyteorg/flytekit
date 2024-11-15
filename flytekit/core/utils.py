@@ -1,3 +1,4 @@
+import copy
 import datetime
 import inspect
 import os
@@ -147,6 +148,9 @@ def _serialize_pod_spec(
 
     if pod_template.pod_spec is None:
         return {}
+
+    pod_template = copy.deepcopy(pod_template)
+
     containers = cast(V1PodSpec, pod_template.pod_spec).containers
     primary_exists = False
 
