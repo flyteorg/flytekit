@@ -14,7 +14,7 @@ except ImportError:
     It looks nicer in the real Flyte File/Directory class, but we also want it to not fail.
     """
 
-    logger.warning(
+    logger.debug(
         "Pydantic is not installed.\n" "Please install Pydantic version > 2 to use FlyteTypes in pydantic BaseModel."
     )
 

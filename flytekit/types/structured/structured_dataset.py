@@ -701,6 +701,7 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
             # that we will need to invoke an encoder for. Figure out which encoder to call and invoke it.
             df_type = type(python_val.dataframe)
             protocol = self._protocol_from_type_or_prefix(ctx, df_type, python_val.uri)
+
             return self.encode(
                 ctx,
                 python_val,

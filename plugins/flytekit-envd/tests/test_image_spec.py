@@ -24,13 +24,13 @@ def register_envd_higher_priority():
 def test_image_spec():
     base_image = ImageSpec(
         packages=["numpy"],
-        python_version="3.8",
+        python_version="3.9",
         registry="",
-        base_image="cr.flyte.org/flyteorg/flytekit:py3.8-latest",
+        base_image="cr.flyte.org/flyteorg/flytekit:py3.9-latest",
     )
     # Replace the base image name with the default flytekit image name,
     # so Envd can find the base image when building imageSpec below
-    ImageBuildEngine._IMAGE_NAME_TO_REAL_NAME[base_image.image_name()] = "cr.flyte.org/flyteorg/flytekit:py3.8-latest"
+    ImageBuildEngine._IMAGE_NAME_TO_REAL_NAME[base_image.image_name()] = "cr.flyte.org/flyteorg/flytekit:py3.9-latest"
 
     with tempfile.TemporaryDirectory(dir=Path.cwd().as_posix()) as temp_dir:
         copy_file = Path(temp_dir) / "copy_file.txt"
@@ -39,7 +39,7 @@ def test_image_spec():
         image_spec = ImageSpec(
             packages=["pandas"],
             apt_packages=["git"],
-            python_version="3.8",
+            python_version="3.9",
             base_image=base_image,
             pip_index="https://pypi.python.org/simple",
             source_root=os.path.dirname(os.path.realpath(__file__)),
@@ -57,13 +57,13 @@ def test_image_spec():
             == f"""# syntax=v1
 
 def build():
-    base(image="cr.flyte.org/flyteorg/flytekit:py3.8-latest", dev=False)
+    base(image="cr.flyte.org/flyteorg/flytekit:py3.9-latest", dev=False)
     run(commands=["echo hello"])
     install.python_packages(name=["pandas"])
     install.apt_packages(name=["git"])
     runtime.environ(env={{'PYTHONPATH': '/root:', '_F_IMG_ID': '{image_spec.id}'}}, extra_path=['/root'])
     config.pip_index(url="https://pypi.python.org/simple")
-    install.python(version="3.8")
+    install.python(version="3.9")
     io.copy(source="./", target="/root")
     io.copy(source="{copy_file.relative_to(Path.cwd()).as_posix()}", target="/root/{copy_file.parent.relative_to(Path.cwd()).as_posix()}/")
 """

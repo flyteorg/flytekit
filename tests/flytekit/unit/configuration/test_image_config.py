@@ -14,7 +14,6 @@ from flytekit.core.constants import FLYTE_INTERNAL_IMAGE_ENV_VAR
 @pytest.mark.parametrize(
     "python_version_enum, expected_image_string",
     [
-        (PythonVersion.PYTHON_3_8, "cr.flyte.org/flyteorg/flytekit:py3.8-latest"),
         (PythonVersion.PYTHON_3_9, "cr.flyte.org/flyteorg/flytekit:py3.9-latest"),
         (PythonVersion.PYTHON_3_10, "cr.flyte.org/flyteorg/flytekit:py3.10-latest"),
     ],
@@ -27,7 +26,6 @@ def test_defaults(python_version_enum, expected_image_string):
     "python_version_enum, flytekit_version, expected_image_string",
     [
         (PythonVersion.PYTHON_3_9, "v0.32.0", "cr.flyte.org/flyteorg/flytekit:py3.9-0.32.0"),
-        (PythonVersion.PYTHON_3_8, "1.31.3", "cr.flyte.org/flyteorg/flytekit:py3.8-1.31.3"),
     ],
 )
 def test_set_both(python_version_enum, flytekit_version, expected_image_string):
