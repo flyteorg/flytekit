@@ -1,6 +1,8 @@
+from datetime import datetime
 import os
 import re
 import textwrap
+import time
 import typing
 from collections import OrderedDict
 import uuid
@@ -9,8 +11,10 @@ import fsspec
 import mock
 import pytest
 from flyteidl.core.errors_pb2 import ErrorDocument
+from google.protobuf.timestamp_pb2 import Timestamp
 
-from flytekit.bin.entrypoint import _dispatch_execute, normalize_inputs, setup_execution, get_traceback_str
+
+from flytekit.bin.entrypoint import _dispatch_execute, get_container_error_timestamp, normalize_inputs, setup_execution, get_traceback_str
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core import context_manager
 from flytekit.core.base_task import IgnoreOutputs
@@ -503,3 +507,19 @@ def test_get_traceback_str():
     expected_error_re = re.compile(expected_error_pattern)
     print(traceback_str)  # helpful for debugging
     assert expected_error_re.match(traceback_str) is not None
+
+def test_get_container_error_timestamp() -> None:
+
+    assert get_container_error_timestamp(FlyteException("foo", timestamp=10.5)) == Timestamp(seconds=10, nanos=500000000)
+
+    current_dtime = datetime.now()
+    error_timestamp = get_container_error_timestamp(RuntimeError("foo"))
+    assert error_timestamp.ToDatetime() >= current_dtime
+
+    current_dtime = datetime.now()
+    error_timestamp = get_container_error_timestamp(FlyteException("foo"))
+    assert error_timestamp.ToDatetime() >= current_dtime
+
+    current_dtime = datetime.now()
+    error_timestamp = get_container_error_timestamp(None)
+    assert error_timestamp.ToDatetime() >= current_dtime
