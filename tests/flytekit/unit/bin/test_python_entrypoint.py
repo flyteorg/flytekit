@@ -509,7 +509,6 @@ def test_get_traceback_str():
     assert expected_error_re.match(traceback_str) is not None
 
 def test_get_container_error_timestamp() -> None:
-
     assert get_container_error_timestamp(FlyteException("foo", timestamp=10.5)) == Timestamp(seconds=10, nanos=500000000)
 
     current_dtime = datetime.now()
