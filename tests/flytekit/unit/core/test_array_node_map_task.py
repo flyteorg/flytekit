@@ -8,7 +8,7 @@ from typing import List
 import pytest
 from flyteidl.core import workflow_pb2 as _core_workflow
 
-from flytekit import dynamic, map_task, task, workflow
+from flytekit import dynamic, map_task, task, workflow, PythonFunctionTask
 from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SerializationSettings
 from flytekit.core import context_manager
 from flytekit.core.array_node_map_task import ArrayNodeMapTask, ArrayNodeMapTaskResolver
@@ -23,6 +23,14 @@ from flytekit.models.literals import (
 )
 from flytekit.tools.translator import get_serializable
 from flytekit.types.directory import FlyteDirectory
+
+
+class PythonFunctionTaskExtension(PythonFunctionTask):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def __call__(self, *args, **kwargs):
+        return super().__call__(*args, **kwargs)
 
 
 @pytest.fixture
@@ -388,6 +396,12 @@ def test_serialization_metadata2(serialization_settings):
     def wf(x: typing.List[int]):
         return arraynode_maptask(a=x)
 
+    full_state_array_node_map_task = map_task(PythonFunctionTaskExtension(task_config={}, task_function=t1))
+
+    @workflow
+    def wf1(x: typing.List[int]):
+        return full_state_array_node_map_task(a=x)
+
     od = OrderedDict()
     wf_spec = get_serializable(od, serialization_settings, wf)
 
@@ -401,6 +415,10 @@ def test_serialization_metadata2(serialization_settings):
     task_spec = od[arraynode_maptask]
     assert task_spec.template.metadata.retries.retries == 2
     assert task_spec.template.metadata.interruptible
+
+    wf1_spec = get_serializable(od, serialization_settings, wf1)
+    array_node = wf1_spec.template.nodes[0]
+    assert array_node.array_node._execution_mode == _core_workflow.ArrayNode.FULL_STATE
 
 
 def test_serialization_extended_resources(serialization_settings):
