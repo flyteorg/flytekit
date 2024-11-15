@@ -142,7 +142,7 @@ def package(
     ... you can package the Flyte entities contained in this Python package by executing the following command:
     pyflyte --pkgs some_package package
 
-    This command parses and compiles the user’s Python code into Flyte protobuf objects that can be registered with the backend.
+    This command parses and compiles the user's Python code into Flyte protobuf objects that can be registered with the backend.
     """
     # Ensure that the two flags are consistent
     if fast:
