@@ -751,39 +751,48 @@ def test_dataclass_transformer():
         s: UnsupportedSchemaType
 
     schema = {
-        "$ref": "#/definitions/TeststructSchema",
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "definitions": {
-            "InnerstructSchema": {
-                "additionalProperties": False,
+        "type": "object",
+        "title": "TestStruct",
+        "properties": {
+            "s": {
+                "type": "object",
+                "title": "InnerStruct",
                 "properties": {
-                    "a": {"title": "a", "type": "integer"},
-                    "b": {"default": None, "title": "b", "type": ["string", "null"]},
+                    "a": {
+                        "type": "integer"
+                    },
+                    "b": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
                     "c": {
-                        "items": {"title": "c", "type": "integer"},
-                        "title": "c",
                         "type": "array",
-                    },
+                        "items": {
+                            "type": "integer"
+                        }
+                    }
                 },
-                "type": "object",
-            },
-            "TeststructSchema": {
                 "additionalProperties": False,
-                "properties": {
-                    "m": {
-                        "additionalProperties": {"title": "m", "type": "string"},
-                        "title": "m",
-                        "type": "object",
-                    },
-                    "s": {
-                        "$ref": "#/definitions/InnerstructSchema",
-                        "field_many": False,
-                        "type": "object",
-                    },
-                },
-                "type": "object",
+                "required": ["a", "b", "c"]
             },
+            "m": {
+                "type": "object",
+                "additionalProperties": {
+                    "type": "string"
+                },
+                "propertyNames": {
+                    "type": "string"
+                }
+            }
         },
+        "additionalProperties": False,
+        "required": ["s", "m"]
     }
     tf = DataclassTransformer()
     t = tf.get_literal_type(TestStruct)
@@ -1566,7 +1575,7 @@ def test_assert_dataclass_type():
     pv = Bar(x=3)
     with pytest.raises(
             TypeTransformerFailedError,
-            match="Type of Val '<class 'int'>' is not an instance of <class '.*.ArgsSchema'>",
+            match="Type of Val '<class 'int'>' is not an instance of <class '.*.Args'>",
     ):
         DataclassTransformer().assert_type(gt, pv)
 
