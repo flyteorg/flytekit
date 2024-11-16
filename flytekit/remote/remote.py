@@ -1065,24 +1065,34 @@ class FlyteRemote(object):
         encoded_md5 = b64encode(md5_bytes)
         local_file_path = str(to_upload)
         content_length = os.stat(local_file_path).st_size
-        with open(local_file_path, "+rb") as local_file:
-            headers = {"Content-Length": str(content_length), "Content-MD5": encoded_md5}
-            headers.update(extra_headers)
-            rsp = requests.put(
-                upload_location.signed_url,
-                data=local_file,  # NOTE: We pass the file object directly to stream our upload.
-                headers=headers,
-                verify=False
-                if self._config.platform.insecure_skip_verify is True
-                else self._config.platform.ca_cert_file_path,
-            )
 
-            # Check both HTTP 201 and 200, because some storage backends (e.g. Azure) return 201 instead of 200.
-            if rsp.status_code not in (requests.codes["OK"], requests.codes["created"]):
-                raise FlyteValueException(
-                    rsp.status_code,
-                    f"Request to send data {upload_location.signed_url} failed.\nResponse: {rsp.text}",
+        from rich.progress import Progress, TextColumn, TimeElapsedColumn
+
+        progress = Progress(
+            TimeElapsedColumn(), TextColumn(f"Uploading package of size {content_length/1024/1024} MBs")
+        )
+        t1 = progress.add_task("uploader", total=1)
+        with progress:
+            progress.start_task(t1)
+            with open(local_file_path, "+rb") as local_file:
+                headers = {"Content-Length": str(content_length), "Content-MD5": encoded_md5}
+                headers.update(extra_headers)
+                rsp = requests.put(
+                    upload_location.signed_url,
+                    data=local_file,  # NOTE: We pass the file object directly to stream our upload.
+                    headers=headers,
+                    verify=False
+                    if self._config.platform.insecure_skip_verify is True
+                    else self._config.platform.ca_cert_file_path,
                 )
+
+                # Check both HTTP 201 and 200, because some storage backends (e.g. Azure) return 201 instead of 200.
+                if rsp.status_code not in (requests.codes["OK"], requests.codes["created"]):
+                    raise FlyteValueException(
+                        rsp.status_code,
+                        f"Request to send data {upload_location.signed_url} failed.\nResponse: {rsp.text}",
+                    )
+                progress.update(t1, completed=1, description="Upload complete", refresh=True)
 
         developer_logger.debug(
             f"Uploading {to_upload} to {upload_location.signed_url} native url {upload_location.native_url}"
@@ -1154,6 +1164,7 @@ class FlyteRemote(object):
         module_name: typing.Optional[str] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
         fast_package_options: typing.Optional[FastPackageOptions] = None,
+        show_progress: bool = False,
     ) -> typing.Union[FlyteWorkflow, FlyteTask, FlyteLaunchPlan]:
         """
         Use this method to register a workflow via script mode.
@@ -1170,6 +1181,7 @@ class FlyteRemote(object):
         :param module_name: the name of the module
         :param envs: Environment variables to be passed to the serialization
         :param fast_package_options: Options to customize copy_all behavior, ignored when copy_all is False.
+        :param show_progress: If True, will show progress bar for the upload
         :return:
         """
         if copy_all:

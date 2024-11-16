@@ -41,6 +41,7 @@ class FastPackageOptions:
     keep_default_ignores: bool = True
     copy_style: Optional[CopyFileDetection] = None
     show_files: bool = False
+    show_progress: bool = False
 
 
 def print_ls_tree(source: os.PathLike, ls: typing.List[str]):
@@ -122,6 +123,10 @@ def fast_package(
     if options and (
         options.copy_style == CopyFileDetection.LOADED_MODULES or options.copy_style == CopyFileDetection.ALL
     ):
+        from rich.progress import Progress
+
+        progress = Progress()
+
         ls, ls_digest = ls_files(str(source), options.copy_style, deref_symlinks, ignore)
         logger.debug(f"Hash digest: {ls_digest}")
 
@@ -135,19 +140,39 @@ def fast_package(
             click.secho(f"No output path provided, using a temporary directory at {output_dir} instead", fg="yellow")
         archive_fname = os.path.join(output_dir, archive_fname)
 
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            tar_path = os.path.join(tmp_dir, "tmp.tar")
-            with tarfile.open(tar_path, "w", dereference=deref_symlinks) as tar:
-                for ws_file in ls:
-                    rel_path = os.path.relpath(ws_file, start=source)
-                    tar.add(
-                        os.path.join(source, ws_file),
-                        recursive=False,
-                        arcname=rel_path,
-                        filter=lambda x: tar_strip_file_attributes(x),
-                    )
-
-            compress_tarball(tar_path, archive_fname)
+        # add the tarfile task to progress and start it
+        l = len(ls)
+        t = 0
+        tar_task = progress.add_task(f"Creating tarball with [{l}] files...", total=l)
+        with progress:
+            t = t + 1
+            progress.start_task(tar_task)
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                tar_path = os.path.join(tmp_dir, "tmp.tar")
+                with tarfile.open(tar_path, "w", dereference=deref_symlinks) as tar:
+                    for ws_file in ls:
+                        rel_path = os.path.relpath(ws_file, start=source)
+                        tar.add(
+                            os.path.join(source, ws_file),
+                            recursive=False,
+                            arcname=rel_path,
+                            filter=lambda x: tar_strip_file_attributes(x),
+                        )
+                        progress.update(tar_task, advance=1, description=f"Adding file {rel_path} files, {t}/{l}")
+                progress.stop_task(tar_task)
+                tpath = pathlib.Path(tar_path)
+                size_mbs = tpath.stat().st_size / 1024 / 1024
+                compress_task = progress.add_task(f"Compressing tarball size [{size_mbs:.2f}]MB...", total=1)
+                progress.start_task(compress_task)
+                compress_tarball(tar_path, archive_fname)
+                arpath = pathlib.Path(archive_fname)
+                asize_mbs = arpath.stat().st_size / 1024 / 1024
+                progress.update(
+                    compress_task,
+                    advance=1,
+                    description=f"Tarball [{size_mbs:.2f}]MB compressed to [{asize_mbs:.2f}]MB",
+                )
+                progress.stop_task(compress_task)
 
     # Original tar command - This condition to be removed in the future after serialize is removed.
     else:
