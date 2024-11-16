@@ -1,248 +1,51 @@
-import asyncio
-import inspect
 import os
-from datetime import datetime, timedelta, timezone
 from functools import partial
 from typing import Optional
 
 from flytekit import current_context
 from flytekit.configuration import DataConfig, PlatformConfig, S3Config
-from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
-from flytekit.core.python_function_task import EagerAsyncPythonFunctionTask, PythonFunctionTask
-from flytekit.core.workflow import WorkflowBase
+from flytekit.core.python_function_task import EagerAsyncPythonFunctionTask
 from flytekit.loggers import logger
-from flytekit.models.core.execution import WorkflowExecutionPhase
 from flytekit.remote import FlyteRemote
 
 FLYTE_SANDBOX_INTERNAL_ENDPOINT = "flyte-sandbox-grpc.flyte:8089"
 FLYTE_SANDBOX_MINIO_ENDPOINT = "http://flyte-sandbox-minio.flyte:9000"
 
 
-class EagerException(Exception):
-    """Raised when a node in an eager workflow encounters an error.
-
-    This exception should be used in an :py:func:`@eager <flytekit.experimental.eager>` workflow function to
-    catch exceptions that are raised by tasks or subworkflows.
-
-    .. code-block:: python
-
-        from flytekit import task
-        from flytekit.experimental import eager, EagerException
-
-        @task
-        def add_one(x: int) -> int:
-            if x < 0:
-                raise ValueError("x must be positive")
-            return x + 1
-
-        @task
-        def double(x: int) -> int:
-            return x * 2
-
-        @eager
-        async def eager_workflow(x: int) -> int:
-            try:
-                out = await add_one(x=x)
-            except EagerException:
-                # The ValueError error is caught
-                # and raised as an EagerException
-                raise
-            return await double(x=out)
-    """
-
-
-class AsyncEntity:
-    """A wrapper around a Flyte entity (task, workflow, launch plan) that allows it to be executed asynchronously."""
-
-    def __init__(
-        self,
-        entity,
-        remote: Optional[FlyteRemote],
-        ctx: FlyteContext,
-        async_stack: "AsyncStack",
-        timeout: Optional[timedelta] = None,
-        poll_interval: Optional[timedelta] = None,
-        local_entrypoint: bool = False,
-    ):
-        self.entity = entity
-        self.ctx = ctx
-        self.async_stack = async_stack
-        self.execution_state = self.ctx.execution_state.mode
-        self.remote = remote
-        self.local_entrypoint = local_entrypoint
-        if self.remote is not None:
-            logger.debug(f"Using remote config: {self.remote.config}")
-        else:
-            logger.debug("Not using remote, executing locally")
-        self._timeout = timeout
-        self._poll_interval = poll_interval
-        self._execution = None
-
-    async def __call__(self, **kwargs):
-        logger.debug(f"Calling {self.entity}: {self.entity.name}")
-
-        # ensure async context is provided
-        if "async_ctx" in kwargs:
-            kwargs.pop("async_ctx")
-
-        if getattr(self.entity, "execution_mode", None) == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
-            raise EagerException(
-                "Eager workflows currently do not work with dynamic workflows. "
-                "If you need to use a subworkflow, use a static @workflow or nested @eager workflow."
-            )
-
-        if not self.local_entrypoint and self.ctx.execution_state.is_local_execution():
-            # If running as a local workflow execution, just execute the python function
-            try:
-                if isinstance(self.entity, WorkflowBase):
-                    out = self.entity._workflow_function(**kwargs)
-                    if inspect.iscoroutine(out):
-                        # need to handle invocation of AsyncEntity tasks within the workflow
-                        out = await out
-                    return out
-                elif isinstance(self.entity, PythonTask):
-                    # invoke the task-decorated entity
-                    out = self.entity(**kwargs)
-                    if inspect.iscoroutine(out):
-                        out = await out
-                    return out
-                else:
-                    raise ValueError(f"Entity type {type(self.entity)} not supported for local execution")
-            except Exception as exc:
-                raise EagerException(
-                    f"Error executing {type(self.entity)} {self.entity.name} with {type(exc)}: {exc}"
-                ) from exc
-
-        # this is a hack to handle the case when the task.name doesn't contain the fully
-        # qualified module name
-        entity_name = (
-            f"{self.entity._instantiated_in}.{self.entity.name}"
-            if self.entity._instantiated_in not in self.entity.name
-            else self.entity.name
-        )
-
-        if isinstance(self.entity, WorkflowBase):
-            remote_entity = self.remote.fetch_workflow(name=entity_name)
-        elif isinstance(self.entity, PythonTask):
-            remote_entity = self.remote.fetch_task(name=entity_name)
-        else:
-            raise ValueError(f"Entity type {type(self.entity)} not supported for local execution")
-
-        execution = self.remote.execute(remote_entity, inputs=kwargs, type_hints=self.entity.python_interface.inputs)
-        self._execution = execution
-
-        url = self.remote.generate_console_url(execution)
-        msg = f"Running flyte {type(self.entity)} {entity_name} on remote cluster: {url}"
-        if self.local_entrypoint:
-            logger.info(msg)
-        else:
-            logger.debug(msg)
-
-        node = AsyncNode(self, entity_name, execution, url)
-        self.async_stack.set_node(node)
-
-        poll_interval = self._poll_interval or timedelta(seconds=30)
-        time_to_give_up = (
-            (datetime.max.replace(tzinfo=timezone.utc))
-            if self._timeout is None
-            else datetime.now(timezone.utc) + self._timeout
-        )
-
-        while datetime.now(timezone.utc) < time_to_give_up:
-            execution = self.remote.sync(execution)
-            if execution.closure.phase in {WorkflowExecutionPhase.FAILED}:
-                raise EagerException(f"Error executing {self.entity.name} with error: {execution.closure.error}")
-            elif execution.is_done:
-                break
-            await asyncio.sleep(poll_interval.total_seconds())
-
-        outputs = {}
-        for key, type_ in self.entity.python_interface.outputs.items():
-            outputs[key] = execution.outputs.get(key, as_type=type_)
-
-        if len(outputs) == 1:
-            out, *_ = outputs.values()
-            return out
-        return outputs
-
-    async def terminate(self):
-        execution = self.remote.sync(self._execution)
-        logger.debug(f"Cleaning up execution: {execution}")
-        if not execution.is_done:
-            self.remote.terminate(
-                execution,
-                f"Execution terminated by eager workflow execution {self.async_stack.parent_execution_id}.",
-            )
-
-            poll_interval = self._poll_interval or timedelta(seconds=6)
-            time_to_give_up = (
-                (datetime.max.replace(tzinfo=timezone.utc))
-                if self._timeout is None
-                else datetime.now(timezone.utc) + self._timeout
-            )
-
-            while datetime.now(timezone.utc) < time_to_give_up:
-                execution = self.remote.sync(execution)
-                if execution.is_done:
-                    break
-                await asyncio.sleep(poll_interval.total_seconds())
-
-        return True
-
-
-class AsyncNode:
-    """A node in the async callstack."""
-
-    def __init__(self, async_entity, entity_name, execution=None, url=None):
-        self.entity_name = entity_name
-        self.async_entity = async_entity
-        self.execution = execution
-        self._url = url
-
-    @property
-    def url(self) -> str:
-        # make sure that internal flyte sandbox endpoint is replaced with localhost endpoint when rendering the urls
-        # for flyte decks
-        endpoint_root = FLYTE_SANDBOX_INTERNAL_ENDPOINT.replace("http://", "")
-        if endpoint_root in self._url:
-            return self._url.replace(endpoint_root, "localhost:30080")
-        return self._url
-
-    @property
-    def entity_type(self) -> str:
-        if (
-            isinstance(self.async_entity.entity, PythonTask)
-            and getattr(self.async_entity.entity, "execution_mode", None) == PythonFunctionTask.ExecutionBehavior.EAGER
-        ):
-            return "Eager Workflow"
-        elif isinstance(self.async_entity.entity, PythonTask):
-            return "Task"
-        elif isinstance(self.async_entity.entity, WorkflowBase):
-            return "Workflow"
-        return str(type(self.async_entity.entity))
-
-    def __repr__(self):
-        ex_id = self.execution.id
-        execution_id = None if self.execution is None else f"{ex_id.project}:{ex_id.domain}:{ex_id.name}"
-        return (
-            "<async_node | "
-            f"entity_type: {self.entity_type} | "
-            f"entity: {self.entity_name} | "
-            f"execution: {execution_id}"
-        )
+# async def terminate(self):
+#     execution = self.remote.sync(self._execution)
+#     logger.debug(f"Cleaning up execution: {execution}")
+#     if not execution.is_done:
+#         self.remote.terminate(
+#             execution,
+#             f"Execution terminated by eager workflow execution {self.async_stack.parent_execution_id}.",
+#         )
+#
+#         poll_interval = self._poll_interval or timedelta(seconds=6)
+#         time_to_give_up = (
+#             (datetime.max.replace(tzinfo=timezone.utc))
+#             if self._timeout is None
+#             else datetime.now(timezone.utc) + self._timeout
+#         )
+#
+#         while datetime.now(timezone.utc) < time_to_give_up:
+#             execution = self.remote.sync(execution)
+#             if execution.is_done:
+#                 break
+#             await asyncio.sleep(poll_interval.total_seconds())
 
 
 def eager(
     _fn=None,
     *,
     remote: Optional[FlyteRemote] = None,
-    client_secret_group: Optional[str] = None,
-    client_secret_key: Optional[str] = None,
-    timeout: Optional[timedelta] = None,
-    poll_interval: Optional[timedelta] = None,
-    local_entrypoint: bool = False,
-    client_secret_env_var: Optional[str] = None,
+    # client_secret_group: Optional[str] = None,
+    # client_secret_key: Optional[str] = None,
+    # timeout: Optional[timedelta] = None,
+    # poll_interval: Optional[timedelta] = None,
+    # local_entrypoint: bool = False,
+    # client_secret_env_var: Optional[str] = None,
     **kwargs,
 ) -> EagerAsyncPythonFunctionTask:
     """Eager workflow decorator.

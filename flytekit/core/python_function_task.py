@@ -48,6 +48,7 @@ from flytekit.core.workflow import (
     WorkflowMetadata,
     WorkflowMetadataDefaults,
 )
+from flytekit.deck.deck import Deck
 from flytekit.exceptions.user import FlyteValueException
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
@@ -427,6 +428,14 @@ class AsyncPythonFunctionTask(PythonFunctionTask[T], metaclass=FlyteTrackedABC):
 
 
 class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTrackedABC):
+    """
+    This is the base eager task (aka eager workflow) type. It replaces the previous experiment eager task type circa
+    Q4 2024. Users unfamiliar with this concept should refer to the documentation for more information.
+    But basically, Python becomes propeller, and every task invocation, creates a stack frame on the Flyte cluster in
+    the form of an execution rather than on the actual memory stack.
+
+    """
+
     def __init__(
         self,
         task_config: T,
@@ -483,6 +492,32 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
     async def async_execute(self, *args, **kwargs) -> Any:
         """
         Overrides the base execute function. This function does not handle dynamic at all. Eager and dynamic don't mix.
+
+        Some notes on the different call scenarios since it's a little different than other tasks.
+        a) starting local execution - eager_task()
+            -> last condition of call handler,
+            -> set execution mode and self.local_execute()
+            -> self.execute(native_vals)
+              -> 1) -> task function() or 2) -> self.run_with_backend()  # fn name will be changed.
+        b) inside an eager task local execution - calling normal_task()
+            -> call handler detects in eager local execution (middle part of call handler)
+            -> call normal_task's local_execute()
+        c) inside an eager task local execution - calling async_normal_task()
+            -> produces a coro, which when awaited/run
+                -> call handler detects in eager local execution (middle part of call handler)
+                -> call async_normal_task's local_execute()
+                -> call AsyncPythonFunctionTask's async_execute(), which awaits the task function
+        d) inside an eager task local execution - calling another_eager_task()
+            -> produces a coro, which when awaited/run
+                -> call handler detects in eager local execution (middle part of call handler)
+                -> call another_eager_task's local_execute()
+                -> results are returned instead of being passed to create_native_named_tuple
+        d) eager_task, starting backend execution from entrypoint.py
+            -> eager_task.dispatch_execute(literals)
+            -> eager_task.execute(native values)
+            -> awaits eager_task.run_with_backend()  # fn name will be changed
+        e) in an eager task during backend execution, calling any flyte_entity()
+            -> add the entity to the worker queue and await the result.
         """
         # Args is present because the asyn helper function passes it, but everything should be in kwargs by this point
         assert not args
@@ -512,6 +547,7 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
         # if already a worker queue, then get the execution prefix, and append a new one.
         client = ctx.flyte_client
         if client is None:
+            # todo:async update after pattern has been decided for auth.
             # raise AssertionError(
             #     "Remote client needs to be present in the context for cluster-based execution" " of an eager task."
             # )
@@ -541,35 +577,28 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
         else:
             raise AssertionError("Worker queue should not be already present in the context for eager execution")
 
-        with FlyteContextManager.with_context(builder):
-            return await self._task_function(**kwargs)
+        with FlyteContextManager.with_context(builder) as ctx:
+            result = await self._task_function(**kwargs)
+            html = ctx.worker_queue.render_html()
+            print(
+                f"Deck HTML: {html}"
+            )  # if this doesn't show, it's because the deck is only read from the prior ctx level
+            Deck("eager workflow", html)
+            return result
 
 
 """
+test decks, exceptions
+update prints to logs,
+try moving worker queue around
 
-export deck, hook up and test with remote
-update comments about call pattern and move
+actual remote handling, meet with thomas, auth story
+unit tests for worker_queue
 signal handling
-add error to nested call, worker queue must be empty
-investigate shelve as the thing that can be persisted
-semantics for prefix deciding
-actual remote handling, other handling
+semantics for prefix, execution naming for idempotent executions
+
+pure watch informer pattern
 
 priority for flytekit - fix naming, depending on src
 priority for main async - investigate fut.result behavior when there's an exception.
-
-to enable the async pattern the __call__ function needs to be async or sync. One task type can't be both because it has
-to be this function. You can't overload functions in Python, so we have to differentiate at all levels.
-
-eager tasks should run locally - when running a task/workflow, it should be run as if embedded in a workflow context,
-with the outputs converted into literals and then back.
-
-first time we're allowing tasks to be called inside other tasks
-
-
-if i run an eager task, i see it in the console as an execution.
-if i run an eager task inside another eager task, do i want to see a separate console link?
-yes - inputs to eager tasks should be translated to literals (by the underlying eager task) and then fetched by remote
-and translated back (by the parent eager)
-
 """

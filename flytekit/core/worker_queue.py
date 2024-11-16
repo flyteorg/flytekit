@@ -23,6 +23,40 @@ if typing.TYPE_CHECKING:
 
 standard_output_format = re.compile(r"^o\d+$")
 
+NODE_HTML_TEMPLATE = """
+<style>
+    #flyte-frame-container > div.active {{font-family: Open sans;}}
+</style>
+
+<style>
+    #flyte-frame-container div.input-output {{
+        font-family: monospace;
+        background: #f0f0f0;
+        padding: 10px 15px;
+        margin: 15px 0;
+    }}
+</style>
+
+<h3>{entity_type}: {entity_name}</h3>
+
+<p>
+    <strong>Execution:</strong>
+    <a target="_blank" href="{url}">{execution_name}</a>
+</p>
+
+<details>
+<summary>Inputs</summary>
+<div class="input-output">{inputs}</div>
+</details>
+
+<details>
+<summary>Outputs</summary>
+<div class="input-output">{outputs}</div>
+</details>
+
+<hr>
+"""
+
 
 @dataclass
 class WorkItem:
@@ -97,9 +131,11 @@ class PollingInformer:
             results = work.wf_exec.outputs.as_python_native(py_iface)
 
             work.set_result(results)
-        else:
-            # set an exception on the future, read the error from the execution object if any.
-            work.set_error(Exception("Execution failed"))
+        elif work.wf_exec.closure.phase == WorkflowExecutionPhase.FAILED:
+            from flytekit.exceptions.eager import EagerException
+
+            exc = EagerException(f"Error executing {work.entity.name} with error: {work.wf_exec.closure.error}")
+            work.set_error(exc)
 
     def watch(self, work: WorkItem):
         coro = self.watch_one(work)
@@ -175,27 +211,19 @@ class Controller:
         self, task_loop: asyncio.AbstractEventLoop, entity: RunnableEntity, input_kwargs: dict[str, typing.Any]
     ) -> asyncio.Future:
         """
-        same as the current WorkerQueue.add
+        Add an entity along with the requested inputs to be submitted to Admin for running and return a future
         """
-        # when we do the persisting part, need to check to see if we've already run this execution (will have to match
-        # on entity and inputs or something). solve later.
-
         # need to also check to see if the entity has already been registered, and if not, register it.
         fut = task_loop.create_future()
         i = WorkItem(entity=entity, input_kwargs=input_kwargs, fut=fut)
-        # add lock?
-        # also, even if we don't do persisting to disk, should make this data structure more capable.
-        # had to make the value a list because the same entity can be called multiple times (as in the case in helper)
-        # Also don't really need to keep track of it, but need it for the Deck/observability
-        # and maybe below
+
+        # For purposes of awaiting an execution, we don't need to keep track of anything, but doing so for Deck
         if entity.name not in self.entries:
             self.entries[entity.name] = []
         self.entries[entity.name].append(i)
         idx = len(self.entries[entity.name]) - 1
 
         # trigger a run of the launching function.
-        # below: it may be better to pass the state object here by using primitives, name and idx, rather than the
-        # state object itself. think about it.
         self.__loop.call_soon_threadsafe(self.launch_and_start_watch, entity.name, idx)
 
         return fut
@@ -203,27 +231,33 @@ class Controller:
     def render_html(self) -> str:
         """Render the callstack as a deck presentation to be shown after eager workflow execution."""
 
-        def get_io(dict_like):
-            try:
-                return {k: dict_like.get(k) for k in dict_like}
-            except Exception:
-                return dict_like
+        from flytekit.core.base_task import PythonTask
+        from flytekit.core.python_function_task import AsyncPythonFunctionTask, EagerAsyncPythonFunctionTask
+        from flytekit.core.workflow import WorkflowBase
 
         output = "<h2>Nodes</h2><hr>"
-        for node in async_stack.call_stack:
-            node_inputs = get_io(node.execution.inputs)
-            if node.execution.closure.phase in {WorkflowExecutionPhase.FAILED}:
-                node_outputs = None
-            else:
-                node_outputs = get_io(node.execution.outputs)
 
-            output = f"{output}\n" + NODE_HTML_TEMPLATE.format(
-                entity_type=node.entity_type,
-                entity_name=node.entity_name,
-                execution_name=node.execution.id.name,
-                url=node.url,
-                inputs=node_inputs,
-                outputs=node_outputs,
-            )
+        def _entity_type(entity) -> str:
+            if isinstance(entity, EagerAsyncPythonFunctionTask):
+                return "Eager Workflow"
+            elif isinstance(entity, AsyncPythonFunctionTask):
+                return "Async Task"
+            elif isinstance(entity, PythonTask):
+                return "Task"
+            elif isinstance(entity, WorkflowBase):
+                return "Workflow"
+            return str(type(entity))
+
+        for entity_name, items_list in self.entries.items():
+            for item in items_list:
+                kind = _entity_type(item.entity)
+                output = f"{output}\n" + NODE_HTML_TEMPLATE.format(
+                    entity_type=kind,
+                    entity_name=item.entity.name,
+                    execution_name=item.wf_exec.id.name,
+                    url=self.remote.generate_console_url(item.wf_exec),
+                    inputs=item.input_kwargs,
+                    outputs=item.result if item.result else item.error,
+                )
 
         return output
