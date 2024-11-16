@@ -317,47 +317,67 @@ class ExecutionParameters(object):
         """
         return self.__getattr__(attr_name=key)  # type: ignore
 
+# def _deprecate_positional_args(func=None, *, version="1.15.0"):
+#     """Decorator for methods that issue warnings for positional arguments."""
+
+#     def _inner_deprecate_positional_args(f):
+#         sig = signature(f)
+#         kwonly_args = []
+#         all_args = []
+
+#         for name, param in sig.parameters.items():
+#             if param.kind == Parameter.POSITIONAL_OR_KEYWORD:
+#                 all_args.append(name)
+#             elif param.kind == Parameter.KEYWORD_ONLY:
+#                 kwonly_args.append(name)
+
+#         @wraps(f)
+#         def inner_f(*args, **kwargs):
+#             # Determine how many extra positional arguments are present
+#             extra_args = len(args) - len(all_args)
+#             if extra_args <= 0:
+#                 # No extra positional args, so proceed without warning
+#                 return f(*args, **kwargs)
+
+#             # extra_args > 0, handling positional arguments as keyword arguments
+#             args_msg = [
+#                 "{}={}".format(name, arg)
+#                 for name, arg in zip(kwonly_args[:extra_args], args[-extra_args:])
+#             ]
+#             args_msg = ", ".join(args_msg)
+            
+#             # Warning message issued for positional args
+#             warnings.warn(
+#                 (
+#                     f"Pass {args_msg} as keyword args. From version "
+#                     f"{version} passing these as positional arguments "
+#                     "will result in an error"
+#                 ),
+#                 FutureWarning,  # Use FutureWarning as intended
+#             )
+
+#             kwargs.update(zip(sig.parameters, args))
+#             return f(**kwargs)
+
+#         return inner_f
+
+#     if func is not None:
+#         return _inner_deprecate_positional_args(func)
+
+#     return _inner_deprecate_positional_args
+
 def _deprecate_positional_args(func=None, *, version="1.15.0"):
-    """Decorator for methods that issue warnings for positional arguments."""
-
     def _inner_deprecate_positional_args(f):
-        sig = signature(f)
-        kwonly_args = []
-        all_args = []
-
-        for name, param in sig.parameters.items():
-            if param.kind == Parameter.POSITIONAL_OR_KEYWORD:
-                all_args.append(name)
-            elif param.kind == Parameter.KEYWORD_ONLY:
-                kwonly_args.append(name)
-
         @wraps(f)
         def inner_f(*args, **kwargs):
-            # Determine how many extra positional arguments are present
-            extra_args = len(args) - len(all_args)
-            if extra_args <= 0:
-                # No extra positional args, so proceed without warning
-                return f(*args, **kwargs)
-
-            # extra_args > 0, handling positional arguments as keyword arguments
-            args_msg = [
-                "{}={}".format(name, arg)
-                for name, arg in zip(kwonly_args[:extra_args], args[-extra_args:])
-            ]
-            args_msg = ", ".join(args_msg)
-            
-            # Warning message issued for positional args
-            warnings.warn(
-                (
-                    f"Pass {args_msg} as keyword args. From version "
-                    f"{version} passing these as positional arguments "
-                    "will result in an error"
-                ),
-                FutureWarning,  # Use FutureWarning as intended
-            )
-
-            kwargs.update(zip(sig.parameters, args))
-            return f(**kwargs)
+            extra_args = len(args) - len(signature(f).parameters)
+            if extra_args > 0:
+                warnings.warn(
+                    f"Positional arguments are deprecated.",
+                    FutureWarning,
+                )
+                print("Deprecation warning issued!")  # Add this for debugging
+            return f(*args, **kwargs)
 
         return inner_f
 
