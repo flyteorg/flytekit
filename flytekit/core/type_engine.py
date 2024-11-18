@@ -986,11 +986,7 @@ class ProtobufTransformer(TypeTransformer[Message]):
         https://github.com/flyteorg/flyte/blob/a87585ab7cbb6a047c76d994b3f127c4210070fd/flytepropeller/pkg/controller/nodes/attr_path_resolver.go#L72-L106
         """
         try:
-            if type(python_val) == _struct.Struct:
-                struct = Struct()
-                struct.update(_MessageToDict(cast(Message, python_val)))
-                return Literal(scalar=Scalar(generic=struct))
-            elif type(python_val) == _struct.ListValue:
+            if type(python_val) == _struct.ListValue:
                 literals = []
                 for v in python_val:
                     literal_type = TypeEngine.to_literal_type(type(v))
@@ -998,6 +994,10 @@ class ProtobufTransformer(TypeTransformer[Message]):
                     literal = TypeEngine.to_literal(ctx, v, type(v), literal_type)
                     literals.append(literal)
                 return Literal(collection=LiteralCollection(literals=literals))
+            else:
+                struct = Struct()
+                struct.update(_MessageToDict(cast(Message, python_val)))
+                return Literal(scalar=Scalar(generic=struct))
         except Exception:
             raise TypeTransformerFailedError("Failed to convert to generic protobuf struct")
 
