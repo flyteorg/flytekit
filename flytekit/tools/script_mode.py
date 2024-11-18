@@ -183,7 +183,7 @@ def list_all_files(source_path: str, deref_symlinks, ignore_group: Optional[Igno
     return all_files
 
 
-def __drive_safe_commonpath(paths):
+def _drive_safe_commonpath(paths):
     """A wrapper aound os.path.commonpath that defaults to returning an empty string instead of raising a ValueError"""
     try:
         return os.path.commonpath(paths)
@@ -203,7 +203,6 @@ def list_imported_modules_as_files(source_path: str, modules: List[ModuleType]) 
     # identify a common root amongst the packages listed?
 
     site_packages = site.getsitepackages()
-    site_packages_set = set(site_packages)
     bin_directory = os.path.dirname(sys.executable)
     files = []
     flytekit_root = os.path.dirname(flytekit.__file__)
@@ -235,9 +234,7 @@ def list_imported_modules_as_files(source_path: str, modules: List[ModuleType]) 
             # in the site-packages or bin directory.
             pass
 
-        if any(
-            (__drive_safe_commonpath([site_package, mod_file]) == site_package for site_package in site_packages_set)
-        ):
+        if any((_drive_safe_commonpath([site_package, mod_file]) == site_package for site_package in site_packages)):
             # Do not upload files from site-packages
             continue
 
