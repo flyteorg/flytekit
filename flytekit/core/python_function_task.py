@@ -588,15 +588,17 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
 
 
 """
-test decks, exceptions
+exceptions
 update prints to logs
 try moving worker queue around
+unit tests for worker_queue
+
+signal handling
+semantics for prefix, execution naming for idempotent executions, labels
+
 whatever niels comes up with for new local_entrypoint
-semantics for prefix, execution naming for idempotent executions
 
 actual remote handling, meet with thomas, auth story
-unit tests for worker_queue
-signal handling
 
 pure watch informer pattern
 

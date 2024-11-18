@@ -77,7 +77,7 @@ class WorkItem:
     def set_error(self, e: BaseException):
         print(f"Setting error in State for {self.wf_exec.id.name} on thread {threading.current_thread().name} to {e}")
         self.error = e
-        self.fut.set_exception(e)
+        self.fut._loop.call_soon_threadsafe(self.fut.set_exception, e)
 
     def set_exec(self, wf_exec: FlyteWorkflowExecution):
         self.wf_exec = wf_exec
