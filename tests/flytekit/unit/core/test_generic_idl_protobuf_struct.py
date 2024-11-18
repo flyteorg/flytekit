@@ -1,10 +1,10 @@
+import sys
 import tempfile
 from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Dict, List
 
 import pytest
-import pandas as pd
 from flytekit import task, workflow
 from flytekit.types.file import FlyteFile
 from flytekit.types.directory import FlyteDirectory
@@ -38,8 +38,10 @@ def local_pqt_file():
     return Path(__file__).parents[2] / "integration/remote/workflows/basic/data/df.parquet"
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_all_dc_attrs(local_tmp_file, local_tmp_dir, local_pqt_file):
     import os
+    import pandas as pd
 
     # Enable generating protobuf struct in the generic IDL
     # Please refer to https://github.com/flyteorg/flyte/issues/5959
