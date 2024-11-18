@@ -141,18 +141,26 @@ def _dispatch_execute(
             offloaded_literals: Dict[str, _literal_models.Literal] = {}
             literal_map_copy = {}
 
-            min_offloaded_size = int(os.environ.get("_F_L_MIN_SIZE_MB", "10")) * 1024 * 1024
-            max_offloaded_size = int(os.environ.get("_F_L_MAX_SIZE_MB", "1000")) * 1024 * 1024
+            offloading_enabled = os.environ.get("_F_L_MIN_SIZE_MB", None) is not None
+            min_offloaded_size = -1
+            max_offloaded_size = -1
+            if offloading_enabled:
+                min_offloaded_size = int(os.environ.get("_F_L_MIN_SIZE_MB", "10")) * 1024 * 1024
+                max_offloaded_size = int(os.environ.get("_F_L_MAX_SIZE_MB", "1000")) * 1024 * 1024
 
             # Go over each output and create a separate offloaded in case its size is too large
             for k, v in outputs.literals.items():
+                if not offloading_enabled:
+                    literal_map_copy[k] = v
+                    continue
+
                 lit = v.to_flyte_idl()
-                if lit.ByteSize() >= max_offloaded_size:
+                if max_offloaded_size != -1 and lit.ByteSize() >= max_offloaded_size:
                     raise ValueError(
                         f"Literal {k} is too large to be offloaded. Max literal size is {max_offloaded_size} whereas the literal size is {lit.ByteSize()} bytes"
                     )
 
-                if lit.ByteSize() >= min_offloaded_size:
+                if min_offloaded_size != -1 and lit.ByteSize() >= min_offloaded_size:
                     logger.debug(f"Literal {k} is too large to be inlined, offloading to metadata bucket")
 
                     # This file will hold the offloaded literal and will be written to the output prefix
@@ -169,8 +177,6 @@ def _dispatch_execute(
                     )
                     literal_map_copy[k] = offloaded_literal
                     offloaded_literals[offloaded_filename] = v
-                else:
-                    literal_map_copy[k] = v
             outputs = _literal_models.LiteralMap(literals=literal_map_copy)
 
             output_file_dict = {_constants.OUTPUT_FILE_NAME: outputs, **offloaded_literals}
