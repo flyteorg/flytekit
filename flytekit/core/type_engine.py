@@ -990,7 +990,7 @@ class ProtobufTransformer(TypeTransformer[Message]):
                 struct = Struct()
                 struct.update(_MessageToDict(cast(Message, python_val)))
                 return Literal(scalar=Scalar(generic=struct))
-            else:
+            elif type(python_val) == _struct.ListValue:
                 literals = []
                 for v in python_val:
                     literal_type = TypeEngine.to_literal_type(type(v))
