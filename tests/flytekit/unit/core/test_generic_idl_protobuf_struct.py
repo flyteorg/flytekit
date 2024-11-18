@@ -35,7 +35,7 @@ def local_tmp_dir():
 
 @pytest.fixture
 def local_pqt_file():
-    return Path(__file__).parents[2] / "integration/remote/workflows/basic/data/df.parquet/00000"
+    return Path(__file__).parents[2] / "integration/remote/workflows/basic/data/df.parquet"
 
 
 def test_all_dc_attrs(local_tmp_file, local_tmp_dir, local_pqt_file):
