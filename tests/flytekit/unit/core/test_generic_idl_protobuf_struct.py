@@ -240,3 +240,53 @@ def test_all_dc_attrs(local_tmp_file, local_tmp_dir, local_pqt_file):
     EXPECTED_FILE_CONTENT = "Hello World!"
 
     wf(dc=DC())
+
+
+def test_mini_dc_attrs():
+    """
+    Test dc attributes which focuses only on protobuf structs.
+
+    This test doesn't depend on pandas.
+    """
+    import os
+
+    # Enable generating protobuf struct in the generic IDL
+    # Please refer to https://github.com/flyteorg/flyte/issues/5959
+    os.environ["FLYTE_USE_OLD_DC_FORMAT"] = "True"
+
+    @dataclass
+    class InnerDC:
+        a: int = -1
+        b: List[int] = field(default_factory=lambda: [0, 1, 2, -1, -2])
+        c: Dict[int, bool] = field(default_factory=lambda: {0: False, 1: True, -1: False})
+
+    @dataclass
+    class DC:
+        a: int = -1
+        b: List[int] = field(default_factory=lambda: [0, 1, 2, -1, -2])
+        c: Dict[int, bool] = field(default_factory=lambda: {0: False, 1: True, -1: False})
+
+        # Define a nested dataclass
+        inner_dc: InnerDC = field(default_factory=lambda: InnerDC())
+
+    @task
+    def t_test_attrs(a: int, b: List[int], c: Dict[int, bool]) -> None:
+        assert isinstance(a, int), f"a is not int, it's {type(a)}"
+        assert a == -1 
+
+        assert isinstance(b, list) and all(isinstance(i, int) for i in b), "b is not List[int]" 
+
+        assert isinstance(c, dict) and all(
+            isinstance(k, int) and isinstance(v, bool) for k, v in c.items()
+        ), "c is not Dict[int, bool]"
+
+    @workflow
+    def wf(dc: DC) -> None:
+        # Test outer dc
+        t_test_attrs(dc.a, dc.b, dc.c)
+
+        # Test inner dc
+        t_test_attrs(dc.inner_dc.a, dc.inner_dc.b, dc.inner_dc.c)
+
+
+    wf(dc=DC())
