@@ -62,6 +62,7 @@ class ArrayNode:
         self.id = target.name
         self._bindings = bindings or []
         self.metadata = metadata
+        self._data_mode = None
 
         if min_successes is not None:
             self._min_successes = min_successes
@@ -93,10 +94,12 @@ class ArrayNode:
             raise ValueError("No interface found for the target entity.")
 
         if isinstance(target, LaunchPlan) or isinstance(target, FlyteLaunchPlan):
+            self._data_mode = _core_workflow.ArrayNode.SINGLE_INPUT_FILE
             if self._execution_mode != _core_workflow.ArrayNode.FULL_STATE:
                 raise ValueError("Only execution version 1 is supported for LaunchPlans.")
         else:
-            raise ValueError(f"Only LaunchPlans are supported for now, but got {type(target)}")
+            self._data_mode = _core_workflow.ArrayNode.INDIVIDUAL_INPUT_FILES
+        #     raise ValueError(f"Only LaunchPlans are supported for now, but got {type(target)}")
 
     def construct_node_metadata(self) -> _workflow_model.NodeMetadata:
         # Part of SupportsNodeCreation interface
@@ -132,6 +135,10 @@ class ArrayNode:
     @property
     def flyte_entity(self) -> Any:
         return self.target
+
+    @property
+    def data_mode(self) -> _core_workflow.ArrayNode.DataMode:
+        return self._data_mode
 
     def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
         if self._remote_interface:
@@ -269,10 +276,9 @@ def array_node(
     :return: A callable function that takes in keyword arguments and returns a Promise created by
         flyte_entity_call_handler
     """
-    from flytekit.remote import FlyteLaunchPlan
 
-    if not isinstance(target, LaunchPlan) and not isinstance(target, FlyteLaunchPlan):
-        raise ValueError("Only LaunchPlans are supported for now.")
+    # if not isinstance(target, LaunchPlan) and not isinstance(target, FlyteLaunchPlan):
+    #     raise ValueError("Only LaunchPlans are supported for now.")
 
     node = ArrayNode(
         target=target,

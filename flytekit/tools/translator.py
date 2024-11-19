@@ -595,6 +595,7 @@ def get_serializable_array_node(
         min_successes=array_node.min_successes,
         min_success_ratio=array_node.min_success_ratio,
         execution_mode=array_node.execution_mode,
+        data_mode=array_node.data_mode,
     )
 
 

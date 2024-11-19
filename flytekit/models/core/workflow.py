@@ -382,7 +382,13 @@ class GateNode(_common.FlyteIdlEntity):
 
 class ArrayNode(_common.FlyteIdlEntity):
     def __init__(
-        self, node: "Node", parallelism=None, min_successes=None, min_success_ratio=None, execution_mode=None
+        self,
+        node: "Node",
+        parallelism=None,
+        min_successes=None,
+        min_success_ratio=None,
+        execution_mode=None,
+        data_mode=None,
     ) -> None:
         """
         TODO: docstring
@@ -393,6 +399,7 @@ class ArrayNode(_common.FlyteIdlEntity):
         self._min_successes = min_successes
         self._min_success_ratio = min_success_ratio
         self._execution_mode = execution_mode
+        self._data_mode = data_mode
 
     @property
     def node(self) -> "Node":
@@ -405,6 +412,7 @@ class ArrayNode(_common.FlyteIdlEntity):
             min_successes=self._min_successes,
             min_success_ratio=self._min_success_ratio,
             execution_mode=self._execution_mode,
+            data_mode=self._data_mode,
         )
 
     @classmethod
