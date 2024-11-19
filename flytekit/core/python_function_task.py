@@ -18,6 +18,7 @@
 from __future__ import annotations
 
 import inspect
+import os
 from abc import ABC
 from collections import OrderedDict
 from contextlib import suppress
@@ -27,6 +28,7 @@ from typing import Any, Callable, Iterable, List, Optional, Tuple, TypeVar, Unio
 from flytekit.configuration import ImageConfig, LocalConfig, SerializationSettings
 from flytekit.core import launch_plan as _annotated_launch_plan
 from flytekit.core.base_task import Task, TaskResolverMixin
+from flytekit.core.constants import EAGER_ROOT_ENV_NAME
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.docstring import Docstring
 from flytekit.core.interface import transform_function_to_interface
@@ -574,7 +576,14 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
                 ss = SerializationSettings(
                     image_config=ImageConfig.auto_default_image(),
                 )
-            c = Controller(remote=remote, ss=ss)
+            # tag is the current execution id
+            # root tag is read from the environment variable if it exists, if not, it's the current execution id
+            tag = ctx.user_space_params.execution_id.name
+            root_tag = os.environ.get(EAGER_ROOT_ENV_NAME, tag)
+
+            prefix = self.name.split(".")[-1]
+            prefix = f"e_{prefix}-{tag[:5]}"
+            c = Controller(remote=remote, ss=ss, tag=tag, root_tag=root_tag, exec_prefix=prefix)
             builder = builder.with_worker_queue(c)
         else:
             raise AssertionError("Worker queue should not be already present in the context for eager execution")
@@ -597,10 +606,12 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
 
 
 """
+semantics for prefix, execution naming for idempotent executions, labels
+exec names for underlying tasks - eager name-first few chars of current exec id, random friendly name
+
 unit tests for worker_queue
 merge master again
 signal handling
-semantics for prefix, execution naming for idempotent executions, labels
 
 whatever niels comes up with for new local_entrypoint
 

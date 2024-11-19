@@ -1,6 +1,5 @@
 import typing
 from dataclasses import dataclass
-from typing import Callable, Optional
 
 from flytekit.models import common as common_models
 from flytekit.models import security
@@ -35,9 +34,6 @@ class Options(object):
     notifications: typing.Optional[typing.List[common_models.Notification]] = None
     disable_notifications: typing.Optional[bool] = None
     overwrite_cache: typing.Optional[bool] = None
-    file_uploader: Optional[Callable] = (
-        None  # This is used by the translator to upload task files, like pickled code etc
-    )
 
     @classmethod
     def default_from(
