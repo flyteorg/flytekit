@@ -10,6 +10,7 @@ from flytekit.core.type_engine import LiteralsResolver, TypeEngine
 from flytekit.models import interface as interface_models
 from flytekit.models.literals import Literal, LiteralCollection, LiteralMap, Primitive, Scalar
 from flytekit.types.structured.structured_dataset import StructuredDataset
+from flytekit.core.interface import Interface
 
 
 @pytest.mark.parametrize(
@@ -134,3 +135,60 @@ def test_interface():
     guessed_df = lr.get("my_df")
     # Using the user specified type, so number of columns is correct.
     assert len(guessed_df.metadata.structured_dataset_type.columns) == 2
+
+
+def get_simple_lr() -> LiteralsResolver:
+    lm = {
+        "my_map": Literal(
+            map=LiteralMap(
+                literals={
+                    "k1": Literal(scalar=Scalar(primitive=Primitive(string_value="v1"))),
+                    "k2": Literal(scalar=Scalar(primitive=Primitive(string_value="2"))),
+                },
+            )
+        ),
+        "my_list": Literal(
+            collection=LiteralCollection(
+                literals=[
+                    Literal(scalar=Scalar(primitive=Primitive(integer=1))),
+                    Literal(scalar=Scalar(primitive=Primitive(integer=2))),
+                    Literal(scalar=Scalar(primitive=Primitive(integer=3))),
+                ]
+            )
+        ),
+        "val_a": Literal(scalar=Scalar(primitive=Primitive(integer=21828))),
+    }
+
+    variable_map = {
+        "my_map": interface_models.Variable(type=TypeEngine.to_literal_type(typing.Dict[str, str]), description=""),
+        "my_list": interface_models.Variable(type=TypeEngine.to_literal_type(typing.List[int]), description=""),
+        "val_a": interface_models.Variable(type=TypeEngine.to_literal_type(int), description=""),
+    }
+
+    lr = LiteralsResolver(literals=lm, variable_map=variable_map)
+
+    return lr
+
+
+def test_get_python_native_vm():
+    lr = get_simple_lr()
+    lr._variable_map = None
+    pif = Interface(inputs={}, outputs={
+        "my_map": typing.Dict[str, str],
+        "my_list": typing.List[int],
+        "val_a": int,
+    })
+    with pytest.raises(AssertionError):
+        lr.as_python_native(pif)
+
+
+def test_get_python_native():
+    lr = get_simple_lr()
+    pif = Interface(inputs={}, outputs={
+        "my_map": typing.Dict[str, str],
+        "my_list": typing.List[int],
+        "val_a": int,
+    })
+
+    out = lr.as_python_native(pif)
+    assert out == ({'k1': 'v1', 'k2': '2'}, [1, 2, 3], 21828)

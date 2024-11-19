@@ -2615,7 +2615,7 @@ class LiteralsResolver(collections.UserDict):
             return None
 
         if self.variable_map is None:
-            raise AssertionError(f"Variable map is empty in literals resolver with {lr.literals}")
+            raise AssertionError(f"Variable map is empty in literals resolver with {self.literals}")
 
         # Trigger get() on everything to make sure native values are present using the python interface as type hint
         for lit_key, lit in self.literals.items():
@@ -2627,7 +2627,7 @@ class LiteralsResolver(collections.UserDict):
 
         # if more than 1 item, then return a tuple - can ignore naming the tuple unless it becomes a problem
         # This relies on python_interface.outputs being ordered correctly.
-        res = ()
+        res = cast(typing.Tuple[typing.Any, ...], ())
         for var_name, _ in python_interface.outputs.items():
             if var_name not in self.native_values:
                 raise ValueError(f"Key {var_name} is not in the native values")

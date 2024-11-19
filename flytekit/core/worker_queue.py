@@ -7,17 +7,17 @@ import threading
 import typing
 from dataclasses import dataclass
 
-from flytekit.loggers import developer_logger, logger
-from flytekit.models.core.execution import WorkflowExecutionPhase
-
-from flytekit.core.base_task import PythonTask
 from flytekit.configuration import SerializationSettings
+from flytekit.core.base_task import PythonTask
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.reference_entity import ReferenceEntity
 from flytekit.core.workflow import WorkflowBase
+from flytekit.loggers import developer_logger, logger
+from flytekit.models.core.execution import WorkflowExecutionPhase
 
 if typing.TYPE_CHECKING:
     from flytekit.remote.remote_callable import RemoteEntity
+
     RunnableEntity = typing.Union[WorkflowBase, LaunchPlan, PythonTask, ReferenceEntity, RemoteEntity]
     from flytekit.remote import FlyteRemote, FlyteWorkflowExecution
 
@@ -69,12 +69,14 @@ class WorkItem:
     wf_exec: typing.Optional[FlyteWorkflowExecution] = None
 
     def set_result(self, result: typing.Any):
+        assert self.wf_exec is not None
         developer_logger.debug(f"Setting result for {self.wf_exec.id.name} on thread {threading.current_thread().name}")
         self.result = result
         # need to convert from literals resolver to literals and then to python native.
         self.fut._loop.call_soon_threadsafe(self.fut.set_result, result)
 
     def set_error(self, e: BaseException):
+        assert self.wf_exec is not None
         developer_logger.debug(
             f"Setting error for {self.wf_exec.id.name} on thread {threading.current_thread().name} to {e}"
         )
@@ -83,6 +85,10 @@ class WorkItem:
 
     def set_exec(self, wf_exec: FlyteWorkflowExecution):
         self.wf_exec = wf_exec
+
+    @property
+    def ready(self) -> bool:
+        return self.wf_exec is not None and (self.result is not None or self.error is not None)
 
 
 class Informer(typing.Protocol):
@@ -95,6 +101,7 @@ class PollingInformer:
         self.__loop = loop
 
     async def watch_one(self, work: WorkItem):
+        assert work.wf_exec is not None
         logger.debug(f"Starting watching execution {work.wf_exec.id} on {threading.current_thread().name}")
         while True:
             # not really async but pretend it is for now, change to to_thread in the future.
@@ -119,7 +126,7 @@ class PollingInformer:
                         )
 
                 num_outputs = len(work.entity.interface.outputs)
-                python_outputs_interface = {}
+                python_outputs_interface: typing.Dict[str, typing.Type] = {}
                 # Iterate in order so that we add to the interface in the correct order
                 for i in range(num_outputs):
                     key = f"o{i}"
@@ -250,11 +257,17 @@ class Controller:
 
         for entity_name, items_list in self.entries.items():
             for item in items_list:
+                if not item.ready:
+                    logger.warning(
+                        f"Item for {item.entity.name} with inputs {item.input_kwargs}"
+                        f" isn't ready, skipping for deck rendering..."
+                    )
+                    continue
                 kind = _entity_type(item.entity)
                 output = f"{output}\n" + NODE_HTML_TEMPLATE.format(
                     entity_type=kind,
                     entity_name=item.entity.name,
-                    execution_name=item.wf_exec.id.name,
+                    execution_name=typing.cast(FlyteWorkflowExecution, item).wf_exec.id.name,
                     url=self.remote.generate_console_url(item.wf_exec),
                     inputs=item.input_kwargs,
                     outputs=item.result if item.result else item.error,

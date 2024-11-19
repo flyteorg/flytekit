@@ -409,7 +409,7 @@ class AsyncPythonFunctionTask(PythonFunctionTask[T], metaclass=FlyteTrackedABC):
     Really only need to override the call function.
     """
 
-    async def __call__(
+    async def __call__(  # type: ignore[override]
         self, *args: object, **kwargs: object
     ) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, None]:
         return await async_flyte_entity_call_handler(self, *args, **kwargs)  # type: ignore
@@ -587,7 +587,7 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
                 logger.error(f"Leaving eager execution because of {ee}")
                 base_error = ee
 
-            html = ctx.worker_queue.render_html()
+            html = cast(Controller, ctx.worker_queue).render_html()
             Deck("eager workflow", html)
 
             if base_error:
@@ -597,9 +597,8 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
 
 
 """
-try moving worker queue around
 unit tests for worker_queue
-
+merge master again
 signal handling
 semantics for prefix, execution naming for idempotent executions, labels
 
