@@ -407,7 +407,7 @@ def test_serialization_metadata2(serialization_settings):
     assert array_node.metadata.interruptible
     assert array_node.array_node._min_success_ratio == 0.9
     assert array_node.array_node._parallelism == 10
-    assert not array_node.array_node._is_original_sub_node_interface
+    assert array_node.array_node._sub_node_interface_status == _core_workflow.ArrayNode.SUB_NODE_INTERFACE_LIST
     assert array_node.array_node._execution_mode == _core_workflow.ArrayNode.MINIMAL_STATE
     task_spec = od[arraynode_maptask]
     assert task_spec.template.metadata.retries.retries == 2

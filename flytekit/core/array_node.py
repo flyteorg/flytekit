@@ -218,8 +218,8 @@ class ArrayNode:
         return self._execution_mode
 
     @property
-    def is_original_sub_node_interface(self) -> bool:
-        return True
+    def sub_node_interface_status(self) -> _core_workflow.ArrayNode.SubNodeInterfaceStatus:
+        return _core_workflow.ArrayNode.SUB_NODE_INTERFACE_ORIGINAL
 
     def __call__(self, *args, **kwargs):
         if not self._bindings:

@@ -167,8 +167,8 @@ class ArrayNodeMapTask(PythonTask):
         return self._execution_mode
 
     @property
-    def is_original_sub_node_interface(self) -> bool:
-        return False
+    def sub_node_interface_status(self) -> _core_workflow.ArrayNode.SubNodeInterfaceStatus:
+        return _core_workflow.ArrayNode.SUB_NODE_INTERFACE_LIST
 
     def get_extended_resources(self, settings: SerializationSettings) -> Optional[tasks_pb2.ExtendedResources]:
         return self.python_function_task.get_extended_resources(settings)
