@@ -272,9 +272,9 @@ def test_mini_dc_attrs():
     @task
     def t_test_attrs(a: int, b: List[int], c: Dict[int, bool]) -> None:
         assert isinstance(a, int), f"a is not int, it's {type(a)}"
-        assert a == -1 
+        assert a == -1
 
-        assert isinstance(b, list) and all(isinstance(i, int) for i in b), "b is not List[int]" 
+        assert isinstance(b, list) and all(isinstance(i, int) for i in b), "b is not List[int]"
 
         assert isinstance(c, dict) and all(
             isinstance(k, int) and isinstance(v, bool) for k, v in c.items()
