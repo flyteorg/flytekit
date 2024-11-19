@@ -145,12 +145,12 @@ def fast_package(
         t = 0
         tar_task = progress.add_task(f"Creating tarball with [{l}] files...", total=l)
         with progress:
-            t = t + 1
             progress.start_task(tar_task)
             with tempfile.TemporaryDirectory() as tmp_dir:
                 tar_path = os.path.join(tmp_dir, "tmp.tar")
                 with tarfile.open(tar_path, "w", dereference=deref_symlinks) as tar:
                     for ws_file in ls:
+                        t = t + 1
                         rel_path = os.path.relpath(ws_file, start=source)
                         tar.add(
                             os.path.join(source, ws_file),

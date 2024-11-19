@@ -1069,7 +1069,7 @@ class FlyteRemote(object):
         from rich.progress import Progress, TextColumn, TimeElapsedColumn
 
         progress = Progress(
-            TimeElapsedColumn(), TextColumn(f"Uploading package of size {content_length/1024/1024} MBs")
+            TimeElapsedColumn(), TextColumn(f"Uploading package of size {content_length/1024/1024:.2f} MBs")
         )
         t1 = progress.add_task("uploader", total=1)
         with progress:
