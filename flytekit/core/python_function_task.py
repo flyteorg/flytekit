@@ -597,7 +597,6 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
 
 
 """
-update prints to logs
 try moving worker queue around
 unit tests for worker_queue
 

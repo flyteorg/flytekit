@@ -10,14 +10,14 @@ from dataclasses import dataclass
 from flytekit.loggers import developer_logger, logger
 from flytekit.models.core.execution import WorkflowExecutionPhase
 
-if typing.TYPE_CHECKING:
-    from flytekit.configuration import SerializationSettings
-    from flytekit.core.base_task import PythonTask
-    from flytekit.core.launch_plan import LaunchPlan
-    from flytekit.core.reference_entity import ReferenceEntity
-    from flytekit.core.workflow import WorkflowBase
-    from flytekit.remote.remote_callable import RemoteEntity
+from flytekit.core.base_task import PythonTask
+from flytekit.configuration import SerializationSettings
+from flytekit.core.launch_plan import LaunchPlan
+from flytekit.core.reference_entity import ReferenceEntity
+from flytekit.core.workflow import WorkflowBase
 
+if typing.TYPE_CHECKING:
+    from flytekit.remote.remote_callable import RemoteEntity
     RunnableEntity = typing.Union[WorkflowBase, LaunchPlan, PythonTask, ReferenceEntity, RemoteEntity]
     from flytekit.remote import FlyteRemote, FlyteWorkflowExecution
 
