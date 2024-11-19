@@ -31,13 +31,13 @@ from flytekit.core import mock_stats, utils
 from flytekit.core.checkpointer import Checkpoint, SyncCheckpoint
 from flytekit.core.data_persistence import FileAccessProvider, default_local_file_access_provider
 from flytekit.core.node import Node
-from flytekit.core.worker_queue import Controller
 from flytekit.interfaces.cli_identifiers import WorkflowExecutionIdentifier
 from flytekit.interfaces.stats import taggable
 from flytekit.loggers import developer_logger, user_space_logger
 from flytekit.models.core import identifier as _identifier
 
 if typing.TYPE_CHECKING:
+    from flytekit.core.worker_queue import Controller
     from flytekit.clients import friendly as friendly_client  # noqa
     from flytekit.clients.friendly import SynchronousFlyteClient
     from flytekit.deck.deck import Deck

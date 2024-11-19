@@ -1438,15 +1438,6 @@ async def async_flyte_entity_call_handler(
     ctx = FlyteContextManager.current_context()
     # todo: add condition here to let sync/async tasks be called during eager execution
     # conditions to take care of
-    # 1. you are an eager task, and are starting local execution
-    #    eager() -> self.local_execute() -> self.execute(native) a) -> task function() b) -> self.run_with_backend()
-    # 2. you are in an eager task local execution, calling a normal async task
-    #    await normal() -> detect in eager, self.local_execute()
-    # 3. you are an eager task, starting backend execution
-    #    entrypoint -> self.dispatch_execute(literals) -> ...
-    # 3. you are in an eager task, calling a normal sync task
-    # 4. you are in an eager task, calling another eager task
-    # 5. you are in a normal task, calling any other kind of task (disallow)
     if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.EAGER_EXECUTION:
         # for both nested eager, async, and sync tasks, submit to the informer.
         if not ctx.worker_queue:
@@ -1455,9 +1446,7 @@ async def async_flyte_entity_call_handler(
         fut = ctx.worker_queue.add(loop, entity, input_kwargs=kwargs)
         result = await fut
 
-        # todo: skip length checks for now. also convert output to the appropriate named tuple if present.
         return result
-
     # if this is eager local execution, the proceed with normal local execution below
 
     if ctx.execution_state and (
