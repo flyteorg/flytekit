@@ -589,10 +589,10 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
                 base_error = ee
                 # now have to fail this eager task, because we don't want it to show up as succeeded.
             html = ctx.worker_queue.render_html()
-            print(
-                f"Deck HTML: {html}"
-            )
-
+            # print(
+            #     f"Deck HTML: {html}"
+            # )
+            print(f"Adding deck to context id {id(ctx)}")
             Deck("eager workflow", html)
             if base_error:
                 raise FlyteNonRecoverableSystemException(base_error)

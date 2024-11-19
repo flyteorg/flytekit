@@ -214,6 +214,9 @@ def _dispatch_execute(
     logger.info(f"Engine folder written successfully to the output prefix {output_prefix}")
 
     if task_def is not None and not getattr(task_def, "disable_deck", True):
+        from flytekit.core.context_manager import flyte_context_Var
+
+        print(f"Generating deck for {id(ctx)} {FlyteContextManager.current_context().get_deck()} {flyte_context_Var}")
         _output_deck(task_def.name.split(".")[-1], ctx.user_space_params)
 
     logger.debug("Finished _dispatch_execute")
