@@ -180,6 +180,7 @@ def _dispatch_execute(
             logger.warning("Task produces no outputs")
             output_file_dict = {_constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(literals={})}
         elif isinstance(outputs, _literal_models.LiteralMap):
+            # The keys in this map hold the filenames to the offloaded proto literals.
             offloaded_literals: Dict[str, _literal_models.Literal] = {}
             literal_map_copy = {}
 
@@ -214,6 +215,7 @@ def _dispatch_execute(
                         offloaded_metadata=_literal_models.LiteralOffloadedMetadata(
                             uri=f"{output_prefix}/{offloaded_filename}",
                             size_bytes=lit.ByteSize(),
+                            # TODO: remove after https://github.com/flyteorg/flyte/pull/5909 is merged
                             inferred_type=task_def.interface.outputs[k].type,
                         ),
                         hash=v.hash if v.hash is not None else compute_hash_string(lit),
