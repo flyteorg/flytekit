@@ -589,9 +589,9 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
                 base_error = ee
                 # now have to fail this eager task, because we don't want it to show up as succeeded.
             html = ctx.worker_queue.render_html()
-            # print(
-            #     f"Deck HTML: {html}"
-            # )
+            print(
+                f"Deck HTML: {html}"
+            )
 
             Deck("eager workflow", html)
             if base_error:
