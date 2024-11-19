@@ -7,7 +7,7 @@ import threading
 import typing
 from dataclasses import dataclass
 
-from flytekit.loggers import logger
+from flytekit.loggers import developer_logger, logger
 from flytekit.models.core.execution import WorkflowExecutionPhase
 
 if typing.TYPE_CHECKING:
@@ -69,13 +69,15 @@ class WorkItem:
     wf_exec: typing.Optional[FlyteWorkflowExecution] = None
 
     def set_result(self, result: typing.Any):
-        print(f"Setting result in State for {self.wf_exec.id.name} on thread {threading.current_thread().name}")
+        developer_logger.debug(f"Setting result for {self.wf_exec.id.name} on thread {threading.current_thread().name}")
         self.result = result
         # need to convert from literals resolver to literals and then to python native.
         self.fut._loop.call_soon_threadsafe(self.fut.set_result, result)
 
     def set_error(self, e: BaseException):
-        print(f"Setting error in State for {self.wf_exec.id.name} on thread {threading.current_thread().name} to {e}")
+        developer_logger.debug(
+            f"Setting error for {self.wf_exec.id.name} on thread {threading.current_thread().name} to {e}"
+        )
         self.error = e
         self.fut._loop.call_soon_threadsafe(self.fut.set_exception, e)
 
@@ -93,13 +95,13 @@ class PollingInformer:
         self.__loop = loop
 
     async def watch_one(self, work: WorkItem):
-        print(f"Starting watching execution {work.wf_exec.id} on {threading.current_thread().name}")
+        logger.debug(f"Starting watching execution {work.wf_exec.id} on {threading.current_thread().name}")
         while True:
             # not really async but pretend it is for now, change to to_thread in the future.
-            print(f"Looping on {work.wf_exec.id.name}")
+            developer_logger.debug(f"Looping on {work.wf_exec.id.name}")
             self.remote.sync_execution(work.wf_exec)
             if work.wf_exec.is_done:
-                print(f"Execution {work.wf_exec.id.name} is done.")
+                developer_logger.debug(f"Execution {work.wf_exec.id.name} is done.")
                 break
             await asyncio.sleep(2)
 
@@ -145,7 +147,7 @@ class PollingInformer:
         f = asyncio.run_coroutine_threadsafe(coro, self.__loop)
         # Just print a message with the future, no need to return it anywhere, unless we want to pass it back to
         # launch_and_start_watch and save this also in the State object somewhere.
-        print(f"Started watch with future {f}")
+        developer_logger.debug(f"Started watch with future {f}")
 
 
 class Controller:
@@ -180,8 +182,6 @@ class Controller:
 
     def launch_and_start_watch(self, key: str, idx):
         """state reconciliation, not sure if this is really reconciliation"""
-        print(f"In launch and watch, {key=}, on {threading.current_thread().name}\n")
-
         # add lock maybe when accessing self.entries
         if key not in self.entries:
             logger.error(f"Key {key} not found in entries")
@@ -201,7 +201,7 @@ class Controller:
                 version=self.ss.version,
                 image_config=self.ss.image_config,
             )
-            print(f"Successfully started execution {wf_exec.id.name} on {threading.current_thread().name}")
+            logger.info(f"Successfully started execution {wf_exec.id.name}")
             state.set_exec(wf_exec)
 
             # if successful then start watch on the execution

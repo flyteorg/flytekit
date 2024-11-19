@@ -38,14 +38,7 @@ FLYTE_SANDBOX_MINIO_ENDPOINT = "http://flyte-sandbox-minio.flyte:9000"
 
 def eager(
     _fn=None,
-    *,
-    remote: Optional[FlyteRemote] = None,
-    # client_secret_group: Optional[str] = None,
-    # client_secret_key: Optional[str] = None,
-    # timeout: Optional[timedelta] = None,
-    # poll_interval: Optional[timedelta] = None,
-    # local_entrypoint: bool = False,
-    # client_secret_env_var: Optional[str] = None,
+    *args,
     **kwargs,
 ) -> EagerAsyncPythonFunctionTask:
     """Eager workflow decorator.

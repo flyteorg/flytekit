@@ -584,22 +584,19 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
             try:
                 result = await self._task_function(**kwargs)
             except EagerException as ee:
-                print(f"Caught eager exception: {ee}")
                 logger.error(f"Leaving eager execution because of {ee}")
                 base_error = ee
-                # now have to fail this eager task, because we don't want it to show up as succeeded.
 
             html = ctx.worker_queue.render_html()
             Deck("eager workflow", html)
 
             if base_error:
+                # now have to fail this eager task, because we don't want it to show up as succeeded.
                 raise FlyteNonRecoverableSystemException(base_error)
             return result
 
 
 """
-exceptions print an ugly stack trace.
-
 update prints to logs
 try moving worker queue around
 unit tests for worker_queue
