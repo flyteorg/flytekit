@@ -1,19 +1,29 @@
+<<<<<<< HEAD
 from dataclasses import dataclass
+=======
+>>>>>>> origin
 from datetime import datetime
 import os
 import re
 import textwrap
+import time
 import typing
 from collections import OrderedDict
+import uuid
 
 import fsspec
 import mock
 import pytest
 from flyteidl.core.errors_pb2 import ErrorDocument
+<<<<<<< HEAD
 from flyteidl.core import literals_pb2
 from flyteidl.core.literals_pb2 import Literal, LiteralCollection, Scalar, Primitive
+=======
+from google.protobuf.timestamp_pb2 import Timestamp
+>>>>>>> origin
 
-from flytekit.bin.entrypoint import _dispatch_execute, normalize_inputs, setup_execution, get_traceback_str
+
+from flytekit.bin.entrypoint import _dispatch_execute, get_container_error_timestamp, normalize_inputs, setup_execution, get_traceback_str
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core import mock_stats
 from flytekit.core.hash import HashMethod
@@ -25,7 +35,12 @@ from flytekit.core.promise import VoidPromise
 from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine, DataclassTransformer
 from flytekit.exceptions import user as user_exceptions
+<<<<<<< HEAD
 from flytekit.exceptions.scopes import system_entry_point, user_entry_point
+=======
+from flytekit.exceptions.base import FlyteException
+from flytekit.exceptions.scopes import system_entry_point
+>>>>>>> origin
 from flytekit.exceptions.user import FlyteRecoverableException, FlyteUserRuntimeException
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import errors as error_models, execution
@@ -115,6 +130,54 @@ def test_dispatch_execute_exception(mock_write_to_file, mock_upload_dir, mock_ge
 
         def verify_output(*args, **kwargs):
             assert isinstance(args[0], ErrorDocument)
+            assert args[1].endswith("error.pb")
+
+        mock_write_to_file.side_effect = verify_output
+        _dispatch_execute(ctx, lambda: python_task, "inputs path", "outputs prefix")
+        assert mock_write_to_file.call_count == 1
+
+@pytest.mark.parametrize(
+    "exception_value",
+    [
+        FlyteException("exception", timestamp=1),
+        FlyteException("exception"),
+        Exception("exception"),
+    ]
+)
+@mock.patch("flytekit.core.utils.load_proto_from_file")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_data")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
+@mock.patch("flytekit.core.utils.write_proto_to_file")
+def test_dispatch_execute_exception_with_multi_error_files(mock_write_to_file, mock_upload_dir, mock_get_data, mock_load_proto, exception_value: Exception, monkeypatch):
+    monkeypatch.setenv("_F_DES", "1")
+    monkeypatch.setenv("_F_WN", "worker")
+
+    # Just leave these here, mock them out so nothing happens
+    mock_get_data.return_value = True
+    mock_upload_dir.return_value = True
+
+    ctx = context_manager.FlyteContext.current_context()
+    with context_manager.FlyteContextManager.with_context(
+        ctx.with_execution_state(
+            ctx.execution_state.with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION)
+        )
+    ) as ctx:
+        python_task = mock.MagicMock()
+        python_task.dispatch_execute.side_effect = FlyteUserRuntimeException(exception_value)
+
+        empty_literal_map = _literal_models.LiteralMap({}).to_flyte_idl()
+        mock_load_proto.return_value = empty_literal_map
+
+        def verify_output(*args, **kwargs):
+            assert isinstance(args[0], ErrorDocument)
+            container_error = args[0].error
+            assert container_error.timestamp.seconds > 0
+            assert container_error.worker == "worker"
+            error_file_path = args[1]
+            error_filename_base, error_filename_ext = os.path.splitext(os.path.split(error_file_path)[1])
+            assert error_filename_base.startswith("error-")
+            uuid.UUID(hex=error_filename_base[6:], version=4)
+            assert error_filename_ext == ".pb"
 
         mock_write_to_file.side_effect = verify_output
         _dispatch_execute(ctx, lambda: python_task, "inputs path", "outputs prefix")
@@ -462,6 +525,22 @@ def test_get_traceback_str():
     expected_error_re = re.compile(expected_error_pattern)
     print(traceback_str)  # helpful for debugging
     assert expected_error_re.match(traceback_str) is not None
+
+
+def test_get_container_error_timestamp() -> None:
+    assert get_container_error_timestamp(FlyteException("foo", timestamp=10.5)) == Timestamp(seconds=10, nanos=500000000)
+
+    current_dtime = datetime.now()
+    error_timestamp = get_container_error_timestamp(RuntimeError("foo"))
+    assert error_timestamp.ToDatetime() >= current_dtime
+
+    current_dtime = datetime.now()
+    error_timestamp = get_container_error_timestamp(FlyteException("foo"))
+    assert error_timestamp.ToDatetime() >= current_dtime
+
+    current_dtime = datetime.now()
+    error_timestamp = get_container_error_timestamp(None)
+    assert error_timestamp.ToDatetime() >= current_dtime
 
 
 def get_flyte_context(tmp_path_factory, outputs_path):

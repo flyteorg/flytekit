@@ -783,8 +783,8 @@ class DataclassTransformer(TypeTransformer[object]):
         from flytekit.types.file import FlyteFile
         from flytekit.types.structured import StructuredDataset
 
-        # Handle Optional
-        if UnionTransformer.is_optional_type(python_type):
+        # Handle Optional and Union Types
+        if _is_union_type(python_type):
 
             def get_expected_type(python_val: T, types: tuple) -> Type[T | None]:
                 if len(set(types) & {FlyteFile, FlyteDirectory, StructuredDataset}) > 1:
