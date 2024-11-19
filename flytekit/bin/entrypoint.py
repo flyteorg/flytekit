@@ -150,8 +150,9 @@ def _dispatch_execute(
 
             # Go over each output and create a separate offloaded in case its size is too large
             for k, v in outputs.literals.items():
+                literal_map_copy[k] = v
+
                 if not offloading_enabled:
-                    literal_map_copy[k] = v
                     continue
 
                 lit = v.to_flyte_idl()
