@@ -49,6 +49,8 @@ from flytekit.core.workflow import (
     WorkflowMetadataDefaults,
 )
 from flytekit.deck.deck import Deck
+from flytekit.exceptions.eager import EagerException
+from flytekit.exceptions.system import FlyteNonRecoverableSystemException
 from flytekit.exceptions.user import FlyteValueException
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
@@ -578,17 +580,28 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
             raise AssertionError("Worker queue should not be already present in the context for eager execution")
 
         with FlyteContextManager.with_context(builder) as ctx:
-            result = await self._task_function(**kwargs)
+            base_error = None
+            try:
+                result = await self._task_function(**kwargs)
+            except EagerException as ee:
+                print(f"Caught eager exception: {ee}")
+                logger.error(f"Leaving eager execution because of {ee}")
+                base_error = ee
+                # now have to fail this eager task, because we don't want it to show up as succeeded.
             html = ctx.worker_queue.render_html()
-            print(
-                f"Deck HTML: {html}"
-            )  # if this doesn't show, it's because the deck is only read from the prior ctx level
+            # print(
+            #     f"Deck HTML: {html}"
+            # )
+
             Deck("eager workflow", html)
+            if base_error:
+                raise FlyteNonRecoverableSystemException(base_error)
             return result
 
 
 """
-exceptions
+exceptions print an ugly stack trace.
+
 update prints to logs
 try moving worker queue around
 unit tests for worker_queue
