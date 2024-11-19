@@ -1,7 +1,4 @@
-<<<<<<< HEAD
 from dataclasses import dataclass
-=======
->>>>>>> origin
 from datetime import datetime
 import os
 import re
@@ -15,12 +12,9 @@ import fsspec
 import mock
 import pytest
 from flyteidl.core.errors_pb2 import ErrorDocument
-<<<<<<< HEAD
 from flyteidl.core import literals_pb2
 from flyteidl.core.literals_pb2 import Literal, LiteralCollection, Scalar, Primitive
-=======
 from google.protobuf.timestamp_pb2 import Timestamp
->>>>>>> origin
 
 
 from flytekit.bin.entrypoint import _dispatch_execute, get_container_error_timestamp, normalize_inputs, setup_execution, get_traceback_str
@@ -35,12 +29,8 @@ from flytekit.core.promise import VoidPromise
 from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine, DataclassTransformer
 from flytekit.exceptions import user as user_exceptions
-<<<<<<< HEAD
-from flytekit.exceptions.scopes import system_entry_point, user_entry_point
-=======
 from flytekit.exceptions.base import FlyteException
 from flytekit.exceptions.scopes import system_entry_point
->>>>>>> origin
 from flytekit.exceptions.user import FlyteRecoverableException, FlyteUserRuntimeException
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import errors as error_models, execution
