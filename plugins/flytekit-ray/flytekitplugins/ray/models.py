@@ -1,9 +1,58 @@
 import typing
-
+from dataclasses import fields
 from flyteidl.plugins import ray_pb2 as _ray_pb2
 
 from flytekit.models import common as _common
-from flytekit.models.task import K8sPod
+from flytekit.models.task import K8sPod, K8sObjectMetadata
+from flytekit.core.resources import Resources
+from kubernetes.client import V1PodSpec, V1Container, V1ResourceRequirements
+
+
+def construct_k8s_pod_spec(
+    k8s_pod_name: str,
+    requests: typing.Optional[Resources],
+    limits: typing.Optional[Resources],
+) -> dict[str, typing.Any]:
+
+    def construct_k8s_pods_resources(resources: typing.Optional[Resources]):
+        if resources is None:
+            return None
+
+        resources_map = {
+            "cpu": "cpu",
+            "mem": "memory",
+            "gpu": "nvidia.com/gpu",
+            "ephemeral_storage": "ephemeral-storage",
+        }
+
+        k8s_pod_resources = {}
+
+        for resource in fields(resources):
+            resource_value = getattr(resources, resource.name)
+            if resource_value is not None:
+                k8s_pod_resources[resources_map[resource.name]] = resource_value
+
+        print(k8s_pod_resources)
+        return k8s_pod_resources
+
+    requests = construct_k8s_pods_resources(resources=requests)
+    limits = construct_k8s_pods_resources(resources=limits)
+    requests = requests or limits
+    limits = limits or requests
+
+    k8s_pod = V1PodSpec(
+        containers=[
+            V1Container(
+                name=k8s_pod_name,
+                resources=V1ResourceRequirements(
+                    requests=requests,
+                    limits=limits,
+                ),
+            )
+        ]
+    )
+
+    return k8s_pod.to_dict()
 
 
 class WorkerGroupSpec(_common.FlyteIdlEntity):
@@ -14,14 +63,27 @@ class WorkerGroupSpec(_common.FlyteIdlEntity):
         min_replicas: typing.Optional[int] = None,
         max_replicas: typing.Optional[int] = None,
         ray_start_params: typing.Optional[typing.Dict[str, str]] = None,
-        k8s_pod: typing.Optional[K8sPod] = None,
+        requests: typing.Optional[Resources] = None,
+        limits: typing.Optional[Resources] = None,
     ):
         self._group_name = group_name
         self._replicas = replicas
-        self._max_replicas = max(replicas, max_replicas) if max_replicas is not None else replicas
-        self._min_replicas = min(replicas, min_replicas) if min_replicas is not None else replicas
+        self._max_replicas = (
+            max(replicas, max_replicas) if max_replicas is not None else replicas
+        )
+        self._min_replicas = (
+            min(replicas, min_replicas) if min_replicas is not None else replicas
+        )
         self._ray_start_params = ray_start_params
-        self._k8s_pod = k8s_pod
+        self._requests = requests
+        self._limits = limits
+        self._k8s_pod = K8sPod(
+            metadata=K8sObjectMetadata(),
+            pod_spec=construct_k8s_pod_spec(
+                k8s_pod_name="ray-worker", requests=self._requests, limits=self._limits
+            ),
+        )
+        # exit(0)
 
     @property
     def group_name(self):
@@ -96,7 +158,11 @@ class WorkerGroupSpec(_common.FlyteIdlEntity):
             min_replicas=proto.min_replicas,
             max_replicas=proto.max_replicas,
             ray_start_params=proto.ray_start_params,
-            k8s_pod=K8sPod.from_flyte_idl(proto.k8s_pod) if proto.HasField("k8s_pod") else None,
+            k8s_pod=(
+                K8sPod.from_flyte_idl(proto.k8s_pod)
+                if proto.HasField("k8s_pod")
+                else None
+            ),
         )
 
 
@@ -104,10 +170,19 @@ class HeadGroupSpec(_common.FlyteIdlEntity):
     def __init__(
         self,
         ray_start_params: typing.Optional[typing.Dict[str, str]] = None,
-        k8s_pod: typing.Optional[K8sPod] = None,
+        requests: typing.Optional[Resources] = None,
+        limits: typing.Optional[Resources] = None,
     ):
         self._ray_start_params = ray_start_params
-        self._k8s_pod = k8s_pod
+        self._requests = requests
+        self._limits = limits
+
+        self._k8s_pod = K8sPod(
+            metadata=K8sObjectMetadata(),
+            pod_spec=construct_k8s_pod_spec(
+                k8s_pod_name="ray-head", requests=self._requests, limits=self._limits
+            ),
+        )
 
     @property
     def ray_start_params(self):
@@ -142,7 +217,11 @@ class HeadGroupSpec(_common.FlyteIdlEntity):
         """
         return cls(
             ray_start_params=proto.ray_start_params,
-            k8s_pod=K8sPod.from_flyte_idl(proto.k8s_pod) if proto.HasField("k8s_pod") else None,
+            k8s_pod=(
+                K8sPod.from_flyte_idl(proto.k8s_pod)
+                if proto.HasField("k8s_pod")
+                else None
+            ),
         )
 
 
@@ -190,7 +269,9 @@ class RayCluster(_common.FlyteIdlEntity):
         :rtype: flyteidl.plugins._ray_pb2.RayCluster
         """
         return _ray_pb2.RayCluster(
-            head_group_spec=self.head_group_spec.to_flyte_idl() if self.head_group_spec else None,
+            head_group_spec=(
+                self.head_group_spec.to_flyte_idl() if self.head_group_spec else None
+            ),
             worker_group_spec=[wg.to_flyte_idl() for wg in self.worker_group_spec],
             enable_autoscaling=self.enable_autoscaling,
         )
@@ -202,8 +283,14 @@ class RayCluster(_common.FlyteIdlEntity):
         :rtype: RayCluster
         """
         return cls(
-            head_group_spec=HeadGroupSpec.from_flyte_idl(proto.head_group_spec) if proto.head_group_spec else None,
-            worker_group_spec=[WorkerGroupSpec.from_flyte_idl(wg) for wg in proto.worker_group_spec],
+            head_group_spec=(
+                HeadGroupSpec.from_flyte_idl(proto.head_group_spec)
+                if proto.head_group_spec
+                else None
+            ),
+            worker_group_spec=[
+                WorkerGroupSpec.from_flyte_idl(wg) for wg in proto.worker_group_spec
+            ],
             enable_autoscaling=proto.enable_autoscaling,
         )
 
@@ -261,7 +348,11 @@ class RayJob(_common.FlyteIdlEntity):
     @classmethod
     def from_flyte_idl(cls, proto: _ray_pb2.RayJob):
         return cls(
-            ray_cluster=RayCluster.from_flyte_idl(proto.ray_cluster) if proto.ray_cluster else None,
+            ray_cluster=(
+                RayCluster.from_flyte_idl(proto.ray_cluster)
+                if proto.ray_cluster
+                else None
+            ),
             runtime_env=proto.runtime_env,
             runtime_env_yaml=proto.runtime_env_yaml,
             ttl_seconds_after_finished=proto.ttl_seconds_after_finished,

@@ -20,6 +20,7 @@ from flytekit.core.context_manager import ExecutionParameters, FlyteContextManag
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.extend import TaskPlugins
 from flytekit.models.task import K8sPod
+from flytekit.core.resources import Resources
 
 ray = lazy_module("ray")
 
@@ -27,7 +28,8 @@ ray = lazy_module("ray")
 @dataclass
 class HeadNodeConfig:
     ray_start_params: typing.Optional[typing.Dict[str, str]] = None
-    k8s_pod: typing.Optional[K8sPod] = None
+    requests: typing.Optional[Resources] = None
+    limits: typing.Optional[Resources] = None
 
 
 @dataclass
@@ -37,7 +39,8 @@ class WorkerNodeConfig:
     min_replicas: typing.Optional[int] = None
     max_replicas: typing.Optional[int] = None
     ray_start_params: typing.Optional[typing.Dict[str, str]] = None
-    k8s_pod: typing.Optional[K8sPod] = None
+    requests: typing.Optional[Resources] = None
+    limits: typing.Optional[Resources] = None
 
 
 @dataclass
@@ -85,14 +88,22 @@ class RayFunctionTask(PythonFunctionTask):
         cfg = self._task_config
 
         # Deprecated: runtime_env is removed KubeRay >= 1.1.0. It is replaced by runtime_env_yaml
-        runtime_env = base64.b64encode(json.dumps(cfg.runtime_env).encode()).decode() if cfg.runtime_env else None
+        runtime_env = (
+            base64.b64encode(json.dumps(cfg.runtime_env).encode()).decode()
+            if cfg.runtime_env
+            else None
+        )
 
         runtime_env_yaml = yaml.dump(cfg.runtime_env) if cfg.runtime_env else None
 
         ray_job = RayJob(
             ray_cluster=RayCluster(
                 head_group_spec=(
-                    HeadGroupSpec(cfg.head_node_config.ray_start_params, cfg.head_node_config.k8s_pod)
+                    HeadGroupSpec(
+                        cfg.head_node_config.ray_start_params,
+                        cfg.head_node_config.requests,
+                        cfg.head_node_config.limits,
+                    )
                     if cfg.head_node_config
                     else None
                 ),
@@ -103,11 +114,14 @@ class RayFunctionTask(PythonFunctionTask):
                         c.min_replicas,
                         c.max_replicas,
                         c.ray_start_params,
-                        c.k8s_pod,
+                        c.requests,
+                        c.limits,
                     )
                     for c in cfg.worker_node_config
                 ],
-                enable_autoscaling=(cfg.enable_autoscaling if cfg.enable_autoscaling else False),
+                enable_autoscaling=(
+                    cfg.enable_autoscaling if cfg.enable_autoscaling else False
+                ),
             ),
             runtime_env=runtime_env,
             runtime_env_yaml=runtime_env_yaml,
