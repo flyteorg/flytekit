@@ -249,34 +249,49 @@ class Controller:
         """This function launches executions. This is called via the loop, so it needs exception handling"""
         # add the entire function to a try/finally that terminates the process, and or first emits the exception
         # onto the future in the work item.
-
         if key not in self.entries:
             logger.error(f"Key {key} not found in entries")
-            return
+            # Bad error, terminate everything
+            # todo: more graceful error handling
+            import sys
 
-        state = self.entries[key][idx]
-        if state.result is None and state.error is None:
-            l = self.get_labels()
-            e = self.get_env()
-            options = Options(labels=l)
-            # need to add try/catch block since the execution might already exist
-            # if the execution already exists we should fetch the inputs. If the inputs are the same, then we should
-            # start watching it.
-            exec_name = self.get_execution_name(state.entity, idx, state.input_kwargs)
-            wf_exec = self.remote.execute(
-                entity=state.entity,
-                execution_name=exec_name,
-                inputs=state.input_kwargs,
-                version=self.ss.version,
-                image_config=self.ss.image_config,
-                options=options,
-                envs=e,
-            )
-            logger.info(f"Successfully started execution {wf_exec.id.name}")
-            state.set_exec(wf_exec)
+            sys.exit(1)
 
-            # if successful then start watch on the execution
-            self.informer.watch(state)
+        state = None
+        try:
+            state = self.entries[key][idx]
+        except IndexError:
+            logger.error(f"Index {idx} not found in entries for key {key}, entries: {self.entries}")
+            # Bad error, terminate everything
+            import sys
+
+            sys.exit(1)
+        try:
+            if state.result is None and state.error is None:
+                l = self.get_labels()
+                e = self.get_env()
+                options = Options(labels=l)
+                # need to add try/catch block since the execution might already exist
+                # if the execution already exists we should fetch the inputs. If the inputs are the same, then we should
+                # start watching it.
+                exec_name = self.get_execution_name(state.entity, idx, state.input_kwargs)
+                wf_exec = self.remote.execute(
+                    entity=state.entity,
+                    execution_name=exec_name,
+                    inputs=state.input_kwargs,
+                    version=self.ss.version,
+                    image_config=self.ss.image_config,
+                    options=options,
+                    envs=e,
+                )
+                logger.info(f"Successfully started execution {wf_exec.id.name}")
+                state.set_exec(wf_exec)
+
+                # if successful then start watch on the execution
+                self.informer.watch(state)
+        except Exception as e:
+            logger.error(f"Error launching execution for {state.entity.name} with {state.input_kwargs}")
+            state.set_error(e)
 
     def add(
         self, task_loop: asyncio.AbstractEventLoop, entity: RunnableEntity, input_kwargs: dict[str, typing.Any]
