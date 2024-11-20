@@ -1,11 +1,10 @@
 import typing
-from dataclasses import fields
+
 from flyteidl.plugins import ray_pb2 as _ray_pb2
 
-from flytekit.models import common as _common
-from flytekit.models.task import K8sPod, K8sObjectMetadata
 from flytekit.core.resources import Resources, construct_k8s_pod_spec_from_resources
-from kubernetes.client import V1PodSpec, V1Container, V1ResourceRequirements
+from flytekit.models import common as _common
+from flytekit.models.task import K8sObjectMetadata, K8sPod
 
 
 class WorkerGroupSpec(_common.FlyteIdlEntity):

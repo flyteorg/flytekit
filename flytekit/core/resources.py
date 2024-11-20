@@ -1,10 +1,10 @@
 from dataclasses import dataclass, fields
-from typing import List, Optional, Union, Any
+from typing import Any, List, Optional, Union
 
+from kubernetes.client import V1Container, V1PodSpec, V1ResourceRequirements
 from mashumaro.mixins.json import DataClassJSONMixin
 
 from flytekit.models import task as task_models
-from kubernetes.client import V1PodSpec, V1Container, V1ResourceRequirements
 
 
 @dataclass

@@ -18,9 +18,8 @@ from flytekit import lazy_module
 from flytekit.configuration import SerializationSettings
 from flytekit.core.context_manager import ExecutionParameters, FlyteContextManager
 from flytekit.core.python_function_task import PythonFunctionTask
-from flytekit.extend import TaskPlugins
-from flytekit.models.task import K8sPod
 from flytekit.core.resources import Resources
+from flytekit.extend import TaskPlugins
 
 ray = lazy_module("ray")
 
