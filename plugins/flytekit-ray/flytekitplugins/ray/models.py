@@ -20,12 +20,8 @@ class WorkerGroupSpec(_common.FlyteIdlEntity):
     ):
         self._group_name = group_name
         self._replicas = replicas
-        self._max_replicas = (
-            max(replicas, max_replicas) if max_replicas is not None else replicas
-        )
-        self._min_replicas = (
-            min(replicas, min_replicas) if min_replicas is not None else replicas
-        )
+        self._max_replicas = max(replicas, max_replicas) if max_replicas is not None else replicas
+        self._min_replicas = min(replicas, min_replicas) if min_replicas is not None else replicas
         self._ray_start_params = ray_start_params
         self._requests = requests
         self._limits = limits
@@ -109,11 +105,7 @@ class WorkerGroupSpec(_common.FlyteIdlEntity):
             min_replicas=proto.min_replicas,
             max_replicas=proto.max_replicas,
             ray_start_params=proto.ray_start_params,
-            k8s_pod=(
-                K8sPod.from_flyte_idl(proto.k8s_pod)
-                if proto.HasField("k8s_pod")
-                else None
-            ),
+            k8s_pod=(K8sPod.from_flyte_idl(proto.k8s_pod) if proto.HasField("k8s_pod") else None),
         )
 
 
@@ -168,11 +160,7 @@ class HeadGroupSpec(_common.FlyteIdlEntity):
         """
         return cls(
             ray_start_params=proto.ray_start_params,
-            k8s_pod=(
-                K8sPod.from_flyte_idl(proto.k8s_pod)
-                if proto.HasField("k8s_pod")
-                else None
-            ),
+            k8s_pod=(K8sPod.from_flyte_idl(proto.k8s_pod) if proto.HasField("k8s_pod") else None),
         )
 
 
@@ -220,9 +208,7 @@ class RayCluster(_common.FlyteIdlEntity):
         :rtype: flyteidl.plugins._ray_pb2.RayCluster
         """
         return _ray_pb2.RayCluster(
-            head_group_spec=(
-                self.head_group_spec.to_flyte_idl() if self.head_group_spec else None
-            ),
+            head_group_spec=(self.head_group_spec.to_flyte_idl() if self.head_group_spec else None),
             worker_group_spec=[wg.to_flyte_idl() for wg in self.worker_group_spec],
             enable_autoscaling=self.enable_autoscaling,
         )
@@ -234,14 +220,8 @@ class RayCluster(_common.FlyteIdlEntity):
         :rtype: RayCluster
         """
         return cls(
-            head_group_spec=(
-                HeadGroupSpec.from_flyte_idl(proto.head_group_spec)
-                if proto.head_group_spec
-                else None
-            ),
-            worker_group_spec=[
-                WorkerGroupSpec.from_flyte_idl(wg) for wg in proto.worker_group_spec
-            ],
+            head_group_spec=(HeadGroupSpec.from_flyte_idl(proto.head_group_spec) if proto.head_group_spec else None),
+            worker_group_spec=[WorkerGroupSpec.from_flyte_idl(wg) for wg in proto.worker_group_spec],
             enable_autoscaling=proto.enable_autoscaling,
         )
 
@@ -299,11 +279,7 @@ class RayJob(_common.FlyteIdlEntity):
     @classmethod
     def from_flyte_idl(cls, proto: _ray_pb2.RayJob):
         return cls(
-            ray_cluster=(
-                RayCluster.from_flyte_idl(proto.ray_cluster)
-                if proto.ray_cluster
-                else None
-            ),
+            ray_cluster=(RayCluster.from_flyte_idl(proto.ray_cluster) if proto.ray_cluster else None),
             runtime_env=proto.runtime_env,
             runtime_env_yaml=proto.runtime_env_yaml,
             ttl_seconds_after_finished=proto.ttl_seconds_after_finished,

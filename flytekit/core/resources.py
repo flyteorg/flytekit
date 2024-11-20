@@ -67,17 +67,11 @@ _ResourceEntry = task_models.Resources.ResourceEntry
 def _convert_resources_to_resource_entries(resources: Resources) -> List[_ResourceEntry]:  # type: ignore
     resource_entries = []
     if resources.cpu is not None:
-        resource_entries.append(
-            _ResourceEntry(name=_ResourceName.CPU, value=str(resources.cpu))
-        )
+        resource_entries.append(_ResourceEntry(name=_ResourceName.CPU, value=str(resources.cpu)))
     if resources.mem is not None:
-        resource_entries.append(
-            _ResourceEntry(name=_ResourceName.MEMORY, value=str(resources.mem))
-        )
+        resource_entries.append(_ResourceEntry(name=_ResourceName.MEMORY, value=str(resources.mem)))
     if resources.gpu is not None:
-        resource_entries.append(
-            _ResourceEntry(name=_ResourceName.GPU, value=str(resources.gpu))
-        )
+        resource_entries.append(_ResourceEntry(name=_ResourceName.GPU, value=str(resources.gpu)))
     if resources.ephemeral_storage is not None:
         resource_entries.append(
             _ResourceEntry(
@@ -113,7 +107,6 @@ def construct_k8s_pod_spec_from_resources(
     requests: Optional[Resources],
     limits: Optional[Resources],
 ) -> dict[str, Any]:
-
     def construct_k8s_pods_resources(resources: Optional[Resources]):
         if resources is None:
             return None

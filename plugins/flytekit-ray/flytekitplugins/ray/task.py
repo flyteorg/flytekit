@@ -87,11 +87,7 @@ class RayFunctionTask(PythonFunctionTask):
         cfg = self._task_config
 
         # Deprecated: runtime_env is removed KubeRay >= 1.1.0. It is replaced by runtime_env_yaml
-        runtime_env = (
-            base64.b64encode(json.dumps(cfg.runtime_env).encode()).decode()
-            if cfg.runtime_env
-            else None
-        )
+        runtime_env = base64.b64encode(json.dumps(cfg.runtime_env).encode()).decode() if cfg.runtime_env else None
 
         runtime_env_yaml = yaml.dump(cfg.runtime_env) if cfg.runtime_env else None
 
@@ -118,9 +114,7 @@ class RayFunctionTask(PythonFunctionTask):
                     )
                     for c in cfg.worker_node_config
                 ],
-                enable_autoscaling=(
-                    cfg.enable_autoscaling if cfg.enable_autoscaling else False
-                ),
+                enable_autoscaling=(cfg.enable_autoscaling if cfg.enable_autoscaling else False),
             ),
             runtime_env=runtime_env,
             runtime_env_yaml=runtime_env_yaml,
