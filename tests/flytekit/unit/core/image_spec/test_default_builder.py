@@ -288,7 +288,7 @@ def test_uv_lock_error_no_packages(monkeypatch, tmp_path, invalid_param):
     )
     builder = DefaultImageBuilder()
 
-    with pytest.raises(ValueError, match="uv.lock is not compatible"):
+    with pytest.raises(ValueError, match="Support for uv.lock files and packages is mutually exclusive"):
         builder.build_image(image_spec)
 
     run_mock.assert_not_called()

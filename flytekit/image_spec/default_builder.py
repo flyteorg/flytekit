@@ -134,7 +134,7 @@ def prepare_uv_lock_command(image_spec: ImageSpec, pip_install_args: List[str], 
     warnings.warn("uv.lock support is experimental", UserWarning)
 
     if image_spec.packages is not None:
-        msg = "uv.lock is not compatible with packages, please include all your dependencies in uv.lock"
+        msg = "Support for uv.lock files and packages is mutually exclusive"
         raise ValueError(msg)
 
     uv_lock_path = tmp_dir / "uv.lock"
