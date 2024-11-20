@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import datetime
 import os
+from dataclasses import asdict
 from functools import update_wrapper
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, TypeVar, Union, overload
 
+from flytekit.auto_cache.auto_cache import AutoCache, AutoCacheConfig
 from flytekit.core.utils import str2bool
 
 try:
@@ -102,6 +104,7 @@ def task(
     cache: bool = ...,
     cache_serialize: bool = ...,
     cache_version: str = ...,
+    auto_cache_config: AutoCacheConfig = ...,
     cache_ignore_input_vars: Tuple[str, ...] = ...,
     retries: int = ...,
     interruptible: Optional[bool] = ...,
@@ -141,6 +144,7 @@ def task(
     cache: bool = ...,
     cache_serialize: bool = ...,
     cache_version: str = ...,
+    auto_cache_config: AutoCacheConfig = ...,
     cache_ignore_input_vars: Tuple[str, ...] = ...,
     retries: int = ...,
     interruptible: Optional[bool] = ...,
@@ -179,6 +183,7 @@ def task(
     cache: bool = False,
     cache_serialize: bool = False,
     cache_version: str = "",
+    auto_cache_config: AutoCacheConfig = AutoCacheConfig(),
     cache_ignore_input_vars: Tuple[str, ...] = (),
     retries: int = 0,
     interruptible: Optional[bool] = None,
@@ -347,10 +352,17 @@ def task(
     """
 
     def wrapper(fn: Callable[P, Any]) -> PythonFunctionTask[T]:
+        task_hash = ""
+        if any(asdict(auto_cache_config).values()):
+            auto_cache = AutoCache(config=auto_cache_config)
+            task_hash = auto_cache.hash_task(fn)
+
+        print("cache_version: ", cache_version if not task_hash else task_hash)
+
         _metadata = TaskMetadata(
             cache=cache,
             cache_serialize=cache_serialize,
-            cache_version=cache_version,
+            cache_version=cache_version if not task_hash else task_hash,
             cache_ignore_input_vars=cache_ignore_input_vars,
             retries=retries,
             interruptible=interruptible,
