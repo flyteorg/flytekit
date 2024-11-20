@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import _datetime
 import collections
 import json
 import types
@@ -8,7 +9,6 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field, is_dataclass
 from typing import Dict, Generator, Generic, List, Optional, Type, Union
 
-import _datetime
 import msgpack
 from dataclasses_json import config
 from fsspec.utils import get_protocol
