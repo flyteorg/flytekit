@@ -240,12 +240,14 @@ class Controller:
         hex = hashlib.md5(components.encode()).hexdigest()
         # just take the first 16 chars.
         exec_name = f"{self.exec_prefix}-{entity.name.split('.')[-1]}-{hex[:16]}"
-        logger.info(f"Generated execution name {exec_name} for {idx}th call of {entity.id.name}")
+        logger.info(f"Generated execution name {exec_name} for {idx}th call of {entity.name}")
         return exec_name
 
     def launch_and_start_watch(self, key: str, idx):
-        """state reconciliation, not sure if this is really reconciliation"""
-        # add lock maybe when accessing self.entries
+        """This function launches executions. This is called via the loop, so it needs exception handling"""
+        # add the entire function to a try/finally that terminates the process, and or first emits the exception
+        # onto the future in the work item.
+
         if key not in self.entries:
             logger.error(f"Key {key} not found in entries")
             return
