@@ -277,11 +277,18 @@ class Controller:
                 # start watching it.
                 exec_name = self.get_execution_name(state.entity, idx, state.input_kwargs)
                 logger.info(f"Generated execution name {exec_name} for {idx}th call of {state.entity.name}")
+                from flytekit.remote.remote_callable import RemoteEntity
+
+                if isinstance(state.entity, RemoteEntity):
+                    version = state.entity.id.version
+                else:
+                    version = self.ss.version
+
                 wf_exec = self.remote.execute(
                     entity=state.entity,
                     execution_name=exec_name,
                     inputs=state.input_kwargs,
-                    version=self.ss.version,
+                    version=version,
                     image_config=self.ss.image_config,
                     options=options,
                     envs=e,
