@@ -4,55 +4,8 @@ from flyteidl.plugins import ray_pb2 as _ray_pb2
 
 from flytekit.models import common as _common
 from flytekit.models.task import K8sPod, K8sObjectMetadata
-from flytekit.core.resources import Resources
+from flytekit.core.resources import Resources, construct_k8s_pod_spec_from_resources
 from kubernetes.client import V1PodSpec, V1Container, V1ResourceRequirements
-
-
-def construct_k8s_pod_spec(
-    k8s_pod_name: str,
-    requests: typing.Optional[Resources],
-    limits: typing.Optional[Resources],
-) -> dict[str, typing.Any]:
-
-    def construct_k8s_pods_resources(resources: typing.Optional[Resources]):
-        if resources is None:
-            return None
-
-        resources_map = {
-            "cpu": "cpu",
-            "mem": "memory",
-            "gpu": "nvidia.com/gpu",
-            "ephemeral_storage": "ephemeral-storage",
-        }
-
-        k8s_pod_resources = {}
-
-        for resource in fields(resources):
-            resource_value = getattr(resources, resource.name)
-            if resource_value is not None:
-                k8s_pod_resources[resources_map[resource.name]] = resource_value
-
-        print(k8s_pod_resources)
-        return k8s_pod_resources
-
-    requests = construct_k8s_pods_resources(resources=requests)
-    limits = construct_k8s_pods_resources(resources=limits)
-    requests = requests or limits
-    limits = limits or requests
-
-    k8s_pod = V1PodSpec(
-        containers=[
-            V1Container(
-                name=k8s_pod_name,
-                resources=V1ResourceRequirements(
-                    requests=requests,
-                    limits=limits,
-                ),
-            )
-        ]
-    )
-
-    return k8s_pod.to_dict()
 
 
 class WorkerGroupSpec(_common.FlyteIdlEntity):
@@ -79,11 +32,10 @@ class WorkerGroupSpec(_common.FlyteIdlEntity):
         self._limits = limits
         self._k8s_pod = K8sPod(
             metadata=K8sObjectMetadata(),
-            pod_spec=construct_k8s_pod_spec(
+            pod_spec=construct_k8s_pod_spec_from_resources(
                 k8s_pod_name="ray-worker", requests=self._requests, limits=self._limits
             ),
         )
-        # exit(0)
 
     @property
     def group_name(self):
@@ -179,7 +131,7 @@ class HeadGroupSpec(_common.FlyteIdlEntity):
 
         self._k8s_pod = K8sPod(
             metadata=K8sObjectMetadata(),
-            pod_spec=construct_k8s_pod_spec(
+            pod_spec=construct_k8s_pod_spec_from_resources(
                 k8s_pod_name="ray-head", requests=self._requests, limits=self._limits
             ),
         )

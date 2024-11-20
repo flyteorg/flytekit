@@ -1,9 +1,10 @@
-from dataclasses import dataclass
-from typing import List, Optional, Union
+from dataclasses import dataclass, fields
+from typing import List, Optional, Union, Any
 
 from mashumaro.mixins.json import DataClassJSONMixin
 
 from flytekit.models import task as task_models
+from kubernetes.client import V1PodSpec, V1Container, V1ResourceRequirements
 
 
 @dataclass
@@ -66,14 +67,23 @@ _ResourceEntry = task_models.Resources.ResourceEntry
 def _convert_resources_to_resource_entries(resources: Resources) -> List[_ResourceEntry]:  # type: ignore
     resource_entries = []
     if resources.cpu is not None:
-        resource_entries.append(_ResourceEntry(name=_ResourceName.CPU, value=str(resources.cpu)))
+        resource_entries.append(
+            _ResourceEntry(name=_ResourceName.CPU, value=str(resources.cpu))
+        )
     if resources.mem is not None:
-        resource_entries.append(_ResourceEntry(name=_ResourceName.MEMORY, value=str(resources.mem)))
+        resource_entries.append(
+            _ResourceEntry(name=_ResourceName.MEMORY, value=str(resources.mem))
+        )
     if resources.gpu is not None:
-        resource_entries.append(_ResourceEntry(name=_ResourceName.GPU, value=str(resources.gpu)))
+        resource_entries.append(
+            _ResourceEntry(name=_ResourceName.GPU, value=str(resources.gpu))
+        )
     if resources.ephemeral_storage is not None:
         resource_entries.append(
-            _ResourceEntry(name=_ResourceName.EPHEMERAL_STORAGE, value=str(resources.ephemeral_storage))
+            _ResourceEntry(
+                name=_ResourceName.EPHEMERAL_STORAGE,
+                value=str(resources.ephemeral_storage),
+            )
         )
     return resource_entries
 
@@ -96,3 +106,49 @@ def convert_resources_to_resource_model(
     if limits is not None:
         limit_entries = _convert_resources_to_resource_entries(limits)
     return task_models.Resources(requests=request_entries, limits=limit_entries)
+
+
+def construct_k8s_pod_spec_from_resources(
+    k8s_pod_name: str,
+    requests: Optional[Resources],
+    limits: Optional[Resources],
+) -> dict[str, Any]:
+
+    def construct_k8s_pods_resources(resources: Optional[Resources]):
+        if resources is None:
+            return None
+
+        resources_map = {
+            "cpu": "cpu",
+            "mem": "memory",
+            "gpu": "nvidia.com/gpu",
+            "ephemeral_storage": "ephemeral-storage",
+        }
+
+        k8s_pod_resources = {}
+
+        for resource in fields(resources):
+            resource_value = getattr(resources, resource.name)
+            if resource_value is not None:
+                k8s_pod_resources[resources_map[resource.name]] = resource_value
+
+        return k8s_pod_resources
+
+    requests = construct_k8s_pods_resources(resources=requests)
+    limits = construct_k8s_pods_resources(resources=limits)
+    requests = requests or limits
+    limits = limits or requests
+
+    k8s_pod = V1PodSpec(
+        containers=[
+            V1Container(
+                name=k8s_pod_name,
+                resources=V1ResourceRequirements(
+                    requests=requests,
+                    limits=limits,
+                ),
+            )
+        ]
+    )
+
+    return k8s_pod.to_dict()
