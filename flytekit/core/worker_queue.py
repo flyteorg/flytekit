@@ -240,7 +240,10 @@ class Controller:
         # has the components into something deterministic
         hex = hashlib.md5(components.encode()).hexdigest()
         # just take the first 16 chars.
-        exec_name = f"{self.exec_prefix}-{entity.name.split('.')[-1]}-{hex[:16]}"
+        hex = hex[:16]
+        name = entity.name.split(".")[-1]
+        name = name[:8]  # just take the first 8 chars
+        exec_name = f"{self.exec_prefix}-{name}-{hex}"
         exec_name = _dnsify(exec_name)
         return exec_name
 

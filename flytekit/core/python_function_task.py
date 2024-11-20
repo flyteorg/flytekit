@@ -582,7 +582,7 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
             tag = ctx.user_space_params.execution_id.name
             root_tag = os.environ.get(EAGER_ROOT_ENV_NAME, tag)
 
-            prefix = self.name.split(".")[-1]
+            prefix = self.name.split(".")[-1][:8]
             prefix = f"e-{prefix}-{tag[:5]}"
             prefix = _dnsify(prefix)
             c = Controller(remote=remote, ss=ss, tag=tag, root_tag=root_tag, exec_prefix=prefix)
@@ -608,12 +608,10 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
 
 
 """
-semantics for prefix, execution naming for idempotent executions, labels
-exec names for underlying tasks - eager name-first few chars of current exec id, random friendly name
+signal handling
 
 unit tests for worker_queue
 merge master again
-signal handling
 
 whatever niels comes up with for new local_entrypoint
 
