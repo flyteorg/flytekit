@@ -154,6 +154,7 @@ async def resolve_attr_path_in_promise(p: Promise) -> Promise:
 
             curr_val = curr_val.value.literals[attr]
             used += 1
+
         # Scalar is always the leaf. There can't be a collection or map in a scalar.
         if type(curr_val.value) is _literals_models.Scalar:
             break
@@ -167,7 +168,6 @@ async def resolve_attr_path_in_promise(p: Promise) -> Promise:
             This works correctly in remote execution.
             Issue Link: https://github.com/flyteorg/flyte/issues/5959
             """
-
             st = curr_val.value.value
             new_st = resolve_attr_path_in_pb_struct(st, attr_path=p.attr_path[used:])
             literal_type = TypeEngine.to_literal_type(type(new_st))
@@ -204,7 +204,14 @@ def resolve_attr_path_in_dict(d: dict, attr_path: List[Union[str, int]]) -> Any:
     return curr_val
 
 
-def resolve_attr_path_in_pb_struct(st: _struct.Struct, attr_path: List[Union[str, int]]) -> _struct.Struct:
+def resolve_attr_path_in_pb_struct(
+    st: _struct.Struct, attr_path: List[Union[str, int]]
+) -> Union[_struct.Struct, _struct.ListValue]:
+    """
+    Resolves the protobuf struct (e.g. dataclass) with attribute path.
+
+    Note that the return type can be google.protobuf.struct_pb2.Struct or google.protobuf.struct_pb2.ListValue.
+    """
     curr_val = st
     for attr in attr_path:
         if attr not in curr_val:
