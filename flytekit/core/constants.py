@@ -24,11 +24,11 @@ FLYTE_USE_OLD_DC_FORMAT = "FLYTE_USE_OLD_DC_FORMAT"
 FLYTE_FAIL_ON_ERROR = "FLYTE_FAIL_ON_ERROR"
 
 # Executions launched by the current eager task will be tagged with this key:current_eager_exec_name
-EAGER_TAG_KEY = "_eager_exec"
+EAGER_TAG_KEY = "eager-exec"
 
 # Executions launched by the current eager task will be tagged with this key:root_eager_exec_name, only relevant
 # for nested eager tasks. This is how you identify the root execution.
-EAGER_TAG_ROOT_KEY = "_eager_root_exec"
+EAGER_TAG_ROOT_KEY = "eager-root-exec"
 
 # The environment variable that will be set to the root eager task execution name. This is how you pass down the
 # root eager execution.
