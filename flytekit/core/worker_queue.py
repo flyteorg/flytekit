@@ -14,6 +14,7 @@ from flytekit.core.constants import EAGER_ROOT_ENV_NAME, EAGER_TAG_KEY, EAGER_TA
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.options import Options
 from flytekit.core.reference_entity import ReferenceEntity
+from flytekit.core.utils import _dnsify
 from flytekit.core.workflow import WorkflowBase
 from flytekit.loggers import developer_logger, logger
 from flytekit.models.common import Labels
@@ -240,6 +241,7 @@ class Controller:
         hex = hashlib.md5(components.encode()).hexdigest()
         # just take the first 16 chars.
         exec_name = f"{self.exec_prefix}-{entity.name.split('.')[-1]}-{hex[:16]}"
+        exec_name = _dnsify(exec_name)
         logger.info(f"Generated execution name {exec_name} for {idx}th call of {entity.name}")
         return exec_name
 

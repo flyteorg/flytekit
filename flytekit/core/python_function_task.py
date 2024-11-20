@@ -42,6 +42,7 @@ from flytekit.core.promise import (
 from flytekit.core.python_auto_container import PythonAutoContainerTask, default_task_resolver
 from flytekit.core.tracked_abc import FlyteTrackedABC
 from flytekit.core.tracker import extract_task_module, is_functools_wrapped_module_level, isnested, istestfunction
+from flytekit.core.utils import _dnsify
 from flytekit.core.worker_queue import Controller
 from flytekit.core.workflow import (
     PythonFunctionWorkflow,
@@ -583,6 +584,7 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
 
             prefix = self.name.split(".")[-1]
             prefix = f"e-{prefix}-{tag[:5]}"
+            prefix = _dnsify(prefix)
             c = Controller(remote=remote, ss=ss, tag=tag, root_tag=root_tag, exec_prefix=prefix)
             builder = builder.with_worker_queue(c)
         else:
