@@ -272,9 +272,6 @@ class Controller:
                 l = self.get_labels()
                 e = self.get_env()
                 options = Options(labels=l)
-                # need to add try/catch block since the execution might already exist
-                # if the execution already exists we should fetch the inputs. If the inputs are the same, then we should
-                # start watching it.
                 exec_name = self.get_execution_name(state.entity, idx, state.input_kwargs)
                 logger.info(f"Generated execution name {exec_name} for {idx}th call of {state.entity.name}")
                 from flytekit.remote.remote_callable import RemoteEntity
@@ -284,6 +281,8 @@ class Controller:
                 else:
                     version = self.ss.version
 
+                # todo: if the execution already exists, remote.execute will return that execution. in the future
+                #  we can add input checking to make sure the inputs are indeed a match.
                 wf_exec = self.remote.execute(
                     entity=state.entity,
                     execution_name=exec_name,
