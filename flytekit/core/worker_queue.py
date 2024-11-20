@@ -242,13 +242,14 @@ class Controller:
         # just take the first 16 chars.
         exec_name = f"{self.exec_prefix}-{entity.name.split('.')[-1]}-{hex[:16]}"
         exec_name = _dnsify(exec_name)
-        logger.info(f"Generated execution name {exec_name} for {idx}th call of {entity.name}")
         return exec_name
 
     def launch_and_start_watch(self, key: str, idx):
         """This function launches executions. This is called via the loop, so it needs exception handling"""
-        # add the entire function to a try/finally that terminates the process, and or first emits the exception
-        # onto the future in the work item.
+        # The reason the error handling is complicated is because if there is an error in the getting of the work item
+        # object, then there is no way to pass that error to the future that is being awaited on by the user.
+        # So errors in getting the work item will just crash the system for now, but other errors will correctly set
+        # the exception on the future.
         if key not in self.entries:
             logger.error(f"Key {key} not found in entries")
             # Bad error, terminate everything
@@ -275,6 +276,7 @@ class Controller:
                 # if the execution already exists we should fetch the inputs. If the inputs are the same, then we should
                 # start watching it.
                 exec_name = self.get_execution_name(state.entity, idx, state.input_kwargs)
+                logger.info(f"Generated execution name {exec_name} for {idx}th call of {state.entity.name}")
                 wf_exec = self.remote.execute(
                     entity=state.entity,
                     execution_name=exec_name,
