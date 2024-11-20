@@ -164,9 +164,9 @@ class PollingInformer:
 
 class Controller:
     def __init__(self, remote: FlyteRemote, ss: SerializationSettings, tag: str, root_tag: str, exec_prefix: str):
-        logger.info(
+        logger.warning(
             f"Creating Controller for eager execution with {remote.config.platform.endpoint},"
-            f" {tag=}, {root_tag=}, and ss: {ss}"
+            f" {tag=}, {root_tag=}, {exec_prefix=} and ss: {ss}"
         )
         # Set up things for this controller to operate
         self.__lock = threading.Lock()

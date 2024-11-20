@@ -1960,6 +1960,7 @@ class FlyteRemote(object):
             wait=wait,
             type_hints=entity.python_interface.inputs,
             overwrite_cache=overwrite_cache,
+            options=options,
             envs=envs,
             tags=tags,
             cluster_pool=cluster_pool,
