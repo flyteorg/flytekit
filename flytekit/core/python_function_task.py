@@ -582,7 +582,7 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
             root_tag = os.environ.get(EAGER_ROOT_ENV_NAME, tag)
 
             prefix = self.name.split(".")[-1]
-            prefix = f"e_{prefix}-{tag[:5]}"
+            prefix = f"e-{prefix}-{tag[:5]}"
             c = Controller(remote=remote, ss=ss, tag=tag, root_tag=root_tag, exec_prefix=prefix)
             builder = builder.with_worker_queue(c)
         else:
