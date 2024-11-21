@@ -11,6 +11,7 @@ from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.experimental.eager_function import eager
 from flytekit.remote.remote import FlyteRemote
 from flytekit.utils.asyn import loop_manager
+from flytekit.core.worker_queue import Controller
 
 
 @task
@@ -68,7 +69,8 @@ def test_nested_local_backend():
     print(f"Using raw output location: {raw_output}")
     provider = FileAccessProvider(local_sandbox_dir="/tmp/unittest", raw_output_prefix=raw_output, data_config=dc)
 
-    with FlyteContextManager.with_context(ctx.with_file_access(provider).with_client(remote.client)) as ctx:
+    c = Controller.for_sandbox()
+    with FlyteContextManager.with_context(ctx.with_file_access(provider).with_client(remote.client).with_worker_queue(c)) as ctx:
         res = loop_manager.run_sync(level_2.run_with_backend, ctx, x=1000)
         print(res)
         assert res == 43

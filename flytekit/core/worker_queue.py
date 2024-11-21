@@ -8,7 +8,7 @@ import threading
 import typing
 from dataclasses import dataclass
 
-from flytekit.configuration import SerializationSettings
+from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.constants import EAGER_ROOT_ENV_NAME, EAGER_TAG_KEY, EAGER_TAG_ROOT_KEY
 from flytekit.core.launch_plan import LaunchPlan
@@ -425,3 +425,23 @@ class Controller:
         self.__loop.run_until_complete(group)
         print("---------- marker 6", flush=True)
         self.__loop.close()
+
+    @classmethod
+    def for_sandbox(cls, exec_prefix: typing.Optional[str] = None) -> Controller:
+        from flytekit.core.context_manager import FlyteContextManager
+        from flytekit.remote import FlyteRemote
+
+        ctx = FlyteContextManager.current_context()
+        remote = FlyteRemote.for_sandbox()
+        ss = ctx.serialization_settings
+        if not ss:
+            ss = SerializationSettings(
+                image_config=ImageConfig.auto_default_image(),
+            )
+
+        rand = ctx.file_access.get_random_string()
+        root_tag = tag = f"eager-local-{rand}"
+        exec_prefix = exec_prefix or f"e-{rand[:16]}"
+
+        c = Controller(remote=remote, ss=ss, tag=tag, root_tag=root_tag, exec_prefix=exec_prefix)
+        return c
