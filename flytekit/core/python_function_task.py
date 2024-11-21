@@ -547,7 +547,7 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
         from flytekit.remote.remote import FlyteRemote
 
         remote = FlyteRemote.for_sandbox(default_project="flytesnacks", default_domain="development")
-        # remote = _internal_demo_remote(remote)
+        remote = _internal_demo_remote(remote)
 
         ctx = FlyteContextManager.current_context()
         is_local_execution = cast(ExecutionState, ctx.execution_state).is_local_execution()
