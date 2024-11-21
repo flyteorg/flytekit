@@ -565,6 +565,10 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
                     )
                 # tag is the current execution id
                 # root tag is read from the environment variable if it exists, if not, it's the current execution id
+                if not ctx.user_space_params or not ctx.user_space_params.execution_id:
+                    raise AssertionError(
+                        "User facing context and execution ID should be" " present when not running locally"
+                    )
                 tag = ctx.user_space_params.execution_id.name
                 root_tag = os.environ.get(EAGER_ROOT_ENV_NAME, tag)
 
@@ -614,8 +618,6 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
 
 
 """
-signal handling - test local remote
-
 get local testing to work
 unit tests for worker_queue
 merge master again

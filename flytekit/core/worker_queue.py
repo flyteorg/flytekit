@@ -360,7 +360,7 @@ class Controller:
                 output = f"{output}\n" + NODE_HTML_TEMPLATE.format(
                     entity_type=kind,
                     entity_name=item.entity.name,
-                    execution_name=item.wf_exec.id.name,
+                    execution_name=item.wf_exec.id.name,  # type: ignore[union-attr]
                     url=self.remote.generate_console_url(item.wf_exec),
                     inputs=item.input_kwargs,
                     outputs=item.result if item.result else item.error,
