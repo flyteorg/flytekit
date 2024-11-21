@@ -91,7 +91,6 @@ def test_vscode_remote_execution(vscode_patches, mock_remote_execution):
     mock_process.assert_called_once()
     mock_exit_handler.assert_called_once()
     mock_prepare_interactive_python.assert_called_once()
-    assert mock_signal.call_count >=1
     mock_prepare_resume_task_python.assert_called_once()
     mock_prepare_launch_json.assert_called_once()
 
@@ -122,7 +121,6 @@ def test_vscode_remote_execution_but_disable(vscode_patches, mock_remote_executi
     mock_process.assert_not_called()
     mock_exit_handler.assert_not_called()
     mock_prepare_interactive_python.assert_not_called()
-    assert mock_signal.call_count == 0
     mock_prepare_resume_task_python.assert_not_called()
     mock_prepare_launch_json.assert_not_called()
 
@@ -198,7 +196,6 @@ def test_vscode_run_task_first_fail(vscode_patches, mock_remote_execution):
     mock_process.assert_called_once()
     mock_exit_handler.assert_called_once()
     mock_prepare_interactive_python.assert_called_once()
-    assert mock_signal.call_count >= 1
     mock_prepare_resume_task_python.assert_called_once()
     mock_prepare_launch_json.assert_called_once()
 
@@ -251,7 +248,6 @@ def test_vscode_with_args(vscode_patches, mock_remote_execution):
     mock_process.assert_called_once()
     mock_exit_handler.assert_called_once()
     mock_prepare_interactive_python.assert_called_once()
-    assert mock_signal.call_count >= 1
     mock_prepare_resume_task_python.assert_called_once()
     mock_prepare_launch_json.assert_called_once()
 

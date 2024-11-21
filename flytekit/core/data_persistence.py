@@ -315,7 +315,11 @@ class FileAccessProvider(object):
             return to_path
         except OSError as oe:
             logger.debug(f"Error in getting {from_path} to {to_path} rec {recursive} {oe}")
-            if not file_system.exists(from_path):
+            if isinstance(file_system, AsyncFileSystem):
+                exists = await file_system._exists(from_path)  # pylint: disable=W0212
+            else:
+                exists = file_system.exists(from_path)
+            if not exists:
                 raise FlyteDataNotFoundException(from_path)
             file_system = self.get_filesystem(get_protocol(from_path), anonymous=True, asynchronous=True)
             if file_system is not None:

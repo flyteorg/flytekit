@@ -26,9 +26,7 @@ UV_PYTHON_INSTALL_COMMAND_TEMPLATE = Template(
 RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/uv,id=uv \
     --mount=from=uv,source=/uv,target=/usr/bin/uv \
     --mount=type=bind,target=requirements_uv.txt,src=requirements_uv.txt \
-    /usr/bin/uv \
-    pip install --python /opt/micromamba/envs/runtime/bin/python $PIP_EXTRA \
-    --requirement requirements_uv.txt
+    uv pip install $PIP_INSTALL_ARGS
 """
 )
 
@@ -41,13 +39,13 @@ RUN --mount=type=cache,sharing=locked,mode=0777,target=/var/cache/apt,id=apt \
 DOCKER_FILE_TEMPLATE = Template("""\
 #syntax=docker/dockerfile:1.5
 FROM ghcr.io/astral-sh/uv:0.2.37 as uv
-FROM mambaorg/micromamba:1.5.8-bookworm-slim as micromamba
+FROM mambaorg/micromamba:2.0.3-debian12-slim as micromamba
 
 FROM $BASE_IMAGE
 
 USER root
 $APT_INSTALL_COMMAND
-RUN update-ca-certificates
+COPY --from=micromamba /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
 RUN id -u flytekit || useradd --create-home --shell /bin/bash flytekit
 RUN chown -R flytekit /root && chown -R flytekit /home
@@ -65,6 +63,7 @@ ENV PATH="/opt/micromamba/envs/runtime/bin:$$PATH" \
     UV_LINK_MODE=copy \
     FLYTE_SDK_RICH_TRACEBACKS=0 \
     SSL_CERT_DIR=/etc/ssl/certs \
+    UV_PYTHON=/opt/micromamba/envs/runtime/bin/python \
     $ENV
 
 $UV_PYTHON_INSTALL_COMMAND
@@ -76,7 +75,10 @@ ENV PATH="$$PATH:/usr/local/nvidia/bin:/usr/local/cuda/bin" \
 $ENTRYPOINT
 
 $COPY_COMMAND_RUNTIME
-RUN $RUN_COMMANDS
+
+RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/uv,id=uv \
+    --mount=from=uv,source=/uv,target=/usr/bin/uv $RUN_COMMANDS
+
 $EXTRA_COPY_CMDS
 
 WORKDIR /root
@@ -145,17 +147,17 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
     requirements_uv_path = tmp_dir / "requirements_uv.txt"
     requirements_uv_path.write_text("\n".join(requirements))
 
-    pip_extra_args = []
+    pip_install_args = ["--requirement", "requirements_uv.txt"]
 
     if image_spec.pip_index:
-        pip_extra_args.append(f"--index-url {image_spec.pip_index}")
+        pip_install_args.append(f"--index-url {image_spec.pip_index}")
     if image_spec.pip_extra_index_url:
         extra_urls = [f"--extra-index-url {url}" for url in image_spec.pip_extra_index_url]
-        pip_extra_args.extend(extra_urls)
+        pip_install_args.extend(extra_urls)
 
-    pip_extra_args = " ".join(pip_extra_args)
+    pip_install_args = " ".join(pip_install_args)
 
-    uv_python_install_command = UV_PYTHON_INSTALL_COMMAND_TEMPLATE.substitute(PIP_EXTRA=pip_extra_args)
+    uv_python_install_command = UV_PYTHON_INSTALL_COMMAND_TEMPLATE.substitute(PIP_INSTALL_ARGS=pip_install_args)
 
     env_dict = {"PYTHONPATH": "/root", _F_IMG_ID: image_spec.id}
 
@@ -164,11 +166,14 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
 
     env = " ".join(f"{k}={v}" for k, v in env_dict.items())
 
-    apt_packages = ["ca-certificates"]
+    apt_packages = []
     if image_spec.apt_packages:
         apt_packages.extend(image_spec.apt_packages)
 
-    apt_install_command = APT_INSTALL_COMMAND_TEMPLATE.substitute(APT_PACKAGES=" ".join(apt_packages))
+    if apt_packages:
+        apt_install_command = APT_INSTALL_COMMAND_TEMPLATE.substitute(APT_PACKAGES=" ".join(apt_packages))
+    else:
+        apt_install_command = ""
 
     if image_spec.source_copy_mode is not None and image_spec.source_copy_mode != CopyFileDetection.NO_COPY:
         if not image_spec.source_root:

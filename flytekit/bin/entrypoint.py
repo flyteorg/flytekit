@@ -9,13 +9,16 @@ import subprocess
 import sys
 import tempfile
 import textwrap
+import time
 import traceback
+import uuid
 import warnings
 from sys import exit
 from typing import Callable, List, Optional
 
 import click
 from flyteidl.core import literals_pb2 as _literals_pb2
+from google.protobuf.timestamp_pb2 import Timestamp
 
 from flytekit.configuration import (
     SERIALIZED_CONTEXT_ENV_VAR,
@@ -40,6 +43,7 @@ from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.promise import VoidPromise
 from flytekit.core.utils import str2bool
 from flytekit.deck.deck import _output_deck
+from flytekit.exceptions.base import FlyteException
 from flytekit.exceptions.system import FlyteNonRecoverableSystemException
 from flytekit.exceptions.user import FlyteRecoverableException, FlyteUserRuntimeException
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
@@ -74,6 +78,41 @@ def _compute_array_job_index():
     return offset
 
 
+def _build_error_file_name() -> str:
+    """Get name of error file uploaded to the raw output prefix bucket.
+
+    For distributed tasks, all workers upload error files which must not overwrite each other, leading to a race condition.
+    A uuid is included to prevent this.
+
+    Returns
+    -------
+    str
+        Name of the error file.
+    """
+    dist_error_strategy = get_one_of("FLYTE_INTERNAL_DIST_ERROR_STRATEGY", "_F_DES")
+    if not dist_error_strategy:
+        return _constants.ERROR_FILE_NAME
+    error_file_name_base, error_file_name_extension = os.path.splitext(_constants.ERROR_FILE_NAME)
+    error_file_name_base += f"-{uuid.uuid4().hex}"
+    return f"{error_file_name_base}{error_file_name_extension}"
+
+
+def _get_worker_name() -> str:
+    """Get the name of the worker
+
+    For distributed tasks, the backend plugin can set a worker name to be used for error reporting.
+
+    Returns
+    -------
+    str
+        Name of the worker
+    """
+    dist_error_strategy = get_one_of("FLYTE_INTERNAL_DIST_ERROR_STRATEGY", "_F_DES")
+    if not dist_error_strategy:
+        return ""
+    return get_one_of("FLYTE_INTERNAL_WORKER_NAME", "_F_WN")
+
+
 def _get_working_loop():
     """Returns a running event loop."""
     try:
@@ -106,6 +145,9 @@ def _dispatch_execute(
             b: OR if IgnoreOutputs is raised, then ignore uploading outputs
             c: OR if an unhandled exception is retrieved - record it as an errors.pb
     """
+    error_file_name = _build_error_file_name()
+    worker_name = _get_worker_name()
+
     output_file_dict = {}
 
     task_def = None
@@ -142,12 +184,14 @@ def _dispatch_execute(
             output_file_dict = {_constants.FUTURES_FILE_NAME: outputs}
         else:
             logger.error(f"SystemError: received unknown outputs from task {outputs}")
-            output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
+            output_file_dict[error_file_name] = _error_models.ErrorDocument(
                 _error_models.ContainerError(
-                    "UNKNOWN_OUTPUT",
-                    f"Type of output received not handled {type(outputs)} outputs: {outputs}",
-                    _error_models.ContainerError.Kind.RECOVERABLE,
-                    _execution_models.ExecutionError.ErrorKind.SYSTEM,
+                    code="UNKNOWN_OUTPUT",
+                    message=f"Type of output received not handled {type(outputs)} outputs: {outputs}",
+                    kind=_error_models.ContainerError.Kind.RECOVERABLE,
+                    origin=_execution_models.ExecutionError.ErrorKind.SYSTEM,
+                    timestamp=get_container_error_timestamp(),
+                    worker=worker_name,
                 )
             )
 
@@ -165,12 +209,14 @@ def _dispatch_execute(
             kind = _error_models.ContainerError.Kind.NON_RECOVERABLE
 
         exc_str = get_traceback_str(e)
-        output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
+        output_file_dict[error_file_name] = _error_models.ErrorDocument(
             _error_models.ContainerError(
-                "USER",
-                exc_str,
-                kind,
-                _execution_models.ExecutionError.ErrorKind.USER,
+                code="USER",
+                message=exc_str,
+                kind=kind,
+                origin=_execution_models.ExecutionError.ErrorKind.USER,
+                timestamp=get_container_error_timestamp(e.value),
+                worker=worker_name,
             )
         )
         if task_def is not None:
@@ -183,12 +229,14 @@ def _dispatch_execute(
 
     except FlyteNonRecoverableSystemException as e:
         exc_str = get_traceback_str(e.value)
-        output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
+        output_file_dict[error_file_name] = _error_models.ErrorDocument(
             _error_models.ContainerError(
-                "SYSTEM",
-                exc_str,
-                _error_models.ContainerError.Kind.NON_RECOVERABLE,
-                _execution_models.ExecutionError.ErrorKind.SYSTEM,
+                code="SYSTEM",
+                message=exc_str,
+                kind=_error_models.ContainerError.Kind.NON_RECOVERABLE,
+                origin=_execution_models.ExecutionError.ErrorKind.SYSTEM,
+                timestamp=get_container_error_timestamp(e.value),
+                worker=worker_name,
             )
         )
 
@@ -199,12 +247,14 @@ def _dispatch_execute(
     # All other errors are captured here, and are considered system errors
     except Exception as e:
         exc_str = get_traceback_str(e)
-        output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
+        output_file_dict[error_file_name] = _error_models.ErrorDocument(
             _error_models.ContainerError(
-                "SYSTEM",
-                exc_str,
-                _error_models.ContainerError.Kind.RECOVERABLE,
-                _execution_models.ExecutionError.ErrorKind.SYSTEM,
+                code="SYSTEM",
+                message=exc_str,
+                kind=_error_models.ContainerError.Kind.RECOVERABLE,
+                origin=_execution_models.ExecutionError.ErrorKind.SYSTEM,
+                timestamp=get_container_error_timestamp(e),
+                worker=worker_name,
             )
         )
 
@@ -223,7 +273,7 @@ def _dispatch_execute(
 
     logger.debug("Finished _dispatch_execute")
 
-    if str2bool(os.getenv(FLYTE_FAIL_ON_ERROR)) and _constants.ERROR_FILE_NAME in output_file_dict:
+    if str2bool(os.getenv(FLYTE_FAIL_ON_ERROR)) and error_file_name in output_file_dict:
         """
         If the environment variable FLYTE_FAIL_ON_ERROR is set to true, the task execution will fail if an error file is
         generated. This environment variable is set to true by the plugin author if they want the task to fail on error.
@@ -253,6 +303,32 @@ def get_traceback_str(e: Exception) -> str:
     # Last, create the overall traceback string
     format_str = "Trace:\n\n{exception_str}\nMessage:\n\n{message_str}"
     return format_str.format(exception_str=exception_str, message_str=message_str)
+
+
+def get_container_error_timestamp(e: Optional[Exception] = None) -> Timestamp:
+    """Get timestamp for ContainerError.
+
+    If a flyte exception is passed, use its timestamp, otherwise, use the current time.
+
+    Parameters
+    ----------
+    e : Exception, optional
+        Exception that has occurred.
+
+    Returns
+    -------
+    Timestamp
+        Timestamp to be reported in ContainerError
+    """
+    timestamp = None
+    if isinstance(e, FlyteException):
+        timestamp = e.timestamp
+    if timestamp is None:
+        timestamp = time.time()
+    timstamp_secs = int(timestamp)
+    timestamp_fsecs = timestamp - timstamp_secs
+    timestamp_nanos = int(timestamp_fsecs * 1_000_000_000)
+    return Timestamp(seconds=timstamp_secs, nanos=timestamp_nanos)
 
 
 def get_one_of(*args) -> str:
@@ -488,7 +564,7 @@ def _execute_map_task(
         raise ValueError(f"Resolver args cannot be <1, got {resolver_args}")
 
     with setup_execution(
-        raw_output_data_prefix, checkpoint_path, prev_checkpoint, dynamic_addl_distro, dynamic_dest_dir
+        raw_output_data_prefix, output_prefix, checkpoint_path, prev_checkpoint, dynamic_addl_distro, dynamic_dest_dir
     ) as ctx:
         working_dir = os.getcwd()
         if all(os.path.realpath(path) != working_dir for path in sys.path):
