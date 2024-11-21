@@ -5,7 +5,7 @@ import os
 from functools import update_wrapper
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, TypeVar, Union, overload
 
-from flytekit.core.auto_cache import AutoCache
+from flytekit.core.auto_cache import CachePolicy, VersionParameters
 from flytekit.core.utils import str2bool
 
 try:
@@ -100,7 +100,7 @@ FuncOut = TypeVar("FuncOut")
 def task(
     _task_function: None = ...,
     task_config: Optional[T] = ...,
-    cache: Union[bool, list[AutoCache]] = ...,
+    cache: Union[bool, CachePolicy] = ...,
     cache_serialize: bool = ...,
     cache_version: str = ...,
     cache_ignore_input_vars: Tuple[str, ...] = ...,
@@ -136,9 +136,9 @@ def task(
 
 @overload
 def task(
-    _task_function: Callable[P, FuncOut],
+    _task_function: Callable[..., FuncOut],
     task_config: Optional[T] = ...,
-    cache: Union[bool, list[AutoCache]] = ...,
+    cache: Union[bool, CachePolicy] = ...,
     cache_serialize: bool = ...,
     cache_version: str = ...,
     cache_ignore_input_vars: Tuple[str, ...] = ...,
@@ -169,13 +169,13 @@ def task(
     pod_template: Optional["PodTemplate"] = ...,
     pod_template_name: Optional[str] = ...,
     accelerator: Optional[BaseAccelerator] = ...,
-) -> Union[Callable[P, FuncOut], PythonFunctionTask[T]]: ...
+) -> Union[Callable[..., FuncOut], PythonFunctionTask[T]]: ...
 
 
 def task(
-    _task_function: Optional[Callable[P, FuncOut]] = None,
+    _task_function: Optional[Callable[..., FuncOut]] = None,
     task_config: Optional[T] = None,
-    cache: Union[bool, list[AutoCache]] = False,
+    cache: Union[bool, CachePolicy] = False,
     cache_serialize: bool = False,
     cache_version: str = "",
     cache_ignore_input_vars: Tuple[str, ...] = (),
@@ -213,8 +213,8 @@ def task(
     pod_template_name: Optional[str] = None,
     accelerator: Optional[BaseAccelerator] = None,
 ) -> Union[
-    Callable[P, FuncOut],
-    Callable[[Callable[P, FuncOut]], PythonFunctionTask[T]],
+    Callable[..., FuncOut],
+    Callable[[Callable[..., FuncOut]], PythonFunctionTask[T]],
     PythonFunctionTask[T],
 ]:
     """
@@ -343,17 +343,19 @@ def task(
     :param accelerator: The accelerator to use for this task.
     """
 
-    def wrapper(fn: Callable[P, Any]) -> PythonFunctionTask[T]:
-        if isinstance(cache, list) and all(isinstance(item, AutoCache) for item in cache):
-            cache_versions = [item.get_version() for item in cache]
-            task_hash = "".join(cache_versions)
+    def wrapper(fn: Callable[..., Any]) -> PythonFunctionTask[T]:
+        if isinstance(cache, CachePolicy):
+            params = VersionParameters(func=fn, container_image=container_image)
+            cache_version_val = cache.get_version(params=params)
+            cache_val = True
         else:
-            task_hash = ""
+            cache_val = cache
+            cache_version_val = cache_version
 
         _metadata = TaskMetadata(
-            cache=cache,
+            cache=cache_val,
             cache_serialize=cache_serialize,
-            cache_version=cache_version if not task_hash else task_hash,
+            cache_version=cache_version_val,
             cache_ignore_input_vars=cache_ignore_input_vars,
             retries=retries,
             interruptible=interruptible,
@@ -439,7 +441,7 @@ def reference_task(
     return wrapper
 
 
-def decorate_function(fn: Callable[P, Any]) -> Callable[P, Any]:
+def decorate_function(fn: Callable[..., Any]) -> Callable[..., Any]:
     """
     Decorates the task with additional functionality if necessary.
 

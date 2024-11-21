@@ -8,6 +8,8 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Callable, Set, Union
 
+from flytekit.core.auto_cache import VersionParameters
+
 
 @contextmanager
 def temporarily_add_to_syspath(path):
@@ -24,8 +26,11 @@ class CachePrivateModules:
         self.salt = salt
         self.root_dir = Path(root_dir).resolve()
 
-    def get_version(self, func: Callable[..., Any]) -> str:
-        hash_components = [self._get_version(func)]
+    def get_version(self, params: VersionParameters) -> str:
+        if params.func is None:
+            raise ValueError("Function-based cache requires a function parameter")
+
+        hash_components = [self._get_version(params.func)]
         dependencies = self._get_function_dependencies(func, set())
         for dep in dependencies:
             hash_components.append(self._get_version(dep))

@@ -4,6 +4,8 @@ import inspect
 import textwrap
 from typing import Any, Callable
 
+from flytekit.core.auto_cache import VersionParameters
+
 
 class CacheFunctionBody:
     """
@@ -27,8 +29,10 @@ class CacheFunctionBody:
         """
         self.salt = salt
 
-    def get_version(self, func: Callable[..., Any]) -> str:
-        return self._get_version(func=func)
+    def get_version(self, params: VersionParameters) -> str:
+        if params.func is None:
+            raise ValueError("Function-based cache requires a function parameter")
+        return self._get_version(func=params.func)
 
     def _get_version(self, func: Callable[..., Any]) -> str:
         """
