@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import inspect
 import os
+import signal
 from abc import ABC
 from collections import OrderedDict
 from contextlib import suppress
@@ -525,7 +526,8 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
             -> add the entity to the worker queue and await the result.
         """
         # Args is present because the asyn helper function passes it, but everything should be in kwargs by this point
-        assert not args
+        # breakpoint()
+        assert len(args) == 1
         ctx = FlyteContextManager.current_context()
         is_local_execution = cast(ExecutionState, ctx.execution_state).is_local_execution()
         if not is_local_execution:
@@ -539,62 +541,66 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
             ):
                 return await self._task_function(**kwargs)
 
-    execute = loop_manager.synced(async_execute)
+    def execute(self, **kwargs) -> Any:
+        from flytekit.experimental.eager_function import _internal_demo_remote
+        from flytekit.remote.remote import FlyteRemote
+
+        # client = ctx.flyte_client
+        remote = FlyteRemote.for_sandbox(default_project="flytesnacks", default_domain="development")
+        remote = _internal_demo_remote(remote)
+
+        ctx = FlyteContextManager.current_context()
+        is_local_execution = cast(ExecutionState, ctx.execution_state).is_local_execution()
+        builder = ctx.new_builder()
+        if not is_local_execution:
+            # ensure that the worker queue is in context
+            if not ctx.worker_queue:
+                # remote = _internal_demo_remote(remote)
+                # This should be read from transport at real runtime if available, but if not, we should either run
+                # remote in interactive mode, or let users configure the version to use.
+                ss = ctx.serialization_settings
+                if not ss:
+                    ss = SerializationSettings(
+                        image_config=ImageConfig.auto_default_image(),
+                    )
+                # tag is the current execution id
+                # root tag is read from the environment variable if it exists, if not, it's the current execution id
+                tag = ctx.user_space_params.execution_id.name
+                root_tag = os.environ.get(EAGER_ROOT_ENV_NAME, tag)
+
+                # Prefix is a combination of the name of this eager workflow, and the current execution id.
+                prefix = self.name.split(".")[-1][:8]
+                prefix = f"e-{prefix}-{tag[:5]}"
+                prefix = _dnsify(prefix)
+                # Note: The construction of this object is in this function because this function should be on the
+                # main thread of pyflyte-execute. It needs to be on the main thread because signal handlers can only
+                # be installed on the main thread.
+                c = Controller(remote=remote, ss=ss, tag=tag, root_tag=root_tag, exec_prefix=prefix)
+                handler = c.get_signal_handler()
+                signal.signal(signal.SIGINT, handler)
+                signal.signal(signal.SIGTERM, handler)
+                builder = ctx.with_worker_queue(c)
+            else:
+                raise AssertionError("Worker queue should not be already present in the context for eager execution")
+        with FlyteContextManager.with_context(builder):
+            return loop_manager.run_sync(self.async_execute, self, **kwargs)
 
     async def run_with_backend(self, ctx: FlyteContext, **kwargs):
         """
         This is the main entry point to kick off a live run. Like if you're running locally, but want to use a
         Flyte backend, or running for real on a Flyte backend.
         """
-        from flytekit.experimental.eager_function import _internal_demo_remote
-        from flytekit.remote.remote import FlyteRemote
-
-        # if already a worker queue, then get the execution prefix, and append a new one.
-        client = ctx.flyte_client
-        if client is None:
-            # todo:async update after pattern has been decided for auth.
-            # raise AssertionError(
-            #     "Remote client needs to be present in the context for cluster-based execution" " of an eager task."
-            # )
-            remote = FlyteRemote.for_sandbox(default_project="flytesnacks", default_domain="development")
-            remote = _internal_demo_remote(remote)
-        else:
-            # todo:async, figure this out after we figure out auth pattern
-            remote = FlyteRemote.for_sandbox(default_project="flytesnacks", default_domain="development")
-            remote = _internal_demo_remote(remote)
 
         # set up context
         mode = ExecutionState.Mode.EAGER_EXECUTION
         builder = ctx.with_execution_state(cast(ExecutionState, ctx.execution_state).with_params(mode=mode))
-
-        # ensure that the worker queue is in context
-        if not ctx.worker_queue:
-            # remote = _internal_demo_remote(remote)
-            # This should be read from transport at real runtime if available, but if not, we should either run
-            # remote in interactive mode, or let users configure the version to use.
-            ss = ctx.serialization_settings
-            if not ss:
-                ss = SerializationSettings(
-                    image_config=ImageConfig.auto_default_image(),
-                )
-            # tag is the current execution id
-            # root tag is read from the environment variable if it exists, if not, it's the current execution id
-            tag = ctx.user_space_params.execution_id.name
-            root_tag = os.environ.get(EAGER_ROOT_ENV_NAME, tag)
-
-            prefix = self.name.split(".")[-1][:8]
-            prefix = f"e-{prefix}-{tag[:5]}"
-            prefix = _dnsify(prefix)
-            c = Controller(remote=remote, ss=ss, tag=tag, root_tag=root_tag, exec_prefix=prefix)
-            builder = builder.with_worker_queue(c)
-        else:
-            raise AssertionError("Worker queue should not be already present in the context for eager execution")
 
         with FlyteContextManager.with_context(builder) as ctx:
             base_error = None
             try:
                 result = await self._task_function(**kwargs)
             except EagerException as ee:
+                # Catch and re-raise a different exception to render Deck even in case of failure.
                 logger.error(f"Leaving eager execution because of {ee}")
                 base_error = ee
 
@@ -608,13 +614,15 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
 
 
 """
-signal handling
+signal handling - test local remote
 
+get local testing to work
 unit tests for worker_queue
 merge master again
 
-whatever niels comes up with for new local_entrypoint
+figure out local sandbox testing pattern
 
+whatever niels comes up with for new local_entrypoint
 actual remote handling, meet with thomas, auth story
 
 pure watch informer pattern

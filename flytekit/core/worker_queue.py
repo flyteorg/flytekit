@@ -8,7 +8,7 @@ import threading
 import typing
 from dataclasses import dataclass
 
-from flytekit.configuration import SerializationSettings
+from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.constants import EAGER_ROOT_ENV_NAME, EAGER_TAG_KEY, EAGER_TAG_ROOT_KEY
 from flytekit.core.launch_plan import LaunchPlan
@@ -163,6 +163,10 @@ class PollingInformer:
         developer_logger.debug(f"Started watch with future {f}")
 
 
+# A flag to ensure the handler runs only once
+handling_signal = 0
+
+
 class Controller:
     def __init__(self, remote: FlyteRemote, ss: SerializationSettings, tag: str, root_tag: str, exec_prefix: str):
         logger.warning(
@@ -170,10 +174,9 @@ class Controller:
             f" {tag=}, {root_tag=}, {exec_prefix=} and ss: {ss}"
         )
         # Set up things for this controller to operate
-        self.__lock = threading.Lock()
-        self.stop_condition = threading.Event()
-        # add selector policy to loop selection
+        # todo:async add selector policy to loop selection
         self.__loop = asyncio.new_event_loop()
+        self.stop_condition = threading.Event()
         self.__runner_thread: threading.Thread = threading.Thread(
             target=self._execute, daemon=True, name="controller-loop-runner"
         )
@@ -215,7 +218,10 @@ class Controller:
         try:
             loop.run_forever()
         finally:
-            loop.close()
+            print("@@@@@@@@@@@@@@@", flush=True)
+            self.stop_condition.set()
+            print("@@@@@@@@@@@@@@@ 2", flush=True)
+            logger.info("Event loop stopped and event set.")
 
     def get_labels(self) -> Labels:
         """
@@ -234,7 +240,7 @@ class Controller:
     def get_execution_name(self, entity: RunnableEntity, idx: int, input_kwargs: dict[str, typing.Any]) -> str:
         """Make a deterministic name"""
         # todo: Move the transform of python native values to literals up to the controller, and use pb hashing/user
-        #   provided hashmethods to comprise the input_kwargs part
+        #   provided hashmethods to comprise the input_kwargs part. Merely printing input_kwargs is not strictly correct
         components = f"{self.tag}-{type(entity)}-{entity.name}-{idx}-{input_kwargs}"
 
         # has the components into something deterministic
@@ -295,6 +301,7 @@ class Controller:
                     options=options,
                     envs=e,
                 )
+                # Note: sigint handling will not kick in and terminate this execution until the watch is started
                 logger.info(f"Successfully started execution {wf_exec.id.name}")
                 state.set_exec(wf_exec)
 
@@ -364,3 +371,77 @@ class Controller:
                 )
 
         return output
+
+    def get_signal_handler(self):
+        def signal_handler(signum, frame):
+            print(f"Inside signal_handler, received {signum}", flush=True)
+            global handling_signal
+            if handling_signal:
+                if handling_signal > 3:
+                    exit(1)
+                print("Signal already being handled. Please wait...")
+                handling_signal += 1
+                return
+
+            handling_signal += 1
+            self.__loop.stop()  # stop the loop
+            print("---------- marker 10", flush=True)
+            for _, work_list in self.entries.items():
+                for work in work_list:
+                    if not work.wf_exec.is_done:
+                        self.remote.terminate(work.wf_exec, "eager execution cancelled")
+                        logger.warning(f"Cancelled {work.wf_exec.id.name}")
+
+            exit(1)
+            # self.stop_condition.wait()  # wait for the loop to set this.
+            # tasks = asyncio.all_tasks(loop=self.__loop)
+            # for t in tasks:
+            #     print(f"Canceling! {t.get_name()}", flush=True)
+            #     t.cancel()
+            # group = asyncio.gather(*tasks, return_exceptions=True)
+            # self.__loop.run_until_complete(group)
+            # self.__loop.close()
+            # cleanup_thread = threading.Thread(
+            #     target=self._cleanup, name="controller-cleanup"
+            # )
+            #
+            # cleanup_thread.start()
+            # print("---------- marker 11", flush=True)
+            #
+            # cleanup_thread.join()
+
+        return signal_handler
+
+    def _cleanup(self) -> None:
+        print("---------- marker 2", flush=True)
+        tasks = asyncio.all_tasks(loop=self.__loop)
+        print("---------- marker 3", flush=True)
+        for t in tasks:
+            print(f"Canceling! {t.get_name()}", flush=True)
+            t.cancel()
+        print("---------- marker 4", flush=True)
+        group = asyncio.gather(*tasks, return_exceptions=True)
+        print("---------- marker 5", flush=True)
+        self.__loop.run_until_complete(group)
+        print("---------- marker 6", flush=True)
+        self.__loop.close()
+
+    @classmethod
+    def for_sandbox(cls, exec_prefix: typing.Optional[str] = None) -> Controller:
+        from flytekit.core.context_manager import FlyteContextManager
+        from flytekit.remote import FlyteRemote
+
+        ctx = FlyteContextManager.current_context()
+        remote = FlyteRemote.for_sandbox()
+        ss = ctx.serialization_settings
+        if not ss:
+            ss = SerializationSettings(
+                image_config=ImageConfig.auto_default_image(),
+            )
+
+        rand = ctx.file_access.get_random_string()
+        root_tag = tag = f"eager-local-{rand}"
+        exec_prefix = exec_prefix or f"e-{rand[:16]}"
+
+        c = Controller(remote=remote, ss=ss, tag=tag, root_tag=root_tag, exec_prefix=exec_prefix)
+        return c
