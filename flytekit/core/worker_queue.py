@@ -82,9 +82,9 @@ class WorkItem:
         self.fut._loop.call_soon_threadsafe(self.fut.set_result, result)
 
     def set_error(self, e: BaseException):
-        assert self.wf_exec is not None
         developer_logger.debug(
-            f"Setting error for {self.wf_exec.id.name} on thread {threading.current_thread().name} to {e}"
+            f"Setting error for {self.wf_exec.id.name if self.wf_exec else 'unstarted execution'}"
+            f" on thread {threading.current_thread().name} to {e}"
         )
         self.error = e
         self.fut._loop.call_soon_threadsafe(self.fut.set_exception, e)
@@ -176,7 +176,6 @@ class Controller:
         # Set up things for this controller to operate
         # todo:async add selector policy to loop selection
         self.__loop = asyncio.new_event_loop()
-        self.stop_condition = threading.Event()
         self.__runner_thread: threading.Thread = threading.Thread(
             target=self._execute, daemon=True, name="controller-loop-runner"
         )
@@ -218,10 +217,7 @@ class Controller:
         try:
             loop.run_forever()
         finally:
-            print("@@@@@@@@@@@@@@@", flush=True)
-            self.stop_condition.set()
-            print("@@@@@@@@@@@@@@@ 2", flush=True)
-            logger.info("Event loop stopped and event set.")
+            logger.error("Controller event loop stopped.")
 
     def get_labels(self) -> Labels:
         """
@@ -373,19 +369,24 @@ class Controller:
         return output
 
     def get_signal_handler(self):
+        """
+        TODO: At some point, this loop would be ideally managed by the loop manager, and the signal handler should
+          gracefully initiate shutdown of all loops, calling .cancel() on all tasks, allowing each loop to clean up,
+          starting with the deepest loop/thread first and working up.
+        """
+
         def signal_handler(signum, frame):
-            print(f"Inside signal_handler, received {signum}", flush=True)
+            logger.warning(f"Received signal {signum}, initiating signal handler")
             global handling_signal
             if handling_signal:
-                if handling_signal > 3:
+                if handling_signal > 2:
                     exit(1)
-                print("Signal already being handled. Please wait...")
+                logger.warning("Signal already being handled. Please wait...")
                 handling_signal += 1
                 return
 
             handling_signal += 1
             self.__loop.stop()  # stop the loop
-            print("---------- marker 10", flush=True)
             for _, work_list in self.entries.items():
                 for work in work_list:
                     if not work.wf_exec.is_done:
@@ -393,38 +394,8 @@ class Controller:
                         logger.warning(f"Cancelled {work.wf_exec.id.name}")
 
             exit(1)
-            # self.stop_condition.wait()  # wait for the loop to set this.
-            # tasks = asyncio.all_tasks(loop=self.__loop)
-            # for t in tasks:
-            #     print(f"Canceling! {t.get_name()}", flush=True)
-            #     t.cancel()
-            # group = asyncio.gather(*tasks, return_exceptions=True)
-            # self.__loop.run_until_complete(group)
-            # self.__loop.close()
-            # cleanup_thread = threading.Thread(
-            #     target=self._cleanup, name="controller-cleanup"
-            # )
-            #
-            # cleanup_thread.start()
-            # print("---------- marker 11", flush=True)
-            #
-            # cleanup_thread.join()
 
         return signal_handler
-
-    def _cleanup(self) -> None:
-        print("---------- marker 2", flush=True)
-        tasks = asyncio.all_tasks(loop=self.__loop)
-        print("---------- marker 3", flush=True)
-        for t in tasks:
-            print(f"Canceling! {t.get_name()}", flush=True)
-            t.cancel()
-        print("---------- marker 4", flush=True)
-        group = asyncio.gather(*tasks, return_exceptions=True)
-        print("---------- marker 5", flush=True)
-        self.__loop.run_until_complete(group)
-        print("---------- marker 6", flush=True)
-        self.__loop.close()
 
     @classmethod
     def for_sandbox(cls, exec_prefix: typing.Optional[str] = None) -> Controller:
