@@ -5,6 +5,7 @@ from flytekit.core.context_manager import BranchEvalMode, ExecutionState, FlyteC
 from flytekit.core.promise import Promise, VoidPromise, create_and_link_node_from_remote, extract_obj_name
 from flytekit.exceptions import user as user_exceptions
 from flytekit.loggers import logger
+from flytekit.models.core.identifier import Identifier
 from flytekit.models.core.workflow import NodeMetadata
 
 
@@ -19,6 +20,10 @@ class RemoteEntity(ABC):
     @property
     @abstractmethod
     def name(self) -> str: ...
+
+    @property
+    @abstractmethod
+    def id(self) -> Identifier: ...
 
     def construct_node_metadata(self) -> NodeMetadata:
         """

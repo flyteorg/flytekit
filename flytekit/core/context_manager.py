@@ -37,9 +37,9 @@ from flytekit.loggers import developer_logger, user_space_logger
 from flytekit.models.core import identifier as _identifier
 
 if typing.TYPE_CHECKING:
-    from flytekit.core.worker_queue import Controller
     from flytekit.clients import friendly as friendly_client  # noqa
     from flytekit.clients.friendly import SynchronousFlyteClient
+    from flytekit.core.worker_queue import Controller
     from flytekit.deck.deck import Deck
 
 # TODO: resolve circular import from flytekit.core.python_auto_container import TaskResolverMixin

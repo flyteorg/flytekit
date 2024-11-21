@@ -1603,6 +1603,7 @@ class FlyteRemote(object):
                 tags=tags,
                 cluster_pool=cluster_pool,
                 execution_cluster_label=execution_cluster_label,
+                options=options,
             )
         if isinstance(entity, WorkflowBase):
             return self.execute_local_workflow(
@@ -1900,6 +1901,7 @@ class FlyteRemote(object):
         tags: typing.Optional[typing.List[str]] = None,
         cluster_pool: typing.Optional[str] = None,
         execution_cluster_label: typing.Optional[str] = None,
+        options: typing.Optional[Options] = None,
     ) -> FlyteWorkflowExecution:
         """
         Execute a @task-decorated function or TaskTemplate task.
@@ -1918,6 +1920,8 @@ class FlyteRemote(object):
         :param tags: Tags to set for the execution.
         :param cluster_pool: Specify cluster pool on which newly created execution should be placed.
         :param execution_cluster_label: Specify label of cluster(s) on which newly created execution should be placed.
+        :param options: Options to customize the execution.
+
         :return: FlyteWorkflowExecution object.
         """
         ss = SerializationSettings(
@@ -1956,6 +1960,7 @@ class FlyteRemote(object):
             wait=wait,
             type_hints=entity.python_interface.inputs,
             overwrite_cache=overwrite_cache,
+            options=options,
             envs=envs,
             tags=tags,
             cluster_pool=cluster_pool,
