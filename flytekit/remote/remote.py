@@ -2008,7 +2008,7 @@ class FlyteRemote(object):
     ) -> FlyteWorkflowExecution:
         """
         Execute an @workflow decorated function.
-        
+
         :param entity: The workflow to execute
         :param inputs: Input dictionary
         :param project: Project to execute in
