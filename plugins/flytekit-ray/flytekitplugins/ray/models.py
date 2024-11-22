@@ -105,7 +105,7 @@ class WorkerGroupSpec(_common.FlyteIdlEntity):
             min_replicas=proto.min_replicas,
             max_replicas=proto.max_replicas,
             ray_start_params=proto.ray_start_params,
-            k8s_pod=(K8sPod.from_flyte_idl(proto.k8s_pod) if proto.HasField("k8s_pod") else None),
+            k8s_pod=K8sPod.from_flyte_idl(proto.k8s_pod) if proto.HasField("k8s_pod") else None,
         )
 
 
@@ -160,7 +160,7 @@ class HeadGroupSpec(_common.FlyteIdlEntity):
         """
         return cls(
             ray_start_params=proto.ray_start_params,
-            k8s_pod=(K8sPod.from_flyte_idl(proto.k8s_pod) if proto.HasField("k8s_pod") else None),
+            k8s_pod=K8sPod.from_flyte_idl(proto.k8s_pod) if proto.HasField("k8s_pod") else None,
         )
 
 
@@ -208,7 +208,7 @@ class RayCluster(_common.FlyteIdlEntity):
         :rtype: flyteidl.plugins._ray_pb2.RayCluster
         """
         return _ray_pb2.RayCluster(
-            head_group_spec=(self.head_group_spec.to_flyte_idl() if self.head_group_spec else None),
+            head_group_spec=self.head_group_spec.to_flyte_idl() if self.head_group_spec else None,
             worker_group_spec=[wg.to_flyte_idl() for wg in self.worker_group_spec],
             enable_autoscaling=self.enable_autoscaling,
         )
@@ -220,7 +220,7 @@ class RayCluster(_common.FlyteIdlEntity):
         :rtype: RayCluster
         """
         return cls(
-            head_group_spec=(HeadGroupSpec.from_flyte_idl(proto.head_group_spec) if proto.head_group_spec else None),
+            head_group_spec=HeadGroupSpec.from_flyte_idl(proto.head_group_spec) if proto.head_group_spec else None,
             worker_group_spec=[WorkerGroupSpec.from_flyte_idl(wg) for wg in proto.worker_group_spec],
             enable_autoscaling=proto.enable_autoscaling,
         )
