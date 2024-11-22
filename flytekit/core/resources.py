@@ -107,14 +107,14 @@ def construct_k8s_pod_spec_from_resources(
     requests: Optional[Resources],
     limits: Optional[Resources],
 ) -> dict[str, Any]:
-    def _construct_k8s_pods_resources(resources: Optional[Resources]):
+    def _construct_k8s_pods_resources(resources: Optional[Resources], k8s_gpu_resource_key: str = "nvidia.com/gpu"):
         if resources is None:
             return None
 
         resources_map = {
             "cpu": "cpu",
             "mem": "memory",
-            "gpu": "nvidia.com/gpu",
+            "gpu": k8s_gpu_resource_key,
             "ephemeral_storage": "ephemeral-storage",
         }
 
