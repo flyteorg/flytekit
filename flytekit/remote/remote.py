@@ -1331,6 +1331,7 @@ class FlyteRemote(object):
 
         type_hints = type_hints or {}
         literal_map = {}
+
         with self.remote_context() as ctx:
             input_flyte_type_map = entity.interface.inputs
 
@@ -1358,9 +1359,7 @@ class FlyteRemote(object):
                     )
                     lit = TypeEngine.to_literal(ctx, v, hint, variable.type)
                 literal_map[k] = lit
-
             literal_inputs = literal_models.LiteralMap(literals=literal_map)
-
         try:
             # Currently, this will only execute the flyte entity referenced by
             # flyte_id in the same project and domain. However, it is possible to execute it in a different project
@@ -1949,7 +1948,6 @@ class FlyteRemote(object):
             # todo:async If this is being registered from eager, it will not reflect the full serialization settings
             #   object. How should it be piped in?
             flyte_task: FlyteTask = self.register_task(entity, ss, version)
-
         return self.execute(
             flyte_task,
             inputs,

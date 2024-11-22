@@ -6,6 +6,7 @@ import hashlib
 import re
 import threading
 import typing
+from concurrent.futures import Future
 from dataclasses import dataclass
 
 from flytekit.configuration import ImageConfig, SerializationSettings
@@ -16,6 +17,7 @@ from flytekit.core.options import Options
 from flytekit.core.reference_entity import ReferenceEntity
 from flytekit.core.utils import _dnsify
 from flytekit.core.workflow import WorkflowBase
+from flytekit.exceptions.system import FlyteSystemException
 from flytekit.loggers import developer_logger, logger
 from flytekit.models.common import Labels
 from flytekit.models.core.execution import WorkflowExecutionPhase
@@ -154,13 +156,23 @@ class PollingInformer:
 
     def watch(self, work: WorkItem):
         coro = self.watch_one(work)
-        # both of these seem to work, but I think run_coroutine_threadsafe makes more sense in case *this* thread is
-        # ever different than the thread that self.__loop is running on.
-        # t = self.__loop.create_task(coro)
+        # both run_coroutine_threadsafe and self.__loop.create_task seem to work, but the first makes
+        # more sense in case *this* thread is ever different than the thread that self.__loop is running on.
         f = asyncio.run_coroutine_threadsafe(coro, self.__loop)
-        # Just print a message with the future, no need to return it anywhere, unless we want to pass it back to
-        # launch_and_start_watch and save this also in the State object somewhere.
+
         developer_logger.debug(f"Started watch with future {f}")
+
+        def cb(fut: Future):
+            """
+            This cb takes care of any exceptions that might be thrown in the watch_one coroutine
+            Note: This is a concurrent Future not an asyncio Future
+            """
+            e = fut.exception()
+            if e:
+                logger.error(f"Error in watch for {work.entity.name} with {work.input_kwargs}: {e}")
+                work.set_error(e)
+
+        f.add_done_callback(cb)
 
 
 # A flag to ensure the handler runs only once
@@ -169,13 +181,15 @@ handling_signal = 0
 
 class Controller:
     def __init__(self, remote: FlyteRemote, ss: SerializationSettings, tag: str, root_tag: str, exec_prefix: str):
-        logger.warning(
+        logger.debug(
             f"Creating Controller for eager execution with {remote.config.platform.endpoint},"
             f" {tag=}, {root_tag=}, {exec_prefix=} and ss: {ss}"
         )
         # Set up things for this controller to operate
         # todo:async add selector policy to loop selection
         self.__loop = asyncio.new_event_loop()
+        # TODO: the loop manager in asyn.py also needs an exception handler
+        self.__loop.set_exception_handler(self.exc_handler)
         self.__runner_thread: threading.Thread = threading.Thread(
             target=self._execute, daemon=True, name="controller-loop-runner"
         )
@@ -211,6 +225,10 @@ class Controller:
     def _close(self) -> None:
         if self.__loop:
             self.__loop.stop()
+
+    @staticmethod
+    def exc_handler(loop, context):
+        logger.error(f"Caught exception in loop {loop} with context {context}")
 
     def _execute(self) -> None:
         loop = self.__loop
@@ -249,63 +267,46 @@ class Controller:
         exec_name = _dnsify(exec_name)
         return exec_name
 
-    def launch_and_start_watch(self, key: str, idx):
+    def launch_and_start_watch(self, wi: WorkItem, idx: int):
         """This function launches executions. This is called via the loop, so it needs exception handling"""
-        # The reason the error handling is complicated is because if there is an error in the getting of the work item
-        # object, then there is no way to pass that error to the future that is being awaited on by the user.
-        # So errors in getting the work item will just crash the system for now, but other errors will correctly set
-        # the exception on the future.
-        if key not in self.entries:
-            logger.error(f"Key {key} not found in entries")
-            # Bad error, terminate everything
-            # todo: more graceful error handling
-            import sys
-
-            sys.exit(1)
-
-        state = None
         try:
-            state = self.entries[key][idx]
-        except IndexError:
-            logger.error(f"Index {idx} not found in entries for key {key}, entries: {self.entries}")
-            # Bad error, terminate everything
-            import sys
-
-            sys.exit(1)
-        try:
-            if state.result is None and state.error is None:
+            if wi.result is None and wi.error is None:
                 l = self.get_labels()
                 e = self.get_env()
                 options = Options(labels=l)
-                exec_name = self.get_execution_name(state.entity, idx, state.input_kwargs)
-                logger.info(f"Generated execution name {exec_name} for {idx}th call of {state.entity.name}")
+                exec_name = self.get_execution_name(wi.entity, idx, wi.input_kwargs)
+                logger.info(f"Generated execution name {exec_name} for {idx}th call of {wi.entity.name}")
                 from flytekit.remote.remote_callable import RemoteEntity
 
-                if isinstance(state.entity, RemoteEntity):
-                    version = state.entity.id.version
+                if isinstance(wi.entity, RemoteEntity):
+                    version = wi.entity.id.version
                 else:
                     version = self.ss.version
 
                 # todo: if the execution already exists, remote.execute will return that execution. in the future
                 #  we can add input checking to make sure the inputs are indeed a match.
                 wf_exec = self.remote.execute(
-                    entity=state.entity,
+                    entity=wi.entity,
                     execution_name=exec_name,
-                    inputs=state.input_kwargs,
+                    inputs=wi.input_kwargs,
                     version=version,
                     image_config=self.ss.image_config,
                     options=options,
                     envs=e,
                 )
-                # Note: sigint handling will not kick in and terminate this execution until the watch is started
                 logger.info(f"Successfully started execution {wf_exec.id.name}")
-                state.set_exec(wf_exec)
+                wi.set_exec(wf_exec)
 
                 # if successful then start watch on the execution
-                self.informer.watch(state)
+                self.informer.watch(wi)
+            else:
+                raise AssertionError(
+                    "This launch function should not be invoked for work items already" " with result or error"
+                )
         except Exception as e:
-            logger.error(f"Error launching execution for {state.entity.name} with {state.input_kwargs}")
-            state.set_error(e)
+            # all exceptions get registered onto the future.
+            logger.error(f"Error launching execution for {wi.entity.name} with {wi.input_kwargs}")
+            wi.set_error(e)
 
     def add(
         self, task_loop: asyncio.AbstractEventLoop, entity: RunnableEntity, input_kwargs: dict[str, typing.Any]
@@ -324,8 +325,7 @@ class Controller:
         idx = len(self.entries[entity.name]) - 1
 
         # trigger a run of the launching function.
-        self.__loop.call_soon_threadsafe(self.launch_and_start_watch, entity.name, idx)
-
+        self.__loop.call_soon_threadsafe(self.launch_and_start_watch, i, idx)
         return fut
 
     def render_html(self) -> str:
@@ -389,10 +389,12 @@ class Controller:
             self.__loop.stop()  # stop the loop
             for _, work_list in self.entries.items():
                 for work in work_list:
-                    if not work.wf_exec.is_done:
-                        self.remote.terminate(work.wf_exec, "eager execution cancelled")
-                        logger.warning(f"Cancelled {work.wf_exec.id.name}")
-
+                    if work.wf_exec and not work.wf_exec.is_done:
+                        try:
+                            self.remote.terminate(work.wf_exec, "eager execution cancelled")
+                            logger.warning(f"Cancelled {work.wf_exec.id.name}")
+                        except FlyteSystemException as e:
+                            logger.info(f"Error cancelling {work.wf_exec.id.name}, may already be cancelled: {e}")
             exit(1)
 
         return signal_handler
@@ -403,14 +405,14 @@ class Controller:
         from flytekit.remote import FlyteRemote
 
         ctx = FlyteContextManager.current_context()
-        remote = FlyteRemote.for_sandbox()
+        remote = FlyteRemote.for_sandbox(default_project="flytesnacks", default_domain="development")
+        rand = ctx.file_access.get_random_string()
         ss = ctx.serialization_settings
         if not ss:
             ss = SerializationSettings(
                 image_config=ImageConfig.auto_default_image(),
+                version=f"v{rand[:8]}",
             )
-
-        rand = ctx.file_access.get_random_string()
         root_tag = tag = f"eager-local-{rand}"
         exec_prefix = exec_prefix or f"e-{rand[:16]}"
 

@@ -1,5 +1,6 @@
 import pytest
 from flytekit.core.task import task
+from flytekit.core.worker_queue import Controller
 from flytekit.utils.asyn import loop_manager
 from flytekit.experimental.eager_function import eager
 from flytekit.core.context_manager import FlyteContextManager
@@ -36,8 +37,10 @@ def test_easy_2():
     raw_output = f"s3://my-s3-bucket/testing/async_test/raw_output/"
     print(f"Using raw output location: {raw_output}")
     provider = FileAccessProvider(local_sandbox_dir="/tmp/unittest", raw_output_prefix=raw_output, data_config=dc)
-
-    with FlyteContextManager.with_context(ctx.with_file_access(provider).with_client(remote.client)) as ctx:
-        res = loop_manager.run_sync(simple_eager_workflow.run_with_backend, ctx, x=1)
+    c = Controller.for_sandbox()
+    with FlyteContextManager.with_context(
+            ctx.with_file_access(provider).with_client(remote.client).with_worker_queue(c)
+    ):
+        res = loop_manager.run_sync(simple_eager_workflow.run_with_backend, x=1)
         print(res)
         assert res == 42
