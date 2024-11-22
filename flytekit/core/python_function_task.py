@@ -542,6 +542,7 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
                 return await self._task_function(**kwargs)
 
     def execute(self, **kwargs) -> Any:
+        from flytekit.experimental.eager_function import _internal_demo_remote
         from flytekit.remote.remote import FlyteRemote
         from flytekit.experimental.eager_function import _internal_demo_remote
 
@@ -589,6 +590,7 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
         with FlyteContextManager.with_context(builder):
             return loop_manager.run_sync(self.async_execute, self, **kwargs)
 
+    # easier to use explicit input kwargs
     async def run_with_backend(self, **kwargs):
         """
         This is the main entry point to kick off a live run. Like if you're running locally, but want to use a
@@ -619,14 +621,15 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
 
 
 """
-unit tests for worker_queue
+summarize auth patterns
+talk about ux for local run and implement.
+
 merge master again
 
 ux related:
 get local testing to work
 figure out local sandbox testing pattern
-whatever niels comes up with for new local_entrypoint
-actual remote handling, meet with thomas, auth story
+actual remote handling
 
 pure watch informer pattern
 

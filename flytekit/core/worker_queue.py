@@ -267,63 +267,46 @@ class Controller:
         exec_name = _dnsify(exec_name)
         return exec_name
 
-    def launch_and_start_watch(self, key: str, idx):
+    def launch_and_start_watch(self, wi: WorkItem, idx: int):
         """This function launches executions. This is called via the loop, so it needs exception handling"""
-        # The reason the error handling is complicated is because if there is an error in the getting of the work item
-        # object, then there is no way to pass that error to the future that is being awaited on by the user.
-        # So errors in getting the work item will just crash the system for now, but other errors will correctly set
-        # the exception on the future.
-        if key not in self.entries:
-            logger.error(f"Key {key} not found in entries")
-            # Bad error, terminate everything
-            # todo: more graceful error handling
-            import sys
-
-            sys.exit(1)
-
-        state = None
         try:
-            state = self.entries[key][idx]
-        except IndexError:
-            logger.error(f"Index {idx} not found in entries for key {key}, entries: {self.entries}")
-            # Bad error, terminate everything
-            import sys
-
-            sys.exit(1)
-        try:
-            if state.result is None and state.error is None:
+            if wi.result is None and wi.error is None:
                 l = self.get_labels()
                 e = self.get_env()
                 options = Options(labels=l)
-                exec_name = self.get_execution_name(state.entity, idx, state.input_kwargs)
-                logger.info(f"Generated execution name {exec_name} for {idx}th call of {state.entity.name}")
+                exec_name = self.get_execution_name(wi.entity, idx, wi.input_kwargs)
+                logger.info(f"Generated execution name {exec_name} for {idx}th call of {wi.entity.name}")
                 from flytekit.remote.remote_callable import RemoteEntity
 
-                if isinstance(state.entity, RemoteEntity):
-                    version = state.entity.id.version
+                if isinstance(wi.entity, RemoteEntity):
+                    version = wi.entity.id.version
                 else:
                     version = self.ss.version
 
                 # todo: if the execution already exists, remote.execute will return that execution. in the future
                 #  we can add input checking to make sure the inputs are indeed a match.
                 wf_exec = self.remote.execute(
-                    entity=state.entity,
+                    entity=wi.entity,
                     execution_name=exec_name,
-                    inputs=state.input_kwargs,
+                    inputs=wi.input_kwargs,
                     version=version,
                     image_config=self.ss.image_config,
                     options=options,
                     envs=e,
                 )
-                # Note: sigint handling will not kick in and terminate this execution until the watch is started
                 logger.info(f"Successfully started execution {wf_exec.id.name}")
-                state.set_exec(wf_exec)
+                wi.set_exec(wf_exec)
 
                 # if successful then start watch on the execution
-                self.informer.watch(state)
+                self.informer.watch(wi)
+            else:
+                raise AssertionError(
+                    "This launch function should not be invoked for work items already" " with result or error"
+                )
         except Exception as e:
-            logger.error(f"Error launching execution for {state.entity.name} with {state.input_kwargs}")
-            state.set_error(e)
+            # all exceptions get registered onto the future.
+            logger.error(f"Error launching execution for {wi.entity.name} with {wi.input_kwargs}")
+            wi.set_error(e)
 
     def add(
         self, task_loop: asyncio.AbstractEventLoop, entity: RunnableEntity, input_kwargs: dict[str, typing.Any]
@@ -342,8 +325,7 @@ class Controller:
         idx = len(self.entries[entity.name]) - 1
 
         # trigger a run of the launching function.
-        self.__loop.call_soon_threadsafe(self.launch_and_start_watch, entity.name, idx)
-
+        self.__loop.call_soon_threadsafe(self.launch_and_start_watch, i, idx)
         return fut
 
     def render_html(self) -> str:
@@ -407,7 +389,7 @@ class Controller:
             self.__loop.stop()  # stop the loop
             for _, work_list in self.entries.items():
                 for work in work_list:
-                    if not work.wf_exec.is_done:
+                    if work.wf_exec and not work.wf_exec.is_done:
                         try:
                             self.remote.terminate(work.wf_exec, "eager execution cancelled")
                             logger.warning(f"Cancelled {work.wf_exec.id.name}")
