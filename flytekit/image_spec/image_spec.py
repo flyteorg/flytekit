@@ -240,7 +240,10 @@ class ImageSpec:
             if e.response.status_code == 404:
                 return False
 
-            if re.match(f"unknown: repository .*{self.name} not found", e.explanation):
+            if re.match(
+                f"unknown: (artifact|repository) .*{self.name}(|:{self.tag}) not found",
+                e.explanation,
+            ):
                 click.secho(f"Received 500 error with explanation: {e.explanation}", fg="yellow")
                 return False
 

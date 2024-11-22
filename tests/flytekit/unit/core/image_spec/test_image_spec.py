@@ -114,7 +114,7 @@ def test_build_existing_image_with_force_push():
     image_spec = ImageSpec(name="hello", builder="test").force_push()
 
     builder = Mock()
-    builder.build_image.return_value = "new_image_name"
+    builder.build_image.return_value = "fqn.xyz/new_image_name:v-test"
     ImageBuildEngine.register("test", builder)
 
     ImageBuildEngine.build(image_spec)
