@@ -799,3 +799,19 @@ def test_get_control_plane_version():
     client = _SynchronousFlyteClient(PlatformConfig.for_endpoint("localhost:30080", True))
     version = client.get_control_plane_version()
     assert version == "unknown" or version.startswith("v")
+
+def test_signal_approve_reject():
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    conditional_wf = remote.fetch_workflow(name="basic.conditional_wf.conditional_wf", version=VERSION)
+
+    execution = remote.execute(conditional_wf, inputs={"data": [1.0, 2.0, 3.0, 4.0, 5.0]})
+    remote.set_input("title-input", execution.id.name, "my report")
+    remote.approve("review-passes", execution.id.name)
+
+    assert execution.outputs["o0"] == {"title": "my report", "data": [1.0, 2.0, 3.0, 4.0, 5.0]}
+
+    execution = remote.execute(conditional_wf, inputs={"data": [1.0, 2.0, 3.0, 4.0, 5.0]})
+    remote.set_input("title-input", execution.id.name, "my report")
+    remote.reject("review-passes", execution.id.name)
+
+    assert execution.outputs["o0"] == {"invalid_report": True}
