@@ -1510,7 +1510,6 @@ class FlyteRemote(object):
             The ``name`` and ``version`` arguments do not apply to ``FlyteTask``, ``FlyteLaunchPlan``, and
             ``FlyteWorkflow`` entity inputs. These values are determined by referencing the entity identifier values.
         """
-        print("------------------------------ 1")
         if entity.python_interface:
             type_hints = type_hints or entity.python_interface.inputs
         if isinstance(entity, FlyteTask) or isinstance(entity, FlyteLaunchPlan):
@@ -1936,7 +1935,6 @@ class FlyteRemote(object):
             domain=domain or self._default_domain,
             version=version,
         )
-        print("elt----------- 1")
         pickled_target_dict = None
         if version is None and self.interactive_mode_enabled:
             md5_bytes, pickled_target_dict = _get_pickled_target_dict(entity)
@@ -1947,7 +1945,6 @@ class FlyteRemote(object):
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
         resolved_identifiers_dict = asdict(resolved_identifiers)
         try:
-            print("elt----------- 2")
             flyte_task: FlyteTask = self.fetch_task(**resolved_identifiers_dict)
             flyte_task.python_interface = entity.python_interface
         except FlyteEntityNotExistException:
@@ -1957,7 +1954,6 @@ class FlyteRemote(object):
             # todo:async If this is being registered from eager, it will not reflect the full serialization settings
             #   object. How should it be piped in?
             flyte_task: FlyteTask = self.register_task(entity, ss, version)
-        print("elt----------- 3")
         return self.execute(
             flyte_task,
             inputs,

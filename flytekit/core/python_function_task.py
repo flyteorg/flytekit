@@ -542,8 +542,8 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
                 return await self._task_function(**kwargs)
 
     def execute(self, **kwargs) -> Any:
-        from flytekit.remote.remote import FlyteRemote
         from flytekit.experimental.eager_function import _internal_demo_remote
+        from flytekit.remote.remote import FlyteRemote
 
         # client = ctx.flyte_client
         remote = FlyteRemote.for_sandbox(default_project="flytesnacks", default_domain="development")
@@ -620,10 +620,8 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
 
 
 """
-add more unit tests for worker_queue launch, watch_one error handling
-
+summarize auth patterns
 talk about ux for local run and implement.
-manually go over auth patterns
 
 merge master again
 

@@ -271,7 +271,6 @@ class Controller:
         """This function launches executions. This is called via the loop, so it needs exception handling"""
         try:
             if wi.result is None and wi.error is None:
-                print("--------------------here !!!!!!!!!!!!!!!!!!!!!!!!!!!! 1")
                 l = self.get_labels()
                 e = self.get_env()
                 options = Options(labels=l)
@@ -286,7 +285,6 @@ class Controller:
 
                 # todo: if the execution already exists, remote.execute will return that execution. in the future
                 #  we can add input checking to make sure the inputs are indeed a match.
-                print("--------------------here !!!!!!!!!!!!!!!!!!!!!!!!!!!! 2")
                 wf_exec = self.remote.execute(
                     entity=wi.entity,
                     execution_name=exec_name,
@@ -296,7 +294,6 @@ class Controller:
                     options=options,
                     envs=e,
                 )
-                print("--------------------here !!!!!!!!!!!!!!!!!!!!!!!!!!!! 4")
                 # Note: sigint handling will not kick in and terminate this execution until the watch is started
                 logger.info(f"Successfully started execution {wf_exec.id.name}")
                 wi.set_exec(wf_exec)
@@ -304,10 +301,11 @@ class Controller:
                 # if successful then start watch on the execution
                 self.informer.watch(wi)
             else:
-                raise AssertionError("weird state")
+                raise AssertionError(
+                    "This launch function should not be invoked for work items already" " with result or error"
+                )
         except Exception as e:
             # all exceptions get registered onto the future.
-            print("--------------------here !!!!!!!!!!!!!!!!!!!!!!!!!!!! 3")
             logger.error(f"Error launching execution for {wi.entity.name} with {wi.input_kwargs}")
             wi.set_error(e)
 
