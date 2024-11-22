@@ -6,6 +6,7 @@ import hashlib
 import re
 import threading
 import typing
+from concurrent.futures import Future
 from dataclasses import dataclass
 
 from flytekit.configuration import ImageConfig, SerializationSettings
@@ -16,6 +17,7 @@ from flytekit.core.options import Options
 from flytekit.core.reference_entity import ReferenceEntity
 from flytekit.core.utils import _dnsify
 from flytekit.core.workflow import WorkflowBase
+from flytekit.exceptions.system import FlyteSystemException
 from flytekit.loggers import developer_logger, logger
 from flytekit.models.common import Labels
 from flytekit.models.core.execution import WorkflowExecutionPhase
@@ -159,7 +161,18 @@ class PollingInformer:
         f = asyncio.run_coroutine_threadsafe(coro, self.__loop)
 
         developer_logger.debug(f"Started watch with future {f}")
-        # todo:async f.add_done_callback()
+
+        def cb(fut: Future):
+            """
+            This cb takes care of any exceptions that might be thrown in the watch_one coroutine
+            Note: This is a concurrent Future not an asyncio Future
+            """
+            e = fut.exception()
+            if e:
+                logger.error(f"Error in watch for {work.entity.name} with {work.input_kwargs}: {e}")
+                work.set_error(e)
+
+        f.add_done_callback(cb)
 
 
 # A flag to ensure the handler runs only once
@@ -395,9 +408,11 @@ class Controller:
             for _, work_list in self.entries.items():
                 for work in work_list:
                     if not work.wf_exec.is_done:
-                        self.remote.terminate(work.wf_exec, "eager execution cancelled")
-                        logger.warning(f"Cancelled {work.wf_exec.id.name}")
-
+                        try:
+                            self.remote.terminate(work.wf_exec, "eager execution cancelled")
+                            logger.warning(f"Cancelled {work.wf_exec.id.name}")
+                        except FlyteSystemException as e:
+                            logger.info(f"Error cancelling {work.wf_exec.id.name}, may already be cancelled: {e}")
             exit(1)
 
         return signal_handler

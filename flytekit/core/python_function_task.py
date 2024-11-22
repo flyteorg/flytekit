@@ -542,12 +542,11 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
                 return await self._task_function(**kwargs)
 
     def execute(self, **kwargs) -> Any:
-        from flytekit.experimental.eager_function import _internal_demo_remote
         from flytekit.remote.remote import FlyteRemote
 
         # client = ctx.flyte_client
         remote = FlyteRemote.for_sandbox(default_project="flytesnacks", default_domain="development")
-        remote = _internal_demo_remote(remote)
+        # remote = _internal_demo_remote(remote)
 
         ctx = FlyteContextManager.current_context()
         is_local_execution = cast(ExecutionState, ctx.execution_state).is_local_execution()
