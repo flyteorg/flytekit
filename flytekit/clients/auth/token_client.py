@@ -79,10 +79,10 @@ def get_token(
     http_proxy_url: typing.Optional[str] = None,
     verify: typing.Optional[typing.Union[bool, str]] = None,
     session: typing.Optional[requests.Session] = None,
-) -> typing.Tuple[str, int]:
+) -> typing.Tuple[str, str, int]:
     """
-    :rtype: (Text,Int) The first element is the access token retrieved from the IDP, the second is the expiration
-            in seconds
+    :rtype: (Text,Text, Int) The first element is the access token retrieved from the IDP, the second is the refresh token
+    retrieved from the IDP, the third is the expiration in seconds
     """
     headers = {
         "Cache-Control": "no-cache",
@@ -119,7 +119,11 @@ def get_token(
         raise AuthenticationError("Status Code ({}) received from IDP: {}".format(response.status_code, response.text))
 
     j = response.json()
-    return j["access_token"], j["expires_in"]
+    refresh_token = None
+    if "refresh_token" in j:
+        refresh_token = j["refresh_token"]
+
+    return j["access_token"], refresh_token, j["expires_in"]
 
 
 def get_device_code(
@@ -154,13 +158,13 @@ def poll_token_endpoint(
     scopes: typing.Optional[str] = None,
     http_proxy_url: typing.Optional[str] = None,
     verify: typing.Optional[typing.Union[bool, str]] = None,
-) -> typing.Tuple[str, int]:
+) -> typing.Tuple[str, str, int]:
     tick = datetime.now()
     interval = timedelta(seconds=resp.interval)
     end_time = tick + timedelta(seconds=resp.expires_in)
     while tick < end_time:
         try:
-            access_token, expires_in = get_token(
+            access_token, refresh_token, expires_in = get_token(
                 token_endpoint,
                 grant_type=GrantType.DEVICE_CODE,
                 client_id=client_id,
@@ -171,7 +175,7 @@ def poll_token_endpoint(
                 verify=verify,
             )
             print("Authentication successful!")
-            return access_token, expires_in
+            return access_token, refresh_token, expires_in
         except AuthenticationPending:
             ...
         except Exception as e:

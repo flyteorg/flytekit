@@ -237,7 +237,7 @@ class ClientCredentialsAuthenticator(Authenticator):
         logging.debug(f"Basic authorization flow with client id {self._client_id} scope {scopes}")
         authorization_header = token_client.get_basic_authorization_header(self._client_id, self._client_secret)
 
-        token, expires_in = token_client.get_token(
+        token, refresh_token, expires_in = token_client.get_token(
             token_endpoint=token_endpoint,
             authorization_header=authorization_header,
             http_proxy_url=self._http_proxy_url,
@@ -272,6 +272,9 @@ class DeviceCodeAuthenticator(Authenticator):
         session: typing.Optional[requests.Session] = None,
     ):
         cfg = cfg_store.get_client_config()
+        self._auth_client = None
+        self._authorization_endpoint = cfg.authorization_endpoint
+        self._redirect_uri = cfg.redirect_uri
         self._audience = audience or cfg.audience
         self._client_id = cfg.client_id
         self._device_auth_endpoint = cfg.device_authorization_endpoint
@@ -293,7 +296,36 @@ class DeviceCodeAuthenticator(Authenticator):
             verify=verify,
         )
 
+    def _initialize_auth_client(self):
+        if not self._auth_client:
+            self._set_header_key(self._header_key)
+            self._auth_client = AuthorizationClient(
+                endpoint=self._endpoint,
+                redirect_uri=self._redirect_uri,
+                client_id=self._client_id,
+                audience=self._audience,
+                scopes=self._scopes,
+                auth_endpoint=self._authorization_endpoint,
+                token_endpoint=self._token_endpoint,
+                verify=self._verify,
+                session=self._session,
+                refresh_access_token_params={},
+            )
+
     def refresh_credentials(self):
+        self._initialize_auth_client()
+        if self._creds:
+            """We have an access token so lets try to refresh it"""
+            try:
+                self._creds = self._auth_client.refresh_access_token(self._creds)
+                if self._creds:
+                    KeyringStore.store(self._creds)
+                return
+            except AccessTokenNotFoundError:
+                logging.warning("Failed to refresh token. Kicking off a full authorization flow.")
+                KeyringStore.delete(self._endpoint)
+
+        """Fall back to device flow"""
         resp = token_client.get_device_code(
             self._device_auth_endpoint,
             self._client_id,
@@ -308,9 +340,7 @@ class DeviceCodeAuthenticator(Authenticator):
         text = f"To Authenticate, navigate in a browser to the following URL: {click.style(full_uri, fg='blue', underline=True)}"
         click.secho(text)
         try:
-            # Currently the refresh token is not retrieved. We may want to add support for refreshTokens so that
-            # access tokens can be refreshed for once authenticated machines
-            token, expires_in = token_client.poll_token_endpoint(
+            token, refresh_token, expires_in = token_client.poll_token_endpoint(
                 resp,
                 self._token_endpoint,
                 client_id=self._client_id,
@@ -319,7 +349,9 @@ class DeviceCodeAuthenticator(Authenticator):
                 http_proxy_url=self._http_proxy_url,
                 verify=self._verify,
             )
-            self._creds = Credentials(access_token=token, expires_in=expires_in, for_endpoint=self._endpoint)
+            self._creds = Credentials(
+                access_token=token, refresh_token=refresh_token, expires_in=expires_in, for_endpoint=self._endpoint
+            )
             KeyringStore.store(self._creds)
         except Exception:
             KeyringStore.delete(self._endpoint)
