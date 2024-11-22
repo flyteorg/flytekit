@@ -543,6 +543,7 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
 
     def execute(self, **kwargs) -> Any:
         from flytekit.remote.remote import FlyteRemote
+        from flytekit.experimental.eager_function import _internal_demo_remote
 
         # client = ctx.flyte_client
         remote = FlyteRemote.for_sandbox(default_project="flytesnacks", default_domain="development")
