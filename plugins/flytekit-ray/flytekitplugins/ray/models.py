@@ -279,7 +279,7 @@ class RayJob(_common.FlyteIdlEntity):
     @classmethod
     def from_flyte_idl(cls, proto: _ray_pb2.RayJob):
         return cls(
-            ray_cluster=(RayCluster.from_flyte_idl(proto.ray_cluster) if proto.ray_cluster else None),
+            ray_cluster=RayCluster.from_flyte_idl(proto.ray_cluster) if proto.ray_cluster else None,
             runtime_env=proto.runtime_env,
             runtime_env_yaml=proto.runtime_env_yaml,
             ttl_seconds_after_finished=proto.ttl_seconds_after_finished,
