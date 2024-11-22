@@ -161,6 +161,7 @@ class PollingInformer:
         # Just print a message with the future, no need to return it anywhere, unless we want to pass it back to
         # launch_and_start_watch and save this also in the State object somewhere.
         developer_logger.debug(f"Started watch with future {f}")
+        # todo:async f.add_done_callback()
 
 
 # A flag to ensure the handler runs only once
@@ -169,13 +170,15 @@ handling_signal = 0
 
 class Controller:
     def __init__(self, remote: FlyteRemote, ss: SerializationSettings, tag: str, root_tag: str, exec_prefix: str):
-        logger.warning(
+        logger.debug(
             f"Creating Controller for eager execution with {remote.config.platform.endpoint},"
             f" {tag=}, {root_tag=}, {exec_prefix=} and ss: {ss}"
         )
         # Set up things for this controller to operate
         # todo:async add selector policy to loop selection
         self.__loop = asyncio.new_event_loop()
+        # TODO: the loop manager in asyn.py also needs an exception handler
+        self.__loop.set_exception_handler(self.exc_handler)
         self.__runner_thread: threading.Thread = threading.Thread(
             target=self._execute, daemon=True, name="controller-loop-runner"
         )
@@ -211,6 +214,10 @@ class Controller:
     def _close(self) -> None:
         if self.__loop:
             self.__loop.stop()
+
+    @staticmethod
+    def exc_handler(loop, context):
+        logger.error(f"Caught exception in loop {loop} with context {context}")
 
     def _execute(self) -> None:
         loop = self.__loop
@@ -403,14 +410,14 @@ class Controller:
         from flytekit.remote import FlyteRemote
 
         ctx = FlyteContextManager.current_context()
-        remote = FlyteRemote.for_sandbox()
+        remote = FlyteRemote.for_sandbox(default_project="flytesnacks", default_domain="development")
+        rand = ctx.file_access.get_random_string()
         ss = ctx.serialization_settings
         if not ss:
             ss = SerializationSettings(
                 image_config=ImageConfig.auto_default_image(),
+                version=f"v{rand[:8]}",
             )
-
-        rand = ctx.file_access.get_random_string()
         root_tag = tag = f"eager-local-{rand}"
         exec_prefix = exec_prefix or f"e-{rand[:16]}"
 

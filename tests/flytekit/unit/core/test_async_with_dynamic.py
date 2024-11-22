@@ -71,6 +71,6 @@ def test_nested_local_backend():
 
     c = Controller.for_sandbox()
     with FlyteContextManager.with_context(ctx.with_file_access(provider).with_client(remote.client).with_worker_queue(c)) as ctx:
-        res = loop_manager.run_sync(level_2.run_with_backend, ctx, x=1000)
+        res = loop_manager.run_sync(level_2.run_with_backend, x=1000)
         print(res)
         assert res == 43
