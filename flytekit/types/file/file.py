@@ -551,6 +551,7 @@ class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
                 )
             else:
                 remote_path = await ctx.file_access.async_put_raw_data(source_path, **headers)
+            # If the source path is a local file, the remote path will be a remote storage path.
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=unquote(str(remote_path)))))
         # If not uploading, then we can only take the original source path as the uri.
         else:

@@ -9,6 +9,7 @@ import enum
 import inspect
 import json
 import mimetypes
+import os
 import sys
 import textwrap
 import threading
@@ -29,17 +30,17 @@ from google.protobuf.json_format import MessageToDict as _MessageToDict
 from google.protobuf.json_format import ParseDict as _ParseDict
 from google.protobuf.message import Message
 from google.protobuf.struct_pb2 import Struct
-from mashumaro.codecs.json import JSONDecoder
+from mashumaro.codecs.json import JSONDecoder, JSONEncoder
 from mashumaro.codecs.msgpack import MessagePackDecoder, MessagePackEncoder
 from mashumaro.mixins.json import DataClassJSONMixin
 from typing_extensions import Annotated, get_args, get_origin
 
 from flytekit.core.annotation import FlyteAnnotation
-from flytekit.core.constants import MESSAGEPACK
+from flytekit.core.constants import FLYTE_USE_OLD_DC_FORMAT, MESSAGEPACK
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.hash import HashMethod
 from flytekit.core.type_helpers import load_type_from_tag
-from flytekit.core.utils import load_proto_from_file, timeit
+from flytekit.core.utils import load_proto_from_file, str2bool, timeit
 from flytekit.exceptions import user as user_exceptions
 from flytekit.interaction.string_literals import literal_map_string_repr
 from flytekit.lazy_import.lazy_module import is_imported
@@ -498,7 +499,8 @@ class DataclassTransformer(TypeTransformer[object]):
 
     def __init__(self) -> None:
         super().__init__("Object-Dataclass-Transformer", object)
-        self._decoder: Dict[Type, JSONDecoder] = dict()
+        self._json_encoder: Dict[Type, JSONEncoder] = dict()
+        self._json_decoder: Dict[Type, JSONDecoder] = dict()
 
     def assert_type(self, expected_type: Type[DataClassJsonMixin], v: T):
         # Skip iterating all attributes in the dataclass if the type of v already matches the expected_type
@@ -655,14 +657,58 @@ class DataclassTransformer(TypeTransformer[object]):
                     )
                 )
 
+        # This is for attribute access in FlytePropeller.
         ts = TypeStructure(tag="", dataclass_type=literal_type)
 
         return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT, metadata=schema, structure=ts)
 
+    def to_generic_literal(
+        self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType
+    ) -> Literal:
+        """
+        Serializes a dataclass or dictionary to a Flyte literal, handling both JSON and MessagePack formats.
+        Set `FLYTE_USE_OLD_DC_FORMAT=true` to use the old JSON-based format.
+        Note: This is deprecated and will be removed in the future.
+        """
+        if isinstance(python_val, dict):
+            json_str = json.dumps(python_val)
+            return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))
+
+        if not dataclasses.is_dataclass(python_val):
+            raise TypeTransformerFailedError(
+                f"{type(python_val)} is not of type @dataclass, only Dataclasses are supported for "
+                f"user defined datatypes in Flytekit"
+            )
+
+        self._make_dataclass_serializable(python_val, python_type)
+
+        # JSON serialization using mashumaro's DataClassJSONMixin
+        if isinstance(python_val, DataClassJSONMixin):
+            json_str = python_val.to_json()
+        else:
+            try:
+                encoder = self._json_encoder[python_type]
+            except KeyError:
+                encoder = JSONEncoder(python_type)
+                self._json_encoder[python_type] = encoder
+
+            try:
+                json_str = encoder.encode(python_val)
+            except NotImplementedError:
+                raise NotImplementedError(
+                    f"{python_type} should inherit from mashumaro.types.SerializableType"
+                    f" and implement _serialize and _deserialize methods."
+                )
+
+        return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))  # type: ignore
+
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
+        if str2bool(os.getenv(FLYTE_USE_OLD_DC_FORMAT)):
+            return self.to_generic_literal(ctx, python_val, python_type, expected)
+
         if isinstance(python_val, dict):
             msgpack_bytes = msgpack.dumps(python_val)
-            return Literal(scalar=Scalar(binary=Binary(value=msgpack_bytes, tag="msgpack")))
+            return Literal(scalar=Scalar(binary=Binary(value=msgpack_bytes, tag=MESSAGEPACK)))
 
         if not dataclasses.is_dataclass(python_val):
             raise TypeTransformerFailedError(
@@ -697,7 +743,7 @@ class DataclassTransformer(TypeTransformer[object]):
                     f" and implement _serialize and _deserialize methods."
                 )
 
-        return Literal(scalar=Scalar(binary=Binary(value=msgpack_bytes, tag="msgpack")))
+        return Literal(scalar=Scalar(binary=Binary(value=msgpack_bytes, tag=MESSAGEPACK)))
 
     def _get_origin_type_in_annotation(self, python_type: Type[T]) -> Type[T]:
         # dataclass will try to hash python type when calling dataclass.schema(), but some types in the annotation is
@@ -735,12 +781,33 @@ class DataclassTransformer(TypeTransformer[object]):
         """
         from flytekit.types.directory import FlyteDirectory
         from flytekit.types.file import FlyteFile
+        from flytekit.types.structured import StructuredDataset
 
-        # Handle Optional
-        if UnionTransformer.is_optional_type(python_type):
-            if python_val is None:
-                return None
-            return self._make_dataclass_serializable(python_val, get_args(python_type)[0])
+        # Handle Optional and Union Types
+        if _is_union_type(python_type):
+
+            def get_expected_type(python_val: T, types: tuple) -> Type[T | None]:
+                if len(set(types) & {FlyteFile, FlyteDirectory, StructuredDataset}) > 1:
+                    raise ValueError(
+                        "Cannot have more than one Flyte type in the Union when attempting to use the string shortcut. Please specify the full object (e.g. FlyteFile(...)) instead of just passing a string."
+                    )
+
+                for t in types:
+                    try:
+                        trans = TypeEngine.get_transformer(t)  # type: ignore
+                        if trans:
+                            trans.assert_type(t, python_val)
+                            return t
+                    except Exception:
+                        continue
+                return type(None)
+
+            # Get the expected type in the Union type
+            expected_type = type(None)
+            if python_val is not None:
+                expected_type = get_expected_type(python_val, get_args(python_type))  # type: ignore
+
+            return self._make_dataclass_serializable(python_val, expected_type)
 
         if hasattr(python_type, "__origin__") and get_origin(python_type) is list:
             if python_val is None:
@@ -863,10 +930,10 @@ class DataclassTransformer(TypeTransformer[object]):
             # The function looks up or creates a JSONDecoder specifically designed for the object's type.
             # This decoder is then used to convert a JSON string into a data class.
             try:
-                decoder = self._decoder[expected_python_type]
+                decoder = self._json_decoder[expected_python_type]
             except KeyError:
                 decoder = JSONDecoder(expected_python_type)
-                self._decoder[expected_python_type] = decoder
+                self._json_decoder[expected_python_type] = decoder
 
             dc = decoder.decode(json_str)
 
@@ -905,12 +972,34 @@ class ProtobufTransformer(TypeTransformer[Message]):
         return LiteralType(simple=SimpleType.STRUCT, metadata={ProtobufTransformer.PB_FIELD_KEY: self.tag(t)})
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
-        struct = Struct()
+        """
+        Convert the protobuf struct to literal.
+
+        This conversion supports two types of python_val:
+        1. google.protobuf.struct_pb2.Struct: A dictionary-like message
+        2. google.protobuf.struct_pb2.ListValue: An ordered collection of values
+
+        For details, please refer to the following issue:
+        https://github.com/flyteorg/flyte/issues/5959
+
+        Because the remote handling works without errors, we implement conversion with the logic as below:
+        https://github.com/flyteorg/flyte/blob/a87585ab7cbb6a047c76d994b3f127c4210070fd/flytepropeller/pkg/controller/nodes/attr_path_resolver.go#L72-L106
+        """
         try:
-            struct.update(_MessageToDict(cast(Message, python_val)))
+            if type(python_val) == _struct.ListValue:
+                literals = []
+                for v in python_val:
+                    literal_type = TypeEngine.to_literal_type(type(v))
+                    # Recursively convert python native values to literals
+                    literal = TypeEngine.to_literal(ctx, v, type(v), literal_type)
+                    literals.append(literal)
+                return Literal(collection=LiteralCollection(literals=literals))
+            else:
+                struct = Struct()
+                struct.update(_MessageToDict(cast(Message, python_val)))
+                return Literal(scalar=Scalar(generic=struct))
         except Exception:
             raise TypeTransformerFailedError("Failed to convert to generic protobuf struct")
-        return Literal(scalar=Scalar(generic=struct))
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
         if not (lv and lv.scalar and lv.scalar.generic is not None):
@@ -1239,7 +1328,12 @@ class TypeEngine(typing.Generic[T]):
                 "actual attribute that you want to use. For example, in NamedTuple('OP', x=int) then"
                 "return v.x, instead of v, even if this has a single element"
             )
-        if (python_val is None and python_type != type(None)) and expected and expected.union_type is None:
+        if (
+            (python_val is None and python_type != type(None))
+            and expected
+            and expected.union_type is None
+            and python_type is not Any
+        ):
             raise TypeTransformerFailedError(f"Python value cannot be None, expected {python_type}/{expected}")
 
     @classmethod
@@ -1930,6 +2024,43 @@ class DictTransformer(AsyncTypeTransformer[dict]):
         return None, None
 
     @staticmethod
+    async def dict_to_generic_literal(
+        ctx: FlyteContext, v: dict, python_type: Type[dict], allow_pickle: bool
+    ) -> Literal:
+        """
+        This is deprecated from flytekit 1.14.0.
+        Creates a flyte-specific ``Literal`` value from a native python dictionary.
+        Note: This is deprecated and will be removed in the future.
+        """
+        from flytekit.types.pickle import FlytePickle
+
+        try:
+            try:
+                # JSONEncoder is mashumaro's codec and this can triggered Flyte Types customized serialization and deserialization.
+                encoder = JSONEncoder(python_type)
+                json_str = encoder.encode(v)
+            except NotImplementedError:
+                raise NotImplementedError(
+                    f"{python_type} should inherit from mashumaro.types.SerializableType"
+                    f" and implement _serialize and _deserialize methods."
+                )
+
+            return Literal(
+                scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())),
+                metadata={"format": "json"},
+            )
+        except TypeError as e:
+            if allow_pickle:
+                remote_path = await FlytePickle.to_pickle(ctx, v)
+                return Literal(
+                    scalar=Scalar(
+                        generic=_json_format.Parse(json.dumps({"pickle_file": remote_path}), _struct.Struct())
+                    ),
+                    metadata={"format": "pickle"},
+                )
+            raise TypeTransformerFailedError(f"Cannot convert `{v}` to Flyte Literal.\n" f"Error Message: {e}")
+
+    @staticmethod
     async def dict_to_binary_literal(
         ctx: FlyteContext, v: dict, python_type: Type[dict], allow_pickle: bool
     ) -> Literal:
@@ -1943,7 +2074,7 @@ class DictTransformer(AsyncTypeTransformer[dict]):
             # Handle dictionaries with non-string keys (e.g., Dict[int, Type])
             encoder = MessagePackEncoder(python_type)
             msgpack_bytes = encoder.encode(v)
-            return Literal(scalar=Scalar(binary=Binary(value=msgpack_bytes, tag="msgpack")))
+            return Literal(scalar=Scalar(binary=Binary(value=msgpack_bytes, tag=MESSAGEPACK)))
         except TypeError as e:
             if allow_pickle:
                 remote_path = await FlytePickle.to_pickle(ctx, v)
@@ -2004,6 +2135,8 @@ class DictTransformer(AsyncTypeTransformer[dict]):
             allow_pickle, base_type = DictTransformer.is_pickle(python_type)
 
         if expected and expected.simple and expected.simple == SimpleType.STRUCT:
+            if str2bool(os.getenv(FLYTE_USE_OLD_DC_FORMAT)):
+                return await self.dict_to_generic_literal(ctx, python_val, python_type, allow_pickle)
             return await self.dict_to_binary_literal(ctx, python_val, python_type, allow_pickle)
 
         lit_map = {}

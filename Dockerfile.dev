@@ -44,6 +44,7 @@ RUN SETUPTOOLS_SCM_PRETEND_VERSION_FOR_FLYTEKIT=$PSEUDO_VERSION \
             pandas \
             pillow \
             plotly \
+            pyarrow \
             pygments \
             scikit-learn \
             ydata-profiling \

@@ -7,7 +7,7 @@ import pytest
 from flytekit.core import context_manager
 from flytekit.core.context_manager import ExecutionState
 from flytekit.image_spec import ImageSpec
-from flytekit.image_spec.image_spec import _F_IMG_ID, ImageBuildEngine, FLYTE_FORCE_PUSH_IMAGE_SPEC
+from flytekit.image_spec.image_spec import _F_IMG_ID, ImageBuildEngine
 from flytekit.core.python_auto_container import update_image_spec_copy_handling
 from flytekit.configuration import SerializationSettings, FastSerializationSettings, ImageConfig
 from flytekit.constants import CopyFileDetection
@@ -24,7 +24,7 @@ def test_image_spec(mock_image_spec_builder, monkeypatch):
         builder="dummy",
         packages=["pandas"],
         apt_packages=["git"],
-        python_version="3.8",
+        python_version="3.9",
         registry="localhost:30001",
         base_image=base_image,
         cuda="11.2.2",
@@ -42,7 +42,7 @@ def test_image_spec(mock_image_spec_builder, monkeypatch):
     image_spec = image_spec.with_copy(["/src", "/src/file2.txt"])
     image_spec = image_spec.force_push()
 
-    assert image_spec.python_version == "3.8"
+    assert image_spec.python_version == "3.9"
     assert image_spec.base_image == base_image
     assert image_spec.packages == ["pandas", "numpy"]
     assert image_spec.apt_packages == ["git", "wget"]
@@ -62,7 +62,7 @@ def test_image_spec(mock_image_spec_builder, monkeypatch):
     assert image_spec.entrypoint == ["/bin/bash"]
     assert image_spec.copy == ["/src/file1.txt", "/src", "/src/file2.txt"]
 
-    assert image_spec.image_name() == f"localhost:30001/flytekit:fYU5EUF6y0b2oFG4tu70tA"
+    assert image_spec.image_name() == f"localhost:30001/flytekit:AjLtng9gJfYzLnjbNy70gA"
     ctx = context_manager.FlyteContext.current_context()
     with context_manager.FlyteContextManager.with_context(
         ctx.with_execution_state(ctx.execution_state.with_params(mode=ExecutionState.Mode.TASK_EXECUTION))
@@ -114,7 +114,7 @@ def test_build_existing_image_with_force_push():
     image_spec = ImageSpec(name="hello", builder="test").force_push()
 
     builder = Mock()
-    builder.build_image.return_value = "new_image_name"
+    builder.build_image.return_value = "fqn.xyz/new_image_name:v-test"
     ImageBuildEngine.register("test", builder)
 
     ImageBuildEngine.build(image_spec)
