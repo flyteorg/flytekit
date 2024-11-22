@@ -21,10 +21,10 @@ def test_controller(mock_start):
     )
     c = Controller(remote, ss, tag="exec-id", root_tag="exec-id", exec_prefix="e-unit-test")
 
-    def _mock_start(key: str, idx):
-        entry = c.entries[key][idx]
-        entry.wf_exec = mock.MagicMock()  # just to pass the assert
-        entry.set_result("hello")
+    def _mock_start(wi: WorkItem, idx: int):
+        assert c.entries[wi.entity.name][idx] is wi
+        wi.wf_exec = mock.MagicMock()  # just to pass the assert
+        wi.set_result("hello")
 
     mock_start.side_effect = _mock_start
 
