@@ -81,7 +81,7 @@ def get_token(
     session: typing.Optional[requests.Session] = None,
 ) -> typing.Tuple[str, str, int]:
     """
-    :rtype: (Text,Text, Int) The first element is the access token retrieved from the IDP, the second is the refresh token
+    :rtype: (Text,Text,Int) The first element is the access token retrieved from the IDP, the second is the refresh token
     retrieved from the IDP, the third is the expiration in seconds
     """
     headers = {
