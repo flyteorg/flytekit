@@ -1898,7 +1898,7 @@ def test_union_type(exec_prefix):
         TypeError,
         match=re.escape(
             f"Error encountered while converting inputs of '{exec_prefix}tests.flytekit.unit.core.test_type_hints.t2':\n"
-            r"  Cannot convert from Flyte Serialized object (Literal):"
+            r'  Cannot convert from Flyte Serialized object (Union[str]):'
         ),
     ):
         assert wf2(a="2") == "2"

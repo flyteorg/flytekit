@@ -2,16 +2,18 @@ import datetime
 from datetime import timezone, timedelta
 import textwrap
 
+from flytekit import LiteralType
 from flytekit.models import common as _common
 from flytekit.models.core import execution as _execution
 
 from flytekit.models.execution import ExecutionClosure
 
 from flytekit.models.execution import LiteralMapBlob
-from flytekit.models.literals import LiteralMap, Scalar, Primitive, Literal, RetryStrategy
+from flytekit.models.literals import LiteralMap, Scalar, Primitive, Literal, RetryStrategy, LiteralCollection, Union
 from flytekit.models.core.execution import WorkflowExecutionPhase
 from flytekit.models.task import TaskMetadata, RuntimeMetadata
 from flytekit.models.project import Project
+from flytekit.models.types import SimpleType
 
 
 def test_notification_email():
@@ -172,6 +174,40 @@ def test_short_string_entities_Primitive():
 
     assert repr(obj) == expected_result
     assert obj.short_string() == expected_result
+
+
+def test_short_string_literal():
+    int_literal = Literal(scalar=Scalar(primitive=Primitive(integer=1)))
+    assert repr(int_literal) == int_literal.short_string()
+    assert repr(int_literal) == "Flyte Serialized object (int): 1"
+
+    datetime_literal = Literal(scalar=Scalar(primitive=Primitive(datetime=timedelta(days=1))))
+    assert repr(datetime_literal) == datetime_literal.short_string()
+    assert repr(datetime_literal) == "Flyte Serialized object (datetime): 1970-01-01 00:00:00+00:00"
+
+    str_literal = Literal(scalar=Scalar(primitive=Primitive(string_value="hello")))
+    assert repr(str_literal) == str_literal.short_string()
+    assert repr(str_literal) == "Flyte Serialized object (str): hello"
+
+    small_list = Literal(collection=LiteralCollection([Literal(scalar=Scalar(primitive=Primitive(integer=1))), Literal(scalar=Scalar(primitive=Primitive(integer=2)))]))
+    assert repr(small_list) == small_list.short_string()
+    assert repr(small_list) == "Flyte Serialized object (Collection[int]): [1, 2]"
+
+    large_list = Literal(collection=LiteralCollection([Literal(scalar=Scalar(primitive=Primitive(integer=i))) for i in range(100)]))
+    assert repr(large_list) == large_list.short_string()
+    assert repr(large_list) == "Flyte Serialized object (Collection[int]): [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, [...]"
+
+    small_dict = Literal(map=LiteralMap({"a": Literal(scalar=Scalar(primitive=Primitive(integer=1))), "b": Literal(scalar=Scalar(primitive=Primitive(integer=2)))}))
+    assert repr(small_dict) == small_dict.short_string()
+    assert repr(small_dict) == "Flyte Serialized object (Map[str, int]): {'a': 1, 'b': 2}"
+
+    large_dict = Literal(map=LiteralMap({str(i): Literal(scalar=Scalar(primitive=Primitive(integer=i))) for i in range(100)}))
+    assert repr(large_dict) == large_dict.short_string()
+    assert repr(large_dict) == "Flyte Serialized object (Map[str, int]): {'0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, [...]"
+
+    union_literal = Literal(scalar=Scalar(union=Union(large_list, LiteralType(collection_type=SimpleType.INTEGER))))
+    assert repr(union_literal) == union_literal.short_string()
+    assert repr(union_literal) == "Flyte Serialized object (Union[Collection[int]]): [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, [...]"
 
 
 def test_short_string_entities_TaskMetadata():
