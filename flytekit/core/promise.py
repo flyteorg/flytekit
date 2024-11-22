@@ -1407,14 +1407,10 @@ def flyte_entity_call_handler(
             f"Received more arguments than expected in function '{entity.name}'. Expected {len(entity.python_interface.inputs)} but got {len(args)}"
         )
 
-    input_names = list(entity.python_interface.inputs.keys())
-
-    # check for duplicate input names
-    if len(input_names) != len(set(input_names)):
-        raise ValueError(f"Duplicate input names detected in function '{entity.name}': {input_names}")
-
     # Convert args to kwargs
     for arg, input_name in zip(args, entity.python_interface.inputs.keys()):
+        if input_name in kwargs:
+            raise AssertionError(f"Got multiple values for argument '{input_name}' in function '{entity.name}'")
         kwargs[input_name] = arg
 
     ctx = FlyteContextManager.current_context()
