@@ -31,7 +31,7 @@ class CachePrivateModules:
             raise ValueError("Function-based cache requires a function parameter")
 
         hash_components = [self._get_version(params.func)]
-        dependencies = self._get_function_dependencies(func, set())
+        dependencies = self._get_function_dependencies(params.func, set())
         for dep in dependencies:
             hash_components.append(self._get_version(dep))
         # Combine all component hashes into a single version hash
