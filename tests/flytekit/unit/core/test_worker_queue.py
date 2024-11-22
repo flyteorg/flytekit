@@ -4,7 +4,7 @@ import asyncio
 
 from flytekit.core.task import task
 from flytekit.remote.remote import FlyteRemote
-from flytekit.core.worker_queue import Controller
+from flytekit.core.worker_queue import Controller, WorkItem
 from flytekit.configuration import ImageConfig, LocalConfig, SerializationSettings
 from flytekit.utils.asyn import loop_manager
 
@@ -35,3 +35,29 @@ def test_controller(mock_start):
         assert res == "hello"
 
     loop_manager.run_sync(fake_eager)
+
+
+@pytest.mark.asyncio
+async def test_wi():
+    @task
+    def t1() -> str:
+        return "hello"
+
+    loop = asyncio.get_running_loop()
+    fut = loop.create_future()
+    wi = WorkItem(t1, input_kwargs={}, fut=fut)
+
+    with pytest.raises(AssertionError):
+        wi.set_result("hello")
+
+    assert not wi.ready
+
+    wi.wf_exec = mock.MagicMock()
+    wi.set_result("hello")
+    assert wi.ready
+
+    fut2 = loop.create_future()
+    wi = WorkItem(t1, input_kwargs={}, fut=fut2)
+    wi.set_error(ValueError("hello"))
+    with pytest.raises(ValueError):
+        await fut2

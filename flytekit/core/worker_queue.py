@@ -154,12 +154,10 @@ class PollingInformer:
 
     def watch(self, work: WorkItem):
         coro = self.watch_one(work)
-        # both of these seem to work, but I think run_coroutine_threadsafe makes more sense in case *this* thread is
-        # ever different than the thread that self.__loop is running on.
-        # t = self.__loop.create_task(coro)
+        # both run_coroutine_threadsafe and self.__loop.create_task seem to work, but the first makes
+        # more sense in case *this* thread is ever different than the thread that self.__loop is running on.
         f = asyncio.run_coroutine_threadsafe(coro, self.__loop)
-        # Just print a message with the future, no need to return it anywhere, unless we want to pass it back to
-        # launch_and_start_watch and save this also in the State object somewhere.
+
         developer_logger.debug(f"Started watch with future {f}")
         # todo:async f.add_done_callback()
 
