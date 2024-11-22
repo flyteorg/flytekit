@@ -503,7 +503,7 @@ def test_nested_dataclass_with_optional_fields():
 
 
 @pytest.mark.skipif(
-    sys.version_info < (3, 10), reason="handling for windows is nicer with delete_on_close, which doesn't exist in 3.9"
+    sys.version_info < (3, 12), reason="handling for windows is nicer with delete_on_close, which doesn't exist before 3.12"
 )
 def test_pickle_type():
     t = PickleParamType()
