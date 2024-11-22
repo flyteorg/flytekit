@@ -107,7 +107,7 @@ def construct_k8s_pod_spec_from_resources(
     requests: Optional[Resources],
     limits: Optional[Resources],
 ) -> dict[str, Any]:
-    def construct_k8s_pods_resources(resources: Optional[Resources]):
+    def _construct_k8s_pods_resources(resources: Optional[Resources]):
         if resources is None:
             return None
 
@@ -127,8 +127,8 @@ def construct_k8s_pod_spec_from_resources(
 
         return k8s_pod_resources
 
-    requests = construct_k8s_pods_resources(resources=requests)
-    limits = construct_k8s_pods_resources(resources=limits)
+    requests = _construct_k8s_pods_resources(resources=requests)
+    limits = _construct_k8s_pods_resources(resources=limits)
     requests = requests or limits
     limits = limits or requests
 
