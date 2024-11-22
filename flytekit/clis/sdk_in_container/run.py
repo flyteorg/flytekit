@@ -53,7 +53,7 @@ from flytekit.interaction.click_types import (
     labels_callback,
 )
 from flytekit.interaction.string_literals import literal_string_repr
-from flytekit.loggers import logger
+from flytekit.loggers import logger, add_progress_bar, advance_progress_bar
 from flytekit.models import security
 from flytekit.models.common import RawOutputDataConfig
 from flytekit.models.interface import Parameter, Variable
@@ -536,34 +536,33 @@ def run_remote(
     msg = "Running execution on remote."
     if run_level_params.wait_execution:
         msg += " Waiting to complete..."
-    p = Progress(TimeElapsedColumn(), TextColumn(msg), transient=True)
-    t = p.add_task("exec")
-    with p:
-        p.start_task(t)
-        execution = remote.execute(
-            entity,
-            inputs=inputs,
-            project=project,
-            domain=domain,
-            execution_name=run_level_params.name,
-            options=options_from_run_params(run_level_params),
-            type_hints=type_hints,
-            overwrite_cache=run_level_params.overwrite_cache,
-            envs=run_level_params.envvars,
-            tags=run_level_params.tags,
-            cluster_pool=run_level_params.cluster_pool,
-            execution_cluster_label=run_level_params.execution_cluster_label,
-        )
-        s = (
-            click.style("\n[✔] ", fg="green")
-            + "Go to "
-            + click.style(execution.execution_url, fg="cyan")
-            + " to see execution in the console."
-        )
-        click.echo(s)
+    # p = Progress(TimeElapsedColumn(), TextColumn(msg), transient=True)
+    tid = add_progress_bar("Execution starting")
+    execution = remote.execute(
+        entity,
+        inputs=inputs,
+        project=project,
+        domain=domain,
+        execution_name=run_level_params.name,
+        options=options_from_run_params(run_level_params),
+        type_hints=type_hints,
+        overwrite_cache=run_level_params.overwrite_cache,
+        envs=run_level_params.envvars,
+        tags=run_level_params.tags,
+        cluster_pool=run_level_params.cluster_pool,
+        execution_cluster_label=run_level_params.execution_cluster_label,
+    )
+    s = (
+        click.style("\n[✔] ", fg="green")
+        + "Go to "
+        + click.style(execution.execution_url, fg="cyan")
+        + " to see execution in the console."
+    )
+    click.echo(s)
+    advance_progress_bar(tid)
 
-        if run_level_params.wait_execution:
-            execution = remote.wait(execution, poll_interval=run_level_params.poll_interval)
+    if run_level_params.wait_execution:
+        execution = remote.wait(execution, poll_interval=run_level_params.poll_interval)
 
     if run_level_params.wait_execution:
         if execution.closure.phase != WorkflowExecutionPhase.SUCCEEDED:
