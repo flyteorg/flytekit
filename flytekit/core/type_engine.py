@@ -786,8 +786,8 @@ class DataclassTransformer(TypeTransformer[object]):
         from flytekit.types.file import FlyteFile
         from flytekit.types.structured import StructuredDataset
 
-        # Handle Optional
-        if UnionTransformer.is_optional_type(python_type):
+        # Handle Optional and Union Types
+        if _is_union_type(python_type):
 
             def get_expected_type(python_val: T, types: tuple) -> Type[T | None]:
                 if len(set(types) & {FlyteFile, FlyteDirectory, StructuredDataset}) > 1:
@@ -975,12 +975,34 @@ class ProtobufTransformer(TypeTransformer[Message]):
         return LiteralType(simple=SimpleType.STRUCT, metadata={ProtobufTransformer.PB_FIELD_KEY: self.tag(t)})
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
-        struct = Struct()
+        """
+        Convert the protobuf struct to literal.
+
+        This conversion supports two types of python_val:
+        1. google.protobuf.struct_pb2.Struct: A dictionary-like message
+        2. google.protobuf.struct_pb2.ListValue: An ordered collection of values
+
+        For details, please refer to the following issue:
+        https://github.com/flyteorg/flyte/issues/5959
+
+        Because the remote handling works without errors, we implement conversion with the logic as below:
+        https://github.com/flyteorg/flyte/blob/a87585ab7cbb6a047c76d994b3f127c4210070fd/flytepropeller/pkg/controller/nodes/attr_path_resolver.go#L72-L106
+        """
         try:
-            struct.update(_MessageToDict(cast(Message, python_val)))
+            if type(python_val) == _struct.ListValue:
+                literals = []
+                for v in python_val:
+                    literal_type = TypeEngine.to_literal_type(type(v))
+                    # Recursively convert python native values to literals
+                    literal = TypeEngine.to_literal(ctx, v, type(v), literal_type)
+                    literals.append(literal)
+                return Literal(collection=LiteralCollection(literals=literals))
+            else:
+                struct = Struct()
+                struct.update(_MessageToDict(cast(Message, python_val)))
+                return Literal(scalar=Scalar(generic=struct))
         except Exception:
             raise TypeTransformerFailedError("Failed to convert to generic protobuf struct")
-        return Literal(scalar=Scalar(generic=struct))
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
         if not (lv and lv.scalar and lv.scalar.generic is not None):

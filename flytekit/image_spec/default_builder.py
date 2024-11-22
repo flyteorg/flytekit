@@ -39,13 +39,13 @@ RUN --mount=type=cache,sharing=locked,mode=0777,target=/var/cache/apt,id=apt \
 DOCKER_FILE_TEMPLATE = Template("""\
 #syntax=docker/dockerfile:1.5
 FROM ghcr.io/astral-sh/uv:0.2.37 as uv
-FROM mambaorg/micromamba:1.5.8-bookworm-slim as micromamba
+FROM mambaorg/micromamba:2.0.3-debian12-slim as micromamba
 
 FROM $BASE_IMAGE
 
 USER root
 $APT_INSTALL_COMMAND
-RUN update-ca-certificates
+COPY --from=micromamba /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
 RUN id -u flytekit || useradd --create-home --shell /bin/bash flytekit
 RUN chown -R flytekit /root && chown -R flytekit /home
@@ -76,10 +76,10 @@ $ENTRYPOINT
 
 $COPY_COMMAND_RUNTIME
 
+$EXTRA_COPY_CMDS
+
 RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/uv,id=uv \
     --mount=from=uv,source=/uv,target=/usr/bin/uv $RUN_COMMANDS
-
-$EXTRA_COPY_CMDS
 
 WORKDIR /root
 SHELL ["/bin/bash", "-c"]
@@ -166,11 +166,14 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
 
     env = " ".join(f"{k}={v}" for k, v in env_dict.items())
 
-    apt_packages = ["ca-certificates"]
+    apt_packages = []
     if image_spec.apt_packages:
         apt_packages.extend(image_spec.apt_packages)
 
-    apt_install_command = APT_INSTALL_COMMAND_TEMPLATE.substitute(APT_PACKAGES=" ".join(apt_packages))
+    if apt_packages:
+        apt_install_command = APT_INSTALL_COMMAND_TEMPLATE.substitute(APT_PACKAGES=" ".join(apt_packages))
+    else:
+        apt_install_command = ""
 
     if image_spec.source_copy_mode is not None and image_spec.source_copy_mode != CopyFileDetection.NO_COPY:
         if not image_spec.source_root:
