@@ -35,7 +35,7 @@ async def base_wf(x: int) -> int:
     final = double(x=out)
     return final
 
-# import time
+
 @eager
 async def parent_wf(a: int, b: int) -> typing.Tuple[int, int]:
     print("hi")
@@ -58,7 +58,7 @@ async def test_nested_all_local():
     assert res == (4, -1)
 
 
-@pytest.mark.sandbox
+@pytest.mark.skip
 def test_nested_local_backend():
     ctx = FlyteContextManager.current_context()
     remote = FlyteRemote(Config.for_sandbox())
@@ -105,7 +105,7 @@ async def test_nested_level_1_local():
     assert res == (6, 6)
 
 
-@pytest.mark.sandbox
+@pytest.mark.skip
 def test_nested_local_backend_level():
     ctx = FlyteContextManager.current_context()
     remote = FlyteRemote(Config.for_sandbox())

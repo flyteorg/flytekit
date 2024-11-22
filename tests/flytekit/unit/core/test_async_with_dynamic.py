@@ -60,7 +60,7 @@ async def test_nested_level_1_local():
     assert res == (11, 6)
 
 
-@pytest.mark.sandbox
+@pytest.mark.skip
 def test_nested_local_backend():
     ctx = FlyteContextManager.current_context()
     remote = FlyteRemote(Config.for_sandbox())

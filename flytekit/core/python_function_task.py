@@ -545,7 +545,6 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
         from flytekit.experimental.eager_function import _internal_demo_remote
         from flytekit.remote.remote import FlyteRemote
 
-        # client = ctx.flyte_client
         remote = FlyteRemote.for_sandbox(default_project="flytesnacks", default_domain="development")
         remote = _internal_demo_remote(remote)
 
@@ -555,7 +554,6 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
         if not is_local_execution:
             # ensure that the worker queue is in context
             if not ctx.worker_queue:
-                # remote = _internal_demo_remote(remote)
                 # This should be read from transport at real runtime if available, but if not, we should either run
                 # remote in interactive mode, or let users configure the version to use.
                 ss = ctx.serialization_settings
@@ -620,18 +618,8 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
 
 
 """
-summarize auth patterns
-talk about ux for local run and implement.
-
 merge master again
-
-ux related:
-get local testing to work
-figure out local sandbox testing pattern
-actual remote handling
-
 pure watch informer pattern
 
 priority for flytekit - fix naming, depending on src
-priority for main async - investigate fut.result behavior when there's an exception.
 """
