@@ -23,6 +23,7 @@ error_auth_pending = "authorization_pending"
 class GrantType(str, enum.Enum):
     CLIENT_CREDS = "client_credentials"
     DEVICE_CODE = "urn:ietf:params:oauth:grant-type:device_code"
+    REFRESH_TOKEN = "refresh_token"
 
 
 @dataclass
@@ -79,6 +80,7 @@ def get_token(
     http_proxy_url: typing.Optional[str] = None,
     verify: typing.Optional[typing.Union[bool, str]] = None,
     session: typing.Optional[requests.Session] = None,
+    refresh_token: typing.Optional[str] = None,
 ) -> typing.Tuple[str, str, int]:
     """
     :rtype: (Text,Text,Int) The first element is the access token retrieved from the IDP, the second is the refresh token
@@ -102,6 +104,8 @@ def get_token(
         body["scope"] = " ".join(s.strip("' ") for s in scopes).strip("[]'")
     if audience:
         body["audience"] = audience
+    if refresh_token:
+        body["refresh_token"] = refresh_token
 
     proxies = {"https": http_proxy_url, "http": http_proxy_url} if http_proxy_url else None
 
@@ -119,11 +123,11 @@ def get_token(
         raise AuthenticationError("Status Code ({}) received from IDP: {}".format(response.status_code, response.text))
 
     j = response.json()
-    refresh_token = None
+    new_refresh_token = None
     if "refresh_token" in j:
-        refresh_token = j["refresh_token"]
+        new_refresh_token = j["refresh_token"]
 
-    return j["access_token"], refresh_token, j["expires_in"]
+    return j["access_token"], new_refresh_token, j["expires_in"]
 
 
 def get_device_code(

@@ -96,7 +96,7 @@ def test_client_creds_authenticator(mock_session):
 @patch("flytekit.clients.auth.authenticator.KeyringStore")
 @patch("flytekit.clients.auth.token_client.get_device_code")
 @patch("flytekit.clients.auth.token_client.poll_token_endpoint")
-@patch("flytekit.clients.auth.auth_client.AuthorizationClient.refresh_access_token")
+@patch("flytekit.clients.auth.token_client.get_token")
 def test_device_flow_authenticator(mock_refresh: MagicMock, poll_mock: MagicMock, device_mock: MagicMock, mock_keyring: MagicMock):
     with pytest.raises(AuthenticationError):
         DeviceCodeAuthenticator(ENDPOINT, static_cfg_store, audience="x", verify=True)
@@ -116,7 +116,7 @@ def test_device_flow_authenticator(mock_refresh: MagicMock, poll_mock: MagicMock
 
     device_mock.return_value = DeviceCodeResponse("x", "y", "s", 1000, 0)
     poll_mock.return_value = ("access", "refresh", 100)
-    mock_refresh.side_effect = AccessTokenNotFoundError("test") # ensure refresh token fails
+    mock_refresh.side_effect = AuthenticationError("test") # ensure refresh token fails
 
     authn.refresh_credentials()
     assert authn._creds
@@ -129,7 +129,7 @@ def test_device_flow_authenticator(mock_refresh: MagicMock, poll_mock: MagicMock
 @patch("flytekit.clients.auth.authenticator.KeyringStore")
 @patch("flytekit.clients.auth.token_client.get_device_code")
 @patch("flytekit.clients.auth.token_client.poll_token_endpoint")
-@patch("flytekit.clients.auth.auth_client.AuthorizationClient.refresh_access_token")
+@patch("flytekit.clients.auth.token_client.get_token")
 def test_device_flow_authenticator_refresh_token(mock_refresh: MagicMock, poll_mock: MagicMock, device_mock: MagicMock, mock_keyring: MagicMock):
     with pytest.raises(AuthenticationError):
         DeviceCodeAuthenticator(ENDPOINT, static_cfg_store, audience="x", verify=True)
@@ -147,9 +147,7 @@ def test_device_flow_authenticator_refresh_token(mock_refresh: MagicMock, poll_m
         ENDPOINT, cfg_store, audience="x", http_proxy_url="http://my-proxy:9000", verify=False
     )
 
-    mock_refresh.return_value = Credentials(
-        access_token="access", refresh_token="refresh", expires_in=100
-    )
+    mock_refresh.return_value = ("access", "refresh", 100)
 
     authn.refresh_credentials()
     assert authn._creds
