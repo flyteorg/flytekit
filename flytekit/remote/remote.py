@@ -428,9 +428,7 @@ class FlyteRemote(object):
             name,
             version,
         )
-        print(f"----------ft 1 {task_id}")
         admin_task = self.client.get_task(task_id)
-        print("----------ft 2")
         flyte_task = FlyteTask.promote_from_model(admin_task.closure.compiled_task.template)
         flyte_task.template._id = task_id
         return flyte_task
@@ -1316,7 +1314,6 @@ class FlyteRemote(object):
         :param execution_cluster_label: Specify label of cluster(s) on which newly created execution should be placed.
         :returns: :class:`~flytekit.remote.workflow_execution.FlyteWorkflowExecution`
         """
-        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!! remote 1")
         if execution_name is not None and execution_name_prefix is not None:
             raise ValueError("Only one of execution_name and execution_name_prefix can be set, but got both set")
         # todo: The prefix should be passed to the backend
@@ -1362,16 +1359,13 @@ class FlyteRemote(object):
                     )
                     lit = TypeEngine.to_literal(ctx, v, hint, variable.type)
                 literal_map[k] = lit
-            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!! remote 2")
             literal_inputs = literal_models.LiteralMap(literals=literal_map)
-        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!! remote 3")
         try:
             # Currently, this will only execute the flyte entity referenced by
             # flyte_id in the same project and domain. However, it is possible to execute it in a different project
             # and domain, which is specified in the first two arguments of client.create_execution. This is useful
             # in the case that I want to use a flyte entity from e.g. project "A" but actually execute the entity on a
             # different project "B". For now, this method doesn't support this use case.
-            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!! remote 4")
             exec_id = self.client.create_execution(
                 project or self.default_project,
                 domain or self.default_domain,
