@@ -225,6 +225,8 @@ def register(
     dry_run: bool = False,
     activate_launchplans: bool = False,
     skip_errors: bool = False,
+    slack_channel: typing.Optional[str] = None,
+    slack_email: typing.Optional[str] = None,
 ):
     detected_root = find_common_root(package_or_module)
     click.secho(f"Detected Root {detected_root}, using this to create deployable package...", fg="yellow")
@@ -283,7 +285,12 @@ def register(
             if not dry_run:
                 try:
                     i = remote.raw_register(
-                        cp_entity, serialization_settings, version=version, create_default_launchplan=False
+                        cp_entity,
+                        serialization_settings,
+                        version=version,
+                        create_default_launchplan=False,
+                        slack_channel=slack_channel,
+                        slack_email=slack_email,
                     )
                     secho(i, state="success")
                     if is_lp and activate_launchplans:

@@ -125,6 +125,18 @@ the root of your project, it finds the first folder that does not have a ``__ini
     help="Skip errors during registration. This is useful when registering multiple packages and you want to skip "
     "errors for some packages.",
 )
+@click.option(
+    "--slack-channel",
+    required=False,
+    type=str,
+    help="Slack channel to send notifications to when creating launch plans",
+)
+@click.option(
+    "--slack-email",
+    required=False,
+    type=str,
+    help="Slack member ID to notify when creating launch plans",
+)
 @click.argument("package-or-module", type=click.Path(exists=True, readable=True, resolve_path=True), nargs=-1)
 @click.pass_context
 def register(
@@ -144,6 +156,8 @@ def register(
     activate_launchplans: bool,
     env: typing.Optional[typing.Dict[str, str]],
     skip_errors: bool,
+    slack_channel: typing.Optional[str] = None,
+    slack_email: typing.Optional[str] = None,
 ):
     """
     see help
@@ -197,6 +211,8 @@ def register(
             dry_run=dry_run,
             activate_launchplans=activate_launchplans,
             skip_errors=skip_errors,
-        )
+            slack_channel=slack_channel,
+            slack_email=slack_email,
+       )
     except Exception as e:
         raise e

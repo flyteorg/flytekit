@@ -618,3 +618,41 @@ def test_get_git_report_url_unknown_url(tmp_path):
 
     returned_url = _get_git_repo_url(source_path)
     assert returned_url == ""
+
+
+def test_slack_webhook_notification():
+    from flytekit.models.common import SlackWebhookNotification
+
+    slack_channel = "general"
+    slack_email = "user@example.com"
+    notification = SlackWebhookNotification(slack_channel=slack_channel, slack_email=slack_email)
+
+    assert notification.slack_channel == slack_channel
+    assert notification.slack_email == slack_email
+    assert notification.to_flyte_idl().slack_channel == slack_channel
+    assert notification.to_flyte_idl().slack_email == slack_email
+
+
+def test_slack_notification_piped_through_remote():
+    from flytekit.remote.remote import FlyteRemote
+    from flytekit.models.common import SlackWebhookNotification
+    from unittest.mock import MagicMock
+
+    # Mock the client and FlyteRemote
+    mock_client = MagicMock()
+    remote = FlyteRemote(config=None, default_project="project", default_domain="domain", client=mock_client)
+
+    # Mock the method to create Slack notifications
+    remote._create_slack_notification = MagicMock(return_value=[SlackWebhookNotification("#general", "user@example.com")])
+
+    # Call raw_register with slack_channel and slack_email
+    remote.raw_register(
+        cp_entity=MagicMock(),
+        settings=MagicMock(),
+        version="v1",
+        slack_channel="general",
+        slack_email="user@example.com"
+    )
+
+    # Assert that _create_slack_notification was called with the correct parameters
+    remote._create_slack_notification.assert_called_with("general", "user@example.com")

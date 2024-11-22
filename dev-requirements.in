@@ -1,5 +1,5 @@
 -e file:.#egg=flytekit
-git+https://github.com/flyteorg/flyte.git@master#subdirectory=flyteidl
+flyteidl @ file:///home/abhay_vardhan/flyte/flyteidl/dist/flyteidl-1.13.5.dev114+gcdba2b82f.d20241122-py3-none-any.whl
 
 coverage[toml]
 hypothesis

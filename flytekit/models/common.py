@@ -247,6 +247,50 @@ class PagerDutyNotification(FlyteIdlEntity):
         return cls(pb2_object.recipients_email)
 
 
+class SlackWebhookNotification(FlyteIdlEntity):
+    def __init__(self, slack_channel: str, slack_email: str = None):
+        """
+        :param Text slack_channel: The Slack channel to send notifications to
+        :param Text slack_email: Optional Slack email for the user to tag in the notification
+        """
+        self._slack_channel = slack_channel
+        self._slack_email = slack_email
+
+    @property
+    def slack_channel(self) -> str:
+        """
+        :rtype: Text
+        """
+        return self._slack_channel
+
+    @property
+    def slack_email(self) -> str:
+        """
+        :rtype: Text
+        """
+        return self._slack_email
+
+    def to_flyte_idl(self):
+        """
+        :rtype: flyteidl.admin.common_pb2.SlackWebhookNotification
+        """
+        return _common_pb2.SlackWebhookNotification(
+            slack_channel=self.slack_channel,
+            slack_email=self.slack_email,
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object):
+        """
+        :param flyteidl.admin.common_pb2.SlackWebhookNotification pb2_object:
+        :rtype: SlackWebhookNotification
+        """
+        return cls(
+            slack_channel=pb2_object.slack_channel,
+            slack_email=pb2_object.slack_email,
+        )
+
+
 class Notification(FlyteIdlEntity):
     def __init__(
         self,
@@ -254,6 +298,7 @@ class Notification(FlyteIdlEntity):
         email: EmailNotification = None,
         pager_duty: PagerDutyNotification = None,
         slack: SlackNotification = None,
+        slack_webhook: SlackWebhookNotification = None,
     ):
         """
         Represents a structure for notifications based on execution status.
@@ -262,11 +307,13 @@ class Notification(FlyteIdlEntity):
         :param EmailNotification email: [Optional] Specify this for an email notification.
         :param PagerDutyNotification email: [Optional] Specify this for a PagerDuty notification.
         :param SlackNotification email: [Optional] Specify this for a Slack notification.
+        :param SlackWebhookNotification email: [Optional] Specify this for a Slack Webhook notification.
         """
         self._phases = phases
         self._email = email
         self._pager_duty = pager_duty
         self._slack = slack
+        self._slack_webhook = slack_webhook
 
     @property
     def phases(self):
@@ -297,16 +344,35 @@ class Notification(FlyteIdlEntity):
         """
         return self._slack
 
+    @property
+    def slack_webhook(self):
+        """
+        :rtype: SlackWebhookNotification
+        """
+        return self._slack_webhook
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.common_pb2.Notification
         """
-        return _common_pb2.Notification(
+        n = _common_pb2.Notification(
             phases=self.phases,
             email=self.email.to_flyte_idl() if self.email else None,
             pager_duty=self.pager_duty.to_flyte_idl() if self.pager_duty else None,
             slack=self.slack.to_flyte_idl() if self.slack else None,
+            slack_webhook=self.slack_webhook.to_flyte_idl() if self.slack_webhook else None,
         )
+        from google.protobuf import text_format
+        print("Message type:", n.DESCRIPTOR.full_name)
+        print("\nFields:")
+        for field in n.DESCRIPTOR.fields:
+            print(f"Field: {field.full_name}")
+            print(f"  type: {field.type}")
+            print(f"  label: {field.label}")
+        print("\nWhich notification type is set:", n.WhichOneof('type'))
+        print("\nMessage content:")
+        print(text_format.MessageToString(n, as_one_line=False))
+        return n
 
     @classmethod
     def from_flyte_idl(cls, p):
@@ -319,6 +385,7 @@ class Notification(FlyteIdlEntity):
             email=EmailNotification.from_flyte_idl(p.email) if p.HasField("email") else None,
             pager_duty=PagerDutyNotification.from_flyte_idl(p.pager_duty) if p.HasField("pager_duty") else None,
             slack=SlackNotification.from_flyte_idl(p.slack) if p.HasField("slack") else None,
+            slack_webhook=SlackWebhookNotification.from_flyte_idl(p.slack_webhook) if p.HasField("slack_webhook") else None,
         )
 
 
