@@ -28,7 +28,7 @@ async def test_easy_1():
     assert res == 2
 
 
-@pytest.mark.sandbox
+@pytest.mark.sandbox_test
 def test_easy_2():
     ctx = FlyteContextManager.current_context()
     dc = Config.for_sandbox().data_config
