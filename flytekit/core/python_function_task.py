@@ -618,7 +618,6 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
 
 
 """
-merge master again
 pure watch informer pattern
 
 priority for flytekit - fix naming, depending on src

@@ -33,6 +33,7 @@ from flytekit.extend.backend.utils import is_terminal_phase, mirror_async_method
 from flytekit.loggers import set_flytekit_log_properties
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskExecutionMetadata, TaskTemplate
+from flytekit.utils.asyn import loop_manager
 
 
 class TaskCategory:
@@ -286,8 +287,8 @@ class SyncAgentExecutorMixin:
 
         agent = AgentRegistry.get_agent(task_template.type, task_template.task_type_version)
 
-        resource = asyncio.run(
-            self._do(agent=agent, template=task_template, output_prefix=output_prefix, inputs=kwargs)
+        resource = loop_manager.run_sync(
+            self._do, agent=agent, template=task_template, output_prefix=output_prefix, inputs=kwargs
         )
         if resource.phase != TaskExecution.SUCCEEDED:
             raise FlyteUserException(f"Failed to run the task {self.name} with error: {resource.message}")
@@ -329,16 +330,19 @@ class AsyncAgentExecutorMixin:
         ctx = FlyteContext.current_context()
         ss = ctx.serialization_settings or SerializationSettings(ImageConfig())
         output_prefix = ctx.file_access.get_random_remote_directory()
+        self.resource_meta = None
 
         from flytekit.tools.translator import get_serializable
+
+        signal.signal(signal.SIGINT, self.signal_handler)  # type: ignore
 
         task_template = get_serializable(OrderedDict(), ss, self).template
         self._agent = AgentRegistry.get_agent(task_template.type, task_template.task_type_version)
 
-        resource_mata = asyncio.run(
-            self._create(task_template=task_template, output_prefix=output_prefix, inputs=kwargs)
+        resource_mata = loop_manager.run_sync(
+            self._create, task_template=task_template, output_prefix=output_prefix, inputs=kwargs,
         )
-        resource = asyncio.run(self._get(resource_meta=resource_mata))
+        resource = loop_manager.run_sync(self._get, resource_meta=resource_mata)
 
         if resource.phase != TaskExecution.SUCCEEDED:
             raise FlyteUserException(f"Failed to run the task {self.name} with error: {resource.message}")
@@ -380,7 +384,8 @@ class AsyncAgentExecutorMixin:
             output_prefix=output_prefix,
         )
 
-        signal.signal(signal.SIGINT, partial(self.signal_handler, resource_meta))  # type: ignore
+        # signal.signal(signal.SIGINT, partial(self.signal_handler, resource_meta))  # type: ignore
+        self.resource_meta = resource_meta
         return resource_meta
 
     async def _get(self: PythonTask, resource_meta: ResourceMeta) -> Resource:
@@ -415,7 +420,10 @@ class AsyncAgentExecutorMixin:
 
         return resource
 
-    def signal_handler(self, resource_meta: ResourceMeta, signum: int, frame: FrameType) -> Any:
-        if self._clean_up_task is None:
-            co = mirror_async_methods(self._agent.delete, resource_meta=resource_meta)
-            self._clean_up_task = asyncio.create_task(co)
+    def signal_handler(self, signum: int, frame: FrameType) -> Any:
+        self._agent.delete(self.resource_meta)
+        # if self._clean_up_task is None:
+        #     co = mirror_async_methods(self._agent.delete, resource_meta=self.resource_meta)
+        #     # Kevin: what to do about this create_task call? is the assumption that this signal_handler function
+        #     # is always called within an async function?
+        #     self._clean_up_task = asyncio.create_task(co)
