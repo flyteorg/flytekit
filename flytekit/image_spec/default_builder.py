@@ -90,10 +90,10 @@ $ENTRYPOINT
 
 $COPY_COMMAND_RUNTIME
 
+$EXTRA_COPY_CMDS
+
 RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/uv,id=uv \
     --mount=from=uv,source=/uv,target=/usr/bin/uv $RUN_COMMANDS
-
-$EXTRA_COPY_CMDS
 
 WORKDIR /root
 SHELL ["/bin/bash", "-c"]
