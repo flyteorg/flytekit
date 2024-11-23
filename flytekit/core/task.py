@@ -5,12 +5,7 @@ import os
 from functools import update_wrapper
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, TypeVar, Union, overload
 
-from flytekit.core.utils import str2bool
-
-try:
-    from typing import ParamSpec
-except ImportError:
-    from typing_extensions import ParamSpec  # type: ignore
+from typing_extensions import ParamSpec  # type: ignore
 
 from flytekit.core import launch_plan as _annotated_launchplan
 from flytekit.core import workflow as _annotated_workflow
@@ -20,6 +15,7 @@ from flytekit.core.pod_template import PodTemplate
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.reference_entity import ReferenceEntity, TaskReference
 from flytekit.core.resources import Resources
+from flytekit.core.utils import str2bool
 from flytekit.deck import DeckField
 from flytekit.extras.accelerators import BaseAccelerator
 from flytekit.image_spec.image_spec import ImageSpec
@@ -130,6 +126,7 @@ def task(
     pod_template: Optional["PodTemplate"] = ...,
     pod_template_name: Optional[str] = ...,
     accelerator: Optional[BaseAccelerator] = ...,
+    pickle_untyped: bool = ...,
 ) -> Callable[[Callable[..., FuncOut]], PythonFunctionTask[T]]: ...
 
 
@@ -168,6 +165,7 @@ def task(
     pod_template: Optional["PodTemplate"] = ...,
     pod_template_name: Optional[str] = ...,
     accelerator: Optional[BaseAccelerator] = ...,
+    pickle_untyped: bool = ...,
 ) -> Union[Callable[P, FuncOut], PythonFunctionTask[T]]: ...
 
 
@@ -211,6 +209,7 @@ def task(
     pod_template: Optional["PodTemplate"] = None,
     pod_template_name: Optional[str] = None,
     accelerator: Optional[BaseAccelerator] = None,
+    pickle_untyped: bool = False,
 ) -> Union[
     Callable[P, FuncOut],
     Callable[[Callable[P, FuncOut]], PythonFunctionTask[T]],
@@ -340,6 +339,7 @@ def task(
     :param pod_template: Custom PodTemplate for this task.
     :param pod_template_name: The name of the existing PodTemplate resource which will be used in this task.
     :param accelerator: The accelerator to use for this task.
+    :param pickle_untyped: Boolean that indicates if the task allows unspecified data types.
     """
 
     def wrapper(fn: Callable[P, Any]) -> PythonFunctionTask[T]:
@@ -375,6 +375,7 @@ def task(
             pod_template=pod_template,
             pod_template_name=pod_template_name,
             accelerator=accelerator,
+            pickle_untyped=pickle_untyped,
         )
         update_wrapper(task_instance, decorated_fn)
         return task_instance

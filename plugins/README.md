@@ -24,8 +24,8 @@ All the Flytekit plugins maintained by the core team are added here. It is not n
 | dbt                          | `bash pip install flytekitplugins-dbt`                | Run dbt within Flyte                                                                                                       | [![PyPI version fury.io](https://badge.fury.io/py/flytekitplugins-dbt.svg)](https://pypi.python.org/pypi/flytekitplugins-dbt/)                               | Flytekit-only |
 | Huggingface                  | `bash pip install flytekitplugins-huggingface`        | Read & write Hugginface Datasets as Flyte StructuredDatasets                                                               | [![PyPI version fury.io](https://badge.fury.io/py/flytekitplugins-huggingface.svg)](https://pypi.python.org/pypi/flytekitplugins-huggingface/)               | Flytekit-only |
 | DuckDB                       | `bash pip install flytekitplugins-duckdb`             | Run analytical workloads with ease using DuckDB                                                                            | [![PyPI version fury.io](https://badge.fury.io/py/flytekitplugins-duckdb.svg)](https://pypi.python.org/pypi/flytekitplugins-duckdb/)                         | Flytekit-only |
-| ChatGPT             | `bash pip install flytekitplugins-openai`             | Interact with OpenAI's ChatGPT.                            | [![PyPI version fury.io](https://badge.fury.io/py/flytekitplugins-openai.svg)](https://pypi.python.org/pypi/flytekitplugins-openai/)                         | Flytekit-only |
-| OpenAI Batch             | `bash pip install flytekitplugins-openai`             | Submit requests to OpenAI for asynchronous batch processing.                            | [![PyPI version fury.io](https://badge.fury.io/py/flytekitplugins-openai.svg)](https://pypi.python.org/pypi/flytekitplugins-openai/)                         | Flytekit-only |
+| ChatGPT                      | `bash pip install flytekitplugins-openai`             | Interact with OpenAI's ChatGPT.                                                                                            | [![PyPI version fury.io](https://badge.fury.io/py/flytekitplugins-openai.svg)](https://pypi.python.org/pypi/flytekitplugins-openai/)                         | Flytekit-only |
+| OpenAI Batch                 | `bash pip install flytekitplugins-openai`             | Submit requests to OpenAI for asynchronous batch processing.                                                               | [![PyPI version fury.io](https://badge.fury.io/py/flytekitplugins-openai.svg)](https://pypi.python.org/pypi/flytekitplugins-openai/)                         | Flytekit-only |
 
 ## Have a Plugin Idea? 💡
 
@@ -101,12 +101,11 @@ setup(
     packages=[f"flytekitplugins.{PLUGIN_NAME}"],
     install_requires=plugin_requires,
     license="apache2",
-    python_requires=">=3.8",
+    python_requires=">=3.9",
     classifiers=[
         "Intended Audience :: Science/Research",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: Apache Software License",
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Topic :: Scientific/Engineering",

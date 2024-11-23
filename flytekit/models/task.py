@@ -1018,7 +1018,7 @@ class K8sPod(_common.FlyteIdlEntity):
 
     def to_flyte_idl(self) -> _core_task.K8sPod:
         return _core_task.K8sPod(
-            metadata=self._metadata.to_flyte_idl(),
+            metadata=self._metadata.to_flyte_idl() if self.metadata else None,
             pod_spec=_json_format.Parse(_json.dumps(self.pod_spec), _struct.Struct()) if self.pod_spec else None,
             data_config=self.data_config.to_flyte_idl() if self.data_config else None,
         )
