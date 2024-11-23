@@ -1,4 +1,3 @@
-import asyncio
 import json
 import signal
 import sys
@@ -7,7 +6,6 @@ import typing
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from dataclasses import asdict, dataclass
-from functools import partial
 from types import FrameType, coroutine
 from typing import Any, Dict, List, Optional, Union
 
@@ -340,7 +338,10 @@ class AsyncAgentExecutorMixin:
         self._agent = AgentRegistry.get_agent(task_template.type, task_template.task_type_version)
 
         resource_mata = loop_manager.run_sync(
-            self._create, task_template=task_template, output_prefix=output_prefix, inputs=kwargs,
+            self._create,
+            task_template=task_template,
+            output_prefix=output_prefix,
+            inputs=kwargs,
         )
         resource = loop_manager.run_sync(self._get, resource_meta=resource_mata)
 

@@ -51,10 +51,6 @@ class _TaskRunner:
         if self.__loop:
             self.__loop.stop()
 
-    @property
-    def loop(self) -> asyncio.AbstractEventLoop:
-        return self.__loop
-
     def _execute(self) -> None:
         loop = self.__loop
         assert loop is not None
@@ -63,18 +59,15 @@ class _TaskRunner:
         finally:
             loop.close()
 
-    def ensure_loop(self, name: str):
+    def run(self, coro: Any) -> Any:
+        """Synchronously run a coroutine on a background thread."""
+        name = f"{threading.current_thread().name} : loop-runner"
         with self.__lock:
             if self.__loop is None:
                 with _selector_policy():
                     self.__loop = asyncio.new_event_loop()
                 self.__runner_thread = threading.Thread(target=self._execute, daemon=True, name=name)
                 self.__runner_thread.start()
-
-    def run(self, coro: Any) -> Any:
-        """Synchronously run a coroutine on a background thread."""
-        name = f"{threading.current_thread().name} : loop-runner"
-        self.ensure_loop(name)
         fut = asyncio.run_coroutine_threadsafe(coro, self.__loop)
         res = fut.result(None)
 
@@ -107,18 +100,6 @@ class _AsyncLoopManager:
             return self.run_sync(coro_func, *args, **kwargs)
 
         return wrapped
-
-    def get_running_loop(self) -> asyncio.AbstractEventLoop:
-        name = threading.current_thread().name + f"PID:{os.getpid()}"
-        if name not in self._runner_map:
-            if len(self._runner_map) > 500:
-                logger.warning(
-                    "More than 500 event loop runners created!!! This could be a case of runaway recursion..."
-                )
-            self._runner_map[name] = _TaskRunner()
-            runner_thread_name = f"{name} : loop-runner"
-            self._runner_map[name].ensure_loop(runner_thread_name)
-        return self._runner_map[name].loop
 
 
 loop_manager = _AsyncLoopManager()

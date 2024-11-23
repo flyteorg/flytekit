@@ -7,7 +7,6 @@ from flyteidl.core.execution_pb2 import TaskExecution
 
 import flytekit
 from flytekit.models.task import TaskTemplate
-from flytekit.utils.asyn import loop_manager
 
 
 def mirror_async_methods(func: Callable, **kwargs) -> Coroutine:
