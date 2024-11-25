@@ -787,7 +787,7 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
         return lit
 
     def dict_to_structured_dataset(
-        self, dict_obj: typing.Dict[str, str], expected_python_type: Type[T] | StructuredDataset
+        self, ctx: FlyteContext, dict_obj: typing.Dict[str, str], expected_python_type: Type[T] | StructuredDataset
     ) -> T | StructuredDataset:
         uri = dict_obj.get("uri", None)
         file_format = dict_obj.get("file_format", None)
@@ -795,23 +795,29 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
         if uri is None:
             raise ValueError("StructuredDataset's uri and file format should not be None")
 
+        # Construct models.literal.StructuredDataset
+        py_sd = StructuredDataset(
+            metadata=StructuredDatasetMetadata(
+                structured_dataset_type=StructuredDatasetType(format=file_format)
+            ),
+            uri=uri,
+        )
+        to_literal = loop_manager.synced(flyte_dataset_transformer.async_to_literal)
+        expected = TypeEngine.to_literal_type(StructuredDataset)
+        lit_sd = to_literal(ctx, py_sd, StructuredDataset, expected).scalar.structured_dataset
+
         return StructuredDatasetTransformerEngine().to_python_value(
             FlyteContextManager.current_context(),
             Literal(
                 scalar=Scalar(
-                    structured_dataset=StructuredDataset(
-                        metadata=StructuredDatasetMetadata(
-                            structured_dataset_type=StructuredDatasetType(format=file_format)
-                        ),
-                        uri=uri,
-                    )
+                    structured_dataset=lit_sd
                 )
             ),
             expected_python_type,
         )
 
     def from_binary_idl(
-        self, binary_idl_object: Binary, expected_python_type: Type[T] | StructuredDataset
+        self, ctx: FlyteContext, binary_idl_object: Binary, expected_python_type: Type[T] | StructuredDataset
     ) -> T | StructuredDataset:
         """
         If the input is from flytekit, the Life Cycle will be as follows:
@@ -839,7 +845,7 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
         """
         if binary_idl_object.tag == MESSAGEPACK:
             python_val = msgpack.loads(binary_idl_object.value)
-            return self.dict_to_structured_dataset(dict_obj=python_val, expected_python_type=expected_python_type)
+            return self.dict_to_structured_dataset(ctx=ctx, dict_obj=python_val, expected_python_type=expected_python_type)
         else:
             raise TypeTransformerFailedError(f"Unsupported binary format: `{binary_idl_object.tag}`")
 
@@ -909,7 +915,7 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
         # Handle dataclass attribute access
         if lv.scalar:
             if lv.scalar.binary:
-                return self.from_binary_idl(lv.scalar.binary, expected_python_type)
+                return self.from_binary_idl(ctx, lv.scalar.binary, expected_python_type)
             if lv.scalar.generic:
                 return self.from_generic_idl(lv.scalar.generic, expected_python_type)
 
