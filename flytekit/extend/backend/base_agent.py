@@ -1,12 +1,14 @@
+import asyncio
+import inspect
 import json
-import signal
 import sys
 import time
 import typing
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from dataclasses import asdict, dataclass
-from types import FrameType, coroutine
+from functools import partial
+from types import FrameType
 from typing import Any, Dict, List, Optional, Union
 
 from flyteidl.admin.agent_pb2 import Agent
@@ -321,7 +323,7 @@ class AsyncAgentExecutorMixin:
     Asynchronous tasks are tasks that take a long time to complete, such as running a query.
     """
 
-    _clean_up_task: coroutine = None
+    _clean_up_task: bool = False
     _agent: AsyncAgentBase = None
 
     def execute(self: PythonTask, **kwargs) -> LiteralMap:
@@ -331,8 +333,6 @@ class AsyncAgentExecutorMixin:
         self.resource_meta = None
 
         from flytekit.tools.translator import get_serializable
-
-        signal.signal(signal.SIGINT, self.signal_handler)  # type: ignore
 
         task_template = get_serializable(OrderedDict(), ss, self).template
         self._agent = AgentRegistry.get_agent(task_template.type, task_template.task_type_version)
@@ -385,7 +385,7 @@ class AsyncAgentExecutorMixin:
             output_prefix=output_prefix,
         )
 
-        # signal.signal(signal.SIGINT, partial(self.signal_handler, resource_meta))  # type: ignore
+        FlyteContextManager.add_signal_handler(partial(self.agent_signal_handler, resource_meta))
         self.resource_meta = resource_meta
         return resource_meta
 
@@ -403,7 +403,6 @@ class AsyncAgentExecutorMixin:
                 time.sleep(1)
                 resource = await mirror_async_methods(self._agent.get, resource_meta=resource_meta)
                 if self._clean_up_task:
-                    await self._clean_up_task
                     sys.exit(1)
 
                 phase = resource.phase
@@ -421,10 +420,11 @@ class AsyncAgentExecutorMixin:
 
         return resource
 
-    def signal_handler(self, signum: int, frame: FrameType) -> Any:
-        self._agent.delete(self.resource_meta)
-        # if self._clean_up_task is None:
-        #     co = mirror_async_methods(self._agent.delete, resource_meta=self.resource_meta)
-        #     # Kevin: what to do about this create_task call? is the assumption that this signal_handler function
-        #     # is always called within an async function?
-        #     self._clean_up_task = asyncio.create_task(co)
+    def agent_signal_handler(self, resource_meta: ResourceMeta, signum: int, frame: FrameType) -> Any:
+        if inspect.iscoroutinefunction(self._agent.delete):
+            # Use asyncio.run to run the async function in the main thread since the loop manager is killed when the
+            # signal is received.
+            asyncio.run(self._agent.delete(resource_meta))
+        else:
+            self._agent.delete(resource_meta)
+        self._clean_up_task = True

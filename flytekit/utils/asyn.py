@@ -66,9 +66,15 @@ class _TaskRunner:
             if self.__loop is None:
                 with _selector_policy():
                     self.__loop = asyncio.new_event_loop()
+
+                def exc_handler(loop, context):
+                    logger.error(f"Caught exception in loop {loop} with context {context}")
+
+                self.__loop.set_exception_handler(exc_handler)
                 self.__runner_thread = threading.Thread(target=self._execute, daemon=True, name=name)
                 self.__runner_thread.start()
         fut = asyncio.run_coroutine_threadsafe(coro, self.__loop)
+
         res = fut.result(None)
 
         return res

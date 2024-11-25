@@ -16,6 +16,7 @@ from __future__ import annotations
 import logging as _logging
 import os
 import pathlib
+import signal
 import tempfile
 import traceback
 import typing
@@ -896,6 +897,12 @@ class FlyteContextManager(object):
         FlyteContextManager.pop_context()
     """
 
+    signal_handlers = []
+
+    @staticmethod
+    def add_signal_handler(handler):
+        FlyteContextManager.signal_handlers.append(handler)
+
     @staticmethod
     def get_origin_stackframe(limit=2) -> traceback.FrameSummary:
         ss = traceback.extract_stack(limit=limit + 1)
@@ -978,6 +985,13 @@ class FlyteContextManager(object):
         # Ensure a local directory is available for users to work with.
         user_space_path = os.path.join(cfg.local_sandbox_path, "user_space")
         pathlib.Path(user_space_path).mkdir(parents=True, exist_ok=True)
+
+        def main_signal_handler(signum, frame):
+            for handler in FlyteContextManager.signal_handlers:
+                handler(signum, frame)
+            exit(1)
+
+        signal.signal(signal.SIGINT, main_signal_handler)
 
         # Note we use the SdkWorkflowExecution object purely for formatting into the ex:project:domain:name format users
         # are already acquainted with
