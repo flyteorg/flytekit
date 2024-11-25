@@ -8,7 +8,7 @@ plugin_requires = [
     "flytekit>=1.5.0",
     "great-expectations>=0.13.30,<1.0.0",
     "sqlalchemy>=1.4.23",
-    "pyspark==3.3.1",
+    "pyspark==3.3.2",
     "s3fs<2023.6.0",
 ]
 
@@ -24,12 +24,11 @@ setup(
     packages=[f"flytekitplugins.{PLUGIN_NAME}"],
     install_requires=plugin_requires,
     license="apache2",
-    python_requires=">=3.8",
+    python_requires=">=3.9",
     classifiers=[
         "Intended Audience :: Science/Research",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: Apache Software License",
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Topic :: Scientific/Engineering",

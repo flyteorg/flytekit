@@ -3,12 +3,15 @@ from collections import OrderedDict
 
 import pytest
 
-from flytekit import LaunchPlan, current_context, task, workflow
+from flytekit import LaunchPlan, task, workflow
+from flytekit.core.context_manager import FlyteContextManager
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.array_node import array_node
 from flytekit.core.array_node_map_task import map_task
 from flytekit.models.core import identifier as identifier_models
-from flytekit.tools.translator import get_serializable
+from flytekit.remote import FlyteLaunchPlan
+from flytekit.remote.interface import TypedInterface
+from flytekit.tools.translator import gather_dependent_entities, get_serializable
 
 
 @pytest.fixture
@@ -35,33 +38,79 @@ def parent_wf(a: int, b: typing.Union[int, str], c: int = 2) -> int:
     return multiply(val=a, val1=b, val2=c)
 
 
-lp = LaunchPlan.get_default_launch_plan(current_context(), parent_wf)
+ctx = FlyteContextManager.current_context()
+lp = LaunchPlan.get_default_launch_plan(ctx, parent_wf)
 
 
-@workflow
-def grandparent_wf() -> typing.List[int]:
-    return array_node(lp, concurrency=10, min_success_ratio=0.9)(a=[1, 3, 5], b=["two", 4, "six"], c=[7, 8, 9])
+def get_grandparent_wf(serialization_settings):
+    @workflow
+    def grandparent_wf() -> typing.List[int]:
+        return array_node(lp, concurrency=10, min_success_ratio=0.9)(a=[1, 3, 5], b=["two", 4, "six"], c=[7, 8, 9])
+
+    return grandparent_wf
 
 
-def test_lp_serialization(serialization_settings):
-    wf_spec = get_serializable(OrderedDict(), serialization_settings, grandparent_wf)
+def get_grandparent_wf_with_overrides(serialization_settings):
+    @workflow
+    def grandparent_wf_with_overrides() -> typing.List[int]:
+        return array_node(
+            lp, concurrency=10, min_success_ratio=0.9
+        )(a=[1, 3, 5], b=["two", 4, "six"], c=[7, 8, 9]).with_overrides(cache=True, cache_version="1.0")
+
+    return grandparent_wf_with_overrides
+
+
+def get_grandparent_remote_wf(serialization_settings):
+    serialized = OrderedDict()
+    lp_model = get_serializable(serialized, serialization_settings, lp)
+
+    task_templates, wf_specs, lp_specs = gather_dependent_entities(serialized)
+    for wf_id, spec in wf_specs.items():
+        break
+
+    remote_lp = FlyteLaunchPlan.promote_from_model(lp_model.id, lp_model.spec)
+    # To pretend that we've fetched this launch plan from Admin, also fill in the Flyte interface, which isn't
+    # part of the IDL object but is something FlyteRemote does
+    remote_lp._interface = TypedInterface.promote_from_model(spec.template.interface)
+
+    @workflow
+    def grandparent_remote_wf() -> typing.List[int]:
+        return array_node(
+            remote_lp, concurrency=10, min_success_ratio=0.9
+        )(a=[1, 3, 5], b=["two", 4, "six"], c=[7, 8, 9])
+
+    return grandparent_remote_wf
+
+
+@pytest.mark.parametrize(
+    ("target", "overrides_metadata"),
+    [
+        (get_grandparent_wf, False),
+        (get_grandparent_remote_wf, False),
+        (get_grandparent_wf_with_overrides, True),
+    ],
+)
+def test_lp_serialization(target, overrides_metadata, serialization_settings):
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, target(serialization_settings))
     assert len(wf_spec.template.nodes) == 1
 
-    top_level = wf_spec.template.nodes[0]
-    assert top_level.inputs[0].var == "a"
-    assert len(top_level.inputs[0].binding.collection.bindings) == 3
-    for binding in top_level.inputs[0].binding.collection.bindings:
+    parent_node = wf_spec.template.nodes[0]
+    assert parent_node.inputs[0].var == "a"
+    assert len(parent_node.inputs[0].binding.collection.bindings) == 3
+    for binding in parent_node.inputs[0].binding.collection.bindings:
         assert binding.scalar.primitive.integer is not None
-    assert top_level.inputs[1].var == "b"
-    for binding in top_level.inputs[1].binding.collection.bindings:
-        assert binding.scalar.union is not None
-    assert len(top_level.inputs[1].binding.collection.bindings) == 3
-    assert top_level.inputs[2].var == "c"
-    assert len(top_level.inputs[2].binding.collection.bindings) == 3
-    for binding in top_level.inputs[2].binding.collection.bindings:
+    assert parent_node.inputs[1].var == "b"
+    for binding in parent_node.inputs[1].binding.collection.bindings:
+        assert (binding.scalar.union is not None or
+                binding.scalar.primitive.integer is not None or
+                binding.scalar.primitive.string_value is not None)
+    assert len(parent_node.inputs[1].binding.collection.bindings) == 3
+    assert parent_node.inputs[2].var == "c"
+    assert len(parent_node.inputs[2].binding.collection.bindings) == 3
+    for binding in parent_node.inputs[2].binding.collection.bindings:
         assert binding.scalar.primitive.integer is not None
 
-    serialized_array_node = top_level.array_node
+    serialized_array_node = parent_node.array_node
     assert (
             serialized_array_node.node.workflow_node.launchplan_ref.resource_type
             == identifier_models.ResourceType.LAUNCH_PLAN
@@ -74,7 +123,18 @@ def test_lp_serialization(serialization_settings):
     assert serialized_array_node._parallelism == 10
 
     subnode = serialized_array_node.node
-    assert subnode.inputs == top_level.inputs
+    assert subnode.inputs == parent_node.inputs
+
+    if overrides_metadata:
+        assert parent_node.metadata.cacheable
+        assert parent_node.metadata.cache_version == "1.0"
+        assert subnode.metadata.cacheable
+        assert subnode.metadata.cache_version == "1.0"
+    else:
+        assert not parent_node.metadata.cacheable
+        assert not parent_node.metadata.cache_version
+        assert not subnode.metadata.cacheable
+        assert not subnode.metadata.cache_version
 
 
 @pytest.mark.parametrize(
@@ -103,7 +163,8 @@ def test_local_exec_lp_min_successes(min_successes, min_success_ratio, should_ra
     def ex_wf(val: int) -> int:
         return ex_task(val=val)
 
-    ex_lp = LaunchPlan.get_default_launch_plan(current_context(), ex_wf)
+    ctx = FlyteContextManager.current_context()
+    ex_lp = LaunchPlan.get_default_launch_plan(ctx, ex_wf)
 
     @workflow
     def grandparent_ex_wf() -> typing.List[typing.Optional[int]]:

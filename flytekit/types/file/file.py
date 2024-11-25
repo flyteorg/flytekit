@@ -1,24 +1,33 @@
 from __future__ import annotations
 
+import json
 import mimetypes
 import os
 import pathlib
 import typing
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import cast
+from typing import Dict, cast
 from urllib.parse import unquote
 
 import msgpack
 from dataclasses_json import config
+from google.protobuf import json_format as _json_format
+from google.protobuf.struct_pb2 import Struct
 from marshmallow import fields
 from mashumaro.mixins.json import DataClassJSONMixin
 from mashumaro.types import SerializableType
 
 from flytekit.core.constants import MESSAGEPACK
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError, get_underlying_type
+from flytekit.core.type_engine import (
+    AsyncTypeTransformer,
+    TypeEngine,
+    TypeTransformerFailedError,
+    get_underlying_type,
+)
 from flytekit.exceptions.user import FlyteAssertion
+from flytekit.extras.pydantic_transformer.decorator import model_serializer, model_validator
 from flytekit.loggers import logger
 from flytekit.models.core import types as _core_types
 from flytekit.models.core.types import BlobType
@@ -154,12 +163,19 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
 
     @classmethod
     def _deserialize(cls, value) -> "FlyteFile":
-        path = value.get("path", None)
+        return FlyteFilePathTransformer().dict_to_flyte_file(dict_obj=value, expected_python_type=cls)
 
-        if path is None:
-            raise ValueError("FlyteFile's path should not be None")
+    @model_serializer
+    def serialize_flyte_file(self) -> Dict[str, str]:
+        lv = FlyteFilePathTransformer().to_literal(FlyteContextManager.current_context(), self, type(self), None)
+        return {"path": lv.scalar.blob.uri}
 
-        return FlyteFilePathTransformer().to_python_value(
+    @model_validator(mode="after")
+    def deserialize_flyte_file(self, info) -> "FlyteFile":
+        if info.context is None or info.context.get("deserialize") is not True:
+            return self
+
+        pv = FlyteFilePathTransformer().to_python_value(
             FlyteContextManager.current_context(),
             Literal(
                 scalar=Scalar(
@@ -169,12 +185,13 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
                                 format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
                             )
                         ),
-                        uri=path,
+                        uri=self.path,
                     )
                 )
             ),
-            cls,
+            type(self),
         )
+        return pv
 
     @classmethod
     def extension(cls) -> str:
@@ -208,6 +225,21 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
         )
         t = FlyteFilePathTransformer()
         return t.to_python_value(ctx, lit, cls)
+
+    @classmethod
+    def new(cls, filename: str | os.PathLike) -> FlyteFile:
+        """
+        Create a new FlyteFile object in the current Flyte working directory
+        """
+
+        if os.path.isabs(filename):
+            raise ValueError("Path should be relative.")
+
+        ctx = FlyteContextManager.current_context()
+
+        path = os.path.join(ctx.user_space_params.working_directory, filename)
+
+        return cls(path=path)
 
     def __class_getitem__(cls, item: typing.Union[str, typing.Type]) -> typing.Type[FlyteFile]:
         from flytekit.types.file import FileExt
@@ -304,6 +336,9 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
     def download(self) -> str:
         return self.__fspath__()
 
+    async def _download(self) -> str:
+        return self.__fspath__()
+
     @contextmanager
     def open(
         self,
@@ -349,8 +384,11 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
     def __str__(self):
         return self.path
 
+    def __hash__(self):
+        return hash(str(self.path))
 
-class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
+
+class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
     def __init__(self):
         super().__init__(name="FlyteFilePath", t=FlyteFile)
 
@@ -428,7 +466,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             if real_type not in expected_type:
                 raise ValueError(f"Incorrect file type, expected {expected_type}, got {real_type}")
 
-    def to_literal(
+    async def async_to_literal(
         self,
         ctx: FlyteContext,
         python_val: typing.Union[FlyteFile, os.PathLike, str],
@@ -451,7 +489,9 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         meta = BlobMetadata(type=self._blob_type(format=FlyteFilePathTransformer.get_format(python_type)))
 
         if isinstance(python_val, FlyteFile):
-            source_path = python_val.path
+            # Cast the source path to str type to avoid error raised when the source path is used as the blob uri,
+            # please refer to this issue: https://github.com/flyteorg/flyte/issues/5872.
+            source_path = str(python_val.path)
             self.validate_file_type(python_type, source_path)
 
             # If the object has a remote source, then we just convert it back. This means that if someone is just
@@ -506,9 +546,12 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         if should_upload:
             headers = self.get_additional_headers(source_path)
             if remote_path is not None:
-                remote_path = ctx.file_access.put_data(source_path, remote_path, is_multipart=False, **headers)
+                remote_path = await ctx.file_access.async_put_data(
+                    source_path, remote_path, is_multipart=False, **headers
+                )
             else:
-                remote_path = ctx.file_access.put_raw_data(source_path, **headers)
+                remote_path = await ctx.file_access.async_put_raw_data(source_path, **headers)
+            # If the source path is a local file, the remote path will be a remote storage path.
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=unquote(str(remote_path)))))
         # If not uploading, then we can only take the original source path as the uri.
         else:
@@ -520,41 +563,103 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             return {"ContentEncoding": "gzip"}
         return {}
 
+    def dict_to_flyte_file(
+        self, dict_obj: typing.Dict[str, str], expected_python_type: typing.Union[typing.Type[FlyteFile], os.PathLike]
+    ) -> FlyteFile:
+        path = dict_obj.get("path", None)
+
+        if path is None:
+            raise ValueError("FlyteFile's path should not be None")
+
+        return self.to_python_value(
+            FlyteContextManager.current_context(),
+            Literal(
+                scalar=Scalar(
+                    blob=Blob(
+                        metadata=BlobMetadata(
+                            type=_core_types.BlobType(
+                                format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
+                            )
+                        ),
+                        uri=path,
+                    )
+                )
+            ),
+            expected_python_type,
+        )
+
     def from_binary_idl(
         self, binary_idl_object: Binary, expected_python_type: typing.Union[typing.Type[FlyteFile], os.PathLike]
     ) -> FlyteFile:
+        """
+        If the input is from flytekit, the Life Cycle will be as follows:
+
+        Life Cycle:
+        binary IDL                 -> resolved binary         -> bytes                   -> expected Python object
+        (flytekit customized          (propeller processing)     (flytekit binary IDL)      (flytekit customized
+        serialization)                                                                       deserialization)
+
+        Example Code:
+            @dataclass
+            class DC:
+                ff: FlyteFile
+
+            @workflow
+            def wf(dc: DC):
+                t_ff(dc.ff)
+
+        Note:
+        - The deserialization is the same as put a flyte file in a dataclass, which will deserialize by the mashumaro's API.
+
+        Related PR:
+        - Title: Override Dataclass Serialization/Deserialization Behavior for FlyteTypes via Mashumaro
+        - Link: https://github.com/flyteorg/flytekit/pull/2554
+        """
         if binary_idl_object.tag == MESSAGEPACK:
             python_val = msgpack.loads(binary_idl_object.value)
-            path = python_val.get("path", None)
-
-            if path is None:
-                raise ValueError("FlyteFile's path should not be None")
-
-            return FlyteFilePathTransformer().to_python_value(
-                FlyteContextManager.current_context(),
-                Literal(
-                    scalar=Scalar(
-                        blob=Blob(
-                            metadata=BlobMetadata(
-                                type=_core_types.BlobType(
-                                    format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
-                                )
-                            ),
-                            uri=path,
-                        )
-                    )
-                ),
-                expected_python_type,
-            )
+            return self.dict_to_flyte_file(dict_obj=python_val, expected_python_type=expected_python_type)
         else:
             raise TypeTransformerFailedError(f"Unsupported binary format: `{binary_idl_object.tag}`")
 
-    def to_python_value(
+    def from_generic_idl(
+        self, generic: Struct, expected_python_type: typing.Union[typing.Type[FlyteFile], os.PathLike]
+    ) -> FlyteFile:
+        """
+        If the input is from Flyte Console, the Life Cycle will be as follows:
+
+        Life Cycle:
+        json str            -> protobuf struct         -> resolved protobuf struct   -> expected Python object
+        (console user input)   (console output)           (propeller)                   (flytekit customized deserialization)
+
+        Example Code:
+        @dataclass
+        class DC:
+            ff: FlyteFile
+
+        @workflow
+        def wf(dc: DC):
+            t_ff(dc.ff)
+
+        Note:
+        - The deserialization is the same as put a flyte file in a dataclass, which will deserialize by the mashumaro's API.
+
+        Related PR:
+        - Title: Override Dataclass Serialization/Deserialization Behavior for FlyteTypes via Mashumaro
+        - Link: https://github.com/flyteorg/flytekit/pull/2554
+        """
+        json_str = _json_format.MessageToJson(generic)
+        python_val = json.loads(json_str)
+        return self.dict_to_flyte_file(dict_obj=python_val, expected_python_type=expected_python_type)
+
+    async def async_to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Union[typing.Type[FlyteFile], os.PathLike]
     ) -> FlyteFile:
         # Handle dataclass attribute access
-        if lv.scalar and lv.scalar.binary:
-            return self.from_binary_idl(lv.scalar.binary, expected_python_type)
+        if lv.scalar:
+            if lv.scalar.binary:
+                return self.from_binary_idl(lv.scalar.binary, expected_python_type)
+            if lv.scalar.generic:
+                return self.from_generic_idl(lv.scalar.generic, expected_python_type)
 
         try:
             uri = lv.scalar.blob.uri

@@ -9,14 +9,14 @@ import subprocess
 import tempfile
 import time
 import typing
-
+import re
 import joblib
 from urllib.parse import urlparse
 import uuid
 import pytest
 from mock import mock, patch
 
-from flytekit import LaunchPlan, kwtypes
+from flytekit import LaunchPlan, kwtypes, WorkflowExecutionPhase
 from flytekit.configuration import Config, ImageConfig, SerializationSettings
 from flytekit.core.launch_plan import reference_launch_plan
 from flytekit.core.task import reference_task
@@ -62,7 +62,8 @@ def register():
     assert out.returncode == 0
 
 
-def run(file_name, wf_name, *args):
+def run(file_name, wf_name, *args) -> str:
+    # Copy the environment and set the environment variable
     out = subprocess.run(
         [
             "pyflyte",
@@ -82,9 +83,20 @@ def run(file_name, wf_name, *args):
             MODULE_PATH / file_name,
             wf_name,
             *args,
-        ]
+        ],
+        capture_output=True,  # Capture the output streams
+        text=True,  # Return outputs as strings (not bytes)
     )
-    assert out.returncode == 0
+    assert out.returncode == 0, (f"Command failed with return code {out.returncode}.\n"
+                                 f"Standard Output: {out.stdout}\n"
+                                 f"Standard Error: {out.stderr}\n")
+
+    match = re.search(r'executions/([a-zA-Z0-9]+)', out.stdout)
+    if match:
+        execution_id = match.group(1)
+        return execution_id
+
+    return "Unknown"
 
 
 def test_remote_run():
@@ -93,7 +105,28 @@ def test_remote_run():
 
     # run twice to make sure it will register a new version of the workflow.
     run("default_lp.py", "my_wf")
-    run("default_lp.py", "my_wf")
+
+
+def test_generic_idl_flytetypes():
+    os.environ["FLYTE_USE_OLD_DC_FORMAT"] = "true"
+    # default inputs for flyte types in dataclass
+    execution_id = run("generic_idl_flytetypes.py", "wf")
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    execution = remote.fetch_execution(name=execution_id)
+    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
+    print("Execution Error:", execution.error)
+    assert execution.closure.phase == WorkflowExecutionPhase.SUCCEEDED, f"Execution failed with phase: {execution.closure.phase}"
+    os.environ["FLYTE_USE_OLD_DC_FORMAT"] = "false"
+
+
+def test_msgpack_idl_flytetypes():
+    # default inputs for flyte types in dataclass
+    execution_id = run("msgpack_idl_flytetypes.py", "wf")
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    execution = remote.fetch_execution(name=execution_id)
+    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
+    print("Execution Error:", execution.error)
+    assert execution.closure.phase == WorkflowExecutionPhase.SUCCEEDED, f"Execution failed with phase: {execution.closure.phase}"
 
 
 def test_fetch_execute_launch_plan(register):
@@ -121,7 +154,9 @@ def test_get_download_artifact_signed_url(register):
 
     # Check if the signed URL is valid and starts with the expected prefix
     signed_url = download_link_response.signed_url[0]
-    assert signed_url.startswith(f"http://localhost:30002/my-s3-bucket/metadata/propeller/{project}-{domain}-{name}/n0/data/0/deck.html")
+    assert signed_url.startswith(
+        f"http://localhost:30002/my-s3-bucket/metadata/propeller/{project}-{domain}-{name}/n0/data/0/deck.html")
+
 
 def test_fetch_execute_launch_plan_with_args(register):
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
@@ -734,7 +769,6 @@ def test_execute_workflow_remote_fn_with_maptask():
     )
     assert out.outputs["o0"] == [4, 5, 6]
 
-
 def test_register_wf_fast(register):
     from workflows.basic.subworkflows import parent_wf
 
@@ -755,3 +789,13 @@ def test_register_wf_fast(register):
     subworkflow_node_executions = execution.node_executions["n1"].subworkflow_node_executions
     subworkflow_node_executions["n1-0-n0"].inputs == {"a": 103}
     subworkflow_node_executions["n1-0-n1"].outputs == {"t1_int_output": 107, "c": "world"}
+
+
+def test_fetch_active_launchplan_not_found(register):
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    assert remote.fetch_active_launchplan(name="basic.list_float_wf.fake_wf") is None
+
+def test_get_control_plane_version():
+    client = _SynchronousFlyteClient(PlatformConfig.for_endpoint("localhost:30080", True))
+    version = client.get_control_plane_version()
+    assert version == "unknown" or version.startswith("v")

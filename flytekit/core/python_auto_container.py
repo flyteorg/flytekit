@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib
 import re
 from abc import ABC
+from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, TypeVar, Union
 
 from flyteidl.core import tasks_pb2
@@ -208,7 +209,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
             return self._get_container(settings)
 
     def _get_container(self, settings: SerializationSettings) -> _task_model.Container:
-        env = {}
+        env: Dict[str, str] = {}
         for elem in (settings.env, self.environment):
             if elem:
                 env.update(elem)
@@ -282,6 +283,32 @@ class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
 default_task_resolver = DefaultTaskResolver()
 
 
+@dataclass
+class PickledEntityMetadata:
+    """
+    Metadata for a pickled entity containing version information.
+
+    Attributes:
+        python_version: The Python version string (e.g. "3.12.0") used to create the pickle
+    """
+
+    python_version: str
+
+
+@dataclass
+class PickledEntity:
+    """
+    Represents the structure of the pickled object stored in the .pkl file for interactive mode.
+
+    Attributes:
+        metadata: Metadata about the pickled entities including Python version
+        entities: Dictionary mapping entity names to their PythonAutoContainerTask instances
+    """
+
+    metadata: PickledEntityMetadata
+    entities: Dict[str, PythonAutoContainerTask]
+
+
 class DefaultNotebookTaskResolver(TrackedInstance, TaskResolverMixin):
     """
     This resolved is used when the task is defined in a notebook. It is used to load the task from the notebook.
@@ -292,16 +319,48 @@ class DefaultNotebookTaskResolver(TrackedInstance, TaskResolverMixin):
 
     @timeit("Load task")
     def load_task(self, loader_args: List[str]) -> PythonAutoContainerTask:
+        _, entity_name, *_ = loader_args
         import gzip
+        import sys
 
         import cloudpickle
 
-        with gzip.open(PICKLE_FILE_PATH, "r") as f:
-            return cloudpickle.load(f)
+        try:
+            with gzip.open(PICKLE_FILE_PATH, "r") as f:
+                loaded_data = cloudpickle.load(f)
+        except TypeError:
+            raise RuntimeError(
+                "The Python version is different from the version used to create the pickle file. "
+                f"Current Python version: {sys.version_info.major}.{sys.version_info.minor}. "
+                "Please try using the same Python version to create the pickle file or use another "
+                "container image with a matching version."
+            )
+
+        # verify the loaded_data is of the correct type
+        if not isinstance(loaded_data, PickledEntity):
+            raise RuntimeError(
+                f"The loaded data is not of the correct type. Expected PickledEntity, found {type(loaded_data)}. "
+                f"Please ensure that the pickle file is not corrupted. Loaded data: {loaded_data}"
+            )
+        pickled_object: PickledEntity = loaded_data
+
+        pickled_version = pickled_object.metadata.python_version.split(".")
+        if sys.version_info.major != int(pickled_version[0]) or sys.version_info.minor != int(pickled_version[1]):
+            raise RuntimeError(
+                "The Python version used to create the pickle file is different from the current Python version. "
+                f"Current Python version: {sys.version_info.major}.{sys.version_info.minor}. "
+                f"Python version used to create the pickle file: {pickled_object.metadata.python_version}. "
+                "Please try using the same Python version to create the pickle file or use another "
+                "container image with a matching version."
+            )
+
+        if entity_name not in pickled_object.entities:
+            raise ValueError(f"Entity {entity_name} not found in the pickled object")
+        return pickled_object.entities[entity_name]
 
     def loader_args(self, settings: SerializationSettings, task: PythonAutoContainerTask) -> List[str]:  # type:ignore
-        _, m, t, _ = extract_task_module(task)
-        return ["task-module", m, "task-name", t]
+        n, _, _, _ = extract_task_module(task)
+        return ["entity-name", n]
 
     def get_all_tasks(self) -> List[PythonAutoContainerTask]:  # type: ignore
         raise NotImplementedError

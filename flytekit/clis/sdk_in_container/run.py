@@ -15,10 +15,10 @@ import rich_click as click
 import yaml
 from click import Context
 from mashumaro.codecs.json import JSONEncoder
-from rich.progress import Progress
+from rich.progress import Progress, TextColumn, TimeElapsedColumn
 from typing_extensions import get_origin
 
-from flytekit import Annotations, FlyteContext, FlyteContextManager, Labels, Literal
+from flytekit import Annotations, FlyteContext, FlyteContextManager, Labels, LaunchPlan, Literal, WorkflowExecutionPhase
 from flytekit.clis.sdk_in_container.helpers import (
     parse_copy,
     patch_image_config,
@@ -148,12 +148,22 @@ class RunLevelParams(PyFlyteParams):
     )
     wait_execution: bool = make_click_option_field(
         click.Option(
-            param_decls=["--wait-execution", "wait_execution"],
+            param_decls=["--wait", "--wait-execution", "wait_execution"],
             required=False,
             is_flag=True,
             default=False,
             show_default=True,
             help="Whether to wait for the execution to finish",
+        )
+    )
+    poll_interval: int = make_click_option_field(
+        click.Option(
+            param_decls=["-i", "--poll-interval", "poll_interval"],
+            required=False,
+            type=int,
+            default=None,
+            show_default=True,
+            help="Poll interval in seconds to check the status of the execution",
         )
     )
     dump_snippet: bool = make_click_option_field(
@@ -369,12 +379,24 @@ class Entities(typing.NamedTuple):
 
     workflows: typing.List[str]
     tasks: typing.List[str]
+    launch_plans: typing.List[typing.Tuple[str, str]]  # LP is stored as a tuple of name, the variable name in the file
 
     def all(self) -> typing.List[str]:
         e = []
         e.extend(self.workflows)
         e.extend(self.tasks)
+        for i in self.launch_plans:
+            e.append(i[0])
         return e
+
+    def matching_lp(self, lp_name: str) -> typing.Optional[str]:
+        """
+        Returns the variable name of the launch plan in the file
+        """
+        for i in self.launch_plans:
+            if i[0] == lp_name:
+                return i[1]
+        return None
 
 
 def get_entities_in_file(filename: pathlib.Path, should_delete: bool) -> Entities:
@@ -393,6 +415,7 @@ def get_entities_in_file(filename: pathlib.Path, should_delete: bool) -> Entitie
 
     workflows = []
     tasks = []
+    launch_plans = []
     module = importlib.import_module(module_name)
     for name in dir(module):
         o = module.__dict__[name]
@@ -400,10 +423,17 @@ def get_entities_in_file(filename: pathlib.Path, should_delete: bool) -> Entitie
             workflows.append(name)
         elif isinstance(o, PythonTask):
             tasks.append(name)
+        elif isinstance(o, LaunchPlan):
+            varname = name
+            if o.name:
+                # name refers to the variable name, while o.name refers to the launch plan name if the user has
+                # specified one
+                name = o.name
+            launch_plans.append((varname, name))
 
     if should_delete and os.path.exists(filename):
         os.remove(filename)
-    return Entities(workflows, tasks)
+    return Entities(workflows, tasks, launch_plans)
 
 
 def to_click_option(
@@ -438,9 +468,13 @@ def to_click_option(
     description_extra = ""
     if literal_var.type.simple == SimpleType.STRUCT:
         if default_val and not isinstance(default_val, ArtifactQuery):
-            if type(default_val) == dict or type(default_val) == list:
-                default_val = json.dumps(default_val)
-            else:
+            """
+            1. Convert default_val to a JSON string for click.Option, which uses json.loads to parse it.
+            2. Set a new context with remote access to allow Flyte types (e.g., files) to be uploaded.
+            3. Use FlyteContextManager for Flyte Types with custom serialization.
+                If no custom logic exists, fall back to json.dumps.
+            """
+            with FlyteContextManager.with_context(flyte_ctx.new_builder()):
                 encoder = JSONEncoder(python_type)
                 default_val = encoder.encode(default_val)
         if literal_var.type.metadata:
@@ -499,30 +533,50 @@ def run_remote(
     Helper method that executes the given remote FlyteLaunchplan, FlyteWorkflow or FlyteTask
     """
 
-    execution = remote.execute(
-        entity,
-        inputs=inputs,
-        project=project,
-        domain=domain,
-        execution_name=run_level_params.name,
-        wait=run_level_params.wait_execution,
-        options=options_from_run_params(run_level_params),
-        type_hints=type_hints,
-        overwrite_cache=run_level_params.overwrite_cache,
-        envs=run_level_params.envvars,
-        tags=run_level_params.tags,
-        cluster_pool=run_level_params.cluster_pool,
-        execution_cluster_label=run_level_params.execution_cluster_label,
-    )
+    msg = "Running execution on remote."
+    if run_level_params.wait_execution:
+        msg += " Waiting to complete..."
+    p = Progress(TimeElapsedColumn(), TextColumn(msg), transient=True)
+    t = p.add_task("exec")
+    with p:
+        p.start_task(t)
+        execution = remote.execute(
+            entity,
+            inputs=inputs,
+            project=project,
+            domain=domain,
+            execution_name=run_level_params.name,
+            options=options_from_run_params(run_level_params),
+            type_hints=type_hints,
+            overwrite_cache=run_level_params.overwrite_cache,
+            envs=run_level_params.envvars,
+            tags=run_level_params.tags,
+            cluster_pool=run_level_params.cluster_pool,
+            execution_cluster_label=run_level_params.execution_cluster_label,
+        )
+        s = (
+            click.style("\n[✔] ", fg="green")
+            + "Go to "
+            + click.style(execution.execution_url, fg="cyan")
+            + " to see execution in the console."
+        )
+        click.echo(s)
 
-    console_url = remote.generate_console_url(execution)
-    s = (
-        click.style("\n[✔] ", fg="green")
-        + "Go to "
-        + click.style(console_url, fg="cyan")
-        + " to see execution in the console."
-    )
-    click.echo(s)
+        if run_level_params.wait_execution:
+            execution = remote.wait(execution, poll_interval=run_level_params.poll_interval)
+
+    if run_level_params.wait_execution:
+        if execution.closure.phase != WorkflowExecutionPhase.SUCCEEDED:
+            click.secho(
+                f"Execution {execution.id.name} did not complete successfully, "
+                f"phase {WorkflowExecutionPhase.enum_to_string(execution.closure.phase)}",
+                fg="red",
+            )
+            if execution.closure.error:
+                click.secho(f"{execution.closure.error.message}", fg="red")
+            sys.exit(-1)
+        else:
+            click.secho(f"Execution {execution.id.name} has succeeded.", fg="green")
 
     if run_level_params.dump_snippet:
         dump_flyte_remote_snippet(execution, project, domain)
@@ -572,7 +626,7 @@ def is_optional(_type):
     return typing.get_origin(_type) is typing.Union and type(None) in typing.get_args(_type)
 
 
-def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow, PythonTask]):
+def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow, PythonTask, LaunchPlan]):
     """
     Returns a function that is used to implement WorkflowCommand and execute a flyte workflow.
     """
@@ -584,7 +638,11 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
         # By the time we get to this function, all the loading has already happened
 
         run_level_params: RunLevelParams = ctx.obj
-        entity_type = "workflow" if isinstance(entity, PythonFunctionWorkflow) else "task"
+        entity_type = "workflow"
+        if isinstance(entity, LaunchPlan):
+            entity_type = "launch plan"
+        elif isinstance(entity, PythonTask):
+            entity_type = "task"
         logger.debug(f"Running {entity_type} {entity.name} with input {kwargs}")
 
         click.secho(
@@ -718,9 +776,26 @@ class DynamicEntityLaunchCommand(click.RichCommand):
         run_level_params: RunLevelParams = ctx.obj
         r = run_level_params.remote_instance()
         if self._launcher == self.LP_LAUNCHER:
-            entity = r.fetch_launch_plan(run_level_params.project, run_level_params.domain, self._entity_name)
+            parts = self._entity_name.split(":")
+            if len(parts) == 2:
+                entity = r.fetch_launch_plan(run_level_params.project, run_level_params.domain, parts[0], parts[1])
+            else:
+                entity = r.fetch_active_launchplan(run_level_params.project, run_level_params.domain, self._entity_name)
+                if not entity:
+                    click.echo(
+                        click.style(
+                            f"No active launch plan found with name {self._entity_name},"
+                            f" using the latest version by created time.",
+                            fg="yellow",
+                        )
+                    )
+                    entity = r.fetch_launch_plan(run_level_params.project, run_level_params.domain, self._entity_name)
         else:
-            entity = r.fetch_task(run_level_params.project, run_level_params.domain, self._entity_name)
+            parts = self._entity_name.split(":")
+            if len(parts) == 2:
+                entity = r.fetch_task(run_level_params.project, run_level_params.domain, parts[0], parts[1])
+            else:
+                entity = r.fetch_task(run_level_params.project, run_level_params.domain, self._entity_name)
         self._entity = entity
         return entity
 
@@ -798,7 +873,10 @@ class RemoteEntityGroup(click.RichGroup):
     def __init__(self, command_name: str):
         super().__init__(
             name=command_name,
-            help=f"Retrieve {command_name} from a remote flyte instance and execute them.",
+            help=f"Retrieve {command_name} from a remote flyte instance and execute them. The command only lists the "
+            f"names of the entities, but it is possible to pass in a specific version of the entity if known in "
+            f"the format <name>:<version>. If version is not provided, the latest version is used for tasks and "
+            f"active or latest version is used for launchplans.",
         )
         self._command_name = command_name
         self._entities = []
@@ -901,7 +979,9 @@ class YamlFileReadingCommand(click.RichCommand):
             f = args.pop(idx)
             with open(f, "r") as f:
                 inputs = load_inputs(f.read())
-        elif not sys.stdin.isatty():
+        # If the last argument is a dash, read from stdin
+        elif len(args) > 0 and args[-1] == "-":
+            args.pop(-1)
             f = sys.stdin.read()
             if f != "":
                 inputs = load_inputs(f)
@@ -939,7 +1019,7 @@ class WorkflowCommand(click.RichGroup):
         else:
             self._filename = pathlib.Path(filename).resolve()
             self._should_delete = False
-        self._entities = None
+        self._entities: typing.Optional[Entities] = None
 
     def list_commands(self, ctx):
         if self._entities:
@@ -953,8 +1033,8 @@ class WorkflowCommand(click.RichGroup):
         ctx: click.Context,
         entity_name: str,
         run_level_params: RunLevelParams,
-        loaded_entity: [PythonTask, WorkflowBase],
-        is_workflow: bool,
+        loaded_entity: [PythonTask, WorkflowBase, LaunchPlan],
+        entity_type: str,
     ):
         """
         Delegate that creates the command for a given entity.
@@ -972,10 +1052,12 @@ class WorkflowCommand(click.RichGroup):
             required = type(None) not in get_args(python_type) and default_val is None
             params.append(to_click_option(ctx, flyte_ctx, input_name, literal_var, python_type, default_val, required))
 
-        entity_type = "Workflow" if is_workflow else "Task"
         h = f"{click.style(entity_type, bold=True)} ({run_level_params.computed_params.module}.{entity_name})"
-        if loaded_entity.__doc__:
-            h = h + click.style(f"{loaded_entity.__doc__}", dim=True)
+        if isinstance(loaded_entity, LaunchPlan):
+            h = h + click.style(f" (LP Name: {loaded_entity.name})", fg="yellow")
+        else:
+            if loaded_entity.__doc__:
+                h = h + click.style(f"{loaded_entity.__doc__}", dim=True)
         cmd = YamlFileReadingCommand(
             name=entity_name,
             params=params,
@@ -994,9 +1076,14 @@ class WorkflowCommand(click.RichGroup):
           function.
         :return:
         """
-        is_workflow = False
+        entity_type = "task"
         if self._entities:
-            is_workflow = exe_entity in self._entities.workflows
+            if exe_entity in self._entities.workflows:
+                entity_type = "workflow"
+            else:
+                lp_name = self._entities.matching_lp(exe_entity)
+                if lp_name:
+                    entity_type = "launch plan"
         if not os.path.exists(self._filename):
             click.secho(f"File {self._filename} does not exist.", fg="red")
             exit(1)
@@ -1020,7 +1107,7 @@ class WorkflowCommand(click.RichGroup):
 
         entity = load_naive_entity(module, exe_entity, project_root)
 
-        return self._create_command(ctx, exe_entity, run_level_params, entity, is_workflow)
+        return self._create_command(ctx, exe_entity, run_level_params, entity, entity_type)
 
 
 class RunCommand(click.RichGroup):
@@ -1064,7 +1151,7 @@ class RunCommand(click.RichGroup):
             return RemoteEntityGroup(RemoteEntityGroup.WORKFLOW_COMMAND)
         elif filename == RemoteEntityGroup.TASK_COMMAND:
             return RemoteEntityGroup(RemoteEntityGroup.TASK_COMMAND)
-        return WorkflowCommand(filename, name=filename, help=f"Run a [workflow|task] from {filename}")
+        return WorkflowCommand(filename, name=filename, help=f"Run a [workflow|task|launch plan] from {filename}")
 
 
 _run_help = """

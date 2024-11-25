@@ -309,6 +309,7 @@ def test_all_types_with_pipe_input(monkeypatch):
             "run",
             os.path.join(DIR_NAME, "workflow.py"),
             "my_wf",
+            "-",
         ],
         input=input,
         catch_exceptions=False,

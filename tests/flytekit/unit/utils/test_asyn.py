@@ -1,10 +1,11 @@
+import os
 import threading
 import pytest
 import asyncio
 from typing import List, Dict, Optional
 from asyncio import get_running_loop
 from functools import partial
-from flytekit.tools.asyn import run_sync, loop_manager
+from flytekit.utils.asyn import run_sync, loop_manager
 
 from contextvars import ContextVar
 
@@ -116,3 +117,8 @@ def test_recursive_calling():
     main_ctx.vals["depth"] = 0
     assert res == "world"
     sync_function(6, 6)
+
+    # Check to make sure that the names of the runners have the PID in them. This make the loop manager work with
+    # things like pytorch elastic.
+    for k in loop_manager._runner_map.keys():
+        assert str(os.getpid()) in k

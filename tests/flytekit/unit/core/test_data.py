@@ -3,18 +3,22 @@ import random
 import shutil
 import tempfile
 from uuid import UUID
-
+import typing
+import asyncio
 import fsspec
 import mock
 import pytest
 from s3fs import S3FileSystem
 
 from flytekit.configuration import Config, DataConfig, S3Config
-from flytekit.core.context_manager import FlyteContextManager
+from flytekit.core.context_manager import FlyteContextManager, FlyteContext
 from flytekit.core.data_persistence import FileAccessProvider, get_fsspec_storage_options, s3_setup_args
 from flytekit.core.type_engine import TypeEngine
 from flytekit.types.directory.types import FlyteDirectory
 from flytekit.types.file import FlyteFile
+from flytekit.utils.asyn import loop_manager
+from flytekit.models.literals import Literal
+from flytekit.utils.asyn import run_sync
 
 local = fsspec.filesystem("file")
 root = os.path.abspath(os.sep)
@@ -109,7 +113,8 @@ def test_local_raw_fsspec(source_folder):
     assert len(files) == 2
 
 
-def test_local_provider(source_folder):
+@pytest.mark.asyncio
+async def test_local_provider(source_folder):
     # Test that behavior putting from a local dir to a local remote dir is the same whether or not the local
     # dest folder exists.
     dc = Config.for_sandbox().data_config
@@ -117,19 +122,20 @@ def test_local_provider(source_folder):
         provider = FileAccessProvider(local_sandbox_dir="/tmp/unittest", raw_output_prefix=dest_tmpdir, data_config=dc)
         r = provider.get_random_string()
         doesnotexist = provider.join(provider.raw_output_prefix, r)
-        provider.put_data(source_folder, doesnotexist, is_multipart=True)
+        await provider.async_put_data(source_folder, doesnotexist, is_multipart=True)
         files = provider.raw_output_fs.find(doesnotexist)
         assert len(files) == 2
 
         r = provider.get_random_string()
         exists = provider.join(provider.raw_output_prefix, r)
         provider.raw_output_fs.mkdir(exists)
-        provider.put_data(source_folder, exists, is_multipart=True)
+        await provider.async_put_data(source_folder, exists, is_multipart=True)
         files = provider.raw_output_fs.find(exists)
         assert len(files) == 2
 
 
-def test_async_file_system():
+@pytest.mark.asyncio
+async def test_async_file_system():
     remote_path = "test:///tmp/test.py"
     local_path = "test.py"
 
@@ -159,9 +165,9 @@ def test_async_file_system():
     fsspec.register_implementation("test", MockAsyncFileSystem)
 
     ctx = FlyteContextManager.current_context()
-    dst = ctx.file_access.put(local_path, remote_path)
+    dst = await ctx.file_access._put(local_path, remote_path)
     assert dst == remote_path
-    dst = ctx.file_access.get(remote_path, local_path)
+    dst = await ctx.file_access.get(remote_path, local_path)
     assert dst == local_path
 
 
@@ -446,3 +452,119 @@ def test_s3_metadata():
         res = [(x, y) for x, y in res]
         files = [os.path.join(x, y) for x, y in res]
         assert len(files) == 2
+
+
+async def dummy_output_to_literal_map(ctx: FlyteContext, ff: typing.List[FlyteFile]) -> Literal:
+    lt = TypeEngine.to_literal_type(typing.List[FlyteFile])
+    lit = await TypeEngine.async_to_literal(ctx, ff, typing.List[FlyteFile], lt)
+    return lit
+
+
+@pytest.mark.sandbox_test
+def test_async_local_copy_to_s3():
+    import time
+    import datetime
+
+    f1 = "/Users/ytong/go/src/github.com/unionai/debugyt/user/ytong/src/yt_dbg/fr/rand.file"
+    f2 = "/Users/ytong/go/src/github.com/unionai/debugyt/user/ytong/src/yt_dbg/fr/rand2.file"
+    f3 = "/Users/ytong/go/src/github.com/unionai/debugyt/user/ytong/src/yt_dbg/fr/rand3.file"
+
+    ff1 = FlyteFile(path=f1)
+    ff2 = FlyteFile(path=f2)
+    ff3 = FlyteFile(path=f3)
+    ff = [ff1, ff2, ff3]
+
+    ctx = FlyteContextManager.current_context()
+    dc = Config.for_sandbox().data_config
+    random_folder = UUID(int=random.getrandbits(64)).hex
+    raw_output = f"s3://my-s3-bucket/testing/upload_test/{random_folder}"
+    print(f"Uploading to {raw_output}")
+    provider = FileAccessProvider(local_sandbox_dir="/tmp/unittest", raw_output_prefix=raw_output, data_config=dc)
+
+    start_time = datetime.datetime.now(datetime.timezone.utc)
+    start_wall_time = time.perf_counter()
+    start_process_time = time.process_time()
+
+    with FlyteContextManager.with_context(ctx.with_file_access(provider)) as ctx:
+        lit = loop_manager.run_sync(dummy_output_to_literal_map, ctx, ff)
+        print(lit)
+
+    end_time = datetime.datetime.now(datetime.timezone.utc)
+    end_wall_time = time.perf_counter()
+    end_process_time = time.process_time()
+
+    print(f"Time taken: {end_time - start_time}")
+    print(f"Wall time taken: {end_wall_time - start_wall_time}")
+    print(f"Process time taken: {end_process_time - start_process_time}")
+
+
+async def download_files(ffs: typing.List[FlyteFile]):
+    futures = [asyncio.create_task(ff._download()) for ff in ffs]
+    return await asyncio.gather(*futures, return_exceptions=True)
+
+
+@pytest.mark.sandbox_test
+def test_async_download_from_s3():
+    import time
+    import datetime
+
+    f1 = "/Users/ytong/go/src/github.com/unionai/debugyt/user/ytong/src/yt_dbg/fr/rand.file"
+    f2 = "/Users/ytong/go/src/github.com/unionai/debugyt/user/ytong/src/yt_dbg/fr/rand2.file"
+    f3 = "/Users/ytong/go/src/github.com/unionai/debugyt/user/ytong/src/yt_dbg/fr/rand3.file"
+
+    ff1 = FlyteFile(path=f1)
+    ff2 = FlyteFile(path=f2)
+    ff3 = FlyteFile(path=f3)
+    ff = [ff1, ff2, ff3]
+
+    ctx = FlyteContextManager.current_context()
+    dc = Config.for_sandbox().data_config
+    random_folder = UUID(int=random.getrandbits(64)).hex
+    raw_output = f"s3://my-s3-bucket/testing/upload_test/{random_folder}"
+    print(f"Uploading to {raw_output}")
+    provider = FileAccessProvider(local_sandbox_dir="/tmp/unittest", raw_output_prefix=raw_output, data_config=dc)
+
+    with FlyteContextManager.with_context(ctx.with_file_access(provider)) as ctx:
+        lit = TypeEngine.to_literal(ctx, ff, typing.List[FlyteFile], TypeEngine.to_literal_type(typing.List[FlyteFile]))
+        print(f"Literal is {lit}")
+        python_list = TypeEngine.to_python_value(ctx, lit, typing.List[FlyteFile])
+
+    print(f"Serial File list: {python_list}")
+
+    start_time = datetime.datetime.now(datetime.timezone.utc)
+    start_wall_time = time.perf_counter()
+    start_process_time = time.process_time()
+
+    for local_file in python_list:
+        print(f"Downloading {local_file.remote_source} to {local_file.path}")
+        local_file.download()
+
+    end_time = datetime.datetime.now(datetime.timezone.utc)
+    end_wall_time = time.perf_counter()
+    end_process_time = time.process_time()
+
+    print(f"Time taken (serial download): {end_time - start_time}")
+    print(f"Wall time taken (serial download): {end_wall_time - start_wall_time}")
+    print(f"Process time taken (serial download): {end_process_time - start_process_time}")
+
+    with FlyteContextManager.with_context(ctx.with_file_access(provider)) as ctx:
+        lit = TypeEngine.to_literal(ctx, ff, typing.List[FlyteFile], TypeEngine.to_literal_type(typing.List[FlyteFile]))
+        print(f"Literal is {lit}")
+        python_list = TypeEngine.to_python_value(ctx, lit, typing.List[FlyteFile])
+
+    print(f"Async file list: {python_list}")
+
+    start_time = datetime.datetime.now(datetime.timezone.utc)
+    start_wall_time = time.perf_counter()
+    start_process_time = time.process_time()
+
+    res = run_sync(download_files, python_list)
+    print(f"Result is: {res}")
+
+    end_time = datetime.datetime.now(datetime.timezone.utc)
+    end_wall_time = time.perf_counter()
+    end_process_time = time.process_time()
+
+    print(f"Time taken (async): {end_time - start_time}")
+    print(f"Wall time taken (async): {end_wall_time - start_wall_time}")
+    print(f"Process time taken (async): {end_process_time - start_process_time}")

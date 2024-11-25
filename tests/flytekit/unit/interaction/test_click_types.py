@@ -1,5 +1,7 @@
+import os
 from dataclasses import field
 import json
+import sys
 import tempfile
 import typing
 from datetime import datetime, timedelta
@@ -498,3 +500,32 @@ def test_nested_dataclass_with_optional_fields():
     assert v.z["key"].b == "nested"
     assert v.w[0].a == 30
     assert v.w[0].b == "list_item"
+
+
+@pytest.mark.skipif(
+    sys.version_info < (3, 12), reason="handling for windows is nicer with delete_on_close, which doesn't exist before 3.12"
+)
+def test_pickle_type():
+    t = PickleParamType()
+    value = {"a": "b"}
+    v = t.convert(value=value, param=None, ctx=None)
+    assert v == value
+
+    t.convert("", None, None)
+
+    t.convert("module.x", None, None)
+
+    with pytest.raises(click.BadParameter):
+        t.convert("module:var", None, None)
+
+    with pytest.raises(click.BadParameter):
+        t.convert("typing:not_exists", None, None)
+
+    # test that it can load a variable from a module
+    with tempfile.NamedTemporaryFile("w", dir=".", suffix=".py", delete=True, delete_on_close=False) as f:
+        f.write("a = 1")
+        f.flush()
+        f.close()
+        # find the base name of the file
+        basename = os.path.basename(f.name).split(".")[0]
+        assert t.convert(f"{basename}:a", None, None) == 1

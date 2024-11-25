@@ -8,13 +8,17 @@ import signal
 import subprocess
 import sys
 import tempfile
+import textwrap
+import time
 import traceback
+import uuid
 import warnings
 from sys import exit
-from typing import Callable, List, Optional
+from typing import Callable, Dict, List, Optional
 
 import click
 from flyteidl.core import literals_pb2 as _literals_pb2
+from google.protobuf.timestamp_pb2 import Timestamp
 
 from flytekit.configuration import (
     SERIALIZED_CONTEXT_ENV_VAR,
@@ -27,6 +31,7 @@ from flytekit.core import constants as _constants
 from flytekit.core import utils
 from flytekit.core.base_task import IgnoreOutputs, PythonTask
 from flytekit.core.checkpointer import SyncCheckpoint
+from flytekit.core.constants import FLYTE_FAIL_ON_ERROR
 from flytekit.core.context_manager import (
     ExecutionParameters,
     ExecutionState,
@@ -36,7 +41,9 @@ from flytekit.core.context_manager import (
 )
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.promise import VoidPromise
+from flytekit.core.utils import str2bool
 from flytekit.deck.deck import _output_deck
+from flytekit.exceptions.base import FlyteException
 from flytekit.exceptions.system import FlyteNonRecoverableSystemException
 from flytekit.exceptions.user import FlyteRecoverableException, FlyteUserRuntimeException
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
@@ -48,6 +55,7 @@ from flytekit.models.core import execution as _execution_models
 from flytekit.models.core import identifier as _identifier
 from flytekit.tools.fast_registration import download_distribution as _download_distribution
 from flytekit.tools.module_loader import load_object_from_module
+from flytekit.utils.pbhash import compute_hash_string
 
 
 def get_version_message():
@@ -69,6 +77,41 @@ def _compute_array_job_index():
     if os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME"):
         return offset + int(os.environ.get(os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME")))
     return offset
+
+
+def _build_error_file_name() -> str:
+    """Get name of error file uploaded to the raw output prefix bucket.
+
+    For distributed tasks, all workers upload error files which must not overwrite each other, leading to a race condition.
+    A uuid is included to prevent this.
+
+    Returns
+    -------
+    str
+        Name of the error file.
+    """
+    dist_error_strategy = get_one_of("FLYTE_INTERNAL_DIST_ERROR_STRATEGY", "_F_DES")
+    if not dist_error_strategy:
+        return _constants.ERROR_FILE_NAME
+    error_file_name_base, error_file_name_extension = os.path.splitext(_constants.ERROR_FILE_NAME)
+    error_file_name_base += f"-{uuid.uuid4().hex}"
+    return f"{error_file_name_base}{error_file_name_extension}"
+
+
+def _get_worker_name() -> str:
+    """Get the name of the worker
+
+    For distributed tasks, the backend plugin can set a worker name to be used for error reporting.
+
+    Returns
+    -------
+    str
+        Name of the worker
+    """
+    dist_error_strategy = get_one_of("FLYTE_INTERNAL_DIST_ERROR_STRATEGY", "_F_DES")
+    if not dist_error_strategy:
+        return ""
+    return get_one_of("FLYTE_INTERNAL_WORKER_NAME", "_F_WN")
 
 
 def _get_working_loop():
@@ -93,6 +136,7 @@ def _dispatch_execute(
     load_task: Callable[[], PythonTask],
     inputs_path: str,
     output_prefix: str,
+    is_map_task: bool = False,
 ):
     """
     Dispatches execute to PythonTask
@@ -102,7 +146,16 @@ def _dispatch_execute(
             a: [Optional] Record outputs to output_prefix
             b: OR if IgnoreOutputs is raised, then ignore uploading outputs
             c: OR if an unhandled exception is retrieved - record it as an errors.pb
+
+    :param ctx: FlyteContext
+    :param load_task: Callable[[], PythonTask]
+    :param inputs: Where to read inputs
+    :param output_prefix: Where to write primitive outputs
+    :param is_map_task: Whether this task is executing as part of a map task
     """
+    error_file_name = _build_error_file_name()
+    worker_name = _get_worker_name()
+
     output_file_dict = {}
 
     task_def = None
@@ -139,17 +192,71 @@ def _dispatch_execute(
             logger.warning("Task produces no outputs")
             output_file_dict = {_constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(literals={})}
         elif isinstance(outputs, _literal_models.LiteralMap):
-            output_file_dict = {_constants.OUTPUT_FILE_NAME: outputs}
+            # The keys in this map hold the filenames to the offloaded proto literals.
+            offloaded_literals: Dict[str, _literal_models.Literal] = {}
+            literal_map_copy = {}
+
+            offloading_enabled = os.environ.get("_F_L_MIN_SIZE_MB", None) is not None
+            min_offloaded_size = -1
+            max_offloaded_size = -1
+            if offloading_enabled:
+                min_offloaded_size = int(os.environ.get("_F_L_MIN_SIZE_MB", "10")) * 1024 * 1024
+                max_offloaded_size = int(os.environ.get("_F_L_MAX_SIZE_MB", "1000")) * 1024 * 1024
+
+            # Go over each output and create a separate offloaded in case its size is too large
+            for k, v in outputs.literals.items():
+                literal_map_copy[k] = v
+
+                if not offloading_enabled:
+                    continue
+
+                lit = v.to_flyte_idl()
+                if max_offloaded_size != -1 and lit.ByteSize() >= max_offloaded_size:
+                    raise ValueError(
+                        f"Literal {k} is too large to be offloaded. Max literal size is {max_offloaded_size} whereas the literal size is {lit.ByteSize()} bytes"
+                    )
+
+                if min_offloaded_size != -1 and lit.ByteSize() >= min_offloaded_size:
+                    logger.debug(f"Literal {k} is too large to be inlined, offloading to metadata bucket")
+                    inferred_type = task_def.interface.outputs[k].type
+
+                    # In the case of map tasks we need to use the type of the collection as inferred type as the task
+                    # typed interface of the offloaded literal. This is done because the map task interface present in
+                    # the task template contains the (correct) type for the entire map task, not the single node execution.
+                    # For that reason we "unwrap" the collection type and use it as the inferred type of the offloaded literal.
+                    if is_map_task:
+                        inferred_type = inferred_type.collection_type
+
+                    # This file will hold the offloaded literal and will be written to the output prefix
+                    # alongside the regular outputs.pb, deck.pb, etc.
+                    # N.B.: by construction `offloaded_filename` is guaranteed to be unique
+                    offloaded_filename = f"{k}_offloaded_metadata.pb"
+                    offloaded_literal = _literal_models.Literal(
+                        offloaded_metadata=_literal_models.LiteralOffloadedMetadata(
+                            uri=f"{output_prefix}/{offloaded_filename}",
+                            size_bytes=lit.ByteSize(),
+                            # TODO: remove after https://github.com/flyteorg/flyte/pull/5909 is merged
+                            inferred_type=inferred_type,
+                        ),
+                        hash=v.hash if v.hash is not None else compute_hash_string(lit),
+                    )
+                    literal_map_copy[k] = offloaded_literal
+                    offloaded_literals[offloaded_filename] = v
+            outputs = _literal_models.LiteralMap(literals=literal_map_copy)
+
+            output_file_dict = {_constants.OUTPUT_FILE_NAME: outputs, **offloaded_literals}
         elif isinstance(outputs, _dynamic_job.DynamicJobSpec):
             output_file_dict = {_constants.FUTURES_FILE_NAME: outputs}
         else:
             logger.error(f"SystemError: received unknown outputs from task {outputs}")
-            output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
+            output_file_dict[error_file_name] = _error_models.ErrorDocument(
                 _error_models.ContainerError(
-                    "UNKNOWN_OUTPUT",
-                    f"Type of output received not handled {type(outputs)} outputs: {outputs}",
-                    _error_models.ContainerError.Kind.RECOVERABLE,
-                    _execution_models.ExecutionError.ErrorKind.SYSTEM,
+                    code="UNKNOWN_OUTPUT",
+                    message=f"Type of output received not handled {type(outputs)} outputs: {outputs}",
+                    kind=_error_models.ContainerError.Kind.RECOVERABLE,
+                    origin=_execution_models.ExecutionError.ErrorKind.SYSTEM,
+                    timestamp=get_container_error_timestamp(),
+                    worker=worker_name,
                 )
             )
 
@@ -167,12 +274,14 @@ def _dispatch_execute(
             kind = _error_models.ContainerError.Kind.NON_RECOVERABLE
 
         exc_str = get_traceback_str(e)
-        output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
+        output_file_dict[error_file_name] = _error_models.ErrorDocument(
             _error_models.ContainerError(
-                "USER",
-                exc_str,
-                kind,
-                _execution_models.ExecutionError.ErrorKind.USER,
+                code="USER",
+                message=exc_str,
+                kind=kind,
+                origin=_execution_models.ExecutionError.ErrorKind.USER,
+                timestamp=get_container_error_timestamp(e.value),
+                worker=worker_name,
             )
         )
         if task_def is not None:
@@ -185,12 +294,14 @@ def _dispatch_execute(
 
     except FlyteNonRecoverableSystemException as e:
         exc_str = get_traceback_str(e.value)
-        output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
+        output_file_dict[error_file_name] = _error_models.ErrorDocument(
             _error_models.ContainerError(
-                "SYSTEM",
-                exc_str,
-                _error_models.ContainerError.Kind.NON_RECOVERABLE,
-                _execution_models.ExecutionError.ErrorKind.SYSTEM,
+                code="SYSTEM",
+                message=exc_str,
+                kind=_error_models.ContainerError.Kind.NON_RECOVERABLE,
+                origin=_execution_models.ExecutionError.ErrorKind.SYSTEM,
+                timestamp=get_container_error_timestamp(e.value),
+                worker=worker_name,
             )
         )
 
@@ -201,12 +312,14 @@ def _dispatch_execute(
     # All other errors are captured here, and are considered system errors
     except Exception as e:
         exc_str = get_traceback_str(e)
-        output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
+        output_file_dict[error_file_name] = _error_models.ErrorDocument(
             _error_models.ContainerError(
-                "SYSTEM",
-                exc_str,
-                _error_models.ContainerError.Kind.RECOVERABLE,
-                _execution_models.ExecutionError.ErrorKind.SYSTEM,
+                code="SYSTEM",
+                message=exc_str,
+                kind=_error_models.ContainerError.Kind.RECOVERABLE,
+                origin=_execution_models.ExecutionError.ErrorKind.SYSTEM,
+                timestamp=get_container_error_timestamp(e),
+                worker=worker_name,
             )
         )
 
@@ -225,27 +338,62 @@ def _dispatch_execute(
 
     logger.debug("Finished _dispatch_execute")
 
-    if os.environ.get("FLYTE_FAIL_ON_ERROR", "").lower() == "true" and _constants.ERROR_FILE_NAME in output_file_dict:
-        # This env is set by the flytepropeller
-        # AWS batch job get the status from the exit code, so once we catch the error,
-        # we should return the error code here
+    if str2bool(os.getenv(FLYTE_FAIL_ON_ERROR)) and error_file_name in output_file_dict:
+        """
+        If the environment variable FLYTE_FAIL_ON_ERROR is set to true, the task execution will fail if an error file is
+        generated. This environment variable is set to true by the plugin author if they want the task to fail on error.
+        Otherwise, the task will always succeed and just write the error file to the blob store.
+
+        For example, you can see the task fails on Databricks or AWS batch UI by setting this environment variable to true.
+        """
         exit(1)
 
 
 def get_traceback_str(e: Exception) -> str:
+    # First, format the exception stack trace
+    root_exception = e
     if isinstance(e, FlyteUserRuntimeException):
         # If the exception is a user exception, we want to capture the traceback of the exception that was raised by the
         # user code, not the Flyte internals.
-        tb = e.__cause__.__traceback__ if e.__cause__ else e.__traceback__
-    else:
-        tb = e.__traceback__
-    lines = traceback.format_tb(tb)
-    lines = [line.rstrip() for line in lines]
-    tb_str = "\n    ".join(lines)
-    format_str = "Traceback (most recent call last):\n" "\n    {traceback}\n" "\n" "Message:\n" "\n" "    {message}"
-
+        root_exception = e.__cause__ if e.__cause__ else e
+    indentation = "    "
+    exception_str = textwrap.indent(
+        text="".join(traceback.format_exception(type(root_exception), root_exception, root_exception.__traceback__)),
+        prefix=indentation,
+    )
+    # Second, format a summary exception message
     value = e.value if isinstance(e, FlyteUserRuntimeException) else e
-    return format_str.format(traceback=tb_str, message=f"{type(value).__name__}: {value}")
+    message = f"{type(value).__name__}: {value}"
+    message_str = textwrap.indent(text=message, prefix=indentation)
+    # Last, create the overall traceback string
+    format_str = "Trace:\n\n{exception_str}\nMessage:\n\n{message_str}"
+    return format_str.format(exception_str=exception_str, message_str=message_str)
+
+
+def get_container_error_timestamp(e: Optional[Exception] = None) -> Timestamp:
+    """Get timestamp for ContainerError.
+
+    If a flyte exception is passed, use its timestamp, otherwise, use the current time.
+
+    Parameters
+    ----------
+    e : Exception, optional
+        Exception that has occurred.
+
+    Returns
+    -------
+    Timestamp
+        Timestamp to be reported in ContainerError
+    """
+    timestamp = None
+    if isinstance(e, FlyteException):
+        timestamp = e.timestamp
+    if timestamp is None:
+        timestamp = time.time()
+    timstamp_secs = int(timestamp)
+    timestamp_fsecs = timestamp - timstamp_secs
+    timestamp_nanos = int(timestamp_fsecs * 1_000_000_000)
+    return Timestamp(seconds=timstamp_secs, nanos=timestamp_nanos)
 
 
 def get_one_of(*args) -> str:
@@ -481,7 +629,7 @@ def _execute_map_task(
         raise ValueError(f"Resolver args cannot be <1, got {resolver_args}")
 
     with setup_execution(
-        raw_output_data_prefix, checkpoint_path, prev_checkpoint, dynamic_addl_distro, dynamic_dest_dir
+        raw_output_data_prefix, output_prefix, checkpoint_path, prev_checkpoint, dynamic_addl_distro, dynamic_dest_dir
     ) as ctx:
         working_dir = os.getcwd()
         if all(os.path.realpath(path) != working_dir for path in sys.path):
@@ -505,7 +653,7 @@ def _execute_map_task(
             )
             return
 
-        _dispatch_execute(ctx, load_task, inputs, output_prefix)
+        _dispatch_execute(ctx, load_task, inputs, output_prefix, is_map_task=True)
 
 
 def normalize_inputs(
