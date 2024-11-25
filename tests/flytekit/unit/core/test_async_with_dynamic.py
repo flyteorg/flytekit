@@ -3,12 +3,11 @@ import time
 import typing
 import pytest
 
-from flytekit.core.task import task
+from flytekit.core.task import task, eager
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.configuration import Config
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
-from flytekit.experimental.eager_function import eager
 from flytekit.remote.remote import FlyteRemote
 from flytekit.utils.asyn import loop_manager
 from flytekit.core.worker_queue import Controller

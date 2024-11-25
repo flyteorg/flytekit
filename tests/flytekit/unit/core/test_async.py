@@ -1,8 +1,7 @@
 import pytest
-from flytekit.core.task import task
+from flytekit.core.task import task, eager
 from flytekit.core.worker_queue import Controller
 from flytekit.utils.asyn import loop_manager
-from flytekit.experimental.eager_function import eager
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.configuration import Config, DataConfig, S3Config, FastSerializationSettings
 from flytekit.core.data_persistence import FileAccessProvider
