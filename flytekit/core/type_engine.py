@@ -2335,9 +2335,6 @@ def generate_attribute_list_from_dataclass_json(schema: dict, schema_name: typin
                 attribute_list.append(
                     (property_key, Dict[str, _get_element_type(property_val["additionalProperties"])])  # type: ignore[misc,index]
                 )
-
-            else:
-                attribute_list.append((property_key, Dict[str, _get_element_type(property_val)]))  # type: ignore[misc,index]
         # Handle int, float, bool or str
         else:
             attribute_list.append([property_key, _get_element_type(property_val)])  # type: ignore
