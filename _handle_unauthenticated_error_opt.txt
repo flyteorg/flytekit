@@ -1,0 +1,43 @@
+def _handle_unauthenticated_error(self, continuation, client_call_details, request):
+    """處理未認證錯誤, 觸發 PKCE 流程"""
+    logging.info("Received authentication error (401), starting PKCE authentication flow")
+
+    try:
+        # 檢查是否需要切換到 PKCEAuthenticator
+        if isinstance(self._authenticator, Authenticator) and not isinstance(self._authenticator, PKCEAuthenticator):
+            logging.info("Current authenticator is 'None', switching to PKCEAuthenticator")
+
+            if not self._cfg or not self._cfg_store:
+                logging.error("Missing configuration for PKCEAuthenticator initialization.")
+                raise ValueError("Cannot switch to PKCEAuthenticator due to missing configuration.")
+
+            from flytekit.clients.auth.authenticator import PKCEAuthenticator
+            session = get_session(self._cfg)
+
+            verify = None
+            if self._cfg.insecure_skip_verify:
+                verify = False
+            elif self._cfg.ca_cert_file_path:
+                verify = self._cfg.ca_cert_file_path
+
+            # 動態切換到 PKCEAuthenticator
+            self._authenticator = PKCEAuthenticator(
+                self._cfg.endpoint, 
+                self._cfg_store, 
+                scopes=self._cfg.scopes, 
+                verify=verify, 
+                session=session
+            )
+            logging.info("Successfully switched to PKCEAuthenticator.")
+
+        # 刷新憑證
+        self._authenticator.refresh_credentials()
+        logging.info("PKCE authentication flow completed successfully")
+
+    except Exception as e:
+        logging.error(f"Authentication failed during PKCE flow: {str(e)}")
+        raise
+
+    # 使用新的憑證重試 gRPC 請求
+    updated_call_details = self._call_details_with_auth_metadata(client_call_details)
+    return continuation(updated_call_details, request)

@@ -79,3 +79,15 @@ class KeyringStore:
         _delete_key(KeyringStore._access_token_key)
         _delete_key(KeyringStore._refresh_token_key)
         _delete_key(KeyringStore._id_token_key)
+
+    @staticmethod
+    def delete(endpoint: str):
+        """
+        刪除給定端點的所有存儲的令牌
+        """
+        import keyring as _keyring
+        try:
+            _keyring.delete_password(endpoint, KeyringStore._refresh_token_key)
+            _keyring.delete_password(endpoint, KeyringStore._id_token_key)
+        except Exception:
+            pass
