@@ -43,7 +43,6 @@ class SensorEngine(AsyncAgentBase):
         return Resource(phase=cur_phase, outputs=None)
 
     async def delete(self, resource_meta: SensorMetadata, **kwargs):
-        print("test sensor delete")
         return
 
 

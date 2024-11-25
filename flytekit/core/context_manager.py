@@ -25,6 +25,7 @@ from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
+from types import FrameType
 from typing import Generator, List, Optional, Union
 
 from flytekit.configuration import Config, SecretsConfig, SerializationSettings
@@ -900,7 +901,7 @@ class FlyteContextManager(object):
     signal_handlers = []
 
     @staticmethod
-    def add_signal_handler(handler):
+    def add_signal_handler(handler: typing.Callable[[int, FrameType], typing.Any]):
         FlyteContextManager.signal_handlers.append(handler)
 
     @staticmethod
@@ -986,7 +987,7 @@ class FlyteContextManager(object):
         user_space_path = os.path.join(cfg.local_sandbox_path, "user_space")
         pathlib.Path(user_space_path).mkdir(parents=True, exist_ok=True)
 
-        def main_signal_handler(signum, frame):
+        def main_signal_handler(signum: int, frame: FrameType):
             for handler in FlyteContextManager.signal_handlers:
                 handler(signum, frame)
             exit(1)
