@@ -337,6 +337,19 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
         return name, mod_name, name, os.path.abspath(inspect_file)
 
     mod_name = get_full_module_path(mod, mod_name)
+    # If we see the bazel module name or applied workspace, delete everything before it to get the true mod
+    # name under bazel.
+    # example: "pyflyte.flytekit_package.flytekit.core.python_auto_container" -> "flytekit.core.python_auto_container"
+    for module_name_to_delete in [
+        "flytekit_package",
+        "register.applied", # `register.applied` is the marker for the applied workspace because the bazel target has `.register` as the suffix.
+        "binary.applied",
+    ]:
+        module_idx = mod_name.find(module_name_to_delete)
+        if module_idx != -1:
+            mod_name = mod_name[module_idx + len(module_name_to_delete) + 1 :]
+            break
+
     return f"{mod_name}.{name}", mod_name, name, os.path.abspath(inspect.getfile(mod))
 
 

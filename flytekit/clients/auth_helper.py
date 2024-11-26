@@ -85,8 +85,6 @@ def get_authenticator(cfg: PlatformConfig, cfg_store: ClientConfigStore) -> Auth
         )
     elif cfg_auth == AuthType.EXTERNAL_PROCESS or cfg_auth == AuthType.EXTERNALCOMMAND:
         client_cfg = None
-        if cfg_store:
-            client_cfg = cfg_store.get_client_config()
         return CommandAuthenticator(
             command=cfg.command,
             header_key=client_cfg.header_key if client_cfg else None,
