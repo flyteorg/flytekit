@@ -343,6 +343,7 @@ class DeviceCodeAuthenticator(Authenticator):
                 http_proxy_url=self._http_proxy_url,
                 verify=self._verify,
             )
+            print(f"Token: {token} {refresh_token=} {expires_in}")
             self._creds = Credentials(
                 access_token=token, refresh_token=refresh_token, expires_in=expires_in, for_endpoint=self._endpoint
             )

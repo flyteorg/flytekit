@@ -101,7 +101,10 @@ def get_token(
     if device_code:
         body["device_code"] = device_code
     if scopes is not None:
-        body["scope"] = " ".join(s.strip("' ") for s in scopes).strip("[]'")
+        if "offline_access" not in scopes:
+            scopes.append("offline_access")
+            # scopes.append("openid")
+        body["scope"] = "offline_access profile openid"
     if audience:
         body["audience"] = audience
     if refresh_token:
@@ -111,6 +114,7 @@ def get_token(
 
     if not session:
         session = requests.Session()
+    print(f"Request {body=}")
     response = session.post(token_endpoint, data=body, headers=headers, proxies=proxies, verify=verify)
 
     if not response.ok:
@@ -123,6 +127,7 @@ def get_token(
         raise AuthenticationError("Status Code ({}) received from IDP: {}".format(response.status_code, response.text))
 
     j = response.json()
+    print(f"JSON {j}")
     new_refresh_token = None
     if "refresh_token" in j:
         new_refresh_token = j["refresh_token"]
