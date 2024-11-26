@@ -592,12 +592,10 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
 
 
 """
-local execution
-test again
 update code comments and remove int test for now
+
 verify auth env var and start auto loading
   - figure out how remotes can be different.
-match signal handler pattern and re-test
 pure watch informer pattern
 
 priority for flytekit - fix naming, depending on src
