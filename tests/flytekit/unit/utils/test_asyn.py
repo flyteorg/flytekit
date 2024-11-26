@@ -1,5 +1,6 @@
 import os
 import threading
+import sys
 
 import mock
 import pytest
@@ -126,10 +127,11 @@ def test_recursive_calling():
         assert str(os.getpid()) in k
 
 
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="Requires Python 3.10 or higher")
 @mock.patch("flytekit.utils.asyn._TaskRunner.get_exc_handler")
 def test_error_two_ways(mock_getter):
     # Test exception handling two ways
-    mock_handler =mock.MagicMock()
+    mock_handler = mock.MagicMock()
     mock_getter.return_value = mock_handler
 
     async def runner_1():
