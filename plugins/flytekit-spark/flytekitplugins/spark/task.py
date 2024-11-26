@@ -1,3 +1,4 @@
+import dataclasses
 import os
 import shutil
 from dataclasses import dataclass
@@ -134,6 +135,7 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
         self.sess: Optional[SparkSession] = None
         self._default_executor_path: str = task_config.executor_path
         self._default_applications_path: str = task_config.applications_path
+        self._container_image = container_image
 
         if isinstance(container_image, ImageSpec):
             if container_image.base_image is None:
