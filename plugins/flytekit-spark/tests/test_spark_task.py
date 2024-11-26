@@ -185,6 +185,6 @@ def test_spark_with_image_spec():
         print("Starting Spark with Partitions: {}".format(partitions))
         return 1.0
 
-    assert spark2.container_image.base_image == "cr.flyte.org/flyteorg/flytekit:spark-latest"
+    assert spark2.container_image.base_image == "cr.flyte.org/flyteorg/flytekit:spark-3.0.0"
     assert spark2._default_executor_path == "/usr/bin/python3"
     assert spark2._default_applications_path == "local:///usr/local/bin/entrypoint.py"
