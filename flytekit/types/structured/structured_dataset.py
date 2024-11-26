@@ -198,8 +198,8 @@ class StructuredDataset(SerializableType, DataClassJSONMixin):
 
         For details, please refer to this issue: https://github.com/flyteorg/flyte/issues/5954.
 
-        2. Need access to self._literal_sd when converting task output back to flyteidl, please see:
-        https://github.com/flyteorg/flytekit/blob/master/flytekit/bin/entrypoint.py#L326
+        2. Need access to self._literal_sd when converting task output LiteralMap back to flyteidl, please see:
+        https://github.com/flyteorg/flytekit/blob/f938661ff8413219d1bea77f6914a58c302d5c6c/flytekit/bin/entrypoint.py#L326
 
         For details, please refer to this issue: https://github.com/flyteorg/flyte/issues/5956.
         """
