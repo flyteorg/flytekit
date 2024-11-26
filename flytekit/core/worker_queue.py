@@ -138,7 +138,10 @@ class PollingInformer:
                 # Iterate in order so that we add to the interface in the correct order
                 for i in range(num_outputs):
                     key = f"o{i}"
-                    # todo:async add a nicer error here
+                    if key not in work.entity.interface.outputs:
+                        raise AssertionError(
+                            f"Output name {key} not found in outputs {[k for k in work.entity.interface.outputs.keys()]}"
+                        )
                     var_type = work.entity.interface.outputs[key].type
                     python_outputs_interface[key] = TypeEngine.guess_python_type(var_type)
                 py_iface = Interface(inputs=typing.cast(dict[str, typing.Type], {}), outputs=python_outputs_interface)

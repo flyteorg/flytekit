@@ -220,7 +220,6 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         handle dynamic tasks or you will no longer be able to use the task as a dynamic task generator.
         """
         if self.execution_mode == self.ExecutionBehavior.DEFAULT:
-            # todo:async run task function in a runner if necessary.
             return self._task_function(**kwargs)
         elif self.execution_mode == self.ExecutionBehavior.DYNAMIC:
             return self.dynamic_execute(self._task_function, **kwargs)
@@ -425,7 +424,6 @@ class AsyncPythonFunctionTask(PythonFunctionTask[T], metaclass=FlyteTrackedABC):
         # Args is present because the asyn helper function passes it, but everything should be in kwargs by this point
         assert not args
         if self.execution_mode == self.ExecutionBehavior.DEFAULT:
-            # todo:async run task function in a runner if necessary.
             return await self._task_function(**kwargs)
         elif self.execution_mode == self.ExecutionBehavior.DYNAMIC:
             raise NotImplementedError
@@ -618,7 +616,8 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
 
 
 """
-merge master again
+match signal handler pattern and re-test
+local execution
 pure watch informer pattern
 
 priority for flytekit - fix naming, depending on src

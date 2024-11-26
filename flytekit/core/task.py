@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime
 import inspect
 import os
-from functools import update_wrapper
+from functools import partial, update_wrapper
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, TypeVar, Union, overload
 
 from typing_extensions import ParamSpec  # type: ignore
@@ -13,7 +13,7 @@ from flytekit.core import workflow as _annotated_workflow
 from flytekit.core.base_task import PythonTask, TaskMetadata, TaskResolverMixin
 from flytekit.core.interface import Interface, output_name_generator, transform_function_to_interface
 from flytekit.core.pod_template import PodTemplate
-from flytekit.core.python_function_task import AsyncPythonFunctionTask, PythonFunctionTask
+from flytekit.core.python_function_task import AsyncPythonFunctionTask, EagerAsyncPythonFunctionTask, PythonFunctionTask
 from flytekit.core.reference_entity import ReferenceEntity, TaskReference
 from flytekit.core.resources import Resources
 from flytekit.core.utils import str2bool
@@ -504,3 +504,121 @@ class Echo(PythonTask):
             return values[0]
         else:
             return tuple(values)
+
+
+def eager(
+    _fn=None,
+    *args,
+    **kwargs,
+) -> Union[EagerAsyncPythonFunctionTask, partial]:
+    """Eager workflow decorator.
+
+    :param remote: A :py:class:`~flytekit.remote.FlyteRemote` object to use for executing Flyte entities.
+    :param client_secret_group: The client secret group to use for this workflow.
+    :param client_secret_key: The client secret key to use for this workflow.
+    :param timeout: The timeout duration specifying how long to wait for a task/workflow execution within the eager
+        workflow to complete or terminate. By default, the eager workflow will wait indefinitely until complete.
+    :param poll_interval: The poll interval for checking if a task/workflow execution within the eager workflow has
+        finished. If not specified, the default poll interval is 6 seconds.
+    :param local_entrypoint: If True, the eager workflow will can be executed locally but use the provided
+        :py:func:`~flytekit.remote.FlyteRemote` object to create task/workflow executions. This is useful for local
+        testing against a remote Flyte cluster.
+    :param client_secret_env_var: if specified, binds the client secret to the specified environment variable for
+        remote authentication.
+    :param kwargs: keyword-arguments forwarded to :py:func:`~flytekit.task`.
+
+    This type of workflow will execute all flyte entities within it eagerly, meaning that all python constructs can be
+    used inside of an ``@eager``-decorated function. This is because eager workflows use a
+    :py:class:`~flytekit.remote.remote.FlyteRemote` object to kick off executions when a flyte entity needs to produce a
+    value.
+
+    For example:
+
+    .. code-block:: python
+
+        from flytekit import task
+        from flytekit.experimental import eager
+
+        @task
+        def add_one(x: int) -> int:
+            return x + 1
+
+        @task
+        def double(x: int) -> int:
+            return x * 2
+
+        @eager
+        async def eager_workflow(x: int) -> int:
+            out = await add_one(x=x)
+            return await double(x=out)
+
+        # run locally with asyncio
+        if __name__ == "__main__":
+            import asyncio
+
+            result = asyncio.run(eager_workflow(x=1))
+            print(f"Result: {result}")  # "Result: 4"
+
+    Unlike :py:func:`dynamic workflows <flytekit.dynamic>`, eager workflows are not compiled into a workflow spec, but
+    uses python's `async <https://docs.python.org/3/library/asyncio.html>`__ capabilities to execute flyte entities.
+
+    .. note::
+
+       Eager workflows only support `@task`, `@workflow`, and `@eager` entities. Dynamic workflows and launchplans are
+       currently not supported.
+
+    Note that for the ``@eager`` function is an ``async`` function. Under the hood, tasks and workflows called inside
+    an ``@eager`` workflow are executed asynchronously. This means that task and workflow calls will return an awaitable,
+    which need to be awaited.
+
+    .. important::
+
+       A ``client_secret_group`` and ``client_secret_key`` is needed for authenticating via
+       :py:class:`~flytekit.remote.remote.FlyteRemote` using the ``client_credentials`` authentication, which is
+       configured via :py:class:`~flytekit.configuration.PlatformConfig`.
+
+       .. code-block:: python
+
+            from flytekit.remote import FlyteRemote
+            from flytekit.configuration import Config
+
+            @eager(
+                remote=FlyteRemote(config=Config.auto(config_file="config.yaml")),
+                client_secret_group="my_client_secret_group",
+                client_secret_key="my_client_secret_key",
+            )
+            async def eager_workflow(x: int) -> int:
+                out = await add_one(x)
+                return await double(one)
+
+       Where ``config.yaml`` contains is a flytectl-compatible config file.
+       For more details, see `here <https://docs.flyte.org/en/latest/flytectl/overview.html#configuration>`__.
+
+       When using a sandbox cluster started with ``flytectl demo start``, however, the ``client_secret_group``
+       and ``client_secret_key`` are not needed, :
+
+       .. code-block:: python
+
+            @eager(remote=FlyteRemote(config=Config.for_sandbox()))
+            async def eager_workflow(x: int) -> int:
+                ...
+
+    .. important::
+
+       When using ``local_entrypoint=True`` you also need to specify the ``remote`` argument. In this case, the eager
+       workflow runtime will be local, but all task/subworkflow invocations will occur on the specified Flyte cluster.
+       This argument is primarily used for testing and debugging eager workflow logic locally.
+
+    """
+
+    if _fn is None:
+        return partial(
+            eager,
+            **kwargs,
+        )
+
+    if "enable_deck" in kwargs:
+        del kwargs["enable_deck"]
+
+    et = EagerAsyncPythonFunctionTask(task_config=None, task_function=_fn, enable_deck=True, **kwargs)
+    return et
