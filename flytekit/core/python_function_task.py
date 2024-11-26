@@ -26,7 +26,7 @@ from contextlib import suppress
 from enum import Enum
 from typing import Any, Callable, Iterable, List, Optional, Tuple, TypeVar, Union, cast
 
-from flytekit.configuration import ImageConfig, LocalConfig, SerializationSettings
+from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core import launch_plan as _annotated_launch_plan
 from flytekit.core.base_task import Task, TaskResolverMixin
 from flytekit.core.constants import EAGER_ROOT_ENV_NAME
@@ -38,7 +38,6 @@ from flytekit.core.promise import (
     VoidPromise,
     async_flyte_entity_call_handler,
     translate_inputs_to_literals,
-    translate_inputs_to_native,
 )
 from flytekit.core.python_auto_container import PythonAutoContainerTask, default_task_resolver
 from flytekit.core.tracked_abc import FlyteTrackedABC
@@ -470,29 +469,6 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
     def local_execution_mode(self) -> ExecutionState.Mode:
         return ExecutionState.Mode.EAGER_LOCAL_EXECUTION
 
-    def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, None]:
-        """
-        update this comment.
-        This function is used only in the local execution path and is responsible for calling dispatch execute.
-        Use this function when calling a task with native values (or Promises containing Flyte literals derived from
-        Python native values).
-        """
-        native_values = translate_inputs_to_native(
-            ctx,
-            incoming_values=kwargs,
-            flyte_interface_types=self.interface.inputs,
-        )
-
-        # if metadata.cache is set, check memoized version
-        local_config = LocalConfig.auto()
-        if self.metadata.cache and local_config.cache_enabled:
-            # todo:async Handle local caching
-            raise NotImplementedError
-        else:
-            output_native_values = self.execute(**native_values)
-
-            return output_native_values
-
     async def async_execute(self, *args, **kwargs) -> Any:
         """
         Overrides the base execute function. This function does not handle dynamic at all. Eager and dynamic don't mix.
@@ -616,12 +592,10 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
 
 
 """
-local execution
-test again
 update code comments and remove int test for now
+
 verify auth env var and start auto loading
   - figure out how remotes can be different.
-match signal handler pattern and re-test
 pure watch informer pattern
 
 priority for flytekit - fix naming, depending on src

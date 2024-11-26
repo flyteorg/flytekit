@@ -1407,7 +1407,6 @@ class LocallyExecutable(Protocol):
     def local_execution_mode(self) -> ExecutionState.Mode: ...
 
 
-# change this to async?
 async def async_flyte_entity_call_handler(
     entity: SupportsNodeCreation, *args, **kwargs
 ) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, None]:
@@ -1487,10 +1486,9 @@ async def async_flyte_entity_call_handler(
                 else:
                     return None
             if original_mode == ExecutionState.Mode.EAGER_LOCAL_EXECUTION:
+                # When calling a local task/eager task/launch plan/subworkflow, we want the results to be Python
+                # native values, not wrapped in Promises.
                 local_execute_results = cast(LocallyExecutable, entity).local_execute(ctx, **kwargs)
-                if mode == ExecutionState.Mode.EAGER_LOCAL_EXECUTION:
-                    return local_execute_results
-
                 return create_native_named_tuple(ctx, local_execute_results, entity.python_interface)
             else:
                 return cast(LocallyExecutable, entity).local_execute(ctx, **kwargs)
@@ -1515,8 +1513,8 @@ async def async_flyte_entity_call_handler(
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.DYNAMIC_TASK_EXECUTION:
             return result
 
-        if mode == ExecutionState.Mode.EAGER_LOCAL_EXECUTION:
-            return result
+        # if mode == ExecutionState.Mode.EAGER_LOCAL_EXECUTION:
+        #     return result
 
         if (1 < expected_outputs == len(cast(Tuple[Promise], result))) or (
             result is not None and expected_outputs == 1

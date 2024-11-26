@@ -513,31 +513,17 @@ def eager(
 ) -> Union[EagerAsyncPythonFunctionTask, partial]:
     """Eager workflow decorator.
 
-    :param remote: A :py:class:`~flytekit.remote.FlyteRemote` object to use for executing Flyte entities.
-    :param client_secret_group: The client secret group to use for this workflow.
-    :param client_secret_key: The client secret key to use for this workflow.
-    :param timeout: The timeout duration specifying how long to wait for a task/workflow execution within the eager
-        workflow to complete or terminate. By default, the eager workflow will wait indefinitely until complete.
-    :param poll_interval: The poll interval for checking if a task/workflow execution within the eager workflow has
-        finished. If not specified, the default poll interval is 6 seconds.
-    :param local_entrypoint: If True, the eager workflow will can be executed locally but use the provided
-        :py:func:`~flytekit.remote.FlyteRemote` object to create task/workflow executions. This is useful for local
-        testing against a remote Flyte cluster.
-    :param client_secret_env_var: if specified, binds the client secret to the specified environment variable for
-        remote authentication.
-    :param kwargs: keyword-arguments forwarded to :py:func:`~flytekit.task`.
-
-    This type of workflow will execute all flyte entities within it eagerly, meaning that all python constructs can be
+    This type of task will execute all Flyte entities within it eagerly, meaning that all python constructs can be
     used inside of an ``@eager``-decorated function. This is because eager workflows use a
     :py:class:`~flytekit.remote.remote.FlyteRemote` object to kick off executions when a flyte entity needs to produce a
-    value.
+    value. Basically think about it as: every Flyte entity that is called(), the stack frame is an execution with its
+    own Flyte URL. Results (or the error) are fetched when the execution is finished.
 
     For example:
 
     .. code-block:: python
 
-        from flytekit import task
-        from flytekit.experimental import eager
+        from flytekit import task, eager
 
         @task
         def add_one(x: int) -> int:
@@ -549,8 +535,8 @@ def eager(
 
         @eager
         async def eager_workflow(x: int) -> int:
-            out = await add_one(x=x)
-            return await double(x=out)
+            out = add_one(x=x)
+            return double(x=out)
 
         # run locally with asyncio
         if __name__ == "__main__":
@@ -564,12 +550,8 @@ def eager(
 
     .. note::
 
-       Eager workflows only support `@task`, `@workflow`, and `@eager` entities. Dynamic workflows and launchplans are
-       currently not supported.
-
-    Note that for the ``@eager`` function is an ``async`` function. Under the hood, tasks and workflows called inside
-    an ``@eager`` workflow are executed asynchronously. This means that task and workflow calls will return an awaitable,
-    which need to be awaited.
+       Eager workflows only support `@task`, `@workflow`, and `@eager` entities. Conditionals are not supported, use a
+       plain Python if statement instead.
 
     .. important::
 
@@ -599,16 +581,9 @@ def eager(
 
        .. code-block:: python
 
-            @eager(remote=FlyteRemote(config=Config.for_sandbox()))
+            @eager
             async def eager_workflow(x: int) -> int:
                 ...
-
-    .. important::
-
-       When using ``local_entrypoint=True`` you also need to specify the ``remote`` argument. In this case, the eager
-       workflow runtime will be local, but all task/subworkflow invocations will occur on the specified Flyte cluster.
-       This argument is primarily used for testing and debugging eager workflow logic locally.
-
     """
 
     if _fn is None:
