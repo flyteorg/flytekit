@@ -3672,3 +3672,32 @@ def test_assert_type_with_missing_optional():
     engine = TypeEngine()
     value = {"required": 123}
     engine.assert_type(OptionalFields, value)
+
+def test_union_transformer_optional_detection():
+    assert UnionTransformer.is_optional_type(Optional[int])
+    assert not UnionTransformer.is_optional_type(List[int])
+    assert not UnionTransformer.is_optional_type(int)
+
+def test_type_casting_in_expected_fields():
+    expected_fields = {"a": Optional[int], "b": int}
+
+    for k, t in expected_fields.items():
+        if t == Optional[int]:
+            cast_type = TypeEngine.cast_type(type, t)
+            assert cast_type == Optional[int]
+        elif t == int:
+            cast_type = TypeEngine.cast_type(type, t)
+            assert cast_type == int
+
+@dataclasses.dataclass
+class SampleDataclass:
+    x: Optional[int]
+    y: int
+
+def test_fix_val_in_dataclass():
+    dc = SampleDataclass(None, 5)
+    type_engine = TypeEngine()
+    fixed_dc = type_engine._make_dataclass_serializable(dc, SampleDataclass)
+
+    assert fixed_dc.x is None
+    assert fixed_dc.y == 5

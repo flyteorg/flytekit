@@ -454,3 +454,26 @@ async def test_binding_data_with_incorrect_type():
     with pytest.raises(AssertionError, match="Failed to bind data"):
         result = await binding_data_from_python_std(ctx, lt_type, t_value, str, nodes)
         assert result is None
+
+@pytest.mark.asyncio
+async def test_binding_data_python_type_logic():
+    ctx = FlyteContext.current_context()
+    nodes = []
+
+    # Case 1: t_value_type is None, t_value is None
+    lt_type = LiteralType()
+    t_value_type = None
+    t_value = None
+    result = await binding_data_from_python_std(ctx, lt_type, t_value, t_value_type, nodes)
+    assert result.scalar is None  # Expecting a None type scalar
+
+    # Case 2: t_value_type is None, t_value is a string
+    t_value = "example"
+    result = await binding_data_from_python_std(ctx, lt_type, t_value, t_value_type, nodes)
+    assert result.scalar.primitive.string_value == t_value  # Expecting string scalar
+
+    # Case 3: t_value_type is a list type, t_value is a list
+    t_value_type = List[int]
+    t_value = [1, 2, 3]
+    result = await binding_data_from_python_std(ctx, lt_type, t_value, t_value_type, nodes)
+    assert result.collection.bindings is not None  # Expecting a list collection
