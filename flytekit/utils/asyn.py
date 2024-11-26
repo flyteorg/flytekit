@@ -62,7 +62,7 @@ class _TaskRunner:
     def get_exc_handler(self):
         def exc_handler(loop, context):
             logger.error(
-                f"Taskrunner for {self.__runner_thread.name if self.__runner_thread else "no thread"} caught"
+                f"Taskrunner for {self.__runner_thread.name if self.__runner_thread else 'no thread'} caught"
                 f" exception in {loop}: {context}"
             )
 
