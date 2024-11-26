@@ -127,9 +127,7 @@ class TrackedInstance(metaclass=InstanceTrackingMeta):
             return self._lhs
 
         if self._instantiated_in is None or self._instantiated_in == "":
-            raise _system_exceptions.FlyteSystemException(
-                f"Object {self} does not have an _instantiated in"
-            )
+            raise _system_exceptions.FlyteSystemException(f"Object {self} does not have an _instantiated in")
 
         logger.debug(f"Looking for LHS for {self} from {self._instantiated_in}")
         m = importlib.import_module(self._instantiated_in)
@@ -145,11 +143,7 @@ class TrackedInstance(metaclass=InstanceTrackingMeta):
                 #   a.any() or a.all()
                 # Since dataframes aren't registrable entities to begin with we swallow any errors they raise and
                 # continue looping through m.
-                logger.warning(
-                    "Caught ValueError {} while attempting to auto-assign name".format(
-                        err
-                    )
-                )
+                logger.warning("Caught ValueError {} while attempting to auto-assign name".format(err))
 
         # Try to find object in module when the tracked instance is defined in the __main__ module.
         # This section tries to find the matching object in the module when the module is loaded from the __file__.
@@ -175,14 +169,10 @@ class TrackedInstance(metaclass=InstanceTrackingMeta):
                         self._lhs = k
                         return k
                 except ValueError as err:
-                    logger.warning(
-                        f"Caught ValueError {err} while attempting to auto-assign name"
-                    )
+                    logger.warning(f"Caught ValueError {err} while attempting to auto-assign name")
 
         logger.error(f"Could not find LHS for {self} in {self._instantiated_in}")
-        raise _system_exceptions.FlyteSystemException(
-            f"Error looking for LHS in {self._instantiated_in}"
-        )
+        raise _system_exceptions.FlyteSystemException(f"Error looking for LHS in {self._instantiated_in}")
 
 
 def isnested(func: Callable) -> bool:
@@ -201,9 +191,7 @@ def isnested(func: Callable) -> bool:
     In the above example `foo_inner` is the local function or a nested function.
     """
 
-    return hasattr(func, "__code__") and (
-        func.__code__.co_flags & inspect.CO_NESTED != 0
-    )
+    return hasattr(func, "__code__") and (func.__code__.co_flags & inspect.CO_NESTED != 0)
 
 
 def is_functools_wrapped_module_level(func: Callable) -> bool:
@@ -272,9 +260,7 @@ class _ModuleSanitizer(object):
     def __init__(self):
         self._module_cache = {}
 
-    def _resolve_abs_module_name(
-        self, path: str, package_root: typing.Optional[str] = None
-    ) -> str:
+    def _resolve_abs_module_name(self, path: str, package_root: typing.Optional[str] = None) -> str:
         """
         Recursively finds the root python package under-which basename exists
         """
@@ -301,9 +287,7 @@ class _ModuleSanitizer(object):
         self._module_cache[path] = final_mod_name
         return final_mod_name
 
-    def get_absolute_module_name(
-        self, path: str, package_root: typing.Optional[str] = None
-    ) -> str:
+    def get_absolute_module_name(self, path: str, package_root: typing.Optional[str] = None) -> str:
         """
         Returns the absolute module path for a given python file path. This assumes that every module correctly contains
         a __init__.py file. Absence of this file, indicates the root.
@@ -321,9 +305,7 @@ def _task_module_from_callable(f: Callable):
     return mod, mod_name, name
 
 
-def extract_task_module(
-    f: Union[Callable, TrackedInstance]
-) -> Tuple[str, str, str, str]:
+def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, str, str]:
     """
     Returns the task-name, absolute module and the string name of the callable.
     :param f: A task or any other callable
@@ -374,13 +356,9 @@ def extract_task_module(
 def get_full_module_path(mod: ModuleType, mod_name: str) -> str:
     if FeatureFlags.FLYTE_PYTHON_PACKAGE_ROOT != ".":
         package_root = (
-            FeatureFlags.FLYTE_PYTHON_PACKAGE_ROOT
-            if FeatureFlags.FLYTE_PYTHON_PACKAGE_ROOT != "auto"
-            else None
+            FeatureFlags.FLYTE_PYTHON_PACKAGE_ROOT if FeatureFlags.FLYTE_PYTHON_PACKAGE_ROOT != "auto" else None
         )
-        new_mod_name = _mod_sanitizer.get_absolute_module_name(
-            inspect.getabsfile(mod), package_root
-        )
+        new_mod_name = _mod_sanitizer.get_absolute_module_name(inspect.getabsfile(mod), package_root)
         # We only replace the mod_name if it is more specific, else we already have a fully resolved path
         if len(new_mod_name) > len(mod_name):
             mod_name = new_mod_name

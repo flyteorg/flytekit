@@ -1,8 +1,8 @@
-# Flytekit FlyteInteractive Plugin
+# Applied Flytekit FlyteInteractive Plugin
 
 > FlyteInteractive = Develop Flyte with the speed of flying
 
-FlyteInteractive plugin provides users' favorite interface to develop and debug a flyte task interactively. We support vscode, jupyter (WIP), and neovim (WIP).
+FlyteInteractive plugin provides users' favorite interface to develop and debug a flyte task interactively. Only jupyter is supported.
 
 ## Installation
 
