@@ -2092,6 +2092,7 @@ def test_pickle_type():
 
 
 def test_enum_in_dataclass():
+    from mashumaro.jsonschema import build_json_schema
     @dataclass
     class Datum(DataClassJsonMixin):
         x: int
@@ -2100,7 +2101,7 @@ def test_enum_in_dataclass():
     lt = TypeEngine.to_literal_type(Datum)
     schema = Datum.schema()
     schema.fields["y"].load_by = LoadDumpOptions.name
-    assert lt.metadata == JSONSchema().dump(schema)
+    assert lt.metadata == build_json_schema(Datum).to_dict()
 
     transformer = DataclassTransformer()
     ctx = FlyteContext.current_context()
@@ -2477,18 +2478,14 @@ class AnnotatedDataclassTest(DataClassJsonMixin):
                 LiteralType(
                     simple=SimpleType.STRUCT,
                     metadata={
-                        "$schema": "http://json-schema.org/draft-07/schema#",
-                        "definitions": {
-                            "DataclasstestSchema": {
-                                "properties": {
-                                    "a": {"title": "a", "type": "integer"},
-                                    "b": {"title": "b", "type": "string"},
-                                },
-                                "type": "object",
-                                "additionalProperties": False,
-                            }
+                        "type": "object",
+                        "title": "DataclassTest",
+                        "properties": {
+                            "a": {"type": "integer"},
+                            "b": {"type": "string"}
                         },
-                        "$ref": "#/definitions/DataclasstestSchema",
+                        "additionalProperties": False,
+                        "required": ["a", "b"]
                     },
                     structure=TypeStructure(
                         tag="",
@@ -2505,18 +2502,14 @@ class AnnotatedDataclassTest(DataClassJsonMixin):
                 LiteralType(
                     simple=SimpleType.STRUCT,
                     metadata={
-                        "$schema": "http://json-schema.org/draft-07/schema#",
-                        "definitions": {
-                            "DataclasstestSchema": {
-                                "properties": {
-                                    "a": {"title": "a", "type": "integer"},
-                                    "b": {"title": "b", "type": "string"},
-                                },
-                                "type": "object",
-                                "additionalProperties": False,
-                            }
+                        "type": "object",
+                        "title": "DataclassTest",
+                        "properties": {
+                            "a": {"type": "integer"},
+                            "b": {"type": "string"}
                         },
-                        "$ref": "#/definitions/DataclasstestSchema",
+                        "additionalProperties": False,
+                        "required": ["a", "b"]
                     },
                     structure=TypeStructure(
                         tag="",
@@ -2533,18 +2526,14 @@ class AnnotatedDataclassTest(DataClassJsonMixin):
                 LiteralType(
                     simple=SimpleType.STRUCT,
                     metadata={
-                        "$schema": "http://json-schema.org/draft-07/schema#",
-                        "definitions": {
-                            "AnnotateddataclasstestSchema": {
-                                "properties": {
-                                    "a": {"title": "a", "type": "integer"},
-                                    "b": {"title": "b", "type": "string"},
-                                },
-                                "type": "object",
-                                "additionalProperties": False,
-                            }
+                        "type": "object",
+                        "title": "AnnotatedDataclassTest",
+                        "properties": {
+                            "a": {"type": "integer"},
+                            "b": {"type": "string"}
                         },
-                        "$ref": "#/definitions/AnnotateddataclasstestSchema",
+                        "additionalProperties": False,
+                        "required": ["a", "b"]
                     },
                     structure=TypeStructure(
                         tag="",
