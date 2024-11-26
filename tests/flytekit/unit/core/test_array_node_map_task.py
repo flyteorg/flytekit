@@ -1,30 +1,26 @@
 import functools
 import os
-import pathlib
+import tempfile
 import typing
 from collections import OrderedDict
 from typing import List
-from typing_extensions import Annotated
-import tempfile
 
 import pytest
 
-from flytekit import dynamic, map_task, task, workflow
-from flytekit.types.directory import FlyteDirectory
+from flytekit import dynamic, map_task, task, workflow, eager
 from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SerializationSettings
 from flytekit.core import context_manager
 from flytekit.core.array_node_map_task import ArrayNodeMapTask, ArrayNodeMapTaskResolver
-from flytekit.core.python_auto_container import PICKLE_FILE_PATH
 from flytekit.core.task import TaskMetadata
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extras.accelerators import GPUAccelerator
-from flytekit.experimental.eager_function import eager
 from flytekit.models.literals import (
     Literal,
     LiteralMap,
     LiteralOffloadedMetadata,
 )
-from flytekit.tools.translator import get_serializable, Options
+from flytekit.tools.translator import get_serializable
+from flytekit.types.directory import FlyteDirectory
 
 
 @pytest.fixture

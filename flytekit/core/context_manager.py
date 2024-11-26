@@ -898,7 +898,7 @@ class FlyteContextManager(object):
         FlyteContextManager.pop_context()
     """
 
-    signal_handlers = []
+    signal_handlers: typing.List[typing.Callable[[int, FrameType], typing.Any]] = []
 
     @staticmethod
     def add_signal_handler(handler: typing.Callable[[int, FrameType], typing.Any]):

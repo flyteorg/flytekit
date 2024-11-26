@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime
 import inspect
 import os
-from functools import update_wrapper
+from functools import partial, update_wrapper
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, TypeVar, Union, overload
 
 from typing_extensions import ParamSpec  # type: ignore
@@ -510,7 +510,7 @@ def eager(
     _fn=None,
     *args,
     **kwargs,
-) -> EagerAsyncPythonFunctionTask:
+) -> Union[EagerAsyncPythonFunctionTask, partial]:
     """Eager workflow decorator.
 
     :param remote: A :py:class:`~flytekit.remote.FlyteRemote` object to use for executing Flyte entities.
