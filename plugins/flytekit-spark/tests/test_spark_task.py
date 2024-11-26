@@ -12,7 +12,7 @@ from pyspark.sql import SparkSession
 
 import flytekit
 from flytekit import StructuredDataset, StructuredDatasetTransformerEngine, task, ImageSpec
-from flytekit.configuration import Image, ImageConfig, SerializationSettings, FastSerializationSettings
+from flytekit.configuration import Image, ImageConfig, SerializationSettings, FastSerializationSettings, DefaultImages
 from flytekit.core.context_manager import ExecutionParameters, FlyteContextManager, ExecutionState
 
 
@@ -185,6 +185,6 @@ def test_spark_with_image_spec():
         print("Starting Spark with Partitions: {}".format(partitions))
         return 1.0
 
-    assert spark2.container_image.base_image == "cr.flyte.org/flyteorg/flytekit:spark-3.0.0"
+    assert spark2.container_image.base_image == f"cr.flyte.org/flyteorg/flytekit:spark-{DefaultImages.get_version_suffix()}"
     assert spark2._default_executor_path == "/usr/bin/python3"
     assert spark2._default_applications_path == "local:///usr/local/bin/entrypoint.py"
