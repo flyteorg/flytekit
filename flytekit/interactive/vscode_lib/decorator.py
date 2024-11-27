@@ -13,7 +13,6 @@ from typing import Callable, List, Optional
 import fsspec
 
 import flytekit
-from flytekit import PythonFunctionTask, dynamic
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.utils import ClassDecorator
 from flytekit.interactive.constants import EXIT_CODE_SUCCESS, MAX_IDLE_SECONDS
@@ -39,7 +38,7 @@ def exit_handler(
     kwargs,
     max_idle_seconds: int = 180,
     post_execute: Optional[Callable] = None,
-    execution_mode: PythonFunctionTask.ExecutionBehavior = PythonFunctionTask.ExecutionBehavior.DEFAULT
+    execution_mode: "PythonFunctionTask.ExecutionBehavior" = None,
 ):
     """
     1. Check the modified time of ~/.local/share/code-server/heartbeat.
@@ -104,6 +103,7 @@ def exit_handler(
             break
         task_function = task_function.__wrapped__
 
+    from flytekit import PythonFunctionTask, dynamic
     if execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
         return dynamic(task_function)(*args, **kwargs)
     return task_function(*args, **kwargs)
@@ -357,7 +357,7 @@ class vscode(ClassDecorator):
         pre_execute: Optional[Callable] = None,
         post_execute: Optional[Callable] = None,
         config: Optional[VscodeConfig] = None,
-        execution_mode: PythonFunctionTask.ExecutionBehavior = PythonFunctionTask.ExecutionBehavior.DEFAULT,
+        execution_mode: "PythonFunctionTask.ExecutionBehavior" = None,
     ):
         """
         vscode decorator modifies a container to run a VSCode server:
