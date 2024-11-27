@@ -12,6 +12,7 @@ from flytekit.tools.interactive import ipython_check
 OUTPUT_DIR_JUPYTER_PREFIX = "jupyter"
 DECK_FILE_NAME = "deck.html"
 
+
 class DeckField(str, enum.Enum):
     """
     DeckField is used to specify the fields that will be rendered in the deck.
