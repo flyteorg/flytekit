@@ -79,4 +79,3 @@ class KeyringStore:
         _delete_key(KeyringStore._access_token_key)
         _delete_key(KeyringStore._refresh_token_key)
         _delete_key(KeyringStore._id_token_key)
-

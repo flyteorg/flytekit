@@ -72,7 +72,7 @@ def get_authenticator(cfg: PlatformConfig, cfg_store: ClientConfigStore) -> Auth
     if cfg_auth == AuthType.NO_AUTH:
         logging.warning("No authentication required for this configuration.")
         return Authenticator(cfg.endpoint, header_key="", verify=verify)
-    
+
     if cfg_auth == AuthType.STANDARD or cfg_auth == AuthType.PKCE:
         return PKCEAuthenticator(cfg.endpoint, cfg_store, scopes=cfg.scopes, verify=verify, session=session)
     elif cfg_auth == AuthType.BASIC or cfg_auth == AuthType.CLIENT_CREDENTIALS or cfg_auth == AuthType.CLIENTSECRET:

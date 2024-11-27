@@ -1,15 +1,12 @@
+import logging
 import typing
 from collections import namedtuple
 
 import grpc
 
-from flytekit.clients.auth.authenticator import Authenticator
-
-import logging
-
+from flytekit.clients.auth.authenticator import Authenticator, ClientConfigStore
 from flytekit.configuration import PlatformConfig
 
-from flytekit.clients.auth.authenticator import ClientConfigStore
 
 class _ClientCallDetails(
     namedtuple("_ClientCallDetails", ("method", "timeout", "metadata", "credentials")),
@@ -89,18 +86,21 @@ class AuthUnaryInterceptor(grpc.UnaryUnaryClientInterceptor, grpc.UnaryStreamCli
             # updated_call_details = self._call_details_with_auth_metadata(client_call_details)
             # return continuation(updated_call_details, request)
         return c
-    
-    def _handle_unauthenticated_error(self, continuation, client_call_details, request):
-        """處理未認證錯誤,觸發PKCE流程"""
-        logging.info("Received authentication error, starting PKCE authentication flow")
-        
-        try:
 
-            if isinstance(self._authenticator, Authenticator) and not isinstance(self._authenticator, PKCEAuthenticator):
+    def _handle_unauthenticated_error(self, continuation, client_call_details, request):
+        """Handling Unauthenticated Errors and Triggering the PKCE Flow"""
+
+        logging.info("Received authentication error, starting PKCE authentication flow")
+
+        try:
+            if isinstance(self._authenticator, Authenticator) and not isinstance(
+                self._authenticator, PKCEAuthenticator
+            ):
                 logging.info("Current authenticator is 'None', switching to PKCEAuthenticator")
-            
+
                 from flytekit.clients.auth.authenticator import PKCEAuthenticator
                 from flytekit.clients.auth_helper import get_session
+
                 session = get_session(self._cfg)
 
                 verify = None
@@ -109,7 +109,9 @@ class AuthUnaryInterceptor(grpc.UnaryUnaryClientInterceptor, grpc.UnaryStreamCli
                 elif self._cfg.ca_cert_file_path:
                     verify = self._cfg.ca_cert_file_path
 
-                self._authenticator = PKCEAuthenticator(self._cfg.endpoint, self._cfg_store, scopes=self._cfg.scopes, verify=verify, session=session)
+                self._authenticator = PKCEAuthenticator(
+                    self._cfg.endpoint, self._cfg_store, scopes=self._cfg.scopes, verify=verify, session=session
+                )
 
             self._authenticator.refresh_credentials()
             logging.info("Authentication flow completed successfully")
