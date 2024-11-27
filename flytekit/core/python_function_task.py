@@ -548,7 +548,8 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
                     if ctx.user_space_params and ctx.user_space_params.execution_id
                     else "development"
                 )
-                raw_output = ctx.user_space_params.raw_output_prefix
+                raw_output = ctx.user_space_params.raw_output_prefix if ctx.user_space_params else None
+                logger.info(f"Constructing default remote with no config and {project}, {domain}, {raw_output}")
                 remote = get_plugin().get_remote(
                     config=None, project=project, domain=domain, data_upload_location=raw_output
                 )
