@@ -21,6 +21,7 @@ from types import GenericAlias
 from typing import Any, Dict, List, NamedTuple, Optional, Type, cast
 
 import msgpack
+from flytekit.utils.pbhash import compute_hash_string
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from flyteidl.core import literals_pb2
 from fsspec.asyn import _run_coros_in_chunks  # pylint: disable=W0212
@@ -49,7 +50,7 @@ from flytekit.models import interface as _interface_models
 from flytekit.models import types as _type_models
 from flytekit.models.annotation import TypeAnnotation as TypeAnnotationModel
 from flytekit.models.core import types as _core_types
-from flytekit.models.literals import Binary, Literal, LiteralCollection, LiteralMap, Primitive, Scalar, Union, Void
+from flytekit.models.literals import Binary, Literal, LiteralCollection, LiteralMap, LiteralOffloadedMetadata, Primitive, Scalar, Union, Void
 from flytekit.models.types import LiteralType, SimpleType, TypeStructure, UnionType
 from flytekit.utils.asyn import loop_manager
 
@@ -1382,6 +1383,53 @@ class TypeEngine(typing.Generic[T]):
 
         modify_literal_uris(lv)
         lv.hash = cls.calculate_hash(python_val, python_type)
+
+        lv = cls.try_offload_literal(ctx, lv, expected)
+        return lv
+
+    @classmethod
+    def try_offload_literal(cls, ctx: FlyteContext, lv: Literal, literal_type: LiteralType) -> Literal:
+        """
+        If the literal is too large, offload it and return a literal containting a reference to the offloaded data.
+        """
+        # TODO: always offload if in jupyter notebook?
+        offloading_enabled = os.environ.get("_F_L_MIN_SIZE_MB", None) is not None
+
+        logger.debug(f"Offloading enabled: {offloading_enabled}")
+
+        if not offloading_enabled:
+            return lv
+
+        min_offloaded_size_bytes = int(os.environ.get("_F_L_MIN_SIZE_MB", "10")) * 1024 * 1024
+        max_offloaded_size_bytes = int(os.environ.get("_F_L_MAX_SIZE_MB", "1000")) * 1024 * 1024
+
+        logger.debug(f"Min offloaded size: {min_offloaded_size_bytes}, Max offloaded size: {max_offloaded_size_bytes}")
+
+        lit = lv.to_flyte_idl()
+
+        if lit.ByteSize() >= max_offloaded_size_bytes:
+            raise ValueError(
+                f"Literal {lv} is too large to be offloaded. Max literal size is {max_offloaded_size_bytes} whereas the literal size is {lit.ByteSize()} bytes"
+            )
+
+        logger.debug(f"Literal size: {lit.ByteSize()}")
+        if lit.ByteSize() >= min_offloaded_size_bytes:
+            local_file = ctx.file_access.get_random_local_path()
+            with open(local_file, "wb") as w:
+                w.write(lit.SerializeToString())
+            lv = Literal(
+                offloaded_metadata=LiteralOffloadedMetadata(
+                    # TODO: handle jupyter and `pyflyte run`
+                    uri=ctx.file_access.upload(
+                        local_file, ctx.file_access.join(ctx.execution_state.user_space_params.output_metadata_prefix, ctx.file_access.get_random_string()),
+                    ),
+                    size_bytes=lit.ByteSize(),
+                    # TODO: remove after https://github.com/flyteorg/flyte/pull/5909 is merged
+                    inferred_type=literal_type,
+                ),
+                hash=lv.hash if lv.hash else compute_hash_string(lit),
+            )
+            logger.info(f"Literal offloaded to {lv.offloaded_metadata.uri}")
         return lv
 
     @classmethod
@@ -1411,6 +1459,7 @@ class TypeEngine(typing.Generic[T]):
         modify_literal_uris(lv)
         lv.hash = cls.calculate_hash(python_val, python_type)
 
+        lv = cls.try_offload_literal(ctx, lv, expected)
         return lv
 
     @classmethod

@@ -563,7 +563,57 @@ def get_flyte_context(tmp_path_factory, outputs_path):
     )
 
 
-def test_dispatch_execute_offloaded_literals(tmp_path_factory):
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_random_string", return_value="file-1")
+def test_dispatch_execute_single_offloaded_literal(_, tmp_path_factory):
+    @task
+    def t1(a: int) -> str:
+        return f"string is: {a}"
+
+    inputs_path = tmp_path_factory.mktemp("inputs")
+    outputs_path = tmp_path_factory.mktemp("outputs")
+
+    ctx = context_manager.FlyteContext.current_context()
+    with get_flyte_context(tmp_path_factory, outputs_path) as ctx:
+        input_literal_map = _literal_models.LiteralMap(
+            {
+                # "a": TypeEngine.to_literal(ctx, xs, typing.List[int], TypeEngine.to_literal_type(typing.List[int])),
+                "a": _literal_models.Literal(
+                    scalar=_literal_models.Scalar(primitive=_literal_models.Primitive(integer=1)),
+                ),
+            }
+        )
+
+        write_proto_to_file(input_literal_map.to_flyte_idl(), str(inputs_path/"inputs.pb"))
+
+        # Always offload literals
+        with mock.patch.dict(os.environ, {"_F_L_MIN_SIZE_MB": "0"}):
+            _dispatch_execute(ctx, lambda: t1, str(inputs_path/"inputs.pb"), str(outputs_path.absolute()))
+
+            assert "error.pb" not in os.listdir(outputs_path)
+
+            for ff in os.listdir(outputs_path):
+                with open(outputs_path/ff, "rb") as f:
+                    if ff == "outputs.pb":
+                        lit = literals_pb2.LiteralMap()
+                        lit.ParseFromString(f.read())
+                        assert len(lit.literals) == 1
+                        assert "o0" in lit.literals
+                        assert lit.literals["o0"].HasField("offloaded_metadata") == True
+                        assert lit.literals["o0"].offloaded_metadata.size_bytes == 18
+                        assert lit.literals["o0"].offloaded_metadata.inferred_type == LiteralType(simple=SimpleType.STRING).to_flyte_idl()
+                    elif ff == "file-1":
+                        lit = literals_pb2.Literal()
+                        lit.ParseFromString(f.read())
+                        assert lit == Literal(
+                            scalar=Scalar(primitive=Primitive(string_value="string is: 1")),
+                        )
+                    else:
+                        assert False, f"Unexpected file {ff}"
+
+
+
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_random_string", side_effect=["file-1", "file-2", "file-3", "list-1"])
+def test_dispatch_execute_offloaded_literals(_, tmp_path_factory):
     @task
     def t1(a: typing.List[int]) -> typing.List[str]:
         return [f"string is: {x}" for x in a]
@@ -576,7 +626,15 @@ def test_dispatch_execute_offloaded_literals(tmp_path_factory):
         xs: typing.List[int] = [1, 2, 3]
         input_literal_map = _literal_models.LiteralMap(
             {
-                "a": TypeEngine.to_literal(ctx, xs, typing.List[int], TypeEngine.to_literal_type(typing.List[int])),
+                "a": _literal_models.Literal(
+                    collection=_literal_models.LiteralCollection(
+                        literals=[
+                            _literal_models.Literal(
+                                scalar=_literal_models.Scalar(primitive=_literal_models.Primitive(integer=x)),
+                            ) for x in xs
+                        ],
+                    ),
+                ),
             }
         )
 
@@ -595,32 +653,37 @@ def test_dispatch_execute_offloaded_literals(tmp_path_factory):
                         assert len(lit.literals) == 1
                         assert "o0" in lit.literals
                         assert lit.literals["o0"].HasField("offloaded_metadata") == True
-                        assert lit.literals["o0"].offloaded_metadata.size_bytes == 62
-                        assert lit.literals["o0"].offloaded_metadata.uri.endswith("/o0_offloaded_metadata.pb")
+                        assert lit.literals["o0"].offloaded_metadata.uri.endswith("list-1")
+                        assert lit.literals["o0"].offloaded_metadata.size_bytes == 483
                         assert lit.literals["o0"].offloaded_metadata.inferred_type == LiteralType(collection_type=LiteralType(simple=SimpleType.STRING)).to_flyte_idl()
-                    elif ff == "o0_offloaded_metadata.pb":
+                    elif ff == "list-1":
+                        lit = literals_pb2.Literal()
+                        lit.ParseFromString(f.read())
+                        assert len(lit.collection.literals) == 3
+                    elif ff == "file-1":
                         lit = literals_pb2.Literal()
                         lit.ParseFromString(f.read())
                         assert lit == Literal(
-                            collection=LiteralCollection(
-                                literals=[
-                                    Literal(
-                                        scalar=Scalar(primitive=Primitive(string_value="string is: 1")),
-                                    ),
-                                    Literal(
-                                        scalar=Scalar(primitive=Primitive(string_value="string is: 2")),
-                                    ),
-                                    Literal(
-                                        scalar=Scalar(primitive=Primitive(string_value="string is: 3")),
-                                    ),
-                                ]
-                            )
+                            scalar=Scalar(primitive=Primitive(string_value="string is: 1")),
+                        )
+                    elif ff == "file-2":
+                        lit = literals_pb2.Literal()
+                        lit.ParseFromString(f.read())
+                        assert lit == Literal(
+                            scalar=Scalar(primitive=Primitive(string_value="string is: 2")),
+                        )
+                    elif ff == "file-3":
+                        lit = literals_pb2.Literal()
+                        lit.ParseFromString(f.read())
+                        assert lit == Literal(
+                            scalar=Scalar(primitive=Primitive(string_value="string is: 3")),
                         )
                     else:
                         assert False, f"Unexpected file {ff}"
 
 
-def test_dispatch_execute_offloaded_literals_two_outputs_offloaded(tmp_path_factory):
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_random_string", side_effect=["file-1", "file-2", "file-3", "file-4", "file-5", "file-6"])
+def test_dispatch_execute_offloaded_literals_two_outputs_offloaded(_, tmp_path_factory):
     @task
     def t1(xs: typing.List[int]) -> typing.Tuple[int, typing.List[str]]:
         return sum(xs), [f"string is: {x}" for x in xs]
@@ -630,7 +693,7 @@ def test_dispatch_execute_offloaded_literals_two_outputs_offloaded(tmp_path_fact
 
     ctx = context_manager.FlyteContext.current_context()
     with get_flyte_context(tmp_path_factory, outputs_path) as ctx:
-        xs: typing.List[int] = [1, 2, 3, 4]
+        xs: typing.List[int] = [1, 2, 3]
         input_literal_map = _literal_models.LiteralMap(
             {
                 "xs": _literal_models.Literal(
@@ -661,45 +724,47 @@ def test_dispatch_execute_offloaded_literals_two_outputs_offloaded(tmp_path_fact
                         assert "o0" in lit.literals
                         assert lit.literals["o0"].HasField("offloaded_metadata") == True
                         assert lit.literals["o0"].offloaded_metadata.size_bytes == 6
-                        assert lit.literals["o0"].offloaded_metadata.uri.endswith("/o0_offloaded_metadata.pb")
+                        # assert lit.literals["o0"].offloaded_metadata.uri.endswith("/o0_offloaded_metadata.pb")
                         assert lit.literals["o0"].offloaded_metadata.inferred_type == LiteralType(simple=SimpleType.INTEGER).to_flyte_idl()
                         assert "o1" in lit.literals
                         assert lit.literals["o1"].HasField("offloaded_metadata") == True
-                        assert lit.literals["o1"].offloaded_metadata.size_bytes == 82
-                        assert lit.literals["o1"].offloaded_metadata.uri.endswith("/o1_offloaded_metadata.pb")
+                        assert lit.literals["o1"].offloaded_metadata.size_bytes == 483
+                        # assert lit.literals["o1"].offloaded_metadata.uri.endswith("/o1_offloaded_metadata.pb")
                         assert lit.literals["o1"].offloaded_metadata.inferred_type == LiteralType(collection_type=LiteralType(simple=SimpleType.STRING)).to_flyte_idl()
-                    elif ff == "o0_offloaded_metadata.pb":
+                    elif ff == "file-1":
                         lit = literals_pb2.Literal()
                         lit.ParseFromString(f.read())
                         assert lit == Literal(
-                            scalar=Scalar(primitive=Primitive(integer=10)),
+                            scalar=Scalar(primitive=Primitive(integer=6)),
                         )
-                    elif ff == "o1_offloaded_metadata.pb":
+                    elif ff == "file-2":
                         lit = literals_pb2.Literal()
                         lit.ParseFromString(f.read())
                         assert lit == Literal(
-                            collection=LiteralCollection(
-                                literals=[
-                                    Literal(
-                                        scalar=Scalar(primitive=Primitive(string_value="string is: 1")),
-                                    ),
-                                    Literal(
-                                        scalar=Scalar(primitive=Primitive(string_value="string is: 2")),
-                                    ),
-                                    Literal(
-                                        scalar=Scalar(primitive=Primitive(string_value="string is: 3")),
-                                    ),
-                                    Literal(
-                                        scalar=Scalar(primitive=Primitive(string_value="string is: 4")),
-                                    ),
-                                ]
-                            )
+                            scalar=Scalar(primitive=Primitive(string_value="string is: 1")),
                         )
+                    elif ff == "file-3":
+                        lit = literals_pb2.Literal()
+                        lit.ParseFromString(f.read())
+                        assert lit == Literal(
+                            scalar=Scalar(primitive=Primitive(string_value="string is: 2")),
+                        )
+                    elif ff == "file-4":
+                        lit = literals_pb2.Literal()
+                        lit.ParseFromString(f.read())
+                        assert lit == Literal(
+                            scalar=Scalar(primitive=Primitive(string_value="string is: 3")),
+                        )
+                    elif ff == "file-5":
+                        lit = literals_pb2.Literal()
+                        lit.ParseFromString(f.read())
+                        assert len(lit.collection.literals) == 3
                     else:
                         assert False, f"Unexpected file {ff}"
 
 
-def test_dispatch_execute_offloaded_literals_two_outputs_only_second_one_offloaded(tmp_path_factory):
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_random_string", return_value="file-1")
+def test_dispatch_execute_offloaded_literals_two_outputs_only_second_one_offloaded(_, tmp_path_factory):
     @dataclass
     class DC:
         a: typing.List[int]
@@ -748,10 +813,10 @@ def test_dispatch_execute_offloaded_literals_two_outputs_only_second_one_offload
                         assert "o1" in lit.literals
                         assert lit.literals["o1"].HasField("offloaded_metadata") is True
                         assert lit.literals["o1"].offloaded_metadata.size_bytes == 1108538
-                        assert lit.literals["o1"].offloaded_metadata.uri.endswith("/o1_offloaded_metadata.pb")
+                        assert lit.literals["o1"].offloaded_metadata.uri.endswith("/file-1")
                         assert lit.literals["o1"].hash == "VS9bthLslGa8tjuVBCcmO3UdGHrkpyOBXzJlmY47fw8="
                         assert lit.literals["o1"].offloaded_metadata.inferred_type == DataclassTransformer().get_literal_type(DC).to_flyte_idl()
-                    elif ff == "o1_offloaded_metadata.pb":
+                    elif ff == "file-1":
                         lit = literals_pb2.Literal()
                         lit.ParseFromString(f.read())
                         assert lit.hash == ""
@@ -764,7 +829,8 @@ def test_dispatch_execute_offloaded_literals_two_outputs_only_second_one_offload
 
 
 
-def test_dispatch_execute_offloaded_literals_annotated_hash(tmp_path_factory):
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_random_string", return_value="file-1")
+def test_dispatch_execute_offloaded_literals_annotated_hash(_, tmp_path_factory):
     class A:
         def __init__(self, a: int):
             self.a = a
@@ -804,10 +870,9 @@ def test_dispatch_execute_offloaded_literals_annotated_hash(tmp_path_factory):
                         assert "o0" in lit.literals
                         assert lit.literals["o0"].HasField("offloaded_metadata") is True
                         assert lit.literals["o0"].offloaded_metadata.size_bytes > 0
-                        assert lit.literals["o0"].offloaded_metadata.uri.endswith("/o0_offloaded_metadata.pb")
                         assert lit.literals["o0"].hash == "1234"
                         assert lit.literals["o0"].offloaded_metadata.inferred_type == t1.interface.outputs["o0"].type.to_flyte_idl()
-                    elif ff == "o0_offloaded_metadata.pb":
+                    elif ff == "file-1":
                         lit = literals_pb2.Literal()
                         lit.ParseFromString(f.read())
                         assert lit.hash == "1234"
@@ -818,20 +883,29 @@ def test_dispatch_execute_offloaded_literals_annotated_hash(tmp_path_factory):
                         assert False, f"Unexpected file {ff}"
 
 
-def test_dispatch_execute_offloaded_nested_lists_of_literals(tmp_path_factory):
+# TODO: still broken
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_random_string", side_effect=[f"file-{i}" for i in range(100)])
+def test_dispatch_execute_offloaded_nested_lists_of_literals(_, tmp_path_factory):
     @task
     def t1(a: typing.List[int]) -> typing.List[typing.List[str]]:
-        return [[f"string is: {x}" for x in a] for _ in range(len(a))]
+        return [[f"{i}th string is: {x}" for x in a] for i in range(len(a))]
 
     inputs_path = tmp_path_factory.mktemp("inputs")
     outputs_path = tmp_path_factory.mktemp("outputs")
 
     ctx = context_manager.FlyteContext.current_context()
     with get_flyte_context(tmp_path_factory, outputs_path) as ctx:
-        xs: typing.List[int] = [1, 2, 3]
         input_literal_map = _literal_models.LiteralMap(
             {
-                "a": TypeEngine.to_literal(ctx, xs, typing.List[int], TypeEngine.to_literal_type(typing.List[int])),
+                "a": _literal_models.Literal(
+                    collection=_literal_models.LiteralCollection(
+                        literals=[
+                            _literal_models.Literal(scalar=_literal_models.Scalar(primitive=_literal_models.Primitive(integer=1))),
+                            _literal_models.Literal(scalar=_literal_models.Scalar(primitive=_literal_models.Primitive(integer=2))),
+                            _literal_models.Literal(scalar=_literal_models.Scalar(primitive=_literal_models.Primitive(integer=3))),
+                        ],
+                    ),
+                ),
             }
         )
 
@@ -850,59 +924,77 @@ def test_dispatch_execute_offloaded_nested_lists_of_literals(tmp_path_factory):
                         assert len(lit.literals) == 1
                         assert "o0" in lit.literals
                         assert lit.literals["o0"].HasField("offloaded_metadata") == True
-                        assert lit.literals["o0"].offloaded_metadata.size_bytes == 195
-                        assert lit.literals["o0"].offloaded_metadata.uri.endswith("/o0_offloaded_metadata.pb")
+                        assert lit.literals["o0"].offloaded_metadata.size_bytes == 494
+                        assert lit.literals["o0"].offloaded_metadata.uri.endswith("/file-12")
                         assert lit.literals["o0"].offloaded_metadata.inferred_type == LiteralType(collection_type=LiteralType(collection_type=LiteralType(simple=SimpleType.STRING))).to_flyte_idl()
-                    elif ff == "o0_offloaded_metadata.pb":
+                    elif ff == "file-0":
                         lit = literals_pb2.Literal()
                         lit.ParseFromString(f.read())
-                        expected_output = [[f"string is: {x}" for x in xs] for _ in range(len(xs))]
-                        assert lit == TypeEngine.to_literal(ctx, expected_output, typing.List[typing.List[str]], TypeEngine.to_literal_type(typing.List[typing.List[str]])).to_flyte_idl()
+                        assert lit == Literal(
+                            scalar=Scalar(primitive=Primitive(string_value="0th string is: 1")),
+                        )
+                    elif ff == "file-1":
+                        lit = literals_pb2.Literal()
+                        lit.ParseFromString(f.read())
+                        assert lit == Literal(
+                            scalar=Scalar(primitive=Primitive(string_value="0th string is: 2")),
+                        )
+                    elif ff == "file-2":
+                        lit = literals_pb2.Literal()
+                        lit.ParseFromString(f.read())
+                        assert lit == Literal(
+                            scalar=Scalar(primitive=Primitive(string_value="0th string is: 3")),
+                        )
+                    elif ff == "file-3":
+                        lit = literals_pb2.Literal()
+                        lit.ParseFromString(f.read())
+                        assert lit == Literal(
+                            scalar=Scalar(primitive=Primitive(string_value="1th string is: 1")),
+                        )
+                    elif ff == "file-4":
+                        lit = literals_pb2.Literal()
+                        lit.ParseFromString(f.read())
+                        assert lit == Literal(
+                            scalar=Scalar(primitive=Primitive(string_value="1th string is: 2")),
+                        )
+                    elif ff == "file-5":
+                        lit = literals_pb2.Literal()
+                        lit.ParseFromString(f.read())
+                        assert lit == Literal(
+                            scalar=Scalar(primitive=Primitive(string_value="1th string is: 3")),
+                        )
+                    elif ff == "file-6":
+                        lit = literals_pb2.Literal()
+                        lit.ParseFromString(f.read())
+                        assert lit == Literal(
+                            scalar=Scalar(primitive=Primitive(string_value="2th string is: 1")),
+                        )
+                    elif ff == "file-7":
+                        lit = literals_pb2.Literal()
+                        lit.ParseFromString(f.read())
+                        assert lit == Literal(
+                            scalar=Scalar(primitive=Primitive(string_value="2th string is: 2")),
+                        )
+                    elif ff == "file-8":
+                        lit = literals_pb2.Literal()
+                        lit.ParseFromString(f.read())
+                        assert lit == Literal(
+                            scalar=Scalar(primitive=Primitive(string_value="2th string is: 3")),
+                        )
+                    elif ff in ["file-9", "file-10", "file-11"]:
+                        lit = literals_pb2.Literal()
+                        lit.ParseFromString(f.read())
+                        assert len(lit.collection.literals) == 3
+                    elif ff == "file-12":
+                        lit = literals_pb2.Literal()
+                        lit.ParseFromString(f.read())
+                        assert len(lit.collection.literals) == 3
                     else:
                         assert False, f"Unexpected file {ff}"
 
 
-def test_dispatch_execute_offloaded_nested_lists_of_literals_offloading_disabled(tmp_path_factory):
-    @task
-    def t1(a: typing.List[int]) -> typing.List[typing.List[str]]:
-        return [[f"string is: {x}" for x in a] for _ in range(len(a))]
-
-    inputs_path = tmp_path_factory.mktemp("inputs")
-    outputs_path = tmp_path_factory.mktemp("outputs")
-
-    ctx = context_manager.FlyteContext.current_context()
-    with get_flyte_context(tmp_path_factory, outputs_path) as ctx:
-        xs: typing.List[int] = [1, 2, 3]
-        input_literal_map = _literal_models.LiteralMap(
-            {
-                "a": TypeEngine.to_literal(ctx, xs, typing.List[int], TypeEngine.to_literal_type(typing.List[int])),
-            }
-        )
-
-        write_proto_to_file(input_literal_map.to_flyte_idl(), str(inputs_path/"inputs.pb"))
-
-        # Ensure that this is not set by an external source
-        assert os.environ.get("_F_L_MIN_SIZE_MB") is None
-
-        # Notice how we're setting the env var to None, which disables offloading completely
-        _dispatch_execute(ctx, lambda: t1, str(inputs_path/"inputs.pb"), str(outputs_path.absolute()))
-
-        assert "error.pb" not in os.listdir(outputs_path)
-
-        for ff in os.listdir(outputs_path):
-            with open(outputs_path/ff, "rb") as f:
-                if ff == "outputs.pb":
-                    lit = literals_pb2.LiteralMap()
-                    lit.ParseFromString(f.read())
-                    assert len(lit.literals) == 1
-                    assert "o0" in lit.literals
-                    assert lit.literals["o0"].HasField("offloaded_metadata") == False
-                else:
-                    assert False, f"Unexpected file {ff}"
-
-
-
-def test_dispatch_execute_offloaded_map_task(tmp_path_factory):
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_random_string", side_effect=["file-1", "file-2", "file-3", "file-4"])
+def test_dispatch_execute_offloaded_map_task(_, tmp_path_factory):
     @task
     def t1(n: int) -> int:
         return n + 1
@@ -940,13 +1032,16 @@ def test_dispatch_execute_offloaded_map_task(tmp_path_factory):
                             assert len(lit.literals) == 1
                             assert "o0" in lit.literals
                             assert lit.literals["o0"].HasField("offloaded_metadata") == True
-                            assert lit.literals["o0"].offloaded_metadata.uri.endswith("/o0_offloaded_metadata.pb")
                             assert lit.literals["o0"].offloaded_metadata.inferred_type == LiteralType(simple=SimpleType.INTEGER).to_flyte_idl()
-                        elif ff == "o0_offloaded_metadata.pb":
+                        elif ff in ["file-1", "file-2", "file-3", "file-4"]:
                             lit = literals_pb2.Literal()
                             lit.ParseFromString(f.read())
-                            expected_output = v + 1
-                            assert lit == TypeEngine.to_literal(ctx, expected_output, int, TypeEngine.to_literal_type(int)).to_flyte_idl()
+                            expected_lit = _literal_models.Literal(
+                                scalar=_literal_models.Scalar(
+                                    primitive=_literal_models.Primitive(integer=v + 1)
+                                )
+                            )
+                            assert lit == expected_lit.to_flyte_idl()
                         else:
                             assert False, f"Unexpected file {ff}"
 

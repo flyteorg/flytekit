@@ -187,59 +187,8 @@ def _dispatch_execute(
             logger.warning("Task produces no outputs")
             output_file_dict = {_constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(literals={})}
         elif isinstance(outputs, _literal_models.LiteralMap):
-            # The keys in this map hold the filenames to the offloaded proto literals.
-            offloaded_literals: Dict[str, _literal_models.Literal] = {}
-            literal_map_copy = {}
-
-            offloading_enabled = os.environ.get("_F_L_MIN_SIZE_MB", None) is not None
-            min_offloaded_size = -1
-            max_offloaded_size = -1
-            if offloading_enabled:
-                min_offloaded_size = int(os.environ.get("_F_L_MIN_SIZE_MB", "10")) * 1024 * 1024
-                max_offloaded_size = int(os.environ.get("_F_L_MAX_SIZE_MB", "1000")) * 1024 * 1024
-
-            # Go over each output and create a separate offloaded in case its size is too large
-            for k, v in outputs.literals.items():
-                literal_map_copy[k] = v
-
-                if not offloading_enabled:
-                    continue
-
-                lit = v.to_flyte_idl()
-                if max_offloaded_size != -1 and lit.ByteSize() >= max_offloaded_size:
-                    raise ValueError(
-                        f"Literal {k} is too large to be offloaded. Max literal size is {max_offloaded_size} whereas the literal size is {lit.ByteSize()} bytes"
-                    )
-
-                if min_offloaded_size != -1 and lit.ByteSize() >= min_offloaded_size:
-                    logger.debug(f"Literal {k} is too large to be inlined, offloading to metadata bucket")
-                    inferred_type = task_def.interface.outputs[k].type
-
-                    # In the case of map tasks we need to use the type of the collection as inferred type as the task
-                    # typed interface of the offloaded literal. This is done because the map task interface present in
-                    # the task template contains the (correct) type for the entire map task, not the single node execution.
-                    # For that reason we "unwrap" the collection type and use it as the inferred type of the offloaded literal.
-                    if is_map_task:
-                        inferred_type = inferred_type.collection_type
-
-                    # This file will hold the offloaded literal and will be written to the output prefix
-                    # alongside the regular outputs.pb, deck.pb, etc.
-                    # N.B.: by construction `offloaded_filename` is guaranteed to be unique
-                    offloaded_filename = f"{k}_offloaded_metadata.pb"
-                    offloaded_literal = _literal_models.Literal(
-                        offloaded_metadata=_literal_models.LiteralOffloadedMetadata(
-                            uri=f"{output_prefix}/{offloaded_filename}",
-                            size_bytes=lit.ByteSize(),
-                            # TODO: remove after https://github.com/flyteorg/flyte/pull/5909 is merged
-                            inferred_type=inferred_type,
-                        ),
-                        hash=v.hash if v.hash is not None else compute_hash_string(lit),
-                    )
-                    literal_map_copy[k] = offloaded_literal
-                    offloaded_literals[offloaded_filename] = v
-            outputs = _literal_models.LiteralMap(literals=literal_map_copy)
-
-            output_file_dict = {_constants.OUTPUT_FILE_NAME: outputs, **offloaded_literals}
+            # TODO: handle the wrong interface in the case of map tasks
+            output_file_dict = {_constants.OUTPUT_FILE_NAME: outputs}
         elif isinstance(outputs, _dynamic_job.DynamicJobSpec):
             output_file_dict = {_constants.FUTURES_FILE_NAME: outputs}
         else:
