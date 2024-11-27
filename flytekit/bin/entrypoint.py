@@ -174,11 +174,6 @@ def _dispatch_execute(
         input_proto = utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
         idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
 
-        # # TEST DECK
-        # if task_def is not None and not getattr(task_def, "disable_deck", True):
-        #     _output_deck(task_def.name.split(".")[-1], ctx.user_space_params)
-        # print("@@@ OUTPUT DECK @@@")
-
         # Step2
         # Invoke task - dispatch_execute
         outputs = task_def.dispatch_execute(ctx, idl_input_literals)

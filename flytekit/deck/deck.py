@@ -127,21 +127,6 @@ class Deck:
         _output_deck(task_name, new_user_params)
 
 
-class DummyDeck(Deck):
-    """
-    The DummyDeck class is designed
-    """
-
-    def __init__(self):
-        name = "dummy_deck"
-        html = DUMMY_DECK_HTML
-        super().__init__(name, html)
-
-    @property
-    def html(self) -> str:
-        return self._html
-
-
 class TimeLineDeck(Deck):
     """
     The TimeLineDeck class is designed to render the execution time of each part of a task.
@@ -209,13 +194,7 @@ def _get_deck(
     Get flyte deck html string
     If ignore_jupyter is set to True, then it will return a str even in a jupyter environment.
     """
-
-    deck_map = {deck.name: deck.html for deck in new_user_params.decks if deck.name != "dummy_deck"}
-
-    # If deck_map is empty after filtering, add DummyDeck
-    if not deck_map:
-        deck_map = {"dummy_deck": DUMMY_DECK_HTML}
-
+    deck_map = {deck.name: deck.html for deck in new_user_params.decks}
     nav_htmls = []
     body_htmls = []
 
