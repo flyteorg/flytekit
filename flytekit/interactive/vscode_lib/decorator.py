@@ -102,10 +102,11 @@ def exit_handler(
             task_function = task_function.__wrapped__
             break
         task_function = task_function.__wrapped__
+    print("*args", *args)
 
     from flytekit import PythonFunctionTask, dynamic
     if execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
-        return dynamic(task_function)(*args, **kwargs)
+        return dynamic(task_function).dynamic_execute(task_function, **kwargs)
     return task_function(*args, **kwargs)
 
 
