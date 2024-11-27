@@ -648,7 +648,7 @@ class FlyteRemote(object):
         :param options: Options to be used if registering a default launch plan
         :param og_entity: Pass in the original workflow (flytekit type) if create_default_launchplan is true
         :param slack_channel: Optional Slack channel to send notifications to
-        :param slack_email: Optional Slack member ID to notify
+        :param slack_email: Optional Slack email to notify
         :return: Identifier of the created entity
         """
         if isinstance(cp_entity, RemoteEntity):
@@ -733,7 +733,6 @@ class FlyteRemote(object):
             if slack_channel or slack_email:
                 notification = self._create_slack_notification(slack_channel, slack_email)
                 if notification:
-                    print("*****************", notification)
                     cp_entity.spec.entity_metadata._notifications = [notification]
             try:
                 self.client.create_launch_plan(launch_plan_identifer=ident, launch_plan_spec=cp_entity.spec)
@@ -864,7 +863,7 @@ class FlyteRemote(object):
         :param default_launch_plan: This should be true if a default launch plan should be created for the workflow
         :param options: Additional execution options that can be configured for the default launchplan
         :param slack_channel: Optional Slack channel to send notifications to
-        :param slack_email: Optional Slack member ID to notify
+        :param slack_email: Optional Slack email to notify
         :return:
         """
         ident = self._resolve_identifier(ResourceType.WORKFLOW, entity.name, version, serialization_settings)
@@ -1084,7 +1083,7 @@ class FlyteRemote(object):
         :param domain: Optionally provide a domain, if not already provided in FlyteRemote constructor or a separate one
         :param options:
         :param slack_channel: Optional Slack channel to send notifications to
-        :param slack_email: Optional Slack member ID to notify
+        :param slack_email: Optional Slack email to notify
         :return:
         """
         ss = SerializationSettings(
