@@ -28,7 +28,7 @@ from typing import Any, Callable, Iterable, List, Optional, Tuple, TypeVar, Unio
 
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core import launch_plan as _annotated_launch_plan
-from flytekit.core.base_task import Task, TaskResolverMixin
+from flytekit.core.base_task import Task, TaskMetadata, TaskResolverMixin
 from flytekit.core.constants import EAGER_ROOT_ENV_NAME
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.docstring import Docstring
@@ -455,6 +455,11 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
         if "execution_mode" in kwargs:
             del kwargs["execution_mode"]
 
+        if "metadata" in kwargs:
+            kwargs["metadata"].is_eager = True
+        else:
+            kwargs["metadata"] = TaskMetadata(is_eager=True)
+
         super().__init__(
             task_config,
             task_function,
@@ -516,18 +521,14 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
                 return await self._task_function(**kwargs)
 
     def execute(self, **kwargs) -> Any:
-        from flytekit.experimental.eager_function import _internal_demo_remote
-        from flytekit.remote.remote import FlyteRemote
-
-        remote = FlyteRemote.for_sandbox(default_project="flytesnacks", default_domain="development")
-        remote = _internal_demo_remote(remote)
-
         ctx = FlyteContextManager.current_context()
         is_local_execution = cast(ExecutionState, ctx.execution_state).is_local_execution()
         builder = ctx.new_builder()
         if not is_local_execution:
             # ensure that the worker queue is in context
             if not ctx.worker_queue:
+                from flytekit.configuration.plugin import get_plugin
+
                 # This should be read from transport at real runtime if available, but if not, we should either run
                 # remote in interactive mode, or let users configure the version to use.
                 ss = ctx.serialization_settings
@@ -535,6 +536,23 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
                     ss = SerializationSettings(
                         image_config=ImageConfig.auto_default_image(),
                     )
+
+                # In order to build the controller, we really just need a remote.
+                project = (
+                    ctx.user_space_params.execution_id.project
+                    if ctx.user_space_params and ctx.user_space_params.execution_id
+                    else "flytesnacks"
+                )
+                domain = (
+                    ctx.user_space_params.execution_id.domain
+                    if ctx.user_space_params and ctx.user_space_params.execution_id
+                    else "development"
+                )
+                raw_output = ctx.user_space_params.raw_output_prefix
+                remote = get_plugin().get_remote(
+                    config=None, project=project, domain=domain, data_upload_location=raw_output
+                )
+
                 # tag is the current execution id
                 # root tag is read from the environment variable if it exists, if not, it's the current execution id
                 if not ctx.user_space_params or not ctx.user_space_params.execution_id:
@@ -589,14 +607,3 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
                 # now have to fail this eager task, because we don't want it to show up as succeeded.
                 raise FlyteNonRecoverableSystemException(base_error)
             return result
-
-
-"""
-update code comments and remove int test for now
-
-verify auth env var and start auto loading
-  - figure out how remotes can be different.
-pure watch informer pattern
-
-priority for flytekit - fix naming, depending on src
-"""
