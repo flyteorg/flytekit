@@ -60,6 +60,10 @@ class FlytekitPlugin:
         config: Optional[str], project: str, domain: str, data_upload_location: Optional[str] = None
     ) -> FlyteRemote:
         """Get FlyteRemote object for CLI session."""
+
+        print(f"flytekit REMOTE {config=}")
+        print("%%%%%%%%%%%%%%%%%")
+
         cfg_file = get_config_file(config)
 
         # The assumption here (if there's no config file that means we want sandbox) is too broad.
@@ -71,7 +75,7 @@ class FlytekitPlugin:
             # auto() should pick these up.
             if "FLYTE_PLATFORM_URL" in os.environ:
                 cfg_obj = Config.auto(None)
-                logger.info(f"Auto-created config object to pick up env vars {cfg_obj}")
+                logger.warning(f"Auto-created config object to pick up env vars {cfg_obj}")
             else:
                 cfg_obj = Config.for_sandbox()
                 logger.info("No config files found, creating remote with sandbox config")
