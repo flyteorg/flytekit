@@ -27,7 +27,6 @@ from enum import Enum
 from typing import Any, Callable, Iterable, List, Optional, Tuple, TypeVar, Union, cast
 
 from flytekit.configuration import ImageConfig, SerializationSettings
-from flytekit.configuration.plugin import get_plugin
 from flytekit.core import launch_plan as _annotated_launch_plan
 from flytekit.core.base_task import Task, TaskResolverMixin
 from flytekit.core.constants import EAGER_ROOT_ENV_NAME
@@ -526,6 +525,8 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
         if not is_local_execution:
             # ensure that the worker queue is in context
             if not ctx.worker_queue:
+                from flytekit.configuration.plugin import get_plugin
+
                 # This should be read from transport at real runtime if available, but if not, we should either run
                 # remote in interactive mode, or let users configure the version to use.
                 ss = ctx.serialization_settings
