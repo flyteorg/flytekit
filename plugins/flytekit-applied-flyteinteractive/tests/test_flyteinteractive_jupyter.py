@@ -1,32 +1,25 @@
-from collections import OrderedDict
+import os
 
 import mock
-import os
 import pytest
 from flytekitplugins.appliedflyteinteractive import JupyterConfig
 
 from flytekit import task, workflow
-from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.context_manager import ExecutionState
-from flytekit.tools.translator import get_serializable_task
 
 POD_NAME = "execution-id-n0"
 
 
 @pytest.fixture
 def mock_local_execution():
-    with mock.patch.object(
-        ExecutionState, "is_local_execution", return_value=True
-    ) as mock_func:
+    with mock.patch.object(ExecutionState, "is_local_execution", return_value=True) as mock_func:
         yield mock_func
 
 
 @pytest.fixture
 def mock_remote_execution():
     os.environ["POD_NAME"] = POD_NAME
-    with mock.patch.object(
-        ExecutionState, "is_local_execution", return_value=False
-    ) as mock_func:
+    with mock.patch.object(ExecutionState, "is_local_execution", return_value=False) as mock_func:
         yield mock_func
 
     os.environ.pop("POD_NAME")
@@ -146,9 +139,5 @@ def test_jupyter_pod_template():
     def t():
         return
 
-    assert any(
-        env.name == "POD_NAME" for env in t.pod_template.pod_spec.containers[0].env
-    )
-    assert any(
-        env.name == "POD_NAMESPACE" for env in t.pod_template.pod_spec.containers[0].env
-    )
+    assert any(env.name == "POD_NAME" for env in t.pod_template.pod_spec.containers[0].env)
+    assert any(env.name == "POD_NAMESPACE" for env in t.pod_template.pod_spec.containers[0].env)

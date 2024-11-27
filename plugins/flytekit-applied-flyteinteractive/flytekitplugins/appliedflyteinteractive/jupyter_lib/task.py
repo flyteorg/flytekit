@@ -1,14 +1,14 @@
 import inspect
 import multiprocessing
-from typing import Callable, Optional
+import os
 from dataclasses import dataclass
+from typing import Callable, Optional
 
 import nbformat as nbf
 from flytekitplugins.appliedflyteinteractive.utils import execute_command
 from kubernetes import client, config
 from kubernetes.dynamic import DynamicClient
 
-import flytekit
 from flytekit import PythonFunctionTask
 from flytekit.core.context_manager import ExecutionParameters, FlyteContextManager
 from flytekit.core.pod_template import PodTemplate
@@ -17,8 +17,6 @@ from flytekit.loggers import logger
 
 from ..constants import MAX_IDLE_SECONDS
 from .jupyter_constants import EXAMPLE_JUPYTER_NOTEBOOK_NAME
-
-import os
 
 
 class JupyterK8sResources:
@@ -50,15 +48,11 @@ class JupyterK8sResources:
 
         self._mapping_name = f"jupyter-{self._pod_name}"
         self._headless_service_name = f"jupyter-{self._pod_name}"
-        self._headless_service_name_with_port = (
-            f"{self._headless_service_name}:{self._port}"
-        )
+        self._headless_service_name_with_port = f"{self._headless_service_name}:{self._port}"
 
     def make_resources(self):
         self._make_headless_service(self._headless_service_name)
-        self._make_mapping_resource(
-            self._mapping_name, self._headless_service_name_with_port
-        )
+        self._make_mapping_resource(self._mapping_name, self._headless_service_name_with_port)
 
     def delete_resources(self):
         self._delete_mapping_resource(self._mapping_name)
@@ -90,12 +84,8 @@ class JupyterK8sResources:
         # Flyte will attach the unique node id for the execution as a pod label.
         # There is no good way to get pod labels as an environment variable since it is
         # attached at pod schedule time.
-        node_id = self._client.read_namespaced_pod(
-            self._pod_name, self._namespace
-        ).metadata.labels["node-id"]
-        service_port = client.V1ServicePort(
-            name="notebook-port", port=self._port, target_port=self._port
-        )
+        node_id = self._client.read_namespaced_pod(self._pod_name, self._namespace).metadata.labels["node-id"]
+        service_port = client.V1ServicePort(name="notebook-port", port=self._port, target_port=self._port)
 
         self._client.create_namespaced_service(
             namespace=self._namespace,
@@ -116,14 +106,10 @@ class JupyterK8sResources:
         self._mapping_resource.delete(name=mapping_name, namespace=self._namespace)
 
     def _delete_headless_service(self, headless_service_name: str):
-        self._client.delete_namespaced_service(
-            name=headless_service_name, namespace=self._namespace
-        )
+        self._client.delete_namespaced_service(name=headless_service_name, namespace=self._namespace)
 
 
-def _must_get_jupyter_path(
-    path_override: Optional[str], is_local_execution: bool
-) -> str:
+def _must_get_jupyter_path(path_override: Optional[str], is_local_execution: bool) -> str:
     """
     Get path that will route to the jupyter notebook.
 
@@ -219,10 +205,7 @@ def add_pod_name_and_namespace_to_pod_template(pod_template: PodTemplate) -> Non
     if pod_template.pod_spec is None:
         pod_template.pod_spec = client.V1PodSpec()
 
-    if (
-        pod_template.pod_spec.containers is None
-        or len(pod_template.pod_spec.containers) == 0
-    ):
+    if pod_template.pod_spec.containers is None or len(pod_template.pod_spec.containers) == 0:
         pod_template.pod_spec.containers = [client.V1Container(name="primary")]
 
     num_containers = len(pod_template.pod_spec.containers)
@@ -232,11 +215,7 @@ def add_pod_name_and_namespace_to_pod_template(pod_template: PodTemplate) -> Non
         primary_container = pod_template.pod_spec.containers[0]
     else:
         primary_container = next(
-            (
-                container
-                for container in pod_template.pod_spec.containers
-                if container.name == "primary"
-            ),
+            (container for container in pod_template.pod_spec.containers if container.name == "primary"),
             None,
         )
 
@@ -254,9 +233,7 @@ def add_pod_name_and_namespace_to_pod_template(pod_template: PodTemplate) -> Non
         primary_container.env += [
             client.V1EnvVar(
                 name="POD_NAME",
-                value_from=client.V1EnvVarSource(
-                    field_ref=client.V1ObjectFieldSelector(field_path="metadata.name")
-                ),
+                value_from=client.V1EnvVarSource(field_ref=client.V1ObjectFieldSelector(field_path="metadata.name")),
             ),
         ]
 
@@ -265,9 +242,7 @@ def add_pod_name_and_namespace_to_pod_template(pod_template: PodTemplate) -> Non
             client.V1EnvVar(
                 name="POD_NAMESPACE",
                 value_from=client.V1EnvVarSource(
-                    field_ref=client.V1ObjectFieldSelector(
-                        field_path="metadata.namespace"
-                    )
+                    field_ref=client.V1ObjectFieldSelector(field_path="metadata.namespace")
                 ),
             ),
         ]
@@ -327,9 +302,7 @@ class JupyterFunctionTask(PythonFunctionTask[JupyterConfig]):
         if not task_config.enable or ctx.execution_state.is_local_execution():
             return user_params
 
-        path = _must_get_jupyter_path(
-            task_config.path_override, ctx.execution_state.is_local_execution()
-        )
+        path = _must_get_jupyter_path(task_config.path_override, ctx.execution_state.is_local_execution())
         if task_config.pip_install_notebooks:
             _must_install_jupyter_dependencies()
 
@@ -361,9 +334,7 @@ class JupyterFunctionTask(PythonFunctionTask[JupyterConfig]):
         )
         child_process.start()
 
-        write_example_notebook(
-            task_function=self.task_function, notebook_dir=task_config.notebook_dir
-        )
+        write_example_notebook(task_function=self.task_function, notebook_dir=task_config.notebook_dir)
         child_process.join()
         jupyterK8SResources.delete_resources()
 

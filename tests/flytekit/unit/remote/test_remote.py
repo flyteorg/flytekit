@@ -620,39 +620,74 @@ def test_get_git_report_url_unknown_url(tmp_path):
     assert returned_url == ""
 
 
-def test_slack_webhook_notification():
-    from flytekit.models.common import SlackWebhookNotification
+@mock.patch("flytekit.remote.remote.FlyteRemote.client")
+def test_slack_notification_piped_through_remote(mock_client):
+    remote = FlyteRemote(config=Config.auto(), default_project="project", default_domain="domain")
 
-    slack_channel = "general"
-    slack_email = "user@example.com"
-    notification = SlackWebhookNotification(slack_channel=slack_channel, slack_email=slack_email)
+    default_img = Image(name="default", fqn="test", tag="tag")
+    serialization_settings = SerializationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env=None,
+        image_config=ImageConfig(default_image=default_img, images=[default_img]),
+    )
 
-    assert notification.slack_channel == slack_channel
-    assert notification.slack_email == slack_email
-    assert notification.to_flyte_idl().slack_channel == slack_channel
-    assert notification.to_flyte_idl().slack_email == slack_email
-
-
-def test_slack_notification_piped_through_remote():
-    from flytekit.remote.remote import FlyteRemote
-    from flytekit.models.common import SlackWebhookNotification
-    from unittest.mock import MagicMock
-
-    # Mock the client and FlyteRemote
-    mock_client = MagicMock()
-    remote = FlyteRemote(config=None, default_project="project", default_domain="domain", client=mock_client)
-
-    # Mock the method to create Slack notifications
-    remote._create_slack_notification = MagicMock(return_value=[SlackWebhookNotification("#general", "user@example.com")])
+    lp = LaunchPlan.get_or_create(
+        workflow=example_wf,
+        name="daily2",
+        fixed_inputs={"v": 10},
+        schedule=CronSchedule(schedule="0 8 * * *", kickoff_time_input_arg="t"),
+    )
+    ser_lp = get_serializable_launch_plan(OrderedDict(), serialization_settings, lp, recurse_downstream=False)
 
     # Call raw_register with slack_channel and slack_email
     remote.raw_register(
-        cp_entity=MagicMock(),
-        settings=MagicMock(),
+        cp_entity=ser_lp,
+        settings=serialization_settings,
         version="v1",
         slack_channel="general",
-        slack_email="user@example.com"
+        slack_email="user@example.com",
     )
 
-    # Assert that _create_slack_notification was called with the correct parameters
-    remote._create_slack_notification.assert_called_with("general", "user@example.com")
+    called_args, called_kwargs = mock_client.create_launch_plan.call_args
+    launch_plan_spec = called_kwargs.get("launch_plan_spec") or called_args[1]
+
+    notifications = launch_plan_spec.entity_metadata._notifications
+
+    assert notifications[0].slack_webhook.slack_channel == "general"
+    assert notifications[0].slack_webhook.slack_email == "user@example.com"
+
+
+@mock.patch("flytekit.remote.remote.FlyteRemote.client")
+def test_slack_notification_piped_through_remote_for_default_launch_plan(mock_client):
+    remote = FlyteRemote(config=Config.auto(), default_project="project", default_domain="domain")
+
+    default_img = Image(name="default", fqn="test", tag="tag")
+    serialization_settings = SerializationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env=None,
+        image_config=ImageConfig(default_image=default_img, images=[default_img]),
+    )
+
+    ser_wf = get_serializable(OrderedDict(), serialization_settings, example_wf)
+
+    # Call raw_register with slack_channel and slack_email
+    remote.raw_register(
+        cp_entity=ser_wf,
+        settings=serialization_settings,
+        version="v1",
+        og_entity=example_wf,
+        slack_channel="general",
+        slack_email="user@example.com",
+    )
+
+    called_args, called_kwargs = mock_client.create_launch_plan.call_args
+    launch_plan_spec = called_kwargs.get("launch_plan_spec") or called_args[1]
+
+    notifications = launch_plan_spec.entity_metadata._notifications
+
+    assert notifications[0].slack_webhook.slack_channel == "general"
+    assert notifications[0].slack_webhook.slack_email == "user@example.com"

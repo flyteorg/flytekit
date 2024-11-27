@@ -342,7 +342,7 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
     # example: "pyflyte.flytekit_package.flytekit.core.python_auto_container" -> "flytekit.core.python_auto_container"
     for module_name_to_delete in [
         "flytekit_package",
-        "register.applied", # `register.applied` is the marker for the applied workspace because the bazel target has `.register` as the suffix.
+        "register.applied",  # `register.applied` is the marker for the applied workspace because the bazel target has `.register` as the suffix.
         "binary.applied",
     ]:
         module_idx = mod_name.find(module_name_to_delete)

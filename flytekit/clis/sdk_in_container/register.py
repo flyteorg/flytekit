@@ -213,6 +213,6 @@ def register(
             skip_errors=skip_errors,
             slack_channel=slack_channel,
             slack_email=slack_email,
-       )
+        )
     except Exception as e:
         raise e

@@ -52,7 +52,6 @@ from flytekit.exceptions.user import (
 )
 from flytekit.loggers import logger
 from flytekit.models import common as common_models
-from flytekit.models.common import Notification
 from flytekit.models import filters as filter_models
 from flytekit.models import launch_plan as launch_plan_models
 from flytekit.models import literals as literal_models
@@ -61,6 +60,7 @@ from flytekit.models import types as type_models
 from flytekit.models.admin import common as admin_common_models
 from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.models.admin.common import Sort
+from flytekit.models.common import Notification
 from flytekit.models.core import identifier as id_models
 from flytekit.models.core import workflow as workflow_model
 from flytekit.models.core.identifier import Identifier, ResourceType, SignalIdentifier, WorkflowExecutionIdentifier
@@ -707,11 +707,11 @@ class FlyteRemote(object):
                     self.client.get_upload_signed_url, project=settings.project, domain=settings.domain
                 )
                 default_lp = LaunchPlan.get_default_launch_plan(self.context, og_entity)
-                
+
                 # Add Slack notifications if provided
-                notifications = self._create_slack_notification(slack_channel, slack_email)
-                if notifications:
-                    default_lp._notifications = notifications
+                notification = self._create_slack_notification(slack_channel, slack_email)
+                if notification:
+                    default_lp._notifications = [notification]
 
                 lp_entity = get_serializable_launch_plan(
                     OrderedDict(),
@@ -728,11 +728,12 @@ class FlyteRemote(object):
 
         if isinstance(cp_entity, launch_plan_models.LaunchPlan):
             ident = self._resolve_identifier(ResourceType.LAUNCH_PLAN, cp_entity.id.name, version, settings)
-            
+
             # Add Slack notifications if provided
             if slack_channel or slack_email:
                 notification = self._create_slack_notification(slack_channel, slack_email)
                 if notification:
+                    print("*****************", notification)
                     cp_entity.spec.entity_metadata._notifications = [notification]
             try:
                 self.client.create_launch_plan(launch_plan_identifer=ident, launch_plan_spec=cp_entity.spec)
@@ -778,7 +779,16 @@ class FlyteRemote(object):
         for entity, cp_entity in cp_task_entity_map.items():
             tasks.append(
                 loop.run_in_executor(
-                    None, functools.partial(self.raw_register, cp_entity, serialization_settings, version, og_entity=entity, slack_channel=slack_channel, slack_email=slack_email)
+                    None,
+                    functools.partial(
+                        self.raw_register,
+                        cp_entity,
+                        serialization_settings,
+                        version,
+                        og_entity=entity,
+                        slack_channel=slack_channel,
+                        slack_email=slack_email,
+                    ),
                 )
             )
         ident = []
@@ -786,7 +796,16 @@ class FlyteRemote(object):
         # serial register
         cp_other_entities = OrderedDict(filter(lambda x: not isinstance(x[1], task_models.TaskSpec), m.items()))
         for entity, cp_entity in cp_other_entities.items():
-            ident.append(self.raw_register(cp_entity, serialization_settings, version, og_entity=entity, slack_channel=slack_channel, slack_email=slack_email))
+            ident.append(
+                self.raw_register(
+                    cp_entity,
+                    serialization_settings,
+                    version,
+                    og_entity=entity,
+                    slack_channel=slack_channel,
+                    slack_email=slack_email,
+                )
+            )
         return ident[-1]
 
     def register_task(
@@ -856,7 +875,9 @@ class FlyteRemote(object):
             b.version = ident.version
             serialization_settings = b.build()
         ident = asyncio.run(
-            self._serialize_and_register(entity, serialization_settings, version, options, default_launch_plan, slack_channel, slack_email)
+            self._serialize_and_register(
+                entity, serialization_settings, version, options, default_launch_plan, slack_channel, slack_email
+            )
         )
         fwf = self.fetch_workflow(ident.project, ident.domain, ident.name, ident.version)
         fwf._python_interface = entity.python_interface
@@ -2378,6 +2399,7 @@ class FlyteRemote(object):
     def _create_slack_notification(self, slack_channel: str, slack_email: str):
         if slack_channel:
             from flytekit.models.core.execution import WorkflowExecutionPhase
+
             notification = Notification(
                 phases=[
                     WorkflowExecutionPhase.SUCCEEDED,
@@ -2388,7 +2410,7 @@ class FlyteRemote(object):
                 slack_webhook=common_models.SlackWebhookNotification(
                     slack_channel=slack_channel,
                     slack_email=slack_email or "",  # Ensure email is never None
-                )
+                ),
             )
             return notification
         return None

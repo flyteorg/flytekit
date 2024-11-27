@@ -355,24 +355,13 @@ class Notification(FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.common_pb2.Notification
         """
-        n = _common_pb2.Notification(
+        return _common_pb2.Notification(
             phases=self.phases,
             email=self.email.to_flyte_idl() if self.email else None,
             pager_duty=self.pager_duty.to_flyte_idl() if self.pager_duty else None,
             slack=self.slack.to_flyte_idl() if self.slack else None,
             slack_webhook=self.slack_webhook.to_flyte_idl() if self.slack_webhook else None,
         )
-        from google.protobuf import text_format
-        print("Message type:", n.DESCRIPTOR.full_name)
-        print("\nFields:")
-        for field in n.DESCRIPTOR.fields:
-            print(f"Field: {field.full_name}")
-            print(f"  type: {field.type}")
-            print(f"  label: {field.label}")
-        print("\nWhich notification type is set:", n.WhichOneof('type'))
-        print("\nMessage content:")
-        print(text_format.MessageToString(n, as_one_line=False))
-        return n
 
     @classmethod
     def from_flyte_idl(cls, p):
@@ -385,7 +374,9 @@ class Notification(FlyteIdlEntity):
             email=EmailNotification.from_flyte_idl(p.email) if p.HasField("email") else None,
             pager_duty=PagerDutyNotification.from_flyte_idl(p.pager_duty) if p.HasField("pager_duty") else None,
             slack=SlackNotification.from_flyte_idl(p.slack) if p.HasField("slack") else None,
-            slack_webhook=SlackWebhookNotification.from_flyte_idl(p.slack_webhook) if p.HasField("slack_webhook") else None,
+            slack_webhook=SlackWebhookNotification.from_flyte_idl(p.slack_webhook)
+            if p.HasField("slack_webhook")
+            else None,
         )
 
 
