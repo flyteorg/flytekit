@@ -521,9 +521,6 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
                 return await self._task_function(**kwargs)
 
     def execute(self, **kwargs) -> Any:
-        # remote = FlyteRemote.for_sandbox(default_project="flytesnacks", default_domain="development")
-        # remote = _internal_demo_remote(remote)
-
         ctx = FlyteContextManager.current_context()
         is_local_execution = cast(ExecutionState, ctx.execution_state).is_local_execution()
         builder = ctx.new_builder()
@@ -610,12 +607,3 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
                 # now have to fail this eager task, because we don't want it to show up as succeeded.
                 raise FlyteNonRecoverableSystemException(base_error)
             return result
-
-
-"""
-verify auth env var and start auto loading
-  - figure out how remotes can be different.
-pure watch informer pattern
-
-priority for flytekit - fix naming, depending on src
-"""

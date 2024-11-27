@@ -61,9 +61,6 @@ class FlytekitPlugin:
     ) -> FlyteRemote:
         """Get FlyteRemote object for CLI session."""
 
-        print(f"flytekit REMOTE {config=}")
-        print("%%%%%%%%%%%%%%%%%")
-
         cfg_file = get_config_file(config)
 
         # The assumption here (if there's no config file that means we want sandbox) is too broad.
