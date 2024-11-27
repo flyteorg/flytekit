@@ -354,7 +354,7 @@ def task(
             timeout=timeout,
         )
 
-        decorated_fn = decorate_function(fn)
+        decorated_fn = decorate_function(fn, execution_mode=execution_mode)
 
         task_instance = TaskPlugins.find_pythontask_plugin(type(task_config))(
             task_config,
@@ -433,11 +433,12 @@ def reference_task(
     return wrapper
 
 
-def decorate_function(fn: Callable[P, Any]) -> Callable[P, Any]:
+def decorate_function(fn: Callable[P, Any], execution_mode: PythonFunctionTask.ExecutionBehavior) -> Callable[P, Any]:
     """
     Decorates the task with additional functionality if necessary.
 
     :param fn: python function to decorate.
+    :param execution_mode: execution mode for the task.
     :return: a decorated python function.
     """
 
@@ -446,7 +447,7 @@ def decorate_function(fn: Callable[P, Any]) -> Callable[P, Any]:
         If the environment variable FLYTE_ENABLE_VSCODE is set to True, then the task is decorated with vscode
         functionality. This is useful for debugging the task in vscode.
         """
-        return vscode(task_function=fn)
+        return vscode(task_function=fn, execution_mode=execution_mode)
     return fn
 
 
