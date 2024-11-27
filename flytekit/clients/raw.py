@@ -363,7 +363,6 @@ class RawSynchronousFlyteClient(object):
         :param flyteidl.admin.execution_pb2.ExecutionCreateRequest create_execution_request:
         :rtype: flyteidl.admin.execution_pb2.ExecutionCreateResponse
         """
-        raise grpc.RpcError("123123123123123123")
         return self._stub.CreateExecution(create_execution_request, metadata=self._metadata)
 
     def recover_execution(self, recover_execution_request):
