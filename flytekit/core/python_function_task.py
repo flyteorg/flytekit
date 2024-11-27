@@ -28,7 +28,7 @@ from typing import Any, Callable, Iterable, List, Optional, Tuple, TypeVar, Unio
 
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core import launch_plan as _annotated_launch_plan
-from flytekit.core.base_task import Task, TaskResolverMixin
+from flytekit.core.base_task import Task, TaskMetadata, TaskResolverMixin
 from flytekit.core.constants import EAGER_ROOT_ENV_NAME
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.docstring import Docstring
@@ -454,6 +454,11 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
         # delete execution mode from kwargs
         if "execution_mode" in kwargs:
             del kwargs["execution_mode"]
+
+        if "metadata" in kwargs:
+            kwargs["metadata"].is_eager = True
+        else:
+            kwargs["metadata"] = TaskMetadata(is_eager=True)
 
         super().__init__(
             task_config,

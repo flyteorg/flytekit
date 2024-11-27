@@ -141,6 +141,7 @@ class TaskMetadata(object):
     retries: int = 0
     timeout: Optional[Union[datetime.timedelta, int]] = None
     pod_template_name: Optional[str] = None
+    is_eager: bool = False
 
     def __post_init__(self):
         if self.timeout:
@@ -180,6 +181,7 @@ class TaskMetadata(object):
             cache_serializable=self.cache_serialize,
             pod_template_name=self.pod_template_name,
             cache_ignore_input_vars=self.cache_ignore_input_vars,
+            is_eager=self.is_eager,
         )
 
 

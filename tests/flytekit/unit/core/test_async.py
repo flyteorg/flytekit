@@ -57,3 +57,4 @@ def test_easy_2():
 def test_serialization():
     se_spec = get_serializable(OrderedDict(), serialization_settings, simple_eager_workflow)
     print(se_spec.template.container.env)
+    print(se_spec.template.metadata)
