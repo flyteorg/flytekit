@@ -63,8 +63,9 @@ class FlytekitPlugin:
         cfg_file = get_config_file(config)
 
         # The assumption here (if there's no config file that means we want sandbox) is too broad.
+        # todo: can improve this in the future, rather than just checking one env var, auto() with
+        #   nothing configured should probably not return sandbox but can consider
         if cfg_file is None:
-            # can improve this in the future.
             # We really are just looking for endpoint, client_id, and client_secret. These correspond to the env vars
             # FLYTE_PLATFORM_URL, FLYTE_CREDENTIALS_CLIENT_ID, FLYTE_CREDENTIALS_CLIENT_SECRET
             # auto() should pick these up.

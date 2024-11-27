@@ -3,8 +3,19 @@ from flytekit.core.task import task, eager
 from flytekit.core.worker_queue import Controller
 from flytekit.utils.asyn import loop_manager
 from flytekit.core.context_manager import FlyteContextManager
-from flytekit.configuration import Config, DataConfig, S3Config, FastSerializationSettings
+from flytekit.configuration import Config, DataConfig, S3Config, FastSerializationSettings, ImageConfig, SerializationSettings, Image
 from flytekit.core.data_persistence import FileAccessProvider
+from flytekit.tools.translator import get_serializable
+from collections import OrderedDict
+
+default_img = Image(name="default", fqn="test", tag="tag")
+serialization_settings = SerializationSettings(
+    project="project",
+    domain="domain",
+    version="version",
+    env=None,
+    image_config=ImageConfig(default_image=default_img, images=[default_img]),
+)
 
 
 @task
@@ -12,7 +23,7 @@ def add_one(x: int) -> int:
     return x + 1
 
 
-@eager
+@eager(environment={"a": "b"})
 async def simple_eager_workflow(x: int) -> int:
     # This is the normal way of calling tasks. Call normal tasks in an effectively async way by hanging and waiting for
     # the result.
@@ -41,3 +52,8 @@ def test_easy_2():
     ):
         res = loop_manager.run_sync(simple_eager_workflow.run_with_backend, x=1)
         assert res == 2
+
+
+def test_serialization():
+    se_spec = get_serializable(OrderedDict(), serialization_settings, simple_eager_workflow)
+    print(se_spec.template.container.env)
