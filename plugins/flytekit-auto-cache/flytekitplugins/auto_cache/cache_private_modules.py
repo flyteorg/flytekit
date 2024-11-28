@@ -63,9 +63,14 @@ class CachePrivateModules:
             elif isinstance(node, ast.ImportFrom):
                 module = importlib.import_module(node.module)
                 for alias in node.names:
+                    # Resolve attributes or submodules
                     imported_obj = getattr(module, alias.name, None)
                     if imported_obj:
                         locals_dict[alias.asname or alias.name] = imported_obj
+                    else:
+                        # Fallback: attempt to import as submodule. e.g. `from PIL import Image`
+                        submodule = importlib.import_module(f"{node.module}.{alias.name}")
+                        locals_dict[alias.asname or alias.name] = submodule
 
         # Check each function call in the AST
         for node in ast.walk(parsed_ast):
@@ -75,7 +80,10 @@ class CachePrivateModules:
                     visited.add(func_name)
                     try:
                         # Attempt to resolve using locals first, then globals
-                        func_obj = locals_dict.get(func_name) or self._resolve_callable(func_name, func.__globals__)
+                        # func_obj = locals_dict.get(func_name) or self._resolve_callable(func_name, func.__globals__)
+                        func_obj = self._resolve_callable(func_name, locals_dict) or self._resolve_callable(
+                            func_name, func.__globals__
+                        )
                         if inspect.isclass(func_obj) and self._is_user_defined(func_obj):
                             # Add class methods as dependencies
                             for name, method in inspect.getmembers(func_obj, predicate=inspect.isfunction):

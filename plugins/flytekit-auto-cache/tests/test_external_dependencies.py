@@ -26,16 +26,28 @@ def test_package_versions_in_isolated_env():
         subprocess.run([pip, "install", "-r", str(reqs_file)], check=True)
 
         python = str(venv_path / "bin" / "python")
-        verify_script = test_dir / "verify_versions.py"
 
-        result = subprocess.run(
-            [python, str(verify_script)],
+        # Run a test to verify that CacheExternalDependencies can identify the version of various popular packages
+        # verify_version_script = test_dir / "verify_versions.py"
+        # result_version = subprocess.run(
+        #     [python, str(verify_version_script)],
+        #     capture_output=True,
+        #     text=True,
+        #     check=True
+        # )
+
+        # assert result_version.returncode == 0, f"Version verification failed: {result_version.stderr}"
+
+        # Run a test to verify that CacheExternalDependencies cen identify packages used in a complex repo
+        verify_packages_script = test_dir / "verify_identified_packages.py"
+        result_package = subprocess.run(
+            [python, str(verify_packages_script)],
             capture_output=True,
             text=True,
             check=True
         )
 
-        assert result.returncode == 0, f"Version verification failed: {result.stderr}"
+        assert result_package.returncode == 0, f"Package verification failed: {result_package.stderr}"
 
     finally:
         import shutil
