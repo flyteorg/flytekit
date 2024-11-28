@@ -1,4 +1,5 @@
 from sklearn.preprocessing import StandardScaler
+SOME_OTHER_CONSTANT = 222
 
 def helper_in_directory():
     print("Helper in directory")

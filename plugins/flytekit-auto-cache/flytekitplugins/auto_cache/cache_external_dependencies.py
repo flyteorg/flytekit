@@ -52,7 +52,10 @@ class CacheExternalDependencies(CachePrivateModules):
 
     def _is_user_defined(self, obj: Any) -> bool:
         """Check if a callable or class is user-defined within the package."""
-        module_name = getattr(obj, "__module__", None)
+        if isinstance(obj, type(sys)):  # Check if the object is a module
+            module_name = obj.__name__
+        else:
+            module_name = getattr(obj, "__module__", None)
         if not module_name:
             return False
 
