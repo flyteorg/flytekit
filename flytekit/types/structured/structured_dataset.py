@@ -800,7 +800,7 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
         return lit
 
     def dict_to_structured_dataset(
-        self, ctx: FlyteContext, dict_obj: typing.Dict[str, str], expected_python_type: Type[T] | StructuredDataset
+        self, dict_obj: typing.Dict[str, str], expected_python_type: Type[T] | StructuredDataset
     ) -> T | StructuredDataset:
         uri = dict_obj.get("uri", None)
         file_format = dict_obj.get("file_format", None)
@@ -808,23 +808,29 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
         if uri is None:
             raise ValueError("StructuredDataset's uri and file format should not be None")
 
-        # Construct python StructuredDataset
-        sdt = StructuredDatasetType(format=file_format)
-        metad = StructuredDatasetMetadata(structured_dataset_type=sdt)
-        sd = StructuredDataset(uri=uri, metadata=metad)
+        # Instead of using python native StructuredDataset, we need to build a literals.StructuredDataset
+        # The reason is that _literal_sd of python sd is accessed when task output LiteralMap is converted back to flyteidl
+        # Hence, _literal_sd must have to_flyte_idl method
+        # See https://github.com/flyteorg/flytekit/blob/f938661ff8413219d1bea77f6914a58c302d5c6c/flytekit/bin/entrypoint.py#L326
+        # For details, please refer to this issue: https://github.com/flyteorg/flyte/issues/5956.
+        expected_python_type, column_dict, storage_fmt, pa_schema = extract_cols_and_format(expected_python_type)
 
-        # Explicitly set StructuredDataset Literal
-        expected = TypeEngine.to_literal_type(StructuredDataset)
-        sd.set_literal(ctx, expected)
+        final_dataset_columns = []
+        if column_dict is not None and len(column_dict) != 0:
+            final_dataset_columns = self._convert_ordered_dict_of_columns_to_list(column_dict)
+        sdt = StructuredDatasetType(columns=final_dataset_columns, format=file_format)
+
+        metad = literals.StructuredDatasetMetadata(structured_dataset_type=sdt)
+        sd_literal = literals.StructuredDataset(uri=uri, metadata=metad)
 
         return StructuredDatasetTransformerEngine().to_python_value(
             FlyteContextManager.current_context(),
-            Literal(scalar=Scalar(structured_dataset=sd._literal_sd)),
+            Literal(scalar=Scalar(structured_dataset=sd_literal)),
             expected_python_type,
         )
 
     def from_binary_idl(
-        self, ctx: FlyteContext, binary_idl_object: Binary, expected_python_type: Type[T] | StructuredDataset
+        self, binary_idl_object: Binary, expected_python_type: Type[T] | StructuredDataset
     ) -> T | StructuredDataset:
         """
         If the input is from flytekit, the Life Cycle will be as follows:
@@ -852,14 +858,12 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
         """
         if binary_idl_object.tag == MESSAGEPACK:
             python_val = msgpack.loads(binary_idl_object.value)
-            return self.dict_to_structured_dataset(
-                ctx=ctx, dict_obj=python_val, expected_python_type=expected_python_type
-            )
+            return self.dict_to_structured_dataset(dict_obj=python_val, expected_python_type=expected_python_type)
         else:
             raise TypeTransformerFailedError(f"Unsupported binary format: `{binary_idl_object.tag}`")
 
     def from_generic_idl(
-        self, ctx: FlyteContext, generic: Struct, expected_python_type: Type[T] | StructuredDataset
+        self, generic: Struct, expected_python_type: Type[T] | StructuredDataset
     ) -> T | StructuredDataset:
         """
         If the input is from Flyte Console, the Life Cycle will be as follows:
@@ -886,7 +890,7 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
         """
         json_str = _json_format.MessageToJson(generic)
         python_val = json.loads(json_str)
-        return self.dict_to_structured_dataset(ctx=ctx, dict_obj=python_val, expected_python_type=expected_python_type)
+        return self.dict_to_structured_dataset(dict_obj=python_val, expected_python_type=expected_python_type)
 
     async def async_to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T] | StructuredDataset
@@ -924,9 +928,9 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
         # Handle dataclass attribute access
         if lv.scalar:
             if lv.scalar.binary:
-                return self.from_binary_idl(ctx, lv.scalar.binary, expected_python_type)
+                return self.from_binary_idl(lv.scalar.binary, expected_python_type)
             if lv.scalar.generic:
-                return self.from_generic_idl(ctx, lv.scalar.generic, expected_python_type)
+                return self.from_generic_idl(lv.scalar.generic, expected_python_type)
 
         # Detect annotations and extract out all the relevant information that the user might supply
         expected_python_type, column_dict, storage_fmt, pa_schema = extract_cols_and_format(expected_python_type)
