@@ -1093,7 +1093,7 @@ def generate_attribute_list_from_dataclass_json_mixin(schema: dict, schema_name:
         # Handle dataclass and dict
         elif property_type == "object":
             if property_val.get("anyOf"):
-                # Ask Hanru what this is for
+                # For optional with dataclass
                 sub_schemea = property_val["anyOf"][0]
                 sub_schemea_name = sub_schemea["title"]
                 attribute_list.append(
@@ -1108,7 +1108,7 @@ def generate_attribute_list_from_dataclass_json_mixin(schema: dict, schema_name:
                 # For typing.Dict type
                 elem_type = _get_element_type(property_val["additionalProperties"])
                 attribute_list.append((property_key, typing.Dict[str, elem_type]))  # type: ignore
-            elif property_val.get("properties"):
+            elif property_val.get("title"):
                 # For nested dataclass
                 sub_schemea_name = property_val["title"]
                 attribute_list.append(
