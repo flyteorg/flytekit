@@ -1905,7 +1905,7 @@ class UnionTransformer(AsyncTypeTransformer[T]):
                 else:
                     res = trans.to_literal(ctx, python_val, t, expected.union_type.variants[i])
                 if found_res:
-                    print(f"Current type {get_args(python_type)[i]} old res {res_type}")
+                    logger.debug(f"Current type {get_args(python_type)[i]} old res {res_type}")
                     is_ambiguous = True
                 res_type = _add_tag_to_type(trans.get_literal_type(t), trans.name)
                 found_res = True
