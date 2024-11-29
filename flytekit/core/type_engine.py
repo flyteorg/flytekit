@@ -608,36 +608,38 @@ class DataclassTransformer(TypeTransformer[object]):
 
         schema = None
         try:
-            from marshmallow_enum import EnumField, LoadDumpOptions
+            # This produce JSON SCHEMA draft 2020-12
+            from mashumaro.jsonschema import build_json_schema
 
-            if issubclass(t, DataClassJsonMixin):
-                s = cast(DataClassJsonMixin, self._get_origin_type_in_annotation(t)).schema()
-                for _, v in s.fields.items():
-                    # marshmallow-jsonschema only supports enums loaded by name.
-                    # https://github.com/fuhrysteve/marshmallow-jsonschema/blob/81eada1a0c42ff67de216923968af0a6b54e5dcb/marshmallow_jsonschema/base.py#L228
-                    if isinstance(v, EnumField):
-                        v.load_by = LoadDumpOptions.name
-                # check if DataClass mixin
-                from marshmallow_jsonschema import JSONSchema
-
-                schema = JSONSchema().dump(s)
+            schema = build_json_schema(cast(DataClassJSONMixin, self._get_origin_type_in_annotation(t))).to_dict()
         except Exception as e:
-            # https://github.com/lovasoa/marshmallow_dataclass/issues/13
-            logger.warning(
-                f"Failed to extract schema for object {t}, (will run schemaless) error: {e}"
-                f"If you have postponed annotations turned on (PEP 563) turn it off please. Postponed"
-                f"evaluation doesn't work with json dataclasses"
+            logger.error(
+                f"Failed to extract schema for object {t}, error: {e}\n"
+                f"Please remove `DataClassJsonMixin` and `dataclass_json` decorator from the dataclass definition"
             )
 
         if schema is None:
             try:
-                from mashumaro.jsonschema import build_json_schema
+                # This produce JSON SCHEMA draft 2020-12
+                from marshmallow_enum import EnumField, LoadDumpOptions
 
-                schema = build_json_schema(cast(DataClassJSONMixin, self._get_origin_type_in_annotation(t))).to_dict()
+                if issubclass(t, DataClassJsonMixin):
+                    s = cast(DataClassJsonMixin, self._get_origin_type_in_annotation(t)).schema()
+                    for _, v in s.fields.items():
+                        # marshmallow-jsonschema only supports enums loaded by name.
+                        # https://github.com/fuhrysteve/marshmallow-jsonschema/blob/81eada1a0c42ff67de216923968af0a6b54e5dcb/marshmallow_jsonschema/base.py#L228
+                        if isinstance(v, EnumField):
+                            v.load_by = LoadDumpOptions.name
+                    # check if DataClass mixin
+                    from marshmallow_jsonschema import JSONSchema
+
+                    schema = JSONSchema().dump(s)
             except Exception as e:
-                logger.error(
-                    f"Failed to extract schema for object {t}, error: {e}\n"
-                    f"Please remove `DataClassJsonMixin` and `dataclass_json` decorator from the dataclass definition"
+                # https://github.com/lovasoa/marshmallow_dataclass/issues/13
+                logger.warning(
+                    f"Failed to extract schema for object {t}, (will run schemaless) error: {e}"
+                    f"If you have postponed annotations turned on (PEP 563) turn it off please. Postponed"
+                    f"evaluation doesn't work with json dataclasses"
                 )
 
         # Recursively construct the dataclass_type which contains the literal type of each field
@@ -1091,6 +1093,7 @@ def generate_attribute_list_from_dataclass_json_mixin(schema: dict, schema_name:
         # Handle dataclass and dict
         elif property_type == "object":
             if property_val.get("anyOf"):
+                # For optional with dataclass
                 sub_schemea = property_val["anyOf"][0]
                 sub_schemea_name = sub_schemea["title"]
                 attribute_list.append(
@@ -1102,9 +1105,11 @@ def generate_attribute_list_from_dataclass_json_mixin(schema: dict, schema_name:
                     )
                 )
             elif property_val.get("additionalProperties"):
+                # For typing.Dict type
                 elem_type = _get_element_type(property_val["additionalProperties"])
                 attribute_list.append((property_key, typing.Dict[str, elem_type]))  # type: ignore
-            else:
+            elif property_val.get("title"):
+                # For nested dataclass
                 sub_schemea_name = property_val["title"]
                 attribute_list.append(
                     (
@@ -1114,6 +1119,9 @@ def generate_attribute_list_from_dataclass_json_mixin(schema: dict, schema_name:
                         ),
                     )
                 )
+            else:
+                # For untyped dict
+                attribute_list.append((property_key, dict))  # type: ignore
         elif property_type == "enum":
             attribute_list.append([property_key, str])  # type: ignore
         # Handle int, float, bool or str
