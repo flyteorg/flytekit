@@ -966,7 +966,7 @@ def test_optional_flytefile_in_dataclass(mock_upload_dir):
         b: typing.Optional[FlyteFile]
         b_prime: typing.Optional[FlyteFile]
         c: typing.Union[FlyteFile, None]
-        c_prime: typing.Union[None, FlyteFile]
+        c_prime: typing.Union[None, int, bool, FlyteFile]
         d: typing.List[FlyteFile]
         e: typing.List[typing.Optional[FlyteFile]]
         e_prime: typing.List[typing.Optional[FlyteFile]]

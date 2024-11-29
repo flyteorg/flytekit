@@ -2331,6 +2331,7 @@ def generate_attribute_list_from_dataclass_json(schema: dict, schema_name: typin
             attribute_list.append((property_key, List[_get_element_type(property_val["items"])]))  # type: ignore[misc,index]
         # Handle dataclass and dict
         elif property_type == "object":
+            # For nested dataclass
             if property_val.get("$ref"):
                 name = property_val["$ref"].split("/")[-1]
                 attribute_list.append(
@@ -2339,13 +2340,17 @@ def generate_attribute_list_from_dataclass_json(schema: dict, schema_name: typin
                         typing.cast(GenericAlias, convert_marshmallow_json_schema_to_python_class(schema, name)),
                     )
                 )
+            # typed dict and untyped dict
             elif property_val.get("additionalProperties"):
-                attribute_list.append(
-                    (property_key, typing.cast(GenericAlias, _get_element_type(property_val["additionalProperties"]))),
-                )
-            else:
-                attribute_list.append((property_key, Dict[str, _get_element_type(property_val)]))  # type: ignore[misc,index]
-        # Handle int, float, bool or str
+                # untyped dict
+                if property_val["additionalProperties"] == dict():
+                    attribute_list.append((property_key, dict))  # type: ignore
+                else:
+                    # typed dict
+                    attribute_list.append(
+                        (property_key, Dict[str, _get_element_type(property_val["additionalProperties"])])  # type: ignore[misc,index]
+                    )
+        # Handle primitive types like int, float, bool or str
         else:
             attribute_list.append([property_key, _get_element_type(property_val)])  # type: ignore
     return attribute_list
