@@ -1120,7 +1120,7 @@ def generate_attribute_list_from_dataclass_json_mixin(schema: dict, schema_name:
                     )
                 )
             else:
-                # For dict type
+                # For untyped dict
                 attribute_list.append((property_key, dict))  # type: ignore
         elif property_type == "enum":
             attribute_list.append([property_key, str])  # type: ignore
