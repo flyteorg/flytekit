@@ -2331,7 +2331,7 @@ def generate_attribute_list_from_dataclass_json(schema: dict, schema_name: typin
             attribute_list.append((property_key, List[_get_element_type(property_val["items"])]))  # type: ignore[misc,index]
         # Handle dataclass and dict
         elif property_type == "object":
-            # dataclass
+            # For nested dataclass
             if property_val.get("$ref"):
                 name = property_val["$ref"].split("/")[-1]
                 attribute_list.append(
