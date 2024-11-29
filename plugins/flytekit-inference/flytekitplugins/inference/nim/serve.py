@@ -136,6 +136,7 @@ class NIM(ModelInferenceTemplate):
             if local_peft_dir_env:
                 peft_mount_path = local_peft_dir_env.value
             else:
+                # This is the directory where all LoRAs are stored for a particular model.
                 raise ValueError("NIM_PEFT_SOURCE environment variable must be set.")
 
             self.pod_template.pod_spec.volumes.append(V1Volume(name="lora", empty_dir={}))
