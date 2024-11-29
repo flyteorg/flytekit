@@ -91,3 +91,6 @@ def test_with_remote():
     guessed_enum = get_args(guessed_union_type)[0]
     val = guessed_enum("one")
     r.execute(lp, inputs={"x": val})
+
+# Issue Link: https://github.com/flyteorg/flyte/issues/5986
+# def test_union_in_dataclass():
