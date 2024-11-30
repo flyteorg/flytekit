@@ -813,13 +813,7 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
         # Hence, _literal_sd must have to_flyte_idl method
         # See https://github.com/flyteorg/flytekit/blob/f938661ff8413219d1bea77f6914a58c302d5c6c/flytekit/bin/entrypoint.py#L326
         # For details, please refer to this issue: https://github.com/flyteorg/flyte/issues/5956.
-        expected_python_type, column_dict, storage_fmt, pa_schema = extract_cols_and_format(expected_python_type)
-
-        final_dataset_columns = []
-        if column_dict is not None and len(column_dict) != 0:
-            final_dataset_columns = self._convert_ordered_dict_of_columns_to_list(column_dict)
-        sdt = StructuredDatasetType(columns=final_dataset_columns, format=file_format)
-
+        sdt = StructuredDatasetType(format=file_format)
         metad = literals.StructuredDatasetMetadata(structured_dataset_type=sdt)
         sd_literal = literals.StructuredDataset(uri=uri, metadata=metad)
 
