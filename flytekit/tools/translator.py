@@ -381,6 +381,7 @@ def get_serializable_launch_plan(
             expected_inputs=interface_models.ParameterMap({}),
             expected_outputs=interface_models.VariableMap({}),
         ),
+        auto_activate=entity.should_auto_activate,
     )
 
     return lp_model
