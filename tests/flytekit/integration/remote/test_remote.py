@@ -130,7 +130,6 @@ def test_msgpack_idl_flytetypes():
 
 
 def test_attr_access_sd():
-    # default inputs for flyte types in dataclass
     execution_id = run("attr_access_sd.py", "wf")
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     execution = remote.fetch_execution(name=execution_id)
