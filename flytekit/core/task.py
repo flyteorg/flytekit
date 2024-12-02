@@ -358,6 +358,7 @@ def task(
         if inspect.iscoroutinefunction(fn):
             # TODO: figure out vscode decoration for async tasks, wait to do this until this vscode pattern has
             #   stabilized.
+            #   https://github.com/flyteorg/flyte/issues/6071
             decorated_fn = fn
         else:
             decorated_fn = decorate_function(fn)
