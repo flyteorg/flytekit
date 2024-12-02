@@ -709,8 +709,8 @@ def test_get_pickled_target_dict():
 
     _, target_dict = _get_pickled_target_dict(w)
     assert (
-        target_dict.metadata.python_version
-        == f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+            target_dict.metadata.python_version
+            == f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
     )
     assert len(target_dict.entities) == 2
     assert t1.name in target_dict.entities
@@ -730,8 +730,8 @@ def test_get_pickled_target_dict_with_map_task():
 
     _, target_dict = _get_pickled_target_dict(w)
     assert (
-        target_dict.metadata.python_version
-        == f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+            target_dict.metadata.python_version
+            == f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
     )
     assert len(target_dict.entities) == 1
     assert t1.name in target_dict.entities
@@ -783,3 +783,29 @@ def test_get_pickled_target_dict_with_eager():
 
     with pytest.raises(FlyteAssertion):
         _get_pickled_target_dict(eager_wf)
+
+
+@mock.patch("flytekit.remote.remote.FlyteRemote.client")
+def test_launchplan_auto_activate(mock_client):
+    @workflow
+    def wf() -> int:
+        return 1
+
+    lp1 = LaunchPlan.get_or_create(name="lp1", workflow=wf, auto_activate=False)
+    lp2 = LaunchPlan.get_or_create(name="lp2", workflow=wf, auto_activate=True)
+
+    rr = FlyteRemote(
+        Config.for_sandbox(),
+        default_project="flytesnacks",
+        default_domain="development",
+    )
+
+    ss = SerializationSettings(image_config=ImageConfig.auto())
+
+    # The first one should not update the launchplan
+    rr.register_launch_plan(lp1, version="1", serialization_settings=ss)
+    mock_client.update_launch_plan.assert_not_called()
+
+    # the second one should
+    rr.register_launch_plan(lp2, version="1", serialization_settings=ss)
+    mock_client.update_launch_plan.assert_called()

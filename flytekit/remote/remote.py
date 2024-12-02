@@ -825,6 +825,9 @@ class FlyteRemote(object):
                 self.client.create_launch_plan(launch_plan_identifer=ident, launch_plan_spec=cp_entity.spec)
             except FlyteEntityAlreadyExistsException:
                 logger.debug(f" {ident} Already Exists!")
+
+            if cp_entity.should_auto_activate:
+                self.client.update_launch_plan(ident, launch_plan_models.LaunchPlanState.ACTIVE)
             return ident
 
         raise AssertionError(f"Unknown entity of type {type(cp_entity)}")
