@@ -107,29 +107,18 @@
     }
     const handleLinkClick = e => {
         const linkIndex = e.getAttribute('link_index');
-        setLinkIndex(linkIndex);
-        currentTabIndex = linkIndex; // Update current tab index
+        setLinkIndex(linkIndex)
     }
 
     const tabs = document.getElementById('flyte-frame-tabs');
     const containers = document.getElementById('flyte-frame-container');
-    let currentTabIndex = 1; // Default to the first tab
-
-    for (let i = 0; i < tabs.children.length; i++) {
+    for(var i = 0; i < tabs.children.length; i++) {
         if (i === 0) {
             tabs.children[i].classList.add('active')
             containers.children[i].classList.add('active')
         }
-        tabs.children[i].setAttribute("link_index", i + 1)
-        containers.children[i].setAttribute("link_index", i + 1)
+        tabs.children[i].setAttribute("link_index", i+1)
+        containers.children[i].setAttribute("link_index", i+1)
     }
-
-    // Auto-refresh the current tab
-    setInterval(() => {
-        const activeContent = document.querySelector(`#flyte-frame-container > div[link_index="${currentTabIndex}"]`);
-        if (activeContent) {
-            activeContent.innerHTML = `Content refreshed at ${new Date().toLocaleTimeString()}`;
-        }
-    }, 5000); // Refresh every 5 seconds
 </script>
 </html>
