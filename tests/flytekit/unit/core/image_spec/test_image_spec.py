@@ -1,4 +1,5 @@
 import os
+import sys
 from unittest.mock import Mock
 
 import mock
@@ -244,3 +245,33 @@ def test_registry_name():
     ]
     for valid_registry_name in valid_registry_names:
         ImageSpec(registry=valid_registry_name)
+
+
+def test_image_spec_from_env_error():
+    msg = "python_version can not be used with `from_env`"
+    with pytest.raises(ValueError, match=msg):
+        ImageSpec.from_env(pinned_packages=["joblib"], python_version="3.9")
+
+
+def test_image_spec_from_env_with_pinned_packages():
+    import joblib
+    import msgpack
+    joblib_version = joblib.__version__
+    msgpack_version = msgpack.__version__
+
+    version_info = sys.version_info
+    python_version = f"{version_info.major}.{version_info.minor}"
+
+    image_spec = ImageSpec.from_env(pinned_packages=["joblib", "msgpack"], packages=["scikit-learn"])
+    assert image_spec.python_version == python_version
+    assert f"joblib=={joblib_version}" in image_spec.packages
+    assert f"msgpack=={msgpack_version}" in image_spec.packages
+    assert 'scikit-learn' in image_spec.packages
+
+
+def test_image_spec_from_env_empty():
+    version_info = sys.version_info
+    python_version = f"{version_info.major}.{version_info.minor}"
+
+    image_spec = ImageSpec.from_env()
+    assert image_spec.python_version == python_version
