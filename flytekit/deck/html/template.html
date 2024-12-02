@@ -4,7 +4,9 @@
     <meta charset="utf-8">
     <title>User Content</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- (Styles remain the same) -->
     <style>
+        /* ... your existing styles ... */
         ol, ul {
             list-style: none;
         }
@@ -103,8 +105,8 @@
                 // Start refreshing the content in this active tab
                 contentDiv.refreshInterval = setInterval(() => {
                     // Update content inside this tab
-                    contentDiv.innerHTML = `Content refreshed at ${new Date().toLocaleTimeString()}`;
-                }, 1); // Refresh every 1 seconds
+                    contentDiv.innerHTML = 'Content refreshed at ' + new Date().toLocaleTimeString();
+                }, 5000); // Refresh every 5 seconds
             } else {
                 contentDiv.className = '';
                 // Clear any existing interval on inactive tabs
