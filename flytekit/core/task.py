@@ -87,9 +87,6 @@ class TaskPlugins(object):
         return PythonFunctionTask
 
 
-# TaskPlugins.register_pythontask_plugin(EagerAsyncPythonFunctionTask, EagerAsyncPythonFunctionTask)
-
-
 P = ParamSpec("P")
 T = TypeVar("T")
 FuncOut = TypeVar("FuncOut")

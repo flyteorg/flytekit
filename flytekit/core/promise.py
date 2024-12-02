@@ -1442,8 +1442,7 @@ async def async_flyte_entity_call_handler(
         kwargs[input_name] = arg
 
     ctx = FlyteContextManager.current_context()
-    # todo: add condition here to let sync/async tasks be called during eager execution
-    # conditions to take care of
+    # This handles the case where we call other entities from within a running eager task.
     if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.EAGER_EXECUTION:
         # for both nested eager, async, and sync tasks, submit to the informer.
         if not ctx.worker_queue:
@@ -1453,7 +1452,7 @@ async def async_flyte_entity_call_handler(
         result = await fut
 
         return result
-    # if this is eager local execution, the proceed with normal local execution below
+    # eager local execution proceeds with normal local execution below...
 
     if ctx.execution_state and (
         ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION
@@ -1512,9 +1511,6 @@ async def async_flyte_entity_call_handler(
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.DYNAMIC_TASK_EXECUTION:
             return result
-
-        # if mode == ExecutionState.Mode.EAGER_LOCAL_EXECUTION:
-        #     return result
 
         if (1 < expected_outputs == len(cast(Tuple[Promise], result))) or (
             result is not None and expected_outputs == 1

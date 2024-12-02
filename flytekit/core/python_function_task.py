@@ -505,7 +505,6 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
             -> add the entity to the worker queue and await the result.
         """
         # Args is present because the asyn helper function passes it, but everything should be in kwargs by this point
-        # breakpoint()
         assert len(args) == 1
         ctx = FlyteContextManager.current_context()
         is_local_execution = cast(ExecutionState, ctx.execution_state).is_local_execution()

@@ -779,9 +779,9 @@ def test_get_pickled_target_dict_with_eager():
         out = t1(a=a)
         if out < 0:
             return -1
-        return t2(a=out)
+        return await t2(a=out)
 
-    with pytest.raises(FlyteAssertion):
+    with pytest.raises(FlyteAssertion, match="Eager tasks are not supported in interactive mode"):
         _get_pickled_target_dict(eager_wf)
 
 
