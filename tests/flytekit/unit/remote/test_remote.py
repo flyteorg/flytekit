@@ -17,7 +17,8 @@ from flyteidl.service import dataproxy_pb2
 from mock import ANY, MagicMock, patch
 
 import flytekit.configuration
-from flytekit import CronSchedule, ImageSpec, LaunchPlan, WorkflowFailurePolicy, task, workflow, reference_task, map_task, dynamic
+from flytekit import CronSchedule, ImageSpec, LaunchPlan, WorkflowFailurePolicy, task, workflow, reference_task, \
+    map_task, dynamic
 from flytekit.configuration import Config, DefaultImages, Image, ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContextManager
@@ -710,14 +711,15 @@ def test_get_pickled_target_dict():
 
     _, target_dict = _get_pickled_target_dict(w)
     assert (
-        target_dict.metadata.python_version
-        == f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+            target_dict.metadata.python_version
+            == f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
     )
     assert len(target_dict.entities) == 2
     assert t1.name in target_dict.entities
     assert t2.name in target_dict.entities
     assert target_dict.entities[t1.name] == t1
     assert target_dict.entities[t2.name] == t2
+
 
 def test_get_pickled_target_dict_with_map_task():
     @task
@@ -730,12 +732,13 @@ def test_get_pickled_target_dict_with_map_task():
 
     _, target_dict = _get_pickled_target_dict(w)
     assert (
-        target_dict.metadata.python_version
-        == f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+            target_dict.metadata.python_version
+            == f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
     )
     assert len(target_dict.entities) == 1
     assert t1.name in target_dict.entities
     assert target_dict.entities[t1.name] == t1
+
 
 def test_get_pickled_target_dict_with_dynamic():
     @task
@@ -763,6 +766,7 @@ def test_get_pickled_target_dict_with_dynamic():
     with pytest.raises(FlyteAssertion):
         _get_pickled_target_dict(my_wf)
 
+
 def test_get_pickled_target_dict_with_eager():
     @task
     def t1(a: int) -> int:
@@ -781,3 +785,29 @@ def test_get_pickled_target_dict_with_eager():
 
     with pytest.raises(FlyteAssertion):
         _get_pickled_target_dict(eager_wf)
+
+
+@mock.patch("flytekit.remote.remote.FlyteRemote.client")
+def test_launchplan_auto_activate(mock_client):
+    @workflow
+    def wf() -> int:
+        return 1
+
+    lp1 = LaunchPlan.get_or_create(name="lp1", workflow=wf, auto_activate=False)
+    lp2 = LaunchPlan.get_or_create(name="lp2", workflow=wf, auto_activate=True)
+
+    rr = FlyteRemote(
+        Config.for_sandbox(),
+        default_project="flytesnacks",
+        default_domain="development",
+    )
+
+    ss = SerializationSettings(image_config=ImageConfig.auto())
+
+    # The first one should not update the launchplan
+    rr.register_launch_plan(lp1, version="1", serialization_settings=ss)
+    mock_client.update_launch_plan.assert_not_called()
+
+    # the second one should
+    rr.register_launch_plan(lp2, version="1", serialization_settings=ss)
+    mock_client.update_launch_plan.assert_called()

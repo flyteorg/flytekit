@@ -373,15 +373,24 @@ class LaunchPlanClosure(_common.FlyteIdlEntity):
 
 
 class LaunchPlan(_common.FlyteIdlEntity):
-    def __init__(self, id, spec, closure):
+    # TODO shall we add auto_activate here? this is client side only and breaks the contract
+    def __init__(self, id, spec, closure, auto_activate=False):
         """
         :param flytekit.models.core.identifier.Identifier id:
         :param LaunchPlanSpec spec:
         :param LaunchPlanClosure closure:
+        :param bool auto_activate: Whether to automatically activate the launch plan, this is a client side only
+            parameter and does not affect the actual launch plan. Also cannot be used from flytectl, only available
+            from the python SDK or pyflyte register.
         """
         self._id = id
         self._spec = spec
         self._closure = closure
+        self._auto_activate = auto_activate
+
+    @property
+    def should_auto_activate(self) -> bool:
+        return self._auto_activate
 
     @property
     def id(self):

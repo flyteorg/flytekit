@@ -518,7 +518,12 @@ def test_get_traceback_str():
     assert expected_error_re.match(traceback_str) is not None
 
 
-def test_get_container_error_timestamp() -> None:
+def test_get_container_error_timestamp(monkeypatch) -> None:
+    # Set the timezone to UTC
+    monkeypatch.setenv("TZ", "UTC")
+    if hasattr(time, 'tzset'):
+        time.tzset()
+
     assert get_container_error_timestamp(FlyteException("foo", timestamp=10.5)) == Timestamp(seconds=10, nanos=500000000)
 
     current_dtime = datetime.now()
