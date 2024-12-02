@@ -348,15 +348,19 @@ def task(
             params = VersionParameters(func=fn, container_image=container_image)
             cache_version_val = cache.get_version(params=params)
             cache_val = True
+            cache_serialize_val = cache_serialize or cache.cache_serialize
+            cache_serialize_val = cache_ignore_input_vars or cache.cache_ignore_input_vars
         else:
             cache_val = cache
             cache_version_val = cache_version
+            cache_serialize_val = cache_serialize
+            cache_ignore_input_vars_val = cache_ignore_input_vars
 
         _metadata = TaskMetadata(
             cache=cache_val,
-            cache_serialize=cache_serialize,
+            cache_serialize=cache_serialize_val,
             cache_version=cache_version_val,
-            cache_ignore_input_vars=cache_ignore_input_vars,
+            cache_ignore_input_vars=cache_ignore_input_vars_val,
             retries=retries,
             interruptible=interruptible,
             deprecated=deprecated,
