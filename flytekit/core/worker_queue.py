@@ -189,9 +189,10 @@ class Controller:
             f" {tag=}, {root_tag=}, {exec_prefix=} and ss: {ss}"
         )
         # Set up things for this controller to operate
-        # todo:async add selector policy to loop selection
-        self.__loop = asyncio.new_event_loop()
-        # TODO: the loop manager in asyn.py also needs an exception handler
+        from flytekit.utils.asyn import _selector_policy
+
+        with _selector_policy():
+            self.__loop = asyncio.new_event_loop()
         self.__loop.set_exception_handler(self.exc_handler)
         self.__runner_thread: threading.Thread = threading.Thread(
             target=self._execute, daemon=True, name="controller-loop-runner"
@@ -258,6 +259,7 @@ class Controller:
         """Make a deterministic name"""
         # todo: Move the transform of python native values to literals up to the controller, and use pb hashing/user
         #   provided hashmethods to comprise the input_kwargs part. Merely printing input_kwargs is not strictly correct
+        #   https://github.com/flyteorg/flyte/issues/6069
         components = f"{self.tag}-{type(entity)}-{entity.name}-{idx}-{input_kwargs}"
 
         # has the components into something deterministic
@@ -376,6 +378,7 @@ class Controller:
         TODO: At some point, this loop would be ideally managed by the loop manager, and the signal handler should
           gracefully initiate shutdown of all loops, calling .cancel() on all tasks, allowing each loop to clean up,
           starting with the deepest loop/thread first and working up.
+          https://github.com/flyteorg/flyte/issues/6068
         """
 
         def signal_handler(signum, frame):

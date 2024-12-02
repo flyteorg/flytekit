@@ -1948,8 +1948,9 @@ class FlyteRemote(object):
             if self.interactive_mode_enabled:
                 ss.fast_serialization_settings = self._pickle_and_upload_entity(entity, pickled_target_dict)
 
-            # todo:async If this is being registered from eager, it will not reflect the full serialization settings
-            #   object. How should it be piped in?
+            # TODO: If this is being registered from eager, it will not reflect the full serialization settings
+            #   object (look into the function, the passed in ss is basically ignored). How should it be piped in?
+            #   https://github.com/flyteorg/flyte/issues/6070
             flyte_task: FlyteTask = self.register_task(entity, ss, version)
         return self.execute(
             flyte_task,

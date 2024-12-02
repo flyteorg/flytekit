@@ -356,7 +356,8 @@ def task(
         )
 
         if inspect.iscoroutinefunction(fn):
-            # todo:async figure out vscode decoration for async tasks
+            # TODO: figure out vscode decoration for async tasks, wait to do this until this vscode pattern has
+            #   stabilized.
             decorated_fn = fn
         else:
             decorated_fn = decorate_function(fn)
