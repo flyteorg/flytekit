@@ -4,7 +4,6 @@
     <meta charset="utf-8">
     <title>User Content</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link href="https://fonts.googleapis.com/css?family=Lato:300,400,700%7COpen+Sans:400,700" rel="stylesheet">
     <style>
         ol, ul {
             list-style: none;
@@ -90,37 +89,32 @@
     };
 
     // Modified setContent function
-    const setContent = (() => {
+    const setContent = index => {
         const container = document.getElementById('flyte-frame-container');
-        let activeIndex = 1;
-
-        const updateContent = (index) => {
-            if (index !== undefined) {
-                activeIndex = parseInt(index);
-            }
-            for (let i = 0; i < container.children.length; i++) {
-                const tabIndex = container.children[i].getAttribute('link_index');
-                if (tabIndex == activeIndex) {
-                    container.children[i].classList.add('active');
-                } else {
-                    container.children[i].className = '';
+        for (let i = 0; i < container.children.length; i++) {
+            const contentDiv = container.children[i];
+            const tabIndex = contentDiv.getAttribute('link_index');
+            if (tabIndex === index) {
+                contentDiv.classList.add('active');
+                // Clear any existing interval on the contentDiv
+                if (contentDiv.refreshInterval) {
+                    clearInterval(contentDiv.refreshInterval);
+                }
+                // Start refreshing the content in this active tab
+                contentDiv.refreshInterval = setInterval(() => {
+                    // Update content inside this tab
+                    contentDiv.innerHTML = `Content refreshed at ${new Date().toLocaleTimeString()}`;
+                }, 1); // Refresh every 1 seconds
+            } else {
+                contentDiv.className = '';
+                // Clear any existing interval on inactive tabs
+                if (contentDiv.refreshInterval) {
+                    clearInterval(contentDiv.refreshInterval);
+                    contentDiv.refreshInterval = null;
                 }
             }
-        };
-
-        // Set interval to switch content every 1 seconds
-        setInterval(() => {
-            activeIndex++;
-            if (activeIndex > container.children.length) {
-                activeIndex = 1;
-            }
-            updateContent();
-            setTabs(activeIndex.toString()); // Update the tabs to match content
-        }, 1000);
-
-        // Return the function to allow external calls with an index
-        return updateContent;
-    })();
+        }
+    };
 
     const setLinkIndex = index => {
         setTabs(index);
@@ -135,15 +129,18 @@
 
     const tabs = document.getElementById('flyte-frame-tabs');
     const containers = document.getElementById('flyte-frame-container');
-    let currentTabIndex = 1; // Default to the first tab
+    let currentTabIndex = '1'; // Default to the first tab (as a string)
 
     for (let i = 0; i < tabs.children.length; i++) {
         if (i === 0) {
             tabs.children[i].classList.add('active');
             containers.children[i].classList.add('active');
+            // Initialize content refresh for the first tab
+            setContent('1');
         }
-        tabs.children[i].setAttribute("link_index", (i + 1).toString());
-        containers.children[i].setAttribute("link_index", (i + 1).toString());
+        const indexStr = (i + 1).toString();
+        tabs.children[i].setAttribute("link_index", indexStr);
+        containers.children[i].setAttribute("link_index", indexStr);
 
         // Add event listener for clicks
         tabs.children[i].onclick = function() {
