@@ -8,6 +8,9 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Callable, Set, Union
 
+import click
+from flytekitplugins.auto_cache.cache_function_body import CacheFunctionBody
+
 from flytekit.core.auto_cache import VersionParameters
 
 
@@ -21,117 +24,167 @@ def temporarily_add_to_syspath(path):
         sys.path.pop(0)
 
 
-class CachePrivateModules:
+class CachePrivateModules(CacheFunctionBody):
+    """
+    A class that extends CacheFunctionBody to cache private modules and their dependencies.
+
+    It extends the functionality to recursively follow all callables, making a list of all functions,
+    classes, and methods that are eventually used by the initial function of interest. Only functions
+    internal to this package are included, while externally imported packages are ignored. It handles
+    both import and from-import statements, as well as aliases, for both top-level imports global to
+    the module and local imports to the function or method. Additionally, it identifies constants at
+    the same import levels described above, accounting for both constants defined in the internal
+    package and external packages. The contents of all these functions are hashed using the same
+    logic as CacheFunctionBody, and the constants and their values are also fed into the hash.
+
+    Attributes:
+        salt (str): A string used to add uniqueness to the generated hash.
+        root_dir (Path): The root directory of the project, used to resolve module paths.
+        constants (dict): A dictionary to store constants that are part of the versioning process.
+    """
+
     def __init__(self, salt: str, root_dir: str):
+        """
+        Initialize the CachePrivateModules instance with a salt value and a root directory.
+
+        Args:
+            salt (str): A string to be used as the salt in the hashing process.
+            root_dir (str): The root directory of the project, used to resolve module paths.
+        """
         self.salt = salt
         self.root_dir = Path(root_dir).resolve()
         self.constants = {}
 
     def get_version(self, params: VersionParameters) -> str:
+        """
+        Generates a version hash for the provided function and its dependencies.
+
+        This method recursively identifies all callables (functions, methods, classes) used by the provided function,
+        hashes their contents, and combines these hashes with the hashes of all constants and their values identified.
+        The resulting combined hash is then returned as the version string. The user provided salt is by `_get_version`
+        of the parent CacheFunctionBody.
+
+        Args:
+            params (VersionParameters): An object containing the function parameter.
+
+        Returns:
+            str: The SHA-256 hash of the combined hashes of the function, its dependencies, and constants.
+
+        Raises:
+            ValueError: If the function parameter is None.
+        """
         if params.func is None:
             raise ValueError("Function-based cache requires a function parameter")
 
-        hash_components = [self._get_version(params.func)]
+        # Initialize a list to hold all hash components
+        hash_components = [self._get_version(params.func)]  # Start with the hash of the provided function
+        # Identify all dependencies of the provided function
         dependencies = self._get_function_dependencies(params.func, set())
+        # Hash each dependency and add to the list of hash components
         for dep in dependencies:
             hash_components.append(self._get_version(dep))
+        # Add hashes of constants and their values to the list of hash components
         for key, value in self.constants.items():
             hash_components.append(f"{key}={value}")
         # Combine all component hashes into a single version hash
         combined_hash = hashlib.sha256("".join(hash_components).encode("utf-8")).hexdigest()
         return combined_hash
 
-    def _get_version(self, func: Callable[..., Any]) -> str:
-        source = inspect.getsource(func)
-        dedented_source = textwrap.dedent(source)
-        parsed_ast = ast.parse(dedented_source)
-        ast_bytes = ast.dump(parsed_ast).encode("utf-8")
-        combined_data = ast_bytes + self.salt.encode("utf-8")
-        return hashlib.sha256(combined_data).hexdigest()
+    def _get_alias_name(self, alias: ast.alias) -> str:
+        """
+        Extracts the alias name from an AST alias node.
+
+        This method takes an AST alias node and returns its alias name. If the alias has an 'asname', it returns the 'asname';
+        otherwise, it returns the 'name' of the alias.
+
+        Args:
+            alias (ast.alias): The AST alias node from which to extract the alias name.
+
+        Returns:
+            str: The alias name or the name of the alias if 'asname' is not provided.
+        """
+        return alias.asname or alias.name
 
     def _get_function_dependencies(
         self, func: Callable[..., Any], visited: Set[str], class_attributes: dict = None
     ) -> Set[Callable[..., Any]]:
         """
-        Recursively gather all functions, methods, and classes used within `func` and defined in the user’s package.
+        Recursively identifies all functions, methods, and classes used within `func` and defined in the user’s package.
 
-        This method walks through the Abstract Syntax Tree (AST) of the given function to identify all imported modules,
-        functions, methods, and classes. It then checks each function call to identify the dependencies. The method
-        also extracts literal constants from the function's global namespace and imported modules.
+        This method traverses the Abstract Syntax Tree (AST) of the given function to identify all imported modules,
+        functions, methods, and classes. It then inspects each function call to identify the dependencies. Additionally,
+        the method extracts literal constants from the function's global namespace and imported modules.
 
-        Parameters:
-        - func: The function for which to gather dependencies.
-        - visited: A set to keep track of visited functions to avoid infinite recursion.
-        - class_attributes: A dictionary of attributes if the func is a method from a class.
+        Args:
+            func (Callable[..., Any]): The function for which to gather dependencies.
+            visited (Set[str]): A set to keep track of visited functions to avoid infinite recursion.
+            class_attributes (dict, optional): A dictionary of attributes if the func is a method from a class.
 
         Returns:
-        - A set of all dependencies found.
+            Set[Callable[..., Any]]: A set of all dependencies found.
         """
 
         dependencies = set()
-        # Dedent the source code to handle class method indentation
         source = textwrap.dedent(inspect.getsource(func))
         parsed_ast = ast.parse(source)
 
-        # Build a locals dictionary for function-level imports
+        # Initialize a dictionary to mimic the function's global namespace for locally defined imports
         locals_dict = {}
+        # Initialize a dictionary to hold constant imports and class attributes
         constant_imports = {}
+        # If class attributes are provided, include them in the constant imports
         if class_attributes:
             constant_imports.update(class_attributes)
 
+        # Check each function call in the AST
         for node in ast.walk(parsed_ast):
             if isinstance(node, ast.Import):
+                # For each alias in the import statement, we import the module and add it to the locals_dict.
+                # This is because the module itself is being imported, not a specific attribute or function.
                 for alias in node.names:
                     module = importlib.import_module(alias.name)
-                    locals_dict[alias.asname or alias.name] = module
+                    locals_dict[self._get_alias_name(alias)] = module
+                    # We then get all the literal constants defined in the module's __init__.py file.
+                    # These constants are later checked for usage within the function.
                     module_constants = self.get_module_literal_constants(module)
                     constant_imports.update(
-                        {f"{alias.asname or alias.name}.{name}": value for name, value in module_constants.items()}
+                        {f"{self._get_alias_name(alias)}.{name}": value for name, value in module_constants.items()}
                     )
             elif isinstance(node, ast.ImportFrom):
                 module_name = node.module
                 module = importlib.import_module(module_name)
                 for alias in node.names:
-                    # Resolve attributes or submodules
+                    # Attempt to resolve the imported object directly from the module
                     imported_obj = getattr(module, alias.name, None)
                     if imported_obj:
-                        locals_dict[alias.asname or alias.name] = imported_obj
+                        # If the object is found directly in the module, add it to the locals_dict
+                        locals_dict[self._get_alias_name(alias)] = imported_obj
+                        # Check if the imported object is a literal constant and add it to constant_imports if so
+                        if self.is_literal_constant(imported_obj):
+                            constant_imports.update({f"{self._get_alias_name(alias)}": imported_obj})
                     else:
-                        # Fallback: attempt to import as submodule. e.g. `from PIL import Image`
+                        # If the object is not found directly in the module, attempt to import it as a submodule
+                        # This is necessary for cases like `from PIL import Image`, where Image is not imported in PIL's __init__.py
+                        # PIL and similar packages use different mechanisms to expose their objects, requiring this fallback approach
                         submodule = importlib.import_module(f"{module_name}.{alias.name}")
-                        locals_dict[alias.asname or alias.name] = submodule
-                        # If it's a module, find its constants
-                        if inspect.ismodule(imported_obj):
-                            module_constants = self.get_module_literal_constants(imported_obj)
-                            constant_imports.update(
-                                {
-                                    f"{alias.asname or alias.name}.{name}": value
-                                    for name, value in module_constants.items()
-                                }
-                            )
-                        # If the import itself is a constant, add it
-                        elif self.is_literal_constant(imported_obj):
-                            constant_imports.update({f"{module_name}.{alias.asname or alias.name}": imported_obj})
+                        imported_obj = getattr(submodule, alias.name, None)
+                        locals_dict[self._get_alias_name(alias)] = imported_obj
 
-        global_constants = {key: value for key, value in func.__globals__.items() if self.is_literal_constant(value)}
-
-        # Check each function call in the AST
-        for node in ast.walk(parsed_ast):
-            if isinstance(node, ast.Call):
+            elif isinstance(node, ast.Call):
+                # Add callable to the set of dependencies if it's user defined and continue the recursive search within those callables.
                 func_name = self._get_callable_name(node.func)
                 if func_name and func_name not in visited:
                     visited.add(func_name)
                     try:
-                        # Attempt to resolve using locals first, then globals
+                        # Attempt to resolve the callable object using locals first, then globals
                         func_obj = self._resolve_callable(func_name, locals_dict) or self._resolve_callable(
                             func_name, func.__globals__
                         )
+                        # If the callable is a class and user-defined, we add and search all method. We also include attributes as potential constants.
                         if inspect.isclass(func_obj) and self._is_user_defined(func_obj):
-                            # Add class attributes as potential constants
                             current_class_attributes = {
                                 f"class.{func_name}.{name}": value for name, value in func_obj.__dict__.items()
                             }
-                            # Add class methods as dependencies
                             for name, method in inspect.getmembers(func_obj, predicate=inspect.isfunction):
                                 if method not in visited:
                                     visited.add(method.__qualname__)
@@ -139,14 +192,27 @@ class CachePrivateModules:
                                     dependencies.update(
                                         self._get_function_dependencies(method, visited, current_class_attributes)
                                     )
+                        # If the callable is a function or method and user-defined, add it as a dependency and search its dependencies
                         elif (inspect.isfunction(func_obj) or inspect.ismethod(func_obj)) and self._is_user_defined(
                             func_obj
                         ):
+                            # Add the function or method as a dependency
                             dependencies.add(func_obj)
+                            # Recursively search the function or method's dependencies
                             dependencies.update(self._get_function_dependencies(func_obj, visited))
-                    except (NameError, AttributeError):
-                        pass
+                    except (NameError, AttributeError) as e:
+                        click.secho(f"Could not process the callable {func_name} due to error: {str(e)}", fg="yellow")
 
+        # Extract potential constants from the global import context
+        global_constants = {}
+        for key, value in func.__globals__.items():
+            if hasattr(value, "__dict__"):
+                module_constants = self.get_module_literal_constants(value)
+                global_constants.update({f"{key}.{name}": value for name, value in module_constants.items()})
+            elif self.is_literal_constant(value):
+                global_constants[key] = value
+
+        # Check for the usage of all potnential constants and update the set of constants to be hashed
         referenced_constants = self.get_referenced_constants(
             func=func, constant_imports=constant_imports, global_constants=global_constants
         )
@@ -193,12 +259,15 @@ class CachePrivateModules:
 
     def get_referenced_constants(self, func, constant_imports=None, global_constants=None):
         """
-        Find constants that are actually referenced in the function
+        Identifies constants that are actually used within the given function.
 
-        :param func: The function to analyze
-        :param constant_imports: Dictionary of potential constant imports
-        :param global_constants: Dictionary of global constants
-        :return: Dictionary of referenced constants
+        Args:
+            func: The function to be analyzed for constant references.
+            constant_imports: A dictionary containing potential constant imports.
+            global_constants: A dictionary of global constants.
+
+        Returns:
+            A dictionary containing the constants that are actually referenced within the function.
         """
         referenced_constants = {}
         source_code = inspect.getsource(func)
@@ -232,12 +301,12 @@ class CachePrivateModules:
             return f"{node.value.id}.{node.attr}" if isinstance(node.value, ast.Name) else node.attr
         return None
 
-    def _resolve_callable(self, func_name: str, globals_dict: dict) -> Callable[..., Any]:
-        """Resolve a callable from its name within the given globals dictionary, handling modules as entry points."""
+    def _resolve_callable(self, func_name: str, locals_globals_dict: dict) -> Callable[..., Any]:
+        """Resolve a callable from its name within the given locals/globals dictionary, handling modules as entry points."""
         parts = func_name.split(".")
 
         # First, try resolving directly from globals_dict for a straightforward reference
-        obj = globals_dict.get(parts[0], None)
+        obj = locals_globals_dict.get(parts[0], None)
         for part in parts[1:]:
             if obj is None:
                 break
@@ -245,7 +314,7 @@ class CachePrivateModules:
 
         # If not found, iterate through modules in globals_dict and attempt resolution from them
         if not callable(obj):
-            for module in globals_dict.values():
+            for module in locals_globals_dict.values():
                 if isinstance(module, type(sys)):  # Check if the global value is a module
                     obj = module
                     for part in parts:

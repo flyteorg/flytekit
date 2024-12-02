@@ -20,7 +20,7 @@ class CacheFunctionBody:
             Given a function, generates a version hash based on its source code and the salt.
     """
 
-    def __init__(self, salt: str = "salt") -> None:
+    def __init__(self, salt: str = "") -> None:
         """
         Initialize the CacheFunctionBody instance with a salt value.
 

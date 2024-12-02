@@ -28,15 +28,15 @@ def test_package_versions_in_isolated_env():
         python = str(venv_path / "bin" / "python")
 
         # Run a test to verify that CacheExternalDependencies can identify the version of various popular packages
-        # verify_version_script = test_dir / "verify_versions.py"
-        # result_version = subprocess.run(
-        #     [python, str(verify_version_script)],
-        #     capture_output=True,
-        #     text=True,
-        #     check=True
-        # )
+        verify_version_script = test_dir / "verify_versions.py"
+        result_version = subprocess.run(
+            [python, str(verify_version_script)],
+            capture_output=True,
+            text=True,
+            check=True
+        )
 
-        # assert result_version.returncode == 0, f"Version verification failed: {result_version.stderr}"
+        assert result_version.returncode == 0, f"Version verification failed: {result_version.stderr}"
 
         # Run a test to verify that CacheExternalDependencies cen identify packages used in a complex repo
         verify_packages_script = test_dir / "verify_identified_packages.py"

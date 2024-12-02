@@ -28,3 +28,5 @@ def test_dependencies():
         f"Expected: {expected_dependencies}\n"
         f"Actual: {actual_dependencies_str}"
     )
+
+test_dependencies()

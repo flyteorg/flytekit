@@ -51,7 +51,11 @@ class CacheExternalDependencies(CachePrivateModules):
         return hashlib.sha256(combined_data).hexdigest()
 
     def _is_user_defined(self, obj: Any) -> bool:
-        """Check if a callable or class is user-defined within the package."""
+        """
+        Similar to the parent, this method checks if a callable or class is user-defined within the package.
+        If it identifies a non-user-defined package, it adds the external dependency to a list of packages
+        for which we will check their versions and hash.
+        """
         if isinstance(obj, type(sys)):  # Check if the object is a module
             module_name = obj.__name__
         else:

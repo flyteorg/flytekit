@@ -5,10 +5,39 @@ from flytekit.image_spec.image_spec import ImageSpec
 
 
 class CacheImage:
-    def __init__(self, salt: str):
+    """
+    A class that generates a version hash given a container image.
+
+    Attributes:
+        salt (str): A string used to add uniqueness to the generated hash. Defaults to an empty string.
+
+    Methods:
+        get_version(params: VersionParameters) -> str:
+            Given a VersionParameters object, generates a version hash based on the container_image and the salt.
+    """
+
+    def __init__(self, salt: str = ""):
+        """
+        Initialize the CacheImage instance with a salt value.
+
+        Args:
+            salt (str): A string to be used as the salt in the hashing process. Defaults to an empty string.
+        """
         self.salt = salt
 
     def get_version(self, params: VersionParameters) -> str:
+        """
+        Generates a version hash for the container image specified in the VersionParameters object.
+
+        Args:
+            params (VersionParameters): An object containing the container_image parameter.
+
+        Returns:
+            str: The SHA-256 hash of the container_image combined with the salt.
+
+        Raises:
+            ValueError: If the container_image parameter is None.
+        """
         if params.container_image is None:
             raise ValueError("Image-based cache requires a container_image parameter")
 
