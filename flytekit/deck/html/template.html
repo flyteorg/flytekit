@@ -106,7 +106,7 @@
                 contentDiv.refreshInterval = setInterval(() => {
                     // Update content inside this tab
                     contentDiv.innerHTML = 'Content refreshed at ' + new Date().toLocaleTimeString();
-                }, 5000); // Refresh every 5 seconds
+                }, 1000); // Refresh every 1 seconds
             } else {
                 contentDiv.className = '';
                 // Clear any existing interval on inactive tabs
