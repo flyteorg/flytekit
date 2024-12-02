@@ -16,7 +16,7 @@ class CacheExternalDependencies(CachePrivateModules):
     Inherits the dependency traversal logic from CachePrivateModules but focuses on external packages.
     """
 
-    def __init__(self, salt: str, root_dir: str):
+    def __init__(self, root_dir: str, salt: str = ""):
         super().__init__(salt=salt, root_dir=root_dir)
         self._package_versions = {}  # Cache for package versions
         self._external_dependencies = set()

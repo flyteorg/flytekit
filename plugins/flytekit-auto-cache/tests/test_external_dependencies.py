@@ -52,6 +52,3 @@ def test_package_versions_in_isolated_env():
     finally:
         import shutil
         shutil.rmtree(venv_path)
-
-if __name__ == "__main__":
-    test_package_versions_in_isolated_env()

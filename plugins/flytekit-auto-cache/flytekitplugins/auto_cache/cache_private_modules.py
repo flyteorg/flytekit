@@ -43,7 +43,7 @@ class CachePrivateModules(CacheFunctionBody):
         constants (dict): A dictionary to store constants that are part of the versioning process.
     """
 
-    def __init__(self, salt: str, root_dir: str):
+    def __init__(self, root_dir: str, salt: str = ""):
         """
         Initialize the CachePrivateModules instance with a salt value and a root directory.
 
