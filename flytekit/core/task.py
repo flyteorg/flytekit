@@ -345,9 +345,9 @@ def task(
 
     def wrapper(fn: Callable[..., Any]) -> PythonFunctionTask[T]:
         if isinstance(cache, CachePolicy):
-            params = VersionParameters(func=fn, container_image=container_image)
-            cache_version_val = cache.get_version(params=params)
             cache_val = True
+            params = VersionParameters(func=fn, container_image=container_image)
+            cache_version_val = cache_version or cache.get_version(params=params)
             cache_serialize_val = cache_serialize or cache.cache_serialize
             cache_serialize_val = cache_ignore_input_vars or cache.cache_ignore_input_vars
         else:

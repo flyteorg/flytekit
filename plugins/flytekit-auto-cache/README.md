@@ -18,9 +18,11 @@ from flytekit.core.auto_cache import CachePolicy
 from flytekitplugins.auto_cache import CacheFunctionBody, CachePrivateModules
 
 cache_policy = CachePolicy(
-    CacheFunctionBody(),
-    CachePrivateModules(root_dir="../my_package"),
-    ...,
+    auto_cache_policies = [
+        CacheFunctionBody(),
+        CachePrivateModules(root_dir="../my_package"),
+        ...,
+    ]
     salt="my_salt"
 )
 
