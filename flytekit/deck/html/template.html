@@ -64,9 +64,7 @@
             display: block;
             padding: 2rem 2rem;
         }
-
     </style>
-
 </head>
 <body>
     <nav id="flyte-frame-nav">
@@ -79,46 +77,50 @@
     </div>
 </body>
 <script>
-    const setTabs = index => {
-        const container = document.getElementById('flyte-frame-tabs')
-        for (let i = 0; i < container.children.length; i++) {
-            const tabIndex = container.children[i].getAttribute('link_index')
-            if (tabIndex === index) {
-                container.children[i].classList.add('active')
-            } else {
-                container.children[i].className = ''
-            }
-        }
-    }
-    const setContent = index => {
-        const container = document.getElementById('flyte-frame-container')
-        for (let i = 0; i < container.children.length; i++) {
-            const tabIndex = container.children[i].getAttribute('link_index')
-            if (tabIndex === index) {
-                container.children[i].classList.add('active')
-            } else {
-                container.children[i].className = ''
-            }
-        }
-    }
-    const setLinkIndex = index => {
-        setTabs(index)
-        setContent(index)
-    }
-    const handleLinkClick = e => {
-        const linkIndex = e.getAttribute('link_index');
-        setLinkIndex(linkIndex)
-    }
+    const setDynamicContainers = () => {
+        const tabsContainer = document.getElementById('flyte-frame-tabs');
+        const contentContainer = document.getElementById('flyte-frame-container');
+        let activeIndex = 0;
 
-    const tabs = document.getElementById('flyte-frame-tabs');
-    const containers = document.getElementById('flyte-frame-container');
-    for(var i = 0; i < tabs.children.length; i++) {
-        if (i === 0) {
-            tabs.children[i].classList.add('active')
-            containers.children[i].classList.add('active')
+        const updateContainers = () => {
+            // Reset all tabs and containers
+            for (let i = 0; i < tabsContainer.children.length; i++) {
+                tabsContainer.children[i].className = ''; // Reset tab classes
+                contentContainer.children[i].className = ''; // Reset content classes
+            }
+
+            // Activate the current container and its corresponding tab
+            tabsContainer.children[activeIndex].classList.add('active');
+            contentContainer.children[activeIndex].classList.add('active');
+
+            // Increment index and loop back if it exceeds the number of items
+            activeIndex = (activeIndex + 1) % tabsContainer.children.length;
+        };
+
+        // Initial setup for the first container and tab
+        updateContainers();
+
+        // Automatically switch containers every 5 seconds
+        setInterval(updateContainers, 5000);
+    };
+
+    const initializeDynamicContainers = () => {
+        const tabs = document.getElementById('flyte-frame-tabs');
+        const containers = document.getElementById('flyte-frame-container');
+
+        for (let i = 0; i < tabs.children.length; i++) {
+            if (i === 0) {
+                tabs.children[i].classList.add('active'); // Activate first tab
+                containers.children[i].classList.add('active'); // Activate first container
+            }
+            tabs.children[i].setAttribute("link_index", i + 1); // Add index attributes
+            containers.children[i].setAttribute("link_index", i + 1); // Add index attributes
         }
-        tabs.children[i].setAttribute("link_index", i+1)
-        containers.children[i].setAttribute("link_index", i+1)
-    }
+        setDynamicContainers();
+    };
+
+    // Start the dynamic container initialization
+    initializeDynamicContainers();
+
 </script>
 </html>
