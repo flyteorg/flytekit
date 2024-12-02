@@ -134,6 +134,7 @@ class LaunchPlan(object):
         auth_role: Optional[_common_models.AuthRole] = None,
         trigger: Optional[LaunchPlanTriggerBase] = None,
         overwrite_cache: Optional[bool] = None,
+        auto_activate: bool = False,
     ) -> LaunchPlan:
         ctx = FlyteContextManager.current_context()
         default_inputs = default_inputs or {}
@@ -186,6 +187,7 @@ class LaunchPlan(object):
             security_context=security_context,
             trigger=trigger,
             overwrite_cache=overwrite_cache,
+            auto_activate=auto_activate,
         )
 
         # This is just a convenience - we'll need the fixed inputs LiteralMap for when serializing the Launch Plan out
@@ -216,6 +218,7 @@ class LaunchPlan(object):
         auth_role: Optional[_common_models.AuthRole] = None,
         trigger: Optional[LaunchPlanTriggerBase] = None,
         overwrite_cache: Optional[bool] = None,
+        auto_activate: bool = False,
     ) -> LaunchPlan:
         """
         This function offers a friendlier interface for creating launch plans. If the name for the launch plan is not
@@ -242,6 +245,9 @@ class LaunchPlan(object):
             workflow. This is useful to achieve fairness. Note: MapTasks are regarded as one unit, and
             parallelism/concurrency of MapTasks is independent from this.
         :param trigger: [alpha] This is a new syntax for specifying schedules.
+        :param overwrite_cache: If set to True, the execution will always overwrite cache
+        :param auto_activate: If set to True, the launch plan will be activated automatically on registration.
+         Default is False.
         """
         if name is None and (
             default_inputs is not None
@@ -293,6 +299,7 @@ class LaunchPlan(object):
                 ("max_parallelism", max_parallelism, cached_outputs["_max_parallelism"]),
                 ("security_context", security_context, cached_outputs["_security_context"]),
                 ("overwrite_cache", overwrite_cache, cached_outputs["_overwrite_cache"]),
+                ("auto_activate", auto_activate, cached_outputs["_auto_activate"]),
             ]:
                 if new != cached:
                     raise AssertionError(
@@ -324,6 +331,7 @@ class LaunchPlan(object):
                 security_context=security_context,
                 trigger=trigger,
                 overwrite_cache=overwrite_cache,
+                auto_activate=auto_activate,
             )
         LaunchPlan.CACHE[name or workflow.name] = lp
         return lp
@@ -343,6 +351,7 @@ class LaunchPlan(object):
         security_context: Optional[security.SecurityContext] = None,
         trigger: Optional[LaunchPlanTriggerBase] = None,
         overwrite_cache: Optional[bool] = None,
+        auto_activate: bool = False,
     ):
         self._name = name
         self._workflow = workflow
@@ -362,6 +371,7 @@ class LaunchPlan(object):
         self._security_context = security_context
         self._trigger = trigger
         self._overwrite_cache = overwrite_cache
+        self._auto_activate = auto_activate
 
         FlyteEntities.entities.append(self)
 
@@ -379,6 +389,7 @@ class LaunchPlan(object):
         security_context: Optional[security.SecurityContext] = None,
         trigger: Optional[LaunchPlanTriggerBase] = None,
         overwrite_cache: Optional[bool] = None,
+        auto_activate: bool = False,
     ) -> LaunchPlan:
         return LaunchPlan(
             name=name,
@@ -394,6 +405,7 @@ class LaunchPlan(object):
             security_context=security_context or self.security_context,
             trigger=trigger,
             overwrite_cache=overwrite_cache or self.overwrite_cache,
+            auto_activate=auto_activate,
         )
 
     @property
@@ -463,6 +475,10 @@ class LaunchPlan(object):
     @property
     def trigger(self) -> Optional[LaunchPlanTriggerBase]:
         return self._trigger
+
+    @property
+    def should_auto_activate(self) -> bool:
+        return self._auto_activate
 
     def construct_node_metadata(self) -> _workflow_model.NodeMetadata:
         return self.workflow.construct_node_metadata()
