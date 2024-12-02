@@ -596,6 +596,7 @@ def get_serializable_array_node(
         min_successes=array_node.min_successes,
         min_success_ratio=array_node.min_success_ratio,
         execution_mode=array_node.execution_mode,
+        is_original_sub_node_interface=array_node.is_original_sub_node_interface,
     )
 
 
@@ -629,6 +630,8 @@ def get_serializable_array_node_map_task(
         parallelism=entity.concurrency,
         min_successes=entity.min_successes,
         min_success_ratio=entity.min_success_ratio,
+        execution_mode=entity.execution_mode,
+        is_original_sub_node_interface=entity.is_original_sub_node_interface,
     )
 
 
