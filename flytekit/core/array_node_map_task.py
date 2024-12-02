@@ -367,22 +367,21 @@ def map_task(
     :param min_successes: The minimum number of successful executions
     :param min_success_ratio: The minimum ratio of successful executions
     """
-    from flytekit.remote import FlyteLaunchPlan
 
-    if isinstance(target, LaunchPlan) or isinstance(target, FlyteLaunchPlan):
-        return array_node(
-            target=target,
-            concurrency=concurrency,
-            min_successes=min_successes,
-            min_success_ratio=min_success_ratio,
-        )
-    return array_node_map_task(
-        task_function=target,
+    # if isinstance(target, LaunchPlan) or isinstance(target, FlyteLaunchPlan):
+    return array_node(
+        target=target,
         concurrency=concurrency,
         min_successes=min_successes,
         min_success_ratio=min_success_ratio,
-        **kwargs,
     )
+    # return array_node_map_task(
+    #     task_function=target,
+    #     concurrency=concurrency,
+    #     min_successes=min_successes,
+    #     min_success_ratio=min_success_ratio,
+    #     **kwargs,
+    # )
 
 
 def array_node_map_task(
