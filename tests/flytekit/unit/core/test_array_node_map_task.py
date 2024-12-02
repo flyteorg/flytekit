@@ -6,8 +6,9 @@ from collections import OrderedDict
 from typing import List
 
 import pytest
+from flyteidl.core import workflow_pb2 as _core_workflow
 
-from flytekit import dynamic, map_task, task, workflow, eager
+from flytekit import dynamic, map_task, task, workflow, eager, PythonFunctionTask
 from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SerializationSettings
 from flytekit.core import context_manager
 from flytekit.core.array_node_map_task import ArrayNodeMapTask, ArrayNodeMapTaskResolver
@@ -21,6 +22,11 @@ from flytekit.models.literals import (
 )
 from flytekit.tools.translator import get_serializable
 from flytekit.types.directory import FlyteDirectory
+
+
+class PythonFunctionTaskExtension(PythonFunctionTask):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
 
 @pytest.fixture
@@ -113,7 +119,6 @@ def test_serialization(serialization_settings):
     task_spec = get_serializable(OrderedDict(), serialization_settings, arraynode_maptask)
 
     assert task_spec.template.metadata.retries.retries == 2
-    assert task_spec.template.custom["minSuccessRatio"] == 1.0
     assert task_spec.template.type == "python-task"
     assert task_spec.template.task_type_version == 1
     assert task_spec.template.container.args == [
@@ -377,24 +382,39 @@ def test_serialization_metadata(serialization_settings):
 
 def test_serialization_metadata2(serialization_settings):
     @task
-    def t1(a: int) -> int:
+    def t1(a: int) -> typing.Optional[int]:
         return a + 1
 
-    arraynode_maptask = map_task(t1, metadata=TaskMetadata(retries=2, interruptible=True))
+    arraynode_maptask = map_task(t1, min_success_ratio=0.9, concurrency=10, metadata=TaskMetadata(retries=2, interruptible=True))
     assert arraynode_maptask.metadata.interruptible
 
     @workflow
     def wf(x: typing.List[int]):
         return arraynode_maptask(a=x)
 
+    full_state_array_node_map_task = map_task(PythonFunctionTaskExtension(task_config={}, task_function=t1))
+
+    @workflow
+    def wf1(x: typing.List[int]):
+        return full_state_array_node_map_task(a=x)
+
     od = OrderedDict()
     wf_spec = get_serializable(od, serialization_settings, wf)
 
     assert arraynode_maptask.construct_node_metadata().interruptible
-    assert wf_spec.template.nodes[0].metadata.interruptible
+    array_node = wf_spec.template.nodes[0]
+    assert array_node.metadata.interruptible
+    assert array_node.array_node._min_success_ratio == 0.9
+    assert array_node.array_node._parallelism == 10
+    assert not array_node.array_node._is_original_sub_node_interface
+    assert array_node.array_node._execution_mode == _core_workflow.ArrayNode.MINIMAL_STATE
     task_spec = od[arraynode_maptask]
     assert task_spec.template.metadata.retries.retries == 2
     assert task_spec.template.metadata.interruptible
+
+    wf1_spec = get_serializable(od, serialization_settings, wf1)
+    array_node = wf1_spec.template.nodes[0]
+    assert array_node.array_node._execution_mode == _core_workflow.ArrayNode.FULL_STATE
 
 
 def test_serialization_extended_resources(serialization_settings):
