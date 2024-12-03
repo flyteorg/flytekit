@@ -13,6 +13,7 @@ from typing import Callable, List, Optional
 import fsspec
 
 import flytekit
+from flytekit.core import context_manager
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.utils import ClassDecorator
 from flytekit.interactive.constants import EXIT_CODE_SUCCESS, MAX_IDLE_SECONDS
@@ -96,19 +97,18 @@ def exit_handler(
         task_function.__name__,
     )
     logger.info(f"type(task_function) {type(task_function)}")
-    return task_function(*args, **kwargs)
-    # Get the actual function from the task.
-    # while hasattr(task_function, "__wrapped__"):
-    #     if isinstance(task_function, vscode):
-    #         task_function = task_function.__wrapped__
-    #         break
-    #     task_function = task_function.__wrapped__
-    # print("*args", *args)
-    #
-    # from flytekit import PythonFunctionTask, dynamic
-    # # if execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
-    # #     return dynamic(task_function).dynamic_execute(task_function, **kwargs)
     # return task_function(*args, **kwargs)
+    # Get the actual function from the task.
+    while hasattr(task_function, "__wrapped__"):
+        if isinstance(task_function, vscode):
+            task_function = task_function.__wrapped__
+            break
+        task_function = task_function.__wrapped__
+    print("*args", *args)
+
+    ctx = context_manager.FlyteContext.current_context()
+    with context_manager.FlyteContextManager.with_context(ctx.new_builder()):
+        return task_function(*args, **kwargs)
 
 
 def download_file(url, target_dir: Optional[str] = "."):
