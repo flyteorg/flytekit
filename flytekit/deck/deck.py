@@ -188,7 +188,6 @@ def _output_deck(task_name: str, new_user_params: ExecutionParameters, is_termin
     ctx = FlyteContext.current_context()
     local_dir = ctx.file_access.get_random_local_directory()
     local_path = f"{local_dir}{os.sep}{DECK_FILE_NAME}"
-    print("@@@ output deck")
     try:
         with open(local_path, "w", encoding="utf-8") as f:
             f.write(_get_deck(new_user_params=new_user_params, ignore_jupyter=True, is_terminal=is_terminal))
