@@ -95,9 +95,9 @@ def exit_handler(
         load_module_from_path(task_function.__module__, task_function_source_path),
         task_function.__name__,
     )
-    print("type(task_function)", type(task_function))
-    print("args", args)
-    print("kwargs", kwargs)
+    logger.info("type(task_function)", type(task_function))
+    logger.info("args", args)
+    logger.info("kwargs", kwargs)
     return task_function.execute(*args, **kwargs)
     # Get the actual function from the task.
     # while hasattr(task_function, "__wrapped__"):
@@ -415,6 +415,7 @@ class vscode(ClassDecorator):
         ctx.user_space_params.builder().add_attr(
             TASK_FUNCTION_SOURCE_PATH, inspect.getsourcefile(self.task_function)
         ).build()
+        logger.info("vscode execute")
 
         # 1. If the decorator is disabled, we don't launch the VSCode server.
         # 2. When user use pyflyte run or python to execute the task, we don't launch the VSCode server.
