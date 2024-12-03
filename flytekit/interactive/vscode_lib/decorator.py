@@ -96,7 +96,7 @@ def exit_handler(
         load_module_from_path(task_function.__module__, task_function_source_path),
         task_function.__name__,
     )
-    logger.info(f"type(task_function) {type(task_function)}")
+    logger.info(f"first type(task_function) {type(task_function)}")
     # return task_function(*args, **kwargs)
     # Get the actual function from the task.
     while hasattr(task_function, "__wrapped__"):
@@ -104,11 +104,9 @@ def exit_handler(
             task_function = task_function.__wrapped__
             break
         task_function = task_function.__wrapped__
-    print("*args", *args)
+    logger.info(f"second first type(task_function) {type(task_function)}")
 
-    ctx = context_manager.FlyteContext.current_context()
-    with context_manager.FlyteContextManager.with_context(ctx.new_builder()):
-        return task_function(*args, **kwargs)
+    return task_function(*args, **kwargs)
 
 
 def download_file(url, target_dir: Optional[str] = "."):
@@ -443,22 +441,28 @@ class vscode(ClassDecorator):
         task_function_source_dir = os.path.dirname(
             FlyteContextManager.current_context().user_space_params.TASK_FUNCTION_SOURCE_PATH
         )
+        # child_process = multiprocessing.Process(
+        #     target=execute_command,
+        #     kwargs={
+        #         "cmd": f"code-server --bind-addr 0.0.0.0:{self.port} --disable-workspace-trust --auth none {task_function_source_dir}"
+        #     },
+        # )
         child_process = multiprocessing.Process(
             target=execute_command,
             kwargs={
-                "cmd": f"code-server --bind-addr 0.0.0.0:{self.port} --disable-workspace-trust --auth none {task_function_source_dir}"
+                "cmd": f"echo 1"
             },
         )
         child_process.start()
 
         # 3. Prepare the interactive debugging Python script and launch.json.
-        prepare_interactive_python(self.task_function)  # type: ignore
+        # prepare_interactive_python(self.task_function)  # type: ignore
 
         # 4. Prepare the task resumption Python script
-        prepare_resume_task_python(child_process.pid)
+        # prepare_resume_task_python(child_process.pid)
 
         # 5. Prepare the launch.json
-        prepare_launch_json()
+        # prepare_launch_json()
 
         return exit_handler(
             child_process=child_process,
