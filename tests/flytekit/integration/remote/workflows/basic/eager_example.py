@@ -14,4 +14,3 @@ async def simple_eager_workflow(x: int) -> int:
     # the result.
     out = add_one(x=x)
     return out
-
