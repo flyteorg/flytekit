@@ -226,6 +226,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         In the case of dynamic workflows, this function will produce a workflow definition at execution time which will
         then proceed to be executed.
         """
+        logger.info("compiling into workflow")
         # TODO: circular import
         from flytekit.core.task import ReferenceTask
 
