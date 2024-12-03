@@ -65,10 +65,33 @@
             padding: 2rem 2rem;
         }
 
+        #refresh-button {
+            display: flex;
+            justify-content: center;
+            margin: 1rem 0;
+        }
+
+        #refresh-button button {
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: bold;
+            color: #fff;
+            background-color: #a31aff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        #refresh-button button:hover {
+            background-color: #8b1ccf;
+        }
     </style>
 
 </head>
 <body>
+    <div id="refresh-button">
+        <button onclick="refreshPage()">Refresh</button>
+    </div>
     <nav id="flyte-frame-nav">
         <ul id="flyte-frame-tabs">
             $NAV_HTML
@@ -119,6 +142,11 @@
         }
         tabs.children[i].setAttribute("link_index", i+1)
         containers.children[i].setAttribute("link_index", i+1)
+    }
+
+    // Refresh page function
+    const refreshPage = () => {
+        window.location.reload();
     }
 </script>
 </html>
