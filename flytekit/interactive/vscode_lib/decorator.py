@@ -96,7 +96,7 @@ def exit_handler(
         task_function.__name__,
     )
     logger.info(f"type(task_function) {type(task_function)}")
-    return task_function.execute(*args, **kwargs)
+    return task_function(*args, **kwargs)
     # Get the actual function from the task.
     # while hasattr(task_function, "__wrapped__"):
     #     if isinstance(task_function, vscode):
