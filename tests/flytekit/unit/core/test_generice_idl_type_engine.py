@@ -751,39 +751,48 @@ def test_dataclass_transformer():
         s: UnsupportedSchemaType
 
     schema = {
-        "$ref": "#/definitions/TeststructSchema",
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "definitions": {
-            "InnerstructSchema": {
-                "additionalProperties": False,
+        "type": "object",
+        "title": "TestStruct",
+        "properties": {
+            "s": {
+                "type": "object",
+                "title": "InnerStruct",
                 "properties": {
-                    "a": {"title": "a", "type": "integer"},
-                    "b": {"default": None, "title": "b", "type": ["string", "null"]},
+                    "a": {
+                        "type": "integer"
+                    },
+                    "b": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
                     "c": {
-                        "items": {"title": "c", "type": "integer"},
-                        "title": "c",
                         "type": "array",
-                    },
+                        "items": {
+                            "type": "integer"
+                        }
+                    }
                 },
-                "type": "object",
-            },
-            "TeststructSchema": {
                 "additionalProperties": False,
-                "properties": {
-                    "m": {
-                        "additionalProperties": {"title": "m", "type": "string"},
-                        "title": "m",
-                        "type": "object",
-                    },
-                    "s": {
-                        "$ref": "#/definitions/InnerstructSchema",
-                        "field_many": False,
-                        "type": "object",
-                    },
-                },
-                "type": "object",
+                "required": ["a", "b", "c"]
             },
+            "m": {
+                "type": "object",
+                "additionalProperties": {
+                    "type": "string"
+                },
+                "propertyNames": {
+                    "type": "string"
+                }
+            }
         },
+        "additionalProperties": False,
+        "required": ["s", "m"]
     }
     tf = DataclassTransformer()
     t = tf.get_literal_type(TestStruct)
@@ -1566,7 +1575,7 @@ def test_assert_dataclass_type():
     pv = Bar(x=3)
     with pytest.raises(
             TypeTransformerFailedError,
-            match="Type of Val '<class 'int'>' is not an instance of <class '.*.ArgsSchema'>",
+            match="Type of Val '<class 'int'>' is not an instance of <class '.*.Args'>",
     ):
         DataclassTransformer().assert_type(gt, pv)
 
@@ -2083,6 +2092,7 @@ def test_pickle_type():
 
 
 def test_enum_in_dataclass():
+    from mashumaro.jsonschema import build_json_schema
     @dataclass
     class Datum(DataClassJsonMixin):
         x: int
@@ -2091,7 +2101,7 @@ def test_enum_in_dataclass():
     lt = TypeEngine.to_literal_type(Datum)
     schema = Datum.schema()
     schema.fields["y"].load_by = LoadDumpOptions.name
-    assert lt.metadata == JSONSchema().dump(schema)
+    assert lt.metadata == build_json_schema(Datum).to_dict()
 
     transformer = DataclassTransformer()
     ctx = FlyteContext.current_context()
@@ -2468,18 +2478,14 @@ class AnnotatedDataclassTest(DataClassJsonMixin):
                 LiteralType(
                     simple=SimpleType.STRUCT,
                     metadata={
-                        "$schema": "http://json-schema.org/draft-07/schema#",
-                        "definitions": {
-                            "DataclasstestSchema": {
-                                "properties": {
-                                    "a": {"title": "a", "type": "integer"},
-                                    "b": {"title": "b", "type": "string"},
-                                },
-                                "type": "object",
-                                "additionalProperties": False,
-                            }
+                        "type": "object",
+                        "title": "DataclassTest",
+                        "properties": {
+                            "a": {"type": "integer"},
+                            "b": {"type": "string"}
                         },
-                        "$ref": "#/definitions/DataclasstestSchema",
+                        "additionalProperties": False,
+                        "required": ["a", "b"]
                     },
                     structure=TypeStructure(
                         tag="",
@@ -2496,18 +2502,14 @@ class AnnotatedDataclassTest(DataClassJsonMixin):
                 LiteralType(
                     simple=SimpleType.STRUCT,
                     metadata={
-                        "$schema": "http://json-schema.org/draft-07/schema#",
-                        "definitions": {
-                            "DataclasstestSchema": {
-                                "properties": {
-                                    "a": {"title": "a", "type": "integer"},
-                                    "b": {"title": "b", "type": "string"},
-                                },
-                                "type": "object",
-                                "additionalProperties": False,
-                            }
+                        "type": "object",
+                        "title": "DataclassTest",
+                        "properties": {
+                            "a": {"type": "integer"},
+                            "b": {"type": "string"}
                         },
-                        "$ref": "#/definitions/DataclasstestSchema",
+                        "additionalProperties": False,
+                        "required": ["a", "b"]
                     },
                     structure=TypeStructure(
                         tag="",
@@ -2524,18 +2526,14 @@ class AnnotatedDataclassTest(DataClassJsonMixin):
                 LiteralType(
                     simple=SimpleType.STRUCT,
                     metadata={
-                        "$schema": "http://json-schema.org/draft-07/schema#",
-                        "definitions": {
-                            "AnnotateddataclasstestSchema": {
-                                "properties": {
-                                    "a": {"title": "a", "type": "integer"},
-                                    "b": {"title": "b", "type": "string"},
-                                },
-                                "type": "object",
-                                "additionalProperties": False,
-                            }
+                        "type": "object",
+                        "title": "AnnotatedDataclassTest",
+                        "properties": {
+                            "a": {"type": "integer"},
+                            "b": {"type": "string"}
                         },
-                        "$ref": "#/definitions/AnnotateddataclasstestSchema",
+                        "additionalProperties": False,
+                        "required": ["a", "b"]
                     },
                     structure=TypeStructure(
                         tag="",

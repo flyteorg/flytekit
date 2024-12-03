@@ -5,6 +5,7 @@ import hashlib
 import os
 import pathlib
 import re
+import sys
 import typing
 from abc import abstractmethod
 from dataclasses import asdict, dataclass
@@ -331,6 +332,37 @@ class ImageSpec:
         copied_image_spec._is_force_push = True
 
         return copied_image_spec
+
+    @classmethod
+    def from_env(cls, *, pinned_packages: Optional[List[str]] = None, **kwargs) -> "ImageSpec":
+        """Create ImageSpec with the environment's Python version and packages pinned to the ones in the environment."""
+
+        from importlib.metadata import version
+
+        # Invalid kwargs when using `ImageSpec.from_env`
+        invalid_kwargs = ["python_version"]
+        for invalid_kwarg in invalid_kwargs:
+            if invalid_kwarg in kwargs and kwargs[invalid_kwarg] is not None:
+                msg = (
+                    f"{invalid_kwarg} can not be used with `from_env` because it will be inferred from the environment"
+                )
+                raise ValueError(msg)
+
+        version_info = sys.version_info
+        python_version = f"{version_info.major}.{version_info.minor}"
+
+        if "packages" in kwargs:
+            packages = kwargs.pop("packages")
+        else:
+            packages = []
+
+        pinned_packages = pinned_packages or []
+
+        for package_to_pin in pinned_packages:
+            package_version = version(package_to_pin)
+            packages.append(f"{package_to_pin}=={package_version}")
+
+        return ImageSpec(packages=packages, python_version=python_version, **kwargs)
 
 
 class ImageSpecBuilder:
