@@ -226,7 +226,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         In the case of dynamic workflows, this function will produce a workflow definition at execution time which will
         then proceed to be executed.
         """
-        logger.info("compiling into workflow")
+        logger.error("compiling into workflow")
         # TODO: circular import
         from flytekit.core.task import ReferenceTask
 
@@ -237,7 +237,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
 
         updated_ctx = ctx.with_compilation_state(cs)
         if self.execution_mode == self.ExecutionBehavior.DYNAMIC:
-            logger.info("compiling dynamic task")
+            logger.error("compiling dynamic task")
             es = ctx.new_execution_state().with_params(mode=ExecutionState.Mode.DYNAMIC_TASK_EXECUTION)
             updated_ctx = updated_ctx.with_execution_state(es)
 
@@ -365,7 +365,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
             return _literal_models.LiteralMap(literals=wf_outputs_as_literal_dict)
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
-            logger.info("self.compile_into_workflow(ctx, task_function, **kwargs)")
+            logger.error("self.compile_into_workflow(ctx, task_function, **kwargs)")
             return self.compile_into_workflow(ctx, task_function, **kwargs)
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_TASK_EXECUTION:
