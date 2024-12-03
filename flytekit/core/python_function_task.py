@@ -235,7 +235,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
 
         updated_ctx = ctx.with_compilation_state(cs)
         if self.execution_mode == self.ExecutionBehavior.DYNAMIC:
-            print("compiling dynamic task")
+            print("compiling dynamic task", flush=True)
             es = ctx.new_execution_state().with_params(mode=ExecutionState.Mode.DYNAMIC_TASK_EXECUTION)
             updated_ctx = updated_ctx.with_execution_state(es)
 
@@ -363,6 +363,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
             return _literal_models.LiteralMap(literals=wf_outputs_as_literal_dict)
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
+            print("self.compile_into_workflow(ctx, task_function, **kwargs)", flush=True)
             return self.compile_into_workflow(ctx, task_function, **kwargs)
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_TASK_EXECUTION:
