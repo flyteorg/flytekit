@@ -200,6 +200,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         This method will be invoked to execute the task. If you do decide to override this method you must also
         handle dynamic tasks or you will no longer be able to use the task as a dynamic task generator.
         """
+        logger.info("python function task execute")
         if self.execution_mode == self.ExecutionBehavior.DEFAULT:
             return self._task_function(**kwargs)
         elif self.execution_mode == self.ExecutionBehavior.EAGER:
@@ -363,7 +364,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
             return _literal_models.LiteralMap(literals=wf_outputs_as_literal_dict)
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
-            print("self.compile_into_workflow(ctx, task_function, **kwargs)", flush=True)
+            logger.info("self.compile_into_workflow(ctx, task_function, **kwargs)")
             return self.compile_into_workflow(ctx, task_function, **kwargs)
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_TASK_EXECUTION:

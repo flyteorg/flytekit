@@ -95,9 +95,7 @@ def exit_handler(
         load_module_from_path(task_function.__module__, task_function_source_path),
         task_function.__name__,
     )
-    logger.info("type(task_function)", type(task_function))
-    logger.info("args", args)
-    logger.info("kwargs", kwargs)
+    logger.info(f"type(task_function) {type(task_function)}")
     return task_function.execute(*args, **kwargs)
     # Get the actual function from the task.
     # while hasattr(task_function, "__wrapped__"):
