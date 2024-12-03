@@ -1524,4 +1524,110 @@ async def async_flyte_entity_call_handler(
         )
 
 
-flyte_entity_call_handler = loop_manager.synced(async_flyte_entity_call_handler)
+def flyte_entity_call_handler(
+    entity: SupportsNodeCreation, *args, **kwargs
+) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, None]:
+    """
+    This function is the call handler for tasks, workflows, and launch plans (which redirects to the underlying
+    workflow). The logic is the same for all three, but we did not want to create base class, hence this separate
+    method. When one of these entities is () aka __called__, there are three things we may do:
+    #. Compilation Mode - this happens when the function is called as part of a workflow (potentially
+       dynamic task?). Instead of running the user function, produce promise objects and create a node.
+    #. Workflow Execution Mode - when a workflow is being run locally. Even though workflows are functions
+       and everything should be able to be passed through naturally, we'll want to wrap output values of the
+       function into objects, so that potential .with_cpu or other ancillary functions can be attached to do
+       nothing. Subsequent tasks will have to know how to unwrap these. If by chance a non-Flyte task uses a
+       task output as an input, things probably will fail pretty obviously.
+    #. Start a local execution - This means that we're not already in a local workflow execution, which means that
+       we should expect inputs to be native Python values and that we should return Python native values.
+    """
+    # Make sure arguments are part of interface
+    for k, v in kwargs.items():
+        if k not in entity.python_interface.inputs:
+            raise AssertionError(f"Received unexpected keyword argument '{k}' in function '{entity.name}'")
+
+    # Check if we have more arguments than expected
+    if len(args) > len(entity.python_interface.inputs):
+        raise AssertionError(
+            f"Received more arguments than expected in function '{entity.name}'. Expected {len(entity.python_interface.inputs)} but got {len(args)}"
+        )
+
+    # Convert args to kwargs
+    for arg, input_name in zip(args, entity.python_interface.inputs.keys()):
+        if input_name in kwargs:
+            raise AssertionError(f"Got multiple values for argument '{input_name}' in function '{entity.name}'")
+        kwargs[input_name] = arg
+
+    ctx = FlyteContextManager.current_context()
+    # This handles the case where we call other entities from within a running eager task.
+    if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.EAGER_EXECUTION:
+        raise AssertionError("shouldn't be here")
+
+    if ctx.execution_state and (
+        ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION
+        or ctx.execution_state.mode == ExecutionState.Mode.LOCAL_TASK_EXECUTION
+    ):
+        logger.error(
+            "You are not supposed to nest @task/@workflow because the nested task or workflow will run in the same container."
+        )
+    if ctx.compilation_state is not None and ctx.compilation_state.mode == 1:
+        return create_and_link_node(ctx, entity=entity, **kwargs)
+
+    # This handles the case for when we're already in a local execution state
+    if ctx.execution_state and ctx.execution_state.is_local_execution():
+        original_mode = ctx.execution_state.mode
+        mode = cast(LocallyExecutable, entity).local_execution_mode()
+        omt = OutputMetadataTracker()
+        with FlyteContextManager.with_context(
+            ctx.with_execution_state(ctx.execution_state.with_params(mode=mode)).with_output_metadata_tracker(omt)
+        ) as child_ctx:
+            if (
+                child_ctx.execution_state
+                and child_ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED
+            ):
+                if len(entity.python_interface.inputs) > 0 or len(entity.python_interface.outputs) > 0:
+                    output_names = list(entity.python_interface.outputs.keys())
+                    if len(output_names) == 0:
+                        return VoidPromise(entity.name)
+                    vals = [Promise(var, None) for var in output_names]
+                    return create_task_output(vals, entity.python_interface)
+                else:
+                    return None
+            if original_mode == ExecutionState.Mode.EAGER_LOCAL_EXECUTION:
+                # When calling a local task/eager task/launch plan/subworkflow, we want the results to be Python
+                # native values, not wrapped in Promises.
+                local_execute_results = cast(LocallyExecutable, entity).local_execute(ctx, **kwargs)
+                return create_native_named_tuple(ctx, local_execute_results, entity.python_interface)
+            else:
+                return cast(LocallyExecutable, entity).local_execute(ctx, **kwargs)
+
+    # This condition kicks off a new local execution.
+    else:
+        mode = cast(LocallyExecutable, entity).local_execution_mode()
+        omt = OutputMetadataTracker()
+        with FlyteContextManager.with_context(
+            ctx.with_execution_state(ctx.new_execution_state().with_params(mode=mode)).with_output_metadata_tracker(omt)
+        ) as child_ctx:
+            cast(ExecutionParameters, child_ctx.user_space_params)._decks = []
+            result = cast(LocallyExecutable, entity).local_execute(child_ctx, **kwargs)
+
+        expected_outputs = len(entity.python_interface.outputs)
+        if expected_outputs == 0:
+            if result is None or isinstance(result, VoidPromise):
+                return None
+            else:
+                raise ValueError(f"Received an output when workflow local execution expected None. Received: {result}")
+
+        if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.DYNAMIC_TASK_EXECUTION:
+            return result
+
+        if (1 < expected_outputs == len(cast(Tuple[Promise], result))) or (
+            result is not None and expected_outputs == 1
+        ):
+            return create_native_named_tuple(ctx, result, entity.python_interface)
+
+        raise AssertionError(
+            f"Expected outputs and actual outputs do not match."
+            f"Result {result}. "
+            f"Python interface: {entity.python_interface}"
+        )
