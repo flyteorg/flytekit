@@ -4,9 +4,8 @@
     <meta charset="utf-8">
     <title>User Content</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <!-- (Styles remain the same) -->
+    <link href="https://fonts.googleapis.com/css?family=Lato:300,400,700%7COpen+Sans:400,700" rel="stylesheet">
     <style>
-        /* ... your existing styles ... */
         ol, ul {
             list-style: none;
         }
@@ -58,14 +57,16 @@
         }
 
         #flyte-frame-container > div {
-            display: none;
+            display: None;
         }
 
         #flyte-frame-container > div.active {
             display: block;
             padding: 2rem 2rem;
         }
+
     </style>
+
 </head>
 <body>
     <nav id="flyte-frame-nav">
@@ -79,75 +80,45 @@
 </body>
 <script>
     const setTabs = index => {
-        const container = document.getElementById('flyte-frame-tabs');
+        const container = document.getElementById('flyte-frame-tabs')
         for (let i = 0; i < container.children.length; i++) {
-            const tabIndex = container.children[i].getAttribute('link_index');
+            const tabIndex = container.children[i].getAttribute('link_index')
             if (tabIndex === index) {
-                container.children[i].classList.add('active');
+                container.children[i].classList.add('active')
             } else {
-                container.children[i].className = '';
+                container.children[i].className = ''
             }
         }
-    };
-
-    // Modified setContent function
+    }
     const setContent = index => {
-        const container = document.getElementById('flyte-frame-container');
+        const container = document.getElementById('flyte-frame-container')
         for (let i = 0; i < container.children.length; i++) {
-            const contentDiv = container.children[i];
-            const tabIndex = contentDiv.getAttribute('link_index');
+            const tabIndex = container.children[i].getAttribute('link_index')
             if (tabIndex === index) {
-                contentDiv.classList.add('active');
-                // Clear any existing interval on the contentDiv
-                if (contentDiv.refreshInterval) {
-                    clearInterval(contentDiv.refreshInterval);
-                }
-                // Start refreshing the content in this active tab
-                contentDiv.refreshInterval = setInterval(() => {
-                    // Update content inside this tab
-                    contentDiv.innerHTML = 'Content refreshed at ' + new Date().toLocaleTimeString();
-                }, 1000); // Refresh every 1 seconds
+                container.children[i].classList.add('active')
             } else {
-                contentDiv.className = '';
-                // Clear any existing interval on inactive tabs
-                if (contentDiv.refreshInterval) {
-                    clearInterval(contentDiv.refreshInterval);
-                    contentDiv.refreshInterval = null;
-                }
+                container.children[i].className = ''
             }
         }
-    };
-
+    }
     const setLinkIndex = index => {
-        setTabs(index);
-        setContent(index);
-        currentTabIndex = index; // Update current tab index
-    };
-
+        setTabs(index)
+        setContent(index)
+    }
     const handleLinkClick = e => {
         const linkIndex = e.getAttribute('link_index');
-        setLinkIndex(linkIndex);
-    };
+        setLinkIndex(linkIndex)
+    }
 
     const tabs = document.getElementById('flyte-frame-tabs');
     const containers = document.getElementById('flyte-frame-container');
-    let currentTabIndex = '1'; // Default to the first tab (as a string)
-
-    for (let i = 0; i < tabs.children.length; i++) {
+    for(var i = 0; i < tabs.children.length; i++) {
         if (i === 0) {
-            tabs.children[i].classList.add('active');
-            containers.children[i].classList.add('active');
-            // Initialize content refresh for the first tab
-            setContent('1');
+            tabs.children[i].classList.add('active')
+            containers.children[i].classList.add('active')
         }
-        const indexStr = (i + 1).toString();
-        tabs.children[i].setAttribute("link_index", indexStr);
-        containers.children[i].setAttribute("link_index", indexStr);
-
-        // Add event listener for clicks
-        tabs.children[i].onclick = function() {
-            handleLinkClick(this);
-        };
+        tabs.children[i].setAttribute("link_index", i+1)
+        containers.children[i].setAttribute("link_index", i+1)
     }
 </script>
 </html>
