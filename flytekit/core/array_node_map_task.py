@@ -8,6 +8,7 @@ from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Union, cast
 
 from flyteidl.core import tasks_pb2
+from flyteidl.core import workflow_pb2 as _core_workflow
 
 from flytekit.configuration import SerializationSettings
 from flytekit.core import tracker
@@ -21,7 +22,6 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.core.utils import timeit
 from flytekit.loggers import logger
 from flytekit.models import literals as _literal_models
-from flytekit.models.array_job import ArrayJob
 from flytekit.models.core.workflow import NodeMetadata
 from flytekit.models.interface import Variable
 from flytekit.models.task import Container, K8sPod, Sql, Task
@@ -106,6 +106,14 @@ class ArrayNodeMapTask(PythonTask):
         self._min_success_ratio: Optional[float] = min_success_ratio
         self._collection_interface = collection_interface
 
+        self._execution_mode: _core_workflow.ArrayNode.ExecutionMode = _core_workflow.ArrayNode.FULL_STATE
+        if (
+            type(python_function_task) in {PythonFunctionTask, PythonInstanceTask}
+            or isinstance(python_function_task, functools.partial)
+            and type(python_function_task.func) in {PythonFunctionTask, PythonInstanceTask}
+        ):
+            self._execution_mode = _core_workflow.ArrayNode.MINIMAL_STATE
+
         if "metadata" not in kwargs and actual_task.metadata:
             kwargs["metadata"] = actual_task.metadata
         if "security_ctx" not in kwargs and actual_task.security_context:
@@ -154,6 +162,14 @@ class ArrayNodeMapTask(PythonTask):
     def bound_inputs(self) -> Set[str]:
         return self._bound_inputs
 
+    @property
+    def execution_mode(self) -> _core_workflow.ArrayNode.ExecutionMode:
+        return self._execution_mode
+
+    @property
+    def is_original_sub_node_interface(self) -> bool:
+        return False
+
     def get_extended_resources(self, settings: SerializationSettings) -> Optional[tasks_pb2.ExtendedResources]:
         return self.python_function_task.get_extended_resources(settings)
 
@@ -169,7 +185,7 @@ class ArrayNodeMapTask(PythonTask):
             self.python_function_task.reset_command_fn()
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
-        return ArrayJob(parallelism=self._concurrency, min_success_ratio=self._min_success_ratio).to_dict()
+        return self._run_task.get_custom(settings) or {}
 
     def get_config(self, settings: SerializationSettings) -> Optional[Dict[str, str]]:
         return self.python_function_task.get_config(settings)

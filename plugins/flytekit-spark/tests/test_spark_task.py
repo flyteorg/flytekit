@@ -11,8 +11,8 @@ from flytekitplugins.spark.task import Databricks, new_spark_session
 from pyspark.sql import SparkSession
 
 import flytekit
-from flytekit import StructuredDataset, StructuredDatasetTransformerEngine, task
-from flytekit.configuration import Image, ImageConfig, SerializationSettings, FastSerializationSettings
+from flytekit import StructuredDataset, StructuredDatasetTransformerEngine, task, ImageSpec
+from flytekit.configuration import Image, ImageConfig, SerializationSettings, FastSerializationSettings, DefaultImages
 from flytekit.core.context_manager import ExecutionParameters, FlyteContextManager, ExecutionState
 
 
@@ -157,3 +157,34 @@ def test_spark_addPyFile(mock_add_pyfile):
         my_spark.pre_execute(new_ctx.user_space_params)
         mock_add_pyfile.assert_called_once()
         os.remove(os.path.join(os.getcwd(), "flyte_wf.zip"))
+
+
+def test_spark_with_image_spec():
+    custom_image = ImageSpec(
+        registry="ghcr.io/flyteorg",
+        packages=["flytekitplugins-spark"],
+    )
+
+    @task(
+        task_config=Spark(spark_conf={"spark.driver.memory": "1000M"}),
+        container_image=custom_image,
+    )
+    def spark1(partitions: int) -> float:
+        print("Starting Spark with Partitions: {}".format(partitions))
+        return 1.0
+
+    assert spark1.container_image.base_image == f"cr.flyte.org/flyteorg/flytekit:spark-{DefaultImages.get_version_suffix()}"
+    assert spark1._default_executor_path == "/usr/bin/python3"
+    assert spark1._default_applications_path == "local:///usr/local/bin/entrypoint.py"
+
+    @task(
+        task_config=Spark(spark_conf={"spark.driver.memory": "1000M"}),
+        container_image=custom_image,
+    )
+    def spark2(partitions: int) -> float:
+        print("Starting Spark with Partitions: {}".format(partitions))
+        return 1.0
+
+    assert spark2.container_image.base_image == f"cr.flyte.org/flyteorg/flytekit:spark-{DefaultImages.get_version_suffix()}"
+    assert spark2._default_executor_path == "/usr/bin/python3"
+    assert spark2._default_applications_path == "local:///usr/local/bin/entrypoint.py"
