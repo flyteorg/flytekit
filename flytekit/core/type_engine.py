@@ -608,36 +608,38 @@ class DataclassTransformer(TypeTransformer[object]):
 
         schema = None
         try:
-            from marshmallow_enum import EnumField, LoadDumpOptions
+            # This produce JSON SCHEMA draft 2020-12
+            from mashumaro.jsonschema import build_json_schema
 
-            if issubclass(t, DataClassJsonMixin):
-                s = cast(DataClassJsonMixin, self._get_origin_type_in_annotation(t)).schema()
-                for _, v in s.fields.items():
-                    # marshmallow-jsonschema only supports enums loaded by name.
-                    # https://github.com/fuhrysteve/marshmallow-jsonschema/blob/81eada1a0c42ff67de216923968af0a6b54e5dcb/marshmallow_jsonschema/base.py#L228
-                    if isinstance(v, EnumField):
-                        v.load_by = LoadDumpOptions.name
-                # check if DataClass mixin
-                from marshmallow_jsonschema import JSONSchema
-
-                schema = JSONSchema().dump(s)
+            schema = build_json_schema(cast(DataClassJSONMixin, self._get_origin_type_in_annotation(t))).to_dict()
         except Exception as e:
-            # https://github.com/lovasoa/marshmallow_dataclass/issues/13
-            logger.warning(
-                f"Failed to extract schema for object {t}, (will run schemaless) error: {e}"
-                f"If you have postponed annotations turned on (PEP 563) turn it off please. Postponed"
-                f"evaluation doesn't work with json dataclasses"
+            logger.error(
+                f"Failed to extract schema for object {t}, error: {e}\n"
+                f"Please remove `DataClassJsonMixin` and `dataclass_json` decorator from the dataclass definition"
             )
 
         if schema is None:
             try:
-                from mashumaro.jsonschema import build_json_schema
+                # This produce JSON SCHEMA draft 2020-12
+                from marshmallow_enum import EnumField, LoadDumpOptions
 
-                schema = build_json_schema(cast(DataClassJSONMixin, self._get_origin_type_in_annotation(t))).to_dict()
+                if issubclass(t, DataClassJsonMixin):
+                    s = cast(DataClassJsonMixin, self._get_origin_type_in_annotation(t)).schema()
+                    for _, v in s.fields.items():
+                        # marshmallow-jsonschema only supports enums loaded by name.
+                        # https://github.com/fuhrysteve/marshmallow-jsonschema/blob/81eada1a0c42ff67de216923968af0a6b54e5dcb/marshmallow_jsonschema/base.py#L228
+                        if isinstance(v, EnumField):
+                            v.load_by = LoadDumpOptions.name
+                    # check if DataClass mixin
+                    from marshmallow_jsonschema import JSONSchema
+
+                    schema = JSONSchema().dump(s)
             except Exception as e:
-                logger.error(
-                    f"Failed to extract schema for object {t}, error: {e}\n"
-                    f"Please remove `DataClassJsonMixin` and `dataclass_json` decorator from the dataclass definition"
+                # https://github.com/lovasoa/marshmallow_dataclass/issues/13
+                logger.warning(
+                    f"Failed to extract schema for object {t}, (will run schemaless) error: {e}"
+                    f"If you have postponed annotations turned on (PEP 563) turn it off please. Postponed"
+                    f"evaluation doesn't work with json dataclasses"
                 )
 
         # Recursively construct the dataclass_type which contains the literal type of each field
@@ -972,12 +974,34 @@ class ProtobufTransformer(TypeTransformer[Message]):
         return LiteralType(simple=SimpleType.STRUCT, metadata={ProtobufTransformer.PB_FIELD_KEY: self.tag(t)})
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
-        struct = Struct()
+        """
+        Convert the protobuf struct to literal.
+
+        This conversion supports two types of python_val:
+        1. google.protobuf.struct_pb2.Struct: A dictionary-like message
+        2. google.protobuf.struct_pb2.ListValue: An ordered collection of values
+
+        For details, please refer to the following issue:
+        https://github.com/flyteorg/flyte/issues/5959
+
+        Because the remote handling works without errors, we implement conversion with the logic as below:
+        https://github.com/flyteorg/flyte/blob/a87585ab7cbb6a047c76d994b3f127c4210070fd/flytepropeller/pkg/controller/nodes/attr_path_resolver.go#L72-L106
+        """
         try:
-            struct.update(_MessageToDict(cast(Message, python_val)))
+            if type(python_val) == _struct.ListValue:
+                literals = []
+                for v in python_val:
+                    literal_type = TypeEngine.to_literal_type(type(v))
+                    # Recursively convert python native values to literals
+                    literal = TypeEngine.to_literal(ctx, v, type(v), literal_type)
+                    literals.append(literal)
+                return Literal(collection=LiteralCollection(literals=literals))
+            else:
+                struct = Struct()
+                struct.update(_MessageToDict(cast(Message, python_val)))
+                return Literal(scalar=Scalar(generic=struct))
         except Exception:
             raise TypeTransformerFailedError("Failed to convert to generic protobuf struct")
-        return Literal(scalar=Scalar(generic=struct))
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
         if not (lv and lv.scalar and lv.scalar.generic is not None):
@@ -1069,6 +1093,7 @@ def generate_attribute_list_from_dataclass_json_mixin(schema: dict, schema_name:
         # Handle dataclass and dict
         elif property_type == "object":
             if property_val.get("anyOf"):
+                # For optional with dataclass
                 sub_schemea = property_val["anyOf"][0]
                 sub_schemea_name = sub_schemea["title"]
                 attribute_list.append(
@@ -1080,9 +1105,11 @@ def generate_attribute_list_from_dataclass_json_mixin(schema: dict, schema_name:
                     )
                 )
             elif property_val.get("additionalProperties"):
+                # For typing.Dict type
                 elem_type = _get_element_type(property_val["additionalProperties"])
                 attribute_list.append((property_key, typing.Dict[str, elem_type]))  # type: ignore
-            else:
+            elif property_val.get("title"):
+                # For nested dataclass
                 sub_schemea_name = property_val["title"]
                 attribute_list.append(
                     (
@@ -1092,6 +1119,9 @@ def generate_attribute_list_from_dataclass_json_mixin(schema: dict, schema_name:
                         ),
                     )
                 )
+            else:
+                # For untyped dict
+                attribute_list.append((property_key, dict))  # type: ignore
         elif property_type == "enum":
             attribute_list.append([property_key, str])  # type: ignore
         # Handle int, float, bool or str
@@ -1875,7 +1905,7 @@ class UnionTransformer(AsyncTypeTransformer[T]):
                 else:
                     res = trans.to_literal(ctx, python_val, t, expected.union_type.variants[i])
                 if found_res:
-                    print(f"Current type {get_args(python_type)[i]} old res {res_type}")
+                    logger.debug(f"Current type {get_args(python_type)[i]} old res {res_type}")
                     is_ambiguous = True
                 res_type = _add_tag_to_type(trans.get_literal_type(t), trans.name)
                 found_res = True
@@ -2301,6 +2331,7 @@ def generate_attribute_list_from_dataclass_json(schema: dict, schema_name: typin
             attribute_list.append((property_key, List[_get_element_type(property_val["items"])]))  # type: ignore[misc,index]
         # Handle dataclass and dict
         elif property_type == "object":
+            # For nested dataclass
             if property_val.get("$ref"):
                 name = property_val["$ref"].split("/")[-1]
                 attribute_list.append(
@@ -2309,13 +2340,17 @@ def generate_attribute_list_from_dataclass_json(schema: dict, schema_name: typin
                         typing.cast(GenericAlias, convert_marshmallow_json_schema_to_python_class(schema, name)),
                     )
                 )
+            # typed dict and untyped dict
             elif property_val.get("additionalProperties"):
-                attribute_list.append(
-                    (property_key, typing.cast(GenericAlias, _get_element_type(property_val["additionalProperties"]))),
-                )
-            else:
-                attribute_list.append((property_key, Dict[str, _get_element_type(property_val)]))  # type: ignore[misc,index]
-        # Handle int, float, bool or str
+                # untyped dict
+                if property_val["additionalProperties"] == dict():
+                    attribute_list.append((property_key, dict))  # type: ignore
+                else:
+                    # typed dict
+                    attribute_list.append(
+                        (property_key, Dict[str, _get_element_type(property_val["additionalProperties"])])  # type: ignore[misc,index]
+                    )
+        # Handle primitive types like int, float, bool or str
         else:
             attribute_list.append([property_key, _get_element_type(property_val)])  # type: ignore
     return attribute_list
