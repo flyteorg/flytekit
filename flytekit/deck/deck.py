@@ -154,7 +154,9 @@ def generate_time_table(data: dict) -> str:
 
 
 def _get_deck(
-    new_user_params: ExecutionParameters, ignore_jupyter: bool = False, is_terminal: bool = False,
+    new_user_params: ExecutionParameters,
+    ignore_jupyter: bool = False,
+    is_terminal: bool = False,
 ) -> typing.Union[str, "IPython.core.display.HTML"]:  # type:ignore
     """
     Get flyte deck html string
@@ -170,7 +172,9 @@ def _get_deck(
         # The renderer must ensure that the HTML is safe.
         body_htmls.append(f"<div>{value}</div>")
 
-    raw_html = get_deck_template(is_terminal=is_terminal).substitute(NAV_HTML="".join(nav_htmls), BODY_HTML="".join(body_htmls))
+    raw_html = get_deck_template(is_terminal=is_terminal).substitute(
+        NAV_HTML="".join(nav_htmls), BODY_HTML="".join(body_htmls)
+    )
     if not ignore_jupyter and ipython_check():
         try:
             from IPython.core.display import HTML
@@ -184,10 +188,12 @@ def _output_deck(task_name: str, new_user_params: ExecutionParameters, is_termin
     ctx = FlyteContext.current_context()
     local_dir = ctx.file_access.get_random_local_directory()
     local_path = f"{local_dir}{os.sep}{DECK_FILE_NAME}"
+    print("@@@ output deck")
     try:
         with open(local_path, "w", encoding="utf-8") as f:
             f.write(_get_deck(new_user_params=new_user_params, ignore_jupyter=True, is_terminal=is_terminal))
         logger.info(f"{task_name} task creates flyte deck html to file://{local_path}")
+        print(f"path: file://{local_path}")
         if ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
             fs = ctx.file_access.get_filesystem_for_path(new_user_params.output_metadata_prefix)
             remote_path = f"{new_user_params.output_metadata_prefix}{ctx.file_access.sep(fs)}{DECK_FILE_NAME}"
