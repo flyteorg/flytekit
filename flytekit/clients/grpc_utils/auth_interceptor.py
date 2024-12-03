@@ -67,11 +67,9 @@ class AuthUnaryInterceptor(grpc.UnaryUnaryClientInterceptor, grpc.UnaryStreamCli
         if e:
             if not hasattr(e, "code"):
                 raise e
+            # When gRPC is UNAUTHENTICATED (401) or grpc is UNKNOWN, handle the authentication error and trigger the PKCE authenticator.
             if e.code() == grpc.StatusCode.UNAUTHENTICATED or e.code() == grpc.StatusCode.UNKNOWN:
                 return self._handle_unauthenticated_error(fut, client_call_details, request)
-                # self._authenticator.refresh_credentials()
-                # updated_call_details = self._call_details_with_auth_metadata(client_call_details)
-                # return continuation(updated_call_details, request)
         return fut
 
     def intercept_unary_stream(self, continuation, client_call_details, request):
@@ -80,15 +78,15 @@ class AuthUnaryInterceptor(grpc.UnaryUnaryClientInterceptor, grpc.UnaryStreamCli
         """
         updated_call_details = self._call_details_with_auth_metadata(client_call_details)
         c: grpc.Call = continuation(updated_call_details, request)
+        # When gRPC is UNAUTHENTICATED (401), handle the authentication error and trigger the PKCE authenticator.
         if c.code() == grpc.StatusCode.UNAUTHENTICATED:
             return self._handle_unauthenticated_error(c, client_call_details, request)
-            # self._authenticator.refresh_credentials()
-            # updated_call_details = self._call_details_with_auth_metadata(client_call_details)
-            # return continuation(updated_call_details, request)
         return c
 
     def _handle_unauthenticated_error(self, continuation, client_call_details, request):
-        """Handling Unauthenticated Errors and Triggering the PKCE Flow"""
+        """
+        Handling Unauthenticated Errors and Triggering the PKCE Flow
+        """
 
         logging.info("Received authentication error, starting PKCE authentication flow")
 
