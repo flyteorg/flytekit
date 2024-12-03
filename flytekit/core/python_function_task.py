@@ -235,6 +235,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
 
         updated_ctx = ctx.with_compilation_state(cs)
         if self.execution_mode == self.ExecutionBehavior.DYNAMIC:
+            print("compiling dynamic task")
             es = ctx.new_execution_state().with_params(mode=ExecutionState.Mode.DYNAMIC_TASK_EXECUTION)
             updated_ctx = updated_ctx.with_execution_state(es)
 
@@ -322,6 +323,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
             logger.debug(f"Executing Dynamic workflow, using raw inputs {kwargs}")
             self._create_and_cache_dynamic_workflow()
             if self.execution_mode == self.ExecutionBehavior.DYNAMIC:
+                print("dynamic_execute")
                 es = ctx.new_execution_state().with_params(mode=ExecutionState.Mode.DYNAMIC_TASK_EXECUTION)
             else:
                 es = cast(ExecutionState, ctx.execution_state)
