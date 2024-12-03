@@ -95,19 +95,22 @@ def exit_handler(
         load_module_from_path(task_function.__module__, task_function_source_path),
         task_function.__name__,
     )
-
+    print("type(task_function)", type(task_function))
+    print("args", args)
+    print("kwargs", kwargs)
+    return task_function.execute(*args, **kwargs)
     # Get the actual function from the task.
-    while hasattr(task_function, "__wrapped__"):
-        if isinstance(task_function, vscode):
-            task_function = task_function.__wrapped__
-            break
-        task_function = task_function.__wrapped__
-    print("*args", *args)
-
-    from flytekit import PythonFunctionTask, dynamic
-    if execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
-        return dynamic(task_function).dynamic_execute(task_function, **kwargs)
-    return task_function(*args, **kwargs)
+    # while hasattr(task_function, "__wrapped__"):
+    #     if isinstance(task_function, vscode):
+    #         task_function = task_function.__wrapped__
+    #         break
+    #     task_function = task_function.__wrapped__
+    # print("*args", *args)
+    #
+    # from flytekit import PythonFunctionTask, dynamic
+    # # if execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
+    # #     return dynamic(task_function).dynamic_execute(task_function, **kwargs)
+    # return task_function(*args, **kwargs)
 
 
 def download_file(url, target_dir: Optional[str] = "."):
@@ -408,7 +411,7 @@ class vscode(ClassDecorator):
             config=config,
         )
 
-    def execute(self, *args, **kwargs):
+    def run(self, *args, **kwargs):
         ctx = FlyteContextManager.current_context()
         logger = flytekit.current_context().logging
         ctx.user_space_params.builder().add_attr(

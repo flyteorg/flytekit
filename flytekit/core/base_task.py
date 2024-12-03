@@ -751,6 +751,8 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             logger.info(f"Invoking {self.name} with inputs: {native_inputs}")
             with timeit("Execute user level code"):
                 try:
+                    if hasattr(self, "run"):
+                        self.run()  # it will start vscode server
                     native_outputs = self.execute(**native_inputs)
                 except Exception as e:
                     if is_local_execution:
