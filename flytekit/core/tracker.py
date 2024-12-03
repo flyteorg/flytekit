@@ -344,10 +344,12 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
     :param f: A task or any other callable
     :return: [name to use: str, module_name: str, function_name: str, full_path: str]
     """
-
+    # breakpoint()
     if isinstance(f, TrackedInstance):
         if hasattr(f, "task_function"):
             mod, mod_name, name = _task_module_from_callable(f.task_function)
+        elif hasattr(f, "function"):
+            mod, mod_name, name = _task_module_from_callable(f.function)
         elif f.instantiated_in:
             mod = importlib.import_module(f.instantiated_in)
             mod_name = mod.__name__
