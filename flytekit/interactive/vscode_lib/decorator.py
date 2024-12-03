@@ -411,7 +411,7 @@ class vscode(ClassDecorator):
             config=config,
         )
 
-    def run(self, *args, **kwargs):
+    def execute(self, *args, **kwargs):
         ctx = FlyteContextManager.current_context()
         logger = flytekit.current_context().logging
         ctx.user_space_params.builder().add_attr(
