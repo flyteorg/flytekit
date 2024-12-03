@@ -72,10 +72,6 @@ unit_test:
 	# Run serial tests without any parallelism
 	$(PYTEST) -m "serial" tests/flytekit/unit/ --ignore=tests/flytekit/unit/extras/ --ignore=tests/flytekit/unit/models --ignore=tests/flytekit/unit/extend ${CODECOV_OPTS}
 
-.PHONY: unit_test_hypothesis
-unit_test_hypothesis:
-	$(PYTEST_AND_OPTS) -m "hypothesis" tests/flytekit/unit/experimental ${CODECOV_OPTS}
-
 .PHONY: unit_test_extras
 unit_test_extras:
 	PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python $(PYTEST_AND_OPTS) tests/flytekit/unit/extras tests/flytekit/unit/extend ${CODECOV_OPTS}
