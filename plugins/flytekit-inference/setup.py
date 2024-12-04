@@ -19,6 +19,7 @@ setup(
         f"flytekitplugins.{PLUGIN_NAME}",
         f"flytekitplugins.{PLUGIN_NAME}.nim",
         f"flytekitplugins.{PLUGIN_NAME}.ollama",
+        f"flytekitplugins.{PLUGIN_NAME}.vllm",
     ],
     install_requires=plugin_requires,
     license="apache2",
