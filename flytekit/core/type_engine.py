@@ -2135,10 +2135,16 @@ class DictTransformer(AsyncTypeTransformer[dict]):
             if tp[0] == str:
                 try:
                     sub_type = TypeEngine.to_literal_type(cast(type, tp[1]))
-                    return _type_models.LiteralType(map_value_type=sub_type)
+                    return _type_models.LiteralType(
+                        map_value_type=sub_type,
+                        annotation=TypeAnnotationModel({CACHE_KEY_METADATA: {SERIALIZATION_FORMAT: MESSAGEPACK}}),
+                    )
                 except Exception as e:
                     raise ValueError(f"Type of Generic List type is not supported, {e}")
-        return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT)
+        return _type_models.LiteralType(
+            simple=_type_models.SimpleType.STRUCT,
+            annotation=TypeAnnotationModel({CACHE_KEY_METADATA: {SERIALIZATION_FORMAT: MESSAGEPACK}}),
+        )
 
     async def async_to_literal(
         self, ctx: FlyteContext, python_val: typing.Any, python_type: Type[dict], expected: LiteralType
