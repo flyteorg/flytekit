@@ -1482,7 +1482,8 @@ def flyte_entity_call_handler(
     ctx = FlyteContextManager.current_context()
     # This handles the case where we call other entities from within a running eager task.
     if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.EAGER_EXECUTION:
-        raise AssertionError("shouldn't be here")
+        # call the blocking version of the async call handler
+        loop_manager.run_sync(async_flyte_entity_call_handler, entity, **kwargs)
 
     if ctx.execution_state and (
         ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION
