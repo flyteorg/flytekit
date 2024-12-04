@@ -134,7 +134,7 @@ class PydanticTransformer(TypeTransformer[BaseModel]):
         return types.LiteralType(simple=types.SimpleType.STRUCT, metadata=schema, structure=ts)
 
     @lru_cache(typed=True)
-    def guess_python_type(self, literal_type: LiteralType) -> Type[T]:  # type: ignore
+    def guess_python_type(self, literal_type: LiteralType) -> Type[BaseModel]:  # type: ignore
         if literal_type.simple == types.SimpleType.STRUCT:
             if literal_type.metadata is not None:
                 return json_schema_to_model(literal_type.metadata)
