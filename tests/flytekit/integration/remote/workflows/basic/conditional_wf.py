@@ -15,22 +15,19 @@ def invalid_report() -> dict:
 
 
 @workflow
-def conditional_wf(data: typing.List[float]) -> dict:
-    title_input = wait_for_input("title-input", timeout=timedelta(hours=1), expected_type=str)
+def signal_test_wf(data: typing.List[float]) -> dict:
+    title_input = wait_for_input(name="title-input", timeout=timedelta(hours=1), expected_type=str)
 
     # Define a "review-passes" approve node so that a human can review
     # the title before finalizing it.
-    reporting_wf_node = reporting_wf(
-        title_input=approve(title_input, "review-passes", timeout=timedelta(hours=2)), 
-        data=data
-    )
-    
+    approve_node = approve(upstream_item=title_input, name="review-passes", timeout=timedelta(hours=1))
+    title_input >> approve_node
     # This conditional returns the finalized report if the review passes,
     # otherwise it returns an invalid report output.
     return (
         conditional("final-report-condition")
-        .if_(reporting_wf_node is not None)
-        .then(reporting_wf(data=data))
+        .if_((approve_node == "True"))
+        .then(reporting_wf(title_input, data))
         .else_()
         .then(invalid_report())
     )

@@ -800,18 +800,20 @@ def test_get_control_plane_version():
     version = client.get_control_plane_version()
     assert version == "unknown" or version.startswith("v")
 
-def test_signal_approve_reject():
+def test_signal_approve_reject(register):
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
-    conditional_wf = remote.fetch_workflow(name="basic.conditional_wf.conditional_wf", version=VERSION)
+
+    conditional_wf = remote.fetch_workflow(name="basic.conditional_wf.signal_test_wf", version=VERSION)
 
     execution = remote.execute(conditional_wf, inputs={"data": [1.0, 2.0, 3.0, 4.0, 5.0]})
-    remote.set_input("title-input", execution.id.name, "my report")
-    remote.approve("review-passes", execution.id.name)
 
+    remote.set_input("title-input", execution.id.name, value="my report")
+    remote.approve("review-passes", execution.id.name)
+    remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
     assert execution.outputs["o0"] == {"title": "my report", "data": [1.0, 2.0, 3.0, 4.0, 5.0]}
 
     execution = remote.execute(conditional_wf, inputs={"data": [1.0, 2.0, 3.0, 4.0, 5.0]})
-    remote.set_input("title-input", execution.id.name, "my report")
+    remote.set_input("title-input", execution.id.name, value="my report")
     remote.reject("review-passes", execution.id.name)
-
+    remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
     assert execution.outputs["o0"] == {"invalid_report": True}
