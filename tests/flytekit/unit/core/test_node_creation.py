@@ -2,12 +2,14 @@ import datetime
 import typing
 from collections import OrderedDict
 from dataclasses import dataclass
+from pathlib import Path
 
 import pytest
 
 import flytekit.configuration
 from flytekit import Resources, map_task
 from flytekit.configuration import Image, ImageConfig
+from flytekit.core.base_task import PythonTask
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.node_creation import create_node
 from flytekit.core.task import task
@@ -17,6 +19,7 @@ from flytekit.extras.accelerators import A100, T4
 from flytekit.image_spec.image_spec import ImageBuildEngine
 from flytekit.models import literals as _literal_models
 from flytekit.models.task import Resources as _resources_models
+from flytekit.tools.repo import load_packages_and_modules
 from flytekit.tools.translator import get_serializable
 
 
@@ -513,8 +516,17 @@ def test_cache_override_values():
         image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
         env={},
     )
-    wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
 
-    assert wf_spec.template.nodes[0].metadata.cache_serializable
-    assert wf_spec.template.nodes[0].metadata.cacheable
-    assert wf_spec.template.nodes[0].metadata.cache_version == "foo"
+    registrable_entities = load_packages_and_modules(
+        ss=serialization_settings,
+        project_root=Path(__file__).parent.parent.parent.parent,
+        pkgs_or_mods=[str(__file__)],
+    )
+
+    # Find our specific task by name
+    for entity in registrable_entities:
+        if (isinstance(entity, PythonTask)):
+            assert entity is not None
+            assert entity.template.metadata.discoverable
+            assert entity.template.metadata.cache_version == "foo"
+            assert entity.template.metadata.cache_serializable

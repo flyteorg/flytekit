@@ -212,14 +212,20 @@ class Node(object):
         if cache is not None:
             assert_not_promise(cache, "cache")
             self._metadata._cacheable = cache
+            if self.run_entity and self.run_entity.metadata is not None:
+                self.run_entity.metadata.cache = cache
 
         if cache_version is not None:
             assert_not_promise(cache_version, "cache_version")
             self._metadata._cache_version = cache_version
+            if self.run_entity and self.run_entity.metadata is not None:
+                self.run_entity.metadata.cache_version = cache_version
 
         if cache_serialize is not None:
             assert_not_promise(cache_serialize, "cache_serialize")
             self._metadata._cache_serializable = cache_serialize
+            if self.run_entity and self.run_entity.metadata is not None:
+                self.run_entity.metadata.cache_serialize = cache_serialize
 
         return self
 
