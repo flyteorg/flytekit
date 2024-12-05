@@ -1483,6 +1483,8 @@ def flyte_entity_call_handler(
     # This handles the case where we call other entities from within a running eager task.
     if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.EAGER_EXECUTION:
         # call the blocking version of the async call handler
+        # This is a recursive call, the async handler also calls this function, so this conditional must match
+        # the one in the async function perfectly, otherwise you'll get infinite recursion.
         loop_manager.run_sync(async_flyte_entity_call_handler, entity, **kwargs)
 
     if ctx.execution_state and (
