@@ -15,7 +15,6 @@ import rich_click as click
 import yaml
 from click import Context
 from mashumaro.codecs.json import JSONEncoder
-from rich.progress import Progress, TextColumn, TimeElapsedColumn
 from typing_extensions import get_origin
 
 from flytekit import Annotations, FlyteContext, FlyteContextManager, Labels, LaunchPlan, Literal, WorkflowExecutionPhase
@@ -537,7 +536,7 @@ def run_remote(
     if run_level_params.wait_execution:
         msg += " Waiting to complete..."
     # p = Progress(TimeElapsedColumn(), TextColumn(msg), transient=True)
-    tid = add_progress_bar("Execution starting")
+    add_progress_bar("Remote Exec")
     execution = remote.execute(
         entity,
         inputs=inputs,
@@ -559,7 +558,7 @@ def run_remote(
         + " to see execution in the console."
     )
     click.echo(s)
-    advance_progress_bar(tid)
+    advance_progress_bar("Remote Exec")
 
     if run_level_params.wait_execution:
         execution = remote.wait(execution, poll_interval=run_level_params.poll_interval)
@@ -903,21 +902,15 @@ class RemoteEntityGroup(click.RichGroup):
 
         run_level_params: RunLevelParams = ctx.obj
         r = run_level_params.remote_instance()
-        progress = Progress(transient=True)
-        task = progress.add_task(
-            f"[cyan]Gathering [{run_level_params.limit}] remote LaunchPlans...",
-            total=None,
-        )
-        with progress:
-            progress.start_task(task)
-            try:
-                self._entities = self._get_entities(
-                    r, run_level_params.project, run_level_params.domain, run_level_params.limit
-                )
-                return self._entities
-            except FlyteSystemException as e:
-                pretty_print_exception(e)
-                return []
+        add_progress_bar("Remote Entities", total=None)
+        try:
+            self._entities = self._get_entities(
+                r, run_level_params.project, run_level_params.domain, run_level_params.limit
+            )
+            return self._entities
+        except FlyteSystemException as e:
+            pretty_print_exception(e)
+            return []
 
     def get_command(self, ctx, name):
         if self._command_name in [self.LAUNCHPLAN_COMMAND, self.WORKFLOW_COMMAND]:

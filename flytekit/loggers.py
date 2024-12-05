@@ -28,7 +28,7 @@ developer_logger = logging.getLogger("developer")
 # global Python root logger is set to).
 logger.propagate = False
 
-_progress_bar = None
+rich_enabled = False
 
 
 def set_flytekit_log_properties(
@@ -144,78 +144,41 @@ def is_rich_logging_enabled() -> bool:
 
 
 def upgrade_to_rich_logging(log_level: typing.Optional[int] = logging.WARNING):
-    import click
-    from rich.console import Console
-    from rich.logging import RichHandler
-    from rich.progress import Progress, TimeElapsedColumn, BarColumn
+    from flytekit import _rich_logging
+    rich_handler = _rich_logging.get_current_rich_handler()
 
-    import flytekit
-
-    global _progress_bar
-
-    try:
-        width = os.get_terminal_size().columns
-    except Exception as e:
-        logger.debug(f"Failed to get terminal size: {e}")
-        width = 80
-
-    _progress_bar = Progress(
-        TimeElapsedColumn(), "[bold cyan]{task.description}", BarColumn(),
-        "[progress.percentage]{task.percentage:>3.0f}%"
-    )
-
-    handler = RichHandler(
-        tracebacks_suppress=[click, flytekit],
-        rich_tracebacks=True,
-        omit_repeated_times=False,
-        show_path=False,
-        log_time_format="%H:%M:%S.%f",
-        console=Console(width=width),
-    )
-
+    handler = rich_handler.handler
     formatter = logging.Formatter(fmt="%(filename)s:%(lineno)d - %(message)s")
     handler.setFormatter(formatter)
     set_flytekit_log_properties(handler, None, _get_env_logging_level(default_level=log_level))
     set_user_logger_properties(handler, None, logging.INFO)
     set_developer_properties(handler, None, _get_dev_env_logging_level())
-
-
-async def render_live():
-    """Render the live display with progress and logs."""
-    from rich.live import Live
-    from rich.panel import Panel
-    global _progress_bar
-    with Live(refresh_per_second=4, screen=True) as live:
-        while True:
-            # Progress Panel
-            progress_panel = Panel(_progress_bar, title="Progress Panel", border_style="bold green")
-
-            # Group panels
-            # group = Group(progress_panel, log_panel)
-            live.update(progress_panel)
-
-            await asyncio.sleep(0.2)
+    global rich_enabled
+    rich_enabled = True
 
 
 def add_progress_bar(task: str, total: int = 1, **kwargs):
     """
-    return: TaskID
+    Creates a new progress bar with name "task"
     """
-    global _progress_bar
-    if _progress_bar is None:
-        return
-    from rich.progress import Progress
-    _progress_bar: Progress
-    _progress_bar.add_task(task, total=total, **kwargs)
+    global rich_enabled
+    if not rich_enabled:
+        return 0
+    from flytekit import _rich_logging
+    rich_handler = _rich_logging.get_current_rich_handler()
+    rich_handler.add_progress_bar(task, total=total, **kwargs)
 
 
-def advance_progress_bar(task_id: typing.Any, advance: float = 1):
-    global _progress_bar
-    if _progress_bar is None:
-        return
-    from rich.progress import Progress
-    _progress_bar: Progress
-    _progress_bar.advance(task_id=task_id, advance=advance)
+def advance_progress_bar(task: str, advance: float = 1):
+    """
+    Advances a progress bar with name "task"
+    """
+    global rich_enabled
+    if not rich_enabled:
+        return 0
+    from flytekit import _rich_logging
+    rich_handler = _rich_logging.get_current_rich_handler()
+    rich_handler.advance_progress(task, advance)
 
 
 def get_level_from_cli_verbosity(verbosity: int) -> int:
