@@ -156,7 +156,6 @@ def generate_time_table(data: dict) -> str:
 def _get_deck(
     new_user_params: ExecutionParameters,
     ignore_jupyter: bool = False,
-    is_terminal: bool = False,
 ) -> typing.Union[str, "IPython.core.display.HTML"]:  # type:ignore
     """
     Get flyte deck html string
@@ -172,7 +171,7 @@ def _get_deck(
         # The renderer must ensure that the HTML is safe.
         body_htmls.append(f"<div>{value}</div>")
 
-    raw_html = get_deck_template(is_terminal=is_terminal).substitute(
+    raw_html = get_deck_template().substitute(
         NAV_HTML="".join(nav_htmls), BODY_HTML="".join(body_htmls)
     )
     if not ignore_jupyter and ipython_check():
@@ -184,7 +183,7 @@ def _get_deck(
     return raw_html
 
 
-def _output_deck(task_name: str, new_user_params: ExecutionParameters, is_terminal=False):
+def _output_deck(task_name: str, new_user_params: ExecutionParameters):
     ctx = FlyteContext.current_context()
     local_dir = ctx.file_access.get_random_local_directory()
     local_path = f"{local_dir}{os.sep}{DECK_FILE_NAME}"
@@ -192,7 +191,6 @@ def _output_deck(task_name: str, new_user_params: ExecutionParameters, is_termin
         with open(local_path, "w", encoding="utf-8") as f:
             f.write(_get_deck(new_user_params=new_user_params, ignore_jupyter=True, is_terminal=is_terminal))
         logger.info(f"{task_name} task creates flyte deck html to file://{local_path}")
-        print(f"path: file://{local_path}")
         if ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
             fs = ctx.file_access.get_filesystem_for_path(new_user_params.output_metadata_prefix)
             remote_path = f"{new_user_params.output_metadata_prefix}{ctx.file_access.sep(fs)}{DECK_FILE_NAME}"
@@ -205,13 +203,9 @@ def _output_deck(task_name: str, new_user_params: ExecutionParameters, is_termin
         logger.error(f"Failed to write flyte deck html with error {e}.")
 
 
-def get_deck_template(is_terminal: bool = False) -> Template:
+def get_deck_template() -> Template:
     root = os.path.dirname(os.path.abspath(__file__))
-
-    if is_terminal:
-        templates_dir = os.path.join(root, "html", "template.html")
-    else:
-        templates_dir = os.path.join(root, "html", "refresh_template.html")
+    templates_dir = os.path.join(root, "html", "template.html")
 
     with open(templates_dir, "r") as f:
         template_content = f.read()
