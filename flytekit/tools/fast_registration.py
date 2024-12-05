@@ -6,6 +6,7 @@ import os
 import pathlib
 import posixpath
 import shutil
+import stat
 import subprocess
 import tarfile
 import tempfile
@@ -188,6 +189,11 @@ def compute_digest(source: Union[os.PathLike, List[os.PathLike]], filter: Option
         # Only consider files that exist (e.g. disregard symlinks that point to non-existent files)
         if not os.path.exists(path):
             logger.info(f"Skipping non-existent file {path}")
+            return
+
+        # Skip socket files
+        if stat.S_ISSOCK(os.stat(path).st_mode):
+            logger.info(f"Skip socket file {path}")
             return
 
         if filter:
