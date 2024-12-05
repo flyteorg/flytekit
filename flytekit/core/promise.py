@@ -1061,7 +1061,9 @@ class VoidPromise(object):
 
     def __repr__(self):
         raise AssertionError(f"Task {self._task_name} returns nothing, NoneType return cannot be used")
-
+    
+    def is_none(self) -> ComparisonExpression:
+        return ComparisonExpression(self, ComparisonOps.EQ, None)
 
 class NodeOutput(type_models.OutputReference):
     def __init__(self, node: Node, var: str, attr_path: Optional[List[Union[str, int]]] = None):
