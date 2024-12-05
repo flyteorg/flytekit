@@ -139,6 +139,11 @@ class ArrayNodeMapTask(PythonTask):
 
     def construct_node_metadata(self) -> NodeMetadata:
         # TODO: add support for other Flyte entities
+        return NodeMetadata(
+            name=self.name,
+        )
+
+    def construct_sub_node_metadata(self) -> NodeMetadata:
         nm = super().construct_node_metadata()
         nm._name = self.name
         return nm
