@@ -154,7 +154,8 @@ def generate_time_table(data: dict) -> str:
 
 
 def _get_deck(
-    new_user_params: ExecutionParameters, ignore_jupyter: bool = False,
+    new_user_params: ExecutionParameters,
+    ignore_jupyter: bool = False,
 ) -> typing.Union[str, "IPython.core.display.HTML"]:  # type:ignore
     """
     Get flyte deck html string
