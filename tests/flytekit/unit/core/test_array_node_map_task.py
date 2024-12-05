@@ -1,4 +1,5 @@
 import functools
+from datetime import timedelta
 import os
 import tempfile
 import typing
@@ -386,7 +387,12 @@ def test_serialization_metadata2(serialization_settings):
     def t1(a: int) -> typing.Optional[int]:
         return a + 1
 
-    arraynode_maptask = map_task(t1, min_success_ratio=0.9, concurrency=10, metadata=TaskMetadata(retries=2, interruptible=True))
+    arraynode_maptask = map_task(
+        t1,
+        min_success_ratio=0.9,
+        concurrency=10,
+        metadata=TaskMetadata(retries=2, interruptible=True, timeout=timedelta(seconds=10))
+    )
     assert arraynode_maptask.metadata.interruptible
 
     @workflow
@@ -402,9 +408,8 @@ def test_serialization_metadata2(serialization_settings):
     od = OrderedDict()
     wf_spec = get_serializable(od, serialization_settings, wf)
 
-    assert arraynode_maptask.construct_node_metadata().interruptible
     array_node = wf_spec.template.nodes[0]
-    assert array_node.metadata.interruptible
+    assert array_node.metadata.timeout == timedelta()
     assert array_node.array_node._min_success_ratio == 0.9
     assert array_node.array_node._parallelism == 10
     assert not array_node.array_node._is_original_sub_node_interface
@@ -412,6 +417,7 @@ def test_serialization_metadata2(serialization_settings):
     task_spec = od[arraynode_maptask]
     assert task_spec.template.metadata.retries.retries == 2
     assert task_spec.template.metadata.interruptible
+    assert task_spec.template.metadata.timeout == timedelta(seconds=10)
 
     wf1_spec = get_serializable(od, serialization_settings, wf1)
     array_node = wf1_spec.template.nodes[0]
