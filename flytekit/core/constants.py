@@ -22,3 +22,8 @@ FLYTE_USE_OLD_DC_FORMAT = "FLYTE_USE_OLD_DC_FORMAT"
 
 # Set this environment variable to true to force the task to return non-zero exit code on failure.
 FLYTE_FAIL_ON_ERROR = "FLYTE_FAIL_ON_ERROR"
+
+# This is a special key used to store metadata about the cache key in a literal type.
+CACHE_KEY_METADATA = "cache-key-metadata"
+
+SERIALIZATION_FORMAT = "serialization-format"
