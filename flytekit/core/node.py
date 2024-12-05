@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from flyteidl.core import tasks_pb2
 
+from flytekit.core.pod_template import PodTemplate
 from flytekit.core.resources import Resources, convert_resources_to_resource_model
 from flytekit.core.utils import _dnsify
 from flytekit.extras.accelerators import BaseAccelerator
@@ -140,6 +141,7 @@ class Node(object):
         cache: Optional[bool] = None,
         cache_version: Optional[str] = None,
         cache_serialize: Optional[bool] = None,
+        pod_template: Optional[PodTemplate] = None,
         *args,
         **kwargs,
     ):
@@ -220,6 +222,10 @@ class Node(object):
         if cache_serialize is not None:
             assert_not_promise(cache_serialize, "cache_serialize")
             self._metadata._cache_serializable = cache_serialize
+
+        if pod_template is not None:
+            assert_not_promise(pod_template, "podtemplate")
+            self.flyte_entity.pod_template = pod_template
 
         return self
 
