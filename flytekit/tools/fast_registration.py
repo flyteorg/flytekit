@@ -169,7 +169,6 @@ def fast_package(
                         arcname=ws_file,
                         filter=lambda x: ignore.tar_filter(tar_strip_file_attributes(x)),
                     )
-                # tar.list(verbose=True)
 
             compress_tarball(tar_path, archive_fname)
 
