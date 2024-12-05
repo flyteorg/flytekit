@@ -830,16 +830,7 @@ def test_default_args_task_dict_type():
         }
     )
 
-    assert wf_with_input_spec.template.interface.outputs["o0"].type == LiteralType(
-        map_value_type=LiteralType(simple=SimpleType.INTEGER),
-        annotation=TypeAnnotation(
-            {
-                "cache-key-metadata": {
-                    "serialization-format": "msgpack",
-                },
-            },
-        ),
-    )
+    assert wf_with_input_spec.template.interface.outputs["o0"].type == LiteralType(map_value_type=LiteralType(simple=SimpleType.INTEGER))
 
     assert wf_with_input() == input_val
 

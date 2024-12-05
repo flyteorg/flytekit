@@ -2135,10 +2135,7 @@ class DictTransformer(AsyncTypeTransformer[dict]):
             if tp[0] == str:
                 try:
                     sub_type = TypeEngine.to_literal_type(cast(type, tp[1]))
-                    return _type_models.LiteralType(
-                        map_value_type=sub_type,
-                        annotation=TypeAnnotationModel({CACHE_KEY_METADATA: {SERIALIZATION_FORMAT: MESSAGEPACK}}),
-                    )
+                    return _type_models.LiteralType(map_value_type=sub_type)
                 except Exception as e:
                     raise ValueError(f"Type of Generic List type is not supported, {e}")
         return _type_models.LiteralType(

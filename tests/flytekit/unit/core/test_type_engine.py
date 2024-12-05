@@ -2499,39 +2499,18 @@ class AnnotatedDataclassTest(DataClassJsonMixin):
             typing.Dict[str, int],
             LiteralType(
                 map_value_type=LiteralType(simple=SimpleType.INTEGER),
-                annotation=TypeAnnotation(
-                    {
-                        "cache-key-metadata": {
-                            "serialization-format": "msgpack",
-                        },
-                    },
-                ),
             ),
         ),
         (
             typing.Dict[str, str],
             LiteralType(
                 map_value_type=LiteralType(simple=SimpleType.STRING),
-                annotation=TypeAnnotation(
-                    {
-                        "cache-key-metadata": {
-                            "serialization-format": "msgpack",
-                        },
-                    },
-                ),
             ),
         ),
         (
             typing.Dict[str, typing.List[int]],
             LiteralType(
                 map_value_type=LiteralType(collection_type=LiteralType(simple=SimpleType.INTEGER)),
-                annotation=TypeAnnotation(
-                    {
-                        "cache-key-metadata": {
-                            "serialization-format": "msgpack",
-                        },
-                    },
-                ),
             ),
         ),
         (
@@ -2573,13 +2552,6 @@ class AnnotatedDataclassTest(DataClassJsonMixin):
                         },
                     ),
                 ),
-                annotation=TypeAnnotation(
-                    {
-                        "cache-key-metadata": {
-                            "serialization-format": "msgpack",
-                        },
-                    },
-                ),
             ),
         ),
         (
@@ -2589,20 +2561,6 @@ class AnnotatedDataclassTest(DataClassJsonMixin):
                     map_value_type=LiteralType(
                         simple=SimpleType.INTEGER,
                     ),
-                    annotation=TypeAnnotation(
-                        {
-                            "cache-key-metadata": {
-                                "serialization-format": "msgpack",
-                            },
-                        },
-                    ),
-                ),
-                annotation=TypeAnnotation(
-                    {
-                        "cache-key-metadata": {
-                            "serialization-format": "msgpack",
-                        },
-                    },
                 ),
             ),
         ),
