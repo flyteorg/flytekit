@@ -50,6 +50,10 @@ def flyte_project(tmp_path):
     return tmp_path
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="Skip if running on windows since Unix Domain Sockets do not exist in that OS",
+)
 def test_skip_socket_file():
     tmp_dir = tempfile.mkdtemp()
 
@@ -69,7 +73,7 @@ def test_skip_socket_file():
 
     subprocess.run(["git", "init", str(tmp_dir)])
 
-    # Assert that this runs successfully 
+    # Assert that this runs successfully
     compute_digest(str(tmp_dir))
 
 
