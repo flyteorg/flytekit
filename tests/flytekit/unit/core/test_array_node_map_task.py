@@ -409,6 +409,7 @@ def test_serialization_metadata2(serialization_settings):
     wf_spec = get_serializable(od, serialization_settings, wf)
 
     array_node = wf_spec.template.nodes[0]
+    assert array_node.metadata.timeout == timedelta()
     assert array_node.array_node._min_success_ratio == 0.9
     assert array_node.array_node._parallelism == 10
     assert not array_node.array_node._is_original_sub_node_interface
