@@ -1,8 +1,18 @@
+from unittest.mock import patch
+from types import ModuleType
+from pathlib import Path
 import os
 import subprocess
 import sys
 
-from flytekit.tools.script_mode import compress_scripts, hash_file, add_imported_modules_from_source, get_all_modules
+import flytekit
+from flytekit.tools.script_mode import (
+    compress_scripts,
+    hash_file,
+    add_imported_modules_from_source,
+    get_all_modules,
+    list_imported_modules_as_files,
+)
 from flytekit.core.tracker import import_module_from_file
 
 MAIN_WORKFLOW = """
@@ -237,3 +247,63 @@ def test_get_all_modules(tmp_path):
     # Workflow exists, so it is imported
     workflow_file.write_text(WORKFLOW_CONTENT)
     assert n_sys_modules + 1 == len(get_all_modules(os.fspath(source_dir), "my_workflows.main"))
+
+
+@patch("flytekit.tools.script_mode.sys")
+@patch("site.getsitepackages")
+def test_list_imported_modules_as_files(mock_getsitepackage, mock_sys, tmp_path):
+
+    bin_directory = Path(os.path.dirname(sys.executable))
+    flytekit_root = Path(os.path.dirname(flytekit.__file__))
+    source_path = tmp_path / "project"
+
+    # Site packages should be executed
+    site_packages = [
+        str(source_path / ".venv" / "lib" / "python3.10" / "site-packages"),
+        str(source_path / ".venv" / "local" / "lib" / "python3.10" / "dist-packages"),
+        str(source_path / ".venv" / "lib" / "python3" / "dist-packages"),
+        str(source_path / ".venv" / "lib" / "python3.10" / "dist-packages"),
+    ]
+    mock_getsitepackage.return_value = site_packages
+
+    # lib module that should be excluded, even if it is in the same roto as source_path
+    lib_path = source_path / "micromamba" / "envs" / "my-env"
+    lib_modules = [
+        (ModuleType("lib_module"), str(lib_path / "module.py"))
+    ]
+    # mock the sys prefix to be in the source path
+    mock_sys.prefix = str(lib_path)
+
+    # bin module that should be excluded
+    bin_modules = [
+        (ModuleType("bin_module"), str(bin_directory / "bin" / "module.py"))
+    ]
+    # site modules that should be excluded
+    site_modules = [
+        (ModuleType("site_module_1"), str(Path(site_packages[0]) / "package" / "module_1.py")),
+        (ModuleType("site_module_2"), str(Path(site_packages[1]) / "package" / "module_2.py")),
+        (ModuleType("site_module_3"), str(Path(site_packages[2]) / "package" / "module_3.py")),
+        (ModuleType("site_module_4"), str(Path(site_packages[3]) / "package" / "module_4.py")),
+    ]
+
+    # local modules that should be included
+    local_modules = [
+        (ModuleType("local_module_1"), str(source_path / "package_a" / "module_1.py")),
+        (ModuleType("local_module_2"), str(source_path / "package_a" / "module_2.py")),
+        (ModuleType("local_module_3"), str(source_path / "package_b" / "module_3.py")),
+        (ModuleType("local_module_4"), str(source_path / "package_b" / "module_4.py")),
+    ]
+    flyte_modules = [
+        (ModuleType("flyte_module"), str(flytekit_root / "package" / "module.py"))
+    ]
+
+    module_path_pairs = local_modules + flyte_modules + bin_modules + lib_modules + site_modules
+
+    for m, p in module_path_pairs:
+        m.__file__ = p
+
+    modules = [m for m, _ in module_path_pairs]
+
+    file_list = list_imported_modules_as_files(str(source_path), modules)
+
+    assert sorted(file_list) == sorted([p for _, p in local_modules])

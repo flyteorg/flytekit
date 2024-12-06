@@ -234,7 +234,7 @@ def add_imported_modules_from_source(source_path: str, destination: str, modules
     """Copies modules into destination that are in modules. The module files are copied only if:
 
     1. Not a site-packages. These are installed packages and not user files.
-    2. Not in the bin. These are also installed and not user files.
+    2. Not in the sys.base_prefix or sys.prefix. These are also installed and not user files.
     3. Does not share a common path with the source_path.
     """
     # source path is the folder holding the main script.
