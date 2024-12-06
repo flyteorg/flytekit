@@ -48,7 +48,7 @@ class GitIgnore(Ignore):
             out = subprocess.run(["git", "ls-files", "-io", "--exclude-standard"], cwd=self.root, capture_output=True)
             if out.returncode == 0:
                 return dict.fromkeys(out.stdout.decode("utf-8").split("\n")[:-1])
-            logger.warning(f"Could not determine ignored files due to:\n{out.stderr}\nNot applying any filters")
+            logger.info(f"Could not determine ignored files due to:\n{out.stderr}\nNot applying any filters")
             return {}
         logger.info("No git executable found, not applying any filters")
         return {}

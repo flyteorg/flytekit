@@ -230,6 +230,10 @@ def list_imported_modules_as_files(source_path: str, modules: List[ModuleType]) 
                 # Do not upload from the bin directory
                 continue
 
+            if os.path.commonpath([sys.base_prefix, mod_file]) == sys.base_prefix:
+                # Do not upload from the python installation directory
+                continue
+
         except ValueError:
             # ValueError is raised by windows if the paths are not from the same drive
             # If the files are not in the same drive, then mod_file is not
