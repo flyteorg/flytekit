@@ -1,8 +1,9 @@
 import importlib.util
 import sys
 import types
+import typing
 
-LAZY_MODULES = []
+LAZY_MODULES: typing.List[str] = []
 
 
 class LazyModule(types.ModuleType):
@@ -42,6 +43,6 @@ def lazy_module(fullname):
     spec.loader = loader
     module = importlib.util.module_from_spec(spec)
     sys.modules[fullname] = module
-    LAZY_MODULES.append(module)
+    LAZY_MODULES.append(module.__name__)
     loader.exec_module(module)
     return module
