@@ -203,11 +203,15 @@ def list_imported_modules_as_files(source_path: str, modules: List[ModuleType]) 
     # but in register/package case, there are multiple folders.
     # identify a common root amongst the packages listed?
 
-    site_packages = site.getsitepackages()
     files = []
     flytekit_root = os.path.dirname(flytekit.__file__)
 
-    invalid_directories = [flytekit_root, sys.prefix, sys.base_prefix] + site_packages
+    invalid_directories = [
+        flytekit_root,
+        sys.prefix,
+        sys.base_prefix,
+        site.getusersitepackages(),
+    ] + site.getsitepackages()
 
     for mod in modules:
         try:
