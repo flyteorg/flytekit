@@ -5,20 +5,28 @@ import ray
 import yaml
 from flytekitplugins.ray import HeadNodeConfig
 from flytekitplugins.ray.models import (
+    HeadGroupSpec,
     RayCluster,
     RayJob,
     WorkerGroupSpec,
-    HeadGroupSpec,
 )
 from flytekitplugins.ray.task import RayJobConfig, WorkerNodeConfig
 from google.protobuf.json_format import MessageToDict
-from flytekit.models.task import K8sPod
 
 from flytekit import PythonFunctionTask, task
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
+from flytekit.models.task import K8sPod
 
 config = RayJobConfig(
-    worker_node_config=[WorkerNodeConfig(group_name="test_group", replicas=3, min_replicas=0, max_replicas=10, k8s_pod=K8sPod(pod_spec={"str": "worker", "int": 1}))],
+    worker_node_config=[
+        WorkerNodeConfig(
+            group_name="test_group",
+            replicas=3,
+            min_replicas=0,
+            max_replicas=10,
+            k8s_pod=K8sPod(pod_spec={"str": "worker", "int": 1}),
+        )
+    ],
     head_node_config=HeadNodeConfig(k8s_pod=K8sPod(pod_spec={"str": "head", "int": 2})),
     runtime_env={"pip": ["numpy"]},
     enable_autoscaling=True,
@@ -50,7 +58,19 @@ def test_ray_task():
 
     ray_job_pb = RayJob(
         ray_cluster=RayCluster(
-            ray_cluster=RayCluster(worker_group_spec=[WorkerGroupSpec(group_name="test_group", replicas=3, min_replicas=0, max_replicas=10, k8s_pod=K8sPod(pod_spec={"str": "worker", "int": 1}))], head_group_spec=HeadGroupSpec(k8s_pod=K8sPod(pod_spec={"str": "head", "int": 2})), enable_autoscaling=True),
+            ray_cluster=RayCluster(
+                worker_group_spec=[
+                    WorkerGroupSpec(
+                        group_name="test_group",
+                        replicas=3,
+                        min_replicas=0,
+                        max_replicas=10,
+                        k8s_pod=K8sPod(pod_spec={"str": "worker", "int": 1}),
+                    )
+                ],
+                head_group_spec=HeadGroupSpec(k8s_pod=K8sPod(pod_spec={"str": "head", "int": 2})),
+                enable_autoscaling=True,
+            ),
             enable_autoscaling=True,
         ),
         runtime_env=base64.b64encode(json.dumps({"pip": ["numpy"]}).encode()).decode(),

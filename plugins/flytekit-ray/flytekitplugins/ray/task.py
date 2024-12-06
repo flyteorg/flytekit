@@ -18,7 +18,6 @@ from flytekit import lazy_module
 from flytekit.configuration import SerializationSettings
 from flytekit.core.context_manager import ExecutionParameters, FlyteContextManager
 from flytekit.core.python_function_task import PythonFunctionTask
-from flytekit.core.resources import Resources
 from flytekit.extend import TaskPlugins
 from flytekit.models.task import K8sPod
 
@@ -93,21 +92,13 @@ class RayFunctionTask(PythonFunctionTask):
         ray_job = RayJob(
             ray_cluster=RayCluster(
                 head_group_spec=(
-                    HeadGroupSpec(
-                        cfg.head_node_config.ray_start_params,
-                        cfg.head_node_config.k8s_pod
-                    )
+                    HeadGroupSpec(cfg.head_node_config.ray_start_params, cfg.head_node_config.k8s_pod)
                     if cfg.head_node_config
                     else None
                 ),
                 worker_group_spec=[
                     WorkerGroupSpec(
-                        c.group_name,
-                        c.replicas,
-                        c.min_replicas,
-                        c.max_replicas,
-                        c.ray_start_params,
-                        c.k8s_pod
+                        c.group_name, c.replicas, c.min_replicas, c.max_replicas, c.ray_start_params, c.k8s_pod
                     )
                     for c in cfg.worker_node_config
                 ],
