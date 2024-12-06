@@ -102,12 +102,13 @@ def convert_resources_to_resource_model(
     return task_models.Resources(requests=request_entries, limits=limit_entries)
 
 
-def construct_k8s_pod_spec_from_resources(
+def pod_spec_from_resources(
     k8s_pod_name: str,
     requests: Optional[Resources],
     limits: Optional[Resources],
+    k8s_gpu_resource_key: str = "nvidia.com/gpu"
 ) -> dict[str, Any]:
-    def _construct_k8s_pods_resources(resources: Optional[Resources], k8s_gpu_resource_key: str = "nvidia.com/gpu"):
+    def _construct_k8s_pods_resources(resources: Optional[Resources], k8s_gpu_resource_key: str):
         if resources is None:
             return None
 
@@ -127,8 +128,8 @@ def construct_k8s_pod_spec_from_resources(
 
         return k8s_pod_resources
 
-    requests = _construct_k8s_pods_resources(resources=requests)
-    limits = _construct_k8s_pods_resources(resources=limits)
+    requests = _construct_k8s_pods_resources(resources=requests, k8s_gpu_resource_key=k8s_gpu_resource_key)
+    limits = _construct_k8s_pods_resources(resources=limits, k8s_gpu_resource_key=k8s_gpu_resource_key)
     requests = requests or limits
     limits = limits or requests
 
