@@ -189,7 +189,7 @@ def _file_is_in_directory(file: str, directory: str) -> bool:
         return os.path.commonpath([file, directory]) == directory
     except ValueError:
         # ValueError is raised by windows if the paths are not from the same drive
-        pass
+        return False
 
 
 def list_imported_modules_as_files(source_path: str, modules: List[ModuleType]) -> List[str]:
@@ -207,7 +207,7 @@ def list_imported_modules_as_files(source_path: str, modules: List[ModuleType]) 
     files = []
     flytekit_root = os.path.dirname(flytekit.__file__)
 
-    invalid_directories = [flytekit_root, sys.prefix, sys.base_prefix] + site_packages
+    invalid_directories = [flytekit_root, sys.prefix, sys.base_exec_prefix] + site_packages
 
     for mod in modules:
         try:
