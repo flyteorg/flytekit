@@ -184,11 +184,12 @@ def list_all_files(source_path: str, deref_symlinks, ignore_group: Optional[Igno
 
 
 def _file_is_in_directory(file: str, directory: str) -> bool:
-    """Return True if file is in directory and in and of it's children."""
+    """Return True if file is in directory and in its children."""
     try:
         return os.path.commonpath([file, directory]) == directory
-    except ValueError:
+    except ValueError as e:
         # ValueError is raised by windows if the paths are not from the same drive
+        logger.debug(f"{file} and {directory} are not in the same drive: {str(e)}")
         return False
 
 
@@ -196,7 +197,7 @@ def list_imported_modules_as_files(source_path: str, modules: List[ModuleType]) 
     """Copies modules into destination that are in modules. The module files are copied only if:
 
     1. Not a site-packages. These are installed packages and not user files.
-    2. Not in the bin. These are also installed and not user files.
+    2. Not in sys.prefix. These are also installed and not user files.
     3. Does not share a common path with the source_path.
     """
     # source path is the folder holding the main script.
@@ -206,6 +207,8 @@ def list_imported_modules_as_files(source_path: str, modules: List[ModuleType]) 
     files = []
     flytekit_root = os.path.dirname(flytekit.__file__)
 
+    # These directories contain installed packages or modules from the Python standard library.
+    # If a module is from these directories, then they are not user files.
     invalid_directories = [
         flytekit_root,
         sys.prefix,
