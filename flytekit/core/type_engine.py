@@ -1258,14 +1258,9 @@ class TypeEngine(typing.Generic[T]):
             if cls.has_lazy_import:
                 return
             cls.has_lazy_import = True
-            from flytekit.types.structured import (
-                register_arrow_handlers,
-                register_bigquery_handlers,
-                register_pandas_handlers,
-                register_snowflake_handlers,
-            )
-            from flytekit.types.structured.structured_dataset import DuplicateHandlerError
+            from flytekit.types.structured import lazy_import_structured_dataset_handler
 
+            lazy_import_structured_dataset_handler()
             if is_imported("tensorflow"):
                 from flytekit.extras import tensorflow  # noqa: F401
             if is_imported("torch"):
@@ -1279,29 +1274,10 @@ class TypeEngine(typing.Generic[T]):
                     from flytekit.types.schema.types_pandas import PandasSchemaReader, PandasSchemaWriter  # noqa: F401
                 except ValueError:
                     logger.debug("Transformer for pandas is already registered.")
-                try:
-                    register_pandas_handlers()
-                except DuplicateHandlerError:
-                    logger.debug("Transformer for pandas is already registered.")
-            if is_imported("pyarrow"):
-                try:
-                    register_arrow_handlers()
-                except DuplicateHandlerError:
-                    logger.debug("Transformer for arrow is already registered.")
-            if is_imported("google.cloud.bigquery"):
-                try:
-                    register_bigquery_handlers()
-                except DuplicateHandlerError:
-                    logger.debug("Transformer for bigquery is already registered.")
             if is_imported("numpy"):
                 from flytekit.types import numpy  # noqa: F401
             if is_imported("PIL"):
                 from flytekit.types.file import image  # noqa: F401
-            if is_imported("snowflake.connector"):
-                try:
-                    register_snowflake_handlers()
-                except DuplicateHandlerError:
-                    logger.debug("Transformer for snowflake is already registered.")
 
     @classmethod
     def to_literal_type(cls, python_type: Type[T]) -> LiteralType:

@@ -170,6 +170,9 @@ class StructuredDataset(SerializableType, DataClassJSONMixin):
         return self._literal_sd
 
     def open(self, dataframe_type: Type[DF]):
+        from flytekit.types.structured import lazy_import_structured_dataset_handler
+
+        lazy_import_structured_dataset_handler()
         self._dataframe_type = dataframe_type
         return self
 
