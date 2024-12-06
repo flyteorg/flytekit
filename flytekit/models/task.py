@@ -179,6 +179,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
         cache_serializable,
         pod_template_name,
         cache_ignore_input_vars,
+        is_eager: bool = False,
     ):
         """
         Information needed at runtime to determine behavior such as whether or not outputs are discoverable, timeouts,
@@ -200,6 +201,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
             single instance over identical inputs is executed, other concurrent executions wait for the cached results.
         :param pod_template_name: The name of the existing PodTemplate resource which will be used in this task.
         :param cache_ignore_input_vars: Input variables that should not be included when calculating hash for cache.
+        :param is_eager:
         """
         self._discoverable = discoverable
         self._runtime = runtime
@@ -211,6 +213,11 @@ class TaskMetadata(_common.FlyteIdlEntity):
         self._cache_serializable = cache_serializable
         self._pod_template_name = pod_template_name
         self._cache_ignore_input_vars = cache_ignore_input_vars
+        self._is_eager = is_eager
+
+    @property
+    def is_eager(self):
+        return self._is_eager
 
     @property
     def discoverable(self):
@@ -310,13 +317,14 @@ class TaskMetadata(_common.FlyteIdlEntity):
             cache_serializable=self.cache_serializable,
             pod_template_name=self.pod_template_name,
             cache_ignore_input_vars=self.cache_ignore_input_vars,
+            is_eager=self.is_eager,
         )
         if self.timeout:
             tm.timeout.FromTimedelta(self.timeout)
         return tm
 
     @classmethod
-    def from_flyte_idl(cls, pb2_object):
+    def from_flyte_idl(cls, pb2_object: _core_task.TaskMetadata):
         """
         :param flyteidl.core.task_pb2.TaskMetadata pb2_object:
         :rtype: TaskMetadata
@@ -332,6 +340,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
             cache_serializable=pb2_object.cache_serializable,
             pod_template_name=pb2_object.pod_template_name,
             cache_ignore_input_vars=pb2_object.cache_ignore_input_vars,
+            is_eager=pb2_object.is_eager,
         )
 
 

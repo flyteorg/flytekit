@@ -150,7 +150,7 @@ class FlyteWorkflowExecution(RemoteExecutionBase, execution_models.Execution):
         }
 
     @property
-    def outputs(self):
+    def outputs(self) -> Optional[LiteralsResolver]:
         outputs = super().outputs
         if outputs and self._type_hints:
             outputs.update_type_hints(self._type_hints)

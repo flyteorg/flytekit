@@ -17,15 +17,13 @@ from flyteidl.service import dataproxy_pb2
 from mock import ANY, MagicMock, patch
 
 import flytekit.configuration
-from flytekit import CronSchedule, ImageSpec, LaunchPlan, WorkflowFailurePolicy, task, workflow, reference_task, \
-    map_task, dynamic
+from flytekit import CronSchedule, ImageSpec, LaunchPlan, WorkflowFailurePolicy, task, workflow, reference_task, map_task, dynamic, eager
 from flytekit.configuration import Config, DefaultImages, Image, ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions import user as user_exceptions
 from flytekit.exceptions.user import FlyteEntityNotExistException, FlyteAssertion
-from flytekit.experimental.eager_function import eager
 from flytekit.models import common as common_models
 from flytekit.models import security
 from flytekit.models.admin.workflow import Workflow, WorkflowClosure
@@ -773,17 +771,17 @@ def test_get_pickled_target_dict_with_eager():
         return a + 1
 
     @task
-    def t2(a: int) -> int:
+    async def t2(a: int) -> int:
         return a * 2
 
     @eager
     async def eager_wf(a: int) -> int:
-        out = await t1(a=a)
+        out = t1(a=a)
         if out < 0:
             return -1
         return await t2(a=out)
 
-    with pytest.raises(FlyteAssertion):
+    with pytest.raises(FlyteAssertion, match="Eager tasks are not supported in interactive mode"):
         _get_pickled_target_dict(eager_wf)
 
 

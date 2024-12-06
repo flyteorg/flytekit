@@ -1,7 +1,6 @@
 import asyncio
 import contextlib
 import datetime
-import inspect
 import os
 import pathlib
 import signal
@@ -177,10 +176,6 @@ def _dispatch_execute(
         # Step2
         # Invoke task - dispatch_execute
         outputs = task_def.dispatch_execute(ctx, idl_input_literals)
-        if inspect.iscoroutine(outputs):
-            # Handle eager-mode (async) tasks
-            logger.info("Output is a coroutine")
-            outputs = _get_working_loop().run_until_complete(outputs)
 
         # Step3a
         if isinstance(outputs, VoidPromise):

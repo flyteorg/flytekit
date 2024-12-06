@@ -18,6 +18,7 @@ my_plugin = "my_module:MyCustomPlugin"
 ```
 """
 
+import os
 from typing import Optional, Protocol, runtime_checkable
 
 from click import Group
@@ -59,10 +60,22 @@ class FlytekitPlugin:
         config: Optional[str], project: str, domain: str, data_upload_location: Optional[str] = None
     ) -> FlyteRemote:
         """Get FlyteRemote object for CLI session."""
+
         cfg_file = get_config_file(config)
+
+        # The assumption here (if there's no config file that means we want sandbox) is too broad.
+        # todo: can improve this in the future, rather than just checking one env var, auto() with
+        #   nothing configured should probably not return sandbox but can consider
         if cfg_file is None:
-            cfg_obj = Config.for_sandbox()
-            logger.info("No config files found, creating remote with sandbox config")
+            # We really are just looking for endpoint, client_id, and client_secret. These correspond to the env vars
+            # FLYTE_PLATFORM_URL, FLYTE_CREDENTIALS_CLIENT_ID, FLYTE_CREDENTIALS_CLIENT_SECRET
+            # auto() should pick these up.
+            if "FLYTE_PLATFORM_URL" in os.environ:
+                cfg_obj = Config.auto(None)
+                logger.warning(f"Auto-created config object to pick up env vars {cfg_obj}")
+            else:
+                cfg_obj = Config.for_sandbox()
+                logger.info("No config files found, creating remote with sandbox config")
         else:  # pragma: no cover
             cfg_obj = Config.auto(config)
             logger.debug(f"Creating remote with config {cfg_obj}" + (f" with file {config}" if config else ""))

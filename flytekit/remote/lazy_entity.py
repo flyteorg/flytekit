@@ -2,6 +2,7 @@ import typing
 from threading import Lock
 
 from flytekit import FlyteContext
+from flytekit.models.core.identifier import Identifier
 from flytekit.remote.remote_callable import RemoteEntity
 
 T = typing.TypeVar("T", bound=RemoteEntity)
@@ -25,6 +26,10 @@ class LazyEntity(RemoteEntity, typing.Generic[T]):
     @property
     def name(self) -> str:
         return self._name
+
+    @property
+    def id(self) -> Identifier:
+        return getattr(self.entity, "id")
 
     def entity_fetched(self) -> bool:
         with self._mutex:

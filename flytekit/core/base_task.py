@@ -21,7 +21,6 @@
 import asyncio
 import collections
 import datetime
-import inspect
 import warnings
 from abc import abstractmethod
 from base64 import b64encode
@@ -142,6 +141,7 @@ class TaskMetadata(object):
     retries: int = 0
     timeout: Optional[Union[datetime.timedelta, int]] = None
     pod_template_name: Optional[str] = None
+    is_eager: bool = False
 
     def __post_init__(self):
         if self.timeout:
@@ -181,6 +181,7 @@ class TaskMetadata(object):
             cache_serializable=self.cache_serialize,
             pod_template_name=self.pod_template_name,
             cache_ignore_input_vars=self.cache_ignore_input_vars,
+            is_eager=self.is_eager,
         )
 
 
@@ -339,9 +340,6 @@ class Task(object):
             # Code is simpler with duplication and less metaprogramming, but introduces regressions
             # if one is changed and not the other.
             outputs_literal_map = self.sandbox_execute(ctx, input_literal_map)
-
-        if inspect.iscoroutine(outputs_literal_map):
-            return outputs_literal_map
 
         outputs_literals = outputs_literal_map.literals
 
@@ -758,29 +756,6 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                         e.args = (f"Error encountered while executing '{self.name}':\n  {e}",)
                         raise
                     raise FlyteUserRuntimeException(e) from e
-
-            if inspect.iscoroutine(native_outputs):
-                # If native outputs is a coroutine, then this is an eager workflow.
-                if exec_ctx.execution_state:
-                    if exec_ctx.execution_state.mode == ExecutionState.Mode.LOCAL_TASK_EXECUTION:
-                        # Just return task outputs as a coroutine if the eager workflow is being executed locally,
-                        # outside of a workflow. This preserves the expectation that the eager workflow is an async
-                        # function.
-                        return native_outputs
-                    elif exec_ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
-                        # If executed inside of a workflow being executed locally, then run the coroutine to get the
-                        # actual results.
-                        return asyncio.run(
-                            self._async_execute(
-                                native_inputs,
-                                native_outputs,
-                                ctx,
-                                exec_ctx,
-                                new_user_params,
-                            )
-                        )
-
-                return self._async_execute(native_inputs, native_outputs, ctx, exec_ctx, new_user_params)
 
             # Lets run the post_execute method. This may result in a IgnoreOutputs Exception, which is
             # bubbled up to be handled at the callee layer.

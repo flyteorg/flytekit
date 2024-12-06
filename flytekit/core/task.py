@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import datetime
+import inspect
 import os
-from functools import update_wrapper
+from functools import partial, update_wrapper
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, TypeVar, Union, overload
 
 from typing_extensions import ParamSpec  # type: ignore
@@ -12,7 +13,7 @@ from flytekit.core import workflow as _annotated_workflow
 from flytekit.core.base_task import PythonTask, TaskMetadata, TaskResolverMixin
 from flytekit.core.interface import Interface, output_name_generator, transform_function_to_interface
 from flytekit.core.pod_template import PodTemplate
-from flytekit.core.python_function_task import PythonFunctionTask
+from flytekit.core.python_function_task import AsyncPythonFunctionTask, EagerAsyncPythonFunctionTask, PythonFunctionTask
 from flytekit.core.reference_entity import ReferenceEntity, TaskReference
 from flytekit.core.resources import Resources
 from flytekit.core.utils import str2bool
@@ -354,9 +355,22 @@ def task(
             timeout=timeout,
         )
 
-        decorated_fn = decorate_function(fn)
+        if inspect.iscoroutinefunction(fn):
+            # TODO: figure out vscode decoration for async tasks, wait to do this until this vscode pattern has
+            #   stabilized.
+            #   https://github.com/flyteorg/flyte/issues/6071
+            decorated_fn = fn
+        else:
+            decorated_fn = decorate_function(fn)
+        task_plugin = TaskPlugins.find_pythontask_plugin(type(task_config))
+        if inspect.iscoroutinefunction(fn):
+            if task_plugin is PythonFunctionTask:
+                task_plugin = AsyncPythonFunctionTask
+            else:
+                if not issubclass(task_plugin, AsyncPythonFunctionTask):
+                    raise AssertionError(f"Task plugin {task_plugin} is not compatible with async functions")
 
-        task_instance = TaskPlugins.find_pythontask_plugin(type(task_config))(
+        task_instance = task_plugin(
             task_config,
             decorated_fn,
             metadata=_metadata,
@@ -489,3 +503,96 @@ class Echo(PythonTask):
             return values[0]
         else:
             return tuple(values)
+
+
+def eager(
+    _fn=None,
+    *args,
+    **kwargs,
+) -> Union[EagerAsyncPythonFunctionTask, partial]:
+    """Eager workflow decorator.
+
+    This type of task will execute all Flyte entities within it eagerly, meaning that all python constructs can be
+    used inside of an ``@eager``-decorated function. This is because eager workflows use a
+    :py:class:`~flytekit.remote.remote.FlyteRemote` object to kick off executions when a flyte entity needs to produce a
+    value. Basically think about it as: every Flyte entity that is called(), the stack frame is an execution with its
+    own Flyte URL. Results (or the error) are fetched when the execution is finished.
+
+    For example:
+
+    .. code-block:: python
+
+        from flytekit import task, eager
+
+        @task
+        def add_one(x: int) -> int:
+            return x + 1
+
+        @task
+        def double(x: int) -> int:
+            return x * 2
+
+        @eager
+        async def eager_workflow(x: int) -> int:
+            out = add_one(x=x)
+            return double(x=out)
+
+        # run locally with asyncio
+        if __name__ == "__main__":
+            import asyncio
+
+            result = asyncio.run(eager_workflow(x=1))
+            print(f"Result: {result}")  # "Result: 4"
+
+    Unlike :py:func:`dynamic workflows <flytekit.dynamic>`, eager workflows are not compiled into a workflow spec, but
+    uses python's `async <https://docs.python.org/3/library/asyncio.html>`__ capabilities to execute flyte entities.
+
+    .. note::
+
+       Eager workflows only support `@task`, `@workflow`, and `@eager` entities. Conditionals are not supported, use a
+       plain Python if statement instead.
+
+    .. important::
+
+       A ``client_secret_group`` and ``client_secret_key`` is needed for authenticating via
+       :py:class:`~flytekit.remote.remote.FlyteRemote` using the ``client_credentials`` authentication, which is
+       configured via :py:class:`~flytekit.configuration.PlatformConfig`.
+
+       .. code-block:: python
+
+            from flytekit.remote import FlyteRemote
+            from flytekit.configuration import Config
+
+            @eager(
+                remote=FlyteRemote(config=Config.auto(config_file="config.yaml")),
+                client_secret_group="my_client_secret_group",
+                client_secret_key="my_client_secret_key",
+            )
+            async def eager_workflow(x: int) -> int:
+                out = await add_one(x)
+                return await double(one)
+
+       Where ``config.yaml`` contains is a flytectl-compatible config file.
+       For more details, see `here <https://docs.flyte.org/en/latest/flytectl/overview.html#configuration>`__.
+
+       When using a sandbox cluster started with ``flytectl demo start``, however, the ``client_secret_group``
+       and ``client_secret_key`` are not needed, :
+
+       .. code-block:: python
+
+            @eager
+            async def eager_workflow(x: int) -> int:
+                ...
+    """
+
+    if _fn is None:
+        return partial(
+            eager,
+            **kwargs,
+        )
+
+    if "enable_deck" in kwargs:
+        del kwargs["enable_deck"]
+
+    et = EagerAsyncPythonFunctionTask(task_config=None, task_function=_fn, enable_deck=True, **kwargs)
+    return et

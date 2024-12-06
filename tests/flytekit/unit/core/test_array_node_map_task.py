@@ -9,13 +9,12 @@ from typing import List
 import pytest
 from flyteidl.core import workflow_pb2 as _core_workflow
 
-from flytekit import dynamic, map_task, task, workflow, PythonFunctionTask
+from flytekit import dynamic, map_task, task, workflow, eager, PythonFunctionTask
 from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SerializationSettings
 from flytekit.core import context_manager
 from flytekit.core.array_node_map_task import ArrayNodeMapTask, ArrayNodeMapTaskResolver
 from flytekit.core.task import TaskMetadata
 from flytekit.core.type_engine import TypeEngine
-from flytekit.experimental.eager_function import eager
 from flytekit.extras.accelerators import GPUAccelerator
 from flytekit.models.literals import (
     Literal,
