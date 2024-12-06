@@ -1260,7 +1260,6 @@ class TypeEngine(typing.Generic[T]):
             cls.has_lazy_import = True
             from flytekit.types.structured import lazy_import_structured_dataset_handler
 
-            lazy_import_structured_dataset_handler()
             if is_imported("tensorflow"):
                 from flytekit.extras import tensorflow  # noqa: F401
             if is_imported("torch"):
@@ -1278,6 +1277,8 @@ class TypeEngine(typing.Generic[T]):
                 from flytekit.types import numpy  # noqa: F401
             if is_imported("PIL"):
                 from flytekit.types.file import image  # noqa: F401
+            lazy_import_structured_dataset_handler()
+
 
     @classmethod
     def to_literal_type(cls, python_type: Type[T]) -> LiteralType:
