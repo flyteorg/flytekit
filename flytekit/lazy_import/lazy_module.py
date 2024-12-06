@@ -1,9 +1,6 @@
 import importlib.util
 import sys
 import types
-import typing
-
-LAZY_MODULES: typing.List[str] = []
 
 
 class LazyModule(types.ModuleType):
@@ -18,8 +15,17 @@ class LazyModule(types.ModuleType):
 def is_imported(module_name):
     """
     This function is used to check if a module has been imported by the regular import.
+    Return false if module is lazy imported and not used yet.
     """
-    return module_name in sys.modules and module_name not in LAZY_MODULES
+    return (
+        module_name in sys.modules
+        and object.__getattribute__(lazy_module(module_name), "__class__").__name__ != "LazyModule"
+    )
+
+
+# lazy import pandas
+# someone imports pandas
+# register sd transformer
 
 
 def lazy_module(fullname):
@@ -43,6 +49,5 @@ def lazy_module(fullname):
     spec.loader = loader
     module = importlib.util.module_from_spec(spec)
     sys.modules[fullname] = module
-    LAZY_MODULES.append(module.__name__)
     loader.exec_module(module)
     return module
