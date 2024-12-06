@@ -1247,17 +1247,15 @@ class TypeEngine(typing.Generic[T]):
         return FlytePickleTransformer()
 
     @classmethod
-    def lazy_import_transformers(cls):
+    def lazy_import_transformers(cls, force: bool = False):
         """
         Only load the transformers if needed.
+        If force is set to True, the transformers will be loaded regardless of whether they have been loaded before.
         """
         with cls.lazy_import_lock:
             # Avoid a race condition where concurrent threads may exit lazy_import_transformers before the transformers
             # have been imported. This could be implemented without a lock if you assume python assignments are atomic
             # and re-registering transformers is acceptable, but I decided to play it safe.
-            if cls.has_lazy_import:
-                return
-            cls.has_lazy_import = True
             from flytekit.types.structured import lazy_import_structured_dataset_handler
 
             if is_imported("tensorflow"):
@@ -1278,7 +1276,6 @@ class TypeEngine(typing.Generic[T]):
             if is_imported("PIL"):
                 from flytekit.types.file import image  # noqa: F401
             lazy_import_structured_dataset_handler()
-
 
     @classmethod
     def to_literal_type(cls, python_type: Type[T]) -> LiteralType:
