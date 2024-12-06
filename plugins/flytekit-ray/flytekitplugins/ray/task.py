@@ -20,6 +20,7 @@ from flytekit.core.context_manager import ExecutionParameters, FlyteContextManag
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.resources import Resources
 from flytekit.extend import TaskPlugins
+from flytekit.models.task import K8sPod
 
 ray = lazy_module("ray")
 
@@ -27,8 +28,7 @@ ray = lazy_module("ray")
 @dataclass
 class HeadNodeConfig:
     ray_start_params: typing.Optional[typing.Dict[str, str]] = None
-    requests: typing.Optional[Resources] = None
-    limits: typing.Optional[Resources] = None
+    k8s_pod: typing.Optional[K8sPod] = None
 
 
 @dataclass
@@ -38,8 +38,7 @@ class WorkerNodeConfig:
     min_replicas: typing.Optional[int] = None
     max_replicas: typing.Optional[int] = None
     ray_start_params: typing.Optional[typing.Dict[str, str]] = None
-    requests: typing.Optional[Resources] = None
-    limits: typing.Optional[Resources] = None
+    k8s_pod: typing.Optional[K8sPod] = None
 
 
 @dataclass
@@ -96,8 +95,7 @@ class RayFunctionTask(PythonFunctionTask):
                 head_group_spec=(
                     HeadGroupSpec(
                         cfg.head_node_config.ray_start_params,
-                        cfg.head_node_config.requests,
-                        cfg.head_node_config.limits,
+                        cfg.head_node_config.k8s_pod
                     )
                     if cfg.head_node_config
                     else None
@@ -109,8 +107,7 @@ class RayFunctionTask(PythonFunctionTask):
                         c.min_replicas,
                         c.max_replicas,
                         c.ray_start_params,
-                        c.requests,
-                        c.limits,
+                        c.k8s_pod
                     )
                     for c in cfg.worker_node_config
                 ],

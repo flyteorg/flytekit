@@ -2,9 +2,8 @@ import typing
 
 from flyteidl.plugins import ray_pb2 as _ray_pb2
 
-from flytekit.core.resources import Resources, construct_k8s_pod_spec_from_resources
 from flytekit.models import common as _common
-from flytekit.models.task import K8sObjectMetadata, K8sPod
+from flytekit.models.task import K8sPod
 
 
 class WorkerGroupSpec(_common.FlyteIdlEntity):
@@ -15,22 +14,14 @@ class WorkerGroupSpec(_common.FlyteIdlEntity):
         min_replicas: typing.Optional[int] = None,
         max_replicas: typing.Optional[int] = None,
         ray_start_params: typing.Optional[typing.Dict[str, str]] = None,
-        requests: typing.Optional[Resources] = None,
-        limits: typing.Optional[Resources] = None,
+        k8s_pod: typing.Optional[K8sPod] = None,
     ):
         self._group_name = group_name
         self._replicas = replicas
         self._max_replicas = max(replicas, max_replicas) if max_replicas is not None else replicas
         self._min_replicas = min(replicas, min_replicas) if min_replicas is not None else replicas
         self._ray_start_params = ray_start_params
-        self._requests = requests
-        self._limits = limits
-        self._k8s_pod = K8sPod(
-            metadata=K8sObjectMetadata(),
-            pod_spec=construct_k8s_pod_spec_from_resources(
-                k8s_pod_name="ray-worker", requests=self._requests, limits=self._limits
-            ),
-        )
+        self._k8s_pod = k8s_pod
 
     @property
     def group_name(self):
@@ -113,19 +104,10 @@ class HeadGroupSpec(_common.FlyteIdlEntity):
     def __init__(
         self,
         ray_start_params: typing.Optional[typing.Dict[str, str]] = None,
-        requests: typing.Optional[Resources] = None,
-        limits: typing.Optional[Resources] = None,
+        k8s_pod: typing.Optional[K8sPod] = None,
     ):
         self._ray_start_params = ray_start_params
-        self._requests = requests
-        self._limits = limits
-
-        self._k8s_pod = K8sPod(
-            metadata=K8sObjectMetadata(),
-            pod_spec=construct_k8s_pod_spec_from_resources(
-                k8s_pod_name="ray-head", requests=self._requests, limits=self._limits
-            ),
-        )
+        self._k8s_pod = k8s_pod
 
     @property
     def ray_start_params(self):
