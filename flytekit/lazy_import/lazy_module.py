@@ -23,11 +23,6 @@ def is_imported(module_name):
     )
 
 
-# lazy import pandas
-# someone imports pandas
-# register sd transformer
-
-
 def lazy_module(fullname):
     """
     This function is used to lazily import modules.  It is used in the following way:
