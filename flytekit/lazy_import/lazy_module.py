@@ -3,7 +3,7 @@ import sys
 import types
 
 
-class LazyModule(types.ModuleType):
+class _LazyModule(types.ModuleType):
     def __init__(self, module_name: str):
         super().__init__(module_name)
         self._module_name = module_name
@@ -19,7 +19,7 @@ def is_imported(module_name):
     """
     return (
         module_name in sys.modules
-        and object.__getattribute__(lazy_module(module_name), "__class__").__name__ != "LazyModule"
+        and object.__getattribute__(lazy_module(module_name), "__class__").__name__ != "_LazyModule"
     )
 
 
@@ -39,7 +39,7 @@ def lazy_module(fullname):
     if spec is None or spec.loader is None:
         # Return a lazy module if the module is not found in the python environment,
         # so that we can raise a proper error when the user tries to access an attribute in the module.
-        return LazyModule(fullname)
+        return _LazyModule(fullname)
     loader = importlib.util.LazyLoader(spec.loader)
     spec.loader = loader
     module = importlib.util.module_from_spec(spec)
