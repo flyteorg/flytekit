@@ -202,7 +202,7 @@ def list_imported_modules_as_files(source_path: str, modules: List[ModuleType]) 
     """Copies modules into destination that are in modules. The module files are copied only if:
 
     1. Not a site-packages. These are installed packages and not user files.
-    2. Not in sys.prefix. These are also installed and not user files.
+    2. Not in the sys.base_prefix or sys.prefix. These are also installed and not user files.
     3. Does not share a common path with the source_path.
     """
     # source path is the folder holding the main script.
