@@ -33,3 +33,8 @@ EAGER_TAG_ROOT_KEY = "eager-root-exec"
 # The environment variable that will be set to the root eager task execution name. This is how you pass down the
 # root eager execution.
 EAGER_ROOT_ENV_NAME = "_F_EE_ROOT"
+
+# This is a special key used to store metadata about the cache key in a literal type.
+CACHE_KEY_METADATA = "cache-key-metadata"
+
+SERIALIZATION_FORMAT = "serialization-format"

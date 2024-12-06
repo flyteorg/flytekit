@@ -1,8 +1,13 @@
 import os
+import socket
 import subprocess
 import sys
+import tempfile
+from pathlib import Path
 
-from flytekit.tools.script_mode import compress_scripts, hash_file, add_imported_modules_from_source, get_all_modules
+import pytest
+
+from flytekit.tools.script_mode import compress_scripts, hash_file, add_imported_modules_from_source, get_all_modules, list_all_files
 from flytekit.core.tracker import import_module_from_file
 
 MAIN_WORKFLOW = """
@@ -237,3 +242,29 @@ def test_get_all_modules(tmp_path):
     # Workflow exists, so it is imported
     workflow_file.write_text(WORKFLOW_CONTENT)
     assert n_sys_modules + 1 == len(get_all_modules(os.fspath(source_dir), "my_workflows.main"))
+
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="Skip if running on windows since Unix Domain Sockets do not exist in that OS",
+)
+def test_list_all_files_skip_socket_files():
+    tmp_dir = Path(tempfile.mkdtemp())
+
+    source_dir = tmp_dir / "source"
+    source_dir.mkdir()
+
+    file1 = source_dir / "file1.py"
+    file1.write_text("")
+
+    socket_file = source_dir / "test.socket"
+    server_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    server_socket.bind(os.fspath(socket_file))
+
+    files = list(list_all_files(os.fspath(source_dir), False))
+
+    # Ensure that the socket file is not in the list of files
+    assert str(socket_file) not in files
+
+    # Ensure that the regular file is the only file in the list
+    assert len(files) == 1
+    assert str(file1) in files

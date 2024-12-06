@@ -42,6 +42,19 @@ class TypeAnnotation:
 
         return cls(annotations=_json_format.MessageToDict(proto.annotations))
 
+    @classmethod
+    def merge_annotations(cls, annotation: "TypeAnnotation", other_annotation: "TypeAnnotation") -> "TypeAnnotation":
+        """
+        Merges two annotations together. If the same key exists in both annotations, the value in the other annotation
+        will be used.
+        :param TypeAnnotation annotation: The first annotation
+        :param TypeAnnotation other_annotation: The second annotation
+        :rtype: TypeAnnotation
+        """
+        merged_annotations = annotation.annotations.copy()
+        merged_annotations.update(other_annotation.annotations)
+        return cls(annotations=merged_annotations)
+
     def __eq__(self, x: object) -> bool:
         if not isinstance(x, self.__class__):
             return False
