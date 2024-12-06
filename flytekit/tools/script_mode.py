@@ -170,13 +170,13 @@ def list_all_files(source_path: str, deref_symlinks, ignore_group: Optional[Igno
             if not os.path.exists(abspath):
                 logger.info(f"Skipping non-existent file {abspath}")
                 continue
-            if ignore_group:
-                if ignore_group.is_ignored(abspath):
-                    continue
             # Skip socket files
             if stat.S_ISSOCK(os.stat(abspath).st_mode):
                 logger.info(f"Skip socket file {abspath}")
                 continue
+            if ignore_group:
+                if ignore_group.is_ignored(abspath):
+                    continue
 
             ff.append(abspath)
         all_files.extend(ff)
