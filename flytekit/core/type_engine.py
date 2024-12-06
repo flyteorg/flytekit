@@ -36,7 +36,7 @@ from mashumaro.mixins.json import DataClassJSONMixin
 from typing_extensions import Annotated, get_args, get_origin
 
 from flytekit.core.annotation import FlyteAnnotation
-from flytekit.core.constants import FLYTE_USE_OLD_DC_FORMAT, MESSAGEPACK
+from flytekit.core.constants import CACHE_KEY_METADATA, FLYTE_USE_OLD_DC_FORMAT, MESSAGEPACK, SERIALIZATION_FORMAT
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.hash import HashMethod
 from flytekit.core.type_helpers import load_type_from_tag
@@ -662,7 +662,12 @@ class DataclassTransformer(TypeTransformer[object]):
         # This is for attribute access in FlytePropeller.
         ts = TypeStructure(tag="", dataclass_type=literal_type)
 
-        return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT, metadata=schema, structure=ts)
+        return _type_models.LiteralType(
+            simple=_type_models.SimpleType.STRUCT,
+            metadata=schema,
+            structure=ts,
+            annotation=TypeAnnotationModel({CACHE_KEY_METADATA: {SERIALIZATION_FORMAT: MESSAGEPACK}}),
+        )
 
     def to_generic_literal(
         self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType
@@ -1316,7 +1321,12 @@ class TypeEngine(typing.Generic[T]):
                     )
                 data = x.data
         if data is not None:
+            # Double-check that `data` does not contain a key called `cache-key-metadata`
+            if CACHE_KEY_METADATA in data:
+                raise AssertionError(f"FlyteAnnotation cannot contain `{CACHE_KEY_METADATA}`.")
             idl_type_annotation = TypeAnnotationModel(annotations=data)
+            if res.annotation:
+                idl_type_annotation = TypeAnnotationModel.merge_annotations(idl_type_annotation, res.annotation)
             res = LiteralType.from_flyte_idl(res.to_flyte_idl())
             res._annotation = idl_type_annotation
         return res
@@ -2128,7 +2138,10 @@ class DictTransformer(AsyncTypeTransformer[dict]):
                     return _type_models.LiteralType(map_value_type=sub_type)
                 except Exception as e:
                     raise ValueError(f"Type of Generic List type is not supported, {e}")
-        return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT)
+        return _type_models.LiteralType(
+            simple=_type_models.SimpleType.STRUCT,
+            annotation=TypeAnnotationModel({CACHE_KEY_METADATA: {SERIALIZATION_FORMAT: MESSAGEPACK}}),
+        )
 
     async def async_to_literal(
         self, ctx: FlyteContext, python_val: typing.Any, python_type: Type[dict], expected: LiteralType
