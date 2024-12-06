@@ -183,6 +183,15 @@ def list_all_files(source_path: str, deref_symlinks, ignore_group: Optional[Igno
     return all_files
 
 
+def _file_is_in_directory(file: str, directory: str) -> bool:
+    """Return True if file is in directory and in and of it's children."""
+    try:
+        return os.path.commonpath([file, directory]) == directory
+    except ValueError:
+        # ValueError is raised by windows if the paths are not from the same drive
+        pass
+
+
 def list_imported_modules_as_files(source_path: str, modules: List[ModuleType]) -> List[str]:
     """Copies modules into destination that are in modules. The module files are copied only if:
 
@@ -195,10 +204,10 @@ def list_imported_modules_as_files(source_path: str, modules: List[ModuleType]) 
     # identify a common root amongst the packages listed?
 
     site_packages = site.getsitepackages()
-    site_packages_set = set(site_packages)
-    bin_directory = os.path.dirname(sys.executable)
     files = []
     flytekit_root = os.path.dirname(flytekit.__file__)
+
+    invalid_directories = [flytekit_root, sys.prefix, sys.base_prefix] + site_packages
 
     for mod in modules:
         try:
@@ -209,37 +218,11 @@ def list_imported_modules_as_files(source_path: str, modules: List[ModuleType]) 
         if mod_file is None:
             continue
 
-        # Check to see if mod_file is in site_packages or bin_directory, which are
-        # installed packages & libraries that are not user files. This happens when
-        # there is a virtualenv like `.venv` in the working directory.
-        try:
-            # Do not upload code if it is from the flytekit library
-            if os.path.commonpath([flytekit_root, mod_file]) == flytekit_root:
-                continue
+        if any(_file_is_in_directory(mod_file, directory) for directory in invalid_directories):
+            continue
 
-            if os.path.commonpath(site_packages + [mod_file]) in site_packages_set:
-                # Do not upload files from site-packages
-                continue
-
-            if os.path.commonpath([bin_directory, mod_file]) == bin_directory:
-                # Do not upload from the bin directory
-                continue
-
-        except ValueError:
-            # ValueError is raised by windows if the paths are not from the same drive
-            # If the files are not in the same drive, then mod_file is not
-            # in the site-packages or bin directory.
-            pass
-
-        try:
-            common_path = os.path.commonpath([mod_file, source_path])
-            if common_path != source_path:
-                # Do not upload files that do not share a common directory with the source
-                continue
-        except ValueError:
-            # ValueError is raised by windows if the paths are not from the same drive
-            # If they are not in the same directory, then they do not share a common path,
-            # so we do not upload the file.
+        if not _file_is_in_directory(mod_file, source_path):
+            # Only upload files where the module file in the source directory
             continue
 
         files.append(mod_file)
