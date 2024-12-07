@@ -7,6 +7,8 @@ import grpc
 from flytekit.clients.auth.authenticator import Authenticator, ClientConfigStore
 from flytekit.configuration import PlatformConfig
 
+from flytekit.clients.auth.authenticator import PKCEAuthenticator
+from flytekit.clients.auth_helper import get_session
 
 class _ClientCallDetails(
     namedtuple("_ClientCallDetails", ("method", "timeout", "metadata", "credentials")),
@@ -95,9 +97,6 @@ class AuthUnaryInterceptor(grpc.UnaryUnaryClientInterceptor, grpc.UnaryStreamCli
                 self._authenticator, PKCEAuthenticator
             ):
                 logging.info("Current authenticator is 'None', switching to PKCEAuthenticator")
-
-                from flytekit.clients.auth.authenticator import PKCEAuthenticator
-                from flytekit.clients.auth_helper import get_session
 
                 session = get_session(self._cfg)
 
