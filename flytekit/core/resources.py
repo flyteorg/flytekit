@@ -106,7 +106,7 @@ def pod_spec_from_resources(
     k8s_pod_name: str,
     requests: Optional[Resources] = None,
     limits: Optional[Resources] = None,
-    k8s_gpu_resource_key: Optional[str] = "nvidia.com/gpu",
+    k8s_gpu_resource_key: str = "nvidia.com/gpu",
 ) -> dict[str, Any]:
     def _construct_k8s_pods_resources(resources: Optional[Resources], k8s_gpu_resource_key: str):
         if resources is None:
