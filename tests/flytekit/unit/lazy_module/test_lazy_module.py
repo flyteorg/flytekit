@@ -3,6 +3,7 @@ from unittest.mock import Mock
 
 import pytest
 from flytekit.lazy_import.lazy_module import _LazyModule, lazy_module, is_imported
+import dataclasses
 
 
 def test_lazy_module():
@@ -20,3 +21,5 @@ def test_lazy_module():
     non_lazy_module.__name__ = 'NonLazyModule'
     sys.modules["fake_module"] = non_lazy_module
     assert is_imported("fake_module")
+
+    assert is_imported("dataclasses")
