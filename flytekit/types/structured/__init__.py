@@ -13,17 +13,15 @@ Flytekit StructuredDataset
 """
 
 from flytekit.deck.renderer import ArrowRenderer, TopFrameRenderer
+from flytekit.lazy_import.lazy_module import is_imported
 from flytekit.loggers import logger
 
-from ...lazy_import.lazy_module import is_imported
 from .structured_dataset import (
     DuplicateHandlerError,
     StructuredDataset,
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
-    StructuredDatasetMetadata,
     StructuredDatasetTransformerEngine,
-    StructuredDatasetType,
 )
 
 

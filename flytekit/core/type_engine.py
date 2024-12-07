@@ -1249,7 +1249,6 @@ class TypeEngine(typing.Generic[T]):
     def lazy_import_transformers(cls):
         """
         Only load the transformers if needed.
-        If force is set to True, the transformers will be loaded regardless of whether they have been loaded before.
         """
         with cls.lazy_import_lock:
             # Avoid a race condition where concurrent threads may exit lazy_import_transformers before the transformers
