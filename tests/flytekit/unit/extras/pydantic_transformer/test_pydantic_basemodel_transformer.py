@@ -10,9 +10,12 @@ from google.protobuf import struct_pb2 as _struct
 from pydantic import BaseModel, Field
 
 from flytekit import task, workflow
+from flytekit.core.constants import CACHE_KEY_METADATA, MESSAGEPACK, SERIALIZATION_FORMAT
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
+from flytekit.models.annotation import TypeAnnotation
 from flytekit.models.literals import Literal, Scalar
+from flytekit.models.types import LiteralType, SimpleType
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import FlyteFile
 from flytekit.types.schema import FlyteSchema
@@ -980,3 +983,12 @@ def test_union_in_basemodel_wf():
         return bm
 
     assert wf_return_bm(bm=bm(a=1, b=2)) == bm(a=1, b=2)
+
+
+def test_basemodel_literal_type_annotation():
+    class BM(BaseModel):
+        a: int = -1
+        b: float = 2.1
+        c: str = "Hello, Flyte"
+
+    assert TypeEngine.to_literal_type(BM).annotation == TypeAnnotation({CACHE_KEY_METADATA: {SERIALIZATION_FORMAT: MESSAGEPACK}})

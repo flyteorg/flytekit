@@ -114,6 +114,9 @@ class NIM(ModelInferenceTemplate):
         model_server_container.volume_mounts = [V1VolumeMount(name="dshm", mount_path="/dev/shm")]
         model_server_container.security_context = V1SecurityContext(run_as_user=1000)
 
+        self.pod_template.pod_spec.volumes.append(V1Volume(name="cache", empty_dir={}))
+        model_server_container.volume_mounts.append(V1VolumeMount(name="cache", mount_path="/opt/nim/.cache"))
+
         # Download HF LoRA adapters
         if self._hf_repo_ids:
             if not self._lora_adapter_mem:
@@ -131,12 +134,13 @@ class NIM(ModelInferenceTemplate):
                 None,
             )
             if local_peft_dir_env:
-                mount_path = local_peft_dir_env.value
+                peft_mount_path = local_peft_dir_env.value
             else:
+                # This is the directory where all LoRAs are stored for a particular model.
                 raise ValueError("NIM_PEFT_SOURCE environment variable must be set.")
 
             self.pod_template.pod_spec.volumes.append(V1Volume(name="lora", empty_dir={}))
-            model_server_container.volume_mounts.append(V1VolumeMount(name="lora", mount_path=mount_path))
+            model_server_container.volume_mounts.append(V1VolumeMount(name="lora", mount_path=peft_mount_path))
 
             self.pod_template.pod_spec.init_containers.insert(
                 0,
@@ -149,7 +153,7 @@ class NIM(ModelInferenceTemplate):
                         f"""
             pip install -U "huggingface_hub[cli]"
 
-            export LOCAL_PEFT_DIRECTORY={mount_path}
+            export LOCAL_PEFT_DIRECTORY={peft_mount_path}
             mkdir -p $LOCAL_PEFT_DIRECTORY
 
             TOKEN_VAR_NAME={self._secrets.secrets_prefix}{hf_key}
@@ -175,7 +179,7 @@ class NIM(ModelInferenceTemplate):
                     volume_mounts=[
                         V1VolumeMount(
                             name="lora",
-                            mount_path=mount_path,
+                            mount_path=peft_mount_path,
                         )
                     ],
                 ),

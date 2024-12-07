@@ -6,6 +6,7 @@ import os
 import pathlib
 import posixpath
 import shutil
+import stat
 import subprocess
 import tarfile
 import tempfile
@@ -114,9 +115,6 @@ def fast_package(
         ignores = default_ignores
     ignore = IgnoreGroup(source, ignores)
 
-    # Remove this after original tar command is removed.
-    digest = compute_digest(source, ignore.is_ignored)
-
     # This function is temporarily split into two, to support the creation of the tar file in both the old way,
     # copying the underlying items in the source dir by doing a listdir, and the new way, relying on a list of files.
     if options and (
@@ -151,6 +149,9 @@ def fast_package(
 
     # Original tar command - This condition to be removed in the future after serialize is removed.
     else:
+        # Remove this after original tar command is removed.
+        digest = compute_digest(source, ignore.is_ignored)
+
         # Compute where the archive should be written
         archive_fname = f"{FAST_PREFIX}{digest}{FAST_FILEENDING}"
         if output_dir is None:
@@ -168,7 +169,6 @@ def fast_package(
                         arcname=ws_file,
                         filter=lambda x: ignore.tar_filter(tar_strip_file_attributes(x)),
                     )
-                # tar.list(verbose=True)
 
             compress_tarball(tar_path, archive_fname)
 
@@ -188,6 +188,11 @@ def compute_digest(source: Union[os.PathLike, List[os.PathLike]], filter: Option
         # Only consider files that exist (e.g. disregard symlinks that point to non-existent files)
         if not os.path.exists(path):
             logger.info(f"Skipping non-existent file {path}")
+            return
+
+        # Skip socket files
+        if stat.S_ISSOCK(os.stat(path).st_mode):
+            logger.info(f"Skip socket file {path}")
             return
 
         if filter:
