@@ -3459,8 +3459,6 @@ def test_lazy_import_transformers_concurrently():
 
     with mock.patch.object(StructuredDatasetTransformerEngine, "register", new=mock_register):
         def run():
-            import pandas as pd
-            print(pd.__version__)  # This is to ensure that the import is done.
             TypeEngine.lazy_import_transformers()
             after_import_mock()
 
