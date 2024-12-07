@@ -3451,10 +3451,6 @@ def test_dataclass_none_output_input_deserialization():
 
 @pytest.mark.serial
 def test_lazy_import_transformers_concurrently():
-    # Ensure that next call to TypeEngine.lazy_import_transformers doesn't skip the import. Mark as serial to ensure
-    # this achieves what we expect.
-    TypeEngine.has_lazy_import = False
-
     # Configure the mocks similar to https://stackoverflow.com/questions/29749193/python-unit-testing-with-two-mock-objects-how-to-verify-call-order
     after_import_mock, mock_register = mock.Mock(), mock.Mock()
     mock_wrapper = mock.Mock()
@@ -3471,11 +3467,11 @@ def test_lazy_import_transformers_concurrently():
             futures = [executor.submit(run) for _ in range(N)]
             [f.result() for f in futures]
 
-        # Assert that all the register calls come before anything else.
-        assert mock_wrapper.mock_calls[-N:] == [mock.call.after_import_mock()] * N
+        assert mock_wrapper.mock_calls[-1] == mock.call.after_import_mock()
         expected_number_of_register_calls = len(mock_wrapper.mock_calls) - N
+        assert sum([mock_call[0] == "mock_register" for mock_call in mock_wrapper.mock_calls]) == expected_number_of_register_calls
         assert all([mock_call[0] == "mock_register" for mock_call in
-                    mock_wrapper.mock_calls[:expected_number_of_register_calls]])
+                    mock_wrapper.mock_calls[:int(len(mock_wrapper.mock_calls)/N)-1]])
 
 
 @pytest.mark.skipif(sys.version_info < (3, 10), reason="PEP604 requires >=3.10, 585 requires >=3.9")

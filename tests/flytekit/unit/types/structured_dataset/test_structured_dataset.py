@@ -22,7 +22,6 @@ from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import LiteralType, SchemaType, SimpleType, StructuredDatasetType
 from flytekit.tools.translator import get_serializable
-from flytekit.types.file import FlyteFile
 from flytekit.types.structured.structured_dataset import (
     PARQUET,
     StructuredDataset,
