@@ -4,6 +4,10 @@ import types
 
 
 class _LazyModule(types.ModuleType):
+    """
+    `lazy_module` returns an instance of this class if the module is not found in the python environment.
+    """
+
     def __init__(self, module_name: str):
         super().__init__(module_name)
         self._module_name = module_name
@@ -39,6 +43,8 @@ def lazy_module(fullname):
     if spec is None or spec.loader is None:
         # Return a lazy module if the module is not found in the python environment,
         # so that we can raise a proper error when the user tries to access an attribute in the module.
+        # The reason to do this is because importlib.util.LazyLoader still requires
+        # the module to be installed even if you don't use it.
         return _LazyModule(fullname)
     loader = importlib.util.LazyLoader(spec.loader)
     spec.loader = loader
