@@ -179,7 +179,7 @@ class StructuredDataset(SerializableType, DataClassJSONMixin):
           import pandas as pd
           sd.open(pd.DataFrame).all()
 
-        pandas is imported inside the task, so padnas handler won't be loaded during deserialization in type engine.
+        pandas is imported inside the task, so pandnas handler won't be loaded during deserialization in type engine.
         """
         lazy_import_structured_dataset_handler()
         self._dataframe_type = dataframe_type
