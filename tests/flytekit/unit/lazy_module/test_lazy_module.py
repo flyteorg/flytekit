@@ -3,7 +3,6 @@ from unittest.mock import Mock
 
 import pytest
 from flytekit.lazy_import.lazy_module import _LazyModule, lazy_module, is_imported
-import dataclasses
 
 
 def test_lazy_module():

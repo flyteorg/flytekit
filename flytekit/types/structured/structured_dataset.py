@@ -174,11 +174,10 @@ class StructuredDataset(SerializableType, DataClassJSONMixin):
 
         """
         Load the handler if needed. For the use case like:
-        
-            @task
-            def t1(sd: StructuredDataset):
-              import pandas as pd
-              sd.open(pd.DataFrame).all()
+        @task
+        def t1(sd: StructuredDataset):
+          import pandas as pd
+          sd.open(pd.DataFrame).all()
 
         pandas is imported inside the task, so padnas handler won't be loaded during deserialization in type engine.
         """
