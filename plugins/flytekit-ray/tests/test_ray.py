@@ -58,19 +58,16 @@ def test_ray_task():
 
     ray_job_pb = RayJob(
         ray_cluster=RayCluster(
-            ray_cluster=RayCluster(
-                worker_group_spec=[
-                    WorkerGroupSpec(
-                        group_name="test_group",
-                        replicas=3,
-                        min_replicas=0,
-                        max_replicas=10,
-                        k8s_pod=K8sPod(pod_spec={"str": "worker", "int": 1}),
-                    )
-                ],
-                head_group_spec=HeadGroupSpec(k8s_pod=K8sPod(pod_spec={"str": "head", "int": 2})),
-                enable_autoscaling=True,
-            ),
+            worker_group_spec=[
+                WorkerGroupSpec(
+                    group_name="test_group",
+                    replicas=3,
+                    min_replicas=0,
+                    max_replicas=10,
+                    k8s_pod=K8sPod(pod_spec={"str": "worker", "int": 1}),
+                )
+            ],
+            head_group_spec=HeadGroupSpec(k8s_pod=K8sPod(pod_spec={"str": "head", "int": 2})),
             enable_autoscaling=True,
         ),
         runtime_env=base64.b64encode(json.dumps({"pip": ["numpy"]}).encode()).decode(),
