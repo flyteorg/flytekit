@@ -1146,7 +1146,6 @@ class TypeEngine(typing.Generic[T]):
     _RESTRICTED_TYPES: typing.List[type] = []
     _DATACLASS_TRANSFORMER: TypeTransformer = DataclassTransformer()  # type: ignore
     _ENUM_TRANSFORMER: TypeTransformer = EnumTransformer()  # type: ignore
-    has_lazy_import = False
     lazy_import_lock = threading.Lock()
 
     @classmethod
@@ -1247,7 +1246,7 @@ class TypeEngine(typing.Generic[T]):
         return FlytePickleTransformer()
 
     @classmethod
-    def lazy_import_transformers(cls, force: bool = False):
+    def lazy_import_transformers(cls):
         """
         Only load the transformers if needed.
         If force is set to True, the transformers will be loaded regardless of whether they have been loaded before.
