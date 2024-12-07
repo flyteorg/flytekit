@@ -4,11 +4,9 @@ from collections import namedtuple
 
 import grpc
 
-from flytekit.clients.auth.authenticator import Authenticator, ClientConfigStore
+from flytekit.clients.auth.authenticator import Authenticator, ClientConfigStore, PKCEAuthenticator
 from flytekit.configuration import PlatformConfig
 
-from flytekit.clients.auth.authenticator import PKCEAuthenticator
-from flytekit.clients.auth_helper import get_session
 
 class _ClientCallDetails(
     namedtuple("_ClientCallDetails", ("method", "timeout", "metadata", "credentials")),
@@ -91,6 +89,7 @@ class AuthUnaryInterceptor(grpc.UnaryUnaryClientInterceptor, grpc.UnaryStreamCli
         """
 
         logging.info("Received authentication error, starting PKCE authentication flow")
+        from flytekit.clients.auth_helper import get_session
 
         try:
             if isinstance(self._authenticator, Authenticator) and not isinstance(
