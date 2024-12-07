@@ -2,10 +2,12 @@ import importlib.util
 import sys
 import types
 
-LAZY_MODULES = []
 
+class _LazyModule(types.ModuleType):
+    """
+    `lazy_module` returns an instance of this class if the module is not found in the python environment.
+    """
 
-class LazyModule(types.ModuleType):
     def __init__(self, module_name: str):
         super().__init__(module_name)
         self._module_name = module_name
@@ -17,8 +19,12 @@ class LazyModule(types.ModuleType):
 def is_imported(module_name):
     """
     This function is used to check if a module has been imported by the regular import.
+    Return false if module is lazy imported and not used yet.
     """
-    return module_name in sys.modules and module_name not in LAZY_MODULES
+    return (
+        module_name in sys.modules
+        and object.__getattribute__(lazy_module(module_name), "__class__").__name__ != "_LazyModule"
+    )
 
 
 def lazy_module(fullname):
@@ -37,11 +43,12 @@ def lazy_module(fullname):
     if spec is None or spec.loader is None:
         # Return a lazy module if the module is not found in the python environment,
         # so that we can raise a proper error when the user tries to access an attribute in the module.
-        return LazyModule(fullname)
+        # The reason to do this is because importlib.util.LazyLoader still requires
+        # the module to be installed even if you don't use it.
+        return _LazyModule(fullname)
     loader = importlib.util.LazyLoader(spec.loader)
     spec.loader = loader
     module = importlib.util.module_from_spec(spec)
     sys.modules[fullname] = module
-    LAZY_MODULES.append(module)
     loader.exec_module(module)
     return module

@@ -170,6 +170,18 @@ class StructuredDataset(SerializableType, DataClassJSONMixin):
         return self._literal_sd
 
     def open(self, dataframe_type: Type[DF]):
+        from flytekit.types.structured import lazy_import_structured_dataset_handler
+
+        """
+        Load the handler if needed. For the use case like:
+        @task
+        def t1(sd: StructuredDataset):
+          import pandas as pd
+          sd.open(pd.DataFrame).all()
+
+        pandas is imported inside the task, so pandnas handler won't be loaded during deserialization in type engine.
+        """
+        lazy_import_structured_dataset_handler()
         self._dataframe_type = dataframe_type
         return self
 
