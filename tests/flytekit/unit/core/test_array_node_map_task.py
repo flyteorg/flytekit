@@ -351,15 +351,27 @@ def test_raw_execute_with_min_success_ratio(min_success_ratio, should_raise_erro
 
 
 def test_map_task_override(serialization_settings):
-    @task
+    @task(
+        timeout=timedelta(seconds=10)
+    )
     def my_mappable_task(a: int) -> typing.Optional[str]:
         return str(a)
 
+    arraynode_maptask = map_task(my_mappable_task)
+
     @workflow
     def wf(x: typing.List[int]):
-        map_task(my_mappable_task)(a=x).with_overrides(container_image="random:image")
+        arraynode_maptask(a=x).with_overrides(container_image="random:image", timeout=timedelta(seconds=20))
 
     assert wf.nodes[0]._container_image == "random:image"
+
+    od = OrderedDict()
+    wf_spec = get_serializable(od, serialization_settings, wf)
+
+    array_node = wf_spec.template.nodes[0]
+    assert array_node.metadata.timeout == timedelta()
+    task_spec = od[arraynode_maptask]
+    assert task_spec.template.metadata.timeout == timedelta(seconds=20)
 
 
 def test_serialization_metadata(serialization_settings):
