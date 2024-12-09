@@ -35,7 +35,7 @@ from flytekit.models.core.compiler import CompiledWorkflowClosure
 from flytekit.models.core.identifier import Identifier, ResourceType, WorkflowExecutionIdentifier
 from flytekit.models.execution import Execution
 from flytekit.models.task import Task
-from flytekit.remote import FlyteTask
+from flytekit.remote import FlyteTask, FlyteWorkflow
 from flytekit.remote.lazy_entity import LazyEntity
 from flytekit.remote.remote import FlyteRemote, _get_git_repo_url, _get_pickled_target_dict
 from flytekit.tools.translator import Options, get_serializable, get_serializable_launch_plan
