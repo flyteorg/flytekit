@@ -863,13 +863,15 @@ class FlyteRemote(object):
         cp_task_entity_map = OrderedDict(filter(lambda x: isinstance(x[1], task_models.TaskSpec), m.items()))
         tasks = []
         loop = asyncio.get_running_loop()
-        for entity, cp_entity in cp_task_entity_map.items():
+        for task_entity, cp_entity in cp_task_entity_map.items():
             tasks.append(
                 loop.run_in_executor(
                     None,
-                    functools.partial(self.raw_register, cp_entity, serialization_settings, version, og_entity=entity),
+                    functools.partial(self.raw_register, cp_entity, serialization_settings, version, og_entity=task_entity),
                 )
             )
+            if task_entity == entity:
+                registered_entity = await tasks[-1]
 
         identifiers_or_exceptions = []
         identifiers_or_exceptions.extend(await asyncio.gather(*tasks, return_exceptions=True))
@@ -882,15 +884,17 @@ class FlyteRemote(object):
                 raise ie
         # serial register
         cp_other_entities = OrderedDict(filter(lambda x: not isinstance(x[1], task_models.TaskSpec), m.items()))
-        for entity, cp_entity in cp_other_entities.items():
+        for non_task_entity, cp_entity in cp_other_entities.items():
             try:
                 identifiers_or_exceptions.append(
-                    self.raw_register(cp_entity, serialization_settings, version, og_entity=entity)
+                    self.raw_register(cp_entity, serialization_settings, version, og_entity=non_task_entity)
                 )
             except RegistrationSkipped as e:
                 logger.info(f"Skipping registration... {e}")
                 continue
-        return identifiers_or_exceptions[-1]
+            if non_task_entity == entity:
+                registered_entity = identifiers_or_exceptions[-1]
+        return registered_entity
 
     def register_task(
         self,
