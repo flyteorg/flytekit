@@ -31,7 +31,6 @@ from flytekit.core import mock_stats, utils
 from flytekit.core.checkpointer import Checkpoint, SyncCheckpoint
 from flytekit.core.data_persistence import FileAccessProvider, default_local_file_access_provider
 from flytekit.core.node import Node
-from flytekit.core.python_auto_container import default_task_resolver
 from flytekit.interfaces.cli_identifiers import WorkflowExecutionIdentifier
 from flytekit.interfaces.stats import taggable
 from flytekit.loggers import developer_logger, user_space_logger
@@ -719,6 +718,7 @@ class FlyteContext(object):
         Creates and returns a default compilation state. For most of the code this should be the entrypoint
         of compilation, otherwise the code should always uses - with_compilation_state
         """
+        from flytekit.core.python_auto_container import default_task_resolver
         return CompilationState(prefix=prefix, task_resolver=default_task_resolver)
 
     def new_execution_state(self, working_dir: Optional[os.PathLike] = None) -> ExecutionState:
