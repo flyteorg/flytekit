@@ -844,7 +844,12 @@ def test_register_task_with_node_dependency_hints(mock_client):
 
     registered_task = rr.register_task(dynamic0, ss)
     assert isinstance(registered_task, FlyteTask)
-    assert registered_task.id == Identifier(ResourceType.TASK, "flytesnacks", "development", "tests.flytekit.unit.remote.test_remote.dynamic0", "dummy_version")
+    assert registered_task.id.resource_type == ResourceType.TASK
+    assert registered_task.id.project == "flytesnacks"
+    assert registered_task.id.domain == "development"
+    # When running via `make unit_test` there is a `__-channelexec__` prefix added to the name.
+    assert registered_task.id.name.endswith("tests.flytekit.unit.remote.test_remote.dynamic0")
+    assert registered_task.id.version == "dummy_version"
 
     registered_workflow = rr.register_workflow(workflow1, ss)
     assert isinstance(registered_workflow, FlyteWorkflow)
