@@ -14,6 +14,7 @@ import fsspec
 
 import flytekit
 from flytekit.core.context_manager import FlyteContextManager
+from flytekit.core.promise import flyte_entity_call_handler
 from flytekit.core.utils import ClassDecorator
 from flytekit.interactive.constants import EXIT_CODE_SUCCESS, MAX_IDLE_SECONDS
 from flytekit.interactive.utils import (
@@ -98,12 +99,13 @@ def exit_handler(
     print("Task resumed. Running the task...")
     print(type(task_function))
 
-    while hasattr(task_function, "__wrapped__"):
-        if isinstance(task_function, vscode):
-            task_function = task_function.__wrapped__
-            break
-        task_function = task_function.__wrapped__
-    return task_function(*args, **kwargs)
+    return flyte_entity_call_handler(task_function, *args, **kwargs)
+    # while hasattr(task_function, "__wrapped__"):
+    #     if isinstance(task_function, vscode):
+    #         task_function = task_function.__wrapped__
+    #         break
+    #     task_function = task_function.__wrapped__
+    # return task_function(*args, **kwargs)
 
 
 def download_file(url, target_dir: Optional[str] = "."):
@@ -430,7 +432,7 @@ class vscode(ClassDecorator):
             logger.info("Pre execute function executed successfully!")
 
         # 1. Downloads the VSCode server from Internet to local.
-        download_vscode(self._config)
+        # download_vscode(self._config)
 
         # 2. Launches and monitors the VSCode server.
         #    Run the function in the background.
