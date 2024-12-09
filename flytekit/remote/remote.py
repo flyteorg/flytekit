@@ -869,7 +869,9 @@ class FlyteRemote(object):
             tasks.append(
                 loop.run_in_executor(
                     None,
-                    functools.partial(self.raw_register, cp_entity, serialization_settings, version, og_entity=task_entity),
+                    functools.partial(
+                        self.raw_register, cp_entity, serialization_settings, version, og_entity=task_entity
+                    ),
                 )
             )
             if task_entity == entity:
