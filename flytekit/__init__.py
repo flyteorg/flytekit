@@ -239,7 +239,7 @@ from flytekit.core.reference import get_reference_entity
 from flytekit.core.reference_entity import LaunchPlanReference, TaskReference, WorkflowReference
 from flytekit.core.resources import Resources
 from flytekit.core.schedule import CronSchedule, FixedRate
-from flytekit.core.task import Secret, reference_task, task
+from flytekit.core.task import Secret, eager, reference_task, task
 from flytekit.core.type_engine import BatchSize
 from flytekit.core.workflow import ImperativeWorkflow as Workflow
 from flytekit.core.workflow import WorkflowFailurePolicy, reference_workflow, workflow
