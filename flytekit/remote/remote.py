@@ -56,6 +56,7 @@ from flytekit.core.python_auto_container import (
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.reference_entity import ReferenceSpec
 from flytekit.core.task import ReferenceTask
+from flytekit.core.reference_entity import ReferenceEntity
 from flytekit.core.tracker import extract_task_module
 from flytekit.core.type_engine import LiteralsResolver, TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow, ReferenceWorkflow, WorkflowBase, WorkflowFailurePolicy
@@ -1175,6 +1176,8 @@ class FlyteRemote(object):
         :param fast_package_options: Options to customize copy_all behavior, ignored when copy_all is False.
         :return:
         """
+        if isinstance(entity, ReferenceWorkflow):
+            return self.fetch_workflow(entity.id.project, entity.id.domain, entity.id.name, entity.id.version)
         if copy_all:
             logger.info(
                 "The copy_all flag to FlyteRemote.register_script is deprecated. Please use"
