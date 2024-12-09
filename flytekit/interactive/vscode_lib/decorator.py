@@ -98,7 +98,7 @@ def exit_handler(
     print("Task resumed. Running the task...")
     print(type(task_function))
 
-    return task_function.execute()(*args, **kwargs)
+    return task_function(*args, **kwargs)
 
 
 def download_file(url, target_dir: Optional[str] = "."):
