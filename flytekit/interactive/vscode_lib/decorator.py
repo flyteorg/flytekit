@@ -13,7 +13,6 @@ from typing import Callable, List, Optional
 import fsspec
 
 import flytekit
-from flytekit.core import context_manager
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.utils import ClassDecorator
 from flytekit.interactive.constants import EXIT_CODE_SUCCESS, MAX_IDLE_SECONDS
@@ -97,9 +96,9 @@ def exit_handler(
     )
 
     print("Task resumed. Running the task...")
-    print(task)
+    print(type(task_function))
 
-    return task_function(*args, **kwargs)
+    return task_function.execute()(*args, **kwargs)
 
 
 def download_file(url, target_dir: Optional[str] = "."):
@@ -442,9 +441,7 @@ class vscode(ClassDecorator):
         # )
         child_process = multiprocessing.Process(
             target=execute_command,
-            kwargs={
-                "cmd": f"echo 1"
-            },
+            kwargs={"cmd": "echo 1"},
         )
         child_process.start()
 
