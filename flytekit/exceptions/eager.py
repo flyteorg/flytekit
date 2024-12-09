@@ -1,13 +1,13 @@
 class EagerException(Exception):
     """Raised when a node in an eager workflow encounters an error.
 
-    This exception should be used in an :py:func:`@eager <flytekit.experimental.eager>` workflow function to
+    This exception should be used in an :py:func:`@eager <flytekit.core.task.eager>` workflow function to
     catch exceptions that are raised by tasks or subworkflows.
 
     .. code-block:: python
 
         from flytekit import task
-        from flytekit.experimental import eager, EagerException
+        from flytekit.exceptions.eager import EagerException
 
         @task
         def add_one(x: int) -> int:
