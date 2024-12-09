@@ -369,6 +369,8 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
     if mod_name == "__main__":
         if hasattr(f, "task_function"):
             f = f.task_function
+        elif hasattr(f, "function"):
+            mod, mod_name, name = _task_module_from_callable(f.function)
         # If the module is __main__, we need to find the actual module name based on the file path
         inspect_file = inspect.getfile(f)  # type: ignore
         file_name, _ = os.path.splitext(os.path.basename(inspect_file))
