@@ -8,7 +8,7 @@ import warnings
 from pathlib import Path
 from string import Template
 from subprocess import run
-from typing import ClassVar
+from typing import ClassVar, List
 
 import click
 
@@ -20,6 +20,20 @@ from flytekit.image_spec.image_spec import (
 )
 from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
 from flytekit.tools.script_mode import ls_files
+
+UV_LOCK_INSTALL_TEMPLATE = Template(
+    """\
+RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/uv,id=uv \
+    --mount=from=uv,source=/uv,target=/usr/bin/uv \
+    --mount=type=bind,target=uv.lock,src=uv.lock \
+    --mount=type=bind,target=pyproject.toml,src=pyproject.toml \
+    uv sync $PIP_INSTALL_ARGS
+
+# Update PATH and UV_PYTHON to point to the venv created by uv sync
+ENV PATH="/.venv/bin:$$PATH" \
+    UV_PYTHON=/.venv/bin/python
+"""
+)
 
 UV_PYTHON_INSTALL_COMMAND_TEMPLATE = Template(
     """\
@@ -38,7 +52,7 @@ RUN --mount=type=cache,sharing=locked,mode=0777,target=/var/cache/apt,id=apt \
 
 DOCKER_FILE_TEMPLATE = Template("""\
 #syntax=docker/dockerfile:1.5
-FROM ghcr.io/astral-sh/uv:0.2.37 as uv
+FROM ghcr.io/astral-sh/uv:0.5.1 as uv
 FROM mambaorg/micromamba:2.0.3-debian12-slim as micromamba
 
 FROM $BASE_IMAGE
@@ -114,11 +128,76 @@ def _is_flytekit(package: str) -> bool:
     return name == "flytekit"
 
 
+def prepare_uv_lock_command(image_spec: ImageSpec, pip_install_args: List[str], tmp_dir: Path) -> str:
+    # uv sync is experimental, so our uv.lock support is also experimental
+    # the parameters we pass into install args could be different
+    warnings.warn("uv.lock support is experimental", UserWarning)
+
+    if image_spec.packages is not None:
+        msg = "Support for uv.lock files and packages is mutually exclusive"
+        raise ValueError(msg)
+
+    uv_lock_path = tmp_dir / "uv.lock"
+    shutil.copy2(image_spec.requirements, uv_lock_path)
+
+    # uv.lock requires pyproject.toml to be included
+    pyproject_toml_path = tmp_dir / "pyproject.toml"
+    dir_name = os.path.dirname(image_spec.requirements)
+
+    pyproject_toml_src = os.path.join(dir_name, "pyproject.toml")
+    if not os.path.exists(pyproject_toml_src):
+        msg = "To use uv.lock, a pyproject.toml must be in the same directory as the lock file"
+        raise ValueError(msg)
+
+    shutil.copy2(pyproject_toml_src, pyproject_toml_path)
+
+    # --locked: Assert that the `uv.lock` will remain unchanged
+    # --no-dev: Omit the development dependency group
+    # --no-install-project: Do not install the current project
+    pip_install_args.extend(["--locked", "--no-dev", "--no-install-project"])
+    pip_install_args = " ".join(pip_install_args)
+
+    return UV_LOCK_INSTALL_TEMPLATE.substitute(PIP_INSTALL_ARGS=pip_install_args)
+
+
+def prepare_python_install(image_spec: ImageSpec, tmp_dir: Path) -> str:
+    pip_install_args = []
+    if image_spec.pip_index:
+        pip_install_args.append(f"--index-url {image_spec.pip_index}")
+
+    if image_spec.pip_extra_index_url:
+        extra_urls = [f"--extra-index-url {url}" for url in image_spec.pip_extra_index_url]
+        pip_install_args.extend(extra_urls)
+
+    requirements = []
+    if image_spec.requirements:
+        requirement_basename = os.path.basename(image_spec.requirements)
+        if requirement_basename == "uv.lock":
+            return prepare_uv_lock_command(image_spec, pip_install_args, tmp_dir)
+
+        # Assume this is a requirements.txt file
+        with open(image_spec.requirements) as f:
+            requirements.extend([line.strip() for line in f.readlines()])
+
+    if image_spec.packages:
+        requirements.extend(image_spec.packages)
+
+    # Adds flytekit if it is not specified
+    if not any(_is_flytekit(package) for package in requirements):
+        requirements.append(get_flytekit_for_pypi())
+
+    requirements_uv_path = tmp_dir / "requirements_uv.txt"
+    requirements_uv_path.write_text("\n".join(requirements))
+    pip_install_args.extend(["--requirement", "requirements_uv.txt"])
+
+    pip_install_args = " ".join(pip_install_args)
+
+    return UV_PYTHON_INSTALL_COMMAND_TEMPLATE.substitute(PIP_INSTALL_ARGS=pip_install_args)
+
+
 def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
     """Populate tmp_dir with Dockerfile as specified by the `image_spec`."""
     base_image = image_spec.base_image or "debian:bookworm-slim"
-
-    requirements = []
 
     if image_spec.cuda is not None or image_spec.cudnn is not None:
         msg = (
@@ -133,32 +212,7 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
         )
         raise ValueError(msg)
 
-    if image_spec.requirements:
-        with open(image_spec.requirements) as f:
-            requirements.extend([line.strip() for line in f.readlines()])
-
-    if image_spec.packages:
-        requirements.extend(image_spec.packages)
-
-    # Adds flytekit if it is not specified
-    if not any(_is_flytekit(package) for package in requirements):
-        requirements.append(get_flytekit_for_pypi())
-
-    requirements_uv_path = tmp_dir / "requirements_uv.txt"
-    requirements_uv_path.write_text("\n".join(requirements))
-
-    pip_install_args = ["--requirement", "requirements_uv.txt"]
-
-    if image_spec.pip_index:
-        pip_install_args.append(f"--index-url {image_spec.pip_index}")
-    if image_spec.pip_extra_index_url:
-        extra_urls = [f"--extra-index-url {url}" for url in image_spec.pip_extra_index_url]
-        pip_install_args.extend(extra_urls)
-
-    pip_install_args = " ".join(pip_install_args)
-
-    uv_python_install_command = UV_PYTHON_INSTALL_COMMAND_TEMPLATE.substitute(PIP_INSTALL_ARGS=pip_install_args)
-
+    uv_python_install_command = prepare_python_install(image_spec, tmp_dir)
     env_dict = {"PYTHONPATH": "/root", _F_IMG_ID: image_spec.id}
 
     if image_spec.env:

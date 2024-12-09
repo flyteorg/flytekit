@@ -4,6 +4,7 @@ runs:
   using: 'composite'
   steps:
     - shell: bash
+      if: runner.os != 'Windows'
       run: |
         rm -rf /usr/share/dotnet
         rm -rf /opt/ghc

@@ -619,7 +619,7 @@ def get_serializable_array_node_map_task(
     )
     node = workflow_model.Node(
         id=entity.name,
-        metadata=entity.construct_node_metadata(),
+        metadata=entity.construct_sub_node_metadata(),
         inputs=node.bindings,
         upstream_node_ids=[],
         output_aliases=[],

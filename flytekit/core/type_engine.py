@@ -36,7 +36,7 @@ from mashumaro.mixins.json import DataClassJSONMixin
 from typing_extensions import Annotated, get_args, get_origin
 
 from flytekit.core.annotation import FlyteAnnotation
-from flytekit.core.constants import FLYTE_USE_OLD_DC_FORMAT, MESSAGEPACK
+from flytekit.core.constants import CACHE_KEY_METADATA, FLYTE_USE_OLD_DC_FORMAT, MESSAGEPACK, SERIALIZATION_FORMAT
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.hash import HashMethod
 from flytekit.core.type_helpers import load_type_from_tag
@@ -662,7 +662,12 @@ class DataclassTransformer(TypeTransformer[object]):
         # This is for attribute access in FlytePropeller.
         ts = TypeStructure(tag="", dataclass_type=literal_type)
 
-        return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT, metadata=schema, structure=ts)
+        return _type_models.LiteralType(
+            simple=_type_models.SimpleType.STRUCT,
+            metadata=schema,
+            structure=ts,
+            annotation=TypeAnnotationModel({CACHE_KEY_METADATA: {SERIALIZATION_FORMAT: MESSAGEPACK}}),
+        )
 
     def to_generic_literal(
         self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType
@@ -1141,7 +1146,6 @@ class TypeEngine(typing.Generic[T]):
     _RESTRICTED_TYPES: typing.List[type] = []
     _DATACLASS_TRANSFORMER: TypeTransformer = DataclassTransformer()  # type: ignore
     _ENUM_TRANSFORMER: TypeTransformer = EnumTransformer()  # type: ignore
-    has_lazy_import = False
     lazy_import_lock = threading.Lock()
 
     @classmethod
@@ -1250,16 +1254,7 @@ class TypeEngine(typing.Generic[T]):
             # Avoid a race condition where concurrent threads may exit lazy_import_transformers before the transformers
             # have been imported. This could be implemented without a lock if you assume python assignments are atomic
             # and re-registering transformers is acceptable, but I decided to play it safe.
-            if cls.has_lazy_import:
-                return
-            cls.has_lazy_import = True
-            from flytekit.types.structured import (
-                register_arrow_handlers,
-                register_bigquery_handlers,
-                register_pandas_handlers,
-                register_snowflake_handlers,
-            )
-            from flytekit.types.structured.structured_dataset import DuplicateHandlerError
+            from flytekit.types.structured import lazy_import_structured_dataset_handler
 
             if is_imported("tensorflow"):
                 from flytekit.extras import tensorflow  # noqa: F401
@@ -1274,29 +1269,11 @@ class TypeEngine(typing.Generic[T]):
                     from flytekit.types.schema.types_pandas import PandasSchemaReader, PandasSchemaWriter  # noqa: F401
                 except ValueError:
                     logger.debug("Transformer for pandas is already registered.")
-                try:
-                    register_pandas_handlers()
-                except DuplicateHandlerError:
-                    logger.debug("Transformer for pandas is already registered.")
-            if is_imported("pyarrow"):
-                try:
-                    register_arrow_handlers()
-                except DuplicateHandlerError:
-                    logger.debug("Transformer for arrow is already registered.")
-            if is_imported("google.cloud.bigquery"):
-                try:
-                    register_bigquery_handlers()
-                except DuplicateHandlerError:
-                    logger.debug("Transformer for bigquery is already registered.")
             if is_imported("numpy"):
                 from flytekit.types import numpy  # noqa: F401
             if is_imported("PIL"):
                 from flytekit.types.file import image  # noqa: F401
-            if is_imported("snowflake.connector"):
-                try:
-                    register_snowflake_handlers()
-                except DuplicateHandlerError:
-                    logger.debug("Transformer for snowflake is already registered.")
+            lazy_import_structured_dataset_handler()
 
     @classmethod
     def to_literal_type(cls, python_type: Type[T]) -> LiteralType:
@@ -1316,7 +1293,12 @@ class TypeEngine(typing.Generic[T]):
                     )
                 data = x.data
         if data is not None:
+            # Double-check that `data` does not contain a key called `cache-key-metadata`
+            if CACHE_KEY_METADATA in data:
+                raise AssertionError(f"FlyteAnnotation cannot contain `{CACHE_KEY_METADATA}`.")
             idl_type_annotation = TypeAnnotationModel(annotations=data)
+            if res.annotation:
+                idl_type_annotation = TypeAnnotationModel.merge_annotations(idl_type_annotation, res.annotation)
             res = LiteralType.from_flyte_idl(res.to_flyte_idl())
             res._annotation = idl_type_annotation
         return res
@@ -2128,7 +2110,10 @@ class DictTransformer(AsyncTypeTransformer[dict]):
                     return _type_models.LiteralType(map_value_type=sub_type)
                 except Exception as e:
                     raise ValueError(f"Type of Generic List type is not supported, {e}")
-        return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT)
+        return _type_models.LiteralType(
+            simple=_type_models.SimpleType.STRUCT,
+            annotation=TypeAnnotationModel({CACHE_KEY_METADATA: {SERIALIZATION_FORMAT: MESSAGEPACK}}),
+        )
 
     async def async_to_literal(
         self, ctx: FlyteContext, python_val: typing.Any, python_type: Type[dict], expected: LiteralType

@@ -24,8 +24,10 @@ dependencies = [
     "fsspec>=2023.3.0",
     "gcsfs>=2023.3.0",
     "googleapis-common-protos>=1.57",
-    "grpcio",
-    "grpcio-status",
+    # Skipping those versions to account for the unwanted output coming from grpcio and grpcio-status.
+    # Issue being tracked in https://github.com/flyteorg/flyte/issues/6082.
+    "grpcio!=1.68.0,!=1.68.1",
+    "grpcio-status!=1.68.0,!=1.68.1",
     "importlib-metadata",
     "joblib",
     "jsonlines",
