@@ -98,6 +98,11 @@ def exit_handler(
     print("Task resumed. Running the task...")
     print(type(task_function))
 
+    while hasattr(task_function, "__wrapped__"):
+        if isinstance(task_function, vscode):
+            task_function = task_function.__wrapped__
+            break
+        task_function = task_function.__wrapped__
     return task_function(*args, **kwargs)
 
 
