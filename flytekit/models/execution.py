@@ -10,6 +10,7 @@ import flyteidl.admin.cluster_assignment_pb2 as _cluster_assignment_pb2
 import flyteidl.admin.execution_pb2 as _execution_pb2
 import flyteidl.admin.node_execution_pb2 as _node_execution_pb2
 import flyteidl.admin.task_execution_pb2 as _task_execution_pb2
+from google.protobuf import wrappers_pb2 as _google_wrappers_pb2
 
 import flytekit
 from flytekit.models import common as _common_models
@@ -179,6 +180,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         max_parallelism: Optional[int] = None,
         security_context: Optional[security.SecurityContext] = None,
         overwrite_cache: Optional[bool] = None,
+        interruptible: Optional[bool] = None,
         envs: Optional[_common_models.Envs] = None,
         tags: Optional[typing.List[str]] = None,
         cluster_assignment: Optional[ClusterAssignment] = None,
@@ -198,6 +200,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             parallelism/concurrency of MapTasks is independent from this.
         :param security_context: Optional security context to use for this execution.
         :param overwrite_cache: Optional flag to overwrite the cache for this execution.
+        :param interruptible: Optional flag to override the default interruptible flag of the executed entity.
         :param envs: flytekit.models.common.Envs environment variables to set for this execution.
         :param tags: Optional list of tags to apply to the execution.
         :param execution_cluster_label: Optional execution cluster label to use for this execution.
@@ -213,6 +216,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         self._max_parallelism = max_parallelism
         self._security_context = security_context
         self._overwrite_cache = overwrite_cache
+        self._interruptible = interruptible
         self._envs = envs
         self._tags = tags
         self._cluster_assignment = cluster_assignment
@@ -288,6 +292,10 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         return self._overwrite_cache
 
     @property
+    def interruptible(self) -> Optional[bool]:
+        return self._interruptible
+
+    @property
     def envs(self) -> Optional[_common_models.Envs]:
         return self._envs
 
@@ -321,6 +329,9 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             max_parallelism=self.max_parallelism,
             security_context=self.security_context.to_flyte_idl() if self.security_context else None,
             overwrite_cache=self.overwrite_cache,
+            interruptible=_google_wrappers_pb2.BoolValue(value=self.interruptible)
+            if self.interruptible is not None
+            else None,
             envs=self.envs.to_flyte_idl() if self.envs else None,
             tags=self.tags,
             cluster_assignment=self._cluster_assignment.to_flyte_idl() if self._cluster_assignment else None,
@@ -351,6 +362,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             if p.security_context
             else None,
             overwrite_cache=p.overwrite_cache,
+            interruptible=p.interruptible.value if p.HasField("interruptible") else None,
             envs=_common_models.Envs.from_flyte_idl(p.envs) if p.HasField("envs") else None,
             tags=p.tags,
             cluster_assignment=ClusterAssignment.from_flyte_idl(p.cluster_assignment)
