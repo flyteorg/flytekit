@@ -438,7 +438,6 @@ def decorate_function(fn: Callable[P, Any]) -> Callable[P, Any]:
     Decorates the task with additional functionality if necessary.
 
     :param fn: python function to decorate.
-    :param execution_mode: execution mode for the task.
     :return: a decorated python function.
     """
 

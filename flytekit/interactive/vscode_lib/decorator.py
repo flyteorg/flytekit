@@ -39,7 +39,6 @@ def exit_handler(
     kwargs,
     max_idle_seconds: int = 180,
     post_execute: Optional[Callable] = None,
-    execution_mode: "PythonFunctionTask.ExecutionBehavior" = None,
 ):
     """
     1. Check the modified time of ~/.local/share/code-server/heartbeat.
@@ -96,15 +95,9 @@ def exit_handler(
         load_module_from_path(task_function.__module__, task_function_source_path),
         task_function.__name__,
     )
-    logger.info(f"first type(task_function) {type(task_function)}")
-    # return task_function(*args, **kwargs)
-    # Get the actual function from the task.
-    while hasattr(task_function, "__wrapped__"):
-        if isinstance(task_function, vscode):
-            task_function = task_function.__wrapped__
-            break
-        task_function = task_function.__wrapped__
-    logger.info(f"second first type(task_function) {type(task_function)}")
+
+    print("Task resumed. Running the task...")
+    print(task)
 
     return task_function(*args, **kwargs)
 
