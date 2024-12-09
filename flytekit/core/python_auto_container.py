@@ -119,6 +119,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
                 logger.info(
                     f"Not using the passed in task resolver {task_resolver} because one found in compilation context"
                 )
+            print("compilation_state.task_resolver", compilation_state.task_resolver)
             self._task_resolver = compilation_state.task_resolver
             if self._task_resolver.task_name(self) is not None:
                 self._name = self._task_resolver.task_name(self) or ""
