@@ -1,4 +1,5 @@
 import functools
+from datetime import timedelta
 import os
 import typing
 from collections import OrderedDict
@@ -377,7 +378,12 @@ def test_serialization_metadata2(serialization_settings):
     def t1(a: int) -> int:
         return a + 1
 
-    arraynode_maptask = map_task(t1, metadata=TaskMetadata(retries=2, interruptible=True))
+    arraynode_maptask = map_task(
+        t1,
+        min_success_ratio=0.9,
+        concurrency=10,
+        metadata=TaskMetadata(retries=2, interruptible=True, timeout=timedelta(seconds=10))
+    )
     assert arraynode_maptask.metadata.interruptible
 
     @workflow
@@ -387,11 +393,11 @@ def test_serialization_metadata2(serialization_settings):
     od = OrderedDict()
     wf_spec = get_serializable(od, serialization_settings, wf)
 
-    assert arraynode_maptask.construct_node_metadata().interruptible
-    assert wf_spec.template.nodes[0].metadata.interruptible
+    assert wf_spec.template.nodes[0].metadata.timeout == timedelta()
     task_spec = od[arraynode_maptask]
     assert task_spec.template.metadata.retries.retries == 2
     assert task_spec.template.metadata.interruptible
+    assert task_spec.template.metadata.timeout == timedelta(seconds=10)
 
 
 def test_serialization_extended_resources(serialization_settings):
