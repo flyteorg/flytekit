@@ -845,3 +845,7 @@ def test_register_task_with_node_dependency_hints(mock_client):
     registered_task = rr.register_task(dynamic0, ss)
     assert isinstance(registered_task, FlyteTask)
     assert registered_task.id == Identifier(ResourceType.TASK, "flytesnacks", "development", "tests.flytekit.unit.remote.test_remote.dynamic0", "dummy_version")
+
+    registered_workflow = rr.register_workflow(workflow1, ss)
+    assert isinstance(registered_workflow, FlyteWorkflow)
+    assert registered_workflow.id == Identifier(ResourceType.WORKFLOW, "flytesnacks", "development", "tests.flytekit.unit.remote.test_remote.workflow1", "dummy_version")

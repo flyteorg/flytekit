@@ -524,7 +524,9 @@ class FlyteRemote(object):
 
                 if node.branch_node:
                     get_launch_plan_from_branch(node.branch_node, node_launch_plans)
-        return FlyteWorkflow.promote_from_closure(compiled_wf, node_launch_plans)
+        flyte_workflow = FlyteWorkflow.promote_from_closure(compiled_wf, node_launch_plans)
+        flyte_workflow.template._id = workflow_id
+        return flyte_workflow
 
     def _upgrade_launchplan(self, lp: launch_plan_models.LaunchPlan) -> FlyteLaunchPlan:
         """
