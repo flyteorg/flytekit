@@ -98,12 +98,7 @@ class RayFunctionTask(PythonFunctionTask):
                 ),
                 worker_group_spec=[
                     WorkerGroupSpec(
-                        c.group_name,
-                        c.replicas,
-                        c.min_replicas,
-                        c.max_replicas,
-                        c.ray_start_params,
-                        c.k8s_pod,
+                        c.group_name, c.replicas, c.min_replicas, c.max_replicas, c.ray_start_params, c.k8s_pod
                     )
                     for c in cfg.worker_node_config
                 ],
