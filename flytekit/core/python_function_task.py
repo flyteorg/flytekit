@@ -24,7 +24,6 @@ from contextlib import suppress
 from enum import Enum
 from typing import Any, Callable, Iterable, List, Optional, TypeVar, Union, cast
 
-from flytekit import logger
 from flytekit.core import launch_plan as _annotated_launch_plan
 from flytekit.core.base_task import Task, TaskResolverMixin
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
@@ -319,7 +318,6 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         if ctx.execution_state and ctx.execution_state.is_local_execution():
             # The rest of this function mimics the local_execute of the workflow. We can't use the workflow
             # local_execute directly though since that converts inputs into Promises.
-            logger.debug(f"Executing Dynamic workflow, using raw inputs {kwargs}")
             self._create_and_cache_dynamic_workflow()
             if self.execution_mode == self.ExecutionBehavior.DYNAMIC:
                 es = ctx.new_execution_state().with_params(mode=ExecutionState.Mode.DYNAMIC_TASK_EXECUTION)
