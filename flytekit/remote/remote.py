@@ -825,6 +825,9 @@ class FlyteRemote(object):
                 self.client.create_launch_plan(launch_plan_identifer=ident, launch_plan_spec=cp_entity.spec)
             except FlyteEntityAlreadyExistsException:
                 logger.debug(f" {ident} Already Exists!")
+
+            if cp_entity.should_auto_activate:
+                self.client.update_launch_plan(ident, launch_plan_models.LaunchPlanState.ACTIVE)
             return ident
 
         raise AssertionError(f"Unknown entity of type {type(cp_entity)}")
@@ -1331,6 +1334,7 @@ class FlyteRemote(object):
 
         type_hints = type_hints or {}
         literal_map = {}
+
         with self.remote_context() as ctx:
             input_flyte_type_map = entity.interface.inputs
 
@@ -1358,9 +1362,7 @@ class FlyteRemote(object):
                     )
                     lit = TypeEngine.to_literal(ctx, v, hint, variable.type)
                 literal_map[k] = lit
-
             literal_inputs = literal_models.LiteralMap(literals=literal_map)
-
         try:
             # Currently, this will only execute the flyte entity referenced by
             # flyte_id in the same project and domain. However, it is possible to execute it in a different project
@@ -1603,6 +1605,7 @@ class FlyteRemote(object):
                 tags=tags,
                 cluster_pool=cluster_pool,
                 execution_cluster_label=execution_cluster_label,
+                options=options,
             )
         if isinstance(entity, WorkflowBase):
             return self.execute_local_workflow(
@@ -1900,6 +1903,7 @@ class FlyteRemote(object):
         tags: typing.Optional[typing.List[str]] = None,
         cluster_pool: typing.Optional[str] = None,
         execution_cluster_label: typing.Optional[str] = None,
+        options: typing.Optional[Options] = None,
     ) -> FlyteWorkflowExecution:
         """
         Execute a @task-decorated function or TaskTemplate task.
@@ -1918,6 +1922,8 @@ class FlyteRemote(object):
         :param tags: Tags to set for the execution.
         :param cluster_pool: Specify cluster pool on which newly created execution should be placed.
         :param execution_cluster_label: Specify label of cluster(s) on which newly created execution should be placed.
+        :param options: Options to customize the execution.
+
         :return: FlyteWorkflowExecution object.
         """
         ss = SerializationSettings(
@@ -1942,8 +1948,10 @@ class FlyteRemote(object):
             if self.interactive_mode_enabled:
                 ss.fast_serialization_settings = self._pickle_and_upload_entity(entity, pickled_target_dict)
 
+            # TODO: If this is being registered from eager, it will not reflect the full serialization settings
+            #   object (look into the function, the passed in ss is basically ignored). How should it be piped in?
+            #   https://github.com/flyteorg/flyte/issues/6070
             flyte_task: FlyteTask = self.register_task(entity, ss, version)
-
         return self.execute(
             flyte_task,
             inputs,
@@ -1954,6 +1962,7 @@ class FlyteRemote(object):
             wait=wait,
             type_hints=entity.python_interface.inputs,
             overwrite_cache=overwrite_cache,
+            options=options,
             envs=envs,
             tags=tags,
             cluster_pool=cluster_pool,

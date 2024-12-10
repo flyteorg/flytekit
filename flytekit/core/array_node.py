@@ -217,6 +217,10 @@ class ArrayNode:
     def execution_mode(self) -> _core_workflow.ArrayNode.ExecutionMode:
         return self._execution_mode
 
+    @property
+    def is_original_sub_node_interface(self) -> bool:
+        return True
+
     def __call__(self, *args, **kwargs):
         if not self._bindings:
             ctx = FlyteContext.current_context()

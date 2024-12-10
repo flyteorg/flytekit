@@ -17,14 +17,13 @@ from flyteidl.service import dataproxy_pb2
 from mock import ANY, MagicMock, patch
 
 import flytekit.configuration
-from flytekit import CronSchedule, ImageSpec, LaunchPlan, WorkflowFailurePolicy, task, workflow, reference_task, map_task, dynamic
+from flytekit import CronSchedule, ImageSpec, LaunchPlan, WorkflowFailurePolicy, task, workflow, reference_task, map_task, dynamic, eager
 from flytekit.configuration import Config, DefaultImages, Image, ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions import user as user_exceptions
 from flytekit.exceptions.user import FlyteEntityNotExistException, FlyteAssertion
-from flytekit.experimental.eager_function import eager
 from flytekit.models import common as common_models
 from flytekit.models import security
 from flytekit.models.admin.workflow import Workflow, WorkflowClosure
@@ -710,14 +709,15 @@ def test_get_pickled_target_dict():
 
     _, target_dict = _get_pickled_target_dict(w)
     assert (
-        target_dict.metadata.python_version
-        == f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+            target_dict.metadata.python_version
+            == f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
     )
     assert len(target_dict.entities) == 2
     assert t1.name in target_dict.entities
     assert t2.name in target_dict.entities
     assert target_dict.entities[t1.name] == t1
     assert target_dict.entities[t2.name] == t2
+
 
 def test_get_pickled_target_dict_with_map_task():
     @task
@@ -730,12 +730,13 @@ def test_get_pickled_target_dict_with_map_task():
 
     _, target_dict = _get_pickled_target_dict(w)
     assert (
-        target_dict.metadata.python_version
-        == f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+            target_dict.metadata.python_version
+            == f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
     )
     assert len(target_dict.entities) == 1
     assert t1.name in target_dict.entities
     assert target_dict.entities[t1.name] == t1
+
 
 def test_get_pickled_target_dict_with_dynamic():
     @task
@@ -763,21 +764,48 @@ def test_get_pickled_target_dict_with_dynamic():
     with pytest.raises(FlyteAssertion):
         _get_pickled_target_dict(my_wf)
 
+
 def test_get_pickled_target_dict_with_eager():
     @task
     def t1(a: int) -> int:
         return a + 1
 
     @task
-    def t2(a: int) -> int:
+    async def t2(a: int) -> int:
         return a * 2
 
     @eager
     async def eager_wf(a: int) -> int:
-        out = await t1(a=a)
+        out = t1(a=a)
         if out < 0:
             return -1
         return await t2(a=out)
 
-    with pytest.raises(FlyteAssertion):
+    with pytest.raises(FlyteAssertion, match="Eager tasks are not supported in interactive mode"):
         _get_pickled_target_dict(eager_wf)
+
+
+@mock.patch("flytekit.remote.remote.FlyteRemote.client")
+def test_launchplan_auto_activate(mock_client):
+    @workflow
+    def wf() -> int:
+        return 1
+
+    lp1 = LaunchPlan.get_or_create(name="lp1", workflow=wf, auto_activate=False)
+    lp2 = LaunchPlan.get_or_create(name="lp2", workflow=wf, auto_activate=True)
+
+    rr = FlyteRemote(
+        Config.for_sandbox(),
+        default_project="flytesnacks",
+        default_domain="development",
+    )
+
+    ss = SerializationSettings(image_config=ImageConfig.auto())
+
+    # The first one should not update the launchplan
+    rr.register_launch_plan(lp1, version="1", serialization_settings=ss)
+    mock_client.update_launch_plan.assert_not_called()
+
+    # the second one should
+    rr.register_launch_plan(lp2, version="1", serialization_settings=ss)
+    mock_client.update_launch_plan.assert_called()
