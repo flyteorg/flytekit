@@ -230,6 +230,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         # TODO: circular import
         from flytekit.core.task import ReferenceTask
 
+        # breakpoint()
         if not ctx.compilation_state:
             cs = ctx.new_compilation_state(prefix="d")
         else:

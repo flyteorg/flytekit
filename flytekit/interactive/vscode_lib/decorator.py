@@ -13,6 +13,7 @@ from typing import Callable, List, Optional
 import fsspec
 
 import flytekit
+from flytekit.core import context_manager
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.promise import flyte_entity_call_handler
 from flytekit.core.utils import ClassDecorator
@@ -90,7 +91,8 @@ def exit_handler(
     terminate_process()
 
     # Reload the task function since it may be modified.
-    task_function_source_path = FlyteContextManager.current_context().user_space_params.TASK_FUNCTION_SOURCE_PATH
+    ctx = FlyteContextManager.current_context()
+    task_function_source_path = ctx.user_space_params.TASK_FUNCTION_SOURCE_PATH
     task_function = getattr(
         load_module_from_path(task_function.__module__, task_function_source_path),
         task_function.__name__,
@@ -98,8 +100,8 @@ def exit_handler(
 
     print("Task resumed. Running the task...")
     print(type(task_function))
-
-    return flyte_entity_call_handler(task_function, *args, **kwargs)
+    with context_manager.FlyteContextManager.with_context(ctx.new_builder()):
+        return flyte_entity_call_handler(task_function, *args, **kwargs)
     # while hasattr(task_function, "__wrapped__"):
     #     if isinstance(task_function, vscode):
     #         task_function = task_function.__wrapped__
