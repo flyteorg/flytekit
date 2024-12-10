@@ -95,6 +95,7 @@ def exit_handler(
         task_function.__name__,
     )
 
+    # Get the actual function from the task.
     while hasattr(task_function, "__wrapped__"):
         if isinstance(task_function, vscode):
             task_function = task_function.__wrapped__

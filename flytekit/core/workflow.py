@@ -696,9 +696,13 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         return f"{self.name}.{t.__module__}.{t.name}"
 
     def _validate_add_on_failure_handler(self, ctx: FlyteContext, prefix: str, wf_args: Dict[str, Promise]):
-        # Compare
+        resolver = (
+            ctx.compilation_state.task_resolver
+            if ctx.compilation_state and ctx.compilation_state.task_resolver
+            else self
+        )
         with FlyteContextManager.with_context(
-            ctx.with_compilation_state(CompilationState(prefix=prefix, task_resolver=self))
+            ctx.with_compilation_state(CompilationState(prefix=prefix, task_resolver=resolver))
         ) as inner_comp_ctx:
             # Now lets compile the failure-node if it exists
             if self.on_failure:
@@ -748,7 +752,6 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             # Construct the default input promise bindings, but then override with the provided inputs, if any
             input_kwargs = construct_input_promises([k for k in self.interface.inputs.keys()])
             input_kwargs.update(kwargs)
-            # breakpoint()
             workflow_outputs = self._workflow_function(**input_kwargs)
             all_nodes.extend(comp_ctx.compilation_state.nodes)
 

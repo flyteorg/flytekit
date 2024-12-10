@@ -40,7 +40,6 @@ from flytekit.core.workflow import (
     WorkflowMetadataDefaults,
 )
 from flytekit.exceptions.user import FlyteValueException
-from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as task_models
@@ -200,7 +199,6 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         This method will be invoked to execute the task. If you do decide to override this method you must also
         handle dynamic tasks or you will no longer be able to use the task as a dynamic task generator.
         """
-        logger.info("python function task execute")
         if self.execution_mode == self.ExecutionBehavior.DEFAULT:
             return self._task_function(**kwargs)
         elif self.execution_mode == self.ExecutionBehavior.EAGER:
@@ -226,11 +224,9 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         In the case of dynamic workflows, this function will produce a workflow definition at execution time which will
         then proceed to be executed.
         """
-        logger.error("compiling into workflow")
         # TODO: circular import
         from flytekit.core.task import ReferenceTask
 
-        # breakpoint()
         if not ctx.compilation_state:
             cs = ctx.new_compilation_state(prefix="d")
         else:
@@ -238,7 +234,6 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
 
         updated_ctx = ctx.with_compilation_state(cs)
         if self.execution_mode == self.ExecutionBehavior.DYNAMIC:
-            logger.error("compiling dynamic task")
             es = ctx.new_execution_state().with_params(mode=ExecutionState.Mode.DYNAMIC_TASK_EXECUTION)
             updated_ctx = updated_ctx.with_execution_state(es)
 
@@ -323,10 +318,8 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         if ctx.execution_state and ctx.execution_state.is_local_execution():
             # The rest of this function mimics the local_execute of the workflow. We can't use the workflow
             # local_execute directly though since that converts inputs into Promises.
-            logger.debug(f"Executing Dynamic workflow, using raw inputs {kwargs}")
             self._create_and_cache_dynamic_workflow()
             if self.execution_mode == self.ExecutionBehavior.DYNAMIC:
-                logger.info("dynamic_execute")
                 es = ctx.new_execution_state().with_params(mode=ExecutionState.Mode.DYNAMIC_TASK_EXECUTION)
             else:
                 es = cast(ExecutionState, ctx.execution_state)
@@ -366,7 +359,6 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
             return _literal_models.LiteralMap(literals=wf_outputs_as_literal_dict)
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
-            logger.error("self.compile_into_workflow(ctx, task_function, **kwargs)")
             return self.compile_into_workflow(ctx, task_function, **kwargs)
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_TASK_EXECUTION:
