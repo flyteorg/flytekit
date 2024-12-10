@@ -736,7 +736,11 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         ctx = FlyteContextManager.current_context()
         all_nodes = []
         prefix = ctx.compilation_state.prefix if ctx.compilation_state is not None else ""
-        resolver = ctx.compilation_state.task_resolver if ctx.compilation_state and ctx.compilation_state.task_resolver else self
+        resolver = (
+            ctx.compilation_state.task_resolver
+            if ctx.compilation_state and ctx.compilation_state.task_resolver
+            else self
+        )
 
         with FlyteContextManager.with_context(
             ctx.with_compilation_state(CompilationState(prefix=prefix, task_resolver=resolver))

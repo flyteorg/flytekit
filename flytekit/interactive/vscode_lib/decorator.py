@@ -13,9 +13,7 @@ from typing import Callable, List, Optional
 import fsspec
 
 import flytekit
-from flytekit.core import context_manager
 from flytekit.core.context_manager import FlyteContextManager
-from flytekit.core.promise import flyte_entity_call_handler
 from flytekit.core.utils import ClassDecorator
 from flytekit.interactive.constants import EXIT_CODE_SUCCESS, MAX_IDLE_SECONDS
 from flytekit.interactive.utils import (
@@ -91,17 +89,15 @@ def exit_handler(
     terminate_process()
 
     # Reload the task function since it may be modified.
-    ctx = FlyteContextManager.current_context()
-    task_function_source_path = ctx.user_space_params.TASK_FUNCTION_SOURCE_PATH
+    task_function_source_path = FlyteContextManager.current_context().user_space_params.TASK_FUNCTION_SOURCE_PATH
     task_function = getattr(
         load_module_from_path(task_function.__module__, task_function_source_path),
         task_function.__name__,
     )
 
-    print("Task resumed. Running the task...")
-    print(type(task_function))
     # with context_manager.FlyteContextManager.with_context(ctx.new_builder()):
     #     return flyte_entity_call_handler(task_function, *args, **kwargs)
+    # Get the actual function from the task.
     while hasattr(task_function, "__wrapped__"):
         if isinstance(task_function, vscode):
             task_function = task_function.__wrapped__
@@ -412,7 +408,6 @@ class vscode(ClassDecorator):
         ctx.user_space_params.builder().add_attr(
             TASK_FUNCTION_SOURCE_PATH, inspect.getsourcefile(self.task_function)
         ).build()
-        logger.info("vscode execute")
 
         # 1. If the decorator is disabled, we don't launch the VSCode server.
         # 2. When user use pyflyte run or python to execute the task, we don't launch the VSCode server.
@@ -434,7 +429,7 @@ class vscode(ClassDecorator):
             logger.info("Pre execute function executed successfully!")
 
         # 1. Downloads the VSCode server from Internet to local.
-        # download_vscode(self._config)
+        download_vscode(self._config)
 
         # 2. Launches and monitors the VSCode server.
         #    Run the function in the background.
@@ -442,26 +437,22 @@ class vscode(ClassDecorator):
         task_function_source_dir = os.path.dirname(
             FlyteContextManager.current_context().user_space_params.TASK_FUNCTION_SOURCE_PATH
         )
-        # child_process = multiprocessing.Process(
-        #     target=execute_command,
-        #     kwargs={
-        #         "cmd": f"code-server --bind-addr 0.0.0.0:{self.port} --disable-workspace-trust --auth none {task_function_source_dir}"
-        #     },
-        # )
         child_process = multiprocessing.Process(
             target=execute_command,
-            kwargs={"cmd": "echo 1"},
+            kwargs={
+                "cmd": f"code-server --bind-addr 0.0.0.0:{self.port} --disable-workspace-trust --auth none {task_function_source_dir}"
+            },
         )
         child_process.start()
 
         # 3. Prepare the interactive debugging Python script and launch.json.
-        # prepare_interactive_python(self.task_function)  # type: ignore
+        prepare_interactive_python(self.task_function)  # type: ignore
 
         # 4. Prepare the task resumption Python script
-        # prepare_resume_task_python(child_process.pid)
+        prepare_resume_task_python(child_process.pid)
 
         # 5. Prepare the launch.json
-        # prepare_launch_json()
+        prepare_launch_json()
 
         return exit_handler(
             child_process=child_process,
