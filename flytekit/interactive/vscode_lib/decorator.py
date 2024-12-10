@@ -100,14 +100,14 @@ def exit_handler(
 
     print("Task resumed. Running the task...")
     print(type(task_function))
-    with context_manager.FlyteContextManager.with_context(ctx.new_builder()):
-        return flyte_entity_call_handler(task_function, *args, **kwargs)
-    # while hasattr(task_function, "__wrapped__"):
-    #     if isinstance(task_function, vscode):
-    #         task_function = task_function.__wrapped__
-    #         break
-    #     task_function = task_function.__wrapped__
-    # return task_function(*args, **kwargs)
+    # with context_manager.FlyteContextManager.with_context(ctx.new_builder()):
+    #     return flyte_entity_call_handler(task_function, *args, **kwargs)
+    while hasattr(task_function, "__wrapped__"):
+        if isinstance(task_function, vscode):
+            task_function = task_function.__wrapped__
+            break
+        task_function = task_function.__wrapped__
+    return task_function(*args, **kwargs)
 
 
 def download_file(url, target_dir: Optional[str] = "."):
