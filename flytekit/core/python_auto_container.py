@@ -146,7 +146,6 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         """
         Returns the default pyflyte-execute command used to run this on hosted Flyte platforms.
         """
-        # breakpoint()
         container_args = [
             "pyflyte-execute",
             "--inputs",
