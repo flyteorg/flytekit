@@ -24,7 +24,6 @@ from contextlib import suppress
 from enum import Enum
 from typing import Any, Callable, Iterable, List, Optional, TypeVar, Union, cast
 
-from flytekit.loggers import logger
 from flytekit.core import launch_plan as _annotated_launch_plan
 from flytekit.core.base_task import Task, TaskResolverMixin
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
@@ -41,6 +40,7 @@ from flytekit.core.workflow import (
     WorkflowMetadataDefaults,
 )
 from flytekit.exceptions.user import FlyteValueException
+from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as task_models
