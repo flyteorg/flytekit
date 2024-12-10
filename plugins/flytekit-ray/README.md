@@ -7,3 +7,5 @@ To install the plugin, run the following command:
 ```bash
 pip install flytekitplugins-ray
 ```
+
+All [examples](https://docs.flyte.org/en/latest/flytesnacks/examples/ray_plugin/index.html) showcasing execution of Ray jobs using the plugin can be found in the documentation.
