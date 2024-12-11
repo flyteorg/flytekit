@@ -86,6 +86,12 @@ class Deck:
     def html(self) -> str:
         return self._html
 
+    @classmethod
+    def publish(cls):
+        task_name = FlyteContextManager.current_context().user_space_params.task_id.name
+        new_user_params = FlyteContextManager.current_context().user_space_params
+        _output_deck(task_name=task_name, new_user_params=new_user_params)
+
 
 class TimeLineDeck(Deck):
     """
@@ -148,7 +154,8 @@ def generate_time_table(data: dict) -> str:
 
 
 def _get_deck(
-    new_user_params: ExecutionParameters, ignore_jupyter: bool = False
+    new_user_params: ExecutionParameters,
+    ignore_jupyter: bool = False,
 ) -> typing.Union[str, "IPython.core.display.HTML"]:  # type:ignore
     """
     Get flyte deck html string
@@ -180,7 +187,7 @@ def _output_deck(task_name: str, new_user_params: ExecutionParameters):
     local_path = f"{local_dir}{os.sep}{DECK_FILE_NAME}"
     try:
         with open(local_path, "w", encoding="utf-8") as f:
-            f.write(_get_deck(new_user_params, ignore_jupyter=True))
+            f.write(_get_deck(new_user_params=new_user_params, ignore_jupyter=True))
         logger.info(f"{task_name} task creates flyte deck html to file://{local_path}")
         if ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
             fs = ctx.file_access.get_filesystem_for_path(new_user_params.output_metadata_prefix)
@@ -197,6 +204,7 @@ def _output_deck(task_name: str, new_user_params: ExecutionParameters):
 def get_deck_template() -> Template:
     root = os.path.dirname(os.path.abspath(__file__))
     templates_dir = os.path.join(root, "html", "template.html")
+
     with open(templates_dir, "r") as f:
         template_content = f.read()
     return Template(template_content)
