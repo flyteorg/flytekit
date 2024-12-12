@@ -1,16 +1,17 @@
 import io
 import os
-import fsspec
 import pathlib
 import random
 import string
 import sys
 import tempfile
 
+import fsspec
 import mock
 import pytest
 from azure.identity import ClientSecretCredential, DefaultAzureCredential
 
+from flytekit.configuration import Config
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.local_fsspec import FlyteLocalFileSystem
 
@@ -207,3 +208,18 @@ def test_get_file_system():
 
     fp = FileAccessProvider("/tmp", "s3://my-bucket")
     fp.get_filesystem("testgetfs", test_arg="test_arg")
+
+
+@pytest.mark.sandbox_text
+def test_put_raw_data_bytes():
+    dc = Config.for_sandbox().data_config
+    raw_output = f"s3://my-s3-bucket/"
+    provider = FileAccessProvider(local_sandbox_dir="/tmp/unittest", raw_output_prefix=raw_output, data_config=dc)
+    prefix = provider.get_random_string()
+    provider.put_raw_data(lpath=b"hello", upload_prefix=prefix, file_name="hello_bytes")
+    provider.put_raw_data(lpath=io.BytesIO(b"hello"), upload_prefix=prefix, file_name="hello_bytes_io")
+    provider.put_raw_data(lpath=io.StringIO("hello"), upload_prefix=prefix, file_name="hello_string_io")
+
+    fs = provider.get_filesystem("s3")
+    listing = fs.ls(f"{raw_output}{prefix}/")
+    assert len(listing) == 3

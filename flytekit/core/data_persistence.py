@@ -199,7 +199,8 @@ class FileAccessProvider(object):
         elif protocol == "s3":
             s3kwargs = s3_setup_args(self._data_config.s3, anonymous=anonymous)
             s3kwargs.update(kwargs)
-            return fsspec.filesystem(protocol, **s3kwargs)  # type: ignore
+            fs = fsspec.filesystem(protocol, **s3kwargs)  # type: ignore
+            return fs
         elif protocol == "gs":
             if anonymous:
                 kwargs["token"] = _ANON
@@ -220,8 +221,8 @@ class FileAccessProvider(object):
     ) -> Union[AsyncFileSystem, fsspec.AbstractFileSystem]:
         protocol = get_protocol(path)
         loop = asyncio.get_running_loop()
-
-        return self.get_filesystem(protocol, anonymous=anonymous, path=path, asynchronous=True, loop=loop, **kwargs)
+        fs = self.get_filesystem(protocol, anonymous=anonymous, path=path, asynchronous=True, loop=loop, **kwargs)
+        return fs
 
     def get_filesystem_for_path(self, path: str = "", anonymous: bool = False, **kwargs) -> fsspec.AbstractFileSystem:
         protocol = get_protocol(path)
@@ -425,45 +426,30 @@ class FileAccessProvider(object):
 
         # raw bytes
         if isinstance(lpath, bytes):
-            fs = await self.get_async_filesystem_for_path(to_path)
-            if isinstance(fs, AsyncFileSystem):
-                async with fs.open_async(to_path, "wb", **kwargs) as s:
-                    s.write(lpath)
-            else:
-                with fs.open(to_path, "wb", **kwargs) as s:
-                    s.write(lpath)
-
+            fs = self.get_filesystem_for_path(to_path)
+            with fs.open(to_path, "wb", **kwargs) as s:
+                s.write(lpath)
             return to_path
 
         # If lpath is a buffered reader of some kind
         if isinstance(lpath, io.BufferedReader) or isinstance(lpath, io.BytesIO):
             if not lpath.readable():
                 raise FlyteAssertion("Buffered reader must be readable")
-            fs = await self.get_async_filesystem_for_path(to_path)
+            fs = self.get_filesystem_for_path(to_path)
             lpath.seek(0)
-            if isinstance(fs, AsyncFileSystem):
-                async with fs.open_async(to_path, "wb", **kwargs) as s:
-                    while data := lpath.read(read_chunk_size_bytes):
-                        s.write(data)
-            else:
-                with fs.open(to_path, "wb", **kwargs) as s:
-                    while data := lpath.read(read_chunk_size_bytes):
-                        s.write(data)
+            with fs.open(to_path, "wb", **kwargs) as s:
+                while data := lpath.read(read_chunk_size_bytes):
+                    s.write(data)
             return to_path
 
         if isinstance(lpath, io.StringIO):
             if not lpath.readable():
                 raise FlyteAssertion("Buffered reader must be readable")
-            fs = await self.get_async_filesystem_for_path(to_path)
+            fs = self.get_filesystem_for_path(to_path)
             lpath.seek(0)
-            if isinstance(fs, AsyncFileSystem):
-                async with fs.open_async(to_path, "wb", **kwargs) as s:
-                    while data_str := lpath.read(read_chunk_size_bytes):
-                        s.write(data_str.encode(encoding))
-            else:
-                with fs.open(to_path, "wb", **kwargs) as s:
-                    while data_str := lpath.read(read_chunk_size_bytes):
-                        s.write(data_str.encode(encoding))
+            with fs.open(to_path, "wb", **kwargs) as s:
+                while data_str := lpath.read(read_chunk_size_bytes):
+                    s.write(data_str.encode(encoding))
             return to_path
 
         raise FlyteAssertion(f"Unsupported lpath type {type(lpath)}")
