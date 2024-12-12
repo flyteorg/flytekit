@@ -341,9 +341,12 @@ def register(
                     )
                     console_url = remote.generate_console_url(i)
                     print_activation_message = False
-                    if is_lp and activate_launchplans:
-                        remote.activate_launchplan(i)
-                        print_activation_message = True
+                    if is_lp:
+                        if activate_launchplans:
+                            remote.activate_launchplan(i)
+                            print_activation_message = True
+                        if cp_entity.should_auto_activate:
+                            print_activation_message = True
                     print_registration_status(
                         i, console_url=console_url, verbosity=verbosity, activation=print_activation_message
                     )

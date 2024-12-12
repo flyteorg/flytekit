@@ -1,6 +1,9 @@
 import os
+import socket
 import subprocess
+import sys
 import tarfile
+import tempfile
 import time
 from hashlib import md5
 from pathlib import Path
@@ -46,6 +49,33 @@ def flyte_project(tmp_path):
     os.symlink(str(tmp_path) + "/utils/util.py", str(tmp_path) + "/src/util")
     subprocess.run(["git", "init", str(tmp_path)])
     return tmp_path
+
+
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="Skip if running on windows since Unix Domain Sockets do not exist in that OS",
+)
+def test_skip_socket_file():
+    tmp_dir = tempfile.mkdtemp()
+
+    tree = {
+        "data": {"large.file": "", "more.files": ""},
+        "src": {
+            "workflows": {
+                "hello_world.py": "print('Hello World!')",
+            },
+        },
+    }
+
+    # Add a socket file
+    socket_path = tmp_dir + "/test.sock"
+    server_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    server_socket.bind(socket_path)
+
+    subprocess.run(["git", "init", str(tmp_dir)])
+
+    # Assert that this runs successfully
+    compute_digest(str(tmp_dir))
 
 
 def test_package(flyte_project, tmp_path):

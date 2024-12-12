@@ -2,6 +2,7 @@ import typing
 from collections import OrderedDict
 
 import pytest
+from flyteidl.core import workflow_pb2 as _core_workflow
 
 from flytekit import LaunchPlan, task, workflow
 from flytekit.core.context_manager import FlyteContextManager
@@ -96,6 +97,10 @@ def test_lp_serialization(target, overrides_metadata, serialization_settings):
 
     parent_node = wf_spec.template.nodes[0]
     assert parent_node.inputs[0].var == "a"
+    assert parent_node.array_node._min_success_ratio == 0.9
+    assert parent_node.array_node._parallelism == 10
+    assert parent_node.array_node._is_original_sub_node_interface
+    assert parent_node.array_node._execution_mode == _core_workflow.ArrayNode.FULL_STATE
     assert len(parent_node.inputs[0].binding.collection.bindings) == 3
     for binding in parent_node.inputs[0].binding.collection.bindings:
         assert binding.scalar.primitive.integer is not None
