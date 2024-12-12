@@ -210,7 +210,7 @@ def test_get_file_system():
     fp.get_filesystem("testgetfs", test_arg="test_arg")
 
 
-@pytest.mark.sandbox_text
+@pytest.mark.sandbox_test
 def test_put_raw_data_bytes():
     dc = Config.for_sandbox().data_config
     raw_output = f"s3://my-s3-bucket/"
