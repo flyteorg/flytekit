@@ -16,6 +16,7 @@ from flytekit.core.workflow import workflow
 from flytekit.exceptions.user import FlyteAssertion, FlyteMissingTypeException
 from flytekit.image_spec.image_spec import ImageBuildEngine
 from flytekit.models.admin.workflow import WorkflowSpec
+from flytekit.models.annotation import TypeAnnotation
 from flytekit.models.literals import (
     BindingData,
     BindingDataCollection,
@@ -829,9 +830,7 @@ def test_default_args_task_dict_type():
         }
     )
 
-    assert wf_with_input_spec.template.interface.outputs["o0"].type == LiteralType(
-        map_value_type=LiteralType(simple=SimpleType.INTEGER)
-    )
+    assert wf_with_input_spec.template.interface.outputs["o0"].type == LiteralType(map_value_type=LiteralType(simple=SimpleType.INTEGER))
 
     assert wf_with_input() == input_val
 
