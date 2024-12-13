@@ -199,8 +199,7 @@ class FileAccessProvider(object):
         elif protocol == "s3":
             s3kwargs = s3_setup_args(self._data_config.s3, anonymous=anonymous)
             s3kwargs.update(kwargs)
-            fs = fsspec.filesystem(protocol, **s3kwargs)  # type: ignore
-            return fs
+            return fsspec.filesystem(protocol, **s3kwargs)  # type: ignore
         elif protocol == "gs":
             if anonymous:
                 kwargs["token"] = _ANON
@@ -221,8 +220,7 @@ class FileAccessProvider(object):
     ) -> Union[AsyncFileSystem, fsspec.AbstractFileSystem]:
         protocol = get_protocol(path)
         loop = asyncio.get_running_loop()
-        fs = self.get_filesystem(protocol, anonymous=anonymous, path=path, asynchronous=True, loop=loop, **kwargs)
-        return fs
+        return self.get_filesystem(protocol, anonymous=anonymous, path=path, asynchronous=True, loop=loop, **kwargs)
 
     def get_filesystem_for_path(self, path: str = "", anonymous: bool = False, **kwargs) -> fsspec.AbstractFileSystem:
         protocol = get_protocol(path)
