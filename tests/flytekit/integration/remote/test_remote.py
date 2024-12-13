@@ -615,7 +615,7 @@ class TestLargeFileTransfers:
     @pytest.mark.parametrize("gigabytes", [2, 3])
     def test_flyteremote_uploads_large_file(gigabytes):
         """This test checks whether FlyteRemote can upload large files."""
-        remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+        remote = FlyteRemote(Config.for_sandbox(), PROJECT, DOMAIN)
         minio_s3_client = TestLargeFileTransfers._get_minio_s3_client(remote)
         with ExitStack() as stack:
             # Step 1 - Create a large local file
