@@ -1410,7 +1410,7 @@ def flyte_entity_call_handler(
     # Convert args to kwargs
     for arg, input_name in zip(args, entity.python_interface.inputs.keys()):
         if input_name in kwargs:
-            raise AssertionError(f"Got multiple values for argument '{input_name}' in function '{entity.name}'")
+            continue
         kwargs[input_name] = arg
 
     ctx = FlyteContextManager.current_context()

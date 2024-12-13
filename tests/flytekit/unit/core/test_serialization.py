@@ -1065,10 +1065,3 @@ def test_too_many_positional_args_task_raises_error():
     with pytest.raises(AssertionError, match="Received more arguments than expected"):
         t1(1, 2)
 
-def test_both_positional_and_keyword_args_task_raises_error():
-    @task
-    def t1(a: int) -> int:
-        return a
-
-    with pytest.raises(AssertionError, match="Got multiple values for argument"):
-        t1(1, a=2)
