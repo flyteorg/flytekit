@@ -34,7 +34,7 @@ class VLLM(ModelInferenceTemplate):
 
         :param hf_secret: Instance of HFSecret for managing hugging face secrets.
         :param arg_dict: A dictionary of arguments for the VLLM model server (https://docs.vllm.ai/en/stable/models/engine_args.html).
-        :param image: The Docker image to be used for the model server container. Default is "ç".
+        :param image: The Docker image to be used for the model server container. Default is "vllm/vllm-openai".
         :param health_endpoint: The health endpoint for the model server container. Default is "/health".
         :param port: The port number for the model server container. Default is 8000.
         :param cpu: The number of CPU cores requested for the model server container. Default is 2.
