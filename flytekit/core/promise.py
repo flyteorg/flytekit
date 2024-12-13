@@ -439,7 +439,7 @@ class Promise(object):
     def __init__(
         self,
         var: str,
-        val: Union[NodeOutput, _literals_models.Literal],
+        val: Union[NodeOutput, _literals_models.Literal, "Run"],
         type: typing.Optional[_type_models.LiteralType] = None,
     ):
         self._var = var
@@ -448,6 +448,8 @@ class Promise(object):
         self._ref = None
         self._attr_path: List[Union[str, int]] = []
         self._type = type
+        self.node_metadata = None
+
         if val and isinstance(val, NodeOutput):
             self._ref = val
             self._promise_ready = False
@@ -487,6 +489,12 @@ class Promise(object):
         """
         If the promise is ready then this holds the actual evaluate value in Flyte's type system
         """
+        from flytekit.core.base_task import Run
+
+        if isinstance(self._val, Run):
+            # Invoke the task when using it in a workflow
+            lt_map = self._val.invoke(self.node_metadata)
+            self._val = lt_map.literals[self._var]
         return self._val
 
     @property
@@ -512,7 +520,7 @@ class Promise(object):
         return self._attr_path
 
     def eval(self) -> Any:
-        if not self._promise_ready or self._val is None:
+        if not self._promise_ready or self.val is None:
             raise ValueError("Cannot Eval with incomplete promises")
         if self.val.scalar is None or self.val.scalar.primitive is None:
             raise ValueError("Eval can be invoked for primitive types only")
@@ -599,11 +607,13 @@ class Promise(object):
                 *args,
                 **kwargs,
             )
+        self.node_metadata = {"cache": cache}
         return self
 
     def __repr__(self):
         if self._promise_ready:
-            return f"Resolved({self._var}={self._val})"
+            return f"Resolved({self._var}={self.val})"
+
         return f"Promise(node:{self.ref.node_id}.{self._var}.{self.attr_path})"
 
     def __str__(self):
