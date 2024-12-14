@@ -268,7 +268,7 @@ jobs:
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
       - name: Install dependencies
         run: |
-          pip install uv==0.5.6
+          pip install uv
           make setup-global-uv
           uv pip freeze
       - name: Install FlyteCTL
