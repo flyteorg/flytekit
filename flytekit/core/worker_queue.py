@@ -291,6 +291,8 @@ class Controller:
                 # todo: if the execution already exists, remote.execute will return that execution. in the future
                 #  we can add input checking to make sure the inputs are indeed a match.
                 wf_exec = self.remote.execute(
+                    project=self.ss.project,
+                    domain=self.ss.domain,
                     entity=wi.entity,
                     execution_name=exec_name,
                     inputs=wi.input_kwargs,
