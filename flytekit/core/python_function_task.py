@@ -24,7 +24,7 @@ from abc import ABC
 from collections import OrderedDict
 from contextlib import suppress
 from enum import Enum
-from typing import Any, Callable, Iterable, List, Optional, Tuple, TypeVar, Union, cast
+from typing import Any, Callable, Iterable, List, Optional, Tuple, TypeVar, Union, cast, TYPE_CHECKING
 
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core import launch_plan as _annotated_launch_plan
@@ -61,6 +61,9 @@ from flytekit.models import literals as _literal_models
 from flytekit.models import task as task_models
 from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.utils.asyn import loop_manager
+
+if TYPE_CHECKING:
+    from flytekit.remote.remote import FlyteRemote
 
 T = TypeVar("T")
 
@@ -579,31 +582,52 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
         with FlyteContextManager.with_context(builder):
             return loop_manager.run_sync(self.async_execute, self, **kwargs)
 
-    # easier to use explicit input kwargs
     async def run_with_backend(self, **kwargs):
         """
         This is the main entry point to kick off a live run. Like if you're running locally, but want to use a
         Flyte backend, or running for real on a Flyte backend.
         """
 
-        # set up context
         ctx = FlyteContextManager.current_context()
-        mode = ExecutionState.Mode.EAGER_EXECUTION
-        builder = ctx.with_execution_state(cast(ExecutionState, ctx.execution_state).with_params(mode=mode))
+        base_error = None
+        try:
+            result = await self._task_function(**kwargs)
+        except EagerException as ee:
+            # Catch and re-raise a different exception to render Deck even in case of failure.
+            logger.error(f"Leaving eager execution because of {ee}")
+            base_error = ee
 
-        with FlyteContextManager.with_context(builder) as ctx:
-            base_error = None
-            try:
-                result = await self._task_function(**kwargs)
-            except EagerException as ee:
-                # Catch and re-raise a different exception to render Deck even in case of failure.
-                logger.error(f"Leaving eager execution because of {ee}")
-                base_error = ee
+        html = cast(Controller, ctx.worker_queue).render_html()
+        Deck("eager workflow", html)
 
-            html = cast(Controller, ctx.worker_queue).render_html()
-            Deck("eager workflow", html)
+        if base_error:
+            # now have to fail this eager task, because we don't want it to show up as succeeded.
+            raise FlyteNonRecoverableSystemException(base_error)
+        return result
 
-            if base_error:
-                # now have to fail this eager task, because we don't want it to show up as succeeded.
-                raise FlyteNonRecoverableSystemException(base_error)
-            return result
+    def run(self, remote: FlyteRemote, ss: SerializationSettings, **kwargs):
+        ctx = FlyteContextManager.current_context()
+        # tag is the current execution id
+        # root tag is read from the environment variable if it exists, if not, it's the current execution id
+        if not ctx.user_space_params or not ctx.user_space_params.execution_id:
+            raise AssertionError(
+                "User facing context and execution ID should be present when not running locally"
+            )
+        tag = ctx.user_space_params.execution_id.name
+        root_tag = os.environ.get(EAGER_ROOT_ENV_NAME, tag)
+
+        # Prefix is a combination of the name of this eager workflow, and the current execution id.
+        prefix = self.name.split(".")[-1][:8]
+        prefix = f"e-{prefix}-{tag[:5]}"
+        prefix = _dnsify(prefix)
+        # Note: The construction of this object is in this function because this function should be on the
+        # main thread of pyflyte-execute. It needs to be on the main thread because signal handlers can only
+        # be installed on the main thread.
+        c = Controller(remote=remote, ss=ss, tag=tag, root_tag=root_tag, exec_prefix=prefix)
+        handler = c.get_signal_handler()
+        signal.signal(signal.SIGINT, handler)
+        signal.signal(signal.SIGTERM, handler)
+        builder = ctx.with_worker_queue(c)
+
+        with FlyteContextManager.with_context(builder):
+            return loop_manager.run_sync(self.async_execute, self, **kwargs)
