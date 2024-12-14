@@ -13,15 +13,15 @@ Flytekit StructuredDataset
 """
 
 from flytekit.deck.renderer import ArrowRenderer, TopFrameRenderer
+from flytekit.lazy_import.lazy_module import is_imported
 from flytekit.loggers import logger
 
 from .structured_dataset import (
+    DuplicateHandlerError,
     StructuredDataset,
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
-    StructuredDatasetMetadata,
     StructuredDatasetTransformerEngine,
-    StructuredDatasetType,
 )
 
 
@@ -84,3 +84,27 @@ def register_snowflake_handlers():
             "We won't register snowflake handler for structured dataset because "
             "we can't find package snowflake-connector-python"
         )
+
+
+def lazy_import_structured_dataset_handler():
+    if is_imported("pandas"):
+        try:
+            register_pandas_handlers()
+            register_csv_handlers()
+        except DuplicateHandlerError:
+            logger.debug("Transformer for pandas is already registered.")
+    if is_imported("pyarrow"):
+        try:
+            register_arrow_handlers()
+        except DuplicateHandlerError:
+            logger.debug("Transformer for arrow is already registered.")
+    if is_imported("google.cloud.bigquery"):
+        try:
+            register_bigquery_handlers()
+        except DuplicateHandlerError:
+            logger.debug("Transformer for bigquery is already registered.")
+    if is_imported("snowflake.connector"):
+        try:
+            register_snowflake_handlers()
+        except DuplicateHandlerError:
+            logger.debug("Transformer for snowflake is already registered.")
