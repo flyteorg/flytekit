@@ -88,9 +88,9 @@ class Deck:
 
     @classmethod
     def publish(cls):
-        task_name = FlyteContextManager.current_context().user_space_params.task_id.name
-        new_user_params = FlyteContextManager.current_context().user_space_params
-        _output_deck(task_name=task_name, new_user_params=new_user_params)
+        params = FlyteContextManager.current_context().user_space_params
+        task_name = params.task_id.name
+        _output_deck(task_name=task_name, new_user_params=params)
 
 
 class TimeLineDeck(Deck):
