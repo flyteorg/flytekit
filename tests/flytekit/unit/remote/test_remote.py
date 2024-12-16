@@ -35,7 +35,7 @@ from flytekit.models.core.compiler import CompiledWorkflowClosure
 from flytekit.models.core.identifier import Identifier, ResourceType, WorkflowExecutionIdentifier
 from flytekit.models.execution import Execution
 from flytekit.models.task import Task
-from flytekit.remote import FlyteTask
+from flytekit.remote import FlyteTask, FlyteWorkflow
 from flytekit.remote.lazy_entity import LazyEntity
 from flytekit.remote.remote import FlyteRemote, _get_git_repo_url, _get_pickled_target_dict
 from flytekit.tools.translator import Options, get_serializable, get_serializable_launch_plan
@@ -811,3 +811,46 @@ def test_launchplan_auto_activate(mock_client):
     # the second one should
     rr.register_launch_plan(lp2, version="1", serialization_settings=ss)
     mock_client.update_launch_plan.assert_called()
+
+
+@mock.patch("flytekit.remote.remote.FlyteRemote.client")
+def test_register_task_with_node_dependency_hints(mock_client):
+    @task
+    def task0():
+        return None
+
+    @workflow
+    def workflow0():
+        return task0()
+
+    @dynamic(node_dependency_hints=[workflow0])
+    def dynamic0():
+        return workflow0()
+
+    @workflow
+    def workflow1():
+        return dynamic0()
+
+    rr = FlyteRemote(
+        Config.for_sandbox(),
+        default_project="flytesnacks",
+        default_domain="development",
+    )
+
+    ss = SerializationSettings(
+        image_config=ImageConfig.from_images("docker.io/abc:latest"),
+        version="dummy_version",
+    )
+
+    registered_task = rr.register_task(dynamic0, ss)
+    assert isinstance(registered_task, FlyteTask)
+    assert registered_task.id.resource_type == ResourceType.TASK
+    assert registered_task.id.project == "flytesnacks"
+    assert registered_task.id.domain == "development"
+    # When running via `make unit_test` there is a `__-channelexec__` prefix added to the name.
+    assert registered_task.id.name.endswith("tests.flytekit.unit.remote.test_remote.dynamic0")
+    assert registered_task.id.version == "dummy_version"
+
+    registered_workflow = rr.register_workflow(workflow1, ss)
+    assert isinstance(registered_workflow, FlyteWorkflow)
+    assert registered_workflow.id == Identifier(ResourceType.WORKFLOW, "flytesnacks", "development", "tests.flytekit.unit.remote.test_remote.workflow1", "dummy_version")

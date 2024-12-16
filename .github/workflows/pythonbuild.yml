@@ -299,6 +299,9 @@ jobs:
           FLYTEKIT_IMAGE: localhost:30000/flytekit:dev
           FLYTEKIT_CI: 1
           PYTEST_OPTS: -n2
+          AWS_ENDPOINT_URL: 'http://localhost:30002'
+          AWS_ACCESS_KEY_ID: minio
+          AWS_SECRET_ACCESS_KEY: miniostorage
         run: |
           make ${{ matrix.makefile-cmd }}
       - name: Codecov
