@@ -31,6 +31,9 @@ jobs:
           else
             echo "python_versions=[\"3.9\", \"3.12\"]" >> $GITHUB_ENV
           fi
+      - name: Confirm Agent can start
+        run: |
+          docker run --rm -it ghcr.io/flyteorg/flyteagent:1.14.0 pyflyte serve agent --port 8000 --timeout 1
 
   build:
     needs:
