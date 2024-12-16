@@ -44,33 +44,25 @@ class GitIgnore(Ignore):
         self.ignored_files = self._list_ignored_files()
         self.ignored_dirs = self._list_ignored_dirs()
 
-    def _list_ignored_files(self) -> set[str]:
+    def _git_wrapper(self, extra_args: List[str]) -> set[str]:
         if self.has_git:
             out = subprocess.run(
-                ["git", "ls-files", "-io", "--exclude-standard"],
+                ["git", "ls-files", "-io", "--exclude-standard", *extra_args],
                 cwd=self.root,
                 capture_output=True,
             )
             if out.returncode == 0:
                 return set(out.stdout.decode("utf-8").split("\n")[:-1])
-            logger.info(f"Could not determine ignored files due to:\n{out.stderr}\nNot applying any filters")
+            logger.info(f"Could not determine ignored paths due to:\n{out.stderr}\nNot applying any filters")
             return set()
         logger.info("No git executable found, not applying any filters")
         return set()
 
+    def _list_ignored_files(self) -> set[str]:
+        return self._git_wrapper([])
+
     def _list_ignored_dirs(self) -> set[str]:
-        if self.has_git:
-            out = subprocess.run(
-                ["git", "ls-files", "-io", "--exclude-standard", "--directory"],
-                cwd=self.root,
-                capture_output=True,
-            )
-            if out.returncode == 0:
-                return set(out.stdout.decode("utf-8").split("\n")[:-1])
-            logger.info(f"Could not determine ignored files due to:\n{out.stderr}\nNot applying any filters")
-            return set()
-        logger.info("No git executable found, not applying any filters")
-        return set()
+        return self._git_wrapper(["--directory"])
 
     def _is_ignored(self, path: str) -> bool:
         if self.ignored_files:
