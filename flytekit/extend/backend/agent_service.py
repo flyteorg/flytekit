@@ -61,13 +61,13 @@ def _handle_exception(e: Exception, context: grpc.ServicerContext, task_type: st
         error_message = f"Cannot find agent for task type: {task_type}."
         logger.error(error_message)
         context.set_code(grpc.StatusCode.NOT_FOUND)
-        context.set_details(get_traceback_str(e))
+        context.set_details(error_message)
         request_failure_count.labels(task_type=task_type, operation=operation, error_code=HTTPStatus.NOT_FOUND).inc()
     else:
-        error_message = f"failed to {operation} {task_type} task with error: {e}."
+        error_message = f"failed to {operation} {task_type} task with error:\n {get_traceback_str(e)}."
         logger.error(error_message)
         context.set_code(grpc.StatusCode.INTERNAL)
-        context.set_details(get_traceback_str(e))
+        context.set_details(error_message)
         request_failure_count.labels(
             task_type=task_type, operation=operation, error_code=HTTPStatus.INTERNAL_SERVER_ERROR
         ).inc()
