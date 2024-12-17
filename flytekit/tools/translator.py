@@ -13,6 +13,7 @@ from flytekit.core.array_node import ArrayNode
 from flytekit.core.array_node_map_task import ArrayNodeMapTask
 from flytekit.core.base_task import PythonTask
 from flytekit.core.condition import BranchNode
+from flytekit.core.constants import FLYTE_ENABLE_DECK
 from flytekit.core.container_task import ContainerTask
 from flytekit.core.gate import Gate
 from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
@@ -191,8 +192,8 @@ def get_serializable_task(
     if hasattr(entity, "task_function"):
         if isinstance(entity.task_function, ClassDecorator):
             extra_config = entity.task_function.get_extra_config()
-        if entity.disable_deck == False:
-            extra_config["ENABLE_FLYTE_DECK"] = "true"
+        if not entity.disable_deck:
+            extra_config[FLYTE_ENABLE_DECK] = "true"
 
     merged_config = {**entity_config, **extra_config}
     # ENABLE_FLYTE_DECK = true
