@@ -222,6 +222,9 @@ jobs:
           file: ./Dockerfile.agent
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - name: Confirm Agent can start
+        run: |
+          docker run --rm ghcr.io/${{ github.repository_owner }}/flyteagent:${{ github.sha }} pyflyte serve agent --port 8000 --timeout 1
       - name: Push flyteagent-all Image to GitHub Registry
         uses: docker/build-push-action@v2
         with:
