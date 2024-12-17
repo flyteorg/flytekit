@@ -188,11 +188,14 @@ def get_serializable_task(
 
     extra_config = {}
 
-    if hasattr(entity, "task_function") and isinstance(entity.task_function, ClassDecorator):
-        extra_config = entity.task_function.get_extra_config()
+    if hasattr(entity, "task_function"):
+        if isinstance(entity.task_function, ClassDecorator):
+            extra_config = entity.task_function.get_extra_config()
+        if entity.disable_deck == False:
+            extra_config["ENABLE_FLYTE_DECK"] = "true"
 
     merged_config = {**entity_config, **extra_config}
-
+    # ENABLE_FLYTE_DECK = true
     tt = TaskTemplate(
         id=task_id,
         type=entity.task_type,
