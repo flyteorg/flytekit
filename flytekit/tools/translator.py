@@ -196,7 +196,7 @@ def get_serializable_task(
             extra_config[FLYTE_ENABLE_DECK] = "true"
 
     merged_config = {**entity_config, **extra_config}
-    # ENABLE_FLYTE_DECK = true
+
     tt = TaskTemplate(
         id=task_id,
         type=entity.task_type,

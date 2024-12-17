@@ -175,10 +175,6 @@ def _dispatch_execute(
 
         # Step2
         # Invoke task - dispatch_execute
-        if task_def is not None and not getattr(task_def, "disable_deck", False):
-            ctx.user_space_params.builder().add_attr("FLYTE_ENABLE_DECK", True).build()
-        else:
-            ctx.user_space_params.builder().add_attr("FLYTE_ENABLE_DECK", False).build()
         outputs = task_def.dispatch_execute(ctx, idl_input_literals)
 
         # Step3a
