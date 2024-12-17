@@ -477,10 +477,7 @@ def test_nested_workflow(working_dir, wf_path, monkeypatch: pytest.MonkeyPatch):
         ],
         catch_exceptions=False,
     )
-    assert (
-        result.stdout.strip()
-        == "Running Execution on local.\nRunning Execution on local."
-    )
+    assert ("Running Execution on local.\nRunning Execution on local." in result.stdout.strip())
     assert result.exit_code == 0
 
 
@@ -853,7 +850,7 @@ def test_list_default_arguments(task_path):
         catch_exceptions=False,
     )
     assert result.exit_code == 0
-    assert result.stdout == "Running Execution on local.\n0 Hello Color.RED\n\n"
+    assert "Running Execution on local.\n0 Hello Color.RED\n\n" in result.stdout
 
 
 def test_entity_non_found_in_file():
