@@ -10,6 +10,7 @@ from typing_extensions import ParamSpec  # type: ignore
 
 from flytekit.core import launch_plan as _annotated_launchplan
 from flytekit.core import workflow as _annotated_workflow
+from flytekit.core.auto_cache import CachePolicy, VersionParameters
 from flytekit.core.base_task import PythonTask, TaskMetadata, TaskResolverMixin
 from flytekit.core.interface import Interface, output_name_generator, transform_function_to_interface
 from flytekit.core.pod_template import PodTemplate
@@ -96,7 +97,7 @@ FuncOut = TypeVar("FuncOut")
 def task(
     _task_function: None = ...,
     task_config: Optional[T] = ...,
-    cache: bool = ...,
+    cache: Union[bool, CachePolicy] = ...,
     cache_serialize: bool = ...,
     cache_version: str = ...,
     cache_ignore_input_vars: Tuple[str, ...] = ...,
@@ -133,9 +134,9 @@ def task(
 
 @overload
 def task(
-    _task_function: Callable[P, FuncOut],
+    _task_function: Callable[..., FuncOut],
     task_config: Optional[T] = ...,
-    cache: bool = ...,
+    cache: Union[bool, CachePolicy] = ...,
     cache_serialize: bool = ...,
     cache_version: str = ...,
     cache_ignore_input_vars: Tuple[str, ...] = ...,
@@ -167,13 +168,13 @@ def task(
     pod_template_name: Optional[str] = ...,
     accelerator: Optional[BaseAccelerator] = ...,
     pickle_untyped: bool = ...,
-) -> Union[Callable[P, FuncOut], PythonFunctionTask[T]]: ...
+) -> Union[Callable[..., FuncOut], PythonFunctionTask[T]]: ...
 
 
 def task(
-    _task_function: Optional[Callable[P, FuncOut]] = None,
+    _task_function: Optional[Callable[..., FuncOut]] = None,
     task_config: Optional[T] = None,
-    cache: bool = False,
+    cache: Union[bool, CachePolicy] = False,
     cache_serialize: bool = False,
     cache_version: str = "",
     cache_ignore_input_vars: Tuple[str, ...] = (),
@@ -212,8 +213,8 @@ def task(
     accelerator: Optional[BaseAccelerator] = None,
     pickle_untyped: bool = False,
 ) -> Union[
-    Callable[P, FuncOut],
-    Callable[[Callable[P, FuncOut]], PythonFunctionTask[T]],
+    Callable[..., FuncOut],
+    Callable[[Callable[..., FuncOut]], PythonFunctionTask[T]],
     PythonFunctionTask[T],
 ]:
     """
@@ -248,7 +249,7 @@ def task(
     :param _task_function: This argument is implicitly passed and represents the decorated function
     :param task_config: This argument provides configuration for a specific task types.
                         Please refer to the plugins documentation for the right object to use.
-    :param cache: Boolean that indicates if caching should be enabled
+    :param cache: Boolean that indicates if caching should be enabled or a list of AutoCache implementations
     :param cache_serialize: Boolean that indicates if identical (ie. same inputs) instances of this task should be
           executed in serial when caching is enabled. This means that given multiple concurrent executions over
           identical inputs, only a single instance executes and the rest wait to reuse the cached results. This
@@ -343,12 +344,24 @@ def task(
     :param pickle_untyped: Boolean that indicates if the task allows unspecified data types.
     """
 
-    def wrapper(fn: Callable[P, Any]) -> PythonFunctionTask[T]:
+    def wrapper(fn: Callable[..., Any]) -> PythonFunctionTask[T]:
+        if isinstance(cache, CachePolicy):
+            cache_val = True
+            params = VersionParameters(func=fn, container_image=container_image)
+            cache_version_val = cache_version or cache.get_version(params=params)
+            cache_serialize_val = cache_serialize or cache.cache_serialize
+            cache_serialize_val = cache_ignore_input_vars or cache.cache_ignore_input_vars
+        else:
+            cache_val = cache
+            cache_version_val = cache_version
+            cache_serialize_val = cache_serialize
+            cache_ignore_input_vars_val = cache_ignore_input_vars
+
         _metadata = TaskMetadata(
-            cache=cache,
-            cache_serialize=cache_serialize,
-            cache_version=cache_version,
-            cache_ignore_input_vars=cache_ignore_input_vars,
+            cache=cache_val,
+            cache_serialize=cache_serialize_val,
+            cache_version=cache_version_val,
+            cache_ignore_input_vars=cache_ignore_input_vars_val,
             retries=retries,
             interruptible=interruptible,
             deprecated=deprecated,
@@ -447,7 +460,7 @@ def reference_task(
     return wrapper
 
 
-def decorate_function(fn: Callable[P, Any]) -> Callable[P, Any]:
+def decorate_function(fn: Callable[..., Any]) -> Callable[..., Any]:
     """
     Decorates the task with additional functionality if necessary.
 
