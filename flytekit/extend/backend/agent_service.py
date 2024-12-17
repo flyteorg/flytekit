@@ -25,6 +25,7 @@ from flyteidl.service.agent_pb2_grpc import (
 from prometheus_client import Counter, Summary
 
 from flytekit import logger
+from flytekit.bin.entrypoint import get_traceback_str
 from flytekit.exceptions.system import FlyteAgentNotFound
 from flytekit.extend.backend.base_agent import AgentRegistry, SyncAgentBase, mirror_async_methods
 from flytekit.models.literals import LiteralMap
@@ -60,13 +61,13 @@ def _handle_exception(e: Exception, context: grpc.ServicerContext, task_type: st
         error_message = f"Cannot find agent for task type: {task_type}."
         logger.error(error_message)
         context.set_code(grpc.StatusCode.NOT_FOUND)
-        context.set_details(error_message)
+        context.set_details(get_traceback_str(e))
         request_failure_count.labels(task_type=task_type, operation=operation, error_code=HTTPStatus.NOT_FOUND).inc()
     else:
         error_message = f"failed to {operation} {task_type} task with error: {e}."
         logger.error(error_message)
         context.set_code(grpc.StatusCode.INTERNAL)
-        context.set_details(error_message)
+        context.set_details(get_traceback_str(e))
         request_failure_count.labels(
             task_type=task_type, operation=operation, error_code=HTTPStatus.INTERNAL_SERVER_ERROR
         ).inc()
