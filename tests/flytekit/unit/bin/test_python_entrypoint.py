@@ -526,15 +526,15 @@ def test_get_container_error_timestamp(monkeypatch) -> None:
 
     assert get_container_error_timestamp(FlyteException("foo", timestamp=10.5)) == Timestamp(seconds=10, nanos=500000000)
 
-    current_dtime = datetime.now()
+    current_dtime = datetime.fromtimestamp(time.time())
     error_timestamp = get_container_error_timestamp(RuntimeError("foo"))
     assert error_timestamp.ToDatetime() >= current_dtime
 
-    current_dtime = datetime.now()
+    current_dtime = datetime.fromtimestamp(time.time())
     error_timestamp = get_container_error_timestamp(FlyteException("foo"))
     assert error_timestamp.ToDatetime() >= current_dtime
 
-    current_dtime = datetime.now()
+    current_dtime = datetime.fromtimestamp(time.time())
     error_timestamp = get_container_error_timestamp(None)
     assert error_timestamp.ToDatetime() >= current_dtime
 
