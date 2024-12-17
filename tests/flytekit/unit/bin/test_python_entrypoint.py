@@ -526,17 +526,20 @@ def test_get_container_error_timestamp(monkeypatch) -> None:
 
     assert get_container_error_timestamp(FlyteException("foo", timestamp=10.5)) == Timestamp(seconds=10, nanos=500000000)
 
-    current_dtime = datetime.fromtimestamp(time.time())
+    current_timestamp = Timestamp()
+    current_timestamp.GetCurrentTime()
     error_timestamp = get_container_error_timestamp(RuntimeError("foo"))
-    assert error_timestamp.ToDatetime() >= current_dtime
+    assert error_timestamp.ToDatetime() >= current_timestamp.ToDatetime()
 
-    current_dtime = datetime.fromtimestamp(time.time())
+    current_timestamp = Timestamp()
+    current_timestamp.GetCurrentTime()
     error_timestamp = get_container_error_timestamp(FlyteException("foo"))
-    assert error_timestamp.ToDatetime() >= current_dtime
+    assert error_timestamp.ToDatetime() >= current_timestamp.ToDatetime()
 
-    current_dtime = datetime.fromtimestamp(time.time())
+    current_timestamp = Timestamp()
+    current_timestamp.GetCurrentTime()
     error_timestamp = get_container_error_timestamp(None)
-    assert error_timestamp.ToDatetime() >= current_dtime
+    assert error_timestamp.ToDatetime() >= current_timestamp.ToDatetime()
 
 
 def get_flyte_context(tmp_path_factory, outputs_path):
