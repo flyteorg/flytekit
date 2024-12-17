@@ -2,46 +2,19 @@
 Slurm agent.
 """
 
-import subprocess
+import os
 from dataclasses import dataclass
 from typing import Optional
 
-from openapi_client import ApiClient as Client
-from openapi_client import Configuration as Config
-from openapi_client.api.slurm_api import SlurmApi
-from openapi_client.models.slurm_v0041_post_job_submit_request import SlurmV0041PostJobSubmitRequest
-from openapi_client.models.slurm_v0041_post_job_submit_request_job import SlurmV0041PostJobSubmitRequestJob
+import asyncssh
 
-from flytekit import lazy_module
 from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource, ResourceMeta
 from flytekit.extend.backend.utils import convert_to_flyte_phase
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
-aiohttp = lazy_module("aiohttp")
-
-
-def _gen_jwt_auth_token() -> str:
-    """Generate an auth token for JWT authentication.
-
-    Returns:
-        auth_token: An auth token for JWT authentication.
-    """
-    CMD = ["scontrol", "token", "lifespan=9999"]
-    auth_token = (
-        subprocess.run(CMD, check=True, capture_output=True, text=True).stdout.strip().replace("SLURM_JWT=", "")
-    )
-
-    return auth_token
-
-
-# Setup slurm API
-api_cfg = Config(
-    # Run slurmrestd locally now
-    host="http://localhost:6820/",
-    access_token=_gen_jwt_auth_token(),
-)
-slurm = SlurmApi(Client(api_cfg))
+HOST = "localhost"
+PORT = 2200
 
 
 @dataclass
@@ -57,7 +30,7 @@ class SlurmAgent(AsyncAgentBase):
     def __init__(self):
         super(SlurmAgent, self).__init__(task_type_name="slurm", metadata_type=SlurmJobMetadata)
 
-    def create(
+    async def create(
         self,
         task_template: TaskTemplate,
         inputs: Optional[LiteralMap] = None,
@@ -68,49 +41,46 @@ class SlurmAgent(AsyncAgentBase):
         """
         slurm_config = task_template.custom["slurm_config"]
 
-        # Define a simple slurm job
-        job = SlurmV0041PostJobSubmitRequest(
-            script=slurm_config["script"],  # Should use a better method
-            job=SlurmV0041PostJobSubmitRequestJob(
-                account=slurm_config["account"],  # flyte
-                partition=slurm_config["partition"],  # debug
-                name=slurm_config["name"],  # hello-slurm-agent
-                environment=slurm_config["environment"],  # ["PATH=/bin/:/sbin/:/usr/bin/:/usr/sbin/"]
-                current_working_directory=slurm_config["current_working_directory"],  # /tmp
-            ),
-        )
+        # Construct the sbatch command
+        cmd = ["sbatch"]
+        for k, v in slurm_config.items():
+            if k in ["local_path", "remote_path", "environment"]:
+                continue
 
-        response = slurm.slurm_v0041_post_job_submit(job)
-        # async with aiohttp.ClientSession() as session:
-        #     async with slurm.slurm_v0041_post_job_submit(job) as resp:
-        #         response = await resp
-        #         assert len(response.errors) == 0 and len(response.warnings) == 0, (
-        #             "There exist errors or warnings."
-        #         )
+            cmd.extend([f"--{k}", v])
+        cmd = " ".join(cmd)
+        cmd += f" {slurm_config['remote_path']}"
 
-        return SlurmJobMetadata(job_id=str(response.job_id))
+        async with asyncssh.connect(host=HOST, port=PORT, password=os.environ["PASSWORD"], known_hosts=None) as conn:
+            async with conn.start_sftp_client() as sftp:
+                await sftp.put(slurm_config["local_path"], slurm_config["remote_path"])
 
-    def get(self, resource_meta: SlurmJobMetadata, **kwargs) -> Resource:
+            # env is optional so far
+            res = await conn.run(cmd, check=True, env=slurm_config["environment"])
+
+        job_id = res.stdout.split()[-1]
+
+        return SlurmJobMetadata(job_id=job_id)
+
+    async def get(self, resource_meta: SlurmJobMetadata, **kwargs) -> Resource:
         """
         Return the status of the task, and return the outputs in some cases. For example, bigquery job
         can't write the structured dataset to the output location, so it returns the output literals to the propeller,
         and the propeller will write the structured dataset to the blob store.
         """
-        # async with aiohttp.ClientSession() as session:
-        # async with slurm.slurm_v0041_get_job(job_id=resource_meta.job_id) as resp:
-        # response = await resp
-        response = slurm.slurm_v0041_get_job(job_id=resource_meta.job_id)
+        async with asyncssh.connect(host=HOST, port=PORT, password=os.environ["PASSWORD"], known_hosts=None) as conn:
+            res = await conn.run(f"scontrol show job {resource_meta.job_id}", check=True)
 
-        job = response.jobs[-1]
-        outputs = {
-            "o0": {
-                "partition": job.partition,
-                "account": job.account,
-                "name": job.name,
-                "post_job_id": str(resource_meta.job_id),
-                "get_job_id": job.job_id,
-            }
-        }
+        output_map = {}
+        for o in res.stdout.split(" "):
+            if len(o) == 0:
+                continue
+
+            o = o.split("=")
+            if len(o) == 2:
+                output_map[o[0].strip()] = o[1].strip()
+        assert output_map["JobState"] == "COMPLETED"
+        outputs = {"o0": output_map}
 
         return Resource(phase=convert_to_flyte_phase("done"), outputs=outputs)
 
