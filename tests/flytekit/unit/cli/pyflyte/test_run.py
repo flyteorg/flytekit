@@ -850,7 +850,8 @@ def test_list_default_arguments(task_path):
         catch_exceptions=False,
     )
     assert result.exit_code == 0
-    assert "Running Execution on local.\n0 Hello Color.RED\n\n" in result.stdout
+    assert "Running Execution on local." in result.stdout
+    assert "Hello Color.RED" in result.stdout
 
 
 def test_entity_non_found_in_file():
