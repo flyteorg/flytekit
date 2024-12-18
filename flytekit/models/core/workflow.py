@@ -612,10 +612,12 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
         resources: typing.Optional[Resources],
         extended_resources: typing.Optional[tasks_pb2.ExtendedResources],
         container_image: typing.Optional[str] = None,
+        pod_template: typing.Optional[tasks_pb2.K8sPod] = None,
     ):
         self._resources = resources
         self._extended_resources = extended_resources
         self._container_image = container_image
+        self._pod_template = pod_template
 
     @property
     def resources(self) -> Resources:
@@ -629,11 +631,20 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
     def container_image(self) -> typing.Optional[str]:
         return self._container_image
 
+    @property
+    def pod_template(self) -> typing.Optional[tasks_pb2.K8sPod]:
+        return self._pod_template
+
     def to_flyte_idl(self):
+        if self.resources is not None:
+            if isinstance(self.resources, dict):
+                print(self.resources)
         return _core_workflow.TaskNodeOverrides(
             resources=self.resources.to_flyte_idl() if self.resources is not None else None,
             extended_resources=self.extended_resources,
             container_image=self.container_image,
+            # pod_template=self.pod_template if self.pod_template is not None else None,
+            pod_template=tasks_pb2.K8sPod(pod_spec=self.pod_template.pod_spec,metadata=self.pod_template.metadata) if self.pod_template is not None else None,
         )
 
     @classmethod

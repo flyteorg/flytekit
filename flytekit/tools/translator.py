@@ -1,3 +1,4 @@
+import copy
 import sys
 import typing
 from collections import OrderedDict
@@ -449,22 +450,43 @@ def get_serializable_node(
         # if entity._aliases:
         #     node_model._output_aliases = entity._aliases
     elif isinstance(entity.flyte_entity, PythonTask):
-        task_spec = get_serializable(entity_mapping, settings, entity.flyte_entity, options=options)
-        node_model = workflow_model.Node(
-            id=_dnsify(entity.id),
-            metadata=entity.metadata,
-            inputs=entity.bindings,
-            upstream_node_ids=[n.id for n in upstream_nodes],
-            output_aliases=[],
-            task_node=workflow_model.TaskNode(
-                reference_id=task_spec.template.id,
-                overrides=TaskNodeOverrides(
-                    resources=entity._resources,
-                    extended_resources=entity._extended_resources,
-                    container_image=entity._container_image,
+        if entity._pod_template is not None:
+            flyte_override_entity = copy.deepcopy(entity.flyte_entity)
+            flyte_override_entity.pod_template = entity._pod_template
+            task_spec = get_serializable(entity_mapping, settings, flyte_override_entity, options=options)
+            node_model = workflow_model.Node(
+                id=_dnsify(entity.id),
+                metadata=entity.metadata,
+                inputs=entity.bindings,
+                upstream_node_ids=[n.id for n in upstream_nodes],
+                output_aliases=[],
+                task_node=workflow_model.TaskNode(
+                    reference_id=task_spec.template.id,
+                    overrides=TaskNodeOverrides(
+                        resources=entity._resources,
+                        extended_resources=entity._extended_resources,
+                        container_image=entity._container_image,
+                        pod_template=task_spec.template.k8s_pod,
+                    ),
                 ),
-            ),
-        )
+            )
+        else:
+            task_spec = get_serializable(entity_mapping, settings, entity.flyte_entity, options=options)
+            node_model = workflow_model.Node(
+                id=_dnsify(entity.id),
+                metadata=entity.metadata,
+                inputs=entity.bindings,
+                upstream_node_ids=[n.id for n in upstream_nodes],
+                output_aliases=[],
+                task_node=workflow_model.TaskNode(
+                    reference_id=task_spec.template.id,
+                    overrides=TaskNodeOverrides(
+                        resources=entity._resources,
+                        extended_resources=entity._extended_resources,
+                        container_image=entity._container_image,
+                    ),
+                ),
+            )
         if entity._aliases:
             node_model._output_aliases = entity._aliases
 
@@ -793,7 +815,18 @@ def get_serializable(
                     )
             entity.docs.source_code = SourceCode(link=settings.git_repo)
     # This needs to be at the bottom not the top - i.e. dependent tasks get added before the workflow containing it
-    entity_mapping[entity] = cp_entity
+    # if not any(entity_mapping.get("id") == cp_entity.get("id") for entity in entity_mapping)
+    if isinstance(cp_entity, TaskSpec):
+        new_id = cp_entity.template.id
+        if not any(
+                _entity.template.id == new_id for _entity in entity_mapping.values()
+        ):
+            # If not found, append the new entity
+            entity_mapping[entity] = cp_entity
+        else:
+            print("Entity with this ID already exists.")
+    else:
+            entity_mapping[entity] = cp_entity
     return cp_entity
 
 

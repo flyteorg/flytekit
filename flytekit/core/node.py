@@ -68,6 +68,7 @@ class Node(object):
         self._resources: typing.Optional[_resources_model] = None
         self._extended_resources: typing.Optional[tasks_pb2.ExtendedResources] = None
         self._container_image: typing.Optional[str] = None
+        self._pod_template: typing.Optional[PodTemplate] = None
 
     def runs_before(self, other: Node):
         """
@@ -225,7 +226,7 @@ class Node(object):
 
         if pod_template is not None:
             assert_not_promise(pod_template, "podtemplate")
-            self.flyte_entity.pod_template = pod_template
+            self._pod_template = pod_template
 
         return self
 
