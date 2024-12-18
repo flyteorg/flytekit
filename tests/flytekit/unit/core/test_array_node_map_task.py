@@ -1,4 +1,5 @@
 import functools
+from datetime import timedelta
 import os
 import tempfile
 import typing
@@ -8,13 +9,12 @@ from typing import List
 import pytest
 from flyteidl.core import workflow_pb2 as _core_workflow
 
-from flytekit import dynamic, map_task, task, workflow, PythonFunctionTask
+from flytekit import dynamic, map_task, task, workflow, eager, PythonFunctionTask
 from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SerializationSettings
 from flytekit.core import context_manager
 from flytekit.core.array_node_map_task import ArrayNodeMapTask, ArrayNodeMapTaskResolver
 from flytekit.core.task import TaskMetadata
 from flytekit.core.type_engine import TypeEngine
-from flytekit.experimental.eager_function import eager
 from flytekit.extras.accelerators import GPUAccelerator
 from flytekit.models.literals import (
     Literal,
@@ -386,7 +386,12 @@ def test_serialization_metadata2(serialization_settings):
     def t1(a: int) -> typing.Optional[int]:
         return a + 1
 
-    arraynode_maptask = map_task(t1, min_success_ratio=0.9, concurrency=10, metadata=TaskMetadata(retries=2, interruptible=True))
+    arraynode_maptask = map_task(
+        t1,
+        min_success_ratio=0.9,
+        concurrency=10,
+        metadata=TaskMetadata(retries=2, interruptible=True, timeout=timedelta(seconds=10))
+    )
     assert arraynode_maptask.metadata.interruptible
 
     @workflow
@@ -402,9 +407,8 @@ def test_serialization_metadata2(serialization_settings):
     od = OrderedDict()
     wf_spec = get_serializable(od, serialization_settings, wf)
 
-    assert arraynode_maptask.construct_node_metadata().interruptible
     array_node = wf_spec.template.nodes[0]
-    assert array_node.metadata.interruptible
+    assert array_node.metadata.timeout == timedelta()
     assert array_node.array_node._min_success_ratio == 0.9
     assert array_node.array_node._parallelism == 10
     assert not array_node.array_node._is_original_sub_node_interface
@@ -412,6 +416,7 @@ def test_serialization_metadata2(serialization_settings):
     task_spec = od[arraynode_maptask]
     assert task_spec.template.metadata.retries.retries == 2
     assert task_spec.template.metadata.interruptible
+    assert task_spec.template.metadata.timeout == timedelta(seconds=10)
 
     wf1_spec = get_serializable(od, serialization_settings, wf1)
     array_node = wf1_spec.template.nodes[0]

@@ -23,6 +23,7 @@ from flytekit.core.options import Options
 from flytekit.core.python_auto_container import (
     PythonAutoContainerTask,
 )
+from flytekit.core.python_function_task import EagerAsyncPythonFunctionTask
 from flytekit.core.reference_entity import ReferenceEntity, ReferenceSpec, ReferenceTemplate
 from flytekit.core.task import ReferenceTask
 from flytekit.core.utils import ClassDecorator, _dnsify
@@ -155,6 +156,9 @@ def get_serializable_task(
         if entity.node_dependency_hints is not None:
             for entity_hint in entity.node_dependency_hints:
                 get_serializable(entity_mapping, settings, entity_hint, options)
+
+    if isinstance(entity, EagerAsyncPythonFunctionTask):
+        settings = settings.with_serialized_context()
 
     container = entity.get_container(settings)
     # This pod will be incorrect when doing fast serialize
@@ -641,7 +645,7 @@ def get_serializable_array_node_map_task(
     )
     node = workflow_model.Node(
         id=entity.name,
-        metadata=entity.construct_node_metadata(),
+        metadata=entity.construct_sub_node_metadata(),
         inputs=node.bindings,
         upstream_node_ids=[],
         output_aliases=[],
