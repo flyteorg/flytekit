@@ -194,6 +194,8 @@ def get_serializable_task(
             extra_config = entity.task_function.get_extra_config()
         if not entity.disable_deck:
             extra_config[FLYTE_ENABLE_DECK] = "true"
+        else:
+            extra_config[FLYTE_ENABLE_DECK] = "false"
 
     merged_config = {**entity_config, **extra_config}
 
