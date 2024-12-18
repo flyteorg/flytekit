@@ -53,6 +53,7 @@ from flytekit.interaction.click_types import (
     labels_callback,
 )
 from flytekit.interaction.string_literals import literal_string_repr
+from flytekit.lazy_import.lazy_module import is_imported
 from flytekit.loggers import logger
 from flytekit.models import security
 from flytekit.models.common import RawOutputDataConfig
@@ -475,8 +476,21 @@ def to_click_option(
                 If no custom logic exists, fall back to json.dumps.
             """
             with FlyteContextManager.with_context(flyte_ctx.new_builder()):
-                encoder = JSONEncoder(python_type)
-                default_val = encoder.encode(default_val)
+                if is_imported("pydantic"):
+                    try:
+                        from pydantic import BaseModel as BaseModelV2
+                        from pydantic.v1 import BaseModel as BaseModelV1
+
+                        if issubclass(python_type, BaseModelV2):
+                            default_val = default_val.model_dump_json()
+                        elif issubclass(python_type, BaseModelV1):
+                            default_val = default_val.json()
+                    except ImportError:
+                        # Pydantic BaseModel v1
+                        default_val = default_val.json()
+                else:
+                    encoder = JSONEncoder(python_type)
+                    default_val = encoder.encode(default_val)
         if literal_var.type.metadata:
             description_extra = f": {json.dumps(literal_var.type.metadata)}"
 
