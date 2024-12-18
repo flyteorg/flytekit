@@ -735,7 +735,9 @@ class FlyteContext(object):
         Creates and returns a default compilation state. For most of the code this should be the entrypoint
         of compilation, otherwise the code should always uses - with_compilation_state
         """
-        return CompilationState(prefix=prefix)
+        from flytekit.core.python_auto_container import default_task_resolver
+
+        return CompilationState(prefix=prefix, task_resolver=default_task_resolver)
 
     def new_execution_state(self, working_dir: Optional[os.PathLike] = None) -> ExecutionState:
         """
