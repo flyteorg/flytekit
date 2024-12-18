@@ -1,2 +1,2 @@
 from .agent import SlurmAgent
-from .task import SlurmTask
+from .task import Slurm, SlurmTask

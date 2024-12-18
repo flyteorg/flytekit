@@ -13,8 +13,12 @@ from flytekit.extend.backend.utils import convert_to_flyte_phase
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
-HOST = "localhost"
-PORT = 2200
+
+class SSHCfg:
+    host = os.environ["SSH_HOST"]
+    port = int(os.environ["SSH_PORT"])
+    username = os.environ["SSH_USERNAME"]
+    password = os.environ["SSH_PASSWORD"]
 
 
 @dataclass
@@ -36,39 +40,37 @@ class SlurmAgent(AsyncAgentBase):
         inputs: Optional[LiteralMap] = None,
         **kwargs,
     ) -> SlurmJobMetadata:
-        """
-        Return a resource meta that can be used to get the status of the task.
-        """
-        slurm_config = task_template.custom["slurm_config"]
+        """Submit a batch script to a remote Slurm cluster with `sbatch`"""
+        slurm_conf = task_template.custom["slurm_conf"]
+        assert len(slurm_conf) == 0, "Please leave slurm_conf untouched now."
 
-        # Construct the sbatch command
-        cmd = ["sbatch"]
-        for k, v in slurm_config.items():
-            if k in ["local_path", "remote_path", "environment"]:
-                continue
+        batch_script = task_template.custom["batch_script"]
+        with open("/tmp/test.slurm", "w") as f:
+            f.write(batch_script)
 
-            cmd.extend([f"--{k}", v])
-        cmd = " ".join(cmd)
-        cmd += f" {slurm_config['remote_path']}"
+        local_path = task_template.custom["local_path"]
+        remote_path = task_template.custom["remote_path"]
+        # Maybe needs to add environ for python and slurm in task.py Slurm and get_custom
 
-        async with asyncssh.connect(host=HOST, port=PORT, password=os.environ["PASSWORD"], known_hosts=None) as conn:
+        print("Connecting...")
+        async with asyncssh.connect(
+            host=SSHCfg.host, port=SSHCfg.port, username=SSHCfg.username, password=SSHCfg.password, known_hosts=None
+        ) as conn:
             async with conn.start_sftp_client() as sftp:
-                await sftp.put(slurm_config["local_path"], slurm_config["remote_path"])
+                await sftp.put(local_path, remote_path)
+                await sftp.put("/tmp/test.slurm", "/tmp/test.slurm")
 
-            # env is optional so far
-            res = await conn.run(cmd, check=True, env=slurm_config["environment"])
+            res = await conn.run("sbatch /tmp/test.slurm", check=True)
 
         job_id = res.stdout.split()[-1]
 
         return SlurmJobMetadata(job_id=job_id)
 
     async def get(self, resource_meta: SlurmJobMetadata, **kwargs) -> Resource:
-        """
-        Return the status of the task, and return the outputs in some cases. For example, bigquery job
-        can't write the structured dataset to the output location, so it returns the output literals to the propeller,
-        and the propeller will write the structured dataset to the blob store.
-        """
-        async with asyncssh.connect(host=HOST, port=PORT, password=os.environ["PASSWORD"], known_hosts=None) as conn:
+        """Check the Slurm job status and return the specified outputs."""
+        async with asyncssh.connect(
+            host=SSHCfg.host, port=SSHCfg.port, username=SSHCfg.username, password=SSHCfg.password, known_hosts=None
+        ) as conn:
             res = await conn.run(f"scontrol show job {resource_meta.job_id}", check=True)
 
         output_map = {}
