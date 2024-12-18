@@ -187,11 +187,13 @@ class ErrorHandlingCommand(click.RichGroup):
         verbosity = ctx.params["verbose"]
         log_level = get_level_from_cli_verbosity(verbosity)
         logger.setLevel(log_level)
-        try:
-            return super().invoke(ctx)
-        except Exception as e:
-            pretty_print_exception(e, verbosity)
-            exit(1)
+        from flytekit import _rich_logging
+        with _rich_logging.get_current_sync_rich_handler():
+            try:
+                return super().invoke(ctx)
+            except Exception as e:
+                pretty_print_exception(e, verbosity)
+                exit(1)
 
 
 def make_click_option_field(o: click.Option) -> Field:
