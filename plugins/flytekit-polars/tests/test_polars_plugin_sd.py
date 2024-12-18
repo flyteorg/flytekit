@@ -5,7 +5,7 @@ import polars as pl
 import pytest
 from flytekitplugins.polars.sd_transformers import PolarsDataFrameRenderer
 from typing_extensions import Annotated
-from packaging import version
+import numpy as np
 from polars.testing import assert_frame_equal
 
 from flytekit import kwtypes, task, workflow
@@ -134,3 +134,28 @@ def test_parquet_to_polars_dataframe(df_cls):
         opened_sd = opened_sd.collect()
 
     assert_frame_equal(opened_sd, polars_df)
+
+
+def test_with_uri():
+    temp_file = tempfile.mktemp()
+
+    @task
+    def random_dataframe(num_rows: int) -> StructuredDataset:
+        feature_1_list = np.random.randint(low=100, high=999, size=(num_rows,))
+        feature_2_list = np.random.normal(loc=0, scale=1, size=(num_rows, ))
+        pl_df = pl.DataFrame({'protein_length': feature_1_list,
+                              'protein_feature': feature_2_list})
+        sd = StructuredDataset(dataframe=pl_df, uri=temp_file)
+        return sd
+
+    @task
+    def consume(df: pd.DataFrame):
+        print(df.head(5))
+        print(df.describe())
+
+    @workflow
+    def my_wf(num_rows: int):
+        pl = random_dataframe(num_rows=num_rows)
+        consume(pl)
+
+    my_wf(num_rows=100)
