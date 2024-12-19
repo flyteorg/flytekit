@@ -18,6 +18,7 @@ from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteCon
 from flytekit.core.interface import transform_interface_to_list_interface
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanceTask
+from flytekit.core.task import ReferenceTask
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.utils import timeit
 from flytekit.loggers import logger
@@ -390,7 +391,7 @@ def map_task(
     """
     from flytekit.remote import FlyteLaunchPlan
 
-    if isinstance(target, LaunchPlan) or isinstance(target, FlyteLaunchPlan):
+    if isinstance(target, (LaunchPlan, FlyteLaunchPlan, ReferenceTask)):
         return array_node(
             target=target,
             concurrency=concurrency,
