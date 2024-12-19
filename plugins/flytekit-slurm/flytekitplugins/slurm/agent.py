@@ -52,7 +52,6 @@ class SlurmAgent(AsyncAgentBase):
         remote_path = task_template.custom["remote_path"]
         # Maybe needs to add environ for python and slurm in task.py Slurm and get_custom
 
-        print("Connecting...")
         async with asyncssh.connect(
             host=SSHCfg.host, port=SSHCfg.port, username=SSHCfg.username, password=SSHCfg.password, known_hosts=None
         ) as conn:
@@ -81,16 +80,21 @@ class SlurmAgent(AsyncAgentBase):
             o = o.split("=")
             if len(o) == 2:
                 output_map[o[0].strip()] = o[1].strip()
-        assert output_map["JobState"] == "COMPLETED"
+
+        job_state = output_map["JobState"].lower()
         outputs = {"o0": output_map}
 
-        return Resource(phase=convert_to_flyte_phase("done"), outputs=outputs)
+        return Resource(phase=convert_to_flyte_phase(job_state), outputs=outputs)
 
     async def delete(self, resource_meta: SlurmJobMetadata, **kwargs):
-        """
+        """Cancel the Slurm job.
+
         Delete the task. This call should be idempotent. It should raise an error if fails to delete the task.
         """
-        pass
+        async with asyncssh.connect(
+            host=SSHCfg.host, port=SSHCfg.port, username=SSHCfg.username, password=SSHCfg.password, known_hosts=None
+        ) as conn:
+            _ = await conn.run(f"scancel {resource_meta.job_id}", check=True)
 
 
 AgentRegistry.register(SlurmAgent())
