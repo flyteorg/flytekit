@@ -25,7 +25,7 @@ from flytekit.core.python_auto_container import (
 from flytekit.core.python_function_task import EagerAsyncPythonFunctionTask
 from flytekit.core.reference_entity import ReferenceEntity, ReferenceSpec, ReferenceTemplate
 from flytekit.core.task import ReferenceTask
-from flytekit.core.utils import ClassDecorator, _dnsify
+from flytekit.core.utils import ClassDecorator, _dnsify, _serialize_pod_spec
 from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase
 from flytekit.models import common as _common_models
 from flytekit.models import interface as interface_models
@@ -38,7 +38,7 @@ from flytekit.models.core import workflow as workflow_model
 from flytekit.models.core.workflow import ApproveCondition, GateNode, SignalCondition, SleepCondition, TaskNodeOverrides
 from flytekit.models.core.workflow import ArrayNode as ArrayNodeModel
 from flytekit.models.core.workflow import BranchNode as BranchNodeModel
-from flytekit.models.task import TaskSpec, TaskTemplate
+from flytekit.models.task import K8sObjectMetadata, K8sPod, TaskSpec, TaskTemplate
 
 FlyteLocalEntity = Union[
     PythonTask,
@@ -453,6 +453,12 @@ def get_serializable_node(
         # if entity._aliases:
         #     node_model._output_aliases = entity._aliases
     elif isinstance(entity.flyte_entity, PythonTask):
+        override_pod = {}
+        if entity._pod_template is not None:
+            entity.flyte_entity.set_command_fn(_fast_serialize_command_fn(settings, entity.flyte_entity))
+            override_pod = _serialize_pod_spec(
+                entity._pod_template, entity.flyte_entity._get_container(settings), settings
+            )
         task_spec = get_serializable(entity_mapping, settings, entity.flyte_entity, options=options)
         node_model = workflow_model.Node(
             id=_dnsify(entity.id),
@@ -466,6 +472,16 @@ def get_serializable_node(
                     resources=entity._resources,
                     extended_resources=entity._extended_resources,
                     container_image=entity._container_image,
+                    pod_template=K8sPod(
+                        pod_spec=override_pod if override_pod is not None else None,
+                        metadata=K8sObjectMetadata(
+                            labels=entity._pod_template.labels if entity._pod_template else None,
+                            annotations=entity._pod_template.annotations if entity._pod_template else None,
+                        ),
+                        primarycontainername=entity._pod_template.primary_container_name
+                        if entity._pod_template
+                        else None,
+                    ),
                 ),
             ),
         )
@@ -797,6 +813,7 @@ def get_serializable(
                     )
             entity.docs.source_code = SourceCode(link=settings.git_repo)
     # This needs to be at the bottom not the top - i.e. dependent tasks get added before the workflow containing it
+    # if not any(entity_mapping.get("id") == cp_entity.get("id") for entity in entity_mapping)
     entity_mapping[entity] = cp_entity
     return cp_entity
 
