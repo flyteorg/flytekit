@@ -281,8 +281,8 @@ def array_node(
         flyte_entity_call_handler
     """
 
-    # if not isinstance(target, LaunchPlan) and not isinstance(target, FlyteLaunchPlan):
-    #     raise ValueError("Only LaunchPlans are supported for now.")
+    if not isinstance(target, (LaunchPlan, FlyteLaunchPlan, ReferenceTask)):
+        raise ValueError("Only LaunchPlans and ReferenceTasks are supported for now.")
 
     node = ArrayNode(
         target=target,
