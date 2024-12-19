@@ -194,6 +194,8 @@ class Node(object):
 
         if name is not None:
             self._metadata._name = name
+            if self.run_entity and hasattr(self.run_entity, "metadata"):
+                self.run_entity.metadata.name = name
 
         if task_config is not None:
             logger.warning("This override is beta. We may want to revisit this in the future.")
@@ -212,14 +214,20 @@ class Node(object):
         if cache is not None:
             assert_not_promise(cache, "cache")
             self._metadata._cacheable = cache
+            if hasattr(self.run_entity, "metadata") and self.run_entity.metadata is not None:
+                self.run_entity.metadata.cache = cache
 
         if cache_version is not None:
             assert_not_promise(cache_version, "cache_version")
             self._metadata._cache_version = cache_version
+            if hasattr(self.run_entity, "metadata") and self.run_entity.metadata is not None:
+                self.run_entity.metadata.cache_version = cache_version
 
         if cache_serialize is not None:
             assert_not_promise(cache_serialize, "cache_serialize")
             self._metadata._cache_serializable = cache_serialize
+            if hasattr(self.run_entity, "metadata") and self.run_entity.metadata is not None:
+                self.run_entity.metadata.cache_serialize = cache_serialize
 
         return self
 
