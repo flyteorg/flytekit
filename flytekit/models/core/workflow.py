@@ -1,8 +1,10 @@
 import datetime
+import json
 import typing
 
 from flyteidl.core import tasks_pb2
 from flyteidl.core import workflow_pb2 as _core_workflow
+from google.protobuf import json_format, struct_pb2
 from google.protobuf.wrappers_pb2 import BoolValue
 
 from flytekit.models import common as _common
@@ -636,15 +638,17 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
         return self._pod_template
 
     def to_flyte_idl(self):
-        if self.resources is not None:
-            if isinstance(self.resources, dict):
-                print(self.resources)
         return _core_workflow.TaskNodeOverrides(
             resources=self.resources.to_flyte_idl() if self.resources is not None else None,
             extended_resources=self.extended_resources,
             container_image=self.container_image,
-            # pod_template=self.pod_template if self.pod_template is not None else None,
-            pod_template=tasks_pb2.K8sPod(pod_spec=self.pod_template.pod_spec,metadata=self.pod_template.metadata) if self.pod_template is not None else None,
+            pod_template=tasks_pb2.K8sPod(
+                metadata=self.pod_template.metadata.to_flyte_idl() if self.pod_template else None,
+                pod_spec=json_format.Parse(json.dumps(self.pod_template.pod_spec), struct_pb2.Struct())
+                if self.pod_template
+                else None,
+                primarycontainername=self.pod_template.primarycontainername if self.pod_template else None,
+            ),
         )
 
     @classmethod

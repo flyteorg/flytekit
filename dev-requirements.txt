@@ -113,7 +113,7 @@ filelock==3.14.0
     # via
     #   snowflake-connector-python
     #   virtualenv
-flyteidl @ git+https://github.com/arbaobao/flyte.git@podtemplate_override#subdirectory=flyteidl
+flyteidl @ git+https://github.com/flyteorg/flyte.git@master#subdirectory=flyteidl
     # via
     #   -r dev-requirements.in
     #   flytekit
@@ -260,7 +260,7 @@ marshmallow-enum==1.5.1
     #   flytekit
 marshmallow-jsonschema==0.13.0
     # via flytekit
-mashumaro==3.15
+mashumaro==3.13
     # via flytekit
 matplotlib-inline==0.1.7
     # via
