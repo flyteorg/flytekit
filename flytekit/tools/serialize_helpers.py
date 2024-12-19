@@ -50,9 +50,14 @@ def get_registrable_entities(
     that are not known to Admin
     """
     new_api_serializable_entities = OrderedDict()
+
+    # Sort entities to process workflows and launch plans before tasks
     # TODO: Clean up the copy() - it's here because we call get_default_launch_plan, which may create a LaunchPlan
     #  object, which gets added to the FlyteEntities.entities list, which we're iterating over.
-    for entity in flyte_context.FlyteEntities.entities.copy():
+    sorted_entities = sorted(
+        flyte_context.FlyteEntities.entities.copy(), key=lambda x: 0 if isinstance(x, (WorkflowBase, LaunchPlan)) else 1
+    )
+    for entity in sorted_entities:
         if isinstance(entity, PythonTask) or isinstance(entity, WorkflowBase) or isinstance(entity, LaunchPlan):
             get_serializable(new_api_serializable_entities, ctx.serialization_settings, entity, options=options)
 
