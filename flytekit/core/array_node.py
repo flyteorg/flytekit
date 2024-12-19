@@ -61,6 +61,7 @@ class ArrayNode:
         self._bindings = bindings or []
         self.metadata = metadata
         self._data_mode = None
+        self._execution_mode = None
 
         if min_successes is not None:
             self._min_successes = min_successes
@@ -91,10 +92,9 @@ class ArrayNode:
         else:
             raise ValueError("No interface found for the target entity.")
 
-        self._execution_mode = _core_workflow.ArrayNode.FULL_STATE
-
         if isinstance(target, (LaunchPlan, FlyteLaunchPlan)):
             self._data_mode = _core_workflow.ArrayNode.SINGLE_INPUT_FILE
+            self._execution_mode = _core_workflow.ArrayNode.FULL_STATE
         elif isinstance(target, ReferenceTask):
             self._data_mode = _core_workflow.ArrayNode.INDIVIDUAL_INPUT_FILES
             self._execution_mode = _core_workflow.ArrayNode.MINIMAL_STATE
