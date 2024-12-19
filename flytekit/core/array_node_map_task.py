@@ -18,6 +18,7 @@ from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteCon
 from flytekit.core.interface import transform_interface_to_list_interface
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanceTask
+from flytekit.core.task import ReferenceTask
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.utils import timeit
 from flytekit.loggers import logger
@@ -388,21 +389,22 @@ def map_task(
     :param min_successes: The minimum number of successful executions
     :param min_success_ratio: The minimum ratio of successful executions
     """
+    from flytekit.remote import FlyteLaunchPlan
 
-    # if isinstance(target, LaunchPlan) or isinstance(target, FlyteLaunchPlan):
-    return array_node(
-        target=target,
+    if isinstance(target, (LaunchPlan, FlyteLaunchPlan, ReferenceTask)):
+        return array_node(
+            target=target,
+            concurrency=concurrency,
+            min_successes=min_successes,
+            min_success_ratio=min_success_ratio,
+        )
+    return array_node_map_task(
+        task_function=target,
         concurrency=concurrency,
         min_successes=min_successes,
         min_success_ratio=min_success_ratio,
+        **kwargs,
     )
-    # return array_node_map_task(
-    #     task_function=target,
-    #     concurrency=concurrency,
-    #     min_successes=min_successes,
-    #     min_success_ratio=min_success_ratio,
-    #     **kwargs,
-    # )
 
 
 def array_node_map_task(
