@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from enum import Enum
 import sys
 import pytest
+import mock
 
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
@@ -91,3 +92,51 @@ def test_with_remote():
     guessed_enum = get_args(guessed_union_type)[0]
     val = guessed_enum("one")
     r.execute(lp, inputs={"x": val})
+
+# Issue Link: https://github.com/flyteorg/flyte/issues/5986
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.async_put_data")
+def test_union_in_dataclass(mock_upload_dir):
+    mock_upload_dir.return_value = True
+
+    from dataclasses_json import DataClassJsonMixin
+    from flytekit.core.type_engine import DataclassTransformer
+    import msgpack
+    from flytekit.types.file import FlyteFile
+
+    remote_path = "s3://my-bucket"
+    f1 = FlyteFile("f1", remote_path=remote_path)
+    mock_upload_dir.return_value = remote_path
+
+    @dataclass
+    class A(DataClassJsonMixin):
+        a: int
+
+    @dataclass
+    class TestDataclass(DataClassJsonMixin):
+        a: typing.Union[A, str, bool, int, float, None]
+        b: typing.Union[A, FlyteFile, bool, int, float, None]
+        c: typing.Union[A, typing.Dict[str, str], typing.List[int], None]
+        d: typing.Union[A, FlyteFile, int, bool, float, None]
+
+    o = TestDataclass(a=A(a=1), b=f1, c={"a": "value"}, d=remote_path)
+    ctx = FlyteContextManager.current_context()
+
+    tf = DataclassTransformer()
+    lt = tf.get_literal_type(TestDataclass)
+    lv = tf.to_literal(ctx, o, TestDataclass, lt)
+
+    msgpack_bytes = lv.scalar.binary.value
+    dict_obj = msgpack.loads(msgpack_bytes)
+
+    assert dict_obj["a"]["a"] == 1
+    assert dict_obj["b"]["path"] == remote_path
+    assert dict_obj["c"]["a"] == "value"
+    assert dict_obj["d"]["path"] == remote_path
+
+    # Convert back to python object
+    ot = tf.to_python_value(ctx, lv, TestDataclass)
+
+    assert o.a.a == ot.a.a
+    assert o.b.remote_path == ot.b.remote_source
+    assert o.c["a"] == ot.c["a"]
+    assert o.d == FlyteFile(remote_path)

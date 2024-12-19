@@ -1,13 +1,13 @@
 from __future__ import annotations
 
+import asyncio
 import collections
 import datetime
-import inspect
 import typing
 from collections.abc import Iterable
 from copy import deepcopy
 from enum import Enum
-from typing import Any, Coroutine, Dict, List, Optional, Set, Tuple, Union, cast
+from typing import Any, Dict, List, Optional, Set, Tuple, Union, cast
 
 from google.protobuf import struct_pb2 as _struct
 from typing_extensions import Annotated, Protocol, get_args, get_origin
@@ -109,6 +109,27 @@ async def _translate_inputs_to_literals(
 translate_inputs_to_literals = loop_manager.synced(_translate_inputs_to_literals)
 
 
+async def _translate_inputs_to_native(
+    ctx: FlyteContext,
+    incoming_values: Dict[str, Any],
+    flyte_interface_types: Dict[str, _interface_models.Variable],
+) -> Dict[str, _literals_models.Literal]:
+    if incoming_values is None:
+        raise AssertionError("Incoming values cannot be None, must be a dict")
+
+    result = {}  # So as to not overwrite the input_kwargs
+    for k, v in incoming_values.items():
+        if k not in flyte_interface_types:
+            raise AssertionError(f"Received unexpected keyword argument {k}")
+        v = await resolve_attr_path_recursively(v)
+        result[k] = v
+
+    return result
+
+
+translate_inputs_to_native = loop_manager.synced(_translate_inputs_to_native)
+
+
 async def resolve_attr_path_recursively(v: Any) -> Any:
     """
     This function resolves the attribute path in a nested structure recursively.
@@ -154,6 +175,7 @@ async def resolve_attr_path_in_promise(p: Promise) -> Promise:
 
             curr_val = curr_val.value.literals[attr]
             used += 1
+
         # Scalar is always the leaf. There can't be a collection or map in a scalar.
         if type(curr_val.value) is _literals_models.Scalar:
             break
@@ -167,7 +189,6 @@ async def resolve_attr_path_in_promise(p: Promise) -> Promise:
             This works correctly in remote execution.
             Issue Link: https://github.com/flyteorg/flyte/issues/5959
             """
-
             st = curr_val.value.value
             new_st = resolve_attr_path_in_pb_struct(st, attr_path=p.attr_path[used:])
             literal_type = TypeEngine.to_literal_type(type(new_st))
@@ -204,7 +225,14 @@ def resolve_attr_path_in_dict(d: dict, attr_path: List[Union[str, int]]) -> Any:
     return curr_val
 
 
-def resolve_attr_path_in_pb_struct(st: _struct.Struct, attr_path: List[Union[str, int]]) -> _struct.Struct:
+def resolve_attr_path_in_pb_struct(
+    st: _struct.Struct, attr_path: List[Union[str, int]]
+) -> Union[_struct.Struct, _struct.ListValue]:
+    """
+    Resolves the protobuf struct (e.g. dataclass) with attribute path.
+
+    Note that the return type can be google.protobuf.struct_pb2.Struct or google.protobuf.struct_pb2.ListValue.
+    """
     curr_val = st
     for attr in attr_path:
         if attr not in curr_val:
@@ -1379,9 +1407,47 @@ class LocallyExecutable(Protocol):
     def local_execution_mode(self) -> ExecutionState.Mode: ...
 
 
+async def async_flyte_entity_call_handler(
+    entity: SupportsNodeCreation, *args, **kwargs
+) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, None]:
+    """
+    This is a limited async version of the main call handler.
+    """
+    # Make sure arguments are part of interface
+    for k, v in kwargs.items():
+        if k not in entity.python_interface.inputs:
+            raise AssertionError(f"Received unexpected keyword argument '{k}' in function '{entity.name}'")
+
+    # Check if we have more arguments than expected
+    if len(args) > len(entity.python_interface.inputs):
+        raise AssertionError(
+            f"Received more arguments than expected in function '{entity.name}'. Expected {len(entity.python_interface.inputs)} but got {len(args)}"
+        )
+
+    # Convert args to kwargs
+    for arg, input_name in zip(args, entity.python_interface.inputs.keys()):
+        if input_name in kwargs:
+            raise AssertionError(f"Got multiple values for argument '{input_name}' in function '{entity.name}'")
+        kwargs[input_name] = arg
+
+    ctx = FlyteContextManager.current_context()
+    # This handles the case where we call other entities from within a running eager task.
+    if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.EAGER_EXECUTION:
+        # for both nested eager, async, and sync tasks, submit to the informer.
+        if not ctx.worker_queue:
+            raise AssertionError("Worker queue missing, must be set when trying to execute tasks in an eager workflow")
+        loop = asyncio.get_running_loop()
+        fut = ctx.worker_queue.add(loop, entity, input_kwargs=kwargs)
+        result = await fut
+        return result
+
+    # eager local execution, and all other call patterns are handled by the sync version
+    return flyte_entity_call_handler(entity, **kwargs)
+
+
 def flyte_entity_call_handler(
     entity: SupportsNodeCreation, *args, **kwargs
-) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, Coroutine, None]:
+) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, None]:
     """
     This function is the call handler for tasks, workflows, and launch plans (which redirects to the underlying
     workflow). The logic is the same for all three, but we did not want to create base class, hence this separate
@@ -1414,6 +1480,13 @@ def flyte_entity_call_handler(
         kwargs[input_name] = arg
 
     ctx = FlyteContextManager.current_context()
+    # This handles the case where we call other entities from within a running eager task.
+    if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.EAGER_EXECUTION:
+        # call the blocking version of the async call handler
+        # This is a recursive call, the async handler also calls this function, so this conditional must match
+        # the one in the async function perfectly, otherwise you'll get infinite recursion.
+        loop_manager.run_sync(async_flyte_entity_call_handler, entity, **kwargs)
+
     if ctx.execution_state and (
         ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION
         or ctx.execution_state.mode == ExecutionState.Mode.LOCAL_TASK_EXECUTION
@@ -1423,7 +1496,10 @@ def flyte_entity_call_handler(
         )
     if ctx.compilation_state is not None and ctx.compilation_state.mode == 1:
         return create_and_link_node(ctx, entity=entity, **kwargs)
+
+    # This handles the case for when we're already in a local execution state
     if ctx.execution_state and ctx.execution_state.is_local_execution():
+        original_mode = ctx.execution_state.mode
         mode = cast(LocallyExecutable, entity).local_execution_mode()
         omt = OutputMetadataTracker()
         with FlyteContextManager.with_context(
@@ -1441,7 +1517,15 @@ def flyte_entity_call_handler(
                     return create_task_output(vals, entity.python_interface)
                 else:
                     return None
-            return cast(LocallyExecutable, entity).local_execute(ctx, **kwargs)
+            if original_mode == ExecutionState.Mode.EAGER_LOCAL_EXECUTION:
+                # When calling a local task/eager task/launch plan/subworkflow, we want the results to be Python
+                # native values, not wrapped in Promises.
+                local_execute_results = cast(LocallyExecutable, entity).local_execute(ctx, **kwargs)
+                return create_native_named_tuple(ctx, local_execute_results, entity.python_interface)
+            else:
+                return cast(LocallyExecutable, entity).local_execute(ctx, **kwargs)
+
+    # This condition kicks off a new local execution.
     else:
         mode = cast(LocallyExecutable, entity).local_execution_mode()
         omt = OutputMetadataTracker()
@@ -1457,9 +1541,6 @@ def flyte_entity_call_handler(
                 return None
             else:
                 raise ValueError(f"Received an output when workflow local execution expected None. Received: {result}")
-
-        if inspect.iscoroutine(result):
-            return result
 
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.DYNAMIC_TASK_EXECUTION:
             return result

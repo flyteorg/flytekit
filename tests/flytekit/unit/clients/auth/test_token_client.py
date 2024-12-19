@@ -30,10 +30,26 @@ def test_get_token(mock_session):
     response.json.return_value = json.loads("""{"access_token": "abc", "expires_in": 60}""")
     session.post.return_value = response
     mock_session.return_value = session
-    access, expiration = get_token(
+    access, refresh_token, expiration = get_token(
         "https://corp.idp.net", client_id="abc123", scopes=["my_scope"], http_proxy_url="http://proxy:3000", verify=True
     )
     assert access == "abc"
+    assert refresh_token is None
+    assert expiration == 60
+
+@patch("flytekit.clients.auth.token_client.requests.Session")
+def test_get_token_with_refresh(mock_session):
+    session = MagicMock()
+    response = MagicMock()
+    response.status_code = 200
+    response.json.return_value = json.loads("""{"access_token": "abc", "refresh_token": "def", "expires_in": 60}""")
+    session.post.return_value = response
+    mock_session.return_value = session
+    access, refresh_token, expiration = get_token(
+        "https://corp.idp.net", client_id="abc123", scopes=["my_scope"], http_proxy_url="http://proxy:3000", verify=True
+    )
+    assert access == "abc"
+    assert refresh_token == "def"
     assert expiration == 60
 
 
@@ -77,10 +93,11 @@ def test_poll_token_endpoint(mock_session):
 
     response = MagicMock()
     response.ok = True
-    response.json.return_value = {"access_token": "abc", "expires_in": 60}
+    response.json.return_value = {"access_token": "abc", "refresh_token": "def", "expires_in": 60}
     session.post.return_value = response
     r = DeviceCodeResponse(device_code="x", user_code="y", verification_uri="v", expires_in=1, interval=0)
-    t, e = poll_token_endpoint(r, "test.com", "test", http_proxy_url="http://proxy:3000", verify=True)
+    t, r, e = poll_token_endpoint(r, "test.com", "test", http_proxy_url="http://proxy:3000", verify=True)
 
     assert t == "abc"
+    assert r == "def"
     assert e == 60

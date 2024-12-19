@@ -1,3 +1,4 @@
+import dataclasses
 import os
 import shutil
 from dataclasses import dataclass
@@ -134,11 +135,12 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
         self.sess: Optional[SparkSession] = None
         self._default_executor_path: str = task_config.executor_path
         self._default_applications_path: str = task_config.applications_path
+        self._container_image = container_image
 
         if isinstance(container_image, ImageSpec):
             if container_image.base_image is None:
                 img = f"cr.flyte.org/flyteorg/flytekit:spark-{DefaultImages.get_version_suffix()}"
-                container_image.base_image = img
+                self._container_image = dataclasses.replace(container_image, base_image=img)
                 # default executor path and applications path in apache/spark-py:3.3.1
                 self._default_executor_path = self._default_executor_path or "/usr/bin/python3"
                 self._default_applications_path = (
@@ -154,7 +156,7 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
             task_config=task_config,
             task_type=task_type,
             task_function=task_function,
-            container_image=container_image,
+            container_image=self._container_image,
             **kwargs,
         )
 

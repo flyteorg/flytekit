@@ -2,6 +2,7 @@ import os
 import tempfile
 import typing
 from collections import OrderedDict
+from pathlib import Path
 
 import google.cloud.bigquery
 import pytest
@@ -57,6 +58,21 @@ def test_protocol():
 
 def generate_pandas() -> pd.DataFrame:
     return pd.DataFrame({"name": ["Tom", "Joseph"], "age": [20, 22]})
+
+
+@pytest.fixture
+def local_tmp_pqt_file():
+    df = generate_pandas()
+
+    # Create a temporary parquet file
+    with tempfile.NamedTemporaryFile(delete=False, mode="w+b", suffix=".parquet") as pqt_file:
+        pqt_path = pqt_file.name
+        df.to_parquet(pqt_path)
+
+    yield pqt_path
+
+    # Cleanup
+    Path(pqt_path).unlink(missing_ok=True)
 
 
 def test_formats_make_sense():
@@ -643,3 +659,27 @@ def test_default_args_task():
 
     pd.testing.assert_frame_equal(wf_no_input(), default_val)
     pd.testing.assert_frame_equal(wf_with_input(), input_val)
+
+
+
+def test_read_sd_from_local_uri(local_tmp_pqt_file):
+
+    @task
+    def read_sd_from_uri(uri: str) -> pd.DataFrame:
+        sd = StructuredDataset(uri=uri, file_format="parquet")
+        df = sd.open(pd.DataFrame).all()
+
+        return df
+
+    @workflow
+    def read_sd_from_local_uri(uri: str) -> pd.DataFrame:
+        df = read_sd_from_uri(uri=uri)
+
+        return df
+
+
+    df = generate_pandas()
+
+    # Read sd from local uri
+    df_local = read_sd_from_local_uri(uri=local_tmp_pqt_file)
+    pd.testing.assert_frame_equal(df, df_local)

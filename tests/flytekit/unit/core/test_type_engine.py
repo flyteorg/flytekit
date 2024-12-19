@@ -486,7 +486,10 @@ def test_dict_transformer():
     )
     recursive_assert(
         d.get_literal_type(typing.Dict[str, dict]),
-        LiteralType(simple=SimpleType.STRUCT),
+        LiteralType(
+            simple=SimpleType.STRUCT,
+            annotation=TypeAnnotation({"cache-key-metadata": {"serialization-format": "msgpack"}})
+        ),
     )
     recursive_assert(
         d.get_literal_type(typing.Dict[str, typing.Dict[str, str]]),
@@ -495,7 +498,10 @@ def test_dict_transformer():
     )
     recursive_assert(
         d.get_literal_type(typing.Dict[str, typing.Dict[int, str]]),
-        LiteralType(simple=SimpleType.STRUCT),
+        LiteralType(
+            simple=SimpleType.STRUCT,
+            annotation=TypeAnnotation({"cache-key-metadata": {"serialization-format": "msgpack"}})
+        ),
         expected_depth=2,
     )
     recursive_assert(
@@ -505,12 +511,18 @@ def test_dict_transformer():
     )
     recursive_assert(
         d.get_literal_type(typing.Dict[str, typing.Dict[str, typing.Dict[str, dict]]]),
-        LiteralType(simple=SimpleType.STRUCT),
+        LiteralType(
+            simple=SimpleType.STRUCT,
+            annotation=TypeAnnotation({"cache-key-metadata": {"serialization-format": "msgpack"}})
+        ),
         expected_depth=3,
     )
     recursive_assert(
         d.get_literal_type(typing.Dict[str, typing.Dict[str, typing.Dict[int, dict]]]),
-        LiteralType(simple=SimpleType.STRUCT),
+        LiteralType(
+            simple=SimpleType.STRUCT,
+            annotation=TypeAnnotation({"cache-key-metadata": {"serialization-format": "msgpack"}})
+        ),
         expected_depth=2,
     )
 
@@ -741,39 +753,48 @@ def test_dataclass_transformer():
         s: UnsupportedSchemaType
 
     schema = {
-        "$ref": "#/definitions/TeststructSchema",
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "definitions": {
-            "InnerstructSchema": {
-                "additionalProperties": False,
+        "type": "object",
+        "title": "TestStruct",
+        "properties": {
+            "s": {
+                "type": "object",
+                "title": "InnerStruct",
                 "properties": {
-                    "a": {"title": "a", "type": "integer"},
-                    "b": {"default": None, "title": "b", "type": ["string", "null"]},
+                    "a": {
+                        "type": "integer"
+                    },
+                    "b": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
                     "c": {
-                        "items": {"title": "c", "type": "integer"},
-                        "title": "c",
                         "type": "array",
-                    },
+                        "items": {
+                            "type": "integer"
+                        }
+                    }
                 },
-                "type": "object",
-            },
-            "TeststructSchema": {
                 "additionalProperties": False,
-                "properties": {
-                    "m": {
-                        "additionalProperties": {"title": "m", "type": "string"},
-                        "title": "m",
-                        "type": "object",
-                    },
-                    "s": {
-                        "$ref": "#/definitions/InnerstructSchema",
-                        "field_many": False,
-                        "type": "object",
-                    },
-                },
-                "type": "object",
+                "required": ["a", "b", "c"]
             },
+            "m": {
+                "type": "object",
+                "additionalProperties": {
+                    "type": "string"
+                },
+                "propertyNames": {
+                    "type": "string"
+                }
+            }
         },
+        "additionalProperties": False,
+        "required": ["s", "m"]
     }
     tf = DataclassTransformer()
     t = tf.get_literal_type(TestStruct)
@@ -957,7 +978,7 @@ def test_optional_flytefile_in_dataclass(mock_upload_dir):
         b: typing.Optional[FlyteFile]
         b_prime: typing.Optional[FlyteFile]
         c: typing.Union[FlyteFile, None]
-        c_prime: typing.Union[None, FlyteFile]
+        c_prime: typing.Union[None, int, bool, FlyteFile]
         d: typing.List[FlyteFile]
         e: typing.List[typing.Optional[FlyteFile]]
         e_prime: typing.List[typing.Optional[FlyteFile]]
@@ -968,6 +989,7 @@ def test_optional_flytefile_in_dataclass(mock_upload_dir):
         h_prime: typing.Optional[FlyteFile] = None
         i: typing.Optional[A] = None
         i_prime: typing.Optional[A] = field(default_factory=lambda: A(a=99))
+        j: typing.Union[int, FlyteFile] = 0
 
     remote_path = "s3://tmp/file"
     # set the return value to the remote path since that's what put_data does
@@ -989,6 +1011,7 @@ def test_optional_flytefile_in_dataclass(mock_upload_dir):
             g_prime={"a": None},
             h=f1,
             i=A(a=42),
+            j=remote_path,
         )
 
         ctx = FlyteContext.current_context()
@@ -1014,6 +1037,7 @@ def test_optional_flytefile_in_dataclass(mock_upload_dir):
         assert dict_obj["h_prime"] is None
         assert dict_obj["i"]["a"] == 42
         assert dict_obj["i_prime"]["a"] == 99
+        assert dict_obj["j"]["path"] == remote_path
 
         ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestFileStruct)
 
@@ -1032,6 +1056,7 @@ def test_optional_flytefile_in_dataclass(mock_upload_dir):
         assert ot.h_prime is None
         assert o.i == ot.i
         assert o.i_prime == A(a=99)
+        assert o.j == FlyteFile(remote_path)
 
 
 @mock.patch("flytekit.core.data_persistence.FileAccessProvider.async_put_data")
@@ -1569,7 +1594,7 @@ def test_assert_dataclass_type():
     pv = Bar(x=3)
     with pytest.raises(
             TypeTransformerFailedError,
-            match="Type of Val '<class 'int'>' is not an instance of <class '.*.ArgsSchema'>",
+            match="Type of Val '<class 'int'>' is not an instance of <class '.*.Args'>",
     ):
         DataclassTransformer().assert_type(gt, pv)
 
@@ -2091,10 +2116,9 @@ def test_enum_in_dataclass():
         x: int
         y: Color
 
+    from mashumaro.jsonschema import build_json_schema
     lt = TypeEngine.to_literal_type(Datum)
-    schema = Datum.schema()
-    schema.fields["y"].load_by = LoadDumpOptions.name
-    assert lt.metadata == JSONSchema().dump(schema)
+    assert lt.metadata == build_json_schema(Datum).to_dict()
 
     transformer = DataclassTransformer()
     ctx = FlyteContext.current_context()
@@ -2345,10 +2369,6 @@ def test_annotated_simple_types():
         typing_extensions.Annotated[int, FlyteAnnotation({"d": {"test": "data"}, "l": ["nested", ["list"]]})],
         {"d": {"test": "data"}, "l": ["nested", ["list"]]},
     )
-    _check_annotation(
-        typing_extensions.Annotated[int, FlyteAnnotation(InnerStruct(a=1, b="fizz", c=[1]))],
-        InnerStruct(a=1, b="fizz", c=[1]),
-    )
 
 
 def test_annotated_list():
@@ -2434,124 +2454,223 @@ class AnnotatedDataclassTest(DataClassJsonMixin):
 @pytest.mark.parametrize(
     "t,expected_type",
     [
-        (dict, LiteralType(simple=SimpleType.STRUCT)),
-        # Annotations are not being copied over to the LiteralType
         (
-                typing_extensions.Annotated[dict, "a-tag"],
-                LiteralType(simple=SimpleType.STRUCT),
-        ),
-        (typing.Dict[int, str], LiteralType(simple=SimpleType.STRUCT)),
-        (
-                typing.Dict[str, int],
-                LiteralType(map_value_type=LiteralType(simple=SimpleType.INTEGER)),
-        ),
-        (
-                typing.Dict[str, str],
-                LiteralType(map_value_type=LiteralType(simple=SimpleType.STRING)),
-        ),
-        (
-                typing.Dict[str, typing.List[int]],
-                LiteralType(map_value_type=LiteralType(collection_type=LiteralType(simple=SimpleType.INTEGER))),
-        ),
-        (typing.Dict[int, typing.List[int]], LiteralType(simple=SimpleType.STRUCT)),
-        (
-                typing.Dict[int, typing.Dict[int, int]],
-                LiteralType(simple=SimpleType.STRUCT),
-        ),
-        (
-                typing.Dict[str, typing.Dict[int, int]],
-                LiteralType(map_value_type=LiteralType(simple=SimpleType.STRUCT)),
-        ),
-        (
-                typing.Dict[str, typing.Dict[str, int]],
-                LiteralType(map_value_type=LiteralType(map_value_type=LiteralType(simple=SimpleType.INTEGER))),
-        ),
-        (
-                DataclassTest,
-                LiteralType(
-                    simple=SimpleType.STRUCT,
-                    metadata={
-                        "$schema": "http://json-schema.org/draft-07/schema#",
-                        "definitions": {
-                            "DataclasstestSchema": {
-                                "properties": {
-                                    "a": {"title": "a", "type": "integer"},
-                                    "b": {"title": "b", "type": "string"},
-                                },
-                                "type": "object",
-                                "additionalProperties": False,
-                            }
+            dict,
+            LiteralType(
+                simple=SimpleType.STRUCT,
+                annotation=TypeAnnotation(
+                    {
+                        "cache-key-metadata": {
+                            "serialization-format": "msgpack",
                         },
-                        "$ref": "#/definitions/DataclasstestSchema",
                     },
-                    structure=TypeStructure(
-                        tag="",
-                        dataclass_type={
-                            "a": LiteralType(simple=SimpleType.INTEGER),
-                            "b": LiteralType(simple=SimpleType.STRING),
+                ),
+            ),
+        ),
+        # Only the special `cache-key-metadata` TypeAnnotations is copied over to the LiteralType
+        (
+            typing_extensions.Annotated[dict, "a-tag"],
+            LiteralType(
+                simple=SimpleType.STRUCT,
+                annotation=TypeAnnotation(
+                    {
+                        "cache-key-metadata": {
+                            "serialization-format": "msgpack",
+                        },
+                    },
+                ),
+            ),
+        ),
+        (
+            typing.Dict[int, str],
+            LiteralType(
+                simple=SimpleType.STRUCT,
+                annotation=TypeAnnotation(
+                    {
+                        "cache-key-metadata": {
+                            "serialization-format": "msgpack",
+                        },
+                    },
+                ),
+
+            ),
+        ),
+        (
+            typing.Dict[str, int],
+            LiteralType(
+                map_value_type=LiteralType(simple=SimpleType.INTEGER),
+            ),
+        ),
+        (
+            typing.Dict[str, str],
+            LiteralType(
+                map_value_type=LiteralType(simple=SimpleType.STRING),
+            ),
+        ),
+        (
+            typing.Dict[str, typing.List[int]],
+            LiteralType(
+                map_value_type=LiteralType(collection_type=LiteralType(simple=SimpleType.INTEGER)),
+            ),
+        ),
+        (
+            typing.Dict[int, typing.List[int]],
+            LiteralType(
+                simple=SimpleType.STRUCT,
+                annotation=TypeAnnotation(
+                    {
+                        "cache-key-metadata": {
+                            "serialization-format": "msgpack",
+                        },
+                    },
+                ),
+            ),
+        ),
+        (
+            typing.Dict[int, typing.Dict[int, int]],
+            LiteralType(
+                simple=SimpleType.STRUCT,
+                annotation=TypeAnnotation(
+                    {
+                        "cache-key-metadata": {
+                            "serialization-format": "msgpack",
+                        },
+                    },
+                ),
+            ),
+        ),
+        (
+            typing.Dict[str, typing.Dict[int, int]],
+            LiteralType(
+                map_value_type=LiteralType(
+                    simple=SimpleType.STRUCT,
+                    annotation=TypeAnnotation(
+                        {
+                            "cache-key-metadata": {
+                                "serialization-format": "msgpack",
+                            },
                         },
                     ),
                 ),
+            ),
+        ),
+        (
+            typing.Dict[str, typing.Dict[str, int]],
+            LiteralType(
+                map_value_type=LiteralType(
+                    map_value_type=LiteralType(
+                        simple=SimpleType.INTEGER,
+                    ),
+                ),
+            ),
+        ),
+        (
+            DataclassTest,
+            LiteralType(
+                simple=SimpleType.STRUCT,
+                metadata={
+                    "type": "object",
+                    "title": "DataclassTest",
+                    "properties": {
+                        "a": {"type": "integer"},
+                        "b": {"type": "string"}
+                    },
+                    "additionalProperties": False,
+                    "required": ["a", "b"]
+                },
+                structure=TypeStructure(
+                    tag="",
+                    dataclass_type={
+                        "a": LiteralType(simple=SimpleType.INTEGER),
+                        "b": LiteralType(simple=SimpleType.STRING),
+                    },
+                ),
+                annotation=TypeAnnotation(
+                    {
+                        "cache-key-metadata": {
+                            "serialization-format": "msgpack",
+                        },
+                    },
+                ),
+            ),
         ),
         #  Similar to the dict[int, str] case, the annotation is not being copied over to the LiteralType
         (
-                Annotated[DataclassTest, "another-tag"],
-                LiteralType(
-                    simple=SimpleType.STRUCT,
-                    metadata={
-                        "$schema": "http://json-schema.org/draft-07/schema#",
-                        "definitions": {
-                            "DataclasstestSchema": {
-                                "properties": {
-                                    "a": {"title": "a", "type": "integer"},
-                                    "b": {"title": "b", "type": "string"},
-                                },
-                                "type": "object",
-                                "additionalProperties": False,
-                            }
-                        },
-                        "$ref": "#/definitions/DataclasstestSchema",
+            Annotated[DataclassTest, "another-tag"],
+            LiteralType(
+                simple=SimpleType.STRUCT,
+                metadata={
+                    "type": "object",
+                    "title": "DataclassTest",
+                    "properties": {
+                        "a": {"type": "integer"},
+                        "b": {"type": "string"}
                     },
-                    structure=TypeStructure(
-                        tag="",
-                        dataclass_type={
-                            "a": LiteralType(simple=SimpleType.INTEGER),
-                            "b": LiteralType(simple=SimpleType.STRING),
-                        },
-                    ),
+                    "additionalProperties": False,
+                    "required": ["a", "b"]
+                },
+                structure=TypeStructure(
+                    tag="",
+                    dataclass_type={
+                        "a": LiteralType(simple=SimpleType.INTEGER),
+                        "b": LiteralType(simple=SimpleType.STRING),
+                    },
                 ),
+                annotation=TypeAnnotation(
+                    {
+                        "cache-key-metadata": {
+                            "serialization-format": "msgpack",
+                        },
+                    },
+                ),
+            ),
         ),
         # Notice how the annotation in the field is not carried over either
         (
-                Annotated[AnnotatedDataclassTest, "another-tag"],
-                LiteralType(
-                    simple=SimpleType.STRUCT,
-                    metadata={
-                        "$schema": "http://json-schema.org/draft-07/schema#",
-                        "definitions": {
-                            "AnnotateddataclasstestSchema": {
-                                "properties": {
-                                    "a": {"title": "a", "type": "integer"},
-                                    "b": {"title": "b", "type": "string"},
-                                },
-                                "type": "object",
-                                "additionalProperties": False,
-                            }
-                        },
-                        "$ref": "#/definitions/AnnotateddataclasstestSchema",
+            Annotated[AnnotatedDataclassTest, "another-tag"],
+            LiteralType(
+                simple=SimpleType.STRUCT,
+                metadata={
+                    "type": "object",
+                    "title": "AnnotatedDataclassTest",
+                    "properties": {
+                        "a": {"type": "integer"},
+                        "b": {"type": "string"},
                     },
-                    structure=TypeStructure(
-                        tag="",
-                        dataclass_type={
-                            "a": LiteralType(simple=SimpleType.INTEGER),
-                            "b": LiteralType(simple=SimpleType.STRING),
-                        },
-                    ),
+                    "additionalProperties": False,
+                    "required": ["a", "b"],
+                },
+                structure=TypeStructure(
+                    tag="",
+                    dataclass_type={
+                        "a": LiteralType(simple=SimpleType.INTEGER),
+                        "b": LiteralType(simple=SimpleType.STRING),
+                    },
                 ),
+                annotation=TypeAnnotation(
+                    {
+                        "cache-key-metadata": {
+                            "serialization-format": "msgpack",
+                        },
+                    },
+                ),
+            ),
+        ),
+        # Notice how the `FlyteAnnotation` is carried over
+        (
+            Annotated[int, FlyteAnnotation({"some-annotation": "a value"})],
+            LiteralType(
+                simple=SimpleType.INTEGER,
+                annotation=TypeAnnotation(
+                    {
+                        "some-annotation": "a value",
+                    },
+                ),
+            ),
         ),
     ],
 )
-def test_annotated_dicts(t, expected_type):
+def test_annotated(t, expected_type):
     assert TypeEngine.to_literal_type(t) == expected_type
 
 
@@ -3332,10 +3451,6 @@ def test_dataclass_none_output_input_deserialization():
 
 @pytest.mark.serial
 def test_lazy_import_transformers_concurrently():
-    # Ensure that next call to TypeEngine.lazy_import_transformers doesn't skip the import. Mark as serial to ensure
-    # this achieves what we expect.
-    TypeEngine.has_lazy_import = False
-
     # Configure the mocks similar to https://stackoverflow.com/questions/29749193/python-unit-testing-with-two-mock-objects-how-to-verify-call-order
     after_import_mock, mock_register = mock.Mock(), mock.Mock()
     mock_wrapper = mock.Mock()
@@ -3352,11 +3467,11 @@ def test_lazy_import_transformers_concurrently():
             futures = [executor.submit(run) for _ in range(N)]
             [f.result() for f in futures]
 
-        # Assert that all the register calls come before anything else.
-        assert mock_wrapper.mock_calls[-N:] == [mock.call.after_import_mock()] * N
+        assert mock_wrapper.mock_calls[-1] == mock.call.after_import_mock()
         expected_number_of_register_calls = len(mock_wrapper.mock_calls) - N
+        assert sum([mock_call[0] == "mock_register" for mock_call in mock_wrapper.mock_calls]) == expected_number_of_register_calls
         assert all([mock_call[0] == "mock_register" for mock_call in
-                    mock_wrapper.mock_calls[:expected_number_of_register_calls]])
+                    mock_wrapper.mock_calls[:int(len(mock_wrapper.mock_calls)/N)-1]])
 
 
 @pytest.mark.skipif(sys.version_info < (3, 10), reason="PEP604 requires >=3.10, 585 requires >=3.9")

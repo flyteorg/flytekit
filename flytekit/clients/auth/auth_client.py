@@ -303,6 +303,7 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
         """
         response_body = auth_token_resp.json()
         refresh_token = None
+        expires_in = None
         id_token = None
         if "access_token" not in response_body:
             raise ValueError('Expected "access_token" in response from oauth server')

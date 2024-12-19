@@ -991,7 +991,7 @@ class Literal(_common.FlyteIdlEntity):
             map=self.map.to_flyte_idl() if self.map is not None else None,
             hash=self.hash,
             metadata=self.metadata,
-            offloaded_metadata=self.offloaded_metadata.to_flyte_idl() if self.offloaded_metadata else None,
+            offloaded_metadata=self.offloaded_metadata.to_flyte_idl() if self.offloaded_metadata is not None else None,
         )
 
     @classmethod

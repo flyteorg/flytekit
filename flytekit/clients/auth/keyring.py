@@ -13,7 +13,7 @@ class Credentials(object):
     """
 
     access_token: str
-    refresh_token: str = "na"
+    refresh_token: typing.Optional[str] = None
     for_endpoint: str = "flyte-default"
     expires_in: typing.Optional[int] = None
     id_token: typing.Optional[str] = None
