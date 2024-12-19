@@ -601,6 +601,7 @@ def get_serializable_array_node(
         min_success_ratio=array_node.min_success_ratio,
         execution_mode=array_node.execution_mode,
         is_original_sub_node_interface=array_node.is_original_sub_node_interface,
+        data_mode=array_node.data_mode,
     )
 
 
