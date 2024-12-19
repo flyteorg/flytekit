@@ -51,6 +51,18 @@ dependencies = [
     "statsd>=3.0.0",
     "typing_extensions",
     "urllib3>=1.22",
+    "pdoc3",
+    "prometheus-client",
+    "pillow",
+    "numpy",
+    "pandas",
+    "google-cloud-bigquery",
+    "google-cloud-bigquery-storage",
+    "pyarrow",
+    "snowflake",
+    "scikit-learn",
+    "tensorflow",
+    "torch",
 ]
 classifiers = [
     "Intended Audience :: Science/Research",
