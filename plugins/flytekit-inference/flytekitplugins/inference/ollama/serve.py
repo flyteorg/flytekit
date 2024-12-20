@@ -164,7 +164,7 @@ for chunk in ollama.pull('{self._model_name}', stream=True):
                 name=container_name,
                 image="python:3.11-slim",
                 command=["/bin/sh", "-c"],
-                args=[f"pip install requests && pip install ollama && {command}"],
+                args=[f"pip install requests && pip install ollama==0.3.3 && {command}"],
                 resources=V1ResourceRequirements(
                     requests={
                         "cpu": self._model_cpu,

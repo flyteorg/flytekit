@@ -8,11 +8,12 @@ from google.protobuf import struct_pb2 as _struct
 from pydantic import BaseModel
 
 from flytekit import FlyteContext
-from flytekit.core.constants import FLYTE_USE_OLD_DC_FORMAT, MESSAGEPACK
+from flytekit.core.constants import CACHE_KEY_METADATA, FLYTE_USE_OLD_DC_FORMAT, MESSAGEPACK, SERIALIZATION_FORMAT
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
 from flytekit.core.utils import str2bool
 from flytekit.loggers import logger
 from flytekit.models import types
+from flytekit.models.annotation import TypeAnnotation as TypeAnnotationModel
 from flytekit.models.literals import Binary, Literal, Scalar
 from flytekit.models.types import LiteralType, TypeStructure
 
@@ -37,7 +38,12 @@ class PydanticTransformer(TypeTransformer[BaseModel]):
         # This is for attribute access in FlytePropeller.
         ts = TypeStructure(tag="", dataclass_type=literal_type)
 
-        return types.LiteralType(simple=types.SimpleType.STRUCT, metadata=schema, structure=ts)
+        return types.LiteralType(
+            simple=types.SimpleType.STRUCT,
+            metadata=schema,
+            structure=ts,
+            annotation=TypeAnnotationModel({CACHE_KEY_METADATA: {SERIALIZATION_FORMAT: MESSAGEPACK}}),
+        )
 
     def to_generic_literal(
         self,

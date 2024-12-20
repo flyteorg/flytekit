@@ -69,9 +69,10 @@ class PolarsDataFrameToParquetEncodingHandler(StructuredDatasetEncoder):
             df.to_parquet(output_bytes)
 
         if structured_dataset.uri is not None:
+            output_bytes.seek(0)
             fs = ctx.file_access.get_filesystem_for_path(path=structured_dataset.uri)
             with fs.open(structured_dataset.uri, "wb") as s:
-                s.write(output_bytes)
+                s.write(output_bytes.read())
             output_uri = structured_dataset.uri
         else:
             remote_fn = "00000"  # 00000 is our default unnamed parquet filename

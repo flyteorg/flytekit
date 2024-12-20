@@ -1,5 +1,8 @@
 import os
 import threading
+import sys
+
+import mock
 import pytest
 import asyncio
 from typing import List, Dict, Optional
@@ -74,7 +77,7 @@ async def async_function(n: int, orig: int) -> str:
     print(f"Async[{n}] Started! CTX id {id(ctx)} @ depth {ctx.vals['depth']} Thread: {threading.current_thread().name}")
 
     if n > 0:
-        await asyncio.sleep(0.5)  # Simulate some async work
+        await asyncio.sleep(0.01)  # Simulate some async work
         result = sync_function(n - 1, orig)  # Call the synchronous function
         return f"Async[{n}]: {result}"
     else:
@@ -122,3 +125,46 @@ def test_recursive_calling():
     # things like pytorch elastic.
     for k in loop_manager._runner_map.keys():
         assert str(os.getpid()) in k
+
+
+@mock.patch("flytekit.utils.asyn._TaskRunner.get_exc_handler")
+def test_error_two_ways(mock_getter):
+
+    # First reset everything so that the _TaskRunners get recreated
+    keys = [k for k in loop_manager._runner_map.keys()]
+    for k in keys:
+        l = loop_manager._runner_map[k]
+        l._close()
+        del loop_manager._runner_map[k]
+
+    # Test exception handling two ways
+    mock_handler = mock.MagicMock()
+    mock_getter.return_value = mock_handler
+
+    async def runner_1():
+        loop = asyncio.get_running_loop()
+        fut = loop.create_future()
+        fut.set_exception(ValueError("Future failed!"))
+
+    # this should trigger the exception handler because there's an uncaught exception on a future.
+
+    loop_manager.run_sync(runner_1)
+
+    def sync_error():
+        raise ValueError("This is a test2")
+
+    async def get_exc():
+        raise ValueError("This is a test")
+
+    async def runner_2():
+        loop = asyncio.get_running_loop()
+        loop.call_soon_threadsafe(sync_error)
+        t = loop.create_task(get_exc())
+        return await t
+
+    # This should trigger the handler because the ss call raises a ValueError as the first step, so when await t
+    # is run, the ss function sync_error function will raise
+    with pytest.raises(ValueError):
+        loop_manager.run_sync(runner_2)
+
+    assert mock_handler.call_count == 2
