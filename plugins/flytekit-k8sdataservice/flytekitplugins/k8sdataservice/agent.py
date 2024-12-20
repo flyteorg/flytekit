@@ -19,13 +19,11 @@ class DataServiceMetadata(ResourceMeta):
 
 class DataServiceAgent(AsyncAgentBase):
     name = "K8s DataService Async Agent"
-    # config_file_path = "/etc/config/aipflyteagent/task_logs.yaml"
 
     def __init__(self):
         self.k8s_manager = K8sManager()
         super().__init__(task_type_name="dataservicetask", metadata_type=DataServiceMetadata)
         self.config = None
-        self.kk_execution_id = None
 
     def create(
         self, task_template: TaskTemplate, output_prefix: str, inputs: Optional[LiteralMap] = None, **kwargs
@@ -39,12 +37,11 @@ class DataServiceAgent(AsyncAgentBase):
         name = ""
         if existing_release_name is None or existing_release_name == "":
             logger.info("Creating K8s data service resources...")
-            name = self.k8s_manager.create_data_service(self.kk_execution_id)
+            name = self.k8s_manager.create_data_service()
             logger.info(f'Data service {name} with image {graph_engine_config["Image"]} completed')
         else:
             name = existing_release_name
             logger.info(f"User configs to use the existing data service release name: {name}.")
-            logger.info(f"The existing execution ID found is: {self.kk_execution_id}.")
 
         dataservice_config = DataServiceConfig(
             Name=graph_engine_config.get("Name", None),
