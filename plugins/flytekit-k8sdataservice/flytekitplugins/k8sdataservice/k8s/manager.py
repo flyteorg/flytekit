@@ -1,7 +1,6 @@
 from flytekitplugins.k8sdataservice.k8s.kube_config import KubeConfig
 from kubernetes import client
 from kubernetes.client.rest import ApiException
-from utils.infra import union_maps
 from utils.resources import cleanup_resources, convert_flyte_to_k8s_fields
 
 from flytekit import logger
@@ -75,9 +74,10 @@ class K8sManager:
                 )
             ],
         )
+        self.labels.update({"app.kubernetes.io/instance": self.name})
         template = client.V1PodTemplateSpec(
             metadata=client.V1ObjectMeta(
-                labels=union_maps(self.labels, {"app.kubernetes.io/instance": self.name}),
+                labels=self.labels,
                 annotations={},
             ),
             spec=client.V1PodSpec(
@@ -123,13 +123,13 @@ class K8sManager:
         namespace = self.namespace
         logger.info(f"creating a service at namespace {namespace} with name {self.name}")
         port = self.data_service_config.get("Port", 40000)
-        label = union_maps(self.labels, {"app.kubernetes.io/instance": self.name, "app": APPNAME})
+        self.labels.update({"app.kubernetes.io/instance": self.name, "app": APPNAME})
         body = client.V1Service(
             api_version="v1",
             kind="Service",
             metadata=client.V1ObjectMeta(
                 name=self.name,
-                labels=label,
+                labels=self.labels,
                 namespace=namespace,
             ),
             spec=client.V1ServiceSpec(

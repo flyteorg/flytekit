@@ -16,17 +16,11 @@ from flytekit.models.core.identifier import ResourceType
 from flytekit.models.task import TaskTemplate
 
 
-# @patch("flytekitplugins.k8sdataservice.agent.open", new_callable=mock_open,
-#        read_data="task_logs:\n  templates:\n    - templateUris:\n        - 'https://some-log-url'\n     displayName: testlogs")
-# @patch("flytekitplugins.k8sdataservice.agent.yaml.safe_load")
 @patch("flytekitplugins.k8sdataservice.agent.K8sManager.create_data_service", return_value="gnn-1234")
 @patch("flytekitplugins.k8sdataservice.agent.K8sManager.check_stateful_set_status", return_value="succeeded")
 @patch("flytekitplugins.k8sdataservice.agent.K8sManager.delete_stateful_set")
 @patch("flytekitplugins.k8sdataservice.agent.K8sManager.delete_service")
 def test_gnn_agent(mock_delete_service, mock_delete_stateful_set, mock_check_status, mock_create_data_service):
-    ctx = MagicMock(spec=grpc.ServicerContext)
-    # mock_load.return_value = {"task_logs": {"templates": [{"templateUris": ["https://some-log-url"], "displayName": "testlogs"}]}}
-    # Your test code here
     agent = AgentRegistry.get_agent("dataservicetask")
     task_id = Identifier(
         resource_type=ResourceType.TASK, project="project", domain="domain", name="name", version="version"
@@ -95,17 +89,11 @@ def test_gnn_agent(mock_delete_service, mock_delete_stateful_set, mock_check_sta
     mock_delete_service.assert_called_once_with("gnn-1234")
 
 
-# @patch("flytekitplugins.k8sdataservice.agent.open", new_callable=mock_open,
-#        read_data="task_logs:\n  templates:\n    - templateUris:\n        - 'https://some-log-url'\n     displayName: testlogs")
-# @patch("flytekitplugins.k8sdataservice.agent.yaml.safe_load")
 @patch("flytekitplugins.k8sdataservice.agent.K8sManager.create_data_service", return_value="gnn-1234")
 @patch("flytekitplugins.k8sdataservice.agent.K8sManager.check_stateful_set_status", return_value="succeeded")
 @patch("flytekitplugins.k8sdataservice.agent.K8sManager.delete_stateful_set")
 @patch("flytekitplugins.k8sdataservice.agent.K8sManager.delete_service")
 def test_gnn_agent_reuse_data_service(mock_delete_service, mock_delete_stateful_set, mock_check_status, mock_create_data_service):
-    ctx = MagicMock(spec=grpc.ServicerContext)
-    # mock_load.return_value = {"task_logs": {"templates": [{"templateUris": ["https://some-log-url"], "displayName": "testlogs"}]}}
-    # Your test code here
     agent = AgentRegistry.get_agent("dataservicetask")
     task_id = Identifier(
         resource_type=ResourceType.TASK, project="project", domain="domain", name="name", version="version"
@@ -176,17 +164,11 @@ def test_gnn_agent_reuse_data_service(mock_delete_service, mock_delete_stateful_
     mock_delete_service.assert_called_once_with("gnn-2345")
 
 
-# @patch("flytekitplugins.k8sdataservice.agent.open", new_callable=mock_open,
-#        read_data="task_logs:\n  templates:\n    - templateUris:\n        - 'https://some-log-url'\n     displayName: testlogs")
-# @patch("flytekitplugins.k8sdataservice.agent.yaml.safe_load")
 @patch("flytekitplugins.k8sdataservice.agent.K8sManager.create_data_service", return_value="gnn-1234")
 @patch("flytekitplugins.k8sdataservice.agent.K8sManager.check_stateful_set_status", return_value="running")
 @patch("flytekitplugins.k8sdataservice.agent.K8sManager.delete_stateful_set")
 @patch("flytekitplugins.k8sdataservice.agent.K8sManager.delete_service")
 def test_gnn_agent_status(mock_delete_service, mock_delete_stateful_set, mock_check_status, mock_create_data_service):
-    ctx = MagicMock(spec=grpc.ServicerContext)
-    # mock_load.return_value = {"task_logs": {"templates": [{"templateUris": ["https://some-log-url"], "displayName": "testlogs"}]}}
-    # Your test code here
     agent = AgentRegistry.get_agent("dataservicetask")
     task_id = Identifier(
         resource_type=ResourceType.TASK, project="project", domain="domain", name="name", version="version"
@@ -256,17 +238,11 @@ def test_gnn_agent_status(mock_delete_service, mock_delete_stateful_set, mock_ch
     mock_delete_service.assert_called_once_with("gnn-2345")
 
 
-# @patch("flytekitplugins.k8sdataservice.agent.open", new_callable=mock_open,
-#        read_data="")
-# @patch("flytekitplugins.k8sdataservice.agent.yaml.safe_load")
 @patch("flytekitplugins.k8sdataservice.agent.K8sManager.create_data_service", return_value="gnn-1234")
 @patch("flytekitplugins.k8sdataservice.agent.K8sManager.check_stateful_set_status", return_value="succeeded")
 @patch("flytekitplugins.k8sdataservice.agent.K8sManager.delete_stateful_set")
 @patch("flytekitplugins.k8sdataservice.agent.K8sManager.delete_service")
 def test_gnn_agent_no_configmap(mock_delete_service, mock_delete_stateful_set, mock_check_status, mock_create_data_service):
-    ctx = MagicMock(spec=grpc.ServicerContext)
-    # mock_load.return_value = {}
-    # Your test code here
     agent = AgentRegistry.get_agent("dataservicetask")
     task_id = Identifier(
         resource_type=ResourceType.TASK, project="project", domain="domain", name="name", version="version"
@@ -337,17 +313,11 @@ def test_gnn_agent_no_configmap(mock_delete_service, mock_delete_stateful_set, m
     mock_delete_service.assert_called_once_with("gnn-2345")
 
 
-# @patch("flytekitplugins.k8sdataservice.agent.open", new_callable=mock_open,
-#        read_data="")
-# @patch("flytekitplugins.k8sdataservice.agent.yaml.safe_load")
 @patch("flytekitplugins.k8sdataservice.agent.K8sManager.create_data_service", return_value="gnn-1234")
 @patch("flytekitplugins.k8sdataservice.agent.K8sManager.check_stateful_set_status", return_value="pending")
 @patch("flytekitplugins.k8sdataservice.agent.K8sManager.delete_stateful_set")
 @patch("flytekitplugins.k8sdataservice.agent.K8sManager.delete_service")
 def test_gnn_agent_status_failed(mock_delete_service, mock_delete_stateful_set, mock_check_status, mock_create_data_service):
-    ctx = MagicMock(spec=grpc.ServicerContext)
-    # mock_load.return_value = {}
-    # Your test code here
     agent = AgentRegistry.get_agent("dataservicetask")
     task_id = Identifier(
         resource_type=ResourceType.TASK, project="project", domain="domain", name="name", version="version"

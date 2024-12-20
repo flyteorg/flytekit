@@ -14,7 +14,7 @@ setup(
     author="LinkedIn",
     author_email="shuliang@linkedin.com",
     description="Flytekit K8s Data Service Plugin",
-    # namespace_packages=["flytekitplugins"],
+    namespace_packages=["flytekitplugins"],
     packages=find_namespace_packages(where="."),
     include_package_data=True,
     install_requires=plugin_requires,

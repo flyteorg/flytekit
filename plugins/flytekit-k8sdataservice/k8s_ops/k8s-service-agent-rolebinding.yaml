@@ -15,6 +15,3 @@ subjects:
 - kind: ServiceAccount
   name: flyteagent
   namespace: flyte
-- kind: ServiceAccount
-  name: aipflyteagent
-  namespace: flyte

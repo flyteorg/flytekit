@@ -8,7 +8,6 @@ from flytekitplugins.k8sdataservice.sensor import CleanupSensor
 
 
 @pytest.mark.asyncio
-@patch("flytekitplugins.k8sdataservice.sensor.get_execution_namespace")
 @patch("flytekitplugins.k8sdataservice.sensor.KubeConfig")
 @patch("flytekitplugins.k8sdataservice.sensor.client.AppsV1Api")
 @patch("flytekitplugins.k8sdataservice.sensor.client.CoreV1Api")
@@ -19,10 +18,8 @@ async def test_poke_no_cleanup(
     mock_custom_api,
     mock_core_v1_api,
     mock_apps_v1_api,
-    mock_kube_config,
-    mock_get_namespace
+    mock_kube_config
 ):
-    mock_get_namespace.return_value = "test-namespace"
     mock_kube_config.return_value = MagicMock()
     sensor = CleanupSensor(name="test-sensor")
     await asyncio.create_task(
@@ -36,13 +33,12 @@ async def test_poke_no_cleanup(
     assert isinstance(sensor.custom_api, MagicMock)
     assert sensor.release_name == "test-release"
     assert sensor.cleanup_data_service is False
-    assert sensor.namespace == "test-namespace"
+    assert sensor.namespace == "flyte"
     assert sensor.cluster == "test-cluster"
 
 
 @pytest.mark.asyncio
 @patch("flytekitplugins.k8sdataservice.sensor.CleanupSensor.delete_data_service")
-@patch("flytekitplugins.k8sdataservice.sensor.get_execution_namespace")
 @patch("flytekitplugins.k8sdataservice.sensor.KubeConfig")
 @patch("flytekitplugins.k8sdataservice.sensor.client.AppsV1Api")
 @patch("flytekitplugins.k8sdataservice.sensor.client.CoreV1Api")
@@ -54,11 +50,8 @@ async def test_poke_with_cleanup(
     mock_core_v1_api,
     mock_apps_v1_api,
     mock_kube_config,
-    mock_get_namespace,
     mock_delete_data_service
 ):
-    # Configure mocks
-    mock_get_namespace.return_value = "test-namespace"
     mock_kube_config.return_value = MagicMock()
 
     # Initialize CleanupSensor instance
