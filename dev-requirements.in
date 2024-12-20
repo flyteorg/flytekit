@@ -60,3 +60,6 @@ ipykernel
 
 orjson
 kubernetes>=12.0.1
+
+google-api-core==2.23.0
+google-auth==2.36.0
