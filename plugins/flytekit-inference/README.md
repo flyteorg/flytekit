@@ -126,3 +126,66 @@ def model_serving(questions: list[str], gguf: FlyteFile) -> list[str]:
 
     return responses
 ```
+
+## vLLM
+
+The vLLM plugin allows you to serve an LLM hosted on HuggingFace.
+
+```python
+import flytekit as fl
+from openai import OpenAI
+
+model_name = "google/gemma-2b-it"
+hf_token_key = "vllm_hf_token"
+
+vllm_args = {
+    "model": model_name,
+    "dtype": "half",
+    "max-model-len": 2000,
+}
+
+hf_secrets = HFSecret(
+    secrets_prefix="_FSEC_",
+    hf_token_key=hf_token_key
+)
+
+vllm_instance = VLLM(
+    hf_secret=hf_secrets,
+    arg_dict=vllm_args
+)
+
+image = fl.ImageSpec(
+    name="vllm_serve",
+    registry="...",
+    packages=["flytekitplugins-inference"],
+)
+
+
+@fl.task(
+    pod_template=vllm_instance.pod_template,
+    container_image=image,
+    secret_requests=[
+        fl.Secret(
+            key=hf_token_key, mount_requirement=fl.Secret.MountType.ENV_VAR  # must be mounted as an env var
+        )
+    ],
+)
+def model_serving() -> str:
+    client = OpenAI(
+        base_url=f"{vllm_instance.base_url}/v1", api_key="vllm"  # api key required but ignored
+    )
+
+    completion = client.chat.completions.create(
+        model=model_name,
+        messages=[
+            {
+                "role": "user",
+                "content": "Compose a haiku about the power of AI.",
+            }
+        ],
+        temperature=0.5,
+        top_p=1,
+        max_tokens=1024,
+    )
+    return completion.choices[0].message.content
+```
