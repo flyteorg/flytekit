@@ -5,15 +5,39 @@ import pandas as pd
 import pyspark
 import pytest
 
+from google.protobuf.json_format import MessageToDict
+from flytekit import  PodTemplate
 from flytekit.core import context_manager
 from flytekitplugins.spark import Spark
 from flytekitplugins.spark.task import Databricks, new_spark_session
 from pyspark.sql import SparkSession
 
 import flytekit
-from flytekit import StructuredDataset, StructuredDatasetTransformerEngine, task, ImageSpec
-from flytekit.configuration import Image, ImageConfig, SerializationSettings, FastSerializationSettings, DefaultImages
-from flytekit.core.context_manager import ExecutionParameters, FlyteContextManager, ExecutionState
+from flytekit import (
+    StructuredDataset,
+    StructuredDatasetTransformerEngine,
+    task,
+    ImageSpec,
+)
+from flytekit.configuration import (
+    Image,
+    ImageConfig,
+    SerializationSettings,
+    FastSerializationSettings,
+    DefaultImages,
+)
+from flytekit.core.context_manager import (
+    ExecutionParameters,
+    FlyteContextManager,
+    ExecutionState,
+)
+from flytekit.models.task import K8sPod
+from kubernetes.client.models import (
+    V1Container,
+    V1PodSpec,
+    V1Toleration,
+    V1EnvVar,
+)
 
 
 @pytest.fixture(scope="function")
@@ -68,7 +92,10 @@ def test_spark_task(reset_spark_session):
     retrieved_settings = my_spark.get_custom(settings)
     assert retrieved_settings["sparkConf"] == {"spark": "1"}
     assert retrieved_settings["executorPath"] == "/usr/bin/python3"
-    assert retrieved_settings["mainApplicationFile"] == "local:///usr/local/bin/entrypoint.py"
+    assert (
+        retrieved_settings["mainApplicationFile"]
+        == "local:///usr/local/bin/entrypoint.py"
+    )
 
     pb = ExecutionParameters.new_builder()
     pb.working_dir = "/tmp"
@@ -121,11 +148,13 @@ def test_to_html():
     df = spark.createDataFrame([("Bob", 10)], ["name", "age"])
     sd = StructuredDataset(dataframe=df)
     tf = StructuredDatasetTransformerEngine()
-    output = tf.to_html(FlyteContextManager.current_context(), sd, pyspark.sql.DataFrame)
+    output = tf.to_html(
+        FlyteContextManager.current_context(), sd, pyspark.sql.DataFrame
+    )
     assert pd.DataFrame(df.schema, columns=["StructField"]).to_html() == output
 
 
-@mock.patch('pyspark.context.SparkContext.addPyFile')
+@mock.patch("pyspark.context.SparkContext.addPyFile")
 def test_spark_addPyFile(mock_add_pyfile):
     @task(
         task_config=Spark(
@@ -151,8 +180,11 @@ def test_spark_addPyFile(mock_add_pyfile):
 
     ctx = context_manager.FlyteContextManager.current_context()
     with context_manager.FlyteContextManager.with_context(
-            ctx.with_execution_state(
-                ctx.new_execution_state().with_params(mode=ExecutionState.Mode.TASK_EXECUTION)).with_serialization_settings(serialization_settings)
+        ctx.with_execution_state(
+            ctx.new_execution_state().with_params(
+                mode=ExecutionState.Mode.TASK_EXECUTION
+            )
+        ).with_serialization_settings(serialization_settings)
     ) as new_ctx:
         my_spark.pre_execute(new_ctx.user_space_params)
         mock_add_pyfile.assert_called_once()
@@ -173,7 +205,10 @@ def test_spark_with_image_spec():
         print("Starting Spark with Partitions: {}".format(partitions))
         return 1.0
 
-    assert spark1.container_image.base_image == f"cr.flyte.org/flyteorg/flytekit:spark-{DefaultImages.get_version_suffix()}"
+    assert (
+        spark1.container_image.base_image
+        == f"cr.flyte.org/flyteorg/flytekit:spark-{DefaultImages.get_version_suffix()}"
+    )
     assert spark1._default_executor_path == "/usr/bin/python3"
     assert spark1._default_applications_path == "local:///usr/local/bin/entrypoint.py"
 
@@ -185,6 +220,106 @@ def test_spark_with_image_spec():
         print("Starting Spark with Partitions: {}".format(partitions))
         return 1.0
 
-    assert spark2.container_image.base_image == f"cr.flyte.org/flyteorg/flytekit:spark-{DefaultImages.get_version_suffix()}"
+    assert (
+        spark2.container_image.base_image
+        == f"cr.flyte.org/flyteorg/flytekit:spark-{DefaultImages.get_version_suffix()}"
+    )
     assert spark2._default_executor_path == "/usr/bin/python3"
     assert spark2._default_applications_path == "local:///usr/local/bin/entrypoint.py"
+
+
+def test_spark_driver_executor_podSpec():
+    custom_image = ImageSpec(
+        registry="ghcr.io/flyteorg",
+        packages=["flytekitplugins-spark"],
+    )
+
+    driver_pod_spec = V1PodSpec(
+        containers=[
+            V1Container(
+                name="primary",
+                image="ghcr.io/flyteorg",
+                command=["echo"],
+                args=["wow"],
+                env=[V1EnvVar(name="x/custom-driver", value="driver")],
+            ),
+        ],
+        tolerations=[
+            V1Toleration(
+                key="x/custom-driver",
+                operator="Equal",
+                value="foo-driver",
+                effect="NoSchedule",
+            ),
+        ],
+    )
+
+    executor_pod_spec = V1PodSpec(
+        containers=[
+            V1Container(
+                name="primary",
+                image="ghcr.io/flyteorg",
+                command=["echo"],
+                args=["wow"],
+                env=[V1EnvVar(name="x/custom-executor", value="executor")],
+            ),
+        ],
+        tolerations=[
+            V1Toleration(
+                key="x/custom-executor",
+                operator="Equal",
+                value="foo-executor",
+                effect="NoSchedule",
+            ),
+        ],
+    )
+
+    @task(
+        task_config=Spark(
+            spark_conf={"spark.driver.memory": "1000M"},
+            driver_pod=K8sPod(pod_spec=driver_pod_spec.to_dict()),
+            executor_pod=K8sPod(pod_spec=executor_pod_spec.to_dict()),
+        ),
+        # limits=Resources(cpu="50m", mem="2000M"),
+        container_image=custom_image,
+        pod_template=PodTemplate(primary_container_name="primary"),
+    )
+    def my_spark(a: str) -> int:
+        session = flytekit.current_context().spark_session
+        assert session.sparkContext.appName == "FlyteSpark: ex:local:local:local"
+        return 10
+
+    assert my_spark.task_config is not None
+    assert my_spark.task_config.spark_conf == {"spark.driver.memory": "1000M"}
+
+    default_img = Image(name="default", fqn="test", tag="tag")
+    settings = SerializationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env={"FOO": "baz"},
+        image_config=ImageConfig(default_image=default_img, images=[default_img]),
+    )
+
+    retrieved_settings = my_spark.get_custom(settings)
+    assert retrieved_settings["sparkConf"] == {"spark.driver.memory": "1000M"}
+    assert retrieved_settings["executorPath"] == "/usr/bin/python3"
+    assert (
+        retrieved_settings["mainApplicationFile"]
+        == "local:///usr/local/bin/entrypoint.py"
+    )
+    assert retrieved_settings["driverPod"] == MessageToDict(K8sPod(pod_spec=driver_pod_spec.to_dict()).to_flyte_idl())
+    assert retrieved_settings["executorPod"] == MessageToDict(K8sPod(pod_spec=executor_pod_spec.to_dict()).to_flyte_idl())
+
+    pb = ExecutionParameters.new_builder()
+    pb.working_dir = "/tmp"
+    pb.execution_id = "ex:local:local:local"
+    p = pb.build()
+    new_p = my_spark.pre_execute(p)
+    assert new_p is not None
+    assert new_p.has_attr("SPARK_SESSION")
+
+    assert my_spark.sess is not None
+    configs = my_spark.sess.sparkContext.getConf().getAll()
+    assert ("spark.driver.memory", "1000M") in configs
+    assert ("spark.app.name", "FlyteSpark: ex:local:local:local") in configs

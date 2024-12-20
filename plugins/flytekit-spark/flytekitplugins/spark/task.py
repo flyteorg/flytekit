@@ -13,6 +13,7 @@ from flytekit.core.context_manager import ExecutionParameters
 from flytekit.extend import ExecutionState, TaskPlugins
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 from flytekit.image_spec import ImageSpec
+from flytekit.models.task import K8sPod
 
 from .models import SparkJob, SparkType
 
@@ -31,12 +32,16 @@ class Spark(object):
         hadoop_conf: Dictionary of hadoop conf. The variables should match a typical hadoop configuration for spark
         executor_path: Python binary executable to use for PySpark in driver and executor.
         applications_path: MainFile is the path to a bundled JAR, Python, or R file of the application to execute.
+        driver_pod: K8sPod for Spark driver pod
+        executor_pod: K8sPod for Spark executor pod
     """
 
     spark_conf: Optional[Dict[str, str]] = None
     hadoop_conf: Optional[Dict[str, str]] = None
     executor_path: Optional[str] = None
     applications_path: Optional[str] = None
+    driver_pod: Optional[K8sPod] = None
+    executor_pod: Optional[K8sPod] = None
 
     def __post_init__(self):
         if self.spark_conf is None:
@@ -168,6 +173,8 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
             executor_path=self._default_executor_path or settings.python_interpreter,
             main_class="",
             spark_type=SparkType.PYTHON,
+            driver_pod=self.task_config.driver_pod,
+            executor_pod=self.task_config.executor_pod,
         )
         if isinstance(self.task_config, (Databricks, DatabricksV2)):
             cfg = cast(DatabricksV2, self.task_config)

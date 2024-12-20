@@ -7,6 +7,7 @@ from google.protobuf.struct_pb2 import Struct
 
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.models import common as _common
+from flytekit.models.task import K8sPod
 
 
 class SparkType(enum.Enum):
@@ -27,6 +28,8 @@ class SparkJob(_common.FlyteIdlEntity):
         executor_path: str,
         databricks_conf: Optional[Dict[str, Dict[str, Dict]]] = None,
         databricks_instance: Optional[str] = None,
+        driver_pod: Optional[K8sPod] = None,
+        executor_pod: Optional[K8sPod] = None,
     ):
         """
         This defines a SparkJob target.  It will execute the appropriate SparkJob.
@@ -47,6 +50,8 @@ class SparkJob(_common.FlyteIdlEntity):
             databricks_conf = {}
         self._databricks_conf = databricks_conf
         self._databricks_instance = databricks_instance
+        self._driver_pod = driver_pod
+        self._executor_pod = executor_pod
 
     def with_overrides(
         self,
@@ -71,6 +76,8 @@ class SparkJob(_common.FlyteIdlEntity):
             hadoop_conf=new_hadoop_conf,
             databricks_conf=new_databricks_conf,
             databricks_instance=self.databricks_instance,
+            driver_pod=self.driver_pod,
+            executor_pod=self.executor_pod,
             executor_path=self.executor_path,
         )
 
@@ -139,6 +146,22 @@ class SparkJob(_common.FlyteIdlEntity):
         """
         return self._databricks_instance
 
+    @property
+    def driver_pod(self) -> K8sPod:
+        """
+        Additional pod specs for driver pod.
+        :rtype: K8sPod
+        """
+        return self._driver_pod
+
+    @property
+    def executor_pod(self) -> K8sPod:
+        """
+        Additional pod specs for the worker node pods.
+        :rtype: K8sPod
+        """
+        return self._executor_pod
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.plugins.spark_pb2.SparkJob
@@ -167,6 +190,8 @@ class SparkJob(_common.FlyteIdlEntity):
             hadoopConf=self.hadoop_conf,
             databricksConf=databricks_conf,
             databricksInstance=self.databricks_instance,
+            driverPod=self.driver_pod.to_flyte_idl() if self.driver_pod else None,
+            executorPod=self.executor_pod.to_flyte_idl() if self.executor_pod else None,
         )
 
     @classmethod
@@ -193,4 +218,6 @@ class SparkJob(_common.FlyteIdlEntity):
             executor_path=pb2_object.executorPath,
             databricks_conf=json_format.MessageToDict(pb2_object.databricksConf),
             databricks_instance=pb2_object.databricksInstance,
+            driver_pod=pb2_object.driverPod,
+            executor_pod=pb2_object.executorPod,
         )
