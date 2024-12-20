@@ -39,7 +39,7 @@ class CleanupSensor(BaseSensor):
             )
             logger.info("DataService sensor will stop polling")
             return True
-        # NOTE: the sensory node will be append to the end of workflow.
+        # NOTE: the sensory node can be appended to the end of workflow.
         # So the training jobs are guaranteed to be finished, regardless of success or failure.
         logger.info(f"The training job is in terminal stage, deleting graph engine {self.release_name}")
         self.delete_data_service()
