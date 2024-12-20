@@ -37,12 +37,6 @@ pydantic
 # Once a solution is found, this should be updated to support Windows as well.
 python-magic; (platform_system=='Darwin' or platform_system=='Linux')
 
-# Google released a new major version of the protobuf library and once that started being used in the ecosystem at large,
-# including `googleapis-common-protos` we started seeing errors in CI, so let's constrain that for now.
-# The issue to support protobuf 5 is being tracked in https://github.com/flyteorg/flyte/issues/5448.
-protobuf<5
-types-protobuf<5
-
 types-croniter
 types-decorator
 types-mock
@@ -60,3 +54,6 @@ ipykernel
 
 orjson
 kubernetes>=12.0.1
+
+# protobuf type stubs are shipped separate from the protobuf package
+types-protobuf
