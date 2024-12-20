@@ -280,6 +280,7 @@ def array_node(
     :return: A callable function that takes in keyword arguments and returns a Promise created by
         flyte_entity_call_handler
     """
+    from flytekit.remote import FlyteLaunchPlan
 
     if not isinstance(target, (LaunchPlan, FlyteLaunchPlan, ReferenceTask)):
         raise ValueError("Only LaunchPlans and ReferenceTasks are supported for now.")
