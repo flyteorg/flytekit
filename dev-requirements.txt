@@ -565,4 +565,4 @@ zipp==3.19.1
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools
 
-grpcio-health-checking==1.68.1
+grpcio-health-checking==1.66.0
