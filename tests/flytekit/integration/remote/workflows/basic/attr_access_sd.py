@@ -1,36 +1,29 @@
 """
 Access StructuredDataset attribute from a dataclass.
 """
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import pandas as pd
-from flytekit import task, workflow, ImageSpec
+from flytekit import task, workflow
 from flytekit.types.structured import StructuredDataset
 
 
-# Build docker image and push to the local registry
-flytekit_hash = "4e467b9ecd4172a77965780ea4783acea40cb502"
-flytekit = f"git+https://github.com/flyteorg/flytekit.git@{flytekit_hash}"
-image = ImageSpec(
-    packages=[
-        flytekit,
-        "pandas",
-        "pyarrow"
-    ],
-    apt_packages=["git"],
-    registry="localhost:30000",
-)
-
-
-S3_URI = "s3://my-s3-bucket/df.parquet"
+URI = "tests/flytekit/integration/remote/workflows/basic/data/df.parquet"
 
 
 @dataclass
 class DC:
-    sd: StructuredDataset = field(default_factory=lambda: StructuredDataset(uri=S3_URI, file_format="parquet"))
+    sd: StructuredDataset
 
 
-@task(container_image=image)
+@task
+def build_dc(uri: str) -> DC:
+    dc = DC(sd=StructuredDataset(uri=uri, file_format="parquet"))
+
+    return dc
+
+
+@task
 def t_sd_attr(sd: StructuredDataset) -> StructuredDataset:
     print("sd:", sd.open(pd.DataFrame).all())
 
@@ -38,9 +31,10 @@ def t_sd_attr(sd: StructuredDataset) -> StructuredDataset:
 
 
 @workflow
-def wf(dc: DC = DC()) -> None:
+def wf(uri: str) -> None:
+    dc = build_dc(uri=uri)
     t_sd_attr(sd=dc.sd)
 
 
 if __name__ == "__main__":
-    wf()
+    wf(uri=URI)

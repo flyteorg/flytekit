@@ -885,8 +885,7 @@ def test_attr_access_sd():
     remote_file_path = file_transfer.upload_file(file_type="parquet")
     print(remote_file_path)
 
-    dc = json.dumps({"dc": {"sd": {"uri": remote_file_path, "file_format": "parquet"}}})
-    execution_id = run("attr_access_sd.py", "wf", "--dc", dc)
+    execution_id = run("attr_access_sd.py", "wf", "--uri", remote_file_path)
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     execution = remote.fetch_execution(name=execution_id)
     execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
