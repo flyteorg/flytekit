@@ -8,7 +8,7 @@ from flytekit import task, workflow
 from flytekit.types.structured import StructuredDataset
 
 
-S3_URI = "s3://my-s3-bucket/s3_flyte_dir/df.parquet"
+S3_URI = "s3://my-s3-bucket/df.parquet"
 
 
 @dataclass
@@ -23,18 +23,10 @@ def t_sd_attr(sd: StructuredDataset) -> StructuredDataset:
     return sd
 
 
-@task
-def t_sd_attr_2(sd: StructuredDataset) -> StructuredDataset:
-    print("sd:", sd.open(pd.DataFrame).all())
-
-    return sd
-
-
 @workflow
 def wf(dc: DC = DC()) -> None:
-    sd_2 = t_sd_attr(sd=dc.sd)
-    t_sd_attr_2(sd=sd_2)
+    t_sd_attr(sd=dc.sd)
 
 
 if __name__ == "__main__":
-    wf(dc=DC())
+    wf()
