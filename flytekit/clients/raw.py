@@ -10,6 +10,7 @@ from flyteidl.service import dataproxy_pb2 as _dataproxy_pb2
 from flyteidl.service import dataproxy_pb2_grpc as dataproxy_service
 from flyteidl.service import signal_pb2_grpc as signal_service
 from flyteidl.service.dataproxy_pb2_grpc import DataProxyServiceStub
+from grpc_health.v1 import health_pb2, health_pb2_grpc
 
 from flytekit.clients.auth_helper import (
     get_channel,
@@ -18,6 +19,12 @@ from flytekit.clients.auth_helper import (
     wrap_exceptions_channel,
 )
 from flytekit.configuration import PlatformConfig
+from flytekit.exceptions.system import FlyteSystemUnavailableException
+from flytekit.exceptions.user import (
+    FlyteEntityAlreadyExistsException,
+    FlyteEntityNotExistException,
+    FlyteInvalidInputException,
+)
 from flytekit.loggers import logger
 
 
@@ -51,11 +58,10 @@ class RawSynchronousFlyteClient(object):
         # 32KB for error messages, 20MB for actual messages.
         options = (("grpc.max_metadata_size", 32 * 1024), ("grpc.max_receive_message_length", 20 * 1024 * 1024))
         self._cfg = cfg
-        self.skip_auth = True
-        if self.skip_auth:
-            base_channel = get_channel(cfg, options=options)
+        base_channel = get_channel(cfg, options=options)
+
+        if self.check_grpc_health_with_authentication(base_channel):
             self._channel = wrap_exceptions_channel(cfg, base_channel)
-            self.skip_auth = False
         else:
             self._channel = wrap_exceptions_channel(
                 cfg,
@@ -73,6 +79,27 @@ class RawSynchronousFlyteClient(object):
         )
         # metadata will hold the value of the token to send to the various endpoints.
         self._metadata = None
+
+    @staticmethod
+    def check_grpc_health_with_authentication(in_channel):
+        health_stub = health_pb2_grpc.HealthStub(in_channel)
+        request = health_pb2.HealthCheckRequest()
+        try:
+            response = health_stub.Check(request)
+            if response.status == health_pb2.HealthCheckResponse.SERVING:
+                print("Service is healthy and ready to serve.")
+                return True
+        except grpc.RpcError as e:
+            if e.code() == grpc.StatusCode.UNAUTHENTICATED:
+                return False
+            elif e.code() == grpc.StatusCode.ALREADY_EXISTS:
+                raise FlyteEntityAlreadyExistsException() from e
+            elif e.code() == grpc.StatusCode.NOT_FOUND:
+                raise FlyteEntityNotExistException() from e
+            elif e.code() == grpc.StatusCode.INVALID_ARGUMENT:
+                raise FlyteInvalidInputException(request) from e
+            elif e.code() == grpc.StatusCode.UNAVAILABLE:
+                raise FlyteSystemUnavailableException() from e
 
     @classmethod
     def with_root_certificate(cls, cfg: PlatformConfig, root_cert_file: str) -> RawSynchronousFlyteClient:

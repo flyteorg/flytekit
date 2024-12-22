@@ -6,7 +6,6 @@ import grpc
 import requests
 from flyteidl.service.auth_pb2 import OAuth2MetadataRequest, PublicClientAuthConfigRequest
 from flyteidl.service.auth_pb2_grpc import AuthMetadataServiceStub
-from grpc_health.v1 import health_pb2, health_pb2_grpc
 
 from flytekit.clients.auth.authenticator import (
     Authenticator,
@@ -234,22 +233,7 @@ def wrap_exceptions_channel(cfg: PlatformConfig, in_channel: grpc.Channel) -> gr
     :param in_channel: grpc.Channel
     :return: grpc.Channel
     """
-
-    try:
-        health_stub = health_pb2_grpc.HealthStub(in_channel)
-        request = health_pb2.HealthCheckRequest()
-        health_stub.Check(request)
-
-    except grpc.RpcError as e:
-        logging.warning(f"RPC error occurred: {e.code()}")
-        if e.code() == grpc.StatusCode.UNAUTHENTICATED:
-            in_channel = wrap_exceptions_channel(
-                cfg,
-                upgrade_channel_to_authenticated(
-                    cfg, upgrade_channel_to_proxy_authenticated(cfg, get_channel(cfg, options=cfg.options))
-                ),
-            )
-
+    print("wrap_exceptions_channel")
     return grpc.intercept_channel(in_channel, RetryExceptionWrapperInterceptor(max_retries=cfg.rpc_retries))
 
 

@@ -8,10 +8,11 @@ from google.protobuf.duration_pb2 import Duration
 from flytekit.clients.friendly import SynchronousFlyteClient as _SynchronousFlyteClient
 from flytekit.configuration import PlatformConfig
 from flytekit.models.project import Project as _Project
-
+from grpc_health.v1 import health_pb2
 
 @mock.patch("flytekit.clients.friendly._RawSynchronousFlyteClient.update_project")
-def test_update_project(mock_raw_update_project):
+@mock.patch("flytekit.clients.raw.RawSynchronousFlyteClient.check_grpc_health_with_authentication", return_value=health_pb2.HealthCheckResponse.SERVING)
+def test_update_project(mock_check_health, mock_raw_update_project):
     client = _SynchronousFlyteClient(PlatformConfig.for_endpoint("a.b.com", True))
     project = _Project("foo", "name", "description", state=_Project.ProjectState.ACTIVE)
     client.update_project(project)
@@ -19,7 +20,8 @@ def test_update_project(mock_raw_update_project):
 
 
 @mock.patch("flytekit.clients.friendly._RawSynchronousFlyteClient.list_projects")
-def test_list_projects_paginated(mock_raw_list_projects):
+@mock.patch("flytekit.clients.raw.RawSynchronousFlyteClient.check_grpc_health_with_authentication", return_value=health_pb2.HealthCheckResponse.SERVING)
+def test_list_projects_paginated(mock_check_health, mock_raw_list_projects):
     client = _SynchronousFlyteClient(PlatformConfig.for_endpoint("a.b.com", True))
     client.list_projects_paginated(limit=100, token="")
     project_list_request = _project_pb2.ProjectListRequest(limit=100, token="", filters=None, sort_by=None)
@@ -27,7 +29,8 @@ def test_list_projects_paginated(mock_raw_list_projects):
 
 
 @mock.patch("flytekit.clients.friendly._RawSynchronousFlyteClient.create_upload_location")
-def test_create_upload_location(mock_raw_create_upload_location):
+@mock.patch("flytekit.clients.raw.RawSynchronousFlyteClient.check_grpc_health_with_authentication", return_value=health_pb2.HealthCheckResponse.SERVING)
+def test_create_upload_location(mock_check_health, mock_raw_create_upload_location):
     client = _SynchronousFlyteClient(PlatformConfig.for_endpoint("a.b.com", True))
     client.get_upload_signed_url("foo", "bar", bytes(), "baz.qux", timedelta(minutes=42), add_content_md5_metadata=True)
     duration_pb = Duration()
