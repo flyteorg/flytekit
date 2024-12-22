@@ -393,7 +393,6 @@ class AuthType(enum.Enum):
     PKCE = "Pkce"
     EXTERNALCOMMAND = "ExternalCommand"
     DEVICEFLOW = "DeviceFlow"
-    NO_AUTH = "no_auth"
 
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
@@ -750,7 +749,7 @@ class Config(object):
         :return: Config
         """
         return Config(
-            platform=PlatformConfig(endpoint="localhost:30080", auth_mode="no_auth", insecure=True),
+            platform=PlatformConfig(endpoint="localhost:30080", auth_mode="Pkce", insecure=True),
             data_config=DataConfig(
                 s3=S3Config(endpoint="http://localhost:30002", access_key_id="minio", secret_access_key="miniostorage")
             ),
