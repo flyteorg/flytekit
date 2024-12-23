@@ -113,10 +113,8 @@ filelock==3.14.0
     # via
     #   snowflake-connector-python
     #   virtualenv
-flyteidl @ git+https://github.com/flyteorg/flyte.git@master#subdirectory=flyteidl
-    # via
-    #   -r dev-requirements.in
-    #   flytekit
+flyteidl==1.14.1
+    # via flytekit
 frozenlist==1.4.1
     # via
     #   aiohttp
@@ -244,7 +242,9 @@ keyring==25.2.1
 keyrings-alt==5.0.1
     # via -r dev-requirements.in
 kubernetes==29.0.0
-    # via -r dev-requirements.in
+    # via
+    #   -r dev-requirements.in
+    #   flytekit
 markdown-it-py==3.0.0
     # via
     #   flytekit
@@ -260,7 +260,7 @@ marshmallow-enum==1.5.1
     #   flytekit
 marshmallow-jsonschema==0.13.0
     # via flytekit
-mashumaro==3.13
+mashumaro==3.15
     # via flytekit
 matplotlib-inline==0.1.7
     # via
@@ -501,7 +501,7 @@ threadpoolctl==3.5.0
     # via scikit-learn
 tomlkit==0.13.2
     # via snowflake-connector-python
-tornado==6.4.1
+tornado==6.4.2
     # via
     #   ipykernel
     #   jupyter-client
