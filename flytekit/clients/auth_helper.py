@@ -233,7 +233,6 @@ def wrap_exceptions_channel(cfg: PlatformConfig, in_channel: grpc.Channel) -> gr
     :param in_channel: grpc.Channel
     :return: grpc.Channel
     """
-    print("wrap_exceptions_channel")
     return grpc.intercept_channel(in_channel, RetryExceptionWrapperInterceptor(max_retries=cfg.rpc_retries))
 
 
