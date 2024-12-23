@@ -294,15 +294,13 @@ jobs:
           tags: localhost:30000/flytekit:dev
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      - name: Install dependencies
-        run: |
-          pip install grpcio-health-checking==1.49.0
       - name: Integration Test with coverage
         env:
           FLYTEKIT_IMAGE: localhost:30000/flytekit:dev
           FLYTEKIT_CI: 1
           PYTEST_OPTS: -n2
         run: |
+          pip install grpcio-health-checking==1.49.0
           make ${{ matrix.makefile-cmd }}
       - name: Codecov
         uses: codecov/codecov-action@v3.1.0
