@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import typing
 
 import grpc
@@ -26,7 +27,7 @@ from flytekit.exceptions.user import (
     FlyteInvalidInputException,
 )
 from flytekit.loggers import logger
-import logging
+
 
 class RawSynchronousFlyteClient(object):
     """
