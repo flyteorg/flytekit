@@ -26,7 +26,7 @@ from flytekit.exceptions.user import (
     FlyteInvalidInputException,
 )
 from flytekit.loggers import logger
-
+import logging
 
 class RawSynchronousFlyteClient(object):
     """
@@ -87,7 +87,7 @@ class RawSynchronousFlyteClient(object):
         try:
             response = health_stub.Check(request)
             if response.status == health_pb2.HealthCheckResponse.SERVING:
-                print("Service is healthy and ready to serve.")
+                logging.info("Service is healthy and ready to serve.")
                 return True
         except grpc.RpcError as e:
             if e.code() == grpc.StatusCode.UNAUTHENTICATED:
