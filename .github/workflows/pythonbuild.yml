@@ -389,7 +389,7 @@ jobs:
           # This path is specific to Ubuntu
           path: ~/.cache/pip
           # Look to see if there is a cache hit for the corresponding requirements files
-          key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.txt', format('plugins/{0}/requirements.txt', matrix.plugin-names ))) }}
+          key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', format('plugins/{0}/requirements.txt', matrix.plugin-names ))) }}
       - name: Install dependencies
         run: |
           pip install uv
@@ -399,8 +399,7 @@ jobs:
           cd plugins/${{ matrix.plugin-names }}
           uv pip install --system .
           if [ -f dev-requirements.in ]; then uv pip install --system -r dev-requirements.in; fi
-          # TODO: move to protobuf>=5. Github issue: https://github.com/flyteorg/flyte/issues/5448
-          uv pip install --system -U $GITHUB_WORKSPACE "protobuf<5" "git+https://github.com/flyteorg/flyte.git@master#subdirectory=flyteidl"
+          uv pip install --system -U $GITHUB_WORKSPACE "git+https://github.com/flyteorg/flyte.git@master#subdirectory=flyteidl"
           # TODO: remove this when numpy v2 in onnx has been resolved
           if [[ ${{ matrix.plugin-names }} == *"onnx"* || ${{ matrix.plugin-names }} == "flytekit-sqlalchemy" || ${{ matrix.plugin-names }} == "flytekit-pandera" ]]; then
             uv pip install --system "numpy<2.0.0"
