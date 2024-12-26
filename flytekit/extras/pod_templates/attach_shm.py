@@ -1,7 +1,7 @@
 from flytekit.core.pod_template import PodTemplate
 
 
-def template_shm(name: str, size: str) -> PodTemplate:
+def attach_shm(name: str, size: str) -> PodTemplate:
 
     from kubernetes.client.models import (
         V1Container,
