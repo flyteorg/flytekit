@@ -42,8 +42,10 @@ def inherit(old: dict[str, Any], new: dict[str, Any]) -> dict[str, Any]:
 
 
 class Environment:
+
     @forge(task)
-    def __init__(self, **overrides: Any) -> Any:
+    def __init__(self, **overrides: Any) -> None:
+
         _overrides: dict[str, Any] = {}
         for key, value in overrides.items():
             if key == "_task_function":
