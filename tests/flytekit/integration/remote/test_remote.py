@@ -14,7 +14,7 @@ import joblib
 from urllib.parse import urlparse
 import uuid
 import pytest
-from mock import mock, patch
+import mock
 
 from flytekit import LaunchPlan, kwtypes, WorkflowExecutionPhase
 from flytekit.configuration import Config, ImageConfig, SerializationSettings
@@ -879,23 +879,21 @@ class SimpleFileTransfer:
         assert res["ResponseMetadata"]["HTTPStatusCode"] == 204
 
 
+@mock.patch.dict(os.environ, {
+    "AWS_ENDPOINT_URL": "http://localhost:30002",
+    "AWS_ACCESS_KEY_ID": "minio",
+    "AWS_SECRET_ACCESS_KEY": "miniostorage"
+})
 def test_open_ff():
     """Test opening FlyteFile from a remote path."""
-    # Set environment variables for interacting with minio
-    os.environ["AWS_ENDPOINT_URL"] = "http://localhost:30002"
-    os.environ["AWS_ACCESS_KEY_ID"] = "minio"
-    os.environ["AWS_SECRET_ACCESS_KEY"] = "miniostorage"
-
     # Upload a file to minio s3 bucket
     file_transfer = SimpleFileTransfer()
     remote_file_path = file_transfer.upload_file(file_type="json")
-    print(remote_file_path)
 
     execution_id = run("flytefile.py", "wf", "--remote_file_path", remote_file_path)
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     execution = remote.fetch_execution(name=execution_id)
     execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
-    print("Execution Error:", execution.error)
     assert execution.closure.phase == WorkflowExecutionPhase.SUCCEEDED, f"Execution failed with phase: {execution.closure.phase}"
 
     # Delete the remote file to free the space
