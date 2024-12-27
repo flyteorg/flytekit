@@ -27,5 +27,5 @@ def test_listdir():
         tmpdir = setup()
         files = list_dir(dir=tmpdir)
         return map_task(read_file)(file=files)
-    
+
     assert wf() == ["Hello, World!"]

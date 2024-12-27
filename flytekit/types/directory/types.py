@@ -367,7 +367,7 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
         file_access = FlyteContextManager.current_context().file_access
         if not file_access.is_remote(final_path):
             for p in os.listdir(final_path):
-                joined_path = os.path.join(final_path, p) 
+                joined_path = os.path.join(final_path, p)
                 if os.path.isfile(joined_path):
                     paths.append(FlyteFile(joined_path))
                 else:
