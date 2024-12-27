@@ -296,9 +296,7 @@ jobs:
           cache-to: type=gha,mode=max
       - name: Install dependencies
         run: |
-          pip install grpcio
-          pip install grpcio-tools
-          pip install grpcio-health-checking
+          pip install -r dev-requirements.txt
       - name: Integration Test with coverage
         env:
           FLYTEKIT_IMAGE: localhost:30000/flytekit:dev
