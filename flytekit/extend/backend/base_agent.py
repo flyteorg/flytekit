@@ -327,7 +327,10 @@ class AsyncAgentExecutorMixin:
     def execute(self: PythonTask, **kwargs) -> LiteralMap:
         ctx = FlyteContext.current_context()
         ss = ctx.serialization_settings or SerializationSettings(ImageConfig())
-        output_prefix = ctx.file_access.get_random_remote_directory()
+        # Hardcode amazon s3 bucket uri for testing the agent locally
+        # Note that this is a temporary workaround for quick dev and test
+        # output_prefix = ctx.file_access.get_random_remote_directory()
+        output_prefix = "s3://flyte-slurm-agent"
         self.resource_meta = None
 
         from flytekit.tools.translator import get_serializable

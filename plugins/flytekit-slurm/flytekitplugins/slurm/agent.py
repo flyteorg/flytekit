@@ -1,10 +1,6 @@
-"""
-Slurm agent.
-"""
-
 import os
 from dataclasses import dataclass
-from typing import Optional
+from typing import Dict, Optional
 
 import asyncssh
 
@@ -14,6 +10,7 @@ from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
 
+# Configure ssh info
 class SSHCfg:
     host = os.environ["SSH_HOST"]
     port = int(os.environ["SSH_PORT"])
@@ -23,15 +20,19 @@ class SSHCfg:
 
 @dataclass
 class SlurmJobMetadata(ResourceMeta):
+    """Slurm job metadata.
+
+    Args:
+        job_id: Slurm job id.
+    """
+
     job_id: str
 
 
 class SlurmAgent(AsyncAgentBase):
-    """Slurm agent."""
-
     name = "Slurm Agent"
 
-    def __init__(self):
+    def __init__(self) -> None:
         super(SlurmAgent, self).__init__(task_type_name="slurm", metadata_type=SlurmJobMetadata)
 
     async def create(
@@ -40,61 +41,85 @@ class SlurmAgent(AsyncAgentBase):
         inputs: Optional[LiteralMap] = None,
         **kwargs,
     ) -> SlurmJobMetadata:
-        """Submit a batch script to a remote Slurm cluster with `sbatch`"""
-        slurm_conf = task_template.custom["slurm_conf"]
-        assert len(slurm_conf) == 0, "Please leave slurm_conf untouched now."
+        # Retrieve task config
+        task_module = task_template.custom["task_module"]
+        srun_conf = task_template.custom["srun_conf"]
 
-        batch_script = task_template.custom["batch_script"]
-        with open("/tmp/test.slurm", "w") as f:
-            f.write(batch_script)
+        # Construct srun command for Slurm cluster
+        cmd = _get_srun_cmd(srun_conf=srun_conf, entrypoint=" ".join(task_template.container.args))
 
-        local_path = task_template.custom["local_path"]
-        remote_path = task_template.custom["remote_path"]
-        # Maybe needs to add environ for python and slurm in task.py Slurm and get_custom
-
+        # Run Slurm job
         async with asyncssh.connect(
-            host=SSHCfg.host, port=SSHCfg.port, username=SSHCfg.username, password=SSHCfg.password, known_hosts=None
+            host=SSHCfg.host, port=SSHCfg.port, username=SSHCfg.username, password=SSHCfg.password
         ) as conn:
             async with conn.start_sftp_client() as sftp:
-                await sftp.put(local_path, remote_path)
-                await sftp.put("/tmp/test.slurm", "/tmp/test.slurm")
+                # Transfer the task module to the working directory on Slurm cluster
+                await sftp.put(task_module, srun_conf["chdir"])
+            res = await conn.run(cmd, check=True)
 
-            res = await conn.run("sbatch /tmp/test.slurm", check=True)
-
-        job_id = res.stdout.split()[-1]
+        # Direct return for sbatch
+        # job_id = res.stdout.split()[-1]
+        # Use echo trick for srun
+        job_id = res.stdout.strip()
 
         return SlurmJobMetadata(job_id=job_id)
 
     async def get(self, resource_meta: SlurmJobMetadata, **kwargs) -> Resource:
-        """Check the Slurm job status and return the specified outputs."""
         async with asyncssh.connect(
-            host=SSHCfg.host, port=SSHCfg.port, username=SSHCfg.username, password=SSHCfg.password, known_hosts=None
+            host=SSHCfg.host, port=SSHCfg.port, username=SSHCfg.username, password=SSHCfg.password
         ) as conn:
             res = await conn.run(f"scontrol show job {resource_meta.job_id}", check=True)
 
-        output_map = {}
+        # Determine the current flyte phase from Slurm job state
+        job_state = "running"
         for o in res.stdout.split(" "):
-            if len(o) == 0:
-                continue
+            if "JobState" in o:
+                job_state = o.split("=")[1].strip().lower()
+        cur_phase = convert_to_flyte_phase(job_state)
 
-            o = o.split("=")
-            if len(o) == 2:
-                output_map[o[0].strip()] = o[1].strip()
+        # outputs.pb will be loaded without setting outputs object
+        return Resource(phase=cur_phase)
 
-        job_state = output_map["JobState"].lower()
-        outputs = {"o0": output_map}
-
-        return Resource(phase=convert_to_flyte_phase(job_state), outputs=outputs)
-
-    async def delete(self, resource_meta: SlurmJobMetadata, **kwargs):
-        """Cancel the Slurm job.
-
-        Delete the task. This call should be idempotent. It should raise an error if fails to delete the task.
-        """
+    async def delete(self, resource_meta: SlurmJobMetadata, **kwargs) -> None:
         async with asyncssh.connect(
-            host=SSHCfg.host, port=SSHCfg.port, username=SSHCfg.username, password=SSHCfg.password, known_hosts=None
+            host=SSHCfg.host, port=SSHCfg.port, username=SSHCfg.username, password=SSHCfg.password
         ) as conn:
             _ = await conn.run(f"scancel {resource_meta.job_id}", check=True)
+
+
+def _get_srun_cmd(srun_conf: Dict[str, str], entrypoint: str) -> str:
+    """Construct Slurm srun command.
+
+    Flyte entrypoint, pyflyte-execute, is run within a bash shell process.
+
+    Args:
+        srun_conf: Options of srun command.
+        entrypoint: Flyte entrypoint.
+
+    Returns:
+        cmd: Slurm srun command.
+    """
+    # Setup srun options
+    cmd = ["srun"]
+    for opt, val in srun_conf.items():
+        cmd.extend([f"--{opt}", str(val)])
+
+    cmd.extend(["bash", "-c"])
+    cmd = " ".join(cmd)
+
+    cmd += f""" '# Setup environment variables
+        export PATH=$PATH:/opt/anaconda/anaconda3/bin;
+        export FLYTECTL_CONFIG=/home/abaowei/.flyte/config-dev.yaml;
+
+        # Run pyflyte-execute in a pre-built conda env
+        source activate dev;
+        {entrypoint};
+
+        # A trick to show Slurm job id on stdout
+        echo $SLURM_JOB_ID;'
+    """
+
+    return cmd
 
 
 AgentRegistry.register(SlurmAgent())
