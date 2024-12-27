@@ -262,7 +262,7 @@ jobs:
           pip install grpcio
           pip install grpcio-tools
           pip install grpcio-health-checking==1.49.0
-          pip show rpcio-health-checking
+          pip show grpcio-health-checking
           pip show protobuf
       - name: Integration Test with coverage
         env:
