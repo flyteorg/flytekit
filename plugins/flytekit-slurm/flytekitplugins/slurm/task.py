@@ -19,11 +19,9 @@ class Slurm(object):
     Compared with spark, please refer to https://api-docs.databricks.com/python/pyspark/latest/api/pyspark.SparkContext.html.
 
     Args:
-        task_module: Absolute file path of the user-defined flytekit code.
         srun_conf: Options of srun command.
     """
 
-    task_module: str
     srun_conf: Optional[Dict[str, str]] = None
 
     def __post_init__(self):
@@ -55,7 +53,6 @@ class SlurmTask(AsyncAgentExecutorMixin, PythonFunctionTask[Slurm]):
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         return {
-            "task_module": self.task_config.task_module,
             "srun_conf": self.task_config.srun_conf,
         }
 

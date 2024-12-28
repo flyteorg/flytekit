@@ -42,7 +42,6 @@ class SlurmAgent(AsyncAgentBase):
         **kwargs,
     ) -> SlurmJobMetadata:
         # Retrieve task config
-        task_module = task_template.custom["task_module"]
         srun_conf = task_template.custom["srun_conf"]
 
         # Construct srun command for Slurm cluster
@@ -52,9 +51,6 @@ class SlurmAgent(AsyncAgentBase):
         async with asyncssh.connect(
             host=SSHCfg.host, port=SSHCfg.port, username=SSHCfg.username, password=SSHCfg.password
         ) as conn:
-            async with conn.start_sftp_client() as sftp:
-                # Transfer the task module to the working directory on Slurm cluster
-                await sftp.put(task_module, srun_conf["chdir"])
             res = await conn.run(cmd, check=True)
 
         # Direct return for sbatch
