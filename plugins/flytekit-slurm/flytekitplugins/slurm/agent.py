@@ -105,7 +105,6 @@ def _get_srun_cmd(srun_conf: Dict[str, str], entrypoint: str) -> str:
 
     cmd += f""" '# Setup environment variables
         export PATH=$PATH:/opt/anaconda/anaconda3/bin;
-        export FLYTECTL_CONFIG=/home/abaowei/.flyte/config-dev.yaml;
 
         # Run pyflyte-execute in a pre-built conda env
         source activate dev;
