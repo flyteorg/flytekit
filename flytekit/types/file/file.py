@@ -297,7 +297,21 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
         self._downloader = downloader
         self._downloaded = False
         self._remote_path = remote_path
-        self._remote_source: typing.Optional[str] = None
+        self._remote_source: typing.Optional[typing.Union[str, os.PathLike]] = None
+
+        # Setup local path and downloader for delayed downloading
+        # We introduce another attribute self._local_path to avoid overriding user-defined self.path
+        self._local_path = self.path
+
+        ctx = FlyteContextManager.current_context()
+        if ctx.file_access.is_remote(self.path):
+            self._remote_source = self.path
+            self._local_path = ctx.file_access.get_random_local_path(self._remote_source)
+            self._downloader = lambda: FlyteFilePathTransformer.downloader(
+                ctx=ctx,
+                remote_path=self._remote_source,  # type: ignore
+                local_path=self._local_path,
+            )
 
     def __fspath__(self):
         """
@@ -325,25 +339,11 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
         In this case, a delayed downloading of the remote file will be done.
         For details, please refer to this issue: https://github.com/flyteorg/flyte/issues/6090.
         """
-        ctx = FlyteContextManager.current_context()
-
-        if ctx.file_access.is_remote(self.path) and self._remote_source is None:
-            # Setup remote file source and local file destination
-            self._remote_source = self.path
-            local_path = ctx.file_access.get_random_local_path(self._remote_source)
-            self._downloader = lambda: FlyteFilePathTransformer.downloader(
-                ctx=ctx,
-                remote_path=self._remote_source,
-                local_path=local_path,
-            )
-            self.path = local_path
-
         if not self._downloaded:
-            # Download data from remote to local or
-            # run dummy downloading for input local path
+            # Download data from remote to local or run dummy downloading for input local path
             self._downloader()
             self._downloaded = True
-        return self.path
+        return self._local_path
 
     def __eq__(self, other):
         if isinstance(other, FlyteFile):
@@ -741,7 +741,9 @@ class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
         return ff
 
     @staticmethod
-    def downloader(ctx: FlyteContext, remote_path: typing.Union[str, os.PathLike], local_path: str) -> None:
+    def downloader(
+        ctx: FlyteContext, remote_path: typing.Union[str, os.PathLike], local_path: typing.Union[str, os.PathLike]
+    ) -> None:
         """
         Download data from remote_path to local_path.
 
