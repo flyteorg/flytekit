@@ -11,7 +11,6 @@ from flyteidl.service import dataproxy_pb2 as _dataproxy_pb2
 from flyteidl.service import dataproxy_pb2_grpc as dataproxy_service
 from flyteidl.service import signal_pb2_grpc as signal_service
 from flyteidl.service.dataproxy_pb2_grpc import DataProxyServiceStub
-from grpc_health.v1 import health_pb2, health_pb2_grpc
 
 from flytekit.clients.auth_helper import (
     get_channel,
@@ -83,6 +82,8 @@ class RawSynchronousFlyteClient(object):
 
     @staticmethod
     def check_grpc_health_with_authentication(in_channel):
+        from grpc_health.v1 import health_pb2, health_pb2_grpc
+
         health_stub = health_pb2_grpc.HealthStub(in_channel)
         request = health_pb2.HealthCheckRequest()
         try:
