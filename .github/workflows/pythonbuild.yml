@@ -256,12 +256,6 @@ jobs:
           tags: localhost:30000/flytekit:dev
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      - name: Install dependencies
-        run: |
-          pip show grpcio-health-checking
-          pip show protobuf
-          pip show grpcio-tools
-          pip show grpcio
       - name: Integration Test with coverage
         env:
           FLYTEKIT_IMAGE: localhost:30000/flytekit:dev
@@ -271,9 +265,6 @@ jobs:
           AWS_ACCESS_KEY_ID: minio
           AWS_SECRET_ACCESS_KEY: miniostorage
         run: |
-          pip show grpcio-health-checking
-          pip show grpcio-tools
-          pip show grpcio
           make ${{ matrix.makefile-cmd }}
       - name: Codecov
         uses: codecov/codecov-action@v3.1.0
