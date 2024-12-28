@@ -806,19 +806,25 @@ def test_get_control_plane_version():
     assert version == "unknown" or version.startswith("v")
 
 def test_signal_approve_reject(register):
-    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    from flytekit.models.types import LiteralType, SimpleType
+    from time import sleep
 
-    conditional_wf = remote.fetch_workflow(name="basic.conditional_wf.signal_test_wf", version=VERSION)
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    conditional_wf = remote.fetch_workflow(name="basic.signal_test.signal_test_wf", version=VERSION)
 
     execution = remote.execute(conditional_wf, inputs={"data": [1.0, 2.0, 3.0, 4.0, 5.0]})
-
-    remote.set_input("title-input", execution.id.name, value="my report")
-    remote.approve("review-passes", execution.id.name)
+    sleep(5)
+    remote.set_input("title-input", execution.id.name, value="my report", project=PROJECT, domain=DOMAIN, python_type=str, literal_type=LiteralType(simple=SimpleType.STRING))
+    sleep(10)
+    remote.approve("review-passes", execution.id.name, project=PROJECT, domain=DOMAIN)
     remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
     assert execution.outputs["o0"] == {"title": "my report", "data": [1.0, 2.0, 3.0, 4.0, 5.0]}
 
-    execution = remote.execute(conditional_wf, inputs={"data": [1.0, 2.0, 3.0, 4.0, 5.0]})
-    remote.set_input("title-input", execution.id.name, value="my report")
-    remote.reject("review-passes", execution.id.name)
-    remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
-    assert execution.outputs["o0"] == {"invalid_report": True}
+    with pytest.raises(FlyteAssertion, match="Outputs could not be found because the execution ended in failure"):
+        execution = remote.execute(conditional_wf, inputs={"data": [1.0, 2.0, 3.0, 4.0, 5.0]})
+        sleep(5)
+        remote.set_input("title-input", execution.id.name, value="my report", project=PROJECT, domain=DOMAIN, python_type=str, literal_type=LiteralType(simple=SimpleType.STRING))
+        sleep(10)
+        remote.reject("review-passes", execution.id.name, project=PROJECT, domain=DOMAIN)
+        remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
+        assert execution.outputs["o0"] == {"title": "my report", "data": [1.0, 2.0, 3.0, 4.0, 5.0]}

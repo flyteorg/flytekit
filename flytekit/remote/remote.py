@@ -645,9 +645,12 @@ class FlyteRemote(object):
             project=project or self.default_project, domain=domain or self.default_domain, name=execution_name
         )
 
-        true_literal = Literal(scalar=literals_pb2.Scalar(primitive=literals_pb2.Primitive(boolean=True)))
+        lt = TypeEngine.to_literal_type(bool)
+        true_literal = TypeEngine.to_literal(self.context, True, bool, lt)
 
-        req = Signal(id=SignalIdentifier(signal_id, wf_exec_id).to_flyte_idl(), value=true_literal.to_flyte_idl())
+        req = SignalSetRequest(
+            id=SignalIdentifier(signal_id, wf_exec_id).to_flyte_idl(), value=true_literal.to_flyte_idl()
+        )
 
         # Response is empty currently, nothing to give back to the user.
         self.client.set_signal(req)
@@ -665,7 +668,8 @@ class FlyteRemote(object):
             project=project or self.default_project, domain=domain or self.default_domain, name=execution_name
         )
 
-        false_literal = Literal(scalar=literals_pb2.Scalar(primitive=literals_pb2.Primitive(boolean=False)))
+        lt = TypeEngine.to_literal_type(bool)
+        false_literal = TypeEngine.to_literal(self.context, False, bool, lt)
 
         req = SignalSetRequest(
             id=SignalIdentifier(signal_id, wf_exec_id).to_flyte_idl(), value=false_literal.to_flyte_idl()
