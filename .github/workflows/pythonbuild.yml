@@ -271,6 +271,9 @@ jobs:
           AWS_ACCESS_KEY_ID: minio
           AWS_SECRET_ACCESS_KEY: miniostorage
         run: |
+          uv pip install grpcio-health-checking
+          uv pip install grpcio-tools
+          uv pip install grpcio
           make ${{ matrix.makefile-cmd }}
       - name: Codecov
         uses: codecov/codecov-action@v3.1.0
