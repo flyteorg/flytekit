@@ -390,7 +390,8 @@ class FileAccessProvider(object):
         More of an internal function to be called by put_data and put_raw_data
         This does not need a separate sync function.
         """
-        file_system = await self.get_async_filesystem_for_path(to_path)
+        bucket, to_path_file_only = split_path(to_path)
+        file_system = await self.get_async_filesystem_for_path(to_path, bucket)
         from_path = self.strip_file_header(from_path)
         if recursive:
             # Only check this for the local filesystem
@@ -408,7 +409,7 @@ class FileAccessProvider(object):
                 kwargs["metadata"] = {}
             kwargs["metadata"].update(self._execution_metadata)
         if isinstance(file_system, AsyncFileSystem):
-            dst = await file_system._put(from_path, to_path, recursive=recursive, **kwargs)  # pylint: disable=W0212
+            dst = await file_system._put(from_path, to_path_file_only, recursive=recursive, **kwargs)  # pylint: disable=W0212
         else:
             dst = file_system.put(from_path, to_path, recursive=recursive, **kwargs)
         if isinstance(dst, (str, pathlib.Path)):
