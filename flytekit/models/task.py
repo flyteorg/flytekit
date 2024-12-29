@@ -1005,7 +1005,7 @@ class K8sPod(_common.FlyteIdlEntity):
         metadata: K8sObjectMetadata = None,
         pod_spec: typing.Dict[str, typing.Any] = None,
         data_config: typing.Optional[DataLoadingConfig] = None,
-        primarycontainername: typing.Optional[str] = None,
+        primary_container_name: typing.Optional[str] = None,
     ):
         """
         This defines a kubernetes pod target.  It will build the pod target during task execution
@@ -1013,7 +1013,7 @@ class K8sPod(_common.FlyteIdlEntity):
         self._metadata = metadata
         self._pod_spec = pod_spec
         self._data_config = data_config
-        self._primarycontainername = primarycontainername
+        self._primary_container_name = primary_container_name
 
     @property
     def metadata(self) -> K8sObjectMetadata:
@@ -1028,8 +1028,8 @@ class K8sPod(_common.FlyteIdlEntity):
         return self._data_config
 
     @property
-    def primarycontainername(self) -> typing.Optional[str]:
-        return self._primarycontainername
+    def primary_container_name(self) -> typing.Optional[str]:
+        return self._primary_container_name
 
     def to_flyte_idl(self) -> _core_task.K8sPod:
         return _core_task.K8sPod(

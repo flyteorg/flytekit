@@ -647,7 +647,7 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
                 pod_spec=json_format.Parse(json.dumps(self.pod_template.pod_spec), struct_pb2.Struct())
                 if self.pod_template
                 else None,
-                primarycontainername=self.pod_template.primarycontainername if self.pod_template else None,
+                primary_container_name=self.pod_template.primary_container_name if self.pod_template else None,
             ),
         )
 
