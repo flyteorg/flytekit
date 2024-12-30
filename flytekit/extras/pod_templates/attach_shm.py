@@ -2,7 +2,6 @@ from flytekit.core.pod_template import PodTemplate
 
 
 def attach_shm(name: str, size: str) -> PodTemplate:
-
     from kubernetes.client.models import (
         V1Container,
         V1EmptyDirVolumeSource,
