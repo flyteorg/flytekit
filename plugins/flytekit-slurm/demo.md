@@ -3,13 +3,13 @@
 In this guide, we will briefly introduce how to setup an environment to test Slurm agent locally without running the backend service (e.g., flyte agent gRPC server).
 
 ## Table of Content
-* [Overview](https://github.com/flyteorg/flytekit/blob/e9760a70b26bbab250fd69ec4443bb9b2edddbe3/plugins/flytekit-slurm/demo.md#overview)
-* [Setup a Local Environment](https://github.com/flyteorg/flytekit/blob/e9760a70b26bbab250fd69ec4443bb9b2edddbe3/plugins/flytekit-slurm/demo.md#setup-a-local-environment)
-    * [Flyte Client (Localhost)](https://github.com/flyteorg/flytekit/blob/e9760a70b26bbab250fd69ec4443bb9b2edddbe3/plugins/flytekit-slurm/demo.md#flyte-client-localhost)
-    * [Remote Tiny Slurm Cluster](https://github.com/flyteorg/flytekit/blob/e9760a70b26bbab250fd69ec4443bb9b2edddbe3/plugins/flytekit-slurm/demo.md#remote-tiny-slurm-cluster)
-    * [Amazon S3 Bucket](https://github.com/flyteorg/flytekit/blob/e9760a70b26bbab250fd69ec4443bb9b2edddbe3/plugins/flytekit-slurm/demo.md#amazon-s3-bucket)
-* [Run a Demo](https://github.com/flyteorg/flytekit/blob/e9760a70b26bbab250fd69ec4443bb9b2edddbe3/plugins/flytekit-slurm/demo.md#run-a-demo)
-* [Result](https://github.com/flyteorg/flytekit/blob/e9760a70b26bbab250fd69ec4443bb9b2edddbe3/plugins/flytekit-slurm/demo.md#result)
+* [Overview](https://github.com/flyteorg/flytekit/blob/e68fda9f071833a4ea5facf350f9ee53be42ced3/plugins/flytekit-slurm/demo.md#overview)
+* [Setup a Local Environment](https://github.com/flyteorg/flytekit/blob/e68fda9f071833a4ea5facf350f9ee53be42ced3/plugins/flytekit-slurm/demo.md#setup-a-local-environment)
+    * [Flyte Client (Localhost)](https://github.com/flyteorg/flytekit/blob/e68fda9f071833a4ea5facf350f9ee53be42ced3/plugins/flytekit-slurm/demo.md#flyte-client-localhost)
+    * [Remote Tiny Slurm Cluster](https://github.com/flyteorg/flytekit/blob/e68fda9f071833a4ea5facf350f9ee53be42ced3/plugins/flytekit-slurm/demo.md#remote-tiny-slurm-cluster)
+    * [Amazon S3 Bucket](https://github.com/flyteorg/flytekit/blob/e68fda9f071833a4ea5facf350f9ee53be42ced3/plugins/flytekit-slurm/demo.md#amazon-s3-bucket)
+* [Run a Demo](https://github.com/flyteorg/flytekit/blob/e68fda9f071833a4ea5facf350f9ee53be42ced3/plugins/flytekit-slurm/demo.md#run-a-demo)
+* [Result](https://github.com/flyteorg/flytekit/blob/e68fda9f071833a4ea5facf350f9ee53be42ced3/plugins/flytekit-slurm/demo.md#result)
 
 ## Overview
 Slurm agent on the highest level has three core methods to interact with a Slurm cluster:
