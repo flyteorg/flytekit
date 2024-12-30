@@ -251,44 +251,70 @@ def test_create_docker_context_uv_lock(tmp_path):
     ) in dockerfile_content
 
 
+@pytest.mark.parametrize("lock_file", ["uv.lock", "poetry.lock"])
 @pytest.mark.filterwarnings("ignore::UserWarning")
-def test_uv_lock_errors_no_pyproject_toml(monkeypatch, tmp_path):
+def test_lock_errors_no_pyproject_toml(monkeypatch, tmp_path, lock_file):
     run_mock = Mock()
     monkeypatch.setattr("flytekit.image_spec.default_builder.run", run_mock)
 
-    uv_lock_file = tmp_path / "uv.lock"
-    uv_lock_file.write_text("this is a lock file")
+    lock_file = tmp_path / lock_file
+    lock_file.write_text("this is a lock file")
 
     image_spec = ImageSpec(
         name="FLYTEKIT",
         python_version="3.12",
-        requirements=os.fspath(uv_lock_file),
+        requirements=os.fspath(lock_file),
     )
 
     builder = DefaultImageBuilder()
 
-    with pytest.raises(ValueError, match="To use uv.lock"):
+    with pytest.raises(ValueError, match="a pyproject.toml file must be in the same"):
         builder.build_image(image_spec)
 
 
+@pytest.mark.parametrize("lock_file", ["uv.lock", "poetry.lock"])
 @pytest.mark.filterwarnings("ignore::UserWarning")
-@pytest.mark.parametrize("invalid_param", ["packages"])
-def test_uv_lock_error_no_packages(monkeypatch, tmp_path, invalid_param):
+def test_uv_lock_error_no_packages(monkeypatch, tmp_path, lock_file):
     run_mock = Mock()
     monkeypatch.setattr("flytekit.image_spec.default_builder.run", run_mock)
 
-    uv_lock_file = tmp_path / "uv.lock"
-    uv_lock_file.write_text("this is a lock file")
+    lock_file = tmp_path / lock_file
+    lock_file.write_text("this is a lock file")
 
     image_spec = ImageSpec(
         name="FLYTEKIT",
         python_version="3.12",
-        requirements=os.fspath(uv_lock_file),
+        requirements=os.fspath(lock_file),
         packages=["ruff"],
     )
     builder = DefaultImageBuilder()
 
-    with pytest.raises(ValueError, match="Support for uv.lock files and packages is mutually exclusive"):
+    with pytest.raises(ValueError, match=f"Support for {lock_file} files and packages is mutually exclusive"):
         builder.build_image(image_spec)
 
     run_mock.assert_not_called()
+
+
+def test_create_poetry_lock(tmp_path):
+    docker_context_path = tmp_path / "builder_root"
+    docker_context_path.mkdir()
+
+    poetry_lock = tmp_path / "poetry.lock"
+    poetry_lock.write_text("this is a lock file")
+
+    pyproject_file = tmp_path / "pyproject.toml"
+    pyproject_file.write_text("this is a pyproject.toml file")
+
+    image_spec = ImageSpec(
+        name="FLYTEKIT",
+        python_version="3.12",
+        requirements=os.fspath(poetry_lock),
+    )
+
+    create_docker_context(image_spec, docker_context_path)
+
+    dockerfile_path = docker_context_path / "Dockerfile"
+    assert dockerfile_path.exists()
+    dockerfile_content = dockerfile_path.read_text()
+
+    assert "poetry install" in dockerfile_content
