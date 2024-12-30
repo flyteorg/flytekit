@@ -1,6 +1,6 @@
 import copy
 from functools import partial, wraps
-from typing import Any, Callable, TypeVar
+from typing import Any, Callable, TypeVar, Union
 
 from rich.console import Console
 from rich.panel import Panel
@@ -64,7 +64,7 @@ class Environment:
         return self.__class__(**inherit(self.overrides, overrides))
 
     @forge(task)
-    def __call__(self, _task_function: Callable | None = None, /, **overrides) -> Callable:
+    def __call__(self, _task_function: Union[Callable, None] = None, /, **overrides) -> Callable:
         # no additional overrides are passed
         if _task_function is not None:
             if callable(_task_function):
