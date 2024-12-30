@@ -257,13 +257,13 @@ def test_lock_errors_no_pyproject_toml(monkeypatch, tmp_path, lock_file):
     run_mock = Mock()
     monkeypatch.setattr("flytekit.image_spec.default_builder.run", run_mock)
 
-    lock_file = tmp_path / lock_file
-    lock_file.write_text("this is a lock file")
+    lock_file_path = tmp_path / lock_file
+    lock_file_path.write_text("this is a lock file")
 
     image_spec = ImageSpec(
         name="FLYTEKIT",
         python_version="3.12",
-        requirements=os.fspath(lock_file),
+        requirements=os.fspath(lock_file_path),
     )
 
     builder = DefaultImageBuilder()
@@ -278,8 +278,8 @@ def test_uv_lock_error_no_packages(monkeypatch, tmp_path, lock_file):
     run_mock = Mock()
     monkeypatch.setattr("flytekit.image_spec.default_builder.run", run_mock)
 
-    lock_file = tmp_path / lock_file
-    lock_file.write_text("this is a lock file")
+    lock_file_path = tmp_path / lock_file
+    lock_file_path.write_text("this is a lock file")
 
     image_spec = ImageSpec(
         name="FLYTEKIT",
@@ -317,4 +317,4 @@ def test_create_poetry_lock(tmp_path):
     assert dockerfile_path.exists()
     dockerfile_content = dockerfile_path.read_text()
 
-    assert "poetry install" in dockerfile_content
+    assert "poetry install --no-root" in dockerfile_content
