@@ -1,10 +1,11 @@
 import copy
 from functools import partial, wraps
-from typing import Any, Callable, Concatenate, ParamSpec, TypeVar
+from typing import Any, Callable, TypeVar
 
 from rich.console import Console
 from rich.panel import Panel
 from rich.pretty import Pretty
+from typing_extensions import Concatenate, ParamSpec
 
 from flytekit.core.task import task
 
