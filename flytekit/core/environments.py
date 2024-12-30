@@ -11,6 +11,7 @@ from flytekit.core.task import task
 P = ParamSpec("P")
 T = TypeVar("T")
 
+
 # basically, I want the docstring for `flyte.task` to be available for users to see
 # this is "copying" the docstring from `flyte.task` to functions wrapped by `forge`
 # more details here: https://github.com/python/typing/issues/270
@@ -42,10 +43,8 @@ def inherit(old: dict[str, Any], new: dict[str, Any]) -> dict[str, Any]:
 
 
 class Environment:
-
     @forge(task)
     def __init__(self, **overrides: Any) -> None:
-
         _overrides: dict[str, Any] = {}
         for key, value in overrides.items():
             if key == "_task_function":
