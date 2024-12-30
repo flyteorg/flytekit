@@ -33,7 +33,7 @@ from decorator import decorator
 from fsspec.asyn import AsyncFileSystem
 from fsspec.utils import get_protocol
 from obstore.fsspec import AsyncFsspecStore
-from obstore.store import S3Store
+from obstore.store import GCSStore, S3Store
 from typing_extensions import Unpack
 
 from flytekit import configuration
@@ -79,8 +79,22 @@ def s3_setup_args(s3_cfg: configuration.S3Config, bucket: str = "", anonymous: b
         },
     )
 
-    # if anonymous:
-    #     kwargs[_ANON] = True
+    if anonymous:
+        kwargs[_ANON] = True
+
+    kwargs["store"] = store
+
+    return kwargs
+
+def gs_setup_args(gcs_cfg: configuration.GCSConfig, bucket: str = "", anonymous: bool = False) -> Dict[str, Any]:
+    kwargs: Dict[str, Any] = {}
+
+    store = GCSStore.from_env(
+        bucket,
+    )
+
+    if anonymous:
+        kwargs["token"] = _ANON
 
     kwargs["store"] = store
 
@@ -116,8 +130,14 @@ def split_path(path: str) -> Tuple[str, str]:
     else:
         path_li = path.split("/")
         bucket = path_li[0]
-        file_path = "/".join(path_li[1:])
-        return (bucket, file_path)
+        # use obstore for s3 and gcs only now, no need to split
+        # bucket out of path for other storage
+        support_types = ["s3", "gs"]
+        if protocol in support_types:
+            file_path = "/".join(path_li[1:])
+            return (bucket, file_path)
+        else:
+            return bucket, path
 
 
 def azure_setup_args(azure_cfg: configuration.AzureBlobStorageConfig, anonymous: bool = False) -> Dict[str, Any]:
@@ -239,6 +259,7 @@ class FileAccessProvider(object):
         bucket: str = "",
         **kwargs,
     ) -> fsspec.AbstractFileSystem:
+        # TODO: add bucket to adlfs
         if not protocol:
             return self._default_remote
         if protocol == "file":
@@ -249,9 +270,9 @@ class FileAccessProvider(object):
             s3kwargs.update(kwargs)
             return fsspec.filesystem(protocol, **s3kwargs)  # type: ignore
         elif protocol == "gs":
-            if anonymous:
-                kwargs["token"] = _ANON
-            return fsspec.filesystem(protocol, **kwargs)  # type: ignore
+            gskwargs = gs_setup_args(self._data_config.gcs, bucket, anonymous=anonymous)
+            gskwargs.update(kwargs)
+            return fsspec.filesystem(protocol, **gskwargs)  # type: ignore
         # TODO: add azure
         elif protocol == "ftp":
             kwargs.update(fsspec.implementations.ftp.FTPFileSystem._get_kwargs_from_urls(path))
@@ -270,15 +291,13 @@ class FileAccessProvider(object):
         protocol = get_protocol(path)
         loop = asyncio.get_running_loop()
 
-        # TODO: get bucket here?
-
         return self.get_filesystem(
             protocol, anonymous=anonymous, path=path, bucket=bucket, asynchronous=True, loop=loop, **kwargs
         )
 
-    def get_filesystem_for_path(self, path: str = "", anonymous: bool = False, **kwargs) -> fsspec.AbstractFileSystem:
+    def get_filesystem_for_path(self, path: str = "", bucket: str = "", anonymous: bool = False, **kwargs) -> fsspec.AbstractFileSystem:
         protocol = get_protocol(path)
-        return self.get_filesystem(protocol, anonymous=anonymous, path=path, **kwargs)
+        return self.get_filesystem(protocol, anonymous=anonymous, path=path, bucket=bucket, **kwargs)
 
     @staticmethod
     def is_remote(path: Union[str, os.PathLike]) -> bool:
@@ -478,11 +497,13 @@ class FileAccessProvider(object):
                 r = await self._put(from_path, to_path, **kwargs)
             return r or to_path
 
+        bucket, to_path_file_only = split_path(to_path)
+
         # See https://github.com/fsspec/s3fs/issues/871 for more background and pending work on the fsspec side to
         # support effectively async open(). For now these use-cases below will revert to sync calls.
         # raw bytes
         if isinstance(lpath, bytes):
-            fs = self.get_filesystem_for_path(to_path)
+            fs = self.get_filesystem_for_path(to_path_file_only, bucket)
             with fs.open(to_path, "wb", **kwargs) as s:
                 s.write(lpath)
             return to_path
@@ -491,7 +512,7 @@ class FileAccessProvider(object):
         if isinstance(lpath, io.BufferedReader) or isinstance(lpath, io.BytesIO):
             if not lpath.readable():
                 raise FlyteAssertion("Buffered reader must be readable")
-            fs = self.get_filesystem_for_path(to_path)
+            fs = self.get_filesystem_for_path(to_path_file_only, bucket)
             lpath.seek(0)
             with fs.open(to_path, "wb", **kwargs) as s:
                 while data := lpath.read(read_chunk_size_bytes):
@@ -501,7 +522,7 @@ class FileAccessProvider(object):
         if isinstance(lpath, io.StringIO):
             if not lpath.readable():
                 raise FlyteAssertion("Buffered reader must be readable")
-            fs = self.get_filesystem_for_path(to_path)
+            fs = self.get_filesystem_for_path(to_path_file_only, bucket)
             lpath.seek(0)
             with fs.open(to_path, "wb", **kwargs) as s:
                 while data_str := lpath.read(read_chunk_size_bytes):
@@ -691,6 +712,7 @@ class FileAccessProvider(object):
 
 
 fsspec.register_implementation("s3", AsyncFsspecStore)
+fsspec.register_implementation("gs", AsyncFsspecStore)
 
 flyte_tmp_dir = tempfile.mkdtemp(prefix="flyte-")
 default_local_file_access_provider = FileAccessProvider(
