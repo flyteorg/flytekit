@@ -3,7 +3,7 @@ from flytekit.core.environment import Environment, inherit
 
 def test_basic_environment():
 
-    env = Environment(cache=False)
+    env = Environment(retries=2)
 
     @env.task
     def foo():
@@ -15,9 +15,9 @@ def test_basic_environment():
 
 def test_extended_environment():
 
-    env = Environment(cache=False)
+    env = Environment(retries=2)
 
-    other = env.extend(cache=True)
+    other = env.extend(retries=0)
 
     @other.task
     def foo():
@@ -29,9 +29,9 @@ def test_extended_environment():
 
 def test_updated_environment():
 
-    env = Environment(cache=False)
+    env = Environment(retries=2)
 
-    env.update(cache=True)
+    env.update(retries=0)
 
     @env.task
     def foo():
@@ -43,7 +43,7 @@ def test_updated_environment():
 
 def test_show_environment():
 
-    env = Environment(cache=False)
+    env = Environment(retries=2)
 
     env.show()
 
