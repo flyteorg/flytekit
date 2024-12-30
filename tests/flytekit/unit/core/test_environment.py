@@ -1,4 +1,4 @@
-from flytekit.core.environments import Environment, inherit
+from flytekit.core.environment import Environment, inherit
 
 
 def test_basic_environment():
