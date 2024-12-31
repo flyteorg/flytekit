@@ -1,21 +1,13 @@
-import os
 from dataclasses import dataclass
 from typing import Dict, Optional
 
 import asyncssh
+from asyncssh import SSHClientConnection
 
 from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource, ResourceMeta
 from flytekit.extend.backend.utils import convert_to_flyte_phase
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
-
-
-# Configure ssh info
-class SSHCfg:
-    host = os.environ["SSH_HOST"]
-    port = int(os.environ["SSH_PORT"])
-    username = os.environ["SSH_USERNAME"]
-    password = os.environ["SSH_PASSWORD"]
 
 
 @dataclass
@@ -27,10 +19,15 @@ class SlurmJobMetadata(ResourceMeta):
     """
 
     job_id: str
+    ssh_conf: Dict[str, str]
 
 
 class SlurmAgent(AsyncAgentBase):
     name = "Slurm Agent"
+
+    # SSH connection pool for multi-host environment
+    # _ssh_clients: Dict[str, SSHClientConnection]
+    _conn: Optional[SSHClientConnection] = None
 
     def __init__(self) -> None:
         super(SlurmAgent, self).__init__(task_type_name="slurm", metadata_type=SlurmJobMetadata)
@@ -42,29 +39,27 @@ class SlurmAgent(AsyncAgentBase):
         **kwargs,
     ) -> SlurmJobMetadata:
         # Retrieve task config
+        ssh_conf = task_template.custom["ssh_conf"]
         srun_conf = task_template.custom["srun_conf"]
 
         # Construct srun command for Slurm cluster
         cmd = _get_srun_cmd(srun_conf=srun_conf, entrypoint=" ".join(task_template.container.args))
 
         # Run Slurm job
-        async with asyncssh.connect(
-            host=SSHCfg.host, port=SSHCfg.port, username=SSHCfg.username, password=SSHCfg.password
-        ) as conn:
-            res = await conn.run(cmd, check=True)
+        if self._conn is None:
+            await self._connect(ssh_conf)
+        res = await self._conn.run(cmd, check=True)
 
         # Direct return for sbatch
         # job_id = res.stdout.split()[-1]
         # Use echo trick for srun
         job_id = res.stdout.strip()
 
-        return SlurmJobMetadata(job_id=job_id)
+        return SlurmJobMetadata(job_id=job_id, ssh_conf=ssh_conf)
 
     async def get(self, resource_meta: SlurmJobMetadata, **kwargs) -> Resource:
-        async with asyncssh.connect(
-            host=SSHCfg.host, port=SSHCfg.port, username=SSHCfg.username, password=SSHCfg.password
-        ) as conn:
-            res = await conn.run(f"scontrol show job {resource_meta.job_id}", check=True)
+        await self._connect(resource_meta.ssh_conf)
+        res = await self._conn.run(f"scontrol show job {resource_meta.job_id}", check=True)
 
         # Determine the current flyte phase from Slurm job state
         job_state = "running"
@@ -77,10 +72,17 @@ class SlurmAgent(AsyncAgentBase):
         return Resource(phase=cur_phase)
 
     async def delete(self, resource_meta: SlurmJobMetadata, **kwargs) -> None:
-        async with asyncssh.connect(
-            host=SSHCfg.host, port=SSHCfg.port, username=SSHCfg.username, password=SSHCfg.password
-        ) as conn:
-            _ = await conn.run(f"scancel {resource_meta.job_id}", check=True)
+        await self._connect(resource_meta.ssh_conf)
+        _ = await self._conn.run(f"scancel {resource_meta.job_id}", check=True)
+
+    async def _connect(self, ssh_conf: Dict[str, str]) -> None:
+        """Make an SSH client connection."""
+        self._conn = await asyncssh.connect(
+            host=ssh_conf["host"],
+            port=int(ssh_conf["port"]),
+            username=ssh_conf["username"],
+            password=ssh_conf["password"],
+        )
 
 
 def _get_srun_cmd(srun_conf: Dict[str, str], entrypoint: str) -> str:
