@@ -84,6 +84,12 @@ from flytekitplugins.slurm import Slurm, SlurmTask
 
 @task(
     task_config=Slurm(
+        ssh_conf={
+            "host": "<ssh_host>",
+            "port": "<ssh_port>",
+            "username": "<ssh_username>",
+            "password": "<ssh_password>",
+        },
         srun_conf={
             "partition": "debug",
             "job-name": "demo-slurm",
