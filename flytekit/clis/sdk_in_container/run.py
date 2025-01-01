@@ -1057,7 +1057,7 @@ class WorkflowCommand(click.RichGroup):
             h = h + click.style(f" (LP Name: {loaded_entity.name})", fg="yellow")
         else:
             if loaded_entity.__doc__:
-                h = h + click.style(f"{loaded_entity.__doc__}", dim=True)
+                h = h + click.style(f" {loaded_entity.__doc__}", dim=True)
         cmd = YamlFileReadingCommand(
             name=entity_name,
             params=params,
