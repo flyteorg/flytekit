@@ -33,7 +33,7 @@ from decorator import decorator
 from fsspec.asyn import AsyncFileSystem
 from fsspec.utils import get_protocol
 from obstore.fsspec import AsyncFsspecStore
-from obstore.store import GCSStore, S3Store
+from obstore.store import GCSStore, S3Store, AzureStore
 from typing_extensions import Unpack
 
 from flytekit import configuration
@@ -132,7 +132,7 @@ def split_path(path: str) -> Tuple[str, str]:
         bucket = path_li[0]
         # use obstore for s3 and gcs only now, no need to split
         # bucket out of path for other storage
-        support_types = ["s3", "gs"]
+        support_types = ["s3", "gs", "abfs"]
         if protocol in support_types:
             file_path = "/".join(path_li[1:])
             return (bucket, file_path)
@@ -140,20 +140,33 @@ def split_path(path: str) -> Tuple[str, str]:
             return bucket, path
 
 
-def azure_setup_args(azure_cfg: configuration.AzureBlobStorageConfig, anonymous: bool = False) -> Dict[str, Any]:
+def azure_setup_args(azure_cfg: configuration.AzureBlobStorageConfig, container: str = "", anonymous: bool = False) -> Dict[str, Any]:
     kwargs: Dict[str, Any] = {}
+    store_kwargs: Dict[str, Any] = {}
 
     if azure_cfg.account_name:
-        kwargs["account_name"] = azure_cfg.account_name
+        store_kwargs["account_name"] = azure_cfg.account_name
     if azure_cfg.account_key:
-        kwargs["account_key"] = azure_cfg.account_key
+        store_kwargs["account_key"] = azure_cfg.account_key
     if azure_cfg.client_id:
-        kwargs["client_id"] = azure_cfg.client_id
+        store_kwargs["client_id"] = azure_cfg.client_id
     if azure_cfg.client_secret:
-        kwargs["client_secret"] = azure_cfg.client_secret
+        store_kwargs["client_secret"] = azure_cfg.client_secret
     if azure_cfg.tenant_id:
-        kwargs["tenant_id"] = azure_cfg.tenant_id
-    kwargs[_ANON] = anonymous
+        store_kwargs["tenant_id"] = azure_cfg.tenant_id
+
+    store = AzureStore.from_env(
+        container,
+        config={
+            **store_kwargs,
+        },
+    )
+
+    kwargs["store"] = store
+
+    if anonymous:
+        kwargs[_ANON] = True
+
     return kwargs
 
 
@@ -273,7 +286,10 @@ class FileAccessProvider(object):
             gskwargs = gs_setup_args(self._data_config.gcs, bucket, anonymous=anonymous)
             gskwargs.update(kwargs)
             return fsspec.filesystem(protocol, **gskwargs)  # type: ignore
-        # TODO: add azure
+        elif protocol == "abfs":
+            azkwargs = azure_setup_args(self._data_config.azure, bucket, anonymous=anonymous)
+            azkwargs.update(kwargs)
+            return fsspec.filesystem(protocol, **azkwargs)  # type: ignore
         elif protocol == "ftp":
             kwargs.update(fsspec.implementations.ftp.FTPFileSystem._get_kwargs_from_urls(path))
             return fsspec.filesystem(protocol, **kwargs)
@@ -713,6 +729,7 @@ class FileAccessProvider(object):
 
 fsspec.register_implementation("s3", AsyncFsspecStore)
 fsspec.register_implementation("gs", AsyncFsspecStore)
+fsspec.register_implementation("abfs", AsyncFsspecStore)
 
 flyte_tmp_dir = tempfile.mkdtemp(prefix="flyte-")
 default_local_file_access_provider = FileAccessProvider(
