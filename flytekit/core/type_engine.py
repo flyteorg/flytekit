@@ -53,6 +53,9 @@ from flytekit.models.literals import Binary, Literal, LiteralCollection, Literal
 from flytekit.models.types import LiteralType, SimpleType, TypeStructure, UnionType
 from flytekit.utils.asyn import loop_manager
 
+if typing.TYPE_CHECKING:
+    from flytekit.core.interface import Interface
+
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
 TITLE = "title"
@@ -2620,6 +2623,38 @@ class LiteralsResolver(collections.UserDict):
             raise ValueError(f"Key {key} is not in the literal map")
 
         return self._literals[key]
+
+    def as_python_native(self, python_interface: Interface) -> typing.Any:
+        """
+        This should return the native Python representation, compatible with unpacking.
+        This function relies on Python interface outputs being ordered correctly.
+
+        :param python_interface: Only outputs are used but easier to pass the whole interface.
+        """
+        if len(self.literals) == 0:
+            return None
+
+        if self.variable_map is None:
+            raise AssertionError(f"Variable map is empty in literals resolver with {self.literals}")
+
+        # Trigger get() on everything to make sure native values are present using the python interface as type hint
+        for lit_key, lit in self.literals.items():
+            self.get(lit_key, as_type=python_interface.outputs.get(lit_key))
+
+        # if 1 item, then return 1 item
+        if len(self.native_values) == 1:
+            return next(iter(self.native_values.values()))
+
+        # if more than 1 item, then return a tuple - can ignore naming the tuple unless it becomes a problem
+        # This relies on python_interface.outputs being ordered correctly.
+        res = cast(typing.Tuple[typing.Any, ...], ())
+        for var_name, _ in python_interface.outputs.items():
+            if var_name not in self.native_values:
+                raise ValueError(f"Key {var_name} is not in the native values")
+
+            res += (self.native_values[var_name],)
+
+        return res
 
     def __getitem__(self, key: str):
         # First check to see if it's even in the literal map.

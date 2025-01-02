@@ -68,7 +68,7 @@ class InstanceTrackingMeta(type):
                 # Try to find the module and filename in the case that we're in the __main__ module
                 # This is useful in cases that use FlyteRemote to load tasks/workflows that are defined
                 # in the same file as where FlyteRemote is being invoked to register and execute Flyte
-                # entities. One such case is with the `eager` decorator in the flytekit.experimental module.
+                # entities. One such case is with the `eager` decorator.
                 mod = InstanceTrackingMeta._get_module_from_main(frame.f_globals)
                 if mod is None:
                     return None, None
@@ -344,7 +344,6 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
     :param f: A task or any other callable
     :return: [name to use: str, module_name: str, function_name: str, full_path: str]
     """
-
     if isinstance(f, TrackedInstance):
         if hasattr(f, "task_function"):
             mod, mod_name, name = _task_module_from_callable(f.task_function)

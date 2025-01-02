@@ -107,6 +107,11 @@ def test_remote_run():
     run("default_lp.py", "my_wf")
 
 
+def test_remote_eager_run():
+    # child_workflow.parent_wf asynchronously register a parent wf1 with child lp from another wf2.
+    run("eager_example.py", "simple_eager_workflow", "--x", "3")
+
+
 def test_generic_idl_flytetypes():
     os.environ["FLYTE_USE_OLD_DC_FORMAT"] = "true"
     # default inputs for flyte types in dataclass
