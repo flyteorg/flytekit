@@ -89,9 +89,12 @@ class Deck:
     @classmethod
     def publish(cls):
         params = FlyteContextManager.current_context().user_space_params
-        task_name = params.task_id.name
-        _output_deck(task_name=task_name, new_user_params=params)
-
+        if params.enable_deck:
+            task_name = params.task_id.name
+            _output_deck(task_name=task_name, new_user_params=params)
+        else:
+            # todo: change to a more proper error
+            raise ValueError("Deck is disabled for this task, please don't call Deck.publish()")
 
 class TimeLineDeck(Deck):
     """

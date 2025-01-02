@@ -126,6 +126,7 @@ class ExecutionParameters(object):
                 raw_output_prefix=self.raw_output_prefix,
                 task_id=self.task_id,
                 output_metadata_prefix=self.output_metadata_prefix,
+                enable_deck=self.enable_deck,
                 **self.attrs,
             )
 
@@ -162,6 +163,7 @@ class ExecutionParameters(object):
         checkpoint=None,
         decks=None,
         task_id: typing.Optional[_identifier.Identifier] = None,
+        enable_deck: bool = False,
         **kwargs,
     ):
         """
@@ -189,7 +191,12 @@ class ExecutionParameters(object):
         self._checkpoint = checkpoint
         self._decks = decks
         self._task_id = task_id
+        self._enable_deck = enable_deck
         self._timeline_deck = None
+
+    @property
+    def enable_deck(self) -> bool:
+        return self._enable_deck
 
     @property
     def stats(self) -> taggable.TaggableStats:
