@@ -194,10 +194,11 @@ def test_register_summary_dir_without_format(mock_client, mock_remote):
 @mock.patch("flytekit.configuration.plugin.FlyteRemote", spec=FlyteRemote)
 @mock.patch("flytekit.clients.friendly.SynchronousFlyteClient", spec=SynchronousFlyteClient)
 def test_register_registrated_summary_json(mock_client, mock_remote):
+    ctx = FlyteContextManager.current_context()
     mock_remote._client = mock_client
+    mock_remote.return_value.context = ctx
     mock_remote.return_value._version_from_hash.return_value = "dummy_version_from_hash"
     mock_remote.return_value.fast_package.return_value = "dummy_md5_bytes", "dummy_native_url"
-
     runner = CliRunner()
     context_manager.FlyteEntities.entities.clear()
 
@@ -210,16 +211,10 @@ def test_register_registrated_summary_json(mock_client, mock_remote):
             f.write(sample_file_contents)
             f.close()
 
-        # Run registration command
-        # result = runner.invoke(
-        #     pyflyte.main,
-        #     ["register", "--summary-format", "json", "--summary-dir", "summaries", "core5"]
-        # )
         result = runner.invoke(
             pyflyte.main,
-            ["register", "--summary-format", "json", "core5"]
+            ["register", "--summary-format", "json", "--summary-dir", "summaries", "core5"]
         )
-
         assert result.exit_code == 0
 
         summary_path = os.path.join("summaries", "registration_summary.json")
