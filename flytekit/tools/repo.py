@@ -1,5 +1,6 @@
 import asyncio
 import functools
+import json
 import os
 import tarfile
 import tempfile
@@ -7,6 +8,7 @@ import typing
 from pathlib import Path
 
 import click
+import yaml
 from rich import print as rprint
 
 from flytekit.configuration import FastSerializationSettings, ImageConfig, SerializationSettings
@@ -251,6 +253,8 @@ def register(
     remote: FlyteRemote,
     copy_style: CopyFileDetection,
     env: typing.Optional[typing.Dict[str, str]],
+    summary_format: typing.Optional[str],
+    summary_dir: typing.Optional[str],
     dry_run: bool = False,
     activate_launchplans: bool = False,
     skip_errors: bool = False,
@@ -333,6 +337,14 @@ def register(
             is_lp = True
         else:
             og_id = cp_entity.template.id
+
+        result = {
+            "id": og_id.name,
+            "type": og_id.resource_type_name(),
+            "version": og_id.version,
+            "status": "skipped",  # default status
+        }
+
         try:
             if not dry_run:
                 try:
@@ -350,30 +362,60 @@ def register(
                     print_registration_status(
                         i, console_url=console_url, verbosity=verbosity, activation=print_activation_message
                     )
+                    result["status"] = "success"
 
                 except Exception as e:
                     if not skip_errors:
                         raise e
                     print_registration_status(og_id, success=False)
+                    result["status"] = "failed"
             else:
                 print_registration_status(og_id, dry_run=True)
         except RegistrationSkipped:
             print_registration_status(og_id, success=False)
+            result["status"] = "skipped"
+
+        return result
 
     async def _register(entities: typing.List[task.TaskSpec]):
         loop = asyncio.get_running_loop()
         tasks = []
         for entity in entities:
             tasks.append(loop.run_in_executor(None, functools.partial(_raw_register, entity)))
-        await asyncio.gather(*tasks)
-        return
+        results = await asyncio.gather(*tasks)
+        return results
 
     # concurrent register
     cp_task_entities = list(filter(lambda x: isinstance(x, task.TaskSpec), registrable_entities))
-    asyncio.run(_register(cp_task_entities))
+    task_results = asyncio.run(_register(cp_task_entities))
     # serial register
     cp_other_entities = list(filter(lambda x: not isinstance(x, task.TaskSpec), registrable_entities))
+    other_results = []
     for entity in cp_other_entities:
-        _raw_register(entity)
+        other_results.append(_raw_register(entity))
+
+    all_results = task_results + other_results
 
     click.secho(f"Successfully registered {len(registrable_entities)} entities", fg="green")
+
+    if summary_format is not None:
+        if summary_dir is not None:
+            # Directory path is already absolute and resolved via click.Path
+            os.makedirs(summary_dir, exist_ok=True)
+        else:
+            # Default to current working directory if not specified
+            summary_dir = os.getcwd()
+
+        summary_file = f"registration_summary.{summary_format}"
+        summary_path = os.path.join(summary_dir, summary_file)
+
+        if summary_format == "json":
+            with open(summary_path, "w") as f:
+                json.dump(all_results, f)
+        elif summary_format == "yaml":
+            with open(summary_path, "w") as f:
+                yaml.dump(all_results, f)
+        else:
+            raise ValueError(f"Unsupported file format: {summary_format}")
+
+        click.secho(f"Registration summary written to: {summary_path}", fg="green")

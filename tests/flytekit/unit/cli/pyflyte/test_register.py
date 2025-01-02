@@ -1,6 +1,7 @@
 import os
 import shutil
 import subprocess
+import json
 
 import mock
 import pytest
@@ -163,3 +164,80 @@ def test_non_fast_register_require_version(mock_client, mock_remote):
         result = runner.invoke(pyflyte.main, ["register", "--non-fast", "core3"])
         assert result.exit_code == 1
         shutil.rmtree("core3")
+
+
+@mock.patch("flytekit.configuration.plugin.FlyteRemote", spec=FlyteRemote)
+@mock.patch("flytekit.clients.friendly.SynchronousFlyteClient", spec=SynchronousFlyteClient)
+def test_register_summary_dir_without_format(mock_client, mock_remote):
+    mock_remote._client = mock_client
+    mock_remote.return_value._version_from_hash.return_value = "dummy_version_from_hash"
+    mock_remote.return_value.fast_package.return_value = "dummy_md5_bytes", "dummy_native_url"
+
+    runner = CliRunner()
+    context_manager.FlyteEntities.entities.clear()
+
+    with runner.isolated_filesystem():
+        out = subprocess.run(["git", "init"], capture_output=True)
+        assert out.returncode == 0
+        os.makedirs("core4", exist_ok=True)
+        with open(os.path.join("core4", "sample.py"), "w") as f:
+            f.write(sample_file_contents)
+            f.close()
+        result = runner.invoke(pyflyte.main, ["register", "--summary-dir", "summaries", "core4"])
+        assert result.exit_code == 2
+        print(result.output)
+        assert "--summary-format is a required parameter when --summary-dir is specified" in result.output
+
+        shutil.rmtree("core4")
+
+
+@mock.patch("flytekit.configuration.plugin.FlyteRemote", spec=FlyteRemote)
+@mock.patch("flytekit.clients.friendly.SynchronousFlyteClient", spec=SynchronousFlyteClient)
+def test_register_registrated_summary_json(mock_client, mock_remote):
+    mock_remote._client = mock_client
+    mock_remote.return_value._version_from_hash.return_value = "dummy_version_from_hash"
+    mock_remote.return_value.fast_package.return_value = "dummy_md5_bytes", "dummy_native_url"
+
+    runner = CliRunner()
+    context_manager.FlyteEntities.entities.clear()
+
+    with runner.isolated_filesystem():
+        out = subprocess.run(["git", "init"], capture_output=True)
+        assert out.returncode == 0
+        os.makedirs("core5", exist_ok=True)
+        os.makedirs("summaries", exist_ok=True)
+        with open(os.path.join("core5", "sample.py"), "w") as f:
+            f.write(sample_file_contents)
+            f.close()
+
+        # Run registration command
+        # result = runner.invoke(
+        #     pyflyte.main,
+        #     ["register", "--summary-format", "json", "--summary-dir", "summaries", "core5"]
+        # )
+        result = runner.invoke(
+            pyflyte.main,
+            ["register", "--summary-format", "json", "core5"]
+        )
+
+        assert result.exit_code == 0
+
+        summary_path = os.path.join("summaries", "registration_summary.json")
+        assert os.path.exists(summary_path)
+
+        with open(summary_path) as f:
+            summary_data = json.load(f)
+
+        assert isinstance(summary_data, list)
+        assert len(summary_data) > 0
+        for entry in summary_data:
+            assert "id" in entry
+            assert "type" in entry
+            assert "version" in entry
+            assert "status" in entry
+
+        # Ensure cleanup happens even if test fails
+        if os.path.exists("core5"):
+            shutil.rmtree("core5")
+        if os.path.exists("summaries"):
+            shutil.rmtree("summaries")
