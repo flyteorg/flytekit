@@ -809,11 +809,6 @@ def test_get_control_plane_version():
     assert version == "unknown" or version.startswith("v")
 
 
-@mock.patch.dict(os.environ, {
-    "AWS_ENDPOINT_URL": "http://localhost:30002",
-    "AWS_ACCESS_KEY_ID": "minio",
-    "AWS_SECRET_ACCESS_KEY": "miniostorage"
-})
 def test_open_ff():
     """Test opening FlyteFile from a remote path."""
     # Upload a file to minio s3 bucket
