@@ -7,6 +7,7 @@ import pathlib
 import typing
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from functools import partial
 from typing import Dict, cast
 from urllib.parse import unquote
 
@@ -694,8 +695,7 @@ class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
         # For the remote case, return an FlyteFile object that can download
         local_path = ctx.file_access.get_random_local_path(uri)
 
-        def _downloader():
-            return ctx.file_access.get_data(uri, local_path, is_multipart=False)
+        _downloader = partial(_flyte_file_downloader, ctx, uri, local_path)
 
         expected_format = FlyteFilePathTransformer.get_format(expected_python_type)
         ff = FlyteFile.__class_getitem__(expected_format)(local_path, _downloader)
@@ -712,6 +712,10 @@ class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
             return FlyteFile.__class_getitem__(literal_type.blob.format)
 
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
+
+
+def _flyte_file_downloader(ctx: FlyteContext, uri: str, local_path: str):
+    return ctx.file_access.get_data(uri, local_path, is_multipart=False)
 
 
 TypeEngine.register(FlyteFilePathTransformer(), additional_types=[os.PathLike])
