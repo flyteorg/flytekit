@@ -93,7 +93,7 @@ class ExecutionParameters(object):
         logging: Optional[_logging.Logger] = None
         task_id: typing.Optional[_identifier.Identifier] = None
         output_metadata_prefix: Optional[str] = None
-        # enable_deck: bool = False
+        enable_deck: bool = False
 
         def __init__(self, current: typing.Optional[ExecutionParameters] = None):
             self.stats = current.stats if current else None
