@@ -53,7 +53,6 @@ from flytekit.interaction.click_types import (
     labels_callback,
 )
 from flytekit.interaction.string_literals import literal_string_repr
-from flytekit.lazy_import.lazy_module import is_imported
 from flytekit.loggers import logger
 from flytekit.models import security
 from flytekit.models.common import RawOutputDataConfig
