@@ -96,6 +96,7 @@ class Deck:
             # todo: change to a more proper error
             raise ValueError("Deck is disabled for this task, please don't call Deck.publish()")
 
+
 class TimeLineDeck(Deck):
     """
     The TimeLineDeck class is designed to render the execution time of each part of a task.
