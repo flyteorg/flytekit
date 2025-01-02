@@ -476,18 +476,12 @@ def to_click_option(
                 If no custom logic exists, fall back to json.dumps.
             """
             with FlyteContextManager.with_context(flyte_ctx.new_builder()):
-                if is_imported("pydantic"):
-                    try:
-                        from pydantic import BaseModel as BaseModelV2
-                        from pydantic.v1 import BaseModel as BaseModelV1
-
-                        if issubclass(python_type, BaseModelV2):
-                            default_val = default_val.model_dump_json()
-                        elif issubclass(python_type, BaseModelV1):
-                            default_val = default_val.json()
-                    except ImportError:
-                        # Pydantic BaseModel v1
-                        default_val = default_val.json()
+                if hasattr(default_val, "model_dump_json"):
+                    # pydantic v2
+                    default_val = default_val.model_dump_json()
+                elif hasattr(default_val, "json"):
+                    # pydantic v1
+                    default_val = default_val.json()
                 else:
                     encoder = JSONEncoder(python_type)
                     default_val = encoder.encode(default_val)
