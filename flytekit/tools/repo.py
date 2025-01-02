@@ -399,11 +399,13 @@ def register(
     click.secho(f"Successfully registered {len(registrable_entities)} entities", fg="green")
 
     if summary_format is not None:
+        supported_format = ["json", "yaml"]
+        if summary_format not in supported_format:
+            raise ValueError(f"Unsupported file format: {summary_format}")
+
         if summary_dir is not None:
-            # Directory path is already absolute and resolved via click.Path
             os.makedirs(summary_dir, exist_ok=True)
         else:
-            # Default to current working directory if not specified
             summary_dir = os.getcwd()
 
         summary_file = f"registration_summary.{summary_format}"
@@ -415,7 +417,5 @@ def register(
         elif summary_format == "yaml":
             with open(summary_path, "w") as f:
                 yaml.dump(all_results, f)
-        else:
-            raise ValueError(f"Unsupported file format: {summary_format}")
 
         click.secho(f"Registration summary written to: {summary_path}", fg="green")
