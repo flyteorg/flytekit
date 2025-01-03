@@ -180,6 +180,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
         pod_template_name,
         cache_ignore_input_vars,
         is_eager: bool = False,
+        generates_deck: bool = False,
     ):
         """
         Information needed at runtime to determine behavior such as whether or not outputs are discoverable, timeouts,
@@ -199,6 +200,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
             receive deprecation warnings.
         :param bool cache_serializable: Whether or not caching operations are executed in serial. This means only a
             single instance over identical inputs is executed, other concurrent executions wait for the cached results.
+        :param bool generates_deck: Whether the task will generate a Deck URI.
         :param pod_template_name: The name of the existing PodTemplate resource which will be used in this task.
         :param cache_ignore_input_vars: Input variables that should not be included when calculating hash for cache.
         :param is_eager:
@@ -214,6 +216,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
         self._pod_template_name = pod_template_name
         self._cache_ignore_input_vars = cache_ignore_input_vars
         self._is_eager = is_eager
+        self._generates_deck = generates_deck
 
     @property
     def is_eager(self):
@@ -296,6 +299,14 @@ class TaskMetadata(_common.FlyteIdlEntity):
         return self._pod_template_name
 
     @property
+    def generates_deck(self) -> bool:
+        """
+        Whether the task will generate a Deck URI.
+        :rtype: bool
+        """
+        return self._generates_deck
+
+    @property
     def cache_ignore_input_vars(self):
         """
         Input variables that should not be included when calculating hash for cache.
@@ -315,6 +326,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
             discovery_version=self.discovery_version,
             deprecated_error_message=self.deprecated_error_message,
             cache_serializable=self.cache_serializable,
+            generates_deck=self.generates_deck,
             pod_template_name=self.pod_template_name,
             cache_ignore_input_vars=self.cache_ignore_input_vars,
             is_eager=self.is_eager,
@@ -338,6 +350,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
             discovery_version=pb2_object.discovery_version,
             deprecated_error_message=pb2_object.deprecated_error_message,
             cache_serializable=pb2_object.cache_serializable,
+            generates_deck=pb2_object.generates_deck,
             pod_template_name=pb2_object.pod_template_name,
             cache_ignore_input_vars=pb2_object.cache_ignore_input_vars,
             is_eager=pb2_object.is_eager,

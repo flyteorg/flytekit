@@ -129,6 +129,7 @@ class TaskMetadata(object):
         timeout (Optional[Union[datetime.timedelta, int]]): the max amount of time for which one execution of this task
             should be executed for. The execution will be terminated if the runtime exceeds the given timeout
             (approximately)
+        :param bool generates_deck: Whether the task will generate a Deck URI.
         pod_template_name (Optional[str]): the name of existing PodTemplate resource in the cluster which will be used in this task.
     """
 
@@ -141,6 +142,7 @@ class TaskMetadata(object):
     retries: int = 0
     timeout: Optional[Union[datetime.timedelta, int]] = None
     pod_template_name: Optional[str] = None
+    generates_deck: bool = False
     is_eager: bool = False
 
     def __post_init__(self):
@@ -179,6 +181,7 @@ class TaskMetadata(object):
             discovery_version=self.cache_version,
             deprecated_error_message=self.deprecated,
             cache_serializable=self.cache_serialize,
+            generates_deck=self.generates_deck,
             pod_template_name=self.pod_template_name,
             cache_ignore_input_vars=self.cache_ignore_input_vars,
             is_eager=self.is_eager,
@@ -720,7 +723,9 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
           may be none
         * ``DynamicJobSpec`` is returned when a dynamic workflow is executed
         """
-        if DeckField.TIMELINE.value in self.deck_fields and ctx.user_space_params is not None:
+        if not self.disable_deck:
+            ctx.user_space_params._enable_deck = True  # type: ignore
+        if DeckField.TIMELINE.value in self.deck_fields and ctx.user_space_params is not None and not self.disable_deck:
             ctx.user_space_params.decks.append(ctx.user_space_params.timeline_deck)
         # Invoked before the task is executed
         new_user_params = self.pre_execute(ctx.user_space_params)
