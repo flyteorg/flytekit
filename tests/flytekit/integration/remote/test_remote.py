@@ -14,7 +14,7 @@ import joblib
 from urllib.parse import urlparse
 import uuid
 import pytest
-from mock import mock, patch
+import mock
 
 from flytekit import LaunchPlan, kwtypes, WorkflowExecutionPhase
 from flytekit.configuration import Config, ImageConfig, SerializationSettings
@@ -28,6 +28,9 @@ from flyteidl.service import dataproxy_pb2 as _data_proxy_pb2
 from flytekit.types.schema import FlyteSchema
 from flytekit.clients.friendly import SynchronousFlyteClient as _SynchronousFlyteClient
 from flytekit.configuration import PlatformConfig
+
+from tests.flytekit.integration.remote.utils import SimpleFileTransfer
+
 
 MODULE_PATH = pathlib.Path(__file__).parent / "workflows/basic"
 CONFIG = os.environ.get("FLYTECTL_CONFIG", str(pathlib.Path.home() / ".flyte" / "config-sandbox.yaml"))
