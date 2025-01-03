@@ -14,7 +14,7 @@ import joblib
 from urllib.parse import urlparse
 import uuid
 import pytest
-from unittest import mock
+import mock
 
 from flytekit import LaunchPlan, kwtypes, WorkflowExecutionPhase
 from flytekit.configuration import Config, ImageConfig, SerializationSettings
