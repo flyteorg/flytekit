@@ -35,6 +35,31 @@ ENV PATH="/.venv/bin:$$PATH" \
 """
 )
 
+POETRY_LOCK_TEMPLATE = Template(
+    """\
+RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/uv,id=uv \
+    --mount=from=uv,source=/uv,target=/usr/bin/uv \
+    uv pip install poetry
+
+ENV POETRY_CACHE_DIR=/tmp/poetry_cache \
+    POETRY_VIRTUALENVS_IN_PROJECT=true
+
+# poetry install does not work running in /, so we move to /root to create the venv
+WORKDIR /root
+
+RUN --mount=type=cache,sharing=locked,mode=0777,target=/tmp/poetry_cache,id=poetry \
+    --mount=type=bind,target=poetry.lock,src=poetry.lock \
+    --mount=type=bind,target=pyproject.toml,src=pyproject.toml \
+    poetry install $PIP_INSTALL_ARGS
+
+WORKDIR /
+
+# Update PATH and UV_PYTHON to point to venv
+ENV PATH="/root/.venv/bin:$$PATH" \
+    UV_PYTHON=/root/.venv/bin/python
+"""
+)
+
 UV_PYTHON_INSTALL_COMMAND_TEMPLATE = Template(
     """\
 RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/uv,id=uv \
@@ -43,6 +68,7 @@ RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/uv,id=uv \
     uv pip install $PIP_INSTALL_ARGS
 """
 )
+
 
 APT_INSTALL_COMMAND_TEMPLATE = Template("""\
 RUN --mount=type=cache,sharing=locked,mode=0777,target=/var/cache/apt,id=apt \
@@ -128,28 +154,32 @@ def _is_flytekit(package: str) -> bool:
     return name == "flytekit"
 
 
-def prepare_uv_lock_command(image_spec: ImageSpec, pip_install_args: List[str], tmp_dir: Path) -> str:
-    # uv sync is experimental, so our uv.lock support is also experimental
-    # the parameters we pass into install args could be different
-    warnings.warn("uv.lock support is experimental", UserWarning)
-
+def _copy_lock_files_into_context(image_spec: ImageSpec, lock_file: str, tmp_dir: Path):
     if image_spec.packages is not None:
-        msg = "Support for uv.lock files and packages is mutually exclusive"
+        msg = f"Support for {lock_file} files and packages is mutually exclusive"
         raise ValueError(msg)
 
-    uv_lock_path = tmp_dir / "uv.lock"
-    shutil.copy2(image_spec.requirements, uv_lock_path)
+    lock_path = tmp_dir / lock_file
+    shutil.copy2(image_spec.requirements, lock_path)
 
-    # uv.lock requires pyproject.toml to be included
+    # lock requires pyproject.toml to be included
     pyproject_toml_path = tmp_dir / "pyproject.toml"
     dir_name = os.path.dirname(image_spec.requirements)
 
     pyproject_toml_src = os.path.join(dir_name, "pyproject.toml")
     if not os.path.exists(pyproject_toml_src):
-        msg = "To use uv.lock, a pyproject.toml must be in the same directory as the lock file"
+        msg = f"To use {lock_file}, a pyproject.toml file must be in the same directory as the lock file"
         raise ValueError(msg)
 
     shutil.copy2(pyproject_toml_src, pyproject_toml_path)
+
+
+def prepare_uv_lock_command(image_spec: ImageSpec, pip_install_args: List[str], tmp_dir: Path) -> str:
+    # uv sync is experimental, so our uv.lock support is also experimental
+    # the parameters we pass into install args could be different
+    warnings.warn("uv.lock support is experimental", UserWarning)
+
+    _copy_lock_files_into_context(image_spec, "uv.lock", tmp_dir)
 
     # --locked: Assert that the `uv.lock` will remain unchanged
     # --no-dev: Omit the development dependency group
@@ -158,6 +188,15 @@ def prepare_uv_lock_command(image_spec: ImageSpec, pip_install_args: List[str], 
     pip_install_args = " ".join(pip_install_args)
 
     return UV_LOCK_INSTALL_TEMPLATE.substitute(PIP_INSTALL_ARGS=pip_install_args)
+
+
+def prepare_poetry_lock_command(image_spec: ImageSpec, pip_install_args: List[str], tmp_dir: Path) -> str:
+    _copy_lock_files_into_context(image_spec, "poetry.lock", tmp_dir)
+
+    # --no-root: Do not install the current project
+    pip_install_args.extend(["--no-root"])
+    pip_install_args = " ".join(pip_install_args)
+    return POETRY_LOCK_TEMPLATE.substitute(PIP_INSTALL_ARGS=pip_install_args)
 
 
 def prepare_python_install(image_spec: ImageSpec, tmp_dir: Path) -> str:
@@ -174,6 +213,8 @@ def prepare_python_install(image_spec: ImageSpec, tmp_dir: Path) -> str:
         requirement_basename = os.path.basename(image_spec.requirements)
         if requirement_basename == "uv.lock":
             return prepare_uv_lock_command(image_spec, pip_install_args, tmp_dir)
+        elif requirement_basename == "poetry.lock":
+            return prepare_poetry_lock_command(image_spec, pip_install_args, tmp_dir)
 
         # Assume this is a requirements.txt file
         with open(image_spec.requirements) as f:
