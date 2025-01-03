@@ -30,7 +30,7 @@ from flytekit.core import constants as _constants
 from flytekit.core import utils
 from flytekit.core.base_task import IgnoreOutputs, PythonTask
 from flytekit.core.checkpointer import SyncCheckpoint
-from flytekit.core.constants import FLYTE_FAIL_ON_ERROR
+from flytekit.core.constants import FLYTE_FAIL_ON_ERROR, FLYTE_FAST_EXECUTE_CMD_IN_NEW_PROCESS
 from flytekit.core.context_manager import (
     ExecutionParameters,
     ExecutionState,
@@ -721,6 +721,37 @@ def execute_task_cmd(
     )
 
 
+def _run_cmd_in_new_process(cmd, dest_dir):
+    """Run cmd in a new process."""
+    env = os.environ.copy()
+    if dest_dir is not None:
+        dest_dir_resolved = os.path.realpath(os.path.expanduser(dest_dir))
+        if "PYTHONPATH" in env:
+            env["PYTHONPATH"] += os.pathsep + dest_dir_resolved
+        else:
+            env["PYTHONPATH"] = dest_dir_resolved
+    p = subprocess.Popen(cmd, env=env)
+
+    def handle_sigterm(signum, frame):
+        logger.info(f"passing signum {signum} [frame={frame}] to subprocess")
+        p.send_signal(signum)
+
+    signal.signal(signal.SIGTERM, handle_sigterm)
+    returncode = p.wait()
+    exit(returncode)
+
+
+def _run_cmd_in_current_process(command: click.Command, args: List[str], dest_dir: Optional[str]):
+    """Run command with args in the same process."""
+
+    if dest_dir is not None:
+        dest_dir_resolved = os.path.realpath(os.path.expanduser(dest_dir))
+        if all(os.path.realpath(path) != dest_dir_resolved for path in sys.path):
+            sys.path.append(dest_dir_resolved)
+
+    command(args)
+
+
 @_pass_through.command("pyflyte-fast-execute")
 @click.option("--additional-distribution", required=False)
 @click.option("--dest-dir", required=False)
@@ -742,24 +773,16 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
             cmd.extend(["--dynamic-addl-distro", additional_distribution, "--dynamic-dest-dir", dest_dir])
         cmd.append(arg)
 
+    commands_to_run_in_process = {cmd.name: cmd for cmd in [map_execute_task_cmd, execute_task_cmd]}
+
     # Use the commandline to run the task execute command rather than calling it directly in python code
     # since the current runtime bytecode references the older user code, rather than the downloaded distribution.
-    env = os.environ.copy()
-    if dest_dir is not None:
-        dest_dir_resolved = os.path.realpath(os.path.expanduser(dest_dir))
-        if "PYTHONPATH" in env:
-            env["PYTHONPATH"] += os.pathsep + dest_dir_resolved
-        else:
-            env["PYTHONPATH"] = dest_dir_resolved
-    p = subprocess.Popen(cmd, env=env)
-
-    def handle_sigterm(signum, frame):
-        logger.info(f"passing signum {signum} [frame={frame}] to subprocess")
-        p.send_signal(signum)
-
-    signal.signal(signal.SIGTERM, handle_sigterm)
-    returncode = p.wait()
-    exit(returncode)
+    if os.getenv(FLYTE_FAST_EXECUTE_CMD_IN_NEW_PROCESS, "false") == "true" or cmd[0] not in commands_to_run_in_process:
+        logger.debug(f"Running {cmd[0]} in a new process")
+        _run_cmd_in_new_process(cmd, dest_dir)
+    else:
+        logger.debug(f"Running {cmd[0]} in the same process")
+        _run_cmd_in_current_process(commands_to_run_in_process[cmd[0]], cmd[1:], dest_dir)
 
 
 @_pass_through.command("pyflyte-map-execute")
