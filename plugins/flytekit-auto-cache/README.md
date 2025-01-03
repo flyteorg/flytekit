@@ -22,12 +22,16 @@ cache_policy = CachePolicy(
         CacheFunctionBody(),
         CachePrivateModules(root_dir="../my_package"),
         ...,
-    ]
+    ],
     salt="my_salt"
 )
 
 @task(cache=cache_policy)
 def task_fn():
+    ...
+
+@task(cache=CacheFunctionBody())
+def other_task_fn():
     ...
 ```
 
