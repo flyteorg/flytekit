@@ -2,6 +2,9 @@ from collections import OrderedDict
 
 import mock
 import pytest
+
+from flytekit.core import context_manager
+from flytekit.core.python_auto_container import default_task_resolver
 from flytekitplugins.flyteinteractive import (
     CODE_TOGETHER_CONFIG,
     CODE_TOGETHER_EXTENSION,
@@ -24,9 +27,9 @@ from flytekitplugins.flyteinteractive.vscode_lib.decorator import (
     is_extension_installed,
 )
 
-from flytekit import task, workflow
+from flytekit import task, workflow, dynamic
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
-from flytekit.core.context_manager import ExecutionState
+from flytekit.core.context_manager import ExecutionState, FlyteContextManager
 from flytekit.tools.translator import get_serializable_task
 
 
@@ -402,3 +405,35 @@ def test_get_installed_extensions_failed(mock_run):
 
     expected_extensions = []
     assert installed_extensions == expected_extensions
+
+
+def test_vscode_with_dynamic(vscode_patches):
+    (
+        mock_process,
+        mock_prepare_interactive_python,
+        mock_exit_handler,
+        mock_download_vscode,
+        mock_signal,
+        mock_prepare_resume_task_python,
+        mock_prepare_launch_json,
+    ) = vscode_patches
+
+    mock_exit_handler.return_value = None
+
+    @task()
+    def train():
+        print("forward")
+        print("backward")
+
+    @dynamic()
+    @vscode
+    def d1():
+        print("dynamic", flush=True)
+        train()
+
+    ctx = FlyteContextManager.current_context()
+    with context_manager.FlyteContextManager.with_context(
+            ctx.with_execution_state(ctx.execution_state.with_params(mode=ExecutionState.Mode.TASK_EXECUTION))
+    ):
+        d1()
+        assert d1.task_resolver == default_task_resolver

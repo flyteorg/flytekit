@@ -302,7 +302,7 @@ if __name__ == "__main__":
 
 def prepare_launch_json():
     """
-    Generate the launch.json for users to easily launch interactive debugging and task resumption.
+    Generate the launch.json and settings.json for users to easily launch interactive debugging and task resumption.
     """
 
     task_function_source_dir = os.path.dirname(
@@ -336,6 +336,10 @@ def prepare_launch_json():
 
     with open(os.path.join(vscode_directory, "launch.json"), "w") as file:
         json.dump(launch_json, file, indent=4)
+
+    settings_json = {"python.defaultInterpreterPath": sys.executable}
+    with open(os.path.join(vscode_directory, "settings.json"), "w") as file:
+        json.dump(settings_json, file, indent=4)
 
 
 VSCODE_TYPE_VALUE = "vscode"
