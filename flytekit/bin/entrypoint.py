@@ -777,7 +777,7 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
 
     # Use the commandline to run the task execute command rather than calling it directly in python code
     # since the current runtime bytecode references the older user code, rather than the downloaded distribution.
-    if os.getenv(FLYTE_FAST_EXECUTE_CMD_IN_NEW_PROCESS, "false") == "true" or cmd[0] not in commands_to_run_in_process:
+    if str2bool(os.getenv(FLYTE_FAST_EXECUTE_CMD_IN_NEW_PROCESS)) or cmd[0] not in commands_to_run_in_process:
         logger.debug(f"Running {cmd[0]} in a new process")
         _run_cmd_in_new_process(cmd, dest_dir)
     else:
