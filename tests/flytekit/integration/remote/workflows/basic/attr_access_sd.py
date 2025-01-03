@@ -1,5 +1,5 @@
 """
-Access StructuredDataset attribute from a dataclass.
+Test accessing StructuredDataset attribute from a dataclass.
 """
 from dataclasses import dataclass
 
@@ -8,23 +8,29 @@ from flytekit import task, workflow
 from flytekit.types.structured import StructuredDataset
 
 
-URI = "tests/flytekit/integration/remote/workflows/basic/data/df.parquet"
-
-
 @dataclass
 class DC:
     sd: StructuredDataset
 
 
 @task
-def build_dc(uri: str) -> DC:
+def create_dc(uri: str) -> DC:
+    """Create a dataclass with a StructuredDataset attribute.
+
+    Args:
+        uri: File URI.
+
+    Returns:
+        dc: A dataclass with a StructuredDataset attribute.
+    """
     dc = DC(sd=StructuredDataset(uri=uri, file_format="parquet"))
 
     return dc
 
 
 @task
-def t_sd_attr(sd: StructuredDataset) -> StructuredDataset:
+def read_sd(sd: StructuredDataset) -> StructuredDataset:
+    """Read input StructuredDataset."""
     print("sd:", sd.open(pd.DataFrame).all())
 
     return sd
@@ -32,9 +38,9 @@ def t_sd_attr(sd: StructuredDataset) -> StructuredDataset:
 
 @workflow
 def wf(uri: str) -> None:
-    dc = build_dc(uri=uri)
-    t_sd_attr(sd=dc.sd)
+    dc = create_dc(uri=uri)
+    read_sd(sd=dc.sd)
 
 
 if __name__ == "__main__":
-    wf(uri=URI)
+    wf(uri="tests/flytekit/integration/remote/workflows/basic/data/df.parquet")
