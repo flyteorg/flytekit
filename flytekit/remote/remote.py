@@ -359,6 +359,7 @@ class FlyteRemote(object):
 
             if data_response.HasField("literal_map"):
                 from flytekit.models.interface import VariableMap
+
                 lm = LiteralMap.from_flyte_idl(data_response.literal_map)
                 vm = VariableMap.from_flyte_idl(data_response.variable_map)
                 return LiteralsResolver(lm.literals, vm.variables)
