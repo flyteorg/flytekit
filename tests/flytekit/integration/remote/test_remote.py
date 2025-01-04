@@ -28,10 +28,6 @@ from flyteidl.service import dataproxy_pb2 as _data_proxy_pb2
 from flytekit.types.schema import FlyteSchema
 from flytekit.clients.friendly import SynchronousFlyteClient as _SynchronousFlyteClient
 from flytekit.configuration import PlatformConfig
-from botocore.client import BaseClient
-
-from tests.flytekit.integration.remote.utils import SimpleFileTransfer
-
 
 from tests.flytekit.integration.remote.utils import SimpleFileTransfer
 
