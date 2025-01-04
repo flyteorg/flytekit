@@ -275,7 +275,6 @@ def extract_cols_and_format(
         optional str for the format,
         optional pyarrow Schema
     """
-    # breakpoint()
     fmt = ""
     ordered_dict_cols = None
     pa_schema = None
@@ -692,7 +691,7 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
         # Check first to see if it's even an SD type. For backwards compatibility, we may be getting a FlyteSchema
         python_type, *attrs = extract_cols_and_format(python_type)
         # In case it's a FlyteSchema
-        sdt = StructuredDatasetType(self.DEFAULT_FORMATS.get(python_type, GENERIC_FORMAT))
+        sdt = StructuredDatasetType(format=self.DEFAULT_FORMATS.get(python_type, GENERIC_FORMAT))
 
         if issubclass(python_type, StructuredDataset) and not isinstance(python_val, StructuredDataset):
             # Catch a common mistake
@@ -1104,11 +1103,6 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
         return converted_cols
 
     def _get_dataset_type(self, t: typing.Union[Type[StructuredDataset], typing.Any]) -> StructuredDatasetType:
-        # breakpoint()
-        # if get_origin(t) is Annotated:
-        #     original_python_type, column_map, storage_format, pa_schema = extract_cols_and_format(t)  # type: ignore
-        # else:
-        #     column_map, storage_format, pa_schema = None, t.file_format, None
         original_python_type, column_map, storage_format, pa_schema = extract_cols_and_format(t)  # type: ignore
 
         # Get the column information
