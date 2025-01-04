@@ -19,6 +19,7 @@ from flytekit.core.promise import (
     flyte_entity_call_handler,
     translate_inputs_to_literals,
 )
+from flytekit.core.task import ReferenceTask
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
@@ -34,8 +35,7 @@ if TYPE_CHECKING:
 class ArrayNode:
     def __init__(
         self,
-        target: Union[LaunchPlan, "FlyteLaunchPlan"],
-        execution_mode: _core_workflow.ArrayNode.ExecutionMode = _core_workflow.ArrayNode.FULL_STATE,
+        target: Union[LaunchPlan, ReferenceTask, "FlyteLaunchPlan"],
         bindings: Optional[List[_literal_models.Binding]] = None,
         concurrency: Optional[int] = None,
         min_successes: Optional[int] = None,
@@ -51,17 +51,17 @@ class ArrayNode:
         :param min_successes: The minimum number of successful executions. If set, this takes precedence over
             min_success_ratio
         :param min_success_ratio: The minimum ratio of successful executions.
-        :param execution_mode: The execution mode for propeller to use when handling ArrayNode
         :param metadata: The metadata for the underlying node
         """
         from flytekit.remote import FlyteLaunchPlan
 
         self.target = target
         self._concurrency = concurrency
-        self._execution_mode = execution_mode
         self.id = target.name
         self._bindings = bindings or []
         self.metadata = metadata
+        self._data_mode = None
+        self._execution_mode = None
 
         if min_successes is not None:
             self._min_successes = min_successes
@@ -92,9 +92,12 @@ class ArrayNode:
         else:
             raise ValueError("No interface found for the target entity.")
 
-        if isinstance(target, LaunchPlan) or isinstance(target, FlyteLaunchPlan):
-            if self._execution_mode != _core_workflow.ArrayNode.FULL_STATE:
-                raise ValueError("Only execution version 1 is supported for LaunchPlans.")
+        if isinstance(target, (LaunchPlan, FlyteLaunchPlan)):
+            self._data_mode = _core_workflow.ArrayNode.SINGLE_INPUT_FILE
+            self._execution_mode = _core_workflow.ArrayNode.FULL_STATE
+        elif isinstance(target, ReferenceTask):
+            self._data_mode = _core_workflow.ArrayNode.INDIVIDUAL_INPUT_FILES
+            self._execution_mode = _core_workflow.ArrayNode.MINIMAL_STATE
         else:
             raise ValueError(f"Only LaunchPlans are supported for now, but got {type(target)}")
 
@@ -132,6 +135,10 @@ class ArrayNode:
     @property
     def flyte_entity(self) -> Any:
         return self.target
+
+    @property
+    def data_mode(self) -> _core_workflow.ArrayNode.DataMode:
+        return self._data_mode
 
     def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
         if self._remote_interface:
@@ -217,6 +224,10 @@ class ArrayNode:
     def execution_mode(self) -> _core_workflow.ArrayNode.ExecutionMode:
         return self._execution_mode
 
+    @property
+    def is_original_sub_node_interface(self) -> bool:
+        return True
+
     def __call__(self, *args, **kwargs):
         if not self._bindings:
             ctx = FlyteContext.current_context()
@@ -250,7 +261,7 @@ class ArrayNode:
 
 
 def array_node(
-    target: Union[LaunchPlan, "FlyteLaunchPlan"],
+    target: Union[LaunchPlan, ReferenceTask, "FlyteLaunchPlan"],
     concurrency: Optional[int] = None,
     min_success_ratio: Optional[float] = None,
     min_successes: Optional[int] = None,
@@ -271,8 +282,8 @@ def array_node(
     """
     from flytekit.remote import FlyteLaunchPlan
 
-    if not isinstance(target, LaunchPlan) and not isinstance(target, FlyteLaunchPlan):
-        raise ValueError("Only LaunchPlans are supported for now.")
+    if not isinstance(target, (LaunchPlan, FlyteLaunchPlan, ReferenceTask)):
+        raise ValueError("Only LaunchPlans and ReferenceTasks are supported for now.")
 
     node = ArrayNode(
         target=target,

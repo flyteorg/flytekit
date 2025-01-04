@@ -59,6 +59,15 @@ class _TaskRunner:
         finally:
             loop.close()
 
+    def get_exc_handler(self):
+        def exc_handler(loop, context):
+            logger.error(
+                f"Taskrunner for {self.__runner_thread.name if self.__runner_thread else 'no thread'} caught"
+                f" exception in {loop}: {context}"
+            )
+
+        return exc_handler
+
     def run(self, coro: Any) -> Any:
         """Synchronously run a coroutine on a background thread."""
         name = f"{threading.current_thread().name} : loop-runner"
@@ -66,9 +75,13 @@ class _TaskRunner:
             if self.__loop is None:
                 with _selector_policy():
                     self.__loop = asyncio.new_event_loop()
+
+                exc_handler = self.get_exc_handler()
+                self.__loop.set_exception_handler(exc_handler)
                 self.__runner_thread = threading.Thread(target=self._execute, daemon=True, name=name)
                 self.__runner_thread.start()
         fut = asyncio.run_coroutine_threadsafe(coro, self.__loop)
+
         res = fut.result(None)
 
         return res

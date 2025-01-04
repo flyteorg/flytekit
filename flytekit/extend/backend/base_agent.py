@@ -1,6 +1,6 @@
 import asyncio
+import inspect
 import json
-import signal
 import sys
 import time
 import typing
@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 from collections import OrderedDict
 from dataclasses import asdict, dataclass
 from functools import partial
-from types import FrameType, coroutine
+from types import FrameType
 from typing import Any, Dict, List, Optional, Union
 
 from flyteidl.admin.agent_pb2 import Agent
@@ -285,7 +285,6 @@ class SyncAgentExecutorMixin:
         output_prefix = ctx.file_access.get_random_remote_directory()
 
         agent = AgentRegistry.get_agent(task_template.type, task_template.task_type_version)
-
         resource = asyncio.run(
             self._do(agent=agent, template=task_template, output_prefix=output_prefix, inputs=kwargs)
         )
@@ -322,23 +321,24 @@ class AsyncAgentExecutorMixin:
     Asynchronous tasks are tasks that take a long time to complete, such as running a query.
     """
 
-    _clean_up_task: coroutine = None
+    _clean_up_task: bool = False
     _agent: AsyncAgentBase = None
 
     def execute(self: PythonTask, **kwargs) -> LiteralMap:
         ctx = FlyteContext.current_context()
         ss = ctx.serialization_settings or SerializationSettings(ImageConfig())
         output_prefix = ctx.file_access.get_random_remote_directory()
+        self.resource_meta = None
 
         from flytekit.tools.translator import get_serializable
 
         task_template = get_serializable(OrderedDict(), ss, self).template
         self._agent = AgentRegistry.get_agent(task_template.type, task_template.task_type_version)
 
-        resource_mata = asyncio.run(
+        resource_meta = asyncio.run(
             self._create(task_template=task_template, output_prefix=output_prefix, inputs=kwargs)
         )
-        resource = asyncio.run(self._get(resource_meta=resource_mata))
+        resource = asyncio.run(self._get(resource_meta=resource_meta))
 
         if resource.phase != TaskExecution.SUCCEEDED:
             raise FlyteUserException(f"Failed to run the task {self.name} with error: {resource.message}")
@@ -380,7 +380,8 @@ class AsyncAgentExecutorMixin:
             output_prefix=output_prefix,
         )
 
-        signal.signal(signal.SIGINT, partial(self.signal_handler, resource_meta))  # type: ignore
+        FlyteContextManager.add_signal_handler(partial(self.agent_signal_handler, resource_meta))
+        self.resource_meta = resource_meta
         return resource_meta
 
     async def _get(self: PythonTask, resource_meta: ResourceMeta) -> Resource:
@@ -397,7 +398,6 @@ class AsyncAgentExecutorMixin:
                 time.sleep(1)
                 resource = await mirror_async_methods(self._agent.get, resource_meta=resource_meta)
                 if self._clean_up_task:
-                    await self._clean_up_task
                     sys.exit(1)
 
                 phase = resource.phase
@@ -415,7 +415,11 @@ class AsyncAgentExecutorMixin:
 
         return resource
 
-    def signal_handler(self, resource_meta: ResourceMeta, signum: int, frame: FrameType) -> Any:
-        if self._clean_up_task is None:
-            co = mirror_async_methods(self._agent.delete, resource_meta=resource_meta)
-            self._clean_up_task = asyncio.create_task(co)
+    def agent_signal_handler(self, resource_meta: ResourceMeta, signum: int, frame: FrameType) -> Any:
+        if inspect.iscoroutinefunction(self._agent.delete):
+            # Use asyncio.run to run the async function in the main thread since the loop manager is killed when the
+            # signal is received.
+            asyncio.run(self._agent.delete(resource_meta))
+        else:
+            self._agent.delete(resource_meta)
+        self._clean_up_task = True
