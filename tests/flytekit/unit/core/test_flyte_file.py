@@ -1,6 +1,7 @@
 import json
 import os
 import pathlib
+import pickle
 import tempfile
 import typing
 from unittest.mock import MagicMock, patch
@@ -19,7 +20,7 @@ from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
 from flytekit.models.core.types import BlobType
-from flytekit.models.literals import LiteralMap
+from flytekit.models.literals import LiteralMap, Blob, BlobMetadata
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
@@ -782,3 +783,27 @@ def test_input_from_flyte_console_attribute_access_flytefile(local_dummy_file):
     downstream_input = TypeEngine.to_python_value(
         FlyteContextManager.current_context(), upstream_output, FlyteFile)
     assert downstream_input == FlyteFile(local_dummy_file)
+
+
+def test_flyte_file_is_pickleable():
+    upstream_output = Literal(
+        scalar=Scalar(
+            blob=Blob(
+                uri="s3://sample-path/file",
+                metadata=BlobMetadata(
+                    type=BlobType(
+                        dimensionality=BlobType.BlobDimensionality.SINGLE,
+                        format="txt"
+                    )
+                )
+            )
+        )
+    )
+    downstream_input = TypeEngine.to_python_value(
+        FlyteContextManager.current_context(), upstream_output, FlyteFile
+    )
+
+    # test round trip pickling
+    pickled_input = pickle.dumps(downstream_input)
+    unpickled_input = pickle.loads(pickled_input)
+    assert downstream_input == unpickled_input

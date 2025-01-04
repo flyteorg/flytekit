@@ -6,6 +6,7 @@ import pathlib
 import random
 import typing
 from dataclasses import dataclass, field
+from functools import partial
 from pathlib import Path
 from typing import Any, Dict, Generator, Tuple
 from uuid import UUID
@@ -22,6 +23,7 @@ from mashumaro.types import SerializableType
 from flytekit.core.constants import MESSAGEPACK
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import AsyncTypeTransformer, TypeEngine, TypeTransformerFailedError, get_batch_size
+from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.exceptions.user import FlyteAssertion
 from flytekit.extras.pydantic_transformer.decorator import model_serializer, model_validator
 from flytekit.models import types as _type_models
@@ -665,8 +667,7 @@ class FlyteDirToMultipartBlobTransformer(AsyncTypeTransformer[FlyteDirectory]):
 
         batch_size = get_batch_size(expected_python_type)
 
-        def _downloader():
-            return ctx.file_access.get_data(uri, local_folder, is_multipart=True, batch_size=batch_size)
+        _downloader = partial(_flyte_directory_downloader, ctx.file_access, uri, local_folder, batch_size)
 
         expected_format = self.get_format(expected_python_type)
 
@@ -681,6 +682,10 @@ class FlyteDirToMultipartBlobTransformer(AsyncTypeTransformer[FlyteDirectory]):
         ):
             return FlyteDirectory.__class_getitem__(literal_type.blob.format)
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
+
+
+def _flyte_directory_downloader(file_access_provider: FileAccessProvider, uri: str, local_folder: str, batch_size: int):
+    return file_access_provider.get_data(uri, local_folder, is_multipart=True, batch_size=batch_size)
 
 
 TypeEngine.register(FlyteDirToMultipartBlobTransformer())

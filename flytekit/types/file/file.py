@@ -7,6 +7,7 @@ import pathlib
 import typing
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from functools import partial
 from typing import Dict, cast
 from urllib.parse import unquote
 
@@ -20,6 +21,7 @@ from mashumaro.types import SerializableType
 
 from flytekit.core.constants import MESSAGEPACK
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
+from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import (
     AsyncTypeTransformer,
     TypeEngine,
@@ -732,12 +734,14 @@ class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
 
         # For the remote case, return an FlyteFile object that can download
         local_path = ctx.file_access.get_random_local_path(uri)
+
+        _downloader = partial(_flyte_file_downloader, ctx.file_access, uri, local_path)
+
         expected_format = FlyteFilePathTransformer.get_format(expected_python_type)
         ff = FlyteFile.__class_getitem__(expected_format)(
             path=local_path, downloader=lambda: self.downloader(ctx=ctx, remote_path=uri, local_path=local_path)
         )
         ff._remote_source = uri
-
         return ff
 
     @staticmethod
@@ -761,6 +765,10 @@ class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
             return FlyteFile.__class_getitem__(literal_type.blob.format)
 
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
+
+
+def _flyte_file_downloader(file_access_provider: FileAccessProvider, uri: str, local_path: str):
+    return file_access_provider.get_data(uri, local_path, is_multipart=False)
 
 
 TypeEngine.register(FlyteFilePathTransformer(), additional_types=[os.PathLike])
