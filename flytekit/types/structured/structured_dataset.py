@@ -275,6 +275,7 @@ def extract_cols_and_format(
         optional str for the format,
         optional pyarrow Schema
     """
+    # breakpoint()
     fmt = ""
     ordered_dict_cols = None
     pa_schema = None
@@ -691,7 +692,7 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
         # Check first to see if it's even an SD type. For backwards compatibility, we may be getting a FlyteSchema
         python_type, *attrs = extract_cols_and_format(python_type)
         # In case it's a FlyteSchema
-        sdt = StructuredDatasetType(format=self.DEFAULT_FORMATS.get(python_type, GENERIC_FORMAT))
+        sdt = StructuredDatasetType(self.DEFAULT_FORMATS.get(python_type, GENERIC_FORMAT))
 
         if issubclass(python_type, StructuredDataset) and not isinstance(python_val, StructuredDataset):
             # Catch a common mistake
@@ -737,10 +738,20 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
             #       return StructuredDataset(uri=uri)
             if python_val.dataframe is None:
                 uri = python_val.uri
+                file_format = python_val.file_format
+
+                # Check the user-specified uri
                 if not uri:
                     raise ValueError(f"If dataframe is not specified, then the uri should be specified. {python_val}")
                 if not ctx.file_access.is_remote(uri):
                     uri = await ctx.file_access.async_put_raw_data(uri)
+
+                # Check the user-specified file_format
+                # When users specify file_format for a StructuredDataset, the file_format information must be retained.
+                # For details, please refer to https://github.com/flyteorg/flyte/issues/6096.
+                if file_format != GENERIC_FORMAT:
+                    sdt.format = file_format
+
                 sd_model = literals.StructuredDataset(
                     uri=uri,
                     metadata=StructuredDatasetMetadata(structured_dataset_type=sdt),
@@ -1093,6 +1104,11 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
         return converted_cols
 
     def _get_dataset_type(self, t: typing.Union[Type[StructuredDataset], typing.Any]) -> StructuredDatasetType:
+        # breakpoint()
+        # if get_origin(t) is Annotated:
+        #     original_python_type, column_map, storage_format, pa_schema = extract_cols_and_format(t)  # type: ignore
+        # else:
+        #     column_map, storage_format, pa_schema = None, t.file_format, None
         original_python_type, column_map, storage_format, pa_schema = extract_cols_and_format(t)  # type: ignore
 
         # Get the column information
