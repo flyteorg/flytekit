@@ -14,7 +14,7 @@ import joblib
 from urllib.parse import urlparse
 import uuid
 import pytest
-import mock
+from unittest import mock
 
 from flytekit import LaunchPlan, kwtypes, WorkflowExecutionPhase
 from flytekit.configuration import Config, ImageConfig, SerializationSettings
@@ -820,7 +820,7 @@ def test_get_control_plane_version():
     version = client.get_control_plane_version()
     assert version == "unknown" or version.startswith("v")
 
-    
+
 def test_open_ff():
     """Test opening FlyteFile from a remote path."""
     # Upload a file to minio s3 bucket
