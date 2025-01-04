@@ -33,7 +33,7 @@ from decorator import decorator
 from fsspec.asyn import AsyncFileSystem
 from fsspec.utils import get_protocol
 from obstore.fsspec import AsyncFsspecStore
-from obstore.store import GCSStore, S3Store, AzureStore
+from obstore.store import AzureStore, GCSStore, S3Store
 from typing_extensions import Unpack
 
 from flytekit import configuration
@@ -85,6 +85,7 @@ def s3_setup_args(s3_cfg: configuration.S3Config, bucket: str = "", anonymous: b
     kwargs["store"] = store
 
     return kwargs
+
 
 def gs_setup_args(gcs_cfg: configuration.GCSConfig, bucket: str = "", anonymous: bool = False) -> Dict[str, Any]:
     kwargs: Dict[str, Any] = {}
@@ -140,7 +141,9 @@ def split_path(path: str) -> Tuple[str, str]:
             return bucket, path
 
 
-def azure_setup_args(azure_cfg: configuration.AzureBlobStorageConfig, container: str = "", anonymous: bool = False) -> Dict[str, Any]:
+def azure_setup_args(
+    azure_cfg: configuration.AzureBlobStorageConfig, container: str = "", anonymous: bool = False
+) -> Dict[str, Any]:
     kwargs: Dict[str, Any] = {}
     store_kwargs: Dict[str, Any] = {}
 
@@ -311,7 +314,9 @@ class FileAccessProvider(object):
             protocol, anonymous=anonymous, path=path, bucket=bucket, asynchronous=True, loop=loop, **kwargs
         )
 
-    def get_filesystem_for_path(self, path: str = "", bucket: str = "", anonymous: bool = False, **kwargs) -> fsspec.AbstractFileSystem:
+    def get_filesystem_for_path(
+        self, path: str = "", bucket: str = "", anonymous: bool = False, **kwargs
+    ) -> fsspec.AbstractFileSystem:
         protocol = get_protocol(path)
         return self.get_filesystem(protocol, anonymous=anonymous, path=path, bucket=bucket, **kwargs)
 
@@ -513,13 +518,13 @@ class FileAccessProvider(object):
                 r = await self._put(from_path, to_path, **kwargs)
             return r or to_path
 
-        bucket, to_path_file_only = split_path(to_path)
+        bucket, _ = split_path(to_path)
 
         # See https://github.com/fsspec/s3fs/issues/871 for more background and pending work on the fsspec side to
         # support effectively async open(). For now these use-cases below will revert to sync calls.
         # raw bytes
         if isinstance(lpath, bytes):
-            fs = self.get_filesystem_for_path(to_path_file_only, bucket)
+            fs = self.get_filesystem_for_path(to_path, bucket)
             with fs.open(to_path, "wb", **kwargs) as s:
                 s.write(lpath)
             return to_path
@@ -528,7 +533,7 @@ class FileAccessProvider(object):
         if isinstance(lpath, io.BufferedReader) or isinstance(lpath, io.BytesIO):
             if not lpath.readable():
                 raise FlyteAssertion("Buffered reader must be readable")
-            fs = self.get_filesystem_for_path(to_path_file_only, bucket)
+            fs = self.get_filesystem_for_path(to_path, bucket)
             lpath.seek(0)
             with fs.open(to_path, "wb", **kwargs) as s:
                 while data := lpath.read(read_chunk_size_bytes):
@@ -538,7 +543,7 @@ class FileAccessProvider(object):
         if isinstance(lpath, io.StringIO):
             if not lpath.readable():
                 raise FlyteAssertion("Buffered reader must be readable")
-            fs = self.get_filesystem_for_path(to_path_file_only, bucket)
+            fs = self.get_filesystem_for_path(to_path, bucket)
             lpath.seek(0)
             with fs.open(to_path, "wb", **kwargs) as s:
                 while data_str := lpath.read(read_chunk_size_bytes):
