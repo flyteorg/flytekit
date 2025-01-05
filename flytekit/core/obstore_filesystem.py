@@ -2,6 +2,8 @@
 Classes that overrides the AsyncFsspecStore that specify the filesystem specific parameters
 """
 
+from typing import Optional
+
 from obstore.fsspec import AsyncFsspecStore
 
 DEFAULT_BLOCK_SIZE = 5 * 2**20
@@ -19,6 +21,19 @@ class ObstoreS3FileSystem(AsyncFsspecStore):
     default_block_size = 5 * 2**20
     protocol = ("s3", "s3a")
     _extra_tokenize_attributes = ("default_block_size",)
+
+    def __init__(self, retries: Optional[int] = None, **kwargs):
+        """
+        Initialize the ObstoreS3FileSystem with optional retries.
+
+        Args:
+            retries (int): Number of retry for requests
+            **kwargs: Other keyword arguments passed to the parent class
+        """
+        if retries is not None:
+            self.retries = retries
+
+        super().__init__(**kwargs)
 
 
 class ObstoreGCSFileSystem(AsyncFsspecStore):

@@ -79,6 +79,8 @@ def s3_setup_args(s3_cfg: configuration.S3Config, bucket: str = "", anonymous: b
         },
     )
 
+    kwargs["retries"] = s3_cfg.retries
+
     if anonymous:
         kwargs[_ANON] = True
 
