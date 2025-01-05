@@ -32,13 +32,13 @@ import fsspec
 from decorator import decorator
 from fsspec.asyn import AsyncFileSystem
 from fsspec.utils import get_protocol
-from obstore.fsspec import AsyncFsspecStore
 from obstore.store import AzureStore, GCSStore, S3Store
 from typing_extensions import Unpack
 
 from flytekit import configuration
 from flytekit.configuration import DataConfig
 from flytekit.core.local_fsspec import FlyteLocalFileSystem
+from flytekit.core.obstore_filesystem import ObstoreAzureBlobFileSystem, ObstoreGCSFileSystem, ObstoreS3FileSystem
 from flytekit.core.utils import timeit
 from flytekit.exceptions.system import FlyteDownloadDataException, FlyteUploadDataException
 from flytekit.exceptions.user import FlyteAssertion, FlyteDataNotFoundException
@@ -732,9 +732,9 @@ class FileAccessProvider(object):
     put_data = loop_manager.synced(async_put_data)
 
 
-fsspec.register_implementation("s3", AsyncFsspecStore)
-fsspec.register_implementation("gs", AsyncFsspecStore)
-fsspec.register_implementation("abfs", AsyncFsspecStore)
+fsspec.register_implementation("s3", ObstoreS3FileSystem)
+fsspec.register_implementation("gs", ObstoreGCSFileSystem)
+fsspec.register_implementation("abfs", ObstoreAzureBlobFileSystem)
 
 flyte_tmp_dir = tempfile.mkdtemp(prefix="flyte-")
 default_local_file_access_provider = FileAccessProvider(
