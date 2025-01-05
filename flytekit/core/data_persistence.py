@@ -116,10 +116,12 @@ def split_path(path: str) -> Tuple[str, str]:
     >>> split_path("s3://mybucket/path/to/file")
     ['mybucket', 'path/to/file']
     """
-    if "file" in path:
+    support_types = ["s3", "gs", "abfs"]
+    protocol = get_protocol(path)
+    if protocol not in support_types:
         # no bucket for file
         return "", path
-    protocol = get_protocol(path)
+
     if path.startswith(protocol + "://"):
         path = path[len(protocol) + 3 :]
     elif path.startswith(protocol + "::"):
@@ -133,12 +135,8 @@ def split_path(path: str) -> Tuple[str, str]:
         bucket = path_li[0]
         # use obstore for s3 and gcs only now, no need to split
         # bucket out of path for other storage
-        support_types = ["s3", "gs", "abfs"]
-        if protocol in support_types:
-            file_path = "/".join(path_li[1:])
-            return (bucket, file_path)
-        else:
-            return bucket, path
+        file_path = "/".join(path_li[1:])
+        return (bucket, file_path)
 
 
 def azure_setup_args(
