@@ -470,6 +470,7 @@ class ArrayNodeMapTaskResolver(tracker.TrackedInstance, TaskResolverMixin):
         vars "var1,var2,.." resolver "resolver" [resolver_args]
         """
         _, bound_vars, _, resolver, *resolver_args = loader_args
+        logger.info(f"MapTask found task resolver {resolver} and arguments {resolver_args}")
         resolver_obj = load_object_from_module(resolver)
         # Use the resolver to load the actual task object
         _task_def = resolver_obj.load_task(loader_args=resolver_args)
