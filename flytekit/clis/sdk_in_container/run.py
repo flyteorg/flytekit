@@ -475,8 +475,15 @@ def to_click_option(
                 If no custom logic exists, fall back to json.dumps.
             """
             with FlyteContextManager.with_context(flyte_ctx.new_builder()):
-                encoder = JSONEncoder(python_type)
-                default_val = encoder.encode(default_val)
+                if hasattr(default_val, "model_dump_json"):
+                    # pydantic v2
+                    default_val = default_val.model_dump_json()
+                elif hasattr(default_val, "json"):
+                    # pydantic v1
+                    default_val = default_val.json()
+                else:
+                    encoder = JSONEncoder(python_type)
+                    default_val = encoder.encode(default_val)
         if literal_var.type.metadata:
             description_extra = f": {json.dumps(literal_var.type.metadata)}"
 
@@ -1057,7 +1064,7 @@ class WorkflowCommand(click.RichGroup):
             h = h + click.style(f" (LP Name: {loaded_entity.name})", fg="yellow")
         else:
             if loaded_entity.__doc__:
-                h = h + click.style(f"{loaded_entity.__doc__}", dim=True)
+                h = h + click.style(f" {loaded_entity.__doc__}", dim=True)
         cmd = YamlFileReadingCommand(
             name=entity_name,
             params=params,

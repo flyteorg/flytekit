@@ -117,14 +117,14 @@ class AsyncAgentService(AsyncAgentServiceServicer):
         task_execution_metadata = TaskExecutionMetadata.from_flyte_idl(request.task_execution_metadata)
 
         logger.info(f"{agent.name} start creating the job")
-        resource_mata = await mirror_async_methods(
+        resource_meta = await mirror_async_methods(
             agent.create,
             task_template=template,
             inputs=inputs,
             output_prefix=request.output_prefix,
             task_execution_metadata=task_execution_metadata,
         )
-        return CreateTaskResponse(resource_meta=resource_mata.encode())
+        return CreateTaskResponse(resource_meta=resource_meta.encode())
 
     @record_agent_metrics
     async def GetTask(self, request: GetTaskRequest, context: grpc.ServicerContext) -> GetTaskResponse:
