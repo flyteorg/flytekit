@@ -11,6 +11,7 @@ from flytekit.core.utils import _dnsify
 from flytekit.extras.accelerators import BaseAccelerator
 from flytekit.loggers import logger
 from flytekit.models import literals as _literal_models
+from flytekit.models.admin import common as _common_model
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.task import Resources as _resources_model
 
@@ -226,14 +227,12 @@ class Node(object):
         if labels is not None:
             if not isinstance(labels, dict):
                 raise AssertionError("Labels should be specified as dict[str, str]")
-            for k, v in labels.items():
-                self._metadata._labels.append(_workflow_model.Label(var=k, label=v))
+            self._metadata._labels.append(_common_model.Label(values=labels))
 
         if annotations is not None:
             if not isinstance(annotations, dict):
                 raise AssertionError("Annotations should be specified as dict[str, str]")
-            for k, v in annotations.items():
-                self._metadata.__annotations.append(_workflow_model.Annotation(var=k, annotation=v))
+            self._metadata._annotations.append(_common_model.Annotation(values=annotations))
 
         return self
 
