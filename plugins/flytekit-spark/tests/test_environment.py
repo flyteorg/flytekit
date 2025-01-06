@@ -1,20 +1,9 @@
-import pyspark
-import pytest
-
 import flytekit
 from flytekitplugins.spark import Spark
 from flytekit.core.environment import Environment
 
 
-@pytest.fixture(scope="function")
-def reset_spark_session() -> None: # type: ignore
-
-    pyspark.sql.SparkSession.builder.getOrCreate().stop()
-    yield
-    pyspark.sql.SparkSession.builder.getOrCreate().stop()
-
-
-def test_spark_task(reset_spark_session):
+def test_spark_task():
 
     env = Environment(
         task_config=Spark(
