@@ -28,7 +28,6 @@ def forge(source: Callable[Concatenate[Any, P], T]) -> Callable[[Callable], Call
 
 
 def inherit(old: dict[str, Any], new: dict[str, Any]) -> dict[str, Any]:
-
     out = copy.deepcopy(old)
 
     for key, value in new.items():

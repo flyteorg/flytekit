@@ -17,7 +17,7 @@ def test_basic_environment():
     @env
     def bar():
         pass
-    
+
     assert foo._metadata.retries == 2
     assert bar._metadata.retries == 2
 
@@ -52,7 +52,7 @@ def test_updated_environment():
     @env
     def bar():
         pass
-    
+
 
     assert foo._metadata.retries == 0
     assert bar._metadata.retries == 0
@@ -108,7 +108,7 @@ def test_spark_task(reset_spark_session):
             applications_path="local:///usr/local/bin/entrypoint.py",
         )
     )
-    
+
     @env.task
     def my_spark(a: str) -> int:
         session = flytekit.current_context().spark_session
