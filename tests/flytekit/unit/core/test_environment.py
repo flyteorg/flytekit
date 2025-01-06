@@ -1,5 +1,6 @@
 from flytekit.core.environment import Environment, inherit
 
+
 def test_basic_environment():
 
     env = Environment(retries=2)
@@ -15,6 +16,7 @@ def test_basic_environment():
     assert foo._metadata.retries == 2
     assert bar._metadata.retries == 2
 
+
 def test_dynamic_from_environment():
 
     env = Environment(retries=2)
@@ -29,6 +31,7 @@ def test_dynamic_from_environment():
 
     assert foo._metadata.retries == 2
     assert bar._metadata.retries == 2
+
 
 def test_extended_environment():
 
@@ -48,6 +51,7 @@ def test_extended_environment():
     assert foo._metadata.retries == 0
     assert bar._metadata.retries == 0
 
+
 def test_updated_environment():
 
     env = Environment(retries=2)
@@ -66,11 +70,13 @@ def test_updated_environment():
     assert foo._metadata.retries == 0
     assert bar._metadata.retries == 0
 
+
 def test_show_environment():
 
     env = Environment(retries=2)
 
     env.show()
+
 
 def test_inherit():
 
