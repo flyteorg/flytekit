@@ -5,7 +5,7 @@ from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from flyteidl.admin import schedule_pb2
 
-from flytekit import ImageSpec, PythonFunctionTask, SourceCode, PodTemplate
+from flytekit import ImageSpec, PodTemplate, PythonFunctionTask, SourceCode
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core import constants as _common_constants
 from flytekit.core import context_manager
@@ -476,8 +476,12 @@ def get_serializable_node(
                         pod_spec=override_pod_spec,
                         labels=entity._pod_template.labels if entity._pod_template.labels else None,
                         annotations=entity._pod_template.annotations if entity._pod_template.annotations else None,
-                        primary_container_name=entity._pod_template.primary_container_name if entity._pod_template.primary_container_name else None,
-                    ) if entity._pod_template else None,
+                        primary_container_name=entity._pod_template.primary_container_name
+                        if entity._pod_template.primary_container_name
+                        else None,
+                    )
+                    if entity._pod_template
+                    else None,
                 ),
             ),
         )

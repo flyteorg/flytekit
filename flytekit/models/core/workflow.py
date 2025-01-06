@@ -15,7 +15,7 @@ from flytekit.models.core import condition as _condition
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.literals import Binding as _Binding
 from flytekit.models.literals import RetryStrategy as _RetryStrategy
-from flytekit.models.task import Resources, K8sObjectMetadata
+from flytekit.models.task import K8sObjectMetadata, Resources
 
 
 class IfBlock(_common.FlyteIdlEntity):
@@ -645,9 +645,11 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
             container_image=self.container_image,
             pod_template=tasks_pb2.K8sPod(
                 metadata=K8sObjectMetadata(
-                            labels=self.pod_template.labels if self.pod_template else None,
-                            annotations=self.pod_template.annotations if self.pod_template else None,
-                        ).to_flyte_idl() if self.pod_template is not None else None,
+                    labels=self.pod_template.labels if self.pod_template else None,
+                    annotations=self.pod_template.annotations if self.pod_template else None,
+                ).to_flyte_idl()
+                if self.pod_template is not None
+                else None,
                 pod_spec=json_format.Parse(json.dumps(self.pod_template.pod_spec), struct_pb2.Struct())
                 if self.pod_template
                 else None,
