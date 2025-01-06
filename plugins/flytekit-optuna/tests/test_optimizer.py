@@ -22,11 +22,11 @@ async def train(concurrency: int, n_trials: int) -> float:
         z=suggest.category([-5, 0, 3, 6, 9]),
         power=2,
     )
-    
+
     return optimizer.study.best_value()
 
 def test_local_exec():
-    
+
     loss = asyncio.run(train(concurrency=2, n_trials=10))
 
     assert isinstance(loss, float)
