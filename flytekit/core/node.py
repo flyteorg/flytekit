@@ -140,6 +140,8 @@ class Node(object):
         cache: Optional[bool] = None,
         cache_version: Optional[str] = None,
         cache_serialize: Optional[bool] = None,
+        labels: Optional[Dict[str, str]] = None,
+        annotations: Optional[Dict[str, str]] = None,
         *args,
         **kwargs,
     ):
@@ -220,6 +222,18 @@ class Node(object):
         if cache_serialize is not None:
             assert_not_promise(cache_serialize, "cache_serialize")
             self._metadata._cache_serializable = cache_serialize
+
+        if labels is not None:
+            if not isinstance(labels, dict):
+                raise AssertionError("Labels should be specified as dict[str, str]")
+            for k, v in labels.items():
+                self._metadata._labels.append(_workflow_model.Label(var=k, label=v))
+
+        if annotations is not None:
+            if not isinstance(annotations, dict):
+                raise AssertionError("Annotations should be specified as dict[str, str]")
+            for k, v in annotations.items():
+                self._metadata.__annotations.append(_workflow_model.Annotation(var=k, annotation=v))
 
         return self
 
