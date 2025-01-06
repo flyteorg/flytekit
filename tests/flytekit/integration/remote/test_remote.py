@@ -14,7 +14,7 @@ import joblib
 from urllib.parse import urlparse
 import uuid
 import pytest
-import mock
+from unittest import mock
 
 from flytekit import LaunchPlan, kwtypes, WorkflowExecutionPhase
 from flytekit.configuration import Config, ImageConfig, SerializationSettings
@@ -852,6 +852,7 @@ def test_attr_access_sd():
     url = urlparse(remote_file_path)
     bucket, key = url.netloc, url.path.lstrip("/")
     file_transfer.delete_file(bucket=bucket, key=key)
+<<<<<<< HEAD
 
 def test_signal_approve_reject(register):
     from flytekit.models.types import LiteralType, SimpleType
@@ -885,3 +886,5 @@ def test_signal_approve_reject(register):
 
         remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
         assert execution.outputs["o0"] == {"title": "my report", "data": [1.0, 2.0, 3.0, 4.0, 5.0]}
+=======
+>>>>>>> 99f6d9f76 ([test] Add integration test for accessing sd sttr in dc (#2969))
