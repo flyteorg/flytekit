@@ -28,19 +28,19 @@ def forge(source: Callable[Concatenate[Any, P], T]) -> Callable[[Callable], Call
 
 
 def inherit(old: dict[str, Any], new: dict[str, Any]) -> dict[str, Any]:
-    old = copy.deepcopy(old)
-    new = copy.deepcopy(new)
+
+    out = copy.deepcopy(old)
 
     for key, value in new.items():
-        if key in old:
+        if key in out:
             if isinstance(value, dict):
-                old[key] = inherit(old[key], value)
+                out[key] = inherit(out[key], value)
             else:
-                old[key] = value
+                out[key] = value
         else:
-            old[key] = value
+            out[key] = value
 
-    return old
+    return out
 
 
 class Environment:
