@@ -8,7 +8,7 @@ from rich.pretty import Pretty
 from typing_extensions import Concatenate, ParamSpec
 
 from flytekit.core.dynamic_workflow_task import dynamic
-from flytekit.core.task import PythonFunctionTask, task
+from flytekit.core.task import task
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -66,7 +66,7 @@ class Environment:
     @forge(task)
     def __call__(
         self, _task_function: Union[Callable, None] = None, /, **overrides
-    ) -> Callable[..., PythonFunctionTask[T]]:
+    ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
         # no additional overrides are passed
         if _task_function is not None:
             if callable(_task_function):
@@ -95,7 +95,7 @@ class Environment:
     @forge(dynamic)
     def dynamic(
         self, _task_function: Union[Callable, None] = None, /, **overrides
-    ) -> Callable[..., PythonFunctionTask[T]]:
+    ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
         # no additional overrides are passed
         if _task_function is not None:
             if callable(_task_function):
