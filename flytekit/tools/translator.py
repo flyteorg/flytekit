@@ -5,7 +5,7 @@ from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from flyteidl.admin import schedule_pb2
 
-from flytekit import ImageSpec, PythonFunctionTask, SourceCode
+from flytekit import ImageSpec, PythonFunctionTask, SourceCode, PodTemplate
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core import constants as _common_constants
 from flytekit.core import context_manager
@@ -38,7 +38,7 @@ from flytekit.models.core import workflow as workflow_model
 from flytekit.models.core.workflow import ApproveCondition, GateNode, SignalCondition, SleepCondition, TaskNodeOverrides
 from flytekit.models.core.workflow import ArrayNode as ArrayNodeModel
 from flytekit.models.core.workflow import BranchNode as BranchNodeModel
-from flytekit.models.task import K8sObjectMetadata, K8sPod, TaskSpec, TaskTemplate
+from flytekit.models.task import TaskSpec, TaskTemplate
 
 FlyteLocalEntity = Union[
     PythonTask,
@@ -472,16 +472,12 @@ def get_serializable_node(
                     resources=entity._resources,
                     extended_resources=entity._extended_resources,
                     container_image=entity._container_image,
-                    pod_template=K8sPod(
-                        pod_spec=override_pod_spec if override_pod_spec is not None else None,
-                        metadata=K8sObjectMetadata(
-                            labels=entity._pod_template.labels if entity._pod_template else None,
-                            annotations=entity._pod_template.annotations if entity._pod_template else None,
-                        ),
-                        primary_container_name=entity._pod_template.primary_container_name
-                        if entity._pod_template
-                        else None,
-                    ),
+                    pod_template=PodTemplate(
+                        pod_spec=override_pod_spec,
+                        labels=entity._pod_template.labels if entity._pod_template.labels else None,
+                        annotations=entity._pod_template.annotations if entity._pod_template.annotations else None,
+                        primary_container_name=entity._pod_template.primary_container_name if entity._pod_template.primary_container_name else None,
+                    ) if entity._pod_template else None,
                 ),
             ),
         )
