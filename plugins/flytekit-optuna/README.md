@@ -1,22 +1,15 @@
-# Flytekit Optuna Plugin
+# Fully Parallelized Flyte Orchestrated Optimizer
 
-The Flytekit Optuna plugin provides the capability of scheduling a large set of concurrent Optuna Trials.
-
-To install the plugin, run the following command:
-
-```bash
-pip install flytekitplugins-optuna
-```
+WIP Flyte integration with Optuna to parallelize optimization objective function runtime.
 
 ```python
 import math
 
 import flytekit as fl
 
-from experiment import FlyteExperiment, suggest
+from optimizer import Optimizer, suggest
 
 image = fl.ImageSpec(builder="union", packages=["flytekit==1.15.0b0", "optuna>=4.0.0"])
-
 
 @fl.task(container_image=image)
 async def objective(x: float, y: int, z: int, power: int) -> float:
@@ -25,14 +18,28 @@ async def objective(x: float, y: int, z: int, power: int) -> float:
 
 @fl.eager(container_image=image)
 async def train(concurrency: int, n_trials: int):
-    experiment = FlyteExperiment(
-        concurrency=concurrency, n_trials=n_trials, objective=objective
-    )
+    optimizer = Optimizer(objective, concurrency, n_trials)
 
-    await experiment(
+    await optimizer(
         x=suggest.float(low=-10, high=10),
         y=suggest.integer(low=-10, high=10),
-        z=suggest.category(-5, 0, 3, 6, 9),
+        z=suggest.category([-5, 0, 3, 6, 9]),
         power=2,
     )
 ```
+
+This integration allows one to define fully parallelized HPO experiments via `@eager` in as little as 20 lines of code. The objective task is optimized via Optuna under the hood, such that one may extract the `optuna.Study` at any time for the purposes of serialization, storage, visualization, or interpretation.
+
+This plugin provides full feature parity to Optuna, including:
+
+- fixed arguments
+- multiple suggestion types (`Integer`, `Float`, `Category`)
+- multi-objective, with arbitrary objective directions (minimize, maximize)
+- pruners
+- samplers
+
+# Improvements
+
+- This would synergize really well with Union Actors.
+- This should also support workflows, but it currently does not.
+- Add unit tests, of course.
