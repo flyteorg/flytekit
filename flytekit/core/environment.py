@@ -64,7 +64,9 @@ class Environment:
         return self.__class__(**inherit(self.overrides, overrides))
 
     @forge(task)
-    def __call__(self, _task_function: Union[Callable, None] = None, /, **overrides) -> Callable[..., PythonFunctionTask[T]]:
+    def __call__(
+        self, _task_function: Union[Callable, None] = None, /, **overrides
+    ) -> Callable[..., PythonFunctionTask[T]]:
         # no additional overrides are passed
         if _task_function is not None:
             if callable(_task_function):
@@ -91,7 +93,9 @@ class Environment:
     task = __call__
 
     @forge(dynamic)
-    def dynamic(self, _task_function: Union[Callable, None] = None, /, **overrides) -> Callable[..., PythonFunctionTask[T]]:
+    def dynamic(
+        self, _task_function: Union[Callable, None] = None, /, **overrides
+    ) -> Callable[..., PythonFunctionTask[T]]:
         # no additional overrides are passed
         if _task_function is not None:
             if callable(_task_function):
