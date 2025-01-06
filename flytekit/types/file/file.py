@@ -21,7 +21,6 @@ from mashumaro.types import SerializableType
 
 from flytekit.core.constants import MESSAGEPACK
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import (
     AsyncTypeTransformer,
     TypeEngine,
@@ -736,7 +735,7 @@ class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
         local_path = ctx.file_access.get_random_local_path(uri)
 
         _downloader = partial(ctx.file_access.get_data, uri, local_path, is_multipart=False)
-  
+
         expected_format = FlyteFilePathTransformer.get_format(expected_python_type)
         ff = FlyteFile.__class_getitem__(expected_format)(
             path=local_path, downloader=lambda: self.downloader(ctx=ctx, remote_path=uri, local_path=local_path)
