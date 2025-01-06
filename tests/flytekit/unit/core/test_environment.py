@@ -15,6 +15,21 @@ def test_basic_environment():
     assert foo._metadata.retries == 2
     assert bar._metadata.retries == 2
 
+def test_dynamic_from_environment():
+
+    env = Environment(retries=2)
+
+    @env.task
+    def foo():
+        pass
+
+    @env.dynamic
+    def bar():
+        foo()
+
+    assert foo._metadata.retries == 2
+    assert bar._metadata.retries == 2
+
 def test_extended_environment():
 
     env = Environment(retries=2)
