@@ -23,7 +23,7 @@ async def train(concurrency: int, n_trials: int) -> float:
         power=2,
     )
 
-    return optimizer.study.best_value()
+    return optimizer.study.best_value
 
 def test_local_exec():
 
