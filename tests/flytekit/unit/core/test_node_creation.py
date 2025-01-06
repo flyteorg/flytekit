@@ -518,3 +518,25 @@ def test_cache_override_values():
     assert wf_spec.template.nodes[0].metadata.cache_serializable
     assert wf_spec.template.nodes[0].metadata.cacheable
     assert wf_spec.template.nodes[0].metadata.cache_version == "foo"
+
+
+def test_override_labels_annotations():
+    @task
+    def t1(a: str) -> str:
+        return f"*~*~*~{a}*~*~*~"
+
+    @workflow
+    def my_wf(a: str) -> str:
+        return t1(a=a).with_overrides(labels={"override": "label"}, annotations={"override": "annotation"})
+
+    serialization_settings = flytekit.configuration.SerializationSettings(
+        project="test_proj",
+        domain="test_domain",
+        version="abc",
+        image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+        env={},
+    )
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
+
+    assert wf_spec.template.nodes[0].metadata.labels.values == {"override": "label"}
+    assert wf_spec.template.nodes[0].metadata.annotations.values == {"override": "annotation"}
