@@ -308,7 +308,8 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
         if ctx.file_access.is_remote(self.path):
             self._remote_source = self.path
             self._local_path = ctx.file_access.get_random_local_path(self._remote_source)
-            self._downloader = lambda: FlyteFilePathTransformer.downloader(
+            self._downloader = partial(
+                FlyteFilePathTransformer.downloader,
                 ctx=ctx,
                 remote_path=self._remote_source,  # type: ignore
                 local_path=self._local_path,
@@ -734,11 +735,9 @@ class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
         # For the remote case, return an FlyteFile object that can download
         local_path = ctx.file_access.get_random_local_path(uri)
 
-        _downloader = partial(ctx.file_access.get_data, uri, local_path, is_multipart=False)
-
         expected_format = FlyteFilePathTransformer.get_format(expected_python_type)
         ff = FlyteFile.__class_getitem__(expected_format)(
-            path=local_path, downloader=lambda: self.downloader(ctx=ctx, remote_path=uri, local_path=local_path)
+            path=local_path, downloader=partial(self.downloader, ctx=ctx, remote_path=uri, local_path=local_path),
         )
         ff._remote_source = uri
         return ff
