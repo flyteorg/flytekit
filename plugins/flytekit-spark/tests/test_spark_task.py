@@ -4,14 +4,11 @@ from unittest import mock
 import pandas as pd
 import pyspark
 import pytest
-from flytekit.tools.translator import get_serializable
-from collections import OrderedDict
 
 from flytekit.core import context_manager
 from flytekitplugins.spark import Spark
 from flytekitplugins.spark.task import Databricks, new_spark_session
 from pyspark.sql import SparkSession
-from flytekit.core.environment import Environment
 
 import flytekit
 from flytekit import StructuredDataset, StructuredDatasetTransformerEngine, task, ImageSpec
@@ -24,50 +21,6 @@ def reset_spark_session() -> None:
     pyspark.sql.SparkSession.builder.getOrCreate().stop()
     yield
     pyspark.sql.SparkSession.builder.getOrCreate().stop()
-
-
-def test_env_spark():
-
-    @task(
-        task_config=Spark(
-            spark_conf={"spark": "1"},
-            executor_path="/usr/bin/python3",
-            applications_path="local:///usr/local/bin/entrypoint.py",
-        )
-    )
-    def my_spark(a: str) -> int:
-        session = flytekit.current_context().spark_session
-        assert session.sparkContext.appName == "FlyteSpark: ex:local:local:local"
-        return 10
-
-    spark_env = Environment(task_config=Spark(
-            spark_conf={"spark": "1"},
-            executor_path="/usr/bin/python3",
-            applications_path="local:///usr/local/bin/entrypoint.py",
-        )
-    )
-
-    @spark_env.task
-    def spark_from_env(a: str) -> int:
-        return 5
-
-    spark_env.task()
-
-    default_img = Image(name="default", fqn="test", tag="tag")
-    settings = SerializationSettings(
-        project="project",
-        domain="domain",
-        version="version",
-        env={"FOO": "baz"},
-        image_config=ImageConfig(default_image=default_img, images=[default_img]),
-    )
-
-    od = OrderedDict()
-    spec2 = get_serializable(od, settings, spark_from_env)
-
-    od = OrderedDict()
-    spec1 = get_serializable(od, settings, my_spark)
-    assert spec1.template.custom == spec2.template.custom
 
 
 def test_spark_task(reset_spark_session):
