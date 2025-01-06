@@ -456,7 +456,7 @@ class vscode(ClassDecorator):
         # 5. Prepare the launch.json
         prepare_launch_json()
 
-        return exit_handler(
+        exit_handler(
             child_process=child_process,
             task_function=self.task_function,
             args=args,

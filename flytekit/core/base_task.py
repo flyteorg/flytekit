@@ -75,7 +75,10 @@ from flytekit.exceptions.system import (
     FlyteNonRecoverableSystemException,
     FlyteUploadDataException,
 )
-from flytekit.exceptions.user import FlyteUserRuntimeException
+from flytekit.exceptions.user import (
+    FlyteUserRuntimeException,
+    FlyteValueException,
+)
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import interface as _interface_models
@@ -769,6 +772,15 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 (_literal_models.LiteralMap, _dynamic_job.DynamicJobSpec),
             ):
                 return native_outputs
+
+            if isinstance(native_outputs, VoidPromise):
+                return _literal_models.LiteralMap(literals={})
+
+            if native_outputs is not None and len(list(self._outputs_interface.keys())) == 0:
+                raise FlyteValueException(
+                    native_outputs,
+                    f"Interface has {len(self.python_interface.outputs)} outputs.",
+                )
 
             try:
                 with timeit("dispatch execute"):
