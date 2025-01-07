@@ -1,12 +1,11 @@
 import asyncio
-from dataclasses import dataclass
-from types import SimpleNamespace
-from typing import Optional, Union, Any
-from functools import partial
 import inspect
+from dataclasses import dataclass
+from functools import partial
+from types import SimpleNamespace
+from typing import Any, Optional, Union
 
 import optuna
-
 from flytekit import PythonFunctionTask
 from flytekit.core.workflow import PythonFunctionWorkflow
 from flytekit.exceptions.eager import EagerException
@@ -50,6 +49,7 @@ suggest = SimpleNamespace(float=Float, integer=Integer, category=Category)
 
 Suggestions = dict[str, Union[float, int, str, bool, None]]
 
+
 @dataclass
 class Optimizer:
     objective: Union[PythonFunctionTask, PythonFunctionWorkflow]
@@ -83,25 +83,17 @@ class Optimizer:
 
         if signature.return_annotation is float:
             if len(self.study.directions) != 1:
-                raise ValueError(
-                    "the study must have a single objective if objective returns a single float"
-                )
+                raise ValueError("the study must have a single objective if objective returns a single float")
 
         elif isinstance(args := signature.return_annotation.__args__, tuple):
             if len(args) != len(self.study.directions):
-                raise ValueError(
-                    "objective must return the same number of directions in the study"
-                )
+                raise ValueError("objective must return the same number of directions in the study")
 
             if not all(arg is float for arg in args):
-                raise ValueError(
-                    "objective function must return a float or tuple of floats"
-                )
+                raise ValueError("objective function must return a float or tuple of floats")
 
         else:
-            raise ValueError(
-                "objective function must return a float or tuple of floats"
-            )
+            raise ValueError("objective function must return a float or tuple of floats")
 
     async def __call__(self, **inputs: Any):
         """
@@ -145,7 +137,6 @@ class Optimizer:
                 objective = partial(self.objective, suggestions)
 
             else:
-
                 objective = self.objective
                 # suggest inputs for the trial
                 for key, value in inputs.items():

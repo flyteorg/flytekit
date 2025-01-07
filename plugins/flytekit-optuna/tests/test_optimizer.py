@@ -34,11 +34,11 @@ def test_local_exec():
 
 @fl.task(container_image=image)
 async def bundled_objective(suggestions: Suggestions, power: int) -> float:
-    
+
     # building out a large set of typed inputs is exhausting, so we can just use a dict
-    
+
     x, y, z = suggestions["x"], suggestions["y"], suggestions["z"]
-    
+
     return math.log((((x - 5) ** 2) + (y + 4) ** 4 + (3 * z - 3) ** 2)) ** power
 
 
