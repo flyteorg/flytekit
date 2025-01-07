@@ -1,3 +1,4 @@
+import tempfile
 from dataclasses import dataclass
 from typing import Dict, Optional
 
@@ -29,6 +30,9 @@ class SlurmAgent(AsyncAgentBase):
     # _ssh_clients: Dict[str, SSHClientConnection]
     _conn: Optional[SSHClientConnection] = None
 
+    # Remote path of the batch script
+    REMOTE_PATH = "/tmp/demo.slurm"
+
     def __init__(self) -> None:
         super(SlurmAgent, self).__init__(task_type_name="slurm", metadata_type=SlurmJobMetadata)
 
@@ -39,21 +43,25 @@ class SlurmAgent(AsyncAgentBase):
         **kwargs,
     ) -> SlurmJobMetadata:
         # Retrieve task config
+        script = task_template.custom["script"]
         slurm_host = task_template.custom["slurm_host"]
-        srun_conf = task_template.custom["srun_conf"]
+        sbatch_conf = task_template.custom["sbatch_conf"]
 
-        # Construct srun command for Slurm cluster
-        cmd = _get_srun_cmd(srun_conf=srun_conf, entrypoint=" ".join(task_template.container.args))
+        # Construct sbatch command for Slurm cluster
+        cmd = _get_sbatch_cmd(sbatch_conf=sbatch_conf, batch_script_path=self.REMOTE_PATH)
 
         # Run Slurm job
         if self._conn is None:
             await self._connect(slurm_host)
+        with tempfile.NamedTemporaryFile("w") as f:
+            f.write(script)
+            f.flush()
+            async with self._conn.start_sftp_client() as sftp:
+                await sftp.put(f.name, self.REMOTE_PATH)
         res = await self._conn.run(cmd, check=True)
 
-        # Direct return for sbatch
-        # job_id = res.stdout.split()[-1]
-        # Use echo trick for srun
-        job_id = res.stdout.strip()
+        # Retrieve Slurm job id
+        job_id = res.stdout.split()[-1]
 
         return SlurmJobMetadata(job_id=job_id, slurm_host=slurm_host)
 
@@ -68,7 +76,6 @@ class SlurmAgent(AsyncAgentBase):
                 job_state = o.split("=")[1].strip().lower()
         cur_phase = convert_to_flyte_phase(job_state)
 
-        # outputs.pb will be loaded without setting outputs object
         return Resource(phase=cur_phase)
 
     async def delete(self, resource_meta: SlurmJobMetadata, **kwargs) -> None:
@@ -80,36 +87,26 @@ class SlurmAgent(AsyncAgentBase):
         self._conn = await asyncssh.connect(host=slurm_host)
 
 
-def _get_srun_cmd(srun_conf: Dict[str, str], entrypoint: str) -> str:
-    """Construct Slurm srun command.
+def _get_sbatch_cmd(sbatch_conf: Dict[str, str], batch_script_path: str) -> str:
+    """Construct Slurm sbatch command.
 
-    Flyte entrypoint, pyflyte-execute, is run within a bash shell process.
+    We assume all main scripts and dependencies are on Slurm cluster.
 
     Args:
-        srun_conf: Options of srun command.
-        entrypoint: Flyte entrypoint.
+        sbatch_conf: Options of srun command.
+        batch_script_path: Absolute path of the batch script.
 
     Returns:
-        cmd: Slurm srun command.
+        cmd: Slurm sbatch command.
     """
-    # Setup srun options
-    cmd = ["srun"]
-    for opt, val in srun_conf.items():
+    # Setup sbatch options
+    cmd = ["sbatch"]
+    for opt, val in sbatch_conf.items():
         cmd.extend([f"--{opt}", str(val)])
 
-    cmd.extend(["bash", "-c"])
+    # Assign the batch script to run
+    cmd.append(batch_script_path)
     cmd = " ".join(cmd)
-
-    cmd += f""" '# Setup environment variables
-        export PATH=$PATH:/opt/anaconda/anaconda3/bin;
-
-        # Run pyflyte-execute in a pre-built conda env
-        source activate dev;
-        {entrypoint};
-
-        # A trick to show Slurm job id on stdout
-        echo $SLURM_JOB_ID;'
-    """
 
     return cmd
 

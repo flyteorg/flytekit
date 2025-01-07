@@ -250,7 +250,7 @@ class ShellTask(PythonInstanceTask[T]):
 
         if task_config is not None:
             fully_qualified_class_name = task_config.__module__ + "." + task_config.__class__.__name__
-            if not fully_qualified_class_name == "flytekitplugins.pod.task.Pod":
+            if fully_qualified_class_name not in ["flytekitplugins.pod.task.Pod", "flytekitplugins.slurm.task.Slurm"]:
                 raise ValueError("TaskConfig can either be empty - indicating simple container task or a PodConfig.")
 
         # Each instance of NotebookTask instantiates an underlying task with a dummy function that will only be used
@@ -259,11 +259,14 @@ class ShellTask(PythonInstanceTask[T]):
         # errors.
         # This seem like a hack. We should use a plugin_class that doesn't require a fake-function to make work.
         plugin_class = TaskPlugins.find_pythontask_plugin(type(task_config))
-        self._config_task_instance = plugin_class(task_config=task_config, task_function=_dummy_task_func)
-        # Rename the internal task so that there are no conflicts at serialization time. Technically these internal
-        # tasks should not be serialized at all, but we don't currently have a mechanism for skipping Flyte entities
-        # at serialization time.
-        self._config_task_instance._name = f"_bash.{name}"
+        if plugin_class.__name__ == "SlurmTask":
+            self._config_task_instance = None
+        else:
+            self._config_task_instance = plugin_class(task_config=task_config, task_function=_dummy_task_func)
+            # Rename the internal task so that there are no conflicts at serialization time. Technically these internal
+            # tasks should not be serialized at all, but we don't currently have a mechanism for skipping Flyte entities
+            # at serialization time.
+            self._config_task_instance._name = f"_bash.{name}"
         self._script = script
         self._script_file = script_file
         self._debug = debug
@@ -275,7 +278,9 @@ class ShellTask(PythonInstanceTask[T]):
         super().__init__(
             name,
             task_config,
-            task_type=self._config_task_instance.task_type,
+            task_type=kwargs.pop("task_type")
+            if self._config_task_instance is None
+            else self._config_task_instance.task_type,
             interface=Interface(inputs=inputs, outputs=outputs),
             **kwargs,
         )
@@ -309,7 +314,10 @@ class ShellTask(PythonInstanceTask[T]):
         return self._script_file
 
     def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
-        return self._config_task_instance.pre_execute(user_params)
+        if self._config_task_instance is None:
+            return user_params
+        else:
+            return self._config_task_instance.pre_execute(user_params)
 
     def execute(self, **kwargs) -> typing.Any:
         """
@@ -367,7 +375,10 @@ class ShellTask(PythonInstanceTask[T]):
         return None
 
     def post_execute(self, user_params: ExecutionParameters, rval: typing.Any) -> typing.Any:
-        return self._config_task_instance.post_execute(user_params, rval)
+        if self._config_task_instance is None:
+            return rval
+        else:
+            return self._config_task_instance.post_execute(user_params, rval)
 
 
 class RawShellTask(ShellTask):
