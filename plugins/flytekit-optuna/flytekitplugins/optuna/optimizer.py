@@ -1,11 +1,10 @@
 import asyncio
+import inspect
 from dataclasses import dataclass
 from types import SimpleNamespace
-from typing import Optional, Union, Any
-import inspect
+from typing import Any, Optional, Union
 
 import optuna
-
 from flytekit import PythonFunctionTask
 from flytekit.core.workflow import PythonFunctionWorkflow
 from flytekit.exceptions.eager import EagerException
