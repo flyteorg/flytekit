@@ -157,6 +157,7 @@ class Controller:
         self.entries_lock = threading.Lock()
 
         # Things for actually kicking off and monitoring
+
         self.__runner_thread: threading.Thread = threading.Thread(
             target=self._execute, daemon=True, name="controller-thread"
         )
@@ -251,6 +252,9 @@ class Controller:
                         # otherwise it's still pending or running
 
     def _execute(self) -> None:
+        from flytekit.core.context_manager import FlyteContextManager
+        ctx = FlyteContextManager.current_context()
+        print(f"!!!!! _execute ctx id {id(ctx)}")
         # This needs to be a while loop that runs forever,
         while True:
             # Gather all items that need processing
