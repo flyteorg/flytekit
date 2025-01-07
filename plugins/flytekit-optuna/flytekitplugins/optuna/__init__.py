@@ -1,3 +1,3 @@
-from .optimizer import Optimizer, suggest
+from .optimizer import Optimizer, Suggestions, suggest
 
-__all__ = ["Optimizer", "suggest"]
+__all__ = ["Optimizer", "Suggestions", "suggest"]
