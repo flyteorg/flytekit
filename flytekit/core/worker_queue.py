@@ -235,7 +235,9 @@ class Controller:
                         item.status = update.status
                         if update.status == ItemStatus.SUCCESS:
                             item.result = update.wf_exec.outputs.as_python_native(item.python_interface)
+                            print(f"!!!! Setting item {item} {id(item)} to success, exec {item.wf_exec.id}")
                         elif update.status == ItemStatus.FAILED:
+                            print(f"!!!! Setting item {item} {id(item)} to failed {update.error}")
                             # If update object already has an error, then use that, otherwise look for one in the
                             # execution closure.
                             if update.error:
@@ -351,12 +353,13 @@ class Controller:
 
         # wait for it to finish one way or another
         while True:
+            print(f"Watching id {id(i)}")
             if i.status == ItemStatus.SUCCESS:
                 return i.result
             elif i.status == ItemStatus.FAILED:
                 raise i.error
             else:
-                await asyncio.sleep(0.1)  # Small delay to avoid busy-waiting
+                await asyncio.sleep(5)  # Small delay to avoid busy-waiting
 
     def render_html(self) -> str:
         """Render the callstack as a deck presentation to be shown after eager workflow execution."""
