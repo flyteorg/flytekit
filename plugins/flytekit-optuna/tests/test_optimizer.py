@@ -1,8 +1,9 @@
 import asyncio
 import math
+from typing import Union
 
 import flytekit as fl
-from flytekitplugins.optuna import Optimizer, suggest, Suggestions
+from flytekitplugins.optuna import Optimizer, suggest
 
 
 image = fl.ImageSpec(builder="union", packages=["flytekit>=1.15.0", "optuna>=4.0.0"])
@@ -33,7 +34,7 @@ def test_local_exec():
 
 
 @fl.task(container_image=image)
-async def bundled_objective(suggestions: Suggestions, power: int) -> float:
+async def bundled_objective(suggestions: dict[str, Union[int, float]], power: int) -> float:
 
     # building out a large set of typed inputs is exhausting, so we can just use a dict
 
