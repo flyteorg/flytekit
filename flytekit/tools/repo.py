@@ -5,6 +5,7 @@ import os
 import tarfile
 import tempfile
 import typing
+from contextlib import contextmanager
 from pathlib import Path
 
 import click
@@ -23,6 +24,8 @@ from flytekit.tools import fast_registration, module_loader
 from flytekit.tools.script_mode import _find_project_root
 from flytekit.tools.serialize_helpers import get_registrable_entities, persist_registrable_entities
 from flytekit.tools.translator import FlyteControlPlaneEntity, Options
+
+original_secho = click.secho
 
 
 class NoSerializableEntitiesError(Exception):
@@ -239,6 +242,20 @@ def print_registration_status(
         rprint(f"[{color}]{state_ind} {name}: {i.name} (Failed)")
 
 
+@contextmanager
+def temporary_secho():
+    """
+    Temporarily restores the original click.secho function.
+    Useful when you need to temporarily disable quiet mode.
+    """
+    current_secho = click.secho
+    try:
+        click.secho = original_secho
+        yield
+    finally:
+        click.secho = current_secho
+
+
 def register(
     project: str,
     domain: str,
@@ -254,7 +271,7 @@ def register(
     copy_style: CopyFileDetection,
     env: typing.Optional[typing.Dict[str, str]],
     summary_format: typing.Optional[str],
-    summary_dir: typing.Optional[str],
+    quiet: bool = False,
     dry_run: bool = False,
     activate_launchplans: bool = False,
     skip_errors: bool = False,
@@ -265,6 +282,10 @@ def register(
     Temporarily, for fast register, specify both the fast arg as well as copy_style.
     fast == True with copy_style == None means use the old fast register tar'ring method.
     """
+
+    if quiet:
+        click.secho = lambda *args, **kw: None
+
     detected_root = find_common_root(package_or_module)
     click.secho(f"Detected Root {detected_root}, using this to create deployable package...", fg="yellow")
 
@@ -320,6 +341,7 @@ def register(
     registrable_entities = serialize_get_control_plane_entities(
         serialization_settings, str(detected_root), options, is_registration=True
     )
+
     click.secho(
         f"Serializing and registering {len(registrable_entities)} flyte entities",
         fg="green",
@@ -359,20 +381,24 @@ def register(
                             print_activation_message = True
                         if cp_entity.should_auto_activate:
                             print_activation_message = True
-                    print_registration_status(
-                        i, console_url=console_url, verbosity=verbosity, activation=print_activation_message
-                    )
+                    if not quiet:
+                        print_registration_status(
+                            i, console_url=console_url, verbosity=verbosity, activation=print_activation_message
+                        )
                     result["status"] = "success"
 
                 except Exception as e:
                     if not skip_errors:
                         raise e
-                    print_registration_status(og_id, success=False)
+                    if not quiet:
+                        print_registration_status(og_id, success=False)
                     result["status"] = "failed"
             else:
-                print_registration_status(og_id, dry_run=True)
+                if not quiet:
+                    print_registration_status(og_id, dry_run=True)
         except RegistrationSkipped:
-            print_registration_status(og_id, success=False)
+            if not quiet:
+                print_registration_status(og_id, success=False)
             result["status"] = "skipped"
 
         return result
@@ -399,23 +425,12 @@ def register(
     click.secho(f"Successfully registered {len(registrable_entities)} entities", fg="green")
 
     if summary_format is not None:
-        supported_format = ["json", "yaml"]
+        supported_format = {"json", "yaml"}
         if summary_format not in supported_format:
             raise ValueError(f"Unsupported file format: {summary_format}")
 
-        if summary_dir is not None:
-            os.makedirs(summary_dir, exist_ok=True)
-        else:
-            summary_dir = os.getcwd()
-
-        summary_file = f"registration_summary.{summary_format}"
-        summary_path = os.path.join(summary_dir, summary_file)
-
-        if summary_format == "json":
-            with open(summary_path, "w") as f:
-                json.dump(all_results, f)
-        elif summary_format == "yaml":
-            with open(summary_path, "w") as f:
-                yaml.dump(all_results, f)
-
-        click.secho(f"Registration summary written to: {summary_path}", fg="green")
+        with temporary_secho():
+            if summary_format == "json":
+                click.secho(json.dumps(all_results, indent=2))
+            elif summary_format == "yaml":
+                click.secho(yaml.dump(all_results))

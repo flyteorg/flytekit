@@ -169,29 +169,6 @@ def test_non_fast_register_require_version(mock_client, mock_remote):
 
 @mock.patch("flytekit.configuration.plugin.FlyteRemote", spec=FlyteRemote)
 @mock.patch("flytekit.clients.friendly.SynchronousFlyteClient", spec=SynchronousFlyteClient)
-def test_register_summary_dir_without_format(mock_client, mock_remote):
-    mock_remote._client = mock_client
-    mock_remote.return_value._version_from_hash.return_value = "dummy_version_from_hash"
-    mock_remote.return_value.fast_package.return_value = "dummy_md5_bytes", "dummy_native_url"
-
-    runner = CliRunner()
-    context_manager.FlyteEntities.entities.clear()
-
-    with runner.isolated_filesystem():
-        out = subprocess.run(["git", "init"], capture_output=True)
-        assert out.returncode == 0
-        os.makedirs("core4", exist_ok=True)
-        with open(os.path.join("core4", "sample.py"), "w") as f:
-            f.write(sample_file_contents)
-            f.close()
-        result = runner.invoke(pyflyte.main, ["register", "--summary-dir", "summaries", "core4"])
-        assert result.exit_code == 2
-
-        shutil.rmtree("core4")
-
-
-@mock.patch("flytekit.configuration.plugin.FlyteRemote", spec=FlyteRemote)
-@mock.patch("flytekit.clients.friendly.SynchronousFlyteClient", spec=SynchronousFlyteClient)
 def test_register_registrated_summary_json(mock_client, mock_remote):
     ctx = FlyteContextManager.current_context()
     mock_remote._client = mock_client
@@ -205,44 +182,16 @@ def test_register_registrated_summary_json(mock_client, mock_remote):
         out = subprocess.run(["git", "init"], capture_output=True)
         assert out.returncode == 0
         os.makedirs("core5", exist_ok=True)
-        os.makedirs("summaries", exist_ok=True)
         with open(os.path.join("core5", "sample.py"), "w") as f:
             f.write(sample_file_contents)
             f.close()
 
         result = runner.invoke(
             pyflyte.main,
-            ["register", "--summary-format", "json", "--summary-dir", "summaries", "core5"]
-        )
-        assert result.exit_code == 0
-
-        summary_path = os.path.join("summaries", "registration_summary.json")
-        assert os.path.exists(summary_path)
-
-        with open(summary_path) as f:
-            summary_data = json.load(f)
-
-        assert isinstance(summary_data, list)
-        assert len(summary_data) > 0
-        for entry in summary_data:
-            assert "id" in entry
-            assert "type" in entry
-            assert "version" in entry
-            assert "status" in entry
-
-
-        result = runner.invoke(
-            pyflyte.main,
             ["register", "--summary-format", "json", "core5"]
         )
         assert result.exit_code == 0
-
-        summary_path = os.path.join(os.getcwd(), "registration_summary.json")
-        assert os.path.exists(summary_path)
-
-        with open(summary_path) as f:
-            summary_data = json.load(f)
-
+        summary_data = json.loads(result.output)
         assert isinstance(summary_data, list)
         assert len(summary_data) > 0
         for entry in summary_data:
@@ -250,9 +199,7 @@ def test_register_registrated_summary_json(mock_client, mock_remote):
             assert "type" in entry
             assert "version" in entry
             assert "status" in entry
-
         shutil.rmtree("core5")
-        shutil.rmtree("summaries")
 
 @mock.patch("flytekit.configuration.plugin.FlyteRemote", spec=FlyteRemote)
 @mock.patch("flytekit.clients.friendly.SynchronousFlyteClient", spec=SynchronousFlyteClient)
@@ -269,43 +216,16 @@ def test_register_registrated_summary_yaml(mock_client, mock_remote):
         out = subprocess.run(["git", "init"], capture_output=True)
         assert out.returncode == 0
         os.makedirs("core6", exist_ok=True)
-        os.makedirs("summaries", exist_ok=True)
         with open(os.path.join("core6", "sample.py"), "w") as f:
             f.write(sample_file_contents)
             f.close()
 
         result = runner.invoke(
             pyflyte.main,
-            ["register", "--summary-format", "yaml", "--summary-dir", "summaries", "core6"]
-        )
-        assert result.exit_code == 0
-
-        summary_path = os.path.join("summaries", "registration_summary.yaml")
-        assert os.path.exists(summary_path)
-
-        with open(summary_path) as f:
-            summary_data = yaml.safe_load(f)
-
-        assert isinstance(summary_data, list)
-        assert len(summary_data) > 0
-        for entry in summary_data:
-            assert "id" in entry
-            assert "type" in entry
-            assert "version" in entry
-            assert "status" in entry
-
-        result = runner.invoke(
-            pyflyte.main,
             ["register", "--summary-format", "yaml", "core6"]
         )
         assert result.exit_code == 0
-
-        summary_path = os.path.join(os.getcwd(), "registration_summary.yaml")
-        assert os.path.exists(summary_path)
-
-        with open(summary_path) as f:
-            summary_data = yaml.safe_load(f)
-
+        summary_data = yaml.safe_load(result.output)
         assert isinstance(summary_data, list)
         assert len(summary_data) > 0
         for entry in summary_data:
@@ -315,4 +235,29 @@ def test_register_registrated_summary_yaml(mock_client, mock_remote):
             assert "status" in entry
 
         shutil.rmtree("core6")
-        shutil.rmtree("summaries")
+
+@mock.patch("flytekit.configuration.plugin.FlyteRemote", spec=FlyteRemote)
+@mock.patch("flytekit.clients.friendly.SynchronousFlyteClient", spec=SynchronousFlyteClient)
+def test_register_quiet(mock_client, mock_remote):
+    ctx = FlyteContextManager.current_context()
+    mock_remote._client = mock_client
+    mock_remote.return_value.context = ctx
+    mock_remote.return_value._version_from_hash.return_value = "dummy_version_from_hash"
+    mock_remote.return_value.fast_package.return_value = "dummy_md5_bytes", "dummy_native_url"
+    runner = CliRunner()
+    context_manager.FlyteEntities.entities.clear()
+    with runner.isolated_filesystem():
+        out = subprocess.run(["git", "init"], capture_output=True)
+        assert out.returncode == 0
+        os.makedirs("core7", exist_ok=True)
+        with open(os.path.join("core7", "sample.py"), "w") as f:
+            f.write(sample_file_contents)
+            f.close()
+        result = runner.invoke(
+            pyflyte.main,
+            ["register", "--quiet", "core7"]
+        )
+        assert result.exit_code == 0
+        assert result.output == ""
+
+        shutil.rmtree("core7")

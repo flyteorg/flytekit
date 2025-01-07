@@ -148,14 +148,13 @@ the root of your project, it finds the first folder that does not have a ``__ini
     required=False,
     type=click.Choice(["json", "yaml"], case_sensitive=False),
     default=None,
-    help="Set output format for registration summary. Lists registered workflows, tasks, and launch plans. 'json' and 'yaml' supported.",
+    help="Output format for registration summary. Lists registered workflows, tasks, and launch plans. 'json' and 'yaml' supported.",
 )
 @click.option(
-    "--summary-dir",
-    required=False,
-    type=click.Path(dir_okay=True, file_okay=False, writable=True, resolve_path=True),
-    default=None,
-    help="Directory to save registration summary. Uses current working directory if not specified.",
+    "--quiet",
+    is_flag=True,
+    default=False,
+    help="Suppress output messages, only displaying errors.",
 )
 @click.argument("package-or-module", type=click.Path(exists=True, readable=True, resolve_path=True), nargs=-1)
 @click.pass_context
@@ -178,7 +177,7 @@ def register(
     env: typing.Optional[typing.Dict[str, str]],
     skip_errors: bool,
     summary_format: typing.Optional[str],
-    summary_dir: typing.Optional[str],
+    quiet: bool,
 ):
     """
     see help
@@ -213,8 +212,12 @@ def register(
             "Missing argument 'PACKAGE_OR_MODULE...', at least one PACKAGE_OR_MODULE is required but multiple can be passed",
         )
 
-    if summary_dir is not None and summary_format is None:
-        raise click.UsageError("--summary-format is a required parameter when --summary-dir is specified")
+    if summary_format is not None:
+        quiet = True
+
+    # mutes all secho
+    if quiet:
+        click.secho = lambda *args, **kw: None
 
     # Use extra images in the config file if that file exists
     config_file = ctx.obj.get(constants.CTX_CONFIG_FILE)
@@ -247,7 +250,7 @@ def register(
         remote=remote,
         env=env,
         summary_format=summary_format,
-        summary_dir=summary_dir,
+        quiet=quiet,
         dry_run=dry_run,
         activate_launchplans=activate_launchplans,
         skip_errors=skip_errors,
