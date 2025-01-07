@@ -22,7 +22,6 @@ from mashumaro.types import SerializableType
 
 from flytekit.core.constants import MESSAGEPACK
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import AsyncTypeTransformer, TypeEngine, TypeTransformerFailedError, get_batch_size
 from flytekit.exceptions.user import FlyteAssertion
 from flytekit.extras.pydantic_transformer.decorator import model_serializer, model_validator
@@ -679,10 +678,6 @@ class FlyteDirToMultipartBlobTransformer(AsyncTypeTransformer[FlyteDirectory]):
         ):
             return FlyteDirectory.__class_getitem__(literal_type.blob.format)
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
-
-
-def _flyte_directory_downloader(file_access_provider: FileAccessProvider, uri: str, local_folder: str, batch_size: int):
-    return file_access_provider.get_data(uri, local_folder, is_multipart=True, batch_size=batch_size)
 
 
 TypeEngine.register(FlyteDirToMultipartBlobTransformer())
