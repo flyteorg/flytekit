@@ -1,10 +1,11 @@
 import asyncio
-import inspect
 from dataclasses import dataclass
 from types import SimpleNamespace
-from typing import Any, Optional, Union
+from typing import Optional, Union, Any
+import inspect
 
 import optuna
+
 from flytekit import PythonFunctionTask
 from flytekit.core.workflow import PythonFunctionWorkflow
 from flytekit.exceptions.eager import EagerException
@@ -72,29 +73,42 @@ class Optimizer:
         elif isinstance(self.objective, PythonFunctionWorkflow):
             func = self.objective._workflow_function
         else:
-            raise ValueError("objective must be a PythonFunctionTask or PythonFunctionWorkflow")
+            raise ValueError(
+                "objective must be a PythonFunctionTask or PythonFunctionWorkflow"
+            )
 
         signature = inspect.signature(func)
 
         if signature.return_annotation is float:
             if len(self.study.directions) != 1:
-                raise ValueError("the study must have a single objective if objective returns a single float")
+                raise ValueError(
+                    "the study must have a single objective if objective returns a single float"
+                )
 
         elif isinstance(args := signature.return_annotation.__args__, tuple):
             if len(args) != len(self.study.directions):
-                raise ValueError("objective must return the same number of directions in the study")
+                raise ValueError(
+                    "objective must return the same number of directions in the study"
+                )
 
             if not all(arg is float for arg in args):
-                raise ValueError("objective function must return a float or tuple of floats")
+                raise ValueError(
+                    "objective function must return a float or tuple of floats"
+                )
 
         else:
-            raise ValueError("objective function must return a float or tuple of floats")
+            raise ValueError(
+                "objective function must return a float or tuple of floats"
+            )
 
-    async def __call__(self, suggestions: Optional[dict[str, Suggestion]] = None, /, **inputs: Any):
+    async def __call__(
+        self, suggestions: Optional[dict[str, Suggestion]] = None, /, **inputs: Any
+    ):
         """
         Asynchronously executes the objective function remotely.
         Parameters:
-            **inputs: inputs to objective function
+            suggestions (Optional[dict[str, Suggestion]]): bundled suggestions to objective function
+            **inputs: other inputs to objective function
         """
 
         if suggestions is not None:
@@ -107,17 +121,13 @@ class Optimizer:
                 if not isinstance(value, Suggestion):
                     raise ValueError(f"suggestion must be of type {type(value)}")
 
-            for value in inputs.values():
-                if isinstance(value, Suggestion):
-                    raise ValueError(
-                        "you must provide all suggestions as a positional argument of type dict[str, Suggestion]"
-                    )
-
         # create semaphore to manage concurrency
         semaphore = asyncio.Semaphore(self.concurrency)
 
         # create list of async trials
-        trials = [self.spawn(semaphore, suggestions, **inputs) for _ in range(self.n_trials)]
+        trials = [
+            self.spawn(semaphore, suggestions, **inputs) for _ in range(self.n_trials)
+        ]
 
         # await all trials to complete
         await asyncio.gather(*trials)
@@ -135,8 +145,8 @@ class Optimizer:
 
             if suggestions is not None:
                 inputs["suggestions"] = self.suggest(trial, suggestions)
-            else:
-                inputs = self.suggest(trial, inputs)
+
+            inputs = self.suggest(trial, inputs)
 
             try:
                 # schedule the trial
