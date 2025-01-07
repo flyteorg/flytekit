@@ -96,7 +96,6 @@ class WorkItem:
 
     entity: RunnableEntity
     input_kwargs: dict[str, typing.Any]
-    fut: asyncio.Future
     result: typing.Any = None
     error: typing.Optional[BaseException] = None
     status: ItemStatus = ItemStatus.PENDING
@@ -235,9 +234,7 @@ class Controller:
                         item.status = update.status
                         if update.status == ItemStatus.SUCCESS:
                             item.result = update.wf_exec.outputs.as_python_native(item.python_interface)
-                            print(f"!!!! Setting item {item} {id(item)} to success, exec {item.wf_exec.id}")
                         elif update.status == ItemStatus.FAILED:
-                            print(f"!!!! Setting item {item} {id(item)} to failed {update.error}")
                             # If update object already has an error, then use that, otherwise look for one in the
                             # execution closure.
                             if update.error:
@@ -253,10 +250,9 @@ class Controller:
 
                         # otherwise it's still pending or running
 
-    def _execute(self) -> None:
+    def _poll(self) -> None:
         from flytekit.core.context_manager import FlyteContextManager
         ctx = FlyteContextManager.current_context()
-        print(f"!!!!! _execute ctx id {id(ctx)}")
         # This needs to be a while loop that runs forever,
         while True:
             # Gather all items that need processing
@@ -272,6 +268,13 @@ class Controller:
 
             # This is a blocking call so we don't hit the API too much.
             time.sleep(2)
+
+    def _execute(self) -> None:
+        try:
+            self._poll()
+        except Exception as e:
+            logger.error(f"Error in eager execution processor: {e}")
+            exit(1)
 
     def get_labels(self) -> Labels:
         """
@@ -337,14 +340,13 @@ class Controller:
             )
 
     async def add(
-        self, task_loop: asyncio.AbstractEventLoop, entity: RunnableEntity, input_kwargs: dict[str, typing.Any]
-    ) -> asyncio.Future:
+        self, entity: RunnableEntity, input_kwargs: dict[str, typing.Any]
+    ) -> typing.Any:
         """
         Add an entity along with the requested inputs to be submitted to Admin for running and return a future
         """
         # need to also check to see if the entity has already been registered, and if not, register it.
-        fut = task_loop.create_future()
-        i = WorkItem(entity=entity, input_kwargs=input_kwargs, fut=fut)
+        i = WorkItem(entity=entity, input_kwargs=input_kwargs)
 
         with self.entries_lock:
             if entity.name not in self.entries:
@@ -359,7 +361,7 @@ class Controller:
             elif i.status == ItemStatus.FAILED:
                 raise i.error
             else:
-                await asyncio.sleep(5)  # Small delay to avoid busy-waiting
+                await asyncio.sleep(1)  # Small delay to avoid busy-waiting
 
     def render_html(self) -> str:
         """Render the callstack as a deck presentation to be shown after eager workflow execution."""

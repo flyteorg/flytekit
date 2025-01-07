@@ -4,7 +4,7 @@ import asyncio
 import datetime
 from flytekit.core.task import task
 from flytekit.remote.remote import FlyteRemote
-from flytekit.core.worker_queue import Controller, WorkItem
+from flytekit.core.worker_queue import Controller, WorkItem, ItemStatus, Update
 from flytekit.configuration import ImageConfig, LocalConfig, SerializationSettings
 from flytekit.utils.asyn import loop_manager
 from flytekit.models.execution import ExecutionSpec, ExecutionClosure, ExecutionMetadata, NotificationList, Execution, AbortMetadata
@@ -13,8 +13,18 @@ from flytekit.models import common as common_models
 from flytekit.models.core import execution
 
 
-@mock.patch("flytekit.core.worker_queue.Controller.launch_and_start_watch")
-def test_controller(mock_start):
+def _mock_reconcile(update: Update):
+    update.status = ItemStatus.SUCCESS
+    update.wf_exec = mock.MagicMock()
+    # This is how the controller pulls the result from a successful execution
+    update.wf_exec.outputs.as_python_native.return_value = "hello"
+
+
+@mock.patch("flytekit.core.worker_queue.Controller.reconcile_one", side_effect=_mock_reconcile)
+def test_controller(mock_reconcile):
+    print(f"ID mock_reconcile {id(mock_reconcile)}")
+    mock_reconcile.return_value = 123
+
     @task
     def t1() -> str:
         return "hello"
@@ -25,16 +35,8 @@ def test_controller(mock_start):
     )
     c = Controller(remote, ss, tag="exec-id", root_tag="exec-id", exec_prefix="e-unit-test")
 
-    def _mock_start(wi: WorkItem, idx: int):
-        assert c.entries[wi.entity.name][idx] is wi
-        wi.wf_exec = mock.MagicMock()  # just to pass the assert
-        wi.set_result("hello")
-
-    mock_start.side_effect = _mock_start
-
     async def fake_eager():
-        loop = asyncio.get_running_loop()
-        f = c.add(loop, entity=t1, input_kwargs={})
+        f = c.add(entity=t1, input_kwargs={})
         res = await f
         assert res == "hello"
 
@@ -153,7 +155,7 @@ def test_work_item_hashing_equality():
     def t1() -> str:
         return "hello"
 
-    wi1 = WorkItem(entity=t1, wf_exec=fwe, input_kwargs={}, fut=None)
-    wi2 = WorkItem(entity=t1, wf_exec=fwe, input_kwargs={}, fut=None)
+    wi1 = WorkItem(entity=t1, wf_exec=fwe, input_kwargs={})
+    wi2 = WorkItem(entity=t1, wf_exec=fwe, input_kwargs={})
     wi2.uuid = wi1.uuid
     assert wi1 == wi2
