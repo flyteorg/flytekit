@@ -21,6 +21,7 @@ from mashumaro.types import SerializableType
 
 from flytekit.core.constants import MESSAGEPACK
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
+from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import (
     AsyncTypeTransformer,
     TypeEngine,
@@ -738,14 +739,16 @@ class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
         expected_format = FlyteFilePathTransformer.get_format(expected_python_type)
         ff = FlyteFile.__class_getitem__(expected_format)(
             path=local_path,
-            downloader=partial(self.downloader, ctx=ctx, remote_path=uri, local_path=local_path),
+            downloader=partial(self.downloader, ctx.file_access, remote_path=uri, local_path=local_path),
         )
         ff._remote_source = uri
         return ff
 
     @staticmethod
     def downloader(
-        ctx: FlyteContext, remote_path: typing.Union[str, os.PathLike], local_path: typing.Union[str, os.PathLike]
+        file_access_provider: FileAccessProvider,
+        remote_path: typing.Union[str, os.PathLike],
+        local_path: typing.Union[str, os.PathLike],
     ) -> None:
         """
         Download data from remote_path to local_path.
@@ -753,7 +756,7 @@ class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
         We design the downloader as a static method because its behavior is logically
         related to this class but don't need to interact with class or instance data.
         """
-        ctx.file_access.get_data(remote_path, local_path, is_multipart=False)
+        file_access_provider.get_data(remote_path, local_path, is_multipart=False)
 
     def guess_python_type(self, literal_type: LiteralType) -> typing.Type[FlyteFile[typing.Any]]:
         if (
