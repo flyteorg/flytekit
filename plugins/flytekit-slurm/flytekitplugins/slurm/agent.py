@@ -19,7 +19,7 @@ class SlurmJobMetadata(ResourceMeta):
     """
 
     job_id: str
-    ssh_conf: Dict[str, str]
+    slurm_host: str
 
 
 class SlurmAgent(AsyncAgentBase):
@@ -39,7 +39,7 @@ class SlurmAgent(AsyncAgentBase):
         **kwargs,
     ) -> SlurmJobMetadata:
         # Retrieve task config
-        ssh_conf = task_template.custom["ssh_conf"]
+        slurm_host = task_template.custom["slurm_host"]
         srun_conf = task_template.custom["srun_conf"]
 
         # Construct srun command for Slurm cluster
@@ -47,7 +47,7 @@ class SlurmAgent(AsyncAgentBase):
 
         # Run Slurm job
         if self._conn is None:
-            await self._connect(ssh_conf)
+            await self._connect(slurm_host)
         res = await self._conn.run(cmd, check=True)
 
         # Direct return for sbatch
@@ -55,10 +55,10 @@ class SlurmAgent(AsyncAgentBase):
         # Use echo trick for srun
         job_id = res.stdout.strip()
 
-        return SlurmJobMetadata(job_id=job_id, ssh_conf=ssh_conf)
+        return SlurmJobMetadata(job_id=job_id, slurm_host=slurm_host)
 
     async def get(self, resource_meta: SlurmJobMetadata, **kwargs) -> Resource:
-        await self._connect(resource_meta.ssh_conf)
+        await self._connect(resource_meta.slurm_host)
         res = await self._conn.run(f"scontrol show job {resource_meta.job_id}", check=True)
 
         # Determine the current flyte phase from Slurm job state
@@ -72,17 +72,12 @@ class SlurmAgent(AsyncAgentBase):
         return Resource(phase=cur_phase)
 
     async def delete(self, resource_meta: SlurmJobMetadata, **kwargs) -> None:
-        await self._connect(resource_meta.ssh_conf)
+        await self._connect(resource_meta.slurm_host)
         _ = await self._conn.run(f"scancel {resource_meta.job_id}", check=True)
 
-    async def _connect(self, ssh_conf: Dict[str, str]) -> None:
+    async def _connect(self, slurm_host: str) -> None:
         """Make an SSH client connection."""
-        self._conn = await asyncssh.connect(
-            host=ssh_conf["host"],
-            port=int(ssh_conf["port"]),
-            username=ssh_conf["username"],
-            password=ssh_conf["password"],
-        )
+        self._conn = await asyncssh.connect(host=slurm_host)
 
 
 def _get_srun_cmd(srun_conf: Dict[str, str], entrypoint: str) -> str:

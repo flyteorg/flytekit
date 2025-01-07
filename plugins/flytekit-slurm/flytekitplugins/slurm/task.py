@@ -19,17 +19,14 @@ class Slurm(object):
     Compared with spark, please refer to https://api-docs.databricks.com/python/pyspark/latest/api/pyspark.SparkContext.html.
 
     Args:
-        ssh_conf: Options of ssh connection. The keys should match what asyncssh.connect method expects:
-            https://asyncssh.readthedocs.io/en/latest/api.html#asyncssh.connect
+        slurm_host: Slurm host name. We assume there's no default Slurm host now.
         srun_conf: Options of srun command.
     """
 
-    ssh_conf: Optional[Dict[str, str]] = None
+    slurm_host: str
     srun_conf: Optional[Dict[str, str]] = None
 
     def __post_init__(self):
-        if self.ssh_conf is None:
-            self.ssh_conf = {}
         if self.srun_conf is None:
             self.srun_conf = {}
 
@@ -57,7 +54,7 @@ class SlurmTask(AsyncAgentExecutorMixin, PythonFunctionTask[Slurm]):
         )
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
-        return {"ssh_conf": self.task_config.ssh_conf, "srun_conf": self.task_config.srun_conf}
+        return {"slurm_host": self.task_config.slurm_host, "srun_conf": self.task_config.srun_conf}
 
     def execute(self, **kwargs) -> Any:
         ctx = FlyteContextManager.current_context()
