@@ -1,12 +1,16 @@
 import mock
 import pytest
 import asyncio
-
+import datetime
 from flytekit.core.task import task
 from flytekit.remote.remote import FlyteRemote
 from flytekit.core.worker_queue import Controller, WorkItem
 from flytekit.configuration import ImageConfig, LocalConfig, SerializationSettings
 from flytekit.utils.asyn import loop_manager
+from flytekit.models.execution import ExecutionSpec, ExecutionClosure, ExecutionMetadata, NotificationList, Execution, AbortMetadata
+from flytekit.models.core import identifier
+from flytekit.models import common as common_models
+from flytekit.models.core import execution
 
 
 @mock.patch("flytekit.core.worker_queue.Controller.launch_and_start_watch")
@@ -107,3 +111,49 @@ async def test_wi():
     wi.set_error(ValueError("hello"))
     with pytest.raises(ValueError):
         await fut2
+
+
+def test_work_item_hashing_equality():
+    from flytekit.remote import FlyteRemote, FlyteWorkflowExecution
+    remote = FlyteRemote.for_sandbox(default_project="p", domain="d")
+
+    e_spec = ExecutionSpec(
+        identifier.Identifier(identifier.ResourceType.LAUNCH_PLAN, "project", "domain", "name", "version"),
+        ExecutionMetadata(ExecutionMetadata.ExecutionMode.MANUAL, "tester", 1),
+        notifications=NotificationList(
+            [
+                common_models.Notification(
+                    [execution.WorkflowExecutionPhase.ABORTED],
+                    pager_duty=common_models.PagerDutyNotification(recipients_email=["a", "b", "c"]),
+                )
+            ]
+        ),
+        raw_output_data_config=common_models.RawOutputDataConfig(output_location_prefix="raw_output"),
+        max_parallelism=100,
+    )
+
+    test_datetime = datetime.datetime(year=2022, month=1, day=1, tzinfo=datetime.timezone.utc)
+    test_timedelta = datetime.timedelta(seconds=10)
+    abort_metadata = AbortMetadata(cause="cause", principal="testuser")
+
+    e_closure = ExecutionClosure(
+        phase=execution.WorkflowExecutionPhase.SUCCEEDED,
+        started_at=test_datetime,
+        duration=test_timedelta,
+        abort_metadata=abort_metadata,
+    )
+
+    e_id = identifier.WorkflowExecutionIdentifier("project", "domain", "exec-name")
+
+    ex = Execution(id=e_id, spec=e_spec, closure=e_closure)
+
+    fwe = FlyteWorkflowExecution.promote_from_model(ex, remote)
+
+    @task
+    def t1() -> str:
+        return "hello"
+
+    wi1 = WorkItem(entity=t1, wf_exec=fwe, input_kwargs={}, fut=None)
+    wi2 = WorkItem(entity=t1, wf_exec=fwe, input_kwargs={}, fut=None)
+    wi2.uuid = wi1.uuid
+    assert wi1 == wi2

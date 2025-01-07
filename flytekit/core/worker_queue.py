@@ -7,6 +7,7 @@ import re
 import threading
 import time
 import typing
+import uuid
 from dataclasses import dataclass
 from enum import Enum
 
@@ -87,8 +88,12 @@ class Update:
     error: typing.Optional[BaseException] = None
 
 
-@dataclass
+@dataclass(unsafe_hash=True)
 class WorkItem:
+    """
+    This is a class to keep track of what the user requested. The
+    """
+
     entity: RunnableEntity
     input_kwargs: dict[str, typing.Any]
     fut: asyncio.Future
@@ -97,6 +102,7 @@ class WorkItem:
     status: ItemStatus = ItemStatus.PENDING
     wf_exec: typing.Optional[FlyteWorkflowExecution] = None
     python_interface: typing.Optional[Interface] = None
+    uuid: uuid.UUID = uuid.uuid4()
 
     def __post_init__(self):
         self.python_interface = self._get_python_interface()
@@ -149,7 +155,7 @@ class Controller:
         self.ss = ss
         self.exec_prefix = exec_prefix
         self.entries_lock = threading.Lock()
-        
+
         # Things for actually kicking off and monitoring
         self.__runner_thread: threading.Thread = threading.Thread(
             target=self._execute, daemon=True, name="controller-thread"
@@ -206,24 +212,24 @@ class Controller:
             update.error = e
             update.status = ItemStatus.FAILED
 
-    def _get_update_items(self) -> typing.Dict[WorkItem, Update]:
+    def _get_update_items(self) -> typing.Dict[uuid.UUID, Update]:
         with self.entries_lock:
-            update_items: typing.Dict[WorkItem, Update] = {}
+            update_items: typing.Dict[uuid.UUID, Update] = {}
             for entity_name, items in self.entries.items():
                 for idx, item in enumerate(items):
                     # Only process items that need it
                     if item.status == ItemStatus.SUCCESS or item.status == ItemStatus.FAILED:
                         continue
                     update = Update(wi=item, idx=idx)
-                    update_items[item] = update
+                    update_items[item.uuid] = update
             return update_items
 
-    def _apply_updates(self, update_items: typing.Dict[WorkItem, Update]) -> None:
+    def _apply_updates(self, update_items: typing.Dict[uuid.UUID, Update]) -> None:
         with self.entries_lock:
             for entity_name, items in self.entries.items():
                 for item in items:
-                    if item in update_items:
-                        update = update_items[item]
+                    if item.uuid in update_items:
+                        update = update_items[item.uuid]
                         item.wf_exec = update.wf_exec
                         item.status = update.status
                         if update.status == ItemStatus.SUCCESS:
