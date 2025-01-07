@@ -33,6 +33,8 @@ Note: This command only works on regular Python packages, not namespace packages
 the root of your project, it finds the first folder that does not have a ``__init__.py`` file.
 """
 
+_original_secho = click.secho
+
 
 @click.command("register", help=_register_help)
 @project_option_dec
@@ -215,45 +217,49 @@ def register(
     if summary_format is not None:
         quiet = True
 
-    # mutes all secho
     if quiet:
+        # Mute all secho output through monkey patching
         click.secho = lambda *args, **kw: None
 
-    # Use extra images in the config file if that file exists
-    config_file = ctx.obj.get(constants.CTX_CONFIG_FILE)
-    if config_file:
-        image_config = patch_image_config(config_file, image_config)
+    try:
+        # Use extra images in the config file if that file exists
+        config_file = ctx.obj.get(constants.CTX_CONFIG_FILE)
+        if config_file:
+            image_config = patch_image_config(config_file, image_config)
 
-    click.secho(
-        f"Running pyflyte register from {os.getcwd()} "
-        f"with images {image_config} "
-        f"and image destination folder {destination_dir} "
-        f"on {len(package_or_module)} package(s) {package_or_module}",
-        dim=True,
-    )
+        click.secho(
+            f"Running pyflyte register from {os.getcwd()} "
+            f"with images {image_config} "
+            f"and image destination folder {destination_dir} "
+            f"on {len(package_or_module)} package(s) {package_or_module}",
+            dim=True,
+        )
 
-    # Create and save FlyteRemote,
-    remote = get_and_save_remote_with_click_context(ctx, project, domain, data_upload_location="flyte://data")
-    click.secho(f"Registering against {remote.config.platform.endpoint}")
-    repo.register(
-        project,
-        domain,
-        image_config,
-        output,
-        destination_dir,
-        service_account,
-        raw_data_prefix,
-        version,
-        deref_symlinks,
-        copy_style=copy,
-        package_or_module=package_or_module,
-        remote=remote,
-        env=env,
-        summary_format=summary_format,
-        quiet=quiet,
-        dry_run=dry_run,
-        activate_launchplans=activate_launchplans,
-        skip_errors=skip_errors,
-        show_files=show_files,
-        verbosity=ctx.obj[constants.CTX_VERBOSE],
-    )
+        # Create and save FlyteRemote,
+        remote = get_and_save_remote_with_click_context(ctx, project, domain, data_upload_location="flyte://data")
+        click.secho(f"Registering against {remote.config.platform.endpoint}")
+        repo.register(
+            project,
+            domain,
+            image_config,
+            output,
+            destination_dir,
+            service_account,
+            raw_data_prefix,
+            version,
+            deref_symlinks,
+            copy_style=copy,
+            package_or_module=package_or_module,
+            remote=remote,
+            env=env,
+            summary_format=summary_format,
+            quiet=quiet,
+            dry_run=dry_run,
+            activate_launchplans=activate_launchplans,
+            skip_errors=skip_errors,
+            show_files=show_files,
+            verbosity=ctx.obj[constants.CTX_VERBOSE],
+        )
+    finally:
+        # Restore original secho
+        click.secho = _original_secho

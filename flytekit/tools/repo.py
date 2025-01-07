@@ -25,7 +25,7 @@ from flytekit.tools.script_mode import _find_project_root
 from flytekit.tools.serialize_helpers import get_registrable_entities, persist_registrable_entities
 from flytekit.tools.translator import FlyteControlPlaneEntity, Options
 
-original_secho = click.secho
+_original_secho = click.secho
 
 
 class NoSerializableEntitiesError(Exception):
@@ -250,7 +250,7 @@ def temporary_secho():
     """
     current_secho = click.secho
     try:
-        click.secho = original_secho
+        click.secho = _original_secho
         yield
     finally:
         click.secho = current_secho
@@ -283,154 +283,159 @@ def register(
     fast == True with copy_style == None means use the old fast register tar'ring method.
     """
 
+    # Mute all secho output through monkey patching
     if quiet:
         click.secho = lambda *args, **kw: None
 
-    detected_root = find_common_root(package_or_module)
-    click.secho(f"Detected Root {detected_root}, using this to create deployable package...", fg="yellow")
+    try:
+        detected_root = find_common_root(package_or_module)
+        click.secho(f"Detected Root {detected_root}, using this to create deployable package...", fg="yellow")
 
-    # Create serialization settings
-    # Todo: Rely on default Python interpreter for now, this will break custom Spark containers
-    serialization_settings = SerializationSettings(
-        project=project,
-        domain=domain,
-        version=version,
-        image_config=image_config,
-        fast_serialization_settings=None,  # should probably add incomplete fast settings
-        env=env,
-    )
-
-    if not version and copy_style == CopyFileDetection.NO_COPY:
-        click.secho("Version is required.", fg="red")
-        return
-
-    b = serialization_settings.new_builder()
-    serialization_settings = b.build()
-
-    options = Options.default_from(k8s_service_account=service_account, raw_data_prefix=raw_data_prefix)
-
-    # Load all the entities
-    FlyteContextManager.push_context(remote.context)
-    serialization_settings.git_repo = _get_git_repo_url(str(detected_root))
-    pkgs_and_modules = list_packages_and_modules(detected_root, list(package_or_module))
-
-    # NB: The change here is that the loading of user code _cannot_ depend on fast register information (the computed
-    #     version, upload native url, hash digest, etc.).
-    serialize_load_only(pkgs_and_modules, serialization_settings, str(detected_root))
-
-    # Fast registration is handled after module loading
-    if copy_style != CopyFileDetection.NO_COPY:
-        md5_bytes, native_url = remote.fast_package(
-            detected_root,
-            deref_symlinks,
-            output,
-            options=fast_registration.FastPackageOptions([], copy_style=copy_style, show_files=show_files),
+        # Create serialization settings
+        # Todo: Rely on default Python interpreter for now, this will break custom Spark containers
+        serialization_settings = SerializationSettings(
+            project=project,
+            domain=domain,
+            version=version,
+            image_config=image_config,
+            fast_serialization_settings=None,  # should probably add incomplete fast settings
+            env=env,
         )
-        # update serialization settings from fast register output
-        fast_serialization_settings = FastSerializationSettings(
-            enabled=True,
-            destination_dir=destination_dir,
-            distribution_location=native_url,
+
+        if not version and copy_style == CopyFileDetection.NO_COPY:
+            click.secho("Version is required.", fg="red")
+            return
+
+        b = serialization_settings.new_builder()
+        serialization_settings = b.build()
+
+        options = Options.default_from(k8s_service_account=service_account, raw_data_prefix=raw_data_prefix)
+
+        # Load all the entities
+        FlyteContextManager.push_context(remote.context)
+        serialization_settings.git_repo = _get_git_repo_url(str(detected_root))
+        pkgs_and_modules = list_packages_and_modules(detected_root, list(package_or_module))
+
+        # NB: The change here is that the loading of user code _cannot_ depend on fast register information (the computed
+        #     version, upload native url, hash digest, etc.).
+        serialize_load_only(pkgs_and_modules, serialization_settings, str(detected_root))
+
+        # Fast registration is handled after module loading
+        if copy_style != CopyFileDetection.NO_COPY:
+            md5_bytes, native_url = remote.fast_package(
+                detected_root,
+                deref_symlinks,
+                output,
+                options=fast_registration.FastPackageOptions([], copy_style=copy_style, show_files=show_files),
+            )
+            # update serialization settings from fast register output
+            fast_serialization_settings = FastSerializationSettings(
+                enabled=True,
+                destination_dir=destination_dir,
+                distribution_location=native_url,
+            )
+            serialization_settings.fast_serialization_settings = fast_serialization_settings
+            if not version:
+                version = remote._version_from_hash(md5_bytes, serialization_settings, service_account, raw_data_prefix)  # noqa
+                serialization_settings.version = version
+                click.secho(f"Computed version is {version}", fg="yellow")
+
+        registrable_entities = serialize_get_control_plane_entities(
+            serialization_settings, str(detected_root), options, is_registration=True
         )
-        serialization_settings.fast_serialization_settings = fast_serialization_settings
-        if not version:
-            version = remote._version_from_hash(md5_bytes, serialization_settings, service_account, raw_data_prefix)  # noqa
-            serialization_settings.version = version
-            click.secho(f"Computed version is {version}", fg="yellow")
 
-    registrable_entities = serialize_get_control_plane_entities(
-        serialization_settings, str(detected_root), options, is_registration=True
-    )
+        click.secho(
+            f"Serializing and registering {len(registrable_entities)} flyte entities",
+            fg="green",
+        )
 
-    click.secho(
-        f"Serializing and registering {len(registrable_entities)} flyte entities",
-        fg="green",
-    )
+        FlyteContextManager.pop_context()
+        if len(registrable_entities) == 0:
+            click.secho("No Flyte entities were detected. Aborting!", fg="red")
+            return
 
-    FlyteContextManager.pop_context()
-    if len(registrable_entities) == 0:
-        click.secho("No Flyte entities were detected. Aborting!", fg="red")
-        return
-
-    def _raw_register(cp_entity: FlyteControlPlaneEntity):
-        is_lp = False
-        if isinstance(cp_entity, launch_plan.LaunchPlan):
-            og_id = cp_entity.id
-            is_lp = True
-        else:
-            og_id = cp_entity.template.id
-
-        result = {
-            "id": og_id.name,
-            "type": og_id.resource_type_name(),
-            "version": og_id.version,
-            "status": "skipped",  # default status
-        }
-
-        try:
-            if not dry_run:
-                try:
-                    i = remote.raw_register(
-                        cp_entity, serialization_settings, version=version, create_default_launchplan=False
-                    )
-                    console_url = remote.generate_console_url(i)
-                    print_activation_message = False
-                    if is_lp:
-                        if activate_launchplans:
-                            remote.activate_launchplan(i)
-                            print_activation_message = True
-                        if cp_entity.should_auto_activate:
-                            print_activation_message = True
-                    if not quiet:
-                        print_registration_status(
-                            i, console_url=console_url, verbosity=verbosity, activation=print_activation_message
-                        )
-                    result["status"] = "success"
-
-                except Exception as e:
-                    if not skip_errors:
-                        raise e
-                    if not quiet:
-                        print_registration_status(og_id, success=False)
-                    result["status"] = "failed"
+        def _raw_register(cp_entity: FlyteControlPlaneEntity):
+            is_lp = False
+            if isinstance(cp_entity, launch_plan.LaunchPlan):
+                og_id = cp_entity.id
+                is_lp = True
             else:
+                og_id = cp_entity.template.id
+
+            result = {
+                "id": og_id.name,
+                "type": og_id.resource_type_name(),
+                "version": og_id.version,
+                "status": "skipped",  # default status
+            }
+
+            try:
+                if not dry_run:
+                    try:
+                        i = remote.raw_register(
+                            cp_entity, serialization_settings, version=version, create_default_launchplan=False
+                        )
+                        console_url = remote.generate_console_url(i)
+                        print_activation_message = False
+                        if is_lp:
+                            if activate_launchplans:
+                                remote.activate_launchplan(i)
+                                print_activation_message = True
+                            if cp_entity.should_auto_activate:
+                                print_activation_message = True
+                        if not quiet:
+                            print_registration_status(
+                                i, console_url=console_url, verbosity=verbosity, activation=print_activation_message
+                            )
+                        result["status"] = "success"
+
+                    except Exception as e:
+                        if not skip_errors:
+                            raise e
+                        if not quiet:
+                            print_registration_status(og_id, success=False)
+                        result["status"] = "failed"
+                else:
+                    if not quiet:
+                        print_registration_status(og_id, dry_run=True)
+            except RegistrationSkipped:
                 if not quiet:
-                    print_registration_status(og_id, dry_run=True)
-        except RegistrationSkipped:
-            if not quiet:
-                print_registration_status(og_id, success=False)
-            result["status"] = "skipped"
+                    print_registration_status(og_id, success=False)
+                result["status"] = "skipped"
 
-        return result
+            return result
 
-    async def _register(entities: typing.List[task.TaskSpec]):
-        loop = asyncio.get_running_loop()
-        tasks = []
-        for entity in entities:
-            tasks.append(loop.run_in_executor(None, functools.partial(_raw_register, entity)))
-        results = await asyncio.gather(*tasks)
-        return results
+        async def _register(entities: typing.List[task.TaskSpec]):
+            loop = asyncio.get_running_loop()
+            tasks = []
+            for entity in entities:
+                tasks.append(loop.run_in_executor(None, functools.partial(_raw_register, entity)))
+            results = await asyncio.gather(*tasks)
+            return results
 
-    # concurrent register
-    cp_task_entities = list(filter(lambda x: isinstance(x, task.TaskSpec), registrable_entities))
-    task_results = asyncio.run(_register(cp_task_entities))
-    # serial register
-    cp_other_entities = list(filter(lambda x: not isinstance(x, task.TaskSpec), registrable_entities))
-    other_results = []
-    for entity in cp_other_entities:
-        other_results.append(_raw_register(entity))
+        # concurrent register
+        cp_task_entities = list(filter(lambda x: isinstance(x, task.TaskSpec), registrable_entities))
+        task_results = asyncio.run(_register(cp_task_entities))
+        # serial register
+        cp_other_entities = list(filter(lambda x: not isinstance(x, task.TaskSpec), registrable_entities))
+        other_results = []
+        for entity in cp_other_entities:
+            other_results.append(_raw_register(entity))
 
-    all_results = task_results + other_results
+        all_results = task_results + other_results
 
-    click.secho(f"Successfully registered {len(registrable_entities)} entities", fg="green")
+        click.secho(f"Successfully registered {len(registrable_entities)} entities", fg="green")
 
-    if summary_format is not None:
-        supported_format = {"json", "yaml"}
-        if summary_format not in supported_format:
-            raise ValueError(f"Unsupported file format: {summary_format}")
+        if summary_format is not None:
+            supported_format = {"json", "yaml"}
+            if summary_format not in supported_format:
+                raise ValueError(f"Unsupported file format: {summary_format}")
 
-        with temporary_secho():
-            if summary_format == "json":
-                click.secho(json.dumps(all_results, indent=2))
-            elif summary_format == "yaml":
-                click.secho(yaml.dump(all_results))
+            with temporary_secho():
+                if summary_format == "json":
+                    click.secho(json.dumps(all_results, indent=2))
+                elif summary_format == "yaml":
+                    click.secho(yaml.dump(all_results))
+    finally:
+        # Restore original secho
+        click.secho = _original_secho
