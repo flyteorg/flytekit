@@ -997,7 +997,8 @@ class FlyteContextManager(object):
 
         import threading
         print(f"!!!!! in ctx initialize {threading.current_thread().name}")
-        signal.signal(signal.SIGINT, main_signal_handler)
+        if threading.current_thread().name == threading.main_thread().name:
+            signal.signal(signal.SIGINT, main_signal_handler)
 
         # Note we use the SdkWorkflowExecution object purely for formatting into the ex:project:domain:name format users
         # are already acquainted with
