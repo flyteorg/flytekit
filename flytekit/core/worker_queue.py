@@ -208,7 +208,7 @@ class Controller:
                         update.status = ItemStatus.FAILED
 
         except Exception as e:
-            logger.error(f"Error launching execution for {update.wi.entity.name} with {update.wi.input_kwargs}")
+            logger.error(f"Error launching execution for {update.wi.entity.name} with {update.wi.input_kwargs}: {e}")
             update.error = e
             update.status = ItemStatus.FAILED
 
