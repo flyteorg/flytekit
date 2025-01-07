@@ -224,7 +224,7 @@ class Node(object):
 
         if cluster_pool is not None:
             assert_not_promise(cluster_pool, "cluster_pool")
-            self._metadata._cluster_pool = cluster_pool
+            self._metadata.add_config("cluster_pool", cluster_pool)
 
         return self
 

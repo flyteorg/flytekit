@@ -172,6 +172,7 @@ class NodeMetadata(_common.FlyteIdlEntity):
         cacheable: typing.Optional[bool] = None,
         cache_version: typing.Optional[str] = None,
         cache_serializable: typing.Optional[bool] = None,
+        config: typing.Optional[typing.Dict[str, str]] = None,
     ):
         """
         Defines extra information about the Node.
@@ -183,6 +184,7 @@ class NodeMetadata(_common.FlyteIdlEntity):
         :param cacheable: Indicates that this nodes outputs should be cached.
         :param cache_version: The version of the cached data.
         :param cacheable: Indicates that cache operations on this node should be serialized.
+        :param config: Optional config fields for the override
         """
         self._name = name
         self._timeout = timeout if timeout is not None else datetime.timedelta()
@@ -191,6 +193,7 @@ class NodeMetadata(_common.FlyteIdlEntity):
         self._cacheable = cacheable
         self._cache_version = cache_version
         self._cache_serializable = cache_serializable
+        self._config = config or {}
 
     @property
     def name(self):
@@ -229,6 +232,13 @@ class NodeMetadata(_common.FlyteIdlEntity):
     def cache_serializable(self) -> typing.Optional[bool]:
         return self._cache_serializable
 
+    @property
+    def config(self) -> typing.Optional[typing.Dict[str, str]]:
+        return self._config
+
+    def add_config(self, key: str, value: str):
+        self._config[key] = value
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.workflow_pb2.NodeMetadata
@@ -240,6 +250,7 @@ class NodeMetadata(_common.FlyteIdlEntity):
             cacheable=self.cacheable,
             cache_version=self.cache_version,
             cache_serializable=self.cache_serializable,
+            config=self.config,
         )
         if self.timeout:
             node_metadata.timeout.FromTimedelta(self.timeout)
@@ -255,6 +266,7 @@ class NodeMetadata(_common.FlyteIdlEntity):
             pb2_object.cacheable if pb2_object.HasField("cacheable") else None,
             pb2_object.cache_version if pb2_object.HasField("cache_version") else None,
             pb2_object.cache_serializable if pb2_object.HasField("cache_serializable") else None,
+            config=pb2_object.config,
         )
 
 
