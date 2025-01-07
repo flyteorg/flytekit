@@ -368,6 +368,7 @@ def get_serializable_launch_plan(
         max_parallelism=options.max_parallelism or entity.max_parallelism,
         security_context=options.security_context or entity.security_context,
         overwrite_cache=options.overwrite_cache or entity.overwrite_cache,
+        cluster_pool=entity.cluster_pool,
     )
 
     lp_id = _identifier_model.Identifier(

@@ -140,6 +140,7 @@ class Node(object):
         cache: Optional[bool] = None,
         cache_version: Optional[str] = None,
         cache_serialize: Optional[bool] = None,
+        cluster_pool: Optional[str] = None,
         *args,
         **kwargs,
     ):
@@ -220,6 +221,10 @@ class Node(object):
         if cache_serialize is not None:
             assert_not_promise(cache_serialize, "cache_serialize")
             self._metadata._cache_serializable = cache_serialize
+
+        if cluster_pool is not None:
+            assert_not_promise(cluster_pool, "cluster_pool")
+            self._metadata._cluster_pool = cluster_pool
 
         return self
 
