@@ -44,14 +44,15 @@ async def bundled_objective(suggestions: Suggestions, power: int) -> float:
 
 @fl.eager(container_image=image)
 async def train(concurrency: int, n_trials: int) -> float:
-    optimizer = Optimizer(objective, concurrency, n_trials, bundle=True)
+    optimizer = Optimizer(objective, concurrency, n_trials)
 
-    await optimizer(
-        x=suggest.float(low=-10, high=10),
-        y=suggest.integer(low=-10, high=10),
-        z=suggest.category([-5, 0, 3, 6, 9]),
-        power=2,
-    )
+    suggestions = {
+        "x": suggest.float(low=-10, high=10),
+        "y": suggest.integer(low=-10, high=10),
+        "z": suggest.category([-5, 0, 3, 6, 9]),
+    }
+
+    await optimizer(suggestions, power=2)
 
     return optimizer.study.best_value
 

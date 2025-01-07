@@ -1,7 +1,6 @@
 import asyncio
 import inspect
 from dataclasses import dataclass
-from functools import partial
 from types import SimpleNamespace
 from typing import Any, Optional, Union
 
@@ -47,16 +46,12 @@ class Category(Suggestion):
 suggest = SimpleNamespace(float=Float, integer=Integer, category=Category)
 
 
-Suggestions = dict[str, Union[float, int, str, bool, None]]
-
-
 @dataclass
 class Optimizer:
     objective: Union[PythonFunctionTask, PythonFunctionWorkflow]
     concurrency: int
     n_trials: int
     study: Optional[optuna.Study] = None
-    bundle: bool = False
 
     def __post_init__(self):
         if self.study is None:
@@ -95,58 +90,57 @@ class Optimizer:
         else:
             raise ValueError("objective function must return a float or tuple of floats")
 
-    async def __call__(self, **inputs: Any):
+    async def __call__(self, suggestions: Optional[dict[str, Suggestion]] = None, /, **inputs: Any):
         """
         Asynchronously executes the objective function remotely.
         Parameters:
             **inputs: inputs to objective function
         """
 
+        if suggestions is not None:
+            if not isinstance(suggestions, dict):
+                raise ValueError("suggestions must be a dict[str, Suggestion]")
+
+            for key, value in suggestions.items():
+                if not isinstance(key, str):
+                    raise ValueError(f"suggestion key must be a string, got {type(key)}")
+                if not isinstance(value, Suggestion):
+                    raise ValueError(f"suggestion must be of type {type(value)}")
+
+            for value in inputs.values():
+                if isinstance(value, Suggestion):
+                    raise ValueError(
+                        "you must provide all suggestions as a positional argument of type dict[str, Suggestion]"
+                    )
+
         # create semaphore to manage concurrency
         semaphore = asyncio.Semaphore(self.concurrency)
 
         # create list of async trials
-        trials = [self.spawn(semaphore, **inputs) for _ in range(self.n_trials)]
+        trials = [self.spawn(semaphore, suggestions, **inputs) for _ in range(self.n_trials)]
 
         # await all trials to complete
         await asyncio.gather(*trials)
 
-    async def spawn(self, semaphore: asyncio.Semaphore, **inputs: Any):
+    async def spawn(
+        self,
+        semaphore: asyncio.Semaphore,
+        suggestions: Optional[dict[str, Suggestion]] = None,
+        /,
+        **inputs: Any,
+    ):
         async with semaphore:
             # ask for a new trial
             trial: optuna.Trial = self.study.ask()
 
-            suggesters = {
-                Float: trial.suggest_float,
-                Integer: trial.suggest_int,
-                Category: trial.suggest_categorical,
-            }
-
-            if self.bundle:
-                suggestions: Suggestions = {}
-
-                # suggest inputs for the trial
-                for key, value in inputs.items():
-                    if isinstance(inputs[key], Suggestion):
-                        suggester = suggesters[type(value)]
-                        suggestions[key] = suggester(name=key, **vars(value))
-
-                for key in suggestions.keys():
-                    del inputs[key]
-
-                objective = partial(self.objective, suggestions)
-
+            if suggestions is not None:
+                inputs["suggestions"] = self.suggest(trial, suggestions)
             else:
-                objective = self.objective
-                # suggest inputs for the trial
-                for key, value in inputs.items():
-                    if isinstance(inputs[key], Suggestion):
-                        suggester = suggesters[type(value)]
-                        inputs[key] = suggester(name=key, **vars(value))
+                inputs = self.suggest(trial, inputs)
 
             try:
                 # schedule the trial
-                result: Union[float, tuple[float, ...]] = await objective(**inputs)
+                result: Union[float, tuple[float, ...]] = await self.objective(**inputs)
 
                 # tell the study the result
                 self.study.tell(trial, result, state=optuna.trial.TrialState.COMPLETE)
@@ -154,3 +148,18 @@ class Optimizer:
             # if the trial fails, tell the study
             except EagerException:
                 self.study.tell(trial, state=optuna.trial.TrialState.FAIL)
+
+    @staticmethod
+    def suggest(trial: optuna.Trial, inputs: dict[str, Any]) -> dict[str, Any]:
+        suggesters = {
+            Float: trial.suggest_float,
+            Integer: trial.suggest_int,
+            Category: trial.suggest_categorical,
+        }
+
+        for key, value in inputs.items():
+            if isinstance(inputs[key], Suggestion):
+                suggester = suggesters[type(value)]
+                inputs[key] = suggester(name=key, **vars(value))
+
+        return inputs
