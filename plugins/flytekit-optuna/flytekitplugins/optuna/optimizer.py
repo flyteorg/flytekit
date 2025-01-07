@@ -1,10 +1,12 @@
 import asyncio
-import inspect
 from dataclasses import dataclass
 from types import SimpleNamespace
-from typing import Any, Optional, Union
+from typing import Optional, Union, Any
+from functools import partial
+import inspect
 
 import optuna
+
 from flytekit import PythonFunctionTask
 from flytekit.core.workflow import PythonFunctionWorkflow
 from flytekit.exceptions.eager import EagerException
@@ -46,21 +48,24 @@ class Category(Suggestion):
 suggest = SimpleNamespace(float=Float, integer=Integer, category=Category)
 
 
+Suggestions = dict[str, Union[float, int, str, bool, None]]
+
 @dataclass
 class Optimizer:
     objective: Union[PythonFunctionTask, PythonFunctionWorkflow]
     concurrency: int
     n_trials: int
     study: Optional[optuna.Study] = None
+    bundle: bool = False
 
     def __post_init__(self):
         if self.study is None:
             self.study = optuna.create_study()
 
-        if (not isinstance(self.concurrency, int)) or (self.concurrency < 0):
+        if (not isinstance(self.concurrency, int)) and (self.concurrency < 0):
             raise ValueError("concurrency must be an integer greater than 0")
 
-        if (not isinstance(self.n_trials, int)) or (self.n_trials < 0):
+        if (not isinstance(self.n_trials, int)) and (self.n_trials < 0):
             raise ValueError("n_trials must be an integer greater than 0")
 
         if not isinstance(self.study, optuna.Study):
@@ -78,17 +83,25 @@ class Optimizer:
 
         if signature.return_annotation is float:
             if len(self.study.directions) != 1:
-                raise ValueError("the study must have a single objective if objective returns a single float")
+                raise ValueError(
+                    "the study must have a single objective if objective returns a single float"
+                )
 
         elif isinstance(args := signature.return_annotation.__args__, tuple):
             if len(args) != len(self.study.directions):
-                raise ValueError("objective must return the same number of directions in the study")
+                raise ValueError(
+                    "objective must return the same number of directions in the study"
+                )
 
             if not all(arg is float for arg in args):
-                raise ValueError("objective function must return a float or tuple of floats")
+                raise ValueError(
+                    "objective function must return a float or tuple of floats"
+                )
 
         else:
-            raise ValueError("objective function must return a float or tuple of floats")
+            raise ValueError(
+                "objective function must return a float or tuple of floats"
+            )
 
     async def __call__(self, **inputs: Any):
         """
@@ -117,15 +130,32 @@ class Optimizer:
                 Category: trial.suggest_categorical,
             }
 
-            # suggest inputs for the trial
-            for key, value in inputs.items():
-                if isinstance(value, Suggestion):
-                    suggester = suggesters[type(value)]
-                    inputs[key] = suggester(name=key, **vars(value))
+            if self.bundle:
+                suggestions: Suggestions = {}
+
+                # suggest inputs for the trial
+                for key, value in inputs.items():
+                    if isinstance(inputs[key], Suggestion):
+                        suggester = suggesters[type(value)]
+                        suggestions[key] = suggester(name=key, **vars(value))
+
+                for key in suggestions.keys():
+                    del inputs[key]
+
+                objective = partial(self.objective, suggestions)
+
+            else:
+
+                objective = self.objective
+                # suggest inputs for the trial
+                for key, value in inputs.items():
+                    if isinstance(inputs[key], Suggestion):
+                        suggester = suggesters[type(value)]
+                        inputs[key] = suggester(name=key, **vars(value))
 
             try:
                 # schedule the trial
-                result: Union[float, tuple[float, ...]] = await self.objective(**inputs)
+                result: Union[float, tuple[float, ...]] = await objective(**inputs)
 
                 # tell the study the result
                 self.study.tell(trial, result, state=optuna.trial.TrialState.COMPLETE)

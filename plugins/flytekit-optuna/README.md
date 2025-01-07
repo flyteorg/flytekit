@@ -7,9 +7,9 @@ import math
 
 import flytekit as fl
 
-from optimizer import Optimizer, suggest
+from flytekitplugins.optuna import Optimizer, suggest
 
-image = fl.ImageSpec(builder="union", packages=["flytekit==1.15.0b0", "optuna>=4.0.0"])
+image = fl.ImageSpec(builder="union", packages=["flytekitplugins.optuna"])
 
 @fl.task(container_image=image)
 async def objective(x: float, y: int, z: int, power: int) -> float:
@@ -42,4 +42,3 @@ This plugin provides full feature parity to Optuna, including:
 
 - This would synergize really well with Union Actors.
 - This should also support workflows, but it currently does not.
-- Add unit tests, of course.
