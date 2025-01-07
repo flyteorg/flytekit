@@ -191,7 +191,12 @@ def test_register_registrated_summary_json(mock_client, mock_remote):
             ["register", "--summary-format", "json", "core5"]
         )
         assert result.exit_code == 0
-        summary_data = json.loads(result.output)
+        try:
+            summary_data = json.loads(result.output)
+        except json.JSONDecodeError as e:
+            pytest.fail(f"Failed to parse registration summary JSON: {e}")
+        except Exception as e:
+            pytest.fail(f"Unexpected error while parsing registration summary: {e}")
         assert isinstance(summary_data, list)
         assert len(summary_data) > 0
         for entry in summary_data:
@@ -225,7 +230,10 @@ def test_register_registrated_summary_yaml(mock_client, mock_remote):
             ["register", "--summary-format", "yaml", "core6"]
         )
         assert result.exit_code == 0
-        summary_data = yaml.safe_load(result.output)
+        try:
+            summary_data = yaml.safe_load(result.output)
+        except yaml.YAMLError as e:
+            pytest.fail(f"Failed to parse YAML output: {e}")
         assert isinstance(summary_data, list)
         assert len(summary_data) > 0
         for entry in summary_data:
