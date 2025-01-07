@@ -189,6 +189,7 @@ class LaunchPlan(object):
             trigger=trigger,
             overwrite_cache=overwrite_cache,
             auto_activate=auto_activate,
+            cluster_pool=cluster_pool,
         )
 
         # This is just a convenience - we'll need the fixed inputs LiteralMap for when serializing the Launch Plan out
