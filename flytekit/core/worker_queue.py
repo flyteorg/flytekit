@@ -5,9 +5,10 @@ import atexit
 import hashlib
 import re
 import threading
+import time
 import typing
-from concurrent.futures import Future
 from dataclasses import dataclass
+from enum import Enum
 
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask
@@ -18,7 +19,7 @@ from flytekit.core.reference_entity import ReferenceEntity
 from flytekit.core.utils import _dnsify
 from flytekit.core.workflow import WorkflowBase
 from flytekit.exceptions.system import FlyteSystemException
-from flytekit.loggers import developer_logger, logger
+from flytekit.loggers import logger
 from flytekit.models.common import Labels
 from flytekit.models.core.execution import WorkflowExecutionPhase
 
@@ -26,6 +27,7 @@ if typing.TYPE_CHECKING:
     from flytekit.remote.remote_callable import RemoteEntity
 
     RunnableEntity = typing.Union[WorkflowBase, LaunchPlan, PythonTask, ReferenceEntity, RemoteEntity]
+    from flytekit.core.interface import Interface
     from flytekit.remote import FlyteRemote, FlyteWorkflowExecution
 
 
@@ -66,6 +68,25 @@ NODE_HTML_TEMPLATE = """
 """
 
 
+class ItemStatus(Enum):
+    PENDING = "Pending"
+    RUNNING = "Running"
+    SUCCESS = "Success"
+    FAILED = "Failed"
+
+
+@dataclass
+class Update:
+    # The item to update
+    wi: WorkItem
+    idx: int
+
+    # fields in the item to update
+    status: typing.Optional[ItemStatus] = None
+    wf_exec: typing.Optional[FlyteWorkflowExecution] = None
+    error: typing.Optional[BaseException] = None
+
+
 @dataclass
 class WorkItem:
     entity: RunnableEntity
@@ -73,109 +94,43 @@ class WorkItem:
     fut: asyncio.Future
     result: typing.Any = None
     error: typing.Optional[BaseException] = None
-
+    status: ItemStatus = ItemStatus.PENDING
     wf_exec: typing.Optional[FlyteWorkflowExecution] = None
+    python_interface: typing.Optional[Interface] = None
 
-    def set_result(self, result: typing.Any):
-        assert self.wf_exec is not None
-        developer_logger.debug(f"Setting result for {self.wf_exec.id.name} on thread {threading.current_thread().name}")
-        self.result = result
-        # need to convert from literals resolver to literals and then to python native.
-        self.fut._loop.call_soon_threadsafe(self.fut.set_result, result)
-
-    def set_error(self, e: BaseException):
-        developer_logger.debug(
-            f"Setting error for {self.wf_exec.id.name if self.wf_exec else 'unstarted execution'}"
-            f" on thread {threading.current_thread().name} to {e}"
-        )
-        self.error = e
-        self.fut._loop.call_soon_threadsafe(self.fut.set_exception, e)
-
-    def set_exec(self, wf_exec: FlyteWorkflowExecution):
-        self.wf_exec = wf_exec
+    def __post_init__(self):
+        self.python_interface = self._get_python_interface()
 
     @property
     def ready(self) -> bool:
-        return self.wf_exec is not None and (self.result is not None or self.error is not None)
+        return self.status == ItemStatus.SUCCESS or self.status == ItemStatus.FAILED
 
+    def _get_python_interface(self) -> Interface:
+        from flytekit.core.interface import Interface
+        from flytekit.core.type_engine import TypeEngine
 
-class Informer(typing.Protocol):
-    def watch(self, work: WorkItem): ...
+        if not self.entity.python_interface:
+            for k, _ in self.entity.interface.outputs.items():
+                if not re.match(standard_output_format, k):
+                    raise AssertionError(
+                        f"Entity without python interface found, and output name {k} does not match standard format o[0-9]+"
+                    )
 
-
-class PollingInformer:
-    def __init__(self, remote: FlyteRemote, loop: asyncio.AbstractEventLoop):
-        self.remote: FlyteRemote = remote
-        self.__loop = loop
-
-    async def watch_one(self, work: WorkItem):
-        assert work.wf_exec is not None
-        logger.debug(f"Starting watching execution {work.wf_exec.id} on {threading.current_thread().name}")
-        while True:
-            # not really async but pretend it is for now, change to to_thread in the future.
-            developer_logger.debug(f"Looping on {work.wf_exec.id.name}")
-            self.remote.sync_execution(work.wf_exec)
-            if work.wf_exec.is_done:
-                developer_logger.debug(f"Execution {work.wf_exec.id.name} is done.")
-                break
-            await asyncio.sleep(2)
-
-        # set results
-        # but first need to convert from literals resolver to literals and then to python native.
-        if work.wf_exec.closure.phase == WorkflowExecutionPhase.SUCCEEDED:
-            from flytekit.core.interface import Interface
-            from flytekit.core.type_engine import TypeEngine
-
-            if not work.entity.python_interface:
-                for k, _ in work.entity.interface.outputs.items():
-                    if not re.match(standard_output_format, k):
-                        raise AssertionError(
-                            f"Entity without python interface found, and output name {k} does not match standard format o[0-9]+"
-                        )
-
-                num_outputs = len(work.entity.interface.outputs)
-                python_outputs_interface: typing.Dict[str, typing.Type] = {}
-                # Iterate in order so that we add to the interface in the correct order
-                for i in range(num_outputs):
-                    key = f"o{i}"
-                    if key not in work.entity.interface.outputs:
-                        raise AssertionError(
-                            f"Output name {key} not found in outputs {[k for k in work.entity.interface.outputs.keys()]}"
-                        )
-                    var_type = work.entity.interface.outputs[key].type
-                    python_outputs_interface[key] = TypeEngine.guess_python_type(var_type)
-                py_iface = Interface(inputs=typing.cast(dict[str, typing.Type], {}), outputs=python_outputs_interface)
-            else:
-                py_iface = work.entity.python_interface
-
-            results = work.wf_exec.outputs.as_python_native(py_iface)
-
-            work.set_result(results)
-        elif work.wf_exec.closure.phase == WorkflowExecutionPhase.FAILED:
-            from flytekit.exceptions.eager import EagerException
-
-            exc = EagerException(f"Error executing {work.entity.name} with error: {work.wf_exec.closure.error}")
-            work.set_error(exc)
-
-    def watch(self, work: WorkItem):
-        coro = self.watch_one(work)
-        # both run_coroutine_threadsafe and self.__loop.create_task seem to work, but the first makes
-        # more sense in case *this* thread is ever different than the thread that self.__loop is running on.
-        f = asyncio.run_coroutine_threadsafe(coro, self.__loop)
-
-        developer_logger.debug(f"Started watch with future {f}")
-
-        def cb(fut: Future):
-            """
-            This cb takes care of any exceptions that might be thrown in the watch_one coroutine
-            Note: This is a concurrent Future not an asyncio Future
-            """
-            e = fut.exception()
-            if e:
-                logger.error(f"Error in watch for {work.entity.name} with {work.input_kwargs}: {e}")
-                work.set_error(e)
-
-        f.add_done_callback(cb)
+            num_outputs = len(self.entity.interface.outputs)
+            python_outputs_interface: typing.Dict[str, typing.Type] = {}
+            # Iterate in order so that we add to the interface in the correct order
+            for i in range(num_outputs):
+                key = f"o{i}"
+                if key not in self.entity.interface.outputs:
+                    raise AssertionError(
+                        f"Output name {key} not found in outputs {[k for k in work.entity.interface.outputs.keys()]}"
+                    )
+                var_type = self.entity.interface.outputs[key].type
+                python_outputs_interface[key] = TypeEngine.guess_python_type(var_type)
+            py_iface = Interface(inputs=typing.cast(dict[str, typing.Type], {}), outputs=python_outputs_interface)
+        else:
+            py_iface = self.entity.python_interface
+        return py_iface
 
 
 # A flag to ensure the handler runs only once
@@ -188,24 +143,18 @@ class Controller:
             f"Creating Controller for eager execution with {remote.config.platform.endpoint},"
             f" {tag=}, {root_tag=}, {exec_prefix=} and ss: {ss}"
         )
-        # Set up things for this controller to operate
-        from flytekit.utils.asyn import _selector_policy
-
-        with _selector_policy():
-            self.__loop = asyncio.new_event_loop()
-        self.__loop.set_exception_handler(self.exc_handler)
         self.__runner_thread: threading.Thread = threading.Thread(
-            target=self._execute, daemon=True, name="controller-loop-runner"
+            target=self._execute, daemon=True, name="controller-thread"
         )
         self.__runner_thread.start()
         atexit.register(self._close)
 
         # Things for actually kicking off and monitoring
         self.entries: typing.Dict[str, typing.List[WorkItem]] = {}
-        self.informer = PollingInformer(remote=remote, loop=self.__loop)
         self.remote = remote
         self.ss = ss
         self.exec_prefix = exec_prefix
+        self.entries_lock = threading.Lock()
 
         # Executions should be tracked in the following way:
         #  a) you should be able to list by label, all executions generated by the current eager task,
@@ -226,20 +175,90 @@ class Controller:
         self.tag = tag
         self.root_tag = root_tag
 
-    def _close(self) -> None:
-        if self.__loop:
-            self.__loop.stop()
+    def _close(self) -> None: ...
 
     @staticmethod
     def exc_handler(loop, context):
         logger.error(f"Caught exception in loop {loop} with context {context}")
 
-    def _execute(self) -> None:
-        loop = self.__loop
+    def reconcile_one(self, update: Update):
+        """
+        This loop is responsible for processing on work item. Will launch, update, set error on the update object
+        """
         try:
-            loop.run_forever()
-        finally:
-            logger.error("Controller event loop stopped.")
+            item = update.wi
+            if item.wf_exec is None:
+                wf_exec = self.launch_execution(update.wi, update.idx)
+                update.wf_exec = wf_exec
+                update.status = ItemStatus.RUNNING
+            else:
+                if not item.wf_exec.is_done:
+                    # Technically a mutating operation, but let's pretend it's not
+                    update.wf_exec = self.remote.sync_execution(item.wf_exec)
+                    if update.wf_exec.closure.phase == WorkflowExecutionPhase.SUCCEEDED:
+                        update.status = ItemStatus.SUCCESS
+                    elif update.wf_exec.closure.phase == WorkflowExecutionPhase.FAILED:
+                        update.status = ItemStatus.FAILED
+
+        except Exception as e:
+            logger.error(f"Error launching execution for {update.wi.entity.name} with {update.wi.input_kwargs}")
+            update.error = e
+            update.status = ItemStatus.FAILED
+
+    def _get_update_items(self) -> typing.Dict[WorkItem, Update]:
+        with self.entries_lock:
+            update_items: typing.Dict[WorkItem, Update] = {}
+            for entity_name, items in self.entries.items():
+                for idx, item in enumerate(items):
+                    # Only process items that need it
+                    if item.status == ItemStatus.SUCCESS or item.status == ItemStatus.FAILED:
+                        continue
+                    update = Update(wi=item, idx=idx)
+                    update_items[item] = update
+            return update_items
+
+    def _apply_updates(self, update_items: typing.Dict[WorkItem, Update]) -> None:
+        with self.entries_lock:
+            for entity_name, items in self.entries.items():
+                for item in items:
+                    if item in update_items:
+                        update = update_items[item]
+                        item.wf_exec = update.wf_exec
+                        item.status = update.status
+                        if update.status == ItemStatus.SUCCESS:
+                            item.result = update.wf_exec.outputs.as_python_native(item.python_interface)
+                        elif update.status == ItemStatus.FAILED:
+                            # If update object already has an error, then use that, otherwise look for one in the
+                            # execution closure.
+                            if update.error:
+                                item.error = update.error
+                            else:
+                                from flytekit.exceptions.eager import EagerException
+
+                                exc = EagerException(
+                                    f"Error executing {update.wi.entity.name} with error:"
+                                    f" {update.wf_exec.closure.error}"
+                                )
+                                item.error = exc
+
+                        # otherwise it's still pending or running
+
+    def _execute(self) -> None:
+        # This needs to be a while loop that runs forever,
+        while True:
+            # Gather all items that need processing
+            update_items = self._get_update_items()
+
+            # Actually call for updates outside of the lock.
+            # Currently this happens one at a time, but only because the API only supports one at a time.
+            for up in update_items.values():
+                self.reconcile_one(up)
+
+            # Take the lock again and apply all the updates
+            self._apply_updates(update_items)
+
+            # This is a blocking call so we don't hit the API too much.
+            time.sleep(2)
 
     def get_labels(self) -> Labels:
         """
@@ -272,48 +291,39 @@ class Controller:
         exec_name = _dnsify(exec_name)
         return exec_name
 
-    def launch_and_start_watch(self, wi: WorkItem, idx: int):
-        """This function launches executions. This is called via the loop, so it needs exception handling"""
-        try:
-            if wi.result is None and wi.error is None:
-                l = self.get_labels()
-                e = self.get_env()
-                options = Options(labels=l)
-                exec_name = self.get_execution_name(wi.entity, idx, wi.input_kwargs)
-                logger.info(f"Generated execution name {exec_name} for {idx}th call of {wi.entity.name}")
-                from flytekit.remote.remote_callable import RemoteEntity
+    def launch_execution(self, wi: WorkItem, idx: int) -> FlyteWorkflowExecution:
+        """This function launches executions."""
+        if wi.result is None and wi.error is None:
+            l = self.get_labels()
+            e = self.get_env()
+            options = Options(labels=l)
+            exec_name = self.get_execution_name(wi.entity, idx, wi.input_kwargs)
+            logger.info(f"Generated execution name {exec_name} for {idx}th call of {wi.entity.name}")
+            from flytekit.remote.remote_callable import RemoteEntity
 
-                if isinstance(wi.entity, RemoteEntity):
-                    version = wi.entity.id.version
-                else:
-                    version = self.ss.version
-
-                # todo: if the execution already exists, remote.execute will return that execution. in the future
-                #  we can add input checking to make sure the inputs are indeed a match.
-                wf_exec = self.remote.execute(
-                    entity=wi.entity,
-                    execution_name=exec_name,
-                    inputs=wi.input_kwargs,
-                    version=version,
-                    image_config=self.ss.image_config,
-                    options=options,
-                    envs=e,
-                )
-                logger.info(f"Successfully started execution {wf_exec.id.name}")
-                wi.set_exec(wf_exec)
-
-                # if successful then start watch on the execution
-                self.informer.watch(wi)
+            if isinstance(wi.entity, RemoteEntity):
+                version = wi.entity.id.version
             else:
-                raise AssertionError(
-                    "This launch function should not be invoked for work items already" " with result or error"
-                )
-        except Exception as e:
-            # all exceptions get registered onto the future.
-            logger.error(f"Error launching execution for {wi.entity.name} with {wi.input_kwargs}")
-            wi.set_error(e)
+                version = self.ss.version
 
-    def add(
+            # todo: if the execution already exists, remote.execute will return that execution. in the future
+            #  we can add input checking to make sure the inputs are indeed a match.
+            wf_exec = self.remote.execute(
+                entity=wi.entity,
+                execution_name=exec_name,
+                inputs=wi.input_kwargs,
+                version=version,
+                image_config=self.ss.image_config,
+                options=options,
+                envs=e,
+            )
+            return wf_exec
+        else:
+            raise AssertionError(
+                "This launch function should not be invoked for work items already" " with result or error"
+            )
+
+    async def add(
         self, task_loop: asyncio.AbstractEventLoop, entity: RunnableEntity, input_kwargs: dict[str, typing.Any]
     ) -> asyncio.Future:
         """
@@ -323,15 +333,19 @@ class Controller:
         fut = task_loop.create_future()
         i = WorkItem(entity=entity, input_kwargs=input_kwargs, fut=fut)
 
-        # For purposes of awaiting an execution, we don't need to keep track of anything, but doing so for Deck
-        if entity.name not in self.entries:
-            self.entries[entity.name] = []
-        self.entries[entity.name].append(i)
-        idx = len(self.entries[entity.name]) - 1
+        with self.entries_lock:
+            if entity.name not in self.entries:
+                self.entries[entity.name] = []
+            self.entries[entity.name].append(i)
 
-        # trigger a run of the launching function.
-        self.__loop.call_soon_threadsafe(self.launch_and_start_watch, i, idx)
-        return fut
+        # wait for it to finish one way or another
+        while True:
+            if i.status == ItemStatus.SUCCESS:
+                return i.result
+            elif i.status == ItemStatus.FAILED:
+                raise i.error
+            else:
+                await asyncio.sleep(0.1)  # Small delay to avoid busy-waiting
 
     def render_html(self) -> str:
         """Render the callstack as a deck presentation to be shown after eager workflow execution."""
