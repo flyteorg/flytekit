@@ -157,7 +157,7 @@ class Controller:
         self.entries_lock = threading.Lock()
 
         # Things for actually kicking off and monitoring
-
+        from flytekit.core.context_manager import FlyteContextManager
         self.__runner_thread: threading.Thread = threading.Thread(
             target=self._execute, daemon=True, name="controller-thread"
         )
