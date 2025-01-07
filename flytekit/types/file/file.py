@@ -737,7 +737,8 @@ class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
 
         expected_format = FlyteFilePathTransformer.get_format(expected_python_type)
         ff = FlyteFile.__class_getitem__(expected_format)(
-            path=local_path, downloader=partial(self.downloader, ctx=ctx, remote_path=uri, local_path=local_path),
+            path=local_path,
+            downloader=partial(self.downloader, ctx=ctx, remote_path=uri, local_path=local_path),
         )
         ff._remote_source = uri
         return ff
