@@ -981,6 +981,7 @@ class FlyteContextManager(object):
         """
         Re-initializes the context and erases the entire context
         """
+
         # This is supplied so that tasks that rely on Flyte provided param functionality do not fail when run locally
         default_execution_id = _identifier.WorkflowExecutionIdentifier(project="local", domain="local", name="local")
 
@@ -994,6 +995,8 @@ class FlyteContextManager(object):
                 handler(signum, frame)
             exit(1)
 
+        import threading
+        print(f"!!!!! in ctx initialize {threading.current_thread().name}")
         signal.signal(signal.SIGINT, main_signal_handler)
 
         # Note we use the SdkWorkflowExecution object purely for formatting into the ex:project:domain:name format users

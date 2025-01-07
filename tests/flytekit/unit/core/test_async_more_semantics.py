@@ -131,6 +131,9 @@ def test_nested_local_backend_level():
         print(res)
         assert res == (42, 42)
 
+from flytekit.models.core import identifier
+import datetime
+from flytekit.loggers import user_space_logger
 
 @pytest.mark.skip
 def test_local_sandbox_run():
@@ -148,35 +151,22 @@ def test_local_sandbox_run():
     user_workspace_dir = "/Users/ytong/temp/user_space"
     raw_data_dir = "/Users/ytong/temp/raw_data"
     checkpoints = "/Users/ytong/temp/checkpoints"
-    task_name = train.name
+    task_name = level_2.name
 
     execution_parameters = ExecutionParameters(
-        execution_id=_identifier.WorkflowExecutionIdentifier(
+        execution_id=identifier.WorkflowExecutionIdentifier(
             project=remote.default_project,
             domain=remote.default_domain,
             name=exe_name,
         ),
         execution_date=datetime.datetime.now(datetime.timezone.utc),
-        stats=_get_stats(
-            cfg=StatsConfig.auto(),
-            # Stats metric path will be:
-            # registration_project.registration_domain.app.module.task_name.user_stats
-            # and it will be tagged with execution-level values for project/domain/wf/lp
-            prefix=f"{remote.default_project}.{remote.default_domain}.{task_name}.user_stats",
-            tags={
-                "exec_project": remote.default_project,
-                "exec_domain": remote.default_domain,
-                "exec_workflow": task_name,
-                "exec_launchplan": task_name,
-                "api_version": flytekit._version.version,
-            },
-        ),
+        stats=None,
         logging=user_space_logger,
         tmp_dir=user_workspace_dir,
         raw_output_prefix=raw_data_dir,
         output_metadata_prefix=raw_data_dir,
         checkpoint=checkpoints,
-        task_id=_identifier.Identifier(_identifier.ResourceType.TASK, remote.default_project, remote.default_domain, task_name, "v123123"),
+        task_id=identifier.Identifier(identifier.ResourceType.TASK, remote.default_project, remote.default_domain, task_name, "v123123"),
     )
 
     metadata = {
@@ -186,15 +176,11 @@ def test_local_sandbox_run():
         "flyte-execution-workflow": task_name,
         "flyte-execution-name": exe_name,
     }
-    try:
-        file_access = FileAccessProvider(
-            local_sandbox_dir=user_workspace_dir,
-            raw_output_prefix=raw_data_dir,
-            execution_metadata=metadata,
-        )
-    except TypeError:  # would be thrown from DataPersistencePlugins.find_plugin
-        logger.error(f"No data plugin found for raw output prefix {raw_data_dir}")
-        raise
+    file_access = FileAccessProvider(
+        local_sandbox_dir=user_workspace_dir,
+        raw_output_prefix=raw_data_dir,
+        execution_metadata=metadata,
+    )
 
     ctx = FlyteContextManager.current_context()
     ctx = ctx.new_builder().with_file_access(file_access).build()
@@ -211,7 +197,7 @@ def test_local_sandbox_run():
     cb = ctx.new_builder().with_execution_state(es).with_output_metadata_tracker(omt).with_serialization_settings(ss)
 
     with FlyteContextManager.with_context(cb) as ctx:
-        best = train.run(remote, ss)
+        best = level_2.run(remote, ss)
         print(f"completed training with best value: {best:.4f}")
 
         """
