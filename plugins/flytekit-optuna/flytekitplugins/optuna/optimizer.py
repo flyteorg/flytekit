@@ -130,20 +130,16 @@ def process(trial: optuna.Trial, inputs: dict[str, Any], root: Optional[list[str
     if root is None:
         root = []
 
+    suggesters = {Float: trial.suggest_float, Integer: trial.suggest_int, Category: trial.suggest_categorical}
+
     for key, value in inputs.items():
         path = copy(root) + [key]
 
         if isinstance(inputs[key], Suggestion):
-            suggesters = {
-                Float: trial.suggest_float,
-                Integer: trial.suggest_int,
-                Category: trial.suggest_categorical,
-            }
-
             suggester = suggesters[type(value)]
             inputs[key] = suggester(name=(".").join(path), **vars(value))
 
-        if isinstance(value, dict):
+        elif isinstance(value, dict):
             inputs[key] = process(trial=trial, inputs=value, root=path)
 
     return inputs
