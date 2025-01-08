@@ -57,7 +57,11 @@ def test_bundled_local_exec():
             "y": suggest.integer(low=-10, high=10),
         }
 
-        await optimizer(suggestions, z=suggest.category([-5, 0, 3, 6, 9]), power=2)
+        await optimizer(
+            suggestions=suggestions,
+            z=suggest.category([-5, 0, 3, 6, 9]),
+            power=2,
+        )
 
         return optimizer.study.best_value
     loss = asyncio.run(train(concurrency=2, n_trials=10))

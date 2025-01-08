@@ -90,47 +90,32 @@ class Optimizer:
         else:
             raise ValueError("objective function must return a float or tuple of floats")
 
-    async def __call__(self, suggestions: Optional[dict[str, Suggestion]] = None, **inputs: Any):
+    async def __call__(self, **inputs: Any):
         """
         Asynchronously executes the objective function remotely.
         Parameters:
-            suggestions (Optional[dict[str, Suggestion]]): bundled suggestions to objective function
             **inputs: other inputs to objective function
         """
-
-        if suggestions is not None:
-            if not isinstance(suggestions, dict):
-                raise ValueError("suggestions must be a dict[str, Suggestion]")
-
-            for key, value in suggestions.items():
-                if not isinstance(key, str):
-                    raise ValueError(f"suggestion key must be a string, got {type(key)}")
-                if not isinstance(value, Suggestion):
-                    raise ValueError(f"suggestion must be of type {type(value)}")
 
         # create semaphore to manage concurrency
         semaphore = asyncio.Semaphore(self.concurrency)
 
         # create list of async trials
-        trials = [self.spawn(semaphore, suggestions, **inputs) for _ in range(self.n_trials)]
+        trials = [self.spawn(semaphore, **inputs) for _ in range(self.n_trials)]
 
         # await all trials to complete
         await asyncio.gather(*trials)
 
-    async def spawn(
-        self,
-        semaphore: asyncio.Semaphore,
-        suggestions: Optional[dict[str, Suggestion]] = None,
-        **inputs: Any,
-    ):
+    async def spawn(self, semaphore: asyncio.Semaphore, **inputs: Any):
         async with semaphore:
             # ask for a new trial
             trial: optuna.Trial = self.study.ask()
 
-            if suggestions is not None:
-                inputs["suggestions"] = self.suggest(trial, suggestions)
-
             inputs = self.suggest(trial, inputs)
+
+            for key, value in inputs.items():
+                if isinstance(value, dict):
+                    inputs[key] = self.suggest(trial, value)
 
             try:
                 # schedule the trial
