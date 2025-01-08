@@ -688,7 +688,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         )
 
         # Set this here so that the lhs call doesn't fail at least. This is only useful in the context of the
-        # ClassStorageTaskResolver, to satisfy the understanding that my_wf.lhs should be fetch the worflow object
+        # ClassStorageTaskResolver, to satisfy the understanding that my_wf.lhs should be fetch the workflow object
         # from the module.
         self._lhs = workflow_function.__name__
 
