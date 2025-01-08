@@ -126,7 +126,6 @@ class Optimizer:
                 self.study.tell(trial, state=optuna.trial.TrialState.FAIL)
 
     def suggest(self, trial: optuna.Trial, inputs: dict[str, Any], parents: list[str] = None) -> dict[str, Any]:
-
         if parents is None:
             parents = []
 
