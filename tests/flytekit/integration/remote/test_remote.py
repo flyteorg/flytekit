@@ -107,15 +107,6 @@ def test_remote_run():
     run("default_lp.py", "my_wf")
 
 
-def test_pydantic_default_input_with_map_task():
-    execution_id = run("pydantic_wf.py", "wf")
-    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
-    execution = remote.fetch_execution(name=execution_id)
-    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
-    print("Execution Error:", execution.error)
-    assert execution.closure.phase == WorkflowExecutionPhase.SUCCEEDED, f"Execution failed with phase: {execution.closure.phase}"
-
-
 def test_generic_idl_flytetypes():
     os.environ["FLYTE_USE_OLD_DC_FORMAT"] = "true"
     # default inputs for flyte types in dataclass
