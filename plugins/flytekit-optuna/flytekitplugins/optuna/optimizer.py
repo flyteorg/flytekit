@@ -125,8 +125,8 @@ class Optimizer:
             except EagerException:
                 self.study.tell(trial, state=optuna.trial.TrialState.FAIL)
 
-    @staticmethod
-    def suggest(trial: optuna.Trial, inputs: dict[str, Any], parents: list[str] = None) -> dict[str, Any]:
+    def suggest(self, trial: optuna.Trial, inputs: dict[str, Any], parents: list[str] = None) -> dict[str, Any]:
+
         if parents is None:
             parents = []
 
@@ -145,6 +145,6 @@ class Optimizer:
                 inputs[key] = suggester(name=name, **vars(value))
 
             if isinstance(value, dict):
-                inputs[key] = suggest(trial, value, parents)
+                inputs[key] = self.suggest(trial, value, parents)
 
         return inputs
