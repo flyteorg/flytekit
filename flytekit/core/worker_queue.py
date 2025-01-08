@@ -195,6 +195,7 @@ class Controller:
         try:
             item = update.wi
             if item.wf_exec is None:
+                logger.warning(f"reconcile should launch for {id(item)} entity name: {item.entity.name}")
                 wf_exec = self.launch_execution(update.wi, update.idx)
                 update.wf_exec = wf_exec
                 update.status = ItemStatus.RUNNING
@@ -206,6 +207,8 @@ class Controller:
                         update.status = ItemStatus.SUCCESS
                     elif update.wf_exec.closure.phase == WorkflowExecutionPhase.FAILED:
                         update.status = ItemStatus.FAILED
+                else:
+                    assert item.status == ItemStatus.RUNNING
 
         except Exception as e:
             logger.error(f"Error launching execution for {update.wi.entity.name} with {update.wi.input_kwargs}: {e}")
@@ -309,6 +312,7 @@ class Controller:
 
     def launch_execution(self, wi: WorkItem, idx: int) -> FlyteWorkflowExecution:
         """This function launches executions."""
+        logger.warning(f"Launching execution for {wi.entity.name} {idx=} with {wi.input_kwargs}")
         if wi.result is None and wi.error is None:
             l = self.get_labels()
             e = self.get_env()
