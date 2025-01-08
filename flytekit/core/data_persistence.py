@@ -46,11 +46,11 @@ from flytekit.interfaces.random import random
 from flytekit.loggers import logger
 from flytekit.utils.asyn import loop_manager
 
-# Refer to https://github.com/fsspec/s3fs/blob/50bafe4d8766c3b2a4e1fc09669cf02fb2d71454/s3fs/core.py#L198
+# Refer to https://github.com/developmentseed/obstore/blob/33654fc37f19a657689eb93327b621e9f9e01494/obstore/python/obstore/store/_aws.pyi#L11
 # for key and secret
 _FSSPEC_S3_KEY_ID = "access_key_id"
 _FSSPEC_S3_SECRET = "secret_access_key"
-_ANON = "anon"
+_ANON = "skip_signature"
 
 Uploadable = typing.Union[str, os.PathLike, pathlib.Path, bytes, io.BufferedReader, io.BytesIO, io.StringIO]
 
@@ -68,7 +68,8 @@ def s3_setup_args(s3_cfg: configuration.S3Config, bucket: str = "", anonymous: b
     # S3fs takes this as a special arg
     if s3_cfg.endpoint is not None:
         store_kwargs["endpoint_url"] = s3_cfg.endpoint
-        # kwargs["client_kwargs"] = {"endpoint_url": s3_cfg.endpoint}
+    if anonymous:
+        store_kwargs[_ANON] = "true"
 
     store = S3Store.from_env(
         bucket,
@@ -80,9 +81,6 @@ def s3_setup_args(s3_cfg: configuration.S3Config, bucket: str = "", anonymous: b
     )
 
     kwargs["retries"] = s3_cfg.retries
-
-    if anonymous:
-        kwargs[_ANON] = True
 
     kwargs["store"] = store
 
@@ -157,6 +155,8 @@ def azure_setup_args(
         store_kwargs["client_secret"] = azure_cfg.client_secret
     if azure_cfg.tenant_id:
         store_kwargs["tenant_id"] = azure_cfg.tenant_id
+    if anonymous:
+        kwargs[_ANON] = "true"
 
     store = AzureStore.from_env(
         container,
@@ -167,8 +167,6 @@ def azure_setup_args(
 
     kwargs["store"] = store
 
-    if anonymous:
-        kwargs[_ANON] = True
 
     return kwargs
 
