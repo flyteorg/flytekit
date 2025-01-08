@@ -101,10 +101,11 @@ class WorkItem:
     status: ItemStatus = ItemStatus.PENDING
     wf_exec: typing.Optional[FlyteWorkflowExecution] = None
     python_interface: typing.Optional[Interface] = None
-    uuid: uuid.UUID = uuid.uuid4()
+    uuid: uuid.UUID = None
 
     def __post_init__(self):
         self.python_interface = self._get_python_interface()
+        self.uuid = uuid.uuid4()
 
     @property
     def ready(self) -> bool:
@@ -355,6 +356,7 @@ class Controller:
         """
         # need to also check to see if the entity has already been registered, and if not, register it.
         i = WorkItem(entity=entity, input_kwargs=input_kwargs)
+        assert i.status == ItemStatus.PENDING
 
         with self.entries_lock:
             if entity.name not in self.entries:
