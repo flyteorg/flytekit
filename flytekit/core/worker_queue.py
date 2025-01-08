@@ -225,8 +225,10 @@ class Controller:
                     # Only process items that need it
                     if item.status == ItemStatus.SUCCESS or item.status == ItemStatus.FAILED:
                         continue
+                    print(f"DEBUG: Adding item {id(item)} to update_items {idx=} status {item.status}")
                     update = Update(wi=item, idx=idx)
                     update_items[item.uuid] = update
+            print(f"DEBUG: _get_update_items total {len(update_items)} items to update")
             return update_items
 
     def _apply_updates(self, update_items: typing.Dict[uuid.UUID, Update]) -> None:
