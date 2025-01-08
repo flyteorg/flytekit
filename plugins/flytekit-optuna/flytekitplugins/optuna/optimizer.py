@@ -1,6 +1,6 @@
 import asyncio
 import inspect
-from copy import copy
+from copy import copy, deepcopy
 from dataclasses import dataclass
 from types import SimpleNamespace
 from typing import Any, Optional, Union
@@ -102,17 +102,17 @@ class Optimizer:
         semaphore = asyncio.Semaphore(self.concurrency)
 
         # create list of async trials
-        trials = [self.spawn(semaphore, **inputs) for _ in range(self.n_trials)]
+        trials = [self.spawn(semaphore, deepcopy(inputs)) for _ in range(self.n_trials)]
 
         # await all trials to complete
         await asyncio.gather(*trials)
 
-    async def spawn(self, semaphore: asyncio.Semaphore, **inputs: Any):
+    async def spawn(self, semaphore: asyncio.Semaphore, inputs: dict[str, Any]):
         async with semaphore:
             # ask for a new trial
             trial: optuna.Trial = self.study.ask()
 
-            inputs = self.suggest(trial, inputs)
+            inputs = process(trial=trial, inputs=inputs)
 
             try:
                 # schedule the trial
@@ -125,25 +125,25 @@ class Optimizer:
             except EagerException:
                 self.study.tell(trial, state=optuna.trial.TrialState.FAIL)
 
-    def suggest(self, trial: optuna.Trial, inputs: dict[str, Any], parents: list[str] = None) -> dict[str, Any]:
-        if parents is None:
-            parents = []
 
-        suggesters = {
-            Float: trial.suggest_float,
-            Integer: trial.suggest_int,
-            Category: trial.suggest_categorical,
-        }
+def process(trial: optuna.Trial, inputs: dict[str, Any], root: Optional[list[str]] = None) -> dict[str, Any]:
+    if root is None:
+        root = []
 
-        for key, value in inputs.items():
-            parents = copy(parents) + [key]
+    for key, value in inputs.items():
+        path = copy(root) + [key]
 
-            if isinstance(inputs[key], Suggestion):
-                name = (".").join(parents)
-                suggester = suggesters[type(value)]
-                inputs[key] = suggester(name=name, **vars(value))
+        if isinstance(inputs[key], Suggestion):
+            suggesters = {
+                Float: trial.suggest_float,
+                Integer: trial.suggest_int,
+                Category: trial.suggest_categorical,
+            }
 
-            if isinstance(value, dict):
-                inputs[key] = self.suggest(trial, value, parents)
+            suggester = suggesters[type(value)]
+            inputs[key] = suggester(name=(".").join(path), **vars(value))
 
-        return inputs
+        if isinstance(value, dict):
+            inputs[key] = process(trial=trial, inputs=value, root=path)
+
+    return inputs
