@@ -1,5 +1,6 @@
 import asyncio
 import inspect
+from copy import copy
 from dataclasses import dataclass
 from types import SimpleNamespace
 from typing import Any, Optional, Union
@@ -94,7 +95,7 @@ class Optimizer:
         """
         Asynchronously executes the objective function remotely.
         Parameters:
-            **inputs: other inputs to objective function
+            **inputs: inputs to objective function
         """
 
         # create semaphore to manage concurrency
@@ -113,10 +114,6 @@ class Optimizer:
 
             inputs = self.suggest(trial, inputs)
 
-            for key, value in inputs.items():
-                if isinstance(value, dict):
-                    inputs[key] = self.suggest(trial, value)
-
             try:
                 # schedule the trial
                 result: Union[float, tuple[float, ...]] = await self.objective(**inputs)
@@ -129,7 +126,10 @@ class Optimizer:
                 self.study.tell(trial, state=optuna.trial.TrialState.FAIL)
 
     @staticmethod
-    def suggest(trial: optuna.Trial, inputs: dict[str, Any]) -> dict[str, Any]:
+    def suggest(trial: optuna.Trial, inputs: dict[str, Any], parents: list[str] = None) -> dict[str, Any]:
+        if parents is None:
+            parents = []
+
         suggesters = {
             Float: trial.suggest_float,
             Integer: trial.suggest_int,
@@ -137,8 +137,14 @@ class Optimizer:
         }
 
         for key, value in inputs.items():
+            parents = copy(parents) + [key]
+
             if isinstance(inputs[key], Suggestion):
+                name = (".").join(parents)
                 suggester = suggesters[type(value)]
-                inputs[key] = suggester(name=key, **vars(value))
+                inputs[key] = suggester(name=name, **vars(value))
+
+            if isinstance(value, dict):
+                inputs[key] = suggest(trial, value, parents)
 
         return inputs
