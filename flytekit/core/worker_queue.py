@@ -156,7 +156,6 @@ class Controller:
         self.entries_lock = threading.Lock()
 
         # Things for actually kicking off and monitoring
-        from flytekit.core.context_manager import FlyteContextManager
         self.__runner_thread: threading.Thread = threading.Thread(
             target=self._execute, daemon=True, name="controller-thread"
         )
@@ -193,6 +192,7 @@ class Controller:
         This loop is responsible for processing on work item. Will launch, update, set error on the update object
         """
         try:
+            print(f"DEBUG: reconcile_one {update.wi.status} item id {id(update.wi)}")
             item = update.wi
             if item.wf_exec is None:
                 logger.warning(f"reconcile should launch for {id(item)} entity name: {item.entity.name}")
@@ -219,7 +219,9 @@ class Controller:
         with self.entries_lock:
             update_items: typing.Dict[uuid.UUID, Update] = {}
             for entity_name, items in self.entries.items():
+                print(f"DEBUG: {len(items)} items in {entity_name}")
                 for idx, item in enumerate(items):
+                    print(f" DEBUG:item _get_update_items {item.status}")
                     # Only process items that need it
                     if item.status == ItemStatus.SUCCESS or item.status == ItemStatus.FAILED:
                         continue
@@ -255,11 +257,13 @@ class Controller:
 
     def _poll(self) -> None:
         from flytekit.core.context_manager import FlyteContextManager
+
         ctx = FlyteContextManager.current_context()
         # This needs to be a while loop that runs forever,
         while True:
             # Gather all items that need processing
             update_items = self._get_update_items()
+            print(f"DEBUG: poll loop {update_items}")
 
             # Actually call for updates outside of the lock.
             # Currently this happens one at a time, but only because the API only supports one at a time.
@@ -343,9 +347,7 @@ class Controller:
                 "This launch function should not be invoked for work items already" " with result or error"
             )
 
-    async def add(
-        self, entity: RunnableEntity, input_kwargs: dict[str, typing.Any]
-    ) -> typing.Any:
+    async def add(self, entity: RunnableEntity, input_kwargs: dict[str, typing.Any]) -> typing.Any:
         """
         Add an entity along with the requested inputs to be submitted to Admin for running and return a future
         """
