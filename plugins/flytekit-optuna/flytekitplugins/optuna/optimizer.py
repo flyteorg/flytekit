@@ -72,37 +72,25 @@ class Optimizer:
         elif isinstance(self.objective, PythonFunctionWorkflow):
             func = self.objective._workflow_function
         else:
-            raise ValueError(
-                "objective must be a PythonFunctionTask or PythonFunctionWorkflow"
-            )
+            raise ValueError("objective must be a PythonFunctionTask or PythonFunctionWorkflow")
 
         signature = inspect.signature(func)
 
         if signature.return_annotation is float:
             if len(self.study.directions) != 1:
-                raise ValueError(
-                    "the study must have a single objective if objective returns a single float"
-                )
+                raise ValueError("the study must have a single objective if objective returns a single float")
 
         elif isinstance(args := signature.return_annotation.__args__, tuple):
             if len(args) != len(self.study.directions):
-                raise ValueError(
-                    "objective must return the same number of directions in the study"
-                )
+                raise ValueError("objective must return the same number of directions in the study")
 
             if not all(arg is float for arg in args):
-                raise ValueError(
-                    "objective function must return a float or tuple of floats"
-                )
+                raise ValueError("objective function must return a float or tuple of floats")
 
         else:
-            raise ValueError(
-                "objective function must return a float or tuple of floats"
-            )
+            raise ValueError("objective function must return a float or tuple of floats")
 
-    async def __call__(
-        self, suggestions: Optional[dict[str, Suggestion]] = None, /, **inputs: Any
-    ):
+    async def __call__(self, suggestions: Optional[dict[str, Suggestion]] = None, /, **inputs: Any):
         """
         Asynchronously executes the objective function remotely.
         Parameters:
@@ -124,9 +112,7 @@ class Optimizer:
         semaphore = asyncio.Semaphore(self.concurrency)
 
         # create list of async trials
-        trials = [
-            self.spawn(semaphore, suggestions, **inputs) for _ in range(self.n_trials)
-        ]
+        trials = [self.spawn(semaphore, suggestions, **inputs) for _ in range(self.n_trials)]
 
         # await all trials to complete
         await asyncio.gather(*trials)
