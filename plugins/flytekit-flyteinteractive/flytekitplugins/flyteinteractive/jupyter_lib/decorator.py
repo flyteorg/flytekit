@@ -168,7 +168,7 @@ class jupyter(ClassDecorator):
 
         write_example_notebook(task_function=self.task_function, notebook_dir=self.notebook_dir)
 
-        exit_handler(
+        return exit_handler(
             child_process=child_process,
             task_function=self.task_function,
             args=args,
