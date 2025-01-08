@@ -90,7 +90,7 @@ class Optimizer:
         else:
             raise ValueError("objective function must return a float or tuple of floats")
 
-    async def __call__(self, suggestions: Optional[dict[str, Suggestion]] = None, /, **inputs: Any):
+    async def __call__(self, suggestions: Optional[dict[str, Suggestion]] = None, **inputs: Any):
         """
         Asynchronously executes the objective function remotely.
         Parameters:
@@ -121,7 +121,6 @@ class Optimizer:
         self,
         semaphore: asyncio.Semaphore,
         suggestions: Optional[dict[str, Suggestion]] = None,
-        /,
         **inputs: Any,
     ):
         async with semaphore:
