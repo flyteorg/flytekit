@@ -310,7 +310,7 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
             self._remote_source = self.path
             self._local_path = ctx.file_access.get_random_local_path(self._remote_source)
             self._downloader = partial(
-                FlyteFilePathTransformer.downloader,
+                ctx.file_access.get_data,
                 ctx=ctx,
                 remote_path=self._remote_source,  # type: ignore
                 local_path=self._local_path,
@@ -736,27 +736,12 @@ class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
         # For the remote case, return an FlyteFile object that can download
         local_path = ctx.file_access.get_random_local_path(uri)
 
+        _downloader = partial(ctx.file_access.get_data, remote_path=uri, local_path=local_path, is_multipart=False)
+
         expected_format = FlyteFilePathTransformer.get_format(expected_python_type)
-        ff = FlyteFile.__class_getitem__(expected_format)(
-            path=local_path,
-            downloader=partial(self.downloader, ctx.file_access, remote_path=uri, local_path=local_path),
-        )
+        ff = FlyteFile.__class_getitem__(expected_format)(path=local_path, downloader=_downloader)
         ff._remote_source = uri
         return ff
-
-    @staticmethod
-    def downloader(
-        file_access_provider: FileAccessProvider,
-        remote_path: typing.Union[str, os.PathLike],
-        local_path: typing.Union[str, os.PathLike],
-    ) -> None:
-        """
-        Download data from remote_path to local_path.
-
-        We design the downloader as a static method because its behavior is logically
-        related to this class but don't need to interact with class or instance data.
-        """
-        file_access_provider.get_data(remote_path, local_path, is_multipart=False)
 
     def guess_python_type(self, literal_type: LiteralType) -> typing.Type[FlyteFile[typing.Any]]:
         if (
