@@ -114,6 +114,7 @@ def test_remote_eager_run():
     # child_workflow.parent_wf asynchronously register a parent wf1 with child lp from another wf2.
     run("eager_example.py", "simple_eager_workflow", "--x", "3")
 
+
 def test_pydantic_default_input_with_map_task():
     execution_id = run("pydantic_wf.py", "wf")
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
@@ -784,6 +785,20 @@ def test_execute_workflow_remote_fn_with_maptask():
         image_config=ImageConfig.from_images(IMAGE),
     )
     assert out.outputs["o0"] == [4, 5, 6]
+
+
+def test_launch_plans_registrable():
+    """Test remote execution of a @workflow-decorated python function with a map task."""
+    from workflows.basic.array_map import workflow_with_maptask
+
+    from random import choice
+    from string import ascii_letters
+
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN, interactive_mode_enabled=True)
+    version = "".join(choice(ascii_letters) for _ in range(20))
+    new_lp = LaunchPlan.create(name="dynamically_created_lp", workflow=workflow_with_maptask)
+    remote.register_launch_plan(new_lp, version=version)
+
 
 def test_register_wf_fast(register):
     from workflows.basic.subworkflows import parent_wf

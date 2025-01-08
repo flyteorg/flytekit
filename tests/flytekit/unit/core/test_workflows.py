@@ -357,6 +357,10 @@ def my_wf_example(a: int) -> typing.Tuple[int, int]:
     return x, e
 
 
+def test_workflow_lhs():
+    assert my_wf_example._lhs == "my_wf_example"
+
+
 def test_all_node_types():
     assert my_wf_example(a=1) == (6, 16)
     entity_mapping = OrderedDict()
