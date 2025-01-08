@@ -23,7 +23,7 @@ def t1(dc: DC = DC(ff=FlyteFile(os.path.realpath(__file__)),
                        uri="tests/flytekit/integration/remote/workflows/basic/data/df.parquet",
                        file_format="parquet"),
                     fd=FlyteDirectory("tests/flytekit/integration/remote/workflows/basic/data/")
-                   )):
+                   )) -> DC:
 
     with open(dc.ff, "r") as f:
         print("File Content: ", f.read())
