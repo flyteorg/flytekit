@@ -21,7 +21,6 @@ from mashumaro.types import SerializableType
 
 from flytekit.core.constants import MESSAGEPACK
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import (
     AsyncTypeTransformer,
     TypeEngine,
