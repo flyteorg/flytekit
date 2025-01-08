@@ -18,7 +18,7 @@ class ObstoreS3FileSystem(AsyncFsspecStore):
     connect_timeout = 5
     retries = 5
     read_timeout = 15
-    default_block_size = 5 * 2**20
+    default_block_size = DEFAULT_BLOCK_SIZE
     protocol = ("s3", "s3a")
     _extra_tokenize_attributes = ("default_block_size",)
 
