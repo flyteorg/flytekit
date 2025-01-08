@@ -202,6 +202,7 @@ class Controller:
                 update.status = ItemStatus.RUNNING
             else:
                 if not item.wf_exec.is_done:
+                    update.status = ItemStatus.RUNNING
                     # Technically a mutating operation, but let's pretend it's not
                     update.wf_exec = self.remote.sync_execution(item.wf_exec)
                     if update.wf_exec.closure.phase == WorkflowExecutionPhase.SUCCEEDED:
@@ -356,7 +357,6 @@ class Controller:
         """
         # need to also check to see if the entity has already been registered, and if not, register it.
         i = WorkItem(entity=entity, input_kwargs=input_kwargs)
-        assert i.status == ItemStatus.PENDING
 
         with self.entries_lock:
             if entity.name not in self.entries:
