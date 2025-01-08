@@ -57,10 +57,10 @@ class Optimizer:
         if self.study is None:
             self.study = optuna.create_study()
 
-        if (not isinstance(self.concurrency, int)) and (self.concurrency < 0):
+        if (not isinstance(self.concurrency, int)) or (self.concurrency < 0):
             raise ValueError("concurrency must be an integer greater than 0")
 
-        if (not isinstance(self.n_trials, int)) and (self.n_trials < 0):
+        if (not isinstance(self.n_trials, int)) or (self.n_trials < 0):
             raise ValueError("n_trials must be an integer greater than 0")
 
         if not isinstance(self.study, optuna.Study):
