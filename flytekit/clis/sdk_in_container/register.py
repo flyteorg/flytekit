@@ -34,6 +34,7 @@ the root of your project, it finds the first folder that does not have a ``__ini
 """
 
 _original_secho = click.secho
+_original_log_level = logger.level
 
 
 @click.command("register", help=_register_help)
@@ -220,6 +221,7 @@ def register(
     if quiet:
         # Mute all secho output through monkey patching
         click.secho = lambda *args, **kw: None
+        logger.setLevel("ERROR")
 
     try:
         # Use extra images in the config file if that file exists
@@ -263,3 +265,4 @@ def register(
     finally:
         # Restore original secho
         click.secho = _original_secho
+        logger.setLevel(_original_log_level)

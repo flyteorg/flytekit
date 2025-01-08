@@ -26,6 +26,7 @@ from flytekit.tools.serialize_helpers import get_registrable_entities, persist_r
 from flytekit.tools.translator import FlyteControlPlaneEntity, Options
 
 _original_secho = click.secho
+_original_log_level = logger.level
 
 
 class NoSerializableEntitiesError(Exception):
@@ -286,6 +287,7 @@ def register(
     # Mute all secho output through monkey patching
     if quiet:
         click.secho = lambda *args, **kw: None
+        logger.setLevel("ERROR")
 
     try:
         detected_root = find_common_root(package_or_module)
@@ -439,3 +441,4 @@ def register(
     finally:
         # Restore original secho
         click.secho = _original_secho
+        logger.setLevel(_original_log_level)

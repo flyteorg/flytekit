@@ -17,6 +17,7 @@ from flytekit.configuration.plugin import FlytekitPlugin
 from flytekit.core import context_manager
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.remote.remote import FlyteRemote
+from flytekit.loggers import logging
 
 sample_file_contents = """
 from flytekit import task, workflow
@@ -169,7 +170,7 @@ def test_non_fast_register_require_version(mock_client, mock_remote):
 
 @mock.patch("flytekit.configuration.plugin.FlyteRemote", spec=FlyteRemote)
 @mock.patch("flytekit.clients.friendly.SynchronousFlyteClient", spec=SynchronousFlyteClient)
-def test_register_registrated_summary_json(mock_client, mock_remote):
+def test_register_registrated_summary_json(mock_client, mock_remote, caplog):
     ctx = FlyteContextManager.current_context()
     mock_remote._client = mock_client
     mock_remote.return_value.context = ctx
@@ -178,37 +179,39 @@ def test_register_registrated_summary_json(mock_client, mock_remote):
     runner = CliRunner()
     context_manager.FlyteEntities.entities.clear()
 
-    with runner.isolated_filesystem():
-        out = subprocess.run(["git", "init"], capture_output=True)
-        assert out.returncode == 0
-        os.makedirs("core5", exist_ok=True)
-        with open(os.path.join("core5", "sample.py"), "w") as f:
-            f.write(sample_file_contents)
-            f.close()
+    with caplog.at_level(logging.ERROR):
+        with runner.isolated_filesystem():
+            out = subprocess.run(["git", "init"], capture_output=True)
+            assert out.returncode == 0
+            os.makedirs("core5", exist_ok=True)
+            with open(os.path.join("core5", "sample.py"), "w") as f:
+                f.write(sample_file_contents)
+                f.close()
 
-        result = runner.invoke(
-            pyflyte.main,
-            ["register", "--summary-format", "json", "core5"]
-        )
-        assert result.exit_code == 0
-        try:
-            summary_data = json.loads(result.output)
-        except json.JSONDecodeError as e:
-            pytest.fail(f"Failed to parse registration summary JSON: {e}")
-        except Exception as e:
-            pytest.fail(f"Unexpected error while parsing registration summary: {e}")
-        assert isinstance(summary_data, list)
-        assert len(summary_data) > 0
-        for entry in summary_data:
-            assert "id" in entry
-            assert "type" in entry
-            assert "version" in entry
-            assert "status" in entry
-        shutil.rmtree("core5")
+            result = runner.invoke(
+                pyflyte.main,
+                ["register", "--summary-format", "json", "core5"]
+            )
+            assert result.exit_code == 0
+            try:
+                summary_data = json.loads(result.output)
+            except json.JSONDecodeError as e:
+                pytest.fail(f"Failed to parse registration summary JSON: {e}")
+            except Exception as e:
+                pytest.fail(f"Unexpected error while parsing registration summary: {e}")
+            assert isinstance(summary_data, list)
+            assert len(summary_data) > 0
+            for entry in summary_data:
+                assert "id" in entry
+                assert "type" in entry
+                assert "version" in entry
+                assert "status" in entry
+            shutil.rmtree("core5")
+    caplog.clear()
 
 @mock.patch("flytekit.configuration.plugin.FlyteRemote", spec=FlyteRemote)
 @mock.patch("flytekit.clients.friendly.SynchronousFlyteClient", spec=SynchronousFlyteClient)
-def test_register_registrated_summary_yaml(mock_client, mock_remote):
+def test_register_registrated_summary_yaml(mock_client, mock_remote, caplog):
     ctx = FlyteContextManager.current_context()
     mock_remote._client = mock_client
     mock_remote.return_value.context = ctx
@@ -217,36 +220,39 @@ def test_register_registrated_summary_yaml(mock_client, mock_remote):
     runner = CliRunner()
     context_manager.FlyteEntities.entities.clear()
 
-    with runner.isolated_filesystem():
-        out = subprocess.run(["git", "init"], capture_output=True)
-        assert out.returncode == 0
-        os.makedirs("core6", exist_ok=True)
-        with open(os.path.join("core6", "sample.py"), "w") as f:
-            f.write(sample_file_contents)
-            f.close()
+    with caplog.at_level(logging.ERROR):
+        with runner.isolated_filesystem():
+            out = subprocess.run(["git", "init"], capture_output=True)
+            assert out.returncode == 0
+            os.makedirs("core6", exist_ok=True)
+            with open(os.path.join("core6", "sample.py"), "w") as f:
+                f.write(sample_file_contents)
+                f.close()
 
-        result = runner.invoke(
-            pyflyte.main,
-            ["register", "--summary-format", "yaml", "core6"]
-        )
-        assert result.exit_code == 0
-        try:
-            summary_data = yaml.safe_load(result.output)
-        except yaml.YAMLError as e:
-            pytest.fail(f"Failed to parse YAML output: {e}")
-        assert isinstance(summary_data, list)
-        assert len(summary_data) > 0
-        for entry in summary_data:
-            assert "id" in entry
-            assert "type" in entry
-            assert "version" in entry
-            assert "status" in entry
+            result = runner.invoke(
+                pyflyte.main,
+                ["register", "--summary-format", "yaml", "core6"]
+            )
+            assert result.exit_code == 0
+            try:
+                summary_data = yaml.safe_load(result.output)
+            except yaml.YAMLError as e:
+                pytest.fail(f"Failed to parse YAML output: {e}")
+            assert isinstance(summary_data, list)
+            assert len(summary_data) > 0
+            for entry in summary_data:
+                assert "id" in entry
+                assert "type" in entry
+                assert "version" in entry
+                assert "status" in entry
 
-        shutil.rmtree("core6")
+            shutil.rmtree("core6")
+    caplog.clear()
+
 
 @mock.patch("flytekit.configuration.plugin.FlyteRemote", spec=FlyteRemote)
 @mock.patch("flytekit.clients.friendly.SynchronousFlyteClient", spec=SynchronousFlyteClient)
-def test_register_quiet(mock_client, mock_remote):
+def test_register_quiet(mock_client, mock_remote, caplog):
     ctx = FlyteContextManager.current_context()
     mock_remote._client = mock_client
     mock_remote.return_value.context = ctx
@@ -254,18 +260,21 @@ def test_register_quiet(mock_client, mock_remote):
     mock_remote.return_value.fast_package.return_value = "dummy_md5_bytes", "dummy_native_url"
     runner = CliRunner()
     context_manager.FlyteEntities.entities.clear()
-    with runner.isolated_filesystem():
-        out = subprocess.run(["git", "init"], capture_output=True)
-        assert out.returncode == 0
-        os.makedirs("core7", exist_ok=True)
-        with open(os.path.join("core7", "sample.py"), "w") as f:
-            f.write(sample_file_contents)
-            f.close()
-        result = runner.invoke(
-            pyflyte.main,
-            ["register", "--quiet", "core7"]
-        )
-        assert result.exit_code == 0
-        assert result.output == ""
 
-        shutil.rmtree("core7")
+    with caplog.at_level(logging.ERROR):
+        with runner.isolated_filesystem():
+            out = subprocess.run(["git", "init"], capture_output=True)
+            assert out.returncode == 0
+            os.makedirs("core7", exist_ok=True)
+            with open(os.path.join("core7", "sample.py"), "w") as f:
+                f.write(sample_file_contents)
+                f.close()
+            result = runner.invoke(
+                pyflyte.main,
+                ["register", "--quiet", "core7"]
+            )
+            assert result.exit_code == 0
+            assert result.output == ""
+
+            shutil.rmtree("core7")
+    caplog.clear()
