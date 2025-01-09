@@ -65,7 +65,7 @@ def register():
     assert out.returncode == 0
 
 
-def run(file_name, wf_name, run_args=None, *wf_args) -> str:
+def run(file_name, wf_name, *wf_args, run_args=None) -> str:
     # Copy the environment and set the environment variable
     if run_args is None:
         run_args = []
