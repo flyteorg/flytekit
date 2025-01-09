@@ -20,7 +20,7 @@ from flytekit.core.reference_entity import ReferenceEntity
 from flytekit.core.utils import _dnsify
 from flytekit.core.workflow import WorkflowBase
 from flytekit.exceptions.system import FlyteSystemException
-from flytekit.loggers import logger
+from flytekit.loggers import developer_logger, logger
 from flytekit.models.common import Labels
 from flytekit.models.core.execution import WorkflowExecutionPhase
 
@@ -91,7 +91,8 @@ class Update:
 @dataclass(unsafe_hash=True)
 class WorkItem:
     """
-    This is a class to keep track of what the user requested. The
+    This is a class to keep track of what the user requested. Since it captures the arguments that the user wants
+    to run the entity with, an arbitrary map, can't make this frozen.
     """
 
     entity: RunnableEntity
@@ -101,7 +102,7 @@ class WorkItem:
     status: ItemStatus = ItemStatus.PENDING
     wf_exec: typing.Optional[FlyteWorkflowExecution] = None
     python_interface: typing.Optional[Interface] = None
-    uuid: uuid.UUID = None
+    uuid: typing.Optional[uuid.UUID] = None
 
     def __post_init__(self):
         self.python_interface = self._get_python_interface()
@@ -129,7 +130,7 @@ class WorkItem:
                 key = f"o{i}"
                 if key not in self.entity.interface.outputs:
                     raise AssertionError(
-                        f"Output name {key} not found in outputs {[k for k in work.entity.interface.outputs.keys()]}"
+                        f"Output name {key} not found in outputs {[k for k in self.entity.interface.outputs.keys()]}"
                     )
                 var_type = self.entity.interface.outputs[key].type
                 python_outputs_interface[key] = TypeEngine.guess_python_type(var_type)
@@ -184,13 +185,10 @@ class Controller:
 
     def _close(self) -> None: ...
 
-    @staticmethod
-    def exc_handler(loop, context):
-        logger.error(f"Caught exception in loop {loop} with context {context}")
-
     def reconcile_one(self, update: Update):
         """
-        This loop is responsible for processing on work item. Will launch, update, set error on the update object
+        This is responsible for processing one work item. Will launch, update, set error on the update object
+        Any errors are captured in the update object.
         """
         try:
             print(f"DEBUG: reconcile_one {update.wi.status} item id {id(update.wi)}")
@@ -229,7 +227,7 @@ class Controller:
                         continue
                     print(f"DEBUG: Adding item {id(item)} to update_items {idx=} status {item.status}")
                     update = Update(wi=item, idx=idx)
-                    update_items[item.uuid] = update
+                    update_items[typing.cast(uuid.UUID, item.uuid)] = update
             print(f"DEBUG: _get_update_items total {len(update_items)} items to update")
             return update_items
 
@@ -238,10 +236,12 @@ class Controller:
             for entity_name, items in self.entries.items():
                 for item in items:
                     if item.uuid in update_items:
-                        update = update_items[item.uuid]
+                        update = update_items[typing.cast(uuid.UUID, item.uuid)]
                         item.wf_exec = update.wf_exec
+                        assert update.status is not None
                         item.status = update.status
                         if update.status == ItemStatus.SUCCESS:
+                            assert update.wf_exec is not None
                             item.result = update.wf_exec.outputs.as_python_native(item.python_interface)
                         elif update.status == ItemStatus.FAILED:
                             # If update object already has an error, then use that, otherwise look for one in the
@@ -250,6 +250,8 @@ class Controller:
                                 item.error = update.error
                             else:
                                 from flytekit.exceptions.eager import EagerException
+
+                                assert update.wf_exec is not None
 
                                 exc = EagerException(
                                     f"Error executing {update.wi.entity.name} with error:"
@@ -262,7 +264,8 @@ class Controller:
     def _poll(self) -> None:
         from flytekit.core.context_manager import FlyteContextManager
 
-        ctx = FlyteContextManager.current_context()
+        # Import this to ensure context is loaded... python is reloading this module because its in a different thread
+        FlyteContextManager.current_context()
         # This needs to be a while loop that runs forever,
         while True:
             # Gather all items that need processing
@@ -332,6 +335,7 @@ class Controller:
             if isinstance(wi.entity, RemoteEntity):
                 version = wi.entity.id.version
             else:
+                assert self.ss.version
                 version = self.ss.version
 
             # todo: if the execution already exists, remote.execute will return that execution. in the future
@@ -365,10 +369,11 @@ class Controller:
 
         # wait for it to finish one way or another
         while True:
-            print(f"Watching id {id(i)}")
+            developer_logger.debug(f"Watching id {id(i)}")
             if i.status == ItemStatus.SUCCESS:
                 return i.result
             elif i.status == ItemStatus.FAILED:
+                assert i.error is not None
                 raise i.error
             else:
                 await asyncio.sleep(1)  # Small delay to avoid busy-waiting
