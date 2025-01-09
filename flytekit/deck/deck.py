@@ -85,11 +85,8 @@ class Deck:
     @staticmethod
     def publish():
         params = FlyteContextManager.current_context().user_space_params
-        if params.enable_deck:
-            task_name = params.task_id.name
-            _output_deck(task_name=task_name, new_user_params=params)
-        else:
-            logger.warning("Deck is disabled for this task, please don't call Deck.publish()")
+        task_name = params.task_id.name
+        _output_deck(task_name=task_name, new_user_params=params)
 
 class TimeLineDeck(Deck):
     """
@@ -181,6 +178,12 @@ def _get_deck(
 
 def _output_deck(task_name: str, new_user_params: ExecutionParameters):
     ctx = FlyteContext.current_context()
+    params = ctx.user_space_params
+
+    if not params.enable_deck:
+        logger.warning("Deck is disabled for this task, please don't call Deck.publish()")
+        return
+
     local_dir = ctx.file_access.get_random_local_directory()
     local_path = f"{local_dir}{os.sep}{DECK_FILE_NAME}"
     try:
