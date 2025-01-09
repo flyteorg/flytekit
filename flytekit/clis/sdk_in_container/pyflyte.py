@@ -21,10 +21,12 @@ from flytekit.clis.sdk_in_container.serialize import serialize
 from flytekit.clis.sdk_in_container.serve import serve
 from flytekit.clis.sdk_in_container.utils import ErrorHandlingCommand, validate_package
 from flytekit.clis.version import info
-from flytekit.configuration.file import FLYTECTL_CONFIG_ENV_VAR, FLYTECTL_CONFIG_ENV_VAR_OVERRIDE
+from flytekit.configuration.file import FLYTECTL_CONFIG_ENV_VAR_OVERRIDE
 from flytekit.configuration.internal import LocalSDK
 from flytekit.configuration.plugin import get_plugin
-from flytekit.loggers import logger
+
+# from flytekit.configuration.file import  FLYTECTL_CONFIG_ENV_VAR, FLYTECTL_CONFIG_ENV_VAR_OVERRIDE
+# from flytekit.loggers import logger
 
 
 @click.group("pyflyte", invoke_without_command=True, cls=ErrorHandlingCommand)
@@ -66,6 +68,7 @@ def main(ctx, pkgs: typing.List[str], config: str, verbose: int):
     if config:
         ctx.obj[CTX_CONFIG_FILE] = config
         cfg = configuration.ConfigFile(config)
+        # Temporarily commented out to ensure proper output format when using --quiet flag in pyflyte register
         # Set here so that if someone has Config.auto() in their user code, the config here will get used.
         # if FLYTECTL_CONFIG_ENV_VAR in os.environ:
         #     logger.info(

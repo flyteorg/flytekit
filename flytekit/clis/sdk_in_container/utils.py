@@ -71,6 +71,7 @@ def validate_package(ctx, param, values):
             pkgs.extend(val.split(","))
         else:
             pkgs.append(val)
+    # Temporarily commented out to ensure proper output format when using --quiet flag in pyflyte register
     # logger.debug(f"Using packages: {pkgs}")
     return pkgs
 

@@ -192,9 +192,8 @@ def register(
     if quiet:
         # Mute all secho output through monkey patching
         click.secho = lambda *args, **kw: None
-        # Output only log at ERROR or CRITICAL level 
+        # Output only log at ERROR or CRITICAL level
         logger.setLevel("ERROR")
-
 
     # Set the relevant copy option if non_fast is set, this enables the individual file listing behavior
     # that the copy flag uses.
