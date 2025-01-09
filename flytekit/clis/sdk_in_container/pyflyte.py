@@ -67,10 +67,10 @@ def main(ctx, pkgs: typing.List[str], config: str, verbose: int):
         ctx.obj[CTX_CONFIG_FILE] = config
         cfg = configuration.ConfigFile(config)
         # Set here so that if someone has Config.auto() in their user code, the config here will get used.
-        if FLYTECTL_CONFIG_ENV_VAR in os.environ:
-            logger.info(
-                f"Config file arg {config} will override env var {FLYTECTL_CONFIG_ENV_VAR}: {os.environ[FLYTECTL_CONFIG_ENV_VAR]}"
-            )
+        # if FLYTECTL_CONFIG_ENV_VAR in os.environ:
+        #     logger.info(
+        #         f"Config file arg {config} will override env var {FLYTECTL_CONFIG_ENV_VAR}: {os.environ[FLYTECTL_CONFIG_ENV_VAR]}"
+        #     )
         os.environ[FLYTECTL_CONFIG_ENV_VAR_OVERRIDE] = config
         if not pkgs:
             pkgs = LocalSDK.WORKFLOW_PACKAGES.read(cfg)

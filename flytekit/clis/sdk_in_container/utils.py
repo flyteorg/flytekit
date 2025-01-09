@@ -71,7 +71,7 @@ def validate_package(ctx, param, values):
             pkgs.extend(val.split(","))
         else:
             pkgs.append(val)
-    logger.debug(f"Using packages: {pkgs}")
+    # logger.debug(f"Using packages: {pkgs}")
     return pkgs
 
 

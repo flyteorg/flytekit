@@ -185,6 +185,17 @@ def register(
     """
     see help
     """
+
+    if summary_format is not None:
+        quiet = True
+
+    if quiet:
+        # Mute all secho output through monkey patching
+        click.secho = lambda *args, **kw: None
+        # Output only log at ERROR or CRITICAL level 
+        logger.setLevel("ERROR")
+
+
     # Set the relevant copy option if non_fast is set, this enables the individual file listing behavior
     # that the copy flag uses.
 
@@ -214,14 +225,6 @@ def register(
             ctx,
             "Missing argument 'PACKAGE_OR_MODULE...', at least one PACKAGE_OR_MODULE is required but multiple can be passed",
         )
-
-    if summary_format is not None:
-        quiet = True
-
-    if quiet:
-        # Mute all secho output through monkey patching
-        click.secho = lambda *args, **kw: None
-        logger.setLevel("ERROR")
 
     try:
         # Use extra images in the config file if that file exists
