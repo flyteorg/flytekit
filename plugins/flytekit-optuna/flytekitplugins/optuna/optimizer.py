@@ -3,7 +3,7 @@ import inspect
 from copy import copy, deepcopy
 from dataclasses import dataclass
 from types import SimpleNamespace
-from typing import Any, Optional, Union
+from typing import Any, Callable, Optional, Union
 
 import optuna
 from flytekit import PythonFunctionTask
@@ -53,6 +53,7 @@ class Optimizer:
     concurrency: int
     n_trials: int
     study: Optional[optuna.Study] = None
+    callback: Optional[Callable[[optuna.Trial, dict[str, Any]], dict[str, Any]]] = None
 
     def __post_init__(self):
         if self.study is None:
@@ -112,7 +113,10 @@ class Optimizer:
             # ask for a new trial
             trial: optuna.Trial = self.study.ask()
 
-            inputs = process(trial=trial, inputs=inputs)
+            if self.callback is not None:
+                inputs = self.callback(trial, inputs)
+            else:
+                inputs = process(trial, inputs)
 
             try:
                 # schedule the trial
