@@ -41,10 +41,6 @@ class Deck:
     scatter plots or Markdown text. In addition, users can create new decks to render
     their data with custom renderers.
 
-    .. warning::
-
-        This feature is in beta.
-
     .. code-block:: python
 
         iris_df = px.data.iris()
@@ -86,16 +82,14 @@ class Deck:
     def html(self) -> str:
         return self._html
 
-    @classmethod
-    def publish(cls):
+    @staticmethod
+    def publish():
         params = FlyteContextManager.current_context().user_space_params
         if params.enable_deck:
             task_name = params.task_id.name
             _output_deck(task_name=task_name, new_user_params=params)
         else:
-            # todo: change to a more proper error
-            raise ValueError("Deck is disabled for this task, please don't call Deck.publish()")
-
+            logger.warning("Deck is disabled for this task, please don't call Deck.publish()")
 
 class TimeLineDeck(Deck):
     """
