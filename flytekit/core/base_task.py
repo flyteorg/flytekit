@@ -129,7 +129,7 @@ class TaskMetadata(object):
         timeout (Optional[Union[datetime.timedelta, int]]): the max amount of time for which one execution of this task
             should be executed for. The execution will be terminated if the runtime exceeds the given timeout
             (approximately)
-        :param bool generates_deck: Whether the task will generate a Deck URI.
+        generates_deck (bool): Whether the task will generate a Deck URI.
         pod_template_name (Optional[str]): the name of existing PodTemplate resource in the cluster which will be used in this task.
     """
 
@@ -725,6 +725,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         """
         if not self.disable_deck and ctx.user_space_params is not None:
             ctx.user_space_params._enable_deck = True  # type: ignore
+            # ctx.user_space_params.builder().set_enable_decks(True)  # type: ignore
             if DeckField.TIMELINE.value in self.deck_fields:
                 ctx.user_space_params.decks.append(ctx.user_space_params.timeline_deck)
         # Invoked before the task is executed
