@@ -1,4 +1,3 @@
-import tempfile
 from dataclasses import dataclass
 from typing import Dict, Optional
 
@@ -30,9 +29,6 @@ class SlurmAgent(AsyncAgentBase):
     # _ssh_clients: Dict[str, SSHClientConnection]
     _conn: Optional[SSHClientConnection] = None
 
-    # Remote path of the batch script
-    REMOTE_PATH = "/tmp/demo.slurm"
-
     def __init__(self) -> None:
         super(SlurmAgent, self).__init__(task_type_name="slurm", metadata_type=SlurmJobMetadata)
 
@@ -43,21 +39,16 @@ class SlurmAgent(AsyncAgentBase):
         **kwargs,
     ) -> SlurmJobMetadata:
         # Retrieve task config
-        script = task_template.custom["script"]
         slurm_host = task_template.custom["slurm_host"]
+        batch_script_path = task_template.custom["batch_script_path"]
         sbatch_conf = task_template.custom["sbatch_conf"]
 
         # Construct sbatch command for Slurm cluster
-        cmd = _get_sbatch_cmd(sbatch_conf=sbatch_conf, batch_script_path=self.REMOTE_PATH)
+        cmd = _get_sbatch_cmd(sbatch_conf=sbatch_conf, batch_script_path=batch_script_path)
 
         # Run Slurm job
         if self._conn is None:
             await self._connect(slurm_host)
-        with tempfile.NamedTemporaryFile("w") as f:
-            f.write(script)
-            f.flush()
-            async with self._conn.start_sftp_client() as sftp:
-                await sftp.put(f.name, self.REMOTE_PATH)
         res = await self._conn.run(cmd, check=True)
 
         # Retrieve Slurm job id
@@ -94,7 +85,7 @@ def _get_sbatch_cmd(sbatch_conf: Dict[str, str], batch_script_path: str) -> str:
 
     Args:
         sbatch_conf: Options of srun command.
-        batch_script_path: Absolute path of the batch script.
+        batch_script_path: Absolute path of the batch script on Slurm cluster.
 
     Returns:
         cmd: Slurm sbatch command.
