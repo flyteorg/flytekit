@@ -110,6 +110,14 @@ def test_remote_run():
     run("default_lp.py", "my_wf")
 
 
+def test_remote_run_in_new_process():
+    # child_workflow.parent_wf asynchronously register a parent wf1 with child lp from another wf2.
+    run("child_workflow.py", "parent_wf", "--a", "3", "--env", "FLYTE_FAST_EXECUTE_CMD_IN_NEW_PROCESS=1")
+
+    # run twice to make sure it will register a new version of the workflow.
+    run("default_lp.py", "my_wf", "--env", "FLYTE_FAST_EXECUTE_CMD_IN_NEW_PROCESS=1")
+
+
 def test_remote_eager_run():
     # child_workflow.parent_wf asynchronously register a parent wf1 with child lp from another wf2.
     run("eager_example.py", "simple_eager_workflow", "--x", "3")
