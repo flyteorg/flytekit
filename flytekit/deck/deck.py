@@ -88,6 +88,7 @@ class Deck:
         task_name = params.task_id.name
         _output_deck(task_name=task_name, new_user_params=params)
 
+
 class TimeLineDeck(Deck):
     """
     The TimeLineDeck class is designed to render the execution time of each part of a task.
