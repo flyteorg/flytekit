@@ -93,9 +93,11 @@ def test_callback():
             letter = trial.suggest_categorical("booster", ["A", "B", "BLAH"])
 
             if letter == "A":
-                number = trial.suggest_int("number", 1, 10)
+                number = trial.suggest_int("number_A", 1, 10)
             elif letter == "B":
-                number = trial.suggest_float("number", 10., 20.)
+                number = trial.suggest_float("number_B", 10., 20.)
+            else:
+                number = 10
 
             other = trial.suggest_categorical("other", ["Something", "another word", "a phrase"])
 
