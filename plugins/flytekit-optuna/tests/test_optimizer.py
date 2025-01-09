@@ -84,7 +84,7 @@ def test_callback():
 
 
     @fl.eager
-    async def train(concurrency: int, n_trials: int):
+    async def train(concurrency: int, n_trials: int) -> float:
 
         study = optuna.create_study(direction="maximize")
 
@@ -106,6 +106,8 @@ def test_callback():
         optimizer = Optimizer(objective, concurrency, n_trials, study=study, callback=callback)
 
         await optimizer(fixed="hello!")
+        
+        return float(optimizer.study.best_value)
 
     loss = asyncio.run(train(concurrency=2, n_trials=10))
 
