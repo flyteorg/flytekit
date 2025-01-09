@@ -84,6 +84,9 @@ class SimpleFileTransfer:
             tmp_file_path = pathlib.Path(tmp_dir) / "test.json"
             with open(tmp_file_path, "w") as f:
                 json.dump(d, f)
+        elif file_type == "parquet":
+            # Because `upload_file` accepts a single file only, we specify 00000 to make it a single file
+            tmp_file_path = pathlib.Path(__file__).parent / "workflows/basic/data/df.parquet/00000"
 
         return tmp_file_path
 
