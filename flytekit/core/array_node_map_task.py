@@ -128,6 +128,9 @@ class ArrayNodeMapTask(PythonTask):
             **kwargs,
         )
 
+        self.sub_node_metadata: NodeMetadata = super().construct_node_metadata()
+        self.sub_node_metadata._name = self.name
+
     @property
     def name(self) -> str:
         return self._name
@@ -137,15 +140,15 @@ class ArrayNodeMapTask(PythonTask):
         return self._collection_interface
 
     def construct_node_metadata(self) -> NodeMetadata:
-        # TODO: add support for other Flyte entities
+        """
+        This returns metadata for the parent ArrayNode, not the sub-node getting mapped over
+        """
         return NodeMetadata(
             name=self.name,
         )
 
-    def construct_sub_node_metadata(self) -> NodeMetadata:
-        nm = super().construct_node_metadata()
-        nm._name = self.name
-        return nm
+    def get_sub_node_metadata(self) -> NodeMetadata:
+        return self.sub_node_metadata
 
     @property
     def min_success_ratio(self) -> Optional[float]:
