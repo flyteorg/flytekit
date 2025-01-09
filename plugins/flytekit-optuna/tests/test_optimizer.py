@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Union
 
 import asyncio
 import math
@@ -76,7 +76,7 @@ def test_callback():
 
 
     @fl.task
-    async def objective(letter: str, number: float|int, other: str, fixed: str) -> float:
+    async def objective(letter: str, number: Union[float, int], other: str, fixed: str) -> float:
 
         loss = len(letter) + number + len(other) + len(fixed)
 
