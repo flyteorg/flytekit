@@ -214,7 +214,6 @@ class Controller:
         Any errors are captured in the update object.
         """
         try:
-            print(f"DEBUG: reconcile_one {update.wi.status} item id {id(update.wi)}")
             item = update.wi
             if item.wf_exec is None:
                 logger.warning(f"reconcile should launch for {id(item)} entity name: {item.entity.name}")
@@ -242,16 +241,12 @@ class Controller:
         with self.entries_lock:
             update_items: typing.Dict[uuid.UUID, Update] = {}
             for entity_name, items in self.entries.items():
-                print(f"DEBUG: {len(items)} items in {entity_name}")
                 for idx, item in enumerate(items):
-                    print(f" DEBUG:item _get_update_items {item.status}")
                     # Only process items that need it
                     if item.status == ItemStatus.SUCCESS or item.status == ItemStatus.FAILED:
                         continue
-                    print(f"DEBUG: Adding item {id(item)} to update_items {idx=} status {item.status}")
                     update = Update(wi=item, idx=idx)
                     update_items[typing.cast(uuid.UUID, item.uuid)] = update
-            print(f"DEBUG: _get_update_items total {len(update_items)} items to update")
             return update_items
 
     def _apply_updates(self, update_items: typing.Dict[uuid.UUID, Update]) -> None:
@@ -285,18 +280,6 @@ class Controller:
                         # otherwise it's still pending or running
 
     def _poll(self) -> None:
-        import sys
-
-        print(f"in _poll 1: name: {__name__}")
-        print(f"in _poll 1: in sys modules? => {'flytekit.core.context_manager' in sys.modules}")
-        print(f"in _poll 1: {sys.path=}")
-        print(f"in _poll 1: {sys.thread_info=}")
-
-        # Import this to ensure context is loaded... python is reloading this module because its in a different thread
-        print(f"in _poll 2: name: {__name__}")
-        print(f"in _poll 2: in sys modules? => {'flytekit.core.context_manager' in sys.modules}")
-        print(f"in _poll 2: {sys.path=}")
-        print(f"in _poll 2: {sys.thread_info=}")
         # This needs to be a while loop that runs forever,
         while True:
             if self.stopping_condition.is_set():
@@ -304,7 +287,6 @@ class Controller:
                 break
             # Gather all items that need processing
             update_items = self._get_update_items()
-            print(f"DEBUG: poll loop {[(k, id(v.wi)) for k, v in update_items.items()]}")
 
             # Actually call for updates outside of the lock.
             # Currently this happens one at a time, but only because the API only supports one at a time.
@@ -319,13 +301,6 @@ class Controller:
 
     def _execute(self) -> None:
         try:
-            import sys
-
-            print(f"in _execute: name: {__name__}")
-            print(f"in _execute: in sys modules? => {'flytekit.core.context_manager' in sys.modules}")
-            print(f"in _execute: {sys.path=}")
-            print(f"in _execute: {sys.thread_info=}")
-
             self._poll()
         except Exception as e:
             logger.error(f"Error in eager execution processor: {e}")
@@ -411,7 +386,6 @@ class Controller:
         # wait for it to finish one way or another
         while True:
             developer_logger.debug(f"Watching id {id(i)}")
-            print(f"In Add loop - Watching id {id(i)}")
             if i.status == ItemStatus.SUCCESS:
                 return i.result
             elif i.status == ItemStatus.FAILED:

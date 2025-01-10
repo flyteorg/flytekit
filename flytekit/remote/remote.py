@@ -389,14 +389,6 @@ class FlyteRemote(object):
 
     def remote_context(self):
         """Context manager with remote-specific configuration."""
-        import sys
-        import threading
-
-        print(f"in remote_context: name: {__name__}")
-        print(f"in remote_context: in sys modules? => {'flytekit.core.context_manager' in sys.modules}")
-        print(f"in remote_context: thread: {threading.current_thread().name=}")
-
-        # Import this to ensure context is loaded... python is reloading this module because its in a different thread
 
         return FlyteContextManager.with_context(
             FlyteContextManager.current_context().with_file_access(self.file_access)

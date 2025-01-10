@@ -18,6 +18,7 @@ import os
 import pathlib
 import signal
 import tempfile
+import threading
 import traceback
 import typing
 from contextlib import contextmanager
@@ -981,12 +982,6 @@ class FlyteContextManager(object):
         """
         Re-initializes the context and erases the entire context
         """
-        import sys
-        import threading
-
-        print(f"{threading.current_thread().name}: name: {__name__}")
-        print(f"{threading.current_thread().name}: {sys.path}")
-        print(f"{threading.current_thread().name}: {sys.thread_info}")
 
         # This is supplied so that tasks that rely on Flyte provided param functionality do not fail when run locally
         default_execution_id = _identifier.WorkflowExecutionIdentifier(project="local", domain="local", name="local")
@@ -1001,20 +996,8 @@ class FlyteContextManager(object):
                 handler(signum, frame)
             exit(1)
 
-        import threading
-        import traceback
-
-        print(f"!!!!! in ctx initialize {threading.current_thread().name} !!!!!", flush=True)
         if threading.current_thread().name == threading.main_thread().name:
             signal.signal(signal.SIGINT, main_signal_handler)
-        else:
-            print(f"!!!!! should not happen scenario {threading.current_thread().name} !!!!!", flush=True)
-            traceback.print_stack()
-            print([k for k in sys.modules.keys()])
-            print(
-                f"in initialize in incorrect condition: in sys modules? => {'flytekit.core.context_manager' in sys.modules}"
-            )
-            print(f"!!!!! should not happen scenario 2 {threading.current_thread().name} !!!!!", flush=True)
 
         # Note we use the SdkWorkflowExecution object purely for formatting into the ex:project:domain:name format users
         # are already acquainted with
