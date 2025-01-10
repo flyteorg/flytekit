@@ -3,7 +3,7 @@ import inspect
 from copy import copy, deepcopy
 from dataclasses import dataclass
 from types import SimpleNamespace
-from typing import Any, Callable, Optional, Union
+from typing import Any, Awaitable, Callable, Concatenate, Optional, ParamSpec, Union
 
 import optuna
 from flytekit import PythonFunctionTask
@@ -46,14 +46,16 @@ class Category(Suggestion):
 
 suggest = SimpleNamespace(float=Float, integer=Integer, category=Category)
 
+P = ParamSpec("P")
+
 
 @dataclass
 class Optimizer:
-    objective: Union[PythonFunctionTask, PythonFunctionWorkflow]
     concurrency: int
     n_trials: int
     study: Optional[optuna.Study] = None
-    callback: Optional[Callable[[optuna.Trial, dict[str, Any]], dict[str, Any]]] = None
+    objective: Optional[Union[PythonFunctionTask, PythonFunctionWorkflow]] = None
+    callback: Optional[Callable[Concatenate[optuna.Trial, P], Awaitable[Union[float, tuple[float, ...]]]]] = None
 
     def __post_init__(self):
         if self.study is None:
@@ -68,29 +70,45 @@ class Optimizer:
         if not isinstance(self.study, optuna.Study):
             raise ValueError("study must be an optuna.Study")
 
-        # check if the objective function returns the correct number of outputs
-        if isinstance(self.objective, PythonFunctionTask):
-            func = self.objective.task_function
-        elif isinstance(self.objective, PythonFunctionWorkflow):
-            func = self.objective._workflow_function
-        else:
-            raise ValueError("objective must be a PythonFunctionTask or PythonFunctionWorkflow")
+        if self.objective is not None:
+            if self.callback is not None:
+                raise ValueError("either objective or callback must be provided, not both")
 
-        signature = inspect.signature(func)
+            # check if the objective function returns the correct number of outputs
+            if isinstance(self.objective, PythonFunctionTask):
+                func = self.objective.task_function
+            elif isinstance(self.objective, PythonFunctionWorkflow):
+                func = self.objective._workflow_function
+            else:
+                raise ValueError("objective must be a PythonFunctionTask or PythonFunctionWorkflow")
 
-        if signature.return_annotation is float:
-            if len(self.study.directions) != 1:
-                raise ValueError("the study must have a single objective if objective returns a single float")
+            signature = inspect.signature(func)
 
-        elif isinstance(args := signature.return_annotation.__args__, tuple):
-            if len(args) != len(self.study.directions):
-                raise ValueError("objective must return the same number of directions in the study")
+            if signature.return_annotation is float:
+                if len(self.study.directions) != 1:
+                    raise ValueError("the study must have a single objective if objective returns a single float")
 
-            if not all(arg is float for arg in args):
+            elif isinstance(args := signature.return_annotation.__args__, tuple):
+                if len(args) != len(self.study.directions):
+                    raise ValueError("objective must return the same number of directions in the study")
+
+                if not all(arg is float for arg in args):
+                    raise ValueError("objective function must return a float or tuple of floats")
+
+            else:
                 raise ValueError("objective function must return a float or tuple of floats")
 
         else:
-            raise ValueError("objective function must return a float or tuple of floats")
+            if self.callback is None:
+                raise ValueError("either objective or callback must be provided")
+
+            if not callable(self.callback):
+                raise ValueError("callback must be a callable")
+
+            signature = inspect.signature(self.callback)
+
+            if "trial" not in signature.parameters:
+                raise ValueError("callback function must have a parameter called 'trial'")
 
     async def __call__(self, **inputs: Any):
         """
@@ -113,14 +131,14 @@ class Optimizer:
             # ask for a new trial
             trial: optuna.Trial = self.study.ask()
 
-            if self.callback is not None:
-                inputs = self.callback(trial, inputs)
-            else:
-                inputs = process(trial, inputs)
-
             try:
+                if self.callback is not None:
+                    promise = self.callback(trial=trial, **inputs)
+                else:
+                    promise = self.objective(**process(trial, inputs))
+
                 # schedule the trial
-                result: Union[float, tuple[float, ...]] = await self.objective(**inputs)
+                result: Union[float, tuple[float, ...]] = await promise
 
                 # tell the study the result
                 self.study.tell(trial, result, state=optuna.trial.TrialState.COMPLETE)
@@ -134,7 +152,11 @@ def process(trial: optuna.Trial, inputs: dict[str, Any], root: Optional[list[str
     if root is None:
         root = []
 
-    suggesters = {Float: trial.suggest_float, Integer: trial.suggest_int, Category: trial.suggest_categorical}
+    suggesters = {
+        Float: trial.suggest_float,
+        Integer: trial.suggest_int,
+        Category: trial.suggest_categorical,
+    }
 
     for key, value in inputs.items():
         path = copy(root) + [key]
