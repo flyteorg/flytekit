@@ -3,7 +3,9 @@ import inspect
 from copy import copy, deepcopy
 from dataclasses import dataclass
 from types import SimpleNamespace
-from typing import Any, Awaitable, Callable, Concatenate, Optional, ParamSpec, Union
+from typing import Any, Awaitable, Callable, Optional, ParamSpec, Union
+
+from typing_extensions import Concatenate
 
 import optuna
 from flytekit import PythonFunctionTask
