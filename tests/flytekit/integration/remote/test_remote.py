@@ -769,6 +769,20 @@ def test_execute_workflow_remote_fn_with_maptask():
     )
     assert out.outputs["o0"] == [4, 5, 6]
 
+
+def test_launch_plans_registrable():
+    """Test remote execution of a @workflow-decorated python function with a map task."""
+    from workflows.basic.array_map import workflow_with_maptask
+
+    from random import choice
+    from string import ascii_letters
+
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN, interactive_mode_enabled=True)
+    version = "".join(choice(ascii_letters) for _ in range(20))
+    new_lp = LaunchPlan.create(name="dynamically_created_lp", workflow=workflow_with_maptask)
+    remote.register_launch_plan(new_lp, version=version)
+
+
 def test_register_wf_fast(register):
     from workflows.basic.subworkflows import parent_wf
 
