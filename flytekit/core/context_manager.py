@@ -981,6 +981,12 @@ class FlyteContextManager(object):
         """
         Re-initializes the context and erases the entire context
         """
+        import sys
+        import threading
+        print(f"{threading.current_thread().name}: name: {__name__}")
+        print(f"{threading.current_thread().name}: {sys.modules}")
+        print(f"{threading.current_thread().name}: {sys.path}")
+        print(f"{threading.current_thread().name}: {sys.thread_info}")
 
         # This is supplied so that tasks that rely on Flyte provided param functionality do not fail when run locally
         default_execution_id = _identifier.WorkflowExecutionIdentifier(project="local", domain="local", name="local")
