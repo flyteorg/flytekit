@@ -300,7 +300,7 @@ class Controller:
         # This needs to be a while loop that runs forever,
         while True:
             if self.stopping_condition.is_set():
-                print("STOPPING RUNNER THREAD!")
+                developer_logger.debug("Controller thread stopping detected, quitting poll loop")
                 break
             # Gather all items that need processing
             update_items = self._get_update_items()

@@ -1010,6 +1010,10 @@ class FlyteContextManager(object):
         else:
             print(f"!!!!! should not happen scenario {threading.current_thread().name} !!!!!", flush=True)
             traceback.print_stack()
+            print([k for k in sys.modules.keys()])
+            print(
+                f"in initialize in incorrect condition: in sys modules? => {'flytekit.core.context_manager' in sys.modules}"
+            )
             print(f"!!!!! should not happen scenario 2 {threading.current_thread().name} !!!!!", flush=True)
 
         # Note we use the SdkWorkflowExecution object purely for formatting into the ex:project:domain:name format users
