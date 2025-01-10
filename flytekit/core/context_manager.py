@@ -983,6 +983,7 @@ class FlyteContextManager(object):
         """
         import sys
         import threading
+
         print(f"{threading.current_thread().name}: name: {__name__}")
         print(f"{threading.current_thread().name}: {sys.path}")
         print(f"{threading.current_thread().name}: {sys.thread_info}")
@@ -1003,7 +1004,7 @@ class FlyteContextManager(object):
         import threading
         import traceback
 
-        print(f"!!!!! in ctx initialize {threading.current_thread().name} !!!!!")
+        print(f"!!!!! in ctx initialize {threading.current_thread().name} !!!!!", flush=True)
         if threading.current_thread().name == threading.main_thread().name:
             signal.signal(signal.SIGINT, main_signal_handler)
         else:

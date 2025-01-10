@@ -158,6 +158,7 @@ class Controller:
     Executions that should be kicked off will be kicked off, and ones that are running will be checked. This runs
     in a loop similar to a controller loop in a k8s operator.
     """
+
     def __init__(self, remote: FlyteRemote, ss: SerializationSettings, tag: str, root_tag: str, exec_prefix: str):
         logger.debug(
             f"Creating Controller for eager execution with {remote.config.platform.endpoint},"
@@ -204,7 +205,7 @@ class Controller:
     @staticmethod
     def _close(event: threading.Event, runner: threading.Thread) -> None:
         event.set()
-        printf("----------------------------- in close ------------------------")
+        logger.debug("Set background thread to stop, awaiting...")
         runner.join()
 
     def reconcile_one(self, update: Update):
@@ -284,18 +285,26 @@ class Controller:
                         # otherwise it's still pending or running
 
     def _poll(self) -> None:
-        from flytekit.core.context_manager import FlyteContextManager
+        import sys
+
+        print(f"in _poll 1: name: {__name__}")
+        print(f"in _poll 1: in sys modules? => {'flytekit.core.context_manager' in sys.modules}")
+        print(f"in _poll 1: {sys.path=}")
+        print(f"in _poll 1: {sys.thread_info=}")
 
         # Import this to ensure context is loaded... python is reloading this module because its in a different thread
-        FlyteContextManager.current_context()
+        print(f"in _poll 2: name: {__name__}")
+        print(f"in _poll 2: in sys modules? => {'flytekit.core.context_manager' in sys.modules}")
+        print(f"in _poll 2: {sys.path=}")
+        print(f"in _poll 2: {sys.thread_info=}")
         # This needs to be a while loop that runs forever,
         while True:
             if self.stopping_condition.is_set():
-                print(f"STOPPING RUNNER THREAD!")
+                print("STOPPING RUNNER THREAD!")
                 break
             # Gather all items that need processing
             update_items = self._get_update_items()
-            print(f"DEBUG: poll loop {update_items}")
+            print(f"DEBUG: poll loop {[(k, id(v.wi)) for k, v in update_items.items()]}")
 
             # Actually call for updates outside of the lock.
             # Currently this happens one at a time, but only because the API only supports one at a time.
@@ -311,10 +320,11 @@ class Controller:
     def _execute(self) -> None:
         try:
             import sys
+
             print(f"in _execute: name: {__name__}")
-            print(f"in _execute: {'flytekit.core.context_manager' in sys.modules}")
-            print(f"in _execute: {sys.path}")
-            print(f"in _execute: {sys.thread_info}")
+            print(f"in _execute: in sys modules? => {'flytekit.core.context_manager' in sys.modules}")
+            print(f"in _execute: {sys.path=}")
+            print(f"in _execute: {sys.thread_info=}")
 
             self._poll()
         except Exception as e:
