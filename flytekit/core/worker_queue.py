@@ -303,6 +303,12 @@ class Controller:
 
     def _execute(self) -> None:
         try:
+            import sys
+            print(f"in _execute: name: {__name__}")
+            print(f"in _execute: {'flytekit.core.context_manager' in sys.modules}")
+            print(f"in _execute: {sys.path}")
+            print(f"in _execute: {sys.thread_info}")
+
             self._poll()
         except Exception as e:
             logger.error(f"Error in eager execution processor: {e}")
