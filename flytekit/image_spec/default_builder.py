@@ -332,7 +332,7 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
             if src_path.is_absolute() or ".." in src_path.parts:
                 raise ValueError("Absolute paths or paths with '..' are not allowed in COPY command.")
 
-            dst_path = tmp_dir / src_path.name  # Use only the file or directory name for the destination
+            dst_path = tmp_dir / src_path
             dst_path.parent.mkdir(parents=True, exist_ok=True)
 
             if src_path.is_dir():
