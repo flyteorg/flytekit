@@ -3,7 +3,7 @@ Slurm task.
 """
 
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from flytekit.configuration import SerializationSettings
 from flytekit.extend import TaskPlugins
@@ -21,11 +21,13 @@ class Slurm(object):
         slurm_host: Slurm host name. We assume there's no default Slurm host now.
         batch_script_path: Absolute path of the batch script on Slurm cluster.
         sbatch_conf: Options of sbatch command. For available options, please refer to
+        batch_script_args: Additional args for the batch script on Slurm cluster.
             https://slurm.schedmd.com/sbatch.html.
     """
 
     slurm_host: str
     batch_script_path: str
+    batch_script_args: Optional[List[str]] = None
     sbatch_conf: Optional[Dict[str, str]] = None
 
     def __post_init__(self):
@@ -59,6 +61,7 @@ class SlurmTask(AsyncAgentExecutorMixin, ShellTask[Slurm]):
         return {
             "slurm_host": self.task_config.slurm_host,
             "batch_script_path": self.task_config.batch_script_path,
+            "batch_script_args": self.task_config.batch_script_args,
             "sbatch_conf": self.task_config.sbatch_conf,
         }
 

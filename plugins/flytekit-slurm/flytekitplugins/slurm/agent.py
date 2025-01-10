@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 import asyncssh
 from asyncssh import SSHClientConnection
@@ -41,10 +41,11 @@ class SlurmAgent(AsyncAgentBase):
         # Retrieve task config
         slurm_host = task_template.custom["slurm_host"]
         batch_script_path = task_template.custom["batch_script_path"]
+        batch_script_args = task_template.custom["batch_script_args"]
         sbatch_conf = task_template.custom["sbatch_conf"]
 
         # Construct sbatch command for Slurm cluster
-        cmd = _get_sbatch_cmd(sbatch_conf=sbatch_conf, batch_script_path=batch_script_path)
+        cmd = _get_sbatch_cmd(sbatch_conf=sbatch_conf, batch_script_path=batch_script_path, batch_script_args=batch_script_args)
 
         # Run Slurm job
         if self._conn is None:
@@ -78,7 +79,7 @@ class SlurmAgent(AsyncAgentBase):
         self._conn = await asyncssh.connect(host=slurm_host)
 
 
-def _get_sbatch_cmd(sbatch_conf: Dict[str, str], batch_script_path: str) -> str:
+def _get_sbatch_cmd(sbatch_conf: Dict[str, str], batch_script_path: str, batch_script_args: List[str] = None) -> str:
     """Construct Slurm sbatch command.
 
     We assume all main scripts and dependencies are on Slurm cluster.
@@ -86,6 +87,7 @@ def _get_sbatch_cmd(sbatch_conf: Dict[str, str], batch_script_path: str) -> str:
     Args:
         sbatch_conf: Options of srun command.
         batch_script_path: Absolute path of the batch script on Slurm cluster.
+        batch_script_args: Additional args for the batch script on Slurm cluster.
 
     Returns:
         cmd: Slurm sbatch command.
@@ -97,8 +99,13 @@ def _get_sbatch_cmd(sbatch_conf: Dict[str, str], batch_script_path: str) -> str:
 
     # Assign the batch script to run
     cmd.append(batch_script_path)
-    cmd = " ".join(cmd)
 
+    # Add args if present
+    if batch_script_args:
+        for arg in batch_script_args:
+            cmd.append(arg)
+
+    cmd = " ".join(cmd)
     return cmd
 
 
