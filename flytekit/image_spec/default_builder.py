@@ -332,15 +332,15 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
             if src_path.is_absolute() or ".." in src_path.parts:
                 raise ValueError("Absolute paths or paths with '..' are not allowed in COPY command.")
 
-            dst_path = tmp_dir / src_path
+            dst_path = tmp_dir / src_path.name
             dst_path.parent.mkdir(parents=True, exist_ok=True)
 
             if src_path.is_dir():
                 shutil.copytree(src_path, dst_path, dirs_exist_ok=True)
-                copy_commands.append(f"COPY --chown=flytekit {src_path.as_posix()} /root/{src_path.as_posix()}/")
+                copy_commands.append(f"COPY --chown=flytekit {src_path.as_posix()} /root/{src_path.name}/")
             else:
                 shutil.copy(src_path, dst_path)
-                copy_commands.append(f"COPY --chown=flytekit {src_path.as_posix()} /root/{src_path.parent.as_posix()}/")
+                copy_commands.append(f"COPY --chown=flytekit {src_path.as_posix()} /root/")
 
         extra_copy_cmds = "\n".join(copy_commands)
     else:
