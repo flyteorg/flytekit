@@ -996,10 +996,14 @@ class FlyteContextManager(object):
             exit(1)
 
         import threading
+        import traceback
 
         print(f"!!!!! in ctx initialize {threading.current_thread().name} !!!!!")
-        # if threading.current_thread().name == threading.main_thread().name:
-        signal.signal(signal.SIGINT, main_signal_handler)
+        if threading.current_thread().name == threading.main_thread().name:
+            signal.signal(signal.SIGINT, main_signal_handler)
+        else:
+            print(f"!!!!! should not happen scenario {threading.current_thread().name} !!!!!")
+            traceback.print_stack()
 
         # Note we use the SdkWorkflowExecution object purely for formatting into the ex:project:domain:name format users
         # are already acquainted with
