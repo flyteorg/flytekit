@@ -389,7 +389,6 @@ class FlyteRemote(object):
 
     def remote_context(self):
         """Context manager with remote-specific configuration."""
-
         return FlyteContextManager.with_context(
             FlyteContextManager.current_context().with_file_access(self.file_access)
         )
