@@ -984,7 +984,6 @@ class FlyteContextManager(object):
         import sys
         import threading
         print(f"{threading.current_thread().name}: name: {__name__}")
-        print(f"{threading.current_thread().name}: {sys.modules}")
         print(f"{threading.current_thread().name}: {sys.path}")
         print(f"{threading.current_thread().name}: {sys.thread_info}")
 
