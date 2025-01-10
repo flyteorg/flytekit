@@ -145,6 +145,19 @@ handling_signal = 0
 
 
 class Controller:
+    """
+    This controller object is responsible for kicking off and monitoring executions against a Flyte Admin endpoint
+    using a FlyteRemote object. It is used only for running eager tasks. It exposes one async method, `add`, which
+    should be called by the eager task to run a sub-flyte-entity (task, workflow, or a nested eager task).
+
+    The controller maintains a dictionary of entries, where each entry is a list of WorkItems. They are maintained
+    in a list because the number of times and order that each task (or subwf, lp) is called affects the execution name
+    which is consistently hashed.
+
+    After calling `add`, a background thread is started to reconcile the state of this dictionary of WorkItem entries.
+    Executions that should be kicked off will be kicked off, and ones that are running will be checked. This runs
+    in a loop similar to a controller loop in a k8s operator.
+    """
     def __init__(self, remote: FlyteRemote, ss: SerializationSettings, tag: str, root_tag: str, exec_prefix: str):
         logger.debug(
             f"Creating Controller for eager execution with {remote.config.platform.endpoint},"
@@ -183,7 +196,8 @@ class Controller:
         self.tag = tag
         self.root_tag = root_tag
 
-    def _close(self) -> None: ...
+    def _close(self) -> None:
+        self.__runner_thread.join()
 
     def reconcile_one(self, update: Update):
         """
