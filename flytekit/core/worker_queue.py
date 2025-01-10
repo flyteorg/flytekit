@@ -169,6 +169,10 @@ class Controller:
         self.ss = ss
         self.exec_prefix = exec_prefix
         self.entries_lock = threading.Lock()
+        from flytekit.core.context_manager import FlyteContextManager
+
+        # Import this to ensure context is loaded... python is reloading this module because its in a different thread
+        FlyteContextManager.current_context()
 
         # Things for actually kicking off and monitoring
         self.__runner_thread: threading.Thread = threading.Thread(

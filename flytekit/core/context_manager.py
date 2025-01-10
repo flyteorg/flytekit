@@ -1002,8 +1002,9 @@ class FlyteContextManager(object):
         if threading.current_thread().name == threading.main_thread().name:
             signal.signal(signal.SIGINT, main_signal_handler)
         else:
-            print(f"!!!!! should not happen scenario {threading.current_thread().name} !!!!!")
+            print(f"!!!!! should not happen scenario {threading.current_thread().name} !!!!!", flush=True)
             traceback.print_stack()
+            print(f"!!!!! should not happen scenario 2 {threading.current_thread().name} !!!!!", flush=True)
 
         # Note we use the SdkWorkflowExecution object purely for formatting into the ex:project:domain:name format users
         # are already acquainted with
