@@ -135,7 +135,7 @@ async def train(concurrency: int, n_trials: int):
 
 ### Custom Callbacks
 
-In some cases, you may need to create define the suggestions programmatically. This may be done 
+In some cases, you may need to create define the suggestions programmatically. This may be done
 
 ```python
 import flytekit as fl
@@ -151,9 +151,9 @@ async def objective(params: dict[str, int | float | str]) -> float:
 
 @fl.eager(container_image=image)
 async def train(concurrency: int, n_trials: int):
-    
+
     study = optuna.create_study(direction="maximize")
-    
+
     @optimize(n_trials=n_trials, concurrency=concurrency, study=study)
     def optimizer(trial: optuna.Trial, verbosity: int, tree_method: str):
 
