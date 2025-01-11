@@ -146,33 +146,37 @@ image = fl.ImageSpec(packages=["flytekitplugins.optuna"])
 async def objective(params: dict[str, int | float | str]) -> float:
     ...
 
+@optimize
+def optimizer(trial: optuna.Trial, verbosity: int, tree_method: str):
+
+    params = {
+        "verbosity:": verbosity,
+        "tree_method": tree_method,
+        "objective": "binary:logistic",
+        # defines booster, gblinear for linear functions.
+        "booster": trial.suggest_categorical("booster", ["gbtree", "gblinear", "dart"]),
+        # sampling according to each tree.
+        "colsample_bytree": trial.suggest_float("colsample_bytree", 0.2, 1.0),
+    }
+
+    if params["booster"] in ["gbtree", "dart"]:
+        # maximum depth of the tree, signifies complexity of the tree.
+        params["max_depth"] = trial.suggest_int("max_depth", 3, 9, step=2)
+
+    if params["booster"] == "dart":
+        params["sample_type"] = trial.suggest_categorical("sample_type", ["uniform", "weighted"])
+        params["normalize_type"] = trial.suggest_categorical("normalize_type", ["tree", "forest"])
+
+    return objective(params)
+
+
 @fl.eager(container_image=image)
 async def train(concurrency: int, n_trials: int):
 
+    optimizer.concurrency = concurrency
+    optimizer.n_trials = n_trials
+
     study = optuna.create_study(direction="maximize")
-
-    @optimize(n_trials=n_trials, concurrency=concurrency, study=study)
-    def optimizer(trial: optuna.Trial, verbosity: int, tree_method: str):
-
-        params = {
-            "verbosity:": verbosity,
-            "tree_method": tree_method,
-            "objective": "binary:logistic",
-            # defines booster, gblinear for linear functions.
-            "booster": trial.suggest_categorical("booster", ["gbtree", "gblinear", "dart"]),
-            # sampling according to each tree.
-            "colsample_bytree": trial.suggest_float("colsample_bytree", 0.2, 1.0),
-        }
-
-        if params["booster"] in ["gbtree", "dart"]:
-            # maximum depth of the tree, signifies complexity of the tree.
-            params["max_depth"] = trial.suggest_int("max_depth", 3, 9, step=2)
-
-        if params["booster"] == "dart":
-            params["sample_type"] = trial.suggest_categorical("sample_type", ["uniform", "weighted"])
-            params["normalize_type"] = trial.suggest_categorical("normalize_type", ["tree", "forest"])
-
-        return objective(params)
 
     await optimizer(verbosity=0, tree_method="exact")
 ```

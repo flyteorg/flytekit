@@ -1,9 +1,9 @@
 from typing import Union
 
 import asyncio
-import math
 from typing import Union
 
+import optuna
 import flytekit as fl
 from flytekitplugins.optuna import Optimizer, suggest
 
@@ -14,7 +14,7 @@ def test_local_exec():
 
     @fl.task
     async def objective(x: float, y: int, z: int, power: int) -> float:
-        return math.log((((x - 5) ** 2) + (y + 4) ** 4 + (3 * z - 3) ** 2)) ** power
+        return 1.0
 
 
     @fl.eager
@@ -34,6 +34,30 @@ def test_local_exec():
 
     assert isinstance(loss, float)
 
+def test_tuple_out():
+
+    @fl.task
+    async def objective(x: float, y: int, z: int, power: int) -> tuple[float, float]:
+        return 1.0, 1.0
+
+
+    @fl.eager
+    async def train(concurrency: int, n_trials: int):
+        optimizer = Optimizer(
+            objective=objective,
+            concurrency=concurrency,
+            n_trials=n_trials,
+            study=optuna.create_study(directions=["maximize", "maximize"])
+        )
+
+        await optimizer(
+            x=suggest.float(low=-10, high=10),
+            y=suggest.integer(low=-10, high=10),
+            z=suggest.category([-5, 0, 3, 6, 9]),
+            power=2,
+        )
+
+    asyncio.run(train(concurrency=2, n_trials=10))
 
 
 def test_bundled_local_exec():
@@ -45,7 +69,7 @@ def test_bundled_local_exec():
 
         x, y = suggestions["x"], suggestions["y"]
 
-        return math.log((((x - 5) ** 2) + (y + 4) ** 4 + (3 * z - 3) ** 2)) ** power
+        return 1.0
 
 
     @fl.eager
