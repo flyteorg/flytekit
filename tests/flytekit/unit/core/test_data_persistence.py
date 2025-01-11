@@ -154,7 +154,7 @@ def test_generate_new_custom_path():
     assert np == "s3://foo-bucket/my-default-prefix/bar.txt"
 
 
-@mock.patch("obstore.store.AzureStore.from_env")
+@mock.patch("flytekit.core.data_persistence.azurestore_from_env")
 def test_initialise_azure_file_provider_with_account_key(mock_from_env):
     account_key = "accountkey"
     account_key_base64 = base64.b64encode(account_key.encode()).decode()
@@ -168,10 +168,8 @@ def test_initialise_azure_file_provider_with_account_key(mock_from_env):
         mock_from_env.return_value = mock.Mock()
         mock_from_env.assert_called_with(
             "",
-            config={
-                "account_name": "accountname",
-                "account_key": account_key_base64,
-            },
+            account_name = "accountname",
+            account_key = account_key_base64,
         )
 
 
