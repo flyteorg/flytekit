@@ -5,7 +5,7 @@ from typing import Union
 import optuna
 
 import flytekit as fl
-from optimizer import Optimizer
+from flytekitplugins.optuna import Optimizer
 
 
 def test_callback():

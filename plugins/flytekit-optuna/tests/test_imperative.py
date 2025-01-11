@@ -5,7 +5,7 @@ import math
 from typing import Union
 
 import flytekit as fl
-from optimizer import Optimizer, suggest
+from flytekitplugins.optuna import Optimizer, suggest
 
 
 

@@ -6,7 +6,7 @@ from typing import Union
 import optuna
 
 import flytekit as fl
-from optimizer import optimize, suggest
+from flytekitplugins.optuna import optimize, suggest
 
 
 def test_local_exec():
