@@ -1,28 +1,27 @@
 # Slurm Agent Demo
 
-In this guide, we will briefly introduce how to setup an environment to test Slurm agent locally without running the backend service (e.g., flyte agent gRPC server).
+In this guide, we will briefly introduce how to setup an environment to test Slurm agent locally without running the backend service (e.g., flyte agent gRPC server). It covers both basic and advanced use cases.
 
 ## Table of Content
 * [Overview](https://github.com/JiangJiaWei1103/flytekit/blob/slurm-agent-dev/plugins/flytekit-slurm/demo.md#overview)
 * [Setup a Local Environment](https://github.com/JiangJiaWei1103/flytekit/blob/slurm-agent-dev/plugins/flytekit-slurm/demo.md#setup-a-local-environment)
     * [Flyte Client (Localhost)](https://github.com/JiangJiaWei1103/flytekit/blob/slurm-agent-dev/plugins/flytekit-slurm/demo.md#flyte-client-localhost)
     * [Remote Tiny Slurm Cluster](https://github.com/JiangJiaWei1103/flytekit/blob/slurm-agent-dev/plugins/flytekit-slurm/demo.md#remote-tiny-slurm-cluster)
-    * [Amazon S3 Bucket](https://github.com/JiangJiaWei1103/flytekit/blob/slurm-agent-dev/plugins/flytekit-slurm/demo.md#amazon-s3-bucket)
+    * [SSH COnfiguration](https://github.com/JiangJiaWei1103/flytekit/blob/slurm-agent-dev/plugins/flytekit-slurm/demo.md#ssh-configuration)
 * [Run a Demo](https://github.com/JiangJiaWei1103/flytekit/blob/slurm-agent-dev/plugins/flytekit-slurm/demo.md#run-a-demo)
-* [Result](https://github.com/JiangJiaWei1103/flytekit/blob/slurm-agent-dev/plugins/flytekit-slurm/demo.md#result)
 
 ## Overview
 Slurm agent on the highest level has three core methods to interact with a Slurm cluster:
-1. `create`: Use `srun` to run a Slurm job which executes Flyte entrypoints, `pyflyte-fast-execute` and `pyflyte-execute`
+1. `create`: Use `srun` or `sbatch` to run a job on a Slurm cluster
 2. `get`: Use `scontrol show job <job_id>` to monitor the Slurm job state
 3. `delete`: Use `scancel <job_id>` to cancel the Slurm job (this method is still under test)
 
-The following figure illustrates the interaction between a client and a remote Slurm cluster. To facilitate file access between two machines, such as flyte task input and output `.pb` files and task modules, we use an Amazon S3 bucket for data storage.
+In the simplest form, Slurm agent supports directly running a batch script using `sbatch` on a Slurm cluster as shown below:
 
-![](https://github.com/JiangJiaWei1103/flytekit/blob/slurm-agent-dev/plugins/flytekit-slurm/assets/overview_v2.png)
+![](https://github.com/JiangJiaWei1103/flytekit/blob/slurm-agent-dev/plugins/flytekit-slurm/assets/basic_arch.png)
 
-## Setup a Local Environment
-Without running the backend service, we can setup an environment to test the Slurm agent locally. The setup is divided into three components: a client (localhost), a remote tiny Slurm cluster, and an Amazon S3 bucket that facilitates communication between the two.
+## Setup a Local Test Environment
+Without running the backend service, we can setup an environment to test Slurm agent locally. The setup consists of two main components: a client (localhost) and a remote tiny Slurm cluster. Then, we need to configure SSH connection to facilitate communication between the two, which relies on `asyncssh`.
 
 ### Flyte Client (Localhost)
 1. Setup a local Flyte cluster following this [official guide](https://docs.flyte.org/en/latest/community/contribute/contribute_code.html#how-to-setup-dev-environment-for-flytekit)
@@ -42,81 +41,59 @@ pip install -e .
 ### Remote Tiny Slurm Cluster
 To simplify the setup process, we follow this [guide](https://github.com/JiangJiaWei1103/Slurm-101) to configure a single-host Slurm cluster, covering `slurmctld` (the central management daemon) and `slurmd` (the compute node daemon).
 
-After building a Slurm cluster, we need to install Flytekit similar to the Flyte client.
-1. Setup a local Flyte cluster following this [official guide](https://docs.flyte.org/en/latest/community/contribute/contribute_code.html#how-to-setup-dev-environment-for-flytekit)
-2. Build a conda environment called `dev` and activate it
-3. Clone Flytekit repo and install Flytekit
+### SSH Configuration
+To facilitate communication between the Flyte client and the remote Slurm cluster, we setup SSH on the Flyte client side as follows:
+1. Create a new authentication key pair
 ```
-git clone https://github.com/flyteorg/flytekit.git
-make setup && pip install -e .
+ssh-keygen -t rsa -b 4096
 ```
-
-### Amazon S3 Bucket
-1. Click "Create bucket" button tp create a bucket on this [page](https://us-west-2.console.aws.amazon.com/s3/get-started?region=us-west-2&bucketType=general)
-    * Give the cluster an unique name and leave other settings as default
-2. Click the user on the top right corner and go to "Security credentials"
-3. Create an access key and save it
-4. Configure AWS access on both machines
+2. Copy the public key into the remote Slurm cluster
 ```
-# ~/.aws/config
-[default]
-region=<your_region>
-
-# ~/.aws/credentials
-[default]
-aws_access_key_id=<aws_access_key_id>
-aws_secret_access_key=<aws_secret_access_key>
+ssh-copy-id <username>@<remote_server_ip>
 ```
-
-Now, both machines have access to the Amazon S3 bucket.
+3. Enable key-based authentication
+```
+# ~/.ssh/config
+Host <host_alias>
+  HostName <remote_server_ip>
+  Port <ssh_port>
+  User <username>
+  IdentityFile <path_to_private_key>
+```
 
 ## Run a Demo
-We use the following script to test the Slurm agent on the client side.
+Suppose we have a batch script to run on Slurm cluster:
+```
+#!/bin/bash
+
+echo "Working!" >> ./remote_touch.txt
+```
+
+We use the following python script to test Slurm agent on the client side. A crucial part of the task configuration is specifying the target Slurm cluster and designating the batch script's path within the cluster.
 
 ```python
-# demo_slurm.py
 import os
-from typing import Any, Dict
 
-from flytekit import kwtypes, task, workflow, ImageSpec
+from flytekit import workflow
 from flytekitplugins.slurm import Slurm, SlurmTask
 
 
-@task(
+echo_job = SlurmTask(
+    name="echo-job-name",
     task_config=Slurm(
-        ssh_conf={
-            "host": "<ssh_host>",
-            "port": "<ssh_port>",
-            "username": "<ssh_username>",
-            "password": "<ssh_password>",
-        },
-        srun_conf={
+        slurm_host="<host_alias>",
+        batch_script_path="<path_to_batch_script_within_cluster>",
+        sbatch_conf={
             "partition": "debug",
-            "job-name": "demo-slurm",
-            # Remote working directory
-            "chdir": "<your_remote_working_dir>"
+            "job-name": "tiny-slurm",
         }
     )
 )
-def plus_one(x: int) -> int:
-    return x + 1
-
-
-@task
-def greet(year: int) -> str:
-    return f"Hello {year}!!!"
 
 
 @workflow
-def wf(x: int) -> str:
-    """Return plus one result now.
-
-    Return slurm job information?
-    """
-    x = plus_one(x=x)
-    msg = greet(year=x)
-
-    return msg
+def wf() -> None:
+    echo_job()
 
 
 if __name__ == "__main__":
@@ -126,17 +103,11 @@ if __name__ == "__main__":
     runner = CliRunner()
     path = os.path.realpath(__file__)
 
-    # Local run
     print(f">>> LOCAL EXEC <<<")
-    result = runner.invoke(pyflyte.main, ["run", "--raw-output-data-prefix", "<your_s3_bucket_uri>", path, "wf", "--x", 2024])
+    result = runner.invoke(pyflyte.main, ["run", path, "wf"])
     print(result.output)
 ```
 
-We expect "Hello 2025!!!" as the output on the Flyte client terminal.
+After the Slurm job is completed, we can find the following result on Slurm cluster:
 
-## Result
-### Flyte Client
-![](https://github.com/JiangJiaWei1103/flytekit/blob/slurm-agent-dev/plugins/flytekit-slurm/assets/flyte_client.png)
-
-### Remote Tiny Slurm Cluster
-![](https://github.com/JiangJiaWei1103/flytekit/blob/slurm-agent-dev/plugins/flytekit-slurm/assets/remote_tiny_slurm_cluster.png)
+![](https://github.com/JiangJiaWei1103/flytekit/blob/slurm-agent-dev/plugins/flytekit-slurm/assets/slurm_basic_result.png)
