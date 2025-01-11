@@ -3,13 +3,12 @@ import inspect
 from copy import copy, deepcopy
 from dataclasses import dataclass
 from types import SimpleNamespace
-from typing import Any, Awaitable, Callable, Optional, ParamSpec, Union
+from typing import Any, Awaitable, Callable, Optional, Union
 
 from typing_extensions import Concatenate
 
 import optuna
 from flytekit import PythonFunctionTask
-from flytekit.core.workflow import PythonFunctionWorkflow
 from flytekit.exceptions.eager import EagerException
 
 
@@ -48,16 +47,22 @@ class Category(Suggestion):
 
 suggest = SimpleNamespace(float=Float, integer=Integer, category=Category)
 
-P = ParamSpec("P")
+CallbackType = Callable[
+    Concatenate[optuna.Trial, ...], Union[Awaitable[Union[float, tuple[float, ...]]], Union[float, tuple[float, ...]]]
+]
 
 
 @dataclass
 class Optimizer:
+    objective: Union[CallbackType, PythonFunctionTask]
     concurrency: int
     n_trials: int
     study: Optional[optuna.Study] = None
-    objective: Optional[Union[PythonFunctionTask, PythonFunctionWorkflow]] = None
-    callback: Optional[Callable[Concatenate[optuna.Trial, P], Awaitable[Union[float, tuple[float, ...]]]]] = None
+    delay: int = 0
+
+    @property
+    def is_imperative(self) -> bool:
+        return isinstance(self.objective, PythonFunctionTask)
 
     def __post_init__(self):
         if self.study is None:
@@ -72,19 +77,11 @@ class Optimizer:
         if not isinstance(self.study, optuna.Study):
             raise ValueError("study must be an optuna.Study")
 
-        if self.objective is not None:
-            if self.callback is not None:
-                raise ValueError("either objective or callback must be provided, not both")
+        if not isinstance(self.delay, int):
+            raise ValueError("delay must be an integer")
 
-            # check if the objective function returns the correct number of outputs
-            if isinstance(self.objective, PythonFunctionTask):
-                func = self.objective.task_function
-            elif isinstance(self.objective, PythonFunctionWorkflow):
-                func = self.objective._workflow_function
-            else:
-                raise ValueError("objective must be a PythonFunctionTask or PythonFunctionWorkflow")
-
-            signature = inspect.signature(func)
+        if self.is_imperative:
+            signature = inspect.signature(self.objective.task_function)
 
             if signature.return_annotation is float:
                 if len(self.study.directions) != 1:
@@ -101,16 +98,13 @@ class Optimizer:
                 raise ValueError("objective function must return a float or tuple of floats")
 
         else:
-            if self.callback is None:
-                raise ValueError("either objective or callback must be provided")
+            if not callable(self.objective):
+                raise ValueError("objective must be a callable or a PythonFunctionTask")
 
-            if not callable(self.callback):
-                raise ValueError("callback must be a callable")
-
-            signature = inspect.signature(self.callback)
+            signature = inspect.signature(self.objective)
 
             if "trial" not in signature.parameters:
-                raise ValueError("callback function must have a parameter called 'trial'")
+                raise ValueError("objective function must have a parameter called 'trial' if not a PythonFunctionTask")
 
     async def __call__(self, **inputs: Any):
         """
@@ -130,17 +124,21 @@ class Optimizer:
 
     async def spawn(self, semaphore: asyncio.Semaphore, inputs: dict[str, Any]):
         async with semaphore:
+            await asyncio.sleep(self.delay)
+
             # ask for a new trial
             trial: optuna.Trial = self.study.ask()
 
             try:
-                if self.callback is not None:
-                    promise = self.callback(trial=trial, **inputs)
-                else:
-                    promise = self.objective(**process(trial, inputs))
+                result: Union[float, tuple[float, ...]]
 
                 # schedule the trial
-                result: Union[float, tuple[float, ...]] = await promise
+                if self.is_imperative:
+                    result = await self.objective(**process(trial, inputs))
+
+                else:
+                    out = self.objective(trial=trial, **inputs)
+                    result = out if not inspect.isawaitable(out) else await out
 
                 # tell the study the result
                 self.study.tell(trial, result, state=optuna.trial.TrialState.COMPLETE)
@@ -148,6 +146,13 @@ class Optimizer:
             # if the trial fails, tell the study
             except EagerException:
                 self.study.tell(trial, state=optuna.trial.TrialState.FAIL)
+
+
+def optimize(concurrency: int, n_trials: int, study: Optional[optuna.Study] = None):
+    def decorator(func):
+        return Optimizer(func, concurrency=concurrency, n_trials=n_trials, study=study)
+
+    return decorator
 
 
 def process(trial: optuna.Trial, inputs: dict[str, Any], root: Optional[list[str]] = None) -> dict[str, Any]:
