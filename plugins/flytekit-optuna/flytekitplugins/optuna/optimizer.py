@@ -79,8 +79,8 @@ class Optimizer:
         if not isinstance(self.study, optuna.Study):
             raise ValueError("study must be an optuna.Study")
 
-        if not isinstance(self.delay, int):
-            raise ValueError("delay must be an integer")
+        if not isinstance(self.delay, int) or (self.delay < 0):
+            raise ValueError("delay must be an integer greater than 0")
 
         if self.is_imperative:
             signature = inspect.signature(self.objective.task_function)
