@@ -876,22 +876,17 @@ def test_signal_approve_reject(register):
 
     execution = remote.execute(conditional_wf, inputs={"data": [1.0, 2.0, 3.0, 4.0, 5.0]})
 
-    max_retries = 10
+    def retry_operation(operation):
+        max_retries = 10
+        for _ in range(max_retries):
+            try:
+                operation()
+                break
+            except Exception:
+                sleep(1)
 
-    for _ in range(max_retries):
-        try:
-            remote.set_input("title-input", execution.id.name, value="my report", project=PROJECT, domain=DOMAIN, python_type=str, literal_type=LiteralType(simple=SimpleType.STRING))
-            break
-        except Exception as e:
-            sleep(1)
-            continue
-    for _ in range(max_retries):
-        try:
-            remote.approve("review-passes", execution.id.name, project=PROJECT, domain=DOMAIN)
-            break
-        except Exception as e:
-            sleep(1)
-            continue
+    retry_operation(lambda: remote.set_input("title-input", execution.id.name, value="my report", project=PROJECT, domain=DOMAIN, python_type=str, literal_type=LiteralType(simple=SimpleType.STRING)))
+    retry_operation(lambda: remote.approve("review-passes", execution.id.name, project=PROJECT, domain=DOMAIN))
 
     remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
     assert execution.outputs["o0"] == {"title": "my report", "data": [1.0, 2.0, 3.0, 4.0, 5.0]}
@@ -899,20 +894,8 @@ def test_signal_approve_reject(register):
     with pytest.raises(FlyteAssertion, match="Outputs could not be found because the execution ended in failure"):
         execution = remote.execute(conditional_wf, inputs={"data": [1.0, 2.0, 3.0, 4.0, 5.0]})
 
-        for _ in range(max_retries):
-            try:
-                remote.set_input("title-input", execution.id.name, value="my report", project=PROJECT, domain=DOMAIN, python_type=str, literal_type=LiteralType(simple=SimpleType.STRING))
-                break
-            except Exception as e:
-                sleep(1)
-                continue
-        for _ in range(max_retries):
-            try:
-                remote.reject("review-passes", execution.id.name, project=PROJECT, domain=DOMAIN)
-                break
-            except Exception as e:
-                sleep(1)
-                continue
+        retry_operation(lambda: remote.set_input("title-input", execution.id.name, value="my report", project=PROJECT, domain=DOMAIN, python_type=str, literal_type=LiteralType(simple=SimpleType.STRING)))
+        retry_operation(lambda: remote.reject("review-passes", execution.id.name, project=PROJECT, domain=DOMAIN))
 
         remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
         assert execution.outputs["o0"] == {"title": "my report", "data": [1.0, 2.0, 3.0, 4.0, 5.0]}
