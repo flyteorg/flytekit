@@ -16,6 +16,9 @@ from flytekit.models.core.identifier import ResourceType
 from flytekit.models.task import TaskTemplate
 
 
+cmd = ["command", "args"]
+
+
 @patch("flytekitplugins.k8sdataservice.agent.K8sManager.create_data_service", return_value="gnn-1234")
 @patch("flytekitplugins.k8sdataservice.agent.K8sManager.check_stateful_set_status", return_value="succeeded")
 @patch("flytekitplugins.k8sdataservice.agent.K8sManager.delete_stateful_set")
@@ -41,7 +44,7 @@ def test_gnn_agent(mock_delete_service, mock_delete_stateful_set, mock_check_sta
     s.update({
         "Name": "gnn-1234",
         "Image": "image",
-        "Command": "command",
+        "Command": cmd,
         "Cluster": "ei-dev2"
     })
     task_config = json_format.MessageToDict(s)
@@ -70,7 +73,7 @@ def test_gnn_agent(mock_delete_service, mock_delete_stateful_set, mock_check_sta
     )
 
     expected_resource_metadata = DataServiceMetadata(
-            dataservice_config=DataServiceConfig(Name="gnn-1234", Image="image", Command="command", Cluster="ei-dev2"),
+            dataservice_config=DataServiceConfig(Name="gnn-1234", Image="image", Command=cmd, Cluster="ei-dev2"),
             name="gnn-1234")
     # Test create method
     res_resource_metadata = agent.create(dummy_template, task_inputs)
@@ -114,7 +117,7 @@ def test_gnn_agent_reuse_data_service(mock_delete_service, mock_delete_stateful_
     s.update({
         "Name": "gnn-2345",
         "Image": "image",
-        "Command": "command",
+        "Command": cmd,
         "Cluster": "ei-dev2",
         "ExistingReleaseName": "gnn-2345"
     })
@@ -145,7 +148,7 @@ def test_gnn_agent_reuse_data_service(mock_delete_service, mock_delete_stateful_
 
     expected_resource_metadata = DataServiceMetadata(
             dataservice_config=DataServiceConfig(
-                Name="gnn-2345", Image="image", Command="command", Cluster="ei-dev2", ExistingReleaseName="gnn-2345"),
+                Name="gnn-2345", Image="image", Command=cmd, Cluster="ei-dev2", ExistingReleaseName="gnn-2345"),
             name="gnn-2345")
 
     # Test create method, and create_data_service should have not been called
@@ -189,7 +192,7 @@ def test_gnn_agent_status(mock_delete_service, mock_delete_stateful_set, mock_ch
     s.update({
         "Name": "gnn-2345",
         "Image": "image",
-        "Command": "command",
+        "Command": cmd,
         "Cluster": "ei-dev2",
         "ExistingReleaseName": "gnn-2345"
     })
@@ -220,7 +223,7 @@ def test_gnn_agent_status(mock_delete_service, mock_delete_stateful_set, mock_ch
 
     expected_resource_metadata = DataServiceMetadata(
             dataservice_config=DataServiceConfig(
-                Name="gnn-2345", Image="image", Command="command", Cluster="ei-dev2", ExistingReleaseName="gnn-2345"),
+                Name="gnn-2345", Image="image", Command=cmd, Cluster="ei-dev2", ExistingReleaseName="gnn-2345"),
             name="gnn-2345")
     # Test create method, and create_data_service should have not been called
     res_resource_metadata = agent.create(dummy_template, task_inputs)
@@ -263,7 +266,7 @@ def test_gnn_agent_no_configmap(mock_delete_service, mock_delete_stateful_set, m
     s.update({
         "Name": "gnn-2345",
         "Image": "image",
-        "Command": "command",
+        "Command": cmd,
         "Cluster": "ei-dev2",
         "ExistingReleaseName": "gnn-2345"
     })
@@ -294,7 +297,7 @@ def test_gnn_agent_no_configmap(mock_delete_service, mock_delete_stateful_set, m
 
     expected_resource_metadata = DataServiceMetadata(
             dataservice_config=DataServiceConfig(
-                Name="gnn-2345", Image="image", Command="command", Cluster="ei-dev2", ExistingReleaseName="gnn-2345"),
+                Name="gnn-2345", Image="image", Command=cmd, Cluster="ei-dev2", ExistingReleaseName="gnn-2345"),
             name="gnn-2345")
 
     # Test create method, and create_data_service should have not been called
@@ -338,7 +341,7 @@ def test_gnn_agent_status_failed(mock_delete_service, mock_delete_stateful_set, 
     s.update({
         "Name": "gnn-2345",
         "Image": "image",
-        "Command": "command",
+        "Command": cmd,
         "Cluster": "ei-dev2",
         "ExistingReleaseName": "gnn-2345"
     })
@@ -369,7 +372,7 @@ def test_gnn_agent_status_failed(mock_delete_service, mock_delete_stateful_set, 
 
     expected_resource_metadata = DataServiceMetadata(
             dataservice_config=DataServiceConfig(
-                Name="gnn-2345", Image="image", Command="command", Cluster="ei-dev2", ExistingReleaseName="gnn-2345"),
+                Name="gnn-2345", Image="image", Command=cmd, Cluster="ei-dev2", ExistingReleaseName="gnn-2345"),
             name="gnn-2345")
 
     # Test create method, and create_data_service should have not been called
