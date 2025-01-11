@@ -89,7 +89,8 @@ class Optimizer:
                 if len(self.study.directions) != 1:
                     raise ValueError("the study must have a single objective if objective returns a single float")
 
-            elif isinstance(args := signature.return_annotation.__args__, tuple):
+            elif signature.return_annotation is float:
+                args = signature.return_annotation.__args__
                 if len(args) != len(self.study.directions):
                     raise ValueError("objective must return the same number of directions in the study")
 
