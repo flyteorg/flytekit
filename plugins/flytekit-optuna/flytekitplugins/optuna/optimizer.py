@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from types import SimpleNamespace
 from typing import Any, Awaitable, Callable, Optional, Union
 
-from typing_extensions import Concatenate
+from typing_extensions import Concatenate, ParamSpec
 
 import optuna
 from flytekit import PythonFunctionTask
@@ -47,9 +47,11 @@ class Category(Suggestion):
 
 suggest = SimpleNamespace(float=Float, integer=Integer, category=Category)
 
-CallbackType = Callable[
-    Concatenate[optuna.Trial, ...], Union[Awaitable[Union[float, tuple[float, ...]]], Union[float, tuple[float, ...]]]
-]
+P = ParamSpec("P")
+
+Result = Union[float, tuple[float, ...]]
+
+CallbackType = Callable[Concatenate[optuna.Trial, P], Union[Awaitable[Result], Result]]
 
 
 @dataclass
@@ -106,7 +108,7 @@ class Optimizer:
             if "trial" not in signature.parameters:
                 raise ValueError("objective function must have a parameter called 'trial' if not a PythonFunctionTask")
 
-    async def __call__(self, **inputs: Any):
+    async def __call__(self, **inputs: P.kwargs):
         """
         Asynchronously executes the objective function remotely.
         Parameters:
