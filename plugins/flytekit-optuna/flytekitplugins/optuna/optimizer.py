@@ -151,11 +151,29 @@ class Optimizer:
                 self.study.tell(trial, state=optuna.trial.TrialState.FAIL)
 
 
-def optimize(concurrency: int, n_trials: int, study: Optional[optuna.Study] = None):
-    def decorator(func):
-        return Optimizer(func, concurrency=concurrency, n_trials=n_trials, study=study)
+def optimize(
+    objective: Optional[Union[CallbackType, PythonFunctionTask]] = None,
+    concurrency: int = 1,
+    n_trials: int = 1,
+    study: Optional[optuna.Study] = None,
+):
+    if objective is not None:
+        if callable(objective) or isinstance(objective, PythonFunctionTask):
+            return Optimizer(
+                objective=objective,
+                concurrency=concurrency,
+                n_trials=n_trials,
+                study=study,
+            )
 
-    return decorator
+        else:
+            raise ValueError("This decorator must be called with a callable or a flyte Task")
+    else:
+
+        def decorator(objective):
+            return Optimizer(objective=objective, concurrency=concurrency, n_trials=n_trials, study=study)
+
+        return decorator
 
 
 def process(trial: optuna.Trial, inputs: dict[str, Any], root: Optional[list[str]] = None) -> dict[str, Any]:
