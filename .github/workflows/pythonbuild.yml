@@ -319,6 +319,7 @@ jobs:
           # flytekit-onnx-tensorflow
           - flytekit-omegaconf
           - flytekit-openai
+          - flytekit-optuna
           - flytekit-pandera
           - flytekit-papermill
           - flytekit-polars
