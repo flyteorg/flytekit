@@ -24,6 +24,7 @@ import os
 import pathlib
 import tempfile
 import typing
+from functools import lru_cache
 from time import sleep
 from typing import Any, Dict, Optional, Tuple, Union, cast
 from uuid import UUID
@@ -33,6 +34,7 @@ from decorator import decorator
 from fsspec.asyn import AsyncFileSystem
 from fsspec.utils import get_protocol
 from obstore.store import AzureStore, GCSStore, S3Store
+from obstore.exceptions import GenericError
 from typing_extensions import Unpack
 
 from flytekit import configuration
@@ -55,6 +57,34 @@ _ANON = "skip_signature"
 Uploadable = typing.Union[str, os.PathLike, pathlib.Path, bytes, io.BufferedReader, io.BytesIO, io.StringIO]
 
 
+@lru_cache
+def s3store_from_env(bucket: str, retries: int, **store_kwargs) -> S3Store:
+    store = S3Store.from_env(
+        bucket,
+        config={
+            **store_kwargs,
+            "aws_allow_http": "true",  # Allow HTTP connections
+            "aws_virtual_hosted_style_request": "false",  # Use path-style addressing
+        },
+    )
+    return store
+
+
+@lru_cache
+def gcsstore_from_env(bucket: str) -> GCSStore:
+    store = GCSStore.from_env(bucket)
+    return store
+
+
+@lru_cache
+def azurestore_from_env(container: str, **store_kwargs) -> AzureStore:
+    store = AzureStore.from_env(
+        container,
+        config=store_kwargs,
+    )
+    return store
+
+
 def s3_setup_args(s3_cfg: configuration.S3Config, bucket: str = "", anonymous: bool = False) -> Dict[str, Any]:
     kwargs: Dict[str, Any] = {}
     store_kwargs: Dict[str, Any] = {}
@@ -71,14 +101,7 @@ def s3_setup_args(s3_cfg: configuration.S3Config, bucket: str = "", anonymous: b
     if anonymous:
         store_kwargs[_ANON] = "true"
 
-    store = S3Store.from_env(
-        bucket,
-        config={
-            **store_kwargs,
-            "aws_allow_http": "true",  # Allow HTTP connections
-            "aws_virtual_hosted_style_request": "false",  # Use path-style addressing
-        },
-    )
+    store = s3store_from_env(bucket, s3_cfg.retries, **store_kwargs)
 
     kwargs["retries"] = s3_cfg.retries
 
@@ -90,12 +113,7 @@ def s3_setup_args(s3_cfg: configuration.S3Config, bucket: str = "", anonymous: b
 def gs_setup_args(gcs_cfg: configuration.GCSConfig, bucket: str = "", anonymous: bool = False) -> Dict[str, Any]:
     kwargs: Dict[str, Any] = {}
 
-    store = GCSStore.from_env(
-        bucket,
-    )
-
-    if anonymous:
-        kwargs["token"] = _ANON
+    store = gcsstore_from_env(bucket)
 
     kwargs["store"] = store
 
@@ -158,15 +176,9 @@ def azure_setup_args(
     if anonymous:
         kwargs[_ANON] = "true"
 
-    store = AzureStore.from_env(
-        container,
-        config={
-            **store_kwargs,
-        },
-    )
+    store = azurestore_from_env(container, **store_kwargs)
 
     kwargs["store"] = store
-
 
     return kwargs
 
@@ -181,8 +193,6 @@ def get_fsspec_storage_options(
     if protocol == "s3":
         return {**s3_setup_args(data_config.s3, anonymous=anonymous), **kwargs}
     if protocol == "gs":
-        if anonymous:
-            kwargs["token"] = _ANON
         return kwargs
     if protocol in ("abfs", "abfss"):
         return {**azure_setup_args(data_config.azure, anonymous=anonymous), **kwargs}
@@ -405,10 +415,15 @@ class FileAccessProvider(object):
             if isinstance(dst, (str, pathlib.Path)):
                 return dst
             return to_path
-        except OSError as oe:
+        except (OSError, GenericError) as oe:
             logger.debug(f"Error in getting {from_path} to {to_path} rec {recursive} {oe}")
             if isinstance(file_system, AsyncFileSystem):
-                exists = await file_system._exists(from_path)  # pylint: disable=W0212
+                try:
+                    exists = await file_system._exists(from_path)  # pylint: disable=W0212
+                except GenericError:
+                    # for obstore, as it does not raise FileNotFoundError in fsspec but GenericError 
+                    # force it to try get_filesystem(anonymous=True)
+                    exists = True
             else:
                 exists = file_system.exists(from_path)
             if not exists:
