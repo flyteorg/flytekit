@@ -870,7 +870,12 @@ class FlyteRemote(object):
                 loop.run_in_executor(
                     None,
                     functools.partial(
-                        self.raw_register, cp_entity, serialization_settings, version, og_entity=task_entity
+                        self.raw_register,
+                        cp_entity,
+                        serialization_settings,
+                        version,
+                        create_default_launchplan=create_default_launchplan,
+                        og_entity=task_entity,
                     ),
                 )
             )
@@ -1271,16 +1276,36 @@ class FlyteRemote(object):
                 source_root=project_root,
                 project=project or self.default_project,
                 domain=domain or self.default_domain,
+                version=version,
             )
 
-        ident = run_sync(
-            self._serialize_and_register,
-            entity,
-            serialization_settings,
-            version,
-            options,
-            False,
+        workflow_id = self._resolve_identifier(
+            t=ResourceType.WORKFLOW, name=entity.workflow.name, version=version, ss=serialization_settings
         )
+        try:
+            remote_wf = self.client.get_workflow(workflow_id)
+        except FlyteEntityNotExistException:
+            remote_wf = None
+
+        if remote_wf is None:
+            ident = run_sync(
+                self._serialize_and_register,
+                entity,
+                serialization_settings,
+                version,
+                options,
+                False,
+            )
+        else:
+            launch_plan_model = get_serializable(
+                OrderedDict(), settings=serialization_settings, entity=entity, options=options
+            )
+            ident = self.raw_register(
+                launch_plan_model, serialization_settings, version, create_default_launchplan=False
+            )
+            if ident is None:
+                raise ValueError("Failed to register launch plan")
+
         flp = self.fetch_launch_plan(ident.project, ident.domain, ident.name, ident.version)
         flp.python_interface = entity.python_interface
         return flp
