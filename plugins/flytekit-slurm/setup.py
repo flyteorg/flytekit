@@ -4,7 +4,7 @@ PLUGIN_NAME = "slurm"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>1.13.8", "aiohttp", "flyteidl>=1.11.0b1"]
+plugin_requires = ["flytekit>1.13.8", "flyteidl>=1.11.0b1", "asyncssh"]
 
 __version__ = "0.0.0+develop"
 
