@@ -875,18 +875,44 @@ def test_signal_approve_reject(register):
     conditional_wf = remote.fetch_workflow(name="basic.signal_test.signal_test_wf", version=VERSION)
 
     execution = remote.execute(conditional_wf, inputs={"data": [1.0, 2.0, 3.0, 4.0, 5.0]})
-    sleep(5)
-    remote.set_input("title-input", execution.id.name, value="my report", project=PROJECT, domain=DOMAIN, python_type=str, literal_type=LiteralType(simple=SimpleType.STRING))
-    sleep(10)
-    remote.approve("review-passes", execution.id.name, project=PROJECT, domain=DOMAIN)
+
+    max_retries = 10
+
+    for _ in range(max_retries):
+        try:
+            remote.set_input("title-input", execution.id.name, value="my report", project=PROJECT, domain=DOMAIN, python_type=str, literal_type=LiteralType(simple=SimpleType.STRING))
+            break
+        except Exception as e:
+            sleep(1)
+            continue
+    for _ in range(max_retries):
+        try:
+            remote.approve("review-passes", execution.id.name, project=PROJECT, domain=DOMAIN)
+            break
+        except Exception as e:
+            sleep(1)
+            continue
+
     remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
     assert execution.outputs["o0"] == {"title": "my report", "data": [1.0, 2.0, 3.0, 4.0, 5.0]}
 
     with pytest.raises(FlyteAssertion, match="Outputs could not be found because the execution ended in failure"):
         execution = remote.execute(conditional_wf, inputs={"data": [1.0, 2.0, 3.0, 4.0, 5.0]})
-        sleep(5)
-        remote.set_input("title-input", execution.id.name, value="my report", project=PROJECT, domain=DOMAIN, python_type=str, literal_type=LiteralType(simple=SimpleType.STRING))
-        sleep(10)
-        remote.reject("review-passes", execution.id.name, project=PROJECT, domain=DOMAIN)
+
+        for _ in range(max_retries):
+            try:
+                remote.set_input("title-input", execution.id.name, value="my report", project=PROJECT, domain=DOMAIN, python_type=str, literal_type=LiteralType(simple=SimpleType.STRING))
+                break
+            except Exception as e:
+                sleep(1)
+                continue
+        for _ in range(max_retries):
+            try:
+                remote.reject("review-passes", execution.id.name, project=PROJECT, domain=DOMAIN)
+                break
+            except Exception as e:
+                sleep(1)
+                continue
+
         remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
         assert execution.outputs["o0"] == {"title": "my report", "data": [1.0, 2.0, 3.0, 4.0, 5.0]}
