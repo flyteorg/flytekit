@@ -14,7 +14,7 @@ def test_local_exec():
 
     @fl.task
     async def objective(x: float, y: int, z: int, power: int) -> float:
-        return 1.0
+        return (((x - 5) ** 2) + (y + 4) ** 4 + (3 * z - 3) ** 2) ** power
 
 
     @fl.eager
@@ -38,7 +38,11 @@ def test_tuple_out():
 
     @fl.task
     async def objective(x: float, y: int, z: int, power: int) -> tuple[float, float]:
-        return 1.0, 1.0
+        
+        y0 = (((x - 5) ** 2) + (y + 4) ** 4 + (3 * z - 3) ** 2) ** power
+        y1 = (((x - 2) ** 4) + (y + 1) ** 2 + (4 * z - 1))
+        
+        return y0, y1
 
 
     @fl.eager
@@ -69,7 +73,7 @@ def test_bundled_local_exec():
 
         x, y = suggestions["x"], suggestions["y"]
 
-        return 1.0
+        return (((x - 5) ** 2) + (y + 4) ** 4) ** power
 
 
     @fl.eager

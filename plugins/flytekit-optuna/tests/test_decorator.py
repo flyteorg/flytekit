@@ -17,7 +17,7 @@ def test_local_exec():
         @optimize(concurrency=concurrency, n_trials=n_trials)
         @fl.task
         async def optimizer(x: float, y: int, z: int, power: int) -> float:
-            return math.log((((x - 5) ** 2) + (y + 4) ** 4 + (3 * z - 3) ** 2)) ** power
+            return (((x - 5) ** 2) + (y + 4) ** 4 + (3 * z - 3) ** 2) ** power
 
         await optimizer(
             x=suggest.float(low=-10, high=10),
