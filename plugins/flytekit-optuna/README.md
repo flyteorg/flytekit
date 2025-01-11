@@ -50,8 +50,7 @@ The Flyte workflow orchestrates the parallel execution of Optuna trials. Below i
 
 ```python
 import flytekit as fl
-
-from optimizer import Optimizer, suggest
+from flytekitplugins.optuna import Optimizer, suggest
 
 @fl.eager(container_image=image)
 async def train(concurrency: int, n_trials: int) -> float:
@@ -101,8 +100,7 @@ Suggestions may be defined in recursive dictionaries:
 
 ```python
 import flytekit as fl
-
-from optimizer import Optimizer, suggest
+from flytekitplugins.optuna import Optimizer, suggest
 
 image = fl.ImageSpec(packages=["flytekitplugins.optuna"])
 
@@ -140,8 +138,7 @@ In some cases, you may need to create define the suggestions programmatically. T
 ```python
 import flytekit as fl
 import optuna
-
-from optimizer import optimize
+from flytekitplugins.optuna import optimize
 
 image = fl.ImageSpec(packages=["flytekitplugins.optuna"])
 
