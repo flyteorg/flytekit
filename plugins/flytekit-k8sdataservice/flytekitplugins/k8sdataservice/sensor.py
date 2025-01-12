@@ -15,6 +15,12 @@ class CleanupSensor(BaseSensor):
         Initialize the CleanupSensor class with relevant configurations for monitoring and managing the k8s data service.
         """
         super().__init__(name=name, task_type="sensor", **kwargs)
+        self.k8s_config = KubeConfig()
+        self.k8s_config.load_kube_config()
+        self.apps_v1_api = client.AppsV1Api()
+        self.core_v1_api = client.CoreV1Api()
+        self.custom_api = client.CustomObjectsApi()
+        self.namespace = "flyte"
 
     async def poke(self, release_name: str, cleanup_data_service: bool, cluster: str) -> bool:
         """poke will delete the graph engine resources based on the user's configuration
@@ -24,14 +30,8 @@ class CleanupSensor(BaseSensor):
         3. In the near future, we will add the poking logic on the training job's status. In the initial implementation, we skipped
         it for simplicity. This is also why we use the sensor API to keep forward compatibility
         """
-        self.k8s_config = KubeConfig()
-        self.k8s_config.load_kube_config()
-        self.apps_v1_api = client.AppsV1Api()
-        self.core_v1_api = client.CoreV1Api()
-        self.custom_api = client.CustomObjectsApi()
         self.release_name = release_name
         self.cleanup_data_service = cleanup_data_service
-        self.namespace = "flyte"
         self.cluster = cluster
         if not self.cleanup_data_service:
             logger.info(
@@ -49,22 +49,14 @@ class CleanupSensor(BaseSensor):
         """
         Delete the data service's associated Kubernetes resources (StatefulSet and Service).
         """
-        data_service_name = self.release_name
-        logger.info(f"Sensor got the release name: {self.release_name}")
-        try:
-            # Delete the Service associated with the graph engine
-            self.core_v1_api.delete_namespaced_service(
-                name=data_service_name, namespace=self.namespace, body=client.V1DeleteOptions()
-            )
-            logger.info(f"Deleted Service: {data_service_name}")
-        except ApiException as e:
-            logger.error(f"Error deleting Service: {e}")
 
-        try:
-            # Delete the StatefulSet associated with the graph engine
-            self.apps_v1_api.delete_namespaced_stateful_set(
-                name=data_service_name, namespace=self.namespace, body=client.V1DeleteOptions()
-            )
-            logger.info(f"Deleted StatefulSet: {data_service_name}")
-        except ApiException as e:
-            logger.error(f"Error deleting StatefulSet: {e}")
+        def delete_resource(resource_type: str, delete_fn):
+            try:
+                delete_fn(name=self.release_name, namespace=self.namespace, body=client.V1DeleteOptions())
+                logger.info(f"Deleted {resource_type}: {self.release_name}")
+            except ApiException as e:
+                logger.error(f"Error deleting {resource_type}: {e}")
+
+        logger.info(f"Sensor got the release name: {self.release_name}")
+        delete_resource("Service", self.core_v1_api.delete_namespaced_service)
+        delete_resource("StatefulSet", self.apps_v1_api.delete_namespaced_stateful_set)

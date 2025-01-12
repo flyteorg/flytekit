@@ -20,4 +20,4 @@ def cleanup_resources(resources: client.V1ResourceRequirements):
 
 
 def convert_flyte_to_k8s_fields(resources_dict):
-    return {("memory" if "mem" in k else k): v for k, v in resources_dict.items()}
+    return {("memory" if k == "mem" else k): v for k, v in resources_dict.items()}

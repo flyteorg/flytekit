@@ -20,4 +20,4 @@ class TestKubeConfig(unittest.TestCase):
 
         with self.assertLogs('flytekit', level='WARNING') as log:
             kube_config.load_kube_config()
-            self.assertIn("Failed to load in-cluster configuration.", log.output[-1])
+            self.assertEqual(f"WARNING:flytekit:Failed to load in-cluster configuration. In-cluster config not found.", log.output[-1])
