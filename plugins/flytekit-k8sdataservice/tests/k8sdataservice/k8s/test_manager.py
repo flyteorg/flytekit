@@ -39,11 +39,15 @@ class TestK8sManager(unittest.TestCase):
         self.assertEqual(response, "test-statefulset")
 
     @patch("flytekitplugins.k8sdataservice.k8s.manager.client.AppsV1Api.create_namespaced_stateful_set")
-    def test_create_stateful_set_failure(self, mock_create_namespaced_stateful_set):
+    @patch("flytekitplugins.k8sdataservice.k8s.manager.logger")
+    def test_create_stateful_set_failure(self, mock_logger, mock_create_namespaced_stateful_set):
         mock_create_namespaced_stateful_set.side_effect = ApiException("Create failed")
         stateful_set_object = self.k8s_manager.create_stateful_set_object()
         response = self.k8s_manager.create_stateful_set(stateful_set_object)
         self.assertEqual(response, "failed_stateful_set_name")
+        mock_logger.error.assert_called_once()
+        logged_message = mock_logger.error.call_args[0][0]
+        self.assertIn("Exception when calling AppsV1Api->create_namespaced_stateful_set: (Create failed)", logged_message)
 
     @patch("flytekitplugins.k8sdataservice.k8s.manager.client.CoreV1Api.create_namespaced_service")
     def test_create_service(self, mock_create_namespaced_service):
