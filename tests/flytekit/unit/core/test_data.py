@@ -1,3 +1,4 @@
+from datetime import timedelta
 import os
 import random
 import shutil
@@ -246,12 +247,16 @@ def test_s3_setup_args_env_empty(mock_from_env, mock_os, mock_get_config_file):
     kwargs = s3_setup_args(s3c)
 
     mock_from_env.return_value = mock.Mock()
-    mock_from_env.assert_called_with("")
+    mock_from_env.assert_called_with(
+        "",
+        3,  # retries
+        timedelta(seconds=5),  # backoff
+    )
 
 
 @mock.patch("flytekit.configuration.get_config_file")
 @mock.patch("os.environ")
-@mock.patch("obstore.store.S3Store.from_env")
+@mock.patch("flytekit.core.data_persistence.s3store_from_env")
 def test_s3_setup_args_env_both(mock_from_env, mock_os, mock_get_config_file):
     mock_get_config_file.return_value = None
 
@@ -267,12 +272,10 @@ def test_s3_setup_args_env_both(mock_from_env, mock_os, mock_get_config_file):
     mock_from_env.return_value = mock.Mock()
     mock_from_env.assert_called_with(
         "",
-        config={
-            "access_key_id": "flyte",
-            "secret_access_key": "flyte-secret",
-            "aws_allow_http": "true",  # Allow HTTP connections
-            "aws_virtual_hosted_style_request": "false",  # Use path-style addressing
-        },
+        3,  # retries
+        timedelta(seconds=5),  # backoff
+        access_key_id = "flyte",
+        secret_access_key = "flyte-secret",
     )
 
 
@@ -291,6 +294,8 @@ def test_s3_setup_args_env_flyte(mock_from_env, mock_os, mock_get_config_file):
     mock_from_env.return_value = mock.Mock()
     mock_from_env.assert_called_with(
         "",
+        3,  # retries
+        timedelta(seconds=5),  # backoff
         access_key_id = "flyte",
         secret_access_key = "flyte-secret",
     )
@@ -309,7 +314,12 @@ def test_s3_setup_args_env_aws(mock_from_env, mock_os, mock_get_config_file):
     kwargs = s3_setup_args(S3Config.auto())
 
     mock_from_env.return_value = mock.Mock()
-    mock_from_env.assert_called_with("")
+    mock_from_env.assert_called_with(
+        "",
+        3,  # retries
+        timedelta(seconds=5),  # backoff
+
+    )
 
 
 @mock.patch("flytekit.configuration.get_config_file")
@@ -392,7 +402,6 @@ def test_get_fsspec_storage_options_azure_with_overrides(mock_from_env, mock_os,
         other_argument="value",
     )
 
-    # TODO: fix the code to support this test case
     mock_from_env.return_value = mock.Mock()
     mock_from_env.assert_called_with(
         "",
