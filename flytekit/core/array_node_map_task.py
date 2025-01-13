@@ -147,9 +147,6 @@ class ArrayNodeMapTask(PythonTask):
             name=self.name,
         )
 
-    def get_sub_node_metadata(self) -> NodeMetadata:
-        return self.sub_node_metadata
-
     @property
     def min_success_ratio(self) -> Optional[float]:
         return self._min_success_ratio
