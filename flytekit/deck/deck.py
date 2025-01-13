@@ -181,7 +181,7 @@ def _output_deck(task_name: str, new_user_params: ExecutionParameters):
     ctx = FlyteContext.current_context()
     params = ctx.user_space_params
 
-    if params.has_attr("ENABLE_DECK") and not params.enable_deck:
+    if not params.has_attr("ENABLE_DECK") or not params.enable_deck:
         logger.warning("Deck is disabled for this task, please don't call Deck.publish()")
         return
 
