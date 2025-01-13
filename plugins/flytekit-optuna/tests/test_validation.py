@@ -15,6 +15,9 @@ def test_concurrency():
         Optimizer(objective, concurrency=-1, n_trials=10)
 
     with pytest.raises(ValueError):
+        Optimizer(objective, concurrency=0, n_trials=10)
+
+    with pytest.raises(ValueError):
         Optimizer(objective, concurrency="abc", n_trials=10)
 
 
@@ -22,6 +25,9 @@ def test_n_trials():
 
     with pytest.raises(ValueError):
         Optimizer(objective, concurrency=3, n_trials=-10)
+
+    with pytest.raises(ValueError):
+        Optimizer(objective, concurrency=3, n_trials=0)
 
     with pytest.raises(ValueError):
         Optimizer(objective, concurrency=3, n_trials="abc")

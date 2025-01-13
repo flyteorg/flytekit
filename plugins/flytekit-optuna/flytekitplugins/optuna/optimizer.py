@@ -62,6 +62,17 @@ class Optimizer:
     study: Optional[optuna.Study] = None
     delay: int = 0
 
+    """
+    Optimizer is a class that allows for the distributed optimization of a flytekit Task using Optuna.
+
+    Args:
+        objective: The objective function to be optimized. This can be a PythonFunctionTask or a callable.
+        concurrency: The number of trials to run concurrently.
+        n_trials: The number of trials to run in total.
+        study: The study to use for optimization. If None, a new study will be created.
+        delay: The delay in seconds between starting each trial. Default is 0.
+    """
+
     @property
     def is_imperative(self) -> bool:
         return isinstance(self.objective, PythonFunctionTask)
@@ -70,16 +81,16 @@ class Optimizer:
         if self.study is None:
             self.study = optuna.create_study()
 
-        if (not isinstance(self.concurrency, int)) or (self.concurrency <= 0):
+        if (not isinstance(self.concurrency, int)) or (not self.concurrency > 0):
             raise ValueError("concurrency must be an integer greater than 0")
 
-        if (not isinstance(self.n_trials, int)) or (self.n_trials <= 0):
+        if (not isinstance(self.n_trials, int)) or (not self.n_trials > 0):
             raise ValueError("n_trials must be an integer greater than 0")
 
         if not isinstance(self.study, optuna.Study):
             raise ValueError("study must be an optuna.Study")
 
-        if not isinstance(self.delay, int) or (self.delay < 0):
+        if not isinstance(self.delay, int) or (not self.delay >= 0):
             raise ValueError("delay must be an integer greater than or equal to 0")
 
         if self.is_imperative:
