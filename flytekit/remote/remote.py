@@ -1264,7 +1264,7 @@ class FlyteRemote(object):
         :return:
         """
         if serialization_settings is None:
-            _, _, _, module_file = extract_task_module(entity)
+            _, _, _, module_file = extract_task_module(entity.workflow)
             project_root = _find_project_root(module_file)
             serialization_settings = SerializationSettings(
                 image_config=ImageConfig.auto_default_image(),
