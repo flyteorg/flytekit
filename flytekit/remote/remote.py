@@ -1249,6 +1249,27 @@ class FlyteRemote(object):
             return self.register_launch_plan(entity, version, project, domain, options, serialization_settings)
         raise ValueError(f"Unsupported entity type {type(entity)}")
 
+    def _wf_exists(
+        self,
+        name: str,
+        version: str,
+        project: str,
+        domain: str,
+    ) -> bool:
+        """Does the workflow with the given id components exist?"""
+        workflow_id = Identifier(
+            resource_type=ResourceType.WORKFLOW,
+            project=project,
+            domain=domain,
+            name=name,
+            version=version,
+        )
+        try:
+            self.client.get_workflow(workflow_id)
+            return True
+        except FlyteEntityNotExistException:
+            return False
+
     def register_launch_plan(
         self,
         entity: LaunchPlan,
@@ -1259,14 +1280,16 @@ class FlyteRemote(object):
         serialization_settings: typing.Optional[SerializationSettings] = None,
     ) -> FlyteLaunchPlan:
         """
-        Register a given launchplan, possibly applying overrides from the provided options.
+        Register a given launchplan, possibly applying overrides from the provided options. If the underlying workflow
+        is not already registered, it, along with any underlying entities, will also be registered. If the underlying
+        workflow does exist (with the given project/domain/version), then only the launchplan will be registered.
+
         :param entity: Launchplan to be registered
-        :param version:
+        :param version: Version to be registered for the launch plan, and used to check (and register) underlying wf
         :param project: Optionally provide a project, if not already provided in flyteremote constructor or a separate one
         :param domain: Optionally provide a domain, if not already provided in FlyteRemote constructor or a separate one
         :param serialization_settings: Optionally provide serialization settings, if not provided, will use the default
         :param options:
-        :return:
         """
         if serialization_settings is None:
             _, _, _, module_file = extract_task_module(entity.workflow)
@@ -1279,24 +1302,13 @@ class FlyteRemote(object):
                 version=version,
             )
 
-        workflow_id = self._resolve_identifier(
-            t=ResourceType.WORKFLOW, name=entity.workflow.name, version=version, ss=serialization_settings
-        )
-        try:
-            remote_wf = self.client.get_workflow(workflow_id)
-        except FlyteEntityNotExistException:
-            remote_wf = None
-
-        if remote_wf is None:
-            ident = run_sync(
-                self._serialize_and_register,
-                entity,
-                serialization_settings,
-                version,
-                options,
-                False,
-            )
-        else:
+        if self._wf_exists(
+            name=entity.workflow.name,
+            version=version,
+            project=serialization_settings.project,
+            domain=serialization_settings.domain,
+        ):
+            # Underlying workflow, exists, only register the launch plan itself
             launch_plan_model = get_serializable(
                 OrderedDict(), settings=serialization_settings, entity=entity, options=options
             )
@@ -1305,6 +1317,16 @@ class FlyteRemote(object):
             )
             if ident is None:
                 raise ValueError("Failed to register launch plan")
+        else:
+            # Register the launch and everything under it
+            ident = run_sync(
+                self._serialize_and_register,
+                entity,
+                serialization_settings,
+                version,
+                options,
+                False,
+            )
 
         flp = self.fetch_launch_plan(ident.project, ident.domain, ident.name, ident.version)
         flp.python_interface = entity.python_interface
