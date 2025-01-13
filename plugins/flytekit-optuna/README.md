@@ -58,10 +58,10 @@ async def train(concurrency: int, n_trials: int) -> float:
     optimizer = Optimizer(objective=objective, concurrency=concurrency, n_trials=n_trials)
 
     await optimizer(
-        x = suggest.float(low=-10, high=10),
-        y = suggest.integer(low=-10, high=10),
-        z = suggest.category([-5, 0, 3, 6, 9]),
-        power = 2,
+        x=suggest.float(low=-10, high=10),
+        y=suggest.integer(low=-10, high=10),
+        z=suggest.category([-5, 0, 3, 6, 9]),
+        power=2,
     )
 
     print(optimizer.study.best_value)
@@ -133,7 +133,7 @@ async def train(concurrency: int, n_trials: int):
 
 ### Custom Callbacks
 
-In some cases, you may need to create define the suggestions programmatically. This may be done
+In some cases, you may need to define the suggestions programmatically. This may be done
 
 ```python
 import flytekit as fl
