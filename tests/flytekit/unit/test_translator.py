@@ -12,6 +12,7 @@ from flytekit.core.workflow import ReferenceWorkflow, workflow
 from flytekit.models.core import identifier as identifier_models
 from flytekit.models.task import Resources as resource_model
 from flytekit.tools.translator import get_serializable, Options
+from google.protobuf.wrappers_pb2 import BoolValue
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = flytekit.configuration.SerializationSettings(
@@ -118,7 +119,7 @@ def test_deck():
         .build()
     )
     deck_task_spec = get_serializable(OrderedDict(), deck_settings, t_deck)
-    assert deck_task_spec.template.metadata.generates_deck == True
+    assert deck_task_spec.template.metadata.generates_deck == BoolValue(value=True)
 
     no_deck_settings = (
         serialization_settings.new_builder()
@@ -126,7 +127,7 @@ def test_deck():
         .build()
     )
     no_deck_task_spec = get_serializable(OrderedDict(), no_deck_settings, t_no_deck)
-    assert no_deck_task_spec.template.metadata.generates_deck == False
+    assert no_deck_task_spec.template.metadata.generates_deck == BoolValue(value=False)
 
 
 def test_container():
