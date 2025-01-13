@@ -9,7 +9,7 @@ from typing_extensions import ParamSpec  # type: ignore
 
 from flytekit.core import launch_plan as _annotated_launchplan
 from flytekit.core import workflow as _annotated_workflow
-from flytekit.core.auto_cache import AutoCache, CachePolicy, VersionParameters
+from flytekit.core.auto_cache import AutoCache, VersionParameters
 from flytekit.core.base_task import PythonTask, TaskMetadata, TaskResolverMixin
 from flytekit.core.interface import Interface, output_name_generator, transform_function_to_interface
 from flytekit.core.pod_template import PodTemplate
@@ -96,7 +96,7 @@ FuncOut = TypeVar("FuncOut")
 def task(
     _task_function: None = ...,
     task_config: Optional[T] = ...,
-    cache: Union[bool, CachePolicy, AutoCache] = ...,
+    cache: Union[bool, AutoCache] = ...,
     cache_serialize: bool = ...,
     cache_version: str = ...,
     cache_ignore_input_vars: Tuple[str, ...] = ...,
@@ -135,7 +135,7 @@ def task(
 def task(
     _task_function: Callable[..., FuncOut],
     task_config: Optional[T] = ...,
-    cache: Union[bool, CachePolicy, AutoCache] = ...,
+    cache: Union[bool, AutoCache] = ...,
     cache_serialize: bool = ...,
     cache_version: str = ...,
     cache_ignore_input_vars: Tuple[str, ...] = ...,
@@ -173,7 +173,7 @@ def task(
 def task(
     _task_function: Optional[Callable[..., FuncOut]] = None,
     task_config: Optional[T] = None,
-    cache: Union[bool, CachePolicy, AutoCache] = False,
+    cache: Union[bool, AutoCache] = False,
     cache_serialize: bool = False,
     cache_version: str = "",
     cache_ignore_input_vars: Tuple[str, ...] = (),
@@ -350,16 +350,11 @@ def task(
         cache_serialize_val = cache_serialize
         cache_ignore_input_vars_val = cache_ignore_input_vars
 
-        if isinstance(cache, (CachePolicy, AutoCache)):
-            # If cache is a CachePolicy or AutoCache, enable caching
+        if isinstance(cache, (AutoCache)):
+            # If cache is a AutoCache, enable caching
             cache_val = True
             params = VersionParameters(func=fn, container_image=container_image)
             cache_version_val = cache_version or cache.get_version(params=params)
-
-            if isinstance(cache, CachePolicy):
-                # Use CachePolicy-specific attributes if available
-                cache_serialize_val = cache_serialize or cache.cache_serialize
-                cache_ignore_input_vars_val = cache_ignore_input_vars or cache.cache_ignore_input_vars
 
         _metadata = TaskMetadata(
             cache=cache_val,
