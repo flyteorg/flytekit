@@ -347,8 +347,6 @@ def task(
         # Initialize defaults
         cache_val = cache
         cache_version_val = cache_version
-        cache_serialize_val = cache_serialize
-        cache_ignore_input_vars_val = cache_ignore_input_vars
 
         if isinstance(cache, (AutoCache)):
             # If cache is a AutoCache, enable caching
@@ -358,9 +356,9 @@ def task(
 
         _metadata = TaskMetadata(
             cache=cache_val,
-            cache_serialize=cache_serialize_val,
+            cache_serialize=cache_serialize,
             cache_version=cache_version_val,
-            cache_ignore_input_vars=cache_ignore_input_vars_val,
+            cache_ignore_input_vars=cache_ignore_input_vars,
             retries=retries,
             interruptible=interruptible,
             deprecated=deprecated,
