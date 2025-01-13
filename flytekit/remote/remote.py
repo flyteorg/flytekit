@@ -870,7 +870,12 @@ class FlyteRemote(object):
                 loop.run_in_executor(
                     None,
                     functools.partial(
-                        self.raw_register, cp_entity, serialization_settings, version, og_entity=task_entity
+                        self.raw_register,
+                        cp_entity,
+                        serialization_settings,
+                        version,
+                        create_default_launchplan=create_default_launchplan,
+                        og_entity=task_entity,
                     ),
                 )
             )
@@ -1244,6 +1249,27 @@ class FlyteRemote(object):
             return self.register_launch_plan(entity, version, project, domain, options, serialization_settings)
         raise ValueError(f"Unsupported entity type {type(entity)}")
 
+    def _wf_exists(
+        self,
+        name: str,
+        version: str,
+        project: str,
+        domain: str,
+    ) -> bool:
+        """Does the workflow with the given id components exist?"""
+        workflow_id = Identifier(
+            resource_type=ResourceType.WORKFLOW,
+            project=project,
+            domain=domain,
+            name=name,
+            version=version,
+        )
+        try:
+            self.client.get_workflow(workflow_id)
+            return True
+        except FlyteEntityNotExistException:
+            return False
+
     def register_launch_plan(
         self,
         entity: LaunchPlan,
@@ -1254,14 +1280,16 @@ class FlyteRemote(object):
         serialization_settings: typing.Optional[SerializationSettings] = None,
     ) -> FlyteLaunchPlan:
         """
-        Register a given launchplan, possibly applying overrides from the provided options.
+        Register a given launchplan, possibly applying overrides from the provided options. If the underlying workflow
+        is not already registered, it, along with any underlying entities, will also be registered. If the underlying
+        workflow does exist (with the given project/domain/version), then only the launchplan will be registered.
+
         :param entity: Launchplan to be registered
-        :param version:
+        :param version: Version to be registered for the launch plan, and used to check (and register) underlying wf
         :param project: Optionally provide a project, if not already provided in flyteremote constructor or a separate one
         :param domain: Optionally provide a domain, if not already provided in FlyteRemote constructor or a separate one
         :param serialization_settings: Optionally provide serialization settings, if not provided, will use the default
         :param options:
-        :return:
         """
         if serialization_settings is None:
             _, _, _, module_file = extract_task_module(entity.workflow)
@@ -1271,16 +1299,35 @@ class FlyteRemote(object):
                 source_root=project_root,
                 project=project or self.default_project,
                 domain=domain or self.default_domain,
+                version=version,
             )
 
-        ident = run_sync(
-            self._serialize_and_register,
-            entity,
-            serialization_settings,
-            version,
-            options,
-            False,
-        )
+        if self._wf_exists(
+            name=entity.workflow.name,
+            version=version,
+            project=serialization_settings.project,
+            domain=serialization_settings.domain,
+        ):
+            # Underlying workflow, exists, only register the launch plan itself
+            launch_plan_model = get_serializable(
+                OrderedDict(), settings=serialization_settings, entity=entity, options=options
+            )
+            ident = self.raw_register(
+                launch_plan_model, serialization_settings, version, create_default_launchplan=False
+            )
+            if ident is None:
+                raise ValueError("Failed to register launch plan, identifier returned was empty...")
+        else:
+            # Register the launch and everything under it
+            ident = run_sync(
+                self._serialize_and_register,
+                entity,
+                serialization_settings,
+                version,
+                options,
+                False,
+            )
+
         flp = self.fetch_launch_plan(ident.project, ident.domain, ident.name, ident.version)
         flp.python_interface = entity.python_interface
         return flp
