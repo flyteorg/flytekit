@@ -854,3 +854,43 @@ def test_register_task_with_node_dependency_hints(mock_client):
     registered_workflow = rr.register_workflow(workflow1, ss)
     assert isinstance(registered_workflow, FlyteWorkflow)
     assert registered_workflow.id == Identifier(ResourceType.WORKFLOW, "flytesnacks", "development", "tests.flytekit.unit.remote.test_remote.workflow1", "dummy_version")
+
+
+@mock.patch("flytekit.remote.remote.get_serializable")
+@mock.patch("flytekit.remote.remote.FlyteRemote.fetch_launch_plan")
+@mock.patch("flytekit.remote.remote.FlyteRemote.raw_register")
+@mock.patch("flytekit.remote.remote.FlyteRemote._serialize_and_register")
+@mock.patch("flytekit.remote.remote.FlyteRemote.client")
+def test_register_launch_plan(mock_client, mock_serialize_and_register, mock_raw_register,mock_fetch_launch_plan, mock_get_serializable):
+    serialization_settings = SerializationSettings(
+        image_config=ImageConfig.auto_default_image(),
+        version="dummy_version",
+    )
+
+    rr = FlyteRemote(
+        Config.for_sandbox(),
+        default_project="flytesnacks",
+        default_domain="development",
+    )
+
+    @task
+    def say_hello() -> str:
+        return "Hello, World!"
+
+    @workflow
+    def hello_world_wf() -> str:
+        res = say_hello()
+        return res
+
+    lp = LaunchPlan.get_or_create(workflow=hello_world_wf, name="additional_lp_for_hello_world", default_inputs={})
+
+    mock_get_serializable.return_value = MagicMock()
+    mock_client.get_workflow.return_value = MagicMock()
+
+    mock_remote_lp = MagicMock()
+    mock_fetch_launch_plan.return_value = mock_remote_lp
+
+    remote_lp = rr.register_launch_plan(lp, version="dummy_version", project="flytesnacks", domain="development", serialization_settings=serialization_settings)
+    assert remote_lp is mock_remote_lp
+    assert not mock_serialize_and_register.called
+    assert mock_raw_register.called
