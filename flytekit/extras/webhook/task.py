@@ -6,6 +6,7 @@ from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.extend.backend.base_agent import SyncAgentExecutorMixin
 
+from ...core.interface import Interface
 from .constants import BODY_KEY, HEADERS_KEY, METHOD_KEY, SHOW_BODY_KEY, SHOW_URL_KEY, TASK_TYPE, URL_KEY
 
 
@@ -78,10 +79,14 @@ class WebhookTask(SyncAgentExecutorMixin, PythonTask):
             outputs["body"] = dict
         if show_url:
             outputs["url"] = bool
+
+        interface = Interface(
+            inputs=dynamic_inputs or {},
+            outputs={"info": dict},
+        )
         super().__init__(
             name=name,
-            inputs=dynamic_inputs,
-            outputs=outputs,
+            interface=interface,
             task_type=TASK_TYPE,
             # secret_requests=secret_requests,
             docs=Documentation(short_description=description) if description else None,

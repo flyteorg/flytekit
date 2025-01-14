@@ -48,18 +48,21 @@ class WebhookAgent(SyncAgentBase):
 
             session = await self._get_session()
 
+            text = None
             if method == http.HTTPMethod.GET:
                 response = await session.get(url, headers=headers)
+                text = await response.text()
             else:
-                response = await session.post(url, data=body, headers=headers)
+                response = await session.post(url, json=body, headers=headers)
+                text = await response.text()
             if response.status != 200:
                 return Resource(
                     phase=TaskExecution.FAILED,
-                    message=f"Webhook failed with status code {response.status}, response: {response.text}",
+                    message=f"Webhook failed with status code {response.status}, response: {text}",
                 )
             final_response = {
                 "status_code": response.status,
-                "body": response.text,
+                "body": text,
             }
             if show_body:
                 final_response["input_body"] = body
@@ -67,7 +70,9 @@ class WebhookAgent(SyncAgentBase):
                 final_response["url"] = url
 
             return Resource(
-                phase=TaskExecution.SUCCEEDED, outputs=final_response, message="Webhook was successfully invoked!"
+                phase=TaskExecution.SUCCEEDED,
+                outputs={"info": final_response},
+                message="Webhook was successfully invoked!",
             )
         except Exception as e:
             return Resource(phase=TaskExecution.FAILED, message=str(e))
