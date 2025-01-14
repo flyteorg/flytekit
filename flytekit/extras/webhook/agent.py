@@ -1,7 +1,8 @@
+import asyncio
 import http
 from typing import Optional
 
-import httpx
+import aiohttp
 from flyteidl.core.execution_pb2 import TaskExecution
 
 from flytekit.extend.backend.base_agent import AgentRegistry, Resource, SyncAgentBase
@@ -9,7 +10,6 @@ from flytekit.interaction.string_literals import literal_map_string_repr
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 from flytekit.utils.dict_formatter import format_dict
-
 from .constants import BODY_KEY, HEADERS_KEY, METHOD_KEY, SHOW_BODY_KEY, SHOW_URL_KEY, TASK_TYPE, URL_KEY
 
 
@@ -18,9 +18,17 @@ class WebhookAgent(SyncAgentBase):
 
     def __init__(self):
         super().__init__(task_type_name=TASK_TYPE)
+        self._loop = asyncio.get_running_loop()
+        self._loop.create_task(self._initialize_session())
 
-    def do(
-        self, task_template: TaskTemplate, output_prefix: str, inputs: Optional[LiteralMap] = None, **kwargs
+    def __del__(self):
+        self._loop.create_task(self._session.close())
+
+    async def _initialize_session(self):
+        self._session = aiohttp.ClientSession()
+
+    async def do(
+            self, task_template: TaskTemplate, output_prefix: str, inputs: Optional[LiteralMap] = None, **kwargs
     ) -> Resource:
         try:
             custom_dict = task_template.custom
@@ -37,22 +45,17 @@ class WebhookAgent(SyncAgentBase):
             show_body = final_dict.get(SHOW_BODY_KEY, False)
             show_url = final_dict.get(SHOW_URL_KEY, False)
 
-            async with httpx.AsyncClient() as client:
-                if method == http.HTTPMethod.GET:
-                    response = await client.get(url, headers=headers)
-                else:
-                    response = await client.post(url, data=body, headers=headers)
             if method == http.HTTPMethod.GET:
-                response = httpx.get(url, headers=headers)
+                response = await self._session.get(url, headers=headers)
             else:
-                response = httpx.post(url, data=body, headers=headers)
-            if response.status_code != 200:
+                response = self._session.post(url, data=body, headers=headers)
+            if response.status != 200:
                 return Resource(
                     phase=TaskExecution.FAILED,
-                    message=f"Webhook failed with status code {response.status_code}, response: {response.text}",
+                    message=f"Webhook failed with status code {response.status}, response: {response.text}",
                 )
             final_response = {
-                "status_code": response.status_code,
+                "status_code": response.status,
                 "body": response.text,
             }
             if show_body:
