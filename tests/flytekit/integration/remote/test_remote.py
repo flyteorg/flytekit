@@ -65,8 +65,10 @@ def register():
     assert out.returncode == 0
 
 
-def run(file_name, wf_name, *args) -> str:
+def run(file_name, wf_name, *wf_args, run_args=None) -> str:
     # Copy the environment and set the environment variable
+    if run_args is None:
+        run_args = []
     out = subprocess.run(
         [
             "pyflyte",
@@ -74,6 +76,7 @@ def run(file_name, wf_name, *args) -> str:
             "-c",
             CONFIG,
             "run",
+            *run_args,
             "--remote",
             "--destination-dir",
             DEST_DIR,
@@ -85,7 +88,7 @@ def run(file_name, wf_name, *args) -> str:
             DOMAIN,
             MODULE_PATH / file_name,
             wf_name,
-            *args,
+            *wf_args,
         ],
         capture_output=True,  # Capture the output streams
         text=True,  # Return outputs as strings (not bytes)
@@ -108,6 +111,14 @@ def test_remote_run():
 
     # run twice to make sure it will register a new version of the workflow.
     run("default_lp.py", "my_wf")
+
+
+def test_remote_run_in_new_process():
+    # child_workflow.parent_wf asynchronously register a parent wf1 with child lp from another wf2.
+    run("child_workflow.py", "parent_wf", "--a", "3", run_args=["--env", "FLYTE_FAST_EXECUTE_CMD_IN_NEW_PROCESS=1"])
+
+    # run twice to make sure it will register a new version of the workflow.
+    run("default_lp.py", "my_wf", run_args=["--env", "FLYTE_FAST_EXECUTE_CMD_IN_NEW_PROCESS=1"])
 
 
 def test_remote_eager_run():
