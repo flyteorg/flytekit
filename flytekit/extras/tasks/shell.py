@@ -250,7 +250,11 @@ class ShellTask(PythonInstanceTask[T]):
 
         if task_config is not None:
             fully_qualified_class_name = task_config.__module__ + "." + task_config.__class__.__name__
-            if fully_qualified_class_name not in ["flytekitplugins.pod.task.Pod", "flytekitplugins.slurm.task.Slurm"]:
+            if fully_qualified_class_name not in [
+                "flytekitplugins.pod.task.Pod",
+                "flytekitplugins.slurm.task.Slurm",
+                "flytekitplugins.slurm.task.SlurmShell",
+            ]:
                 raise ValueError("TaskConfig can either be empty - indicating simple container task or a PodConfig.")
 
         # Each instance of NotebookTask instantiates an underlying task with a dummy function that will only be used
@@ -259,7 +263,7 @@ class ShellTask(PythonInstanceTask[T]):
         # errors.
         # This seem like a hack. We should use a plugin_class that doesn't require a fake-function to make work.
         plugin_class = TaskPlugins.find_pythontask_plugin(type(task_config))
-        if plugin_class.__name__ == "SlurmTask":
+        if plugin_class.__name__ in ["SlurmTask", "SlurmShellTask"]:
             self._config_task_instance = None
         else:
             self._config_task_instance = plugin_class(task_config=task_config, task_function=_dummy_task_func)

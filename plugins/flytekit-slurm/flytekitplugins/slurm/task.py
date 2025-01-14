@@ -35,6 +35,19 @@ class Slurm(object):
             self.sbatch_conf = {}
 
 
+@dataclass
+class SlurmShell(object):
+    """Encounter collision if Slurm is shared btw SlurmTask and SlurmShellTask."""
+
+    slurm_host: str
+    batch_script_args: Optional[List[str]] = None
+    sbatch_conf: Optional[Dict[str, str]] = None
+
+    def __post_init__(self):
+        if self.sbatch_conf is None:
+            self.sbatch_conf = {}
+
+
 class SlurmTask(AsyncAgentExecutorMixin, ShellTask[Slurm]):
     """
     Actual Plugin that transforms the local python code for execution within a slurm context...
@@ -66,4 +79,32 @@ class SlurmTask(AsyncAgentExecutorMixin, ShellTask[Slurm]):
         }
 
 
+class SlurmShellTask(AsyncAgentExecutorMixin, ShellTask[Slurm]):
+    _TASK_TYPE = "slurm"
+
+    def __init__(
+        self,
+        name: str,
+        task_config: SlurmShell,
+        script: Optional[str] = None,
+        **kwargs,
+    ):
+        super(SlurmShellTask, self).__init__(
+            name,
+            task_config=task_config,
+            task_type=self._TASK_TYPE,
+            script=script,
+            **kwargs,
+        )
+
+    def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
+        return {
+            "slurm_host": self.task_config.slurm_host,
+            "batch_script_args": self.task_config.batch_script_args,
+            "sbatch_conf": self.task_config.sbatch_conf,
+            "script": self._script,
+        }
+
+
 TaskPlugins.register_pythontask_plugin(Slurm, SlurmTask)
+TaskPlugins.register_pythontask_plugin(SlurmShell, SlurmShellTask)
