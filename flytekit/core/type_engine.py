@@ -1692,7 +1692,7 @@ class ListTransformer(AsyncTypeTransformer[T]):
         except AttributeError:
             raise TypeTransformerFailedError(
                 (
-                    f"The expected python type is '{expected_python_type}' but the received Flyte literal value "
+                    f"The expected python type is '{expected_python_type}' but the received {lv} "
                     f"is not a collection (Flyte's representation of Python lists)."
                 )
             )

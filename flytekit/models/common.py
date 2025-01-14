@@ -11,6 +11,8 @@ from flyteidl.core import literals_pb2 as _literals_pb2
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 
+DEFAULT_REPR_MAX_LENGTH = 80
+
 
 class FlyteABCMeta(abc.ABCMeta):
     def __instancecheck__(cls, instance):
@@ -59,7 +61,7 @@ def _repr_idl_yaml_like(idl, indent=0) -> str:
                     out.write(_repr_idl_yaml_like(field, indent + 2))
             except AttributeError:
                 # No ListFields -> Must be a scalar
-                str_repr = shorten(str(field).strip(), width=80)
+                str_repr = shorten(str(field).strip(), width=DEFAULT_REPR_MAX_LENGTH)
                 if str_repr:
                     out.write(" " * indent + descriptor.name + ": " + str_repr + os.linesep)
 
@@ -82,7 +84,7 @@ class FlyteIdlEntity(object, metaclass=FlyteType):
     def __hash__(self):
         return hash(self.to_flyte_idl().SerializeToString(deterministic=True))
 
-    def short_string(self):
+    def short_string(self) -> str:
         """
         :rtype: Text
         """
@@ -90,7 +92,7 @@ class FlyteIdlEntity(object, metaclass=FlyteType):
         type_str = type(self).__name__
         return f"Flyte Serialized object ({type_str}):" + os.linesep + str_repr
 
-    def verbose_string(self):
+    def verbose_string(self) -> str:
         """
         :rtype: Text
         """

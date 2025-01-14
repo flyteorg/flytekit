@@ -1,6 +1,7 @@
 from datetime import datetime as _datetime
 from datetime import timedelta as _timedelta
 from datetime import timezone as _timezone
+from textwrap import shorten
 from typing import Dict, Optional
 
 from flyteidl.core import literals_pb2 as _literals_pb2
@@ -8,6 +9,7 @@ from google.protobuf.struct_pb2 import Struct
 
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.models import common as _common
+from flytekit.models.common import DEFAULT_REPR_MAX_LENGTH
 from flytekit.models.core import types as _core_types
 from flytekit.models.types import Error, LiteralType, StructuredDatasetType
 from flytekit.models.types import LiteralType as _LiteralType
@@ -1029,3 +1031,60 @@ class Literal(_common.FlyteIdlEntity):
         :param Dict[str, str] metadata: Metadata to be added
         """
         self._metadata = metadata
+
+    def _get_literal_value_str(self) -> str:
+        """
+        :rtype: str
+        """
+        if self.scalar:
+            if self.scalar.primitive:
+                return self.scalar.primitive.value
+            if self.scalar.blob:
+                return self.scalar.blob.uri
+            if self.scalar.binary:
+                return self.scalar.binary.value
+            if self.scalar.schema:
+                return self.scalar.schema.uri
+            if self.scalar.union:
+                return self.scalar.union.value._get_literal_value_str()
+            if self.scalar.none_type:
+                return "None"
+            if self.scalar.error:
+                return self.scalar.error.message
+            if self.scalar.generic:
+                return str(self.scalar.generic)
+            if self.scalar.structured_dataset:
+                return self.scalar.structured_dataset.uri
+        elif self.collection:
+            return shorten(
+                str([literal._get_literal_value_str() for literal in self.collection.literals]),
+                width=DEFAULT_REPR_MAX_LENGTH,
+            )
+        elif self.map:
+            return shorten(
+                str({k: v._get_literal_value_str() for k, v in self.map.literals.items()}),
+                width=DEFAULT_REPR_MAX_LENGTH,
+            )
+        return "Unknown Literal"
+
+    def _get_literal_type_str(self) -> str:
+        """
+        :rtype: str
+        """
+        if self.scalar:
+            if self.scalar.union:
+                return f"Union[{self.scalar.union.value._get_literal_type_str()}]"
+            if self.scalar.primitive:
+                return f"{self.scalar.primitive.value.__class__.__name__}"
+            return str(self.scalar.value.__class__.__name__)
+        elif self.collection:
+            return f"Collection[{self.collection.literals[0]._get_literal_type_str()}]"
+        elif self.map:
+            return f"Map[str, {list(self.map.literals.values())[0]._get_literal_type_str()}]"
+        return "Unknown Literal Type"
+
+    def short_string(self) -> str:
+        """
+        :rtype: Text
+        """
+        return f"Flyte Serialized object ({self._get_literal_type_str()}): {self._get_literal_value_str()}"
