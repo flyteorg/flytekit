@@ -303,6 +303,7 @@ jobs:
           - flytekit-huggingface
           - flytekit-identity-aware-proxy
           - flytekit-inference
+          - flytekit-k8sdataservice
           - flytekit-k8s-pod
           - flytekit-kf-mpi
           - flytekit-kf-pytorch
