@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 import typing
@@ -27,11 +28,13 @@ developer_logger = logging.getLogger("developer")
 # global Python root logger is set to).
 logger.propagate = False
 
+rich_enabled = False
+
 
 def set_flytekit_log_properties(
-    handler: typing.Optional[logging.Handler] = None,
-    filter: typing.Optional[logging.Filter] = None,
-    level: typing.Optional[int] = None,
+        handler: typing.Optional[logging.Handler] = None,
+        filter: typing.Optional[logging.Filter] = None,
+        level: typing.Optional[int] = None,
 ):
     """
     flytekit logger, refers to the framework logger. It is possible to selectively tune the logging for flytekit.
@@ -54,9 +57,9 @@ def set_flytekit_log_properties(
 
 
 def set_user_logger_properties(
-    handler: typing.Optional[logging.Handler] = None,
-    filter: typing.Optional[logging.Filter] = None,
-    level: typing.Optional[int] = None,
+        handler: typing.Optional[logging.Handler] = None,
+        filter: typing.Optional[logging.Filter] = None,
+        level: typing.Optional[int] = None,
 ):
     """
     user_space logger, refers to the user's logger. It is possible to selectively tune the logging for the user.
@@ -75,9 +78,9 @@ def set_user_logger_properties(
 
 
 def set_developer_properties(
-    handler: typing.Optional[logging.Handler] = None,
-    filter: typing.Optional[logging.Filter] = None,
-    level: typing.Optional[int] = None,
+        handler: typing.Optional[logging.Handler] = None,
+        filter: typing.Optional[logging.Filter] = None,
+        level: typing.Optional[int] = None,
 ):
     """
     developer logger is only used for debugging. It is possible to selectively tune the logging for the developer.
@@ -141,32 +144,41 @@ def is_rich_logging_enabled() -> bool:
 
 
 def upgrade_to_rich_logging(log_level: typing.Optional[int] = logging.WARNING):
-    import click
-    from rich.console import Console
-    from rich.logging import RichHandler
+    from flytekit import _rich_logging
+    rich_handler = _rich_logging.get_current_rich_handler()
 
-    import flytekit
-
-    try:
-        width = os.get_terminal_size().columns
-    except Exception as e:
-        logger.debug(f"Failed to get terminal size: {e}")
-        width = 80
-
-    handler = RichHandler(
-        tracebacks_suppress=[click, flytekit],
-        rich_tracebacks=True,
-        omit_repeated_times=False,
-        show_path=False,
-        log_time_format="%H:%M:%S.%f",
-        console=Console(width=width),
-    )
-
+    handler = rich_handler.handler
     formatter = logging.Formatter(fmt="%(filename)s:%(lineno)d - %(message)s")
     handler.setFormatter(formatter)
     set_flytekit_log_properties(handler, None, _get_env_logging_level(default_level=log_level))
     set_user_logger_properties(handler, None, logging.INFO)
     set_developer_properties(handler, None, _get_dev_env_logging_level())
+    global rich_enabled
+    rich_enabled = True
+
+
+def add_progress_bar(task: str, total: int = 1, **kwargs):
+    """
+    Creates a new progress bar with name "task"
+    """
+    global rich_enabled
+    if not rich_enabled:
+        return 0
+    from flytekit import _rich_logging
+    rich_handler = _rich_logging.get_current_rich_handler()
+    rich_handler.add_progress_bar(task, total=total, **kwargs)
+
+
+def advance_progress_bar(task: str, advance: float = 1):
+    """
+    Advances a progress bar with name "task"
+    """
+    global rich_enabled
+    if not rich_enabled:
+        return 0
+    from flytekit import _rich_logging
+    rich_handler = _rich_logging.get_current_rich_handler()
+    rich_handler.advance_progress(task, advance)
 
 
 def get_level_from_cli_verbosity(verbosity: int) -> int:
