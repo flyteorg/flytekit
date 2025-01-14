@@ -17,7 +17,7 @@ import flytekit
 from flytekit import task, workflow
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager, ExecutionState, ExecutionParameters, OutputMetadataTracker
 from flytekit.configuration import SerializationSettings
-from flytekit.exceptions.user import FlyteRecoverableException
+from flytekit.exceptions.user import FlyteRecoverableException, FlyteUserRuntimeException
 
 @pytest.fixture(autouse=True, scope="function")
 def restore_env():
@@ -223,7 +223,7 @@ def test_recoverable_error(recoverable: bool, start_method: str) -> None:
         with pytest.raises(FlyteRecoverableException):
             wf(recoverable=recoverable)
     else:
-        with pytest.raises(RuntimeError):
+        with pytest.raises(FlyteUserRuntimeException):
             wf(recoverable=recoverable)
 
 
