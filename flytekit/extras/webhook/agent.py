@@ -10,6 +10,7 @@ from flytekit.interaction.string_literals import literal_map_string_repr
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 from flytekit.utils.dict_formatter import format_dict
+
 from .constants import BODY_KEY, HEADERS_KEY, METHOD_KEY, SHOW_BODY_KEY, SHOW_URL_KEY, TASK_TYPE, URL_KEY
 
 
@@ -28,7 +29,7 @@ class WebhookAgent(SyncAgentBase):
         self._session = aiohttp.ClientSession()
 
     async def do(
-            self, task_template: TaskTemplate, output_prefix: str, inputs: Optional[LiteralMap] = None, **kwargs
+        self, task_template: TaskTemplate, output_prefix: str, inputs: Optional[LiteralMap] = None, **kwargs
     ) -> Resource:
         try:
             custom_dict = task_template.custom
