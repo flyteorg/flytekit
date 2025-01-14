@@ -1,7 +1,7 @@
 import sys
 import typing
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Dict, List, cast
 
 import pytest
 from dataclasses_json import DataClassJsonMixin, dataclass_json
@@ -9,7 +9,7 @@ from typing_extensions import Annotated
 
 from flytekit import LaunchPlan, task, workflow
 from flytekit.core import context_manager
-from flytekit.core.context_manager import CompilationState, FlyteContextManager
+from flytekit.core.context_manager import CompilationState, FlyteContextManager, FlyteContext
 from flytekit.core.promise import (
     Promise,
     VoidPromise,
@@ -22,7 +22,7 @@ from flytekit.core.promise import (
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions.user import FlyteAssertion, FlytePromiseAttributeResolveException
 from flytekit.models import literals as literal_models
-from flytekit.models.types import LiteralType, SimpleType, TypeStructure
+from flytekit.models.types import LiteralType, SimpleType, TypeStructure, UnionType
 
 
 def test_create_and_link_node():
@@ -401,3 +401,79 @@ async def test_prom_with_union_literals():
     assert bd.scalar.union.stored_type.structure.tag == "int"
     bd = await binding_data_from_python_std(ctx, lt, "hello", pt, [])
     assert bd.scalar.union.stored_type.structure.tag == "str"
+
+@pytest.mark.asyncio
+async def test_binding_data_with_type_cast():
+    # Mock inputs for the test case
+    ctx = FlyteContext.current_context()
+    t_value = 123  # Example value
+    lt_type = LiteralType(simple=SimpleType.INTEGER)
+    nodes = []
+
+    # Test with a specific python_type and type cast
+    python_type = int
+    result = await binding_data_from_python_std(ctx, lt_type, t_value, cast(type, python_type), nodes)
+
+    # Assertions
+    assert result is not None
+    assert result.scalar.primitive.integer == t_value
+
+@pytest.mark.asyncio
+async def test_binding_data_without_type_cast():
+    # Test case where python_type is not provided (or is None)
+    ctx = FlyteContext.current_context()
+    t_value = "test_string"
+    lt_type = LiteralType(simple=SimpleType.STRING)
+    nodes = []
+
+    # Call without type cast
+    result = await binding_data_from_python_std(ctx, lt_type, t_value, None, nodes)
+
+    # Assertions
+    assert result is not None
+    assert result.scalar.primitive.string_value == t_value
+
+@pytest.mark.asyncio
+async def test_binding_data_with_incorrect_type():
+    # Test case to trigger exception by providing mismatched type
+    ctx = FlyteContext.current_context()
+    t_value = [1, 2, 3]  # List type
+
+    # Construct a union LiteralType where one of the types is STRING
+    lt_type = LiteralType(
+        union_type=UnionType(
+            variants=[
+                LiteralType(simple=SimpleType.STRING),
+                LiteralType(simple=SimpleType.INTEGER),
+            ],
+        )
+    )
+    nodes = []
+
+    # Check for type mismatch to raise an AssertionError
+    with pytest.raises(AssertionError, match="Failed to bind data"):
+        result = await binding_data_from_python_std(ctx, lt_type, t_value, str, nodes)
+        assert result is None
+
+@pytest.mark.asyncio
+async def test_binding_data_python_type_logic():
+    ctx = FlyteContext.current_context()
+    nodes = []
+
+    # Case 1: t_value_type is None, t_value is None
+    lt_type = LiteralType()
+    t_value_type = None
+    t_value = None
+    result = await binding_data_from_python_std(ctx, lt_type, t_value, t_value_type, nodes)
+    assert result.scalar is None  # Expecting a None type scalar
+
+    # Case 2: t_value_type is None, t_value is a string
+    t_value = "example"
+    result = await binding_data_from_python_std(ctx, lt_type, t_value, t_value_type, nodes)
+    assert result.scalar.primitive.string_value == t_value  # Expecting string scalar
+
+    # Case 3: t_value_type is a list type, t_value is a list
+    t_value_type = List[int]
+    t_value = [1, 2, 3]
+    result = await binding_data_from_python_std(ctx, lt_type, t_value, t_value_type, nodes)
+    assert result.collection.bindings is not None  # Expecting a list collection
