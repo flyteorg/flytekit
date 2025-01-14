@@ -276,3 +276,37 @@ def test_omp_num_threads(start_method: str) -> None:
         assert os.environ["OMP_NUM_THREADS"] == "42"
 
     test_task_omp_set()
+
+
+def test_exception_timestamp() -> None:
+    """Test that the timestamp of the worker process exception is propagated to the task exception."""
+    @task(
+        task_config=Elastic(
+            nnodes=1,
+            nproc_per_node=2,
+        )
+    )
+    def test_task():
+        raise Exception("Test exception")
+
+    with pytest.raises(Exception) as e:
+        test_task()
+
+    assert e.value.timestamp is not None
+
+
+def test_recoverable_exception_timestamp() -> None:
+    """Test that the timestamp of the worker process exception is propagated to the task exception."""
+    @task(
+        task_config=Elastic(
+            nnodes=1,
+            nproc_per_node=2,
+        )
+    )
+    def test_task():
+        raise FlyteRecoverableException("Recoverable test exception")
+
+    with pytest.raises(Exception) as e:
+        test_task()
+
+    assert e.value.timestamp is not None
