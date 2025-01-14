@@ -19,14 +19,14 @@ class WebhookAgent(SyncAgentBase):
 
     def __init__(self):
         super().__init__(task_type_name=TASK_TYPE)
-        self._loop = asyncio.get_running_loop()
-        self._loop.create_task(self._initialize_session())
+        self._session = None
+        self._lock = asyncio.Lock()
 
-    def __del__(self):
-        self._loop.create_task(self._session.close())
-
-    async def _initialize_session(self):
-        self._session = aiohttp.ClientSession()
+    async def _get_session(self) -> aiohttp.ClientSession:
+        async with self._lock:
+            if self._session is None:
+                self._session = aiohttp.ClientSession()
+            return self._session
 
     async def do(
         self, task_template: TaskTemplate, output_prefix: str, inputs: Optional[LiteralMap] = None, **kwargs
@@ -46,10 +46,12 @@ class WebhookAgent(SyncAgentBase):
             show_body = final_dict.get(SHOW_BODY_KEY, False)
             show_url = final_dict.get(SHOW_URL_KEY, False)
 
+            session = await self._get_session()
+
             if method == http.HTTPMethod.GET:
-                response = await self._session.get(url, headers=headers)
+                response = await session.get(url, headers=headers)
             else:
-                response = self._session.post(url, data=body, headers=headers)
+                response = await session.post(url, data=body, headers=headers)
             if response.status != 200:
                 return Resource(
                     phase=TaskExecution.FAILED,

@@ -48,14 +48,14 @@ class WebhookTask(SyncAgentExecutorMixin, PythonTask):
         :param name: Name of this task, should be unique in the project
         :param url: The endpoint or URL to invoke for this webhook. This can be a static string or a python format string,
             where the format arguments are the dynamic_inputs to the task, secrets etc. Refer to the description for more
-            details of available formating parameters.
+            details of available formatting parameters.
         :param method: The HTTP method to use for the request. Default is POST.
         :param headers: The headers to send with the request. This can be a static dictionary or a python format string,
             where the format arguments are the dynamic_inputs to the task, secrets etc. Refer to the description for more
-            details of available formating parameters.
+            details of available formatting parameters.
         :param body: The body to send with the request. This can be a static dictionary or a python format string,
             where the format arguments are the dynamic_inputs to the task, secrets etc. Refer to the description for more
-            details of available formating parameters.
+            details of available formatting parameters.
         :param dynamic_inputs: The dynamic inputs to the task. The keys are the names of the inputs and the values
             are the types of the inputs. These inputs are available under the prefix `inputs.` to be used in the URL,
             headers and body and other formatted fields.

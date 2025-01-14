@@ -32,7 +32,7 @@ def mock_aiohttp_session():
 async def test_do_post_success(mock_task_template, mock_aiohttp_session):
     mock_response = AsyncMock()
     mock_response.status = 200
-    mock_response.text = AsyncMock(return_value="Success")
+    mock_response.text = "Success"
     mock_aiohttp_session.return_value.post = AsyncMock(return_value=mock_response)
 
     agent = WebhookAgent()
