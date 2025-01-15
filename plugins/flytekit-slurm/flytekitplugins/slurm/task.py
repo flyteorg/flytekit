@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from flytekit.configuration import SerializationSettings
+from flytekit.core.base_task import PythonTask
+from flytekit.core.interface import Interface
 from flytekit.extend import TaskPlugins
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 from flytekit.extras.tasks.shell import ShellTask
@@ -48,11 +50,7 @@ class SlurmShell(object):
             self.sbatch_conf = {}
 
 
-class SlurmTask(AsyncAgentExecutorMixin, ShellTask[Slurm]):
-    """
-    Actual Plugin that transforms the local python code for execution within a slurm context...
-    """
-
+class SlurmTask(AsyncAgentExecutorMixin, PythonTask[Slurm]):
     _TASK_TYPE = "slurm"
 
     def __init__(
@@ -62,11 +60,11 @@ class SlurmTask(AsyncAgentExecutorMixin, ShellTask[Slurm]):
         **kwargs,
     ):
         super(SlurmTask, self).__init__(
-            name,
-            task_config=task_config,
             task_type=self._TASK_TYPE,
-            # Dummy script as a tmp workaround
-            script="#!/bin/bash",
+            name=name,
+            task_config=task_config,
+            # Dummy interface, will support this after discussion
+            interface=Interface(None, None),
             **kwargs,
         )
 
