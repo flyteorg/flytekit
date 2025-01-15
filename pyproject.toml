@@ -26,8 +26,8 @@ dependencies = [
     "googleapis-common-protos>=1.57",
     # Skipping those versions to account for the unwanted output coming from grpcio and grpcio-status.
     # Issue being tracked in https://github.com/flyteorg/flyte/issues/6082.
-    "grpcio!=1.68.0,!=1.68.1",
-    "grpcio-status!=1.68.0,!=1.68.1",
+    "grpcio<=1.68.0",
+    "grpcio-status<=1.68.0",
     "importlib-metadata",
     "joblib",
     "jsonlines",
@@ -94,6 +94,7 @@ exclude = ["boilerplate", "docs", "plugins", "tests*"]
 
 [tool.pytest.ini_options]
 norecursedirs = ["common", "workflows", "spark", "fsspec"]
+asyncio_default_fixture_loop_scope = "function"
 log_cli = false
 log_cli_level = 20
 markers = [
