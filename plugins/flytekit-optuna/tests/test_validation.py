@@ -8,7 +8,6 @@ from flytekitplugins.optuna import Optimizer
 async def objective(x: float, y: int, z: int, power: int) -> float:
     return 1.0
 
-
 def test_concurrency():
 
     with pytest.raises(ValueError):
@@ -62,11 +61,18 @@ def test_objective():
         Optimizer(workflow, concurrency=3, n_trials=10)
 
     @fl.task
-    def mistyped_objective(x: int, y: int, z: int, power: int) -> str:
+    async def mistyped_objective(x: int, y: int, z: int, power: int) -> str:
         return "abc"
 
     with pytest.raises(ValueError):
         Optimizer(mistyped_objective, concurrency=3, n_trials=10)
+
+    @fl.task
+    def synchronous_objective(x: int, y: int, z: int, power: int) -> float:
+        return 1.0
+
+    with pytest.raises(ValueError):
+        Optimizer(synchronous_objective, concurrency=3, n_trials=10)
 
 
 
