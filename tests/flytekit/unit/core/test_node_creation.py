@@ -470,6 +470,29 @@ def test_override_image():
 
     assert wf.nodes[0]._container_image == "hello/world"
 
+def test_override_label():
+    @task
+    def bar():
+        print("hello")
+
+    @workflow
+    def wf() -> str:
+        bar().with_overrides(labels={"foo": "bar"})
+        return "hi"
+
+    assert wf.nodes[0]._labels == {"foo": "bar"}
+
+def test_override_annotation():
+    @task
+    def bar():
+        print("hello")
+
+    @workflow
+    def wf() -> str:
+        bar().with_overrides(annotations={"foo": "bar"})
+        return "hi"
+
+    assert wf.nodes[0]._annotations == {"foo": "bar"}
 
 def test_override_accelerator():
     @task(accelerator=T4)

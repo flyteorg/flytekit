@@ -8,6 +8,7 @@ from typing import List
 
 import pytest
 from flyteidl.core import workflow_pb2 as _core_workflow
+from mypy.api import annotations
 
 from flytekit import dynamic, map_task, task, workflow, eager, PythonFunctionTask
 from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SerializationSettings
@@ -356,9 +357,11 @@ def test_map_task_override(serialization_settings):
 
     @workflow
     def wf(x: typing.List[int]):
-        map_task(my_mappable_task)(a=x).with_overrides(container_image="random:image")
+        map_task(my_mappable_task)(a=x).with_overrides(container_image="random:image",labels={"lKeyA": "lValA"},annotations={"aKeyA": "aValA"})
 
     assert wf.nodes[0]._container_image == "random:image"
+    assert wf.nodes[0]._labels["lKeyA"] == "lValA"
+    assert wf.nodes[0]._annotations["aKeyA"] == "aValA"
 
 
 def test_serialization_metadata(serialization_settings):
