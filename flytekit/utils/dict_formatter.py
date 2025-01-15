@@ -71,7 +71,7 @@ def format_dict(
                 if f"{{{match}}}" == original_dict:
                     return nested_value
                 else:
-                    original_dict = replace_placeholder(service, original_dict, match, nested_value)
+                    original_dict = replace_placeholder(service, original_dict, match, str(nested_value))
             elif match == "idempotence_token" and idempotence_token:
                 original_dict = replace_placeholder(service, original_dict, match, idempotence_token)
         return original_dict

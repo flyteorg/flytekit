@@ -3,6 +3,7 @@ from unittest.mock import patch, MagicMock, AsyncMock
 import pytest
 
 from flytekit.extras.webhook.agent import WebhookAgent
+from flytekit.extras.webhook.constants import SHOW_DATA_KEY, DATA_KEY, METHOD_KEY, URL_KEY, HEADERS_KEY, SHOW_URL_KEY
 from flytekit.models.core.execution import TaskExecutionPhase as TaskExecution
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
@@ -12,12 +13,12 @@ from flytekit.models.task import TaskTemplate
 def mock_task_template():
     task_template = MagicMock(spec=TaskTemplate)
     task_template.custom = {
-        "url": "http://example.com",
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "body": {"key": "value"},
-        "show_body": True,
-        "show_url": True,
+        URL_KEY: "http://example.com",
+        METHOD_KEY: "POST",
+        HEADERS_KEY: {"Content-Type": "application/json"},
+        DATA_KEY: {"key": "value"},
+        SHOW_DATA_KEY: True,
+        SHOW_URL_KEY: True,
     }
     return task_template
 
@@ -32,23 +33,23 @@ def mock_aiohttp_session():
 async def test_do_post_success(mock_task_template, mock_aiohttp_session):
     mock_response = AsyncMock()
     mock_response.status = 200
-    mock_response.text = "Success"
+    mock_response.text = AsyncMock(return_value="Success")
     mock_aiohttp_session.return_value.post = AsyncMock(return_value=mock_response)
 
     agent = WebhookAgent()
     result = await agent.do(mock_task_template, output_prefix="", inputs=LiteralMap({}))
 
     assert result.phase == TaskExecution.SUCCEEDED
-    assert result.outputs["status_code"] == 200
-    assert result.outputs["body"] == "Success"
-    assert result.outputs["url"] == "http://example.com"
+    assert result.outputs["info"]
+    assert result.outputs["info"]["status_code"] == 200
+    assert result.outputs["info"]["url"] == "http://example.com"
 
 
 @pytest.mark.asyncio
 async def test_do_get_success(mock_task_template, mock_aiohttp_session):
-    mock_task_template.custom["method"] = "GET"
-    mock_task_template.custom.pop("body")
-    mock_task_template.custom["show_body"] = False
+    mock_task_template.custom[METHOD_KEY] = "GET"
+    mock_task_template.custom.pop(DATA_KEY)
+    mock_task_template.custom[SHOW_DATA_KEY] = False
 
     mock_response = AsyncMock()
     mock_response.status = 200
@@ -59,8 +60,8 @@ async def test_do_get_success(mock_task_template, mock_aiohttp_session):
     result = await agent.do(mock_task_template, output_prefix="", inputs=LiteralMap({}))
 
     assert result.phase == TaskExecution.SUCCEEDED
-    assert result.outputs["status_code"] == 200
-    assert result.outputs["url"] == "http://example.com"
+    assert result.outputs["info"]["status_code"] == 200
+    assert result.outputs["info"]["url"] == "http://example.com"
 
 
 @pytest.mark.asyncio

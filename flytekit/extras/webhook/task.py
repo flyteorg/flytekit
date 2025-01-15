@@ -7,7 +7,7 @@ from flytekit.core.base_task import PythonTask
 from flytekit.extend.backend.base_agent import SyncAgentExecutorMixin
 
 from ...core.interface import Interface
-from .constants import BODY_KEY, HEADERS_KEY, METHOD_KEY, SHOW_BODY_KEY, SHOW_URL_KEY, TASK_TYPE, URL_KEY
+from .constants import DATA_KEY, HEADERS_KEY, METHOD_KEY, SHOW_DATA_KEY, SHOW_URL_KEY, TASK_TYPE, URL_KEY
 
 
 class WebhookTask(SyncAgentExecutorMixin, PythonTask):
@@ -21,9 +21,9 @@ class WebhookTask(SyncAgentExecutorMixin, PythonTask):
         url: str,
         method: http.HTTPMethod = http.HTTPMethod.POST,
         headers: Optional[Dict[str, str]] = None,
-        body: Optional[Dict[str, Any]] = None,
+        data: Optional[Dict[str, Any]] = None,
         dynamic_inputs: Optional[Dict[str, Type]] = None,
-        show_body: bool = False,
+        show_data: bool = False,
         show_url: bool = False,
         description: Optional[str] = None,
         # secret_requests: Optional[List[Secret]] = None,  TODO Secret support is coming soon
@@ -54,31 +54,20 @@ class WebhookTask(SyncAgentExecutorMixin, PythonTask):
         :param headers: The headers to send with the request. This can be a static dictionary or a python format string,
             where the format arguments are the dynamic_inputs to the task, secrets etc. Refer to the description for more
             details of available formatting parameters.
-        :param body: The body to send with the request. This can be a static dictionary or a python format string,
+        :param data: The body to send with the request. This can be a static dictionary or a python format string,
             where the format arguments are the dynamic_inputs to the task, secrets etc. Refer to the description for more
-            details of available formatting parameters.
+            details of available formatting parameters. the data should be a json serializable dictionary and will be
+            sent as the json body of the POST request and as the query parameters of the GET request.
         :param dynamic_inputs: The dynamic inputs to the task. The keys are the names of the inputs and the values
             are the types of the inputs. These inputs are available under the prefix `inputs.` to be used in the URL,
             headers and body and other formatted fields.
         :param secret_requests: The secrets that are requested by the task. (TODO not yet supported)
-        :param show_body: If True, the body of the request will be logged in the UI as the output of the task.
+        :param show_data: If True, the body of the request will be logged in the UI as the output of the task.
         :param show_url: If True, the URL of the request will be logged in the UI as the output of the task.
         :param description: Description of the task
         """
         if method not in {http.HTTPMethod.GET, http.HTTPMethod.POST}:
             raise ValueError(f"Method should be either GET or POST. Got {method}")
-        if method == http.HTTPMethod.GET:
-            if body:
-                raise ValueError("GET method cannot have a body")
-            if show_body:
-                raise ValueError("GET method cannot show body")
-        outputs = {
-            "status_code": int,
-        }
-        if show_body:
-            outputs["body"] = dict
-        if show_url:
-            outputs["url"] = bool
 
         interface = Interface(
             inputs=dynamic_inputs or {},
@@ -94,8 +83,8 @@ class WebhookTask(SyncAgentExecutorMixin, PythonTask):
         self._url = url
         self._method = method
         self._headers = headers
-        self._body = body
-        self._show_body = show_body
+        self._data = data
+        self._show_data = show_data
         self._show_url = show_url
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
@@ -103,8 +92,8 @@ class WebhookTask(SyncAgentExecutorMixin, PythonTask):
             URL_KEY: self._url,
             METHOD_KEY: self._method.value,
             HEADERS_KEY: self._headers or {},
-            BODY_KEY: self._body or {},
-            SHOW_BODY_KEY: self._show_body,
+            DATA_KEY: self._data or {},
+            SHOW_DATA_KEY: self._show_data,
             SHOW_URL_KEY: self._show_url,
         }
         return config
