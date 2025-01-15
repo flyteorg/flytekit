@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import pytest
 
 import flytekit.configuration
-from flytekit import Resources, map_task
+from flytekit import Resources, map_task, LaunchPlan
 from flytekit.configuration import Image, ImageConfig
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.node_creation import create_node
@@ -16,6 +16,7 @@ from flytekit.exceptions.user import FlyteAssertion
 from flytekit.extras.accelerators import A100, T4
 from flytekit.image_spec.image_spec import ImageBuildEngine
 from flytekit.models import literals as _literal_models
+from flytekit.models.admin.workflow import WorkflowSpec
 from flytekit.models.task import Resources as _resources_models
 from flytekit.tools.translator import get_serializable
 
@@ -95,7 +96,6 @@ def test_normal_task(mock_image_spec_builder):
     assert wf_spec.template.nodes[0].metadata.name == "t2"
 
     with pytest.raises(FlyteAssertion):
-
         @workflow
         def empty_wf2():
             create_node(t2, "foo")
@@ -141,7 +141,6 @@ def test_reserved_keyword():
 
     # Test that you can't name an output "outputs"
     with pytest.raises(FlyteAssertion):
-
         @workflow
         def my_wf(a: int) -> str:
             t1_node = create_node(t1, a=a)
@@ -333,7 +332,6 @@ def test_timeout_override_invalid_value():
         return f"*~*~*~{a}*~*~*~"
 
     with pytest.raises(ValueError, match="datetime.timedelta or int seconds"):
-
         @workflow
         def my_wf(a: str) -> str:
             return t1(a=a).with_overrides(timeout="foo")
@@ -450,7 +448,6 @@ def test_config_override():
     assert my_wf.nodes[0].flyte_entity.task_config.name == "flyte"
 
     with pytest.raises(ValueError):
-
         @workflow
         def my_wf(a: str) -> str:
             return t1(a=a).with_overrides(task_config=None)
@@ -518,3 +515,27 @@ def test_cache_override_values():
     assert wf_spec.template.nodes[0].metadata.cache_serializable
     assert wf_spec.template.nodes[0].metadata.cacheable
     assert wf_spec.template.nodes[0].metadata.cache_version == "foo"
+
+
+def test_cluster_pool_overrides():
+    @workflow
+    def my_wf() -> str:
+        return "hello"
+
+    lp = LaunchPlan.create("test", my_wf)
+
+    @workflow
+    def caller_wf() -> str:
+        return lp().with_overrides(cluster_pool="pool")
+
+    ss = flytekit.configuration.SerializationSettings(
+        project="proj",
+        domain="dom",
+        version="v",
+        image_config=ImageConfig(Image(name="name", fqn="image", tag="tag")),
+        env={},
+    )
+
+    caller_wf_spec: WorkflowSpec = get_serializable(OrderedDict(), ss, caller_wf)
+
+    assert caller_wf_spec.template.nodes[0].metadata.config["cluster_pool"] == "pool"

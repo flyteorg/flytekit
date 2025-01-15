@@ -14,6 +14,7 @@ from flytekit.core.workflow import workflow
 from flytekit.models.common import Annotations, AuthRole, Labels, RawOutputDataConfig
 from flytekit.models.core import execution as _execution_model
 from flytekit.models.core import identifier as identifier_models
+from flytekit.models.launch_plan import LaunchPlan
 from flytekit.tools.translator import get_serializable
 
 default_img = Image(name="default", fqn="test", tag="tag")
@@ -401,8 +402,8 @@ def test_lp_nodes():
     wf_spec = get_serializable(all_entities, serialization_settings, my_wf)
     assert wf_spec.template.nodes[1].workflow_node is not None
     assert (
-        wf_spec.template.nodes[1].workflow_node.launchplan_ref.resource_type
-        == identifier_models.ResourceType.LAUNCH_PLAN
+            wf_spec.template.nodes[1].workflow_node.launchplan_ref.resource_type
+            == identifier_models.ResourceType.LAUNCH_PLAN
     )
     assert wf_spec.template.nodes[1].workflow_node.launchplan_ref.name == "my_sub_wf_lp1"
 
@@ -452,6 +453,7 @@ def test_lp_with_docstring():
     lp = launch_plan.LaunchPlan.get_or_create(workflow=wf_with_docstring)
     assert lp.parameters.parameters["a"].var.description == "foo"
 
+
 def test_lp_with_wf_with_default_options():
     @task
     def t1(a: int) -> int:
@@ -472,3 +474,25 @@ def test_lp_with_wf_with_default_options():
     assert lp.labels.values["label"] == "foo"
     assert len(lp.annotations.values) == 1
     assert lp.annotations.values["anno"] == "bar"
+
+
+def test_launchplan_with_cluster_assignment():
+    @task
+    def t1(a: int) -> int:
+        return a + 2
+
+    @workflow
+    def wf_with_cluster_assignment(a: int) -> int:
+        return t1(a=a)
+
+    lp = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf_with_cluster_assignment, name="lp_with_cluster_assignment", cluster_pool="foo"
+    )
+
+    assert lp.cluster_pool == "foo"
+    assert lp.name == "lp_with_cluster_assignment"
+
+    lp_model: LaunchPlan = get_serializable(OrderedDict(), serialization_settings, lp)
+    assert lp_model is not None
+    assert lp_model.spec.cluster_assignment is not None
+    assert lp_model.spec.cluster_assignment.cluster_pool == "foo"

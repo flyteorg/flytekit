@@ -597,6 +597,7 @@ class Promise(object):
         cache: Optional[bool] = None,
         cache_version: Optional[str] = None,
         cache_serialize: Optional[bool] = None,
+        cluster_pool: Optional[str] = None,
         *args,
         **kwargs,
     ):
@@ -617,6 +618,7 @@ class Promise(object):
                 cache=cache,
                 cache_version=cache_version,
                 cache_serialize=cache_serialize,
+                cluster_pool=cluster_pool,
                 *args,
                 **kwargs,
             )
