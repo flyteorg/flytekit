@@ -266,7 +266,7 @@ def _dispatch_execute(
         exc_str = get_traceback_str(e)
         output_file_dict[error_file_name] = _error_models.ErrorDocument(
             _error_models.ContainerError(
-                code="USER",
+                code=e.error_code,
                 message=exc_str,
                 kind=kind,
                 origin=_execution_models.ExecutionError.ErrorKind.USER,

@@ -28,6 +28,10 @@ class FlyteUserRuntimeException(_FlyteException):
     def value(self):
         return self._exc_value
 
+    @property
+    def error_code(self):
+        return self._ERROR_CODE
+
 
 class FlyteTypeException(FlyteUserException, TypeError):
     _ERROR_CODE = "USER:TypeError"
