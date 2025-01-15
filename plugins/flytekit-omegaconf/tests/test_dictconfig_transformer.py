@@ -5,7 +5,7 @@ from flytekitplugins.omegaconf.dictconfig_transformer import (
     check_if_valid_dictconfig,
     extract_type_and_value_maps,
     is_flattenable,
-    parse_type_description,
+    parse_type_description, NoneType,
 )
 from omegaconf import DictConfig, OmegaConf
 
@@ -77,11 +77,11 @@ def test_is_flattenable(config: DictConfig, should_flatten: bool, monkeypatch: p
 def test_extract_type_and_value_maps_simple() -> None:
     """Test extraction of type and value maps from a simple DictConfig."""
     ctx = FlyteContext.current_context()
-    config: DictConfig = OmegaConf.create({"key1": "value1", "key2": 123, "key3": True})
+    config: DictConfig = OmegaConf.create({"key1": "value1", "key2": 123, "key3": True, "key4": None})
 
     type_map, value_map = extract_type_and_value_maps(ctx, config)
 
-    expected_type_map = {"key1": "builtins.str", "key2": "builtins.int", "key3": "builtins.bool"}
+    expected_type_map = {"key1": "builtins.str", "key2": "builtins.int", "key3": "builtins.bool", "key4": "builtins.NoneType"}
 
     assert type_map == expected_type_map
     assert "key1" in value_map
@@ -93,6 +93,7 @@ def test_extract_type_and_value_maps_simple() -> None:
     "type_desc, expected_type",
     [
         ("builtins.int", int),
+        ("builtins.NoneType", NoneType),
         ("typing.List[builtins.int]", t.List[int]),
         ("typing.Optional[builtins.int]", t.Optional[int]),
     ],
