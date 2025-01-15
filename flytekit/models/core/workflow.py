@@ -4,7 +4,6 @@ import typing
 from flyteidl.core import tasks_pb2
 from flyteidl.core import workflow_pb2 as _core_workflow
 from google.protobuf.wrappers_pb2 import BoolValue
-from mypy.api import annotations
 
 from flytekit.models import common as _common
 from flytekit.models import interface as _interface
