@@ -466,6 +466,8 @@ def get_serializable_node(
                     resources=entity._resources,
                     extended_resources=entity._extended_resources,
                     container_image=entity._container_image,
+                    annotations=entity._annotations,
+                    labels=entity._labels,
                 ),
             ),
         )

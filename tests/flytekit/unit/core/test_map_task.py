@@ -350,9 +350,11 @@ def test_map_task_override(serialization_settings):
 
     @workflow
     def wf(x: typing.List[int]):
-        map_task(my_mappable_task)(a=x).with_overrides(container_image="random:image")
+        map_task(my_mappable_task)(a=x).with_overrides(container_image="random:image",labels={"lKeyA": "lValA"},annotations={"aKeyA": "aValA"})
 
     assert wf.nodes[0]._container_image == "random:image"
+    assert wf.nodes[0]._labels["lKeyA"] == "lValA"
+    assert wf.nodes[0]._annotations["aKeyA"] == "aValA"
 
 
 def test_bounded_inputs_vars_order(serialization_settings):
