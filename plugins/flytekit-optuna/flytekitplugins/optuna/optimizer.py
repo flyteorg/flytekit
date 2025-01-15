@@ -8,7 +8,7 @@ from typing import Any, Awaitable, Callable, Optional, Union
 from typing_extensions import Concatenate, ParamSpec
 
 import optuna
-from flytekit import PythonFunctionTask
+from flytekit.core.python_function_task import AsyncPythonFunctionTask
 from flytekit.exceptions.eager import EagerException
 
 
@@ -56,7 +56,7 @@ CallbackType = Callable[Concatenate[optuna.Trial, P], Union[Awaitable[Result], R
 
 @dataclass
 class Optimizer:
-    objective: Union[CallbackType, PythonFunctionTask]
+    objective: Union[CallbackType, AsyncPythonFunctionTask]
     concurrency: int
     n_trials: int
     study: Optional[optuna.Study] = None
@@ -66,7 +66,7 @@ class Optimizer:
     Optimizer is a class that allows for the distributed optimization of a flytekit Task using Optuna.
 
     Args:
-        objective: The objective function to be optimized. This can be a PythonFunctionTask or a callable.
+        objective: The objective function to be optimized. This can be a AsyncPythonFunctionTask or a callable.
         concurrency: The number of trials to run concurrently.
         n_trials: The number of trials to run in total.
         study: The study to use for optimization. If None, a new study will be created.
@@ -75,7 +75,7 @@ class Optimizer:
 
     @property
     def is_imperative(self) -> bool:
-        return isinstance(self.objective, PythonFunctionTask)
+        return isinstance(self.objective, AsyncPythonFunctionTask)
 
     def __post_init__(self):
         if self.study is None:
@@ -113,12 +113,14 @@ class Optimizer:
 
         else:
             if not callable(self.objective):
-                raise ValueError("objective must be a callable or a PythonFunctionTask")
+                raise ValueError("objective must be a callable or a AsyncPythonFunctionTask")
 
             signature = inspect.signature(self.objective)
 
             if "trial" not in signature.parameters:
-                raise ValueError("objective function must have a parameter called 'trial' if not a PythonFunctionTask")
+                raise ValueError(
+                    "objective function must have a parameter called 'trial' if not a AsyncPythonFunctionTask"
+                )
 
     async def __call__(self, **inputs: P.kwargs):
         """
@@ -163,13 +165,13 @@ class Optimizer:
 
 
 def optimize(
-    objective: Optional[Union[CallbackType, PythonFunctionTask]] = None,
+    objective: Optional[Union[CallbackType, AsyncPythonFunctionTask]] = None,
     concurrency: int = 1,
     n_trials: int = 1,
     study: Optional[optuna.Study] = None,
 ):
     if objective is not None:
-        if callable(objective) or isinstance(objective, PythonFunctionTask):
+        if callable(objective) or isinstance(objective, AsyncPythonFunctionTask):
             return Optimizer(
                 objective=objective,
                 concurrency=concurrency,
