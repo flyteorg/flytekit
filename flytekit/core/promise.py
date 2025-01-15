@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import collections
 import datetime
 import typing
@@ -1436,9 +1435,7 @@ async def async_flyte_entity_call_handler(
         # for both nested eager, async, and sync tasks, submit to the informer.
         if not ctx.worker_queue:
             raise AssertionError("Worker queue missing, must be set when trying to execute tasks in an eager workflow")
-        loop = asyncio.get_running_loop()
-        fut = ctx.worker_queue.add(loop, entity, input_kwargs=kwargs)
-        result = await fut
+        result = await ctx.worker_queue.add(entity, input_kwargs=kwargs)
         return result
 
     # eager local execution, and all other call patterns are handled by the sync version

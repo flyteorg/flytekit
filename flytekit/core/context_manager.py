@@ -18,6 +18,7 @@ import os
 import pathlib
 import signal
 import tempfile
+import threading
 import traceback
 import typing
 from contextlib import contextmanager
@@ -994,7 +995,8 @@ class FlyteContextManager(object):
                 handler(signum, frame)
             exit(1)
 
-        signal.signal(signal.SIGINT, main_signal_handler)
+        if threading.current_thread().name == threading.main_thread().name:
+            signal.signal(signal.SIGINT, main_signal_handler)
 
         # Note we use the SdkWorkflowExecution object purely for formatting into the ex:project:domain:name format users
         # are already acquainted with
