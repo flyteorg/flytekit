@@ -58,7 +58,7 @@ async def _start_grpc_server(port: int, worker: int, timeout: int):
     from flytekit.extend.backend.agent_service import AgentMetadataService, AsyncAgentService, SyncAgentService
 
     click.secho("🚀 Starting the agent service...")
-    _start_http_server()
+    # _start_http_server()
     print_agents_metadata()
 
     server = grpc.aio.server(futures.ThreadPoolExecutor(max_workers=worker))
