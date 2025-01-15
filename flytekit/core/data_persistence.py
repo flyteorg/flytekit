@@ -24,6 +24,7 @@ import os
 import pathlib
 import tempfile
 import typing
+from datetime import timedelta
 from functools import lru_cache
 from time import sleep
 from typing import Any, Dict, Optional, Tuple, Union, cast
@@ -65,13 +66,23 @@ Uploadable = typing.Union[str, os.PathLike, pathlib.Path, bytes, io.BufferedRead
 
 
 @lru_cache
-def s3store_from_env(bucket: str, retries: int, **store_kwargs) -> S3Store:
+def s3store_from_env(bucket: str, retries: int, backoff: timedelta, **store_kwargs) -> S3Store:
     store = S3Store.from_env(
         bucket,
         config={
             **store_kwargs,
             "aws_allow_http": "true",  # Allow HTTP connections
             "aws_virtual_hosted_style_request": "false",  # Use path-style addressing
+        },
+        client_options={"timeout": "999999s"},  # need to put this to somewhere for user to config?
+        retry_config={
+            "max_retries": retries,
+            "backoff": {
+                "base": 2,
+                "init_backoff": backoff,
+                "max_backoff": timedelta(seconds=16),
+            },
+            "retry_timeout": timedelta(minutes=3),
         },
     )
     return store
