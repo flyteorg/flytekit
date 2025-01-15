@@ -737,10 +737,20 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
             #       return StructuredDataset(uri=uri)
             if python_val.dataframe is None:
                 uri = python_val.uri
+                file_format = python_val.file_format
+
+                # Check the user-specified uri
                 if not uri:
                     raise ValueError(f"If dataframe is not specified, then the uri should be specified. {python_val}")
                 if not ctx.file_access.is_remote(uri):
                     uri = await ctx.file_access.async_put_raw_data(uri)
+
+                # Check the user-specified file_format
+                # When users specify file_format for a StructuredDataset, the file_format information must be retained.
+                # For details, please refer to https://github.com/flyteorg/flyte/issues/6096.
+                if file_format != GENERIC_FORMAT:
+                    sdt.format = file_format
+
                 sd_model = literals.StructuredDataset(
                     uri=uri,
                     metadata=StructuredDatasetMetadata(structured_dataset_type=sdt),
