@@ -211,6 +211,7 @@ for chunk in ollama.pull('{self._model_name}', stream=True):
                 image="python:3.11-slim",
                 command=["/bin/sh", "-c"],
                 args=[
+                    "apt-get update && apt-get install -y git && "
                     f"pip install requests && pip install git+https://github.com/ollama/ollama-python.git@eefe5c9666e2fa82ab17618155dd0aae47bba8fa && {command}"
                 ],
                 resources=V1ResourceRequirements(
