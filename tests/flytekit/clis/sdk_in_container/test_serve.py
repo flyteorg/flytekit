@@ -22,7 +22,7 @@ def test_agent_prometheus_port():
                 '--timeout', str(test_timeout)
             ]
         )
-        
+
         assert result.exit_code == 0, f"Command failed with output: {result.output}"
         mock_start_grpc.assert_called_once_with(
             test_port,
