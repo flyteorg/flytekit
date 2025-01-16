@@ -147,9 +147,9 @@ adapters = {{}}
 client = Client('{self.base_url}')
 
 for input_name, input_value in inputs.items():
-    if input_name in {self._model_files}:
+    if {self._model_files} and input_name in {self._model_files}:
         files[input_name] = client.create_blob(input_value)
-    if input_name in {self._model_adapters}:
+    if {self._model_adapters} and input_name in {self._model_adapters}:
         adapters[input_name] = client.create_blob(input_value)
 
 {ollama_service_ready}
