@@ -156,16 +156,16 @@ for input_name, input_value in inputs.items():
 
 # Debugging: Shows the status of model creation.
 for chunk in ollama.create(
-    model='{self._model_name}',
-    from='{self._model_from}',
+    model={"\'" + self._model_name + "\'" if self._model_name is not None else None},
+    from_={"\'" + self._model_from + "\'" if self._model_from is not None else None},
     files=files if files else None,
     adapters=adapters if adapters else None,
-    template='{self._model_template}',
-    license='{self._model_license}',
-    system='{self._model_system}',
-    parameters={self._model_parameters},
-    messages={self._model_messages},
-    quantize='{self._model_quantize}',
+    template={"\'" + self._model_template.replace("\n", "\\n") + "\'" if self._model_template is not None else None},
+    license={"\'" + self._model_license + "\'" if self._model_license is not None else None},
+    system={"\'" + self._model_system.replace("\n", "\\n") + "\'" if self._model_system is not None else None},
+    parameters={self._model_parameters if self._model_parameters is not None else None},
+    messages={self._model_messages if self._model_messages is not None else None},
+    quantize={"\'" + self._model_quantize + "\'" if self._model_quantize is not None else None},
     stream=True
 ):
     print(chunk)
@@ -178,16 +178,16 @@ for chunk in ollama.create(
 
 # Debugging: Shows the status of model creation.
 for chunk in ollama.create(
-    model='{self._model_name}',
-    from='{self._model_from}',
+    model={"\'" + self._model_name + "\'" if self._model_name is not None else None},
+    from_={"\'" + self._model_from + "\'" if self._model_from is not None else None},
     files=None,
     adapters=None,
-    template='{self._model_template}',
-    license='{self._model_license}',
-    system='{self._model_system}',
-    parameters={self._model_parameters},
-    messages={self._model_messages},
-    quantize='{self._model_quantize}',
+    template={"\'" + self._model_template.replace("\n", "\\n") + "\'" if self._model_template is not None else None},
+    license={"\'" + self._model_license + "\'" if self._model_license is not None else None},
+    system={"\'" + self._model_system.replace("\n", "\\n") + "\'" if self._model_system is not None else None},
+    parameters={self._model_parameters if self._model_parameters is not None else None},
+    messages={self._model_messages if self._model_messages is not None else None},
+    quantize={"\'" + self._model_quantize + "\'" if self._model_quantize is not None else None},
     stream=True
 ):
     print(chunk)
