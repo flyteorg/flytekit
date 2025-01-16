@@ -51,6 +51,9 @@ class Ollama(ModelInferenceTemplate):
     ):
         """Initialize Ollama class for managing a Kubernetes pod template.
 
+        Python 3.12 or higher is required due to support for backslashes in f-strings:
+        https://realpython.com/python312-f-strings/#backslashes-now-allowed-in-f-strings
+
         :param model: An instance of the Model class containing the model's configuration, including its name, memory, CPU, and the modelfile parameters.
         :param image: The Docker image to be used for the container. Default is "ollama/ollama".
         :param port: The port number on which the container should expose its service. Default is 11434.
@@ -149,23 +152,23 @@ client = Client('{self.base_url}')
 for input_name, input_value in inputs.items():
     if {self._model_files} and input_name in {self._model_files}:
         files[input_name] = client.create_blob(input_value)
-    if {self._model_adapters} and input_name in {self._model_adapters}:
+    elif {self._model_adapters} and input_name in {self._model_adapters}:
         adapters[input_name] = client.create_blob(input_value)
 
 {ollama_service_ready}
 
 # Debugging: Shows the status of model creation.
 for chunk in ollama.create(
-    model={"'" + self._model_name + "'" if self._model_name is not None else None},
-    from_={"'" + self._model_from + "'" if self._model_from is not None else None},
+    model={"'" + self._model_name + "'" if self._model_name else None},
+    from_={"'" + self._model_from + "'" if self._model_from else None},
     files=files if files else None,
     adapters=adapters if adapters else None,
-    template={"'" + self._model_template.replace("\n", "\\n") + "'" if self._model_template is not None else None},
-    license={"'" + self._model_license + "'" if self._model_license is not None else None},
-    system={"'" + self._model_system.replace("\n", "\\n") + "'" if self._model_system is not None else None},
-    parameters={self._model_parameters if self._model_parameters is not None else None},
-    messages={self._model_messages if self._model_messages is not None else None},
-    quantize={"'" + self._model_quantize + "'" if self._model_quantize is not None else None},
+    template={"'" + self._model_template.replace("\n", "\\n") + "'" if self._model_template else None},
+    license={"'" + self._model_license + "'" if self._model_license else None},
+    system={"'" + self._model_system.replace("\n", "\\n") + "'" if self._model_system else None},
+    parameters={self._model_parameters if self._model_parameters else None},
+    messages={self._model_messages if self._model_messages else None},
+    quantize={"'" + self._model_quantize + "'" if self._model_quantize else None},
     stream=True
 ):
     print(chunk)
@@ -178,16 +181,16 @@ for chunk in ollama.create(
 
 # Debugging: Shows the status of model creation.
 for chunk in ollama.create(
-    model={"'" + self._model_name + "'" if self._model_name is not None else None},
-    from_={"'" + self._model_from + "'" if self._model_from is not None else None},
+    model={"'" + self._model_name + "'" if self._model_name else None},
+    from_={"'" + self._model_from + "'" if self._model_from else None},
     files=None,
     adapters=None,
-    template={"'" + self._model_template.replace("\n", "\\n") + "'" if self._model_template is not None else None},
-    license={"'" + self._model_license + "'" if self._model_license is not None else None},
-    system={"'" + self._model_system.replace("\n", "\\n") + "'" if self._model_system is not None else None},
-    parameters={self._model_parameters if self._model_parameters is not None else None},
-    messages={self._model_messages if self._model_messages is not None else None},
-    quantize={"'" + self._model_quantize + "'" if self._model_quantize is not None else None},
+    template={"'" + self._model_template.replace("\n", "\\n") + "'" if self._model_template else None},
+    license={"'" + self._model_license + "'" if self._model_license else None},
+    system={"'" + self._model_system.replace("\n", "\\n") + "'" if self._model_system else None},
+    parameters={self._model_parameters if self._model_parameters else None},
+    messages={self._model_messages if self._model_messages else None},
+    quantize={"'" + self._model_quantize + "'" if self._model_quantize else None},
     stream=True
 ):
     print(chunk)

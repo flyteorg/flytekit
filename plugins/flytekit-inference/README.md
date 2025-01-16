@@ -70,8 +70,6 @@ def model_serving() -> str:
 
 ## Ollama
 
-Use Python 3.12
-
 The Ollama plugin allows you to serve LLMs locally.
 You can either pull an existing model or create a new one.
 
