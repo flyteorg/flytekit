@@ -1,4 +1,3 @@
-import asyncio
 import http
 from typing import Optional
 
@@ -19,14 +18,6 @@ class WebhookAgent(SyncAgentBase):
 
     def __init__(self):
         super().__init__(task_type_name=TASK_TYPE)
-        self._session = None
-        self._lock = asyncio.Lock()
-
-    async def _get_session(self) -> aiohttp.ClientSession:
-        async with self._lock:
-            if self._session is None:
-                self._session = aiohttp.ClientSession()
-            return self._session
 
     async def do(
         self, task_template: TaskTemplate, output_prefix: str, inputs: Optional[LiteralMap] = None, **kwargs
@@ -43,17 +34,21 @@ class WebhookAgent(SyncAgentBase):
             return Resource(phase=TaskExecution.FAILED, message=str(e))
 
     async def _make_http_request(self, method: http.HTTPMethod, url: str, headers: dict, data: dict = None) -> tuple:
-        session = await self._get_session()
-        if method == http.HTTPMethod.GET:
-            response = await session.get(url, headers=headers, params=data)
-        else:
-            response = await session.post(url, json=data, headers=headers)
-        text = await response.text()
-        return response, text
+        # TODO This is a potential performance bottleneck. Consider using a connection pool. To do this, we need to
+        #  create a session object and reuse it for multiple requests. This will reduce the overhead of creating a new
+        #  connection for each request. The problem for not doing so is local execution, does not have a common event
+        #  loop and agent executor creates a new event loop for each request (in the mixin).
+        async with aiohttp.ClientSession() as session:
+            if method == http.HTTPMethod.GET:
+                response = await session.get(url, headers=headers, params=data)
+            else:
+                response = await session.post(url, json=data, headers=headers)
+            text = await response.text()
+            return response.status, text
 
     @staticmethod
     def _build_response(
-        response: aiohttp.ClientResponse,
+        status: int,
         text: str,
         data: dict = None,
         url: str = None,
@@ -61,7 +56,7 @@ class WebhookAgent(SyncAgentBase):
         show_url: bool = False,
     ) -> dict:
         final_response = {
-            "status_code": response.status,
+            "status_code": status,
             "response_data": text,
         }
         if show_data:
@@ -77,13 +72,13 @@ class WebhookAgent(SyncAgentBase):
         method = http.HTTPMethod(final_dict.get(METHOD_KEY))
         show_data = final_dict.get(SHOW_DATA_KEY, False)
         show_url = final_dict.get(SHOW_URL_KEY, False)
-        response, text = await self._make_http_request(method, url, headers, body)
-        if response.status != 200:
+        status, text = await self._make_http_request(method, url, headers, body)
+        if status != 200:
             return Resource(
                 phase=TaskExecution.FAILED,
-                message=f"Webhook failed with status code {response.status}, response: {text}",
+                message=f"Webhook failed with status code {status}, response: {text}",
             )
-        final_response = self._build_response(response, text, body, url, show_data, show_url)
+        final_response = self._build_response(status, text, body, url, show_data, show_url)
         return Resource(
             phase=TaskExecution.SUCCEEDED,
             outputs={"info": final_response},
