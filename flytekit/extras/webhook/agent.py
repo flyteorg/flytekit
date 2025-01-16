@@ -47,9 +47,7 @@ class WebhookAgent(SyncAgentBase):
                 response = await session.get(url, headers=headers, params=data)
             else:
                 response = await session.post(url, json=data, headers=headers)
-            print(f"Response status: {response.status}")
-            text = await response.text()
-            return response.status, text
+            return response.status, await response.text()
 
     @staticmethod
     def _build_response(
