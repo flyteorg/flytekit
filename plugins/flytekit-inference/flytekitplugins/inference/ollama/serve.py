@@ -4,6 +4,10 @@ from typing import Any, Mapping, Optional, Sequence, Union
 from ..sidecar_template import ModelInferenceTemplate
 
 
+NEWLINE = "\n"
+NEWLINE_ESCAPED = "\\n"
+
+
 @dataclass
 class Model:
     """Represents the configuration for a model used in a Kubernetes pod template.
@@ -163,9 +167,9 @@ for chunk in ollama.create(
     from_={"'" + self._model_from + "'" if self._model_from else None},
     files=files if files else None,
     adapters=adapters if adapters else None,
-    template={"'" + self._model_template.replace("\n", "\\n") + "'" if self._model_template else None},
+    template={"'" + self._model_template.replace(NEWLINE, NEWLINE_ESCAPED) + "'" if self._model_template else None},
     license={"'" + self._model_license + "'" if self._model_license else None},
-    system={"'" + self._model_system.replace("\n", "\\n") + "'" if self._model_system else None},
+    system={"'" + self._model_system.replace(NEWLINE, NEWLINE_ESCAPED) + "'" if self._model_system else None},
     parameters={self._model_parameters if self._model_parameters else None},
     messages={self._model_messages if self._model_messages else None},
     quantize={"'" + self._model_quantize + "'" if self._model_quantize else None},
@@ -185,9 +189,9 @@ for chunk in ollama.create(
     from_={"'" + self._model_from + "'" if self._model_from else None},
     files=None,
     adapters=None,
-    template={"'" + self._model_template.replace("\n", "\\n") + "'" if self._model_template else None},
+    template={"'" + self._model_template.replace(NEWLINE, NEWLINE_ESCAPED) + "'" if self._model_template else None},
     license={"'" + self._model_license + "'" if self._model_license else None},
-    system={"'" + self._model_system.replace("\n", "\\n") + "'" if self._model_system else None},
+    system={"'" + self._model_system.replace(NEWLINE, NEWLINE_ESCAPED) + "'" if self._model_system else None},
     parameters={self._model_parameters if self._model_parameters else None},
     messages={self._model_messages if self._model_messages else None},
     quantize={"'" + self._model_quantize + "'" if self._model_quantize else None},
