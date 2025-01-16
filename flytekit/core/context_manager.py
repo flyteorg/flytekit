@@ -995,6 +995,8 @@ class FlyteContextManager(object):
                 handler(signum, frame)
             exit(1)
 
+        # This initialize function is also called by other threads (since the context manager lives in a ContextVar)
+        # so we should not run this if we're not the main thread.
         if threading.current_thread().name == threading.main_thread().name:
             signal.signal(signal.SIGINT, main_signal_handler)
 

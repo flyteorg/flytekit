@@ -141,7 +141,7 @@ async def test_controller_update_cycle_get_items(mock_thread_target):
     update_items = iter(updates.items())
     uuid, update = next(update_items)
     assert uuid
-    assert update.wi is wi
+    assert update.work_item is wi
     assert update.idx == 0
     assert update.status is None
     assert update.wf_exec is None
