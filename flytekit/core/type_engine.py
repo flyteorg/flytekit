@@ -1520,7 +1520,7 @@ class TypeEngine(typing.Generic[T]):
             await asyncio.gather(*kwargs.values())
         except TypeTransformerFailedError as exc:
             exc.args = (f"Error converting input '{k}' at position {i}:\n  {exc.args[0]}",)
-            raise
+            raise TypeTransformerFailedError(exc)
 
         kwargs = {k: v.result() for k, v in kwargs.items() if v is not None}
         return kwargs
