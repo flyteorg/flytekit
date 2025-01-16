@@ -1518,14 +1518,15 @@ class TypeEngine(typing.Generic[T]):
                     TypeEngine.async_to_python_value(ctx, lm.literals[k], python_interface_inputs[k])
                 )
             await asyncio.gather(*kwargs.values())
-        except Exception as e:
-            raise TypeTransformerFailedError(
+        except Exception as exc:
+            exc.args = (
                 f"Error converting input '{k}' at position {i}:\n"
                 f"Literal value: {lm.literals[k]}\n"
                 f"Literal type: {literal_types}\n"
                 f"Expected Python type: {python_interface_inputs[k]}\n"
-                f"Exception: {e}"
+                f"Exception: {exc.args[0]}"
             )
+            raise TypeTransformerFailedError(exc)
 
         kwargs = {k: v.result() for k, v in kwargs.items() if v is not None}
         return kwargs
