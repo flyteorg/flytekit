@@ -11,7 +11,7 @@ class Model:
     :param name: The name of the model.
     :param mem: The amount of memory allocated for the model, specified as a string. Default is "500Mi".
     :param cpu: The number of CPU cores allocated for the model. Default is 1.
-    :param from: The name of an existing model to create the new model from.
+    :param from: The name of an existing model used as a base to create a new custom model.
     :param files: A list of file names to create the model from.
     :param adapters: A list of file names to create the model for LORA adapters.
     :param template: The prompt template for the model.
