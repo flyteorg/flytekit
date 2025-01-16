@@ -10,7 +10,7 @@ from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 from flytekit.utils.dict_formatter import format_dict
 
-from .constants import DATA_KEY, HEADERS_KEY, METHOD_KEY, SHOW_DATA_KEY, SHOW_URL_KEY, TASK_TYPE, URL_KEY
+from .constants import DATA_KEY, HEADERS_KEY, METHOD_KEY, SHOW_DATA_KEY, SHOW_URL_KEY, TASK_TYPE, TIMEOUT_SEC, URL_KEY
 
 
 class WebhookAgent(SyncAgentBase):
@@ -23,26 +23,31 @@ class WebhookAgent(SyncAgentBase):
         self, task_template: TaskTemplate, output_prefix: str, inputs: Optional[LiteralMap] = None, **kwargs
     ) -> Resource:
         try:
-            custom_dict = task_template.custom
-            input_dict = {
-                "inputs": literal_map_string_repr(inputs),
-            }
-
-            final_dict = format_dict("test", custom_dict, input_dict)
+            final_dict = self._get_final_dict(task_template, inputs)
             return await self._process_webhook(final_dict)
         except aiohttp.ClientError as e:
             return Resource(phase=TaskExecution.FAILED, message=str(e))
 
-    async def _make_http_request(self, method: http.HTTPMethod, url: str, headers: dict, data: dict = None) -> tuple:
+    def _get_final_dict(self, task_template: TaskTemplate, inputs: LiteralMap) -> dict:
+        custom_dict = task_template.custom
+        input_dict = {
+            "inputs": literal_map_string_repr(inputs),
+        }
+        return format_dict("test", custom_dict, input_dict)
+
+    async def _make_http_request(
+        self, method: http.HTTPMethod, url: str, headers: dict, data: dict, timeout: int
+    ) -> tuple:
         # TODO This is a potential performance bottleneck. Consider using a connection pool. To do this, we need to
         #  create a session object and reuse it for multiple requests. This will reduce the overhead of creating a new
         #  connection for each request. The problem for not doing so is local execution, does not have a common event
         #  loop and agent executor creates a new event loop for each request (in the mixin).
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout)) as session:
             if method == http.HTTPMethod.GET:
                 response = await session.get(url, headers=headers, params=data)
             else:
                 response = await session.post(url, json=data, headers=headers)
+            print(f"Response status: {response.status}")
             text = await response.text()
             return response.status, text
 
@@ -72,7 +77,9 @@ class WebhookAgent(SyncAgentBase):
         method = http.HTTPMethod(final_dict.get(METHOD_KEY))
         show_data = final_dict.get(SHOW_DATA_KEY, False)
         show_url = final_dict.get(SHOW_URL_KEY, False)
-        status, text = await self._make_http_request(method, url, headers, body)
+        timeout_sec = final_dict.get(TIMEOUT_SEC, 10)
+
+        status, text = await self._make_http_request(method, url, headers, body, timeout_sec)
         if status != 200:
             return Resource(
                 phase=TaskExecution.FAILED,

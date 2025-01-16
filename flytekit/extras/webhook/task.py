@@ -1,5 +1,6 @@
 import http
-from typing import Any, Dict, Optional, Type
+from datetime import timedelta
+from typing import Any, Dict, Optional, Type, Union
 
 from flytekit import Documentation
 from flytekit.configuration import SerializationSettings
@@ -7,7 +8,7 @@ from flytekit.core.base_task import PythonTask
 from flytekit.extend.backend.base_agent import SyncAgentExecutorMixin
 
 from ...core.interface import Interface
-from .constants import DATA_KEY, HEADERS_KEY, METHOD_KEY, SHOW_DATA_KEY, SHOW_URL_KEY, TASK_TYPE, URL_KEY
+from .constants import DATA_KEY, HEADERS_KEY, METHOD_KEY, SHOW_DATA_KEY, SHOW_URL_KEY, TASK_TYPE, TIMEOUT_SEC, URL_KEY
 
 
 class WebhookTask(SyncAgentExecutorMixin, PythonTask):
@@ -26,6 +27,7 @@ class WebhookTask(SyncAgentExecutorMixin, PythonTask):
         show_data: bool = False,
         show_url: bool = False,
         description: Optional[str] = None,
+        timeout: Union[int, timedelta] = timedelta(seconds=10),
         # secret_requests: Optional[List[Secret]] = None,  TODO Secret support is coming soon
     ):
         """
@@ -65,6 +67,8 @@ class WebhookTask(SyncAgentExecutorMixin, PythonTask):
         :param show_data: If True, the body of the request will be logged in the UI as the output of the task.
         :param show_url: If True, the URL of the request will be logged in the UI as the output of the task.
         :param description: Description of the task
+        :param timeout: The timeout for the request (connection and read). Default is 10 seconds. If int value is provided,
+            it is considered as seconds.
         """
         if method not in {http.HTTPMethod.GET, http.HTTPMethod.POST}:
             raise ValueError(f"Method should be either GET or POST. Got {method}")
@@ -86,6 +90,7 @@ class WebhookTask(SyncAgentExecutorMixin, PythonTask):
         self._data = data
         self._show_data = show_data
         self._show_url = show_url
+        self._timeout_sec = timeout if isinstance(timeout, int) else timeout.total_seconds()
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         config = {
@@ -95,5 +100,6 @@ class WebhookTask(SyncAgentExecutorMixin, PythonTask):
             DATA_KEY: self._data or {},
             SHOW_DATA_KEY: self._show_data,
             SHOW_URL_KEY: self._show_url,
+            TIMEOUT_SEC: self._timeout_sec,
         }
         return config
