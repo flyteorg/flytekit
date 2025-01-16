@@ -1075,7 +1075,7 @@ class FlyteRemote(object):
             filename=to_upload.name,
             filename_root=filename_root,
         )
-
+        print(f'{upload_location=}')
         extra_headers = self.get_extra_headers_for_protocol(upload_location.native_url)
         extra_headers.update(upload_location.headers)
         encoded_md5 = b64encode(md5_bytes)
@@ -1201,17 +1201,49 @@ class FlyteRemote(object):
         if image_config is None:
             image_config = ImageConfig.auto_default_image()
 
+        isImageSpecSourceRoot = any(
+            node.flyte_entity.container_image and node.flyte_entity.container_image.source_root
+            for node in entity.nodes
+        )
+
         with tempfile.TemporaryDirectory() as tmp_dir:
             if fast_package_options and fast_package_options.copy_style != CopyFileDetection.NO_COPY:
-                md5_bytes, upload_native_url = self.fast_package(
-                    pathlib.Path(source_path), False, tmp_dir, fast_package_options
-                )
+                if not isImageSpecSourceRoot:
+                    md5_bytes, upload_native_url = self.fast_package(
+                        pathlib.Path(source_path), False, tmp_dir, fast_package_options
+                    )
+                else:
+                    zip_file = fast_package(pathlib.Path(source_path), tmp_dir, False, options)
+
+                    md5_bytes, str_digest, _ = hash_file(pathlib.Path(zip_file))
+
+                    upload_location = self.client.get_upload_signed_url(
+                        project=project or self.default_project,
+                        domain=domain or self.default_domain,
+                        content_md5=md5_bytes,
+                        filename=pathlib.Path(zip_file).name,
+                        filename_root=None,
+                    )
+                    upload_native_url = upload_location.native_url
+
             else:
                 archive_fname = pathlib.Path(os.path.join(tmp_dir, "script_mode.tar.gz"))
                 compress_scripts(source_path, str(archive_fname), get_all_modules(source_path, module_name))
-                md5_bytes, upload_native_url = self.upload_file(
-                    archive_fname, project or self.default_project, domain or self.default_domain
-                )
+                if not isImageSpecSourceRoot:
+                    md5_bytes, upload_native_url = self.upload_file(
+                        archive_fname, project or self.default_project, domain or self.default_domain
+                    )
+                else:
+                    md5_bytes, str_digest, _ = hash_file(pathlib.Path(os.path.join(tmp_dir, "script_mode.tar.gz")))
+
+                    upload_location = self.client.get_upload_signed_url(
+                        project=project or self.default_project,
+                        domain=domain or self.default_domain,
+                        content_md5=md5_bytes,
+                        filename=archive_fname,
+                        filename_root=None,
+                    )
+                    upload_native_url = upload_location.native_url
 
         serialization_settings = SerializationSettings(
             project=project or self.default_project,
