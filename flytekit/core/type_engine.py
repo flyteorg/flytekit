@@ -1519,7 +1519,8 @@ class TypeEngine(typing.Generic[T]):
                 )
             await asyncio.gather(*kwargs.values())
         except TypeTransformerFailedError:
-            raise TypeTransformerFailedError(f"Error converting input '{k}' at position {i}:\n"
+            print("@@@ Comer to here")
+            raise ValueError(f"Error converting input '{k}' at position {i}:\n"
                 f"Literal value: {lm.literals[k]}\nExpected Python type: {python_interface_inputs[k]}")
 
         kwargs = {k: v.result() for k, v in kwargs.items() if v is not None}
