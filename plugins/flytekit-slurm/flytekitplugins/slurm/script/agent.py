@@ -23,8 +23,8 @@ class SlurmJobMetadata(ResourceMeta):
     slurm_host: str
 
 
-class SlurmAgent(AsyncAgentBase):
-    name = "Slurm Agent"
+class SlurmScriptAgent(AsyncAgentBase):
+    name = "Slurm Script Agent"
 
     # SSH connection pool for multi-host environment
     # _ssh_clients: Dict[str, SSHClientConnection]
@@ -37,7 +37,7 @@ class SlurmAgent(AsyncAgentBase):
     DUMMY_SCRIPT = "#!/bin/bash"
 
     def __init__(self) -> None:
-        super(SlurmAgent, self).__init__(task_type_name="slurm", metadata_type=SlurmJobMetadata)
+        super(SlurmScriptAgent, self).__init__(task_type_name="slurm", metadata_type=SlurmJobMetadata)
 
     async def create(
         self,
@@ -133,4 +133,4 @@ def _get_sbatch_cmd(sbatch_conf: Dict[str, str], batch_script_path: str, batch_s
     return cmd
 
 
-AgentRegistry.register(SlurmAgent())
+AgentRegistry.register(SlurmScriptAgent())
