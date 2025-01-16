@@ -17,7 +17,7 @@ class Secret(_common.FlyteIdlEntity):
         key is optional and can be an individual secret identifier within the secret For k8s this is required
         version is the version of the secret. This is an optional field
         mount_requirement provides a hint to the system as to how the secret should be injected
-        env_name is optional. Custom environment name to set the value of the secret.
+        env_var is optional. Custom environment name to set the value of the secret.
             If mount_requirement is ENV_VAR, then the value is the secret itself.
             If mount_requirement is FILE, then the value is the path to the secret file.
     """
@@ -42,7 +42,7 @@ class Secret(_common.FlyteIdlEntity):
     key: Optional[str] = None
     group_version: Optional[str] = None
     mount_requirement: MountType = MountType.ANY
-    env_name: Optional[str] = None
+    env_var: Optional[str] = None
 
     def __post_init__(self):
         from flytekit.configuration.plugin import get_plugin
@@ -60,7 +60,7 @@ class Secret(_common.FlyteIdlEntity):
             group_version=self.group_version,
             key=self.key,
             mount_requirement=self.mount_requirement.value,
-            env_name=self.env_name,
+            env_var=self.env_var,
         )
 
     @classmethod
@@ -70,7 +70,7 @@ class Secret(_common.FlyteIdlEntity):
             group_version=pb2_object.group_version if pb2_object.group_version else None,
             key=pb2_object.key if pb2_object.key else None,
             mount_requirement=Secret.MountType(pb2_object.mount_requirement),
-            env_name=pb2_object.env_name if pb2_object.env_name else None,
+            env_var=pb2_object.env_var if pb2_object.env_var else None,
         )
 
 
