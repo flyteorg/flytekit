@@ -1517,7 +1517,7 @@ class TypeEngine(typing.Generic[T]):
                 kwargs[k] = asyncio.create_task(
                     TypeEngine.async_to_python_value(ctx, lm.literals[k], python_interface_inputs[k])
                 )
-            await asyncio.gather(*kwargs.values())
+            await asyncio.gather(*kwargs.values(), return_exceptions=True)
         except TypeTransformerFailedError:
             print("@@@ Comer to here")
             raise ValueError(f"Error converting input '{k}' at position {i}:\n"
