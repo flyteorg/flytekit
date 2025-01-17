@@ -994,7 +994,7 @@ class FlyteContextManager(object):
                 handler(signum, frame)
             exit(1)
 
-        signal.signal(signal.SIGINT, main_signal_handler)
+        # signal.signal(signal.SIGINT, main_signal_handler)
 
         # Note we use the SdkWorkflowExecution object purely for formatting into the ex:project:domain:name format users
         # are already acquainted with

@@ -1,4 +1,5 @@
 import typing
+from concurrent.futures import ThreadPoolExecutor
 from http import HTTPStatus
 
 import grpc
@@ -109,6 +110,9 @@ def record_agent_metrics(func: typing.Callable):
 
 
 class AsyncAgentService(AsyncAgentServiceServicer):
+    def __init__(self):
+        self._executor = ThreadPoolExecutor()
+
     @record_agent_metrics
     async def CreateTask(self, request: CreateTaskRequest, context: grpc.ServicerContext) -> CreateTaskResponse:
         template = TaskTemplate.from_flyte_idl(request.template)
@@ -123,6 +127,7 @@ class AsyncAgentService(AsyncAgentServiceServicer):
             inputs=inputs,
             output_prefix=request.output_prefix,
             task_execution_metadata=task_execution_metadata,
+            executor=self._executor,
         )
         return CreateTaskResponse(resource_meta=resource_meta.encode())
 
@@ -133,7 +138,11 @@ class AsyncAgentService(AsyncAgentServiceServicer):
         else:
             agent = AgentRegistry.get_agent(request.task_type)
         logger.info(f"{agent.name} start checking the status of the job")
-        res = await mirror_async_methods(agent.get, resource_meta=agent.metadata_type.decode(request.resource_meta))
+        res = await mirror_async_methods(
+            agent.get,
+            resource_meta=agent.metadata_type.decode(request.resource_meta),
+            executor=self._executor
+        )
         resource = await res.to_flyte_idl()
         return GetTaskResponse(resource=resource)
 
@@ -144,7 +153,11 @@ class AsyncAgentService(AsyncAgentServiceServicer):
         else:
             agent = AgentRegistry.get_agent(request.task_type)
         logger.info(f"{agent.name} start deleting the job")
-        await mirror_async_methods(agent.delete, resource_meta=agent.metadata_type.decode(request.resource_meta))
+        await mirror_async_methods(
+            agent.delete,
+            resource_meta=agent.metadata_type.decode(request.resource_meta),
+            executor=self._executor
+        )
         return DeleteTaskResponse()
 
 
