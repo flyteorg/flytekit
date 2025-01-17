@@ -34,7 +34,7 @@ def serve(ctx: click.Context):
     default="9090",
     is_flag=False,
     type=int,
-    help="Grpc port for the agent service",
+    help="Prometheus port for the agent service",
 )
 @click.option(
     "--worker",
