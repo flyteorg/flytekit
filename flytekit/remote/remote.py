@@ -2524,19 +2524,11 @@ class FlyteRemote(object):
     ):
         """Helper for assigning synced inputs and outputs to an execution object."""
         input_literal_map = self._get_input_literal_map(execution_data)
-        # 如果 interface.inputs 为空,则只返回 literals
-        if not interface.inputs:
-            execution._inputs = input_literal_map.literals
-        else:
-            execution._inputs = LiteralsResolver(input_literal_map.literals, interface.inputs, self.context)
+        execution._inputs = LiteralsResolver(input_literal_map.literals, interface.inputs, self.context)
 
         if execution.is_done and not execution.error:
             output_literal_map = self._get_output_literal_map(execution_data)
-            # 如果 interface.outputs 为空,则只返回 literals
-            if not interface.outputs:
-                execution._outputs = output_literal_map.literals
-            else:
-                execution._outputs = LiteralsResolver(output_literal_map.literals, interface.outputs, self.context)
+            execution._outputs = LiteralsResolver(output_literal_map.literals, interface.outputs, self.context)
         return execution
 
     def _get_input_literal_map(self, execution_data: ExecutionDataResponse) -> literal_models.LiteralMap:
