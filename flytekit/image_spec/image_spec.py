@@ -62,6 +62,7 @@ class ImageSpec:
 
             If the option is set by the user, then that option is of course used.
         copy: List of files/directories to copy to /root. e.g. ["src/file1.txt", "src/file2.txt"]
+        python_exec: Python executable to use for install packages
     """
 
     name: str = "flytekit"
@@ -87,6 +88,7 @@ class ImageSpec:
     tag_format: Optional[str] = None
     source_copy_mode: Optional[CopyFileDetection] = None
     copy: Optional[List[str]] = None
+    python_exec: Optional[str] = None
 
     def __post_init__(self):
         self.name = self.name.lower()
