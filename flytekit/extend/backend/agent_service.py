@@ -1,5 +1,7 @@
+import time
 import typing
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 from http import HTTPStatus
 
 import grpc
@@ -138,11 +140,16 @@ class AsyncAgentService(AsyncAgentServiceServicer):
         else:
             agent = AgentRegistry.get_agent(request.task_type)
         logger.info(f"{agent.name} start checking the status of the job")
-        res = await mirror_async_methods(
-            agent.get,
-            resource_meta=agent.metadata_type.decode(request.resource_meta),
-            executor=self._executor
-        )
+        start_time = time.time()
+        res = await agent.get(resource_meta=agent.metadata_type.decode(request.resource_meta))
+        end_time = time.time()
+        logger.info(f"Total runtime of the GET' is {end_time - start_time} seconds")
+
+        # res = await mirror_async_methods(
+        #     agent.get,
+        #     resource_meta=agent.metadata_type.decode(request.resource_meta),
+        #     executor=self._executor
+        # )
         resource = await res.to_flyte_idl()
         return GetTaskResponse(resource=resource)
 
