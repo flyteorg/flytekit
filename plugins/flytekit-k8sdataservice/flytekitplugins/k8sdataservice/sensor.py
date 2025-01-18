@@ -10,17 +10,21 @@ VERSION = "v1"
 
 
 class CleanupSensor(BaseSensor):
-    def __init__(self, name: str, **kwargs):
+    def __init__(self, name: str, namespace: str = "flyte", **kwargs):
         """
         Initialize the CleanupSensor class with relevant configurations for monitoring and managing the k8s data service.
         """
         super().__init__(name=name, task_type="sensor", **kwargs)
         self.k8s_config = KubeConfig()
-        self.k8s_config.load_kube_config()
+        try:
+            self.k8s_config.load_kube_config()
+        except Exception as e:
+            logger.error(f"Failed to load kubernetes config: {e}")
+            raise
         self.apps_v1_api = client.AppsV1Api()
         self.core_v1_api = client.CoreV1Api()
         self.custom_api = client.CustomObjectsApi()
-        self.namespace = "flyte"
+        self.namespace = namespace
 
     async def poke(self, release_name: str, cleanup_data_service: bool, cluster: str) -> bool:
         """poke will delete the graph engine resources based on the user's configuration
