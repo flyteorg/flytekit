@@ -67,6 +67,8 @@ class Node(object):
         self._resources: typing.Optional[_resources_model] = None
         self._extended_resources: typing.Optional[tasks_pb2.ExtendedResources] = None
         self._container_image: typing.Optional[str] = None
+        self._labels: typing.Dict[str, str] = {}
+        self._annotations: typing.Dict[str, str] = {}
 
     def runs_before(self, other: Node):
         """
@@ -140,6 +142,8 @@ class Node(object):
         cache: Optional[bool] = None,
         cache_version: Optional[str] = None,
         cache_serialize: Optional[bool] = None,
+        annotations: Optional[Dict[str, str]] = None,
+        labels: Optional[Dict[str, str]] = None,
         *args,
         **kwargs,
     ):
@@ -220,6 +224,14 @@ class Node(object):
         if cache_serialize is not None:
             assert_not_promise(cache_serialize, "cache_serialize")
             self._metadata._cache_serializable = cache_serialize
+
+        if annotations is not None:
+            assert_not_promise(annotations, "annotations")
+            self._annotations = annotations
+
+        if labels is not None:
+            assert_not_promise(labels, "labels")
+            self._labels = labels
 
         return self
 
