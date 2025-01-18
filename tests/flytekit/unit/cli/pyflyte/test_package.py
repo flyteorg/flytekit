@@ -116,9 +116,9 @@ def test_package_with_fast_registration_and_envvars():
         # Uncompress flyte-package.tgz
         tarfile.open("flyte-package.tgz", "r:gz").extractall()
 
-        # Load the proto message from file 3_core.sample.sum_1.pb
+        # Load the proto message from file 4_core.sample.sum_1.pb
         task_spec = task_pb2.TaskSpec()
-        task_spec.ParseFromString(open("3_core.sample.sum_1.pb", "rb").read())
+        task_spec.ParseFromString(open("4_core.sample.sum_1.pb", "rb").read())
 
         assert task_spec.template.container.env[0].key == "abc"
         assert task_spec.template.container.env[0].value == "42"
@@ -148,9 +148,9 @@ def test_package_with_fast_registration_and_envvars():
 
         tarfile.open("flyte-package.tgz", "r:gz").extractall()
 
-        # Load the proto message from file 3_core.sample.sum_1.pb
+        # Load the proto message from file 4_core.sample.sum_1.pb
         task_spec = task_pb2.TaskSpec()
-        task_spec.ParseFromString(open("3_core.sample.sum_1.pb", "rb").read())
+        task_spec.ParseFromString(open("4_core.sample.sum_1.pb", "rb").read())
 
         assert task_spec.template.container.env[0].key == "k1"
         assert task_spec.template.container.env[0].value == "v1"

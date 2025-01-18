@@ -513,8 +513,19 @@ def test_cache_override_values():
         image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
         env={},
     )
-    wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
 
-    assert wf_spec.template.nodes[0].metadata.cache_serializable
+    task_spec = get_serializable(OrderedDict(), serialization_settings, t1)
+    assert not task_spec.template.metadata.discoverable
+    assert task_spec.template.metadata.discovery_version != "foo"
+    assert not task_spec.template.metadata.cache_serializable
+
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
+    assert len(wf_spec.template.nodes) == 1
     assert wf_spec.template.nodes[0].metadata.cacheable
     assert wf_spec.template.nodes[0].metadata.cache_version == "foo"
+    assert wf_spec.template.nodes[0].metadata.cache_serializable
+
+    task_spec = get_serializable(OrderedDict(), serialization_settings, t1)
+    assert task_spec.template.metadata.discoverable
+    assert task_spec.template.metadata.discovery_version == "foo"
+    assert task_spec.template.metadata.cache_serializable
