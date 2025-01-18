@@ -19,16 +19,8 @@ from flytekit.models.task import TaskTemplate
 cmd = ["command", "args"]
 
 
-@patch("flytekitplugins.k8sdataservice.agent.K8sManager.create_data_service", return_value="gnn-1234")
-@patch("flytekitplugins.k8sdataservice.agent.K8sManager.check_stateful_set_status", return_value="succeeded")
-@patch("flytekitplugins.k8sdataservice.agent.K8sManager.delete_stateful_set")
-@patch("flytekitplugins.k8sdataservice.agent.K8sManager.delete_service")
-def test_gnn_agent(mock_delete_service, mock_delete_stateful_set, mock_check_status, mock_create_data_service):
-    agent = AgentRegistry.get_agent("dataservicetask")
-    task_id = Identifier(
-        resource_type=ResourceType.TASK, project="project", domain="domain", name="name", version="version"
-    )
-    task_metadata = task.TaskMetadata(
+def create_test_task_metadata():
+    return task.TaskMetadata(
        discoverable= True,
         runtime=task.RuntimeMetadata(task.RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0", "python"),
         timeout=timedelta(days=1),
@@ -40,6 +32,18 @@ def test_gnn_agent(mock_delete_service, mock_delete_stateful_set, mock_check_sta
         pod_template_name="A",
         cache_ignore_input_vars=(),
     )
+
+
+@patch("flytekitplugins.k8sdataservice.agent.K8sManager.create_data_service", return_value="gnn-1234")
+@patch("flytekitplugins.k8sdataservice.agent.K8sManager.check_stateful_set_status", return_value="succeeded")
+@patch("flytekitplugins.k8sdataservice.agent.K8sManager.delete_stateful_set")
+@patch("flytekitplugins.k8sdataservice.agent.K8sManager.delete_service")
+def test_gnn_agent(mock_delete_service, mock_delete_stateful_set, mock_check_status, mock_create_data_service):
+    agent = AgentRegistry.get_agent("dataservicetask")
+    task_id = Identifier(
+        resource_type=ResourceType.TASK, project="project", domain="domain", name="name", version="version"
+    )
+    task_metadata = create_test_task_metadata()
     s = Struct()
     s.update({
         "Name": "gnn-1234",
@@ -101,18 +105,7 @@ def test_gnn_agent_reuse_data_service(mock_delete_service, mock_delete_stateful_
     task_id = Identifier(
         resource_type=ResourceType.TASK, project="project", domain="domain", name="name", version="version"
     )
-    task_metadata = task.TaskMetadata(
-       discoverable= True,
-        runtime=task.RuntimeMetadata(task.RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0", "python"),
-        timeout=timedelta(days=1),
-        retries=literals.RetryStrategy(3),
-        interruptible=True,
-        discovery_version="0.1.1b0",
-        deprecated_error_message="This is deprecated!",
-        cache_serializable=True,
-        pod_template_name="A",
-        cache_ignore_input_vars=(),
-    )
+    task_metadata = create_test_task_metadata()
     s = Struct()
     s.update({
         "Name": "gnn-2345",
@@ -176,18 +169,7 @@ def test_gnn_agent_status(mock_delete_service, mock_delete_stateful_set, mock_ch
     task_id = Identifier(
         resource_type=ResourceType.TASK, project="project", domain="domain", name="name", version="version"
     )
-    task_metadata = task.TaskMetadata(
-       discoverable= True,
-        runtime=task.RuntimeMetadata(task.RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0", "python"),
-        timeout=timedelta(days=1),
-        retries=literals.RetryStrategy(3),
-        interruptible=True,
-        discovery_version="0.1.1b0",
-        deprecated_error_message="This is deprecated!",
-        cache_serializable=True,
-        pod_template_name="A",
-        cache_ignore_input_vars=(),
-    )
+    task_metadata = create_test_task_metadata()
     s = Struct()
     s.update({
         "Name": "gnn-2345",
@@ -250,18 +232,7 @@ def test_gnn_agent_no_configmap(mock_delete_service, mock_delete_stateful_set, m
     task_id = Identifier(
         resource_type=ResourceType.TASK, project="project", domain="domain", name="name", version="version"
     )
-    task_metadata = task.TaskMetadata(
-       discoverable= True,
-        runtime=task.RuntimeMetadata(task.RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0", "python"),
-        timeout=timedelta(days=1),
-        retries=literals.RetryStrategy(3),
-        interruptible=True,
-        discovery_version="0.1.1b0",
-        deprecated_error_message="This is deprecated!",
-        cache_serializable=True,
-        pod_template_name="A",
-        cache_ignore_input_vars=(),
-    )
+    task_metadata = create_test_task_metadata()
     s = Struct()
     s.update({
         "Name": "gnn-2345",
@@ -325,18 +296,7 @@ def test_gnn_agent_status_failed(mock_delete_service, mock_delete_stateful_set, 
     task_id = Identifier(
         resource_type=ResourceType.TASK, project="project", domain="domain", name="name", version="version"
     )
-    task_metadata = task.TaskMetadata(
-       discoverable= True,
-        runtime=task.RuntimeMetadata(task.RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0", "python"),
-        timeout=timedelta(days=1),
-        retries=literals.RetryStrategy(3),
-        interruptible=True,
-        discovery_version="0.1.1b0",
-        deprecated_error_message="This is deprecated!",
-        cache_serializable=True,
-        pod_template_name="A",
-        cache_ignore_input_vars=(),
-    )
+    task_metadata = create_test_task_metadata()
     s = Struct()
     s.update({
         "Name": "gnn-2345",
