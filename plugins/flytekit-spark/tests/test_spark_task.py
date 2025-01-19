@@ -6,7 +6,7 @@ import pyspark
 import pytest
 
 from google.protobuf.json_format import MessageToDict
-from flytekit import  PodTemplate
+from flytekit import PodTemplate
 from flytekit.core import context_manager
 from flytekitplugins.spark import Spark
 from flytekitplugins.spark.task import Databricks, new_spark_session
@@ -31,7 +31,7 @@ from flytekit.core.context_manager import (
     FlyteContextManager,
     ExecutionState,
 )
-from flytekit.models.task import K8sPod
+from flytekit.models.task import K8sObjectMetadata, K8sPod
 from kubernetes.client.models import (
     V1Container,
     V1PodSpec,
@@ -228,6 +228,18 @@ def test_spark_with_image_spec():
     assert spark2._default_applications_path == "local:///usr/local/bin/entrypoint.py"
 
 
+def clean_dict(d):
+    """
+    Recursively remove keys with None values from dictionaries and lists.
+    """
+    if isinstance(d, dict):
+        return {k: clean_dict(v) for k, v in d.items() if v is not None}
+    elif isinstance(d, list):
+        return [clean_dict(item) for item in d if item is not None]
+    else:
+        return d
+
+
 def test_spark_driver_executor_podSpec():
     custom_image = ImageSpec(
         registry="ghcr.io/flyteorg",
@@ -237,11 +249,16 @@ def test_spark_driver_executor_podSpec():
     driver_pod_spec = V1PodSpec(
         containers=[
             V1Container(
-                name="primary",
+                name="driver-primary",
                 image="ghcr.io/flyteorg",
                 command=["echo"],
                 args=["wow"],
                 env=[V1EnvVar(name="x/custom-driver", value="driver")],
+            ),
+            V1Container(
+                name="not-primary",
+                command=["echo"],
+                args=["not_primary"],
             ),
         ],
         tolerations=[
@@ -257,11 +274,16 @@ def test_spark_driver_executor_podSpec():
     executor_pod_spec = V1PodSpec(
         containers=[
             V1Container(
-                name="primary",
+                name="executor-primary",
                 image="ghcr.io/flyteorg",
                 command=["echo"],
                 args=["wow"],
                 env=[V1EnvVar(name="x/custom-executor", value="executor")],
+            ),
+            V1Container(
+                name="not-primary",
+                command=["echo"],
+                args=["not_primary"],
             ),
         ],
         tolerations=[
@@ -274,13 +296,94 @@ def test_spark_driver_executor_podSpec():
         ],
     )
 
+    driver_pod = PodTemplate(
+        labels={"lKeyA_d": "lValA", "lKeyB_d": "lValB"},
+        annotations={"aKeyA_d": "aValA", "aKeyB_d": "aValB"},
+        primary_container_name="driver-primary",
+        pod_spec=driver_pod_spec,
+    )
+
+    executor_pod = PodTemplate(
+        labels={"lKeyA_e": "lValA", "lKeyB_e": "lValB"},
+        annotations={"aKeyA_e": "aValA", "aKeyB_e": "aValB"},
+        primary_container_name="executor-primary",
+        pod_spec=executor_pod_spec,
+    )
+
+    expect_driver_pod_spec = V1PodSpec(
+        containers=[
+            V1Container(
+                name="driver-primary",
+                image="ghcr.io/flyteorg",
+                command=["echo"],
+                args=["wow"],
+                env=[
+                    V1EnvVar(name="FOO", value="baz"),
+                    V1EnvVar(name="x/custom-driver", value="driver"),
+                ],
+            ),
+        ],
+        tolerations=[
+            V1Toleration(
+                key="x/custom-driver",
+                operator="Equal",
+                value="foo-driver",
+                effect="NoSchedule",
+            ),
+        ],
+    )
+
+    expect_executor_pod_spec = V1PodSpec(
+        containers=[
+            V1Container(
+                name="executor-primary",
+                image="ghcr.io/flyteorg",
+                command=["echo"],
+                args=["wow"],
+                env=[
+                    V1EnvVar(name="FOO", value="baz"),
+                    V1EnvVar(name="x/custom-executor", value="executor"),
+                ],
+            ),
+        ],
+        tolerations=[
+            V1Toleration(
+                key="x/custom-executor",
+                operator="Equal",
+                value="foo-executor",
+                effect="NoSchedule",
+            ),
+        ],
+    )
+
+    driver_pod_spec_dict_remove_None = expect_driver_pod_spec.to_dict()
+    executor_pod_spec_dict_remove_None = expect_executor_pod_spec.to_dict()
+
+    driver_pod_spec_dict_remove_None = clean_dict(driver_pod_spec_dict_remove_None)
+    executor_pod_spec_dict_remove_None = clean_dict(executor_pod_spec_dict_remove_None)
+
+    target_driver_k8sPod = K8sPod(
+        metadata=K8sObjectMetadata(
+            labels={"lKeyA_d": "lValA", "lKeyB_d": "lValB"},
+            annotations={"aKeyA_d": "aValA", "aKeyB_d": "aValB"},
+        ),
+        pod_spec=driver_pod_spec_dict_remove_None,  # type: ignore
+    )
+
+    target_executor_k8sPod = K8sPod(
+        metadata=K8sObjectMetadata(
+            labels={"lKeyA_e": "lValA", "lKeyB_e": "lValB"},
+            annotations={"aKeyA_e": "aValA", "aKeyB_e": "aValB"},
+        ),
+        pod_spec=executor_pod_spec_dict_remove_None,  # type: ignore
+    )
+
     @task(
         task_config=Spark(
             spark_conf={"spark.driver.memory": "1000M"},
-            driver_pod=K8sPod(pod_spec=driver_pod_spec.to_dict()),
-            executor_pod=K8sPod(pod_spec=executor_pod_spec.to_dict()),
+            driver_pod=driver_pod,
+            executor_pod=executor_pod,
         ),
-        # limits=Resources(cpu="50m", mem="2000M"),
         container_image=custom_image,
         pod_template=PodTemplate(primary_container_name="primary"),
     )
@@ -291,8 +394,8 @@ def test_spark_driver_executor_podSpec():
 
     assert my_spark.task_config is not None
     assert my_spark.task_config.spark_conf == {"spark.driver.memory": "1000M"}
-
     default_img = Image(name="default", fqn="test", tag="tag")
+
     settings = SerializationSettings(
         project="project",
         domain="domain",
@@ -308,8 +411,12 @@ def test_spark_driver_executor_podSpec():
         retrieved_settings["mainApplicationFile"]
         == "local:///usr/local/bin/entrypoint.py"
     )
-    assert retrieved_settings["driverPod"] == MessageToDict(K8sPod(pod_spec=driver_pod_spec.to_dict()).to_flyte_idl())
-    assert retrieved_settings["executorPod"] == MessageToDict(K8sPod(pod_spec=executor_pod_spec.to_dict()).to_flyte_idl())
+    assert retrieved_settings["driverPod"] == MessageToDict(
+        target_driver_k8sPod.to_flyte_idl()
+    )
+    assert retrieved_settings["executorPod"] == MessageToDict(
+        target_executor_k8sPod.to_flyte_idl()
+    )
 
     pb = ExecutionParameters.new_builder()
     pb.working_dir = "/tmp"
