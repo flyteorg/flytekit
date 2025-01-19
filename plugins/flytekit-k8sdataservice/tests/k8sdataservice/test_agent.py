@@ -19,7 +19,7 @@ from flytekit.models.task import TaskTemplate
 cmd = ["command", "args"]
 
 
-def create_test_task_metadata():
+def create_test_task_metadata() -> task.TaskMetadata:
     return task.TaskMetadata(
        discoverable= True,
         runtime=task.RuntimeMetadata(task.RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0", "python"),
