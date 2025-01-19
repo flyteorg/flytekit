@@ -139,6 +139,7 @@ def _serialize_pod_spec(
     pod_template: "PodTemplate",
     primary_container: "task_models.Container",
     settings: SerializationSettings,
+    primary_only: bool = False,
 ) -> Dict[str, Any]:
     # import here to avoid circular import
     from kubernetes.client import ApiClient, V1PodSpec
@@ -169,6 +170,7 @@ def _serialize_pod_spec(
         # with the values given to ContainerTask.
         # The attributes include: image, command, args, resource, and env (env is unioned)
 
+        is_primary = False
         if container.name == cast(PodTemplate, pod_template).primary_container_name:
             if container.image is None:
                 # Copy the image from primary_container only if the image is not specified in the pod spec.
@@ -192,8 +194,12 @@ def _serialize_pod_spec(
                 container.env = [V1EnvVar(name=key, value=val) for key, val in primary_container.env.items()] + (
                     container.env or []
                 )
+            is_primary = True
         else:
             container.image = get_registerable_container_image(container.image, settings.image_config)
+
+        if primary_only and not is_primary:
+            continue
 
         final_containers.append(container)
     cast(V1PodSpec, pod_template.pod_spec).containers = final_containers

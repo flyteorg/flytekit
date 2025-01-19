@@ -10,12 +10,12 @@ from google.protobuf.json_format import MessageToDict
 from flytekit import FlyteContextManager, PythonFunctionTask, lazy_module, logger
 from flytekit.configuration import DefaultImages, SerializationSettings
 from flytekit.core.context_manager import ExecutionParameters
-from flytekit.core.utils import _get_container_definition, _serialize_pod_spec, timeit
 from flytekit.core.pod_template import PodTemplate
+from flytekit.core.utils import _serialize_pod_spec
 from flytekit.extend import ExecutionState, TaskPlugins
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 from flytekit.image_spec import ImageSpec
-from flytekit.models.task import K8sPod, K8sObjectMetadata
+from flytekit.models.task import K8sObjectMetadata, K8sPod
 
 from .models import SparkJob, SparkType
 
@@ -191,15 +191,14 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
         """
         if pod_template is None:
             return None
-        
+
         return K8sPod(
-            pod_spec=_serialize_pod_spec(pod_template, self._get_container(settings), settings),
+            pod_spec=_serialize_pod_spec(pod_template, self._get_container(settings), settings, primary_only=True),
             metadata=K8sObjectMetadata(
                 labels=pod_template.labels,
                 annotations=pod_template.annotations,
             ),
         )
-
 
     def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
         import pyspark as _pyspark
