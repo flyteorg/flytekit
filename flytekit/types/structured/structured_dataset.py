@@ -748,8 +748,7 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
                 # Check the user-specified file_format
                 # When users specify file_format for a StructuredDataset, the file_format information must be retained.
                 # For details, please refer to https://github.com/flyteorg/flyte/issues/6096.
-                if file_format != GENERIC_FORMAT:
-                    sdt.format = file_format
+                sdt.format = file_format
 
                 sd_model = literals.StructuredDataset(
                     uri=uri,
