@@ -193,7 +193,9 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
             return None
 
         return K8sPod(
-            pod_spec=_serialize_pod_spec(pod_template, self._get_container(settings), settings, primary_only=True),
+            pod_spec=_serialize_pod_spec(
+                pod_template, self._get_container(settings), settings, task_type=self._SPARK_TASK_TYPE
+            ),
             metadata=K8sObjectMetadata(
                 labels=pod_template.labels,
                 annotations=pod_template.annotations,
