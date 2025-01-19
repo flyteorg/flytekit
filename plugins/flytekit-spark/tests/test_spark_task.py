@@ -40,12 +40,23 @@ from kubernetes.client.models import (
 )
 
 
+# @pytest.fixture(scope="function")
+# def reset_spark_session() -> None:
+#     pyspark.sql.SparkSession.builder.getOrCreate().stop()
+#     yield
+#     pyspark.sql.SparkSession.builder.getOrCreate().stop()
+
+
+
 @pytest.fixture(scope="function")
 def reset_spark_session() -> None:
-    pyspark.sql.SparkSession.builder.getOrCreate().stop()
+    if SparkSession._instantiatedSession:
+        SparkSession.builder.getOrCreate().stop()
+        SparkSession._instantiatedSession = None
     yield
-    pyspark.sql.SparkSession.builder.getOrCreate().stop()
-
+    if SparkSession._instantiatedSession:
+        SparkSession.builder.getOrCreate().stop()
+        SparkSession._instantiatedSession = None
 
 def test_spark_task(reset_spark_session):
     databricks_conf = {
@@ -240,7 +251,7 @@ def clean_dict(d):
         return d
 
 
-def test_spark_driver_executor_podSpec():
+def test_spark_driver_executor_podSpec(reset_spark_session):
     custom_image = ImageSpec(
         registry="ghcr.io/flyteorg",
         packages=["flytekitplugins-spark"],
@@ -389,6 +400,8 @@ def test_spark_driver_executor_podSpec():
     )
     def my_spark(a: str) -> int:
         session = flytekit.current_context().spark_session
+        configs = session.sparkContext.getConf().getAll()
+        assert ("spark.driver.memory", "1000M") in configs
         assert session.sparkContext.appName == "FlyteSpark: ex:local:local:local"
         return 10
 

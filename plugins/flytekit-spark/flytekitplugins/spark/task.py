@@ -175,8 +175,8 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
             executor_path=self._default_executor_path or settings.python_interpreter,
             main_class="",
             spark_type=SparkType.PYTHON,
-            driver_pod=self.to_k8s_pod(self.task_config.driver_pod, settings),
-            executor_pod=self.to_k8s_pod(self.task_config.executor_pod, settings),
+            driver_pod=self.to_k8s_pod(settings, self.task_config.driver_pod),
+            executor_pod=self.to_k8s_pod(settings, self.task_config.executor_pod),
         )
         if isinstance(self.task_config, (Databricks, DatabricksV2)):
             cfg = cast(DatabricksV2, self.task_config)
@@ -185,7 +185,7 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
 
         return MessageToDict(job.to_flyte_idl())
 
-    def to_k8s_pod(self, pod_template: PodTemplate | None, settings: SerializationSettings) -> K8sPod | None:
+    def to_k8s_pod(self, settings: SerializationSettings, pod_template: Optional[PodTemplate] = None) -> Optional[K8sPod]:
         """
         Convert the podTemplate to K8sPod
         """
