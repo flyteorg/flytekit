@@ -389,7 +389,7 @@ def map_task(
     :param min_success_ratio: The minimum ratio of successful executions
     """
     from flytekit.remote import FlyteLaunchPlan
-
+    print("testing")
     if isinstance(target, (LaunchPlan, FlyteLaunchPlan, ReferenceTask)):
         return array_node(
             target=target,
