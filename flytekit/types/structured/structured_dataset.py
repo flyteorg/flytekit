@@ -75,6 +75,7 @@ class StructuredDataset(SerializableType, DataClassJSONMixin):
 
     @classmethod
     def _deserialize(cls, value) -> "StructuredDataset":
+        breakpoint()
         uri = value.get("uri", None)
         file_format = value.get("file_format", None)
 
@@ -687,6 +688,7 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
         python_type: Union[Type[StructuredDataset], Type],
         expected: LiteralType,
     ) -> Literal:
+        breakpoint()
         # Make a copy in case we need to hand off to encoders, since we can't be sure of mutations.
         # Check first to see if it's even an SD type. For backwards compatibility, we may be getting a FlyteSchema
         python_type, *attrs = extract_cols_and_format(python_type)
@@ -726,7 +728,12 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
                     raise ValueError(
                         f"Shouldn't have specified both literal {python_val._literal_sd} and dataframe {python_val.dataframe}"
                     )
-                return Literal(scalar=Scalar(structured_dataset=python_val._literal_sd))
+                if isinstance(python_val._literal_sd, StructuredDataset):
+                    sdt = StructuredDatasetType(format=python_val._literal_sd.file_format)
+                    metad = literals.StructuredDatasetMetadata(structured_dataset_type=sdt)
+                    sd_literal = literals.StructuredDataset(uri=python_val._literal_sd.uri, metadata=metad)
+
+                return Literal(scalar=Scalar(structured_dataset=sd_literal))
 
             # 2. A task returns a python StructuredDataset with an uri.
             # Note: this case is also what happens we start a local execution of a task with a python StructuredDataset.
@@ -932,6 +939,7 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
         +-----------------------------+-----------------------------------------+--------------------------------------+
         """
         # Handle dataclass attribute access
+        breakpoint()
         if lv.scalar:
             if lv.scalar.binary:
                 return self.from_binary_idl(lv.scalar.binary, expected_python_type)

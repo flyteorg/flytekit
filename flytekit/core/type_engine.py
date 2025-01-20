@@ -913,6 +913,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 except KeyError:
                     decoder = MessagePackDecoder(expected_python_type, pre_decoder_func=_default_msgpack_decoder)
                     self._msgpack_decoder[expected_python_type] = decoder
+                breakpoint()
                 dc = decoder.decode(binary_idl_object.value)
 
             return dc
@@ -920,6 +921,7 @@ class DataclassTransformer(TypeTransformer[object]):
             raise TypeTransformerFailedError(f"Unsupported binary format: `{binary_idl_object.tag}`")
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
+        breakpoint()
         if not dataclasses.is_dataclass(expected_python_type):
             raise TypeTransformerFailedError(
                 f"{expected_python_type} is not of type @dataclass, only Dataclasses are supported for "
@@ -1437,6 +1439,7 @@ class TypeEngine(typing.Generic[T]):
 
     @classmethod
     async def async_to_python_value(cls, ctx: FlyteContext, lv: Literal, expected_python_type: Type) -> typing.Any:
+        breakpoint()
         if lv.offloaded_metadata:
             lv = await cls.unwrap_offloaded_literal(ctx, lv)
         transformer = cls.get_transformer(expected_python_type)
