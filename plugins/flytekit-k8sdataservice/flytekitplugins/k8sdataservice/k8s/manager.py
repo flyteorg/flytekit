@@ -154,10 +154,9 @@ class K8sManager:
             logger.error(f"Exception when calling CoreV1Api->create_namespaced_service: {e}")
             raise e
         # This will not happen in K8s API, but in case.
-        if api_response is not None and hasattr(api_response, "metadata") and hasattr(api_response.metadata, "name"):
-            return api_response.metadata.name
-        else:
-            return ""
+        if api_response is None or not hasattr(api_response, "metadata") or not hasattr(api_response.metadata, "name"):
+            raise ValueError("Invalid response from Kubernetes API - missing metadata or name")
+        return api_response.metadata.name
 
     def check_stateful_set_status(self, name) -> str:
         try:
