@@ -726,12 +726,22 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
                     raise ValueError(
                         f"Shouldn't have specified both literal {python_val._literal_sd} and dataframe {python_val.dataframe}"
                     )
+
+                # if structuredDataset is passed by dataclass, it will not be transformed into literals.StructuredDataset.
+                # Ex.
+                # @dataclass
+                # class Data:
+                #     f: StructuredDataset
+                # @task
+                # def extract(d: Data) -> StructuredDataset:
+                #     return d.f
                 if isinstance(python_val._literal_sd, StructuredDataset):
                     sdt = StructuredDatasetType(format=python_val._literal_sd.file_format)
                     metad = literals.StructuredDatasetMetadata(structured_dataset_type=sdt)
                     sd_literal = literals.StructuredDataset(uri=python_val._literal_sd.uri, metadata=metad)
+                    return Literal(scalar=Scalar(structured_dataset=sd_literal))
 
-                return Literal(scalar=Scalar(structured_dataset=sd_literal))
+                return Literal(scalar=Scalar(structured_dataset=python_val._literal_sd))
 
             # 2. A task returns a python StructuredDataset with an uri.
             # Note: this case is also what happens we start a local execution of a task with a python StructuredDataset.
