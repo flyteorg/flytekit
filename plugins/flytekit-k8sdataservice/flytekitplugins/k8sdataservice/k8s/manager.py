@@ -153,7 +153,11 @@ class K8sManager:
         except Exception as e:
             logger.error(f"Exception when calling CoreV1Api->create_namespaced_service: {e}")
             raise e
-        return api_response.metadata.name
+        # This will not happen in K8s API, but in case.
+        if api_response is not None and hasattr(api_response, "metadata") and hasattr(api_response.metadata, "name"):
+            return api_response.metadata.name
+        else:
+            return ""
 
     def check_stateful_set_status(self, name) -> str:
         try:

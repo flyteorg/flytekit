@@ -59,6 +59,18 @@ class TestK8sManager(unittest.TestCase):
         response = self.k8s_manager.create_service()
         self.assertEqual(response, "test-service")
 
+        # Test with empty metadata
+        mock_create_namespaced_service.return_value = MagicMock(metadata=None)
+        response = self.k8s_manager.create_service()
+        self.assertEqual(response, "")
+
+        # Test with None service name
+        mock_metadata = MagicMock()
+        mock_metadata.name = None
+        mock_create_namespaced_service.return_value = MagicMock(metadata=mock_metadata)
+        response = self.k8s_manager.create_service()
+        self.assertEqual(response, None)
+
     @patch("flytekitplugins.k8sdataservice.k8s.manager.client.CoreV1Api.create_namespaced_service")
     @patch("flytekitplugins.k8sdataservice.k8s.manager.logger")
     def test_create_service_exception(self, mock_logger, mock_create_namespaced_service):
