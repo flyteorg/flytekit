@@ -75,7 +75,6 @@ class StructuredDataset(SerializableType, DataClassJSONMixin):
 
     @classmethod
     def _deserialize(cls, value) -> "StructuredDataset":
-        breakpoint()
         uri = value.get("uri", None)
         file_format = value.get("file_format", None)
 
@@ -688,7 +687,6 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
         python_type: Union[Type[StructuredDataset], Type],
         expected: LiteralType,
     ) -> Literal:
-        breakpoint()
         # Make a copy in case we need to hand off to encoders, since we can't be sure of mutations.
         # Check first to see if it's even an SD type. For backwards compatibility, we may be getting a FlyteSchema
         python_type, *attrs = extract_cols_and_format(python_type)
@@ -939,7 +937,6 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
         +-----------------------------+-----------------------------------------+--------------------------------------+
         """
         # Handle dataclass attribute access
-        breakpoint()
         if lv.scalar:
             if lv.scalar.binary:
                 return self.from_binary_idl(lv.scalar.binary, expected_python_type)
