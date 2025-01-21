@@ -7,7 +7,7 @@ import pytest
 import flytekit.configuration
 from flytekit import LaunchPlan, Resources
 from flytekit.configuration import Image, ImageConfig
-from flytekit.core.legacy_map_task import MapPythonTask, MapTaskResolver, map_task
+from flytekit.core.legacy_map_task import MapPythonTask, MapTaskResolver, map
 from flytekit.core.task import TaskMetadata, task
 from flytekit.core.workflow import workflow
 from flytekit.tools.translator import get_serializable
@@ -51,7 +51,7 @@ def test_map_docs():
 
     @workflow
     def my_wf(x: typing.List[int]) -> typing.List[typing.Optional[str]]:
-        return map_task(
+        return map(
             my_mappable_task,
             metadata=TaskMetadata(retries=1),
             concurrency=10,
@@ -65,18 +65,18 @@ def test_map_docs():
 
 
 def test_map_task_types():
-    strs = map_task(t1, metadata=TaskMetadata(retries=1))(a=[5, 6])
+    strs = map(t1, metadata=TaskMetadata(retries=1))(a=[5, 6])
     assert strs == ["7", "8"]
 
     with pytest.raises(TypeError):
-        _ = map_task(t1, metadata=TaskMetadata(retries=1))(a=1)
+        _ = map(t1, metadata=TaskMetadata(retries=1))(a=1)
 
     with pytest.raises(TypeError):
-        _ = map_task(t1, metadata=TaskMetadata(retries=1))(a=["invalid", "args"])
+        _ = map(t1, metadata=TaskMetadata(retries=1))(a=["invalid", "args"])
 
 
 def test_serialization(serialization_settings):
-    maptask = map_task(t1, metadata=TaskMetadata(retries=1))
+    maptask = map(t1, metadata=TaskMetadata(retries=1))
     task_spec = get_serializable(OrderedDict(), serialization_settings, maptask)
 
     # By default all map_task tasks will have their custom fields set.
@@ -119,7 +119,7 @@ def test_serialization(serialization_settings):
     ],
 )
 def test_serialization_of_custom_fields(custom_fields_dict, expected_custom_fields, serialization_settings):
-    maptask = map_task(t1, **custom_fields_dict)
+    maptask = map(t1, **custom_fields_dict)
     task_spec = get_serializable(OrderedDict(), serialization_settings, maptask)
 
     assert task_spec.template.custom == expected_custom_fields
@@ -131,7 +131,7 @@ def test_serialization_workflow_def(serialization_settings):
         b = a + 2
         return str(b)
 
-    maptask = map_task(complex_task, metadata=TaskMetadata(retries=1))
+    maptask = map(complex_task, metadata=TaskMetadata(retries=1))
 
     @workflow
     def w1(a: typing.List[int]) -> typing.List[str]:
@@ -139,7 +139,7 @@ def test_serialization_workflow_def(serialization_settings):
 
     @workflow
     def w2(a: typing.List[int]) -> typing.List[str]:
-        return map_task(complex_task, metadata=TaskMetadata(retries=2))(a=a)
+        return map(complex_task, metadata=TaskMetadata(retries=2))(a=a)
 
     serialized_control_plane_entities = OrderedDict()
     wf1_spec = get_serializable(serialized_control_plane_entities, serialization_settings, w1)
@@ -170,7 +170,7 @@ def test_map_tasks_only():
 
         @workflow
         def wf2(a: typing.List[int]):
-            return map_task(wf1)(a=a)
+            return map(wf1)(a=a)
 
         wf2()
 
@@ -180,7 +180,7 @@ def test_map_tasks_only():
 
         @workflow
         def wf3(a: typing.List[int]):
-            return map_task(lp)(a=a)
+            return map(lp)(a=a)
 
         wf3()
 
@@ -190,35 +190,35 @@ def test_inputs_outputs_length():
     def many_inputs(a: int, b: str, c: float) -> str:
         return f"{a} - {b} - {c}"
 
-    m = map_task(many_inputs)
+    m = map(many_inputs)
     assert m.python_interface.inputs == {"a": typing.List[int], "b": typing.List[str], "c": typing.List[float]}
     assert m.name == "tests.flytekit.unit.core.test_map_task.map_many_inputs_d41d8cd98f00b204e9800998ecf8427e"
     r_m = MapPythonTask(many_inputs)
     assert str(r_m.python_interface) == str(m.python_interface)
 
     p1 = functools.partial(many_inputs, c=1.0)
-    m = map_task(p1)
+    m = map(p1)
     assert m.python_interface.inputs == {"a": typing.List[int], "b": typing.List[str], "c": float}
     assert m.name == "tests.flytekit.unit.core.test_map_task.map_many_inputs_4a8a08f09d37b73795649038408b5f33"
     r_m = MapPythonTask(many_inputs, bound_inputs=set("c"))
     assert str(r_m.python_interface) == str(m.python_interface)
 
     p2 = functools.partial(p1, b="hello")
-    m = map_task(p2)
+    m = map(p2)
     assert m.python_interface.inputs == {"a": typing.List[int], "b": str, "c": float}
     assert m.name == "tests.flytekit.unit.core.test_map_task.map_many_inputs_74aefa13d6ab8e4bfbd241583749dfe8"
     r_m = MapPythonTask(many_inputs, bound_inputs={"c", "b"})
     assert str(r_m.python_interface) == str(m.python_interface)
 
     p3 = functools.partial(p2, a=1)
-    m = map_task(p3)
+    m = map(p3)
     assert m.python_interface.inputs == {"a": int, "b": str, "c": float}
     assert m.name == "tests.flytekit.unit.core.test_map_task.map_many_inputs_a44c56c8177e32d3613988f4dba7962e"
     r_m = MapPythonTask(many_inputs, bound_inputs={"a", "c", "b"})
     assert str(r_m.python_interface) == str(m.python_interface)
 
     p3_1 = functools.partial(p2, a=1)
-    m_1 = map_task(p3_1)
+    m_1 = map(p3_1)
     assert m_1.python_interface.inputs == {"a": int, "b": str, "c": float}
     assert m_1.name == m.name
 
@@ -230,20 +230,20 @@ def test_inputs_outputs_length():
         return a, f"{a}"
 
     with pytest.raises(ValueError):
-        _ = map_task(many_outputs)
+        _ = map(many_outputs)
 
 
 def test_map_task_metadata():
     map_meta = TaskMetadata(retries=1)
-    mapped_1 = map_task(t2, metadata=map_meta)
+    mapped_1 = map(t2, metadata=map_meta)
     assert mapped_1.metadata is map_meta
-    mapped_2 = map_task(t2)
+    mapped_2 = map(t2)
     assert mapped_2.metadata is t2.metadata
 
 
 def test_map_task_resolver(serialization_settings):
     list_outputs = {"o0": typing.List[str]}
-    mt = map_task(t3)
+    mt = map(t3)
     assert mt.python_interface.inputs == {"a": typing.List[int], "b": typing.List[str], "c": typing.List[float]}
     assert mt.python_interface.outputs == list_outputs
     mtr = MapTaskResolver()
@@ -253,7 +253,7 @@ def test_map_task_resolver(serialization_settings):
     assert t.python_interface.inputs == mt.python_interface.inputs
     assert t.python_interface.outputs == mt.python_interface.outputs
 
-    mt = map_task(functools.partial(t3, b="hello", c=1.0))
+    mt = map(functools.partial(t3, b="hello", c=1.0))
     assert mt.python_interface.inputs == {"a": typing.List[int], "b": str, "c": float}
     assert mt.python_interface.outputs == list_outputs
     mtr = MapTaskResolver()
@@ -262,7 +262,7 @@ def test_map_task_resolver(serialization_settings):
     assert t.python_interface.inputs == mt.python_interface.inputs
     assert t.python_interface.outputs == mt.python_interface.outputs
 
-    mt = map_task(functools.partial(t3, b="hello"))
+    mt = map(functools.partial(t3, b="hello"))
     assert mt.python_interface.inputs == {"a": typing.List[int], "b": str, "c": typing.List[float]}
     assert mt.python_interface.outputs == list_outputs
     mtr = MapTaskResolver()
@@ -287,7 +287,7 @@ def test_map_task_min_success_ratio(min_success_ratio, type_t):
 
     @workflow
     def my_wf1() -> typing.List[type_t]:
-        return map_task(some_task1, min_success_ratio=min_success_ratio)(inputs=[1, 2, 3, 4])
+        return map(some_task1, min_success_ratio=min_success_ratio)(inputs=[1, 2, 3, 4])
 
     my_wf1()
 
@@ -309,9 +309,9 @@ def test_map_task_parameter_order():
     param_b = [0.1, 0.2, 0.3]
     param_c = "c"
 
-    m1 = map_task(functools.partial(task1, c=param_c))(a=param_a, b=param_b)
-    m2 = map_task(functools.partial(task2, c=param_c))(a=param_a, b=param_b)
-    m3 = map_task(functools.partial(task3, c=param_c))(a=param_a, b=param_b)
+    m1 = map(functools.partial(task1, c=param_c))(a=param_a, b=param_b)
+    m2 = map(functools.partial(task2, c=param_c))(a=param_a, b=param_b)
+    m3 = map(functools.partial(task3, c=param_c))(a=param_a, b=param_b)
 
     assert m1 == m2 == m3 == ["1 - 0.1 - c", "2 - 0.2 - c", "3 - 0.3 - c"]
 
@@ -334,7 +334,7 @@ def test_raw_execute_with_min_success_ratio(min_success_ratio, should_raise_erro
 
     @workflow
     def my_wf1() -> typing.List[typing.Optional[int]]:
-        return map_task(some_task1, min_success_ratio=min_success_ratio)(inputs=[1, 2, 3, 4])
+        return map(some_task1, min_success_ratio=min_success_ratio)(inputs=[1, 2, 3, 4])
 
     if should_raise_error:
         with pytest.raises(ValueError):
@@ -350,13 +350,13 @@ def test_map_task_override(serialization_settings):
 
     @workflow
     def wf(x: typing.List[int]):
-        map_task(my_mappable_task)(a=x).with_overrides(container_image="random:image")
+        map(my_mappable_task)(a=x).with_overrides(container_image="random:image")
 
     assert wf.nodes[0]._container_image == "random:image"
 
 
 def test_bounded_inputs_vars_order(serialization_settings):
-    mt = map_task(functools.partial(t3, c=1.0, b="hello", a=1))
+    mt = map(functools.partial(t3, c=1.0, b="hello", a=1))
     mtr = MapTaskResolver()
     args = mtr.loader_args(serialization_settings, mt)
 

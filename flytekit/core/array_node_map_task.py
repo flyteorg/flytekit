@@ -4,6 +4,7 @@ import hashlib
 import math
 import os  # TODO: use flytekit logger
 import warnings
+import warnings
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Union, cast
 
@@ -371,6 +372,7 @@ class ArrayNodeMapTask(PythonTask):
 
 
 def map(
+def map(
     target: Union[LaunchPlan, PythonFunctionTask, "FlyteLaunchPlan"],
     concurrency: Optional[int] = None,
     tolerance: Optional[Union[float, int]] = None,
@@ -387,6 +389,11 @@ def map(
         size. If the size of the input exceeds the concurrency value, then multiple batches will be run serially until
         all inputs are processed. If set to 0, this means unbounded concurrency. If left unspecified, this means the
         array node will inherit parallelism from the workflow
+    :param tolerance: Failure tolerance threshold.
+                If float (0-1): represents minimum success ratio
+                If int (>1): represents minimum number of successes
+    :param min_successes: The minimum number of successful executions [Deprecated] Use tolerance instead
+    :param min_success_ratio: The minimum ratio of successful executions [Deprecated] Use tolerance instead
     :param tolerance: Failure tolerance threshold.
                 If float (0-1): represents minimum success ratio
                 If int (>1): represents minimum number of successes
@@ -426,10 +433,14 @@ def map(
             concurrency=concurrency,
             min_successes=final_min_successes,
             min_success_ratio=final_min_ratio,
+            min_successes=final_min_successes,
+            min_success_ratio=final_min_ratio,
         )
     return array_node_map_task(
         task_function=target,
         concurrency=concurrency,
+        min_successes=final_min_successes,
+        min_success_ratio=final_min_ratio,
         min_successes=final_min_successes,
         min_success_ratio=final_min_ratio,
         **kwargs,
