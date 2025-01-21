@@ -45,9 +45,8 @@ class K8sManager:
             logger.info(f"Created statefulset in K8s API server: {api_response}")
         except ApiException as e:
             logger.error(f"Exception when calling AppsV1Api->create_namespaced_stateful_set: {e}\n")
-        if api_response is not None:
-            return api_response.metadata.name
-        return "failed_stateful_set_name"
+            raise
+        return api_response.metadata.name
 
     def create_stateful_set_object(self):
         ss_replicas = self.data_service_config.get("Replicas", 1)
