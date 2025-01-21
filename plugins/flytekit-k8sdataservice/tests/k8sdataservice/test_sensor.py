@@ -56,13 +56,13 @@ async def test_poke_with_cleanup(
 
     # Initialize CleanupSensor instance
     sensor = CleanupSensor(name="test-sensor")
-    await asyncio.create_task(
-        sensor.poke(
-            release_name="test-release",
-            cleanup_data_service=True,
-            cluster="test-cluster"
-        )
-    )
+    async with asyncio.TaskGroup() as tg:
+        task = tg.create_task(
+            sensor.poke(
+                release_name="test-release",
+                cleanup_data_service=True,
+                cluster="test-cluster"
+            ))
     # Assertions for logger and delete_data_service call
     mock_logger.info.assert_any_call("The training job is in terminal stage, deleting graph engine test-release")
     mock_delete_data_service.assert_called_once()

@@ -34,25 +34,38 @@ def create_test_task_metadata() -> task.TaskMetadata:
     )
 
 
+def create_test_setup(original_name: str = "gnn-1234", existing_release_name: str = "gnn-2345"):
+    task_id = Identifier(
+        resource_type=ResourceType.TASK, project="project", domain="domain", name="name", version="version"
+    )
+    task_metadata = create_test_task_metadata()
+    s = Struct()
+    if existing_release_name != "":
+        s.update({
+            "Name": original_name,
+            "Image": "image",
+            "Command": cmd,
+            "Cluster": "ei-dev2",
+            "ExistingReleaseName": existing_release_name,
+        })
+    else:
+        s.update({
+            "Name": original_name,
+            "Image": "image",
+            "Command": cmd,
+            "Cluster": "ei-dev2",
+        })
+    task_config = json_format.MessageToDict(s)
+    return task_id, task_metadata, task_config
+
+
 @patch("flytekitplugins.k8sdataservice.agent.K8sManager.create_data_service", return_value="gnn-1234")
 @patch("flytekitplugins.k8sdataservice.agent.K8sManager.check_stateful_set_status", return_value="succeeded")
 @patch("flytekitplugins.k8sdataservice.agent.K8sManager.delete_stateful_set")
 @patch("flytekitplugins.k8sdataservice.agent.K8sManager.delete_service")
 def test_gnn_agent(mock_delete_service, mock_delete_stateful_set, mock_check_status, mock_create_data_service):
     agent = AgentRegistry.get_agent("dataservicetask")
-    task_id = Identifier(
-        resource_type=ResourceType.TASK, project="project", domain="domain", name="name", version="version"
-    )
-    task_metadata = create_test_task_metadata()
-    s = Struct()
-    s.update({
-        "Name": "gnn-1234",
-        "Image": "image",
-        "Command": cmd,
-        "Cluster": "ei-dev2"
-    })
-    task_config = json_format.MessageToDict(s)
-
+    task_id, task_metadata, task_config = create_test_setup(existing_release_name="")
     int_type = types.LiteralType(types.SimpleType.INTEGER)
     interfaces = interface_models.TypedInterface(
         {
@@ -102,19 +115,7 @@ def test_gnn_agent(mock_delete_service, mock_delete_stateful_set, mock_check_sta
 @patch("flytekitplugins.k8sdataservice.agent.K8sManager.delete_service")
 def test_gnn_agent_reuse_data_service(mock_delete_service, mock_delete_stateful_set, mock_check_status, mock_create_data_service):
     agent = AgentRegistry.get_agent("dataservicetask")
-    task_id = Identifier(
-        resource_type=ResourceType.TASK, project="project", domain="domain", name="name", version="version"
-    )
-    task_metadata = create_test_task_metadata()
-    s = Struct()
-    s.update({
-        "Name": "gnn-2345",
-        "Image": "image",
-        "Command": cmd,
-        "Cluster": "ei-dev2",
-        "ExistingReleaseName": "gnn-2345"
-    })
-    task_config = json_format.MessageToDict(s)
+    task_id, task_metadata, task_config = create_test_setup(original_name="gnn-2345", existing_release_name="gnn-2345")
 
     int_type = types.LiteralType(types.SimpleType.INTEGER)
     interfaces = interface_models.TypedInterface(
@@ -166,19 +167,7 @@ def test_gnn_agent_reuse_data_service(mock_delete_service, mock_delete_stateful_
 @patch("flytekitplugins.k8sdataservice.agent.K8sManager.delete_service")
 def test_gnn_agent_status(mock_delete_service, mock_delete_stateful_set, mock_check_status, mock_create_data_service):
     agent = AgentRegistry.get_agent("dataservicetask")
-    task_id = Identifier(
-        resource_type=ResourceType.TASK, project="project", domain="domain", name="name", version="version"
-    )
-    task_metadata = create_test_task_metadata()
-    s = Struct()
-    s.update({
-        "Name": "gnn-2345",
-        "Image": "image",
-        "Command": cmd,
-        "Cluster": "ei-dev2",
-        "ExistingReleaseName": "gnn-2345"
-    })
-    task_config = json_format.MessageToDict(s)
+    task_id, task_metadata, task_config = create_test_setup(original_name="gnn-2345", existing_release_name="gnn-2345")
 
     int_type = types.LiteralType(types.SimpleType.INTEGER)
     interfaces = interface_models.TypedInterface(
@@ -229,19 +218,7 @@ def test_gnn_agent_status(mock_delete_service, mock_delete_stateful_set, mock_ch
 @patch("flytekitplugins.k8sdataservice.agent.K8sManager.delete_service")
 def test_gnn_agent_no_configmap(mock_delete_service, mock_delete_stateful_set, mock_check_status, mock_create_data_service):
     agent = AgentRegistry.get_agent("dataservicetask")
-    task_id = Identifier(
-        resource_type=ResourceType.TASK, project="project", domain="domain", name="name", version="version"
-    )
-    task_metadata = create_test_task_metadata()
-    s = Struct()
-    s.update({
-        "Name": "gnn-2345",
-        "Image": "image",
-        "Command": cmd,
-        "Cluster": "ei-dev2",
-        "ExistingReleaseName": "gnn-2345"
-    })
-    task_config = json_format.MessageToDict(s)
+    task_id, task_metadata, task_config = create_test_setup(original_name="gnn-2345", existing_release_name="gnn-2345")
 
     int_type = types.LiteralType(types.SimpleType.INTEGER)
     interfaces = interface_models.TypedInterface(
@@ -293,19 +270,7 @@ def test_gnn_agent_no_configmap(mock_delete_service, mock_delete_stateful_set, m
 @patch("flytekitplugins.k8sdataservice.agent.K8sManager.delete_service")
 def test_gnn_agent_status_failed(mock_delete_service, mock_delete_stateful_set, mock_check_status, mock_create_data_service):
     agent = AgentRegistry.get_agent("dataservicetask")
-    task_id = Identifier(
-        resource_type=ResourceType.TASK, project="project", domain="domain", name="name", version="version"
-    )
-    task_metadata = create_test_task_metadata()
-    s = Struct()
-    s.update({
-        "Name": "gnn-2345",
-        "Image": "image",
-        "Command": cmd,
-        "Cluster": "ei-dev2",
-        "ExistingReleaseName": "gnn-2345"
-    })
-    task_config = json_format.MessageToDict(s)
+    task_id, task_metadata, task_config = create_test_setup(original_name="gnn-2345", existing_release_name="gnn-2345")
 
     int_type = types.LiteralType(types.SimpleType.INTEGER)
     interfaces = interface_models.TypedInterface(

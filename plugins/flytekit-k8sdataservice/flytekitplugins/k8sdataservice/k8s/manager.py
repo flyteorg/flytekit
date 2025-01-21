@@ -1,3 +1,5 @@
+import uuid
+
 from flytekitplugins.k8sdataservice.k8s.kube_config import KubeConfig
 from kubernetes import client
 from kubernetes.client.rest import ApiException
@@ -25,7 +27,7 @@ class K8sManager:
         self.name = None
         self.name = data_service_config.get("Name", None)
         if self.name is None:
-            self.name = "gnn-nofirsthash"
+            self.name = f"k8s-dataservice-{uuid.uuid4().hex[:8]}"
 
     def create_data_service(self) -> str:
         svc_name = self.create_service()
