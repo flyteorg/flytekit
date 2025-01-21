@@ -890,7 +890,9 @@ async def binding_data_from_python_std(
         for i in range(len(expected_literal_type.union_type.variants)):
             try:
                 lt_type = expected_literal_type.union_type.variants[i]
-                python_type = get_args(t_value_type)[i] if t_value_type else None
+                python_type = (
+                    get_args(t_value_type)[i] if t_value_type else type(t_value) if t_value is not None else type(None)
+                )
                 return await binding_data_from_python_std(ctx, lt_type, t_value, python_type, nodes)
             except Exception:
                 logger.debug(

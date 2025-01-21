@@ -535,7 +535,9 @@ class DataclassTransformer(TypeTransformer[object]):
             original_dict = v
 
             # Find the Optional keys in expected_fields_dict
-            optional_keys = {k for k, t in expected_fields_dict.items() if UnionTransformer.is_optional_type(t)}
+            optional_keys = {
+                k for k, t in expected_fields_dict.items() if UnionTransformer.is_optional_type(cast(type, t))
+            }
 
             # Remove the Optional keys from the keys of original_dict
             original_key = set(original_dict.keys()) - optional_keys
@@ -558,9 +560,9 @@ class DataclassTransformer(TypeTransformer[object]):
             for k, v in original_dict.items():
                 if k in expected_fields_dict:
                     if isinstance(v, dict):
-                        self.assert_type(expected_fields_dict[k], v)
+                        self.assert_type(cast(type, expected_fields_dict[k]), v)
                     else:
-                        expected_type = expected_fields_dict[k]
+                        expected_type = cast(type, expected_fields_dict[k])
                         original_type = type(v)
                         if UnionTransformer.is_optional_type(expected_type):
                             expected_type = UnionTransformer.get_sub_type_in_optional(expected_type)
@@ -571,12 +573,12 @@ class DataclassTransformer(TypeTransformer[object]):
 
         else:
             for f in dataclasses.fields(type(v)):  # type: ignore
-                original_type = f.type
+                original_type = cast(type, f.type)
                 if f.name not in expected_fields_dict:
                     raise TypeTransformerFailedError(
                         f"Field '{f.name}' is not present in the expected dataclass fields {expected_type.__name__}"
                     )
-                expected_type = expected_fields_dict[f.name]
+                expected_type = cast(type, expected_fields_dict[f.name])
 
                 if UnionTransformer.is_optional_type(original_type):
                     original_type = UnionTransformer.get_sub_type_in_optional(original_type)
@@ -770,7 +772,7 @@ class DataclassTransformer(TypeTransformer[object]):
             return get_args(python_type)[0]
         elif dataclasses.is_dataclass(python_type):
             for field in dataclasses.fields(copy.deepcopy(python_type)):
-                field.type = self._get_origin_type_in_annotation(field.type)
+                field.type = self._get_origin_type_in_annotation(cast(type, field.type))
         return python_type
 
     def _make_dataclass_serializable(self, python_val: T, python_type: Type[T]) -> typing.Any:
@@ -897,7 +899,7 @@ class DataclassTransformer(TypeTransformer[object]):
         # Thus we will have to walk the given dataclass and typecast values to int, where expected.
         for f in dataclasses.fields(dc_type):
             val = getattr(dc, f.name)
-            object.__setattr__(dc, f.name, self._fix_val_int(f.type, val))
+            object.__setattr__(dc, f.name, self._fix_val_int(cast(type, f.type), val))
 
         return dc
 
@@ -2406,7 +2408,7 @@ def dataclass_from_dict(cls: type, src: typing.Dict[str, typing.Any]) -> typing.
     constructor_inputs = {}
     for field_name, value in src.items():
         if dataclasses.is_dataclass(field_types_lookup[field_name]):
-            constructor_inputs[field_name] = dataclass_from_dict(field_types_lookup[field_name], value)
+            constructor_inputs[field_name] = dataclass_from_dict(cast(type, field_types_lookup[field_name]), value)
         else:
             constructor_inputs[field_name] = value
 

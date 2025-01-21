@@ -20,6 +20,7 @@ IPython
 keyrings.alt
 setuptools_scm
 pytest-icdiff
+eval_type_backport
 
 # Tensorflow is not available for python 3.12 yet: https://github.com/tensorflow/tensorflow/issues/62003
 tensorflow<=2.15.1; python_version<'3.12'

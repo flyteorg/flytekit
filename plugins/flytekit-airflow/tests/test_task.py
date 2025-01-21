@@ -1,3 +1,4 @@
+from __future__ import annotations
 import jsonpickle
 from airflow.operators.bash import BashOperator
 from airflow.providers.apache.beam.operators.beam import BeamRunJavaPipelineOperator, BeamRunPythonPipelineOperator
