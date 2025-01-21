@@ -362,7 +362,7 @@ def my_mappable_task(a: int) -> typing.Optional[str]:
     retries=10,
     cache=True,
     cache_version="original-version",
-    requests=Resources(cpu=1)
+    requests=_resources_models(cpu=1)
 )
 def my_mappable_task_1(a: int) -> typing.Optional[str]:
     return str(a)

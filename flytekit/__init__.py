@@ -205,6 +205,7 @@ Documentation
 
 import os
 import sys
+import warnings
 from typing import Generator
 
 from rich import traceback
@@ -216,19 +217,9 @@ if sys.version_info < (3, 10):
 else:
     from importlib.metadata import entry_points
 
-
 from flytekit._version import __version__
 from flytekit.configuration import Config
 from flytekit.core.array_node_map_task import map
-
-import warnings
-warnings.warn(
-    "'map_task' is deprecated and will be removed in a future version. Use 'map' instead.",
-    DeprecationWarning,
-    stacklevel=2
-)
-map_task = map 
-
 from flytekit.core.artifact import Artifact
 from flytekit.core.base_sql_task import SQLTask
 from flytekit.core.base_task import SecurityContext, TaskMetadata, kwtypes
@@ -273,6 +264,13 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetTransformerEngine,
     StructuredDatasetType,
 )
+
+warnings.warn(
+    "'map_task' is deprecated and will be removed in a future version. Use 'map' instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
+map_task = map
 
 
 def current_context() -> ExecutionParameters:
