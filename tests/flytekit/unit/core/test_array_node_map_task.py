@@ -9,7 +9,7 @@ from typing import List
 import pytest
 from flyteidl.core import workflow_pb2 as _core_workflow
 
-from flytekit import dynamic, map, task, workflow, eager, PythonFunctionTask
+from flytekit import dynamic, map, task, workflow, eager, PythonFunctionTask, Resources
 from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SerializationSettings
 from flytekit.core import context_manager
 from flytekit.core.array_node_map_task import ArrayNodeMapTask, ArrayNodeMapTaskResolver
@@ -362,7 +362,7 @@ def my_mappable_task(a: int) -> typing.Optional[str]:
     retries=10,
     cache=True,
     cache_version="original-version",
-    requests=_resources_models(cpu=1)
+    requests=Resources(cpu=1)
 )
 def my_mappable_task_1(a: int) -> typing.Optional[str]:
     return str(a)
@@ -373,7 +373,7 @@ def my_mappable_task_1(a: int) -> typing.Optional[str]:
     [my_mappable_task, my_mappable_task_1]
 )
 def test_map_task_override(serialization_settings, task_func):
-    array_node_map_task = map_task(task_func)
+    array_node_map_task = map(task_func)
 
     @workflow
     def wf(x: typing.List[int]):
