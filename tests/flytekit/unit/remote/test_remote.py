@@ -17,7 +17,7 @@ from flyteidl.service import dataproxy_pb2
 from mock import ANY, MagicMock, patch
 
 import flytekit.configuration
-from flytekit import CronSchedule, ImageSpec, LaunchPlan, WorkflowFailurePolicy, task, workflow, reference_task, map_task, dynamic, eager
+from flytekit import CronSchedule, ImageSpec, LaunchPlan, WorkflowFailurePolicy, task, workflow, reference_task, map, dynamic, eager
 from flytekit.configuration import Config, DefaultImages, Image, ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContextManager
@@ -726,7 +726,7 @@ def test_get_pickled_target_dict_with_map_task():
 
     @workflow
     def w() -> int:
-        return map_task(partial(t1, y=2))(x=[1, 2, 3])
+        return map(partial(t1, y=2))(x=[1, 2, 3])
 
     _, target_dict = _get_pickled_target_dict(w)
     assert (
