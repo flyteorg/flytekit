@@ -318,3 +318,40 @@ def test_create_poetry_lock(tmp_path):
     dockerfile_content = dockerfile_path.read_text()
 
     assert "poetry install --no-root" in dockerfile_content
+
+
+def test_python_exec(tmp_path):
+    docker_context_path = tmp_path / "builder_root"
+    docker_context_path.mkdir()
+    base_image = "ghcr.io/flyteorg/flytekit:py3.11-1.14.4"
+    python_exec = "/usr/local/bin/python"
+
+    image_spec = ImageSpec(
+        name="FLYTEKIT",
+        base_image=base_image,
+        python_exec=python_exec
+    )
+
+    create_docker_context(image_spec, docker_context_path)
+
+    dockerfile_path = docker_context_path / "Dockerfile"
+    assert dockerfile_path.exists()
+    dockerfile_content = dockerfile_path.read_text()
+
+    assert f"UV_PYTHON={python_exec}" in dockerfile_content
+
+
+@pytest.mark.parametrize("key, value", [("conda_packages", ["ruff"]), ("conda_channels", ["bioconda"])])
+def test_python_exec_errors(tmp_path, key, value):
+    docker_context_path = tmp_path / "builder_root"
+    docker_context_path.mkdir()
+
+    image_spec = ImageSpec(
+        name="FLYTEKIT",
+        base_image="ghcr.io/flyteorg/flytekit:py3.11-1.14.4",
+        python_exec="/usr/local/bin/python",
+        **{key: value}
+    )
+    msg = f"{key} is not supported with python_exec"
+    with pytest.raises(ValueError, match=msg):
+        create_docker_context(image_spec, docker_context_path)
