@@ -4,6 +4,7 @@ from enum import Enum
 import sys
 import pytest
 import mock
+from flytekit import task
 
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
@@ -140,3 +141,22 @@ def test_union_in_dataclass(mock_upload_dir):
     assert o.b.remote_path == ot.b.remote_source
     assert o.c["a"] == ot.c["a"]
     assert o.d == FlyteFile(remote_path)
+
+def test_ambiguous_union_transformer_to_literal():
+    @dataclass
+    class A:
+        a: int
+
+    @dataclass
+    class B:
+        a: int
+
+    @task
+    def t1() -> typing.Union[A, B]:
+        return A(a=1)
+
+    with pytest.raises(
+        TypeError,
+        match=("Potential types:")
+    ):
+        t1()
