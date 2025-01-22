@@ -98,11 +98,11 @@ def _get_srun_cmd(srun_conf: Dict[str, str], entrypoint: str) -> str:
     cmd.extend(["bash", "-c"])
     cmd = " ".join(cmd)
 
-    cmd += f""" '# Setup environment variables
-        export PATH=$PATH:/opt/anaconda/anaconda3/bin;
+    cmd += f""" '# Activate the pre-built virtual env
+        . /home/ubuntu/.cache/pypoetry/virtualenvs/demo-poetry-RLi6T71_-py3.12/bin/activate;
 
-        # Run pyflyte-execute in a pre-built conda env
-        source activate dev;
+        # Run entrypoints in a subshell with virtual env activated,
+        # including pyflyte-fast-execute and pyflyte-execute
         {entrypoint};
 
         # A trick to show Slurm job id on stdout
