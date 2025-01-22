@@ -30,7 +30,6 @@ from typing_extensions import Annotated, get_args, get_origin
 
 from flytekit import dynamic, kwtypes, task, workflow
 from flytekit.core.annotation import FlyteAnnotation
-from flytekit.core.base_task import Task
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import flyte_tmp_dir
 from flytekit.core.hash import HashMethod
@@ -3750,7 +3749,7 @@ def test_register_dataclass_override():
     Test to confirm that a dataclass transformer can be overridden by a user defined transformer
     """
 
-    # We register a
+    # We register a type transformer for the top-level user-defined dataclass
     @dataclass
     class ParentDC:
         ...
@@ -3776,3 +3775,5 @@ def test_register_dataclass_override():
 
     assert TypeEngine.get_transformer(ChildDC) != TypeEngine.get_transformer(RegularDC)
     assert TypeEngine.get_transformer(RegularDC) == TypeEngine._DATACLASS_TRANSFORMER
+
+    del TypeEngine._REGISTRY[ParentDC]
