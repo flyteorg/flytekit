@@ -53,22 +53,26 @@ async def test_poke_with_cleanup(
     mock_delete_data_service
 ):
     mock_kube_config.return_value = MagicMock()
-
     # Initialize CleanupSensor instance
     sensor = CleanupSensor(name="test-sensor")
+
+    async def sensor_poke_task():
+        await sensor.poke(
+            release_name="test-release",
+            cleanup_data_service=True,
+            cluster="test-cluster"
+        )
+
+    # Use asyncio.wait_for for timeout handling (compatible with older Python versions)
     try:
-        async with asyncio.timeout(30):
-            async with asyncio.TaskGroup() as tg:
-                task = tg.create_task(
-                    sensor.poke(
-                        release_name="test-release",
-                        cleanup_data_service=True,
-                        cluster="test-cluster"
-                    ))
+        await asyncio.wait_for(sensor_poke_task(), timeout=30)
     except asyncio.TimeoutError:
         pytest.fail("Test timed out")
+
     # Assertions for logger and delete_data_service call
-    mock_logger.info.assert_any_call("The training job is in terminal stage, deleting graph engine test-release")
+    mock_logger.info.assert_any_call(
+        "The training job is in terminal stage, deleting graph engine test-release"
+    )
     mock_delete_data_service.assert_called_once()
 
 
