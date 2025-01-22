@@ -928,7 +928,7 @@ def kubectl_secret():
     ],  capture_output=True, text=True)
 
 
-# To enable this test, kubectl must be available in the CI.
+# To enable this test, kubectl must be available.
 @pytest.mark.skip(reason="Waiting for flyte release that includes https://github.com/flyteorg/flyte/pull/6176")
 def test_check_secret(kubectl_secret):
     execution_id = run("get_secret.py", "wf")
