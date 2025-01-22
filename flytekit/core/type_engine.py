@@ -1222,9 +1222,6 @@ class TypeEngine(typing.Generic[T]):
         if python_type in cls._REGISTRY:
             return cls._REGISTRY[python_type]
 
-        if dataclasses.is_dataclass(python_type):
-            return cls._DATACLASS_TRANSFORMER
-
         return None
 
     @classmethod
@@ -1242,6 +1239,16 @@ class TypeEngine(typing.Generic[T]):
                 v = cls._get_transformer(t)
                 if v is not None:
                     return v
+
+        # flytekit's dataclass type transformer is left for last to give users a chance to register a type transformer
+        # to handle dataclass-like objects as part of the mro evaluation.
+        #
+        # N.B.: keep in mind that there are no compatibility guarantees between these user-defined dataclass transformers
+        # and the flytekit one. This incompatibility is *not* a new behavior introduced by the recent type engine
+        # refactor (https://github.com/flyteorg/flytekit/pull/2815), but it is worth calling out explicitly as a known
+        # limitation nonetheless.
+        if dataclasses.is_dataclass(python_type):
+            return cls._DATACLASS_TRANSFORMER
 
         display_pickle_warning(str(python_type))
         from flytekit.types.pickle.pickle import FlytePickleTransformer
