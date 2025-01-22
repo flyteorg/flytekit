@@ -3742,3 +3742,38 @@ def test_structured_dataset_mismatch():
 
     with pytest.raises(TypeTransformerFailedError):
         TypeEngine.to_literal(FlyteContext.current_context(), df, StructuredDataset, TypeEngine.to_literal_type(StructuredDataset))
+
+
+def test_register_dataclass_override():
+    """
+    Test to confirm that a dataclass transformer can be overridden by a user defined transformer
+    """
+
+    # We register a type transformer for the top-level user-defined dataclass
+    @dataclass
+    class ParentDC:
+        ...
+
+    @dataclass
+    class ChildDC(ParentDC):
+        ...
+
+    class ParentDCTransformer(TypeTransformer[ParentDC]):
+        def __init__(self):
+            super().__init__("ParentDC Transformer", ParentDC)
+
+    # Register a type transformer for the parent dataclass
+    TypeEngine.register(ParentDCTransformer())
+
+    # Confirm that the transformer for ChildDC is the same as the ParentDC
+    assert TypeEngine.get_transformer(ChildDC) == TypeEngine.get_transformer(ParentDC)
+
+    # Confirm that the transformer for ChildDC is not flytekit's default dataclass transformer
+    @dataclass
+    class RegularDC:
+        ...
+
+    assert TypeEngine.get_transformer(ChildDC) != TypeEngine.get_transformer(RegularDC)
+    assert TypeEngine.get_transformer(RegularDC) == TypeEngine._DATACLASS_TRANSFORMER
+
+    del TypeEngine._REGISTRY[ParentDC]
