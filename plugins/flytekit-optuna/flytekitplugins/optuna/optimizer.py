@@ -1,12 +1,14 @@
 import asyncio
 import inspect
+from copy import copy, deepcopy
 from dataclasses import dataclass
 from types import SimpleNamespace
-from typing import Any, Optional, Union
+from typing import Any, Awaitable, Callable, Optional, Union
+
+from typing_extensions import Concatenate, ParamSpec
 
 import optuna
-from flytekit import PythonFunctionTask
-from flytekit.core.workflow import PythonFunctionWorkflow
+from flytekit.core.python_function_task import AsyncPythonFunctionTask
 from flytekit.exceptions.eager import EagerException
 
 
@@ -45,52 +47,82 @@ class Category(Suggestion):
 
 suggest = SimpleNamespace(float=Float, integer=Integer, category=Category)
 
+P = ParamSpec("P")
+
+Result = Union[float, tuple[float, ...]]
+
+CallbackType = Callable[Concatenate[optuna.Trial, P], Union[Awaitable[Result], Result]]
+
 
 @dataclass
 class Optimizer:
-    objective: Union[PythonFunctionTask, PythonFunctionWorkflow]
+    objective: Union[CallbackType, AsyncPythonFunctionTask]
     concurrency: int
     n_trials: int
     study: Optional[optuna.Study] = None
+    delay: int = 0
+
+    """
+    Optimizer is a class that allows for the distributed optimization of a flytekit Task using Optuna.
+
+    Args:
+        objective: The objective function to be optimized. This can be a AsyncPythonFunctionTask or a callable.
+        concurrency: The number of trials to run concurrently.
+        n_trials: The number of trials to run in total.
+        study: The study to use for optimization. If None, a new study will be created.
+        delay: The delay in seconds between starting each trial. Default is 0.
+    """
+
+    @property
+    def is_imperative(self) -> bool:
+        return isinstance(self.objective, AsyncPythonFunctionTask)
 
     def __post_init__(self):
         if self.study is None:
             self.study = optuna.create_study()
 
-        if (not isinstance(self.concurrency, int)) or (self.concurrency < 0):
+        if (not isinstance(self.concurrency, int)) or (not self.concurrency > 0):
             raise ValueError("concurrency must be an integer greater than 0")
 
-        if (not isinstance(self.n_trials, int)) or (self.n_trials < 0):
+        if (not isinstance(self.n_trials, int)) or (not self.n_trials > 0):
             raise ValueError("n_trials must be an integer greater than 0")
 
         if not isinstance(self.study, optuna.Study):
             raise ValueError("study must be an optuna.Study")
 
-        # check if the objective function returns the correct number of outputs
-        if isinstance(self.objective, PythonFunctionTask):
-            func = self.objective.task_function
-        elif isinstance(self.objective, PythonFunctionWorkflow):
-            func = self.objective._workflow_function
-        else:
-            raise ValueError("objective must be a PythonFunctionTask or PythonFunctionWorkflow")
+        if not isinstance(self.delay, int) or (not self.delay >= 0):
+            raise ValueError("delay must be an integer greater than or equal to 0")
 
-        signature = inspect.signature(func)
+        if self.is_imperative:
+            signature = inspect.signature(self.objective.task_function)
 
-        if signature.return_annotation is float:
-            if len(self.study.directions) != 1:
-                raise ValueError("the study must have a single objective if objective returns a single float")
+            if signature.return_annotation is float:
+                if len(self.study.directions) != 1:
+                    raise ValueError("the study must have a single objective if objective returns a single float")
 
-        elif isinstance(args := signature.return_annotation.__args__, tuple):
-            if len(args) != len(self.study.directions):
-                raise ValueError("objective must return the same number of directions in the study")
+            elif hasattr(signature.return_annotation, "__args__"):
+                args = signature.return_annotation.__args__
+                if len(args) != len(self.study.directions):
+                    raise ValueError("objective must return the same number of directions in the study")
 
-            if not all(arg is float for arg in args):
+                if not all(arg is float for arg in args):
+                    raise ValueError("objective function must return a float or tuple of floats")
+
+            else:
                 raise ValueError("objective function must return a float or tuple of floats")
 
         else:
-            raise ValueError("objective function must return a float or tuple of floats")
+            if not callable(self.objective):
+                raise ValueError("objective must be a callable or a AsyncPythonFunctionTask")
 
-    async def __call__(self, **inputs: Any):
+            signature = inspect.signature(self.objective)
+
+            if "trial" not in signature.parameters:
+                raise ValueError(
+                    "objective function must have a parameter called 'trial' if not a AsyncPythonFunctionTask"
+                )
+
+    async def __call__(self, **inputs: P.kwargs):
         """
         Asynchronously executes the objective function remotely.
         Parameters:
@@ -101,31 +133,28 @@ class Optimizer:
         semaphore = asyncio.Semaphore(self.concurrency)
 
         # create list of async trials
-        trials = [self.spawn(semaphore, **inputs) for _ in range(self.n_trials)]
+        trials = [self.spawn(semaphore, deepcopy(inputs)) for _ in range(self.n_trials)]
 
         # await all trials to complete
         await asyncio.gather(*trials)
 
-    async def spawn(self, semaphore: asyncio.Semaphore, **inputs: Any):
+    async def spawn(self, semaphore: asyncio.Semaphore, inputs: dict[str, Any]):
         async with semaphore:
+            await asyncio.sleep(self.delay)
+
             # ask for a new trial
             trial: optuna.Trial = self.study.ask()
 
-            suggesters = {
-                Float: trial.suggest_float,
-                Integer: trial.suggest_int,
-                Category: trial.suggest_categorical,
-            }
-
-            # suggest inputs for the trial
-            for key, value in inputs.items():
-                if isinstance(value, Suggestion):
-                    suggester = suggesters[type(value)]
-                    inputs[key] = suggester(name=key, **vars(value))
-
             try:
+                result: Union[float, tuple[float, ...]]
+
                 # schedule the trial
-                result: Union[float, tuple[float, ...]] = await self.objective(**inputs)
+                if self.is_imperative:
+                    result = await self.objective(**process(trial, inputs))
+
+                else:
+                    out = self.objective(trial=trial, **inputs)
+                    result = out if not inspect.isawaitable(out) else await out
 
                 # tell the study the result
                 self.study.tell(trial, result, state=optuna.trial.TrialState.COMPLETE)
@@ -133,3 +162,51 @@ class Optimizer:
             # if the trial fails, tell the study
             except EagerException:
                 self.study.tell(trial, state=optuna.trial.TrialState.FAIL)
+
+
+def optimize(
+    objective: Optional[Union[CallbackType, AsyncPythonFunctionTask]] = None,
+    concurrency: int = 1,
+    n_trials: int = 1,
+    study: Optional[optuna.Study] = None,
+):
+    if objective is not None:
+        if callable(objective) or isinstance(objective, AsyncPythonFunctionTask):
+            return Optimizer(
+                objective=objective,
+                concurrency=concurrency,
+                n_trials=n_trials,
+                study=study,
+            )
+
+        else:
+            raise ValueError("This decorator must be called with a callable or a flyte Task")
+    else:
+
+        def decorator(objective):
+            return Optimizer(objective=objective, concurrency=concurrency, n_trials=n_trials, study=study)
+
+        return decorator
+
+
+def process(trial: optuna.Trial, inputs: dict[str, Any], root: Optional[list[str]] = None) -> dict[str, Any]:
+    if root is None:
+        root = []
+
+    suggesters = {
+        Float: trial.suggest_float,
+        Integer: trial.suggest_int,
+        Category: trial.suggest_categorical,
+    }
+
+    for key, value in inputs.items():
+        path = copy(root) + [key]
+
+        if isinstance(inputs[key], Suggestion):
+            suggester = suggesters[type(value)]
+            inputs[key] = suggester(name=(".").join(path), **vars(value))
+
+        elif isinstance(value, dict):
+            inputs[key] = process(trial=trial, inputs=value, root=path)
+
+    return inputs
