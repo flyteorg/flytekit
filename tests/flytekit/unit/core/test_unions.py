@@ -157,6 +157,7 @@ def test_ambiguous_union_transformer_to_literal():
 
     with pytest.raises(
         TypeError,
-        match=("Potential types:")
+        match=("Ambiguous choice of variant for union type.\n"
+               "Potential types: \\[<class '.*\\.A'>, <class '.*\\.B'>\\]")
     ):
         t1()
