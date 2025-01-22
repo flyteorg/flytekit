@@ -17,8 +17,6 @@ def mock_k8s_manager():
         yield mock_k8s_manager
 
 
-# @patch("flytekitplugins.k8sdataservice.agent.yaml.safe_load", new_callable=mock_open, read_data="task_logs: {}")
-# @patch("flytekitplugins.k8sdataservice.agent.open", return_value={"task_logs": {"templates": [{"templateUris": ["https://some-log-url"]}]}})
 def test_gnn_task():
     gnn_config = DataServiceConfig(
         Name="test",
