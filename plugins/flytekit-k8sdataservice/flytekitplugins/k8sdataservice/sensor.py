@@ -37,14 +37,15 @@ class CleanupSensor(BaseSensor):
         self.release_name = release_name
         self.cleanup_data_service = cleanup_data_service
         self.cluster = cluster
+        return await self._handle_cleanup()
+
+    async def _handle_cleanup(self) -> bool:
         if not self.cleanup_data_service:
             logger.info(
                 f"User decides to not to clean up the graph engine: {self.release_name} in cluster {self.cluster}, namespace {self.namespace}"
             )
             logger.info("DataService sensor will stop polling")
             return True
-        # NOTE: the sensory node can be appended to the end of workflow.
-        # So the training jobs are guaranteed to be finished, regardless of success or failure.
         logger.info(f"The training job is in terminal stage, deleting graph engine {self.release_name}")
         self.delete_data_service()
         return True

@@ -49,66 +49,10 @@ class K8sManager:
         return api_response.metadata.name
 
     def create_stateful_set_object(self):
-        ss_replicas = self.data_service_config.get("Replicas", 1)
-        port = self.data_service_config.get("Port", 40000)
-        ss_env = [
-            client.V1EnvVar(name="GE_BASE_PORT", value=str(port)),
-            # I found that the the integer is serialized into float, and we have to
-            # change it to int type first, and then to string type. Otherwise, it will be
-            # something like "10.0".
-            client.V1EnvVar(name="GE_COUNT", value=str(int(ss_replicas))),
-            client.V1EnvVar(name="SERVER_PORT", value=str(port)),
-        ]
-        container = client.V1Container(
-            name=self.name,
-            image=self.data_service_config["Image"],
-            image_pull_policy="IfNotPresent",
-            ports=[client.V1ContainerPort(container_port=port, name="graph-engine")],
-            command=self.data_service_config["Command"],
-            env=ss_env,
-            resources=self.get_resources(),
-            volume_mounts=[
-                client.V1VolumeMount(
-                    mount_path="/etc/cm.json",
-                    name="cm-json-volume",
-                    read_only=True,
-                )
-            ],
-        )
-        self.labels.update({"app.kubernetes.io/instance": self.name})
-        template = client.V1PodTemplateSpec(
-            metadata=client.V1ObjectMeta(
-                labels=self.labels,
-                annotations={},
-            ),
-            spec=client.V1PodSpec(
-                containers=[container],
-                volumes=[
-                    client.V1Volume(
-                        name="cm-json-volume",
-                        host_path=client.V1HostPathVolumeSource(
-                            path="/etc/cm.json",
-                            type="FileOrCreate",
-                        ),
-                    )
-                ],
-                security_context=client.V1PodSecurityContext(
-                    fs_group=1001,
-                    run_as_group=1001,
-                    run_as_non_root=True,
-                    run_as_user=1001,
-                ),
-            ),
-        )
-        spec = client.V1StatefulSetSpec(
-            replicas=int(ss_replicas),
-            selector=client.V1LabelSelector(
-                match_labels={"app.kubernetes.io/instance": self.name},
-            ),
-            service_name=self.name,
-            template=template,
-        )
-        statefulset = client.V1StatefulSet(
+        container = self._create_container()
+        template = self._create_pod_template(container)
+        spec = self._create_stateful_set_spec(template)
+        return client.V1StatefulSet(
             api_version="apps/v1",
             kind="StatefulSet",
             metadata=client.V1ObjectMeta(
@@ -118,7 +62,53 @@ class K8sManager:
             ),
             spec=spec,
         )
-        return statefulset
+
+    def _create_container(self):
+        ss_replicas = self.data_service_config.get("Replicas", 1)
+        port = self.data_service_config.get("Port", 40000)
+        ss_env = [
+            client.V1EnvVar(name="GE_BASE_PORT", value=str(port)),
+            client.V1EnvVar(name="GE_COUNT", value=str(int(ss_replicas))),
+            client.V1EnvVar(name="SERVER_PORT", value=str(port)),
+        ]
+        return client.V1Container(
+            name=self.name,
+            image=self.data_service_config["Image"],
+            image_pull_policy="IfNotPresent",
+            ports=[client.V1ContainerPort(container_port=port, name="graph-engine")],
+            command=self.data_service_config["Command"],
+            env=ss_env,
+            resources=self.get_resources(),
+        )
+
+    def _create_pod_template(self, container):
+        self.labels.update({"app.kubernetes.io/instance": self.name})
+        return client.V1PodTemplateSpec(
+            metadata=client.V1ObjectMeta(
+                labels=self.labels,
+                annotations={},
+            ),
+            spec=client.V1PodSpec(
+                containers=[container],
+                security_context=client.V1PodSecurityContext(
+                    fs_group=1001,
+                    run_as_group=1001,
+                    run_as_non_root=True,
+                    run_as_user=1001,
+                ),
+            ),
+        )
+
+    def _create_stateful_set_spec(self, template):
+        ss_replicas = self.data_service_config.get("Replicas", 1)
+        return client.V1StatefulSetSpec(
+            replicas=int(ss_replicas),
+            selector=client.V1LabelSelector(
+                match_labels={"app.kubernetes.io/instance": self.name},
+            ),
+            service_name=self.name,
+            template=template,
+        )
 
     def create_service(self) -> str:
         namespace = self.namespace
@@ -151,7 +141,7 @@ class K8sManager:
         api_response = None
         try:
             api_response = self.core_v1_api.create_namespaced_service(namespace=namespace, body=body)
-        except Exception as e:
+        except ApiException as e:
             logger.error(f"Exception when calling CoreV1Api->create_namespaced_service: {e}")
             raise e
         # This will not happen in K8s API, but in case.
