@@ -632,6 +632,93 @@ class FlyteRemote(object):
         s = resp.signals
         return s
 
+    def approve(self, signal_id: str, execution_name: str, project: str = None, domain: str = None):
+        """
+        :param signal_id: The name of the signal, this is the key used in the approve() or wait_for_input() call.
+        :param execution_name: The name of the execution. This is the tail-end of the URL when looking
+            at the workflow execution.
+        :param project: The execution project, will default to the Remote's default project.
+        :param domain: The execution domain, will default to the Remote's default domain.
+        """
+
+        wf_exec_id = WorkflowExecutionIdentifier(
+            project=project or self.default_project, domain=domain or self.default_domain, name=execution_name
+        )
+
+        lt = TypeEngine.to_literal_type(bool)
+        true_literal = TypeEngine.to_literal(self.context, True, bool, lt)
+
+        req = SignalSetRequest(
+            id=SignalIdentifier(signal_id, wf_exec_id).to_flyte_idl(), value=true_literal.to_flyte_idl()
+        )
+
+        # Response is empty currently, nothing to give back to the user.
+        self.client.set_signal(req)
+
+    def reject(self, signal_id: str, execution_name: str, project: str = None, domain: str = None):
+        """
+        :param signal_id: The name of the signal, this is the key used in the approve() or wait_for_input() call.
+        :param execution_name: The name of the execution. This is the tail-end of the URL when looking
+            at the workflow execution.
+        :param project: The execution project, will default to the Remote's default project.
+        :param domain: The execution domain, will default to the Remote's default domain.
+        """
+
+        wf_exec_id = WorkflowExecutionIdentifier(
+            project=project or self.default_project, domain=domain or self.default_domain, name=execution_name
+        )
+
+        lt = TypeEngine.to_literal_type(bool)
+        false_literal = TypeEngine.to_literal(self.context, False, bool, lt)
+
+        req = SignalSetRequest(
+            id=SignalIdentifier(signal_id, wf_exec_id).to_flyte_idl(), value=false_literal.to_flyte_idl()
+        )
+
+        # Response is empty currently, nothing to give back to the user.
+        self.client.set_signal(req)
+
+    def set_input(
+        self,
+        signal_id: str,
+        execution_name: str,
+        value: typing.Union[literal_models.Literal, typing.Any],
+        project=None,
+        domain=None,
+        python_type=None,
+        literal_type=None,
+    ):
+        """
+        :param signal_id: The name of the signal, this is the key used in the approve() or wait_for_input() call.
+        :param execution_name: The name of the execution. This is the tail-end of the URL when looking
+            at the workflow execution.
+        :param value: This is either a Literal or a Python value which FlyteRemote will invoke the TypeEngine to
+            convert into a Literal. This argument is only value for wait_for_input type signals.
+        :param project: The execution project, will default to the Remote's default project.
+        :param domain: The execution domain, will default to the Remote's default domain.
+        :param python_type: Provide a python type to help with conversion if the value you provided is not a Literal.
+        :param literal_type: Provide a Flyte literal type to help with conversion if the value you provided
+            is not a Literal
+        """
+
+        wf_exec_id = WorkflowExecutionIdentifier(
+            project=project or self.default_project, domain=domain or self.default_domain, name=execution_name
+        )
+        if isinstance(value, Literal):
+            logger.debug(f"Using provided {value} as existing Literal value")
+            lit = value
+        else:
+            lt = literal_type or (
+                TypeEngine.to_literal_type(python_type) if python_type else TypeEngine.to_literal_type(type(value))
+            )
+            lit = TypeEngine.to_literal(self.context, value, python_type or type(value), lt)
+            logger.debug(f"Converted {value} to literal {lit} using literal type {lt}")
+
+        req = SignalSetRequest(id=SignalIdentifier(signal_id, wf_exec_id).to_flyte_idl(), value=lit.to_flyte_idl())
+
+        # Response is empty currently, nothing to give back to the user.
+        self.client.set_signal(req)
+
     def set_signal(
         self,
         signal_id: str,
