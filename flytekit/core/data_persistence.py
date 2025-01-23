@@ -338,7 +338,9 @@ class FileAccessProvider(object):
         """
         file_system = await self.get_async_filesystem_for_path(to_path)
         from_path = self.strip_file_header(from_path)
-        kwargs["chunksize"] = 1 * 2**20
+        import os
+        cs = os.environ.get("chunksize", "8388608")  # 8 * 2**20
+        kwargs["chunksize"] = int(cs)
         if recursive:
             # Only check this for the local filesystem
             if file_system.protocol == "file" and not file_system.isdir(from_path):
