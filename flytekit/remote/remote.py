@@ -23,7 +23,6 @@ from collections import OrderedDict
 from dataclasses import asdict, dataclass
 from dataclasses import replace as dc_replace
 from datetime import datetime, timedelta
-from rich.progress import Progress, TextColumn, TimeElapsedColumn
 from typing import Dict
 
 import click
@@ -32,6 +31,7 @@ import fsspec
 import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
 from flyteidl.core import literals_pb2
+from rich.progress import Progress, TextColumn, TimeElapsedColumn
 
 from flytekit import ImageSpec
 from flytekit.clients.friendly import SynchronousFlyteClient
@@ -78,7 +78,7 @@ from flytekit.exceptions.user import (
     FlyteEntityNotExistException,
     FlyteValueException,
 )
-from flytekit.loggers import developer_logger, logger, is_display_progress_enabled
+from flytekit.loggers import developer_logger, is_display_progress_enabled, logger
 from flytekit.models import common as common_models
 from flytekit.models import filters as filter_models
 from flytekit.models import launch_plan as launch_plan_models

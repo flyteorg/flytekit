@@ -17,11 +17,10 @@ from typing import List, Optional, Union
 import click
 from rich import print as rich_print
 from rich.progress import (
-    Progress,
-    TimeElapsedColumn,
-    TextColumn,
     BarColumn,
-    TaskProgressColumn,
+    Progress,
+    TextColumn,
+    TimeElapsedColumn,
 )
 from rich.tree import Tree
 
@@ -30,7 +29,7 @@ from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.python_auto_container import PICKLE_FILE_PATH
 from flytekit.core.utils import timeit
 from flytekit.exceptions.user import FlyteDataNotFoundException
-from flytekit.loggers import logger, is_display_progress_enabled
+from flytekit.loggers import is_display_progress_enabled, logger
 from flytekit.tools.ignore import (
     DockerIgnore,
     FlyteIgnore,
