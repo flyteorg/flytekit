@@ -52,6 +52,8 @@ _ANON = "anon"
 
 Uploadable = typing.Union[str, os.PathLike, pathlib.Path, bytes, io.BufferedReader, io.BytesIO, io.StringIO]
 
+# This is the default chunk size flytekit will use for writing to S3 and GCS. This is set to 25MB by default and is
+# configurable by the user if needed. This is used when put() is called on filesystems.
 _WRITE_SIZE_CHUNK_BYTES = int(os.environ.get("_F_P_WRITE_CHUNK_SIZE", "26214400"))  # 25 * 2**20
 
 
@@ -123,12 +125,10 @@ def get_additional_fsspec_call_kwargs(protocol: typing.Union[str, tuple], method
     if isinstance(protocol, tuple):
         protocol = protocol[0]
 
-    if protocol == "s3":
-        if method_name == "put":
-            kwargs["chunksize"] = _WRITE_SIZE_CHUNK_BYTES
-    if protocol == "gs":
-        if method_name == "put":
-            kwargs["chunksize"] = _WRITE_SIZE_CHUNK_BYTES
+    # For s3fs and gcsfs, we feel the default chunksize of 50MB is too big.
+    # Re-evaluate these kwargs when we move off of s3fs to obstore.
+    if method_name == "put" and protocol in ["s3", "gs"]:
+        kwargs["chunksize"] = _WRITE_SIZE_CHUNK_BYTES
 
     return kwargs
 

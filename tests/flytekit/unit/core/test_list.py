@@ -16,8 +16,6 @@ from flytekit.models.literals import (
 )
 from flytekit.models.types import LiteralType, SimpleType
 
-T = typing.TypeVar("T")
-
 
 class MyInt:
     def __init__(self, x: int):
