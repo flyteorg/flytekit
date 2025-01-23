@@ -60,7 +60,9 @@ T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
 TITLE = "title"
 
-_TYPE_ENGINE_COROS_BATCH_SIZE = 30
+coros_env = os.environ.get("FLYTE_COROS", "5")
+
+_TYPE_ENGINE_COROS_BATCH_SIZE = int(coros_env)
 
 
 # In Mashumaro, the default encoder uses strict_map_key=False, while the default decoder uses strict_map_key=True.
