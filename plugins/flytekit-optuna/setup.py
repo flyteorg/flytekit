@@ -4,7 +4,7 @@ PLUGIN_NAME = "optuna"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=1.15.0", "optuna>=4.0.0,<5.0.0"]
+plugin_requires = ["flytekit>=1.15.0", "optuna>=4.0.0,<5.0.0", "typing-extensions>=4.10,<5.0"]
 
 __version__ = "0.0.0+develop"
 

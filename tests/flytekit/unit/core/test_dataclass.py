@@ -6,6 +6,7 @@ import os
 import sys
 import tempfile
 from dataclasses import dataclass, fields, field
+from dataclasses_json import DataClassJsonMixin, dataclass_json
 from typing import List, Dict, Optional, Union, Any
 from typing_extensions import Annotated
 from flytekit.types.schema import FlyteSchema
@@ -17,6 +18,7 @@ from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import FlyteFile
 from flytekit.types.structured import StructuredDataset
 
+
 @pytest.fixture
 def local_dummy_txt_file():
     fd, path = tempfile.mkstemp(suffix=".txt")
@@ -27,6 +29,7 @@ def local_dummy_txt_file():
     finally:
         os.remove(path)
 
+
 @pytest.fixture
 def local_dummy_directory():
     temp_dir = tempfile.TemporaryDirectory()
@@ -36,6 +39,7 @@ def local_dummy_directory():
         yield temp_dir.name
     finally:
         temp_dir.cleanup()
+
 
 def test_dataclass():
     @dataclass
@@ -65,6 +69,7 @@ def test_dataclass_assert_works_for_annotated():
 
     d = Annotated[MyDC, "tag"]
     DataclassTransformer().assert_type(d, MyDC(my_str="hi"))
+
 
 def test_pure_dataclasses_with_python_types():
     @dataclass
@@ -330,6 +335,7 @@ def test_pure_dataclasses_with_flyte_types_get_literal_type_and_to_python_value(
     assert isinstance(pv, NestedFlyteTypes)
     DataclassTransformer().assert_type(NestedFlyteTypes, pv)
 
+
 ## For dataclasses json mixin, it's equal to use @dataclasses_json
 def test_dataclasses_json_mixin_with_python_types():
     @dataclass
@@ -401,7 +407,6 @@ def test_dataclasses_json_mixin__with_python_types_get_literal_type_and_to_pytho
         list_dict_dc: Optional[List[Dict[str, DC]]] = None
 
     ctx = FlyteContextManager.current_context()
-
 
     o = DCWithOptional()
     lt = TypeEngine.to_literal_type(DCWithOptional)
@@ -596,6 +601,7 @@ def test_dataclasses_json_mixin_with_flyte_types_get_literal_type_and_to_python_
     assert isinstance(pv, NestedFlyteTypes)
     DataclassTransformer().assert_type(NestedFlyteTypes, pv)
 
+
 # For mashumaro dataclasses mixins, it's equal to use @dataclasses only
 def test_mashumaro_dataclasses_json_mixin_with_python_types():
     @dataclass
@@ -648,6 +654,34 @@ def test_mashumaro_dataclasses_json_mixin_with_python_types():
 
     DataclassTransformer().assert_type(DCWithOptional, dc1)
     DataclassTransformer().assert_type(DCWithOptional, dc2)
+
+
+def test_ret_unions():
+    @dataclass_json
+    @dataclass
+    class DC:
+        my_string: str
+
+    @dataclass_json
+    @dataclass
+    class DCWithOptional:
+        my_float: float
+
+    @task
+    def make_union(a: int) -> Union[DC, DCWithOptional]:
+        if a > 10:
+            return DC(my_string="hello")
+        else:
+            return DCWithOptional(my_float=3.14)
+
+    @workflow
+    def make_union_wf(a: int) -> Union[DC, DCWithOptional]:
+        return make_union(a=a)
+
+    dc = make_union_wf(a=15)
+    assert dc.my_string == "hello"
+    dc = make_union_wf(a=5)
+    assert dc.my_float == 3.14
 
 
 def test_mashumaro_dataclasses_json_mixin_with_python_types_get_literal_type_and_to_python_value():
@@ -861,6 +895,7 @@ def test_mashumaro_dataclasses_json_mixin_with_flyte_types_get_literal_type_and_
     assert isinstance(pv, NestedFlyteTypes)
     DataclassTransformer().assert_type(NestedFlyteTypes, pv)
 
+
 def test_get_literal_type_data_class_json_fail_but_mashumaro_works():
     @dataclass
     class FlyteTypesWithDataClassJson(DataClassJsonMixin):
@@ -885,6 +920,8 @@ def test_get_literal_type_data_class_json_fail_but_mashumaro_works():
     transformer = DataclassTransformer()
     lt = transformer.get_literal_type(NestedFlyteTypesWithDataClassJson)
     assert lt.metadata is not None
+
+
 @pytest.mark.skipif(sys.version_info < (3, 10), reason="Requires Python 3.10 or higher")
 def test_numpy_import_issue_from_flyte_schema_in_dataclass():
     from dataclasses import dataclass
@@ -916,6 +953,7 @@ def test_numpy_import_issue_from_flyte_schema_in_dataclass():
     assert main_flyte_workflow(b=True) == True
     assert main_flyte_workflow(b=False) == False
 
+
 def test_dataclass_union_primitive_types_and_enum():
     class Status(Enum):
         PENDING = "pending"
@@ -933,6 +971,7 @@ def test_dataclass_union_primitive_types_and_enum():
         return dc
 
     my_task(dc=DC())
+
 
 def test_dataclass_with_json_mixin_union_primitive_types_and_enum():
     class Status(Enum):
@@ -952,6 +991,7 @@ def test_dataclass_with_json_mixin_union_primitive_types_and_enum():
 
     my_task(dc=DC())
 
+
 def test_frozen_dataclass():
     @dataclass(frozen=True)
     class FrozenDataclass:
@@ -969,6 +1009,7 @@ def test_frozen_dataclass():
     assert b == 2.0
     assert c == True
     assert d == "hello"
+
 
 def test_pure_frozen_dataclasses_with_python_types():
     @dataclass(frozen=True)
@@ -1021,6 +1062,7 @@ def test_pure_frozen_dataclasses_with_python_types():
 
     DataclassTransformer().assert_type(DCWithOptional, dc1)
     DataclassTransformer().assert_type(DCWithOptional, dc2)
+
 
 def test_pure_frozen_dataclasses_with_flyte_types(local_dummy_txt_file, local_dummy_directory):
     @dataclass(frozen=True)
@@ -1118,6 +1160,7 @@ def test_pure_frozen_dataclasses_with_flyte_types(local_dummy_txt_file, local_du
 
     empty_nested_flyte_types = empty_nested_dc_wf()
     DataclassTransformer().assert_type(NestedFlyteTypes, empty_nested_flyte_types)
+
 
 def test_dataclass_serialize_with_multiple_dataclass_union():
     @dataclass

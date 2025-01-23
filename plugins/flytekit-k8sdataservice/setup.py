@@ -1,24 +1,22 @@
-from setuptools import setup
+from setuptools import find_namespace_packages, setup
 
-PLUGIN_NAME = "pydantic"
+PLUGIN_NAME = "k8sdataservice"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=1.7.0b0", "pydantic<2"]
+plugin_requires = ["flytekit>=1.11.0,<2.0.0", "kubernetes>=23.6.0,<24.0.0", "flyteidl>=1.11.0,<2.0.0"]
 
 __version__ = "0.0.0+develop"
 
 setup(
     name=microlib_name,
     version=__version__,
-    author="flyteorg",
-    author_email="admin@flyte.org",
-    description="Plugin adding type support for Pydantic models",
-    url="https://github.com/flyteorg/flytekit/tree/master/plugins/flytekit-pydantic",
-    long_description=open("README.md").read(),
-    long_description_content_type="text/markdown",
+    author="LinkedIn",
+    author_email="shuliang@linkedin.com",
+    description="Flytekit K8s Data Service Plugin",
     namespace_packages=["flytekitplugins"],
-    packages=[f"flytekitplugins.{PLUGIN_NAME}"],
+    packages=find_namespace_packages(where="."),
+    include_package_data=True,
     install_requires=plugin_requires,
     license="apache2",
     python_requires=">=3.9",
@@ -29,6 +27,7 @@ setup(
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
         "Topic :: Scientific/Engineering",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Software Development",
