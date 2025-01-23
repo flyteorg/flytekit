@@ -10,7 +10,6 @@ import flyteidl.admin.cluster_assignment_pb2 as _cluster_assignment_pb2
 import flyteidl.admin.execution_pb2 as _execution_pb2
 import flyteidl.admin.node_execution_pb2 as _node_execution_pb2
 import flyteidl.admin.task_execution_pb2 as _task_execution_pb2
-from google.protobuf import wrappers_pb2 as _google_wrappers_pb2
 
 import flytekit
 from flytekit.models import common as _common_models
@@ -329,9 +328,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             max_parallelism=self.max_parallelism,
             security_context=self.security_context.to_flyte_idl() if self.security_context else None,
             overwrite_cache=self.overwrite_cache,
-            interruptible=_google_wrappers_pb2.BoolValue(value=self.interruptible)
-            if self.interruptible is not None
-            else None,
+            interruptible=self.interruptible if self.interruptible is not None else None,
             envs=self.envs.to_flyte_idl() if self.envs else None,
             tags=self.tags,
             cluster_assignment=self._cluster_assignment.to_flyte_idl() if self._cluster_assignment else None,
