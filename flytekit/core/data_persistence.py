@@ -339,6 +339,7 @@ class FileAccessProvider(object):
         file_system = await self.get_async_filesystem_for_path(to_path)
         from_path = self.strip_file_header(from_path)
         import os
+
         cs = os.environ.get("chunksize", "8388608")  # 8 * 2**20
         kwargs["chunksize"] = int(cs)
         if recursive:

@@ -1690,13 +1690,11 @@ class ListTransformer(AsyncTypeTransformer[T]):
             raise TypeTransformerFailedError("Expected a list")
 
         t = self.get_sub_type(python_type)
-        lit_list = [
-            asyncio.create_task(TypeEngine.async_to_literal(ctx, x, t, expected.collection_type)) for x in python_val
-        ]
+        lit_list = [TypeEngine.async_to_literal(ctx, x, t, expected.collection_type) for x in python_val]
         print(f"Type engine batch size: {_TYPE_ENGINE_COROS_BATCH_SIZE}")
         print(f"Number of coros {len(lit_list)}", flush=True)
 
-        lit_list = await _run_coros_in_chunks(lit_list, batch_size=_TYPE_ENGINE_COROS_BATCH_SIZE)
+        lit_list = await _run_coros_in_chunks(lit_list, batch_size=1)
 
         return Literal(collection=LiteralCollection(literals=lit_list))
 
@@ -2165,13 +2163,10 @@ class DictTransformer(AsyncTypeTransformer[dict]):
             else:
                 _, v_type = self.extract_types_or_metadata(python_type)
 
-            lit_map[k] = asyncio.create_task(
-                TypeEngine.async_to_literal(ctx, v, cast(type, v_type), expected.map_value_type)
-            )
-
-        await _run_coros_in_chunks([c for c in lit_map.values()], batch_size=_TYPE_ENGINE_COROS_BATCH_SIZE)
-        for k, v in lit_map.items():
-            lit_map[k] = v.result()
+            lit_map[k] = TypeEngine.async_to_literal(ctx, v, cast(type, v_type), expected.map_value_type)
+        vals = await _run_coros_in_chunks([c for c in lit_map.values()], batch_size=_TYPE_ENGINE_COROS_BATCH_SIZE)
+        for idx, k in zip(range(len(vals)), lit_map.keys()):
+            lit_map[k] = vals[idx]
 
         return Literal(map=LiteralMap(literals=lit_map))
 
@@ -2192,12 +2187,11 @@ class DictTransformer(AsyncTypeTransformer[dict]):
                 raise TypeError("TypeMismatch. Destination dictionary does not accept 'str' key")
             py_map = {}
             for k, v in lv.map.literals.items():
-                fut = asyncio.create_task(TypeEngine.async_to_python_value(ctx, v, cast(Type, tp[1])))
-                py_map[k] = fut
+                py_map[k] = TypeEngine.async_to_python_value(ctx, v, cast(Type, tp[1]))
 
-            await _run_coros_in_chunks([c for c in py_map.values()], batch_size=_TYPE_ENGINE_COROS_BATCH_SIZE)
-            for k, v in py_map.items():
-                py_map[k] = v.result()
+            vals = await _run_coros_in_chunks([c for c in py_map.values()], batch_size=_TYPE_ENGINE_COROS_BATCH_SIZE)
+            for idx, k in zip(range(len(vals)), py_map.keys()):
+                py_map[k] = vals[idx]
 
             return py_map
 
