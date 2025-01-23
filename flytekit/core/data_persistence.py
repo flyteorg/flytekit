@@ -71,10 +71,9 @@ def s3store_from_env(bucket: str, retries: int, backoff: timedelta, **store_kwar
         bucket,
         config={
             **store_kwargs,
-            "aws_allow_http": "true",  # Allow HTTP connections
             "aws_virtual_hosted_style_request": "false",  # Use path-style addressing
         },
-        client_options={"timeout": "999999s"},  # need to put this to somewhere for user to config?
+        client_options={"timeout": "99999s", "allow_http": "true"},
         retry_config={
             "max_retries": retries,
             "backoff": {
