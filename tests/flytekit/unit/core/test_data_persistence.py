@@ -216,7 +216,7 @@ def test_get_additional_fsspec_call_kwargs():
         kwargs = get_additional_fsspec_call_kwargs(("s3", "s3a"), "put")
         assert kwargs == {"chunksize": 12345}
 
-        kwargs = get_additional_fsspec_call_kwargs("s3", "put")
+        kwargs = get_additional_fsspec_call_kwargs("s3", "_put")
         assert kwargs == {"chunksize": 12345}
 
         kwargs = get_additional_fsspec_call_kwargs("s3", "get")
