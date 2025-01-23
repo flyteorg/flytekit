@@ -1694,7 +1694,7 @@ class ListTransformer(AsyncTypeTransformer[T]):
         print(f"Type engine batch size: {_TYPE_ENGINE_COROS_BATCH_SIZE}")
         print(f"Number of coros {len(lit_list)}", flush=True)
 
-        lit_list = await _run_coros_in_chunks(lit_list, batch_size=1)
+        lit_list = await _run_coros_in_chunks(lit_list, batch_size=_TYPE_ENGINE_COROS_BATCH_SIZE)
 
         return Literal(collection=LiteralCollection(literals=lit_list))
 
