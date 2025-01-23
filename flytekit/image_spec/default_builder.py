@@ -27,8 +27,8 @@ WORKDIR /root
 RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/uv,id=uv \
     --mount=from=uv,source=/uv,target=/usr/bin/uv \
     --mount=type=bind,target=uv.lock,src=uv.lock \
-    --mount=type=bind,target=pyproject.toml,src=pyproject.toml \
-    uv sync $PIP_INSTALL_ARGS
+    --mount=type=bind,target=pyproject.toml,src=pyproject.toml  $PIP_SECRET_MOUNT \
+    $PIP_PREINSTALL_COMMAND uv sync $PIP_INSTALL_ARGS $PIP_POSTINSTALL_COMMAND
 WORKDIR /
 
 # Update PATH and UV_PYTHON to point to the venv created by uv sync
@@ -51,8 +51,8 @@ WORKDIR /root
 
 RUN --mount=type=cache,sharing=locked,mode=0777,target=/tmp/poetry_cache,id=poetry \
     --mount=type=bind,target=poetry.lock,src=poetry.lock \
-    --mount=type=bind,target=pyproject.toml,src=pyproject.toml \
-    poetry install $PIP_INSTALL_ARGS
+    --mount=type=bind,target=pyproject.toml,src=pyproject.toml  $PIP_SECRET_MOUNT \
+    $PIP_PREINSTALL_COMMAND poetry install $PIP_INSTALL_ARGS $PIP_POSTINSTALL_COMMAND
 
 WORKDIR /
 
@@ -66,8 +66,8 @@ UV_PYTHON_INSTALL_COMMAND_TEMPLATE = Template(
     """\
 RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/uv,id=uv \
     --mount=from=uv,source=/uv,target=/usr/bin/uv \
-    --mount=type=bind,target=requirements_uv.txt,src=requirements_uv.txt \
-    uv pip install $PIP_INSTALL_ARGS
+    --mount=type=bind,target=requirements_uv.txt,src=requirements_uv.txt $PIP_SECRET_MOUNT \
+    $PIP_PREINSTALL_COMMAND uv pip install $PIP_INSTALL_ARGS $PIP_POSTINSTALL_COMMAND
 """
 )
 
@@ -138,6 +138,9 @@ RUN mkdir -p $$HOME && \
 """)
 
 
+GITHUB_CREDENTIAL_SECRET = 'GITHUB_CREDENTIAL_SECRET'
+
+
 def get_flytekit_for_pypi():
     """Get flytekit version on PyPI."""
     from flytekit import __version__
@@ -195,8 +198,7 @@ def prepare_uv_lock_command(image_spec: ImageSpec, pip_install_args: List[str], 
     pip_install_args.extend(["--locked", "--no-dev", "--no-install-project"])
     pip_install_args = " ".join(pip_install_args)
 
-    return UV_LOCK_INSTALL_TEMPLATE.substitute(PIP_INSTALL_ARGS=pip_install_args)
-
+    return UV_LOCK_INSTALL_TEMPLATE, pip_install_args
 
 def prepare_poetry_lock_command(image_spec: ImageSpec, pip_install_args: List[str], tmp_dir: Path) -> str:
     _copy_lock_files_into_context(image_spec, "poetry.lock", tmp_dir)
@@ -204,7 +206,7 @@ def prepare_poetry_lock_command(image_spec: ImageSpec, pip_install_args: List[st
     # --no-root: Do not install the current project
     pip_install_args.extend(["--no-root"])
     pip_install_args = " ".join(pip_install_args)
-    return POETRY_LOCK_TEMPLATE.substitute(PIP_INSTALL_ARGS=pip_install_args)
+    return POETRY_LOCK_TEMPLATE, pip_install_args
 
 
 def prepare_python_install(image_spec: ImageSpec, tmp_dir: Path) -> str:
@@ -216,32 +218,42 @@ def prepare_python_install(image_spec: ImageSpec, tmp_dir: Path) -> str:
         extra_urls = [f"--extra-index-url {url}" for url in image_spec.pip_extra_index_url]
         pip_install_args.extend(extra_urls)
 
+    pip_preinstall_command = ""
+    pip_postinstall_command = ""
+    pip_secret_mount = ""
+    if image_spec.pip_github_credential_source:
+        pip_secret_mount = f"--mount=type=secret,id={GITHUB_CREDENTIAL_SECRET}"
+        pip_preinstall_command = f'git config --global url."https://$$(cat /run/secrets/{GITHUB_CREDENTIAL_SECRET})@github.com".insteadOf "https://github.com"'
+        pip_postinstall_command = f'git config --global --unset url."https://$$(cat /run/secrets/{GITHUB_CREDENTIAL_SECRET})@github.com".insteadOf "https://github.com"'
+
     requirements = []
+    template = None
     if image_spec.requirements:
         requirement_basename = os.path.basename(image_spec.requirements)
         if requirement_basename == "uv.lock":
-            return prepare_uv_lock_command(image_spec, pip_install_args, tmp_dir)
+            template, pip_install_args = prepare_uv_lock_command(image_spec, pip_install_args, tmp_dir)
         elif requirement_basename == "poetry.lock":
-            return prepare_poetry_lock_command(image_spec, pip_install_args, tmp_dir)
+            template, pip_install_args = prepare_poetry_lock_command(image_spec, pip_install_args, tmp_dir)
+        else:
+            with open(image_spec.requirements) as f:
+                requirements.extend([line.strip() for line in f.readlines()])
 
-        # Assume this is a requirements.txt file
-        with open(image_spec.requirements) as f:
-            requirements.extend([line.strip() for line in f.readlines()])
+    if template is None:
+        template = UV_PYTHON_INSTALL_COMMAND_TEMPLATE
+        if image_spec.packages:
+            requirements.extend(image_spec.packages)
 
-    if image_spec.packages:
-        requirements.extend(image_spec.packages)
+        # Adds flytekit if it is not specified
+        if not any(_is_flytekit(package) for package in requirements):
+            requirements.append(get_flytekit_for_pypi())
 
-    # Adds flytekit if it is not specified
-    if not any(_is_flytekit(package) for package in requirements):
-        requirements.append(get_flytekit_for_pypi())
+        requirements_uv_path = tmp_dir / "requirements_uv.txt"
+        requirements_uv_path.write_text("\n".join(requirements))
+        pip_install_args.extend(["--requirement", "requirements_uv.txt"])
 
-    requirements_uv_path = tmp_dir / "requirements_uv.txt"
-    requirements_uv_path.write_text("\n".join(requirements))
-    pip_install_args.extend(["--requirement", "requirements_uv.txt"])
+        pip_install_args = " ".join(pip_install_args)
 
-    pip_install_args = " ".join(pip_install_args)
-
-    return UV_PYTHON_INSTALL_COMMAND_TEMPLATE.substitute(PIP_INSTALL_ARGS=pip_install_args)
+    return template.substitute(PIP_INSTALL_ARGS=pip_install_args, PIP_SECRET_MOUNT=pip_secret_mount, PIP_PREINSTALL_COMMAND=pip_preinstall_command, PIP_POSTINSTALL_COMMAND=pip_postinstall_command)
 
 
 class _PythonInstallTemplate(NamedTuple):
@@ -459,6 +471,9 @@ class DefaultImageBuilder(ImageSpecBuilder):
                 "--platform",
                 image_spec.platform,
             ]
+
+            if image_spec.pip_github_credential_source:
+                command.extend(["--secret", f"id={GITHUB_CREDENTIAL_SECRET},src={image_spec.pip_github_credential_source}"])
 
             if image_spec.registry and push:
                 command.append("--push")
