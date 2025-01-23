@@ -60,7 +60,7 @@ T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
 TITLE = "title"
 
-coros_env = os.environ.get("FLYTE_COROS", "5")
+coros_env = os.environ.get("FLYTE_COROS", "10")
 
 _TYPE_ENGINE_COROS_BATCH_SIZE = int(coros_env)
 
@@ -1691,8 +1691,6 @@ class ListTransformer(AsyncTypeTransformer[T]):
 
         t = self.get_sub_type(python_type)
         lit_list = [TypeEngine.async_to_literal(ctx, x, t, expected.collection_type) for x in python_val]
-        print(f"Type engine batch size: {_TYPE_ENGINE_COROS_BATCH_SIZE}")
-        print(f"Number of coros {len(lit_list)}", flush=True)
 
         lit_list = await _run_coros_in_chunks(lit_list, batch_size=_TYPE_ENGINE_COROS_BATCH_SIZE)
 
