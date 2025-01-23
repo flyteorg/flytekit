@@ -52,7 +52,7 @@ _ANON = "anon"
 
 Uploadable = typing.Union[str, os.PathLike, pathlib.Path, bytes, io.BufferedReader, io.BytesIO, io.StringIO]
 
-_S3_WRITE_SIZE_CHUNK_BYTES = int(os.environ.get("FLYTE_S3_WRITE_CHUNKSIZE_BYTES", "26214400"))  # 25 * 2**20
+_WRITE_SIZE_CHUNK_BYTES = int(os.environ.get("_F_P_WRITE_CHUNK_SIZE", "26214400"))  # 25 * 2**20
 
 
 def s3_setup_args(s3_cfg: configuration.S3Config, anonymous: bool = False) -> Dict[str, Any]:
@@ -108,6 +108,29 @@ def get_fsspec_storage_options(
     if protocol in ("abfs", "abfss"):
         return {**azure_setup_args(data_config.azure, anonymous=anonymous), **kwargs}
     return {}
+
+
+def get_additional_fsspec_call_kwargs(protocol: typing.Union[str, tuple], method_name: str) -> Dict[str, Any]:
+    """
+    These are different from the setup args functions defined above. Those kwargs are applied when asking fsspec
+    to create the filesystem. These kwargs returned here are for when the filesystem's methods are invoked.
+
+    :param protocol: s3, gcs, etc.
+    :param method_name: Pass in the __name__ of the fsspec.filesystem function. _'s will be ignored.
+    """
+    kwargs = {}
+    method_name = method_name.replace("_", "")
+    if isinstance(protocol, tuple):
+        protocol = protocol[0]
+
+    if protocol == "s3":
+        if method_name == "put":
+            kwargs["chunksize"] = _WRITE_SIZE_CHUNK_BYTES
+    if protocol == "gs":
+        if method_name == "put":
+            kwargs["chunksize"] = _WRITE_SIZE_CHUNK_BYTES
+
+    return kwargs
 
 
 @decorator
@@ -342,8 +365,6 @@ class FileAccessProvider(object):
         from_path = self.strip_file_header(from_path)
         import os
 
-        if to_path.startswith("s3"):
-            kwargs["chunksize"] = _S3_WRITE_SIZE_CHUNK_BYTES
         if recursive:
             # Only check this for the local filesystem
             if file_system.protocol == "file" and not file_system.isdir(from_path):
@@ -359,6 +380,10 @@ class FileAccessProvider(object):
             if "metadata" not in kwargs:
                 kwargs["metadata"] = {}
             kwargs["metadata"].update(self._execution_metadata)
+
+        additional_kwargs = get_additional_fsspec_call_kwargs(file_system.protocol, file_system.put.__name__)
+        kwargs.update(additional_kwargs)
+
         if isinstance(file_system, AsyncFileSystem):
             dst = await file_system._put(from_path, to_path, recursive=recursive, **kwargs)  # pylint: disable=W0212
         else:
