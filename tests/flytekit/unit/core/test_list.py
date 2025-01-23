@@ -1,4 +1,6 @@
 import mock
+
+import pytest
 import typing
 import asyncio
 import datetime
@@ -79,5 +81,9 @@ def test_file_formats_getting_literal_type():
 
     with mock.patch("flytekit.core.type_engine._TYPE_ENGINE_COROS_BATCH_SIZE", 2):
         TypeEngine.to_literal(ctx, python_val, typing.List[MyInt], lt)
+
+    with mock.patch("flytekit.core.type_engine._TYPE_ENGINE_COROS_BATCH_SIZE", 5):
+        with pytest.raises(Exception):
+            TypeEngine.to_literal(ctx, python_val, typing.List[MyInt], lt)
 
     del TypeEngine._REGISTRY[MyInt]
