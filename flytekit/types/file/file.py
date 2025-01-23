@@ -514,7 +514,6 @@ class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
         python_type: typing.Type[FlyteFile],
         expected: LiteralType,
     ) -> Literal:
-        print(f"uploading file {python_val.path}", flush=True)
         remote_path = None
         should_upload = True
 

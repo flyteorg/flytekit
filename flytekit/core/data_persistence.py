@@ -52,6 +52,8 @@ _ANON = "anon"
 
 Uploadable = typing.Union[str, os.PathLike, pathlib.Path, bytes, io.BufferedReader, io.BytesIO, io.StringIO]
 
+_S3_WRITE_SIZE_CHUNK_BYTES = int(os.environ.get("FLYTE_S3_WRITE_CHUNKSIZE_BYTES", "26214400"))  # 25 * 2**20
+
 
 def s3_setup_args(s3_cfg: configuration.S3Config, anonymous: bool = False) -> Dict[str, Any]:
     kwargs: Dict[str, Any] = {
@@ -340,8 +342,8 @@ class FileAccessProvider(object):
         from_path = self.strip_file_header(from_path)
         import os
 
-        cs = os.environ.get("chunksize", "8388608")  # 8 * 2**20
-        kwargs["chunksize"] = int(cs)
+        if to_path.startswith("s3"):
+            kwargs["chunksize"] = _S3_WRITE_SIZE_CHUNK_BYTES
         if recursive:
             # Only check this for the local filesystem
             if file_system.protocol == "file" and not file_system.isdir(from_path):
