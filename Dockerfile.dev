@@ -36,7 +36,7 @@ COPY . /flytekit
 RUN SETUPTOOLS_SCM_PRETEND_VERSION_FOR_FLYTEKIT=$PSEUDO_VERSION \
     SETUPTOOLS_SCM_PRETEND_VERSION_FOR_FLYTEIDL=3.0.0dev0 \
         uv pip install --system --no-cache-dir -U \
-            "git+https://github.com/flyteorg/flyte.git@streaming-deck-v2#subdirectory=flyteidl" \
+            "git+https://github.com/flyteorg/flyte.git@master#subdirectory=flyteidl" \
             -e /flytekit \
             -e /flytekit/plugins/flytekit-deck-standard \
             -e /flytekit/plugins/flytekit-flyteinteractive \
