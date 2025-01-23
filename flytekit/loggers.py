@@ -17,6 +17,7 @@ LOGGING_ENV_VAR = "FLYTE_SDK_LOGGING_LEVEL"
 LOGGING_DEV_ENV_VAR = "FLYTE_SDK_DEV_LOGGING_LEVEL"
 LOGGING_FMT_ENV_VAR = "FLYTE_SDK_LOGGING_FORMAT"
 LOGGING_RICH_FMT_ENV_VAR = "FLYTE_SDK_RICH_TRACEBACKS"
+FLYTEKIT_DISPLAY_PROGRESS_ENV_VAR = "FLYTE_SDK_DISPLAY_PROGRESS"
 
 # By default, the root flytekit logger to debug so everything is logged, but enable fine-tuning
 logger = logging.getLogger("flytekit")
@@ -116,7 +117,9 @@ def initialize_global_loggers():
     Initializes the global loggers to the default configuration.
     """
     # Use Rich logging while running in the local execution or jupyter notebook.
-    if (os.getenv("FLYTE_INTERNAL_EXECUTION_ID") is None or interactive.ipython_check()) and is_rich_logging_enabled():
+    if (
+        os.getenv("FLYTE_INTERNAL_EXECUTION_ID") is None or interactive.ipython_check()
+    ) and is_rich_logging_enabled():
         try:
             upgrade_to_rich_logging()
             return
@@ -128,7 +131,9 @@ def initialize_global_loggers():
     handler.setLevel(logging.DEBUG)
     formatter = logging.Formatter(fmt="[%(name)s] %(message)s")
     if os.environ.get(LOGGING_FMT_ENV_VAR, "json") == "json":
-        formatter = jsonlogger.JsonFormatter(fmt="%(asctime)s %(name)s %(levelname)s %(message)s")
+        formatter = jsonlogger.JsonFormatter(
+            fmt="%(asctime)s %(name)s %(levelname)s %(message)s"
+        )
     handler.setFormatter(formatter)
 
     set_flytekit_log_properties(handler, None, _get_env_logging_level())
@@ -164,7 +169,9 @@ def upgrade_to_rich_logging(log_level: typing.Optional[int] = logging.WARNING):
 
     formatter = logging.Formatter(fmt="%(filename)s:%(lineno)d - %(message)s")
     handler.setFormatter(formatter)
-    set_flytekit_log_properties(handler, None, _get_env_logging_level(default_level=log_level))
+    set_flytekit_log_properties(
+        handler, None, _get_env_logging_level(default_level=log_level)
+    )
     set_user_logger_properties(handler, None, logging.INFO)
     set_developer_properties(handler, None, _get_dev_env_logging_level())
 
@@ -184,6 +191,10 @@ def get_level_from_cli_verbosity(verbosity: int) -> int:
         return logging.INFO
     else:
         return logging.DEBUG
+
+
+def is_display_progress_enabled() -> bool:
+    return os.getenv(FLYTEKIT_DISPLAY_PROGRESS_ENV_VAR, False)
 
 
 # Default initialization
