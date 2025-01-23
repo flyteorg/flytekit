@@ -16,6 +16,13 @@ from typing import List, Optional, Union
 
 import click
 from rich import print as rich_print
+from rich.progress import (
+    Progress,
+    TimeElapsedColumn,
+    TextColumn,
+    BarColumn,
+    TaskProgressColumn,
+)
 from rich.tree import Tree
 
 from flytekit.constants import CopyFileDetection
@@ -23,9 +30,21 @@ from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.python_auto_container import PICKLE_FILE_PATH
 from flytekit.core.utils import timeit
 from flytekit.exceptions.user import FlyteDataNotFoundException
-from flytekit.loggers import logger
-from flytekit.tools.ignore import DockerIgnore, FlyteIgnore, GitIgnore, Ignore, IgnoreGroup, StandardIgnore
-from flytekit.tools.script_mode import _filehash_update, _pathhash_update, ls_files, tar_strip_file_attributes
+from flytekit.loggers import logger, is_display_progress_enabled
+from flytekit.tools.ignore import (
+    DockerIgnore,
+    FlyteIgnore,
+    GitIgnore,
+    Ignore,
+    IgnoreGroup,
+    StandardIgnore,
+)
+from flytekit.tools.script_mode import (
+    _filehash_update,
+    _pathhash_update,
+    ls_files,
+    tar_strip_file_attributes,
+)
 
 FAST_PREFIX = "fast"
 FAST_FILEENDING = ".tar.gz"
@@ -74,7 +93,9 @@ def compress_tarball(source: os.PathLike, output: os.PathLike) -> None:
     """Compress code tarball using pigz if available, otherwise gzip"""
     if pigz := shutil.which("pigz"):
         with open(output, "wb") as gzipped:
-            subprocess.run([pigz, "--no-time", "-c", source], stdout=gzipped, check=True)
+            subprocess.run(
+                [pigz, "--no-time", "-c", source], stdout=gzipped, check=True
+            )
     else:
         start_time = time.time()
         with gzip.GzipFile(filename=output, mode="wb", mtime=0) as gzipped:
@@ -121,13 +142,24 @@ def fast_package(
     # This function is temporarily split into two, to support the creation of the tar file in both the old way,
     # copying the underlying items in the source dir by doing a listdir, and the new way, relying on a list of files.
     if options and (
-        options.copy_style == CopyFileDetection.LOADED_MODULES or options.copy_style == CopyFileDetection.ALL
+        options.copy_style == CopyFileDetection.LOADED_MODULES
+        or options.copy_style == CopyFileDetection.ALL
     ):
-        from rich.progress import Progress
+        create_tarball_progress = Progress(
+            TimeElapsedColumn(),
+            TextColumn("[progress.description]{task.description}."),
+            BarColumn(),
+            TextColumn("{task.fields[files_added_progress]}"),
+        )
 
-        progress = Progress()
+        compress_tarball_progress = Progress(
+            TimeElapsedColumn(),
+            TextColumn("[progress.description]{task.description}"),
+        )
 
-        ls, ls_digest = ls_files(str(source), options.copy_style, deref_symlinks, ignore)
+        ls, ls_digest = ls_files(
+            str(source), options.copy_style, deref_symlinks, ignore
+        )
         logger.debug(f"Hash digest: {ls_digest}")
 
         if options.show_files:
@@ -137,42 +169,68 @@ def fast_package(
         archive_fname = f"{FAST_PREFIX}{ls_digest}{FAST_FILEENDING}"
         if output_dir is None:
             output_dir = tempfile.mkdtemp()
-            click.secho(f"No output path provided, using a temporary directory at {output_dir} instead", fg="yellow")
+            click.secho(
+                f"No output path provided, using a temporary directory at {output_dir} instead",
+                fg="yellow",
+            )
         archive_fname = os.path.join(output_dir, archive_fname)
 
         # add the tarfile task to progress and start it
         l = len(ls)
         t = 0
-        tar_task = progress.add_task(f"Creating tarball with [{l}] files...", total=l)
-        with progress:
-            progress.start_task(tar_task)
-            with tempfile.TemporaryDirectory() as tmp_dir:
-                tar_path = os.path.join(tmp_dir, "tmp.tar")
-                with tarfile.open(tar_path, "w", dereference=deref_symlinks) as tar:
-                    for ws_file in ls:
-                        t = t + 1
-                        rel_path = os.path.relpath(ws_file, start=source)
-                        tar.add(
-                            os.path.join(source, ws_file),
-                            recursive=False,
-                            arcname=rel_path,
-                            filter=lambda x: tar_strip_file_attributes(x),
-                        )
-                        progress.update(tar_task, advance=1, description=f"Adding file {rel_path} files, {t}/{l}")
-                progress.stop_task(tar_task)
-                tpath = pathlib.Path(tar_path)
-                size_mbs = tpath.stat().st_size / 1024 / 1024
-                compress_task = progress.add_task(f"Compressing tarball size [{size_mbs:.2f}]MB...", total=1)
-                progress.start_task(compress_task)
-                compress_tarball(tar_path, archive_fname)
-                arpath = pathlib.Path(archive_fname)
-                asize_mbs = arpath.stat().st_size / 1024 / 1024
-                progress.update(
-                    compress_task,
-                    advance=1,
-                    description=f"Tarball [{size_mbs:.2f}]MB compressed to [{asize_mbs:.2f}]MB",
-                )
-                progress.stop_task(compress_task)
+        tar_task = create_tarball_progress.add_task(
+            f"Creating tarball with [{l}] files...",
+            total=l,
+            files_added_progress=f"{t}/{l} files",
+        )
+
+        if is_display_progress_enabled():
+            create_tarball_progress.start()
+
+        create_tarball_progress.start_task(tar_task)
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tar_path = os.path.join(tmp_dir, "tmp.tar")
+            with tarfile.open(tar_path, "w", dereference=deref_symlinks) as tar:
+                for ws_file in ls:
+                    t = t + 1
+                    rel_path = os.path.relpath(ws_file, start=source)
+                    tar.add(
+                        os.path.join(source, ws_file),
+                        recursive=False,
+                        arcname=rel_path,
+                        filter=lambda x: tar_strip_file_attributes(x),
+                    )
+
+                    create_tarball_progress.update(
+                        tar_task,
+                        advance=1,
+                        description=f"Added file {rel_path}",
+                        refresh=True,
+                        files_added_progress=f"{t}/{l} files",
+                    )
+
+            create_tarball_progress.stop_task(tar_task)
+            if is_display_progress_enabled():
+                create_tarball_progress.stop()
+                compress_tarball_progress.start()
+
+            tpath = pathlib.Path(tar_path)
+            size_mbs = tpath.stat().st_size / 1024 / 1024
+            compress_task = compress_tarball_progress.add_task(
+                f"Compressing tarball size {size_mbs:.2f}MB...", total=1
+            )
+            compress_tarball_progress.start_task(compress_task)
+            compress_tarball(tar_path, archive_fname)
+            arpath = pathlib.Path(archive_fname)
+            asize_mbs = arpath.stat().st_size / 1024 / 1024
+            compress_tarball_progress.update(
+                compress_task,
+                advance=1,
+                description=f"Tarball {size_mbs:.2f}MB compressed to {asize_mbs:.2f}MB",
+            )
+            compress_tarball_progress.stop_task(compress_task)
+            if is_display_progress_enabled():
+                compress_tarball_progress.stop()
 
     # Original tar command - This condition to be removed in the future after serialize is removed.
     else:
@@ -180,7 +238,10 @@ def fast_package(
         archive_fname = f"{FAST_PREFIX}{digest}{FAST_FILEENDING}"
         if output_dir is None:
             output_dir = tempfile.mkdtemp()
-            click.secho(f"No output path provided, using a temporary directory at {output_dir} instead", fg="yellow")
+            click.secho(
+                f"No output path provided, using a temporary directory at {output_dir} instead",
+                fg="yellow",
+            )
         archive_fname = os.path.join(output_dir, archive_fname)
 
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -191,7 +252,9 @@ def fast_package(
                     tar.add(
                         os.path.join(source, ws_file),
                         arcname=ws_file,
-                        filter=lambda x: ignore.tar_filter(tar_strip_file_attributes(x)),
+                        filter=lambda x: ignore.tar_filter(
+                            tar_strip_file_attributes(x)
+                        ),
                     )
                 # tar.list(verbose=True)
 
@@ -200,7 +263,9 @@ def fast_package(
     return archive_fname
 
 
-def compute_digest(source: Union[os.PathLike, List[os.PathLike]], filter: Optional[callable] = None) -> str:
+def compute_digest(
+    source: Union[os.PathLike, List[os.PathLike]], filter: Optional[callable] = None
+) -> str:
     """
     Walks the entirety of the source dir to compute a deterministic md5 hex digest of the dir contents.
     :param os.PathLike source:
@@ -260,7 +325,9 @@ def download_distribution(additional_distribution: str, destination: str):
     :param os.PathLike destination:
     """
     if not os.path.isdir(destination):
-        raise ValueError("Destination path is required to download distribution and it should be a directory")
+        raise ValueError(
+            "Destination path is required to download distribution and it should be a directory"
+        )
     # NOTE the os.path.join(destination, ''). This is to ensure that the given path is in fact a directory and all
     # downloaded data should be copied into this directory. We do this to account for a difference in behavior in
     # fsspec, which requires a trailing slash in case of pre-existing directory.
@@ -280,4 +347,8 @@ def download_distribution(additional_distribution: str, destination: str):
         result.check_returncode()
     elif tarfile_name != PICKLE_FILE_PATH:
         # The distribution is not a pickled file.
-        raise RuntimeError("Unrecognized additional distribution format for {}".format(additional_distribution))
+        raise RuntimeError(
+            "Unrecognized additional distribution format for {}".format(
+                additional_distribution
+            )
+        )
