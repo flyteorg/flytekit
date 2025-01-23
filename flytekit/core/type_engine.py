@@ -1693,6 +1693,9 @@ class ListTransformer(AsyncTypeTransformer[T]):
         lit_list = [
             asyncio.create_task(TypeEngine.async_to_literal(ctx, x, t, expected.collection_type)) for x in python_val
         ]
+        print(f"Type engine batch size: {_TYPE_ENGINE_COROS_BATCH_SIZE}")
+        print(f"Number of coros {len(lit_list)}", flush=True)
+
         lit_list = await _run_coros_in_chunks(lit_list, batch_size=_TYPE_ENGINE_COROS_BATCH_SIZE)
 
         return Literal(collection=LiteralCollection(literals=lit_list))
@@ -1715,8 +1718,6 @@ class ListTransformer(AsyncTypeTransformer[T]):
 
         st = self.get_sub_type(expected_python_type)
         result = [TypeEngine.async_to_python_value(ctx, x, st) for x in lits]
-        print(f"Type engine batch size: {_TYPE_ENGINE_COROS_BATCH_SIZE}")
-        print(f"Number of coros {len(result)}", flush=True)
         result = await _run_coros_in_chunks(result, batch_size=_TYPE_ENGINE_COROS_BATCH_SIZE)
         return result  # type: ignore  # should be a list, thinks its a tuple
 
