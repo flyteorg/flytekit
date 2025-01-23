@@ -1,11 +1,10 @@
-import mock
-
-import pytest
-import typing
 import asyncio
-import datetime
-from flytekit.core.context_manager import FlyteContext, FlyteContextManager
+import typing
 
+import mock
+import pytest
+
+from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_engine import (
     AsyncTypeTransformer,
     TypeEngine,
@@ -49,13 +48,11 @@ class MyIntAsyncTransformer(AsyncTypeTransformer[MyInt]):
         python_type: typing.Type[MyInt],
         expected: LiteralType,
     ) -> Literal:
-        print(f"start waiting on {python_val.val} {datetime.datetime.now()}")
         async with self.my_lock:
             self.my_count += 1
             if self.my_count > 2:
-                raise Exception("This should not happen")
+                raise ValueError("coroutine count exceeded")
         await asyncio.sleep(0.1)
-        print(f"done waiting on {python_val.val} {datetime.datetime.now()}")
         lit = Literal(scalar=Scalar(primitive=Primitive(integer=python_val.val)))
 
         async with self.my_lock:
@@ -72,7 +69,8 @@ class MyIntAsyncTransformer(AsyncTypeTransformer[MyInt]):
         return MyInt
 
 
-def test_file_formats_getting_literal_type():
+@pytest.mark.asyncio
+async def test_coroutine_batching_of_list_transformer():
     TypeEngine.register(MyIntAsyncTransformer())
 
     lt = LiteralType(simple=SimpleType.INTEGER)
@@ -83,7 +81,7 @@ def test_file_formats_getting_literal_type():
         TypeEngine.to_literal(ctx, python_val, typing.List[MyInt], lt)
 
     with mock.patch("flytekit.core.type_engine._TYPE_ENGINE_COROS_BATCH_SIZE", 5):
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             TypeEngine.to_literal(ctx, python_val, typing.List[MyInt], lt)
 
     del TypeEngine._REGISTRY[MyInt]
