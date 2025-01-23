@@ -363,8 +363,6 @@ class FileAccessProvider(object):
         """
         file_system = await self.get_async_filesystem_for_path(to_path)
         from_path = self.strip_file_header(from_path)
-        import os
-
         if recursive:
             # Only check this for the local filesystem
             if file_system.protocol == "file" and not file_system.isdir(from_path):
