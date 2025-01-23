@@ -930,8 +930,9 @@ def kubectl_secret():
 
 # To enable this test, kubectl must be available.
 @pytest.mark.skip(reason="Waiting for flyte release that includes https://github.com/flyteorg/flyte/pull/6176")
-def test_check_secret(kubectl_secret):
-    execution_id = run("get_secret.py", "wf")
+@pytest.mark.parametrize("task", ["get_secret_env_var", "get_secret_file"])
+def test_check_secret(kubectl_secret, task):
+    execution_id = run("get_secret.py", task)
 
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     execution = remote.fetch_execution(name=execution_id)
