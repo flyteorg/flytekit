@@ -60,6 +60,8 @@ T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
 TITLE = "title"
 
+_TYPE_ENGINE_COROS_BATCH_SIZE = 30
+
 
 # In Mashumaro, the default encoder uses strict_map_key=False, while the default decoder uses strict_map_key=True.
 # This is relevant for cases like Dict[int, str].
@@ -1689,7 +1691,7 @@ class ListTransformer(AsyncTypeTransformer[T]):
         lit_list = [
             asyncio.create_task(TypeEngine.async_to_literal(ctx, x, t, expected.collection_type)) for x in python_val
         ]
-        lit_list = await _run_coros_in_chunks(lit_list)
+        lit_list = await _run_coros_in_chunks(lit_list, batch_size=_TYPE_ENGINE_COROS_BATCH_SIZE)
 
         return Literal(collection=LiteralCollection(literals=lit_list))
 
@@ -1711,7 +1713,7 @@ class ListTransformer(AsyncTypeTransformer[T]):
 
         st = self.get_sub_type(expected_python_type)
         result = [TypeEngine.async_to_python_value(ctx, x, st) for x in lits]
-        result = await _run_coros_in_chunks(result)
+        result = await _run_coros_in_chunks(result, batch_size=_TYPE_ENGINE_COROS_BATCH_SIZE)
         return result  # type: ignore  # should be a list, thinks its a tuple
 
     def guess_python_type(self, literal_type: LiteralType) -> list:  # type: ignore
@@ -2162,7 +2164,7 @@ class DictTransformer(AsyncTypeTransformer[dict]):
                 TypeEngine.async_to_literal(ctx, v, cast(type, v_type), expected.map_value_type)
             )
 
-        await _run_coros_in_chunks([c for c in lit_map.values()])
+        await _run_coros_in_chunks([c for c in lit_map.values()], batch_size=_TYPE_ENGINE_COROS_BATCH_SIZE)
         for k, v in lit_map.items():
             lit_map[k] = v.result()
 
@@ -2188,7 +2190,7 @@ class DictTransformer(AsyncTypeTransformer[dict]):
                 fut = asyncio.create_task(TypeEngine.async_to_python_value(ctx, v, cast(Type, tp[1])))
                 py_map[k] = fut
 
-            await _run_coros_in_chunks([c for c in py_map.values()])
+            await _run_coros_in_chunks([c for c in py_map.values()], batch_size=_TYPE_ENGINE_COROS_BATCH_SIZE)
             for k, v in py_map.items():
                 py_map[k] = v.result()
 
