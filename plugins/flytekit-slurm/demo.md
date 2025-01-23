@@ -11,7 +11,10 @@ In this guide, we will briefly introduce how to setup an environment to test Slu
     * [Remote Tiny Slurm Cluster](https://github.com/JiangJiaWei1103/flytekit/blob/slurm-agent-dev/plugins/flytekit-slurm/demo.md#remote-tiny-slurm-cluster)
     * [SSH Configuration](https://github.com/JiangJiaWei1103/flytekit/blob/slurm-agent-dev/plugins/flytekit-slurm/demo.md#ssh-configuration)
     * [(Optional) Setup Amazon S3 Bucket](https://github.com/JiangJiaWei1103/flytekit/blob/slurm-agent-dev/plugins/flytekit-slurm/demo.md#optional-setup-amazon-s3-bucket)
-* [Run a Demo](https://github.com/JiangJiaWei1103/flytekit/blob/slurm-agent-dev/plugins/flytekit-slurm/demo.md#run-a-demo)
+* [Rich Use Cases](https://github.com/JiangJiaWei1103/flytekit/blob/slurm-agent-dev/plugins/flytekit-slurm/demo.md#rich-use-cases)
+    * [`SlurmTask`](https://github.com/JiangJiaWei1103/flytekit/blob/slurm-agent-dev/plugins/flytekit-slurm/demo.md#slurmtask)
+    * [`SlurmShellTask`](https://github.com/JiangJiaWei1103/flytekit/blob/slurm-agent-dev/plugins/flytekit-slurm/demo.md#slurmshelltask)
+    * [`SlurmFunctionTask`](https://github.com/JiangJiaWei1103/flytekit/blob/slurm-agent-dev/plugins/flytekit-slurm/demo.md#slurmfunctiontask)
 
 ## Overview
 Slurm agent on the highest level has three core methods to interact with a Slurm cluster:
@@ -114,28 +117,32 @@ aws_secret_access_key=<aws_secret_access_key>
 Now, both machines have access to the Amazon S3 bucket. Perfect!
 
 
-## Run a Demo
-Suppose we have a batch script to run on Slurm cluster:
+## Rich Use Cases
+In this section, we will demonstrate three supported use cases, ranging from basic to advanced.
+
+### `SlurmTask`
+In the simplest use case, we specify the path to the batch script that is already available on the cluster.
+
+Suppose we have a batch script as follows:
 ```
 #!/bin/bash
 
-echo "Working!" >> ./remote_touch.txt
+echo "Hello AWS slurm, run a Flyte SlurmTask!" >> ./echo_aws.txt
 ```
 
-We use the following python script to test Slurm agent on the client side. A crucial part of the task configuration is specifying the target Slurm cluster and designating the batch script's path within the cluster.
-
+We use the following python script to test Slurm agent on the [client](https://github.com/JiangJiaWei1103/flytekit/blob/slurm-agent-dev/plugins/flytekit-slurm/demo.md#flyte-client-localhost):
 ```python
 import os
 
 from flytekit import workflow
-from flytekitplugins.slurm import Slurm, SlurmTask
+from flytekitplugins.slurm import SlurmRemoteScript, SlurmTask
 
 
 echo_job = SlurmTask(
-    name="echo-job-name",
-    task_config=Slurm(
-        slurm_host="<host_alias>",
-        batch_script_path="<path_to_batch_script_within_cluster>",
+    name="<task-name>",
+    task_config=SlurmRemoteScript(
+        slurm_host="<slurm-host>",
+        batch_script_path="<remote-batch-script-path>",
         sbatch_conf={
             "partition": "debug",
             "job-name": "tiny-slurm",
@@ -161,6 +168,97 @@ if __name__ == "__main__":
     print(result.output)
 ```
 
-After the Slurm job is completed, we can find the following result on Slurm cluster:
+### `SlurmShellTask`
+`SlurmShellTask` offers users the flexibility to define the content of shell scripts. Below is an example of creating a task that executes a Python script already present on the Slurm cluster:
+```python
+import os
 
-![](https://github.com/JiangJiaWei1103/flytekit/blob/slurm-agent-dev/plugins/flytekit-slurm/assets/slurm_basic_result.png)
+from flytekit import workflow
+from flytekitplugins.slurm import Slurm, SlurmShellTask
+
+
+shell_task = SlurmShellTask(
+    name="test-shell",
+    script="""#!/bin/bash
+# We can define sbatch options here, but using sbatch_conf can be more neat
+echo "Run a Flyte SlurmShellTask...\n"
+
+# Run a python script on Slurm
+# Activate the virtual env first if any
+python3 <path_to_python_script>
+""",
+    task_config=Slurm(
+        slurm_host="<slurm-host>",
+        sbatch_conf={
+            "partition": "debug",
+            "job-name": "tiny-slurm",
+        }
+    ),
+)
+
+
+@workflow
+def wf() -> None:
+    shell_task()
+
+
+if __name__ == "__main__":
+    from flytekit.clis.sdk_in_container import pyflyte
+    from click.testing import CliRunner
+
+    runner = CliRunner()
+    path = os.path.realpath(__file__)
+
+    print(f">>> LOCAL EXEC <<<")
+    result = runner.invoke(pyflyte.main, ["run", path, "wf"])
+    print(result.output)
+```
+
+### `SlurmFunctionTask`
+In the most advanced use case, `SlurmFunctionTask` allows users to define custom Python functions that are sent to and executed on the Slurm cluster. Following figure demonstrates the process of running a `SlurmFunctionTask`:
+
+![](https://github.com/JiangJiaWei1103/flytekit/blob/slurm-agent-dev/plugins/flytekit-slurm/assets/overview_v2.png)
+
+```python
+import os
+
+from flytekit import task, workflow
+from flytekitplugins.slurm import SlurmFunction
+
+
+@task(
+    task_config=SlurmFunction(
+        slurm_host="<slurm-host>",
+        sbatch_conf={
+            "partition": "debug",
+            "job-name": "tiny-slurm",
+        }
+    )
+)
+def plus_one(x: int) -> int:
+    return x + 1
+
+
+@task
+def greet(year: int) -> str:
+    return f"Hello {year}!!!"
+
+
+@workflow
+def wf(x: int) -> str:
+    x = plus_one(x=x)
+    msg = greet(year=x)
+    return msg
+
+
+if __name__ == "__main__":
+    from flytekit.clis.sdk_in_container import pyflyte
+    from click.testing import CliRunner
+
+    runner = CliRunner()
+    path = os.path.realpath(__file__)
+
+    print(f">>> LOCAL EXEC <<<")
+    result = runner.invoke(pyflyte.main, ["run", "--raw-output-data-prefix", "<s3-bucket-uri>", path, "wf", "--x", 2024])
+    print(result.output)
+```
