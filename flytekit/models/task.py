@@ -301,7 +301,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
     @property
     def generates_deck(self) -> bool:
         """
-        Whether the task will generate a Deck URI.
+        Whether the task will generate a Deck.
         :rtype: bool
         """
         return self._generates_deck

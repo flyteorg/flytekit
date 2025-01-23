@@ -724,7 +724,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
           may be none
         * ``DynamicJobSpec`` is returned when a dynamic workflow is executed
         """
-        if not self.disable_deck and ctx.user_space_params is not None:
+        if self.enable_deck and ctx.user_space_params is not None:
             ctx.user_space_params.builder().add_attr("ENABLE_DECK", True)
             if DeckField.TIMELINE.value in self.deck_fields:
                 ctx.user_space_params.decks.append(ctx.user_space_params.timeline_deck)
@@ -835,6 +835,13 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         If true, this task will not output deck html file
         """
         return self._disable_deck
+
+    @property
+    def enable_deck(self) -> bool:
+        """
+        If true, this task will output deck html file
+        """
+        return not self._disable_deck
 
     @property
     def deck_fields(self) -> List[DeckField]:
