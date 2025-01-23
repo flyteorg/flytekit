@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from fnmatch import fnmatch
 from pathlib import Path
 from shutil import which
-from typing import Dict, List, Optional, Type
+from typing import List, Optional, Type
 
 from docker.utils.build import PatternMatcher
 
@@ -41,28 +41,37 @@ class GitIgnore(Ignore):
     def __init__(self, root: Path):
         super().__init__(root)
         self.has_git = which("git") is not None
-        self.ignored = self._list_ignored()
+        self.ignored_files = self._list_ignored_files()
+        self.ignored_dirs = self._list_ignored_dirs()
 
-    def _list_ignored(self) -> Dict:
+    def _git_wrapper(self, extra_args: List[str]) -> set[str]:
         if self.has_git:
-            out = subprocess.run(["git", "ls-files", "-io", "--exclude-standard"], cwd=self.root, capture_output=True)
+            out = subprocess.run(
+                ["git", "ls-files", "-io", "--exclude-standard", *extra_args],
+                cwd=self.root,
+                capture_output=True,
+            )
             if out.returncode == 0:
-                return dict.fromkeys(out.stdout.decode("utf-8").split("\n")[:-1])
-            logger.warning(f"Could not determine ignored files due to:\n{out.stderr}\nNot applying any filters")
-            return {}
+                return set(out.stdout.decode("utf-8").split("\n")[:-1])
+            logger.info(f"Could not determine ignored paths due to:\n{out.stderr}\nNot applying any filters")
+            return set()
         logger.info("No git executable found, not applying any filters")
-        return {}
+        return set()
+
+    def _list_ignored_files(self) -> set[str]:
+        return self._git_wrapper([])
+
+    def _list_ignored_dirs(self) -> set[str]:
+        return self._git_wrapper(["--directory"])
 
     def _is_ignored(self, path: str) -> bool:
-        if self.ignored:
+        if self.ignored_files:
             # git-ls-files uses POSIX paths
-            if Path(path).as_posix() in self.ignored:
+            if Path(path).as_posix() in self.ignored_files:
                 return True
             # Ignore empty directories
-            if os.path.isdir(os.path.join(self.root, path)) and all(
-                [self.is_ignored(os.path.join(path, f)) for f in os.listdir(os.path.join(self.root, path))]
-            ):
-                return True
+            if os.path.isdir(os.path.join(self.root, path)) and self.ignored_dirs:
+                return Path(path).as_posix() + "/" in self.ignored_dirs
         return False
 
 

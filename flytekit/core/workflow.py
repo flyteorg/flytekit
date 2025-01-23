@@ -8,12 +8,8 @@ from enum import Enum
 from functools import update_wrapper
 from typing import Any, Callable, Coroutine, Dict, List, Optional, Tuple, Type, Union, cast, overload
 
+from typing_extensions import ParamSpec  # type: ignore
 from typing_inspect import is_optional_type
-
-try:
-    from typing import ParamSpec
-except ImportError:
-    from typing_extensions import ParamSpec  # type: ignore
 
 from flytekit.core import constants as _common_constants
 from flytekit.core import launch_plan as _annotated_launch_plan
@@ -690,6 +686,12 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             docs=docs,
             default_options=default_options,
         )
+
+        # Set this here so that the lhs call doesn't fail at least. This is only useful in the context of the
+        # ClassStorageTaskResolver, to satisfy the understanding that my_wf.lhs should be fetch the workflow object
+        # from the module.
+        self._lhs = workflow_function.__name__
+
         self.compiled = False
 
     @property
@@ -700,9 +702,13 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         return f"{self.name}.{t.__module__}.{t.name}"
 
     def _validate_add_on_failure_handler(self, ctx: FlyteContext, prefix: str, wf_args: Dict[str, Promise]):
-        # Compare
+        resolver = (
+            ctx.compilation_state.task_resolver
+            if ctx.compilation_state and ctx.compilation_state.task_resolver
+            else self
+        )
         with FlyteContextManager.with_context(
-            ctx.with_compilation_state(CompilationState(prefix=prefix, task_resolver=self))
+            ctx.with_compilation_state(CompilationState(prefix=prefix, task_resolver=resolver))
         ) as inner_comp_ctx:
             # Now lets compile the failure-node if it exists
             if self.on_failure:
@@ -740,9 +746,14 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         ctx = FlyteContextManager.current_context()
         all_nodes = []
         prefix = ctx.compilation_state.prefix if ctx.compilation_state is not None else ""
+        resolver = (
+            ctx.compilation_state.task_resolver
+            if ctx.compilation_state and ctx.compilation_state.task_resolver
+            else self
+        )
 
         with FlyteContextManager.with_context(
-            ctx.with_compilation_state(CompilationState(prefix=prefix, task_resolver=self))
+            ctx.with_compilation_state(CompilationState(prefix=prefix, task_resolver=resolver))
         ) as comp_ctx:
             # Construct the default input promise bindings, but then override with the provided inputs, if any
             input_kwargs = construct_input_promises([k for k in self.interface.inputs.keys()])

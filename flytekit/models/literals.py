@@ -979,7 +979,15 @@ class Literal(_common.FlyteIdlEntity):
         """
         This value holds metadata about the offloaded literal.
         """
-        return self._offloaded_metadata
+        # The following check might seem non-sensical, since `_offloaded_metadata` is set in the constructor.
+        # This is here to support backwards compatibility caused by the local cache implementation. Let me explain.
+        # The local cache pickles values and unpickles them. When unpickling, the constructor is not called, so there
+        # are cases where the `_offloaded_metadata` is not set (for example if you cache a value using flytekit<=1.13.6
+        # and you load that value later using flytekit>1.13.6).
+        # In other words, this is a workaround to support backwards compatibility with the local cache.
+        if hasattr(self, "_offloaded_metadata"):
+            return self._offloaded_metadata
+        return None
 
     def to_flyte_idl(self):
         """
@@ -991,7 +999,7 @@ class Literal(_common.FlyteIdlEntity):
             map=self.map.to_flyte_idl() if self.map is not None else None,
             hash=self.hash,
             metadata=self.metadata,
-            offloaded_metadata=self.offloaded_metadata.to_flyte_idl() if self.offloaded_metadata else None,
+            offloaded_metadata=self.offloaded_metadata.to_flyte_idl() if self.offloaded_metadata is not None else None,
         )
 
     @classmethod

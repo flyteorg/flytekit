@@ -36,7 +36,7 @@ from mashumaro.mixins.json import DataClassJSONMixin
 from typing_extensions import Annotated, get_args, get_origin
 
 from flytekit.core.annotation import FlyteAnnotation
-from flytekit.core.constants import FLYTE_USE_OLD_DC_FORMAT, MESSAGEPACK
+from flytekit.core.constants import CACHE_KEY_METADATA, FLYTE_USE_OLD_DC_FORMAT, MESSAGEPACK, SERIALIZATION_FORMAT
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.hash import HashMethod
 from flytekit.core.type_helpers import load_type_from_tag
@@ -52,6 +52,9 @@ from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Binary, Literal, LiteralCollection, LiteralMap, Primitive, Scalar, Union, Void
 from flytekit.models.types import LiteralType, SimpleType, TypeStructure, UnionType
 from flytekit.utils.asyn import loop_manager
+
+if typing.TYPE_CHECKING:
+    from flytekit.core.interface import Interface
 
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
@@ -608,36 +611,38 @@ class DataclassTransformer(TypeTransformer[object]):
 
         schema = None
         try:
-            from marshmallow_enum import EnumField, LoadDumpOptions
+            # This produce JSON SCHEMA draft 2020-12
+            from mashumaro.jsonschema import build_json_schema
 
-            if issubclass(t, DataClassJsonMixin):
-                s = cast(DataClassJsonMixin, self._get_origin_type_in_annotation(t)).schema()
-                for _, v in s.fields.items():
-                    # marshmallow-jsonschema only supports enums loaded by name.
-                    # https://github.com/fuhrysteve/marshmallow-jsonschema/blob/81eada1a0c42ff67de216923968af0a6b54e5dcb/marshmallow_jsonschema/base.py#L228
-                    if isinstance(v, EnumField):
-                        v.load_by = LoadDumpOptions.name
-                # check if DataClass mixin
-                from marshmallow_jsonschema import JSONSchema
-
-                schema = JSONSchema().dump(s)
+            schema = build_json_schema(cast(DataClassJSONMixin, self._get_origin_type_in_annotation(t))).to_dict()
         except Exception as e:
-            # https://github.com/lovasoa/marshmallow_dataclass/issues/13
-            logger.warning(
-                f"Failed to extract schema for object {t}, (will run schemaless) error: {e}"
-                f"If you have postponed annotations turned on (PEP 563) turn it off please. Postponed"
-                f"evaluation doesn't work with json dataclasses"
+            logger.error(
+                f"Failed to extract schema for object {t}, error: {e}\n"
+                f"Please remove `DataClassJsonMixin` and `dataclass_json` decorator from the dataclass definition"
             )
 
         if schema is None:
             try:
-                from mashumaro.jsonschema import build_json_schema
+                # This produce JSON SCHEMA draft 2020-12
+                from marshmallow_enum import EnumField, LoadDumpOptions
 
-                schema = build_json_schema(cast(DataClassJSONMixin, self._get_origin_type_in_annotation(t))).to_dict()
+                if issubclass(t, DataClassJsonMixin):
+                    s = cast(DataClassJsonMixin, self._get_origin_type_in_annotation(t)).schema()
+                    for _, v in s.fields.items():
+                        # marshmallow-jsonschema only supports enums loaded by name.
+                        # https://github.com/fuhrysteve/marshmallow-jsonschema/blob/81eada1a0c42ff67de216923968af0a6b54e5dcb/marshmallow_jsonschema/base.py#L228
+                        if isinstance(v, EnumField):
+                            v.load_by = LoadDumpOptions.name
+                    # check if DataClass mixin
+                    from marshmallow_jsonschema import JSONSchema
+
+                    schema = JSONSchema().dump(s)
             except Exception as e:
-                logger.error(
-                    f"Failed to extract schema for object {t}, error: {e}\n"
-                    f"Please remove `DataClassJsonMixin` and `dataclass_json` decorator from the dataclass definition"
+                # https://github.com/lovasoa/marshmallow_dataclass/issues/13
+                logger.warning(
+                    f"Failed to extract schema for object {t}, (will run schemaless) error: {e}"
+                    f"If you have postponed annotations turned on (PEP 563) turn it off please. Postponed"
+                    f"evaluation doesn't work with json dataclasses"
                 )
 
         # Recursively construct the dataclass_type which contains the literal type of each field
@@ -660,7 +665,12 @@ class DataclassTransformer(TypeTransformer[object]):
         # This is for attribute access in FlytePropeller.
         ts = TypeStructure(tag="", dataclass_type=literal_type)
 
-        return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT, metadata=schema, structure=ts)
+        return _type_models.LiteralType(
+            simple=_type_models.SimpleType.STRUCT,
+            metadata=schema,
+            structure=ts,
+            annotation=TypeAnnotationModel({CACHE_KEY_METADATA: {SERIALIZATION_FORMAT: MESSAGEPACK}}),
+        )
 
     def to_generic_literal(
         self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType
@@ -783,8 +793,8 @@ class DataclassTransformer(TypeTransformer[object]):
         from flytekit.types.file import FlyteFile
         from flytekit.types.structured import StructuredDataset
 
-        # Handle Optional
-        if UnionTransformer.is_optional_type(python_type):
+        # Handle Optional and Union Types
+        if _is_union_type(python_type):
 
             def get_expected_type(python_val: T, types: tuple) -> Type[T | None]:
                 if len(set(types) & {FlyteFile, FlyteDirectory, StructuredDataset}) > 1:
@@ -972,12 +982,34 @@ class ProtobufTransformer(TypeTransformer[Message]):
         return LiteralType(simple=SimpleType.STRUCT, metadata={ProtobufTransformer.PB_FIELD_KEY: self.tag(t)})
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
-        struct = Struct()
+        """
+        Convert the protobuf struct to literal.
+
+        This conversion supports two types of python_val:
+        1. google.protobuf.struct_pb2.Struct: A dictionary-like message
+        2. google.protobuf.struct_pb2.ListValue: An ordered collection of values
+
+        For details, please refer to the following issue:
+        https://github.com/flyteorg/flyte/issues/5959
+
+        Because the remote handling works without errors, we implement conversion with the logic as below:
+        https://github.com/flyteorg/flyte/blob/a87585ab7cbb6a047c76d994b3f127c4210070fd/flytepropeller/pkg/controller/nodes/attr_path_resolver.go#L72-L106
+        """
         try:
-            struct.update(_MessageToDict(cast(Message, python_val)))
+            if type(python_val) == _struct.ListValue:
+                literals = []
+                for v in python_val:
+                    literal_type = TypeEngine.to_literal_type(type(v))
+                    # Recursively convert python native values to literals
+                    literal = TypeEngine.to_literal(ctx, v, type(v), literal_type)
+                    literals.append(literal)
+                return Literal(collection=LiteralCollection(literals=literals))
+            else:
+                struct = Struct()
+                struct.update(_MessageToDict(cast(Message, python_val)))
+                return Literal(scalar=Scalar(generic=struct))
         except Exception:
             raise TypeTransformerFailedError("Failed to convert to generic protobuf struct")
-        return Literal(scalar=Scalar(generic=struct))
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
         if not (lv and lv.scalar and lv.scalar.generic is not None):
@@ -1069,6 +1101,7 @@ def generate_attribute_list_from_dataclass_json_mixin(schema: dict, schema_name:
         # Handle dataclass and dict
         elif property_type == "object":
             if property_val.get("anyOf"):
+                # For optional with dataclass
                 sub_schemea = property_val["anyOf"][0]
                 sub_schemea_name = sub_schemea["title"]
                 attribute_list.append(
@@ -1080,9 +1113,11 @@ def generate_attribute_list_from_dataclass_json_mixin(schema: dict, schema_name:
                     )
                 )
             elif property_val.get("additionalProperties"):
+                # For typing.Dict type
                 elem_type = _get_element_type(property_val["additionalProperties"])
                 attribute_list.append((property_key, typing.Dict[str, elem_type]))  # type: ignore
-            else:
+            elif property_val.get("title"):
+                # For nested dataclass
                 sub_schemea_name = property_val["title"]
                 attribute_list.append(
                     (
@@ -1092,6 +1127,9 @@ def generate_attribute_list_from_dataclass_json_mixin(schema: dict, schema_name:
                         ),
                     )
                 )
+            else:
+                # For untyped dict
+                attribute_list.append((property_key, dict))  # type: ignore
         elif property_type == "enum":
             attribute_list.append([property_key, str])  # type: ignore
         # Handle int, float, bool or str
@@ -1111,7 +1149,6 @@ class TypeEngine(typing.Generic[T]):
     _RESTRICTED_TYPES: typing.List[type] = []
     _DATACLASS_TRANSFORMER: TypeTransformer = DataclassTransformer()  # type: ignore
     _ENUM_TRANSFORMER: TypeTransformer = EnumTransformer()  # type: ignore
-    has_lazy_import = False
     lazy_import_lock = threading.Lock()
 
     @classmethod
@@ -1185,9 +1222,6 @@ class TypeEngine(typing.Generic[T]):
         if python_type in cls._REGISTRY:
             return cls._REGISTRY[python_type]
 
-        if dataclasses.is_dataclass(python_type):
-            return cls._DATACLASS_TRANSFORMER
-
         return None
 
     @classmethod
@@ -1206,6 +1240,16 @@ class TypeEngine(typing.Generic[T]):
                 if v is not None:
                     return v
 
+        # flytekit's dataclass type transformer is left for last to give users a chance to register a type transformer
+        # to handle dataclass-like objects as part of the mro evaluation.
+        #
+        # N.B.: keep in mind that there are no compatibility guarantees between these user-defined dataclass transformers
+        # and the flytekit one. This incompatibility is *not* a new behavior introduced by the recent type engine
+        # refactor (https://github.com/flyteorg/flytekit/pull/2815), but it is worth calling out explicitly as a known
+        # limitation nonetheless.
+        if dataclasses.is_dataclass(python_type):
+            return cls._DATACLASS_TRANSFORMER
+
         display_pickle_warning(str(python_type))
         from flytekit.types.pickle.pickle import FlytePickleTransformer
 
@@ -1220,16 +1264,7 @@ class TypeEngine(typing.Generic[T]):
             # Avoid a race condition where concurrent threads may exit lazy_import_transformers before the transformers
             # have been imported. This could be implemented without a lock if you assume python assignments are atomic
             # and re-registering transformers is acceptable, but I decided to play it safe.
-            if cls.has_lazy_import:
-                return
-            cls.has_lazy_import = True
-            from flytekit.types.structured import (
-                register_arrow_handlers,
-                register_bigquery_handlers,
-                register_pandas_handlers,
-                register_snowflake_handlers,
-            )
-            from flytekit.types.structured.structured_dataset import DuplicateHandlerError
+            from flytekit.types.structured import lazy_import_structured_dataset_handler
 
             if is_imported("tensorflow"):
                 from flytekit.extras import tensorflow  # noqa: F401
@@ -1244,29 +1279,11 @@ class TypeEngine(typing.Generic[T]):
                     from flytekit.types.schema.types_pandas import PandasSchemaReader, PandasSchemaWriter  # noqa: F401
                 except ValueError:
                     logger.debug("Transformer for pandas is already registered.")
-                try:
-                    register_pandas_handlers()
-                except DuplicateHandlerError:
-                    logger.debug("Transformer for pandas is already registered.")
-            if is_imported("pyarrow"):
-                try:
-                    register_arrow_handlers()
-                except DuplicateHandlerError:
-                    logger.debug("Transformer for arrow is already registered.")
-            if is_imported("google.cloud.bigquery"):
-                try:
-                    register_bigquery_handlers()
-                except DuplicateHandlerError:
-                    logger.debug("Transformer for bigquery is already registered.")
             if is_imported("numpy"):
                 from flytekit.types import numpy  # noqa: F401
             if is_imported("PIL"):
                 from flytekit.types.file import image  # noqa: F401
-            if is_imported("snowflake.connector"):
-                try:
-                    register_snowflake_handlers()
-                except DuplicateHandlerError:
-                    logger.debug("Transformer for snowflake is already registered.")
+            lazy_import_structured_dataset_handler()
 
     @classmethod
     def to_literal_type(cls, python_type: Type[T]) -> LiteralType:
@@ -1286,7 +1303,12 @@ class TypeEngine(typing.Generic[T]):
                     )
                 data = x.data
         if data is not None:
+            # Double-check that `data` does not contain a key called `cache-key-metadata`
+            if CACHE_KEY_METADATA in data:
+                raise AssertionError(f"FlyteAnnotation cannot contain `{CACHE_KEY_METADATA}`.")
             idl_type_annotation = TypeAnnotationModel(annotations=data)
+            if res.annotation:
+                idl_type_annotation = TypeAnnotationModel.merge_annotations(idl_type_annotation, res.annotation)
             res = LiteralType.from_flyte_idl(res.to_flyte_idl())
             res._annotation = idl_type_annotation
         return res
@@ -1503,9 +1525,14 @@ class TypeEngine(typing.Generic[T]):
                     TypeEngine.async_to_python_value(ctx, lm.literals[k], python_interface_inputs[k])
                 )
             await asyncio.gather(*kwargs.values())
-        except TypeTransformerFailedError as exc:
-            exc.args = (f"Error converting input '{k}' at position {i}:\n  {exc.args[0]}",)
-            raise
+        except Exception as e:
+            raise TypeTransformerFailedError(
+                f"Error converting input '{k}' at position {i}:\n"
+                f"Literal value: {lm.literals[k]}\n"
+                f"Literal type: {literal_types}\n"
+                f"Expected Python type: {python_interface_inputs[k]}\n"
+                f"Exception: {e}"
+            )
 
         kwargs = {k: v.result() for k, v in kwargs.items() if v is not None}
         return kwargs
@@ -1875,7 +1902,7 @@ class UnionTransformer(AsyncTypeTransformer[T]):
                 else:
                     res = trans.to_literal(ctx, python_val, t, expected.union_type.variants[i])
                 if found_res:
-                    print(f"Current type {get_args(python_type)[i]} old res {res_type}")
+                    logger.debug(f"Current type {get_args(python_type)[i]} old res {res_type}")
                     is_ambiguous = True
                 res_type = _add_tag_to_type(trans.get_literal_type(t), trans.name)
                 found_res = True
@@ -2098,7 +2125,10 @@ class DictTransformer(AsyncTypeTransformer[dict]):
                     return _type_models.LiteralType(map_value_type=sub_type)
                 except Exception as e:
                     raise ValueError(f"Type of Generic List type is not supported, {e}")
-        return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT)
+        return _type_models.LiteralType(
+            simple=_type_models.SimpleType.STRUCT,
+            annotation=TypeAnnotationModel({CACHE_KEY_METADATA: {SERIALIZATION_FORMAT: MESSAGEPACK}}),
+        )
 
     async def async_to_literal(
         self, ctx: FlyteContext, python_val: typing.Any, python_type: Type[dict], expected: LiteralType
@@ -2301,6 +2331,7 @@ def generate_attribute_list_from_dataclass_json(schema: dict, schema_name: typin
             attribute_list.append((property_key, List[_get_element_type(property_val["items"])]))  # type: ignore[misc,index]
         # Handle dataclass and dict
         elif property_type == "object":
+            # For nested dataclass
             if property_val.get("$ref"):
                 name = property_val["$ref"].split("/")[-1]
                 attribute_list.append(
@@ -2309,13 +2340,17 @@ def generate_attribute_list_from_dataclass_json(schema: dict, schema_name: typin
                         typing.cast(GenericAlias, convert_marshmallow_json_schema_to_python_class(schema, name)),
                     )
                 )
+            # typed dict and untyped dict
             elif property_val.get("additionalProperties"):
-                attribute_list.append(
-                    (property_key, typing.cast(GenericAlias, _get_element_type(property_val["additionalProperties"]))),
-                )
-            else:
-                attribute_list.append((property_key, Dict[str, _get_element_type(property_val)]))  # type: ignore[misc,index]
-        # Handle int, float, bool or str
+                # untyped dict
+                if property_val["additionalProperties"] == dict():
+                    attribute_list.append((property_key, dict))  # type: ignore
+                else:
+                    # typed dict
+                    attribute_list.append(
+                        (property_key, Dict[str, _get_element_type(property_val["additionalProperties"])])  # type: ignore[misc,index]
+                    )
+        # Handle primitive types like int, float, bool or str
         else:
             attribute_list.append([property_key, _get_element_type(property_val)])  # type: ignore
     return attribute_list
@@ -2600,6 +2635,38 @@ class LiteralsResolver(collections.UserDict):
             raise ValueError(f"Key {key} is not in the literal map")
 
         return self._literals[key]
+
+    def as_python_native(self, python_interface: Interface) -> typing.Any:
+        """
+        This should return the native Python representation, compatible with unpacking.
+        This function relies on Python interface outputs being ordered correctly.
+
+        :param python_interface: Only outputs are used but easier to pass the whole interface.
+        """
+        if len(self.literals) == 0:
+            return None
+
+        if self.variable_map is None:
+            raise AssertionError(f"Variable map is empty in literals resolver with {self.literals}")
+
+        # Trigger get() on everything to make sure native values are present using the python interface as type hint
+        for lit_key, lit in self.literals.items():
+            self.get(lit_key, as_type=python_interface.outputs.get(lit_key))
+
+        # if 1 item, then return 1 item
+        if len(self.native_values) == 1:
+            return next(iter(self.native_values.values()))
+
+        # if more than 1 item, then return a tuple - can ignore naming the tuple unless it becomes a problem
+        # This relies on python_interface.outputs being ordered correctly.
+        res = cast(typing.Tuple[typing.Any, ...], ())
+        for var_name, _ in python_interface.outputs.items():
+            if var_name not in self.native_values:
+                raise ValueError(f"Key {var_name} is not in the native values")
+
+            res += (self.native_values[var_name],)
+
+        return res
 
     def __getitem__(self, key: str):
         # First check to see if it's even in the literal map.

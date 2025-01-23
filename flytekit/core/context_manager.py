@@ -16,7 +16,9 @@ from __future__ import annotations
 import logging as _logging
 import os
 import pathlib
+import signal
 import tempfile
+import threading
 import traceback
 import typing
 from contextlib import contextmanager
@@ -24,6 +26,7 @@ from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
+from types import FrameType
 from typing import Generator, List, Optional, Union
 
 from flytekit.configuration import Config, SecretsConfig, SerializationSettings
@@ -37,8 +40,10 @@ from flytekit.loggers import developer_logger, user_space_logger
 from flytekit.models.core import identifier as _identifier
 
 if typing.TYPE_CHECKING:
-    from flytekit import Deck
     from flytekit.clients import friendly as friendly_client  # noqa
+    from flytekit.clients.friendly import SynchronousFlyteClient
+    from flytekit.core.worker_queue import Controller
+    from flytekit.deck.deck import Deck
 
 # TODO: resolve circular import from flytekit.core.python_auto_container import TaskResolverMixin
 
@@ -526,6 +531,10 @@ class ExecutionState(object):
         # This is the mode that is used to indicate a dynamic task
         DYNAMIC_TASK_EXECUTION = 4
 
+        EAGER_EXECUTION = 5
+
+        EAGER_LOCAL_EXECUTION = 6
+
     mode: Optional[ExecutionState.Mode]
     working_dir: Union[os.PathLike, str]
     engine_dir: Optional[Union[os.PathLike, str]]
@@ -586,6 +595,7 @@ class ExecutionState(object):
         return (
             self.mode == ExecutionState.Mode.LOCAL_TASK_EXECUTION
             or self.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
+            or self.mode == ExecutionState.Mode.EAGER_LOCAL_EXECUTION
         )
 
 
@@ -663,6 +673,7 @@ class FlyteContext(object):
     in_a_condition: bool = False
     origin_stackframe: Optional[traceback.FrameSummary] = None
     output_metadata_tracker: Optional[OutputMetadataTracker] = None
+    worker_queue: Optional[Controller] = None
 
     @property
     def user_space_params(self) -> Optional[ExecutionParameters]:
@@ -689,6 +700,7 @@ class FlyteContext(object):
             execution_state=self.execution_state,
             in_a_condition=self.in_a_condition,
             output_metadata_tracker=self.output_metadata_tracker,
+            worker_queue=self.worker_queue,
         )
 
     def enter_conditional_section(self) -> Builder:
@@ -713,12 +725,20 @@ class FlyteContext(object):
     def with_output_metadata_tracker(self, t: OutputMetadataTracker) -> Builder:
         return self.new_builder().with_output_metadata_tracker(t)
 
+    def with_worker_queue(self, wq: Controller) -> Builder:
+        return self.new_builder().with_worker_queue(wq)
+
+    def with_client(self, c: SynchronousFlyteClient) -> Builder:
+        return self.new_builder().with_client(c)
+
     def new_compilation_state(self, prefix: str = "") -> CompilationState:
         """
         Creates and returns a default compilation state. For most of the code this should be the entrypoint
         of compilation, otherwise the code should always uses - with_compilation_state
         """
-        return CompilationState(prefix=prefix)
+        from flytekit.core.python_auto_container import default_task_resolver
+
+        return CompilationState(prefix=prefix, task_resolver=default_task_resolver)
 
     def new_execution_state(self, working_dir: Optional[os.PathLike] = None) -> ExecutionState:
         """
@@ -774,6 +794,7 @@ class FlyteContext(object):
         serialization_settings: Optional[SerializationSettings] = None
         in_a_condition: bool = False
         output_metadata_tracker: Optional[OutputMetadataTracker] = None
+        worker_queue: Optional[Controller] = None
 
         def build(self) -> FlyteContext:
             return FlyteContext(
@@ -785,6 +806,7 @@ class FlyteContext(object):
                 serialization_settings=self.serialization_settings,
                 in_a_condition=self.in_a_condition,
                 output_metadata_tracker=self.output_metadata_tracker,
+                worker_queue=self.worker_queue,
             )
 
         def enter_conditional_section(self) -> FlyteContext.Builder:
@@ -833,6 +855,14 @@ class FlyteContext(object):
             self.output_metadata_tracker = t
             return self
 
+        def with_worker_queue(self, wq: Controller) -> FlyteContext.Builder:
+            self.worker_queue = wq
+            return self
+
+        def with_client(self, c: SynchronousFlyteClient) -> FlyteContext.Builder:
+            self.flyte_client = c
+            return self
+
         def new_compilation_state(self, prefix: str = "") -> CompilationState:
             """
             Creates and returns a default compilation state. For most of the code this should be the entrypoint
@@ -870,6 +900,12 @@ class FlyteContextManager(object):
         # but correspondingly a pop_context should be called
         FlyteContextManager.pop_context()
     """
+
+    signal_handlers: typing.List[typing.Callable[[int, FrameType], typing.Any]] = []
+
+    @staticmethod
+    def add_signal_handler(handler: typing.Callable[[int, FrameType], typing.Any]):
+        FlyteContextManager.signal_handlers.append(handler)
 
     @staticmethod
     def get_origin_stackframe(limit=2) -> traceback.FrameSummary:
@@ -953,6 +989,16 @@ class FlyteContextManager(object):
         # Ensure a local directory is available for users to work with.
         user_space_path = os.path.join(cfg.local_sandbox_path, "user_space")
         pathlib.Path(user_space_path).mkdir(parents=True, exist_ok=True)
+
+        def main_signal_handler(signum: int, frame: FrameType):
+            for handler in FlyteContextManager.signal_handlers:
+                handler(signum, frame)
+            exit(1)
+
+        # This initialize function is also called by other threads (since the context manager lives in a ContextVar)
+        # so we should not run this if we're not the main thread.
+        if threading.current_thread().name == threading.main_thread().name:
+            signal.signal(signal.SIGINT, main_signal_handler)
 
         # Note we use the SdkWorkflowExecution object purely for formatting into the ex:project:domain:name format users
         # are already acquainted with

@@ -5,6 +5,7 @@ import hashlib
 import os
 import pathlib
 import re
+import sys
 import typing
 from abc import abstractmethod
 from dataclasses import asdict, dataclass
@@ -61,6 +62,7 @@ class ImageSpec:
 
             If the option is set by the user, then that option is of course used.
         copy: List of files/directories to copy to /root. e.g. ["src/file1.txt", "src/file2.txt"]
+        python_exec: Python executable to use for install packages
     """
 
     name: str = "flytekit"
@@ -86,6 +88,7 @@ class ImageSpec:
     tag_format: Optional[str] = None
     source_copy_mode: Optional[CopyFileDetection] = None
     copy: Optional[List[str]] = None
+    python_exec: Optional[str] = None
 
     def __post_init__(self):
         self.name = self.name.lower()
@@ -240,7 +243,10 @@ class ImageSpec:
             if e.response.status_code == 404:
                 return False
 
-            if re.match(f"unknown: repository .*{self.name} not found", e.explanation):
+            if re.match(
+                f"unknown: (artifact|repository) .*{self.name}(|:{self.tag}) not found",
+                e.explanation,
+            ):
                 click.secho(f"Received 500 error with explanation: {e.explanation}", fg="yellow")
                 return False
 
@@ -328,6 +334,37 @@ class ImageSpec:
         copied_image_spec._is_force_push = True
 
         return copied_image_spec
+
+    @classmethod
+    def from_env(cls, *, pinned_packages: Optional[List[str]] = None, **kwargs) -> "ImageSpec":
+        """Create ImageSpec with the environment's Python version and packages pinned to the ones in the environment."""
+
+        from importlib.metadata import version
+
+        # Invalid kwargs when using `ImageSpec.from_env`
+        invalid_kwargs = ["python_version"]
+        for invalid_kwarg in invalid_kwargs:
+            if invalid_kwarg in kwargs and kwargs[invalid_kwarg] is not None:
+                msg = (
+                    f"{invalid_kwarg} can not be used with `from_env` because it will be inferred from the environment"
+                )
+                raise ValueError(msg)
+
+        version_info = sys.version_info
+        python_version = f"{version_info.major}.{version_info.minor}"
+
+        if "packages" in kwargs:
+            packages = kwargs.pop("packages")
+        else:
+            packages = []
+
+        pinned_packages = pinned_packages or []
+
+        for package_to_pin in pinned_packages:
+            package_version = version(package_to_pin)
+            packages.append(f"{package_to_pin}=={package_version}")
+
+        return ImageSpec(packages=packages, python_version=python_version, **kwargs)
 
 
 class ImageSpecBuilder:

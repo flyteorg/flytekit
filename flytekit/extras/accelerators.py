@@ -128,7 +128,7 @@ class GPUAccelerator(BaseAccelerator):
 
 
 #: use this constant to specify that the task should run on an
-#: `NVIDIA A10 Tensor Core GPU <https://www.nvidia.com/en-us/data-center/a10-tensor-core-gpu/>`_
+#: `NVIDIA A10 Tensor Core GPU <https://www.nvidia.com/en-us/data-center/products/a10-gpu/>`_
 A10G = GPUAccelerator("nvidia-a10g")
 
 #: use this constant to specify that the task should run on an
@@ -144,23 +144,23 @@ L4_VWS = GPUAccelerator("nvidia-l4-vws")
 K80 = GPUAccelerator("nvidia-tesla-k80")
 
 #: use this constant to specify that the task should run on an
-#: `NVIDIA Tesla M60 GPU <https://www.nvidia.com/en-us/data-center/tesla-m60/>`_
+#: `NVIDIA Tesla M60 GPU <https://images.nvidia.com/content/tesla/pdf/188417-Tesla-M60-DS-A4-fnl-Web.pdf/>`_
 M60 = GPUAccelerator("nvidia-tesla-m60")
 
 #: use this constant to specify that the task should run on an
-#: `NVIDIA Tesla P4 GPU <https://www.nvidia.com/en-us/data-center/tesla-p4/>`_
+#: `NVIDIA Tesla P4 GPU <https://images.nvidia.com/content/pdf/tesla/184457-Tesla-P4-Datasheet-NV-Final-Letter-Web.pdf/>`_
 P4 = GPUAccelerator("nvidia-tesla-p4")
 
 #: use this constant to specify that the task should run on an
-#: `NVIDIA Tesla P100 GPU <https://www.nvidia.com/en-us/data-center/tesla-p100/>`_
+#: `NVIDIA Tesla P100 GPU <https://images.nvidia.com/content/tesla/pdf/nvidia-tesla-p100-datasheet.pdf/>`_
 P100 = GPUAccelerator("nvidia-tesla-p100")
 
 #: use this constant to specify that the task should run on an
-#: `NVIDIA T4 Tensor Core GPU <https://www.nvidia.com/en-us/data-center/t4/>`_
+#: `NVIDIA Tesla T4 GPU <https://www.nvidia.com/en-us/data-center/tesla-t4/>`_
 T4 = GPUAccelerator("nvidia-tesla-t4")
 
 #: use this constant to specify that the task should run on an
-#: `NVIDIA Tesla V100 GPU <https://www.nvidia.com/en-us/data-center/tesla-v100/>`_
+#: `NVIDIA Tesla V100 GPU <https://images.nvidia.com/content/technologies/volta/pdf/tesla-volta-v100-datasheet-letter-fnl-web.pdf/>`_
 V100 = GPUAccelerator("nvidia-tesla-v100")
 
 
