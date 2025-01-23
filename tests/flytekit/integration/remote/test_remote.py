@@ -1,4 +1,5 @@
 import botocore.session
+import shutil
 from contextlib import ExitStack, contextmanager
 import datetime
 import hashlib
@@ -905,8 +906,12 @@ def test_signal_approve_reject(register):
 def kubectl_secret():
     secret = "abc-xyz"
     # Create secret
+    kubectl = shutil.which("kubectl")
+    if kubectl is None:
+        pytest.skip("kubectl not found")
+
     subprocess.run([
-        "kubectl",
+        kubectl,
         "create",
         "secret",
         "-n",
@@ -919,7 +924,7 @@ def kubectl_secret():
 
     # Remove secret
     subprocess.run([
-        "kubectl",
+        kubectl,
         "delete",
         "secrets",
         "-n",
