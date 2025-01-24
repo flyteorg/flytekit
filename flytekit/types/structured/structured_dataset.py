@@ -22,8 +22,7 @@ from typing_extensions import Annotated, TypeAlias, get_args, get_origin
 from flytekit import lazy_module
 from flytekit.core.constants import MESSAGEPACK
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-from flytekit.core.type_engine import AsyncTypeTransformer, TypeEngine, TypeTransformerFailedError
-from flytekit.core.type_engine import modify_literal_uris
+from flytekit.core.type_engine import AsyncTypeTransformer, TypeEngine, TypeTransformerFailedError, modify_literal_uris
 from flytekit.deck.renderer import Renderable
 from flytekit.extras.pydantic_transformer.decorator import model_serializer, model_validator
 from flytekit.loggers import developer_logger, logger

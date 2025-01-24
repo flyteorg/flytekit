@@ -82,7 +82,6 @@ class HttpFileWriter(fsspec.spec.AbstractBufferedFile):
                 filename_root=self._filename,
             )
             FlytePathResolver.add_mapping(self.path, res.native_url)
-            breakpoint()
             resp = requests.put(res.signed_url, data=data)
             if not resp.ok:
                 raise AssertionError(f"Failed to upload file {self._filename} to {res.signed_url} reason {resp.reason}")
