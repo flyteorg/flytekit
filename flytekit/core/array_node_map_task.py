@@ -374,9 +374,9 @@ class ArrayNodeMapTask(PythonTask):
 def map(
     target: Union[LaunchPlan, PythonFunctionTask, "FlyteLaunchPlan"],
     concurrency: Optional[int] = None,
-    tolerance: Optional[Union[float,int]] = None,
-    min_successes: Optional[int] = None, #Deprecated
-    min_success_ratio: float = 1.0, #Deprecated
+    tolerance: Optional[Union[float, int]] = None,
+    min_successes: Optional[int] = None,  # Deprecated
+    min_success_ratio: Optional[float] = None,  # Deprecated
     **kwargs,
 ):
     """
@@ -422,10 +422,10 @@ def map(
             computed_min_success = tolerance
         else:
             raise TypeError("tolerance must be float or int")
-    
-    final_min_ratio = min_success_ratio or computed_min_ratio
-    final_min_successes = min_successes or computed_min_success
-    
+
+    final_min_ratio = computed_min_ratio if min_success_ratio is None else min_success_ratio
+    final_min_successes = computed_min_success if min_successes is None else min_successes
+
     if isinstance(target, (LaunchPlan, FlyteLaunchPlan, ReferenceTask)):
         return array_node(
             target=target,
