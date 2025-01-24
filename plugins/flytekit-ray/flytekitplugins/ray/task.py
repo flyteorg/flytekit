@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional
 
 import yaml
+
+from flytekit.core.resources import _pod_spec_from_resources
 from flytekitplugins.ray.models import (
     HeadGroupSpec,
     RayCluster,
@@ -14,7 +16,7 @@ from flytekitplugins.ray.models import (
 )
 from google.protobuf.json_format import MessageToDict
 
-from flytekit import lazy_module
+from flytekit import lazy_module, PodTemplate, Resources
 from flytekit.configuration import SerializationSettings
 from flytekit.core.context_manager import ExecutionParameters, FlyteContextManager
 from flytekit.core.python_function_task import PythonFunctionTask
@@ -27,7 +29,14 @@ ray = lazy_module("ray")
 @dataclass
 class HeadNodeConfig:
     ray_start_params: typing.Optional[typing.Dict[str, str]] = None
-    k8s_pod: typing.Optional[K8sPod] = None
+    pod_template: typing.Optional[PodTemplate] = None
+    requests: Optional[Resources] = None
+    limits: Optional[Resources] = None
+
+    def __post_init__(self):
+        if self.pod_template:
+            if self.requests and self.limits:
+                raise ValueError("Cannot specify both pod_template and requests/limits")
 
 
 @dataclass
@@ -37,7 +46,14 @@ class WorkerNodeConfig:
     min_replicas: typing.Optional[int] = None
     max_replicas: typing.Optional[int] = None
     ray_start_params: typing.Optional[typing.Dict[str, str]] = None
-    k8s_pod: typing.Optional[K8sPod] = None
+    pod_template: typing.Optional[PodTemplate] = None
+    requests: Optional[Resources] = None
+    limits: Optional[Resources] = None
+
+    def __post_init__(self):
+        if self.pod_template:
+            if self.requests and self.limits:
+                raise ValueError("Cannot specify both pod_template and requests/limits")
 
 
 @dataclass
@@ -86,22 +102,46 @@ class RayFunctionTask(PythonFunctionTask):
 
         # Deprecated: runtime_env is removed KubeRay >= 1.1.0. It is replaced by runtime_env_yaml
         runtime_env = base64.b64encode(json.dumps(cfg.runtime_env).encode()).decode() if cfg.runtime_env else None
-
         runtime_env_yaml = yaml.dump(cfg.runtime_env) if cfg.runtime_env else None
+
+        if cfg.head_node_config.requests or cfg.head_node_config.limits:
+            head_pod_template = PodTemplate(
+                pod_spec=_pod_spec_from_resources(
+                    primary_container_name="ray-head",
+                    requests=cfg.head_node_config.requests,
+                    limits=cfg.head_node_config.limits,
+                )
+            )
+        else:
+            head_pod_template = cfg.head_node_config.pod_template
+
+        worker_group_spec: typing.List[WorkerGroupSpec] = []
+        for c in cfg.worker_node_config:
+            if c.requests or c.limits:
+                worker_pod_template = PodTemplate(
+                    pod_spec=_pod_spec_from_resources(
+                        primary_container_name=f"ray-worker",
+                        requests=c.requests,
+                        limits=c.limits,
+                    )
+                )
+            else:
+                worker_pod_template = c.pod_template
+            k8s_pod = K8sPod.from_pod_template(worker_pod_template) if worker_pod_template else None
+            worker_group_spec.append(
+                WorkerGroupSpec(
+                    c.group_name, c.replicas, c.min_replicas, c.max_replicas, c.ray_start_params, k8s_pod
+                )
+            )
 
         ray_job = RayJob(
             ray_cluster=RayCluster(
                 head_group_spec=(
-                    HeadGroupSpec(cfg.head_node_config.ray_start_params, cfg.head_node_config.k8s_pod)
+                    HeadGroupSpec(cfg.head_node_config.ray_start_params, K8sPod.from_pod_template(head_pod_template) if head_pod_template else None)
                     if cfg.head_node_config
                     else None
                 ),
-                worker_group_spec=[
-                    WorkerGroupSpec(
-                        c.group_name, c.replicas, c.min_replicas, c.max_replicas, c.ray_start_params, c.k8s_pod
-                    )
-                    for c in cfg.worker_node_config
-                ],
+                worker_group_spec=worker_group_spec,
                 enable_autoscaling=(cfg.enable_autoscaling if cfg.enable_autoscaling else False),
             ),
             runtime_env=runtime_env,
