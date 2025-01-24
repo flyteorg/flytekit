@@ -6,8 +6,6 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional
 
 import yaml
-
-from flytekit.core.resources import _pod_spec_from_resources
 from flytekitplugins.ray.models import (
     HeadGroupSpec,
     RayCluster,
@@ -16,10 +14,11 @@ from flytekitplugins.ray.models import (
 )
 from google.protobuf.json_format import MessageToDict
 
-from flytekit import lazy_module, PodTemplate, Resources
+from flytekit import PodTemplate, Resources, lazy_module
 from flytekit.configuration import SerializationSettings
 from flytekit.core.context_manager import ExecutionParameters, FlyteContextManager
 from flytekit.core.python_function_task import PythonFunctionTask
+from flytekit.core.resources import _pod_spec_from_resources
 from flytekit.extend import TaskPlugins
 from flytekit.models.task import K8sPod
 
@@ -120,7 +119,7 @@ class RayFunctionTask(PythonFunctionTask):
             if c.requests or c.limits:
                 worker_pod_template = PodTemplate(
                     pod_spec=_pod_spec_from_resources(
-                        primary_container_name=f"ray-worker",
+                        primary_container_name="ray-worker",
                         requests=c.requests,
                         limits=c.limits,
                     )
@@ -129,15 +128,16 @@ class RayFunctionTask(PythonFunctionTask):
                 worker_pod_template = c.pod_template
             k8s_pod = K8sPod.from_pod_template(worker_pod_template) if worker_pod_template else None
             worker_group_spec.append(
-                WorkerGroupSpec(
-                    c.group_name, c.replicas, c.min_replicas, c.max_replicas, c.ray_start_params, k8s_pod
-                )
+                WorkerGroupSpec(c.group_name, c.replicas, c.min_replicas, c.max_replicas, c.ray_start_params, k8s_pod)
             )
 
         ray_job = RayJob(
             ray_cluster=RayCluster(
                 head_group_spec=(
-                    HeadGroupSpec(cfg.head_node_config.ray_start_params, K8sPod.from_pod_template(head_pod_template) if head_pod_template else None)
+                    HeadGroupSpec(
+                        cfg.head_node_config.ray_start_params,
+                        K8sPod.from_pod_template(head_pod_template) if head_pod_template else None,
+                    )
                     if cfg.head_node_config
                     else None
                 ),
