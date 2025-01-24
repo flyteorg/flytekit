@@ -185,7 +185,7 @@ def _copy_lock_files_into_context(image_spec: ImageSpec, lock_file: str, tmp_dir
     shutil.copy2(pyproject_toml_src, pyproject_toml_path)
 
 
-def prepare_uv_lock_command(image_spec: ImageSpec, pip_install_args: List[str], tmp_dir: Path) -> str:
+def prepare_uv_lock_command(image_spec: ImageSpec, pip_install_args: List[str], tmp_dir: Path) -> tuple[str, list[str]]:
     # uv sync is experimental, so our uv.lock support is also experimental
     # the parameters we pass into install args could be different
     warnings.warn("uv.lock support is experimental", UserWarning)
@@ -200,7 +200,7 @@ def prepare_uv_lock_command(image_spec: ImageSpec, pip_install_args: List[str], 
 
     return UV_LOCK_INSTALL_TEMPLATE, pip_install_args
 
-def prepare_poetry_lock_command(image_spec: ImageSpec, pip_install_args: List[str], tmp_dir: Path) -> str:
+def prepare_poetry_lock_command(image_spec: ImageSpec, pip_install_args: List[str], tmp_dir: Path) -> tuple[str, list[str]]:
     _copy_lock_files_into_context(image_spec, "poetry.lock", tmp_dir)
 
     # --no-root: Do not install the current project
