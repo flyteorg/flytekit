@@ -1,4 +1,5 @@
 import typing
+import warnings
 from dataclasses import dataclass
 
 from flytekit.models import common as common_models
@@ -21,7 +22,7 @@ class Options(object):
             remote prefix for storage location of the form ``s3://<bucket>/key...`` or
             ``gcs://...`` or ``file://...``. If not specified will use the platform configured default. This is where
             the data for offloaded types is stored.
-        max_parallelism: Controls the maximum number of tasknodes that can be run in parallel for the entire workflow.
+        concurrency: Controls the maximum number of tasknodes that can be run in parallel for the entire workflow.
         notifications: List of notifications for this execution.
         disable_notifications: This should be set to true if all notifications are intended to be disabled for this execution.
     """
@@ -30,11 +31,36 @@ class Options(object):
     annotations: typing.Optional[common_models.Annotations] = None
     raw_output_data_config: typing.Optional[common_models.RawOutputDataConfig] = None
     security_context: typing.Optional[security.SecurityContext] = None
-    max_parallelism: typing.Optional[int] = None
+    concurrency: typing.Optional[int] = None
     notifications: typing.Optional[typing.List[common_models.Notification]] = None
     disable_notifications: typing.Optional[bool] = None
     overwrite_cache: typing.Optional[bool] = None
 
+    @property
+    def max_parallelism(self)->typing.Optional[int]:
+        """ 
+        [Deprecated] Use concurrency instead. This property is maintained for backward compatibility
+        """
+        warnings.warn(
+            "max_parallelism is deprecated and will be removed in a future version. Use concurrency instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        return self.concurrency
+    
+    @max_parallelism.setter
+    def max_parallelism(self, value:typing.Optional[int]):
+        """ 
+        Setter for max_parallelism (deprecated in favor of concurrency)
+        """
+        warnings.warn(
+            "max_parallelism is deprecated and will be removed in a future version. Use concurrency instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        self.concurrency = value
+    
+    
     @classmethod
     def default_from(
         cls,
