@@ -176,6 +176,7 @@ flytekit/extras/tensorflow/record.py
 --------------------
 flytekit/image_spec/image_spec.py
     DOC601: Class `ImageSpec`: Class docstring contains fewer class attributes than actual class attributes.  (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
+    DOC603: Class `ImageSpec`: Class docstring attributes are different from actual class attributes. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Attributes in the class definition but not in the docstring: [apt_packages: Optional[List[str]], base_image: Optional[Union[str, 'ImageSpec']], builder: Optional[str], commands: Optional[List[str]], conda_channels: Optional[List[str]], conda_packages: Optional[List[str]], copy: Optional[List[str]], cuda: Optional[str], cudnn: Optional[str], entrypoint: Optional[List[str]], env: Optional[typing.Dict[str, str]], name: str, packages: Optional[List[str]], pip_extra_index_url: Optional[List[str]], pip_index: Optional[str], platform: str, python_exec: Optional[str], python_version: str, registry: Optional[str], registry_config: Optional[str], requirements: Optional[str], source_copy_mode: Optional[CopyFileDetection], source_root: Optional[str], tag_format: Optional[str]]. (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
     DOC109: Method `ImageSpecBuilder.build_image`: The option `--arg-type-hints-in-docstring` is `True` but there are no type hints in the docstring arg list
     DOC110: Method `ImageSpecBuilder.build_image`: The option `--arg-type-hints-in-docstring` is `True` but not all args in the docstring arg list have type hints
     DOC105: Method `ImageSpecBuilder.build_image`: Argument names match, but type hints in these args do not match: image_spec
@@ -384,6 +385,7 @@ flytekit/models/schedule.py
 flytekit/models/security.py
     DOC001: Class `Secret`: Potential formatting errors in docstring. Error message: Expected a colon in 'group is the Name of the secret. For example in kubernetes secrets is the name of the secret'.
     DOC601: Class `Secret`: Class docstring contains fewer class attributes than actual class attributes.  (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
+    DOC603: Class `Secret`: Class docstring attributes are different from actual class attributes. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Attributes in the class definition but not in the docstring: [env_var: Optional[str], group: Optional[str], group_version: Optional[str], key: Optional[str], mount_requirement: MountType]. (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
 --------------------
 flytekit/models/task.py
     DOC301: Class `ResourceEntry`: __init__() should not have a docstring; please combine it with the docstring of the class
@@ -517,6 +519,9 @@ plugins/flytekit-inference/flytekitplugins/inference/ollama/serve.py
 --------------------
 plugins/flytekit-inference/flytekitplugins/inference/vllm/serve.py
     DOC301: Class `VLLM`: __init__() should not have a docstring; please combine it with the docstring of the class
+--------------------
+plugins/flytekit-k8sdataservice/flytekitplugins/k8sdataservice/sensor.py
+    DOC301: Class `CleanupSensor`: __init__() should not have a docstring; please combine it with the docstring of the class
 --------------------
 plugins/flytekit-kf-mpi/flytekitplugins/kfmpi/task.py
     DOC001: Class `RunPolicy`: Potential formatting errors in docstring. Error message: Expected a colon in 'can remain active before it is terminated. Must be a positive integer. This setting applies only to pods.'.
