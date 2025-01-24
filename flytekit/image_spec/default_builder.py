@@ -8,7 +8,7 @@ import warnings
 from pathlib import Path
 from string import Template
 from subprocess import run
-from typing import ClassVar, List
+from typing import ClassVar, List, NamedTuple
 
 import click
 
@@ -78,6 +78,16 @@ RUN --mount=type=cache,sharing=locked,mode=0777,target=/var/cache/apt,id=apt \
     $APT_PACKAGES
 """)
 
+MICROMAMBA_INSTALL_COMMAND_TEMPLATE = Template("""\
+RUN --mount=type=cache,sharing=locked,mode=0777,target=/opt/micromamba/pkgs,\
+id=micromamba \
+    --mount=from=micromamba,source=/usr/bin/micromamba,target=/usr/bin/micromamba \
+    micromamba config set use_lockfiles False && \
+    micromamba create -n runtime --root-prefix /opt/micromamba \
+    -c conda-forge $CONDA_CHANNELS \
+    python=$PYTHON_VERSION $CONDA_PACKAGES
+""")
+
 DOCKER_FILE_TEMPLATE = Template("""\
 #syntax=docker/dockerfile:1.5
 FROM ghcr.io/astral-sh/uv:0.5.1 as uv
@@ -94,20 +104,14 @@ RUN --mount=from=micromamba,source=/etc/ssl/certs/ca-certificates.crt,target=/tm
 RUN id -u flytekit || useradd --create-home --shell /bin/bash flytekit
 RUN chown -R flytekit /root && chown -R flytekit /home
 
-RUN --mount=type=cache,sharing=locked,mode=0777,target=/opt/micromamba/pkgs,\
-id=micromamba \
-    --mount=from=micromamba,source=/usr/bin/micromamba,target=/usr/bin/micromamba \
-    micromamba config set use_lockfiles False && \
-    micromamba create -n runtime --root-prefix /opt/micromamba \
-    -c conda-forge $CONDA_CHANNELS \
-    python=$PYTHON_VERSION $CONDA_PACKAGES
+$INSTALL_PYTHON_TEMPLATE
 
 # Configure user space
-ENV PATH="/opt/micromamba/envs/runtime/bin:$$PATH" \
+ENV PATH="$EXTRA_PATH:$$PATH" \
+    UV_PYTHON=$PYTHON_EXEC \
     UV_LINK_MODE=copy \
     FLYTE_SDK_RICH_TRACEBACKS=0 \
     SSL_CERT_DIR=/etc/ssl/certs \
-    UV_PYTHON=/opt/micromamba/envs/runtime/bin/python \
     $ENV
 
 $UV_PYTHON_INSTALL_COMMAND
@@ -240,6 +244,50 @@ def prepare_python_install(image_spec: ImageSpec, tmp_dir: Path) -> str:
     return UV_PYTHON_INSTALL_COMMAND_TEMPLATE.substitute(PIP_INSTALL_ARGS=pip_install_args)
 
 
+class _PythonInstallTemplate(NamedTuple):
+    python_exec: str
+    template: str
+    extra_path: str
+
+
+def prepare_python_executable(image_spec: ImageSpec) -> _PythonInstallTemplate:
+    if image_spec.python_exec:
+        if image_spec.conda_channels:
+            raise ValueError("conda_channels is not supported with python_exec")
+        if image_spec.conda_packages:
+            raise ValueError("conda_packages is not supported with python_exec")
+        return _PythonInstallTemplate(python_exec=image_spec.python_exec, template="", extra_path="")
+
+    conda_packages = image_spec.conda_packages or []
+    conda_channels = image_spec.conda_channels or []
+
+    if conda_packages:
+        conda_packages_concat = " ".join(conda_packages)
+    else:
+        conda_packages_concat = ""
+
+    if conda_channels:
+        conda_channels_concat = " ".join(f"-c {channel}" for channel in conda_channels)
+    else:
+        conda_channels_concat = ""
+
+    if image_spec.python_version:
+        python_version = image_spec.python_version
+    else:
+        python_version = f"{sys.version_info.major}.{sys.version_info.minor}"
+
+    template = MICROMAMBA_INSTALL_COMMAND_TEMPLATE.substitute(
+        PYTHON_VERSION=python_version,
+        CONDA_PACKAGES=conda_packages_concat,
+        CONDA_CHANNELS=conda_channels_concat,
+    )
+    return _PythonInstallTemplate(
+        python_exec="/opt/micromamba/envs/runtime/bin/python",
+        template=template,
+        extra_path="/opt/micromamba/envs/runtime/bin",
+    )
+
+
 def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
     """Populate tmp_dir with Dockerfile as specified by the `image_spec`."""
     base_image = image_spec.base_image or "debian:bookworm-slim"
@@ -300,23 +348,7 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
     else:
         copy_command_runtime = ""
 
-    conda_packages = image_spec.conda_packages or []
-    conda_channels = image_spec.conda_channels or []
-
-    if conda_packages:
-        conda_packages_concat = " ".join(conda_packages)
-    else:
-        conda_packages_concat = ""
-
-    if conda_channels:
-        conda_channels_concat = " ".join(f"-c {channel}" for channel in conda_channels)
-    else:
-        conda_channels_concat = ""
-
-    if image_spec.python_version:
-        python_version = image_spec.python_version
-    else:
-        python_version = f"{sys.version_info.major}.{sys.version_info.minor}"
+    python_install_template = prepare_python_executable(image_spec=image_spec)
 
     if image_spec.entrypoint is None:
         entrypoint = ""
@@ -351,11 +383,11 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
         extra_copy_cmds = ""
 
     docker_content = DOCKER_FILE_TEMPLATE.substitute(
-        PYTHON_VERSION=python_version,
         UV_PYTHON_INSTALL_COMMAND=uv_python_install_command,
-        CONDA_PACKAGES=conda_packages_concat,
-        CONDA_CHANNELS=conda_channels_concat,
         APT_INSTALL_COMMAND=apt_install_command,
+        INSTALL_PYTHON_TEMPLATE=python_install_template.template,
+        EXTRA_PATH=python_install_template.extra_path,
+        PYTHON_EXEC=python_install_template.python_exec,
         BASE_IMAGE=base_image,
         ENV=env,
         COPY_COMMAND_RUNTIME=copy_command_runtime,

@@ -52,6 +52,10 @@ _ANON = "anon"
 
 Uploadable = typing.Union[str, os.PathLike, pathlib.Path, bytes, io.BufferedReader, io.BytesIO, io.StringIO]
 
+# This is the default chunk size flytekit will use for writing to S3 and GCS. This is set to 25MB by default and is
+# configurable by the user if needed. This is used when put() is called on filesystems.
+_WRITE_SIZE_CHUNK_BYTES = int(os.environ.get("_F_P_WRITE_CHUNK_SIZE", "26214400"))  # 25 * 2**20
+
 
 def s3_setup_args(s3_cfg: configuration.S3Config, anonymous: bool = False) -> Dict[str, Any]:
     kwargs: Dict[str, Any] = {
@@ -106,6 +110,27 @@ def get_fsspec_storage_options(
     if protocol in ("abfs", "abfss"):
         return {**azure_setup_args(data_config.azure, anonymous=anonymous), **kwargs}
     return {}
+
+
+def get_additional_fsspec_call_kwargs(protocol: typing.Union[str, tuple], method_name: str) -> Dict[str, Any]:
+    """
+    These are different from the setup args functions defined above. Those kwargs are applied when asking fsspec
+    to create the filesystem. These kwargs returned here are for when the filesystem's methods are invoked.
+
+    :param protocol: s3, gcs, etc.
+    :param method_name: Pass in the __name__ of the fsspec.filesystem function. _'s will be ignored.
+    """
+    kwargs = {}
+    method_name = method_name.replace("_", "")
+    if isinstance(protocol, tuple):
+        protocol = protocol[0]
+
+    # For s3fs and gcsfs, we feel the default chunksize of 50MB is too big.
+    # Re-evaluate these kwargs when we move off of s3fs to obstore.
+    if method_name == "put" and protocol in ["s3", "gs"]:
+        kwargs["chunksize"] = _WRITE_SIZE_CHUNK_BYTES
+
+    return kwargs
 
 
 @decorator
@@ -353,6 +378,10 @@ class FileAccessProvider(object):
             if "metadata" not in kwargs:
                 kwargs["metadata"] = {}
             kwargs["metadata"].update(self._execution_metadata)
+
+        additional_kwargs = get_additional_fsspec_call_kwargs(file_system.protocol, file_system.put.__name__)
+        kwargs.update(additional_kwargs)
+
         if isinstance(file_system, AsyncFileSystem):
             dst = await file_system._put(from_path, to_path, recursive=recursive, **kwargs)  # pylint: disable=W0212
         else:
