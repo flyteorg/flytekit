@@ -138,7 +138,7 @@ RUN mkdir -p $$HOME && \
 """)
 
 
-GITHUB_CREDENTIAL_SECRET = 'GITHUB_CREDENTIAL_SECRET'
+GITHUB_CREDENTIAL_SECRET = "GITHUB_CREDENTIAL_SECRET"
 
 
 def get_flytekit_for_pypi():
@@ -200,7 +200,10 @@ def prepare_uv_lock_command(image_spec: ImageSpec, pip_install_args: List[str], 
 
     return UV_LOCK_INSTALL_TEMPLATE, pip_install_args
 
-def prepare_poetry_lock_command(image_spec: ImageSpec, pip_install_args: List[str], tmp_dir: Path) -> tuple[str, list[str]]:
+
+def prepare_poetry_lock_command(
+    image_spec: ImageSpec, pip_install_args: List[str], tmp_dir: Path
+) -> tuple[str, list[str]]:
     _copy_lock_files_into_context(image_spec, "poetry.lock", tmp_dir)
 
     # --no-root: Do not install the current project
@@ -253,7 +256,12 @@ def prepare_python_install(image_spec: ImageSpec, tmp_dir: Path) -> str:
 
         pip_install_args = " ".join(pip_install_args)
 
-    return template.substitute(PIP_INSTALL_ARGS=pip_install_args, PIP_SECRET_MOUNT=pip_secret_mount, PIP_PREINSTALL_COMMAND=pip_preinstall_command, PIP_POSTINSTALL_COMMAND=pip_postinstall_command)
+    return template.substitute(
+        PIP_INSTALL_ARGS=pip_install_args,
+        PIP_SECRET_MOUNT=pip_secret_mount,
+        PIP_PREINSTALL_COMMAND=pip_preinstall_command,
+        PIP_POSTINSTALL_COMMAND=pip_postinstall_command,
+    )
 
 
 class _PythonInstallTemplate(NamedTuple):
@@ -473,7 +481,9 @@ class DefaultImageBuilder(ImageSpecBuilder):
             ]
 
             if image_spec.pip_github_credential_source:
-                command.extend(["--secret", f"id={GITHUB_CREDENTIAL_SECRET},src={image_spec.pip_github_credential_source}"])
+                command.extend(
+                    ["--secret", f"id={GITHUB_CREDENTIAL_SECRET},src={image_spec.pip_github_credential_source}"]
+                )
 
             if image_spec.registry and push:
                 command.append("--push")
