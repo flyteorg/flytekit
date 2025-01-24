@@ -65,6 +65,8 @@ class HttpFileWriter(fsspec.spec.AbstractBufferedFile):
         """Only uploads the file at once from the buffer.
         Not suitable for large files as the buffer will blow the memory for very large files.
         Suitable for default values or local dataframes being uploaded all at once.
+        1. why is md5 none?
+        2. how is this a chunk?
         """
         if final is False:
             return False
@@ -80,6 +82,7 @@ class HttpFileWriter(fsspec.spec.AbstractBufferedFile):
                 filename_root=self._filename,
             )
             FlytePathResolver.add_mapping(self.path, res.native_url)
+            breakpoint()
             resp = requests.put(res.signed_url, data=data)
             if not resp.ok:
                 raise AssertionError(f"Failed to upload file {self._filename} to {res.signed_url} reason {resp.reason}")

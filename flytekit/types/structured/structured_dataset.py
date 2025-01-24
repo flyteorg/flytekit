@@ -23,6 +23,7 @@ from flytekit import lazy_module
 from flytekit.core.constants import MESSAGEPACK
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import AsyncTypeTransformer, TypeEngine, TypeTransformerFailedError
+from flytekit.core.type_engine import modify_literal_uris
 from flytekit.deck.renderer import Renderable
 from flytekit.extras.pydantic_transformer.decorator import model_serializer, model_validator
 from flytekit.loggers import developer_logger, logger
@@ -63,6 +64,7 @@ class StructuredDataset(SerializableType, DataClassJSONMixin):
     file_format: typing.Optional[str] = field(default=GENERIC_FORMAT, metadata=config(mm_field=fields.String()))
 
     def _serialize(self) -> Dict[str, Optional[str]]:
+        # dataclass case
         lv = StructuredDatasetTransformerEngine().to_literal(
             FlyteContextManager.current_context(), self, type(self), None
         )
@@ -98,6 +100,7 @@ class StructuredDataset(SerializableType, DataClassJSONMixin):
 
     @model_serializer
     def serialize_structured_dataset(self) -> Dict[str, Optional[str]]:
+        # pydantic case
         lv = StructuredDatasetTransformerEngine().to_literal(
             FlyteContextManager.current_context(), self, type(self), None
         )
@@ -807,6 +810,10 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
         # with a format of "" is used.
         sd_model.metadata._structured_dataset_type.format = handler.supported_format
         lit = Literal(scalar=Scalar(structured_dataset=sd_model))
+
+        # Because the handler.encode may have uploaded something, and because the sd may end up living inside a
+        # dataclass, we need to modify any uploaded flyte:// urls here.
+        modify_literal_uris(lit)
         sd._literal_sd = sd_model
         sd._already_uploaded = True
         return lit
