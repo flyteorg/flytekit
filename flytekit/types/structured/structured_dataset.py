@@ -86,7 +86,7 @@ class StructuredDataset(SerializableType, DataClassJSONMixin):
             FlyteContextManager.current_context(),
             Literal(
                 scalar=Scalar(
-                    structured_dataset=StructuredDataset(
+                    structured_dataset=literals.StructuredDataset(
                         metadata=StructuredDatasetMetadata(
                             structured_dataset_type=StructuredDatasetType(format=file_format)
                         ),
@@ -119,7 +119,7 @@ class StructuredDataset(SerializableType, DataClassJSONMixin):
             FlyteContextManager.current_context(),
             Literal(
                 scalar=Scalar(
-                    structured_dataset=StructuredDataset(
+                    structured_dataset=literals.StructuredDataset(
                         metadata=StructuredDatasetMetadata(
                             structured_dataset_type=StructuredDatasetType(format=self.file_format)
                         ),
