@@ -1022,4 +1022,3 @@ def test_modify_literal_uris_call(mock_resolver):
 
     bm_revived = TypeEngine.to_python_value(ctx, lit, BM)
     assert bm_revived.s.literal.uri == "/my/replaced/val"
-
