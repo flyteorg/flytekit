@@ -23,15 +23,17 @@ from flytekit.tools.script_mode import ls_files
 
 UV_LOCK_INSTALL_TEMPLATE = Template(
     """\
+WORKDIR /root
 RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/uv,id=uv \
     --mount=from=uv,source=/uv,target=/usr/bin/uv \
     --mount=type=bind,target=uv.lock,src=uv.lock \
     --mount=type=bind,target=pyproject.toml,src=pyproject.toml \
     uv sync $PIP_INSTALL_ARGS
+WORKDIR /
 
 # Update PATH and UV_PYTHON to point to the venv created by uv sync
-ENV PATH="/.venv/bin:$$PATH" \
-    UV_PYTHON=/.venv/bin/python
+ENV PATH="/root/.venv/bin:$$PATH" \
+    UV_PYTHON=/root/.venv/bin/python
 """
 )
 
@@ -85,7 +87,9 @@ FROM $BASE_IMAGE
 
 USER root
 $APT_INSTALL_COMMAND
-COPY --from=micromamba /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+RUN --mount=from=micromamba,source=/etc/ssl/certs/ca-certificates.crt,target=/tmp/ca-certificates.crt \
+    [ -f /etc/ssl/certs/ca-certificates.crt ] || \
+    mkdir -p /etc/ssl/certs/ && cp /tmp/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
 RUN id -u flytekit || useradd --create-home --shell /bin/bash flytekit
 RUN chown -R flytekit /root && chown -R flytekit /home
@@ -407,7 +411,7 @@ class DefaultImageBuilder(ImageSpecBuilder):
             if value is not None and name not in self._SUPPORTED_IMAGE_SPEC_PARAMETERS and not name.startswith("_")
         ]
         if unsupported_parameters:
-            msg = f"The following parameters are unsupported and ignored: " f"{unsupported_parameters}"
+            msg = f"The following parameters are unsupported and ignored: {unsupported_parameters}"
             warnings.warn(msg, UserWarning, stacklevel=2)
 
         with tempfile.TemporaryDirectory() as tmp_dir:
