@@ -58,17 +58,13 @@ class RawSynchronousFlyteClient(object):
         # 32KB for error messages, 20MB for actual messages.
         options = (("grpc.max_metadata_size", 32 * 1024), ("grpc.max_receive_message_length", 20 * 1024 * 1024))
         self._cfg = cfg
-        base_channel = get_channel(cfg, options=options)
 
-        if self.check_grpc_health_with_authentication(base_channel):
-            self._channel = wrap_exceptions_channel(cfg, base_channel)
-        else:
-            self._channel = wrap_exceptions_channel(
-                cfg,
-                upgrade_channel_to_authenticated(
-                    cfg, upgrade_channel_to_proxy_authenticated(cfg, get_channel(cfg, options=options))
-                ),
-            )
+        self._channel = wrap_exceptions_channel(
+            cfg,
+            upgrade_channel_to_authenticated(
+                cfg, upgrade_channel_to_proxy_authenticated(cfg, get_channel(cfg, options=options))
+            ),
+        )
 
         self._stub = _admin_service.AdminServiceStub(self._channel)
         self._signal = signal_service.SignalServiceStub(self._channel)
