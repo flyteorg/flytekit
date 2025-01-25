@@ -1,3 +1,4 @@
+import warnings
 from dataclasses import dataclass, fields
 from typing import Any, List, Optional, Union
 
@@ -19,8 +20,9 @@ class Resources(DataClassJSONMixin):
         Resources(cpu=0.5, mem=1024) # This is 500m CPU and 1 KB of memory
 
         # For Kubernetes-based tasks, pods use ephemeral local storage for scratch space, caching, and for logs.
+        # The property has been renamed to disk for simplicity, while still retaining its ephemeral nature.
         # This allocates 1Gi of such local storage.
-        Resources(ephemeral_storage="1Gi")
+        Resources(disk="1Gi")
 
     .. note::
 
@@ -33,6 +35,7 @@ class Resources(DataClassJSONMixin):
     cpu: Optional[Union[str, int, float]] = None
     mem: Optional[Union[str, int]] = None
     gpu: Optional[Union[str, int]] = None
+    disk: Optional[Union[str, int]] = None
     ephemeral_storage: Optional[Union[str, int]] = None
 
     def __post_init__(self):
@@ -51,6 +54,25 @@ class Resources(DataClassJSONMixin):
         _check_cpu(self.cpu)
         _check_others(self.mem)
         _check_others(self.gpu)
+
+        # Rename the `ephemeral_storage` parameter to `disk` for simplicity.
+        # Currently, both `disk` and `ephemeral_storage` are supported to maintain backward compatibility.
+        # For more details, please refer to https://github.com/flyteorg/flyte/issues/6142.
+        if self.disk is not None and self.ephemeral_storage is not None:
+            raise ValueError(
+                "Cannot specify both disk and ephemeral_storage."
+                "Please use disk because ephemeral_storage is deprecated and will be removed in the future."
+            )
+        elif self.ephemeral_storage is not None:
+            warnings.warn(
+                "ephemeral_storage is deprecated and will be removed in the future. Please use disk instead.",
+                DeprecationWarning,
+            )
+        else:
+            self.ephemeral_storage = self.disk
+
+            # Disable further access to disk
+            self.disk = None
         _check_others(self.ephemeral_storage)
 
 
