@@ -57,6 +57,4 @@ def init(template, project_name):
                 processed_contents = project_template_regex.sub(project_name_bytes, zip_contents)
                 dest_file.write(processed_contents)
 
-    click.echo(
-        f"Project initialized in directory {project_name}."
-    )
+    click.echo(f"Project initialized in directory {project_name}.")
