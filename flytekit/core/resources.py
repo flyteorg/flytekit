@@ -1,10 +1,13 @@
 from dataclasses import dataclass, fields
-from typing import Any, List, Optional, Union
+from typing import Any, List, Literal, Optional, Union
 
+from flyteidl.core import tasks_pb2
 from kubernetes.client import V1Container, V1PodSpec, V1ResourceRequirements
 from mashumaro.mixins.json import DataClassJSONMixin
 
+from flytekit.extras.accelerators import BaseAccelerator
 from flytekit.models import task as task_models
+from flytekit.core.constants import SHARED_MEMORY_MOUNT_PATH, SHARED_MEMORY_MOUNT_NAME
 
 
 @dataclass
@@ -100,6 +103,34 @@ def convert_resources_to_resource_model(
     if limits is not None:
         limit_entries = _convert_resources_to_resource_entries(limits)
     return task_models.Resources(requests=request_entries, limits=limit_entries)
+
+
+def _construct_extended_resources(
+    accelerator: Optional[BaseAccelerator] = None,
+    shared_memory: Optional[Union[bool, str]] = None,
+) -> Optional[tasks_pb2.ExtendedResources]:
+    """Convert public extended resources to idl.
+
+    :param accelerator: The accelerator to use for this task.
+    :param shared_memory: If True, then shared memory will be attached to the container where the size is equal
+        to the allocated memory. If str, then the shared memory is set to that size.
+    """
+    kwargs = {}
+    if accelerator is not None:
+        kwargs["gpu_accelerator"] = accelerator.to_flyte_idl()
+    if isinstance(shared_memory, str) or shared_memory is True:
+        if shared_memory is True:
+            shared_memory = None
+        kwargs["shared_memory"] = tasks_pb2.SharedMemory(
+            mount_name=SHARED_MEMORY_MOUNT_NAME,
+            mount_path=SHARED_MEMORY_MOUNT_PATH,
+            size_limit=shared_memory,
+        )
+
+    if not kwargs:
+        return None
+
+    return tasks_pb2.ExtendedResources(**kwargs)
 
 
 def pod_spec_from_resources(

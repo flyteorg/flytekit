@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import datetime
 import typing
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 
 from flyteidl.core import tasks_pb2
 
-from flytekit.core.resources import Resources, convert_resources_to_resource_model
+from flytekit.core.resources import Resources, _construct_extended_resources, convert_resources_to_resource_model
 from flytekit.core.utils import _dnsify
 from flytekit.extras.accelerators import BaseAccelerator
 from flytekit.loggers import logger
@@ -191,6 +191,7 @@ class Node(object):
         cache: Optional[bool] = None,
         cache_version: Optional[str] = None,
         cache_serialize: Optional[bool] = None,
+        shared_memory: Optional[Union[Literal[True], int]] = None,
         *args,
         **kwargs,
     ):
@@ -237,7 +238,12 @@ class Node(object):
 
         if accelerator is not None:
             assert_not_promise(accelerator, "accelerator")
-            self._extended_resources = tasks_pb2.ExtendedResources(gpu_accelerator=accelerator.to_flyte_idl())
+
+        if shared_memory is not None:
+            assert_not_promise(shared_memory, "shared_memory")
+
+        self._extended_resources = _construct_extended_resources(
+            accelerator=accelerator, shared_memory=shared_memory)
 
         self._override_node_metadata(name, timeout, retries, interruptible, cache, cache_version, cache_serialize)
 

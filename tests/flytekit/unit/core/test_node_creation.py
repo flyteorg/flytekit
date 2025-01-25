@@ -497,6 +497,29 @@ def test_override_accelerator():
     assert not accelerator.HasField("unpartitioned")
 
 
+def test_override_shared_memory():
+    @task(shared_memory=True)
+    def bar() -> str:
+        return "hello"
+
+    @workflow
+    def my_wf() -> str:
+        return bar().with_overrides(shared_memory="128Mi")
+
+    serialization_settings = flytekit.configuration.SerializationSettings(
+        project="test_proj",
+        domain="test_domain",
+        version="abc",
+        image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+        env={},
+    )
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
+    assert len(wf_spec.template.nodes) == 1
+    assert wf_spec.template.nodes[0].task_node.overrides is not None
+    assert wf_spec.template.nodes[0].task_node.overrides.extended_resources is not None
+    shared_memory = wf_spec.template.nodes[0].task_node.overrides.extended_resources.shared_memory
+
+
 def test_cache_override_values():
     @task
     def t1(a: str) -> str:
