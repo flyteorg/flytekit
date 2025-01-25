@@ -1908,7 +1908,7 @@ class UnionTransformer(AsyncTypeTransformer[T]):
                 res_type = _add_tag_to_type(trans.get_literal_type(t), trans.name)
                 found_res = True
             except Exception as e:
-                logger.warning(
+                logger.debug(
                     f"UnionTransformer failed attempt to convert from {python_val} to {t} error: {e}",
                 )
                 continue
