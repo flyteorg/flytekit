@@ -133,8 +133,8 @@ def test_pod_spec_from_resources_requests_limits_set():
             )
         ]
     )
-    pod_spec = pod_spec_from_resources(k8s_pod_name=k8s_pod_name, requests=requests, limits=limits)
-    assert expected_pod_spec == V1PodSpec(**pod_spec)
+    pod_spec = pod_spec_from_resources(primary_container_name=k8s_pod_name, requests=requests, limits=limits)
+    assert expected_pod_spec == pod_spec
 
 
 def test_pod_spec_from_resources_requests_set():
@@ -153,5 +153,5 @@ def test_pod_spec_from_resources_requests_set():
             )
         ]
     )
-    pod_spec = pod_spec_from_resources(k8s_pod_name=k8s_pod_name, requests=requests, limits=limits)
-    assert expected_pod_spec == V1PodSpec(**pod_spec)
+    pod_spec = pod_spec_from_resources(primary_container_name=k8s_pod_name, requests=requests, limits=limits)
+    assert expected_pod_spec == pod_spec
