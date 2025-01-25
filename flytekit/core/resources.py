@@ -102,7 +102,7 @@ def convert_resources_to_resource_model(
     return task_models.Resources(requests=request_entries, limits=limit_entries)
 
 
-def _pod_spec_from_resources(
+def pod_spec_from_resources(
     primary_container_name: Optional[str] = None,
     requests: Optional[Resources] = None,
     limits: Optional[Resources] = None,

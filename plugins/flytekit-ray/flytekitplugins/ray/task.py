@@ -18,11 +18,13 @@ from flytekit import PodTemplate, Resources, lazy_module
 from flytekit.configuration import SerializationSettings
 from flytekit.core.context_manager import ExecutionParameters, FlyteContextManager
 from flytekit.core.python_function_task import PythonFunctionTask
-from flytekit.core.resources import _pod_spec_from_resources
+from flytekit.core.resources import pod_spec_from_resources
 from flytekit.extend import TaskPlugins
 from flytekit.models.task import K8sPod
 
 ray = lazy_module("ray")
+_RAY_HEAD_CONTAINER_NAME = "ray-head"
+_RAY_WORKER_CONTAINER_NAME = "ray-worker"
 
 
 @dataclass
@@ -98,15 +100,14 @@ class RayFunctionTask(PythonFunctionTask):
 
     def get_custom(self, settings: SerializationSettings) -> Optional[Dict[str, Any]]:
         cfg = self._task_config
-
         # Deprecated: runtime_env is removed KubeRay >= 1.1.0. It is replaced by runtime_env_yaml
         runtime_env = base64.b64encode(json.dumps(cfg.runtime_env).encode()).decode() if cfg.runtime_env else None
         runtime_env_yaml = yaml.dump(cfg.runtime_env) if cfg.runtime_env else None
 
         if cfg.head_node_config.requests or cfg.head_node_config.limits:
             head_pod_template = PodTemplate(
-                pod_spec=_pod_spec_from_resources(
-                    primary_container_name="ray-head",
+                pod_spec=pod_spec_from_resources(
+                    primary_container_name=_RAY_HEAD_CONTAINER_NAME,
                     requests=cfg.head_node_config.requests,
                     limits=cfg.head_node_config.limits,
                 )
@@ -118,8 +119,8 @@ class RayFunctionTask(PythonFunctionTask):
         for c in cfg.worker_node_config:
             if c.requests or c.limits:
                 worker_pod_template = PodTemplate(
-                    pod_spec=_pod_spec_from_resources(
-                        primary_container_name="ray-worker",
+                    pod_spec=pod_spec_from_resources(
+                        primary_container_name=_RAY_WORKER_CONTAINER_NAME,
                         requests=c.requests,
                         limits=c.limits,
                     )

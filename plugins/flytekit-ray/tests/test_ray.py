@@ -4,7 +4,7 @@ import json
 import ray
 import yaml
 
-from flytekit.core.resources import _pod_spec_from_resources
+from flytekit.core.resources import pod_spec_from_resources
 from flytekitplugins.ray import HeadNodeConfig
 from flytekitplugins.ray.models import (
     HeadGroupSpec,
@@ -65,7 +65,7 @@ def test_ray_task():
         env={},
     )
     head_pod_template = PodTemplate(
-                pod_spec=_pod_spec_from_resources(
+                pod_spec=pod_spec_from_resources(
                     primary_container_name="ray-head",
                     requests=Resources(cpu="1", mem="1Gi"),
                     limits=Resources(cpu="2", mem="2Gi"),
