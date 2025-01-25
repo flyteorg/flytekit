@@ -131,3 +131,18 @@ def test_image_spec_extra_index_url():
     )
 
     assert contents == expected_contents
+
+
+def test_envd_failure_python_exec():
+    base_image = "ghcr.io/flyteorg/flytekit:py3.11-1.14.4"
+    python_exec = "/usr/local/bin/python"
+
+    image_spec = ImageSpec(
+        name="FLYTEKIT",
+        base_image=base_image,
+        python_exec=python_exec
+    )
+
+    msg = "python_exec is not supported with the envd image builder"
+    with pytest.raises(ValueError, match=msg):
+        EnvdImageSpecBuilder().build_image(image_spec)

@@ -632,6 +632,93 @@ class FlyteRemote(object):
         s = resp.signals
         return s
 
+    def approve(self, signal_id: str, execution_name: str, project: str = None, domain: str = None):
+        """
+        :param signal_id: The name of the signal, this is the key used in the approve() or wait_for_input() call.
+        :param execution_name: The name of the execution. This is the tail-end of the URL when looking
+            at the workflow execution.
+        :param project: The execution project, will default to the Remote's default project.
+        :param domain: The execution domain, will default to the Remote's default domain.
+        """
+
+        wf_exec_id = WorkflowExecutionIdentifier(
+            project=project or self.default_project, domain=domain or self.default_domain, name=execution_name
+        )
+
+        lt = TypeEngine.to_literal_type(bool)
+        true_literal = TypeEngine.to_literal(self.context, True, bool, lt)
+
+        req = SignalSetRequest(
+            id=SignalIdentifier(signal_id, wf_exec_id).to_flyte_idl(), value=true_literal.to_flyte_idl()
+        )
+
+        # Response is empty currently, nothing to give back to the user.
+        self.client.set_signal(req)
+
+    def reject(self, signal_id: str, execution_name: str, project: str = None, domain: str = None):
+        """
+        :param signal_id: The name of the signal, this is the key used in the approve() or wait_for_input() call.
+        :param execution_name: The name of the execution. This is the tail-end of the URL when looking
+            at the workflow execution.
+        :param project: The execution project, will default to the Remote's default project.
+        :param domain: The execution domain, will default to the Remote's default domain.
+        """
+
+        wf_exec_id = WorkflowExecutionIdentifier(
+            project=project or self.default_project, domain=domain or self.default_domain, name=execution_name
+        )
+
+        lt = TypeEngine.to_literal_type(bool)
+        false_literal = TypeEngine.to_literal(self.context, False, bool, lt)
+
+        req = SignalSetRequest(
+            id=SignalIdentifier(signal_id, wf_exec_id).to_flyte_idl(), value=false_literal.to_flyte_idl()
+        )
+
+        # Response is empty currently, nothing to give back to the user.
+        self.client.set_signal(req)
+
+    def set_input(
+        self,
+        signal_id: str,
+        execution_name: str,
+        value: typing.Union[literal_models.Literal, typing.Any],
+        project=None,
+        domain=None,
+        python_type=None,
+        literal_type=None,
+    ):
+        """
+        :param signal_id: The name of the signal, this is the key used in the approve() or wait_for_input() call.
+        :param execution_name: The name of the execution. This is the tail-end of the URL when looking
+            at the workflow execution.
+        :param value: This is either a Literal or a Python value which FlyteRemote will invoke the TypeEngine to
+            convert into a Literal. This argument is only value for wait_for_input type signals.
+        :param project: The execution project, will default to the Remote's default project.
+        :param domain: The execution domain, will default to the Remote's default domain.
+        :param python_type: Provide a python type to help with conversion if the value you provided is not a Literal.
+        :param literal_type: Provide a Flyte literal type to help with conversion if the value you provided
+            is not a Literal
+        """
+
+        wf_exec_id = WorkflowExecutionIdentifier(
+            project=project or self.default_project, domain=domain or self.default_domain, name=execution_name
+        )
+        if isinstance(value, Literal):
+            logger.debug(f"Using provided {value} as existing Literal value")
+            lit = value
+        else:
+            lt = literal_type or (
+                TypeEngine.to_literal_type(python_type) if python_type else TypeEngine.to_literal_type(type(value))
+            )
+            lit = TypeEngine.to_literal(self.context, value, python_type or type(value), lt)
+            logger.debug(f"Converted {value} to literal {lit} using literal type {lt}")
+
+        req = SignalSetRequest(id=SignalIdentifier(signal_id, wf_exec_id).to_flyte_idl(), value=lit.to_flyte_idl())
+
+        # Response is empty currently, nothing to give back to the user.
+        self.client.set_signal(req)
+
     def set_signal(
         self,
         signal_id: str,
@@ -870,7 +957,12 @@ class FlyteRemote(object):
                 loop.run_in_executor(
                     None,
                     functools.partial(
-                        self.raw_register, cp_entity, serialization_settings, version, og_entity=task_entity
+                        self.raw_register,
+                        cp_entity,
+                        serialization_settings,
+                        version,
+                        create_default_launchplan=create_default_launchplan,
+                        og_entity=task_entity,
                     ),
                 )
             )
@@ -1244,6 +1336,27 @@ class FlyteRemote(object):
             return self.register_launch_plan(entity, version, project, domain, options, serialization_settings)
         raise ValueError(f"Unsupported entity type {type(entity)}")
 
+    def _wf_exists(
+        self,
+        name: str,
+        version: str,
+        project: str,
+        domain: str,
+    ) -> bool:
+        """Does the workflow with the given id components exist?"""
+        workflow_id = Identifier(
+            resource_type=ResourceType.WORKFLOW,
+            project=project,
+            domain=domain,
+            name=name,
+            version=version,
+        )
+        try:
+            self.client.get_workflow(workflow_id)
+            return True
+        except FlyteEntityNotExistException:
+            return False
+
     def register_launch_plan(
         self,
         entity: LaunchPlan,
@@ -1254,33 +1367,54 @@ class FlyteRemote(object):
         serialization_settings: typing.Optional[SerializationSettings] = None,
     ) -> FlyteLaunchPlan:
         """
-        Register a given launchplan, possibly applying overrides from the provided options.
+        Register a given launchplan, possibly applying overrides from the provided options. If the underlying workflow
+        is not already registered, it, along with any underlying entities, will also be registered. If the underlying
+        workflow does exist (with the given project/domain/version), then only the launchplan will be registered.
+
         :param entity: Launchplan to be registered
-        :param version:
+        :param version: Version to be registered for the launch plan, and used to check (and register) underlying wf
         :param project: Optionally provide a project, if not already provided in flyteremote constructor or a separate one
         :param domain: Optionally provide a domain, if not already provided in FlyteRemote constructor or a separate one
         :param serialization_settings: Optionally provide serialization settings, if not provided, will use the default
         :param options:
-        :return:
         """
         if serialization_settings is None:
-            _, _, _, module_file = extract_task_module(entity)
+            _, _, _, module_file = extract_task_module(entity.workflow)
             project_root = _find_project_root(module_file)
             serialization_settings = SerializationSettings(
                 image_config=ImageConfig.auto_default_image(),
                 source_root=project_root,
                 project=project or self.default_project,
                 domain=domain or self.default_domain,
+                version=version,
             )
 
-        ident = run_sync(
-            self._serialize_and_register,
-            entity,
-            serialization_settings,
-            version,
-            options,
-            False,
-        )
+        if self._wf_exists(
+            name=entity.workflow.name,
+            version=version,
+            project=serialization_settings.project,
+            domain=serialization_settings.domain,
+        ):
+            # Underlying workflow, exists, only register the launch plan itself
+            launch_plan_model = get_serializable(
+                OrderedDict(), settings=serialization_settings, entity=entity, options=options
+            )
+            ident = self.raw_register(
+                launch_plan_model, serialization_settings, version, create_default_launchplan=False
+            )
+            if ident is None:
+                raise ValueError("Failed to register launch plan, identifier returned was empty...")
+        else:
+            # Register the launch and everything under it
+            ident = run_sync(
+                self._serialize_and_register,
+                entity,
+                serialization_settings,
+                version,
+                options,
+                False,
+            )
+
         flp = self.fetch_launch_plan(ident.project, ident.domain, ident.name, ident.version)
         flp.python_interface = entity.python_interface
         return flp
