@@ -1358,7 +1358,7 @@ class TypeEngine(typing.Generic[T]):
     ) -> Literal:
         """
         The current dance is because we are allowing users to call from an async function, this synchronous
-        to_literal function, and allowing this to_literal function, to then invoke yet another async functionl,
+        to_literal function, and allowing this to_literal function, to then invoke yet another async function,
         namely an async transformer.
         """
         from flytekit.core.promise import Promise
