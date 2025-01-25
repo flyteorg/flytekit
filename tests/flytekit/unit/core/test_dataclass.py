@@ -1,11 +1,12 @@
 import pytest
-from enum import Enum
 import mock
-from pathlib import Path
-from mashumaro.mixins.json import DataClassJSONMixin
 import os
 import sys
 import tempfile
+from enum import Enum
+from pathlib import Path
+from dataclasses_json import DataClassJsonMixin
+from mashumaro.mixins.json import DataClassJSONMixin
 from dataclasses import dataclass, fields, field
 from typing import List, Dict, Optional, Union, Any
 from typing_extensions import Annotated
