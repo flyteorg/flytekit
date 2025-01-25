@@ -4,7 +4,7 @@ import importlib
 import re
 from abc import ABC
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Optional, TypeVar, Union
+from typing import Callable, Dict, List, Optional, TypeVar, Union, Literal
 
 from flyteidl.core import tasks_pb2
 
@@ -51,6 +51,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         pod_template: Optional[PodTemplate] = None,
         pod_template_name: Optional[str] = None,
         accelerator: Optional[BaseAccelerator] = None,
+        shared_memory_volume: Optional[Union[Literal[True], int]] = None,
         **kwargs,
     ):
         """
@@ -78,6 +79,8 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         :param pod_template: Custom PodTemplate for this task.
         :param pod_template_name: The name of the existing PodTemplate resource which will be used in this task.
         :param accelerator: The accelerator to use for this task.
+        :param shared_memory_volume: If True, then shared memory will be attached to the container where the size is equal
+            to the allocated memory. If int, then the shared memory is set to that size.
         """
         sec_ctx = None
         if secret_requests:
@@ -128,6 +131,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
 
         self.pod_template = pod_template
         self.accelerator = accelerator
+        self.shared_memory_volume = shared_memory_volume
 
     @property
     def task_resolver(self) -> TaskResolverMixin:
@@ -250,10 +254,20 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         """
         Returns the extended resources to allocate to the task on hosted Flyte.
         """
-        if self.accelerator is None:
+        kwargs = {}
+        if self.accelerator is not None:
+            kwargs["gpu_accelerator"] = self.accelerator.to_flyte_idl()
+        if self.shared_memory_volume is not None:
+            kwargs["shared_memory_volume"] = tasks_pb2.SharedMemoryVolume(
+                mount_name="flyte-shared-memory",
+                mount_path="/dev/shm",
+                size_limit=self.shared_memory_volume,
+            )
+
+        if not kwargs:
             return None
 
-        return tasks_pb2.ExtendedResources(gpu_accelerator=self.accelerator.to_flyte_idl())
+        return tasks_pb2.ExtendedResources(**kwargs)
 
 
 class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
