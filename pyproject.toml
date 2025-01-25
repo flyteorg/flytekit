@@ -146,5 +146,5 @@ extend-exclude = ["tests/", "**/tests/**"]
 ]
 
 [tool.codespell]
-ignore-words-list = "ot,te,raison,fo,lits"
+ignore-words-list = "ot,te,raison,fo,lits,assertIn"
 skip = "./docs/build,./.git,*.txt"
