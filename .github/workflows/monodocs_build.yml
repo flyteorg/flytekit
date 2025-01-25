@@ -57,5 +57,4 @@ jobs:
           DOCSEARCH_API_KEY: fake_docsearch_api_key  # must be set to get doc build to succeed
         run: |
           conda activate monodocs-env
-          pip install grpcio-health-checking==1.49.0
           make -C docs clean html SPHINXOPTS="-W -vvv"
