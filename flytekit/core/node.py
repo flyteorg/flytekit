@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Literal, Optional, Union
 
 from flyteidl.core import tasks_pb2
 
-from flytekit.core.resources import Resources, _construct_extended_resources, convert_resources_to_resource_model
+from flytekit.core.resources import Resources, construct_extended_resources, convert_resources_to_resource_model
 from flytekit.core.utils import _dnsify
 from flytekit.extras.accelerators import BaseAccelerator
 from flytekit.loggers import logger
@@ -242,7 +242,7 @@ class Node(object):
         if shared_memory is not None:
             assert_not_promise(shared_memory, "shared_memory")
 
-        self._extended_resources = _construct_extended_resources(
+        self._extended_resources = construct_extended_resources(
             accelerator=accelerator, shared_memory=shared_memory)
 
         self._override_node_metadata(name, timeout, retries, interruptible, cache, cache_version, cache_serialize)

@@ -13,7 +13,7 @@ from flytekit.constants import CopyFileDetection
 from flytekit.core.base_task import PythonTask, TaskMetadata, TaskResolverMixin
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.pod_template import PodTemplate
-from flytekit.core.resources import Resources, ResourceSpec, _construct_extended_resources
+from flytekit.core.resources import Resources, ResourceSpec, construct_extended_resources
 from flytekit.core.tracked_abc import FlyteTrackedABC
 from flytekit.core.tracker import TrackedInstance, extract_task_module
 from flytekit.core.utils import _get_container_definition, _serialize_pod_spec, timeit
@@ -254,7 +254,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         """
         Returns the extended resources to allocate to the task on hosted Flyte.
         """
-        return _construct_extended_resources(
+        return construct_extended_resources(
             accelerator=self.accelerator, shared_memory=self.shared_memory
         )
 

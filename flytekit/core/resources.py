@@ -105,7 +105,8 @@ def convert_resources_to_resource_model(
     return task_models.Resources(requests=request_entries, limits=limit_entries)
 
 
-def _construct_extended_resources(
+def construct_extended_resources(
+    *,
     accelerator: Optional[BaseAccelerator] = None,
     shared_memory: Optional[Union[bool, str]] = None,
 ) -> Optional[tasks_pb2.ExtendedResources]:
