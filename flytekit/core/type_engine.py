@@ -380,7 +380,7 @@ class SimpleTransformer(TypeTransformer[T]):
                     a: Union[int, bool, str, float]
                     b: Union[int, bool, str, float]
 
-                @task(container_image=custom_image)
+                @task(image=custom_image)
                 def add(a: Union[int, bool, str, float], b: Union[int, bool, str, float]) -> Union[int, bool, str, float]:
                     return a + b
 
