@@ -1,6 +1,7 @@
 import pytest
 from enum import Enum
-from dataclasses_json import DataClassJsonMixin
+import mock
+from pathlib import Path
 from mashumaro.mixins.json import DataClassJSONMixin
 import os
 import sys
@@ -17,6 +18,8 @@ from flytekit import task, workflow
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import FlyteFile
 from flytekit.types.structured import StructuredDataset
+
+pd = pytest.importorskip("pandas")
 
 
 @pytest.fixture
@@ -1175,3 +1178,32 @@ def test_dataclass_serialize_with_multiple_dataclass_union():
     res = DataclassTransformer()._make_dataclass_serializable(b, Union[None, A, B])
 
     assert res.x.path == "s3://my-bucket/my-file"
+
+
+@mock.patch("flytekit.remote.remote_fs.FlytePathResolver")
+def test_modify_literal_uris_call(mock_resolver):
+    ctx = FlyteContextManager.current_context()
+
+    sd = StructuredDataset(dataframe=pd.DataFrame(
+        {"a": [1, 2], "b": [3, 4]}))
+
+    @dataclass
+    class DC1:
+        s: StructuredDataset
+
+    bm = DC1(s=sd)
+
+    def mock_resolve_remote_path(flyte_uri: str):
+        p = Path(flyte_uri)
+        if p.exists():
+            return "/my/replaced/val"
+        return ""
+
+    mock_resolver.resolve_remote_path.side_effect = mock_resolve_remote_path
+    mock_resolver.protocol = "/"
+
+    lt = TypeEngine.to_literal_type(DC1)
+    lit = TypeEngine.to_literal(ctx, bm, DC1, lt)
+
+    bm_revived = TypeEngine.to_python_value(ctx, lit, DC1)
+    assert bm_revived.s.literal.uri == "/my/replaced/val"
