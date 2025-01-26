@@ -235,6 +235,9 @@ def prepare_python_install(image_spec: ImageSpec, tmp_dir: Path) -> str:
         pip_preinstall_command = f"git config --global {git_config_to_use_github_credential}"
         pip_postinstall_command = f"git config --global --unset {git_config_to_use_github_credential}"
 
+    if image_spec.pip_extra_args:
+        pip_install_args.append(image_spec.pip_extra_args)
+
     requirements = []
     template = None
     if image_spec.requirements:

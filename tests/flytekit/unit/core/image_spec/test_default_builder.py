@@ -240,6 +240,7 @@ def test_create_docker_context_uv_lock(tmp_path):
         requirements=os.fspath(uv_lock_file),
         pip_index="https://url.com",
         pip_extra_index_url=["https://extra-url.com"],
+        pip_extra_args="--no-install-package library-to-skip",
     )
 
     warning_msg = "uv.lock support is experimental"
@@ -252,7 +253,8 @@ def test_create_docker_context_uv_lock(tmp_path):
 
     assert (
         "uv sync --index-url https://url.com --extra-index-url "
-        "https://extra-url.com --locked --no-dev --no-install-project"
+        "https://extra-url.com --no-install-package library-to-skip "
+        "--locked --no-dev --no-install-project"
     ) in dockerfile_content
 
 
@@ -314,6 +316,7 @@ def test_create_poetry_lock(tmp_path):
         name="FLYTEKIT",
         python_version="3.12",
         requirements=os.fspath(poetry_lock),
+        pip_extra_args="--no-directory",
     )
 
     create_docker_context(image_spec, docker_context_path)
@@ -322,7 +325,7 @@ def test_create_poetry_lock(tmp_path):
     assert dockerfile_path.exists()
     dockerfile_content = dockerfile_path.read_text()
 
-    assert "poetry install --no-root" in dockerfile_content
+    assert "poetry install --no-directory --no-root" in dockerfile_content
 
 
 def test_python_exec(tmp_path):

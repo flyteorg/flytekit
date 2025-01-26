@@ -50,6 +50,7 @@ class ImageSpec:
         pip_extra_index_url: Specify one or more pip index urls as a list
         pip_github_credential_source: Specify a file containing a GitHub user name and token separated with a colon.
             The file is mounted as a build secret, and used to access private GitHub repositories.
+        pip_extra_args: Specify one or more extra pip install arguments as a space-delimited string
         registry_config: Specify the path to a JSON registry config file
         entrypoint: List of strings to overwrite the entrypoint of the base image with, set to [] to remove the entrypoint.
         commands: Command to run during the building process
@@ -85,6 +86,7 @@ class ImageSpec:
     pip_index: Optional[str] = None
     pip_extra_index_url: Optional[List[str]] = None
     pip_github_credential_source: Optional[str] = None
+    pip_extra_args: Optional[str] = None
     registry_config: Optional[str] = None
     entrypoint: Optional[List[str]] = None
     commands: Optional[List[str]] = None
