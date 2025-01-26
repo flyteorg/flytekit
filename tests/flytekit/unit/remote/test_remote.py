@@ -829,6 +829,9 @@ def test_register_task_with_node_dependency_hints(mock_client):
     def workflow1():
         return dynamic0()
 
+    mock_client.get_task.return_value.closure.compiled_task.template.sql = None
+    mock_client.get_task.return_value.closure.compiled_task.template.k8s_pod = None
+
     rr = FlyteRemote(
         Config.for_sandbox(),
         default_project="flytesnacks",
