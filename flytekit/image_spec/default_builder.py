@@ -452,6 +452,7 @@ class DefaultImageBuilder(ImageSpecBuilder):
         "base_image",
         "pip_index",
         "pip_extra_index_url",
+        "pip_github_credential_source",
         # "registry_config",
         "commands",
         "copy",

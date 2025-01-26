@@ -359,3 +359,25 @@ def test_python_exec_errors(tmp_path, key, value):
     msg = f"{key} is not supported with python_exec"
     with pytest.raises(ValueError, match=msg):
         create_docker_context(image_spec, docker_context_path)
+
+
+def test_github_credential_as_secret(monkeypatch, recwarn):
+    image_spec = ImageSpec(
+        name="FLYTEKIT",
+        python_version="3.12",
+        pip_github_credential_source="test_path_to_credential",
+    )
+    run_mock = Mock()
+    monkeypatch.setattr("flytekit.image_spec.default_builder.run", run_mock)
+
+    builder = DefaultImageBuilder()
+    builder.build_image(image_spec)
+
+    run_mock.assert_called_once()
+    call_args = run_mock.call_args.args
+
+    assert "--secret" in call_args[0]
+    next_arg = call_args[0][call_args[0].index("--secret") + 1]
+    assert next_arg == "id=GITHUB_CREDENTIAL_SECRET,src=test_path_to_credential"
+
+    assert not len(recwarn)
