@@ -8,7 +8,7 @@ import warnings
 from pathlib import Path
 from string import Template
 from subprocess import run
-from typing import ClassVar, List, NamedTuple
+from typing import ClassVar, List, NamedTuple, Tuple
 
 import click
 
@@ -185,7 +185,9 @@ def _copy_lock_files_into_context(image_spec: ImageSpec, lock_file: str, tmp_dir
     shutil.copy2(pyproject_toml_src, pyproject_toml_path)
 
 
-def prepare_uv_lock_command(image_spec: ImageSpec, pip_install_args: List[str], tmp_dir: Path) -> tuple[str, list[str]]:
+def prepare_uv_lock_command(
+    image_spec: ImageSpec, pip_install_args: List[str], tmp_dir: Path
+) -> Tuple[Template, List[str]]:
     # uv sync is experimental, so our uv.lock support is also experimental
     # the parameters we pass into install args could be different
     warnings.warn("uv.lock support is experimental", UserWarning)
@@ -203,7 +205,7 @@ def prepare_uv_lock_command(image_spec: ImageSpec, pip_install_args: List[str], 
 
 def prepare_poetry_lock_command(
     image_spec: ImageSpec, pip_install_args: List[str], tmp_dir: Path
-) -> tuple[str, list[str]]:
+) -> Tuple[Template, List[str]]:
     _copy_lock_files_into_context(image_spec, "poetry.lock", tmp_dir)
 
     # --no-root: Do not install the current project
@@ -226,8 +228,12 @@ def prepare_python_install(image_spec: ImageSpec, tmp_dir: Path) -> str:
     pip_secret_mount = ""
     if image_spec.pip_github_credential_source:
         pip_secret_mount = f"--mount=type=secret,id={GITHUB_CREDENTIAL_SECRET}"
-        pip_preinstall_command = f'git config --global url."https://$$(cat /run/secrets/{GITHUB_CREDENTIAL_SECRET})@github.com".insteadOf "https://github.com"'
-        pip_postinstall_command = f'git config --global --unset url."https://$$(cat /run/secrets/{GITHUB_CREDENTIAL_SECRET})@github.com".insteadOf "https://github.com"'
+        git_config_to_use_github_credential = (
+            f'url."https://$$(cat /run/secrets/{GITHUB_CREDENTIAL_SECRET})@github.com".insteadOf '
+            '"https://github.com"'
+        )
+        pip_preinstall_command = f"git config --global {git_config_to_use_github_credential}"
+        pip_postinstall_command = f"git config --global --unset {git_config_to_use_github_credential}"
 
     requirements = []
     template = None
