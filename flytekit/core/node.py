@@ -191,7 +191,7 @@ class Node(object):
         cache: Optional[bool] = None,
         cache_version: Optional[str] = None,
         cache_serialize: Optional[bool] = None,
-        shared_memory: Optional[Union[Literal[True], int]] = None,
+        shared_memory: Optional[Union[bool, str]] = None,
         *args,
         **kwargs,
     ):
