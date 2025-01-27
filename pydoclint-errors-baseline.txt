@@ -90,6 +90,10 @@ flytekit/core/notification.py
     DOC301: Class `Email`: __init__() should not have a docstring; please combine it with the docstring of the class
     DOC301: Class `Slack`: __init__() should not have a docstring; please combine it with the docstring of the class
 --------------------
+flytekit/core/options.py
+    DOC601: Class `Options`: Class docstring contains fewer class attributes than actual class attributes.  (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
+    DOC603: Class `Options`: Class docstring attributes are different from actual class attributes. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Attributes in the class definition but not in the docstring: [annotations: typing.Optional[common_models.Annotations], disable_notifications: typing.Optional[bool], labels: typing.Optional[common_models.Labels], max_parallelism: typing.Optional[int], notifications: typing.Optional[typing.List[common_models.Notification]], overwrite_cache: typing.Optional[bool], raw_output_data_config: typing.Optional[common_models.RawOutputDataConfig], security_context: typing.Optional[security.SecurityContext]]. (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
+--------------------
 flytekit/core/promise.py
     DOC301: Class `NodeOutput`: __init__() should not have a docstring; please combine it with the docstring of the class
 --------------------

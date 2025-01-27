@@ -9,7 +9,7 @@ from typing import List
 import pytest
 from flyteidl.core import workflow_pb2 as _core_workflow
 
-from flytekit import dynamic, map, task, workflow, eager, PythonFunctionTask, Resources
+from flytekit import dynamic, map_task, task, workflow, eager, PythonFunctionTask, Resources
 from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SerializationSettings
 from flytekit.core import context_manager
 from flytekit.core.array_node_map_task import ArrayNodeMapTask, ArrayNodeMapTaskResolver
@@ -373,13 +373,36 @@ def my_mappable_task_1(a: int) -> typing.Optional[str]:
     [my_mappable_task, my_mappable_task_1]
 )
 def test_map_task_override(serialization_settings, task_func):
-    array_node_map_task = map(task_func)
+    array_node_map_task = map_task(task_func)
 
     @workflow
     def wf(x: typing.List[int]):
-        map(my_mappable_task)(a=x).with_overrides(container_image="random:image")
+        array_node_map_task(a=x).with_overrides(
+            container_image="new-image",
+            timeout=timedelta(seconds=20),
+            interruptible=True,
+            retries=5,
+            cache=True,
+            cache_version="new-version",
+            requests=Resources(cpu=2)
+        )
 
-    assert wf.nodes[0]._container_image == "random:image"
+    assert wf.nodes[0]._container_image == "new-image"
+
+    od = OrderedDict()
+    wf_spec = get_serializable(od, serialization_settings, wf)
+
+    array_node = wf_spec.template.nodes[0]
+    assert array_node.metadata.timeout == timedelta()
+    sub_node_spec = array_node.array_node.node
+    assert sub_node_spec.metadata.timeout == timedelta(seconds=20)
+    assert sub_node_spec.metadata.interruptible
+    assert sub_node_spec.metadata.retries.retries == 5
+    assert sub_node_spec.metadata.cacheable
+    assert sub_node_spec.metadata.cache_version == "new-version"
+    assert sub_node_spec.target.overrides.resources.requests == [
+        _resources_models.ResourceEntry(_resources_models.ResourceName.CPU, "2")
+    ]
 
 
 def test_serialization_metadata(serialization_settings):
