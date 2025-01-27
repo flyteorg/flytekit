@@ -1529,7 +1529,7 @@ class FlyteRemote(object):
                     annotations=options.annotations,
                     raw_output_data_config=options.raw_output_data_config,
                     auth_role=None,
-                    max_parallelism=options.max_parallelism,
+                    concurrency=options.concurrency,
                     security_context=options.security_context,
                     envs=common_models.Envs(envs) if envs else None,
                     tags=tags,

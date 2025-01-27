@@ -1,0 +1,57 @@
+Metadata-Version: 2.1
+Name: jsonpickle
+Version: 3.0.4
+Summary: Serialize any Python object to JSON
+Home-page: https://github.com/jsonpickle/jsonpickle
+Author: David Aguilar
+Author-email: davvid@gmail.com
+Keywords: json pickle,json,pickle,marshal,serialization,JavaScript Object Notation
+Platform: POSIX
+Platform: Windows
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: BSD License
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: JavaScript
+Classifier: Operating System :: OS Independent
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.7
+License-File: LICENSE
+Requires-Dist: importlib-metadata ; python_version < "3.8"
+Provides-Extra: docs
+Requires-Dist: furo ; extra == 'docs'
+Requires-Dist: rst.linker >=1.9 ; extra == 'docs'
+Requires-Dist: sphinx ; extra == 'docs'
+Provides-Extra: packaging
+Requires-Dist: build ; extra == 'packaging'
+Requires-Dist: twine ; extra == 'packaging'
+Provides-Extra: testing
+Requires-Dist: bson ; extra == 'testing'
+Requires-Dist: ecdsa ; extra == 'testing'
+Requires-Dist: feedparser ; extra == 'testing'
+Requires-Dist: numpy ; extra == 'testing'
+Requires-Dist: pandas ; extra == 'testing'
+Requires-Dist: pymongo ; extra == 'testing'
+Requires-Dist: pytest !=3.7.3,>=3.5 ; extra == 'testing'
+Requires-Dist: pytest-benchmark ; extra == 'testing'
+Requires-Dist: pytest-benchmark[histogram] ; extra == 'testing'
+Requires-Dist: pytest-checkdocs >=1.2.3 ; extra == 'testing'
+Requires-Dist: pytest-cov ; extra == 'testing'
+Requires-Dist: pytest-enabler >=1.0.1 ; extra == 'testing'
+Requires-Dist: pytest-ruff >=0.2.1 ; extra == 'testing'
+Requires-Dist: scikit-learn ; extra == 'testing'
+Requires-Dist: simplejson ; extra == 'testing'
+Requires-Dist: sqlalchemy ; extra == 'testing'
+Requires-Dist: ujson ; extra == 'testing'
+Requires-Dist: gmpy2 ; (python_version < "3.12") and extra == 'testing'
+Requires-Dist: scipy ; (python_version <= "3.10") and extra == 'testing'
+Requires-Dist: scipy >=1.9.3 ; (python_version > "3.10") and extra == 'testing'
+
+Python library for serializing arbitrary object graphs into JSON
