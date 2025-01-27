@@ -33,15 +33,3 @@ RUN apt-get update && apt-get install build-essential -y \
     && chown flytekit: /home \
     && :
 
-# USER flytekit
-
-# ENV FLYTE_INTERNAL_IMAGE="$DOCKER_IMAGE"
-# FROM python:3.9-slim-buster
-# USER root
-# WORKDIR /root
-# ENV PYTHONPATH /root
-# RUN apt-get update && apt-get install build-essential -y
-# RUN apt-get install git -y
-# # 因為你是直接使用 flytekit 倉庫，我們可以直接從你的本地倉庫安裝
-# RUN pip install -U git+https://github.com/ChihTsungLu/flytekit.git
-# ENV FLYTE_INTERNAL_IMAGE "localhost:30000/flytekit:demo"
