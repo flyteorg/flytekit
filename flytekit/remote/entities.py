@@ -761,7 +761,7 @@ class FlyteLaunchPlan(hash_mixin.HashOnReferenceMixin, RemoteEntity, _launch_pla
 
     def __init__(self, id, *args, **kwargs):
         if "concurrency" in kwargs:
-            kwargs["max_parallelism"] = kwargs.pop("concurrency")
+            kwargs["max_parallelism"] = kwargs.pop("concurreny")
         elif "max_parallelism" in kwargs:
             import warnings
 

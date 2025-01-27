@@ -1,0 +1,100 @@
+agrv->argv
+alloced->allocated
+amin->main
+apoint->appoint
+arange->arrange, a range,
+atend->attend
+atending->attending
+bre->be, brie,
+brouter->router
+cas->case, cast,
+clas->class
+cloneable->clonable
+cmo->com
+copyable->copiable
+creat->create, crate,
+dateset->dataset
+datesets->datasets
+define'd->defined
+deque->dequeue
+doas->does, do as,
+dof->of, doff,
+dont->don't
+dosclose->disclose
+dur->due
+endcode->encode
+errorstring->error string
+exitst->exists, exist, exits,
+falsy->falsely, false,
+focusin->focusing, focus in,
+gadjet->gadget
+gadjets->gadgets
+gae->game, Gael, gale,
+hist->heist, his,
+iam->I am, aim,
+iff->if
+ifset->if set
+isenough->is enough
+ith->with
+jupyter->Jupiter
+keypair->key pair
+keypairs->key pairs
+lateset->latest
+lite->light
+movei->movie
+MSDOS->MS-DOS
+musl->must
+mut->must, mutt, moot,
+nmake->make
+nto->not
+objext->object
+od->of
+outputof->output of, output-of,
+packat->packet
+protecten->protection, protected,
+pullrequenst->pull requests, pull request,
+pullrequest->pull request
+pullrequests->pull requests
+pysic->physic
+recomment->recommend
+reday->ready
+referer->referrer
+rela->real
+rendir->render
+rendirs->renders
+ro->to, row, rob, rod, roe, rot,
+seeked->sought
+shouldnot->should not, shouldn't,
+sinc->sync, sink, since,
+sincs->syncs, sinks, since,
+snd->send, and, sound,
+sockt->socket
+sockts->sockets
+spawnve->spawn
+stdio->studio
+stdios->studios
+stoll->still
+storaged->storage, stored,
+storaget->storage
+stringly->strongly, stringy,
+subpatchs->subpatches
+sur->sure, sir,
+tarceback->traceback
+tarcebacks->tracebacks
+templace->template
+thead->thread
+theads->threads
+todays->today's
+tomorrows->tomorrow's
+udate->update, date,
+udates->updates, dates,
+uint->unit
+uis->is, use,
+upto->up to
+usesd->used, uses,
+wan->want
+warmup->warm up, warm-up,
+were'->we're
+whome->whom
+ws->was
+yesterdays->yesterday's
