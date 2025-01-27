@@ -216,6 +216,9 @@ def prepare_python_install(image_spec: ImageSpec, tmp_dir: Path) -> str:
         extra_urls = [f"--extra-index-url {url}" for url in image_spec.pip_extra_index_url]
         pip_install_args.extend(extra_urls)
 
+    if image_spec.pip_extra_args:
+        pip_install_args.append(image_spec.pip_extra_args)
+
     requirements = []
     if image_spec.requirements:
         requirement_basename = os.path.basename(image_spec.requirements)

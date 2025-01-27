@@ -65,6 +65,8 @@ class HttpFileWriter(fsspec.spec.AbstractBufferedFile):
         """Only uploads the file at once from the buffer.
         Not suitable for large files as the buffer will blow the memory for very large files.
         Suitable for default values or local dataframes being uploaded all at once.
+
+        This function is called by fsspec.flush(). This will create a new file upload location.
         """
         if final is False:
             return False
@@ -72,6 +74,10 @@ class HttpFileWriter(fsspec.spec.AbstractBufferedFile):
         data = self.buffer.read()
 
         try:
+            # The inputs here are flipped a bit, it should be the filename is set to the filename and the filename root
+            # is something deterministic, like a hash. But since this is supposed to mimic open(), we can't hash.
+            # With the args currently below, the backend will create a random suffix for the filename.
+            # Since no hash is set on it, we will not be able to write to it again (which is totally fine).
             res = self._remote.client.get_upload_signed_url(
                 self._remote.default_project,
                 self._remote.default_domain,

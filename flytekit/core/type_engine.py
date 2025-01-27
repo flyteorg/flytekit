@@ -1361,7 +1361,7 @@ class TypeEngine(typing.Generic[T]):
     ) -> Literal:
         """
         The current dance is because we are allowing users to call from an async function, this synchronous
-        to_literal function, and allowing this to_literal function, to then invoke yet another async functionl,
+        to_literal function, and allowing this to_literal function, to then invoke yet another async function,
         namely an async transformer.
         """
         from flytekit.core.promise import Promise
@@ -1908,7 +1908,7 @@ class UnionTransformer(AsyncTypeTransformer[T]):
                 res_type = _add_tag_to_type(trans.get_literal_type(t), trans.name)
                 found_res = True
             except Exception as e:
-                logger.warning(
+                logger.debug(
                     f"UnionTransformer failed attempt to convert from {python_val} to {t} error: {e}",
                 )
                 continue

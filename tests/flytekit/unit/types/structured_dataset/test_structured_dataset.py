@@ -3,7 +3,7 @@ import tempfile
 import typing
 from collections import OrderedDict
 from pathlib import Path
-
+import mock
 import google.cloud.bigquery
 import pytest
 from fsspec.utils import get_protocol
@@ -661,7 +661,6 @@ def test_default_args_task():
     pd.testing.assert_frame_equal(wf_with_input(), input_val)
 
 
-
 def test_read_sd_from_local_uri(local_tmp_pqt_file):
 
     @task
@@ -677,9 +676,40 @@ def test_read_sd_from_local_uri(local_tmp_pqt_file):
 
         return df
 
-
     df = generate_pandas()
 
     # Read sd from local uri
     df_local = read_sd_from_local_uri(uri=local_tmp_pqt_file)
     pd.testing.assert_frame_equal(df, df_local)
+
+
+@mock.patch("flytekit.remote.remote_fs.FlytePathResolver")
+@mock.patch("flytekit.types.structured.structured_dataset.StructuredDatasetTransformerEngine.get_encoder")
+def test_modify_literal_uris_call(mock_get_encoder, mock_resolver):
+
+    ctx = FlyteContextManager.current_context()
+
+    sd = StructuredDataset(dataframe=pd.DataFrame(
+        {"a": [1, 2], "b": [3, 4]}), uri="bq://blah", file_format="bq")
+
+    def mock_resolve_remote_path(flyte_uri: str) -> typing.Optional[str]:
+        if flyte_uri == "bq://blah":
+            return "bq://blah/blah/blah"
+        return ""
+
+    mock_resolver.resolve_remote_path.side_effect = mock_resolve_remote_path
+    mock_resolver.protocol = "bq"
+
+    dummy_encoder = mock.MagicMock()
+    sd_model = literals.StructuredDataset(uri="bq://blah", metadata=StructuredDatasetMetadata(StructuredDatasetType(format="parquet")))
+    dummy_encoder.encode.return_value = sd_model
+
+    mock_get_encoder.return_value = dummy_encoder
+
+    sdte = StructuredDatasetTransformerEngine()
+    lt = LiteralType(
+        structured_dataset_type=StructuredDatasetType()
+    )
+
+    lit = sdte.encode(ctx, sd, df_type=pd.DataFrame, protocol="bq", format="parquet", structured_literal_type=lt)
+    assert lit.scalar.structured_dataset.uri == "bq://blah/blah/blah"

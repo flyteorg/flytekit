@@ -26,6 +26,13 @@ repos:
     rev: v2.3.0
     hooks:
       - id: codespell
+        additional_dependencies:
+          - tomli
+  - repo: https://github.com/jsh9/pydoclint
+    rev: 0.6.0
+    hooks:
+      - id: pydoclint
         args:
-          - --ignore-words-list=assertIn  # Ignore 'assertIn'
-        additional_dependencies: [tomli]
+        - --style=google
+        - --exclude='.git|tests/flytekit/*|tests/'
+        - --baseline=pydoclint-errors-baseline.txt
