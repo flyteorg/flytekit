@@ -213,6 +213,7 @@ def get_fsspec_storage_options(
     protocol: str,
     data_config: typing.Optional[DataConfig] = None,
     anonymous: bool = False,
+    bucket: str = "",
     **kwargs,
 ) -> Dict[str, Any]:
     data_config = data_config or DataConfig.auto()
@@ -221,14 +222,14 @@ def get_fsspec_storage_options(
         return {"auto_mkdir": True, **kwargs}
     if protocol == "s3":
         return {
-            **s3_setup_args(data_config.s3, anonymous=anonymous, **kwargs),
+            **s3_setup_args(data_config.s3, bucket, anonymous=anonymous, **kwargs),
             **kwargs,
         }
     if protocol == "gs":
-        return kwargs
+        return {**gs_setup_args(data_config.gcs, bucket, anonymous=anonymous), **kwargs}
     if protocol in ("abfs", "abfss"):
         return {
-            **azure_setup_args(data_config.azure, anonymous=anonymous, **kwargs),
+            **azure_setup_args(data_config.azure, bucket, anonymous=anonymous, **kwargs),
             **kwargs,
         }
     return {}
@@ -344,6 +345,7 @@ class FileAccessProvider(object):
             protocol=protocol,
             anonymous=anonymous,
             data_config=self._data_config,
+            bucket=bucket,
             **kwargs,
         )
         kwargs.update(storage_options)

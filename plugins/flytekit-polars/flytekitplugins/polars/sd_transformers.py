@@ -2,7 +2,7 @@ import io
 import typing
 
 from flytekit import FlyteContext, lazy_module
-from flytekit.core.data_persistence import get_fsspec_storage_options
+from flytekit.core.data_persistence import get_fsspec_storage_options, split_path
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import StructuredDatasetType
@@ -91,10 +91,11 @@ class ParquetToPolarsDataFrameDecodingHandler(StructuredDatasetDecoder):
         current_task_metadata: StructuredDatasetMetadata,
     ) -> pl.DataFrame:
         uri = flyte_value.uri
-
+        bucket, _ = split_path(uri)
         kwargs = get_fsspec_storage_options(
             protocol=fsspec_utils.get_protocol(uri),
             data_config=ctx.file_access.data_config,
+            bucket=bucket,
         )
         if current_task_metadata.structured_dataset_type and current_task_metadata.structured_dataset_type.columns:
             columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
@@ -153,10 +154,11 @@ class ParquetToPolarsLazyFrameDecodingHandler(StructuredDatasetDecoder):
         current_task_metadata: StructuredDatasetMetadata,
     ) -> pl.LazyFrame:
         uri = flyte_value.uri
-
+        bucket, _ = split_path(uri)
         kwargs = get_fsspec_storage_options(
             protocol=fsspec_utils.get_protocol(uri),
             data_config=ctx.file_access.data_config,
+            bucket=bucket,
         )
         # use read_parquet instead of scan_parquet for now because scan_parquet currently doesn't work with fsspec:
         # https://github.com/pola-rs/polars/issues/16737

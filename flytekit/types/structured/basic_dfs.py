@@ -9,7 +9,7 @@ from fsspec.utils import get_protocol
 
 from flytekit import FlyteContext, lazy_module, logger
 from flytekit.configuration import DataConfig
-from flytekit.core.data_persistence import get_fsspec_storage_options
+from flytekit.core.data_persistence import get_fsspec_storage_options, split_path
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import StructuredDatasetType
@@ -37,7 +37,13 @@ def get_pandas_storage_options(
     from pandas.io.common import is_fsspec_url
 
     if is_fsspec_url(uri):
-        return get_fsspec_storage_options(protocol=get_protocol(uri), data_config=data_config, anonymous=anonymous)
+        bucket, _ = split_path(uri)
+        return get_fsspec_storage_options(
+            protocol=get_protocol(uri),
+            data_config=data_config,
+            anonymous=anonymous,
+            bucket=bucket,
+        )
 
     # Pandas does not allow storage_options for non-fsspec paths e.g. local.
     return None
