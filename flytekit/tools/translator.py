@@ -177,9 +177,6 @@ def get_serializable_task(
             ):
                 container._args = prefix_with_fast_execute(settings, container.args)
 
-            # elif not entity.container_image.source_root:
-            #     container._args = prefix_with_fast_execute(settings, container.args)
-
         # If the pod spec is not None, we have to get it again, because the one we retrieved above will be incorrect.
         # The reason we have to call get_k8s_pod again, instead of just modifying the command in this file, is because
         # the pod spec is a K8s library object, and we shouldn't be messing around with it in this file.
