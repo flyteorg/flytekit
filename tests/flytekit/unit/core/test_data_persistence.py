@@ -189,12 +189,10 @@ def test_initialise_azure_file_provider_with_service_principal(mock_from_env):
         mock_from_env.return_value = mock.Mock()
         mock_from_env.assert_called_with(
             "",
-            config={
-                "account_name": "accountname",
-                "client_secret": "clientsecret",
-                "client_id": "clientid",
-                "tenant_id": "tenantid",
-            },
+            account_name = "accountname",
+            client_secret = "clientsecret",
+            client_id = "clientid",
+            tenant_id = "tenantid",
         )
 
 
@@ -212,9 +210,7 @@ def test_initialise_azure_file_provider_with_default_credential(mock_from_env):
         mock_from_env.return_value = mock.Mock()
         mock_from_env.assert_called_with(
             "",
-            config={
-                "account_name": "accountname",
-            },
+            account_name = "accountname",
         )
 
 

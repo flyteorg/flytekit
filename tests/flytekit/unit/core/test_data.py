@@ -249,8 +249,8 @@ def test_s3_setup_args_env_empty(mock_from_env, mock_os, mock_get_config_file):
     mock_from_env.return_value = mock.Mock()
     mock_from_env.assert_called_with(
         "",
-        3,  # retries
-        timedelta(seconds=5),  # backoff
+        retries=3,
+        backoff=timedelta(seconds=5),
     )
 
 
@@ -272,8 +272,8 @@ def test_s3_setup_args_env_both(mock_from_env, mock_os, mock_get_config_file):
     mock_from_env.return_value = mock.Mock()
     mock_from_env.assert_called_with(
         "",
-        3,  # retries
-        timedelta(seconds=5),  # backoff
+        retries=3,
+        backoff=timedelta(seconds=5),
         access_key_id = "flyte",
         secret_access_key = "flyte-secret",
     )
@@ -294,8 +294,8 @@ def test_s3_setup_args_env_flyte(mock_from_env, mock_os, mock_get_config_file):
     mock_from_env.return_value = mock.Mock()
     mock_from_env.assert_called_with(
         "",
-        3,  # retries
-        timedelta(seconds=5),  # backoff
+        retries=3,
+        backoff=timedelta(seconds=5),
         access_key_id = "flyte",
         secret_access_key = "flyte-secret",
     )
@@ -316,27 +316,31 @@ def test_s3_setup_args_env_aws(mock_from_env, mock_os, mock_get_config_file):
     mock_from_env.return_value = mock.Mock()
     mock_from_env.assert_called_with(
         "",
-        3,  # retries
-        timedelta(seconds=5),  # backoff
-
+        retries=3,
+        backoff=timedelta(seconds=5),
     )
 
 
 @mock.patch("flytekit.configuration.get_config_file")
 @mock.patch("os.environ")
-def test_get_fsspec_storage_options_gcs(mock_os, mock_get_config_file):
+@mock.patch("flytekit.core.data_persistence.gcsstore_from_env")
+def test_get_fsspec_storage_options_gcs(mock_from_env, mock_os, mock_get_config_file):
     mock_get_config_file.return_value = None
     ee = {
         "FLYTE_GCP_GSUTIL_PARALLELISM": "False",
     }
     mock_os.get.side_effect = lambda x, y: ee.get(x)
     storage_options = get_fsspec_storage_options("gs", DataConfig.auto())
-    assert storage_options == {}
+    mock_from_env.return_value = mock.Mock()
+    mock_from_env.assert_called_with(
+        "",  # bucket name is empty
+    )
 
 
 @mock.patch("flytekit.configuration.get_config_file")
 @mock.patch("os.environ")
-def test_get_fsspec_storage_options_gcs_with_overrides(mock_os, mock_get_config_file):
+@mock.patch("flytekit.core.data_persistence.gcsstore_from_env")
+def test_get_fsspec_storage_options_gcs_with_overrides(mock_from_env, mock_os, mock_get_config_file):
     mock_get_config_file.return_value = None
     ee = {
         "FLYTE_GCP_GSUTIL_PARALLELISM": "False",
@@ -345,12 +349,16 @@ def test_get_fsspec_storage_options_gcs_with_overrides(mock_os, mock_get_config_
     storage_options = get_fsspec_storage_options(
         "gs", DataConfig.auto(), anonymous=True, other_argument="value"
     )
-    assert storage_options == {"other_argument": "value"}
+    assert "other_argument" in storage_options
+    mock_from_env.return_value = mock.Mock()
+    mock_from_env.assert_called_with(
+        "",  # bucket name is empty
+    )
 
 
 @mock.patch("flytekit.configuration.get_config_file")
 @mock.patch("os.environ")
-@mock.patch("obstore.store.AzureStore.from_env")
+@mock.patch("flytekit.core.data_persistence.azurestore_from_env")
 def test_get_fsspec_storage_options_azure(mock_from_env, mock_os, mock_get_config_file):
     mock_get_config_file.return_value = None
     account_key = "accountkey"
@@ -370,13 +378,11 @@ def test_get_fsspec_storage_options_azure(mock_from_env, mock_os, mock_get_confi
     mock_from_env.return_value = mock.Mock()
     mock_from_env.assert_called_with(
         "",
-        config={
-            "account_name": "accountname",
-            "account_key": account_key_base64,
-            "client_id": "clientid",
-            "client_secret": "clientsecret",
-            "tenant_id": "tenantid",
-        },
+        account_name = "accountname",
+        account_key = account_key_base64,
+        client_id = "clientid",
+        client_secret = "clientsecret",
+        tenant_id = "tenantid",
     )
 
 
