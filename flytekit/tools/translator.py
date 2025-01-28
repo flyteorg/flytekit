@@ -173,7 +173,7 @@ def get_serializable_task(
             if (
                 (not hasattr(entity, "container_image"))
                 or (entity.container_image is None)
-                or (entity.container_image and not entity.container_image.source_root)
+                or (isinstance(entity.container_image, ImageSpec) and entity.container_image.source_root is not None)
             ):
                 container._args = prefix_with_fast_execute(settings, container.args)
 
