@@ -67,13 +67,12 @@ Uploadable = typing.Union[str, os.PathLike, pathlib.Path, bytes, io.BufferedRead
 
 @lru_cache
 def s3store_from_env(bucket: str, retries: int, backoff: timedelta, **store_kwargs) -> S3Store:
+    # Config refer to https://developmentseed.org/obstore/latest/api/store/aws/#obstore.store.S3Store.from_env
     store = S3Store.from_env(
         bucket,
-        config={
-            **store_kwargs,
-            "aws_virtual_hosted_style_request": "false",  # Use path-style addressing
-        },
-        client_options={"timeout": "99999s", "allow_http": "true"},
+        **store_kwargs,
+        virtual_hosted_style_request=False,  # not include bucket name in the domain name
+        client_options={"timeout": "99999s", "allow_http": True},
         retry_config={
             "max_retries": retries,
             "backoff": {
@@ -84,6 +83,7 @@ def s3store_from_env(bucket: str, retries: int, backoff: timedelta, **store_kwar
             "retry_timeout": timedelta(minutes=3),
         },
     )
+
     return store
 
 
@@ -95,16 +95,17 @@ def gcsstore_from_env(bucket: str) -> GCSStore:
 
 @lru_cache
 def azurestore_from_env(container: str, **store_kwargs) -> AzureStore:
-    store = AzureStore.from_env(
-        container,
-        config=store_kwargs,  # type: ignore
-    )
+    # Config refer to https://developmentseed.org/obstore/latest/api/store/azure/#obstore.store.AzureStore.from_env
+    store = AzureStore.from_env(container, **store_kwargs)
     return store
 
 
 def s3_setup_args(
     s3_cfg: configuration.S3Config, bucket: str = "", anonymous: bool = False, **kwargs
 ) -> Dict[str, Any]:
+    """
+    Setup s3 storage, bucket is needed to create obstore store object
+    """
     store_kwargs: Dict[str, Any] = {}
 
     if _FSSPEC_S3_KEY_ID in kwargs or s3_cfg.access_key_id is not None:
@@ -114,13 +115,13 @@ def s3_setup_args(
     if "endpoint_url" in kwargs or s3_cfg.endpoint is not None:
         store_kwargs["endpoint_url"] = kwargs.get("endpoint_url", s3_cfg.endpoint)
     if "retries" in kwargs or s3_cfg.retries is not None:
-        retries = kwargs.get("retries", s3_cfg.retries)
+        store_kwargs["retries"] = kwargs.get("retries", s3_cfg.retries)
     if "backoff" in kwargs or s3_cfg.backoff is not None:
-        backoff = kwargs.get("backoff", s3_cfg.backoff)
+        store_kwargs["backoff"] = kwargs.get("backoff", s3_cfg.backoff)
     if anonymous:
         store_kwargs[_ANON] = "true"
 
-    store = s3store_from_env(bucket, retries, backoff, **store_kwargs)
+    store = s3store_from_env(bucket, **store_kwargs)
 
     kwargs["store"] = store
 
@@ -128,6 +129,9 @@ def s3_setup_args(
 
 
 def gs_setup_args(gcs_cfg: configuration.GCSConfig, bucket: str = "", anonymous: bool = False) -> Dict[str, Any]:
+    """
+    Setup gcs storage, bucket is needed to create obstore store object
+    """
     kwargs: Dict[str, Any] = {}
 
     store = gcsstore_from_env(bucket)
@@ -139,10 +143,13 @@ def gs_setup_args(gcs_cfg: configuration.GCSConfig, bucket: str = "", anonymous:
 
 def azure_setup_args(
     azure_cfg: configuration.AzureBlobStorageConfig,
-    container: str = "",
+    bucket: str = "",
     anonymous: bool = False,
     **kwargs,
 ) -> Dict[str, Any]:
+    """
+    Setup azure blob storage, bucket is needed to create obstore store object
+    """
     store_kwargs: Dict[str, Any] = {}
 
     if "account_name" in kwargs or azure_cfg.account_name is not None:
@@ -158,7 +165,7 @@ def azure_setup_args(
     if anonymous:
         store_kwargs[_ANON] = "true"
 
-    store = azurestore_from_env(container, **store_kwargs)
+    store = azurestore_from_env(bucket, **store_kwargs)
 
     kwargs["store"] = store
 
