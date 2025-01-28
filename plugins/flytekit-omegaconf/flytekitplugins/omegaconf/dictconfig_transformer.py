@@ -143,6 +143,8 @@ def parse_type_description(type_desc: str) -> Type:
             return origin[sub_types[0]]
         return origin[tuple(sub_types)]
     else:
+        if type_desc == "builtins.NoneType":
+            return NoneType
         module_name, class_name = type_desc.rsplit(".", 1)
         return importlib.import_module(module_name).__getattribute__(class_name)
 

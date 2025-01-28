@@ -1,7 +1,6 @@
 # TODO: has to support the SupportsNodeCreation protocol
 import functools
 import hashlib
-import logging
 import math
 import os  # TODO: use flytekit logger
 from contextlib import contextmanager
@@ -129,6 +128,9 @@ class ArrayNodeMapTask(PythonTask):
             **kwargs,
         )
 
+        self.sub_node_metadata: NodeMetadata = super().construct_node_metadata()
+        self.sub_node_metadata._name = self.name
+
     @property
     def name(self) -> str:
         return self._name
@@ -138,15 +140,12 @@ class ArrayNodeMapTask(PythonTask):
         return self._collection_interface
 
     def construct_node_metadata(self) -> NodeMetadata:
-        # TODO: add support for other Flyte entities
+        """
+        This returns metadata for the parent ArrayNode, not the sub-node getting mapped over
+        """
         return NodeMetadata(
             name=self.name,
         )
-
-    def construct_sub_node_metadata(self) -> NodeMetadata:
-        nm = super().construct_node_metadata()
-        nm._name = self.name
-        return nm
 
     @property
     def min_success_ratio(self) -> Optional[float]:
@@ -471,7 +470,7 @@ class ArrayNodeMapTaskResolver(tracker.TrackedInstance, TaskResolverMixin):
         vars "var1,var2,.." resolver "resolver" [resolver_args]
         """
         _, bound_vars, _, resolver, *resolver_args = loader_args
-        logging.info(f"MapTask found task resolver {resolver} and arguments {resolver_args}")
+        logger.info(f"MapTask found task resolver {resolver} and arguments {resolver_args}")
         resolver_obj = load_object_from_module(resolver)
         # Use the resolver to load the actual task object
         _task_def = resolver_obj.load_task(loader_args=resolver_args)

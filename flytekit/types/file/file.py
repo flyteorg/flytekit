@@ -7,6 +7,7 @@ import pathlib
 import typing
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from functools import partial
 from typing import Dict, cast
 from urllib.parse import unquote
 
@@ -297,14 +298,54 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
         self._downloader = downloader
         self._downloaded = False
         self._remote_path = remote_path
-        self._remote_source: typing.Optional[str] = None
+        self._remote_source: typing.Optional[typing.Union[str, os.PathLike]] = None
+
+        # Setup local path and downloader for delayed downloading
+        # We introduce another attribute self._local_path to avoid overriding user-defined self.path
+        self._local_path = self.path
+
+        ctx = FlyteContextManager.current_context()
+        if ctx.file_access.is_remote(self.path):
+            self._remote_source = self.path
+            self._local_path = ctx.file_access.get_random_local_path(self._remote_source)
+            self._downloader = partial(
+                ctx.file_access.get_data,
+                ctx=ctx,
+                remote_path=self._remote_source,  # type: ignore
+                local_path=self._local_path,
+            )
 
     def __fspath__(self):
-        # This is where a delayed downloading of the file will happen
+        """
+        Define the file path protocol for opening FlyteFile with the context manager,
+        following show two common use cases:
+
+        1. Directly open a FlyteFile with a local path:
+
+        ff = FlyteFile(path=local_path)
+        with open(ff, "r") as f:
+            # Read your local file here
+            # ...
+
+        There's no need to handle downloading of the file because it's on the local file system.
+        In this case, a dummy downloading will be done.
+
+        2. Directly open a FlyteFile with a remote path:
+
+        ff = FlyteFile(path=remote_path)
+        with open(ff, "r") as f:
+            # Read your remote file here
+            # ...
+
+        We now support directly opening a FlyteFile with a file from the remote data storage.
+        In this case, a delayed downloading of the remote file will be done.
+        For details, please refer to this issue: https://github.com/flyteorg/flyte/issues/6090.
+        """
         if not self._downloaded:
+            # Download data from remote to local or run dummy downloading for input local path
             self._downloader()
             self._downloaded = True
-        return self.path
+        return self._local_path
 
     def __eq__(self, other):
         if isinstance(other, FlyteFile):
@@ -694,13 +735,11 @@ class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
         # For the remote case, return an FlyteFile object that can download
         local_path = ctx.file_access.get_random_local_path(uri)
 
-        def _downloader():
-            return ctx.file_access.get_data(uri, local_path, is_multipart=False)
+        _downloader = partial(ctx.file_access.get_data, remote_path=uri, local_path=local_path, is_multipart=False)
 
         expected_format = FlyteFilePathTransformer.get_format(expected_python_type)
-        ff = FlyteFile.__class_getitem__(expected_format)(local_path, _downloader)
+        ff = FlyteFile.__class_getitem__(expected_format)(path=local_path, downloader=_downloader)
         ff._remote_source = uri
-
         return ff
 
     def guess_python_type(self, literal_type: LiteralType) -> typing.Type[FlyteFile[typing.Any]]:
