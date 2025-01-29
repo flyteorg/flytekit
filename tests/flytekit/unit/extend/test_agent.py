@@ -204,7 +204,7 @@ def test_dummy_agent():
         def __init__(self, **kwargs):
             super().__init__(task_type="dummy", **kwargs)
 
-    t = DummyTask(task_config={}, task_function=lambda: None, container_image="dummy")
+    t = DummyTask(task_config={}, task_function=lambda: None, image="dummy")
     t.execute()
 
     t._task_type = "non-exist-type"

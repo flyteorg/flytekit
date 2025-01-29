@@ -356,7 +356,7 @@ def my_mappable_task(a: int) -> typing.Optional[str]:
 
 
 @task(
-    container_image="original-image",
+    image="original-image",
     timeout=timedelta(seconds=10),
     interruptible=False,
     retries=10,
