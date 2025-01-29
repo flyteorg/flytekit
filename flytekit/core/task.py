@@ -380,7 +380,7 @@ def task(
         _container_image = None
         if image is not None and container_image is not None:
             raise ValueError(
-                "Cannot specify both image and container_image."
+                "Cannot specify both image and container_image. "
                 "Please use image because container_image is deprecated and will be removed in the future."
             )
         elif container_image is not None:
