@@ -1,7 +1,7 @@
 import os
 import pytest
 
-from flytekit import task, dynamic
+from flytekit import task, dynamic, eager
 from flytekit.core.task import decorate_function
 from flytekit.core.utils import str2bool
 from flytekit.interactive import vscode
@@ -62,4 +62,26 @@ def test_image():
         def dy_t3(i: int) -> str:
             return "Use both image and container_image in @dynamic."
 
-    # TODO: Test eager
+
+    # Eager workflow task
+    @eager(image=IMAGE)
+    def eager_t1(dummy: bool) -> str:
+        if dummy:
+            print(f"Eager!")
+        return "Use image in @eager."
+    assert eager_t1._container_image == IMAGE, f"_container_image of eager_t1 should match the user-specified {IMAGE}"
+
+    with pytest.warns(DeprecationWarning, match=WARN_MSG):
+        @eager(container_image=IMAGE)
+        def eager_t2(dummy: bool) -> str:
+            if dummy:
+                print(f"Eager!")
+            return "Use container_image in @eager."
+    assert eager_t2._container_image == IMAGE, f"_container_image of eager_t2 should match the user-specified {IMAGE}"
+
+    with pytest.raises(ValueError, match=ERR_MSG):
+        @eager(image=IMAGE, container_image=IMAGE)
+        def eager_t3(dummy: bool) -> str:
+            if dummy:
+                print(f"Eager!")
+            return "Use both image and container_image in @eager."

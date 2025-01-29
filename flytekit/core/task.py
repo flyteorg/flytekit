@@ -606,6 +606,24 @@ def eager(
             async def eager_workflow(x: int) -> int:
                 ...
     """
+    # Rename the `container_image` parameter to `image` for improved user experience.
+    # Currently, both `image` and `container_image` are supported to maintain backward compatibility.
+    # For more details, please refer to https://github.com/flyteorg/flyte/issues/6140.
+    if kwargs.get("image") is not None and kwargs.get("container_image") is not None:
+        raise ValueError(
+            "Cannot specify both image and container_image. "
+            "Please use image because container_image is deprecated and will be removed in the future."
+        )
+    elif kwargs.get("container_image") is not None:
+        warnings.warn(
+            "container_image is deprecated and will be removed in the future. Please use image instead.",
+            DeprecationWarning,
+        )
+    elif kwargs.get("image") is not None:
+        kwargs["container_image"] = kwargs["image"]
+
+        # Disable further access to image
+        _ = kwargs.pop("image")
 
     if _fn is None:
         return partial(
