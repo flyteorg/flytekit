@@ -1,10 +1,14 @@
 from typing import Dict
 
 import pytest
+from kubernetes.client import V1Container, V1PodSpec, V1ResourceRequirements
 
 import flytekit.models.task as _task_models
 from flytekit import Resources
-from flytekit.core.resources import convert_resources_to_resource_model
+from flytekit.core.resources import (
+    pod_spec_from_resources,
+    convert_resources_to_resource_model,
+)
 
 _ResourceName = _task_models.Resources.ResourceName
 
@@ -101,3 +105,53 @@ def test_resources_round_trip():
     json_str = original.to_json()
     result = Resources.from_json(json_str)
     assert original == result
+
+
+def test_pod_spec_from_resources_requests_limits_set():
+    requests = Resources(cpu="1", mem="1Gi", gpu="1", ephemeral_storage="1Gi")
+    limits = Resources(cpu="4", mem="2Gi", gpu="1", ephemeral_storage="1Gi")
+    primary_container_name = "foo"
+
+    expected_pod_spec = V1PodSpec(
+        containers=[
+            V1Container(
+                name=primary_container_name,
+                resources=V1ResourceRequirements(
+                    requests={
+                        "cpu": "1",
+                        "memory": "1Gi",
+                        "nvidia.com/gpu": "1",
+                        "ephemeral-storage": "1Gi",
+                    },
+                    limits={
+                        "cpu": "4",
+                        "memory": "2Gi",
+                        "nvidia.com/gpu": "1",
+                        "ephemeral-storage": "1Gi",
+                    },
+                ),
+            )
+        ]
+    )
+    pod_spec = pod_spec_from_resources(primary_container_name=primary_container_name, requests=requests, limits=limits)
+    assert expected_pod_spec == pod_spec
+
+
+def test_pod_spec_from_resources_requests_set():
+    requests = Resources(cpu="1", mem="1Gi")
+    limits = None
+    primary_container_name = "foo"
+
+    expected_pod_spec = V1PodSpec(
+        containers=[
+            V1Container(
+                name=primary_container_name,
+                resources=V1ResourceRequirements(
+                    requests={"cpu": "1", "memory": "1Gi"},
+                    limits={"cpu": "1", "memory": "1Gi"},
+                ),
+            )
+        ]
+    )
+    pod_spec = pod_spec_from_resources(primary_container_name=primary_container_name, requests=requests, limits=limits)
+    assert expected_pod_spec == pod_spec

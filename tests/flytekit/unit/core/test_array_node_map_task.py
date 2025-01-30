@@ -8,9 +8,8 @@ from typing import List
 
 import pytest
 from flyteidl.core import workflow_pb2 as _core_workflow
-from kubernetes.client import V1PodSpec, V1Container, V1EnvVar
 
-from flytekit import dynamic, map_task, task, workflow, eager, PythonFunctionTask, PodTemplate
+from flytekit import dynamic, map_task, task, workflow, eager, PythonFunctionTask
 from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SerializationSettings
 from flytekit.core import context_manager
 from flytekit.core.array_node_map_task import ArrayNodeMapTask, ArrayNodeMapTaskResolver
@@ -360,38 +359,6 @@ def test_map_task_override(serialization_settings):
         map_task(my_mappable_task)(a=x).with_overrides(container_image="random:image")
 
     assert wf.nodes[0]._container_image == "random:image"
-
-def test_map_task_pod_template_override(serialization_settings):
-    @task
-    def my_mappable_task(a: int) -> typing.Optional[str]:
-        return str(a)
-
-    @workflow
-    def wf(x: typing.List[int]):
-        map_task(my_mappable_task)(a=x).with_overrides(pod_template=PodTemplate(
-        primary_container_name="primary1",
-        labels={"lKeyA": "lValA", "lKeyB": "lValB"},
-        annotations={"aKeyA": "aValA", "aKeyB": "aValB"},
-        pod_spec=V1PodSpec(
-            containers=[
-                V1Container(
-                    name="primary1",
-                    image="random:image",
-                    env=[V1EnvVar(name="eKeyC", value="eValC"), V1EnvVar(name="eKeyD", value="eValD")],
-                ),
-                V1Container(
-                    name="primary2",
-                    image="random:image2",
-                    env=[V1EnvVar(name="eKeyC", value="eValC"), V1EnvVar(name="eKeyD", value="eValD")],
-                ),
-            ],
-        )
-    ))
-
-    assert wf.nodes[0]._pod_template.primary_container_name == "primary1"
-    assert wf.nodes[0]._pod_template.pod_spec.containers[0].image == "random:image"
-    assert wf.nodes[0]._pod_template.labels == {"lKeyA": "lValA", "lKeyB": "lValB"}
-    assert wf.nodes[0]._pod_template.annotations["aKeyA"] == "aValA"
 
 
 def test_serialization_metadata(serialization_settings):

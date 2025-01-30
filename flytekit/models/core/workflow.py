@@ -393,6 +393,7 @@ class ArrayNode(_common.FlyteIdlEntity):
         min_success_ratio=None,
         execution_mode=None,
         is_original_sub_node_interface=False,
+        data_mode=None,
     ) -> None:
         """
         TODO: docstring
@@ -404,6 +405,7 @@ class ArrayNode(_common.FlyteIdlEntity):
         self._min_success_ratio = min_success_ratio
         self._execution_mode = execution_mode
         self._is_original_sub_node_interface = is_original_sub_node_interface
+        self._data_mode = data_mode
 
     @property
     def node(self) -> "Node":
@@ -417,6 +419,7 @@ class ArrayNode(_common.FlyteIdlEntity):
             min_success_ratio=self._min_success_ratio,
             execution_mode=self._execution_mode,
             is_original_sub_node_interface=BoolValue(value=self._is_original_sub_node_interface),
+            data_mode=self._data_mode,
         )
 
     @classmethod

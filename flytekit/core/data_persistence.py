@@ -52,6 +52,10 @@ _ANON = "anon"
 
 Uploadable = typing.Union[str, os.PathLike, pathlib.Path, bytes, io.BufferedReader, io.BytesIO, io.StringIO]
 
+# This is the default chunk size flytekit will use for writing to S3 and GCS. This is set to 25MB by default and is
+# configurable by the user if needed. This is used when put() is called on filesystems.
+_WRITE_SIZE_CHUNK_BYTES = int(os.environ.get("_F_P_WRITE_CHUNK_SIZE", "26214400"))  # 25 * 2**20
+
 
 def s3_setup_args(s3_cfg: configuration.S3Config, anonymous: bool = False) -> Dict[str, Any]:
     kwargs: Dict[str, Any] = {
@@ -106,6 +110,27 @@ def get_fsspec_storage_options(
     if protocol in ("abfs", "abfss"):
         return {**azure_setup_args(data_config.azure, anonymous=anonymous), **kwargs}
     return {}
+
+
+def get_additional_fsspec_call_kwargs(protocol: typing.Union[str, tuple], method_name: str) -> Dict[str, Any]:
+    """
+    These are different from the setup args functions defined above. Those kwargs are applied when asking fsspec
+    to create the filesystem. These kwargs returned here are for when the filesystem's methods are invoked.
+
+    :param protocol: s3, gcs, etc.
+    :param method_name: Pass in the __name__ of the fsspec.filesystem function. _'s will be ignored.
+    """
+    kwargs = {}
+    method_name = method_name.replace("_", "")
+    if isinstance(protocol, tuple):
+        protocol = protocol[0]
+
+    # For s3fs and gcsfs, we feel the default chunksize of 50MB is too big.
+    # Re-evaluate these kwargs when we move off of s3fs to obstore.
+    if method_name == "put" and protocol in ["s3", "gs"]:
+        kwargs["chunksize"] = _WRITE_SIZE_CHUNK_BYTES
+
+    return kwargs
 
 
 @decorator
@@ -353,6 +378,10 @@ class FileAccessProvider(object):
             if "metadata" not in kwargs:
                 kwargs["metadata"] = {}
             kwargs["metadata"].update(self._execution_metadata)
+
+        additional_kwargs = get_additional_fsspec_call_kwargs(file_system.protocol, file_system.put.__name__)
+        kwargs.update(additional_kwargs)
+
         if isinstance(file_system, AsyncFileSystem):
             dst = await file_system._put(from_path, to_path, recursive=recursive, **kwargs)  # pylint: disable=W0212
         else:
@@ -423,47 +452,34 @@ class FileAccessProvider(object):
                 r = await self._put(from_path, to_path, **kwargs)
             return r or to_path
 
+        # See https://github.com/fsspec/s3fs/issues/871 for more background and pending work on the fsspec side to
+        # support effectively async open(). For now these use-cases below will revert to sync calls.
         # raw bytes
         if isinstance(lpath, bytes):
-            fs = await self.get_async_filesystem_for_path(to_path)
-            if isinstance(fs, AsyncFileSystem):
-                async with fs.open_async(to_path, "wb", **kwargs) as s:
-                    s.write(lpath)
-            else:
-                with fs.open(to_path, "wb", **kwargs) as s:
-                    s.write(lpath)
-
+            fs = self.get_filesystem_for_path(to_path)
+            with fs.open(to_path, "wb", **kwargs) as s:
+                s.write(lpath)
             return to_path
 
         # If lpath is a buffered reader of some kind
         if isinstance(lpath, io.BufferedReader) or isinstance(lpath, io.BytesIO):
             if not lpath.readable():
                 raise FlyteAssertion("Buffered reader must be readable")
-            fs = await self.get_async_filesystem_for_path(to_path)
+            fs = self.get_filesystem_for_path(to_path)
             lpath.seek(0)
-            if isinstance(fs, AsyncFileSystem):
-                async with fs.open_async(to_path, "wb", **kwargs) as s:
-                    while data := lpath.read(read_chunk_size_bytes):
-                        s.write(data)
-            else:
-                with fs.open(to_path, "wb", **kwargs) as s:
-                    while data := lpath.read(read_chunk_size_bytes):
-                        s.write(data)
+            with fs.open(to_path, "wb", **kwargs) as s:
+                while data := lpath.read(read_chunk_size_bytes):
+                    s.write(data)
             return to_path
 
         if isinstance(lpath, io.StringIO):
             if not lpath.readable():
                 raise FlyteAssertion("Buffered reader must be readable")
-            fs = await self.get_async_filesystem_for_path(to_path)
+            fs = self.get_filesystem_for_path(to_path)
             lpath.seek(0)
-            if isinstance(fs, AsyncFileSystem):
-                async with fs.open_async(to_path, "wb", **kwargs) as s:
-                    while data_str := lpath.read(read_chunk_size_bytes):
-                        s.write(data_str.encode(encoding))
-            else:
-                with fs.open(to_path, "wb", **kwargs) as s:
-                    while data_str := lpath.read(read_chunk_size_bytes):
-                        s.write(data_str.encode(encoding))
+            with fs.open(to_path, "wb", **kwargs) as s:
+                while data_str := lpath.read(read_chunk_size_bytes):
+                    s.write(data_str.encode(encoding))
             return to_path
 
         raise FlyteAssertion(f"Unsupported lpath type {type(lpath)}")

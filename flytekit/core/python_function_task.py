@@ -601,7 +601,7 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
                 base_error = ee
 
             html = cast(Controller, ctx.worker_queue).render_html()
-            Deck("eager workflow", html)
+            Deck("Eager Executions", html)
 
             if base_error:
                 # now have to fail this eager task, because we don't want it to show up as succeeded.

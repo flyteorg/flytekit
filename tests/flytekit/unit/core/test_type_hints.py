@@ -1896,12 +1896,11 @@ def test_union_type(exec_prefix):
 
     with pytest.raises(
         TypeError,
-        match=re.escape(
-            f"Error encountered while converting inputs of '{exec_prefix}tests.flytekit.unit.core.test_type_hints.t2':\n"
-            r"  Cannot convert from Flyte Serialized object (Literal):"
-        ),
+        match=(
+              rf"Error encountered while converting inputs of '{exec_prefix}tests\.flytekit\.unit\.core\.test_type_hints\.t2':\n\s+Error converting input 'a' at position 0:"
+          ),
     ):
-        assert wf2(a="2") == "2"
+        wf2(a="2")  # Removed assert as it was not necessary for the exception to be raised
 
 
 def test_optional_type():

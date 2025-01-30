@@ -1,6 +1,7 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from typing import List, Optional, Union
 
+from kubernetes.client import V1Container, V1PodSpec, V1ResourceRequirements
 from mashumaro.mixins.json import DataClassJSONMixin
 
 from flytekit.models import task as task_models
@@ -73,7 +74,10 @@ def _convert_resources_to_resource_entries(resources: Resources) -> List[_Resour
         resource_entries.append(_ResourceEntry(name=_ResourceName.GPU, value=str(resources.gpu)))
     if resources.ephemeral_storage is not None:
         resource_entries.append(
-            _ResourceEntry(name=_ResourceName.EPHEMERAL_STORAGE, value=str(resources.ephemeral_storage))
+            _ResourceEntry(
+                name=_ResourceName.EPHEMERAL_STORAGE,
+                value=str(resources.ephemeral_storage),
+            )
         )
     return resource_entries
 
@@ -96,3 +100,49 @@ def convert_resources_to_resource_model(
     if limits is not None:
         limit_entries = _convert_resources_to_resource_entries(limits)
     return task_models.Resources(requests=request_entries, limits=limit_entries)
+
+
+def pod_spec_from_resources(
+    primary_container_name: Optional[str] = None,
+    requests: Optional[Resources] = None,
+    limits: Optional[Resources] = None,
+    k8s_gpu_resource_key: str = "nvidia.com/gpu",
+) -> V1PodSpec:
+    def _construct_k8s_pods_resources(resources: Optional[Resources], k8s_gpu_resource_key: str):
+        if resources is None:
+            return None
+
+        resources_map = {
+            "cpu": "cpu",
+            "mem": "memory",
+            "gpu": k8s_gpu_resource_key,
+            "ephemeral_storage": "ephemeral-storage",
+        }
+
+        k8s_pod_resources = {}
+
+        for resource in fields(resources):
+            resource_value = getattr(resources, resource.name)
+            if resource_value is not None:
+                k8s_pod_resources[resources_map[resource.name]] = resource_value
+
+        return k8s_pod_resources
+
+    requests = _construct_k8s_pods_resources(resources=requests, k8s_gpu_resource_key=k8s_gpu_resource_key)
+    limits = _construct_k8s_pods_resources(resources=limits, k8s_gpu_resource_key=k8s_gpu_resource_key)
+    requests = requests or limits
+    limits = limits or requests
+
+    pod_spec = V1PodSpec(
+        containers=[
+            V1Container(
+                name=primary_container_name,
+                resources=V1ResourceRequirements(
+                    requests=requests,
+                    limits=limits,
+                ),
+            )
+        ]
+    )
+
+    return pod_spec
