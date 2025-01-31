@@ -1,4 +1,5 @@
 import botocore.session
+import shutil
 from contextlib import ExitStack, contextmanager
 import datetime
 import hashlib
@@ -115,6 +116,15 @@ def test_remote_run():
 def test_remote_eager_run():
     # child_workflow.parent_wf asynchronously register a parent wf1 with child lp from another wf2.
     run("eager_example.py", "simple_eager_workflow", "--x", "3")
+
+
+def test_pydantic_default_input_with_map_task():
+    execution_id = run("pydantic_wf.py", "wf")
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    execution = remote.fetch_execution(name=execution_id)
+    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
+    print("Execution Error:", execution.error)
+    assert execution.closure.phase == WorkflowExecutionPhase.SUCCEEDED, f"Execution failed with phase: {execution.closure.phase}"
 
 
 def test_pydantic_default_input_with_map_task():
@@ -945,3 +955,49 @@ def test_signal_approve_reject(register):
 
         remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
         assert execution.outputs["o0"] == {"title": "my report", "data": [1.0, 2.0, 3.0, 4.0, 5.0]}
+
+
+@pytest.fixture
+def kubectl_secret():
+    secret = "abc-xyz"
+    # Create secret
+    kubectl = shutil.which("kubectl")
+    if kubectl is None:
+        pytest.skip("kubectl not found")
+
+    subprocess.run([
+        kubectl,
+        "create",
+        "secret",
+        "-n",
+        "flytesnacks-development",
+        "generic",
+        "my-group",
+        f"--from-literal=token={secret}",
+    ],  capture_output=True, text=True)
+    yield secret
+
+    # Remove secret
+    subprocess.run([
+        kubectl,
+        "delete",
+        "secrets",
+        "-n",
+        "flytesnacks-development",
+        "my-group",
+    ],  capture_output=True, text=True)
+
+
+# To enable this test, kubectl must be available.
+@pytest.mark.skip(reason="Waiting for flyte release that includes https://github.com/flyteorg/flyte/pull/6176")
+@pytest.mark.parametrize("task", ["get_secret_env_var", "get_secret_file"])
+def test_check_secret(kubectl_secret, task):
+    execution_id = run("get_secret.py", task)
+
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    execution = remote.fetch_execution(name=execution_id)
+    execution = remote.wait(execution=execution)
+    assert execution.closure.phase == WorkflowExecutionPhase.SUCCEEDED, (
+        f"Execution failed with phase: {execution.closure.phase}"
+    )
+    assert execution.outputs['o0'] == kubectl_secret

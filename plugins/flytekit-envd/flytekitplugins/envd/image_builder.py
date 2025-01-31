@@ -98,6 +98,9 @@ def _create_str_from_package_list(packages):
 
 
 def create_envd_config(image_spec: ImageSpec) -> str:
+    if image_spec.python_exec is not None:
+        raise ValueError("python_exec is not supported with the envd image builder")
+
     base_image = DefaultImages.default_image() if image_spec.base_image is None else image_spec.base_image
     if image_spec.cuda:
         if image_spec.python_version is None:
