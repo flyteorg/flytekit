@@ -27,7 +27,7 @@ WORKDIR /root
 RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/uv,id=uv \
     --mount=from=uv,source=/uv,target=/usr/bin/uv \
     --mount=type=bind,target=uv.lock,src=uv.lock \
-    --mount=type=bind,target=pyproject.toml,src=pyproject.toml  \
+    --mount=type=bind,target=pyproject.toml,src=pyproject.toml \
     $PIP_SECRET_MOUNT \
     uv sync $PIP_INSTALL_ARGS
 WORKDIR /
@@ -189,9 +189,7 @@ def _secret_id(index: int) -> str:
     return f"secret_{index}"
 
 
-def prepare_uv_lock_command(
-    image_spec: ImageSpec, pip_install_args: List[str], tmp_dir: Path
-) -> Tuple[Template, List[str]]:
+def prepare_uv_lock_command(image_spec: ImageSpec, tmp_dir: Path) -> Tuple[Template, List[str]]:
     # uv sync is experimental, so our uv.lock support is also experimental
     # the parameters we pass into install args could be different
     warnings.warn("uv.lock support is experimental", UserWarning)
@@ -201,21 +199,17 @@ def prepare_uv_lock_command(
     # --locked: Assert that the `uv.lock` will remain unchanged
     # --no-dev: Omit the development dependency group
     # --no-install-project: Do not install the current project
-    pip_install_args.extend(["--locked", "--no-dev", "--no-install-project"])
-    pip_install_args = " ".join(pip_install_args)
+    additional_pip_install_args = ["--locked", "--no-dev", "--no-install-project"]
 
-    return UV_LOCK_INSTALL_TEMPLATE, pip_install_args
+    return UV_LOCK_INSTALL_TEMPLATE, additional_pip_install_args
 
 
-def prepare_poetry_lock_command(
-    image_spec: ImageSpec, pip_install_args: List[str], tmp_dir: Path
-) -> Tuple[Template, List[str]]:
+def prepare_poetry_lock_command(image_spec: ImageSpec, tmp_dir: Path) -> Tuple[Template, List[str]]:
     _copy_lock_files_into_context(image_spec, "poetry.lock", tmp_dir)
 
     # --no-root: Do not install the current project
-    pip_install_args.extend(["--no-root"])
-    pip_install_args = " ".join(pip_install_args)
-    return POETRY_LOCK_TEMPLATE, pip_install_args
+    additional_pip_install_args = ["--no-root"]
+    return POETRY_LOCK_TEMPLATE, additional_pip_install_args
 
 
 def prepare_python_install(image_spec: ImageSpec, tmp_dir: Path) -> str:
@@ -240,9 +234,11 @@ def prepare_python_install(image_spec: ImageSpec, tmp_dir: Path) -> str:
     if image_spec.requirements:
         requirement_basename = os.path.basename(image_spec.requirements)
         if requirement_basename == "uv.lock":
-            template, pip_install_args = prepare_uv_lock_command(image_spec, pip_install_args, tmp_dir)
+            template, additional_pip_install_args = prepare_uv_lock_command(image_spec, tmp_dir)
+            pip_install_args.extend(additional_pip_install_args)
         elif requirement_basename == "poetry.lock":
-            template, pip_install_args = prepare_poetry_lock_command(image_spec, pip_install_args, tmp_dir)
+            template, additional_pip_install_args = prepare_poetry_lock_command(image_spec, tmp_dir)
+            pip_install_args.extend(additional_pip_install_args)
         else:
             with open(image_spec.requirements) as f:
                 requirements.extend([line.strip() for line in f.readlines()])
@@ -260,10 +256,8 @@ def prepare_python_install(image_spec: ImageSpec, tmp_dir: Path) -> str:
         requirements_uv_path.write_text("\n".join(requirements))
         pip_install_args.extend(["--requirement", "requirements_uv.txt"])
 
-        pip_install_args = " ".join(pip_install_args)
-
     return template.substitute(
-        PIP_INSTALL_ARGS=pip_install_args,
+        PIP_INSTALL_ARGS=" ".join(pip_install_args),
         PIP_SECRET_MOUNT=pip_secret_mount,
     )
 
