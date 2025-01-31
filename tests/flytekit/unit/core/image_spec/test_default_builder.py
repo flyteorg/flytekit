@@ -11,7 +11,6 @@ from flytekit.constants import CopyFileDetection
 from pathlib import Path
 import tempfile
 
-
 def test_create_docker_context(tmp_path):
     docker_context_path = tmp_path / "builder_root"
     docker_context_path.mkdir()
@@ -64,7 +63,7 @@ def test_create_docker_context(tmp_path):
 
     run_match = re.search(r"RUN.+mkdir my_dir", dockerfile_content)
     assert run_match
-    assert 'ENTRYPOINT ["/bin/bash"]' in dockerfile_content
+    assert "ENTRYPOINT [\"/bin/bash\"]" in dockerfile_content
     assert "mkdir -p $HOME" in dockerfile_content
     assert f"COPY --chown=flytekit {tmp_file.relative_to(Path.cwd()).as_posix()} /root/" in dockerfile_content
 
@@ -124,6 +123,7 @@ def test_create_docker_context_with_null_entrypoint(tmp_path):
 
 @pytest.mark.parametrize("flytekit_spec", [None, "flytekit>=1.12.3", "flytekit==1.12.3"])
 def test_create_docker_context_with_flytekit(tmp_path, flytekit_spec, monkeypatch):
+
     # pretend version is 1.13.0
     mock_version = "1.13.0"
     monkeypatch.setattr(flytekit, "__version__", mock_version)
@@ -136,7 +136,9 @@ def test_create_docker_context_with_flytekit(tmp_path, flytekit_spec, monkeypatc
     else:
         packages = []
 
-    image_spec = ImageSpec(name="FLYTEKIT", packages=packages)
+    image_spec = ImageSpec(
+        name="FLYTEKIT", packages=packages
+    )
 
     create_docker_context(image_spec, docker_context_path)
 
@@ -192,7 +194,7 @@ def test_build(tmp_path):
         requirements=os.fspath(other_requirements_path),
         source_root=os.fspath(source_root),
         commands=["mkdir my_dir"],
-        copy=[f"{tmp_path}/hello_world.txt", f"{tmp_path}/requirements.txt"],
+        copy=[f"{tmp_path}/hello_world.txt", f"{tmp_path}/requirements.txt"]
     )
 
     builder = DefaultImageBuilder()
@@ -330,7 +332,11 @@ def test_python_exec(tmp_path):
     base_image = "ghcr.io/flyteorg/flytekit:py3.11-1.14.4"
     python_exec = "/usr/local/bin/python"
 
-    image_spec = ImageSpec(name="FLYTEKIT", base_image=base_image, python_exec=python_exec)
+    image_spec = ImageSpec(
+        name="FLYTEKIT",
+        base_image=base_image,
+        python_exec=python_exec
+    )
 
     create_docker_context(image_spec, docker_context_path)
 
@@ -350,7 +356,7 @@ def test_python_exec_errors(tmp_path, key, value):
         name="FLYTEKIT",
         base_image="ghcr.io/flyteorg/flytekit:py3.11-1.14.4",
         python_exec="/usr/local/bin/python",
-        **{key: value},
+        **{key: value}
     )
     msg = f"{key} is not supported with python_exec"
     with pytest.raises(ValueError, match=msg):
