@@ -1,4 +1,5 @@
 import botocore.session
+import shutil
 from contextlib import ExitStack, contextmanager
 import datetime
 import hashlib
@@ -15,6 +16,7 @@ from urllib.parse import urlparse
 import uuid
 import pytest
 from unittest import mock
+from dataclasses import dataclass
 
 from flytekit import LaunchPlan, kwtypes, WorkflowExecutionPhase
 from flytekit.configuration import Config, ImageConfig, SerializationSettings
@@ -26,6 +28,7 @@ from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
 from flytekit.remote.remote import FlyteRemote
 from flyteidl.service import dataproxy_pb2 as _data_proxy_pb2
 from flytekit.types.schema import FlyteSchema
+from flytekit.types.structured import StructuredDataset
 from flytekit.clients.friendly import SynchronousFlyteClient as _SynchronousFlyteClient
 from flytekit.configuration import PlatformConfig
 
@@ -113,6 +116,15 @@ def test_remote_run():
 def test_remote_eager_run():
     # child_workflow.parent_wf asynchronously register a parent wf1 with child lp from another wf2.
     run("eager_example.py", "simple_eager_workflow", "--x", "3")
+
+
+def test_pydantic_default_input_with_map_task():
+    execution_id = run("pydantic_wf.py", "wf")
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    execution = remote.fetch_execution(name=execution_id)
+    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
+    print("Execution Error:", execution.error)
+    assert execution.closure.phase == WorkflowExecutionPhase.SUCCEEDED, f"Execution failed with phase: {execution.closure.phase}"
 
 
 def test_pydantic_default_input_with_map_task():
@@ -866,3 +878,126 @@ def test_attr_access_sd():
     url = urlparse(remote_file_path)
     bucket, key = url.netloc, url.path.lstrip("/")
     file_transfer.delete_file(bucket=bucket, key=key)
+
+
+def test_sd_attr():
+    """Test correctness of StructuredDataset attributes.
+
+    This test considers only the following condition:
+    1. Check StructuredDataset (wrapped in a dataclass) file_format attribute
+
+    We'll make sure uri aligns with the user-specified one in the future.
+    """
+    from workflows.basic.sd_attr import wf
+
+    @dataclass
+    class DC:
+        sd: StructuredDataset
+
+    FILE_FORMAT = "parquet"
+
+    # Upload a file to minio s3 bucket
+    file_transfer = SimpleFileTransfer()
+    remote_file_path = file_transfer.upload_file(file_type=FILE_FORMAT)
+
+    # Create a dataclass as the workflow input because `pyflyte run`
+    # can't properly handle input arg `dc` as a json str so far
+    dc = DC(sd=StructuredDataset(uri=remote_file_path, file_format=FILE_FORMAT))
+
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN, interactive_mode_enabled=True)
+    wf_exec = remote.execute(
+        wf,
+        inputs={"dc": dc, "file_format": FILE_FORMAT},
+        wait=True,
+        version=VERSION,
+        image_config=ImageConfig.from_images(IMAGE),
+    )
+    assert wf_exec.closure.phase == WorkflowExecutionPhase.SUCCEEDED, f"Execution failed with phase: {wf_exec.closure.phase}"
+    assert wf_exec.outputs["o0"].file_format == FILE_FORMAT, (
+        f"Workflow output StructuredDataset file_format should align with the user-specified file_format: {FILE_FORMAT}."
+    )
+
+    # Delete the remote file to free the space
+    url = urlparse(remote_file_path)
+    bucket, key = url.netloc, url.path.lstrip("/")
+    file_transfer.delete_file(bucket=bucket, key=key)
+
+
+def test_signal_approve_reject(register):
+    from flytekit.models.types import LiteralType, SimpleType
+    from time import sleep
+
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    conditional_wf = remote.fetch_workflow(name="basic.signal_test.signal_test_wf", version=VERSION)
+
+    execution = remote.execute(conditional_wf, inputs={"data": [1.0, 2.0, 3.0, 4.0, 5.0]})
+
+    def retry_operation(operation):
+        max_retries = 10
+        for _ in range(max_retries):
+            try:
+                operation()
+                break
+            except Exception:
+                sleep(1)
+
+    retry_operation(lambda: remote.set_input("title-input", execution.id.name, value="my report", project=PROJECT, domain=DOMAIN, python_type=str, literal_type=LiteralType(simple=SimpleType.STRING)))
+    retry_operation(lambda: remote.approve("review-passes", execution.id.name, project=PROJECT, domain=DOMAIN))
+
+    remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
+    assert execution.outputs["o0"] == {"title": "my report", "data": [1.0, 2.0, 3.0, 4.0, 5.0]}
+
+    with pytest.raises(FlyteAssertion, match="Outputs could not be found because the execution ended in failure"):
+        execution = remote.execute(conditional_wf, inputs={"data": [1.0, 2.0, 3.0, 4.0, 5.0]})
+
+        retry_operation(lambda: remote.set_input("title-input", execution.id.name, value="my report", project=PROJECT, domain=DOMAIN, python_type=str, literal_type=LiteralType(simple=SimpleType.STRING)))
+        retry_operation(lambda: remote.reject("review-passes", execution.id.name, project=PROJECT, domain=DOMAIN))
+
+        remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
+        assert execution.outputs["o0"] == {"title": "my report", "data": [1.0, 2.0, 3.0, 4.0, 5.0]}
+
+
+@pytest.fixture
+def kubectl_secret():
+    secret = "abc-xyz"
+    # Create secret
+    kubectl = shutil.which("kubectl")
+    if kubectl is None:
+        pytest.skip("kubectl not found")
+
+    subprocess.run([
+        kubectl,
+        "create",
+        "secret",
+        "-n",
+        "flytesnacks-development",
+        "generic",
+        "my-group",
+        f"--from-literal=token={secret}",
+    ],  capture_output=True, text=True)
+    yield secret
+
+    # Remove secret
+    subprocess.run([
+        kubectl,
+        "delete",
+        "secrets",
+        "-n",
+        "flytesnacks-development",
+        "my-group",
+    ],  capture_output=True, text=True)
+
+
+# To enable this test, kubectl must be available.
+@pytest.mark.skip(reason="Waiting for flyte release that includes https://github.com/flyteorg/flyte/pull/6176")
+@pytest.mark.parametrize("task", ["get_secret_env_var", "get_secret_file"])
+def test_check_secret(kubectl_secret, task):
+    execution_id = run("get_secret.py", task)
+
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    execution = remote.fetch_execution(name=execution_id)
+    execution = remote.wait(execution=execution)
+    assert execution.closure.phase == WorkflowExecutionPhase.SUCCEEDED, (
+        f"Execution failed with phase: {execution.closure.phase}"
+    )
+    assert execution.outputs['o0'] == kubectl_secret
