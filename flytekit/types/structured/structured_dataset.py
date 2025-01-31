@@ -739,10 +739,31 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
             #       return StructuredDataset(uri=uri)
             if python_val.dataframe is None:
                 uri = python_val.uri
+                file_format = python_val.file_format
+
+                # Check the user-specified uri
                 if not uri:
                     raise ValueError(f"If dataframe is not specified, then the uri should be specified. {python_val}")
                 if not ctx.file_access.is_remote(uri):
                     uri = await ctx.file_access.async_put_raw_data(uri)
+
+                # Check the user-specified file_format
+                # When users specify file_format for a StructuredDataset, the file_format should be retained conditionally.
+                # For details, please refer to https://github.com/flyteorg/flyte/issues/6096.
+                # Following illustrates why we can't always copy the user-specified file_format over:
+                #
+                # @task
+                # def modify_format(sd: Annotated[StructuredDataset, {}, "task-format"]) -> StructuredDataset:
+                #     return sd
+                #
+                # sd = StructuredDataset(uri="s3://my-s3-bucket/df.parquet", file_format="user-format")
+                # sd2 = modify_format(sd=sd)
+                #
+                # In this case, we expect sd2.file_format to be task-format (as shown in Annotated), not user-format.
+                # If we directly copy the user-specified file_format over, the type hint information will be missing.
+                if sdt.format == GENERIC_FORMAT and file_format != GENERIC_FORMAT:
+                    sdt.format = file_format
+
                 sd_model = literals.StructuredDataset(
                     uri=uri,
                     metadata=StructuredDatasetMetadata(structured_dataset_type=sdt),
