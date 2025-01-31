@@ -86,7 +86,7 @@ class ImageSpec:
     platform: str = "linux/amd64"
     pip_index: Optional[str] = None
     pip_extra_index_url: Optional[List[str]] = None
-    pip_secret_mounts: Optional[List[str]] = None
+    pip_secret_mounts: Optional[List[Tuple[str, str]]] = None
     pip_extra_args: Optional[str] = None
     registry_config: Optional[str] = None
     entrypoint: Optional[List[str]] = None
