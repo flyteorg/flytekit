@@ -18,7 +18,7 @@ import pytest
 from unittest import mock
 from dataclasses import dataclass
 
-from flytekit import LaunchPlan, kwtypes, WorkflowExecutionPhase
+from flytekit import LaunchPlan, kwtypes, WorkflowExecutionPhase, task, workflow
 from flytekit.configuration import Config, ImageConfig, SerializationSettings
 from flytekit.core.launch_plan import reference_launch_plan
 from flytekit.core.task import reference_task
@@ -535,6 +535,14 @@ def test_execute_reference_workflow(register):
         return a + 2, b + "world"
 
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    remote_entity = remote.register_script(
+        my_wf,
+        project=PROJECT,
+        domain=DOMAIN,
+        image_config=ImageConfig.auto(img_name=IMAGE),
+        destination_dir=DEST_DIR,
+        source_path=MODULE_PATH,
+    )
     execution = remote.execute(
         my_wf,
         inputs={"a": 10, "b": "xyz"},
