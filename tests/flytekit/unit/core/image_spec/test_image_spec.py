@@ -160,6 +160,19 @@ def test_image_spec_validation_string_list(parameter_name, value):
     with pytest.raises(ValueError, match=msg):
         ImageSpec(**input_params)
 
+@pytest.mark.parametrize(
+    "parameter_name", ["pip_secret_mounts", ]
+)
+@pytest.mark.parametrize("value", ["secrets.txt", ("secret_src", "id", "secret_dst")])
+def test_image_spec_validation_two_string_tuple_list(parameter_name, value):
+    msg = f"{parameter_name} must be a list of tuples of two strings or None"
+
+    input_params = {parameter_name: value}
+
+    with pytest.raises(ValueError, match=msg):
+        ImageSpec(**input_params)
+
+
 
 def test_copy_is_set_if_source_root_is_set():
     image_spec = ImageSpec(name="my_image", python_version="3.12", source_root="/tmp")
