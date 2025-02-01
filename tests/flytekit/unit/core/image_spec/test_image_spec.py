@@ -275,3 +275,9 @@ def test_image_spec_from_env_empty():
 
     image_spec = ImageSpec.from_env()
     assert image_spec.python_version == python_version
+
+
+def test_image_spec_same_id_with_pip_secret_mounts():
+    image_spec = ImageSpec(name="my_image")
+    image_spec_with_pip_secret_mounts = ImageSpec(name="my_image", pip_secret_mounts=[("src", "dst")])
+    assert image_spec.id == image_spec_with_pip_secret_mounts.id
