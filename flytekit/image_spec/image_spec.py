@@ -180,7 +180,8 @@ class ImageSpec:
         """
 
         # copy the image spec to avoid modifying the original image spec. otherwise, the hash will be different.
-        spec = copy.deepcopy(self)
+        parameters_to_exclude = ["pip_secret_mounts"]
+        spec = dataclasses.replace(self, **{k: None for k in parameters_to_exclude})
         if isinstance(spec.base_image, ImageSpec):
             spec = dataclasses.replace(spec, base_image=spec.base_image.image_name())
 

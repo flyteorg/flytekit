@@ -222,7 +222,10 @@ def prepare_python_install(image_spec: ImageSpec, tmp_dir: Path) -> str:
         pip_install_args.extend(extra_urls)
 
     pip_secret_mount = ""
-    pip_secret_mount = ' '.join(f'--mount=type=secret,id={_secret_id(i)},target={dst}' for i, (_, dst) in enumerate(image_spec.pip_secret_mounts or []))
+    pip_secret_mount = " ".join(
+        f"--mount=type=secret,id={_secret_id(i)},target={dst}"
+        for i, (_, dst) in enumerate(image_spec.pip_secret_mounts or [])
+    )
 
     if image_spec.pip_extra_args:
         pip_install_args.append(image_spec.pip_extra_args)
