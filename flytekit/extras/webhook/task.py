@@ -13,27 +13,49 @@ from .constants import DATA_KEY, HEADERS_KEY, METHOD_KEY, SHOW_DATA_KEY, SHOW_UR
 
 class WebhookTask(SyncAgentExecutorMixin, PythonTask):
     """
-    This is the simplest form of a BigQuery Task, that can be used even for tasks that do not produce any output.
-    """
+        The WebhookTask is used to invoke a webhook. The webhook can be invoked with a POST or GET method.
 
-    def __init__(
-        self,
-        name: str,
-        url: str,
-        method: http.HTTPMethod = http.HTTPMethod.POST,
-        headers: Optional[Dict[str, str]] = None,
-        data: Optional[Dict[str, Any]] = None,
-        dynamic_inputs: Optional[Dict[str, Type]] = None,
-        show_data: bool = False,
-        show_url: bool = False,
-        description: Optional[str] = None,
-        timeout: Union[int, timedelta] = timedelta(seconds=10),
-        # secret_requests: Optional[List[Secret]] = None,  TODO Secret support is coming soon
-    ):
-        """
-        This task is used to invoke a webhook. The webhook can be invoked with a POST or GET method.
+        All the parameters can be formatted using python format strings.
 
-        All the parameters can be formatted using python format strings. The following parameters are available for
+        Example:
+        ```python
+        simple_get = WebhookTask(
+        name="simple-get",
+        url="http://localhost:8000/",
+        method=http.HTTPMethod.GET,
+        headers={"Content-Type": "application/json"},
+    )
+
+    get_with_params = WebhookTask(
+        name="get-with-params",
+        url="http://localhost:8000/items/{inputs.item_id}",
+        method=http.HTTPMethod.GET,
+        headers={"Content-Type": "application/json"},
+        dynamic_inputs={"s": str, "item_id": int},
+        show_data=True,
+        show_url=True,
+        description="Test Webhook Task",
+        data={"q": "{inputs.s}"},
+    )
+
+
+    @fk.workflow
+    def wf(s: str) -> (dict, dict, dict):
+        v = hello(s=s)
+        w = WebhookTask(
+            name="invoke-slack",
+            url="https://hooks.slack.com/services/xyz/zaa/aaa",
+            headers={"Content-Type": "application/json"},
+            data={"text": "{inputs.s}"},
+            show_data=True,
+            show_url=True,
+            description="Test Webhook Task",
+            dynamic_inputs={"s": str},
+        )
+        return simple_get(), get_with_params(s=v, item_id=10), w(s=v)
+        ```
+
+         All the parameters can be formatted using python format strings. The following parameters are available for
         formatting:
         - dynamic_inputs: These are the dynamic inputs to the task. The keys are the names of the inputs and the values
             are the values of the inputs. All inputs are available under the prefix `inputs.`.
@@ -69,7 +91,22 @@ class WebhookTask(SyncAgentExecutorMixin, PythonTask):
         :param description: Description of the task
         :param timeout: The timeout for the request (connection and read). Default is 10 seconds. If int value is provided,
             it is considered as seconds.
-        """
+    """
+
+    def __init__(
+        self,
+        name: str,
+        url: str,
+        method: http.HTTPMethod = http.HTTPMethod.POST,
+        headers: Optional[Dict[str, str]] = None,
+        data: Optional[Dict[str, Any]] = None,
+        dynamic_inputs: Optional[Dict[str, Type]] = None,
+        show_data: bool = False,
+        show_url: bool = False,
+        description: Optional[str] = None,
+        timeout: Union[int, timedelta] = timedelta(seconds=10),
+        # secret_requests: Optional[List[Secret]] = None,  TODO Secret support is coming soon
+    ):
         if method not in {http.HTTPMethod.GET, http.HTTPMethod.POST}:
             raise ValueError(f"Method should be either GET or POST. Got {method}")
 

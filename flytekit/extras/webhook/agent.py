@@ -1,7 +1,7 @@
 import http
 from typing import Optional
 
-import aiohttp
+import httpx
 from flyteidl.core.execution_pb2 import TaskExecution
 
 from flytekit.extend.backend.base_agent import AgentRegistry, Resource, SyncAgentBase
@@ -14,18 +14,33 @@ from .constants import DATA_KEY, HEADERS_KEY, METHOD_KEY, SHOW_DATA_KEY, SHOW_UR
 
 
 class WebhookAgent(SyncAgentBase):
-    name = "Webhook Agent"
+    """
+    WebhookAgent is responsible for handling webhook tasks.
 
-    def __init__(self):
+    This agent sends HTTP requests based on the task template and inputs provided,
+    and processes the responses to determine the success or failure of the task.
+
+    :param client: An optional HTTP client to use for sending requests.
+    """
+
+    name: str = "Webhook Agent"
+
+    def __init__(self, client: Optional[httpx.AsyncClient] = None):
         super().__init__(task_type_name=TASK_TYPE)
+        self._client = client or httpx.AsyncClient()
 
     async def do(
         self, task_template: TaskTemplate, output_prefix: str, inputs: Optional[LiteralMap] = None, **kwargs
     ) -> Resource:
+        """
+        This method processes the webhook task and sends an HTTP request.
+
+        It uses asyncio to send the request and process the response using the httpx library.
+        """
         try:
             final_dict = self._get_final_dict(task_template, inputs)
             return await self._process_webhook(final_dict)
-        except aiohttp.ClientError as e:
+        except Exception as e:
             return Resource(phase=TaskExecution.FAILED, message=str(e))
 
     def _get_final_dict(self, task_template: TaskTemplate, inputs: LiteralMap) -> dict:
@@ -38,16 +53,11 @@ class WebhookAgent(SyncAgentBase):
     async def _make_http_request(
         self, method: http.HTTPMethod, url: str, headers: dict, data: dict, timeout: int
     ) -> tuple:
-        # TODO This is a potential performance bottleneck. Consider using a connection pool. To do this, we need to
-        #  create a session object and reuse it for multiple requests. This will reduce the overhead of creating a new
-        #  connection for each request. The problem for not doing so is local execution, does not have a common event
-        #  loop and agent executor creates a new event loop for each request (in the mixin).
-        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout)) as session:
-            if method == http.HTTPMethod.GET:
-                response = await session.get(url, headers=headers, params=data)
-            else:
-                response = await session.post(url, json=data, headers=headers)
-            return response.status, await response.text()
+        if method == http.HTTPMethod.GET:
+            response = await self._client.get(url, headers=headers, params=data, timeout=timeout)
+        else:
+            response = await self._client.post(url, json=data, headers=headers, timeout=timeout)
+        return response.status_code, response.text
 
     @staticmethod
     def _build_response(

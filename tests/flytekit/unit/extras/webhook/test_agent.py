@@ -1,12 +1,12 @@
 from unittest.mock import patch, MagicMock, AsyncMock
 
 import pytest
+import httpx
 
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extras.webhook.agent import WebhookAgent
-from flytekit.extras.webhook.constants import SHOW_DATA_KEY, DATA_KEY, METHOD_KEY, URL_KEY, HEADERS_KEY, SHOW_URL_KEY, \
-    TIMEOUT_SEC
+from flytekit.extras.webhook.constants import SHOW_DATA_KEY, DATA_KEY, METHOD_KEY, URL_KEY, HEADERS_KEY, SHOW_URL_KEY, TIMEOUT_SEC
 from flytekit.models.core.execution import TaskExecutionPhase as TaskExecution
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
@@ -27,20 +27,15 @@ def mock_task_template():
     return task_template
 
 
-@pytest.fixture
-def mock_aiohttp_session():
-    with patch('aiohttp.ClientSession') as mock_session:
-        yield mock_session
-
-
 @pytest.mark.asyncio
-async def test_do_post_success(mock_task_template, mock_aiohttp_session):
-    mock_response = AsyncMock()
-    mock_response.status = 200
-    mock_response.text = AsyncMock(return_value="Success")
-    mock_aiohttp_session.return_value.post = AsyncMock(return_value=mock_response)
+async def test_do_post_success(mock_task_template):
+    mock_response = AsyncMock(name="httpx.Response")
+    mock_response.status_code = 200
+    mock_response.text = "Success"
+    mock_httpx_client = AsyncMock(name="httpx.AsyncClient")
+    mock_httpx_client.post.return_value = mock_response
 
-    agent = WebhookAgent()
+    agent = WebhookAgent(client=mock_httpx_client)
     result = await agent.do(mock_task_template, output_prefix="", inputs=LiteralMap({}))
 
     assert result.phase == TaskExecution.SUCCEEDED
@@ -50,17 +45,18 @@ async def test_do_post_success(mock_task_template, mock_aiohttp_session):
 
 
 @pytest.mark.asyncio
-async def test_do_get_success(mock_task_template, mock_aiohttp_session):
+async def test_do_get_success(mock_task_template):
     mock_task_template.custom[METHOD_KEY] = "GET"
     mock_task_template.custom.pop(DATA_KEY)
     mock_task_template.custom[SHOW_DATA_KEY] = False
 
-    mock_response = AsyncMock()
-    mock_response.status = 200
-    mock_response.text = AsyncMock(return_value="Success")
-    mock_aiohttp_session.return_value.get = AsyncMock(return_value=mock_response)
+    mock_response = AsyncMock(name="httpx.Response")
+    mock_response.status_code = 200
+    mock_response.text = "Success"
+    mock_httpx_client = AsyncMock(name="httpx.AsyncClient")
+    mock_httpx_client.get.return_value = mock_response
 
-    agent = WebhookAgent()
+    agent = WebhookAgent(client=mock_httpx_client)
     result = await agent.do(mock_task_template, output_prefix="", inputs=LiteralMap({}))
 
     assert result.phase == TaskExecution.SUCCEEDED
@@ -70,13 +66,33 @@ async def test_do_get_success(mock_task_template, mock_aiohttp_session):
 
 
 @pytest.mark.asyncio
-async def test_do_failure(mock_task_template, mock_aiohttp_session):
-    mock_response = AsyncMock()
-    mock_response.status = 500
-    mock_response.text = AsyncMock(return_value="Internal Server Error")
-    mock_aiohttp_session.return_value.post = AsyncMock(return_value=mock_response)
+async def test_do_failure(mock_task_template):
+    mock_response = AsyncMock(name="httpx.Response")
+    mock_response.status_code = 500
+    mock_response.text = "Internal Server Error"
+    mock_httpx_client = AsyncMock(name="httpx.AsyncClient")
+    mock_httpx_client.post.return_value = mock_response
 
-    agent = WebhookAgent()
+    agent = WebhookAgent(client=mock_httpx_client)
+    result = await agent.do(mock_task_template, output_prefix="", inputs=LiteralMap({}))
+
+    assert result.phase == TaskExecution.FAILED
+    assert "Webhook failed with status code 500" in result.message
+
+
+@pytest.mark.asyncio
+async def test_do_get_failure(mock_task_template):
+    mock_task_template.custom[METHOD_KEY] = "GET"
+    mock_task_template.custom.pop(DATA_KEY)
+    mock_task_template.custom[SHOW_DATA_KEY] = False
+
+    mock_response = AsyncMock(name="httpx.Response")
+    mock_response.status_code = 500
+    mock_response.text = "Internal Server Error"
+    mock_httpx_client = AsyncMock(name="httpx.AsyncClient")
+    mock_httpx_client.get.return_value = mock_response
+
+    agent = WebhookAgent(client=mock_httpx_client)
     result = await agent.do(mock_task_template, output_prefix="", inputs=LiteralMap({}))
 
     assert result.phase == TaskExecution.FAILED

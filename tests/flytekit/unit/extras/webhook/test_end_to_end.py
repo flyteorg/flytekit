@@ -1,5 +1,5 @@
 import http
-from unittest.mock import patch, AsyncMock
+from unittest.mock import patch
 
 import flytekit as fk
 from flytekit.extras.webhook import WebhookTask
