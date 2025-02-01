@@ -172,6 +172,8 @@ class NodeMetadata(_common.FlyteIdlEntity):
         cacheable: typing.Optional[bool] = None,
         cache_version: typing.Optional[str] = None,
         cache_serializable: typing.Optional[bool] = None,
+        labels: typing.Optional[dict[str, str]] = None,
+        annotations: typing.Optional[dict[str, str]] = None,
     ):
         """
         Defines extra information about the Node.
@@ -183,6 +185,8 @@ class NodeMetadata(_common.FlyteIdlEntity):
         :param cacheable: Indicates that this nodes outputs should be cached.
         :param cache_version: The version of the cached data.
         :param cacheable: Indicates that cache operations on this node should be serialized.
+        :param labels: Identifying attributes to add to the k8s resource.
+        :param annotations: Arbitrary metadata to add to the k8s resource.
         """
         self._name = name
         self._timeout = timeout if timeout is not None else datetime.timedelta()
@@ -191,6 +195,8 @@ class NodeMetadata(_common.FlyteIdlEntity):
         self._cacheable = cacheable
         self._cache_version = cache_version
         self._cache_serializable = cache_serializable
+        self._labels = labels
+        self._annotations = annotations
 
     @property
     def name(self):
@@ -229,6 +235,14 @@ class NodeMetadata(_common.FlyteIdlEntity):
     def cache_serializable(self) -> typing.Optional[bool]:
         return self._cache_serializable
 
+    @property
+    def labels(self) -> typing.Optional[dict[str, str]]:
+        return self._labels
+
+    @property
+    def annotations(self) -> typing.Optional[dict[str, str]]:
+        return self._annotations
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.workflow_pb2.NodeMetadata
@@ -240,6 +254,8 @@ class NodeMetadata(_common.FlyteIdlEntity):
             cacheable=self.cacheable,
             cache_version=self.cache_version,
             cache_serializable=self.cache_serializable,
+            labels=self.labels,
+            annotations=self.annotations,
         )
         if self.timeout:
             node_metadata.timeout.FromTimedelta(self.timeout)
@@ -255,6 +271,8 @@ class NodeMetadata(_common.FlyteIdlEntity):
             pb2_object.cacheable if pb2_object.HasField("cacheable") else None,
             pb2_object.cache_version if pb2_object.HasField("cache_version") else None,
             pb2_object.cache_serializable if pb2_object.HasField("cache_serializable") else None,
+            pb2_object.labels if pb2_object.HasField("labels") else None,
+            pb2_object.annotations if pb2_object.HasField("annotations") else None,
         )
 
 
