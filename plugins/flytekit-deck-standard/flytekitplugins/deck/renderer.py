@@ -3,6 +3,18 @@ from typing import TYPE_CHECKING, List, Optional, Union
 
 from flytekit import lazy_module
 from flytekit.types.file import FlyteFile
+from ._memory_viz import (
+    trace_plot, 
+    segment_plot, 
+    memory, 
+    segments, 
+    compare, 
+    profile_plot,
+    _format_size,  # Could be useful for formatting memory sizes
+    segsum,        # Could be useful for summary visualization
+    trace          # Could be useful for detailed trace visualization
+)
+import pickle
 
 if TYPE_CHECKING:
     import markdown
@@ -212,3 +224,266 @@ class GanttChartRenderer:
         )
 
         return fig.to_html()
+
+class PyTorchProfilingRenderer:
+    """Renders PyTorch profiling data in various visualization formats.
+    
+    This renderer is particularly useful for analyzing memory usage and potential
+    memory-related failures in PyTorch executions. It can help diagnose OOM (Out of Memory)
+    errors and memory leaks by providing various visualization types.
+    
+    Supports multiple visualization types:
+    - trace_plot: Shows the execution timeline
+    - segment_plot: Shows the execution segments
+    - memory: Displays memory usage over time
+    - segments: Shows detailed segment information
+    - compare: Compares two profiling snapshots
+    - profile_plot: Shows detailed profiling information
+    - summary: Shows overall allocation statistics
+    - trace_view: Shows detailed trace information
+    
+    The renderer can be particularly helpful in:
+    1. Analyzing failed executions due to OOM errors
+    2. Identifying memory leaks
+    3. Understanding memory usage patterns
+    4. Comparing memory states before and after operations
+    """
+    def __init__(self, profiling_data):
+        if profiling_data is None:
+            raise ValueError("Profiling data cannot be None")
+            
+        # Handle both single snapshot and comparison cases
+        if isinstance(profiling_data, tuple):
+            before, after = profiling_data
+            if before is None or after is None:
+                raise ValueError("Both before and after snapshots must be provided for comparison")
+            
+            # Check if this might be an OOM case by comparing memory usage
+            try:
+                self._check_memory_growth(before, after)
+            except Exception:
+                # Don't fail initialization if memory check fails
+                pass
+        
+        self.profiling_data = profiling_data
+
+    def _check_memory_growth(self, before, after):
+        """Check for significant memory growth between snapshots"""
+        before_mem = self._get_total_memory(before)
+        after_mem = self._get_total_memory(after)
+        if after_mem > before_mem * 1.5:  # 50% growth threshold
+            warnings.warn(
+                f"Significant memory growth detected: {_format_size(before_mem)} -> {_format_size(after_mem)}",
+                RuntimeWarning
+            )
+
+    def _get_total_memory(self, snapshot):
+        """Get total memory usage from a snapshot"""
+        total = 0
+        for seg in snapshot.get("segments", []):
+            total += seg.get("total_size", 0)
+        return total
+
+    def get_failure_analysis(self) -> str:
+        """
+        Analyze profiling data for potential failure causes.
+        Particularly useful for OOM and memory-related failures.
+        
+        Returns:
+            str: HTML formatted analysis of potential issues
+        """
+        analysis = []
+        
+        # Get memory summary
+        memory_summary = self.get_memory_summary()
+        analysis.append("<h3>Memory Usage Summary</h3>")
+        analysis.append(f"<pre>{memory_summary}</pre>")
+        
+        # Get trace summary for context
+        trace_summary = self.get_trace_summary()
+        analysis.append("<h3>Execution Trace Summary</h3>")
+        analysis.append(f"<pre>{trace_summary}</pre>")
+        
+        # Add memory visualization
+        analysis.append("<h3>Memory Usage Visualization</h3>")
+        analysis.append(self.to_html("memory"))
+        
+        return "\n".join(analysis)
+
+    def get_memory_metrics(self) -> dict:
+        """
+        Get key memory metrics that might be useful for failure analysis
+        
+        Returns:
+            dict: Dictionary containing memory metrics
+        """
+        metrics = {
+            "peak_memory": 0,
+            "total_allocations": 0,
+            "largest_allocation": 0,
+            "memory_at_failure": 0,
+        }
+        
+        try:
+            # Extract metrics from profiling data
+            if isinstance(self.profiling_data, tuple):
+                # For comparison case, use the 'after' snapshot
+                data = self.profiling_data[1]
+            else:
+                data = self.profiling_data
+                
+            for seg in data.get("segments", []):
+                metrics["peak_memory"] = max(metrics["peak_memory"], seg.get("total_size", 0))
+                for block in seg.get("blocks", []):
+                    if block.get("state") == "active_allocated":
+                        metrics["total_allocations"] += 1
+                        metrics["largest_allocation"] = max(
+                            metrics["largest_allocation"],
+                            block.get("size", 0)
+                        )
+            
+            # Get the last known memory state
+            metrics["memory_at_failure"] = self._get_total_memory(data)
+            
+        except Exception as e:
+            warnings.warn(f"Failed to extract memory metrics: {str(e)}")
+            
+        return metrics
+
+    def format_memory_size(self, size: int) -> str:
+        """Format memory size using the _memory_viz helper"""
+        return _format_size(size)
+
+    def to_html(self, plot_type: str = "trace_plot") -> str:
+        """Convert profiling data to HTML visualization."""
+        
+        # Define memory_viz_js at the start so it's available for all branches
+        memory_viz_js = """
+        <script src="MemoryViz.js" type="text/javascript"></script>
+        <script type="text/javascript">
+            function init(evt) {
+                if (window.svgDocument == null) {
+                    svgDocument = evt.target.ownerDocument;
+                }
+            }
+        </script>
+        """
+        
+        if plot_type == "profile_plot":
+            import torch
+            try:
+                # Create a profile object without initializing it
+                profile = torch.profiler.profile()
+                # Set basic attributes needed for visualization
+                profile.steps = []
+                profile.events = []
+                profile.key_averages = []
+                
+                # Copy the data from our profiling_data
+                if isinstance(self.profiling_data, dict):
+                    for key, value in self.profiling_data.items():
+                        setattr(profile, key, value)
+                content = profile_plot(profile)
+            except Exception as e:
+                content = f"<div>Failed to generate profile plot: {str(e)}</div>"
+        
+        elif plot_type == "compare":
+            if not isinstance(self.profiling_data, tuple):
+                raise ValueError("Compare plot type requires before/after snapshots")
+            before, after = self.profiling_data
+            
+            # Ensure both snapshots have the correct structure
+            def ensure_structure(data):
+                if isinstance(data, dict) and "segments" in data:
+                    return data
+                return {
+                    "segments": data.get("segments", []) if hasattr(data, "get") else [],
+                    "traces": data.get("traces", []) if hasattr(data, "get") else [],
+                    "allocator_settings": data.get("allocator_settings", {}) if hasattr(data, "get") else {}
+                }
+            
+            before = ensure_structure(before)
+            after = ensure_structure(after)
+            content = compare(before["segments"], after["segments"])
+        
+        elif plot_type == "trace_plot":
+            content = trace_plot(self.profiling_data)
+        elif plot_type == "segment_plot":
+            content = segment_plot(self.profiling_data)
+        elif plot_type == "memory":
+            content = memory(self.profiling_data)
+        elif plot_type == "segments":
+            content = segments(self.profiling_data)
+        else:
+            raise ValueError(f"Unknown plot type: {plot_type}")
+
+        return f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <title>PyTorch Memory Profiling</title>
+            {memory_viz_js if plot_type in ["memory", "segments", "compare"] else ""}
+        </head>
+        <body>
+            {content}
+        </body>
+        </html>
+        """
+    
+    def get_memory_summary(self) -> str:
+        """Get a text summary of memory usage"""
+        return segsum(self.profiling_data)
+
+    def get_trace_summary(self) -> str:
+        """Get a text summary of the trace"""
+        return trace(self.profiling_data)
+
+    @staticmethod
+    def load_from_file(file_path: str) -> 'PyTorchProfilingRenderer':
+        """Create a renderer instance from a pickle file"""
+        try:
+            with open(file_path, "rb") as f:
+                profiling_data = pickle.load(f)
+            return PyTorchProfilingRenderer(profiling_data)
+        except Exception as e:
+            raise ValueError(f"Failed to load profiling data: {str(e)}")
+
+def render_pytorch_profiling(profiling_file: FlyteFile,  plot_type: str = "trace_plot") -> str:
+    """Renders PyTorch profiling data from a pickle file into HTML visualization.
+    
+    Args:
+        profiling_file (FlyteFile): Pickle file containing PyTorch profiling data
+        plot_type (str): Type of visualization to generate
+        
+    Returns:
+        str: HTML string containing the visualization
+        
+    Raises:
+        FileNotFoundError: If profiling file doesn't exist
+        ValueError: If plot type is invalid or data loading fails
+    """
+    # Load the profiling data from the .pkl file
+    try:
+        with open(profiling_file, "rb") as f:
+            profiling_data = pickle.load(f)
+    except Exception as e:
+        raise ValueError(f"Failed to load profiling data: {str(e)}")
+    # Create an instance of the renderer and generate the HTML
+    renderer = PyTorchProfilingRenderer(profiling_data)
+    return renderer.to_html(plot_type)
+
+def test_compare_plot_type():
+    """Test the compare plot type which requires two snapshots"""
+    with open(PROFILE_PATH, "rb") as f:
+        profiling_data = pickle.load(f)
+    
+    # Create proper before/after snapshots
+    before = {"segments": [], "traces": []}  # Empty snapshot
+    after = profiling_data  # Your actual data
+    
+    renderer = PyTorchProfilingRenderer((before, after))
+    html_output = renderer.to_html("compare")
+    
+    assert isinstance(html_output, str)
+    assert "<html>" in html_output
