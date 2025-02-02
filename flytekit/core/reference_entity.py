@@ -187,7 +187,7 @@ class ReferenceEntity(object):
         return _workflow_model.NodeMetadata(name=extract_obj_name(self.name))
 
     def compile(self, ctx: FlyteContext, *args, **kwargs):
-        return create_and_link_node(ctx, entity=self, **kwargs)
+        return create_and_link_node(ctx, self, *args, **kwargs)
 
     def __call__(self, *args, **kwargs):
         # When a Task is () aka __called__, there are three things we may do:
@@ -200,10 +200,6 @@ class ReferenceEntity(object):
         #     nothing. Subsequent tasks will have to know how to unwrap these. If by chance a non-Flyte task uses a
         #     task output as an input, things probably will fail pretty obviously.
         #     Since this is a reference entity, it still needs to be mocked otherwise an exception will be raised.
-        if len(args) > 0:
-            raise _user_exceptions.FlyteAssertion(
-                f"Cannot call reference entity with args - detected {len(args)} positional args {args}"
-            )
 
         ctx = FlyteContext.current_context()
         if ctx.compilation_state is not None and ctx.compilation_state.mode == 1:
