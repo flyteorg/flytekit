@@ -1257,7 +1257,7 @@ class FlyteRemote(object):
         module_name: typing.Optional[str] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
         fast_package_options: typing.Optional[FastPackageOptions] = None,
-    ) -> typing.Union[FlyteWorkflow, FlyteTask, FlyteLaunchPlan]:
+    ) -> typing.Union[FlyteWorkflow, ReferenceWorkflow, FlyteTask, FlyteLaunchPlan]:
         """
         Use this method to register a workflow via script mode.
         :param destination_dir: The destination directory where the workflow will be copied to.
