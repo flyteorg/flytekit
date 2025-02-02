@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, List, Optional, Union
 
 from flytekit import lazy_module
 from flytekit.types.file import FlyteFile
-from ._memory_viz import (
+from .pytorch_memory_viz import (
     trace_plot, 
     segment_plot, 
     memory, 
