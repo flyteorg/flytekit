@@ -1275,6 +1275,8 @@ class FlyteRemote(object):
         :param fast_package_options: Options to customize copy_all behavior, ignored when copy_all is False.
         :return:
         """
+        if isinstance(entity, ReferenceWorkflow):
+            return entity
         if copy_all:
             logger.info(
                 "The copy_all flag to FlyteRemote.register_script is deprecated. Please use"

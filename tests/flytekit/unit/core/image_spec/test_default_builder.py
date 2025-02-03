@@ -235,6 +235,7 @@ def test_create_docker_context_uv_lock(tmp_path):
         requirements=os.fspath(uv_lock_file),
         pip_index="https://url.com",
         pip_extra_index_url=["https://extra-url.com"],
+        pip_extra_args="--no-install-package library-to-skip",
     )
 
     warning_msg = "uv.lock support is experimental"
@@ -247,7 +248,8 @@ def test_create_docker_context_uv_lock(tmp_path):
 
     assert (
         "uv sync --index-url https://url.com --extra-index-url "
-        "https://extra-url.com --locked --no-dev --no-install-project"
+        "https://extra-url.com --no-install-package library-to-skip "
+        "--locked --no-dev --no-install-project"
     ) in dockerfile_content
 
 
@@ -309,6 +311,7 @@ def test_create_poetry_lock(tmp_path):
         name="FLYTEKIT",
         python_version="3.12",
         requirements=os.fspath(poetry_lock),
+        pip_extra_args="--no-directory",
     )
 
     create_docker_context(image_spec, docker_context_path)
@@ -317,4 +320,41 @@ def test_create_poetry_lock(tmp_path):
     assert dockerfile_path.exists()
     dockerfile_content = dockerfile_path.read_text()
 
-    assert "poetry install --no-root" in dockerfile_content
+    assert "poetry install --no-directory --no-root" in dockerfile_content
+
+
+def test_python_exec(tmp_path):
+    docker_context_path = tmp_path / "builder_root"
+    docker_context_path.mkdir()
+    base_image = "ghcr.io/flyteorg/flytekit:py3.11-1.14.4"
+    python_exec = "/usr/local/bin/python"
+
+    image_spec = ImageSpec(
+        name="FLYTEKIT",
+        base_image=base_image,
+        python_exec=python_exec
+    )
+
+    create_docker_context(image_spec, docker_context_path)
+
+    dockerfile_path = docker_context_path / "Dockerfile"
+    assert dockerfile_path.exists()
+    dockerfile_content = dockerfile_path.read_text()
+
+    assert f"UV_PYTHON={python_exec}" in dockerfile_content
+
+
+@pytest.mark.parametrize("key, value", [("conda_packages", ["ruff"]), ("conda_channels", ["bioconda"])])
+def test_python_exec_errors(tmp_path, key, value):
+    docker_context_path = tmp_path / "builder_root"
+    docker_context_path.mkdir()
+
+    image_spec = ImageSpec(
+        name="FLYTEKIT",
+        base_image="ghcr.io/flyteorg/flytekit:py3.11-1.14.4",
+        python_exec="/usr/local/bin/python",
+        **{key: value}
+    )
+    msg = f"{key} is not supported with python_exec"
+    with pytest.raises(ValueError, match=msg):
+        create_docker_context(image_spec, docker_context_path)
