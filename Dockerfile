@@ -23,7 +23,7 @@ ARG DOCKER_IMAGE
 RUN apt-get update && apt-get install build-essential -y \
     && pip install uv \
     && uv pip install --system --no-cache-dir -U flytekit==$VERSION \
-        kubernetes \
+    kubernetes \
     && apt-get clean autoclean \
     && apt-get autoremove --yes \
     && rm -rf /var/lib/{apt,dpkg,cache,log}/ \
@@ -32,3 +32,7 @@ RUN apt-get update && apt-get install build-essential -y \
     && chown flytekit: /root \
     && chown flytekit: /home \
     && :
+
+USER flytekit
+
+ENV FLYTE_INTERNAL_IMAGE="$DOCKER_IMAGE"
