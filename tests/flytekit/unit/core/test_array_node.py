@@ -28,6 +28,16 @@ def serialization_settings():
 
 
 @task
+def return_one() -> int:
+    return 1
+
+
+@task
+def return_two() -> int:
+    return 2
+
+
+@task
 def multiply(val: int, val1: typing.Union[int, str], val2: int) -> int:
     if type(val1) is str:
         return val * val2
@@ -47,6 +57,42 @@ def get_grandparent_wf(serialization_settings):
     @workflow
     def grandparent_wf() -> typing.List[int]:
         return array_node(lp, concurrency=10, min_success_ratio=0.9)(a=[1, 3, 5], b=["two", 4, "six"], c=[7, 8, 9])
+
+    return grandparent_wf
+
+
+def get_grandparent_wf_upstream_input(serialization_settings):
+    @workflow
+    def grandparent_wf() -> typing.List[int]:
+        one = return_one()
+        return array_node(lp, concurrency=10, min_success_ratio=0.9)(a=[one, 3, 5], b=["two", 4, "six"], c=[7, 8, 9])
+
+    return grandparent_wf
+
+
+def get_grandparent_wf_fixed_input(serialization_settings):
+    @workflow
+    def grandparent_wf() -> typing.List[int]:
+        return array_node(lp, concurrency=10, min_success_ratio=0.9, fixed_inputs={"a": 1})(b=["two", 4, "six"], c=[7, 8, 9])
+
+    return grandparent_wf
+
+
+def get_grandparent_wf_fixed_upstream_input(serialization_settings):
+    @workflow
+    def grandparent_wf() -> typing.List[int]:
+        one = return_one()
+        return array_node(lp, concurrency=10, min_success_ratio=0.9, fixed_inputs={"a": one})(b=["two", 4, "six"], c=[7, 8, 9])
+
+    return grandparent_wf
+
+
+def get_grandparent_wf_fixed_upstream_input_2(serialization_settings):
+    @workflow
+    def grandparent_wf() -> typing.List[int]:
+        one = return_one()
+        two = return_two()
+        return array_node(lp, concurrency=10, min_success_ratio=0.9, fixed_inputs={"a": one, "b": two})(c=[7, 8, 9])
 
     return grandparent_wf
 
@@ -84,32 +130,53 @@ def get_grandparent_remote_wf(serialization_settings):
 
 
 @pytest.mark.parametrize(
-    ("target", "overrides_metadata"),
+    ("target", "overrides_metadata", "upstream_nodes", "fixed_inputs"),
     [
-        (get_grandparent_wf, False),
-        (get_grandparent_remote_wf, False),
-        (get_grandparent_wf_with_overrides, True),
+        (get_grandparent_wf, False, [], {}),
+        (get_grandparent_remote_wf, False, [], {}),
+        (get_grandparent_wf_with_overrides, True, [], {}),
+        (get_grandparent_wf_upstream_input, False, ["n0"], {}),
+        (get_grandparent_wf_fixed_input, False, [], {"a"}),
+        (get_grandparent_wf_fixed_upstream_input, False, ["n0"], {"a"}),
+        (get_grandparent_wf_fixed_upstream_input_2, False, ["n0", "n1"], {"a", "b"}),
     ],
 )
-def test_lp_serialization(target, overrides_metadata, serialization_settings):
+def test_lp_serialization(target, overrides_metadata, upstream_nodes, fixed_inputs, serialization_settings):
     wf_spec = get_serializable(OrderedDict(), serialization_settings, target(serialization_settings))
-    assert len(wf_spec.template.nodes) == 1
+    assert len(wf_spec.template.nodes) == len(upstream_nodes) + 1
 
-    parent_node = wf_spec.template.nodes[0]
-    assert parent_node.inputs[0].var == "a"
+    parent_node = wf_spec.template.nodes[len(upstream_nodes)]
     assert parent_node.array_node._min_success_ratio == 0.9
     assert parent_node.array_node._parallelism == 10
     assert parent_node.array_node._is_original_sub_node_interface
     assert parent_node.array_node._execution_mode == _core_workflow.ArrayNode.FULL_STATE
-    assert len(parent_node.inputs[0].binding.collection.bindings) == 3
-    for binding in parent_node.inputs[0].binding.collection.bindings:
-        assert binding.scalar.primitive.integer is not None
+
+    assert set(parent_node.upstream_node_ids) == set(upstream_nodes)
+    assert len(parent_node.fixed_inputs) == len(fixed_inputs)
+
+    assert parent_node.inputs[0].var == "a"
+    if "a" in fixed_inputs:
+        for fixed_input in parent_node.fixed_inputs:
+            if fixed_input.var == "a":
+                assert fixed_input == parent_node.inputs[0]
+    else:
+        assert len(parent_node.inputs[0].binding.collection.bindings) == 3
+        for i, binding in enumerate(parent_node.inputs[0].binding.collection.bindings):
+            if upstream_nodes and i == 0:
+                assert binding.promise.node_id == upstream_nodes[0]
+            else:
+                assert (binding.scalar.primitive.integer is not None)
     assert parent_node.inputs[1].var == "b"
-    for binding in parent_node.inputs[1].binding.collection.bindings:
-        assert (binding.scalar.union is not None or
-                binding.scalar.primitive.integer is not None or
-                binding.scalar.primitive.string_value is not None)
-    assert len(parent_node.inputs[1].binding.collection.bindings) == 3
+    if "b" in fixed_inputs:
+        for fixed_input in parent_node.fixed_inputs:
+            if fixed_input.var == "b":
+                assert fixed_input == parent_node.inputs[1]
+    else:
+        for binding in parent_node.inputs[1].binding.collection.bindings:
+            assert (binding.scalar.union is not None or
+                    binding.scalar.primitive.integer is not None or
+                    binding.scalar.primitive.string_value is not None)
+        assert len(parent_node.inputs[1].binding.collection.bindings) == 3
     assert parent_node.inputs[2].var == "c"
     assert len(parent_node.inputs[2].binding.collection.bindings) == 3
     for binding in parent_node.inputs[2].binding.collection.bindings:

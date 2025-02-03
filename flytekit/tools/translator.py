@@ -436,6 +436,7 @@ def get_serializable_node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=entity.bindings,
+            fixed_inputs=entity.flyte_entity.fixed_inputs,
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
             array_node=get_serializable_array_node(entity_mapping, settings, entity, options=options),

@@ -1,5 +1,5 @@
 import math
-from typing import TYPE_CHECKING, Any, List, Optional, Set, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
 from flyteidl.core import workflow_pb2 as _core_workflow
 
@@ -41,6 +41,7 @@ class ArrayNode:
         min_successes: Optional[int] = None,
         min_success_ratio: Optional[float] = None,
         metadata: Optional[_workflow_model.NodeMetadata] = None,
+        fixed_inputs: Optional[Dict[str, Any]] = None,
     ):
         """
         :param target: The target Flyte entity to map over
@@ -52,6 +53,7 @@ class ArrayNode:
             min_success_ratio
         :param min_success_ratio: The minimum ratio of successful executions.
         :param metadata: The metadata for the underlying node
+        :param fixed_inputs: ...
         """
         from flytekit.remote import FlyteLaunchPlan
 
@@ -59,6 +61,8 @@ class ArrayNode:
         self._concurrency = concurrency
         self.id = target.name
         self._bindings = bindings or []
+        self._fixed_inputs = fixed_inputs or {}
+        self._bound_inputs: Set[str] = set(self._fixed_inputs.keys())
         self.metadata = metadata
         self._data_mode = None
         self._execution_mode = None
@@ -76,9 +80,6 @@ class ArrayNode:
             n_outputs = len(self.target.interface.outputs)
         if n_outputs > 1:
             raise ValueError("Only tasks with a single output are supported in map tasks.")
-
-        # TODO - bound inputs are not supported at the moment
-        self._bound_inputs: Set[str] = set()
 
         output_as_list_of_optionals = min_success_ratio is not None and min_success_ratio != 1 and n_outputs == 1
 
@@ -126,6 +127,17 @@ class ArrayNode:
     def bindings(self) -> List[_literal_models.Binding]:
         # Required in get_serializable_node
         return self._bindings
+
+    @property
+    def fixed_inputs(self) -> List[_literal_models.Binding]:
+        # TODO - clean this up
+        fixed_inputs = []
+        for binding in self.bindings:
+            if binding.var in self._bound_inputs:
+                fixed_inputs.append(binding)
+        if len(fixed_inputs) != len(self._bound_inputs):
+            raise ValueError("Error binding fixed inputs")
+        return fixed_inputs
 
     @property
     def upstream_nodes(self) -> List[Node]:
@@ -229,6 +241,7 @@ class ArrayNode:
         return True
 
     def __call__(self, *args, **kwargs):
+        kwargs.update(self._fixed_inputs)
         if not self._bindings:
             ctx = FlyteContext.current_context()
             # since a new entity with an updated list interface is not created, we have to work around the mismatch
@@ -265,6 +278,7 @@ def array_node(
     concurrency: Optional[int] = None,
     min_success_ratio: Optional[float] = None,
     min_successes: Optional[int] = None,
+    fixed_inputs: Optional[Any] = None,
 ):
     """
     ArrayNode implementation that maps over tasks and other Flyte entities
@@ -277,6 +291,7 @@ def array_node(
     :param min_successes: The minimum number of successful executions. If set, this takes precedence over
         min_success_ratio
     :param min_success_ratio: The minimum ratio of successful executions
+    :param fixed_inputs: ...
     :return: A callable function that takes in keyword arguments and returns a Promise created by
         flyte_entity_call_handler
     """
@@ -290,6 +305,7 @@ def array_node(
         concurrency=concurrency,
         min_successes=min_successes,
         min_success_ratio=min_success_ratio,
+        fixed_inputs=fixed_inputs,
     )
 
     return node

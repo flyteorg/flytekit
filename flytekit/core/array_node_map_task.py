@@ -374,6 +374,7 @@ def map_task(
     concurrency: Optional[int] = None,
     min_successes: Optional[int] = None,
     min_success_ratio: float = 1.0,
+    fixed_inputs: Optional[Dict[str, Any]] = None,
     **kwargs,
 ):
     """
@@ -387,6 +388,7 @@ def map_task(
         array node will inherit parallelism from the workflow
     :param min_successes: The minimum number of successful executions
     :param min_success_ratio: The minimum ratio of successful executions
+    :param fixed_inputs: ...
     """
     from flytekit.remote import FlyteLaunchPlan
 
@@ -396,6 +398,7 @@ def map_task(
             concurrency=concurrency,
             min_successes=min_successes,
             min_success_ratio=min_success_ratio,
+            fixed_inputs=fixed_inputs,
         )
     return array_node_map_task(
         task_function=target,

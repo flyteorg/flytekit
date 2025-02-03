@@ -437,6 +437,7 @@ class Node(_common.FlyteIdlEntity):
         inputs,
         upstream_node_ids,
         output_aliases,
+        fixed_inputs=None,
         task_node=None,
         workflow_node=None,
         branch_node=None,
@@ -466,6 +467,7 @@ class Node(_common.FlyteIdlEntity):
         self._id = id
         self._metadata = metadata
         self._inputs = inputs
+        self._fixed_inputs = fixed_inputs or []
         self._upstream_node_ids = upstream_node_ids
         # TODO: For proper graph handling, we need to keep track of the node objects themselves, not just the node IDs
         self._output_aliases = output_aliases
@@ -503,6 +505,14 @@ class Node(_common.FlyteIdlEntity):
         :rtype: list[flytekit.models.literals.Binding]
         """
         return self._inputs
+
+    @property
+    def fixed_inputs(self):
+        """
+        TODO fill in
+        :rtype: list[flytekit.models.literals.Binding]
+        """
+        return self._fixed_inputs
 
     @property
     def upstream_node_ids(self):
@@ -576,6 +586,7 @@ class Node(_common.FlyteIdlEntity):
             id=self.id,
             metadata=self.metadata.to_flyte_idl() if self.metadata is not None else None,
             inputs=[i.to_flyte_idl() for i in self.inputs],
+            fixed_inputs=[i.to_flyte_idl() for i in self.fixed_inputs],
             upstream_node_ids=self.upstream_node_ids,
             output_aliases=[a.to_flyte_idl() for a in self.output_aliases],
             task_node=self.task_node.to_flyte_idl() if self.task_node is not None else None,
