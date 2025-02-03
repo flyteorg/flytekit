@@ -157,7 +157,12 @@ def test_ambiguous_union_transformer_to_literal():
 
     with pytest.raises(
         TypeError,
-        match=("Ambiguous choice of variant for union type.\n"
-               "Potential types: \\[<class '.*\\.A'>, <class '.*\\.B'>\\]")
+        match=(
+            "Failed to convert outputs of task '.*?' at position 0\\.\n"
+            "Failed to convert type <class '.*?\\.A'> to type typing\\.Union\\[.*?\\]\\.\n"
+            "Error Message: Ambiguous choice of variant for union type\\.\n"
+            "Potential types: \\[<class '.*?\\.A'>, <class '.*?\\.B'>\\]\n"
+            "These types are structurally the same, because it's attributes have the same names and associated types\\."
+        ),
     ):
         t1()

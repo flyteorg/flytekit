@@ -1915,7 +1915,11 @@ class UnionTransformer(AsyncTypeTransformer[T]):
                 continue
 
         if is_ambiguous:
-            raise TypeError(f"Ambiguous choice of variant for union type.\n" f"Potential types: {potential_types}\n")
+            raise TypeError(
+                f"Ambiguous choice of variant for union type.\n"
+                f"Potential types: {potential_types}\n"
+                "These types are structurally the same, because it's attributes have the same names and associated types."
+            )
 
         if found_res:
             return Literal(scalar=Scalar(union=Union(value=res, stored_type=res_type)))
