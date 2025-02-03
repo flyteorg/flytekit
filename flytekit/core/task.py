@@ -3,7 +3,6 @@ from __future__ import annotations
 import datetime
 import inspect
 import os
-import warnings
 from functools import partial, update_wrapper
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, TypeVar, Union, overload
 
@@ -295,6 +294,7 @@ def task(
                     @task(image='{{.images.xyz.fqn}}:{{images.default.tag}}')
                     def foo2():
                         ...
+    :param container_image: Deprecated, please use `image` instead.
     :param environment: Environment variables that should be added for this tasks execution
     :param requests: Specify compute resource requests for your task. For Pod-plugin tasks, these values will apply only
       to the primary container.
@@ -374,29 +374,12 @@ def task(
                 if not issubclass(task_plugin, AsyncPythonFunctionTask):
                     raise AssertionError(f"Task plugin {task_plugin} is not compatible with async functions")
 
-        # Rename the `container_image` parameter to `image` for improved user experience.
-        # Currently, both `image` and `container_image` are supported to maintain backward compatibility.
-        # For more details, please refer to https://github.com/flyteorg/flyte/issues/6140.
-        _container_image = None
-        if image is not None and container_image is not None:
-            raise ValueError(
-                "Cannot specify both image and container_image. "
-                "Please use image because container_image is deprecated and will be removed in the future."
-            )
-        elif container_image is not None:
-            warnings.warn(
-                "container_image is deprecated and will be removed in the future. Please use image instead.",
-                DeprecationWarning,
-            )
-            _container_image = container_image
-        else:
-            _container_image = image
-
         task_instance = task_plugin(
             task_config,
             decorated_fn,
             metadata=_metadata,
-            container_image=_container_image,
+            image=image,
+            container_image=container_image,
             environment=environment,
             requests=requests,
             limits=limits,
@@ -606,25 +589,6 @@ def eager(
             async def eager_workflow(x: int) -> int:
                 ...
     """
-    # Rename the `container_image` parameter to `image` for improved user experience.
-    # Currently, both `image` and `container_image` are supported to maintain backward compatibility.
-    # For more details, please refer to https://github.com/flyteorg/flyte/issues/6140.
-    if kwargs.get("image") is not None and kwargs.get("container_image") is not None:
-        raise ValueError(
-            "Cannot specify both image and container_image. "
-            "Please use image because container_image is deprecated and will be removed in the future."
-        )
-    elif kwargs.get("container_image") is not None:
-        warnings.warn(
-            "container_image is deprecated and will be removed in the future. Please use image instead.",
-            DeprecationWarning,
-        )
-    elif kwargs.get("image") is not None:
-        kwargs["container_image"] = kwargs["image"]
-
-        # Disable further access to image
-        _ = kwargs.pop("image")
-
     if _fn is None:
         return partial(
             eager,
