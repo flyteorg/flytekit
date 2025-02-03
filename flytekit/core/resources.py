@@ -1,5 +1,5 @@
 from dataclasses import dataclass, fields
-from typing import Any, List, Optional, Union
+from typing import List, Optional, Union
 
 from kubernetes.client import V1Container, V1PodSpec, V1ResourceRequirements
 from mashumaro.mixins.json import DataClassJSONMixin
@@ -103,11 +103,11 @@ def convert_resources_to_resource_model(
 
 
 def pod_spec_from_resources(
-    k8s_pod_name: str,
+    primary_container_name: Optional[str] = None,
     requests: Optional[Resources] = None,
     limits: Optional[Resources] = None,
     k8s_gpu_resource_key: str = "nvidia.com/gpu",
-) -> dict[str, Any]:
+) -> V1PodSpec:
     def _construct_k8s_pods_resources(resources: Optional[Resources], k8s_gpu_resource_key: str):
         if resources is None:
             return None
@@ -133,10 +133,10 @@ def pod_spec_from_resources(
     requests = requests or limits
     limits = limits or requests
 
-    k8s_pod = V1PodSpec(
+    pod_spec = V1PodSpec(
         containers=[
             V1Container(
-                name=k8s_pod_name,
+                name=primary_container_name,
                 resources=V1ResourceRequirements(
                     requests=requests,
                     limits=limits,
@@ -145,4 +145,4 @@ def pod_spec_from_resources(
         ]
     )
 
-    return k8s_pod.to_dict()
+    return pod_spec
