@@ -834,6 +834,11 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         """
         If true, this task will not output deck html file
         """
+        warnings.warn(
+            "`disable_deck` is deprecated and will be removed in the future.\n"
+            "Please use `enable_deck` instead.",
+            DeprecationWarning,
+        )
         return self._disable_deck
 
     @property
