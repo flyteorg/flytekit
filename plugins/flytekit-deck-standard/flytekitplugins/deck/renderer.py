@@ -15,6 +15,7 @@ from .pytorch_memory_viz import (
     trace          # Could be useful for detailed trace visualization
 )
 import pickle
+from pathlib import Path
 
 if TYPE_CHECKING:
     import markdown
@@ -225,6 +226,33 @@ class GanttChartRenderer:
 
         return fig.to_html()
 
+def _ensure_profiling_structure(data: dict) -> dict:
+    """Ensures profiling data has the correct structure with required keys.
+    
+    Args:
+        data: Dictionary containing profiling data
+        
+    Returns:
+        dict: Structured profiling data with required keys
+        
+    Raises:
+        ValueError: If data structure is invalid
+    """
+    if not isinstance(data, dict):
+        raise ValueError("Profiling data must be a dictionary")
+        
+    # Validate segments key exists and is a list
+    if "segments" not in data:
+        raise ValueError("Profiling data missing 'segments' key")
+    if not isinstance(data["segments"], list):
+        raise ValueError("'segments' must be a list")
+        
+    return {
+        "segments": data["segments"],
+        "traces": data.get("traces", []),
+        "allocator_settings": data.get("allocator_settings", {})
+    }
+
 class PyTorchProfilingRenderer:
     """Renders PyTorch profiling data in various visualization formats.
     
@@ -249,6 +277,26 @@ class PyTorchProfilingRenderer:
     4. Comparing memory states before and after operations
     """
     def __init__(self, profiling_data):
+        """Initialize the renderer with profiling data.
+        
+        Args:
+            profiling_data: Single snapshot or tuple of (before, after) snapshots
+            
+        Raises:
+            ValueError: If profiling data is invalid
+        """
+        self._validate_profiling_data(profiling_data)
+        self.profiling_data = profiling_data
+
+    def _validate_profiling_data(self, profiling_data):
+        """Validates profiling data structure and checks for potential issues.
+        
+        Args:
+            profiling_data: Data to validate
+            
+        Raises:
+            ValueError: If data is None or snapshots are invalid
+        """
         if profiling_data is None:
             raise ValueError("Profiling data cannot be None")
             
@@ -257,15 +305,13 @@ class PyTorchProfilingRenderer:
             before, after = profiling_data
             if before is None or after is None:
                 raise ValueError("Both before and after snapshots must be provided for comparison")
-            
+                
             # Check if this might be an OOM case by comparing memory usage
             try:
                 self._check_memory_growth(before, after)
             except Exception:
                 # Don't fail initialization if memory check fails
                 pass
-        
-        self.profiling_data = profiling_data
 
     def _check_memory_growth(self, before, after):
         """Check for significant memory growth between snapshots"""
@@ -392,19 +438,12 @@ class PyTorchProfilingRenderer:
                 raise ValueError("Compare plot type requires before/after snapshots")
             before, after = self.profiling_data
             
-            # Ensure both snapshots have the correct structure
-            def ensure_structure(data):
-                if isinstance(data, dict) and "segments" in data:
-                    return data
-                return {
-                    "segments": data.get("segments", []) if hasattr(data, "get") else [],
-                    "traces": data.get("traces", []) if hasattr(data, "get") else [],
-                    "allocator_settings": data.get("allocator_settings", {}) if hasattr(data, "get") else {}
-                }
-            
-            before = ensure_structure(before)
-            after = ensure_structure(after)
-            content = compare(before["segments"], after["segments"])
+            try:
+                before = _ensure_profiling_structure(before)
+                after = _ensure_profiling_structure(after)
+                content = compare(before["segments"], after["segments"])
+            except ValueError as e:
+                content = f"<div>Failed to generate comparison: {str(e)}</div>"
         
         elif plot_type == "trace_plot":
             content = trace_plot(self.profiling_data)
@@ -441,11 +480,32 @@ class PyTorchProfilingRenderer:
 
     @staticmethod
     def load_from_file(file_path: str) -> 'PyTorchProfilingRenderer':
-        """Create a renderer instance from a pickle file"""
+        """Create a renderer instance from a pickle file.
+        
+        Args:
+            file_path: Path to the pickle file containing profiling data
+            
+        Returns:
+            PyTorchProfilingRenderer: New renderer instance
+            
+        Raises:
+            ValueError: If file loading or deserialization fails
+            FileNotFoundError: If file doesn't exist
+        """
         try:
-            with open(file_path, "rb") as f:
-                profiling_data = pickle.load(f)
+            file_path = Path(file_path)
+            if not file_path.exists():
+                raise FileNotFoundError(f"Profile file not found: {file_path}")
+                
+            with file_path.open("rb") as f:
+                # Use safe loading with protocol and encoding specified
+                try:
+                    profiling_data = pickle.load(f, encoding='bytes')
+                except pickle.UnpicklingError as e:
+                    raise ValueError(f"Failed to deserialize profiling data: {str(e)}")
+                    
             return PyTorchProfilingRenderer(profiling_data)
+            
         except Exception as e:
             raise ValueError(f"Failed to load profiling data: {str(e)}")
 

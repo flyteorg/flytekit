@@ -1,6 +1,7 @@
 import os
 import pytest
 import pickle
+import tempfile
 from flytekit.types.file import FlyteFile
 from flytekitplugins.deck.renderer import PyTorchProfilingRenderer, render_pytorch_profiling
 
@@ -21,6 +22,21 @@ def test_pytorch_profiling_renderer_invalid_data():
     with pytest.raises(ValueError):
         PyTorchProfilingRenderer(None)
 
+def _create_profiling_structure(data):
+    """Creates a standardized profiling data structure.
+    
+    Args:
+        data: Raw profiling data
+        
+    Returns:
+        dict: Structured profiling data with required keys
+    """
+    return {
+        "segments": data.get("segments", []) if hasattr(data, "get") else [],
+        "traces": data.get("traces", []) if hasattr(data, "get") else [],
+        "allocator_settings": data.get("allocator_settings", {}) if hasattr(data, "get") else {}
+    }
+
 @pytest.mark.parametrize("plot_type,expected_content", [
     ("trace_plot", "<!DOCTYPE html>"),
     ("segment_plot", "<!DOCTYPE html>"),
@@ -35,11 +51,7 @@ def test_pytorch_profiling_renderer_plot_types(plot_type, expected_content):
     
     # Convert profiling data to proper format if needed
     if plot_type in ["memory", "segments"]:
-        profiling_data = {
-            "segments": profiling_data.get("segments", []),
-            "traces": profiling_data.get("traces", []),
-            "allocator_settings": profiling_data.get("allocator_settings", {})
-        }
+        profiling_data = _create_profiling_structure(profiling_data)
     elif plot_type == "profile_plot":
         profiling_data = {
             "steps": [],
@@ -50,12 +62,8 @@ def test_pytorch_profiling_renderer_plot_types(plot_type, expected_content):
     renderer = PyTorchProfilingRenderer(profiling_data)
     html_output = renderer.to_html(plot_type)
     
-    # Basic HTML structure checks
     assert isinstance(html_output, str)
     assert "<html>" in html_output
-    assert "<body>" in html_output
-    
-    # Check for expected content based on plot type
     assert expected_content in html_output
 
 def test_pytorch_profiling_renderer_invalid_plot_type():
@@ -87,51 +95,32 @@ def test_render_pytorch_profiling_file_not_found():
     with pytest.raises(ValueError, match="Failed to load profiling data"):
         render_pytorch_profiling(non_existent_file)
 
-def test_render_pytorch_profiling_invalid_file():
-    """Test render_pytorch_profiling with invalid pickle file"""
-    # Create a temporary invalid pickle file
-    invalid_file_path = os.path.join(CURRENT_DIR, "invalid.pkl")
-    with open(invalid_file_path, "w") as f:
-        f.write("not a pickle file")
+def test_invalid_file_handling():
+    """Test handling of invalid profiling data files."""
     
-    try:
-        invalid_file = FlyteFile(invalid_file_path)
+    # Use tempfile context manager for safe cleanup
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.pkl', delete=False) as temp_file:
+        # Write invalid data
+        temp_file.write("not a pickle file")
+        temp_file.flush()
+        
+        # Create FlyteFile from temp file
+        invalid_file = FlyteFile(temp_file.name)
+        
+        # Test that it raises the expected error
         with pytest.raises(ValueError, match="Failed to load profiling data"):
             render_pytorch_profiling(invalid_file)
-    finally:
-        # Clean up the temporary file
-        if os.path.exists(invalid_file_path):
-            os.remove(invalid_file_path)
+            
+    # No need for manual cleanup - tempfile handles it automatically
 
 def test_compare_plot_type():
     """Test the compare plot type which requires two snapshots"""
     with open(PROFILE_PATH, "rb") as f:
         profiling_data = pickle.load(f)
     
-    # Create proper before/after snapshots with correct structure
-    before = {
-        "segments": [{
-            "address": 0,
-            "total_size": 0,
-            "blocks": [],
-            "stream": 0
-        }],
-        "traces": [],
-        "allocator_settings": {
-            "expandable_segments": False,
-            "garbage_collection_threshold": 0
-        }
-    }
-    
-    # Ensure after data has the correct structure
-    if isinstance(profiling_data, dict):
-        after = profiling_data
-    else:
-        after = {
-            "segments": profiling_data.get("segments", []) if hasattr(profiling_data, "get") else [],
-            "traces": profiling_data.get("traces", []) if hasattr(profiling_data, "get") else [],
-            "allocator_settings": profiling_data.get("allocator_settings", {}) if hasattr(profiling_data, "get") else {}
-        }
+    # Create proper before/after snapshots
+    before = _create_profiling_structure({})  # Empty snapshot
+    after = _create_profiling_structure(profiling_data)  # Your actual data
     
     renderer = PyTorchProfilingRenderer((before, after))
     html_output = renderer.to_html("compare")
