@@ -60,6 +60,8 @@ T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
 TITLE = "title"
 
+_TYPE_ENGINE_COROS_BATCH_SIZE = int(os.environ.get("_F_TE_MAX_COROS", "10"))
+
 
 # In Mashumaro, the default encoder uses strict_map_key=False, while the default decoder uses strict_map_key=True.
 # This is relevant for cases like Dict[int, str].
@@ -1222,9 +1224,6 @@ class TypeEngine(typing.Generic[T]):
         if python_type in cls._REGISTRY:
             return cls._REGISTRY[python_type]
 
-        if dataclasses.is_dataclass(python_type):
-            return cls._DATACLASS_TRANSFORMER
-
         return None
 
     @classmethod
@@ -1242,6 +1241,16 @@ class TypeEngine(typing.Generic[T]):
                 v = cls._get_transformer(t)
                 if v is not None:
                     return v
+
+        # flytekit's dataclass type transformer is left for last to give users a chance to register a type transformer
+        # to handle dataclass-like objects as part of the mro evaluation.
+        #
+        # N.B.: keep in mind that there are no compatibility guarantees between these user-defined dataclass transformers
+        # and the flytekit one. This incompatibility is *not* a new behavior introduced by the recent type engine
+        # refactor (https://github.com/flyteorg/flytekit/pull/2815), but it is worth calling out explicitly as a known
+        # limitation nonetheless.
+        if dataclasses.is_dataclass(python_type):
+            return cls._DATACLASS_TRANSFORMER
 
         display_pickle_warning(str(python_type))
         from flytekit.types.pickle.pickle import FlytePickleTransformer
@@ -1352,7 +1361,7 @@ class TypeEngine(typing.Generic[T]):
     ) -> Literal:
         """
         The current dance is because we are allowing users to call from an async function, this synchronous
-        to_literal function, and allowing this to_literal function, to then invoke yet another async functionl,
+        to_literal function, and allowing this to_literal function, to then invoke yet another async function,
         namely an async transformer.
         """
         from flytekit.core.promise import Promise
@@ -1518,9 +1527,14 @@ class TypeEngine(typing.Generic[T]):
                     TypeEngine.async_to_python_value(ctx, lm.literals[k], python_interface_inputs[k])
                 )
             await asyncio.gather(*kwargs.values())
-        except TypeTransformerFailedError as exc:
-            exc.args = (f"Error converting input '{k}' at position {i}:\n  {exc.args[0]}",)
-            raise
+        except Exception as e:
+            raise TypeTransformerFailedError(
+                f"Error converting input '{k}' at position {i}:\n"
+                f"Literal value: {lm.literals[k]}\n"
+                f"Literal type: {literal_types}\n"
+                f"Expected Python type: {python_interface_inputs[k]}\n"
+                f"Exception: {e}"
+            )
 
         kwargs = {k: v.result() for k, v in kwargs.items() if v is not None}
         return kwargs
@@ -1674,10 +1688,9 @@ class ListTransformer(AsyncTypeTransformer[T]):
             raise TypeTransformerFailedError("Expected a list")
 
         t = self.get_sub_type(python_type)
-        lit_list = [
-            asyncio.create_task(TypeEngine.async_to_literal(ctx, x, t, expected.collection_type)) for x in python_val
-        ]
-        lit_list = await _run_coros_in_chunks(lit_list)
+        lit_list = [TypeEngine.async_to_literal(ctx, x, t, expected.collection_type) for x in python_val]
+
+        lit_list = await _run_coros_in_chunks(lit_list, batch_size=_TYPE_ENGINE_COROS_BATCH_SIZE)
 
         return Literal(collection=LiteralCollection(literals=lit_list))
 
@@ -1699,7 +1712,7 @@ class ListTransformer(AsyncTypeTransformer[T]):
 
         st = self.get_sub_type(expected_python_type)
         result = [TypeEngine.async_to_python_value(ctx, x, st) for x in lits]
-        result = await _run_coros_in_chunks(result)
+        result = await _run_coros_in_chunks(result, batch_size=_TYPE_ENGINE_COROS_BATCH_SIZE)
         return result  # type: ignore  # should be a list, thinks its a tuple
 
     def guess_python_type(self, literal_type: LiteralType) -> list:  # type: ignore
@@ -1895,7 +1908,7 @@ class UnionTransformer(AsyncTypeTransformer[T]):
                 res_type = _add_tag_to_type(trans.get_literal_type(t), trans.name)
                 found_res = True
             except Exception as e:
-                logger.warning(
+                logger.debug(
                     f"UnionTransformer failed attempt to convert from {python_val} to {t} error: {e}",
                 )
                 continue
@@ -2146,13 +2159,10 @@ class DictTransformer(AsyncTypeTransformer[dict]):
             else:
                 _, v_type = self.extract_types_or_metadata(python_type)
 
-            lit_map[k] = asyncio.create_task(
-                TypeEngine.async_to_literal(ctx, v, cast(type, v_type), expected.map_value_type)
-            )
-
-        await _run_coros_in_chunks([c for c in lit_map.values()])
-        for k, v in lit_map.items():
-            lit_map[k] = v.result()
+            lit_map[k] = TypeEngine.async_to_literal(ctx, v, cast(type, v_type), expected.map_value_type)
+        vals = await _run_coros_in_chunks([c for c in lit_map.values()], batch_size=_TYPE_ENGINE_COROS_BATCH_SIZE)
+        for idx, k in zip(range(len(vals)), lit_map.keys()):
+            lit_map[k] = vals[idx]
 
         return Literal(map=LiteralMap(literals=lit_map))
 
@@ -2173,12 +2183,11 @@ class DictTransformer(AsyncTypeTransformer[dict]):
                 raise TypeError("TypeMismatch. Destination dictionary does not accept 'str' key")
             py_map = {}
             for k, v in lv.map.literals.items():
-                fut = asyncio.create_task(TypeEngine.async_to_python_value(ctx, v, cast(Type, tp[1])))
-                py_map[k] = fut
+                py_map[k] = TypeEngine.async_to_python_value(ctx, v, cast(Type, tp[1]))
 
-            await _run_coros_in_chunks([c for c in py_map.values()])
-            for k, v in py_map.items():
-                py_map[k] = v.result()
+            vals = await _run_coros_in_chunks([c for c in py_map.values()], batch_size=_TYPE_ENGINE_COROS_BATCH_SIZE)
+            for idx, k in zip(range(len(vals)), py_map.keys()):
+                py_map[k] = vals[idx]
 
             return py_map
 

@@ -25,6 +25,7 @@ from flyteidl.service.agent_pb2_grpc import (
 from prometheus_client import Counter, Summary
 
 from flytekit import logger
+from flytekit.bin.entrypoint import get_traceback_str
 from flytekit.exceptions.system import FlyteAgentNotFound
 from flytekit.extend.backend.base_agent import AgentRegistry, SyncAgentBase, mirror_async_methods
 from flytekit.models.literals import LiteralMap
@@ -63,7 +64,7 @@ def _handle_exception(e: Exception, context: grpc.ServicerContext, task_type: st
         context.set_details(error_message)
         request_failure_count.labels(task_type=task_type, operation=operation, error_code=HTTPStatus.NOT_FOUND).inc()
     else:
-        error_message = f"failed to {operation} {task_type} task with error: {e}."
+        error_message = f"failed to {operation} {task_type} task with error:\n {get_traceback_str(e)}."
         logger.error(error_message)
         context.set_code(grpc.StatusCode.INTERNAL)
         context.set_details(error_message)
@@ -116,14 +117,14 @@ class AsyncAgentService(AsyncAgentServiceServicer):
         task_execution_metadata = TaskExecutionMetadata.from_flyte_idl(request.task_execution_metadata)
 
         logger.info(f"{agent.name} start creating the job")
-        resource_mata = await mirror_async_methods(
+        resource_meta = await mirror_async_methods(
             agent.create,
             task_template=template,
             inputs=inputs,
             output_prefix=request.output_prefix,
             task_execution_metadata=task_execution_metadata,
         )
-        return CreateTaskResponse(resource_meta=resource_mata.encode())
+        return CreateTaskResponse(resource_meta=resource_meta.encode())
 
     @record_agent_metrics
     async def GetTask(self, request: GetTaskRequest, context: grpc.ServicerContext) -> GetTaskResponse:

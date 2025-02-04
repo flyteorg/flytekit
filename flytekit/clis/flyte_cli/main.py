@@ -66,7 +66,7 @@ def _welcome_message():
         bold=True,
     )
     click.secho(
-        "# flyte-cli is being deprecated in favor of flytectl. More details about flytectl in https://docs.flyte.org/en/latest/flytectl/overview.html #",
+        "# flyte-cli is being deprecated in favor of flytectl. More details about flytectl in https://docs.flyte.org/en/latest/api/flytectl/overview.html #",
         bold=True,
     )
     click.secho(
