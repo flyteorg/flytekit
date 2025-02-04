@@ -887,6 +887,23 @@ def test_attr_access_sd():
     bucket, key = url.netloc, url.path.lstrip("/")
     file_transfer.delete_file(bucket=bucket, key=key)
 
+def test_attr_access_dc_sd():
+    """Test accessing StructuredDataset attribute from a dataclass."""
+    # Upload a file to minio s3 bucket
+    file_transfer = SimpleFileTransfer()
+    remote_file_path = file_transfer.upload_file(file_type="parquet")
+
+    execution_id = run("attr_access_dc_sd.py", "wf", "--uri", remote_file_path)
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    execution = remote.fetch_execution(name=execution_id)
+    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
+    assert execution.closure.phase == WorkflowExecutionPhase.SUCCEEDED, f"Execution failed with phase: {execution.closure.phase}"
+
+    # Delete the remote file to free the space
+    url = urlparse(remote_file_path)
+    bucket, key = url.netloc, url.path.lstrip("/")
+    file_transfer.delete_file(bucket=bucket, key=key)
+
 
 def test_sd_attr():
     """Test correctness of StructuredDataset attributes.
