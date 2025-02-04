@@ -17,7 +17,6 @@ LOGGING_ENV_VAR = "FLYTE_SDK_LOGGING_LEVEL"
 LOGGING_DEV_ENV_VAR = "FLYTE_SDK_DEV_LOGGING_LEVEL"
 LOGGING_FMT_ENV_VAR = "FLYTE_SDK_LOGGING_FORMAT"
 LOGGING_RICH_FMT_ENV_VAR = "FLYTE_SDK_RICH_TRACEBACKS"
-FLYTEKIT_DISPLAY_PROGRESS_ENV_VAR = "FLYTE_SDK_DISPLAY_PROGRESS"
 
 # By default, the root flytekit logger to debug so everything is logged, but enable fine-tuning
 logger = logging.getLogger("flytekit")
@@ -188,7 +187,7 @@ def get_level_from_cli_verbosity(verbosity: int) -> int:
 
 
 def is_display_progress_enabled() -> bool:
-    return os.getenv(FLYTEKIT_DISPLAY_PROGRESS_ENV_VAR, False)
+    return os.getenv(LOGGING_RICH_FMT_ENV_VAR, False)
 
 
 # Default initialization
