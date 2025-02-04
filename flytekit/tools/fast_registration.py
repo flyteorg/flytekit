@@ -31,20 +31,8 @@ from flytekit.core.python_auto_container import PICKLE_FILE_PATH
 from flytekit.core.utils import timeit
 from flytekit.exceptions.user import FlyteDataNotFoundException
 from flytekit.loggers import is_display_progress_enabled, logger
-from flytekit.tools.ignore import (
-    DockerIgnore,
-    FlyteIgnore,
-    GitIgnore,
-    Ignore,
-    IgnoreGroup,
-    StandardIgnore,
-)
-from flytekit.tools.script_mode import (
-    _filehash_update,
-    _pathhash_update,
-    ls_files,
-    tar_strip_file_attributes,
-)
+from flytekit.tools.ignore import DockerIgnore, FlyteIgnore, GitIgnore, Ignore, IgnoreGroup, StandardIgnore
+from flytekit.tools.script_mode import _filehash_update, _pathhash_update, ls_files, tar_strip_file_attributes
 
 FAST_PREFIX = "fast"
 FAST_FILEENDING = ".tar.gz"
@@ -230,10 +218,7 @@ def fast_package(
         archive_fname = f"{FAST_PREFIX}{digest}{FAST_FILEENDING}"
         if output_dir is None:
             output_dir = tempfile.mkdtemp()
-            click.secho(
-                f"No output path provided, using a temporary directory at {output_dir} instead",
-                fg="yellow",
-            )
+            click.secho(f"No output path provided, using a temporary directory at {output_dir} instead", fg="yellow")
         archive_fname = os.path.join(output_dir, archive_fname)
 
         with tempfile.TemporaryDirectory() as tmp_dir:
