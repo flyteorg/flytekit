@@ -9,6 +9,7 @@ from flytekit.models import literals as _literals
 from flytekit.models import schedule as _schedule
 from flytekit.models import security
 from flytekit.models.core import identifier as _identifier
+from flytekit.models.execution import ClusterAssignment
 
 
 class LaunchPlanMetadata(_common.FlyteIdlEntity):
@@ -133,11 +134,12 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         fixed_inputs,
         labels: _common.Labels,
         annotations: _common.Annotations,
-        auth_role: _common.AuthRole,
+        auth_role: typing.Optional[_common.AuthRole],
         raw_output_data_config: _common.RawOutputDataConfig,
         max_parallelism: typing.Optional[int] = None,
         security_context: typing.Optional[security.SecurityContext] = None,
         overwrite_cache: typing.Optional[bool] = None,
+        cluster_assignment: typing.Optional[ClusterAssignment] = None,
     ):
         """
         The spec for a Launch Plan.
@@ -158,6 +160,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
             parallelism/concurrency of MapTasks is independent from this.
         :param security_context: This can be used to add security information to a LaunchPlan, which will be used by
                                  every execution
+        :param cluster_assignment: Optional cluster assignment for the launch plan
         """
         self._workflow_id = workflow_id
         self._entity_metadata = entity_metadata
@@ -170,6 +173,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         self._max_parallelism = max_parallelism
         self._security_context = security_context
         self._overwrite_cache = overwrite_cache
+        self._cluster_assignment = cluster_assignment
 
     @property
     def workflow_id(self):
@@ -246,6 +250,10 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
     def overwrite_cache(self) -> typing.Optional[bool]:
         return self._overwrite_cache
 
+    @property
+    def cluster_assignment(self) -> typing.Optional[ClusterAssignment]:
+        return self._cluster_assignment
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.launch_plan_pb2.LaunchPlanSpec
@@ -262,6 +270,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
             max_parallelism=self.max_parallelism,
             security_context=self.security_context.to_flyte_idl() if self.security_context else None,
             overwrite_cache=self.overwrite_cache if self.overwrite_cache else None,
+            cluster_assignment=self.cluster_assignment.to_flyte_idl() if self.cluster_assignment else None,
         )
 
     @classmethod
@@ -295,6 +304,9 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
             if pb2.security_context
             else None,
             overwrite_cache=pb2.overwrite_cache if pb2.overwrite_cache else None,
+            cluster_assignment=ClusterAssignment.from_flyte_idl(pb2.cluster_assignment)
+            if pb2.HasField("cluster_assignment")
+            else None,
         )
 
 

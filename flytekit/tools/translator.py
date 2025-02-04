@@ -38,6 +38,7 @@ from flytekit.models.core import workflow as workflow_model
 from flytekit.models.core.workflow import ApproveCondition, GateNode, SignalCondition, SleepCondition, TaskNodeOverrides
 from flytekit.models.core.workflow import ArrayNode as ArrayNodeModel
 from flytekit.models.core.workflow import BranchNode as BranchNodeModel
+from flytekit.models.execution import ClusterAssignment
 from flytekit.models.task import TaskSpec, TaskTemplate
 
 FlyteLocalEntity = Union[
@@ -368,6 +369,7 @@ def get_serializable_launch_plan(
         max_parallelism=options.max_parallelism or entity.max_parallelism,
         security_context=options.security_context or entity.security_context,
         overwrite_cache=options.overwrite_cache or entity.overwrite_cache,
+        cluster_assignment=ClusterAssignment(cluster_pool=entity.cluster_pool) if entity.cluster_pool else None,
     )
 
     lp_id = _identifier_model.Identifier(

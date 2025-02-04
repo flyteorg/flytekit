@@ -191,6 +191,7 @@ class Node(object):
         cache: Optional[bool] = None,
         cache_version: Optional[str] = None,
         cache_serialize: Optional[bool] = None,
+        cluster_pool: Optional[str] = None,
         *args,
         **kwargs,
     ):
@@ -240,6 +241,10 @@ class Node(object):
             self._extended_resources = tasks_pb2.ExtendedResources(gpu_accelerator=accelerator.to_flyte_idl())
 
         self._override_node_metadata(name, timeout, retries, interruptible, cache, cache_version, cache_serialize)
+
+        if cluster_pool is not None:
+            assert_not_promise(cluster_pool, "cluster_pool")
+            self._metadata.add_config("cluster_pool", cluster_pool)
 
         return self
 

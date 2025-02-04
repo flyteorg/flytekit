@@ -332,3 +332,24 @@ def test_task_node_with_overrides():
 
     obj = _workflow.TaskNode.from_flyte_idl(task_node.to_flyte_idl())
     assert task_node == obj
+
+
+def test_cluster_pool_override():
+    md = _get_sample_node_metadata()
+    md.add_config("cluster_pool", "pool-name")
+    node = _workflow.Node(
+        id="some:node:id",
+        metadata=md,
+        inputs=[],
+        upstream_node_ids=[],
+        output_aliases=[],
+        workflow_node=_workflow.WorkflowNode(
+            launchplan_ref=_generic_id,
+        ),
+    )
+
+    idl = node.to_flyte_idl()
+    assert idl.metadata.config["cluster_pool"] == "pool-name"
+
+    back = _workflow.Node.from_flyte_idl(idl)
+    assert back.metadata.config["cluster_pool"] == "pool-name"
