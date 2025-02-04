@@ -2601,40 +2601,22 @@ class FlyteRemote(object):
     # Projects #
     ############
 
-    def list_projects_paginated(
+    def list_projects(
         self,
         limit: typing.Optional[int] = 100,
-        max_iters: typing.Optional[int] = 1000,
-        token: typing.Optional[str] = None,
         filters: typing.Optional[typing.List[filter_models.Filter]] = None,
         sort_by: typing.Optional[admin_common_models.Sort] = None,
     ) -> typing.List[Project]:
         """Lists registered projects from flyte admin.
 
-        .. note ::
-
-            This is a paginated API. The input variables limit, max_iters & token are optional and set to sane defaults.
-
-        :param limit: [Optional[int]] The maximum number of entries to return per page.
-        :param max_iters [Optional[int]]: The maximum number of pages to go through.
-        :param token [Optional[str]]: Token used to navigate through pages.
+        :param limit: [Optional[int]] The maximum number of entries to return.
         :param filters Optional[typing.List[filter_models.Filter]]: If specified, the filters will be applied to
             the query. If the filter is not supported, an exception will be raised.
         :param sort_by Optional[admin_common_models.Sort]: If provided, the results will be sorted.
         :raises grpc.RpcError:
         :returns: typing.List[flytekit.models.project.Project]
         """
-        projects = []
-        while max_iters > 0:
-            _projects, token = self.client.list_projects_paginated(
-                limit=limit, token=token, filters=filters, sort_by=sort_by
-            )
-            projects.extend(_projects)
-
-            if token == "":
-                return projects
-
-            max_iters = max_iters - 1
+        return self.client.list_projects_paginated(limit=limit, filters=filters, sort_by=sort_by)[0]
 
     ############
     # Domains #
