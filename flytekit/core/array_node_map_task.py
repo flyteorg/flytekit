@@ -371,10 +371,10 @@ class ArrayNodeMapTask(PythonTask):
 
 def map_task(
     target: Union[LaunchPlan, PythonFunctionTask, "FlyteLaunchPlan"],
+    fixed_inputs: Optional[Dict[str, Any]] = None,
     concurrency: Optional[int] = None,
     min_successes: Optional[int] = None,
     min_success_ratio: float = 1.0,
-    fixed_inputs: Optional[Dict[str, Any]] = None,
     **kwargs,
 ):
     """

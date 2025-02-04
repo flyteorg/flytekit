@@ -126,17 +126,19 @@ class ArrayNode:
     @property
     def bindings(self) -> List[_literal_models.Binding]:
         # Required in get_serializable_node
-        return self._bindings
+        bindings = []
+        for binding in self._bindings:
+            if binding.var not in self._bound_inputs:
+                bindings.append(binding)
+        return bindings
 
     @property
     def fixed_inputs(self) -> List[_literal_models.Binding]:
-        # TODO - clean this up
+        # Required in get_serializable_node
         fixed_inputs = []
-        for binding in self.bindings:
+        for binding in self._bindings:
             if binding.var in self._bound_inputs:
                 fixed_inputs.append(binding)
-        if len(fixed_inputs) != len(self._bound_inputs):
-            raise ValueError("Error binding fixed inputs")
         return fixed_inputs
 
     @property

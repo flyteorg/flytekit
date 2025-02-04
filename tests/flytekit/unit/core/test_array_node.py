@@ -154,33 +154,41 @@ def test_lp_serialization(target, overrides_metadata, upstream_nodes, fixed_inpu
     assert set(parent_node.upstream_node_ids) == set(upstream_nodes)
     assert len(parent_node.fixed_inputs) == len(fixed_inputs)
 
-    assert parent_node.inputs[0].var == "a"
+    inputs_map = {x.var: x for x in parent_node.inputs}
+    fixed_inputs_map = {x.var: x for x in parent_node.fixed_inputs}
+
     if "a" in fixed_inputs:
-        for fixed_input in parent_node.fixed_inputs:
-            if fixed_input.var == "a":
-                assert fixed_input == parent_node.inputs[0]
+        fixed_input = fixed_inputs_map["a"]
+        assert fixed_input
     else:
-        assert len(parent_node.inputs[0].binding.collection.bindings) == 3
-        for i, binding in enumerate(parent_node.inputs[0].binding.collection.bindings):
+        node_input = inputs_map["a"]
+        assert node_input
+        assert len(node_input.binding.collection.bindings) == 3
+        for i, binding in enumerate(node_input.binding.collection.bindings):
             if upstream_nodes and i == 0:
                 assert binding.promise.node_id == upstream_nodes[0]
             else:
                 assert (binding.scalar.primitive.integer is not None)
-    assert parent_node.inputs[1].var == "b"
     if "b" in fixed_inputs:
-        for fixed_input in parent_node.fixed_inputs:
-            if fixed_input.var == "b":
-                assert fixed_input == parent_node.inputs[1]
+        fixed_input = fixed_inputs_map["b"]
+        assert fixed_input
     else:
-        for binding in parent_node.inputs[1].binding.collection.bindings:
+        node_input = inputs_map["b"]
+        assert node_input
+        for binding in node_input.binding.collection.bindings:
             assert (binding.scalar.union is not None or
                     binding.scalar.primitive.integer is not None or
                     binding.scalar.primitive.string_value is not None)
-        assert len(parent_node.inputs[1].binding.collection.bindings) == 3
-    assert parent_node.inputs[2].var == "c"
-    assert len(parent_node.inputs[2].binding.collection.bindings) == 3
-    for binding in parent_node.inputs[2].binding.collection.bindings:
-        assert binding.scalar.primitive.integer is not None
+        assert len(node_input.binding.collection.bindings) == 3
+    if "c" in fixed_inputs:
+        fixed_input = fixed_inputs_map["c"]
+        assert fixed_input
+    else:
+        node_input = inputs_map["c"]
+        assert node_input
+        assert len(node_input.binding.collection.bindings) == 3
+        for binding in node_input.binding.collection.bindings:
+            assert binding.scalar.primitive.integer is not None
 
     serialized_array_node = parent_node.array_node
     assert (

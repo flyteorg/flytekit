@@ -414,6 +414,7 @@ def get_serializable_node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=entity.bindings,
+            fixed_inputs=entity.fixed_inputs,
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
         )
@@ -435,7 +436,7 @@ def get_serializable_node(
         node_model = workflow_model.Node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
-            inputs=entity.bindings,
+            inputs=entity.flyte_entity.bindings,
             fixed_inputs=entity.flyte_entity.fixed_inputs,
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
@@ -446,6 +447,7 @@ def get_serializable_node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=entity.bindings,
+            fixed_inputs=entity.fixed_inputs,
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
             array_node=get_serializable_array_node_map_task(entity_mapping, settings, entity, options=options),
@@ -459,6 +461,7 @@ def get_serializable_node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=entity.bindings,
+            fixed_inputs=entity.fixed_inputs,
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
             task_node=workflow_model.TaskNode(
@@ -479,6 +482,7 @@ def get_serializable_node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=entity.bindings,
+            fixed_inputs=entity.fixed_inputs,
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
             workflow_node=workflow_model.WorkflowNode(sub_workflow_ref=wf_spec.template.id),
@@ -489,6 +493,7 @@ def get_serializable_node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=entity.bindings,
+            fixed_inputs=entity.fixed_inputs,
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
             branch_node=get_serializable(entity_mapping, settings, entity.flyte_entity, options=options),
@@ -502,11 +507,17 @@ def get_serializable_node(
         for b in entity.bindings:
             if b.var not in entity.flyte_entity.fixed_inputs.literals:
                 node_input.append(b)
+        # TODO clean up and explain
+        fixed_node_inputs = []
+        for b in entity.fixed_inputs:
+            if b.var not in entity.flyte_entity.fixed_inputs.literals:
+                fixed_node_inputs.append(b)
 
         node_model = workflow_model.Node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=node_input,
+            fixed_inputs=fixed_node_inputs,
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
             workflow_node=workflow_model.WorkflowNode(launchplan_ref=lp_spec.id),
@@ -528,6 +539,7 @@ def get_serializable_node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=entity.bindings,
+            fixed_inputs=entity.fixed_inputs,
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
             gate_node=gn,
@@ -540,6 +552,7 @@ def get_serializable_node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=entity.bindings,
+            fixed_inputs=entity.fixed_inputs,
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
             task_node=workflow_model.TaskNode(
@@ -559,6 +572,7 @@ def get_serializable_node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=entity.bindings,
+            fixed_inputs=entity.fixed_inputs,
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
             workflow_node=workflow_model.WorkflowNode(sub_workflow_ref=wf_spec.id),
@@ -571,11 +585,17 @@ def get_serializable_node(
         for b in entity.bindings:
             if b.var not in entity.flyte_entity.fixed_inputs.literals:
                 node_input.append(b)
+        # TODO clean up and explain
+        fixed_node_inputs = []
+        for b in entity.fixed_inputs:
+            if b.var not in entity.flyte_entity.fixed_inputs.literals:
+                fixed_node_inputs.append(b)
 
         node_model = workflow_model.Node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=node_input,
+            fixed_inputs=fixed_node_inputs,
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
             workflow_node=workflow_model.WorkflowNode(launchplan_ref=entity.flyte_entity.id),
@@ -627,6 +647,7 @@ def get_serializable_array_node_map_task(
         id=entity.name,
         metadata=entity.sub_node_metadata,
         inputs=node.bindings,
+        fixed_inputs=entity.fixed_inputs,
         upstream_node_ids=[],
         output_aliases=[],
         task_node=task_node,
