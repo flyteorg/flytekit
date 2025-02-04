@@ -13,7 +13,6 @@ from flytekit.deck import Deck
 from flytekit.models.core import identifier as identifier_models
 from flytekit.models.task import Resources as resource_model
 from flytekit.tools.translator import get_serializable, Options
-from google.protobuf.wrappers_pb2 import BoolValue
 import pytest
 
 default_img = Image(name="default", fqn="test", tag="tag")
@@ -117,7 +116,7 @@ def test_deck_settings(enable_deck, expected):
         .build()
     )
     task_spec = get_serializable(OrderedDict(), settings, t_deck)
-    assert task_spec.template.metadata.generates_deck == BoolValue(value=expected)
+    assert task_spec.template.metadata.generates_deck == expected
 
 
 def test_container():

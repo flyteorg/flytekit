@@ -42,7 +42,6 @@ from typing import (
 
 from flyteidl.core import artifact_id_pb2 as art_id
 from flyteidl.core import tasks_pb2
-from google.protobuf.wrappers_pb2 import BoolValue
 
 from flytekit.configuration import LocalConfig, SerializationSettings
 from flytekit.core.artifact_utils import (
@@ -178,7 +177,7 @@ class TaskMetadata(object):
             discovery_version=self.cache_version,
             deprecated_error_message=self.deprecated,
             cache_serializable=self.cache_serialize,
-            generates_deck=BoolValue(value=self.generates_deck),
+            generates_deck=self.generates_deck,
             pod_template_name=self.pod_template_name,
             cache_ignore_input_vars=self.cache_ignore_input_vars,
             is_eager=self.is_eager,

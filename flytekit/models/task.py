@@ -8,6 +8,7 @@ from flyteidl.core import literals_pb2 as _literals_pb2
 from flyteidl.core import tasks_pb2 as _core_task
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
+from google.protobuf.wrappers_pb2 import BoolValue
 from kubernetes.client import ApiClient
 
 from flytekit.models import common as _common
@@ -330,10 +331,10 @@ class TaskMetadata(_common.FlyteIdlEntity):
             discovery_version=self.discovery_version,
             deprecated_error_message=self.deprecated_error_message,
             cache_serializable=self.cache_serializable,
-            generates_deck=self.generates_deck,
             pod_template_name=self.pod_template_name,
             cache_ignore_input_vars=self.cache_ignore_input_vars,
             is_eager=self.is_eager,
+            generates_deck=BoolValue(value=self.generates_deck),
         )
         if self.timeout:
             tm.timeout.FromTimedelta(self.timeout)
@@ -354,10 +355,10 @@ class TaskMetadata(_common.FlyteIdlEntity):
             discovery_version=pb2_object.discovery_version,
             deprecated_error_message=pb2_object.deprecated_error_message,
             cache_serializable=pb2_object.cache_serializable,
-            generates_deck=pb2_object.generates_deck if pb2_object.HasField("generates_deck") else False,
             pod_template_name=pb2_object.pod_template_name,
             cache_ignore_input_vars=pb2_object.cache_ignore_input_vars,
             is_eager=pb2_object.is_eager,
+            generates_deck=pb2_object.generates_deck.value if pb2_object.HasField("generates_deck") else False,
         )
 
 
