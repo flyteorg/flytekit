@@ -1,7 +1,7 @@
 import tempfile
 from pathlib import Path
 
-from flytekit import FlyteDirectory, FlyteFile, map_task, task, workflow
+from flytekit import FlyteDirectory, FlyteFile, map, task, workflow
 
 def test_listdir():
     @task
@@ -26,6 +26,6 @@ def test_listdir():
     def wf() -> list[str]:
         tmpdir = setup()
         files = list_dir(dir=tmpdir)
-        return map_task(read_file)(file=files)
+        return map(read_file)(file=files)
 
     assert wf() == ["Hello, World!"]

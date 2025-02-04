@@ -3,6 +3,7 @@ import functools
 import hashlib
 import math
 import os  # TODO: use flytekit logger
+import warnings
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Union, cast
 
@@ -369,11 +370,12 @@ class ArrayNodeMapTask(PythonTask):
         return outputs
 
 
-def map_task(
+def map(
     target: Union[LaunchPlan, PythonFunctionTask, "FlyteLaunchPlan"],
     concurrency: Optional[int] = None,
-    min_successes: Optional[int] = None,
-    min_success_ratio: float = 1.0,
+    tolerance: Optional[Union[float, int]] = None,
+    min_successes: Optional[int] = None,  # Deprecated
+    min_success_ratio: Optional[float] = None,  # Deprecated
     **kwargs,
 ):
     """
@@ -385,23 +387,51 @@ def map_task(
         size. If the size of the input exceeds the concurrency value, then multiple batches will be run serially until
         all inputs are processed. If set to 0, this means unbounded concurrency. If left unspecified, this means the
         array node will inherit parallelism from the workflow
-    :param min_successes: The minimum number of successful executions
-    :param min_success_ratio: The minimum ratio of successful executions
+    :param tolerance: Failure tolerance threshold.
+                If float (0-1): represents minimum success ratio
+                If int (>1): represents minimum number of successes
+    :param min_successes: The minimum number of successful executions [Deprecated] Use tolerance instead
+    :param min_success_ratio: The minimum ratio of successful executions [Deprecated] Use tolerance instead
     """
     from flytekit.remote import FlyteLaunchPlan
+
+    if min_successes is not None and min_success_ratio != 1.0:
+        warnings.warn(
+            "min_success and min_success_ratio are deprecated. Please use 'tolerance' parameter instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
+    computed_min_ratio = 1.0
+    computed_min_success = None
+
+    if tolerance is not None:
+        if isinstance(tolerance, float):
+            if not 0 <= tolerance <= 1:
+                raise ValueError("tolerance must be between 0 and 1")
+            computed_min_ratio = tolerance
+        elif isinstance(tolerance, int):
+            if tolerance < 1:
+                raise ValueError("tolerance must be greater than 0")
+            computed_min_success = tolerance
+        else:
+            raise TypeError("tolerance must be float or int")
+
+    final_min_ratio = computed_min_ratio if min_success_ratio is None else min_success_ratio
+    final_min_successes = computed_min_success if min_successes is None else min_successes
 
     if isinstance(target, (LaunchPlan, FlyteLaunchPlan, ReferenceTask)):
         return array_node(
             target=target,
             concurrency=concurrency,
-            min_successes=min_successes,
-            min_success_ratio=min_success_ratio,
+            min_successes=final_min_successes,
+            min_success_ratio=final_min_ratio,
         )
     return array_node_map_task(
         task_function=target,
         concurrency=concurrency,
-        min_successes=min_successes,
-        min_success_ratio=min_success_ratio,
+        min_successes=final_min_successes,
+        min_success_ratio=final_min_ratio,
         **kwargs,
     )
 
