@@ -354,7 +354,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
             discovery_version=pb2_object.discovery_version,
             deprecated_error_message=pb2_object.deprecated_error_message,
             cache_serializable=pb2_object.cache_serializable,
-            generates_deck=pb2_object.generates_deck,
+            generates_deck=pb2_object.generates_deck if pb2_object.HasField("generates_deck") else False,
             pod_template_name=pb2_object.pod_template_name,
             cache_ignore_input_vars=pb2_object.cache_ignore_input_vars,
             is_eager=pb2_object.is_eager,
