@@ -9,10 +9,12 @@ from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
 from flytekit.core.reference_entity import ReferenceSpec, ReferenceTemplate
 from flytekit.core.task import ReferenceTask, task
 from flytekit.core.workflow import ReferenceWorkflow, workflow
+from flytekit.deck import Deck
 from flytekit.models.core import identifier as identifier_models
 from flytekit.models.task import Resources as resource_model
 from flytekit.tools.translator import get_serializable, Options
 from google.protobuf.wrappers_pb2 import BoolValue
+import pytest
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = flytekit.configuration.SerializationSettings(
@@ -102,32 +104,20 @@ def test_fast():
     task_spec = get_serializable(OrderedDict(), settings, t1)
     assert "pyflyte-fast-execute" in task_spec.template.container.args
 
-def test_deck():
-    from flytekit.deck import Deck
-
-    @task(enable_deck=False)
-    def t_no_deck():
-        pass
-
-    @task(enable_deck=True)
+@pytest.mark.parametrize('enable_deck,expected', [(True, True), (False, False)])
+def test_deck_settings(enable_deck, expected):
+    @task(enable_deck=enable_deck)
     def t_deck():
-        Deck.publish()
+        if enable_deck:
+            Deck.publish()
 
-    deck_settings = (
+    settings = (
         serialization_settings.new_builder()
         .with_fast_serialization_settings(FastSerializationSettings(enabled=True))
         .build()
     )
-    deck_task_spec = get_serializable(OrderedDict(), deck_settings, t_deck)
-    assert deck_task_spec.template.metadata.generates_deck == BoolValue(value=True)
-
-    no_deck_settings = (
-        serialization_settings.new_builder()
-        .with_fast_serialization_settings(FastSerializationSettings(enabled=True))
-        .build()
-    )
-    no_deck_task_spec = get_serializable(OrderedDict(), no_deck_settings, t_no_deck)
-    assert no_deck_task_spec.template.metadata.generates_deck == BoolValue(value=False)
+    task_spec = get_serializable(OrderedDict(), settings, t_deck)
+    assert task_spec.template.metadata.generates_deck == BoolValue(value=expected)
 
 
 def test_container():
