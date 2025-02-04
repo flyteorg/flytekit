@@ -31,6 +31,7 @@ import fsspec
 import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
 from flyteidl.core import literals_pb2
+from rich.progress import Progress, TextColumn, TimeElapsedColumn
 
 from flytekit import ImageSpec
 from flytekit.clients.friendly import SynchronousFlyteClient
@@ -66,7 +67,7 @@ from flytekit.exceptions.user import (
     FlyteEntityNotExistException,
     FlyteValueException,
 )
-from flytekit.loggers import developer_logger, logger
+from flytekit.loggers import developer_logger, is_display_progress_enabled, logger
 from flytekit.models import common as common_models
 from flytekit.models import filters as filter_models
 from flytekit.models import launch_plan as launch_plan_models
@@ -1168,6 +1169,13 @@ class FlyteRemote(object):
         encoded_md5 = b64encode(md5_bytes)
         local_file_path = str(to_upload)
         content_length = os.stat(local_file_path).st_size
+
+        upload_package_progress = Progress(TimeElapsedColumn(), TextColumn("[progress.description]{task.description}"))
+        t1 = upload_package_progress.add_task(f"Uploading package of size {content_length/1024/1024:.2f} MBs", total=1)
+        upload_package_progress.start_task(t1)
+        if is_display_progress_enabled():
+            upload_package_progress.start()
+
         with open(local_file_path, "+rb") as local_file:
             headers = {"Content-Length": str(content_length), "Content-MD5": encoded_md5}
             headers.update(extra_headers)
@@ -1186,6 +1194,16 @@ class FlyteRemote(object):
                     rsp.status_code,
                     f"Request to send data {upload_location.signed_url} failed.\nResponse: {rsp.text}",
                 )
+
+            upload_package_progress.update(
+                t1,
+                completed=1,
+                description=f"Uploaded package of size {content_length/1024/1024:.2f}MB",
+                refresh=True,
+            )
+            upload_package_progress.stop_task(t1)
+            if is_display_progress_enabled():
+                upload_package_progress.stop()
 
         developer_logger.debug(
             f"Uploading {to_upload} to {upload_location.signed_url} native url {upload_location.native_url}"
