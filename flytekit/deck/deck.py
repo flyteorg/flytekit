@@ -5,6 +5,7 @@ from html import escape
 from string import Template
 from typing import Optional
 
+from flytekit.core.constants import ENABLE_DECK
 from flytekit.core.context_manager import ExecutionParameters, ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.loggers import logger
 from flytekit.tools.interactive import ipython_check
@@ -86,6 +87,11 @@ class Deck:
     def publish():
         params = FlyteContextManager.current_context().user_space_params
         task_name = params.task_id.name
+
+        if not params.has_attr(ENABLE_DECK) or not params.enable_deck:
+            logger.warning("Deck is disabled for this task, please don't call Deck.publish()")
+            return
+
         _output_deck(task_name=task_name, new_user_params=params)
 
 
@@ -179,11 +185,6 @@ def _get_deck(
 
 def _output_deck(task_name: str, new_user_params: ExecutionParameters):
     ctx = FlyteContext.current_context()
-    params = ctx.user_space_params
-
-    if not params.has_attr("ENABLE_DECK") or not params.enable_deck:
-        logger.warning("Deck is disabled for this task, please don't call Deck.publish()")
-        return
 
     local_dir = ctx.file_access.get_random_local_directory()
     local_path = f"{local_dir}{os.sep}{DECK_FILE_NAME}"
