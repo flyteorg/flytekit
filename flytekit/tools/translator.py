@@ -453,6 +453,7 @@ def get_serializable_node(
         # if entity._aliases:
         #     node_model._output_aliases = entity._aliases
     elif isinstance(entity.flyte_entity, PythonTask):
+        # handle pod template overrides
         override_pod_spec = {}
         if entity._pod_template is not None:
             entity.flyte_entity.set_command_fn(_fast_serialize_command_fn(settings, entity.flyte_entity))
