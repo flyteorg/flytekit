@@ -49,7 +49,6 @@ from flytekit.core.artifact_utils import (
     idl_partitions_from_dict,
     idl_time_partition_from_datetime,
 )
-from flytekit.core.constants import ENABLE_DECK
 from flytekit.core.context_manager import (
     ExecutionParameters,
     ExecutionState,
@@ -721,13 +720,14 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
           may be none
         * ``DynamicJobSpec`` is returned when a dynamic workflow is executed
         """
-        if self.enable_deck and ctx.user_space_params is not None:
-            ctx.user_space_params.builder().add_attr(ENABLE_DECK, True)
-            if DeckField.TIMELINE.value in self.deck_fields:
-                ctx.user_space_params.decks.append(ctx.user_space_params.timeline_deck)
 
         # Invoked before the task is executed
         new_user_params = self.pre_execute(ctx.user_space_params)
+
+        if self.enable_deck and ctx.user_space_params is not None:
+            if DeckField.TIMELINE.value in self.deck_fields:
+                ctx.user_space_params.decks.append(ctx.user_space_params.timeline_deck)
+            new_user_params = ctx.user_space_params.with_enable_deck(enable_deck=True).build()
 
         # Create another execution context with the new user params, but let's keep the same working dir
         with FlyteContextManager.with_context(

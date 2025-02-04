@@ -5,7 +5,6 @@ from html import escape
 from string import Template
 from typing import Optional
 
-from flytekit.core.constants import ENABLE_DECK
 from flytekit.core.context_manager import ExecutionParameters, ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.loggers import logger
 from flytekit.tools.interactive import ipython_check
@@ -88,7 +87,7 @@ class Deck:
         params = FlyteContextManager.current_context().user_space_params
         task_name = params.task_id.name
 
-        if not params.has_attr(ENABLE_DECK) or not params.enable_deck:
+        if not params.enable_deck:
             logger.warning("Call to Deck.publish() will not generate flyte decks as enable_deck=False")
             return
 
