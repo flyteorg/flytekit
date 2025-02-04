@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime
 import typing
+import warnings
 from datetime import timezone as _timezone
 from typing import Optional
 
@@ -176,6 +177,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         annotations=None,
         auth_role=None,
         raw_output_data_config=None,
+        concurrency: Optional[int] = None,
         max_parallelism: Optional[int] = None,
         security_context: Optional[security.SecurityContext] = None,
         overwrite_cache: Optional[bool] = None,
@@ -193,15 +195,17 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         :param flytekit.models.common.Annotations annotations: Annotations to apply to the execution
         :param flytekit.models.common.AuthRole auth_role: The authorization method with which to execute the workflow.
         :param raw_output_data_config: Optional location of offloaded data for things like S3, etc.
-        :param max_parallelism int: Controls the maximum number of tasknodes that can be run in parallel for the entire
+        :param concurrency int: Controls the maximum number of tasknodes that can be run in parallel for the entire
             workflow. This is useful to achieve fairness. Note: MapTasks are regarded as one unit, and
             parallelism/concurrency of MapTasks is independent from this.
+        :param max_parallelism: Deprecated] Use concurrency instead.
         :param security_context: Optional security context to use for this execution.
         :param overwrite_cache: Optional flag to overwrite the cache for this execution.
         :param envs: flytekit.models.common.Envs environment variables to set for this execution.
         :param tags: Optional list of tags to apply to the execution.
         :param execution_cluster_label: Optional execution cluster label to use for this execution.
         """
+
         self._launch_plan = launch_plan
         self._metadata = metadata
         self._notifications = notifications
@@ -210,7 +214,13 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         self._annotations = annotations or _common_models.Annotations({})
         self._auth_role = auth_role or _common_models.AuthRole()
         self._raw_output_data_config = raw_output_data_config
-        self._max_parallelism = max_parallelism
+
+        if max_parallelism is not None:
+            warnings.warn("max_parallelism is deprecated. Use concurrency instead.", DeprecationWarning, stacklevel=2)
+            self._concurrency = max_parallelism
+        else:
+            self._concurrency = concurrency
+
         self._security_context = security_context
         self._overwrite_cache = overwrite_cache
         self._envs = envs
@@ -277,7 +287,19 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
 
     @property
     def max_parallelism(self) -> int:
-        return self._max_parallelism
+        """
+        Deprecated. Use concurrency instead.
+        """
+        warnings.warn(
+            "max_parallelism is deprecated and will be removed in a future version. Use concurrency instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self._concurrency
+
+    @property
+    def concurrency(self) -> int:
+        return self._concurrency
 
     @property
     def security_context(self) -> typing.Optional[security.SecurityContext]:
@@ -318,7 +340,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             raw_output_data_config=self._raw_output_data_config.to_flyte_idl()
             if self._raw_output_data_config
             else None,
-            max_parallelism=self.max_parallelism,
+            max_parallelism=self._concurrency,
             security_context=self.security_context.to_flyte_idl() if self.security_context else None,
             overwrite_cache=self.overwrite_cache,
             envs=self.envs.to_flyte_idl() if self.envs else None,
@@ -346,7 +368,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             raw_output_data_config=_common_models.RawOutputDataConfig.from_flyte_idl(p.raw_output_data_config)
             if p.HasField("raw_output_data_config")
             else None,
-            max_parallelism=p.max_parallelism,
+            concurrency=p.max_parallelism,
             security_context=security.SecurityContext.from_flyte_idl(p.security_context)
             if p.security_context
             else None,

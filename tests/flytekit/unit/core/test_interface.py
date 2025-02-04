@@ -6,7 +6,7 @@ from typing import Dict, List
 import pytest
 from typing_extensions import Annotated, TypeVar  # type: ignore
 
-from flytekit import map_task, task
+from flytekit import map, task
 from flytekit.core import context_manager
 from flytekit.core.docstring import Docstring
 from flytekit.core.interface import (
@@ -406,6 +406,6 @@ def test_map_task_interface(min_success_ratio, expected_type):
     def t() -> str:
         return "hello"
 
-    mt = map_task(t, min_success_ratio=min_success_ratio)
+    mt = map(t, min_success_ratio=min_success_ratio)
 
     assert mt.python_interface.outputs["o0"] == typing.List[expected_type]

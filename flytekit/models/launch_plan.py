@@ -135,6 +135,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         annotations: _common.Annotations,
         auth_role: _common.AuthRole,
         raw_output_data_config: _common.RawOutputDataConfig,
+        concurrency: typing.Optional[int] = None,
         max_parallelism: typing.Optional[int] = None,
         security_context: typing.Optional[security.SecurityContext] = None,
         overwrite_cache: typing.Optional[bool] = None,
@@ -153,9 +154,10 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         :param flytekit.models.common.AuthRole auth_role: The auth method with which to execute the workflow.
         :param flytekit.models.common.RawOutputDataConfig raw_output_data_config: Value for where to store offloaded
             data like Blobs and Schemas.
-        :param max_parallelism int: Controls the maximum number of tasknodes that can be run in parallel for the entire
+        :param concurrency int: Controls the maximum number of tasknodes that can be run in parallel for the entire
             workflow. This is useful to achieve fairness. Note: MapTasks are regarded as one unit, and
             parallelism/concurrency of MapTasks is independent from this.
+        :param max_parallelism: Deprecated. Use concurrency instead
         :param security_context: This can be used to add security information to a LaunchPlan, which will be used by
                                  every execution
         """
@@ -167,7 +169,16 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         self._annotations = annotations
         self._auth_role = auth_role
         self._raw_output_data_config = raw_output_data_config
-        self._max_parallelism = max_parallelism
+        self._concurrency = concurrency
+        self._max_parallelism = concurrency if concurrency is not None else max_parallelism
+        if max_parallelism is not None:
+            import warnings
+
+            warnings.warn(
+                "max_parallelism is deprecated and will be removed in a future version. Use concurrency instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         self._security_context = security_context
         self._overwrite_cache = overwrite_cache
 
@@ -235,6 +246,10 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         return self._raw_output_data_config
 
     @property
+    def concurrency(self) -> typing.Optional[int]:
+        return self._concurrency
+
+    @property
     def max_parallelism(self) -> typing.Optional[int]:
         return self._max_parallelism
 
@@ -259,6 +274,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
             annotations=self.annotations.to_flyte_idl(),
             auth_role=self.auth_role.to_flyte_idl() if self.auth_role else None,
             raw_output_data_config=self.raw_output_data_config.to_flyte_idl(),
+            concurrency=self.concurrency,
             max_parallelism=self.max_parallelism,
             security_context=self.security_context.to_flyte_idl() if self.security_context else None,
             overwrite_cache=self.overwrite_cache if self.overwrite_cache else None,
@@ -270,6 +286,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         :param flyteidl.admin.launch_plan_pb2.LaunchPlanSpec pb2:
         :rtype: LaunchPlanSpec
         """
+
         auth_role = None
         # First check the newer field, auth_role.
         if pb2.auth_role is not None and (pb2.auth_role.assumable_iam_role or pb2.auth_role.kubernetes_service_account):
@@ -281,6 +298,24 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
             else:
                 auth_role = _common.AuthRole(assumable_iam_role=pb2.auth.kubernetes_service_account)
 
+        # Handle concurrency/max_parallelism transition
+        concurrency = None
+        max_parallelism = None
+
+        if hasattr(pb2, "concurrency"):
+            try:
+                if pb2.HasField("concurrency"):
+                    concurrency = pb2.concurrency
+            except ValueError:
+                pass  # Field doesn't exist in protobuf yet
+
+        # Fallback to max_parallelism (deprecated field)
+        if hasattr(pb2, "max_parallelism"):
+            max_parallelism = pb2.max_parallelism
+
+        # Use concurrency if available, otherwise use max_parallelism
+        final_concurrency = concurrency if concurrency is not None else max_parallelism
+
         return cls(
             workflow_id=_identifier.Identifier.from_flyte_idl(pb2.workflow_id),
             entity_metadata=LaunchPlanMetadata.from_flyte_idl(pb2.entity_metadata),
@@ -290,6 +325,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
             annotations=_common.Annotations.from_flyte_idl(pb2.annotations),
             auth_role=auth_role,
             raw_output_data_config=_common.RawOutputDataConfig.from_flyte_idl(pb2.raw_output_data_config),
+            concurrency=final_concurrency,
             max_parallelism=pb2.max_parallelism,
             security_context=security.SecurityContext.from_flyte_idl(pb2.security_context)
             if pb2.security_context
