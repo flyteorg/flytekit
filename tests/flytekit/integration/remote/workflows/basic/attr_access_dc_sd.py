@@ -14,7 +14,7 @@ class DC:
 
 
 @task
-def create_dc(uri: str) -> DC:
+def create_dc() -> DC:
     """Create a dataclass with a StructuredDataset attribute.
 
     Returns:
