@@ -38,6 +38,3 @@ EAGER_ROOT_ENV_NAME = "_F_EE_ROOT"
 CACHE_KEY_METADATA = "cache-key-metadata"
 
 SERIALIZATION_FORMAT = "serialization-format"
-
-# This is for enabling the Flyte deck in the task.
-ENABLE_DECK = "ENABLE_DECK"
