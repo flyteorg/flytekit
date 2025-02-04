@@ -168,6 +168,11 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
 
     @_container_image.setter
     def _container_image(self, image: Optional[Union[str, ImageSpec]]):
+        """Deprecated, please use `image` instead.
+
+        This setter is for backward compatibility, so that setting `_container_image`
+        will adjust the new `_image` parameter directly.
+        """
         self._image = image
 
     @property
