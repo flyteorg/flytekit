@@ -155,12 +155,12 @@ def fast_package(
         archive_fname = os.path.join(output_dir, archive_fname)
 
         # add the tarfile task to progress and start it
-        l = len(ls)
-        t = 0
+        total_files = len(ls)
+        files_processed = 0
         tar_task = create_tarball_progress.add_task(
-            f"Creating tarball with [{l}] files...",
-            total=l,
-            files_added_progress=f"{t}/{l} files",
+            f"Creating tarball with [{total_files}] files...",
+            total=total_files,
+            files_added_progress=f"{files_processed}/{total_files} files",
         )
 
         if is_display_progress_enabled():
@@ -171,7 +171,7 @@ def fast_package(
             tar_path = os.path.join(tmp_dir, "tmp.tar")
             with tarfile.open(tar_path, "w", dereference=deref_symlinks) as tar:
                 for ws_file in ls:
-                    t = t + 1
+                    files_processed = files_processed + 1
                     rel_path = os.path.relpath(ws_file, start=source)
                     tar.add(
                         os.path.join(source, ws_file),
@@ -185,7 +185,7 @@ def fast_package(
                         advance=1,
                         description=f"Added file {rel_path}",
                         refresh=True,
-                        files_added_progress=f"{t}/{l} files",
+                        files_added_progress=f"{files_processed}/{total_files} files",
                     )
 
             create_tarball_progress.stop_task(tar_task)
