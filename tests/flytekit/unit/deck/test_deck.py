@@ -273,7 +273,7 @@ def test_disable_deck_in_task():
     @task
     def t1():
         ctx = FlyteContextManager.current_context()
-        assert not ctx.user_space_params.has_attr(ENABLE_DECK) or not ctx.user_space_params.enable_deck
+        assert not (ctx.user_space_params.has_attr(ENABLE_DECK) and ctx.user_space_params.enable_deck)
         return
 
     t1()

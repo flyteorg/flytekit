@@ -190,8 +190,8 @@ def get_serializable_task(
     if hasattr(entity, "task_function"):
         if isinstance(entity.task_function, ClassDecorator):
             extra_config = entity.task_function.get_extra_config()
-        if entity.enable_deck:
-            entity.metadata.generates_deck = True
+    if entity.enable_deck:
+        entity.metadata.generates_deck = True
 
     merged_config = {**entity_config, **extra_config}
 
