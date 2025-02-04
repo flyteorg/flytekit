@@ -2633,7 +2633,8 @@ class FlyteRemote(object):
 
             if token == "":
                 return projects
-        max_iters = max_iters - 1
+
+            max_iters = max_iters - 1
 
     ############
     # Domains #
