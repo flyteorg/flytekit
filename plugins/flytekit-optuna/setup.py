@@ -1,10 +1,10 @@
 from setuptools import setup
 
-PLUGIN_NAME = "pydantic"
+PLUGIN_NAME = "optuna"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=1.7.0b0", "pydantic<2"]
+plugin_requires = ["flytekit>=1.15.0", "optuna>=4.0.0,<5.0.0", "typing-extensions>=4.10,<5.0"]
 
 __version__ = "0.0.0+develop"
 
@@ -13,10 +13,7 @@ setup(
     version=__version__,
     author="flyteorg",
     author_email="admin@flyte.org",
-    description="Plugin adding type support for Pydantic models",
-    url="https://github.com/flyteorg/flytekit/tree/master/plugins/flytekit-pydantic",
-    long_description=open("README.md").read(),
-    long_description_content_type="text/markdown",
+    description="Optuna plugin for flytekit",
     namespace_packages=["flytekitplugins"],
     packages=[f"flytekitplugins.{PLUGIN_NAME}"],
     install_requires=plugin_requires,
@@ -28,7 +25,6 @@ setup(
         "License :: OSI Approved :: Apache Software License",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
-        "Programming Language :: Python :: 3.11",
         "Topic :: Scientific/Engineering",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Software Development",

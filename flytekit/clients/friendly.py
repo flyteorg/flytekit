@@ -21,6 +21,7 @@ from google.protobuf.duration_pb2 import Duration
 
 from flytekit.clients.raw import RawSynchronousFlyteClient as _RawSynchronousFlyteClient
 from flytekit.models import common as _common
+from flytekit.models import domain as _domain
 from flytekit.models import execution as _execution
 from flytekit.models import filters as _filters
 from flytekit.models import launch_plan as _launch_plan
@@ -895,6 +896,21 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             [_project.Project.from_flyte_idl(pb) for pb in projects.projects],
             str(projects.token),
         )
+
+    ####################################################################################################################
+    #
+    #  Domain Endpoints
+    #
+    ####################################################################################################################
+
+    def get_domains(self):
+        """
+        This returns a list of domains.
+
+        :rtype: list[flytekit.models.Domain]
+        """
+        domains = super(SynchronousFlyteClient, self).get_domains()
+        return [_domain.Domain.from_flyte_idl(domain) for domain in domains.domains]
 
     ####################################################################################################################
     #
