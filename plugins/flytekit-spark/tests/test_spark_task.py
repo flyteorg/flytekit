@@ -268,6 +268,7 @@ def test_spark_driver_executor_podSpec(reset_spark_session):
             ),
             V1Container(
                 name="not-primary",
+                image="ghcr.io/flyteorg",
                 command=["echo"],
                 args=["not_primary"],
             ),
@@ -293,6 +294,7 @@ def test_spark_driver_executor_podSpec(reset_spark_session):
             ),
             V1Container(
                 name="not-primary",
+                image="ghcr.io/flyteorg",
                 command=["echo"],
                 args=["not_primary"],
             ),
@@ -333,6 +335,12 @@ def test_spark_driver_executor_podSpec(reset_spark_session):
                     V1EnvVar(name="x/custom-driver", value="driver"),
                 ],
             ),
+            V1Container(
+                name="not-primary",
+                image="ghcr.io/flyteorg",
+                command=["echo"],
+                args=["not_primary"],
+            ),
         ],
         tolerations=[
             V1Toleration(
@@ -355,6 +363,12 @@ def test_spark_driver_executor_podSpec(reset_spark_session):
                     V1EnvVar(name="FOO", value="baz"),
                     V1EnvVar(name="x/custom-executor", value="executor"),
                 ],
+            ),
+            V1Container(
+                name="not-primary",
+                image="ghcr.io/flyteorg",
+                command=["echo"],
+                args=["not_primary"],
             ),
         ],
         tolerations=[
@@ -379,6 +393,7 @@ def test_spark_driver_executor_podSpec(reset_spark_session):
             annotations={"aKeyA_d": "aValA", "aKeyB_d": "aValB"},
         ),
         pod_spec=driver_pod_spec_dict_remove_None,  # type: ignore
+        primary_container_name="driver-primary"
     )
 
     target_executor_k8sPod = K8sPod(
@@ -387,6 +402,7 @@ def test_spark_driver_executor_podSpec(reset_spark_session):
             annotations={"aKeyA_e": "aValA", "aKeyB_e": "aValB"},
         ),
         pod_spec=executor_pod_spec_dict_remove_None,  # type: ignore
+        primary_container_name="executor-primary"
     )
 
     @task(
