@@ -202,6 +202,7 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
                 labels=pod_template.labels,
                 annotations=pod_template.annotations,
             ),
+            primary_container_name=pod_template.primary_container_name,
         )
 
     def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
