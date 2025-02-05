@@ -7,6 +7,7 @@ from mock import mock, patch
 
 import flytekit
 from flytekit import Deck, FlyteContextManager, task
+
 from flytekit.deck import DeckField, MarkdownRenderer, SourceCodeRenderer, TopFrameRenderer
 from flytekit.deck.deck import _output_deck
 from flytekit.deck.renderer import PythonDependencyRenderer
@@ -258,3 +259,43 @@ def test_python_dependency_renderer():
 
         # Assert that the button of copy
         assert 'button onclick="copyTable()"' in result
+
+def test_enable_deck_in_task():
+    @task(enable_deck=True)
+    def t1():
+        ctx = FlyteContextManager.current_context()
+        assert ctx.user_space_params.enable_deck == True
+        return
+
+    ctx = FlyteContextManager.current_context()
+    assert ctx.user_space_params.enable_deck == False
+
+    t1()
+
+    ctx = FlyteContextManager.current_context()
+    assert ctx.user_space_params.enable_deck == False
+
+def test_disable_deck_in_task():
+    @task(disable_deck=True)
+    def t1():
+        ctx = FlyteContextManager.current_context()
+        assert ctx.user_space_params.enable_deck == False
+        return
+
+    ctx = FlyteContextManager.current_context()
+    assert ctx.user_space_params.enable_deck == False
+    t1()
+    ctx = FlyteContextManager.current_context()
+    assert ctx.user_space_params.enable_deck == False
+
+    @task
+    def t2():
+        ctx = FlyteContextManager.current_context()
+        assert ctx.user_space_params.enable_deck == False
+        return
+
+    ctx = FlyteContextManager.current_context()
+    assert ctx.user_space_params.enable_deck == False
+    t2()
+    ctx = FlyteContextManager.current_context()
+    assert ctx.user_space_params.enable_deck == False
