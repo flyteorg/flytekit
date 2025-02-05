@@ -123,6 +123,8 @@ ExecutionDataResponse = typing.Union[WorkflowExecutionGetDataResponse, NodeExecu
 
 MOST_RECENT_FIRST = admin_common_models.Sort("created_at", admin_common_models.Sort.Direction.DESCENDING)
 
+LATEST_VERSION_STR = "latest"
+
 
 class RegistrationSkipped(Exception):
     """
@@ -161,12 +163,14 @@ def _get_entity_identifier(
     name: str,
     version: typing.Optional[str] = None,
 ):
+    if version is None or version == LATEST_VERSION_STR:
+        version = _get_latest_version(list_entities_method, project, domain, name)
     return Identifier(
         resource_type,
         project,
         domain,
         name,
-        version if version is not None else _get_latest_version(list_entities_method, project, domain, name),
+        version,
     )
 
 
@@ -1049,11 +1053,11 @@ class FlyteRemote(object):
         :return:
         """
         if serialization_settings is None:
-            _, _, _, module_file = extract_task_module(entity)
-            project_root = _find_project_root(module_file)
+            # _, _, _, module_file = extract_task_module(entity)
+            # project_root = _find_project_root(module_file)
             serialization_settings = SerializationSettings(
                 image_config=ImageConfig.auto_default_image(),
-                source_root=project_root,
+                # source_root=project_root,
                 project=self.default_project,
                 domain=self.default_domain,
             )
@@ -1399,11 +1403,11 @@ class FlyteRemote(object):
         :param options:
         """
         if serialization_settings is None:
-            _, _, _, module_file = extract_task_module(entity.workflow)
-            project_root = _find_project_root(module_file)
+            #     _, _, _, module_file = extract_task_module(entity.workflow)
+            #     project_root = _find_project_root(module_file)
             serialization_settings = SerializationSettings(
                 image_config=ImageConfig.auto_default_image(),
-                source_root=project_root,
+                # source_root=project_root,
                 project=project or self.default_project,
                 domain=domain or self.default_domain,
                 version=version,
@@ -2048,6 +2052,20 @@ class FlyteRemote(object):
     # Flytekit Entities
     # -----------------
 
+    def _resolve_version(
+        self, version: typing.Optional[str], entity: typing.Any, ss: SerializationSettings
+    ) -> typing.Tuple[str, typing.Optional[PickledEntity]]:
+        if version is None and self.interactive_mode_enabled:
+            md5_bytes, pickled_target_dict = _get_pickled_target_dict(entity)
+            return self._version_from_hash(
+                md5_bytes, ss, entity.python_interface.default_inputs_as_kwargs, *self._get_image_names(entity)
+            ), pickled_target_dict
+        elif version is not None:
+            return version, None
+        raise ValueError(
+            "Version must be provided when not in interactive mode. If you want to use latest version pass 'latest'"
+        )
+
     def execute_local_task(
         self,
         entity: PythonTask,
@@ -2055,7 +2073,7 @@ class FlyteRemote(object):
         project: str = None,
         domain: str = None,
         name: str = None,
-        version: str = None,
+        version: str = "latest",
         execution_name: typing.Optional[str] = None,
         execution_name_prefix: typing.Optional[str] = None,
         image_config: typing.Optional[ImageConfig] = None,
@@ -2075,7 +2093,8 @@ class FlyteRemote(object):
         :param project: The execution project, will default to the Remote's default project.
         :param domain: The execution domain, will default to the Remote's default domain.
         :param name: specific name of the task to run.
-        :param version: specific version of the task to run.
+        :param version: specific version of the task to run, default is a special string ``latest``, which implies latest
+        version by time
         :param execution_name: If provided, will use this name for the execution.
         :param image_config: If provided, will use this image config in the pod.
         :param wait: If True, will wait for the execution to complete before returning.
@@ -2095,11 +2114,8 @@ class FlyteRemote(object):
             version=version,
         )
         pickled_target_dict = None
-        if version is None and self.interactive_mode_enabled:
-            md5_bytes, pickled_target_dict = _get_pickled_target_dict(entity)
-            version = self._version_from_hash(
-                md5_bytes, ss, entity.python_interface.default_inputs_as_kwargs, *self._get_image_names(entity)
-            )
+
+        version, pickled_target_dict = self._resolve_version(version, entity, ss)
 
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
         resolved_identifiers_dict = asdict(resolved_identifiers)
@@ -2273,6 +2289,7 @@ class FlyteRemote(object):
             flyte_launchplan: FlyteLaunchPlan = self.fetch_launch_plan(**resolved_identifiers_dict)
             flyte_launchplan.python_interface = entity.python_interface
         except FlyteEntityNotExistException:
+            print("Registering launch plan because it wasn't found in Flyte Admin.")
             flyte_launchplan: FlyteLaunchPlan = self.register_launch_plan(
                 entity,
                 version=version,
