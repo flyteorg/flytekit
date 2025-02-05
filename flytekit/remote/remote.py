@@ -31,6 +31,7 @@ import fsspec
 import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
 from flyteidl.core import literals_pb2
+from rich.progress import Progress, TextColumn, TimeElapsedColumn
 
 from flytekit import ImageSpec
 from flytekit.clients.friendly import SynchronousFlyteClient
@@ -66,7 +67,7 @@ from flytekit.exceptions.user import (
     FlyteEntityNotExistException,
     FlyteValueException,
 )
-from flytekit.loggers import developer_logger, logger
+from flytekit.loggers import developer_logger, is_display_progress_enabled, logger
 from flytekit.models import common as common_models
 from flytekit.models import filters as filter_models
 from flytekit.models import launch_plan as launch_plan_models
@@ -81,6 +82,7 @@ from flytekit.models.core import identifier as id_models
 from flytekit.models.core import workflow as workflow_model
 from flytekit.models.core.identifier import Identifier, ResourceType, SignalIdentifier, WorkflowExecutionIdentifier
 from flytekit.models.core.workflow import BranchNode, Node, NodeMetadata
+from flytekit.models.domain import Domain
 from flytekit.models.execution import (
     ClusterAssignment,
     ExecutionMetadata,
@@ -92,6 +94,7 @@ from flytekit.models.execution import (
 from flytekit.models.launch_plan import LaunchPlanState
 from flytekit.models.literals import Literal, LiteralMap
 from flytekit.models.matchable_resource import ExecutionClusterLabel
+from flytekit.models.project import Project
 from flytekit.remote.backfill import create_backfill_workflow
 from flytekit.remote.data import download_literal
 from flytekit.remote.entities import FlyteLaunchPlan, FlyteNode, FlyteTask, FlyteTaskNode, FlyteWorkflow
@@ -1168,6 +1171,13 @@ class FlyteRemote(object):
         encoded_md5 = b64encode(md5_bytes)
         local_file_path = str(to_upload)
         content_length = os.stat(local_file_path).st_size
+
+        upload_package_progress = Progress(TimeElapsedColumn(), TextColumn("[progress.description]{task.description}"))
+        t1 = upload_package_progress.add_task(f"Uploading package of size {content_length/1024/1024:.2f} MBs", total=1)
+        upload_package_progress.start_task(t1)
+        if is_display_progress_enabled():
+            upload_package_progress.start()
+
         with open(local_file_path, "+rb") as local_file:
             headers = {"Content-Length": str(content_length), "Content-MD5": encoded_md5}
             headers.update(extra_headers)
@@ -1186,6 +1196,16 @@ class FlyteRemote(object):
                     rsp.status_code,
                     f"Request to send data {upload_location.signed_url} failed.\nResponse: {rsp.text}",
                 )
+
+            upload_package_progress.update(
+                t1,
+                completed=1,
+                description=f"Uploaded package of size {content_length/1024/1024:.2f}MB",
+                refresh=True,
+            )
+            upload_package_progress.stop_task(t1)
+            if is_display_progress_enabled():
+                upload_package_progress.stop()
 
         developer_logger.debug(
             f"Uploading {to_upload} to {upload_location.signed_url} native url {upload_location.native_url}"
@@ -2594,6 +2614,38 @@ class FlyteRemote(object):
         :param cause: reason for termination
         """
         self.client.terminate_execution(execution.id, cause)
+
+    ############
+    # Projects #
+    ############
+
+    def list_projects(
+        self,
+        limit: typing.Optional[int] = 100,
+        filters: typing.Optional[typing.List[filter_models.Filter]] = None,
+        sort_by: typing.Optional[admin_common_models.Sort] = None,
+    ) -> typing.List[Project]:
+        """Lists registered projects from flyte admin.
+
+        :param limit: [Optional[int]] The maximum number of entries to return.
+        :param filters Optional[typing.List[filter_models.Filter]]: If specified, the filters will be applied to
+            the query. If the filter is not supported, an exception will be raised.
+        :param sort_by Optional[admin_common_models.Sort]: If provided, the results will be sorted.
+        :raises grpc.RpcError:
+        :returns: typing.List[flytekit.models.project.Project]
+        """
+        return self.client.list_projects_paginated(limit=limit, filters=filters, sort_by=sort_by)[0]
+
+    ############
+    # Domains #
+    ############
+
+    def get_domains(self) -> typing.List[Domain]:
+        """Lists registered domains from flyte admin.
+
+        :returns: typing.List[flytekit.models.domain.Domain]
+        """
+        return self.client.get_domains()
 
     ##################
     # Helper Methods #

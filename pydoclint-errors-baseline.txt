@@ -37,8 +37,6 @@ flytekit/core/base_sql_task.py
     DOC301: Class `SQLTask`: __init__() should not have a docstring; please combine it with the docstring of the class
 --------------------
 flytekit/core/base_task.py
-    DOC601: Class `TaskMetadata`: Class docstring contains fewer class attributes than actual class attributes.  (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
-    DOC603: Class `TaskMetadata`: Class docstring attributes are different from actual class attributes. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Attributes in the class definition but not in the docstring: [cache: bool, cache_ignore_input_vars: Tuple[str, ...], cache_serialize: bool, cache_version: str, deprecated: str, interruptible: Optional[bool], is_eager: bool, pod_template_name: Optional[str], retries: int, timeout: Optional[Union[datetime.timedelta, int]]]. (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
     DOC301: Class `PythonTask`: __init__() should not have a docstring; please combine it with the docstring of the class
     DOC001: Function/method `post_execute`: Potential formatting errors in docstring. Error message: Expected a colon in 'rval is returned value from call to execute'. (Note: DOC001 could trigger other unrelated violations under this function/method too. Please fix the docstring formatting first.)
     DOC101: Method `PythonTask.post_execute`: Docstring contains fewer arguments than in function signature.
