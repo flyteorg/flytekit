@@ -9,7 +9,7 @@ from typing import List
 import pytest
 from flyteidl.core import workflow_pb2 as _core_workflow
 
-from flytekit import dynamic, map_task, task, workflow, eager, PythonFunctionTask
+from flytekit import dynamic, map, task, workflow, eager, PythonFunctionTask
 from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SerializationSettings
 from flytekit.core import context_manager
 from flytekit.core.array_node_map_task import ArrayNodeMapTask, ArrayNodeMapTaskResolver
@@ -356,7 +356,7 @@ def test_map_task_override(serialization_settings):
 
     @workflow
     def wf(x: typing.List[int]):
-        map_task(my_mappable_task)(a=x).with_overrides(container_image="random:image")
+        map(my_mappable_task)(a=x).with_overrides(container_image="random:image")
 
     assert wf.nodes[0]._container_image == "random:image"
 
@@ -450,7 +450,7 @@ def test_serialization_extended_resources_shared_memory(serialization_settings):
     def t1(a: int) -> int:
         return a + 1
 
-    arraynode_maptask = map_task(t1)
+    arraynode_maptask = map(t1)
 
     @workflow
     def wf(x: typing.List[int]):
