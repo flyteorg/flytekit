@@ -29,13 +29,13 @@ class Spark(object):
     Use this to configure a SparkContext for a your task. Task's marked with this will automatically execute
     natively onto K8s as a distributed execution of spark
 
-    Args:
-        spark_conf: Dictionary of spark config. The variables should match what spark expects
-        hadoop_conf: Dictionary of hadoop conf. The variables should match a typical hadoop configuration for spark
-        executor_path: Python binary executable to use for PySpark in driver and executor.
-        applications_path: MainFile is the path to a bundled JAR, Python, or R file of the application to execute.
-        driver_pod: PodTemplate for Spark driver pod
-        executor_pod: PodTemplate for Spark executor pod
+    Attributes:
+        spark_conf (Optional[Dict[str, str]]): Spark configuration dictionary.
+        hadoop_conf (Optional[Dict[str, str]]): Hadoop configuration dictionary.
+        executor_path (Optional[str]): Path to the Python binary for PySpark execution.
+        applications_path (Optional[str]): Path to the main application file.
+        driver_pod (Optional[PodTemplate]): The pod template for the Spark driver pod.
+        executor_pod (Optional[PodTemplate]): The pod template for the Spark executor pod.
     """
 
     spark_conf: Optional[Dict[str, str]] = None
