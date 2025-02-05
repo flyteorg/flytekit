@@ -32,3 +32,7 @@ RUN apt-get update && apt-get install build-essential -y \
     && chown flytekit: /root \
     && chown flytekit: /home \
     && :
+
+USER flytekit
+
+ENV FLYTE_INTERNAL_IMAGE="$DOCKER_IMAGE"
