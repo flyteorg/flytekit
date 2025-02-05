@@ -82,6 +82,7 @@ from flytekit.models.core import identifier as id_models
 from flytekit.models.core import workflow as workflow_model
 from flytekit.models.core.identifier import Identifier, ResourceType, SignalIdentifier, WorkflowExecutionIdentifier
 from flytekit.models.core.workflow import BranchNode, Node, NodeMetadata
+from flytekit.models.domain import Domain
 from flytekit.models.execution import (
     ClusterAssignment,
     ExecutionMetadata,
@@ -93,6 +94,7 @@ from flytekit.models.execution import (
 from flytekit.models.launch_plan import LaunchPlanState
 from flytekit.models.literals import Literal, LiteralMap
 from flytekit.models.matchable_resource import ExecutionClusterLabel
+from flytekit.models.project import Project
 from flytekit.remote.backfill import create_backfill_workflow
 from flytekit.remote.data import download_literal
 from flytekit.remote.entities import FlyteLaunchPlan, FlyteNode, FlyteTask, FlyteTaskNode, FlyteWorkflow
@@ -2612,6 +2614,38 @@ class FlyteRemote(object):
         :param cause: reason for termination
         """
         self.client.terminate_execution(execution.id, cause)
+
+    ############
+    # Projects #
+    ############
+
+    def list_projects(
+        self,
+        limit: typing.Optional[int] = 100,
+        filters: typing.Optional[typing.List[filter_models.Filter]] = None,
+        sort_by: typing.Optional[admin_common_models.Sort] = None,
+    ) -> typing.List[Project]:
+        """Lists registered projects from flyte admin.
+
+        :param limit: [Optional[int]] The maximum number of entries to return.
+        :param filters Optional[typing.List[filter_models.Filter]]: If specified, the filters will be applied to
+            the query. If the filter is not supported, an exception will be raised.
+        :param sort_by Optional[admin_common_models.Sort]: If provided, the results will be sorted.
+        :raises grpc.RpcError:
+        :returns: typing.List[flytekit.models.project.Project]
+        """
+        return self.client.list_projects_paginated(limit=limit, filters=filters, sort_by=sort_by)[0]
+
+    ############
+    # Domains #
+    ############
+
+    def get_domains(self) -> typing.List[Domain]:
+        """Lists registered domains from flyte admin.
+
+        :returns: typing.List[flytekit.models.domain.Domain]
+        """
+        return self.client.get_domains()
 
     ##################
     # Helper Methods #
