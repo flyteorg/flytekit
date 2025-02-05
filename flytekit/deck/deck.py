@@ -88,7 +88,9 @@ class Deck:
         task_name = params.task_id.name
 
         if not params.enable_deck:
-            logger.warning("Call to Deck.publish() will not generate flyte decks as enable_deck=False")
+            logger.warning(
+                f"Attempted to call publish() in task '{task_name}', but Flyte decks will not be generated because enable_deck is currently set to False."
+            )
             return
 
         _output_deck(task_name=task_name, new_user_params=params)
