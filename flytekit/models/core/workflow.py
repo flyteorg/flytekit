@@ -1,10 +1,13 @@
 import datetime
+import json
 import typing
 
 from flyteidl.core import tasks_pb2
 from flyteidl.core import workflow_pb2 as _core_workflow
+from google.protobuf import json_format, struct_pb2
 from google.protobuf.wrappers_pb2 import BoolValue
 
+from flytekit.core.pod_template import PodTemplate
 from flytekit.models import common as _common
 from flytekit.models import interface as _interface
 from flytekit.models import types as type_models
@@ -12,7 +15,7 @@ from flytekit.models.core import condition as _condition
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.literals import Binding as _Binding
 from flytekit.models.literals import RetryStrategy as _RetryStrategy
-from flytekit.models.task import Resources
+from flytekit.models.task import K8sObjectMetadata, Resources
 
 
 class IfBlock(_common.FlyteIdlEntity):
@@ -390,6 +393,7 @@ class ArrayNode(_common.FlyteIdlEntity):
         min_success_ratio=None,
         execution_mode=None,
         is_original_sub_node_interface=False,
+        data_mode=None,
     ) -> None:
         """
         TODO: docstring
@@ -401,6 +405,7 @@ class ArrayNode(_common.FlyteIdlEntity):
         self._min_success_ratio = min_success_ratio
         self._execution_mode = execution_mode
         self._is_original_sub_node_interface = is_original_sub_node_interface
+        self._data_mode = data_mode
 
     @property
     def node(self) -> "Node":
@@ -414,6 +419,7 @@ class ArrayNode(_common.FlyteIdlEntity):
             min_success_ratio=self._min_success_ratio,
             execution_mode=self._execution_mode,
             is_original_sub_node_interface=BoolValue(value=self._is_original_sub_node_interface),
+            data_mode=self._data_mode,
         )
 
     @classmethod
@@ -612,10 +618,12 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
         resources: typing.Optional[Resources],
         extended_resources: typing.Optional[tasks_pb2.ExtendedResources],
         container_image: typing.Optional[str] = None,
+        pod_template: typing.Optional[PodTemplate] = None,
     ):
         self._resources = resources
         self._extended_resources = extended_resources
         self._container_image = container_image
+        self._pod_template = pod_template
 
     @property
     def resources(self) -> Resources:
@@ -629,11 +637,27 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
     def container_image(self) -> typing.Optional[str]:
         return self._container_image
 
+    @property
+    def pod_template(self) -> typing.Optional[PodTemplate]:
+        return self._pod_template
+
     def to_flyte_idl(self):
         return _core_workflow.TaskNodeOverrides(
             resources=self.resources.to_flyte_idl() if self.resources is not None else None,
             extended_resources=self.extended_resources,
             container_image=self.container_image,
+            pod_template=tasks_pb2.K8sPod(
+                metadata=K8sObjectMetadata(
+                    labels=self.pod_template.labels if self.pod_template else None,
+                    annotations=self.pod_template.annotations if self.pod_template else None,
+                ).to_flyte_idl()
+                if self.pod_template is not None
+                else None,
+                pod_spec=json_format.Parse(json.dumps(self.pod_template.pod_spec), struct_pb2.Struct())
+                if self.pod_template
+                else None,
+                primary_container_name=self.pod_template.primary_container_name if self.pod_template else None,
+            ),
         )
 
     @classmethod

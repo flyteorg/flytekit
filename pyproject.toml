@@ -20,14 +20,14 @@ dependencies = [
     "diskcache>=5.2.1",
     "docker>=4.0.0",
     "docstring-parser>=0.9.0",
-    "flyteidl>=1.13.9",
+    "flyteidl>=1.14.3",
     "fsspec>=2023.3.0",
     "gcsfs>=2023.3.0",
     "googleapis-common-protos>=1.57",
     # Skipping those versions to account for the unwanted output coming from grpcio and grpcio-status.
     # Issue being tracked in https://github.com/flyteorg/flyte/issues/6082.
-    "grpcio!=1.68.0,!=1.68.1",
-    "grpcio-status!=1.68.0,!=1.68.1",
+    "grpcio<=1.68.0",
+    "grpcio-status<=1.68.0",
     "importlib-metadata",
     "joblib",
     "jsonlines",
@@ -94,6 +94,7 @@ exclude = ["boilerplate", "docs", "plugins", "tests*"]
 
 [tool.pytest.ini_options]
 norecursedirs = ["common", "workflows", "spark", "fsspec"]
+asyncio_default_fixture_loop_scope = "function"
 log_cli = false
 log_cli_level = 20
 markers = [
@@ -145,5 +146,5 @@ extend-exclude = ["tests/", "**/tests/**"]
 ]
 
 [tool.codespell]
-ignore-words-list = "ot,te,raison,fo,lits"
+ignore-words-list = "ot,te,raison,fo,lits,assertIn"
 skip = "./docs/build,./.git,*.txt"

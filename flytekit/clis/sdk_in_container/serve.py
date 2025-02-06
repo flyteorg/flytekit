@@ -30,6 +30,13 @@ def serve(ctx: click.Context):
     help="Grpc port for the agent service",
 )
 @click.option(
+    "--prometheus_port",
+    default="9090",
+    is_flag=False,
+    type=int,
+    help="Prometheus port for the agent service",
+)
+@click.option(
     "--worker",
     default="10",
     is_flag=False,
@@ -45,20 +52,20 @@ def serve(ctx: click.Context):
     "for testing.",
 )
 @click.pass_context
-def agent(_: click.Context, port, worker, timeout):
+def agent(_: click.Context, port, prometheus_port, worker, timeout):
     """
     Start a grpc server for the agent service.
     """
     import asyncio
 
-    asyncio.run(_start_grpc_server(port, worker, timeout))
+    asyncio.run(_start_grpc_server(port, prometheus_port, worker, timeout))
 
 
-async def _start_grpc_server(port: int, worker: int, timeout: int):
+async def _start_grpc_server(port: int, prometheus_port: int, worker: int, timeout: int):
     from flytekit.extend.backend.agent_service import AgentMetadataService, AsyncAgentService, SyncAgentService
 
     click.secho("🚀 Starting the agent service...")
-    _start_http_server()
+    _start_http_server(prometheus_port)
     print_agents_metadata()
 
     server = grpc.aio.server(futures.ThreadPoolExecutor(max_workers=worker))
@@ -73,12 +80,12 @@ async def _start_grpc_server(port: int, worker: int, timeout: int):
     await server.wait_for_termination(timeout)
 
 
-def _start_http_server():
+def _start_http_server(prometheus_port: int):
     try:
         from prometheus_client import start_http_server
 
         click.secho("Starting up the server to expose the prometheus metrics...")
-        start_http_server(9090)
+        start_http_server(prometheus_port)
     except ImportError as e:
         click.secho(f"Failed to start the prometheus server with error {e}", fg="red")
 

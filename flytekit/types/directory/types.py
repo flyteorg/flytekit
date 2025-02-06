@@ -6,6 +6,7 @@ import pathlib
 import random
 import typing
 from dataclasses import dataclass, field
+from functools import partial
 from pathlib import Path
 from typing import Any, Dict, Generator, Tuple
 from uuid import UUID
@@ -221,7 +222,7 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
         return cls(path=remote_path)
 
     @classmethod
-    def new(cls, dirname: str | os.PathLike) -> FlyteFile:
+    def new(cls, dirname: str | os.PathLike) -> FlyteDirectory:
         """
         Create a new FlyteDirectory object in current Flyte working directory.
         """
@@ -367,14 +368,12 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
         file_access = FlyteContextManager.current_context().file_access
         if not file_access.is_remote(final_path):
             for p in os.listdir(final_path):
-                if os.path.isfile(os.path.join(final_path, p)):
-                    paths.append(FlyteFile(p))
+                joined_path = os.path.join(final_path, p)
+                if os.path.isfile(joined_path):
+                    paths.append(FlyteFile(joined_path))
                 else:
-                    paths.append(FlyteDirectory(p))
+                    paths.append(FlyteDirectory(joined_path))
             return paths
-
-        def create_downloader(_remote_path: str, _local_path: str, is_multipart: bool):
-            return lambda: file_access.get_data(_remote_path, _local_path, is_multipart=is_multipart)
 
         fs = file_access.get_filesystem_for_path(final_path)
         for key in fs.listdir(final_path):
@@ -382,14 +381,14 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
             if key["type"] == "file":
                 local_path = file_access.get_random_local_path()
                 os.makedirs(pathlib.Path(local_path).parent, exist_ok=True)
-                downloader = create_downloader(remote_path, local_path, is_multipart=False)
+                downloader = partial(file_access.get_data, remote_path, local_path, is_multipart=False)
 
                 flyte_file: FlyteFile = FlyteFile(local_path, downloader=downloader)
                 flyte_file._remote_source = remote_path
                 paths.append(flyte_file)
             else:
                 local_folder = file_access.get_random_local_directory()
-                downloader = create_downloader(remote_path, local_folder, is_multipart=True)
+                downloader = partial(file_access.get_data, remote_path, local_folder, is_multipart=True)
 
                 flyte_directory: FlyteDirectory = FlyteDirectory(path=local_folder, downloader=downloader)
                 flyte_directory._remote_source = remote_path
@@ -664,8 +663,7 @@ class FlyteDirToMultipartBlobTransformer(AsyncTypeTransformer[FlyteDirectory]):
 
         batch_size = get_batch_size(expected_python_type)
 
-        def _downloader():
-            return ctx.file_access.get_data(uri, local_folder, is_multipart=True, batch_size=batch_size)
+        _downloader = partial(ctx.file_access.get_data, uri, local_folder, is_multipart=True, batch_size=batch_size)
 
         expected_format = self.get_format(expected_python_type)
 

@@ -3,9 +3,10 @@ import typing
 from collections import OrderedDict
 
 import pytest
+from kubernetes.client import V1PodSpec, V1Container, V1EnvVar
 
 import flytekit.configuration
-from flytekit import LaunchPlan, Resources
+from flytekit import LaunchPlan, Resources, PodTemplate
 from flytekit.configuration import Image, ImageConfig
 from flytekit.core.legacy_map_task import MapPythonTask, MapTaskResolver, map_task
 from flytekit.core.task import TaskMetadata, task
@@ -353,6 +354,39 @@ def test_map_task_override(serialization_settings):
         map_task(my_mappable_task)(a=x).with_overrides(container_image="random:image")
 
     assert wf.nodes[0]._container_image == "random:image"
+
+def test_map_task_pod_template_override(serialization_settings):
+    @task
+    def my_mappable_task(a: int) -> typing.Optional[str]:
+        return str(a)
+
+    @workflow
+    def wf(x: typing.List[int]):
+        map_task(my_mappable_task)(a=x).with_overrides(pod_template=PodTemplate(
+        primary_container_name="primary1",
+        labels={"lKeyA": "lValA", "lKeyB": "lValB"},
+        annotations={"aKeyA": "aValA", "aKeyB": "aValB"},
+        pod_spec=V1PodSpec(
+            containers=[
+                V1Container(
+                    name="primary1",
+                    image="random:image",
+                    env=[V1EnvVar(name="eKeyC", value="eValC"), V1EnvVar(name="eKeyD", value="eValD")],
+                ),
+                V1Container(
+                    name="primary2",
+                    image="random:image2",
+                    env=[V1EnvVar(name="eKeyC", value="eValC"), V1EnvVar(name="eKeyD", value="eValD")],
+                ),
+            ],
+        )
+    ))
+
+
+    assert wf.nodes[0]._pod_template.primary_container_name == "primary1"
+    assert wf.nodes[0]._pod_template.pod_spec.containers[0].image == "random:image"
+    assert wf.nodes[0]._pod_template.labels == {"lKeyA": "lValA", "lKeyB": "lValB"}
+    assert wf.nodes[0]._pod_template.annotations["aKeyA"] == "aValA"
 
 
 def test_bounded_inputs_vars_order(serialization_settings):

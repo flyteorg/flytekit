@@ -18,6 +18,7 @@ import os
 import pathlib
 import signal
 import tempfile
+import threading
 import traceback
 import typing
 from contextlib import contextmanager
@@ -93,6 +94,7 @@ class ExecutionParameters(object):
         logging: Optional[_logging.Logger] = None
         task_id: typing.Optional[_identifier.Identifier] = None
         output_metadata_prefix: Optional[str] = None
+        enable_deck: bool = False
 
         def __init__(self, current: typing.Optional[ExecutionParameters] = None):
             self.stats = current.stats if current else None
@@ -106,6 +108,7 @@ class ExecutionParameters(object):
             self.raw_output_prefix = current.raw_output_prefix if current else None
             self.task_id = current.task_id if current else None
             self.output_metadata_prefix = current.output_metadata_prefix if current else None
+            self.enable_deck = current.enable_deck if current else False
 
         def add_attr(self, key: str, v: typing.Any) -> ExecutionParameters.Builder:
             self.attrs[key] = v
@@ -125,6 +128,7 @@ class ExecutionParameters(object):
                 raw_output_prefix=self.raw_output_prefix,
                 task_id=self.task_id,
                 output_metadata_prefix=self.output_metadata_prefix,
+                enable_deck=self.enable_deck,
                 **self.attrs,
             )
 
@@ -146,6 +150,11 @@ class ExecutionParameters(object):
         b.working_dir = task_sandbox_dir
         return b
 
+    def with_enable_deck(self, enable_deck: bool) -> Builder:
+        b = self.new_builder(self)
+        b.enable_deck = enable_deck
+        return b
+
     def builder(self) -> Builder:
         return ExecutionParameters.Builder(current=self)
 
@@ -161,6 +170,7 @@ class ExecutionParameters(object):
         checkpoint=None,
         decks=None,
         task_id: typing.Optional[_identifier.Identifier] = None,
+        enable_deck: bool = False,
         **kwargs,
     ):
         """
@@ -189,6 +199,7 @@ class ExecutionParameters(object):
         self._decks = decks
         self._task_id = task_id
         self._timeline_deck = None
+        self._enable_deck = enable_deck
 
     @property
     def stats(self) -> taggable.TaggableStats:
@@ -296,6 +307,13 @@ class ExecutionParameters(object):
 
         self._timeline_deck = time_line_deck
         return time_line_deck
+
+    @property
+    def enable_deck(self) -> bool:
+        """
+        Returns whether deck is enabled or not
+        """
+        return self._enable_deck
 
     def __getattr__(self, attr_name: str) -> typing.Any:
         """
@@ -735,7 +753,9 @@ class FlyteContext(object):
         Creates and returns a default compilation state. For most of the code this should be the entrypoint
         of compilation, otherwise the code should always uses - with_compilation_state
         """
-        return CompilationState(prefix=prefix)
+        from flytekit.core.python_auto_container import default_task_resolver
+
+        return CompilationState(prefix=prefix, task_resolver=default_task_resolver)
 
     def new_execution_state(self, working_dir: Optional[os.PathLike] = None) -> ExecutionState:
         """
@@ -992,7 +1012,10 @@ class FlyteContextManager(object):
                 handler(signum, frame)
             exit(1)
 
-        signal.signal(signal.SIGINT, main_signal_handler)
+        # This initialize function is also called by other threads (since the context manager lives in a ContextVar)
+        # so we should not run this if we're not the main thread.
+        if threading.current_thread().name == threading.main_thread().name:
+            signal.signal(signal.SIGINT, main_signal_handler)
 
         # Note we use the SdkWorkflowExecution object purely for formatting into the ex:project:domain:name format users
         # are already acquainted with

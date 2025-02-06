@@ -39,7 +39,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os:
+          - ubuntu-24.04-arm
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
         python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
     steps:
       - uses: actions/checkout@v4
@@ -78,7 +82,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os:
+          - ubuntu-24.04-arm
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
         python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
     steps:
       - uses: actions/checkout@v4
@@ -303,6 +311,7 @@ jobs:
           - flytekit-huggingface
           - flytekit-identity-aware-proxy
           - flytekit-inference
+          - flytekit-k8sdataservice
           - flytekit-k8s-pod
           - flytekit-kf-mpi
           - flytekit-kf-pytorch
@@ -319,6 +328,7 @@ jobs:
           # flytekit-onnx-tensorflow
           - flytekit-omegaconf
           - flytekit-openai
+          - flytekit-optuna
           - flytekit-pandera
           - flytekit-papermill
           - flytekit-polars

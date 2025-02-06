@@ -335,10 +335,10 @@ class AsyncAgentExecutorMixin:
         task_template = get_serializable(OrderedDict(), ss, self).template
         self._agent = AgentRegistry.get_agent(task_template.type, task_template.task_type_version)
 
-        resource_mata = asyncio.run(
+        resource_meta = asyncio.run(
             self._create(task_template=task_template, output_prefix=output_prefix, inputs=kwargs)
         )
-        resource = asyncio.run(self._get(resource_meta=resource_mata))
+        resource = asyncio.run(self._get(resource_meta=resource_meta))
 
         if resource.phase != TaskExecution.SUCCEEDED:
             raise FlyteUserException(f"Failed to run the task {self.name} with error: {resource.message}")
