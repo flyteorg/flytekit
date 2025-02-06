@@ -129,7 +129,7 @@ class Node(object):
     def _override_node_metadata(
         self,
         name,
-        timeout: Optional[Union[int, datetime.timedelta, object]] = timeout_override_sentinel,
+        timeout: Optional[Union[int, datetime.timedelta, object]] = TIMEOUT_OVERRIDE_SENTINEL,
         retries: Optional[int] = None,
         interruptible: typing.Optional[bool] = None,
         cache: typing.Optional[bool] = None,
@@ -144,7 +144,7 @@ class Node(object):
         else:
             node_metadata = self._metadata
 
-        if timeout is not Node.timeout_override_sentinel:
+        if timeout is not Node.TIMEOUT_OVERRIDE_SENTINEL:
             if timeout is None:
                 node_metadata._timeout = 0
             elif isinstance(timeout, int):
@@ -185,7 +185,7 @@ class Node(object):
         aliases: Optional[Dict[str, str]] = None,
         requests: Optional[Resources] = None,
         limits: Optional[Resources] = None,
-        timeout: Optional[Union[int, datetime.timedelta, object]] = timeout_override_sentinel,
+        timeout: Optional[Union[int, datetime.timedelta, object]] = TIMEOUT_OVERRIDE_SENTINEL,
         retries: Optional[int] = None,
         interruptible: Optional[bool] = None,
         name: Optional[str] = None,
