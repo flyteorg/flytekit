@@ -806,6 +806,19 @@ class FlyteRemote(object):
     #####################
     # Register Entities #
     #####################
+    def _resolve_version(
+        self, version: typing.Optional[str], entity: typing.Any, ss: SerializationSettings
+    ) -> typing.Tuple[str, typing.Optional[PickledEntity]]:
+        if version is None and self.interactive_mode_enabled:
+            md5_bytes, pickled_target_dict = _get_pickled_target_dict(entity)
+            return self._version_from_hash(
+                md5_bytes, ss, entity.python_interface.default_inputs_as_kwargs, *self._get_image_names(entity)
+            ), pickled_target_dict
+        elif version is not None:
+            return version, None
+        raise ValueError(
+            "Version must be provided when not in interactive mode. If you want to use latest version pass 'latest'"
+        )
 
     def _resolve_identifier(self, t: int, name: str, version: str, ss: SerializationSettings) -> Identifier:
         ident = Identifier(
@@ -1061,6 +1074,8 @@ class FlyteRemote(object):
                 project=self.default_project,
                 domain=self.default_domain,
             )
+
+        version, _ = self._resolve_version(version, entity, serialization_settings)
 
         ident = run_sync(
             self._serialize_and_register, entity, serialization_settings, version, options, default_launch_plan
@@ -1384,7 +1399,7 @@ class FlyteRemote(object):
     def register_launch_plan(
         self,
         entity: LaunchPlan,
-        version: str,
+        version: typing.Optional[str] = None,
         project: typing.Optional[str] = None,
         domain: typing.Optional[str] = None,
         options: typing.Optional[Options] = None,
@@ -1412,6 +1427,8 @@ class FlyteRemote(object):
                 domain=domain or self.default_domain,
                 version=version,
             )
+
+        version, _ = self._resolve_version(version, entity, serialization_settings)
 
         if self._wf_exists(
             name=entity.workflow.name,
@@ -2051,20 +2068,6 @@ class FlyteRemote(object):
 
     # Flytekit Entities
     # -----------------
-
-    def _resolve_version(
-        self, version: typing.Optional[str], entity: typing.Any, ss: SerializationSettings
-    ) -> typing.Tuple[str, typing.Optional[PickledEntity]]:
-        if version is None and self.interactive_mode_enabled:
-            md5_bytes, pickled_target_dict = _get_pickled_target_dict(entity)
-            return self._version_from_hash(
-                md5_bytes, ss, entity.python_interface.default_inputs_as_kwargs, *self._get_image_names(entity)
-            ), pickled_target_dict
-        elif version is not None:
-            return version, None
-        raise ValueError(
-            "Version must be provided when not in interactive mode. If you want to use latest version pass 'latest'"
-        )
 
     def execute_local_task(
         self,
