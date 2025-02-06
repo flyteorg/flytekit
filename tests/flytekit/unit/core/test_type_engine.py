@@ -3018,18 +3018,18 @@ def test_DataclassTransformer_with_discriminated_subtypes():
                 include_subtypes=True,
             )
 
-        subclass_type: SubclassTypes = SubclassTypes.BASE
         base_attribute: int
+        subclass_type: SubclassTypes = SubclassTypes.BASE
 
     @dataclass(kw_only=True)
     class ClassA(BaseClass):
+        class_a_attribute: str # type: ignore[misc]
         subclass_type: SubclassTypes = SubclassTypes.CLASS_A
-        class_a_attribute: str
 
     @dataclass(kw_only=True)
     class ClassB(BaseClass):
+        class_b_attribute: float # type: ignore[misc]
         subclass_type: SubclassTypes = SubclassTypes.CLASS_B
-        class_b_attribute: float
 
     @task
     def assert_class_and_return(instance: BaseClass) -> BaseClass:
@@ -3742,3 +3742,38 @@ def test_structured_dataset_mismatch():
 
     with pytest.raises(TypeTransformerFailedError):
         TypeEngine.to_literal(FlyteContext.current_context(), df, StructuredDataset, TypeEngine.to_literal_type(StructuredDataset))
+
+
+def test_register_dataclass_override():
+    """
+    Test to confirm that a dataclass transformer can be overridden by a user defined transformer
+    """
+
+    # We register a type transformer for the top-level user-defined dataclass
+    @dataclass
+    class ParentDC:
+        ...
+
+    @dataclass
+    class ChildDC(ParentDC):
+        ...
+
+    class ParentDCTransformer(TypeTransformer[ParentDC]):
+        def __init__(self):
+            super().__init__("ParentDC Transformer", ParentDC)
+
+    # Register a type transformer for the parent dataclass
+    TypeEngine.register(ParentDCTransformer())
+
+    # Confirm that the transformer for ChildDC is the same as the ParentDC
+    assert TypeEngine.get_transformer(ChildDC) == TypeEngine.get_transformer(ParentDC)
+
+    # Confirm that the transformer for ChildDC is not flytekit's default dataclass transformer
+    @dataclass
+    class RegularDC:
+        ...
+
+    assert TypeEngine.get_transformer(ChildDC) != TypeEngine.get_transformer(RegularDC)
+    assert TypeEngine.get_transformer(RegularDC) == TypeEngine._DATACLASS_TRANSFORMER
+
+    del TypeEngine._REGISTRY[ParentDC]

@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install build-essential -y \
 RUN uv pip install --system --no-cache-dir -U flytekit==$VERSION \
   flytekitplugins-airflow==$VERSION \
   flytekitplugins-bigquery==$VERSION \
+  flytekitplugins-k8sdataservice==$VERSION \
   flytekitplugins-openai==$VERSION \
   flytekitplugins-snowflake==$VERSION \
   flytekitplugins-awssagemaker==$VERSION \

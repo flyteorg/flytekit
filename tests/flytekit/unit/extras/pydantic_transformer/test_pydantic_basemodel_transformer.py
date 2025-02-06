@@ -1,9 +1,10 @@
 import os
 import tempfile
 from enum import Enum
+from pathlib import Path
 from typing import Dict, List, Optional, Union
 from unittest.mock import patch
-
+import mock
 import pytest
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
@@ -15,11 +16,12 @@ from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
 from flytekit.models.annotation import TypeAnnotation
 from flytekit.models.literals import Literal, Scalar
-from flytekit.models.types import LiteralType, SimpleType
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import FlyteFile
 from flytekit.types.schema import FlyteSchema
 from flytekit.types.structured import StructuredDataset
+
+pd = pytest.importorskip("pandas")
 
 
 class Status(Enum):
@@ -992,3 +994,31 @@ def test_basemodel_literal_type_annotation():
         c: str = "Hello, Flyte"
 
     assert TypeEngine.to_literal_type(BM).annotation == TypeAnnotation({CACHE_KEY_METADATA: {SERIALIZATION_FORMAT: MESSAGEPACK}})
+
+
+@mock.patch("flytekit.remote.remote_fs.FlytePathResolver")
+def test_modify_literal_uris_call(mock_resolver):
+    ctx = FlyteContextManager.current_context()
+
+    sd = StructuredDataset(dataframe=pd.DataFrame(
+        {"a": [1, 2], "b": [3, 4]}))
+
+    class BM(BaseModel):
+        s: StructuredDataset
+
+    bm = BM(s=sd)
+
+    def mock_resolve_remote_path(flyte_uri: str):
+        p = Path(flyte_uri)
+        if p.exists():
+            return "/my/replaced/val"
+        return ""
+
+    mock_resolver.resolve_remote_path.side_effect = mock_resolve_remote_path
+    mock_resolver.protocol = "/"
+
+    lt = TypeEngine.to_literal_type(BM)
+    lit = TypeEngine.to_literal(ctx, bm, BM, lt)
+
+    bm_revived = TypeEngine.to_python_value(ctx, lit, BM)
+    assert bm_revived.s.literal.uri == "/my/replaced/val"
