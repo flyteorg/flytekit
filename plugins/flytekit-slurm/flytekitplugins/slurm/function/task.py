@@ -16,15 +16,18 @@ from flytekit.image_spec import ImageSpec
 class SlurmFunction(object):
     """Configure Slurm settings. Note that we focus on srun command now.
 
-    Compared with spark, please refer to https://api-docs.databricks.com/python/pyspark/latest/api/pyspark.SparkContext.html.
-
     Args:
         slurm_host: Slurm host name. We assume there's no default Slurm host now.
         srun_conf: Options of srun command.
+        script: User-defined script where "{task.fn}" serves as a placeholder for the
+            task function execution. Users should insert "{task.fn}" at the desired
+            execution point within the script. If the script is not provided, the task
+            function will be executed directly.
     """
 
     slurm_host: str
     srun_conf: Optional[Dict[str, str]] = None
+    script: Optional[str] = None
 
     def __post_init__(self):
         if self.srun_conf is None:
@@ -57,6 +60,7 @@ class SlurmFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[SlurmFunctio
         return {
             "slurm_host": self.task_config.slurm_host,
             "srun_conf": self.task_config.srun_conf,
+            "script": self.task_config.script,
         }
 
     def execute(self, **kwargs) -> Any:
