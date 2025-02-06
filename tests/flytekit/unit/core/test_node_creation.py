@@ -4,9 +4,10 @@ from collections import OrderedDict
 from dataclasses import dataclass
 
 import pytest
+from kubernetes.client import V1PodSpec, V1Container, V1EnvVar
 
 import flytekit.configuration
-from flytekit import Resources, map_task
+from flytekit import Resources, map_task, PodTemplate
 from flytekit.configuration import Image, ImageConfig
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.node_creation import create_node
@@ -469,6 +470,39 @@ def test_override_image():
         return "hi"
 
     assert wf.nodes[0]._container_image == "hello/world"
+
+def test_pod_template_override():
+    @task
+    def bar():
+        print("hello")
+
+    @workflow
+    def wf() -> str:
+        bar().with_overrides(pod_template=PodTemplate(
+        primary_container_name="primary1",
+        labels={"lKeyA": "lValA", "lKeyB": "lValB"},
+        annotations={"aKeyA": "aValA", "aKeyB": "aValB"},
+        pod_spec=V1PodSpec(
+            containers=[
+                V1Container(
+                    name="primary1",
+                    image="random:image",
+                    env=[V1EnvVar(name="eKeyC", value="eValC"), V1EnvVar(name="eKeyD", value="eValD")],
+                ),
+                V1Container(
+                    name="primary2",
+                    image="random:image2",
+                    env=[V1EnvVar(name="eKeyC", value="eValC"), V1EnvVar(name="eKeyD", value="eValD")],
+                ),
+            ],
+        )
+        ))
+        return "hi"
+
+    assert wf.nodes[0]._pod_template.primary_container_name == "primary1"
+    assert wf.nodes[0]._pod_template.pod_spec.containers[0].image == "random:image"
+    assert wf.nodes[0]._pod_template.labels == {"lKeyA": "lValA", "lKeyB": "lValB"}
+    assert wf.nodes[0]._pod_template.annotations["aKeyA"] == "aValA"
 
 
 def test_override_accelerator():

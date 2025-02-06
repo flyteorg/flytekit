@@ -1,13 +1,13 @@
 from dataclasses import dataclass, fields
-from typing import Any, List, Literal, Optional, Union
+from typing import List, Literal, Optional, Union
 
 from flyteidl.core import tasks_pb2
 from kubernetes.client import V1Container, V1PodSpec, V1ResourceRequirements
 from mashumaro.mixins.json import DataClassJSONMixin
 
+from flytekit.core.constants import SHARED_MEMORY_MOUNT_NAME, SHARED_MEMORY_MOUNT_PATH
 from flytekit.extras.accelerators import BaseAccelerator
 from flytekit.models import task as task_models
-from flytekit.core.constants import SHARED_MEMORY_MOUNT_PATH, SHARED_MEMORY_MOUNT_NAME
 
 
 @dataclass
@@ -108,7 +108,7 @@ def convert_resources_to_resource_model(
 def construct_extended_resources(
     *,
     accelerator: Optional[BaseAccelerator] = None,
-    shared_memory: Optional[Union[bool, str]] = None,
+    shared_memory: Optional[Union[Literal[True], str]] = None,
 ) -> Optional[tasks_pb2.ExtendedResources]:
     """Convert public extended resources to idl.
 
@@ -135,11 +135,11 @@ def construct_extended_resources(
 
 
 def pod_spec_from_resources(
-    k8s_pod_name: str,
+    primary_container_name: Optional[str] = None,
     requests: Optional[Resources] = None,
     limits: Optional[Resources] = None,
     k8s_gpu_resource_key: str = "nvidia.com/gpu",
-) -> dict[str, Any]:
+) -> V1PodSpec:
     def _construct_k8s_pods_resources(resources: Optional[Resources], k8s_gpu_resource_key: str):
         if resources is None:
             return None
@@ -165,10 +165,10 @@ def pod_spec_from_resources(
     requests = requests or limits
     limits = limits or requests
 
-    k8s_pod = V1PodSpec(
+    pod_spec = V1PodSpec(
         containers=[
             V1Container(
-                name=k8s_pod_name,
+                name=primary_container_name,
                 resources=V1ResourceRequirements(
                     requests=requests,
                     limits=limits,
@@ -177,4 +177,4 @@ def pod_spec_from_resources(
         ]
     )
 
-    return k8s_pod.to_dict()
+    return pod_spec

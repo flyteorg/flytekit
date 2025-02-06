@@ -186,5 +186,9 @@ def get_level_from_cli_verbosity(verbosity: int) -> int:
         return logging.DEBUG
 
 
+def is_display_progress_enabled() -> bool:
+    return os.getenv(LOGGING_RICH_FMT_ENV_VAR, False)
+
+
 # Default initialization
 initialize_global_loggers()

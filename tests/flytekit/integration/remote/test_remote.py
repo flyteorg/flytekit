@@ -16,8 +16,9 @@ from urllib.parse import urlparse
 import uuid
 import pytest
 from unittest import mock
+from dataclasses import dataclass
 
-from flytekit import LaunchPlan, kwtypes, WorkflowExecutionPhase
+from flytekit import LaunchPlan, kwtypes, WorkflowExecutionPhase, task, workflow
 from flytekit.configuration import Config, ImageConfig, SerializationSettings
 from flytekit.core.launch_plan import reference_launch_plan
 from flytekit.core.task import reference_task
@@ -27,6 +28,7 @@ from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
 from flytekit.remote.remote import FlyteRemote
 from flyteidl.service import dataproxy_pb2 as _data_proxy_pb2
 from flytekit.types.schema import FlyteSchema
+from flytekit.types.structured import StructuredDataset
 from flytekit.clients.friendly import SynchronousFlyteClient as _SynchronousFlyteClient
 from flytekit.configuration import PlatformConfig
 
@@ -533,6 +535,14 @@ def test_execute_reference_workflow(register):
         return a + 2, b + "world"
 
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    remote_entity = remote.register_script(
+        my_wf,
+        project=PROJECT,
+        domain=DOMAIN,
+        image_config=ImageConfig.auto(img_name=IMAGE),
+        destination_dir=DEST_DIR,
+        source_path=MODULE_PATH,
+    )
     execution = remote.execute(
         my_wf,
         inputs={"a": 10, "b": "xyz"},
@@ -876,6 +886,50 @@ def test_attr_access_sd():
     url = urlparse(remote_file_path)
     bucket, key = url.netloc, url.path.lstrip("/")
     file_transfer.delete_file(bucket=bucket, key=key)
+
+
+def test_sd_attr():
+    """Test correctness of StructuredDataset attributes.
+
+    This test considers only the following condition:
+    1. Check StructuredDataset (wrapped in a dataclass) file_format attribute
+
+    We'll make sure uri aligns with the user-specified one in the future.
+    """
+    from workflows.basic.sd_attr import wf
+
+    @dataclass
+    class DC:
+        sd: StructuredDataset
+
+    FILE_FORMAT = "parquet"
+
+    # Upload a file to minio s3 bucket
+    file_transfer = SimpleFileTransfer()
+    remote_file_path = file_transfer.upload_file(file_type=FILE_FORMAT)
+
+    # Create a dataclass as the workflow input because `pyflyte run`
+    # can't properly handle input arg `dc` as a json str so far
+    dc = DC(sd=StructuredDataset(uri=remote_file_path, file_format=FILE_FORMAT))
+
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN, interactive_mode_enabled=True)
+    wf_exec = remote.execute(
+        wf,
+        inputs={"dc": dc, "file_format": FILE_FORMAT},
+        wait=True,
+        version=VERSION,
+        image_config=ImageConfig.from_images(IMAGE),
+    )
+    assert wf_exec.closure.phase == WorkflowExecutionPhase.SUCCEEDED, f"Execution failed with phase: {wf_exec.closure.phase}"
+    assert wf_exec.outputs["o0"].file_format == FILE_FORMAT, (
+        f"Workflow output StructuredDataset file_format should align with the user-specified file_format: {FILE_FORMAT}."
+    )
+
+    # Delete the remote file to free the space
+    url = urlparse(remote_file_path)
+    bucket, key = url.netloc, url.path.lstrip("/")
+    file_transfer.delete_file(bucket=bucket, key=key)
+
 
 def test_signal_approve_reject(register):
     from flytekit.models.types import LiteralType, SimpleType
