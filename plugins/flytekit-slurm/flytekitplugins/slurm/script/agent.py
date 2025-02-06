@@ -66,8 +66,7 @@ class SlurmScriptAgent(AsyncAgentBase):
         )
 
         # Run Slurm job
-        if self._conn is None:
-            await self._connect(slurm_host)
+        await self._connect(slurm_host)
         if upload_script:
             with tempfile.NamedTemporaryFile("w") as f:
                 f.write(script)
