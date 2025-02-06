@@ -47,7 +47,7 @@ class Node(object):
     ID, which from the registration step
     """
 
-    timeout_override_sentinel = object()
+    TIMEOUT_OVERRIDE_SENTINEL = object()
 
     def __init__(
         self,
