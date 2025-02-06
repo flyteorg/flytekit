@@ -642,9 +642,9 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
         return self._pod_template
 
     def to_flyte_idl(self):
-        pod_template
+        pod_template_override = None
         if self._pod_template is not None:
-            pod_template = tasks_pb2.K8sPod(
+            pod_template_override = tasks_pb2.K8sPod(
                 metadata=K8sObjectMetadata(
                     labels=self.pod_template.labels,
                     annotations=self.pod_template.annotations,
@@ -656,7 +656,7 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
             resources=self.resources.to_flyte_idl() if self.resources is not None else None,
             extended_resources=self.extended_resources,
             container_image=self.container_image,
-            pod_template= pod_template
+            pod_template= pod_template_override
         )
 
     @classmethod
