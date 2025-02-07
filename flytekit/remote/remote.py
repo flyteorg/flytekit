@@ -58,7 +58,7 @@ from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.reference_entity import ReferenceSpec
 from flytekit.core.task import ReferenceTask
 from flytekit.core.tracker import extract_task_module
-from flytekit.core.type_engine import LiteralsResolver, TypeEngine
+from flytekit.core.type_engine import LiteralsResolver, TypeEngine, better_guess_type_hint
 from flytekit.core.workflow import PythonFunctionWorkflow, ReferenceWorkflow, WorkflowBase, WorkflowFailurePolicy
 from flytekit.exceptions import user as user_exceptions
 from flytekit.exceptions.user import (
