@@ -25,15 +25,22 @@ class AuthUnaryInterceptor(grpc.UnaryUnaryClientInterceptor, grpc.UnaryStreamCli
     is needed.
     """
 
-    def __init__(self, authenticator: Authenticator):
-        self._authenticator = authenticator
+    def __init__(self, get_authenticator: typing.Callable[[], Authenticator]):
+        self._get_authenticator = get_authenticator
+        self._authenticator = None
+
+    @property
+    def authenticator(self) -> Authenticator:
+        if self._authenticator is None:
+            self._authenticator = self._get_authenticator()
+        return self._authenticator
 
     def _call_details_with_auth_metadata(self, client_call_details: grpc.ClientCallDetails) -> grpc.ClientCallDetails:
         """
         Returns new ClientCallDetails with metadata added.
         """
         metadata = client_call_details.metadata
-        auth_metadata = self._authenticator.fetch_grpc_call_auth_metadata()
+        auth_metadata = self.authenticator.fetch_grpc_call_auth_metadata()
         if auth_metadata:
             metadata = []
             if client_call_details.metadata:
@@ -65,6 +72,7 @@ class AuthUnaryInterceptor(grpc.UnaryUnaryClientInterceptor, grpc.UnaryStreamCli
                 raise e
             if e.code() == grpc.StatusCode.UNAUTHENTICATED or e.code() == grpc.StatusCode.UNKNOWN:
                 self._authenticator.refresh_credentials()
+                self.authenticator.refresh_credentials()
                 updated_call_details = self._call_details_with_auth_metadata(client_call_details)
                 return continuation(updated_call_details, request)
         return fut
@@ -77,6 +85,7 @@ class AuthUnaryInterceptor(grpc.UnaryUnaryClientInterceptor, grpc.UnaryStreamCli
         c: grpc.Call = continuation(updated_call_details, request)
         if c.code() == grpc.StatusCode.UNAUTHENTICATED:
             self._authenticator.refresh_credentials()
+            self.authenticator.refresh_credentials()
             updated_call_details = self._call_details_with_auth_metadata(client_call_details)
             return continuation(updated_call_details, request)
         return c
