@@ -58,8 +58,8 @@ from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.reference_entity import ReferenceSpec
 from flytekit.core.task import ReferenceTask
 from flytekit.core.tracker import extract_task_module
-from flytekit.core.type_cast_checking import literal_types_match
 from flytekit.core.type_engine import LiteralsResolver, TypeEngine
+from flytekit.core.type_match_checking import literal_types_match
 from flytekit.core.workflow import PythonFunctionWorkflow, ReferenceWorkflow, WorkflowBase, WorkflowFailurePolicy
 from flytekit.exceptions import user as user_exceptions
 from flytekit.exceptions.user import (
