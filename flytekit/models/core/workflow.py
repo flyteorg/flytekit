@@ -664,9 +664,10 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
         resources = Resources.from_flyte_idl(pb2_object.resources)
         extended_resources = pb2_object.extended_resources if pb2_object.HasField("extended_resources") else None
         container_image = pb2_object.container_image if len(pb2_object.container_image) > 0 else None
+        pod_template = pb2_object.pod_template if pb2_object.HasField("pod_template") else None
         if bool(resources.requests) or bool(resources.limits):
-            return cls(resources=resources, extended_resources=extended_resources, container_image=container_image)
-        return cls(resources=None, extended_resources=extended_resources, container_image=container_image)
+            return cls(resources=resources, extended_resources=extended_resources, container_image=container_image,pod_template=pod_template)
+        return cls(resources=None, extended_resources=extended_resources, container_image=container_image,pod_template=pod_template)
 
 
 class TaskNode(_common.FlyteIdlEntity):
