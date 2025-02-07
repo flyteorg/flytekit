@@ -643,7 +643,7 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
 
     def to_flyte_idl(self):
         pod_template_override = None
-        if self._pod_template is not None:
+        if self.pod_template is not None:
             pod_template_override = tasks_pb2.K8sPod(
                 metadata=K8sObjectMetadata(
                     labels=self.pod_template.labels,
