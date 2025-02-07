@@ -59,7 +59,6 @@ from flytekit.core.reference_entity import ReferenceSpec
 from flytekit.core.task import ReferenceTask
 from flytekit.core.tracker import extract_task_module
 from flytekit.core.type_engine import LiteralsResolver, TypeEngine
-from flytekit.core.type_match_checking import literal_types_match
 from flytekit.core.workflow import PythonFunctionWorkflow, ReferenceWorkflow, WorkflowBase, WorkflowFailurePolicy
 from flytekit.exceptions import user as user_exceptions
 from flytekit.exceptions.user import (
@@ -250,19 +249,6 @@ def _get_pickled_target_dict(
             queue.append(entity.flyte_entity)
     md5_bytes = hashlib.md5(cloudpickle.dumps(pickled_target_dict)).digest()
     return md5_bytes, pickled_target_dict
-
-
-def better_guess_type_hint(input_val: typing.Any, target_literal_type: type_models.LiteralType) -> typing.Type:
-    """
-    Try to be smarter about guessing the type of the input (and hence the transformer).
-    If the literal type from the transformer for type(v), matches the literal type of the interface, then we
-    can use type(). Otherwise, fall back to guess python type from the literal type.
-    """
-    transformer = TypeEngine.get_transformer(type(input_val))
-    inferred_literal_type = transformer.get_literal_type(input_val)
-    if literal_types_match(inferred_literal_type, target_literal_type):
-        return type(input_val)
-    return TypeEngine.guess_python_type(target_literal_type)
 
 
 class FlyteRemote(object):

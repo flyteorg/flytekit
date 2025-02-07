@@ -1,4 +1,3 @@
-import pytest
 from flytekit.models.core.types import BlobType, EnumType
 from flytekit.models.types import LiteralType, StructuredDatasetType, UnionType, SimpleType
 from flytekit.core.type_match_checking import literal_types_match
@@ -28,6 +27,11 @@ def test_blob_type_match():
     blob1 = LiteralType(blob=BlobType(format="csv", dimensionality=1))
     blob2 = LiteralType(blob=BlobType(format="csv", dimensionality=1))
     assert literal_types_match(blob1, blob2) is True
+
+    from flytekit.types.pickle.pickle import FlytePickleTransformer
+    blob1 = LiteralType(blob=BlobType(format=FlytePickleTransformer.PYTHON_PICKLE_FORMAT, dimensionality=1))
+    blob2 = LiteralType(blob=BlobType(format="", dimensionality=1))
+    assert literal_types_match(blob1, blob2) is False
 
 
 def test_blob_type_mismatch():

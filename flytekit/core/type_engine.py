@@ -40,6 +40,7 @@ from flytekit.core.constants import CACHE_KEY_METADATA, FLYTE_USE_OLD_DC_FORMAT,
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.hash import HashMethod
 from flytekit.core.type_helpers import load_type_from_tag
+from flytekit.core.type_match_checking import literal_types_match
 from flytekit.core.utils import load_proto_from_file, str2bool, timeit
 from flytekit.exceptions import user as user_exceptions
 from flytekit.interaction.string_literals import literal_map_string_repr
@@ -2421,6 +2422,22 @@ def dataclass_from_dict(cls: type, src: typing.Dict[str, typing.Any]) -> typing.
             constructor_inputs[field_name] = value
 
     return cls(**constructor_inputs)
+
+
+def better_guess_type_hint(input_val: typing.Any, target_literal_type: type_models.LiteralType) -> typing.Type:
+    """
+    Try to be smarter about guessing the type of the input (and hence the transformer).
+    If the literal type from the transformer for type(v), matches the literal type of the interface, then we
+    can use type(). Otherwise, fall back to guess python type from the literal type.
+    """
+    transformer = TypeEngine.get_transformer(type(input_val))
+    inferred_literal_type = transformer.get_literal_type(input_val)
+    # note: if no good match, transformer will be the pickle transformer, but type will not match unless it's the
+    # pickle type so will fall back to normal guessing
+    if literal_types_match(inferred_literal_type, target_literal_type):
+        return type(input_val)
+
+    return TypeEngine.guess_python_type(target_literal_type)
 
 
 def _check_and_covert_float(lv: Literal) -> float:
