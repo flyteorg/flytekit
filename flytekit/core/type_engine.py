@@ -969,6 +969,20 @@ class DataclassTransformer(TypeTransformer[object]):
         from flytekit.types.structured.structured_dataset import StructuredDataset
         from typing import get_type_hints, Type, Dict
 
+        def convert_dataclass(instance, target_cls):
+            if not (is_dataclass(instance) and is_dataclass(target_cls)):
+                return instance
+
+            kwargs = {}
+            target_fields = {f.name: f.type for f in fields(target_cls)}
+            for field in fields(instance.__class__):
+                if field.name in target_fields:
+                    value = getattr(instance, field.name)
+                    if is_dataclass(value) and is_dataclass(target_fields[field.name]):
+                        value = convert_dataclass(value, target_fields[field.name])
+                    kwargs[field.name] = value
+            return target_cls(**kwargs)
+
         def transform_dataclass(cls, memo=None):
             if memo is None:
                 memo = {}
@@ -995,27 +1009,27 @@ class DataclassTransformer(TypeTransformer[object]):
         new_expected_python_type = transform_dataclass(expected_python_type)
 
         if lv.scalar and lv.scalar.binary:
-            return self.from_binary_idl(lv.scalar.binary, new_expected_python_type)  # type: ignore
+            return convert_dataclass(self.from_binary_idl(lv.scalar.binary, new_expected_python_type), expected_python_type)  # type: ignore
 
         json_str = _json_format.MessageToJson(lv.scalar.generic)
 
         # The `from_json` function is provided from mashumaro's `DataClassJSONMixin`.
         # It deserializes a JSON string into a data class, and supports additional functionality over JSONDecoder
         # We can't use hasattr(expected_python_type, "from_json") here because we rely on mashumaro's API to customize the deserialization behavior for Flyte types.
-        if issubclass(expected_python_type, DataClassJSONMixin):
+        if issubclass(new_expected_python_type, DataClassJSONMixin):
             dc = new_expected_python_type.from_json(json_str)  # type: ignore
         else:
             # The function looks up or creates a JSONDecoder specifically designed for the object's type.
             # This decoder is then used to convert a JSON string into a data class.
             try:
-                decoder = self._json_decoder[expected_python_type]
+                decoder = self._json_decoder[new_expected_python_type]
             except KeyError:
                 decoder = JSONDecoder(new_expected_python_type)
                 self._json_decoder[new_expected_python_type] = decoder
 
             dc = decoder.decode(json_str)
 
-        return self._fix_dataclass_int(new_expected_python_type, dc)
+        return convert_dataclass(self._fix_dataclass_int(new_expected_python_type, dc), expected_python_type)
 
     # This ensures that calls with the same literal type returns the same dataclass. For example, `pyflyte run``
     # command needs to call guess_python_type to get the TypeEngine-derived dataclass. Without caching here, separate
