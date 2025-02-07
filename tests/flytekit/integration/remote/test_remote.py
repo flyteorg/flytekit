@@ -888,7 +888,7 @@ def test_attr_access_sd():
     file_transfer.delete_file(bucket=bucket, key=key)
 
 def test_attr_access_dc_sd():
-    """Test accessing StructuredDataset attribute from a dataclass."""
+    """Test accessing and returning a StructuredDataset attribute from a dataclass instance."""
     # Upload a file to minio s3 bucket
     file_transfer = SimpleFileTransfer()
     remote_file_path = file_transfer.upload_file(file_type="parquet")
