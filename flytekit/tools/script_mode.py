@@ -230,20 +230,14 @@ def list_imported_modules_as_files(source_path: str, modules: List[ModuleType]) 
         if mod_file is None:
             continue
 
-        # if _file_is_in_directory(mod_file, flytekit_root):
-        #     files.append(mod_file)
-        #     continue
-
         if any(_file_is_in_directory(mod_file, directory) for directory in invalid_directories):
             continue
-
 
         if not _file_is_in_directory(mod_file, source_path):
             # Only upload files where the module file in the source directory
             continue
 
         files.append(mod_file)
-
 
     return files
 
