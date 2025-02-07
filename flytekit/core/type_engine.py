@@ -1,5 +1,6 @@
 from __future__ import annotations
-
+import dataclasses
+from dataclasses import dataclass, fields, make_dataclass, is_dataclass, MISSING
 import asyncio
 import collections
 import copy
@@ -127,7 +128,6 @@ def modify_literal_uris(lit: Literal):
             lit.scalar.structured_dataset._uri = FlytePathResolver.resolve_remote_path(
                 lit.scalar.structured_dataset.uri
             )
-
 
 class TypeTransformerFailedError(TypeError, AssertionError, ValueError): ...
 
@@ -728,8 +728,52 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"user defined datatypes in Flytekit"
             )
 
-        self._make_dataclass_serializable(python_val, python_type)
 
+        import pandas as pd
+        from flytekit.types.structured.structured_dataset import StructuredDataset
+        from typing import get_type_hints, Type, Dict
+
+        def transform_dataclass(cls, memo=None):
+            if memo is None:
+                memo = {}
+
+            if cls in memo:
+                return memo[cls]
+
+            cls_hints = get_type_hints(cls)
+            new_field_defs = []
+            for field in fields(cls):
+                orig_type = cls_hints[field.name]
+                if orig_type == pd.DataFrame:
+                    new_type = StructuredDataset
+                elif is_dataclass(orig_type):
+                    new_type = transform_dataclass(orig_type, memo)
+                else:
+                    new_type = orig_type
+                new_field_defs.append((field.name, new_type))
+
+            new_cls = make_dataclass("FlyteModified" + cls.__name__, new_field_defs)
+            memo[cls] = new_cls
+            return new_cls
+
+        self._make_dataclass_serializable(python_val, python_type)
+        new_python_type = transform_dataclass(python_type)
+        print("========")
+
+        def print_dataclass_fields_recursively(cls, indent=0):
+            """Print all fields in a dataclass recursively with proper indentation."""
+            prefix = "  " * indent
+            for field in fields(cls):
+                field_type = field.type
+                if is_dataclass(field_type):
+                    print(f"{prefix}{cls.__name__}.{field.name}: {field_type.__name__} {{")
+                    print_dataclass_fields_recursively(field_type, indent + 1)
+                    print(f"{prefix}}}")
+                else:
+                    print(f"{prefix}{cls.__name__}.{field.name}: {field_type}")
+
+        print_dataclass_fields_recursively(new_python_type)
+        print("========")
         # The `to_json` integrated through mashumaro's `DataClassJSONMixin` allows for more
         # functionality than JSONEncoder
         # We can't use hasattr(python_val, "to_json") here because we rely on mashumaro's API to customize the serialization behavior for Flyte types.
@@ -741,10 +785,10 @@ class DataclassTransformer(TypeTransformer[object]):
             # The function looks up or creates a MessagePackEncoder specifically designed for the object's type.
             # This encoder is then used to convert a data class into MessagePack Bytes.
             try:
-                encoder = self._msgpack_encoder[python_type]
+                encoder = self._msgpack_encoder[new_python_type]
             except KeyError:
-                encoder = MessagePackEncoder(python_type)
-                self._msgpack_encoder[python_type] = encoder
+                encoder = MessagePackEncoder(new_python_type)
+                self._msgpack_encoder[new_python_type] = encoder
 
             try:
                 msgpack_bytes = encoder.encode(python_val)
@@ -835,6 +879,9 @@ class DataclassTransformer(TypeTransformer[object]):
             }
 
         if not dataclasses.is_dataclass(python_type):
+            import pandas as pd
+            if isinstance(python_val, pd.DataFrame):
+                python_val = StructuredDataset(dataframe=python_val, file_format="parquet")
             return python_val
 
         # Transform str to FlyteFile or FlyteDirectory so that mashumaro can serialize the path.
@@ -872,6 +919,10 @@ class DataclassTransformer(TypeTransformer[object]):
 
         if t == int:
             return int(val)
+
+        import pandas as pd
+        if t == pd.DataFrame:
+            return val().open(dataframe_type=pd.DataFrame).all()
 
         if isinstance(val, list):
             # Handle nested List. e.g. [[1, 2], [3, 4]]
@@ -917,7 +968,8 @@ class DataclassTransformer(TypeTransformer[object]):
                     self._msgpack_decoder[expected_python_type] = decoder
                 dc = decoder.decode(binary_idl_object.value)
 
-            return dc
+            # return dc
+            return self._fix_dataclass_int(expected_python_type, dc)
         else:
             raise TypeTransformerFailedError(f"Unsupported binary format: `{binary_idl_object.tag}`")
 
@@ -928,8 +980,37 @@ class DataclassTransformer(TypeTransformer[object]):
                 "user defined datatypes in Flytekit"
             )
 
+        import pandas as pd
+        from flytekit.types.structured.structured_dataset import StructuredDataset
+        from typing import get_type_hints, Type, Dict
+
+        def transform_dataclass(cls, memo=None):
+            if memo is None:
+                memo = {}
+
+            if cls in memo:
+                return memo[cls]
+
+            cls_hints = get_type_hints(cls)
+            new_field_defs = []
+            for field in fields(cls):
+                orig_type = cls_hints[field.name]
+                if orig_type == pd.DataFrame:
+                    new_type = StructuredDataset
+                elif is_dataclass(orig_type):
+                    new_type = transform_dataclass(orig_type, memo)
+                else:
+                    new_type = orig_type
+                new_field_defs.append((field.name, new_type))
+
+            new_cls = make_dataclass("FlyteModified" + cls.__name__, new_field_defs)
+            memo[cls] = new_cls
+            return new_cls
+
+        new_expected_python_type = transform_dataclass(expected_python_type)
+
         if lv.scalar and lv.scalar.binary:
-            return self.from_binary_idl(lv.scalar.binary, expected_python_type)  # type: ignore
+            return self.from_binary_idl(lv.scalar.binary, new_expected_python_type)  # type: ignore
 
         json_str = _json_format.MessageToJson(lv.scalar.generic)
 
@@ -937,19 +1018,19 @@ class DataclassTransformer(TypeTransformer[object]):
         # It deserializes a JSON string into a data class, and supports additional functionality over JSONDecoder
         # We can't use hasattr(expected_python_type, "from_json") here because we rely on mashumaro's API to customize the deserialization behavior for Flyte types.
         if issubclass(expected_python_type, DataClassJSONMixin):
-            dc = expected_python_type.from_json(json_str)  # type: ignore
+            dc = new_expected_python_type.from_json(json_str)  # type: ignore
         else:
             # The function looks up or creates a JSONDecoder specifically designed for the object's type.
             # This decoder is then used to convert a JSON string into a data class.
             try:
                 decoder = self._json_decoder[expected_python_type]
             except KeyError:
-                decoder = JSONDecoder(expected_python_type)
-                self._json_decoder[expected_python_type] = decoder
+                decoder = JSONDecoder(new_expected_python_type)
+                self._json_decoder[new_expected_python_type] = decoder
 
             dc = decoder.decode(json_str)
 
-        return self._fix_dataclass_int(expected_python_type, dc)
+        return self._fix_dataclass_int(new_expected_python_type, dc)
 
     # This ensures that calls with the same literal type returns the same dataclass. For example, `pyflyte run``
     # command needs to call guess_python_type to get the TypeEngine-derived dataclass. Without caching here, separate

@@ -63,7 +63,6 @@ class StructuredDataset(SerializableType, DataClassJSONMixin):
     file_format: typing.Optional[str] = field(default=GENERIC_FORMAT, metadata=config(mm_field=fields.String()))
 
     def _serialize(self) -> Dict[str, Optional[str]]:
-        # dataclass case
         lv = StructuredDatasetTransformerEngine().to_literal(
             FlyteContextManager.current_context(), self, type(self), None
         )
