@@ -758,22 +758,7 @@ class DataclassTransformer(TypeTransformer[object]):
 
         self._make_dataclass_serializable(python_val, python_type)
         new_python_type = transform_dataclass(python_type)
-        print("========")
 
-        def print_dataclass_fields_recursively(cls, indent=0):
-            """Print all fields in a dataclass recursively with proper indentation."""
-            prefix = "  " * indent
-            for field in fields(cls):
-                field_type = field.type
-                if is_dataclass(field_type):
-                    print(f"{prefix}{cls.__name__}.{field.name}: {field_type.__name__} {{")
-                    print_dataclass_fields_recursively(field_type, indent + 1)
-                    print(f"{prefix}}}")
-                else:
-                    print(f"{prefix}{cls.__name__}.{field.name}: {field_type}")
-
-        print_dataclass_fields_recursively(new_python_type)
-        print("========")
         # The `to_json` integrated through mashumaro's `DataClassJSONMixin` allows for more
         # functionality than JSONEncoder
         # We can't use hasattr(python_val, "to_json") here because we rely on mashumaro's API to customize the serialization behavior for Flyte types.
