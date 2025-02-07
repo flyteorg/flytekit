@@ -1068,11 +1068,8 @@ class FlyteRemote(object):
         :return:
         """
         if serialization_settings is None:
-            # _, _, _, module_file = extract_task_module(entity)
-            # project_root = _find_project_root(module_file)
             serialization_settings = SerializationSettings(
                 image_config=ImageConfig.auto_default_image(),
-                # source_root=project_root,
                 project=self.default_project,
                 domain=self.default_domain,
             )
@@ -1420,11 +1417,8 @@ class FlyteRemote(object):
         :param options:
         """
         if serialization_settings is None:
-            #     _, _, _, module_file = extract_task_module(entity.workflow)
-            #     project_root = _find_project_root(module_file)
             serialization_settings = SerializationSettings(
                 image_config=ImageConfig.auto_default_image(),
-                # source_root=project_root,
                 project=project or self.default_project,
                 domain=domain or self.default_domain,
                 version=version,
