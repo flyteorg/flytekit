@@ -211,6 +211,7 @@ def task(
     pod_template_name: Optional[str] = None,
     accelerator: Optional[BaseAccelerator] = None,
     pickle_untyped: bool = False,
+    new_kwargs: bool = False,
 ) -> Union[
     Callable[P, FuncOut],
     Callable[[Callable[P, FuncOut]], PythonFunctionTask[T]],
