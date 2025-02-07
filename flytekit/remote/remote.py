@@ -816,6 +816,8 @@ class FlyteRemote(object):
             ), pickled_target_dict
         elif version is not None:
             return version, None
+        elif ss.version is not None:
+            return ss.version, None
         raise ValueError(
             "Version must be provided when not in interactive mode. If you want to use latest version pass 'latest'"
         )
