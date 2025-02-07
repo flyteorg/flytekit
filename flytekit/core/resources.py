@@ -1,5 +1,6 @@
 from dataclasses import dataclass, fields
-from typing import List, Literal, Optional, Union
+from typing import List, Optional, Union
+from typing import Literal as L
 
 from flyteidl.core import tasks_pb2
 from kubernetes.client import V1Container, V1PodSpec, V1ResourceRequirements
@@ -108,7 +109,7 @@ def convert_resources_to_resource_model(
 def construct_extended_resources(
     *,
     accelerator: Optional[BaseAccelerator] = None,
-    shared_memory: Optional[Union[Literal[True], str]] = None,
+    shared_memory: Optional[Union[L[True], str]] = None,
 ) -> Optional[tasks_pb2.ExtendedResources]:
     """Convert public extended resources to idl.
 

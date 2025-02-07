@@ -4,7 +4,8 @@ import datetime
 import inspect
 import os
 from functools import partial, update_wrapper
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, TypeVar, Union, overload, Literal
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, TypeVar, Union, overload
+from typing import Literal as L
 
 from typing_extensions import ParamSpec  # type: ignore
 
@@ -128,7 +129,7 @@ def task(
     pod_template_name: Optional[str] = ...,
     accelerator: Optional[BaseAccelerator] = ...,
     pickle_untyped: bool = ...,
-    shared_memory: Optional[Union[Literal[True], str]] = None,
+    shared_memory: Optional[Union[L[True], str]] = None,
 ) -> Callable[[Callable[..., FuncOut]], PythonFunctionTask[T]]: ...
 
 
@@ -168,7 +169,7 @@ def task(
     pod_template_name: Optional[str] = ...,
     accelerator: Optional[BaseAccelerator] = ...,
     pickle_untyped: bool = ...,
-    shared_memory: Optional[Union[Literal[True], str]] = ...,
+    shared_memory: Optional[Union[L[True], str]] = ...,
 ) -> Union[Callable[P, FuncOut], PythonFunctionTask[T]]: ...
 
 
@@ -213,7 +214,7 @@ def task(
     pod_template_name: Optional[str] = None,
     accelerator: Optional[BaseAccelerator] = None,
     pickle_untyped: bool = False,
-    shared_memory: Optional[Union[bool, str]] = None,
+    shared_memory: Optional[Union[L[True], str]] = None,
 ) -> Union[
     Callable[P, FuncOut],
     Callable[[Callable[P, FuncOut]], PythonFunctionTask[T]],

@@ -4,7 +4,8 @@ import importlib
 import re
 from abc import ABC
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Literal, Optional, TypeVar, Union
+from typing import Callable, Dict, List, Optional, TypeVar, Union
+from typing import Literal as L
 
 from flyteidl.core import tasks_pb2
 
@@ -51,7 +52,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         pod_template: Optional[PodTemplate] = None,
         pod_template_name: Optional[str] = None,
         accelerator: Optional[BaseAccelerator] = None,
-        shared_memory: Optional[Union[Literal[True], str]] = None,
+        shared_memory: Optional[Union[L[True], str]] = None,
         **kwargs,
     ):
         """
@@ -254,9 +255,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         """
         Returns the extended resources to allocate to the task on hosted Flyte.
         """
-        return construct_extended_resources(
-            accelerator=self.accelerator, shared_memory=self.shared_memory
-        )
+        return construct_extended_resources(accelerator=self.accelerator, shared_memory=self.shared_memory)
 
 
 class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):

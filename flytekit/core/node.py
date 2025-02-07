@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import datetime
 import typing
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, Dict, List, Optional, Union
+from typing import Literal as L
 
 from flyteidl.core import tasks_pb2
 
@@ -193,7 +194,7 @@ class Node(object):
         cache: Optional[bool] = None,
         cache_version: Optional[str] = None,
         cache_serialize: Optional[bool] = None,
-        shared_memory: Optional[Union[Literal[True], str]] = None,
+        shared_memory: Optional[Union[L[True], str]] = None,
         pod_template: Optional[PodTemplate] = None,
         *args,
         **kwargs,
