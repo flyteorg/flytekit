@@ -2424,13 +2424,13 @@ def dataclass_from_dict(cls: type, src: typing.Dict[str, typing.Any]) -> typing.
     return cls(**constructor_inputs)
 
 
-def better_guess_type_hint(input_val: typing.Any, target_literal_type: type_models.LiteralType) -> typing.Type:
+def better_guess_type_hint(input_val: typing.Any, target_literal_type: LiteralType) -> typing.Type:
     """
     Try to be smarter about guessing the type of the input (and hence the transformer).
     If the literal type from the transformer for type(v), matches the literal type of the interface, then we
     can use type(). Otherwise, fall back to guess python type from the literal type.
     """
-    transformer = TypeEngine.get_transformer(type(input_val))
+    transformer: TypeTransformer = TypeEngine.get_transformer(type(input_val))
     inferred_literal_type = transformer.get_literal_type(input_val)
     # note: if no good match, transformer will be the pickle transformer, but type will not match unless it's the
     # pickle type so will fall back to normal guessing
