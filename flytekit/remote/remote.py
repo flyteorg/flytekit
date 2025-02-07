@@ -2294,7 +2294,7 @@ class FlyteRemote(object):
             flyte_launchplan: FlyteLaunchPlan = self.fetch_launch_plan(**resolved_identifiers_dict)
             flyte_launchplan.python_interface = entity.python_interface
         except FlyteEntityNotExistException:
-            print("Registering launch plan because it wasn't found in Flyte Admin.")
+            logger.info("Registering launch plan because it wasn't found in Flyte Admin.")
             flyte_launchplan: FlyteLaunchPlan = self.register_launch_plan(
                 entity,
                 version=version,
