@@ -3811,3 +3811,10 @@ def test_better_type_guessing():
     assert pt_better_guess is MyInt
 
     del TypeEngine._REGISTRY[MyInt]
+
+
+def test_better_type_guessing_list():
+    xs: typing.List[float] = [0.1, 0.2, 0.3, 0.4, -99999.7]
+    lt = TypeEngine.to_literal_type(typing.List[float])
+    pt = better_guess_type_hint(xs, lt)
+    assert pt is typing.List[float]

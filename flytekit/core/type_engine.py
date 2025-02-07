@@ -1677,7 +1677,8 @@ class ListTransformer(AsyncTypeTransformer[T]):
         Only univariate Lists are supported in Flyte
         """
         try:
-            sub_type = TypeEngine.to_literal_type(self.get_sub_type(t))
+            s = self.get_sub_type(t)
+            sub_type = TypeEngine.to_literal_type(s)
             return _type_models.LiteralType(collection_type=sub_type)
         except Exception as e:
             raise ValueError(f"Type of Generic List type is not supported, {e}")
@@ -2430,12 +2431,17 @@ def better_guess_type_hint(input_val: typing.Any, target_literal_type: LiteralTy
     If the literal type from the transformer for type(v), matches the literal type of the interface, then we
     can use type(). Otherwise, fall back to guess python type from the literal type.
     """
-    transformer: TypeTransformer = TypeEngine.get_transformer(type(input_val))
-    inferred_literal_type = transformer.get_literal_type(input_val)
-    # note: if no good match, transformer will be the pickle transformer, but type will not match unless it's the
-    # pickle type so will fall back to normal guessing
-    if literal_types_match(inferred_literal_type, target_literal_type):
-        return type(input_val)
+    native_type = type(input_val)
+    try:
+        transformer: TypeTransformer = TypeEngine.get_transformer(native_type)
+        inferred_literal_type = transformer.get_literal_type(native_type)
+        # note: if no good match, transformer will be the pickle transformer, but type will not match unless it's the
+        # pickle type so will fall back to normal guessing
+        if literal_types_match(inferred_literal_type, target_literal_type):
+            return type(input_val)
+    except ValueError:
+        # In case of [1,2,3] type() will just give `list`, which won't work
+        ...
 
     return TypeEngine.guess_python_type(target_literal_type)
 
