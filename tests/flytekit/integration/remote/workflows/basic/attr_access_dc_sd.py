@@ -14,13 +14,13 @@ class DC:
 
 
 @task
-def create_dc() -> DC:
+def create_dc(uri: str) -> DC:
     """Create a dataclass with a StructuredDataset attribute.
 
     Returns:
         dc: A dataclass with a StructuredDataset attribute.
     """
-    dc = DC(sd=StructuredDataset(dataframe=pd.DataFrame({"a": [5]})))
+    dc = DC(sd=StructuredDataset(uri=uri, file_format="parquet"))
 
     return dc
 
@@ -35,10 +35,10 @@ def read_sd(dc: DC) -> StructuredDataset:
 
 
 @workflow
-def wf() -> None:
-    dc = create_dc()
+def wf(uri: str) -> None:
+    dc = create_dc(uri=uri)
     r = read_sd(dc=dc)
 
 
 if __name__ == "__main__":
-    wf()
+    wf(uri="tests/flytekit/integration/remote/workflows/basic/data/df.parquet")
