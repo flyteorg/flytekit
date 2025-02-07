@@ -656,7 +656,7 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
             resources=self.resources.to_flyte_idl() if self.resources is not None else None,
             extended_resources=self.extended_resources,
             container_image=self.container_image,
-            pod_template= pod_template_override
+            pod_template=pod_template_override,
         )
 
     @classmethod
