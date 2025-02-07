@@ -37,7 +37,7 @@ def read_sd(dc: DC) -> StructuredDataset:
 @workflow
 def wf() -> None:
     dc = create_dc()
-    read_sd(dc=dc)
+    r = read_sd(dc=dc)
 
 
 if __name__ == "__main__":
