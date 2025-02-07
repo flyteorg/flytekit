@@ -615,8 +615,12 @@ def get_serializable_array_node(
     array_node = node.flyte_entity
     # pass in parent node metadata to be set for subnode
     array_node.metadata = node.metadata
+    subnode = get_serializable_node(entity_mapping, settings, array_node, options=options)
+    # parent node holds the needed inputs. No need to have duplicate in the subnode spec
+    subnode._inputs = []
+    subnode._fixed_inputs = []
     return ArrayNodeModel(
-        node=get_serializable_node(entity_mapping, settings, array_node, options=options),
+        node=subnode,
         parallelism=array_node.concurrency,
         min_successes=array_node.min_successes,
         min_success_ratio=array_node.min_success_ratio,
@@ -643,7 +647,7 @@ def get_serializable_array_node_map_task(
             container_image=node._container_image,
         ),
     )
-    node = workflow_model.Node(
+    subnode = workflow_model.Node(
         id=entity.name,
         metadata=entity.sub_node_metadata,
         inputs=node.bindings,
@@ -652,8 +656,11 @@ def get_serializable_array_node_map_task(
         output_aliases=[],
         task_node=task_node,
     )
+    # parent node holds the needed inputs. No need to have duplicate in the subnode spec
+    subnode._inputs = []
+    subnode._fixed_inputs = []
     return ArrayNodeModel(
-        node=node,
+        node=subnode,
         parallelism=entity.concurrency,
         min_successes=entity.min_successes,
         min_success_ratio=entity.min_success_ratio,

@@ -168,6 +168,11 @@ class ArrayNodeMapTask(PythonTask):
         return self._bound_inputs
 
     @property
+    def fixed_inputs(self) -> List[_literal_models.Binding]:
+        # Required in get_serializable_node
+        return []
+
+    @property
     def execution_mode(self) -> _core_workflow.ArrayNode.ExecutionMode:
         return self._execution_mode
 

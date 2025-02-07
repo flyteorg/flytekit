@@ -203,7 +203,8 @@ def test_lp_serialization(target, overrides_metadata, upstream_nodes, fixed_inpu
     assert serialized_array_node._parallelism == 10
 
     subnode = serialized_array_node.node
-    assert subnode.inputs == parent_node.inputs
+    assert subnode.inputs == []
+    assert subnode.fixed_inputs == []
 
     if overrides_metadata:
         assert parent_node.metadata.cacheable
