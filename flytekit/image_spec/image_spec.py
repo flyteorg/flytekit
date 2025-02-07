@@ -131,15 +131,13 @@ class ImageSpec:
                 error_msg = f"{parameter} must be a list of strings or None"
                 raise ValueError(error_msg)
 
-        parameters_two_str_tuple_list = ["pip_secret_mounts"]
-        for parameter in parameters_two_str_tuple_list:
-            attr = getattr(self, parameter)
-            parameter_is_none = attr is None
-            parameter_is_list_tuple = isinstance(attr, list) and all(
-                isinstance(v, tuple) and len(v) == 2 and all(isinstance(vv, str) for vv in v) for v in attr
+        if self.pip_secret_mounts is not None:
+            pip_secret_mounts_is_list_tuple = isinstance(self.pip_secret_mounts, list) and all(
+                isinstance(v, tuple) and len(v) == 2 and all(isinstance(vv, str) for vv in v)
+                for v in self.pip_secret_mounts
             )
-            if not (parameter_is_none or parameter_is_list_tuple):
-                error_msg = f"{parameter} must be a list of tuples of two strings or None"
+            if not pip_secret_mounts_is_list_tuple:
+                error_msg = "pip_secret_mounts must be a list of tuples of two strings or None"
                 raise ValueError(error_msg)
 
     @cached_property
