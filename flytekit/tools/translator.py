@@ -354,6 +354,35 @@ def get_serializable_launch_plan(
     else:
         lc = None
 
+    # First, determine the concurrency value with precedence and warnings
+    concurrency = None
+
+    # Check options first
+    if hasattr(options, "concurrency"):
+        concurrency = options.concurrency
+    elif hasattr(options, "max_parallelism") and options.max_parallelism is not None:
+        import warnings
+
+        warnings.warn(
+            "max_parallelism in Options is deprecated and will be removed in a future version. Use concurrency instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        concurrency = options.max_parallelism
+
+    if concurrency is None:
+        if hasattr(entity, "concurrency"):
+            concurrency = entity.concurrency
+        elif hasattr(entity, "max_parallelism") and entity.max_parallelism is not None:
+            import warnings
+
+            warnings.warn(
+                "max_parallelism in LaunchPlan is deprecated and will be removed in a future version. Use concurrency instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            concurrency = entity.max_parallelism
+
     lps = _launch_plan_models.LaunchPlanSpec(
         workflow_id=wf_id,
         entity_metadata=_launch_plan_models.LaunchPlanMetadata(
@@ -367,7 +396,7 @@ def get_serializable_launch_plan(
         annotations=options.annotations or entity.annotations or _common_models.Annotations({}),
         auth_role=None,
         raw_output_data_config=raw_prefix_config,
-        max_parallelism=options.max_parallelism or entity.max_parallelism,
+        max_parallelism=concurrency,
         security_context=options.security_context or entity.security_context,
         overwrite_cache=options.overwrite_cache or entity.overwrite_cache,
     )
