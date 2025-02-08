@@ -10,9 +10,12 @@ from google.protobuf.json_format import MessageToDict
 from flytekit import FlyteContextManager, PythonFunctionTask, lazy_module, logger
 from flytekit.configuration import DefaultImages, SerializationSettings
 from flytekit.core.context_manager import ExecutionParameters
+from flytekit.core.pod_template import PodTemplate
+from flytekit.core.utils import _serialize_pod_spec
 from flytekit.extend import ExecutionState, TaskPlugins
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 from flytekit.image_spec import ImageSpec
+from flytekit.models.task import K8sObjectMetadata, K8sPod
 
 from .models import SparkJob, SparkType
 
@@ -26,17 +29,21 @@ class Spark(object):
     Use this to configure a SparkContext for a your task. Task's marked with this will automatically execute
     natively onto K8s as a distributed execution of spark
 
-    Args:
-        spark_conf: Dictionary of spark config. The variables should match what spark expects
-        hadoop_conf: Dictionary of hadoop conf. The variables should match a typical hadoop configuration for spark
-        executor_path: Python binary executable to use for PySpark in driver and executor.
-        applications_path: MainFile is the path to a bundled JAR, Python, or R file of the application to execute.
+    Attributes:
+        spark_conf (Optional[Dict[str, str]]): Spark configuration dictionary.
+        hadoop_conf (Optional[Dict[str, str]]): Hadoop configuration dictionary.
+        executor_path (Optional[str]): Path to the Python binary for PySpark execution.
+        applications_path (Optional[str]): Path to the main application file.
+        driver_pod (Optional[PodTemplate]): The pod template for the Spark driver pod.
+        executor_pod (Optional[PodTemplate]): The pod template for the Spark executor pod.
     """
 
     spark_conf: Optional[Dict[str, str]] = None
     hadoop_conf: Optional[Dict[str, str]] = None
     executor_path: Optional[str] = None
     applications_path: Optional[str] = None
+    driver_pod: Optional[PodTemplate] = None
+    executor_pod: Optional[PodTemplate] = None
 
     def __post_init__(self):
         if self.spark_conf is None:
@@ -168,6 +175,8 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
             executor_path=self._default_executor_path or settings.python_interpreter,
             main_class="",
             spark_type=SparkType.PYTHON,
+            driver_pod=self.to_k8s_pod(settings, self.task_config.driver_pod),
+            executor_pod=self.to_k8s_pod(settings, self.task_config.executor_pod),
         )
         if isinstance(self.task_config, (Databricks, DatabricksV2)):
             cfg = cast(DatabricksV2, self.task_config)
@@ -175,6 +184,26 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
             job._databricks_instance = cfg.databricks_instance
 
         return MessageToDict(job.to_flyte_idl())
+
+    def to_k8s_pod(
+        self, settings: SerializationSettings, pod_template: Optional[PodTemplate] = None
+    ) -> Optional[K8sPod]:
+        """
+        Convert the podTemplate to K8sPod
+        """
+        if pod_template is None:
+            return None
+
+        return K8sPod(
+            pod_spec=_serialize_pod_spec(
+                pod_template, self._get_container(settings), settings, task_type=self._SPARK_TASK_TYPE
+            ),
+            metadata=K8sObjectMetadata(
+                labels=pod_template.labels,
+                annotations=pod_template.annotations,
+            ),
+            primary_container_name=pod_template.primary_container_name,
+        )
 
     def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
         import pyspark as _pyspark

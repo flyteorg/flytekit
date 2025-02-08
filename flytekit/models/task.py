@@ -1054,6 +1054,7 @@ class K8sPod(_common.FlyteIdlEntity):
             metadata=self._metadata.to_flyte_idl() if self.metadata else None,
             pod_spec=_json_format.Parse(_json.dumps(self.pod_spec), _struct.Struct()) if self.pod_spec else None,
             data_config=self.data_config.to_flyte_idl() if self.data_config else None,
+            primary_container_name=self.primary_container_name,
         )
 
     @classmethod
