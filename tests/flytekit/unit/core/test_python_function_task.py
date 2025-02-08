@@ -176,7 +176,7 @@ def test_metadata():
 
 def test_pod_template():
     @task(
-        container_image="repo/image:0.0.0",
+        image="repo/image:0.0.0",
         pod_template=PodTemplate(
             primary_container_name="primary",
             labels={"lKeyA": "lValA"},

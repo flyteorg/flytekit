@@ -66,11 +66,11 @@ remote = FlyteRemote(
     interactive_mode_enabled=True,
 )
 
-@task(container_image="{IMAGE}")
+@task(image="{IMAGE}")
 def hello(name: str) -> str:
     return f"Hello {{name}}"
 
-@task(container_image="{IMAGE}")
+@task(image="{IMAGE}")
 def world(pre: str) -> str:
     return f"{{pre}}, Welcome to the world!"
 

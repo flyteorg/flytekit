@@ -104,6 +104,7 @@ def task(
     interruptible: Optional[bool] = ...,
     deprecated: str = ...,
     timeout: Union[datetime.timedelta, int] = ...,
+    image: Optional[Union[str, ImageSpec]] = ...,
     container_image: Optional[Union[str, ImageSpec]] = ...,
     environment: Optional[Dict[str, str]] = ...,
     requests: Optional[Resources] = ...,
@@ -143,6 +144,7 @@ def task(
     interruptible: Optional[bool] = ...,
     deprecated: str = ...,
     timeout: Union[datetime.timedelta, int] = ...,
+    image: Optional[Union[str, ImageSpec]] = ...,
     container_image: Optional[Union[str, ImageSpec]] = ...,
     environment: Optional[Dict[str, str]] = ...,
     requests: Optional[Resources] = ...,
@@ -181,6 +183,7 @@ def task(
     interruptible: Optional[bool] = None,
     deprecated: str = "",
     timeout: Union[datetime.timedelta, int] = 0,
+    image: Optional[Union[str, ImageSpec]] = None,
     container_image: Optional[Union[str, ImageSpec]] = None,
     environment: Optional[Dict[str, str]] = None,
     requests: Optional[Resources] = None,
@@ -272,7 +275,7 @@ def task(
                        indicates that the task is active and not deprecated
     :param timeout: the max amount of time for which one execution of this task should be executed for. The execution
                     will be terminated if the runtime exceeds the given timeout (approximately).
-    :param container_image: By default the configured FLYTE_INTERNAL_IMAGE is used for every task. This directive can be
+    :param image: By default the configured FLYTE_INTERNAL_IMAGE is used for every task. This directive can be
                 used to provide an alternate image for a specific task. This is useful for the cases in which images
                 bloat because of various dependencies and a dependency is only required for this or a set of tasks,
                 and they vary from the default.
@@ -282,15 +285,16 @@ def task(
                     # Use default image name `fqn` and alter the tag to `tag-{{default.tag}}` tag of the default image
                     # with a prefix. In this case, it is assumed that the image like
                     # flytecookbook:tag-gitsha is published alongwith the default of flytecookbook:gitsha
-                    @task(container_image='{{.images.default.fqn}}:tag-{{images.default.tag}}')
+                    @task(image='{{.images.default.fqn}}:tag-{{images.default.tag}}')
                     def foo():
                         ...
 
                     # Refer to configurations to configure fqns for other images besides default. In this case it will
                     # lookup for an image named xyz
-                    @task(container_image='{{.images.xyz.fqn}}:{{images.default.tag}}')
+                    @task(image='{{.images.xyz.fqn}}:{{images.default.tag}}')
                     def foo2():
                         ...
+    :param container_image: Deprecated, please use `image` instead.
     :param environment: Environment variables that should be added for this tasks execution
     :param requests: Specify compute resource requests for your task. For Pod-plugin tasks, these values will apply only
       to the primary container.
@@ -374,6 +378,7 @@ def task(
             task_config,
             decorated_fn,
             metadata=_metadata,
+            image=image,
             container_image=container_image,
             environment=environment,
             requests=requests,
@@ -584,7 +589,6 @@ def eager(
             async def eager_workflow(x: int) -> int:
                 ...
     """
-
     if _fn is None:
         return partial(
             eager,
