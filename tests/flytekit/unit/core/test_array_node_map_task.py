@@ -443,6 +443,26 @@ def test_serialization_extended_resources(serialization_settings):
     assert task_spec.template.extended_resources.gpu_accelerator.device == "test_gpu"
 
 
+def test_serialization_extended_resources_shared_memory(serialization_settings):
+    @task(
+        shared_memory="2Gi"
+    )
+    def t1(a: int) -> int:
+        return a + 1
+
+    arraynode_maptask = map_task(t1)
+
+    @workflow
+    def wf(x: typing.List[int]):
+        return arraynode_maptask(a=x)
+
+    od = OrderedDict()
+    get_serializable(od, serialization_settings, wf)
+    task_spec = od[arraynode_maptask]
+
+    assert task_spec.template.extended_resources.shared_memory.size_limit == "2Gi"
+
+
 def test_supported_node_type():
     @task
     def test_task():
