@@ -5,7 +5,7 @@ from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from flyteidl.admin import schedule_pb2
 
-from flytekit import ImageSpec, PythonFunctionTask, SourceCode
+from flytekit import ImageSpec, PodTemplate, PythonFunctionTask, SourceCode
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core import constants as _common_constants
 from flytekit.core import context_manager
@@ -25,7 +25,7 @@ from flytekit.core.python_auto_container import (
 from flytekit.core.python_function_task import EagerAsyncPythonFunctionTask
 from flytekit.core.reference_entity import ReferenceEntity, ReferenceSpec, ReferenceTemplate
 from flytekit.core.task import ReferenceTask
-from flytekit.core.utils import ClassDecorator, _dnsify
+from flytekit.core.utils import ClassDecorator, _dnsify, _serialize_pod_spec
 from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase
 from flytekit.models import common as _common_models
 from flytekit.models import interface as interface_models
@@ -185,11 +185,13 @@ def get_serializable_task(
                 entity.reset_command_fn()
 
     entity_config = entity.get_config(settings) or {}
-
     extra_config = {}
 
-    if hasattr(entity, "task_function") and isinstance(entity.task_function, ClassDecorator):
-        extra_config = entity.task_function.get_extra_config()
+    if hasattr(entity, "task_function"):
+        if isinstance(entity.task_function, ClassDecorator):
+            extra_config = entity.task_function.get_extra_config()
+    if entity.enable_deck:
+        entity.metadata.generates_deck = True
 
     merged_config = {**entity_config, **extra_config}
 
@@ -453,6 +455,13 @@ def get_serializable_node(
         # if entity._aliases:
         #     node_model._output_aliases = entity._aliases
     elif isinstance(entity.flyte_entity, PythonTask):
+        # handle pod template overrides
+        override_pod_spec = {}
+        if entity._pod_template is not None and settings.should_fast_serialize():
+            entity.flyte_entity.set_command_fn(_fast_serialize_command_fn(settings, entity.flyte_entity))
+            override_pod_spec = _serialize_pod_spec(
+                entity._pod_template, entity.flyte_entity._get_container(settings), settings
+            )
         task_spec = get_serializable(entity_mapping, settings, entity.flyte_entity, options=options)
         node_model = workflow_model.Node(
             id=_dnsify(entity.id),
@@ -466,6 +475,16 @@ def get_serializable_node(
                     resources=entity._resources,
                     extended_resources=entity._extended_resources,
                     container_image=entity._container_image,
+                    pod_template=PodTemplate(
+                        pod_spec=override_pod_spec,
+                        labels=entity._pod_template.labels if entity._pod_template.labels else None,
+                        annotations=entity._pod_template.annotations if entity._pod_template.annotations else None,
+                        primary_container_name=entity._pod_template.primary_container_name
+                        if entity._pod_template.primary_container_name
+                        else None,
+                    )
+                    if entity._pod_template
+                    else None,
                 ),
             ),
         )
