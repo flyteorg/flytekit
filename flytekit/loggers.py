@@ -2,7 +2,11 @@ import logging
 import os
 import typing
 
-from pythonjsonlogger import jsonlogger
+if importlib.util.find_spec("pythonjsonlogger.json"):
+    # Module was renamed: https://github.com/nhairs/python-json-logger/releases/tag/v3.1.0
+    from pythonjsonlogger import json as jsonlogger
+else:
+    from pythonjsonlogger import jsonlogger
 
 from .tools import interactive
 
