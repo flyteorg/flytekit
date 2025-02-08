@@ -71,7 +71,6 @@ class AuthUnaryInterceptor(grpc.UnaryUnaryClientInterceptor, grpc.UnaryStreamCli
             if not hasattr(e, "code"):
                 raise e
             if e.code() == grpc.StatusCode.UNAUTHENTICATED or e.code() == grpc.StatusCode.UNKNOWN:
-                self._authenticator.refresh_credentials()
                 self.authenticator.refresh_credentials()
                 updated_call_details = self._call_details_with_auth_metadata(client_call_details)
                 return continuation(updated_call_details, request)
@@ -84,7 +83,6 @@ class AuthUnaryInterceptor(grpc.UnaryUnaryClientInterceptor, grpc.UnaryStreamCli
         updated_call_details = self._call_details_with_auth_metadata(client_call_details)
         c: grpc.Call = continuation(updated_call_details, request)
         if c.code() == grpc.StatusCode.UNAUTHENTICATED:
-            self._authenticator.refresh_credentials()
             self.authenticator.refresh_credentials()
             updated_call_details = self._call_details_with_auth_metadata(client_call_details)
             return continuation(updated_call_details, request)
