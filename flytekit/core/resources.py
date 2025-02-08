@@ -1,5 +1,5 @@
 import warnings
-from dataclasses import dataclass, fields
+from dataclasses import InitVar, dataclass, fields
 from typing import Any, List, Optional, Union
 
 from kubernetes.client import V1Container, V1PodSpec, V1ResourceRequirements
@@ -35,10 +35,10 @@ class Resources(DataClassJSONMixin):
     cpu: Optional[Union[str, int, float]] = None
     mem: Optional[Union[str, int]] = None
     gpu: Optional[Union[str, int]] = None
-    disk: Optional[Union[str, int]] = None
+    disk: InitVar[str | int | None] = None
     ephemeral_storage: Optional[Union[str, int]] = None
 
-    def __post_init__(self):
+    def __post_init__(self, disk):
         def _check_cpu(value):
             if value is None:
                 return
@@ -58,7 +58,7 @@ class Resources(DataClassJSONMixin):
         # Rename the `ephemeral_storage` parameter to `disk` for simplicity.
         # Currently, both `disk` and `ephemeral_storage` are supported to maintain backward compatibility.
         # For more details, please refer to https://github.com/flyteorg/flyte/issues/6142.
-        if self.disk is not None and self.ephemeral_storage is not None:
+        if disk is not None and self.ephemeral_storage is not None:
             raise ValueError(
                 "Cannot specify both disk and ephemeral_storage."
                 "Please use disk because ephemeral_storage is deprecated and will be removed in the future."
@@ -68,12 +68,11 @@ class Resources(DataClassJSONMixin):
                 "ephemeral_storage is deprecated and will be removed in the future. Please use disk instead.",
                 DeprecationWarning,
             )
+            self.disk = self.ephemeral_storage
         else:
+            self.disk = disk
             self.ephemeral_storage = self.disk
-
-            # Disable further access to disk
-            self.disk = None
-        _check_others(self.ephemeral_storage)
+        _check_others(self.disk)
 
 
 @dataclass
