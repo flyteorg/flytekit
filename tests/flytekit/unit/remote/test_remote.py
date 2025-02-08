@@ -547,14 +547,21 @@ def test_get_image_names(
     flyte_remote.register_script(wf1)
 
 
-@mock.patch("flytekit.remote.remote.FlyteRemote.client")
-def test_local_server(mock_client):
+@pytest.fixture()
+def mock_flyte_remote_client():
+    with patch("flytekit.remote.remote.FlyteRemote.client") as mock_flyte_remote_client:
+        mock_flyte_remote_client.get_task.return_value.closure.compiled_task.template.sql = None
+        mock_flyte_remote_client.get_task.return_value.closure.compiled_task.template.k8s_pod = None
+        yield mock_flyte_remote_client
+
+
+def test_local_server(mock_flyte_remote_client):
     ctx = FlyteContextManager.current_context()
     lt = TypeEngine.to_literal_type(typing.Dict[str, int])
     lm = TypeEngine.to_literal(ctx, {"hello": 55}, typing.Dict[str, int], lt)
     lm = lm.map.to_flyte_idl()
 
-    mock_client.get_data.return_value = dataproxy_pb2.GetDataResponse(literal_map=lm)
+    mock_flyte_remote_client.get_data.return_value = dataproxy_pb2.GetDataResponse(literal_map=lm)
 
     rr = FlyteRemote(
         Config.for_sandbox(),
@@ -566,8 +573,7 @@ def test_local_server(mock_client):
 
 
 @mock.patch("flytekit.remote.remote.uuid")
-@mock.patch("flytekit.remote.remote.FlyteRemote.client")
-def test_execution_name(mock_client, mock_uuid):
+def test_execution_name(mock_uuid, mock_flyte_remote_client):
     test_uuid = uuid.UUID("16fd2706-8baf-433b-82eb-8c7fada847da")
     mock_uuid.uuid4.return_value = test_uuid
     remote = FlyteRemote(config=Config.auto(), default_project="project", default_domain="domain")
@@ -597,7 +603,7 @@ def test_execution_name(mock_client, mock_uuid):
         entity=ft,
         inputs={"t": datetime.now(), "v": 0},
     )
-    mock_client.create_execution.assert_has_calls(
+    mock_flyte_remote_client.create_execution.assert_has_calls(
         [
             mock.call(ANY, ANY, "execution-test", ANY, ANY),
             mock.call(ANY, ANY, "execution-test-" + test_uuid.hex[:19], ANY, ANY),
@@ -688,9 +694,8 @@ def test_register_wf_script_mode(compress_scripts_mock, upload_file_mock, regist
     )
 
 
-@mock.patch("flytekit.remote.remote.FlyteRemote.client")
-def test_fetch_active_launchplan_not_found(mock_client, remote):
-    mock_client.get_active_launch_plan.side_effect = FlyteEntityNotExistException("not found")
+def test_fetch_active_launchplan_not_found(mock_flyte_remote_client, remote):
+    mock_flyte_remote_client.get_active_launch_plan.side_effect = FlyteEntityNotExistException("not found")
     assert remote.fetch_active_launchplan(name="basic.list_float_wf.fake_wf") is None
 
 
@@ -785,8 +790,7 @@ def test_get_pickled_target_dict_with_eager():
         _get_pickled_target_dict(eager_wf)
 
 
-@mock.patch("flytekit.remote.remote.FlyteRemote.client")
-def test_launchplan_auto_activate(mock_client):
+def test_launchplan_auto_activate(mock_flyte_remote_client):
     @workflow
     def wf() -> int:
         return 1
@@ -804,15 +808,14 @@ def test_launchplan_auto_activate(mock_client):
 
     # The first one should not update the launchplan
     rr.register_launch_plan(lp1, version="1", serialization_settings=ss)
-    mock_client.update_launch_plan.assert_not_called()
+    mock_flyte_remote_client.update_launch_plan.assert_not_called()
 
     # the second one should
     rr.register_launch_plan(lp2, version="1", serialization_settings=ss)
-    mock_client.update_launch_plan.assert_called()
+    mock_flyte_remote_client.update_launch_plan.assert_called()
 
 
-@mock.patch("flytekit.remote.remote.FlyteRemote.client")
-def test_register_task_with_node_dependency_hints(mock_client):
+def test_register_task_with_node_dependency_hints(mock_flyte_remote_client):
     @task
     def task0():
         return None
@@ -828,9 +831,6 @@ def test_register_task_with_node_dependency_hints(mock_client):
     @workflow
     def workflow1():
         return dynamic0()
-
-    mock_client.get_task.return_value.closure.compiled_task.template.sql = None
-    mock_client.get_task.return_value.closure.compiled_task.template.k8s_pod = None
 
     rr = FlyteRemote(
         Config.for_sandbox(),
@@ -861,8 +861,7 @@ def test_register_task_with_node_dependency_hints(mock_client):
 @mock.patch("flytekit.remote.remote.FlyteRemote.fetch_launch_plan")
 @mock.patch("flytekit.remote.remote.FlyteRemote.raw_register")
 @mock.patch("flytekit.remote.remote.FlyteRemote._serialize_and_register")
-@mock.patch("flytekit.remote.remote.FlyteRemote.client")
-def test_register_launch_plan(mock_client, mock_serialize_and_register, mock_raw_register,mock_fetch_launch_plan, mock_get_serializable):
+def test_register_launch_plan(mock_serialize_and_register, mock_raw_register,mock_fetch_launch_plan, mock_get_serializable, mock_flyte_remote_client):
     serialization_settings = SerializationSettings(
         image_config=ImageConfig.auto_default_image(),
         version="dummy_version",
@@ -886,7 +885,7 @@ def test_register_launch_plan(mock_client, mock_serialize_and_register, mock_raw
     lp = LaunchPlan.get_or_create(workflow=hello_world_wf, name="additional_lp_for_hello_world", default_inputs={})
 
     mock_get_serializable.return_value = MagicMock()
-    mock_client.get_workflow.return_value = MagicMock()
+    mock_flyte_remote_client.get_workflow.return_value = MagicMock()
 
     mock_remote_lp = MagicMock()
     mock_fetch_launch_plan.return_value = mock_remote_lp
