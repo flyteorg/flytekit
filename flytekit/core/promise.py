@@ -1277,7 +1277,6 @@ def create_and_link_node_from_remote(
 def create_and_link_node(
     ctx: FlyteContext,
     entity: SupportsNodeCreation,
-    *args,
     overridden_interface: Optional[Interface] = None,
     add_node_to_compilation_state: bool = True,
     node_id: str = "",
@@ -1310,18 +1309,6 @@ def create_and_link_node(
     )
     # Mypy needs some extra help to believe that `typed_interface` will not be `None`
     assert typed_interface is not None
-
-    # Check if we have more arguments than expected
-    if len(args) > len(interface.inputs):
-        raise AssertionError(
-            f"Received more arguments than expected in function '{entity.name}'. Expected {len(interface.inputs)} but got {len(args)}"
-        )
-
-    # Convert args to kwargs
-    for arg, input_name in zip(args, interface.inputs.keys()):
-        if input_name in kwargs:
-            raise AssertionError(f"Got multiple values for argument '{input_name}' in function '{entity.name}'")
-        kwargs[input_name] = arg
 
     for k in sorted(interface.inputs):
         var = typed_interface.inputs[k]
