@@ -1,6 +1,6 @@
 import warnings
 from dataclasses import InitVar, dataclass, fields
-from typing import Any, List, Optional, Union
+from typing import List, Optional, Union
 
 from kubernetes.client import V1Container, V1PodSpec, V1ResourceRequirements
 from mashumaro.mixins.json import DataClassJSONMixin
@@ -35,7 +35,7 @@ class Resources(DataClassJSONMixin):
     cpu: Optional[Union[str, int, float]] = None
     mem: Optional[Union[str, int]] = None
     gpu: Optional[Union[str, int]] = None
-    disk: InitVar[str | int | None] = None
+    disk: InitVar[Optional[Union[str, int]]] = None
     ephemeral_storage: Optional[Union[str, int]] = None
 
     def __post_init__(self, disk):
