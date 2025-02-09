@@ -1608,7 +1608,9 @@ class FlyteRemote(object):
 
     def execute(
         self,
-        entity: typing.Union[FlyteTask, FlyteLaunchPlan, FlyteWorkflow, PythonTask, WorkflowBase, LaunchPlan, ReferenceEntity],
+        entity: typing.Union[
+            FlyteTask, FlyteLaunchPlan, FlyteWorkflow, PythonTask, WorkflowBase, LaunchPlan, ReferenceEntity
+        ],
         inputs: typing.Dict[str, typing.Any],
         project: str = None,
         domain: str = None,
