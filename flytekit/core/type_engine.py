@@ -1888,6 +1888,7 @@ class UnionTransformer(AsyncTypeTransformer[T]):
     ) -> typing.Union[Literal, asyncio.Future]:
         python_type = get_underlying_type(python_type)
 
+        potential_types = []
         found_res = False
         is_ambiguous = False
         res = None
@@ -1907,6 +1908,7 @@ class UnionTransformer(AsyncTypeTransformer[T]):
                     is_ambiguous = True
                 res_type = _add_tag_to_type(trans.get_literal_type(t), trans.name)
                 found_res = True
+                potential_types.append(t)
             except Exception as e:
                 logger.debug(
                     f"UnionTransformer failed attempt to convert from {python_val} to {t} error: {e}",
@@ -1914,7 +1916,11 @@ class UnionTransformer(AsyncTypeTransformer[T]):
                 continue
 
         if is_ambiguous:
-            raise TypeError("Ambiguous choice of variant for union type")
+            raise TypeError(
+                f"Ambiguous choice of variant for union type.\n"
+                f"Potential types: {potential_types}\n"
+                "These types are structurally the same, because it's attributes have the same names and associated types."
+            )
 
         if found_res:
             return Literal(scalar=Scalar(union=Union(value=res, stored_type=res_type)))
