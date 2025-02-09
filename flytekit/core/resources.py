@@ -1,4 +1,5 @@
-from dataclasses import dataclass, fields
+import warnings
+from dataclasses import InitVar, dataclass, fields
 from typing import List, Optional, Union
 
 from kubernetes.client import V1Container, V1PodSpec, V1ResourceRequirements
@@ -19,8 +20,9 @@ class Resources(DataClassJSONMixin):
         Resources(cpu=0.5, mem=1024) # This is 500m CPU and 1 KB of memory
 
         # For Kubernetes-based tasks, pods use ephemeral local storage for scratch space, caching, and for logs.
+        # The property has been renamed to disk for simplicity, while still retaining its ephemeral nature.
         # This allocates 1Gi of such local storage.
-        Resources(ephemeral_storage="1Gi")
+        Resources(disk="1Gi")
 
     .. note::
 
@@ -33,9 +35,10 @@ class Resources(DataClassJSONMixin):
     cpu: Optional[Union[str, int, float]] = None
     mem: Optional[Union[str, int]] = None
     gpu: Optional[Union[str, int]] = None
+    disk: InitVar[Optional[Union[str, int]]] = None
     ephemeral_storage: Optional[Union[str, int]] = None
 
-    def __post_init__(self):
+    def __post_init__(self, disk):
         def _check_cpu(value):
             if value is None:
                 return
@@ -51,7 +54,28 @@ class Resources(DataClassJSONMixin):
         _check_cpu(self.cpu)
         _check_others(self.mem)
         _check_others(self.gpu)
-        _check_others(self.ephemeral_storage)
+
+        # Rename the `ephemeral_storage` parameter to `disk` for simplicity.
+        # Currently, both `disk` and `ephemeral_storage` are supported to maintain backward compatibility.
+        # For more details, please refer to https://github.com/flyteorg/flyte/issues/6142.
+        if disk is not None and self.ephemeral_storage is not None:
+            raise ValueError(
+                "Cannot specify both disk and ephemeral_storage."
+                "Please use disk because ephemeral_storage is deprecated and will be removed in the future."
+            )
+        elif self.ephemeral_storage is not None:
+            warnings.warn(
+                "ephemeral_storage is deprecated and will be removed in the future. Please use disk instead.",
+                DeprecationWarning,
+            )
+            self.disk = self.ephemeral_storage
+        else:
+            self.disk = disk
+
+            # This alias ensures backward compatibility, allowing `ephemeral_storage`
+            # to mirror the value of `disk` for seamless attribute access
+            self.ephemeral_storage = self.disk
+        _check_others(self.disk)
 
 
 @dataclass
