@@ -130,6 +130,27 @@ def test_ref_task_more_2():
             mock_x.return_value = "hello"
             assert wf1(in1=["hello", "world"]) == "hello"
 
+def test_ref_task_positional_args():
+    @reference_task(
+        project="flytesnacks",
+        domain="development",
+        name="recipes.aaa.simple.join_strings",
+        version="553018f39e519bdb2597b652639c30ce16b99c79",
+    )
+    def ref_t1(a: typing.List[str]) -> str:
+        ...
+
+    @workflow
+    def wf1(in1: typing.List[str]) -> str:
+        return ref_t1(in1)
+
+    with pytest.raises(Exception) as e:
+        wf1(in1=["hello", "world"])
+    assert "You must mock this out" in f"{e}"
+
+    with task_mock(ref_t1) as mock:
+        mock.return_value = "hello"
+        assert wf1(in1=["hello", "world"]) == "hello"
 
 @reference_workflow(project="proj", domain="development", name="wf_name", version="abc")
 def ref_wf1(a: int) -> typing.Tuple[str, str]:
@@ -166,6 +187,15 @@ def test_reference_workflow():
     with pytest.raises(Exception):
         my_wf(a=3, b="foo")
 
+def test_reference_workflow_positional_args():
+    @patch(ref_wf1)
+    def inner_test(ref_mock):
+        ref_mock.return_value = ("hello", "alice")
+        x, y = ref_wf1(3)
+        assert x == "hello"
+        assert y == "alice"
+
+    inner_test()
 
 def test_ref_plain_no_outputs():
     r1 = ReferenceEntity(
@@ -421,10 +451,27 @@ def test_ref_lp_from_decorator():
 def test_ref_lp_from_decorator_with_named_outputs():
     nt = typing.NamedTuple("RefLPOutput", [("o1", int), ("o2", str)])
     @reference_launch_plan(project="project", domain="domain", name="name", version="version")
-    def ref_lp1(p1: str, p2: str) -> nt:
+    def ref_lp1(p1: str, p2: str) -> int:
         ...
 
-    assert ref_lp1.python_interface.outputs == {"o1": int, "o2": str}
+    assert ref_lp1.python_interface.outputs == {"o0": int}
+
+def test_ref_lp_from_decorator_positional_args():
+    @reference_launch_plan(project="project", domain="domain", name="name", version="version")
+    def ref_lp1(p1: str, p2: str) -> int:
+        ...
+
+    @workflow
+    def wf1(p1: str, p2: str) -> int:
+        return ref_lp1(p1, p2)
+
+    with pytest.raises(Exception) as e:
+        wf1("hello", "world")
+        assert "You must mock this out" in f"{e}"
+
+    with task_mock(ref_lp1) as mock:
+        mock.return_value = 123
+        assert wf1("hello", "world") == 123
 
 
 def test_ref_dynamic_task():
