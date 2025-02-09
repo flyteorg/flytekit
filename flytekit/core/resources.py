@@ -71,6 +71,9 @@ class Resources(DataClassJSONMixin):
             self.disk = self.ephemeral_storage
         else:
             self.disk = disk
+
+            # This alias ensures backward compatibility, allowing `ephemeral_storage`
+            # to mirror the value of `disk` for seamless attribute access
             self.ephemeral_storage = self.disk
         _check_others(self.disk)
 

@@ -155,3 +155,27 @@ def test_pod_spec_from_resources_requests_set():
     )
     pod_spec = pod_spec_from_resources(k8s_pod_name=k8s_pod_name, requests=requests, limits=limits)
     assert expected_pod_spec == V1PodSpec(**pod_spec)
+
+
+def test_disk():
+    # Define expected warning and error messages
+    WARN_MSG = "ephemeral_storage is deprecated and will be removed in the future. Please use disk instead."
+    ERR_MSG = (
+        "Cannot specify both disk and ephemeral_storage."
+        "Please use disk because ephemeral_storage is deprecated and will be removed in the future."
+    )
+
+    # Specify both disk and ephemeral_storage
+    with pytest.raises(ValueError, match=ERR_MSG):
+        resources = Resources(cpu="1", mem="1Gi", gpu="1", disk="1Gi", ephemeral_storage="1Gi")
+
+    # Specify only ephemeral_storage
+    with pytest.warns(DeprecationWarning, match=WARN_MSG):
+        resources = Resources(cpu="1", mem="1Gi", gpu="1", ephemeral_storage="1Gi")
+    assert resources.disk == "1Gi"
+    assert resources.ephemeral_storage == "1Gi"
+
+    # Specify only disk
+    resources = Resources(cpu="1", mem="1Gi", gpu="1", disk="1Gi")
+    assert resources.disk == "1Gi"
+    assert resources.ephemeral_storage == "1Gi"
