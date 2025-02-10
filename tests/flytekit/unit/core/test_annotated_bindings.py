@@ -2,11 +2,14 @@ import asyncio
 from dataclasses import dataclass
 from typing import List, Optional, TypeVar, Type, Tuple
 
+from pydantic import BaseModel
 from typing_extensions import Annotated
 
-from flytekit import task, workflow
+from flytekit import task
+from flytekit import workflow
 from flytekit.configuration import SerializationSettings, ImageConfig, Image
-from flytekit.core.context_manager import FlyteContextManager, ExecutionState, FlyteContext
+from flytekit.core.context_manager import FlyteContext
+from flytekit.core.context_manager import FlyteContextManager, ExecutionState
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.type_engine import SimpleTransformer
 from flytekit.core.type_engine import TypeEngine, AsyncTypeTransformer, TypeTransformerFailedError
@@ -339,3 +342,75 @@ def test_sample_transformer_wf_annotated_dict():
             print(dynamic_job_spec)
 
     del TypeEngine._REGISTRY[MyStr]
+
+
+# stand-in for prophet.Prophet models
+class Prophet:
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+
+
+def test_annotated_dynamic():
+    # Define a dummy Pydantic dataclass
+    class Config(BaseModel):
+        forecast_horizon: int = 30
+        changepoint_prior_scale: float = 0.05
+        seasonality_mode: str = "multiplicative"
+
+    @task
+    def get_config() -> Config:
+        return Config()
+
+    def dt_function():
+        # Create dummy Prophet models
+        best_models = {
+            "model_1": Prophet(changepoint_prior_scale=0.05),
+            "model_2": Prophet(changepoint_prior_scale=0.1)
+        }
+
+        # Instantiate config
+        cfg = get_config()
+
+        # Create final model dictionary
+        final_model = {
+            "model": best_models,
+            "config": cfg
+        }
+
+        return final_model
+
+    @dynamic
+    def dt1() -> Annotated[dict[str, Config | dict[str, Prophet]], "my tag"]:
+        return dt_function()
+
+    @dynamic
+    def dt_plain() -> dict[str, Config | dict[str, Prophet]]:
+        return dt_function()
+
+    ss = SerializationSettings(
+        project="test_proj",
+        domain="test_domain",
+        version="abc",
+        image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+        env={},
+    )
+
+    with FlyteContextManager.with_context(
+        FlyteContextManager.current_context().with_serialization_settings(ss)
+    ) as ctx:
+        new_exc_state = ctx.execution_state.with_params(mode=ExecutionState.Mode.TASK_EXECUTION)
+        with FlyteContextManager.with_context(ctx.with_execution_state(new_exc_state)):
+            dynamic_job_spec_dt1 = dt1.compile_into_workflow(ctx, dt1._task_function, )
+
+    with FlyteContextManager.with_context(
+        FlyteContextManager.current_context().with_serialization_settings(ss)
+    ) as ctx:
+        new_exc_state = ctx.execution_state.with_params(mode=ExecutionState.Mode.TASK_EXECUTION)
+        with FlyteContextManager.with_context(ctx.with_execution_state(new_exc_state)):
+            dynamic_job_spec_plain = dt_plain.compile_into_workflow(ctx, dt_plain._task_function, )
+
+    assert len(dynamic_job_spec_dt1.nodes) == 1
+    assert len(dynamic_job_spec_plain.nodes) == 1
+
+    assert len(dynamic_job_spec_dt1.outputs[0].binding.map.bindings["model"].map.bindings) == 2
+    assert len(dynamic_job_spec_plain.outputs[0].binding.map.bindings["model"].map.bindings) == 2
