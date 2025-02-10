@@ -2872,7 +2872,7 @@ def test_get_underlying_type(t, expected):
     ],
 )
 def test_dict_get(t, expected):
-    assert DictTransformer.extract_types_or_metadata(t) == expected
+    assert DictTransformer.extract_types(t) == expected
 
 
 def test_DataclassTransformer_get_literal_type():

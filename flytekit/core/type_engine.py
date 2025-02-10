@@ -878,7 +878,7 @@ class DataclassTransformer(TypeTransformer[object]):
             return list(map(lambda x: self._fix_val_int(ListTransformer.get_sub_type(t), x), val))
 
         if isinstance(val, dict):
-            ktype, vtype = DictTransformer.extract_types_or_metadata(t)
+            ktype, vtype = DictTransformer.extract_types(t)
             # Handle nested Dict. e.g. {1: {2: 3}, 4: {5: 6}})
             return {
                 self._fix_val_int(cast(type, ktype), k): self._fix_val_int(cast(type, vtype), v) for k, v in val.items()
@@ -2018,7 +2018,7 @@ class DictTransformer(AsyncTypeTransformer[dict]):
         super().__init__("Typed Dict", dict)
 
     @staticmethod
-    def extract_types_or_metadata(t: Optional[Type[dict]]) -> typing.Tuple:
+    def extract_types(t: Optional[Type[dict]]) -> typing.Tuple:
         _origin = get_origin(t)
         _args = get_args(t)
         if _origin is not None:
@@ -2034,7 +2034,7 @@ class DictTransformer(AsyncTypeTransformer[dict]):
             if _origin is dict and _args is not None:
                 return _args  # type: ignore
             elif _origin is Annotated:
-                return DictTransformer.extract_types_or_metadata(_args[0])
+                return DictTransformer.extract_types(_args[0])
             else:
                 raise ValueError(f"Trying to extract dictionary type information from a non-dict type {t}")
         return None, None
@@ -2120,7 +2120,7 @@ class DictTransformer(AsyncTypeTransformer[dict]):
         """
         Transforms a native python dictionary to a flyte-specific ``LiteralType``
         """
-        tp = DictTransformer.extract_types_or_metadata(t)
+        tp = DictTransformer.extract_types(t)
 
         if tp:
             if tp[0] == str:
@@ -2156,7 +2156,7 @@ class DictTransformer(AsyncTypeTransformer[dict]):
                 raise ValueError("Flyte MapType expects all keys to be strings")
             # TODO: log a warning for Annotated objects that contain HashMethod
 
-            _, v_type = self.extract_types_or_metadata(python_type)
+            _, v_type = self.extract_types(python_type)
             lit_map[k] = TypeEngine.async_to_literal(ctx, v, cast(type, v_type), expected.map_value_type)
         vals = await _run_coros_in_chunks([c for c in lit_map.values()], batch_size=_TYPE_ENGINE_COROS_BATCH_SIZE)
         for idx, k in zip(range(len(vals)), lit_map.keys()):
@@ -2169,7 +2169,7 @@ class DictTransformer(AsyncTypeTransformer[dict]):
             return self.from_binary_idl(lv.scalar.binary, expected_python_type)  # type: ignore
 
         if lv and lv.map and lv.map.literals is not None:
-            tp = DictTransformer.extract_types_or_metadata(expected_python_type)
+            tp = DictTransformer.extract_types(expected_python_type)
 
             if tp is None or len(tp) == 0 or tp[0] is None:
                 raise TypeError(
