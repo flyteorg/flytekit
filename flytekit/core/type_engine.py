@@ -682,6 +682,33 @@ class DataclassTransformer(TypeTransformer[object]):
         Set `FLYTE_USE_OLD_DC_FORMAT=true` to use the old JSON-based format.
         Note: This is deprecated and will be removed in the future.
         """
+        import pandas as pd
+        from flytekit.types.structured.structured_dataset import StructuredDataset
+        from typing import get_type_hints, Type, Dict
+
+        def transform_dataclass(cls, memo=None):
+            if memo is None:
+                memo = {}
+
+            if cls in memo:
+                return memo[cls]
+
+            cls_hints = get_type_hints(cls)
+            new_field_defs = []
+            for field in fields(cls):
+                orig_type = cls_hints[field.name]
+                if orig_type == pd.DataFrame:
+                    new_type = StructuredDataset
+                elif is_dataclass(orig_type):
+                    new_type = transform_dataclass(orig_type, memo)
+                else:
+                    new_type = orig_type
+                new_field_defs.append((field.name, new_type))
+
+            new_cls = make_dataclass("FlyteModified" + cls.__name__, new_field_defs)
+            memo[cls] = new_cls
+            return new_cls
+
         if isinstance(python_val, dict):
             json_str = json.dumps(python_val)
             return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))
@@ -693,6 +720,7 @@ class DataclassTransformer(TypeTransformer[object]):
             )
 
         self._make_dataclass_serializable(python_val, python_type)
+        new_python_type = transform_dataclass(python_type)
 
         # JSON serialization using mashumaro's DataClassJSONMixin
         if isinstance(python_val, DataClassJSONMixin):
