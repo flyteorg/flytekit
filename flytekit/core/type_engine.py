@@ -1677,8 +1677,7 @@ class ListTransformer(AsyncTypeTransformer[T]):
         Only univariate Lists are supported in Flyte
         """
         try:
-            s = self.get_sub_type(t)
-            sub_type = TypeEngine.to_literal_type(s)
+            sub_type = TypeEngine.to_literal_type(self.get_sub_type(t))
             return _type_models.LiteralType(collection_type=sub_type)
         except Exception as e:
             raise ValueError(f"Type of Generic List type is not supported, {e}")
