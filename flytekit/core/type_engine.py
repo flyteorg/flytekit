@@ -2105,7 +2105,7 @@ class DictTransformer(AsyncTypeTransformer[dict]):
     @staticmethod
     def is_pickle(python_type: Type[dict]) -> bool:
         _origin = get_origin(python_type)
-        metadata = []
+        metadata: typing.Tuple = ()
         if _origin is Annotated:
             metadata = get_args(python_type)[1:]
 

@@ -1,6 +1,7 @@
 import asyncio
+from flytekit.core.artifact import Artifact
 from dataclasses import dataclass
-from typing import List, Optional, TypeVar, Type, Tuple
+from typing import List, Optional, TypeVar, Type, Tuple, Union
 
 from pydantic import BaseModel
 from typing_extensions import Annotated
@@ -379,12 +380,14 @@ def test_annotated_dynamic():
 
         return final_model
 
+    a = Artifact(name="my_model")
+
     @dynamic
-    def dt1() -> Annotated[dict[str, Config | dict[str, Prophet]], "my tag"]:
+    def dt1() -> Annotated[dict[str, Union[Config, dict[str, Prophet]]], a]:
         return dt_function()
 
     @dynamic
-    def dt_plain() -> dict[str, Config | dict[str, Prophet]]:
+    def dt_plain() -> dict[str, Union[Config, dict[str, Prophet]]]:
         return dt_function()
 
     ss = SerializationSettings(
