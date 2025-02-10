@@ -19,7 +19,7 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
 from flytekit.lazy_import.lazy_module import is_imported
 from flytekit.models import literals
-from flytekit.models.literals import StructuredDatasetMetadata
+from flytekit.models.literals import StructuredDatasetMetadata, Literal
 from flytekit.models.types import LiteralType, SchemaType, SimpleType, StructuredDatasetType
 from flytekit.tools.translator import get_serializable
 from flytekit.types.structured.structured_dataset import (
@@ -713,3 +713,41 @@ def test_modify_literal_uris_call(mock_get_encoder, mock_resolver):
 
     lit = sdte.encode(ctx, sd, df_type=pd.DataFrame, protocol="bq", format="parquet", structured_literal_type=lt)
     assert lit.scalar.structured_dataset.uri == "bq://blah/blah/blah"
+
+def test_structured_dataset_pickleable():
+    import pickle
+
+    upstream_output = Literal(
+        scalar=literals.Scalar(
+            structured_dataset=StructuredDataset(
+                dataframe=pd.DataFrame({"a": [1, 2], "b": [3, 4]}),
+                uri="bq://test_uri",
+                metadata=StructuredDatasetMetadata(
+                    structured_dataset_type=StructuredDatasetType(
+                        columns=[
+                            StructuredDatasetType.DatasetColumn(
+                                name="a",
+                                literal_type=LiteralType(simple=SimpleType.INTEGER)
+                            ),
+                            StructuredDatasetType.DatasetColumn(
+                                name="b",
+                                literal_type=LiteralType(simple=SimpleType.INTEGER)
+                            )
+                        ],
+                        format="parquet"
+                    )
+                )
+            )
+        )
+    )
+
+    downstream_input = TypeEngine.to_python_value(
+        FlyteContextManager.current_context(),
+        upstream_output,
+        StructuredDataset
+    )
+
+    pickled_input = pickle.dumps(downstream_input)
+    unpickled_input = pickle.loads(pickled_input)
+
+    assert downstream_input == unpickled_input
