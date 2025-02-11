@@ -1,3 +1,6 @@
+import importlib
+import os
+import sys
 from concurrent import futures
 
 import grpc
@@ -51,21 +54,35 @@ def serve(ctx: click.Context):
     help="It will wait for the specified number of seconds before shutting down grpc server. It should only be used "
     "for testing.",
 )
+@click.option(
+    "--files",
+    required=False,
+    multiple=True,
+    type=str,
+    help="List of additional files or module that defines the agent",
+)
 @click.pass_context
-def agent(_: click.Context, port, prometheus_port, worker, timeout):
+def agent(_: click.Context, port, prometheus_port, worker, timeout, files):
     """
     Start a grpc server for the agent service.
     """
     import asyncio
 
-    asyncio.run(_start_grpc_server(port, prometheus_port, worker, timeout))
+    working_dir = os.getcwd()
+    if all(os.path.realpath(path) != working_dir for path in sys.path):
+        sys.path.append(working_dir)
+    for f in files:
+        importlib.import_module(f)
+
+    asyncio.run(_start_grpc_server(port, prometheus_port, worker, timeout, files))
 
 
-async def _start_grpc_server(port: int, prometheus_port: int, worker: int, timeout: int):
+async def _start_grpc_server(port: int, prometheus_port: int, worker: int, timeout: int, files: str):
     from flytekit.extend.backend.agent_service import AgentMetadataService, AsyncAgentService, SyncAgentService
 
     click.secho("🚀 Starting the agent service...")
     _start_http_server(prometheus_port)
+
     print_agents_metadata()
 
     server = grpc.aio.server(futures.ThreadPoolExecutor(max_workers=worker))
