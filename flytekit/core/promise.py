@@ -947,7 +947,7 @@ async def binding_data_from_python_std(
             if transformer_override and hasattr(transformer_override, "extract_types_or_metadata"):
                 _, v_type = transformer_override.extract_types_or_metadata(t_value_type)  # type: ignore
             else:
-                _, v_type = DictTransformer.extract_types(t_value_type)  # type: ignore
+                _, v_type = DictTransformer.extract_types(cast(typing.Type[dict], t_value_type))
             m = _literals_models.BindingDataMap(
                 bindings={
                     k: await binding_data_from_python_std(
