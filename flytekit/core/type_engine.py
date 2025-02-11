@@ -2424,25 +2424,25 @@ def dataclass_from_dict(cls: type, src: typing.Dict[str, typing.Any]) -> typing.
     return cls(**constructor_inputs)
 
 
-def better_guess_type_hint(input_val: typing.Any, target_literal_type: LiteralType) -> typing.Type:
+def strict_type_hint_matching(input_val: typing.Any, target_literal_type: LiteralType) -> typing.Type:
     """
     Try to be smarter about guessing the type of the input (and hence the transformer).
     If the literal type from the transformer for type(v), matches the literal type of the interface, then we
     can use type(). Otherwise, fall back to guess python type from the literal type.
+    Raises ValueError, like in case of [1,2,3] type() will just give `list`, which won't work.
+    Raises ValueError also if the transformer found for the raw type doesn't have a literal type match.
     """
     native_type = type(input_val)
-    try:
-        transformer: TypeTransformer = TypeEngine.get_transformer(native_type)
-        inferred_literal_type = transformer.get_literal_type(native_type)
-        # note: if no good match, transformer will be the pickle transformer, but type will not match unless it's the
-        # pickle type so will fall back to normal guessing
-        if literal_types_match(inferred_literal_type, target_literal_type):
-            return type(input_val)
-    except ValueError:
-        # In case of [1,2,3] type() will just give `list`, which won't work
-        ...
+    transformer: TypeTransformer = TypeEngine.get_transformer(native_type)
+    inferred_literal_type = transformer.get_literal_type(native_type)
+    # note: if no good match, transformer will be the pickle transformer, but type will not match unless it's the
+    # pickle type so will fall back to normal guessing
+    if literal_types_match(inferred_literal_type, target_literal_type):
+        return type(input_val)
 
-    return TypeEngine.guess_python_type(target_literal_type)
+    raise ValueError(
+        f"Transformer for {native_type} returned literal type {inferred_literal_type} which doesn't match {target_literal_type}"
+    )
 
 
 def _check_and_covert_float(lv: Literal) -> float:
