@@ -607,3 +607,28 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
                 # now have to fail this eager task, because we don't want it to show up as succeeded.
                 raise FlyteNonRecoverableSystemException(base_error)
             return result
+
+    def run(self, remote: "FlyteRemote", ss: SerializationSettings, **kwargs):
+        ctx = FlyteContextManager.current_context()
+        # tag is the current execution id
+        # root tag is read from the environment variable if it exists, if not, it's the current execution id
+        if not ctx.user_space_params or not ctx.user_space_params.execution_id:
+            raise AssertionError("User facing context and execution ID should be present when not running locally")
+        tag = ctx.user_space_params.execution_id.name
+        root_tag = os.environ.get(EAGER_ROOT_ENV_NAME, tag)
+
+        # Prefix is a combination of the name of this eager workflow, and the current execution id.
+        prefix = self.name.split(".")[-1][:8]
+        prefix = f"e-{prefix}-{tag[:5]}"
+        prefix = _dnsify(prefix)
+        # Note: The construction of this object is in this function because this function should be on the
+        # main thread of pyflyte-execute. It needs to be on the main thread because signal handlers can only
+        # be installed on the main thread.
+        c = Controller(remote=remote, ss=ss, tag=tag, root_tag=root_tag, exec_prefix=prefix)
+        handler = c.get_signal_handler()
+        signal.signal(signal.SIGINT, handler)
+        signal.signal(signal.SIGTERM, handler)
+        builder = ctx.with_worker_queue(c)
+
+        with FlyteContextManager.with_context(builder):
+            return loop_manager.run_sync(self.async_execute, self, **kwargs)

@@ -296,7 +296,9 @@ class WorkflowBase(object):
         # Get default arguments and override with kwargs passed in
         input_kwargs = self.python_interface.default_inputs_as_kwargs
         input_kwargs.update(kwargs)
-        self.compile()
+        ctx = FlyteContext.current_context()
+        if not (ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.EAGER_EXECUTION):
+            self.compile()
         try:
             return flyte_entity_call_handler(self, *args, **input_kwargs)
         except Exception as exc:
