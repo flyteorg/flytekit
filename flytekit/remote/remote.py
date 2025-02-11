@@ -2092,8 +2092,7 @@ class FlyteRemote(object):
         :param project: The execution project, will default to the Remote's default project.
         :param domain: The execution domain, will default to the Remote's default domain.
         :param name: specific name of the task to run.
-        :param version: specific version of the task to run, default is a special string ``latest``, which implies latest
-        version by time
+        :param version: specific version of the task to run, default is a special string ``latest``, which implies latest version by time
         :param execution_name: If provided, will use this name for the execution.
         :param execution_name_prefix: If provided, will use this prefix for the execution name.
         :param image_config: If provided, will use this image config in the pod.
