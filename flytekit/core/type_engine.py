@@ -878,7 +878,7 @@ class DataclassTransformer(TypeTransformer[object]):
             return list(map(lambda x: self._fix_val_int(ListTransformer.get_sub_type(t), x), val))
 
         if isinstance(val, dict):
-            ktype, vtype = DictTransformer.extract_types_or_metadata(t)
+            ktype, vtype = DictTransformer.extract_types(t)
             # Handle nested Dict. e.g. {1: {2: 3}, 4: {5: 6}})
             return {
                 self._fix_val_int(cast(type, ktype), k): self._fix_val_int(cast(type, vtype), v) for k, v in val.items()
@@ -2018,7 +2018,7 @@ class DictTransformer(AsyncTypeTransformer[dict]):
         super().__init__("Typed Dict", dict)
 
     @staticmethod
-    def extract_types_or_metadata(t: Optional[Type[dict]]) -> typing.Tuple:
+    def extract_types(t: Optional[Type[dict]]) -> typing.Tuple:
         _origin = get_origin(t)
         _args = get_args(t)
         if _origin is not None:
@@ -2031,8 +2031,12 @@ class DictTransformer(AsyncTypeTransformer[dict]):
                         raise ValueError(
                             f"Flytekit does not currently have support for FlyteAnnotations applied to dicts. {t} cannot be parsed."
                         )
-            if _origin in [dict, Annotated] and _args is not None:
+            if _origin is dict and _args is not None:
                 return _args  # type: ignore
+            elif _origin is Annotated:
+                return DictTransformer.extract_types(_args[0])
+            else:
+                raise ValueError(f"Trying to extract dictionary type information from a non-dict type {t}")
         return None, None
 
     @staticmethod
@@ -2099,31 +2103,24 @@ class DictTransformer(AsyncTypeTransformer[dict]):
             raise TypeTransformerFailedError(f"Cannot convert `{v}` to Flyte Literal.\n" f"Error Message: {e}")
 
     @staticmethod
-    def is_pickle(python_type: Type[dict]) -> typing.Tuple[bool, Type]:
-        base_type, *metadata = DictTransformer.extract_types_or_metadata(python_type)
+    def is_pickle(python_type: Type[dict]) -> bool:
+        _origin = get_origin(python_type)
+        metadata: typing.Tuple = ()
+        if _origin is Annotated:
+            metadata = get_args(python_type)[1:]
 
         for each_metadata in metadata:
             if isinstance(each_metadata, OrderedDict):
                 allow_pickle = each_metadata.get("allow_pickle", False)
-                return allow_pickle, base_type
+                return allow_pickle
 
-        return False, base_type
-
-    @staticmethod
-    def dict_types(python_type: Type) -> typing.Tuple[typing.Any, ...]:
-        if get_origin(python_type) is Annotated:
-            base_type, *_ = DictTransformer.extract_types_or_metadata(python_type)
-            tp = get_args(base_type)
-        else:
-            tp = DictTransformer.extract_types_or_metadata(python_type)
-
-        return tp
+        return False
 
     def get_literal_type(self, t: Type[dict]) -> LiteralType:
         """
         Transforms a native python dictionary to a flyte-specific ``LiteralType``
         """
-        tp = self.dict_types(t)
+        tp = DictTransformer.extract_types(t)
 
         if tp:
             if tp[0] == str:
@@ -2144,10 +2141,9 @@ class DictTransformer(AsyncTypeTransformer[dict]):
             raise TypeTransformerFailedError("Expected a dict")
 
         allow_pickle = False
-        base_type = None
 
         if get_origin(python_type) is Annotated:
-            allow_pickle, base_type = DictTransformer.is_pickle(python_type)
+            allow_pickle = DictTransformer.is_pickle(python_type)
 
         if expected and expected.simple and expected.simple == SimpleType.STRUCT:
             if str2bool(os.getenv(FLYTE_USE_OLD_DC_FORMAT)):
@@ -2160,11 +2156,7 @@ class DictTransformer(AsyncTypeTransformer[dict]):
                 raise ValueError("Flyte MapType expects all keys to be strings")
             # TODO: log a warning for Annotated objects that contain HashMethod
 
-            if base_type:
-                _, v_type = get_args(base_type)
-            else:
-                _, v_type = self.extract_types_or_metadata(python_type)
-
+            _, v_type = self.extract_types(python_type)
             lit_map[k] = TypeEngine.async_to_literal(ctx, v, cast(type, v_type), expected.map_value_type)
         vals = await _run_coros_in_chunks([c for c in lit_map.values()], batch_size=_TYPE_ENGINE_COROS_BATCH_SIZE)
         for idx, k in zip(range(len(vals)), lit_map.keys()):
@@ -2177,9 +2169,9 @@ class DictTransformer(AsyncTypeTransformer[dict]):
             return self.from_binary_idl(lv.scalar.binary, expected_python_type)  # type: ignore
 
         if lv and lv.map and lv.map.literals is not None:
-            tp = self.dict_types(expected_python_type)
+            tp = DictTransformer.extract_types(expected_python_type)
 
-            if tp is None or tp[0] is None:
+            if tp is None or len(tp) == 0 or tp[0] is None:
                 raise TypeError(
                     "TypeMismatch: Cannot convert to python dictionary from Flyte Literal Dictionary as the given "
                     "dictionary does not have sub-type hints or they do not match with the originating dictionary "
