@@ -2019,25 +2019,41 @@ class DictTransformer(AsyncTypeTransformer[dict]):
 
     @staticmethod
     def extract_types(t: Optional[Type[dict]]) -> typing.Tuple:
+        if t is None:
+            return None, None
+
+        # Get the origin and type arguments.
         _origin = get_origin(t)
         _args = get_args(t)
-        if _origin is not None:
-            if _origin is Annotated and _args:
-                # _args holds the type arguments to the dictionary, in other words:
-                # >>> get_args(Annotated[dict[int, str], FlyteAnnotation("abc")])
-                # (dict[int, str], <flytekit.core.annotation.FlyteAnnotation object at 0x107f6ff80>)
-                for x in _args[1:]:
-                    if isinstance(x, FlyteAnnotation):
-                        raise ValueError(
-                            f"Flytekit does not currently have support for FlyteAnnotations applied to dicts. {t} cannot be parsed."
-                        )
-            if _origin is dict and _args is not None:
+
+        # If not annotated or dict, return None, None.
+        if _origin is None:
+            return None, None
+
+        # If this is something like Annotated[dict[int, str], FlyteAnnotation("abc")],
+        # we need to check if there's a FlyteAnnotation in the metadata.
+        if _origin is Annotated:
+            if not _args:
+                return None, None
+
+            first_arg = _args[0]
+            # Check the rest of the metadata (after the dict type itself).
+            for x in _args[1:]:
+                if isinstance(x, FlyteAnnotation):
+                    raise ValueError(
+                        f"Flytekit does not currently have support for FlyteAnnotations applied to dicts. {t} cannot be parsed."
+                    )
+            # Recursively process the first argument if it's Annotated (or dict).
+            return DictTransformer.extract_types(first_arg)
+
+        # If the origin is dict, return the type arguments if they exist.
+        if _origin is dict:
+            # _args can be ().
+            if _args is not None:
                 return _args  # type: ignore
-            elif _origin is Annotated:
-                return DictTransformer.extract_types(_args[0])
-            else:
-                raise ValueError(f"Trying to extract dictionary type information from a non-dict type {t}")
-        return None, None
+
+        # Otherwise, we do not support this type in extract_types.
+        raise ValueError(f"Trying to extract dictionary type information from a non-dict type {t}")
 
     @staticmethod
     async def dict_to_generic_literal(
