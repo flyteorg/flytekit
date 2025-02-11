@@ -9,7 +9,7 @@ import typing
 from dataclasses import asdict, dataclass, field
 from datetime import timedelta
 from enum import Enum, auto
-from typing import List, Optional, Type
+from typing import List, Optional, Type, Dict
 
 import mock
 import msgpack
@@ -34,6 +34,10 @@ from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import flyte_tmp_dir
 from flytekit.core.hash import HashMethod
 from flytekit.core.type_engine import (
+    IntTransformer,
+    FloatTransformer,
+    BoolTransformer,
+    StrTransformer,
     DataclassTransformer,
     DictTransformer,
     EnumTransformer,
@@ -48,9 +52,9 @@ from flytekit.core.type_engine import (
     convert_mashumaro_json_schema_to_python_class,
     dataclass_from_dict,
     get_underlying_type,
-    is_annotated, IntTransformer,
+    is_annotated,
+    strict_type_hint_matching,
 )
-from flytekit.core.type_engine import *
 from flytekit.exceptions import user as user_exceptions
 from flytekit.models import types as model_types
 from flytekit.models.annotation import TypeAnnotation
@@ -3777,3 +3781,40 @@ def test_register_dataclass_override():
     assert TypeEngine.get_transformer(RegularDC) == TypeEngine._DATACLASS_TRANSFORMER
 
     del TypeEngine._REGISTRY[ParentDC]
+
+
+def test_strict_type_matching():
+    # should correctly return the more specific transformer
+    class MyInt:
+        def __init__(self, x: int):
+            self.val = x
+
+        def __eq__(self, other):
+            if not isinstance(other, MyInt):
+                return False
+            return other.val == self.val
+
+    lt = LiteralType(simple=SimpleType.INTEGER)
+    TypeEngine.register(
+        SimpleTransformer(
+            "MyInt",
+            MyInt,
+            lt,
+            lambda x: Literal(scalar=Scalar(primitive=Primitive(integer=x.val))),
+            lambda x: MyInt(x.scalar.primitive.integer),
+        )
+    )
+
+    pt_guess = IntTransformer.guess_python_type(lt)
+    assert pt_guess is int
+    pt_better_guess = strict_type_hint_matching(MyInt(3), lt)
+    assert pt_better_guess is MyInt
+
+    del TypeEngine._REGISTRY[MyInt]
+
+
+def test_strict_type_matching_error():
+    xs: typing.List[float] = [0.1, 0.2, 0.3, 0.4, -99999.7]
+    lt = TypeEngine.to_literal_type(typing.List[float])
+    with pytest.raises(ValueError):
+        strict_type_hint_matching(xs, lt)
