@@ -2871,13 +2871,13 @@ def test_get_underlying_type(t, expected):
         (typing.Dict[str, str], (str, str)),
         (
                 Annotated[typing.Dict[str, str], kwtypes(allow_pickle=True)],
-                (typing.Dict[str, str], kwtypes(allow_pickle=True)),
+                (str, str),
         ),
         (typing.Dict[Annotated[str, "a-tag"], int], (Annotated[str, "a-tag"], int)),
     ],
 )
 def test_dict_get(t, expected):
-    assert DictTransformer.extract_types_or_metadata(t) == expected
+    assert DictTransformer.extract_types(t) == expected
 
 
 def test_DataclassTransformer_get_literal_type():
