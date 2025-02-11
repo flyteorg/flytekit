@@ -2,6 +2,7 @@ from datetime import timedelta
 
 from flyteidl.core import tasks_pb2
 
+from flytekit import PodTemplate
 from flytekit.extras.accelerators import T4
 from flytekit.models import interface as _interface
 from flytekit.models import literals as _literals
@@ -332,3 +333,34 @@ def test_task_node_with_overrides():
 
     obj = _workflow.TaskNode.from_flyte_idl(task_node.to_flyte_idl())
     assert task_node == obj
+    assert obj.overrides.pod_template is None
+
+    task_node = _workflow.TaskNode(
+        reference_id=_generic_id,
+        overrides=_workflow.TaskNodeOverrides(
+            Resources(
+                requests=[Resources.ResourceEntry(Resources.ResourceName.CPU, "1")],
+                limits=[Resources.ResourceEntry(Resources.ResourceName.CPU, "2")],
+            ),
+            tasks_pb2.ExtendedResources(gpu_accelerator=T4.to_flyte_idl()),
+            "",
+            PodTemplate(
+                primary_container_name="primary1",
+                labels={"lKeyA": "lValA", "lKeyB": "lValB"},
+                annotations={"aKeyA": "aValA", "aKeyB": "aValB"},
+                pod_spec={
+                    'containers': [
+                        {
+                            'name': 'primary1',
+                            'image': "random:image",
+                            'env': [
+                                {'name': 'eKeyC', 'value': 'eValC'},
+                            ],
+                        }
+                ]},
+            ),
+        ),
+    )
+
+    obj = _workflow.TaskNode.from_flyte_idl(task_node.to_flyte_idl())
+    assert obj.overrides.pod_template is not None
