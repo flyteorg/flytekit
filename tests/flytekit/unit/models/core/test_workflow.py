@@ -316,6 +316,7 @@ def test_task_node_overrides():
 
 
 def test_task_node_with_overrides():
+    # without pod template
     task_node = _workflow.TaskNode(
         reference_id=_generic_id,
         overrides=_workflow.TaskNodeOverrides(
@@ -335,6 +336,7 @@ def test_task_node_with_overrides():
     assert task_node == obj
     assert obj.overrides.pod_template is None
 
+    # with pod template
     task_node = _workflow.TaskNode(
         reference_id=_generic_id,
         overrides=_workflow.TaskNodeOverrides(
