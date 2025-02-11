@@ -349,7 +349,13 @@ def task(
     def wrapper(fn: Callable[P, Any]) -> PythonFunctionTask[T]:
         nonlocal cache, cache_serialize, cache_version, cache_ignore_input_vars
 
-        # If the cache is of type, Cache, then derive a TaskMetadata object from it.
+        # If the cache is of type bool but cache_version is not set, then assume that this is a Cache object
+        if isinstance(cache, bool) and cache is True and cache_version is None:
+            cache = Cache(
+                serialize=cache_serialize if cache_serialize is not None else False,
+                ignored_inputs=cache_ignore_input_vars if cache_ignore_input_vars is not None else tuple(),
+            )
+
         if isinstance(cache, Cache):
             # Validate that none of the deprecated cache-related parameters are set.
             if cache_serialize is not None or cache_version is not None or cache_ignore_input_vars is not None:
