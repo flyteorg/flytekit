@@ -11,6 +11,7 @@ from typing_extensions import ParamSpec  # type: ignore
 from flytekit.core import launch_plan as _annotated_launchplan
 from flytekit.core import workflow as _annotated_workflow
 from flytekit.core.base_task import PythonTask, TaskMetadata, TaskResolverMixin
+from flytekit.core.cache import Cache, VersionParameters
 from flytekit.core.interface import Interface, output_name_generator, transform_function_to_interface
 from flytekit.core.pod_template import PodTemplate
 from flytekit.core.python_function_task import AsyncPythonFunctionTask, EagerAsyncPythonFunctionTask, PythonFunctionTask
@@ -96,7 +97,7 @@ FuncOut = TypeVar("FuncOut")
 def task(
     _task_function: None = ...,
     task_config: Optional[T] = ...,
-    cache: bool = ...,
+    cache: Union[bool, Cache] = ...,
     cache_serialize: bool = ...,
     cache_version: str = ...,
     cache_ignore_input_vars: Tuple[str, ...] = ...,
@@ -135,7 +136,7 @@ def task(
 def task(
     _task_function: Callable[P, FuncOut],
     task_config: Optional[T] = ...,
-    cache: bool = ...,
+    cache: Union[bool, Cache] = ...,
     cache_serialize: bool = ...,
     cache_version: str = ...,
     cache_ignore_input_vars: Tuple[str, ...] = ...,
@@ -173,10 +174,10 @@ def task(
 def task(
     _task_function: Optional[Callable[P, FuncOut]] = None,
     task_config: Optional[T] = None,
-    cache: bool = False,
-    cache_serialize: bool = False,
-    cache_version: str = "",
-    cache_ignore_input_vars: Tuple[str, ...] = (),
+    cache: Union[bool, Cache] = False,
+    cache_serialize: Optional[bool] = None,
+    cache_version: Optional[str] = None,
+    cache_ignore_input_vars: Optional[Tuple[str, ...]] = None,
     retries: int = 0,
     interruptible: Optional[bool] = None,
     deprecated: str = "",
@@ -248,15 +249,17 @@ def task(
     :param _task_function: This argument is implicitly passed and represents the decorated function
     :param task_config: This argument provides configuration for a specific task types.
                         Please refer to the plugins documentation for the right object to use.
-    :param cache: Boolean that indicates if caching should be enabled
-    :param cache_serialize: Boolean that indicates if identical (ie. same inputs) instances of this task should be
-          executed in serial when caching is enabled. This means that given multiple concurrent executions over
-          identical inputs, only a single instance executes and the rest wait to reuse the cached results. This
-          parameter does nothing without also setting the cache parameter.
-    :param cache_version: Cache version to use. Changes to the task signature will automatically trigger a cache miss,
-           but you can always manually update this field as well to force a cache miss. You should also manually bump
-           this version if the function body/business logic has changed, but the signature hasn't.
-    :param cache_ignore_input_vars: Input variables that should not be included when calculating hash for cache.
+    :param cache: Boolean or Cache that indicates how caching is configured.
+    :deprecated param cache_serialize: (deprecated - please use Cache) Boolean that indicates if identical (ie. same inputs)
+          instances of this task should be executed in serial when caching is enabled. This means that given multiple
+          concurrent executions over identical inputs, only a single instance executes and the rest wait to reuse the
+          cached results. This parameter does nothing without also setting the cache parameter.
+    :deprecated param cache_version: (deprecated - please use Cache) Cache version to use. Changes to the task signature will
+           automatically trigger a cache miss, but you can always manually update this field as well to force a cache
+           miss. You should also manually bump this version if the function body/business logic has changed, but the
+           signature hasn't.
+    :deprecated param cache_ignore_input_vars: (deprecated - please use Cache) Input variables that should not be included when
+           calculating hash for cache.
     :param retries: Number of times to retry this task during a workflow execution.
     :param interruptible: [Optional] Boolean that indicates that this task can be interrupted and/or scheduled on nodes
                           with lower QoS guarantees. This will directly reduce the `$`/`execution cost` associated,
@@ -344,6 +347,30 @@ def task(
     """
 
     def wrapper(fn: Callable[P, Any]) -> PythonFunctionTask[T]:
+        nonlocal cache, cache_serialize, cache_version, cache_ignore_input_vars
+
+        # If the cache is of type, Cache, then derive a TaskMetadata object from it.
+        if isinstance(cache, Cache):
+            # Validate that none of the deprecated cache-related parameters are set.
+            if cache_serialize is not None or cache_version is not None or cache_ignore_input_vars is not None:
+                raise ValueError(
+                    "cache_serialize, cache_version, and cache_ignore_input_vars are deprecated. Please use Cache object"
+                )
+
+            assert isinstance(cache, Cache)
+
+            cache_version = cache.get_version(VersionParameters(func=fn, container_image=container_image))
+            cache_serialize = cache.serialize
+            cache_ignore_input_vars = cache.get_ignored_inputs()
+            cache = True
+        else:
+            if cache_serialize is None:
+                cache_serialize = False
+            if cache_version is None:
+                cache_version = ""
+            if cache_ignore_input_vars is None:
+                cache_ignore_input_vars = tuple()
+
         _metadata = TaskMetadata(
             cache=cache,
             cache_serialize=cache_serialize,
