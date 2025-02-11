@@ -2095,6 +2095,7 @@ class FlyteRemote(object):
         :param version: specific version of the task to run, default is a special string ``latest``, which implies latest
         version by time
         :param execution_name: If provided, will use this name for the execution.
+        :param execution_name_prefix: If provided, will use this prefix for the execution name.
         :param image_config: If provided, will use this image config in the pod.
         :param wait: If True, will wait for the execution to complete before returning.
         :param overwrite_cache: If True, will overwrite the cache.
@@ -2112,8 +2113,6 @@ class FlyteRemote(object):
             domain=domain or self._default_domain,
             version=version,
         )
-        pickled_target_dict = None
-
         version, pickled_target_dict = self._resolve_version(version, entity, ss)
 
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
@@ -2129,6 +2128,7 @@ class FlyteRemote(object):
             #   object (look into the function, the passed in ss is basically ignored). How should it be piped in?
             #   https://github.com/flyteorg/flyte/issues/6070
             flyte_task: FlyteTask = self.register_task(entity, ss, version)
+
         return self.execute(
             flyte_task,
             inputs,
