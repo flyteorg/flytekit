@@ -363,19 +363,17 @@ def task(
                     "cache_serialize, cache_version, and cache_ignore_input_vars are deprecated. Please use Cache object"
                 )
 
-            assert isinstance(cache, Cache)
-
             cache_version = cache.get_version(VersionParameters(func=fn, container_image=container_image))
             cache_serialize = cache.serialize
             cache_ignore_input_vars = cache.get_ignored_inputs()
             cache = True
-        else:
-            if cache_serialize is None:
-                cache_serialize = False
-            if cache_version is None:
-                cache_version = ""
-            if cache_ignore_input_vars is None:
-                cache_ignore_input_vars = tuple()
+
+        if cache_serialize is None:
+            cache_serialize = False
+        if cache_version is None:
+            cache_version = ""
+        if cache_ignore_input_vars is None:
+            cache_ignore_input_vars = tuple()
 
         _metadata = TaskMetadata(
             cache=cache,
