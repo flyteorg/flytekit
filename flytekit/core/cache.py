@@ -1,10 +1,12 @@
 import hashlib
-from typing import Callable, Generic, List, Optional, ParamSpec, Protocol, Tuple, TypeVar, Union, runtime_checkable
 from dataclasses import dataclass
+from typing import Callable, Generic, List, Optional, ParamSpec, Protocol, Tuple, TypeVar, Union, runtime_checkable
+
 from flytekit.image_spec.image_spec import ImageSpec
 
 P = ParamSpec("P")
 FuncOut = TypeVar("FuncOut")
+
 
 @dataclass
 class VersionParameters(Generic[P, FuncOut]):
@@ -18,14 +20,36 @@ class VersionParameters(Generic[P, FuncOut]):
                             image name or an ImageSpec object.
     :type container_image: Optional[Union[str, ImageSpec]]
     """
+
     func: Callable[P, FuncOut]
     container_image: Optional[Union[str, ImageSpec]] = None
 
 
 @runtime_checkable
 class CachePolicy(Protocol):
-    def get_version(self, salt: str, params: VersionParameters) -> str:
-        ...
+    def get_version(self, salt: str, params: VersionParameters) -> str: ...
+
+
+class DefaultPolicies:
+    """
+    Singleton class to store and manage a list of default caching policies.
+    """
+
+    _instance = None
+    _policies: List[CachePolicy] = []
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(DefaultPolicies, cls).__new__(cls)
+        return cls._instance
+
+    @classmethod
+    def get_policies(cls) -> List[CachePolicy]:
+        return cls._policies
+
+    @classmethod
+    def set_policies(cls, policies: List[CachePolicy]):
+        cls._policies = policies
 
 
 @dataclass
@@ -46,6 +70,7 @@ class Cache:
     :param policies: A list of cache policies to generate the version hash.
     :type policies: Optional[Union[List[CachePolicy], CachePolicy]]
     """
+
     version: Optional[str] = None
     serialize: bool = False
     ignored_inputs: Union[Tuple[str, ...], str] = ()
@@ -58,11 +83,11 @@ class Cache:
         else:
             self._ignored_inputs = self.ignored_inputs
 
-        if self.policies is not None and isinstance(self.policies, CachePolicy):
-            self._policies = [self.policies]
+        # Normalize policies so that self._policies is always a list
         if self.policies is None:
-            # TODO: Fetch default policies instead
-            self._policies = []
+            self._policies = DefaultPolicies.get_policies()
+        elif isinstance(self.policies, CachePolicy):
+            self._policies = [self.policies]
 
     def get_ignored_inputs(self) -> Tuple[str, ...]:
         return self._ignored_inputs
@@ -73,7 +98,7 @@ class Cache:
 
         # If the list of policies is empty, raise an error
         if not self._policies:
-            raise ValueError("No cache policies provided to generate version")
+            raise ValueError("At least one cache policy needs to be set")
 
         task_hash = ""
         for cache_instance in self._policies:
