@@ -55,10 +55,10 @@ from flytekit.core.python_auto_container import (
     default_notebook_task_resolver,
 )
 from flytekit.core.python_function_task import PythonFunctionTask
-from flytekit.core.reference_entity import ReferenceSpec
+from flytekit.core.reference_entity import ReferenceEntity, ReferenceSpec
 from flytekit.core.task import ReferenceTask
 from flytekit.core.tracker import extract_task_module
-from flytekit.core.type_engine import LiteralsResolver, TypeEngine
+from flytekit.core.type_engine import LiteralsResolver, TypeEngine, strict_type_hint_matching
 from flytekit.core.workflow import PythonFunctionWorkflow, ReferenceWorkflow, WorkflowBase, WorkflowFailurePolicy
 from flytekit.exceptions import user as user_exceptions
 from flytekit.exceptions.user import (
@@ -1277,7 +1277,7 @@ class FlyteRemote(object):
         module_name: typing.Optional[str] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
         fast_package_options: typing.Optional[FastPackageOptions] = None,
-    ) -> typing.Union[FlyteWorkflow, ReferenceWorkflow, FlyteTask, FlyteLaunchPlan]:
+    ) -> typing.Union[FlyteWorkflow, FlyteTask, FlyteLaunchPlan, ReferenceEntity]:
         """
         Use this method to register a workflow via script mode.
         :param destination_dir: The destination directory where the workflow will be copied to.
@@ -1295,7 +1295,7 @@ class FlyteRemote(object):
         :param fast_package_options: Options to customize copy_all behavior, ignored when copy_all is False.
         :return:
         """
-        if isinstance(entity, ReferenceWorkflow):
+        if isinstance(entity, ReferenceEntity):
             return entity
         if copy_all:
             logger.info(
@@ -1516,9 +1516,12 @@ class FlyteRemote(object):
                 else:
                     if k not in type_hints:
                         try:
-                            type_hints[k] = TypeEngine.guess_python_type(input_flyte_type_map[k].type)
+                            type_hints[k] = strict_type_hint_matching(v, input_flyte_type_map[k].type)
                         except ValueError:
-                            logger.debug(f"Could not guess type for {input_flyte_type_map[k].type}, skipping...")
+                            developer_logger.debug(
+                                f"Could not guess type for {input_flyte_type_map[k].type}, skipping..."
+                            )
+                            type_hints[k] = TypeEngine.guess_python_type(input_flyte_type_map[k].type)
                     variable = entity.interface.inputs.get(k)
                     hint = type_hints[k]
                     self.file_access._get_upload_signed_url_fn = functools.partial(
@@ -1611,7 +1614,9 @@ class FlyteRemote(object):
 
     def execute(
         self,
-        entity: typing.Union[FlyteTask, FlyteLaunchPlan, FlyteWorkflow, PythonTask, WorkflowBase, LaunchPlan],
+        entity: typing.Union[
+            FlyteTask, FlyteLaunchPlan, FlyteWorkflow, PythonTask, WorkflowBase, LaunchPlan, ReferenceEntity
+        ],
         inputs: typing.Dict[str, typing.Any],
         project: str = None,
         domain: str = None,
