@@ -148,7 +148,7 @@ def get_flytekit_for_pypi():
     if not __version__ or "dev" in __version__:
         return "flytekit"
     else:
-        return f"flytekit"
+        return f"flytekit=={__version__}"
 
 
 _PACKAGE_NAME_RE = re.compile(r"^[\w-]+")
@@ -251,13 +251,11 @@ def prepare_python_install(image_spec: ImageSpec, tmp_dir: Path) -> str:
             requirements.extend(image_spec.packages)
 
         # Adds flytekit if it is not specified
-        # if not any(_is_flytekit(package) for package in requirements):
-        #     requirements.append(get_flytekit_for_pypi())
+        if not any(_is_flytekit(package) for package in requirements):
+            requirements.append(get_flytekit_for_pypi())
 
         requirements_uv_path = tmp_dir / "requirements_uv.txt"
         requirements_uv_path.write_text("\n".join(requirements))
-        print(requirements_uv_path)
-        breakpoint()
         pip_install_args.extend(["--requirement", "requirements_uv.txt"])
 
     pip_install_args = " ".join(pip_install_args)

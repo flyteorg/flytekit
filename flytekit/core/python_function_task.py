@@ -609,6 +609,10 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
             return result
 
     def run(self, remote: "FlyteRemote", ss: SerializationSettings, **kwargs):
+        """
+        This is a helper function to help run eager parent tasks locally, pointing to a remote cluster. This is used
+        only for local testing for now.
+        """
         ctx = FlyteContextManager.current_context()
         # tag is the current execution id
         # root tag is read from the environment variable if it exists, if not, it's the current execution id

@@ -297,6 +297,7 @@ class WorkflowBase(object):
         input_kwargs = self.python_interface.default_inputs_as_kwargs
         input_kwargs.update(kwargs)
         ctx = FlyteContext.current_context()
+        # todo: remove this conditional once context manager is thread safe
         if not (ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.EAGER_EXECUTION):
             self.compile()
         try:
