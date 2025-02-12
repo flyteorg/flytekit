@@ -139,7 +139,6 @@ def _serialize_pod_spec(
     pod_template: "PodTemplate",
     primary_container: "task_models.Container",
     settings: SerializationSettings,
-    task_type: str = "",
 ) -> Dict[str, Any]:
     # import here to avoid circular import
     from kubernetes.client import ApiClient, V1PodSpec
@@ -177,10 +176,8 @@ def _serialize_pod_spec(
             else:
                 container.image = get_registerable_container_image(container.image, settings.image_config)
 
-            if task_type != "spark":
-                # for spark driver/executor, do not use the command and args from task podTemplate
-                container.command = primary_container.command
-                container.args = primary_container.args
+            container.command = primary_container.command
+            container.args = primary_container.args
 
             limits, requests = {}, {}
             for resource in primary_container.resources.limits:

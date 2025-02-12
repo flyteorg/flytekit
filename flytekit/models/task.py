@@ -1081,6 +1081,7 @@ class K8sPod(_common.FlyteIdlEntity):
         return cls(
             metadata=K8sObjectMetadata(labels=pod_template.labels, annotations=pod_template.annotations),
             pod_spec=ApiClient().sanitize_for_serialization(pod_template.pod_spec),
+            primary_container_name=pod_template.primary_container_name,
         )
 
 
