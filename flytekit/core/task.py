@@ -98,9 +98,9 @@ def task(
     _task_function: None = ...,
     task_config: Optional[T] = ...,
     cache: Union[bool, Cache] = ...,
-    cache_serialize: bool = ...,
-    cache_version: str = ...,
-    cache_ignore_input_vars: Tuple[str, ...] = ...,
+    cache_serialize: Optional[bool] = ...,
+    cache_version: Optional[str] = ...,
+    cache_ignore_input_vars: Optional[Tuple[str, ...]] = ...,
     retries: int = ...,
     interruptible: Optional[bool] = ...,
     deprecated: str = ...,
@@ -137,9 +137,9 @@ def task(
     _task_function: Callable[P, FuncOut],
     task_config: Optional[T] = ...,
     cache: Union[bool, Cache] = ...,
-    cache_serialize: bool = ...,
-    cache_version: str = ...,
-    cache_ignore_input_vars: Tuple[str, ...] = ...,
+    cache_serialize: Optional[bool] = ...,
+    cache_version: Optional[str] = ...,
+    cache_ignore_input_vars: Optional[Tuple[str, ...]] = ...,
     retries: int = ...,
     interruptible: Optional[bool] = ...,
     deprecated: str = ...,
@@ -346,7 +346,7 @@ def task(
     :param pickle_untyped: Boolean that indicates if the task allows unspecified data types.
     """
 
-    def wrapper(fn: Callable[P, Any]) -> PythonFunctionTask[T]:
+    def wrapper(fn: Callable[P, FuncOut]) -> PythonFunctionTask[T]:
         nonlocal cache, cache_serialize, cache_version, cache_ignore_input_vars
 
         # If the cache is of type bool but cache_version is not set, then assume that this is a Cache object
