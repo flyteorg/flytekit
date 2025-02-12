@@ -1,8 +1,8 @@
-# Implement a trivial CachePolicy that always returns the salt as the version
 from typing import OrderedDict
+from mock import mock
 import pytest
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
-from flytekit.core.cache import Cache, CachePolicy, DefaultPolicies, VersionParameters
+from flytekit.core.cache import Cache, CachePolicy, VersionParameters
 from flytekit.core.task import task
 from flytekit.tools.translator import get_serializable_task
 
@@ -123,9 +123,10 @@ def test_basic_salt_cache_policy(default_serialization_settings):
     assert serialized_t_cached.template.metadata.discovery_version == "348b4b8c52d8868e0c202ce4d26d59906c13716197b611a0a7a215074159df79"
 
 
-def test_set_default_policies(default_serialization_settings):
+@mock.patch("flytekit.configuration.plugin.FlytekitPlugin.get_default_cache_policies")
+def test_set_default_policies(mock_get_default_cache_policies, default_serialization_settings):
     # Enable SaltCachePolicy as the default cache policy
-    DefaultPolicies.set_policies([SaltCachePolicy()])
+    mock_get_default_cache_policies.return_value = [SaltCachePolicy()]
 
     @task(cache=True)
     def t1(a: int) -> int:
@@ -147,7 +148,7 @@ def test_set_default_policies(default_serialization_settings):
     assert serialized_t1.template.metadata.discovery_version == serialized_t2.template.metadata.discovery_version
 
     # Reset the default policies
-    DefaultPolicies.set_policies([])
+    mock_get_default_cache_policies.return_value = []
 
     with pytest.raises(ValueError, match="At least one cache policy needs to be set"):
         @task(cache=True)

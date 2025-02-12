@@ -30,28 +30,6 @@ class CachePolicy(Protocol):
     def get_version(self, salt: str, params: VersionParameters) -> str: ...
 
 
-class DefaultPolicies:
-    """
-    Singleton class to store and manage a list of default caching policies.
-    """
-
-    _instance = None
-    _policies: List[CachePolicy] = []
-
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(DefaultPolicies, cls).__new__(cls)
-        return cls._instance
-
-    @classmethod
-    def get_policies(cls) -> List[CachePolicy]:
-        return cls._policies
-
-    @classmethod
-    def set_policies(cls, policies: List[CachePolicy]):
-        cls._policies = policies
-
-
 @dataclass
 class Cache:
     """
@@ -85,7 +63,9 @@ class Cache:
 
         # Normalize policies so that self._policies is always a list
         if self.policies is None:
-            self._policies = DefaultPolicies.get_policies()
+            from flytekit.configuration.plugin import get_plugin
+
+            self._policies = get_plugin().get_default_cache_policies()
         elif isinstance(self.policies, CachePolicy):
             self._policies = [self.policies]
 
