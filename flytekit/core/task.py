@@ -98,9 +98,6 @@ def task(
     _task_function: None = ...,
     task_config: Optional[T] = ...,
     cache: Union[bool, Cache] = ...,
-    cache_serialize: Optional[bool] = ...,
-    cache_version: Optional[str] = ...,
-    cache_ignore_input_vars: Optional[Tuple[str, ...]] = ...,
     retries: int = ...,
     interruptible: Optional[bool] = ...,
     deprecated: str = ...,
@@ -129,6 +126,7 @@ def task(
     pod_template_name: Optional[str] = ...,
     accelerator: Optional[BaseAccelerator] = ...,
     pickle_untyped: bool = ...,
+    **kwargs,
 ) -> Callable[[Callable[..., FuncOut]], PythonFunctionTask[T]]: ...
 
 
@@ -137,9 +135,6 @@ def task(
     _task_function: Callable[P, FuncOut],
     task_config: Optional[T] = ...,
     cache: Union[bool, Cache] = ...,
-    cache_serialize: Optional[bool] = ...,
-    cache_version: Optional[str] = ...,
-    cache_ignore_input_vars: Optional[Tuple[str, ...]] = ...,
     retries: int = ...,
     interruptible: Optional[bool] = ...,
     deprecated: str = ...,
@@ -168,6 +163,7 @@ def task(
     pod_template_name: Optional[str] = ...,
     accelerator: Optional[BaseAccelerator] = ...,
     pickle_untyped: bool = ...,
+    **kwargs,
 ) -> Union[Callable[P, FuncOut], PythonFunctionTask[T]]: ...
 
 
@@ -175,9 +171,6 @@ def task(
     _task_function: Optional[Callable[P, FuncOut]] = None,
     task_config: Optional[T] = None,
     cache: Union[bool, Cache] = False,
-    cache_serialize: Optional[bool] = None,
-    cache_version: Optional[str] = None,
-    cache_ignore_input_vars: Optional[Tuple[str, ...]] = None,
     retries: int = 0,
     interruptible: Optional[bool] = None,
     deprecated: str = "",
@@ -212,6 +205,7 @@ def task(
     pod_template_name: Optional[str] = None,
     accelerator: Optional[BaseAccelerator] = None,
     pickle_untyped: bool = False,
+    **kwargs,
 ) -> Union[
     Callable[P, FuncOut],
     Callable[[Callable[P, FuncOut]], PythonFunctionTask[T]],
@@ -345,6 +339,10 @@ def task(
     :param accelerator: The accelerator to use for this task.
     :param pickle_untyped: Boolean that indicates if the task allows unspecified data types.
     """
+    # Maintain backwards compatibility with the old cache parameters, while cleaning up the task function definition.
+    cache_serialize = kwargs.get("cache_serialize")
+    cache_version = kwargs.get("cache_version")
+    cache_ignore_input_vars = kwargs.get("cache_ignore_input_vars")
 
     def wrapper(fn: Callable[P, FuncOut]) -> PythonFunctionTask[T]:
         nonlocal cache, cache_serialize, cache_version, cache_ignore_input_vars
