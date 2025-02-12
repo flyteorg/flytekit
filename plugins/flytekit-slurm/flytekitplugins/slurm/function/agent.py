@@ -50,7 +50,6 @@ class SlurmFunctionAgent(AsyncAgentBase):
         )
 
         # Run Slurm job
-        # if self._conn is None:
         await self._connect(slurm_host)
         res = await self._conn.run(cmd, check=True)
 
