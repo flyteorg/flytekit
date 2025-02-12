@@ -1,6 +1,8 @@
 import hashlib
 from dataclasses import dataclass
-from typing import Callable, Generic, List, Optional, ParamSpec, Protocol, Tuple, TypeVar, Union, runtime_checkable
+from typing import Callable, Generic, List, Optional, Protocol, Tuple, Union, runtime_checkable
+
+from typing_extensions import ParamSpec, TypeVar
 
 from flytekit.image_spec.image_spec import ImageSpec
 
