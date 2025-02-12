@@ -331,7 +331,6 @@ def test_spark_driver_executor_podSpec(reset_spark_session):
                 command=["echo"],
                 args=["wow"],
                 env=[
-                    V1EnvVar(name="FOO", value="baz"),
                     V1EnvVar(name="x/custom-driver", value="driver"),
                 ],
             ),
@@ -360,7 +359,6 @@ def test_spark_driver_executor_podSpec(reset_spark_session):
                 command=["echo"],
                 args=["wow"],
                 env=[
-                    V1EnvVar(name="FOO", value="baz"),
                     V1EnvVar(name="x/custom-executor", value="executor"),
                 ],
             ),
