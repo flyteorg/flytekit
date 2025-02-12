@@ -11,11 +11,10 @@ from flytekit import FlyteContextManager, PythonFunctionTask, lazy_module, logge
 from flytekit.configuration import DefaultImages, SerializationSettings
 from flytekit.core.context_manager import ExecutionParameters
 from flytekit.core.pod_template import PodTemplate
-from flytekit.core.utils import _serialize_pod_spec
 from flytekit.extend import ExecutionState, TaskPlugins
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 from flytekit.image_spec import ImageSpec
-from flytekit.models.task import K8sObjectMetadata, K8sPod
+from flytekit.models.task import K8sPod
 
 from .models import SparkJob, SparkType
 
@@ -185,9 +184,7 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
 
         return MessageToDict(job.to_flyte_idl())
 
-    def to_k8s_pod(
-        self, pod_template: Optional[PodTemplate] = None
-    ) -> Optional[K8sPod]:
+    def to_k8s_pod(self, pod_template: Optional[PodTemplate] = None) -> Optional[K8sPod]:
         """
         Convert the podTemplate to K8sPod
         """
