@@ -280,7 +280,6 @@ def test_reconcile(phase, expected_update_status):
             phase=phase,
             started_at=datetime.datetime(year=2024, month=1, day=2, tzinfo=datetime.timezone.utc),
             duration=datetime.timedelta(seconds=10),
-            # abort_metadata=AbortMetadata(cause="cause", principal="testuser"),
         )
     )
     mock_remote.sync_execution.return_value = wf_exec
