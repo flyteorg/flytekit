@@ -608,7 +608,7 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
                 raise FlyteNonRecoverableSystemException(base_error)
             return result
 
-    def run(self, remote: "FlyteRemote", ss: SerializationSettings, **kwargs):
+    def run(self, remote: "FlyteRemote", ss: SerializationSettings, **kwargs):  # type: ignore[name-defined]
         """
         This is a helper function to help run eager parent tasks locally, pointing to a remote cluster. This is used
         only for local testing for now.
