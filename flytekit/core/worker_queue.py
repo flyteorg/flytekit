@@ -268,11 +268,11 @@ class Controller:
                         update = update_items[typing.cast(uuid.UUID, item.uuid)]
                         item.wf_exec = update.wf_exec
                         if update.status is None:
-                            raise AssertionError("update.status is None")
+                            raise AssertionError(f"update's status missing for {item.entity.name}")
                         item.status = update.status
                         if update.status == ItemStatus.SUCCESS:
                             if update.wf_exec is None:
-                                raise AssertionError("update.wf_exec is None")
+                                raise AssertionError(f"update's wf_exec missing for {item.entity.name}")
                             item.result = update.wf_exec.outputs.as_python_native(item.python_interface)
                         elif update.status == ItemStatus.FAILED:
                             # If update object already has an error, then use that, otherwise look for one in the
@@ -283,7 +283,9 @@ class Controller:
                                 from flytekit.exceptions.eager import EagerException
 
                                 if update.wf_exec is None:
-                                    raise AssertionError("update.wf_exec is None")
+                                    raise AssertionError(
+                                        f"update's wf_exec missing in error case for {item.entity.name}"
+                                    )
 
                                 exc = EagerException(
                                     f"Error executing {update.work_item.entity.name} with error:"
@@ -404,7 +406,7 @@ class Controller:
                 return i.result
             elif i.status == ItemStatus.FAILED:
                 if i.error is None:
-                    raise AssertionError("Error should not be None if status is failed")
+                    raise AssertionError(f"Error should not be None if status is failed for {entity.name}")
                 raise i.error
             else:
                 await asyncio.sleep(2)  # Small delay to avoid busy-waiting
