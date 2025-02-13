@@ -44,7 +44,6 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         task_config: T,
         task_type="python-task",
         image: Optional[Union[str, ImageSpec]] = None,
-        container_image: Optional[Union[str, ImageSpec]] = None,
         requests: Optional[Resources] = None,
         limits: Optional[Resources] = None,
         environment: Optional[Dict[str, str]] = None,
@@ -60,7 +59,6 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         :param task_config: Configuration object for Task. Should be a unique type for that specific Task.
         :param task_type: String task type to be associated with this Task
         :param image: String FQN or ImageSpec for the image.
-        :param container_image: Deprecated, please use `image` instead.
         :param requests: custom resource request settings.
         :param limits: custom resource limit settings.
         :param environment: Environment variables you want the task to have when run.
@@ -81,6 +79,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         :param pod_template: Custom PodTemplate for this task.
         :param pod_template_name: The name of the existing PodTemplate resource which will be used in this task.
         :param accelerator: The accelerator to use for this task.
+        :param container_image: Deprecated, please use `image` instead.
         """
         sec_ctx = None
         if secret_requests:
@@ -96,17 +95,17 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         # Rename the `container_image` parameter to `image` for improved user experience.
         # Currently, both `image` and `container_image` are supported to maintain backward compatibility.
         # For more details, please refer to https://github.com/flyteorg/flyte/issues/6140.
-        if image is not None and container_image is not None:
+        if image is not None and kwargs.get("container_image") is not None:
             raise ValueError(
                 "Cannot specify both image and container_image. "
                 "Please use image because container_image is deprecated and will be removed in the future."
             )
-        elif container_image is not None:
+        elif kwargs.get("container_image") is not None:
             warnings.warn(
                 "container_image is deprecated and will be removed in the future. Please use image instead.",
                 DeprecationWarning,
             )
-            self._image = container_image
+            self._image = kwargs["container_image"]
         else:
             self._image = image
 
