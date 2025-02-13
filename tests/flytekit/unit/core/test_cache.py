@@ -150,12 +150,12 @@ def test_set_default_policies(mock_get_default_cache_policies, default_serializa
     # Reset the default policies
     mock_get_default_cache_policies.return_value = []
 
-    with pytest.raises(ValueError, match="At least one cache policy needs to be set"):
+    with pytest.raises(ValueError, match="If version is not defined then at least one cache policy needs to be set"):
         @task(cache=True)
         def t3_fails(a: int) -> int:
             return a
 
-    with pytest.raises(ValueError, match="At least one cache policy needs to be set"):
+    with pytest.raises(ValueError, match="If version is not defined then at least one cache policy needs to be set"):
         @task(cache=Cache())
         def t4_fails(a: int) -> int:
             return a + 1

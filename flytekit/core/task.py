@@ -347,7 +347,8 @@ def task(
     def wrapper(fn: Callable[P, FuncOut]) -> PythonFunctionTask[T]:
         nonlocal cache, cache_serialize, cache_version, cache_ignore_input_vars
 
-        # If the cache is of type bool but cache_version is not set, then assume that this is a Cache object
+        # If the cache is of type bool but cache_version is not set, then assume that we want to use the
+        # default cache policies in Cache
         if isinstance(cache, bool) and cache is True and cache_version is None:
             cache = Cache(
                 serialize=cache_serialize if cache_serialize is not None else False,
@@ -360,12 +361,20 @@ def task(
                 raise ValueError(
                     "cache_serialize, cache_version, and cache_ignore_input_vars are deprecated. Please use Cache object"
                 )
-
-            cache_version = cache.get_version(VersionParameters(func=fn, container_image=container_image))
+            cache_version = cache.get_version(
+                VersionParameters(
+                    func=fn,
+                    container_image=container_image,
+                    pod_template=pod_template,
+                    pod_template_name=pod_template_name,
+                )
+            )
             cache_serialize = cache.serialize
             cache_ignore_input_vars = cache.get_ignored_inputs()
             cache = True
 
+        # Set default values to each of the cache-related variables. Notice how this only applies if the values are not
+        # set explicitly, which only happens if they are not set at all in the invocation of the task.
         if cache_serialize is None:
             cache_serialize = False
         if cache_version is None:
