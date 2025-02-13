@@ -74,16 +74,15 @@ class Cache:
         elif isinstance(self.policies, CachePolicy):
             self._policies = [self.policies]
 
+        if self.version is None and not self._policies:
+            raise ValueError("If version is not defined then at least one cache policy needs to be set")
+
     def get_ignored_inputs(self) -> Tuple[str, ...]:
         return self._ignored_inputs
 
     def get_version(self, params: VersionParameters) -> str:
         if self.version is not None:
             return self.version
-
-        # If the list of policies is empty, raise an error
-        if not self._policies:
-            raise ValueError("At least one cache policy needs to be set")
 
         task_hash = ""
         for cache_instance in self._policies:
