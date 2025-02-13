@@ -91,6 +91,7 @@ class PanderaPandasTransformer(TypeTransformer[pandera.typing.DataFrame]):
             html = renderer.to_html(python_val, schema, exc)
             val = python_val
             if config.on_error == "raise":
+                Deck(renderer._title, html).publish()
                 raise exc
             elif config.on_error == "warn":
                 logger.warning(str(exc))
