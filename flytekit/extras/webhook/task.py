@@ -131,7 +131,7 @@ class WebhookTask(SyncAgentExecutorMixin, PythonTask):
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         config = {
             URL_KEY: self._url,
-            METHOD_KEY: self._method.value,
+            METHOD_KEY: self._method,
             HEADERS_KEY: self._headers or {},
             DATA_KEY: self._data or {},
             SHOW_DATA_KEY: self._show_data,
