@@ -137,7 +137,7 @@ class PanderaPandasTransformer(TypeTransformer[pandera.typing.DataFrame]):
         else:
             html = renderer.to_html(val, schema)
         finally:
-            Deck(renderer._title, html)
+            Deck(renderer._title, html).publish()
 
         return val
 
