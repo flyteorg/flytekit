@@ -14,11 +14,11 @@ from flytekit.image_spec import ImageSpec
 
 @dataclass
 class SlurmFunction(object):
-    """Configure Slurm settings. Note that we focus on srun command now.
+    """Configure Slurm settings. Note that we focus on sbatch command now.
 
     Args:
         slurm_host: Slurm host name. We assume there's no default Slurm host now.
-        srun_conf: Options of srun command.
+        sbatch_conf: Options of sbatch command.
         script: User-defined script where "{task.fn}" serves as a placeholder for the
             task function execution. Users should insert "{task.fn}" at the desired
             execution point within the script. If the script is not provided, the task
@@ -26,12 +26,12 @@ class SlurmFunction(object):
     """
 
     slurm_host: str
-    srun_conf: Optional[Dict[str, str]] = None
+    sbatch_conf: Optional[Dict[str, str]] = None
     script: Optional[str] = None
 
     def __post_init__(self):
-        if self.srun_conf is None:
-            self.srun_conf = {}
+        if self.sbatch_conf is None:
+            self.sbatch_conf = {}
 
 
 class SlurmFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[SlurmFunction]):
@@ -59,7 +59,7 @@ class SlurmFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[SlurmFunctio
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         return {
             "slurm_host": self.task_config.slurm_host,
-            "srun_conf": self.task_config.srun_conf,
+            "sbatch_conf": self.task_config.sbatch_conf,
             "script": self.task_config.script,
         }
 

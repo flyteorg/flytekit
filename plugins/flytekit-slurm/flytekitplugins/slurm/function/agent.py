@@ -1,21 +1,24 @@
+import tempfile
 from dataclasses import dataclass
 from typing import Dict, Optional
 
 import asyncssh
 from asyncssh import SSHClientConnection
 
+from flytekit import logger
 from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource, ResourceMeta
 from flytekit.extend.backend.utils import convert_to_flyte_phase
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
-from flytekit import logger
+
 @dataclass
 class SlurmJobMetadata(ResourceMeta):
     """Slurm job metadata.
 
     Args:
         job_id: Slurm job id.
+        slurm_host: Host alias of the Slurm cluster.
     """
 
     job_id: str
@@ -28,6 +31,9 @@ class SlurmFunctionAgent(AsyncAgentBase):
     # SSH connection pool for multi-host environment
     _conn: Optional[SSHClientConnection] = None
 
+    # Tmp remote path of the batch script
+    REMOTE_PATH = "/tmp/task.slurm"
+
     def __init__(self) -> None:
         super(SlurmFunctionAgent, self).__init__(task_type_name="slurm_fn", metadata_type=SlurmJobMetadata)
 
@@ -39,30 +45,35 @@ class SlurmFunctionAgent(AsyncAgentBase):
     ) -> SlurmJobMetadata:
         # Retrieve task config
         slurm_host = task_template.custom["slurm_host"]
-        srun_conf = task_template.custom["srun_conf"]
+        sbatch_conf = task_template.custom["sbatch_conf"]
         script = task_template.custom["script"]
 
-        # Construct srun command for Slurm cluster
-        cmd = _get_srun_cmd(
-            srun_conf=srun_conf,
+        # Construct command for Slurm cluster
+        cmd, script = _get_sbatch_cmd_and_script(
+            sbatch_conf=sbatch_conf,
             entrypoint=" ".join(task_template.container.args),
             script=script,
+            batch_script_path=self.REMOTE_PATH,
         )
-
 
         logger.info("@@@ task_template.container.args:")
         logger.info(task_template.container.args)
         logger.info("@@@ Slurm Command: ")
         logger.info(cmd)
+        logger.info("@@@ Batch script: ")
+        logger.info(script)
 
         # Run Slurm job
         await self._connect(slurm_host)
+        with tempfile.NamedTemporaryFile("w") as f:
+            f.write(script)
+            f.flush()
+            async with self._conn.start_sftp_client() as sftp:
+                await sftp.put(f.name, self.REMOTE_PATH)
         res = await self._conn.run(cmd, check=True)
 
-        # Direct return for sbatch
-        # job_id = res.stdout.split()[-1]
-        # Use echo trick for srun
-        job_id = res.stdout.strip()
+        # Retrieve Slurm job id
+        job_id = res.stdout.split()[-1]
         logger.info("@@@ create slurm job id: " + job_id)
 
         return SlurmJobMetadata(job_id=job_id, slurm_host=slurm_host)
@@ -91,42 +102,46 @@ class SlurmFunctionAgent(AsyncAgentBase):
         self._conn = await asyncssh.connect(host=slurm_host)
 
 
-def _get_srun_cmd(srun_conf: Dict[str, str], entrypoint: str, script: Optional[str] = None) -> str:
-    """Construct Slurm srun command.
+def _get_sbatch_cmd_and_script(
+    sbatch_conf: Dict[str, str],
+    entrypoint: str,
+    script: Optional[str] = None,
+    batch_script_path: str = "/tmp/task.slurm",
+) -> str:
+    """Construct the Slurm sbatch command and the batch script content.
 
     Flyte entrypoint, pyflyte-execute, is run within a bash shell process.
 
     Args:
-        srun_conf: Options of srun command.
+        sbatch_conf: Options of sbatch command.
         entrypoint: Flyte entrypoint.
         script: User-defined script where "{task.fn}" serves as a placeholder for the
             task function execution. Users should insert "{task.fn}" at the desired
             execution point within the script. If the script is not provided, the task
             function will be executed directly.
+        batch_script_path: Absolute path of the batch script on Slurm cluster.
 
     Returns:
-        cmd: Slurm srun command.
+        cmd: Slurm sbatch command.
     """
-    # Setup srun options
-    cmd = ["srun"]
-    for opt, val in srun_conf.items():
+    # Setup sbatch options
+    cmd = ["sbatch"]
+    for opt, val in sbatch_conf.items():
         cmd.extend([f"--{opt}", str(val)])
 
-    cmd.extend(["bash", "-c"])
-    cmd = " ".join(cmd)
+    # Assign the batch script to run
+    cmd.append(batch_script_path)
 
     if script is None:
-        cmd += f""" '{entrypoint}"""
+        script = f"""#!/bin/bash
+        {entrypoint}
+        """
     else:
         script = script.replace("{task.fn}", entrypoint)
-        cmd += f""" '{script}"""
 
-    # Trick to show the Slurm job id on stdout
-    cmd += """
-    echo $SLURM_JOB_ID'
-    """
+    cmd = " ".join(cmd)
 
-    return cmd
+    return cmd, script
 
 
 AgentRegistry.register(SlurmFunctionAgent())
