@@ -18,7 +18,7 @@ import pytest
 from unittest import mock
 from dataclasses import dataclass
 
-from flytekit import LaunchPlan, kwtypes, WorkflowExecutionPhase
+from flytekit import LaunchPlan, kwtypes, WorkflowExecutionPhase, task, workflow
 from flytekit.configuration import Config, ImageConfig, SerializationSettings
 from flytekit.core.launch_plan import reference_launch_plan
 from flytekit.core.task import reference_task
@@ -508,8 +508,16 @@ def test_execute_reference_task(register):
         ...
 
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
-    execution = remote.execute(
+    remote_entity = remote.register_script(
         t1,
+        project=PROJECT,
+        domain=DOMAIN,
+        image_config=ImageConfig.auto(img_name=IMAGE),
+        destination_dir=DEST_DIR,
+        source_path=str(MODULE_PATH),
+    )
+    execution = remote.execute(
+        remote_entity,
         inputs={"a": 10},
         wait=True,
         overwrite_cache=True,
@@ -535,8 +543,16 @@ def test_execute_reference_workflow(register):
         return a + 2, b + "world"
 
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
-    execution = remote.execute(
+    remote_entity = remote.register_script(
         my_wf,
+        project=PROJECT,
+        domain=DOMAIN,
+        image_config=ImageConfig.auto(img_name=IMAGE),
+        destination_dir=DEST_DIR,
+        source_path=str(MODULE_PATH),
+    )
+    execution = remote.execute(
+        remote_entity,
         inputs={"a": 10, "b": "xyz"},
         wait=True,
         overwrite_cache=True,
@@ -562,8 +578,16 @@ def test_execute_reference_launchplan(register):
         return 3, "world"
 
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
-    execution = remote.execute(
+    remote_entity = remote.register_script(
         my_wf,
+        project=PROJECT,
+        domain=DOMAIN,
+        image_config=ImageConfig.auto(img_name=IMAGE),
+        destination_dir=DEST_DIR,
+        source_path=str(MODULE_PATH),
+    )
+    execution = remote.execute(
+        remote_entity,
         inputs={"a": 10, "b": "xyz"},
         wait=True,
         overwrite_cache=True,
@@ -589,6 +613,25 @@ def test_execute_workflow_with_maptask(register):
         wait=True,
     )
     assert execution.outputs["o0"] == [4, 5, 6]
+
+def test_executes_nested_workflow_dictating_interruptible(register):
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    flyte_launch_plan = remote.fetch_launch_plan(name="basic.child_workflow.parent_wf", version=VERSION)
+    # The values we want to test for
+    interruptible_values = [True, False, None]
+    executions = []
+    for creation_interruptible in interruptible_values:
+        execution = remote.execute(flyte_launch_plan, inputs={"a": 10}, wait=False, interruptible=creation_interruptible)
+        executions.append(execution)
+    # Wait for all executions to complete
+    for execution, expected_interruptible in zip(executions, interruptible_values):
+        execution = remote.wait(execution, timeout=300)
+        # Check that the parent workflow is interruptible as expected
+        assert execution.spec.interruptible == expected_interruptible
+        # Check that the child workflow is interruptible as expected
+        subwf_execution_id = execution.node_executions["n1"].closure.workflow_node_metadata.execution_id.name
+        subwf_execution = remote.fetch_execution(project=PROJECT, domain=DOMAIN, name=subwf_execution_id)
+        assert subwf_execution.spec.interruptible == expected_interruptible
 
 
 @pytest.mark.lftransfers
