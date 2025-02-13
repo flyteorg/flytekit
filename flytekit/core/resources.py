@@ -1,7 +1,8 @@
 from dataclasses import dataclass, fields
-from typing import List, Optional, Union
+from typing import TYPE_CHECKING, List, Optional, Union
 
-from kubernetes.client import V1Container, V1PodSpec, V1ResourceRequirements
+if TYPE_CHECKING:
+    from kubernetes.client import V1PodSpec
 from mashumaro.mixins.json import DataClassJSONMixin
 
 from flytekit.models import task as task_models
@@ -107,7 +108,9 @@ def pod_spec_from_resources(
     requests: Optional[Resources] = None,
     limits: Optional[Resources] = None,
     k8s_gpu_resource_key: str = "nvidia.com/gpu",
-) -> V1PodSpec:
+) -> "V1PodSpec":
+    from kubernetes.client import V1Container, V1PodSpec, V1ResourceRequirements
+
     def _construct_k8s_pods_resources(resources: Optional[Resources], k8s_gpu_resource_key: str):
         if resources is None:
             return None
