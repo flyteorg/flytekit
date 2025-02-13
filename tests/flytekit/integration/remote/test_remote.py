@@ -246,6 +246,55 @@ def test_monitor_workflow_execution(register):
     assert execution.outputs["o0"] == "hello world"
 
 
+def test_sync_execution_sync_nodes_get_all_executions(register):
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    flyte_launch_plan = remote.fetch_launch_plan(name="basic.deep_child_workflow.parent_wf", version=VERSION)
+    execution = remote.execute(
+        flyte_launch_plan,
+        inputs={"a": 3},
+    )
+
+    poll_interval = datetime.timedelta(seconds=1)
+    time_to_give_up = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=60)
+
+    execution = remote.sync_execution(execution, sync_nodes=True)
+    while datetime.datetime.now(datetime.timezone.utc) < time_to_give_up:
+        if execution.is_done:
+            break
+
+        with pytest.raises(
+                FlyteAssertion, match="Please wait until the execution has completed before requesting the outputs.",
+        ):
+            execution.outputs
+
+        time.sleep(poll_interval.total_seconds())
+        execution = remote.sync_execution(execution, sync_nodes=True)
+
+        if execution.node_executions:
+            assert execution.node_executions["start-node"].closure.phase == 3  # SUCCEEDED
+
+    for key in execution.node_executions:
+        assert execution.node_executions[key].closure.phase == 3
+
+    # check node execution getting correct number of nested workflows and executions
+    assert len(execution.node_executions) == 5
+    execution_n0 = execution.node_executions["n0"]
+    execution_n1 = execution.node_executions["n1"]
+    assert len(execution_n1.workflow_executions[0].node_executions) == 4
+    execution_n1_n0 = execution_n1.workflow_executions[0].node_executions["n0"]
+    assert len(execution_n1_n0.workflow_executions[0].node_executions) == 3
+    execution_n1_n0_n0 = execution_n1_n0.workflow_executions[0].node_executions["n0"]
+
+    # check inputs and outputs each node execution
+    assert execution_n0.inputs == {"a": 3}
+    assert execution_n0.outputs["o0"] == 6
+    assert execution_n1.inputs == {"a": 6}
+    assert execution_n1_n0.inputs == {"a": 6}
+    assert execution_n1_n0_n0.inputs == {"a": 6}
+    assert execution_n1_n0_n0.outputs["o0"] == 12
+
+
+
 def test_fetch_execute_launch_plan_with_subworkflows(register):
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
 
