@@ -49,6 +49,9 @@ class SlurmFunctionAgent(AsyncAgentBase):
             script=script,
         )
 
+        print("@@@ task_template.container.args:", task_template.container.args)
+        print("@@@ Slurm Command: ", cmd)
+
         # Run Slurm job
         await self._connect(slurm_host)
         res = await self._conn.run(cmd, check=True)
