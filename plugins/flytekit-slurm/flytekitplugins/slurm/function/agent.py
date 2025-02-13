@@ -9,7 +9,7 @@ from flytekit.extend.backend.utils import convert_to_flyte_phase
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
-
+from flytekit import logger
 @dataclass
 class SlurmJobMetadata(ResourceMeta):
     """Slurm job metadata.
@@ -49,9 +49,9 @@ class SlurmFunctionAgent(AsyncAgentBase):
             script=script,
         )
 
-        from flytekit import logger
-        logger.info("@@@ task_template.container.args:", task_template.container.args)
-        logger.info("@@@ Slurm Command: ", cmd)
+
+        logger.info("@@@ task_template.container.args:" + task_template.container.args)
+        logger.info("@@@ Slurm Command: " + cmd)
 
         # Run Slurm job
         await self._connect(slurm_host)
@@ -61,6 +61,7 @@ class SlurmFunctionAgent(AsyncAgentBase):
         # job_id = res.stdout.split()[-1]
         # Use echo trick for srun
         job_id = res.stdout.strip()
+        logger.info("@@@ create slurm job id: " + job_id)
 
         return SlurmJobMetadata(job_id=job_id, slurm_host=slurm_host)
 
@@ -73,8 +74,9 @@ class SlurmFunctionAgent(AsyncAgentBase):
         for o in res.stdout.split(" "):
             if "JobState" in o:
                 job_state = o.split("=")[1].strip().lower()
-        cur_phase = convert_to_flyte_phase(job_state)
 
+        logger.info("@@@ GET PHASE: " + str(job_state))
+        cur_phase = convert_to_flyte_phase(job_state)
         return Resource(phase=cur_phase)
 
     async def delete(self, resource_meta: SlurmJobMetadata, **kwargs) -> None:
