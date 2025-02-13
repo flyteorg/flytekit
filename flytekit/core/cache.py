@@ -4,6 +4,7 @@ from typing import Callable, Generic, List, Optional, Protocol, Tuple, Union, ru
 
 from typing_extensions import ParamSpec, TypeVar
 
+from flytekit.core.pod_template import PodTemplate
 from flytekit.image_spec.image_spec import ImageSpec
 
 P = ParamSpec("P")
@@ -25,6 +26,8 @@ class VersionParameters(Generic[P, FuncOut]):
 
     func: Callable[P, FuncOut]
     container_image: Optional[Union[str, ImageSpec]] = None
+    pod_template: Optional[PodTemplate] = None
+    pod_template_name: Optional[str] = None
 
 
 @runtime_checkable
