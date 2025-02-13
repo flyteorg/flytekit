@@ -49,8 +49,9 @@ class SlurmFunctionAgent(AsyncAgentBase):
             script=script,
         )
 
-        print("@@@ task_template.container.args:", task_template.container.args)
-        print("@@@ Slurm Command: ", cmd)
+        from flytekit import logger
+        logger.info("@@@ task_template.container.args:", task_template.container.args)
+        logger.info("@@@ Slurm Command: ", cmd)
 
         # Run Slurm job
         await self._connect(slurm_host)
