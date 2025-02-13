@@ -1,4 +1,3 @@
-import http
 from datetime import timedelta
 from typing import Any, Dict, Optional, Type, Union
 
@@ -97,7 +96,7 @@ class WebhookTask(SyncAgentExecutorMixin, PythonTask):
         self,
         name: str,
         url: str,
-        method: http.HTTPMethod = http.HTTPMethod.POST,
+        method: str = "POST",
         headers: Optional[Dict[str, str]] = None,
         data: Optional[Dict[str, Any]] = None,
         dynamic_inputs: Optional[Dict[str, Type]] = None,
@@ -107,7 +106,7 @@ class WebhookTask(SyncAgentExecutorMixin, PythonTask):
         timeout: Union[int, timedelta] = timedelta(seconds=10),
         # secret_requests: Optional[List[Secret]] = None,  TODO Secret support is coming soon
     ):
-        if method not in {http.HTTPMethod.GET, http.HTTPMethod.POST}:
+        if method not in {"GET", "POST"}:
             raise ValueError(f"Method should be either GET or POST. Got {method}")
 
         interface = Interface(

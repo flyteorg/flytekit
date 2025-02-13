@@ -13,14 +13,14 @@ def hello(s: str) -> str:
 simple_get = WebhookTask(
     name="simple-get",
     url="http://localhost:8000/",
-    method=http.HTTPMethod.GET,
+    method="GET",
     headers={"Content-Type": "application/json"},
 )
 
 get_with_params = WebhookTask(
     name="get-with-params",
     url="http://localhost:8000/items/{inputs.item_id}",
-    method=http.HTTPMethod.GET,
+    method="GET",
     headers={"Content-Type": "application/json"},
     dynamic_inputs={"s": str, "item_id": int},
     show_data=True,

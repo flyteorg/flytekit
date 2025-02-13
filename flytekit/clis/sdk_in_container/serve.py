@@ -57,6 +57,7 @@ def agent(_: click.Context, port, prometheus_port, worker, timeout):
     Start a grpc server for the agent service.
     """
     import asyncio
+
     from flytekit.extras.webhook import WebhookTask  # noqa: F401
 
     asyncio.run(_start_grpc_server(port, prometheus_port, worker, timeout))

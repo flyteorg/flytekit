@@ -12,7 +12,7 @@ def test_webhook_task_constructor():
     task = WebhookTask(
         name="test_task",
         url="http://example.com",
-        method=http.HTTPMethod.POST,
+        method="POST",
         headers={"Content-Type": "application/json"},
         data={"key": "value"},
         show_data=True,
@@ -23,7 +23,7 @@ def test_webhook_task_constructor():
 
     assert task.name == "test_task"
     assert task._url == "http://example.com"
-    assert task._method == http.HTTPMethod.POST
+    assert task._method == "POST"
     assert task._headers == {"Content-Type": "application/json"}
     assert task._data == {"key": "value"}
     assert task._show_data is True
@@ -36,7 +36,7 @@ def test_webhook_task_get_custom():
     task = WebhookTask(
         name="test_task",
         url="http://example.com",
-        method=http.HTTPMethod.POST,
+        method="POST",
         headers={"Content-Type": "application/json"},
         data={"key": "value"},
         show_data=True,

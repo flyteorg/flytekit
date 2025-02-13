@@ -1,4 +1,3 @@
-import http
 from typing import Optional
 
 import httpx
@@ -50,10 +49,8 @@ class WebhookAgent(SyncAgentBase):
         }
         return format_dict("test", custom_dict, input_dict)
 
-    async def _make_http_request(
-        self, method: http.HTTPMethod, url: str, headers: dict, data: dict, timeout: int
-    ) -> tuple:
-        if method == http.HTTPMethod.GET:
+    async def _make_http_request(self, method: str, url: str, headers: dict, data: dict, timeout: int) -> tuple:
+        if method == "GET":
             response = await self._client.get(url, headers=headers, params=data, timeout=timeout)
         else:
             response = await self._client.post(url, json=data, headers=headers, timeout=timeout)
@@ -82,7 +79,7 @@ class WebhookAgent(SyncAgentBase):
         url = final_dict.get(URL_KEY)
         body = final_dict.get(DATA_KEY)
         headers = final_dict.get(HEADERS_KEY)
-        method = http.HTTPMethod(final_dict.get(METHOD_KEY))
+        method = str(final_dict.get(METHOD_KEY)).upper()
         show_data = final_dict.get(SHOW_DATA_KEY, False)
         show_url = final_dict.get(SHOW_URL_KEY, False)
         timeout_sec = final_dict.get(TIMEOUT_SEC, 10)
