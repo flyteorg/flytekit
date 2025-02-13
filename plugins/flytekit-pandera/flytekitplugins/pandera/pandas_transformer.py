@@ -91,7 +91,6 @@ class PanderaPandasTransformer(TypeTransformer[pandera.typing.DataFrame]):
             html = renderer.to_html(python_val, schema, exc)
             val = python_val
             if config.on_error == "raise":
-                # render the deck before raising the error
                 raise exc
             elif config.on_error == "warn":
                 logger.warning(str(exc))
@@ -100,7 +99,7 @@ class PanderaPandasTransformer(TypeTransformer[pandera.typing.DataFrame]):
         else:
             html = renderer.to_html(val, schema)
         finally:
-            Deck(renderer._title, html)
+            Deck(renderer._title, html).publish()
 
         lv = self._sd_transformer.to_literal(ctx, val, pandas.DataFrame, expected)
 
