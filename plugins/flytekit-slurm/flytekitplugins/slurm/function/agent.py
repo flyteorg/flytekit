@@ -50,8 +50,10 @@ class SlurmFunctionAgent(AsyncAgentBase):
         )
 
 
-        logger.info("@@@ task_template.container.args:" + task_template.container.args)
-        logger.info("@@@ Slurm Command: " + cmd)
+        logger.info("@@@ task_template.container.args:")
+        logger.info(task_template.container.args)
+        logger.info("@@@ Slurm Command: ")
+        logger.info(cmd)
 
         # Run Slurm job
         await self._connect(slurm_host)
@@ -75,7 +77,8 @@ class SlurmFunctionAgent(AsyncAgentBase):
             if "JobState" in o:
                 job_state = o.split("=")[1].strip().lower()
 
-        logger.info("@@@ GET PHASE: " + str(job_state))
+        logger.info("@@@ GET PHASE: ")
+        logger.info(str(job_state))
         cur_phase = convert_to_flyte_phase(job_state)
         return Resource(phase=cur_phase)
 
