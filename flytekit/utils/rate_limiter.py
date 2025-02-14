@@ -25,7 +25,7 @@ class RateLimiter:
             now = datetime.now()
             # Start by clearing out old data
             while self.queue and (now - self.queue[0]) > self.delay:
-                t = self.queue.popleft()
+                self.queue.popleft()
 
             # Now that the queue only has valid entries, we'll need to wait if the queue is full.
             if len(self.queue) >= self.rpm:

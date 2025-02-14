@@ -9,7 +9,6 @@ import time
 import typing
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
 from enum import Enum
 
 from flytekit.configuration import ImageConfig, SerializationSettings
@@ -222,7 +221,7 @@ class Controller:
         try:
             item = update.work_item
             if item.wf_exec is None:
-                logger.warning(f"reconcile should launch for {id(item)} entity name: {item.entity.name}")
+                logger.info(f"reconcile should launch for {id(item)} entity name: {item.entity.name}")
                 wf_exec = self.launch_execution(update.work_item, update.idx)
                 update.wf_exec = wf_exec
                 # Set this to running even if the launched execution was a re-run and already succeeded.
@@ -358,7 +357,7 @@ class Controller:
 
     def launch_execution(self, wi: WorkItem, idx: int) -> FlyteWorkflowExecution:
         """This function launches executions."""
-        logger.warning(f"Launching execution for {wi.entity.name} {idx=} with {wi.input_kwargs}")
+        logger.info(f"Launching execution for {wi.entity.name} {idx=} with {wi.input_kwargs}")
         if wi.result is None and wi.error is None:
             l = self.get_labels()
             e = self.get_env()
@@ -373,10 +372,7 @@ class Controller:
                 assert self.ss.version
                 version = self.ss.version
 
-            now = datetime.now()
-            print(f"Trying to acquire {now} for {wi.uuid}", flush=True)
             self.rate_limiter.sync_acquire()
-            print(f"Have acquired {datetime.now()} for {wi.uuid}", flush=True)
             # todo: if the execution already exists, remote.execute will return that execution. in the future
             #  we can add input checking to make sure the inputs are indeed a match.
             wf_exec = self.remote.execute(
