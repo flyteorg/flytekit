@@ -65,6 +65,9 @@ class SlurmFunctionAgent(AsyncAgentBase):
         logger.info(cmd)
         logger.info("@@@ Batch script: ")
         logger.info(script)
+        logger.info("@@@ OPENAI KEY")
+        OPENAI_API_KEY = "FLYTE_OPENAI_API_KEY"
+        logger.info(get_agent_secret(secret_key=OPENAI_API_KEY))
         logger.info("@@@ Slurm PRIVATE KEY")
         logger.info(get_agent_secret(secret_key=SLURM_PRIVATE_KEY))
         # We can add secret under ./slurm_private_key if key not found
