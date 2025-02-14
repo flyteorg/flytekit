@@ -544,8 +544,9 @@ def run_remote(
     if run_level_params.wait_execution:
         msg += " Waiting to complete..."
     p = Progress(TimeElapsedColumn(), TextColumn(msg), transient=True)
-    t = p.add_task("exec")
+    t = p.add_task("exec", visible=False)
     with p:
+        p.update(t, visible=True)
         p.start_task(t)
         execution = remote.execute(
             entity,
@@ -1051,9 +1052,25 @@ class WorkflowCommand(click.RichGroup):
         r = run_level_params.remote_instance()
         flyte_ctx = r.context
 
+        final_inputs_with_defaults = loaded_entity.python_interface.inputs_with_defaults
+        if isinstance(loaded_entity, LaunchPlan):
+            # For LaunchPlans it is essential to handle fixed inputs and default inputs in a special way
+            # Fixed inputs are inputs that are always passed to the launch plan and cannot be overridden
+            # Default inputs are inputs that are optional and have a default value
+            # The final inputs to the launch plan are a combination of the fixed inputs and the default inputs
+            all_inputs = loaded_entity.python_interface.inputs_with_defaults
+            default_inputs = loaded_entity.saved_inputs
+            pmap = loaded_entity.parameters
+            final_inputs_with_defaults = {}
+            for name, _ in pmap.parameters.items():
+                _type, v = all_inputs[name]
+                if name in default_inputs:
+                    v = default_inputs[name]
+                final_inputs_with_defaults[name] = _type, v
+
         # Add options for each of the workflow inputs
         params = []
-        for input_name, input_type_val in loaded_entity.python_interface.inputs_with_defaults.items():
+        for input_name, input_type_val in final_inputs_with_defaults.items():
             literal_var = loaded_entity.interface.inputs.get(input_name)
             python_type, default_val = input_type_val
             required = type(None) not in get_args(python_type) and default_val is None

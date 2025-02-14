@@ -16,7 +16,7 @@ from flytekit.clis.sdk_in_container import pyflyte
 from flytekit.clis.sdk_in_container.run import (
     RunLevelParams,
     get_entities_in_file,
-    run_command,
+    run_command, WorkflowCommand,
 )
 from flytekit.configuration import Config, Image, ImageConfig
 from flytekit.core.task import task
@@ -28,8 +28,7 @@ from flytekit.interaction.click_types import DirParamType, FileParamType
 from flytekit.remote import FlyteRemote
 from typing import Iterator, List
 from flytekit.types.iterator import JSON
-from flytekit import workflow
-
+from flytekit import workflow, LaunchPlan
 
 pytest.importorskip("pandas")
 
@@ -205,7 +204,7 @@ def test_pyflyte_run_cli(workflow_file):
             "--s",
             json.dumps({"x": {"i": 1, "a": ["h", "e"]}}),
             "--t",
-            json.dumps({"i": [{"i":1,"a":["h","e"]}]}),
+            json.dumps({"i": [{"i": 1, "a": ["h", "e"]}]}),
         ],
         catch_exceptions=False,
     )
@@ -293,7 +292,8 @@ def test_all_types_with_yaml_input():
 
     result = runner.invoke(
         pyflyte.main,
-        ["run", os.path.join(DIR_NAME, "workflow.py"), "my_wf", "--inputs-file", os.path.join(os.path.dirname(os.path.realpath(__file__)), "my_wf_input.yaml")],
+        ["run", os.path.join(DIR_NAME, "workflow.py"), "my_wf", "--inputs-file",
+         os.path.join(os.path.dirname(os.path.realpath(__file__)), "my_wf_input.yaml")],
         catch_exceptions=False,
     )
     assert result.exit_code == 0, result.stdout
@@ -301,7 +301,7 @@ def test_all_types_with_yaml_input():
 
 def test_all_types_with_pipe_input(monkeypatch):
     runner = CliRunner()
-    input= str(json.load(open(os.path.join(os.path.dirname(os.path.realpath(__file__)), "my_wf_input.json"),"r")))
+    input = str(json.load(open(os.path.join(os.path.dirname(os.path.realpath(__file__)), "my_wf_input.json"), "r")))
     monkeypatch.setattr("sys.stdin", io.StringIO(input))
     result = runner.invoke(
         pyflyte.main,
@@ -321,18 +321,18 @@ def test_all_types_with_pipe_input(monkeypatch):
     "pipe_input, option_input",
     [
         (
-            str(
-                json.load(
-                    open(
-                        os.path.join(
-                            os.path.dirname(os.path.realpath(__file__)),
-                            "my_wf_input.json",
-                        ),
-                        "r",
+                str(
+                    json.load(
+                        open(
+                            os.path.join(
+                                os.path.dirname(os.path.realpath(__file__)),
+                                "my_wf_input.json",
+                            ),
+                            "r",
+                        )
                     )
-                )
-            ),
-            "GREEN",
+                ),
+                "GREEN",
         )
     ],
 )
@@ -579,11 +579,11 @@ ic_result_4 = ImageConfig(
     reason="Github macos-latest image does not have docker installed as per https://github.com/orgs/community/discussions/25777",
 )
 def test_pyflyte_run_run(
-    mock_image,
-    image_string,
-    leaf_configuration_file_name,
-    final_image_config,
-    mock_image_spec_builder,
+        mock_image,
+        image_string,
+        leaf_configuration_file_name,
+        final_image_config,
+        mock_image_spec_builder,
 ):
     mock_image.return_value = "cr.flyte.org/flyteorg/flytekit:py3.9-latest"
     ImageBuildEngine.register("test", mock_image_spec_builder)
@@ -597,10 +597,10 @@ def test_pyflyte_run_run(
     image_config = ImageConfig.validate_image(None, "", image_tuple)
 
     pp = (
-        pathlib.Path(__file__).parent.parent.parent
-        / "configuration"
-        / "configs"
-        / leaf_configuration_file_name
+            pathlib.Path(__file__).parent.parent.parent
+            / "configuration"
+            / "configs"
+            / leaf_configuration_file_name
     )
 
     obj = RunLevelParams(
@@ -641,7 +641,7 @@ def jsons():
 
 @mock.patch("flytekit.configuration.default_images.DefaultImages.default_image")
 def test_pyflyte_run_with_iterator_json_type(
-    mock_image, mock_image_spec_builder, caplog
+        mock_image, mock_image_spec_builder, caplog
 ):
     mock_image.return_value = "cr.flyte.org/flyteorg/flytekit:py3.9-latest"
     ImageBuildEngine.register(
@@ -679,10 +679,10 @@ def test_pyflyte_run_with_iterator_json_type(
     image_config = ImageConfig.validate_image(None, "", image_tuple)
 
     pp = (
-        pathlib.Path(__file__).parent.parent.parent
-        / "configuration"
-        / "configs"
-        / "no_images.yaml"
+            pathlib.Path(__file__).parent.parent.parent
+            / "configuration"
+            / "configs"
+            / "no_images.yaml"
     )
 
     obj = RunLevelParams(
@@ -796,9 +796,9 @@ def test_pyflyte_run_with_none(a_val, workflow_file):
     [
         (["--env", "MY_ENV_VAR=hello"], '["MY_ENV_VAR"]', "hello"),
         (
-            ["--env", "MY_ENV_VAR=hello", "--env", "ABC=42"],
-            '["MY_ENV_VAR","ABC"]',
-            "hello,42",
+                ["--env", "MY_ENV_VAR=hello", "--env", "ABC=42"],
+                '["MY_ENV_VAR","ABC"]',
+                "hello,42",
         ),
     ],
 )
@@ -813,16 +813,16 @@ def test_pyflyte_run_with_none(a_val, workflow_file):
 def test_envvar_local_execution(envs, envs_argument, expected_output, workflow_file):
     runner = CliRunner()
     args = (
-        [
-            "run",
-        ]
-        + envs
-        + [
-            workflow_file,
-            "wf_with_env_vars",
-            "--env_vars",
-        ]
-        + [envs_argument]
+            [
+                "run",
+            ]
+            + envs
+            + [
+                workflow_file,
+                "wf_with_env_vars",
+                "--env_vars",
+            ]
+            + [envs_argument]
     )
     result = runner.invoke(
         pyflyte.main,

@@ -8,6 +8,7 @@ from flyteidl.core import literals_pb2 as _literals_pb2
 from flyteidl.core import tasks_pb2 as _core_task
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
+from google.protobuf.wrappers_pb2 import BoolValue
 
 from flytekit.models import common as _common
 from flytekit.models import interface as _interface
@@ -15,6 +16,9 @@ from flytekit.models import literals as _literals
 from flytekit.models import security as _sec
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.documentation import Documentation
+
+if typing.TYPE_CHECKING:
+    from flytekit import PodTemplate
 
 
 class Resources(_common.FlyteIdlEntity):
@@ -180,6 +184,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
         pod_template_name,
         cache_ignore_input_vars,
         is_eager: bool = False,
+        generates_deck: bool = False,
     ):
         """
         Information needed at runtime to determine behavior such as whether or not outputs are discoverable, timeouts,
@@ -199,6 +204,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
             receive deprecation warnings.
         :param bool cache_serializable: Whether or not caching operations are executed in serial. This means only a
             single instance over identical inputs is executed, other concurrent executions wait for the cached results.
+        :param bool generates_deck: Whether the task will generate a Deck URI.
         :param pod_template_name: The name of the existing PodTemplate resource which will be used in this task.
         :param cache_ignore_input_vars: Input variables that should not be included when calculating hash for cache.
         :param is_eager:
@@ -214,6 +220,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
         self._pod_template_name = pod_template_name
         self._cache_ignore_input_vars = cache_ignore_input_vars
         self._is_eager = is_eager
+        self._generates_deck = generates_deck
 
     @property
     def is_eager(self):
@@ -296,6 +303,14 @@ class TaskMetadata(_common.FlyteIdlEntity):
         return self._pod_template_name
 
     @property
+    def generates_deck(self) -> bool:
+        """
+        Whether the task will generate a Deck.
+        :rtype: bool
+        """
+        return self._generates_deck
+
+    @property
     def cache_ignore_input_vars(self):
         """
         Input variables that should not be included when calculating hash for cache.
@@ -318,6 +333,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
             pod_template_name=self.pod_template_name,
             cache_ignore_input_vars=self.cache_ignore_input_vars,
             is_eager=self.is_eager,
+            generates_deck=BoolValue(value=self.generates_deck),
         )
         if self.timeout:
             tm.timeout.FromTimedelta(self.timeout)
@@ -341,6 +357,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
             pod_template_name=pb2_object.pod_template_name,
             cache_ignore_input_vars=pb2_object.cache_ignore_input_vars,
             is_eager=pb2_object.is_eager,
+            generates_deck=pb2_object.generates_deck.value if pb2_object.HasField("generates_deck") else False,
         )
 
 
@@ -1005,6 +1022,7 @@ class K8sPod(_common.FlyteIdlEntity):
         metadata: K8sObjectMetadata = None,
         pod_spec: typing.Dict[str, typing.Any] = None,
         data_config: typing.Optional[DataLoadingConfig] = None,
+        primary_container_name: typing.Optional[str] = None,
     ):
         """
         This defines a kubernetes pod target.  It will build the pod target during task execution
@@ -1012,6 +1030,7 @@ class K8sPod(_common.FlyteIdlEntity):
         self._metadata = metadata
         self._pod_spec = pod_spec
         self._data_config = data_config
+        self._primary_container_name = primary_container_name
 
     @property
     def metadata(self) -> K8sObjectMetadata:
@@ -1024,6 +1043,10 @@ class K8sPod(_common.FlyteIdlEntity):
     @property
     def data_config(self) -> typing.Optional[DataLoadingConfig]:
         return self._data_config
+
+    @property
+    def primary_container_name(self) -> typing.Optional[str]:
+        return self._primary_container_name
 
     def to_flyte_idl(self) -> _core_task.K8sPod:
         return _core_task.K8sPod(
@@ -1040,6 +1063,24 @@ class K8sPod(_common.FlyteIdlEntity):
             data_config=DataLoadingConfig.from_flyte_idl(pb2_object.data_config)
             if pb2_object.HasField("data_config")
             else None,
+        )
+
+    def to_pod_template(self) -> "PodTemplate":
+        from flytekit import PodTemplate
+
+        return PodTemplate(
+            labels=self.metadata.labels,
+            annotations=self.metadata.annotations,
+            pod_spec=self.pod_spec,
+        )
+
+    @classmethod
+    def from_pod_template(cls, pod_template: "PodTemplate") -> "K8sPod":
+        from kubernetes.client import ApiClient
+
+        return cls(
+            metadata=K8sObjectMetadata(labels=pod_template.labels, annotations=pod_template.annotations),
+            pod_spec=ApiClient().sanitize_for_serialization(pod_template.pod_spec),
         )
 
 

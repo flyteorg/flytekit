@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import collections
 import datetime
 import typing
@@ -948,7 +947,7 @@ async def binding_data_from_python_std(
             if transformer_override and hasattr(transformer_override, "extract_types_or_metadata"):
                 _, v_type = transformer_override.extract_types_or_metadata(t_value_type)  # type: ignore
             else:
-                _, v_type = DictTransformer.extract_types_or_metadata(t_value_type)  # type: ignore
+                _, v_type = DictTransformer.extract_types(cast(typing.Type[dict], t_value_type))
             m = _literals_models.BindingDataMap(
                 bindings={
                     k: await binding_data_from_python_std(
@@ -1436,9 +1435,7 @@ async def async_flyte_entity_call_handler(
         # for both nested eager, async, and sync tasks, submit to the informer.
         if not ctx.worker_queue:
             raise AssertionError("Worker queue missing, must be set when trying to execute tasks in an eager workflow")
-        loop = asyncio.get_running_loop()
-        fut = ctx.worker_queue.add(loop, entity, input_kwargs=kwargs)
-        result = await fut
+        result = await ctx.worker_queue.add(entity, input_kwargs=kwargs)
         return result
 
     # eager local execution, and all other call patterns are handled by the sync version
@@ -1485,7 +1482,7 @@ def flyte_entity_call_handler(
         # call the blocking version of the async call handler
         # This is a recursive call, the async handler also calls this function, so this conditional must match
         # the one in the async function perfectly, otherwise you'll get infinite recursion.
-        loop_manager.run_sync(async_flyte_entity_call_handler, entity, **kwargs)
+        return loop_manager.run_sync(async_flyte_entity_call_handler, entity, **kwargs)
 
     if ctx.execution_state and (
         ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION

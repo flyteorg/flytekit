@@ -29,6 +29,7 @@ SOURCES = {
     "flytekitplugins-huggingface": "flytekit-huggingface",
     "flytekitplugins-inference": "flytekit-inference",
     "flytekitplugins-pod": "flytekit-k8s-pod",
+    "flytekitplugins-k8sdataservice": "flytekit-k8sdataservice",
     "flytekitplugins-kfmpi": "flytekit-kf-mpi",
     "flytekitplugins-kfpytorch": "flytekit-kf-pytorch",
     "flytekitplugins-kftensorflow": "flytekit-kf-tensorflow",

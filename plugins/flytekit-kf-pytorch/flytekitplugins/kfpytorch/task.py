@@ -18,7 +18,7 @@ from flytekit.configuration import SerializationSettings
 from flytekit.core.context_manager import FlyteContextManager, OutputMetadata
 from flytekit.core.pod_template import PodTemplate
 from flytekit.core.resources import convert_resources_to_resource_model
-from flytekit.exceptions.user import FlyteRecoverableException
+from flytekit.exceptions.user import FlyteRecoverableException, FlyteUserRuntimeException
 from flytekit.extend import IgnoreOutputs, TaskPlugins
 from flytekit.loggers import logger
 
@@ -475,7 +475,7 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
                 # the automatically assigned timestamp based on exception creation time
                 raise FlyteRecoverableException(e.format_msg(), timestamp=first_failure.timestamp)
             else:
-                raise RuntimeError(e.format_msg())
+                raise FlyteUserRuntimeException(e, timestamp=first_failure.timestamp)
         except SignalException as e:
             logger.exception(f"Elastic launch agent process terminating: {e}")
             raise IgnoreOutputs()
