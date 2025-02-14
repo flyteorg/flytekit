@@ -1,5 +1,3 @@
-import http
-from asyncio import timeout
 from datetime import timedelta
 
 from flytekit.configuration import SerializationSettings, ImageConfig
