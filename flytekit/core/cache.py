@@ -90,7 +90,7 @@ class Cache:
                 task_hash += policy.get_version(self.salt, params)
             except Exception as e:
                 raise ValueError(
-                    f"Failed to generate version for cache policy {policy}. Please consider setting the version in the Cache definition"
+                    f"Failed to generate version for cache policy {policy}. Please consider setting the version in the Cache definition, e.g. Cache(version='v1.2.3')"
                 ) from e
 
         hash_obj = hashlib.sha256(task_hash.encode())
