@@ -2034,6 +2034,8 @@ class DictTransformer(AsyncTypeTransformer[dict]):
         # If this is something like Annotated[dict[int, str], FlyteAnnotation("abc")],
         # we need to check if there's a FlyteAnnotation in the metadata.
         if _origin is Annotated:
+            # This case should never happen since Python's typing system requires at least two arguments
+            # for Annotated[...] - a type and an annotation. Including this check for completeness.
             if not _args:
                 return None, None
 
