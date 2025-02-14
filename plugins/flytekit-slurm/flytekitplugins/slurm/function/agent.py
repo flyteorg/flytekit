@@ -10,7 +10,9 @@ from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Re
 from flytekit.extend.backend.utils import convert_to_flyte_phase
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
+from flytekit.extend.backend.utils import get_agent_secret
 
+SLURM_PRIVATE_KEY = "FLYTE_SLURM_PRIVATE_KEY"
 
 @dataclass
 class SlurmJobMetadata(ResourceMeta):
@@ -56,12 +58,16 @@ class SlurmFunctionAgent(AsyncAgentBase):
             batch_script_path=self.REMOTE_PATH,
         )
 
+
         logger.info("@@@ task_template.container.args:")
         logger.info(task_template.container.args)
         logger.info("@@@ Slurm Command: ")
         logger.info(cmd)
         logger.info("@@@ Batch script: ")
         logger.info(script)
+        logger.info("@@@ Slurm PRIVATE KEY")
+        logger.info(get_agent_secret(secret_key=SLURM_PRIVATE_KEY))
+        # We can add secret under ./slurm_private_key if key not found
 
         # Run Slurm job
         await self._connect(slurm_host)
