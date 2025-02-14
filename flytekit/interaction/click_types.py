@@ -526,12 +526,12 @@ class FlyteLiteralConverter(object):
             # If the input matches the default value in the launch plan, serialization can be skipped.
             if param and value == param.default:
                 return None
-            lit = TypeEngine.to_literal(self._flyte_ctx, value, self._python_type, self._literal_type)
 
+            # If this is used for remote execution then we need to convert it back to a python native type
             if not self._is_remote:
-                # If this is used for remote execution then we need to convert it back to a python native type
-                # for FlyteRemote to use it. This maybe a double conversion penalty!
-                return TypeEngine.to_python_value(self._flyte_ctx, lit, self._python_type)
+                return value
+
+            lit = TypeEngine.to_literal(self._flyte_ctx, value, self._python_type, self._literal_type)
             return lit
         except click.BadParameter:
             raise
