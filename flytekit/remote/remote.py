@@ -2617,9 +2617,7 @@ class FlyteRemote(object):
                 tid = execution._node.array_node.node.task_node.reference_id
                 t = self.fetch_task(tid.project, tid.domain, tid.name, tid.version)
                 execution._task_executions = [
-                    self.sync_task_execution(
-                        FlyteTaskExecution.promote_from_model(task_execution), t
-                    )
+                    self.sync_task_execution(FlyteTaskExecution.promote_from_model(task_execution), t)
                     for task_execution in iterate_task_executions(self.client, execution.id)
                 ]
                 if t.interface:
@@ -2628,7 +2626,7 @@ class FlyteRemote(object):
                     logger.error(f"Fetched map task does not have an interface, skipping i/o {t}")
                     return execution
             else:
-                logger.error(f"Array node not over task, skipping i/o")
+                logger.error("Array node not over task, skipping i/o")
                 return execution
 
         # Handle the case for gate nodes
