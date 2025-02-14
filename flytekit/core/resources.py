@@ -1,6 +1,7 @@
 from dataclasses import dataclass, fields
 from typing import TYPE_CHECKING, List, Optional, Union
 from typing import Literal as L
+
 from flyteidl.core import tasks_pb2
 
 if TYPE_CHECKING:
