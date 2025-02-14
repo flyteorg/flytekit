@@ -48,7 +48,7 @@ class RateLimiter:
                     )
                     await asyncio.sleep(delay.total_seconds())
                 else:
-                    developer_logger(f"No more need to wait, {earliest=} vs {now=}")
+                    developer_logger.debug(f"No more need to wait, {earliest=} vs {now=}")
                     self.queue.append(now)
             else:
                 self.queue.append(now)
