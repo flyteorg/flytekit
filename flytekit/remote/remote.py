@@ -55,10 +55,10 @@ from flytekit.core.python_auto_container import (
     default_notebook_task_resolver,
 )
 from flytekit.core.python_function_task import PythonFunctionTask
-from flytekit.core.reference_entity import ReferenceSpec
+from flytekit.core.reference_entity import ReferenceEntity, ReferenceSpec
 from flytekit.core.task import ReferenceTask
 from flytekit.core.tracker import extract_task_module
-from flytekit.core.type_engine import LiteralsResolver, TypeEngine
+from flytekit.core.type_engine import LiteralsResolver, TypeEngine, strict_type_hint_matching
 from flytekit.core.workflow import PythonFunctionWorkflow, ReferenceWorkflow, WorkflowBase, WorkflowFailurePolicy
 from flytekit.exceptions import user as user_exceptions
 from flytekit.exceptions.user import (
@@ -125,6 +125,8 @@ ExecutionDataResponse = typing.Union[WorkflowExecutionGetDataResponse, NodeExecu
 
 MOST_RECENT_FIRST = admin_common_models.Sort("created_at", admin_common_models.Sort.Direction.DESCENDING)
 
+LATEST_VERSION_STR = "latest"
+
 
 class RegistrationSkipped(Exception):
     """
@@ -163,12 +165,14 @@ def _get_entity_identifier(
     name: str,
     version: typing.Optional[str] = None,
 ):
+    if version is None or version == LATEST_VERSION_STR:
+        version = _get_latest_version(list_entities_method, project, domain, name)
     return Identifier(
         resource_type,
         project,
         domain,
         name,
-        version if version is not None else _get_latest_version(list_entities_method, project, domain, name),
+        version,
     )
 
 
@@ -804,6 +808,21 @@ class FlyteRemote(object):
     #####################
     # Register Entities #
     #####################
+    def _resolve_version(
+        self, version: typing.Optional[str], entity: typing.Any, ss: SerializationSettings
+    ) -> typing.Tuple[str, typing.Optional[PickledEntity]]:
+        if version is None and self.interactive_mode_enabled:
+            md5_bytes, pickled_target_dict = _get_pickled_target_dict(entity)
+            return self._version_from_hash(
+                md5_bytes, ss, entity.python_interface.default_inputs_as_kwargs, *self._get_image_names(entity)
+            ), pickled_target_dict
+        elif version is not None:
+            return version, None
+        elif ss.version is not None:
+            return ss.version, None
+        raise ValueError(
+            "Version must be provided when not in interactive mode. If you want to use latest version pass 'latest'"
+        )
 
     def _resolve_identifier(self, t: int, name: str, version: str, ss: SerializationSettings) -> Identifier:
         ident = Identifier(
@@ -1051,14 +1070,13 @@ class FlyteRemote(object):
         :return:
         """
         if serialization_settings is None:
-            _, _, _, module_file = extract_task_module(entity)
-            project_root = _find_project_root(module_file)
             serialization_settings = SerializationSettings(
                 image_config=ImageConfig.auto_default_image(),
-                source_root=project_root,
                 project=self.default_project,
                 domain=self.default_domain,
             )
+
+        version, _ = self._resolve_version(version, entity, serialization_settings)
 
         ident = run_sync(
             self._serialize_and_register, entity, serialization_settings, version, options, default_launch_plan
@@ -1277,7 +1295,7 @@ class FlyteRemote(object):
         module_name: typing.Optional[str] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
         fast_package_options: typing.Optional[FastPackageOptions] = None,
-    ) -> typing.Union[FlyteWorkflow, ReferenceWorkflow, FlyteTask, FlyteLaunchPlan]:
+    ) -> typing.Union[FlyteWorkflow, FlyteTask, FlyteLaunchPlan, ReferenceEntity]:
         """
         Use this method to register a workflow via script mode.
         :param destination_dir: The destination directory where the workflow will be copied to.
@@ -1295,7 +1313,7 @@ class FlyteRemote(object):
         :param fast_package_options: Options to customize copy_all behavior, ignored when copy_all is False.
         :return:
         """
-        if isinstance(entity, ReferenceWorkflow):
+        if isinstance(entity, ReferenceEntity):
             return entity
         if copy_all:
             logger.info(
@@ -1382,7 +1400,7 @@ class FlyteRemote(object):
     def register_launch_plan(
         self,
         entity: LaunchPlan,
-        version: str,
+        version: typing.Optional[str] = None,
         project: typing.Optional[str] = None,
         domain: typing.Optional[str] = None,
         options: typing.Optional[Options] = None,
@@ -1401,15 +1419,14 @@ class FlyteRemote(object):
         :param options:
         """
         if serialization_settings is None:
-            _, _, _, module_file = extract_task_module(entity.workflow)
-            project_root = _find_project_root(module_file)
             serialization_settings = SerializationSettings(
                 image_config=ImageConfig.auto_default_image(),
-                source_root=project_root,
                 project=project or self.default_project,
                 domain=domain or self.default_domain,
                 version=version,
             )
+
+        version, _ = self._resolve_version(version, entity, serialization_settings)
 
         if self._wf_exists(
             name=entity.workflow.name,
@@ -1457,6 +1474,7 @@ class FlyteRemote(object):
         wait: bool = False,
         type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
         overwrite_cache: typing.Optional[bool] = None,
+        interruptible: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
         cluster_pool: typing.Optional[str] = None,
@@ -1475,6 +1493,7 @@ class FlyteRemote(object):
         :param overwrite_cache: Allows for all cached values of a workflow and its tasks to be overwritten
           for a single execution. If enabled, all calculations are performed even if cached results would
           be available, overwriting the stored data once execution finishes successfully.
+        :param interruptible: Optional flag to override the default interruptible flag of the executed entity.
         :param envs: Environment variables to set for the execution.
         :param tags: Tags to set for the execution.
         :param cluster_pool: Specify cluster pool on which newly created execution should be placed.
@@ -1514,9 +1533,12 @@ class FlyteRemote(object):
                 else:
                     if k not in type_hints:
                         try:
-                            type_hints[k] = TypeEngine.guess_python_type(input_flyte_type_map[k].type)
+                            type_hints[k] = strict_type_hint_matching(v, input_flyte_type_map[k].type)
                         except ValueError:
-                            logger.debug(f"Could not guess type for {input_flyte_type_map[k].type}, skipping...")
+                            developer_logger.debug(
+                                f"Could not guess type for {input_flyte_type_map[k].type}, skipping..."
+                            )
+                            type_hints[k] = TypeEngine.guess_python_type(input_flyte_type_map[k].type)
                     variable = entity.interface.inputs.get(k)
                     hint = type_hints[k]
                     self.file_access._get_upload_signed_url_fn = functools.partial(
@@ -1545,6 +1567,7 @@ class FlyteRemote(object):
                         0,
                     ),
                     overwrite_cache=overwrite_cache,
+                    interruptible=interruptible,
                     notifications=notifications,
                     disable_all=options.disable_notifications,
                     labels=options.labels,
@@ -1608,7 +1631,9 @@ class FlyteRemote(object):
 
     def execute(
         self,
-        entity: typing.Union[FlyteTask, FlyteLaunchPlan, FlyteWorkflow, PythonTask, WorkflowBase, LaunchPlan],
+        entity: typing.Union[
+            FlyteTask, FlyteLaunchPlan, FlyteWorkflow, PythonTask, WorkflowBase, LaunchPlan, ReferenceEntity
+        ],
         inputs: typing.Dict[str, typing.Any],
         project: str = None,
         domain: str = None,
@@ -1621,6 +1646,7 @@ class FlyteRemote(object):
         wait: bool = False,
         type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
         overwrite_cache: typing.Optional[bool] = None,
+        interruptible: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
         cluster_pool: typing.Optional[str] = None,
@@ -1661,6 +1687,7 @@ class FlyteRemote(object):
         :param overwrite_cache: Allows for all cached values of a workflow and its tasks to be overwritten
           for a single execution. If enabled, all calculations are performed even if cached results would
           be available, overwriting the stored data once execution finishes successfully.
+        :param interruptible: Optional flag to override the default interruptible flag of the executed entity.
         :param envs: Environment variables to be set for the execution.
         :param tags: Tags to be set for the execution.
         :param cluster_pool: Specify cluster pool on which newly created execution should be placed.
@@ -1685,6 +1712,7 @@ class FlyteRemote(object):
                 wait=wait,
                 type_hints=type_hints,
                 overwrite_cache=overwrite_cache,
+                interruptible=interruptible,
                 envs=envs,
                 tags=tags,
                 cluster_pool=cluster_pool,
@@ -1702,6 +1730,7 @@ class FlyteRemote(object):
                 wait=wait,
                 type_hints=type_hints,
                 overwrite_cache=overwrite_cache,
+                interruptible=interruptible,
                 envs=envs,
                 tags=tags,
                 cluster_pool=cluster_pool,
@@ -1717,6 +1746,7 @@ class FlyteRemote(object):
                 wait=wait,
                 type_hints=type_hints,
                 overwrite_cache=overwrite_cache,
+                interruptible=interruptible,
                 envs=envs,
                 tags=tags,
                 cluster_pool=cluster_pool,
@@ -1732,6 +1762,7 @@ class FlyteRemote(object):
                 wait=wait,
                 type_hints=type_hints,
                 overwrite_cache=overwrite_cache,
+                interruptible=interruptible,
                 envs=envs,
                 tags=tags,
                 cluster_pool=cluster_pool,
@@ -1747,6 +1778,7 @@ class FlyteRemote(object):
                 wait=wait,
                 type_hints=type_hints,
                 overwrite_cache=overwrite_cache,
+                interruptible=interruptible,
                 envs=envs,
                 tags=tags,
                 cluster_pool=cluster_pool,
@@ -1765,6 +1797,7 @@ class FlyteRemote(object):
                 image_config=image_config,
                 wait=wait,
                 overwrite_cache=overwrite_cache,
+                interruptible=interruptible,
                 envs=envs,
                 tags=tags,
                 cluster_pool=cluster_pool,
@@ -1785,6 +1818,7 @@ class FlyteRemote(object):
                 options=options,
                 wait=wait,
                 overwrite_cache=overwrite_cache,
+                interruptible=interruptible,
                 envs=envs,
                 tags=tags,
                 cluster_pool=cluster_pool,
@@ -1803,6 +1837,7 @@ class FlyteRemote(object):
                 options=options,
                 wait=wait,
                 overwrite_cache=overwrite_cache,
+                interruptible=interruptible,
                 envs=envs,
                 tags=tags,
                 cluster_pool=cluster_pool,
@@ -1825,6 +1860,7 @@ class FlyteRemote(object):
         wait: bool = False,
         type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
         overwrite_cache: typing.Optional[bool] = None,
+        interruptible: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
         cluster_pool: typing.Optional[str] = None,
@@ -1845,6 +1881,7 @@ class FlyteRemote(object):
             options=options,
             type_hints=type_hints,
             overwrite_cache=overwrite_cache,
+            interruptible=interruptible,
             envs=envs,
             tags=tags,
             cluster_pool=cluster_pool,
@@ -1863,6 +1900,7 @@ class FlyteRemote(object):
         wait: bool = False,
         type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
         overwrite_cache: typing.Optional[bool] = None,
+        interruptible: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
         cluster_pool: typing.Optional[str] = None,
@@ -1884,6 +1922,7 @@ class FlyteRemote(object):
             wait=wait,
             type_hints=type_hints,
             overwrite_cache=overwrite_cache,
+            interruptible=interruptible,
             envs=envs,
             tags=tags,
             cluster_pool=cluster_pool,
@@ -1902,6 +1941,7 @@ class FlyteRemote(object):
         wait: bool = False,
         type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
         overwrite_cache: typing.Optional[bool] = None,
+        interruptible: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
         cluster_pool: typing.Optional[str] = None,
@@ -1933,6 +1973,7 @@ class FlyteRemote(object):
             wait=wait,
             type_hints=type_hints,
             overwrite_cache=overwrite_cache,
+            interruptible=interruptible,
             envs=envs,
             tags=tags,
             cluster_pool=cluster_pool,
@@ -1949,6 +1990,7 @@ class FlyteRemote(object):
         wait: bool = False,
         type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
         overwrite_cache: typing.Optional[bool] = None,
+        interruptible: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
         cluster_pool: typing.Optional[str] = None,
@@ -1994,6 +2036,7 @@ class FlyteRemote(object):
             options=options,
             type_hints=type_hints,
             overwrite_cache=overwrite_cache,
+            interruptible=interruptible,
             envs=envs,
             tags=tags,
             cluster_pool=cluster_pool,
@@ -2010,6 +2053,7 @@ class FlyteRemote(object):
         wait: bool = False,
         type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
         overwrite_cache: typing.Optional[bool] = None,
+        interruptible: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
         cluster_pool: typing.Optional[str] = None,
@@ -2041,6 +2085,7 @@ class FlyteRemote(object):
             wait=wait,
             type_hints=type_hints,
             overwrite_cache=overwrite_cache,
+            interruptible=interruptible,
             envs=envs,
             tags=tags,
             cluster_pool=cluster_pool,
@@ -2057,12 +2102,13 @@ class FlyteRemote(object):
         project: str = None,
         domain: str = None,
         name: str = None,
-        version: str = None,
+        version: str = "latest",
         execution_name: typing.Optional[str] = None,
         execution_name_prefix: typing.Optional[str] = None,
         image_config: typing.Optional[ImageConfig] = None,
         wait: bool = False,
         overwrite_cache: typing.Optional[bool] = None,
+        interruptible: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
         cluster_pool: typing.Optional[str] = None,
@@ -2077,11 +2123,13 @@ class FlyteRemote(object):
         :param project: The execution project, will default to the Remote's default project.
         :param domain: The execution domain, will default to the Remote's default domain.
         :param name: specific name of the task to run.
-        :param version: specific version of the task to run.
+        :param version: specific version of the task to run, default is a special string ``latest``, which implies latest version by time
         :param execution_name: If provided, will use this name for the execution.
+        :param execution_name_prefix: If provided, will use this prefix for the execution name.
         :param image_config: If provided, will use this image config in the pod.
         :param wait: If True, will wait for the execution to complete before returning.
         :param overwrite_cache: If True, will overwrite the cache.
+        :param interruptible: Optional flag to override the default interruptible flag of the executed entity.
         :param envs: Environment variables to set for the execution.
         :param tags: Tags to set for the execution.
         :param cluster_pool: Specify cluster pool on which newly created execution should be placed.
@@ -2096,12 +2144,7 @@ class FlyteRemote(object):
             domain=domain or self._default_domain,
             version=version,
         )
-        pickled_target_dict = None
-        if version is None and self.interactive_mode_enabled:
-            md5_bytes, pickled_target_dict = _get_pickled_target_dict(entity)
-            version = self._version_from_hash(
-                md5_bytes, ss, entity.python_interface.default_inputs_as_kwargs, *self._get_image_names(entity)
-            )
+        version, pickled_target_dict = self._resolve_version(version, entity, ss)
 
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
         resolved_identifiers_dict = asdict(resolved_identifiers)
@@ -2116,6 +2159,7 @@ class FlyteRemote(object):
             #   object (look into the function, the passed in ss is basically ignored). How should it be piped in?
             #   https://github.com/flyteorg/flyte/issues/6070
             flyte_task: FlyteTask = self.register_task(entity, ss, version)
+
         return self.execute(
             flyte_task,
             inputs,
@@ -2126,6 +2170,7 @@ class FlyteRemote(object):
             wait=wait,
             type_hints=entity.python_interface.inputs,
             overwrite_cache=overwrite_cache,
+            interruptible=interruptible,
             options=options,
             envs=envs,
             tags=tags,
@@ -2147,6 +2192,7 @@ class FlyteRemote(object):
         options: typing.Optional[Options] = None,
         wait: bool = False,
         overwrite_cache: typing.Optional[bool] = None,
+        interruptible: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
         cluster_pool: typing.Optional[str] = None,
@@ -2154,22 +2200,24 @@ class FlyteRemote(object):
     ) -> FlyteWorkflowExecution:
         """
         Execute an @workflow decorated function.
-        :param entity:
-        :param inputs:
-        :param project:
-        :param domain:
-        :param name:
-        :param version:
-        :param execution_name:
-        :param image_config:
-        :param options:
-        :param wait:
-        :param overwrite_cache:
-        :param envs:
-        :param tags:
-        :param cluster_pool:
-        :param execution_cluster_label:
-        :return:
+
+        :param entity: The workflow to execute
+        :param inputs: Input dictionary
+        :param project: Project to execute in
+        :param domain: Domain to execute in
+        :param name: Optional name override for the workflow
+        :param version: Optional version for the workflow
+        :param execution_name: Optional name for the execution
+        :param image_config: Optional image config override
+        :param options: Optional Options object
+        :param wait: Whether to wait for execution completion
+        :param overwrite_cache: If True, will overwrite the cache
+        :param interruptible: Optional flag to override the default interruptible flag of the executed entity
+        :param envs: Environment variables to set for the execution
+        :param tags: Tags to set for the execution
+        :param cluster_pool: Specify cluster pool on which newly created execution should be placed
+        :param execution_cluster_label: Specify label of cluster(s) on which newly created execution should be placed
+        :return: FlyteWorkflowExecution object
         """
         if not image_config:
             image_config = ImageConfig.auto_default_image()
@@ -2225,6 +2273,7 @@ class FlyteRemote(object):
             options=options,
             type_hints=entity.python_interface.inputs,
             overwrite_cache=overwrite_cache,
+            interruptible=interruptible,
             envs=envs,
             tags=tags,
             cluster_pool=cluster_pool,
@@ -2244,12 +2293,14 @@ class FlyteRemote(object):
         options: typing.Optional[Options] = None,
         wait: bool = False,
         overwrite_cache: typing.Optional[bool] = None,
+        interruptible: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
         cluster_pool: typing.Optional[str] = None,
         execution_cluster_label: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """
+        Execute a locally defined `LaunchPlan`.
 
         :param entity: The locally defined launch plan object
         :param inputs: Inputs to be passed into the execution as a dict with Python native values.
@@ -2261,6 +2312,7 @@ class FlyteRemote(object):
         :param options: Options to be passed into the execution.
         :param wait: If True, will wait for the execution to complete before returning.
         :param overwrite_cache: If True, will overwrite the cache.
+        :param interruptible: Optional flag to override the default interruptible flag of the executed entity.
         :param envs: Environment variables to be passed into the execution.
         :param tags: Tags to be passed into the execution.
         :param cluster_pool: Specify cluster pool on which newly created execution should be placed.
@@ -2275,6 +2327,7 @@ class FlyteRemote(object):
             flyte_launchplan: FlyteLaunchPlan = self.fetch_launch_plan(**resolved_identifiers_dict)
             flyte_launchplan.python_interface = entity.python_interface
         except FlyteEntityNotExistException:
+            logger.info("Registering launch plan because it wasn't found in Flyte Admin.")
             flyte_launchplan: FlyteLaunchPlan = self.register_launch_plan(
                 entity,
                 version=version,
@@ -2292,6 +2345,7 @@ class FlyteRemote(object):
             wait=wait,
             type_hints=entity.python_interface.inputs,
             overwrite_cache=overwrite_cache,
+            interruptible=interruptible,
             envs=envs,
             tags=tags,
             cluster_pool=cluster_pool,
