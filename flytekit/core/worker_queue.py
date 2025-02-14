@@ -222,18 +222,24 @@ class Controller:
                 logger.warning(f"reconcile should launch for {id(item)} entity name: {item.entity.name}")
                 wf_exec = self.launch_execution(update.work_item, update.idx)
                 update.wf_exec = wf_exec
+                # Set this to running even if the launched execution was a re-run and already succeeded.
+                # This forces the bottom half of the conditional to run, properly fetching all outputs.
                 update.status = ItemStatus.RUNNING
             else:
-                if not item.wf_exec.is_done:
-                    update.status = ItemStatus.RUNNING
-                    # Technically a mutating operation, but let's pretend it's not
-                    update.wf_exec = self.remote.sync_execution(item.wf_exec)
-                    if update.wf_exec.closure.phase == WorkflowExecutionPhase.SUCCEEDED:
-                        update.status = ItemStatus.SUCCESS
-                    elif update.wf_exec.closure.phase == WorkflowExecutionPhase.FAILED:
-                        update.status = ItemStatus.FAILED
+                # Technically a mutating operation, but let's pretend it's not
+                update.wf_exec = self.remote.sync_execution(item.wf_exec)
+
+                # Fill in update status
+                if update.wf_exec.closure.phase == WorkflowExecutionPhase.SUCCEEDED:
+                    update.status = ItemStatus.SUCCESS
+                elif update.wf_exec.closure.phase == WorkflowExecutionPhase.FAILED:
+                    update.status = ItemStatus.FAILED
+                elif update.wf_exec.closure.phase == WorkflowExecutionPhase.ABORTED:
+                    update.status = ItemStatus.FAILED
+                elif update.wf_exec.closure.phase == WorkflowExecutionPhase.TIMED_OUT:
+                    update.status = ItemStatus.FAILED
                 else:
-                    developer_logger.debug(f"Execution {item.wf_exec.id.name} is done, item is {item.status}")
+                    update.status = ItemStatus.RUNNING
 
         except Exception as e:
             logger.error(
@@ -261,10 +267,12 @@ class Controller:
                     if item.uuid in update_items:
                         update = update_items[typing.cast(uuid.UUID, item.uuid)]
                         item.wf_exec = update.wf_exec
-                        assert update.status is not None
+                        if update.status is None:
+                            raise AssertionError(f"update's status missing for {item.entity.name}")
                         item.status = update.status
                         if update.status == ItemStatus.SUCCESS:
-                            assert update.wf_exec is not None
+                            if update.wf_exec is None:
+                                raise AssertionError(f"update's wf_exec missing for {item.entity.name}")
                             item.result = update.wf_exec.outputs.as_python_native(item.python_interface)
                         elif update.status == ItemStatus.FAILED:
                             # If update object already has an error, then use that, otherwise look for one in the
@@ -274,7 +282,10 @@ class Controller:
                             else:
                                 from flytekit.exceptions.eager import EagerException
 
-                                assert update.wf_exec is not None
+                                if update.wf_exec is None:
+                                    raise AssertionError(
+                                        f"update's wf_exec missing in error case for {item.entity.name}"
+                                    )
 
                                 exc = EagerException(
                                     f"Error executing {update.work_item.entity.name} with error:"
@@ -394,7 +405,8 @@ class Controller:
             if i.status == ItemStatus.SUCCESS:
                 return i.result
             elif i.status == ItemStatus.FAILED:
-                assert i.error is not None
+                if i.error is None:
+                    raise AssertionError(f"Error should not be None if status is failed for {entity.name}")
                 raise i.error
             else:
                 await asyncio.sleep(2)  # Small delay to avoid busy-waiting
