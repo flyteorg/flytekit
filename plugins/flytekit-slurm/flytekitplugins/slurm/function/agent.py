@@ -7,12 +7,12 @@ from asyncssh import SSHClientConnection
 
 from flytekit import logger
 from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource, ResourceMeta
-from flytekit.extend.backend.utils import convert_to_flyte_phase
+from flytekit.extend.backend.utils import convert_to_flyte_phase, get_agent_secret
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
-from flytekit.extend.backend.utils import get_agent_secret
 
 SLURM_PRIVATE_KEY = "FLYTE_SLURM_PRIVATE_KEY"
+
 
 @dataclass
 class SlurmJobMetadata(ResourceMeta):
@@ -58,7 +58,6 @@ class SlurmFunctionAgent(AsyncAgentBase):
             batch_script_path=self.REMOTE_PATH,
         )
 
-
         logger.info("@@@ task_template.container.args:")
         logger.info(task_template.container.args)
         logger.info("@@@ Slurm Command: ")
@@ -89,18 +88,23 @@ class SlurmFunctionAgent(AsyncAgentBase):
 
     async def get(self, resource_meta: SlurmJobMetadata, **kwargs) -> Resource:
         await self._connect(resource_meta.slurm_host)
-        res = await self._conn.run(f"scontrol show job {resource_meta.job_id}", check=True)
+        job_res = await self._conn.run(f"scontrol show job {resource_meta.job_id}", check=True)
 
         # Determine the current flyte phase from Slurm job state
         job_state = "running"
-        for o in res.stdout.split(" "):
+        for o in job_res.stdout.split(" "):
             if "JobState" in o:
                 job_state = o.split("=")[1].strip().lower()
+            elif "StdOut" in o:
+                stdout_path = o.split("=")[1].strip()
+                msg_res = await self._conn.run(f"cat {stdout_path}", check=True)
+                msg = msg_res.stdout
+        cur_phase = convert_to_flyte_phase(job_state)
 
         logger.info("@@@ GET PHASE: ")
         logger.info(str(job_state))
         cur_phase = convert_to_flyte_phase(job_state)
-        return Resource(phase=cur_phase)
+        return Resource(phase=cur_phase, message=msg)
 
     async def delete(self, resource_meta: SlurmJobMetadata, **kwargs) -> None:
         await self._connect(resource_meta.slurm_host)
