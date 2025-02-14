@@ -12,6 +12,11 @@ class SaltCachePolicy(CachePolicy):
         return salt
 
 
+class ExceptionCachePolicy(CachePolicy):
+    def get_version(self, salt: str, params: VersionParameters) -> str:
+        raise Exception("This is an exception")
+
+
 @pytest.fixture
 def default_serialization_settings():
     default_image = Image(name="default", fqn="full/name", tag="some-tag")
@@ -167,3 +172,12 @@ def test_set_default_policies(mock_get_default_cache_policies, default_serializa
     serialized_t_cached_explicit_version = get_serializable_task(OrderedDict(), default_serialization_settings, t_cached_explicit_version)
     assert serialized_t_cached_explicit_version.template.metadata.discoverable == True
     assert serialized_t_cached_explicit_version.template.metadata.discovery_version == "a-version"
+
+
+def test_cache_policy_exception(default_serialization_settings):
+    # Set the address of the ExceptionCachePolicy in the error message so that the test is robust to changes in the
+    # address of the ExceptionCachePolicy class
+    with pytest.raises(ValueError, match=f"Failed to generate version for cache policy <{ExceptionCachePolicy().__module__}\.{ExceptionCachePolicy().__class__.__name__} object at 0x[0-9a-fA-F]+>.*\. Please consider setting the version in the Cache definition"):
+        @task(cache=Cache(policies=ExceptionCachePolicy()))
+        def t_cached(a: int) -> int:
+            return a
