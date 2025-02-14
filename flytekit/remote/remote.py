@@ -2611,7 +2611,10 @@ class FlyteRemote(object):
                 raise ValueError(f"Node execution undeterminable, entity has type {type(execution._node)}")
 
         # Handle the case for array nodes
-        elif execution.metadata.is_array and execution._node.array_node is not None:
+        elif execution.metadata.is_array:
+            if execution._node.array_node is None:
+                logger.error("Array node not found")
+                return execution
             # if there's a task node underneath the array node, let's fetch the interface for it
             if execution._node.array_node.node.task_node is not None:
                 tid = execution._node.array_node.node.task_node.reference_id
