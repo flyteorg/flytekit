@@ -737,7 +737,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 encoder = self._json_encoder[python_type]
             except KeyError:
                 encoder = JSONEncoder(python_type)
-                self._json_encoder[python_type] = encoder
+                self._json_encoder[new_python_type] = encoder
 
             try:
                 json_str = encoder.encode(python_val)
@@ -1009,6 +1009,13 @@ class DataclassTransformer(TypeTransformer[object]):
 
         import pandas as pd
         from flytekit.types.structured.structured_dataset import StructuredDataset
+        from typing import get_type_hints, Type, Dict
+        import pandas as pd
+        from flytekit.types.file import FlyteFile
+        from flytekit.types.directory import FlyteDirectory
+        from flytekit.types.structured.structured_dataset import StructuredDataset
+        from flytekit.types.schema import FlyteSchema
+
         from typing import get_type_hints, Type, Dict
 
         def convert_dataclass(instance, target_cls):
