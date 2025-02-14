@@ -205,13 +205,13 @@ class ReferenceEntity(object):
         # Check if we have more arguments than expected
         if len(args) > len(interface.inputs):
             raise AssertionError(
-                f"Received more arguments than expected in function '{entity.name}'. Expected {len(interface.inputs)} but got {len(args)}"
+                f"Received more arguments than expected in function '{self.name}'. Expected {len(interface.inputs)} but got {len(args)}"
             )
 
         # Convert args to kwargs
         for arg, input_name in zip(args, interface.inputs.keys()):
             if input_name in kwargs:
-                raise AssertionError(f"Got multiple values for argument '{input_name}' in function '{entity.name}'")
+                raise AssertionError(f"Got multiple values for argument '{input_name}' in function '{self.name}'")
             kwargs[input_name] = arg
 
         ctx = FlyteContext.current_context()
