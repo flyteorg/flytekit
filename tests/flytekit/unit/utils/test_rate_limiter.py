@@ -23,7 +23,7 @@ def runner_for_async(rpm: int, total: int):
     return loop.run_until_complete(helper_for_async(rpm, total))
 
 
-@pytest.mark.skipif(sys.version_info < (3, 10), reason="Requires Python 3.10 or higher")
+@pytest.mark.asyncio
 def test_rate_limiter():
     elapsed_time = timeit.timeit(lambda: runner_for_async(2, 2), number=1)
     elapsed_time_more = timeit.timeit(lambda: runner_for_async(2, 6), number=1)
@@ -47,6 +47,7 @@ def runner_for_sync(rpm: int, total: int):
     return loop.run_until_complete(helper_for_sync(rpm, total))
 
 
+@pytest.mark.asyncio
 def test_rate_limiter_s():
     elapsed_time = timeit.timeit(lambda: runner_for_sync(2, 2), number=1)
     elapsed_time_more = timeit.timeit(lambda: runner_for_sync(2, 6), number=1)
