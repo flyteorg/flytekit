@@ -1,14 +1,14 @@
 import asyncio
-import random
-
 from collections import deque
 from datetime import datetime, timedelta
+
 from flytekit.loggers import developer_logger
 from flytekit.utils.asyn import run_sync
 
 
 class RateLimiter:
-    """ Rate limiter that allows up to a certain number of requests per minute. """
+    """Rate limiter that allows up to a certain number of requests per minute."""
+
     def __init__(self, rpm: int):
         if not isinstance(rpm, int) or rpm <= 0 or rpm > 100:
             raise ValueError("Rate must be a positive integer between 1 and 100")
@@ -43,7 +43,9 @@ class RateLimiter:
                 if delay.total_seconds() > 0:
                     next_time = earliest + self.delay
                     self.queue.append(next_time)
-                    developer_logger.debug(f"Capacity reached - removed time {earliest} and added back {next_time}, sleeping for {delay.total_seconds()}")
+                    developer_logger.debug(
+                        f"Capacity reached - removed time {earliest} and added back {next_time}, sleeping for {delay.total_seconds()}"
+                    )
                     await asyncio.sleep(delay.total_seconds())
                 else:
                     developer_logger(f"No more need to wait, {earliest=} vs {now=}")

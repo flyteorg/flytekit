@@ -9,6 +9,7 @@ import time
 import typing
 import uuid
 from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
 
 from flytekit.configuration import ImageConfig, SerializationSettings
@@ -372,7 +373,10 @@ class Controller:
                 assert self.ss.version
                 version = self.ss.version
 
+            now = datetime.now()
+            print(f"Trying to acquire {now} for {wi.uuid}", flush=True)
             self.rate_limiter.sync_acquire()
+            print(f"Have acquired {datetime.now()} for {wi.uuid}", flush=True)
             # todo: if the execution already exists, remote.execute will return that execution. in the future
             #  we can add input checking to make sure the inputs are indeed a match.
             wf_exec = self.remote.execute(
