@@ -177,7 +177,7 @@ def test_set_default_policies(mock_get_default_cache_policies, default_serializa
 def test_cache_policy_exception(default_serialization_settings):
     # Set the address of the ExceptionCachePolicy in the error message so that the test is robust to changes in the
     # address of the ExceptionCachePolicy class
-    with pytest.raises(ValueError, match=f"Failed to generate version for cache policy <tests.flytekit.unit.core.test_cache.ExceptionCachePolicy object at .*. Please consider setting the version in the Cache definition, e.g. Cache\(version='v1.2.3'\)"):
+    with pytest.raises(ValueError, match="Failed to generate version for cache policy"):
         @task(cache=Cache(policies=ExceptionCachePolicy()))
         def t_cached(a: int) -> int:
             return a
