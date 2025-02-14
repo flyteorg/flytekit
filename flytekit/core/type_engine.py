@@ -683,10 +683,17 @@ class DataclassTransformer(TypeTransformer[object]):
         Note: This is deprecated and will be removed in the future.
         """
         import pandas as pd
+        from flytekit.types.file import FlyteFile
+        from flytekit.types.directory import FlyteDirectory
         from flytekit.types.structured.structured_dataset import StructuredDataset
+        from flytekit.types.schema import FlyteSchema
+
         from typing import get_type_hints, Type, Dict
 
         def transform_dataclass(cls, memo=None):
+            FLYTE_TYPES = [FlyteFile, FlyteDirectory, StructuredDataset, FlyteSchema]
+            if cls in FLYTE_TYPES:
+                return cls
             if memo is None:
                 memo = {}
 
@@ -758,10 +765,17 @@ class DataclassTransformer(TypeTransformer[object]):
 
 
         import pandas as pd
+        from flytekit.types.file import FlyteFile
+        from flytekit.types.directory import FlyteDirectory
         from flytekit.types.structured.structured_dataset import StructuredDataset
+        from flytekit.types.schema import FlyteSchema
+
         from typing import get_type_hints, Type, Dict
 
         def transform_dataclass(cls, memo=None):
+            FLYTE_TYPES = [FlyteFile, FlyteDirectory, StructuredDataset, FlyteSchema]
+            if cls in FLYTE_TYPES:
+                return cls
             if memo is None:
                 memo = {}
 
