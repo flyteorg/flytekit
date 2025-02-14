@@ -50,26 +50,3 @@ class RateLimiter:
                     self.queue.append(now)
             else:
                 self.queue.append(now)
-
-
-async def request(rate_limiter: RateLimiter, idx: int):
-    # Add some jitter to the requests
-    random_float = random.uniform(0, 4)
-    await asyncio.sleep(random_float)
-    now = datetime.now()
-    await rate_limiter.acquire()
-    print(f"Request {idx} at {datetime.now()} waited {(datetime.now() - now).total_seconds()}")
-
-
-async def launch_requests(rate_limiter: RateLimiter, total: int):
-    tasks = [asyncio.create_task(request(rate_limiter, i)) for i in range(total)]
-    await asyncio.gather(*tasks)
-
-
-async def main():
-    rate_limiter = RateLimiter(rpm=30)
-    await launch_requests(rate_limiter, 2)
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
