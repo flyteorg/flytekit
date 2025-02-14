@@ -82,16 +82,20 @@ class SlurmScriptAgent(AsyncAgentBase):
 
     async def get(self, resource_meta: SlurmJobMetadata, **kwargs) -> Resource:
         await self._connect(resource_meta.slurm_host)
-        res = await self._conn.run(f"scontrol show job {resource_meta.job_id}", check=True)
+        job_res = await self._conn.run(f"scontrol show job {resource_meta.job_id}", check=True)
 
         # Determine the current flyte phase from Slurm job state
         job_state = "running"
-        for o in res.stdout.split(" "):
+        for o in job_res.stdout.split(" "):
             if "JobState" in o:
                 job_state = o.split("=")[1].strip().lower()
+            elif "StdOut" in o:
+                stdout_path = o.split("=")[1].strip()
+                msg_res = await self._conn.run(f"cat {stdout_path}", check=True)
+                msg = msg_res.stdout
         cur_phase = convert_to_flyte_phase(job_state)
 
-        return Resource(phase=cur_phase)
+        return Resource(phase=cur_phase, message=msg)
 
     async def delete(self, resource_meta: SlurmJobMetadata, **kwargs) -> None:
         await self._connect(resource_meta.slurm_host)
