@@ -466,10 +466,14 @@ def test_override_image():
 
     @workflow
     def wf() -> str:
+        bar().with_overrides(image="hello/world")
         bar().with_overrides(container_image="hello/world")
         return "hi"
 
+    assert wf.nodes[0]._image == "hello/world"
     assert wf.nodes[0]._container_image == "hello/world"
+    assert wf.nodes[1]._image == "hello/world"
+    assert wf.nodes[1]._container_image == "hello/world"
 
 def test_pod_template_override():
     @task
