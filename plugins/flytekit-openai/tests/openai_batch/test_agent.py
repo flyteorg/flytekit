@@ -1,6 +1,7 @@
 from datetime import timedelta
 from unittest import mock
 from unittest.mock import AsyncMock
+import json
 import msgpack
 import base64
 import pytest
@@ -158,9 +159,10 @@ async def test_openai_batch_agent(mock_retrieve, mock_create, mock_context):
     assert resource.phase == TaskExecution.SUCCEEDED
 
     outputs = literal_map_string_repr(resource.outputs)
-    result = outputs["result"]
 
-    assert msgpack.loads(base64.b64decode(result)) == batch_retrieve_result.to_dict()
+    raw_result = outputs["result"]
+    parsed_result = json.loads(raw_result)
+    assert parsed_result == batch_retrieve_result.to_dict()
 
     # Status: Failed
     mock_retrieve.return_value = batch_retrieve_result_failure

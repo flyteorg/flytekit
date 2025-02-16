@@ -1,4 +1,5 @@
 from unittest.mock import Mock
+import re
 
 import pytest
 
@@ -51,3 +52,10 @@ def test_security_execution_context(monkeypatch, execution_mode, tmpdir):
     monkeypatch.setattr(flytekit.core.context_manager, "FlyteContextManager", context_manager)
     s = Secret(key="key")
     assert s.group is None
+
+
+@pytest.mark.parametrize("env_var", ["abc-xyz", "", "$dfadsf"])
+def test_secret_validate_env_var(env_var):
+    msg = f"Invalid environment variable name: {env_var}"
+    with pytest.raises(ValueError, match=re.escape(msg)):
+        Secret(key="abc", group="group", env_var=env_var)

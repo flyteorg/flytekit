@@ -8,7 +8,9 @@ from flytekit import Resources
 from flytekit.core.resources import (
     pod_spec_from_resources,
     convert_resources_to_resource_model,
+    construct_extended_resources,
 )
+from flytekit.extras.accelerators import T4
 
 _ResourceName = _task_models.Resources.ResourceName
 
@@ -155,3 +157,18 @@ def test_pod_spec_from_resources_requests_set():
     )
     pod_spec = pod_spec_from_resources(primary_container_name=primary_container_name, requests=requests, limits=limits)
     assert expected_pod_spec == pod_spec
+
+
+@pytest.mark.parametrize("shared_memory", [None, False])
+def test_construct_extended_resources_shared_memory_none(shared_memory):
+    resources = construct_extended_resources(shared_memory=shared_memory)
+    assert resources is None
+
+
+@pytest.mark.parametrize("shared_memory, expected_size_limit", [
+    ("2Gi", "2Gi"),
+    (True, ""),
+])
+def test_construct_extended_resources_shared_memory(shared_memory, expected_size_limit):
+    resources = construct_extended_resources(shared_memory=shared_memory)
+    assert resources.shared_memory.size_limit == expected_size_limit
