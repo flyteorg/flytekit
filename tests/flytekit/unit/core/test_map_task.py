@@ -359,6 +359,7 @@ def test_map_task_override(serialization_settings):
     assert wf.nodes[1]._image == "random:image"
     assert wf.nodes[1]._container_image == "random:image"
 
+
 def test_map_task_pod_template_override(serialization_settings):
     @task
     def my_mappable_task(a: int) -> typing.Optional[str]:
