@@ -1,14 +1,15 @@
 import tempfile
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
-import asyncssh
 from asyncssh import SSHClientConnection
 
 from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource, ResourceMeta
 from flytekit.extend.backend.utils import convert_to_flyte_phase
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
+
+from ..ssh_utils import ssh_connect
 
 
 @dataclass
@@ -17,10 +18,12 @@ class SlurmJobMetadata(ResourceMeta):
 
     Args:
         job_id: Slurm job id.
+        ssh_config: Options of SSH client connection. For available options, please refer to
+            <newly-added-ssh-utils-file>
     """
 
     job_id: str
-    slurm_host: str
+    ssh_config: Dict[str, Any]
 
 
 class SlurmScriptAgent(AsyncAgentBase):
@@ -46,7 +49,7 @@ class SlurmScriptAgent(AsyncAgentBase):
         **kwargs,
     ) -> SlurmJobMetadata:
         # Retrieve task config
-        slurm_host = task_template.custom["slurm_host"]
+        ssh_config = task_template.custom["ssh_config"]
         batch_script_args = task_template.custom["batch_script_args"]
         sbatch_conf = task_template.custom["sbatch_conf"]
 
@@ -66,23 +69,23 @@ class SlurmScriptAgent(AsyncAgentBase):
         )
 
         # Run Slurm job
-        await self._connect(slurm_host)
+        conn = await ssh_connect(ssh_config=ssh_config)
         if upload_script:
             with tempfile.NamedTemporaryFile("w") as f:
                 f.write(script)
                 f.flush()
-                async with self._conn.start_sftp_client() as sftp:
+                async with conn.start_sftp_client() as sftp:
                     await sftp.put(f.name, self.REMOTE_PATH)
-        res = await self._conn.run(cmd, check=True)
+        res = await conn.run(cmd, check=True)
 
         # Retrieve Slurm job id
         job_id = res.stdout.split()[-1]
 
-        return SlurmJobMetadata(job_id=job_id, slurm_host=slurm_host)
+        return SlurmJobMetadata(job_id=job_id, ssh_config=ssh_config)
 
     async def get(self, resource_meta: SlurmJobMetadata, **kwargs) -> Resource:
-        await self._connect(resource_meta.slurm_host)
-        job_res = await self._conn.run(f"scontrol show job {resource_meta.job_id}", check=True)
+        conn = await ssh_connect(ssh_config=resource_meta.ssh_config)
+        job_res = await conn.run(f"scontrol show job {resource_meta.job_id}", check=True)
 
         # Determine the current flyte phase from Slurm job state
         job_state = "running"
@@ -91,19 +94,15 @@ class SlurmScriptAgent(AsyncAgentBase):
                 job_state = o.split("=")[1].strip().lower()
             elif "StdOut" in o:
                 stdout_path = o.split("=")[1].strip()
-                msg_res = await self._conn.run(f"cat {stdout_path}", check=True)
+                msg_res = await conn.run(f"cat {stdout_path}", check=True)
                 msg = msg_res.stdout
         cur_phase = convert_to_flyte_phase(job_state)
 
         return Resource(phase=cur_phase, message=msg)
 
     async def delete(self, resource_meta: SlurmJobMetadata, **kwargs) -> None:
-        await self._connect(resource_meta.slurm_host)
-        _ = await self._conn.run(f"scancel {resource_meta.job_id}", check=True)
-
-    async def _connect(self, slurm_host: str) -> None:
-        """Make an SSH client connection."""
-        self._conn = await asyncssh.connect(host=slurm_host)
+        conn = await ssh_connect(ssh_config=resource_meta.ssh_config)
+        _ = await conn.run(f"scancel {resource_meta.job_id}", check=True)
 
 
 def _get_sbatch_cmd(sbatch_conf: Dict[str, str], batch_script_path: str, batch_script_args: List[str] = None) -> str:

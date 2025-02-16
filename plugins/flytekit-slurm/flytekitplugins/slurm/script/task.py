@@ -20,13 +20,14 @@ class Slurm(object):
     Compared with spark, please refer to https://api-docs.databricks.com/python/pyspark/latest/api/pyspark.SparkContext.html.
 
     Args:
-        slurm_host: Slurm host name. We assume there's no default Slurm host now.
+        ssh_config: Options of SSH client connection. For available options, please refer to
+            <newly-added-ssh-utils-file>
         sbatch_conf: Options of sbatch command. For available options, please refer to
             https://slurm.schedmd.com/sbatch.html.
         batch_script_args: Additional args for the batch script on Slurm cluster.
     """
 
-    slurm_host: str
+    ssh_config: Dict[str, Any]
     sbatch_conf: Optional[Dict[str, str]] = None
     batch_script_args: Optional[List[str]] = None
 
@@ -63,7 +64,7 @@ class SlurmTask(AsyncAgentExecutorMixin, PythonTask[SlurmRemoteScript]):
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         return {
-            "slurm_host": self.task_config.slurm_host,
+            "ssh_config": self.task_config.ssh_config,
             "batch_script_path": self.task_config.batch_script_path,
             "batch_script_args": self.task_config.batch_script_args,
             "sbatch_conf": self.task_config.sbatch_conf,
@@ -90,7 +91,7 @@ class SlurmShellTask(AsyncAgentExecutorMixin, ShellTask[Slurm]):
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         return {
-            "slurm_host": self.task_config.slurm_host,
+            "ssh_config": self.task_config.ssh_config,
             "batch_script_args": self.task_config.batch_script_args,
             "sbatch_conf": self.task_config.sbatch_conf,
             # User-defined script content

@@ -17,7 +17,8 @@ class SlurmFunction(object):
     """Configure Slurm settings. Note that we focus on sbatch command now.
 
     Args:
-        slurm_host: Slurm host name. We assume there's no default Slurm host now.
+        ssh_config: Options of SSH client connection. For available options, please refer to
+            <newly-added-ssh-utils-file>
         sbatch_conf: Options of sbatch command.
         script: User-defined script where "{task.fn}" serves as a placeholder for the
             task function execution. Users should insert "{task.fn}" at the desired
@@ -25,7 +26,7 @@ class SlurmFunction(object):
             function will be executed directly.
     """
 
-    slurm_host: str
+    ssh_config: Dict[str, Any]
     sbatch_conf: Optional[Dict[str, str]] = None
     script: Optional[str] = None
 
@@ -58,7 +59,7 @@ class SlurmFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[SlurmFunctio
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         return {
-            "slurm_host": self.task_config.slurm_host,
+            "ssh_config": self.task_config.ssh_config,
             "sbatch_conf": self.task_config.sbatch_conf,
             "script": self.task_config.script,
         }
