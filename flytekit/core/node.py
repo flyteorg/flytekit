@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime
 import typing
+import warnings
 from typing import Any, Dict, List, Optional, Union
 from typing import Literal as L
 
@@ -68,7 +69,7 @@ class Node(object):
         self._outputs = None
         self._resources: typing.Optional[_resources_model] = None
         self._extended_resources: typing.Optional[tasks_pb2.ExtendedResources] = None
-        self._container_image: typing.Optional[str] = None
+        self._image: typing.Optional[str] = None
         self._pod_template: typing.Optional[PodTemplate] = None
 
     def runs_before(self, other: Node):
@@ -189,7 +190,7 @@ class Node(object):
         interruptible: Optional[bool] = None,
         name: Optional[str] = None,
         task_config: Optional[Any] = None,
-        container_image: Optional[str] = None,
+        image: Optional[str] = None,
         accelerator: Optional[BaseAccelerator] = None,
         cache: Optional[bool] = None,
         cache_version: Optional[str] = None,
@@ -236,9 +237,24 @@ class Node(object):
                 raise ValueError("can't change the type of the task config")
             self.run_entity._task_config = task_config
 
-        if container_image is not None:
-            assert_not_promise(container_image, "container_image")
-            self._container_image = container_image
+        # Rename the `container_image` parameter to `image` for improved user experience.
+        # Currently, both `image` and `container_image` are supported to maintain backward compatibility.
+        # For more details, please refer to https://github.com/flyteorg/flyte/issues/6140.
+        if image is not None and kwargs.get("container_image") is not None:
+            raise ValueError(
+                "Cannot specify both image and container_image. "
+                "Please use image because container_image is deprecated and will be removed in the future."
+            )
+        elif kwargs.get("container_image") is not None:
+            warnings.warn(
+                "container_image is deprecated and will be removed in the future. Please use image instead.",
+                DeprecationWarning,
+            )
+            assert_not_promise(kwargs["container_image"], "container_image")
+            self._image = kwargs["container_image"]
+        else:
+            assert_not_promise(image, "image")
+            self._image = image
 
         if accelerator is not None:
             assert_not_promise(accelerator, "accelerator")
@@ -255,6 +271,11 @@ class Node(object):
             self._pod_template = pod_template
 
         return self
+
+    @property
+    def _container_image(self) -> typing.Optional[str]:
+        """Deprecated, please use `_image` instead."""
+        return self._image
 
 
 def _convert_resource_overrides(
