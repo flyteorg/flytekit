@@ -104,7 +104,6 @@ def task(
     deprecated: str = ...,
     timeout: Union[datetime.timedelta, int] = ...,
     image: Optional[Union[str, ImageSpec]] = ...,
-    container_image: Optional[Union[str, ImageSpec]] = ...,
     environment: Optional[Dict[str, str]] = ...,
     requests: Optional[Resources] = ...,
     limits: Optional[Resources] = ...,
@@ -143,7 +142,6 @@ def task(
     deprecated: str = ...,
     timeout: Union[datetime.timedelta, int] = ...,
     image: Optional[Union[str, ImageSpec]] = ...,
-    container_image: Optional[Union[str, ImageSpec]] = ...,
     environment: Optional[Dict[str, str]] = ...,
     requests: Optional[Resources] = ...,
     limits: Optional[Resources] = ...,
@@ -181,7 +179,6 @@ def task(
     deprecated: str = "",
     timeout: Union[datetime.timedelta, int] = 0,
     image: Optional[Union[str, ImageSpec]] = None,
-    container_image: Optional[Union[str, ImageSpec]] = None,
     environment: Optional[Dict[str, str]] = None,
     requests: Optional[Resources] = None,
     limits: Optional[Resources] = None,
@@ -295,7 +292,6 @@ def task(
                     @task(image='{{.images.xyz.fqn}}:{{images.default.tag}}')
                     def foo2():
                         ...
-    :param container_image: Deprecated, please use `image` instead.
     :param environment: Environment variables that should be added for this tasks execution
     :param requests: Specify compute resource requests for your task. For Pod-plugin tasks, these values will apply only
       to the primary container.
@@ -348,6 +344,7 @@ def task(
     :param pickle_untyped: Boolean that indicates if the task allows unspecified data types.
     :param shared_memory: If True, then shared memory will be attached to the container where the size is equal
         to the allocated memory. If int, then the shared memory is set to that size.
+    :param container_image: Deprecated, please use `image` instead.
     """
     # Maintain backwards compatibility with the old cache parameters, while cleaning up the task function definition.
     cache_serialize = kwargs.get("cache_serialize")
@@ -374,7 +371,7 @@ def task(
             cache_version = cache.get_version(
                 VersionParameters(
                     func=fn,
-                    container_image=container_image,
+                    container_image=image or kwargs.get("container_image"),
                     pod_template=pod_template,
                     pod_template_name=pod_template_name,
                 )
@@ -423,7 +420,6 @@ def task(
             decorated_fn,
             metadata=_metadata,
             image=image,
-            container_image=container_image,
             environment=environment,
             requests=requests,
             limits=limits,
@@ -440,6 +436,7 @@ def task(
             accelerator=accelerator,
             pickle_untyped=pickle_untyped,
             shared_memory=shared_memory,
+            **kwargs,
         )
         update_wrapper(task_instance, decorated_fn)
         return task_instance
