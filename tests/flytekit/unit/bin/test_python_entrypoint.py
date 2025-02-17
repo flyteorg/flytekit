@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 import os
 import re
+import sys
 import textwrap
 import time
 import typing
@@ -519,6 +520,7 @@ def test_get_traceback_str():
     assert expected_error_re.match(traceback_str) is not None
 
 
+@pytest.mark.skipif(sys.platform.startswith("win"), reason="granularity of timestamp is not reliable")
 def test_get_container_error_timestamp(monkeypatch) -> None:
     # Set the timezone to UTC
     monkeypatch.setenv("TZ", "UTC")
