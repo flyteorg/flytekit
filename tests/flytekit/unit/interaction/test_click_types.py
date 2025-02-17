@@ -6,6 +6,7 @@ import tempfile
 import typing
 from datetime import datetime, timedelta
 from enum import Enum
+from typing import Optional
 
 import click
 import mock
@@ -367,9 +368,9 @@ def test_dataclass_with_default_none():
     @dataclass
     class Datum:
         x: int
-        y: str = None
-        z: typing.Dict[int, str] = None
-        w: typing.List[int] = None
+        y: Optional[str] = None
+        z: Optional[typing.Dict[int, str]] = None
+        w: Optional[typing.List[int]] = None
 
     t = JsonParamType(Datum)
     value = '{ "x": 1 }'

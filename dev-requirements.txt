@@ -115,7 +115,7 @@ filelock==3.14.0
     # via
     #   snowflake-connector-python
     #   virtualenv
-flyteidl==1.14.1
+flyteidl==1.14.3
     # via flytekit
 frozenlist==1.4.1
     # via
@@ -491,7 +491,7 @@ six==1.16.0
     #   isodate
     #   kubernetes
     #   python-dateutil
-snowflake-connector-python==3.12.3
+snowflake-connector-python==3.13.1
     # via -r dev-requirements.in
 sortedcontainers==2.4.0
     # via

@@ -1,7 +1,9 @@
+import json
 import os
 import pathlib
 import typing
 
+import msgpack
 from google.protobuf.json_format import MessageToJson
 from rich import print
 
@@ -39,6 +41,9 @@ def download_literal(
         elif data.scalar.generic is not None:
             with open(download_to / f"{var}.json", "w") as f:
                 f.write(MessageToJson(data.scalar.generic))
+        elif data.scalar.binary is not None and data.scalar.binary.tag == "msgpack":
+            with open(download_to / f"{var}.json", "w") as f:
+                json.dump(msgpack.unpackb(data.scalar.binary.value), f)
         else:
             print(
                 f"[dim]Skipping {var} val {literal_string_repr(data)} as it is not a blob, structured dataset,"

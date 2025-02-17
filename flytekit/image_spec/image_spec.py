@@ -48,6 +48,9 @@ class ImageSpec:
         platform: Specify the target platforms for the build output (for example, windows/amd64 or linux/amd64,darwin/arm64
         pip_index: Specify the custom pip index url
         pip_extra_index_url: Specify one or more pip index urls as a list
+        pip_secret_mounts: Specify a list of tuples to mount secret for pip install. Each tuple should contain the path to
+            the secret file and the mount path. For example, [(".gitconfig", "/etc/gitconfig")]. This is experimental and
+            the interface may change in the future. Configuring this should not change the built image.
         pip_extra_args: Specify one or more extra pip install arguments as a space-delimited string
         registry_config: Specify the path to a JSON registry config file
         entrypoint: List of strings to overwrite the entrypoint of the base image with, set to [] to remove the entrypoint.
@@ -83,6 +86,7 @@ class ImageSpec:
     platform: str = "linux/amd64"
     pip_index: Optional[str] = None
     pip_extra_index_url: Optional[List[str]] = None
+    pip_secret_mounts: Optional[List[Tuple[str, str]]] = None
     pip_extra_args: Optional[str] = None
     registry_config: Optional[str] = None
     entrypoint: Optional[List[str]] = None
@@ -127,6 +131,15 @@ class ImageSpec:
                 error_msg = f"{parameter} must be a list of strings or None"
                 raise ValueError(error_msg)
 
+        if self.pip_secret_mounts is not None:
+            pip_secret_mounts_is_list_tuple = isinstance(self.pip_secret_mounts, list) and all(
+                isinstance(v, tuple) and len(v) == 2 and all(isinstance(vv, str) for vv in v)
+                for v in self.pip_secret_mounts
+            )
+            if not pip_secret_mounts_is_list_tuple:
+                error_msg = "pip_secret_mounts must be a list of tuples of two strings or None"
+                raise ValueError(error_msg)
+
     @cached_property
     def id(self) -> str:
         """
@@ -142,8 +155,11 @@ class ImageSpec:
 
         :return: a unique identifier of the ImageSpec
         """
+        parameters_to_exclude = ["pip_secret_mounts"]
         # Only get the non-None values in the ImageSpec to ensure the hash is consistent across different Flytekit versions.
-        image_spec_dict = asdict(self, dict_factory=lambda x: {k: v for (k, v) in x if v is not None})
+        image_spec_dict = asdict(
+            self, dict_factory=lambda x: {k: v for (k, v) in x if v is not None and k not in parameters_to_exclude}
+        )
         image_spec_bytes = image_spec_dict.__str__().encode("utf-8")
         return base64.urlsafe_b64encode(hashlib.md5(image_spec_bytes).digest()).decode("ascii").rstrip("=")
 

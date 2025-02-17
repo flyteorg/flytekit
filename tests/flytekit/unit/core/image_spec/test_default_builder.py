@@ -40,6 +40,7 @@ def test_create_docker_context(tmp_path):
             entrypoint=["/bin/bash"],
             pip_index="https://url.com",
             pip_extra_index_url=["https://extra-url.com"],
+            pip_secret_mounts=[(".gitconfig", '/etc/gitconfig'), ("secret_src_2", "secret_dst_2")],
             source_copy_mode=CopyFileDetection.ALL,
             copy=[tmp_file.relative_to(Path.cwd()).as_posix()],
         )
@@ -56,6 +57,8 @@ def test_create_docker_context(tmp_path):
     assert "--requirement requirements_uv.txt" in dockerfile_content
     assert "--index-url" in dockerfile_content
     assert "--extra-index-url" in dockerfile_content
+    assert "--mount=type=secret,id=secret_0,target=/etc/gitconfig" in dockerfile_content
+    assert "--mount=type=secret,id=secret_1,target=secret_dst_2" in dockerfile_content
     assert "COPY --chown=flytekit ./src /root" in dockerfile_content
 
     run_match = re.search(r"RUN.+mkdir my_dir", dockerfile_content)
@@ -358,3 +361,27 @@ def test_python_exec_errors(tmp_path, key, value):
     msg = f"{key} is not supported with python_exec"
     with pytest.raises(ValueError, match=msg):
         create_docker_context(image_spec, docker_context_path)
+
+
+def test_github_credential_as_secret(monkeypatch, recwarn):
+    image_spec = ImageSpec(
+        name="FLYTEKIT",
+        python_version="3.12",
+        pip_secret_mounts=[(".gitconfig", '/etc/gitconfig'), ("secret_src_2", "secret_dst_2")],
+    )
+    run_mock = Mock()
+    monkeypatch.setattr("flytekit.image_spec.default_builder.run", run_mock)
+
+    builder = DefaultImageBuilder()
+    builder.build_image(image_spec)
+
+    run_mock.assert_called_once()
+    call_args = run_mock.call_args.args
+
+    assert "--secret" in call_args[0]
+    first_secret = call_args[0].index("--secret")
+    assert call_args[0][first_secret + 1] == "id=secret_0,src=.gitconfig"
+    assert call_args[0][first_secret + 2] == "--secret"
+    assert call_args[0][first_secret + 3] == "id=secret_1,src=secret_src_2"
+
+    assert not len(recwarn)

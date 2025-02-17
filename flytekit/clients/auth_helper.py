@@ -122,9 +122,12 @@ def upgrade_channel_to_proxy_authenticated(cfg: PlatformConfig, in_channel: grpc
     :param in_channel: grpc.Channel Precreated channel
     :return: grpc.Channel. New composite channel
     """
+
+    def authenticator_factory():
+        return get_proxy_authenticator(cfg)
+
     if cfg.proxy_command:
-        proxy_authenticator = get_proxy_authenticator(cfg)
-        return grpc.intercept_channel(in_channel, AuthUnaryInterceptor(proxy_authenticator))
+        return grpc.intercept_channel(in_channel, AuthUnaryInterceptor(authenticator_factory))
     else:
         return in_channel
 
@@ -137,8 +140,11 @@ def upgrade_channel_to_authenticated(cfg: PlatformConfig, in_channel: grpc.Chann
     :param in_channel: grpc.Channel Precreated channel
     :return: grpc.Channel. New composite channel
     """
-    authenticator = get_authenticator(cfg, RemoteClientConfigStore(in_channel))
-    return grpc.intercept_channel(in_channel, AuthUnaryInterceptor(authenticator))
+
+    def authenticator_factory():
+        return get_authenticator(cfg, RemoteClientConfigStore(in_channel))
+
+    return grpc.intercept_channel(in_channel, AuthUnaryInterceptor(authenticator_factory))
 
 
 def get_authenticated_channel(cfg: PlatformConfig) -> grpc.Channel:

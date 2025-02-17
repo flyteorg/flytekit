@@ -9,9 +9,11 @@ from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
 from flytekit.core.reference_entity import ReferenceSpec, ReferenceTemplate
 from flytekit.core.task import ReferenceTask, task
 from flytekit.core.workflow import ReferenceWorkflow, workflow
+from flytekit.deck import Deck
 from flytekit.models.core import identifier as identifier_models
 from flytekit.models.task import Resources as resource_model
 from flytekit.tools.translator import get_serializable, Options
+import pytest
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = flytekit.configuration.SerializationSettings(
@@ -93,13 +95,28 @@ def test_fast():
     def t2(a: str, b: str) -> str:
         return b + a
 
-    ssettings = (
+    settings = (
         serialization_settings.new_builder()
         .with_fast_serialization_settings(FastSerializationSettings(enabled=True))
         .build()
     )
-    task_spec = get_serializable(OrderedDict(), ssettings, t1)
+    task_spec = get_serializable(OrderedDict(), settings, t1)
     assert "pyflyte-fast-execute" in task_spec.template.container.args
+
+@pytest.mark.parametrize('enable_deck,expected', [(True, True), (False, False)])
+def test_deck_settings(enable_deck, expected):
+    @task(enable_deck=enable_deck)
+    def t_deck():
+        if enable_deck:
+            Deck.publish()
+
+    settings = (
+        serialization_settings.new_builder()
+        .with_fast_serialization_settings(FastSerializationSettings(enabled=True))
+        .build()
+    )
+    task_spec = get_serializable(OrderedDict(), settings, t_deck)
+    assert task_spec.template.metadata.generates_deck == expected
 
 
 def test_container():

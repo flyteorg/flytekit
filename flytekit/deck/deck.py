@@ -41,10 +41,6 @@ class Deck:
     scatter plots or Markdown text. In addition, users can create new decks to render
     their data with custom renderers.
 
-    .. warning::
-
-        This feature is in beta.
-
     .. code-block:: python
 
         iris_df = px.data.iris()
@@ -85,6 +81,19 @@ class Deck:
     @property
     def html(self) -> str:
         return self._html
+
+    @staticmethod
+    def publish():
+        params = FlyteContextManager.current_context().user_space_params
+        task_name = params.task_id.name
+
+        if not params.enable_deck:
+            logger.warning(
+                f"Attempted to call publish() in task '{task_name}', but Flyte decks will not be generated because enable_deck is currently set to False."
+            )
+            return
+
+        _output_deck(task_name=task_name, new_user_params=params)
 
 
 class TimeLineDeck(Deck):
@@ -148,7 +157,8 @@ def generate_time_table(data: dict) -> str:
 
 
 def _get_deck(
-    new_user_params: ExecutionParameters, ignore_jupyter: bool = False
+    new_user_params: ExecutionParameters,
+    ignore_jupyter: bool = False,
 ) -> typing.Union[str, "IPython.core.display.HTML"]:  # type:ignore
     """
     Get flyte deck html string
@@ -176,11 +186,12 @@ def _get_deck(
 
 def _output_deck(task_name: str, new_user_params: ExecutionParameters):
     ctx = FlyteContext.current_context()
+
     local_dir = ctx.file_access.get_random_local_directory()
     local_path = f"{local_dir}{os.sep}{DECK_FILE_NAME}"
     try:
         with open(local_path, "w", encoding="utf-8") as f:
-            f.write(_get_deck(new_user_params, ignore_jupyter=True))
+            f.write(_get_deck(new_user_params=new_user_params, ignore_jupyter=True))
         logger.info(f"{task_name} task creates flyte deck html to file://{local_path}")
         if ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
             fs = ctx.file_access.get_filesystem_for_path(new_user_params.output_metadata_prefix)
@@ -197,6 +208,7 @@ def _output_deck(task_name: str, new_user_params: ExecutionParameters):
 def get_deck_template() -> Template:
     root = os.path.dirname(os.path.abspath(__file__))
     templates_dir = os.path.join(root, "html", "template.html")
+
     with open(templates_dir, "r") as f:
         template_content = f.read()
     return Template(template_content)

@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass
 from enum import Enum
 from typing import List, Optional
@@ -53,6 +54,11 @@ class Secret(_common.FlyteIdlEntity):
         in_registration_context = execution.mode is None
         if in_registration_context and get_plugin().secret_requires_group() and self.group is None:
             raise ValueError("Group is a required parameter")
+
+        if self.env_var is not None:
+            pattern = r"^[A-Z_][A-Z0-9_]*$"
+            if not re.match(pattern, self.env_var):
+                raise ValueError(f"Invalid environment variable name: {self.env_var}")
 
     def to_flyte_idl(self) -> _sec.Secret:
         return _sec.Secret(

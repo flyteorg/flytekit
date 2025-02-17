@@ -9,7 +9,7 @@ import typing
 from dataclasses import asdict, dataclass, field
 from datetime import timedelta
 from enum import Enum, auto
-from typing import List, Optional, Type
+from typing import List, Optional, Type, Dict
 
 import mock
 import msgpack
@@ -34,6 +34,10 @@ from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import flyte_tmp_dir
 from flytekit.core.hash import HashMethod
 from flytekit.core.type_engine import (
+    IntTransformer,
+    FloatTransformer,
+    BoolTransformer,
+    StrTransformer,
     DataclassTransformer,
     DictTransformer,
     EnumTransformer,
@@ -48,9 +52,9 @@ from flytekit.core.type_engine import (
     convert_mashumaro_json_schema_to_python_class,
     dataclass_from_dict,
     get_underlying_type,
-    is_annotated, IntTransformer,
+    is_annotated,
+    strict_type_hint_matching,
 )
-from flytekit.core.type_engine import *
 from flytekit.exceptions import user as user_exceptions
 from flytekit.models import types as model_types
 from flytekit.models.annotation import TypeAnnotation
@@ -2864,21 +2868,22 @@ def test_get_underlying_type(t, expected):
 
 
 @pytest.mark.parametrize(
-    "t,expected",
+    "t,expected,allow_pickle",
     [
-        (None, (None, None)),
-        (typing.Dict, ()),
-        (typing.Dict[str, str], (str, str)),
+        (None, (None, None), False),
+        (typing.Dict, (), False),
+        (typing.Dict[str, str], (str, str), False),
         (
-                Annotated[typing.Dict[str, str], kwtypes(allow_pickle=True)],
-                (typing.Dict[str, str], kwtypes(allow_pickle=True)),
+            Annotated[typing.Dict[str, str], kwtypes(allow_pickle=True)],
+            (str, str),
+            True,
         ),
-        (typing.Dict[Annotated[str, "a-tag"], int], (Annotated[str, "a-tag"], int)),
+        (typing.Dict[Annotated[str, "a-tag"], int], (Annotated[str, "a-tag"], int), False),
     ],
 )
-def test_dict_get(t, expected):
-    assert DictTransformer.extract_types_or_metadata(t) == expected
-
+def test_dict_get(t, expected, allow_pickle):
+    assert DictTransformer.extract_types(t) == expected
+    assert DictTransformer.is_pickle(t) == allow_pickle
 
 def test_DataclassTransformer_get_literal_type():
     @dataclass
@@ -3777,3 +3782,72 @@ def test_register_dataclass_override():
     assert TypeEngine.get_transformer(RegularDC) == TypeEngine._DATACLASS_TRANSFORMER
 
     del TypeEngine._REGISTRY[ParentDC]
+
+
+def test_strict_type_matching():
+    # should correctly return the more specific transformer
+    class MyInt:
+        def __init__(self, x: int):
+            self.val = x
+
+        def __eq__(self, other):
+            if not isinstance(other, MyInt):
+                return False
+            return other.val == self.val
+
+    lt = LiteralType(simple=SimpleType.INTEGER)
+    TypeEngine.register(
+        SimpleTransformer(
+            "MyInt",
+            MyInt,
+            lt,
+            lambda x: Literal(scalar=Scalar(primitive=Primitive(integer=x.val))),
+            lambda x: MyInt(x.scalar.primitive.integer),
+        )
+    )
+
+    pt_guess = IntTransformer.guess_python_type(lt)
+    assert pt_guess is int
+    pt_better_guess = strict_type_hint_matching(MyInt(3), lt)
+    assert pt_better_guess is MyInt
+
+    del TypeEngine._REGISTRY[MyInt]
+
+
+def test_strict_type_matching_error():
+    xs: typing.List[float] = [0.1, 0.2, 0.3, 0.4, -99999.7]
+    lt = TypeEngine.to_literal_type(typing.List[float])
+    with pytest.raises(ValueError):
+        strict_type_hint_matching(xs, lt)
+
+
+@pytest.mark.asyncio
+async def test_dict_transformer_annotated_type():
+    ctx = FlyteContext.current_context()
+
+    # Test case 1: Regular Dict type
+    regular_dict = {"a": 1, "b": 2}
+    regular_dict_type = Dict[str, int]
+    expected_type = TypeEngine.to_literal_type(regular_dict_type)
+
+    # This should work fine
+    literal1 = await TypeEngine.async_to_literal(ctx, regular_dict, regular_dict_type, expected_type)
+    assert literal1.map.literals["a"].scalar.primitive.integer == 1
+    assert literal1.map.literals["b"].scalar.primitive.integer == 2
+
+    # Test case 2: Annotated Dict type
+    annotated_dict = {"x": 10, "y": 20}
+    annotated_dict_type = Annotated[Dict[str, int], "some_metadata"]
+    expected_type = TypeEngine.to_literal_type(annotated_dict_type)
+
+    literal2 = await TypeEngine.async_to_literal(ctx, annotated_dict, annotated_dict_type, expected_type)
+    assert literal2.map.literals["x"].scalar.primitive.integer == 10
+    assert literal2.map.literals["y"].scalar.primitive.integer == 20
+
+    # Test case 3: Nested Annotated Dict type
+    nested_dict = {"outer": {"inner": 42}}
+    nested_dict_type = Dict[str, Annotated[Dict[str, int], "inner_metadata"]]
+    expected_type = TypeEngine.to_literal_type(nested_dict_type)
+
+    literal3 = await TypeEngine.async_to_literal(ctx, nested_dict, nested_dict_type, expected_type)
+    assert literal3.map.literals["outer"].map.literals["inner"].scalar.primitive.integer == 42

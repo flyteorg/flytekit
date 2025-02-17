@@ -222,7 +222,7 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
         return cls(path=remote_path)
 
     @classmethod
-    def new(cls, dirname: str | os.PathLike) -> FlyteFile:
+    def new(cls, dirname: str | os.PathLike) -> FlyteDirectory:
         """
         Create a new FlyteDirectory object in current Flyte working directory.
         """

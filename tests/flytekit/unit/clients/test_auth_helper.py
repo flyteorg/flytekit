@@ -172,7 +172,7 @@ def test_upgrade_channel_to_proxy_auth():
         ch,
     )
     assert isinstance(out_ch._interceptor, AuthUnaryInterceptor)
-    assert isinstance(out_ch._interceptor._authenticator, CommandAuthenticator)
+    assert isinstance(out_ch._interceptor.authenticator, CommandAuthenticator)
 
 
 def test_get_proxy_authenticated_session():

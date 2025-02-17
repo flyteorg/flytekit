@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from unittest import mock
 import msgpack
 import base64
+import json
 
 import pytest
 from flyteidl.core.execution_pb2 import TaskExecution
@@ -163,7 +164,9 @@ async def test_agent(mock_boto_call, mock_return_value):
         if "pickle_check" in mock_return_value[0][0]:
             assert "pickle_file" in outputs["result"]
         else:
-            outputs["result"] = msgpack.loads(base64.b64decode(outputs["result"]))
+            raw_result = outputs["result"]
+            parsed_result = json.loads(raw_result)
+            outputs["result"] = parsed_result
             assert (
                 outputs["result"]["EndpointConfigArn"]
                 == "arn:aws:sagemaker:us-east-2:000000000:endpoint-config/sagemaker-xgboost-endpoint-config"
