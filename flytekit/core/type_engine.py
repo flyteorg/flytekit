@@ -734,9 +734,9 @@ class DataclassTransformer(TypeTransformer[object]):
             json_str = python_val.to_json()
         else:
             try:
-                encoder = self._json_encoder[python_type]
+                encoder = self._json_encoder[new_python_type]
             except KeyError:
-                encoder = JSONEncoder(python_type)
+                encoder = JSONEncoder(new_python_type)
                 self._json_encoder[new_python_type] = encoder
 
             try:
