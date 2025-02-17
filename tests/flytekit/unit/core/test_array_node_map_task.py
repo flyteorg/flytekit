@@ -373,7 +373,7 @@ def my_mappable_task_1(a: int) -> typing.Optional[str]:
     [my_mappable_task, my_mappable_task_1]
 )
 def test_map_task_override(serialization_settings, task_func):
-    array_node_map_task = map_task(task_func)
+    array_node_map_task = map(task_func)
 
     @workflow
     def wf(x: typing.List[int]):
