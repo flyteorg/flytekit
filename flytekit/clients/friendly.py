@@ -7,7 +7,9 @@ from flyteidl.admin import execution_pb2 as _execution_pb2
 from flyteidl.admin import launch_plan_pb2 as _launch_plan_pb2
 from flyteidl.admin import matchable_resource_pb2 as _matchable_resource_pb2
 from flyteidl.admin import node_execution_pb2 as _node_execution_pb2
-from flyteidl.admin import project_domain_attributes_pb2 as _project_domain_attributes_pb2
+from flyteidl.admin import (
+    project_domain_attributes_pb2 as _project_domain_attributes_pb2,
+)
 from flyteidl.admin import project_pb2 as _project_pb2
 from flyteidl.admin import task_execution_pb2 as _task_execution_pb2
 from flyteidl.admin import task_pb2 as _task_pb2
@@ -24,7 +26,6 @@ from flytekit.models import common as _common
 from flytekit.models import execution as _execution
 from flytekit.models import filters as _filters
 from flytekit.models import launch_plan as _launch_plan
-from flytekit.models import metrics as _metrics
 from flytekit.models import node_execution as _node_execution
 from flytekit.models import project as _project
 from flytekit.models import task as _task
@@ -673,7 +674,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         )
 
     def get_execution_metrics(self, id, depth=10):
-        exec_metrics = _metrics.Span.from_flyte_idl(
+        return (
             super(SynchronousFlyteClient, self)
             .get_execution_metrics(
                 get_execution_metrics_request=_execution_pb2.WorkflowExecutionGetMetricsRequest(
@@ -682,7 +683,6 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             )
             .span
         )
-        return exec_metrics
 
     ####################################################################################################################
     #
