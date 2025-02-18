@@ -27,13 +27,13 @@ def my_childwf(a: int = 42) -> int:
     return c
 
 
-child_lp = LaunchPlan.get_or_create(my_childwf, name="my_fixed_child_lp", labels=Labels({"l1": "v1"}))
+shallow_child_lp = LaunchPlan.get_or_create(my_childwf, name="my_shallow_fixed_child_lp", labels=Labels({"l1": "v1"}))
 
 
 @workflow
 def parent_wf(a: int) -> int:
     x = double(a=a)
-    y = child_lp(a=x)
+    y = shallow_child_lp(a=x)
     z = add(a=x, b=y)
     return z
 
