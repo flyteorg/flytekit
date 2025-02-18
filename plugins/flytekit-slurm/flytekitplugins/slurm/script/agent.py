@@ -1,11 +1,14 @@
 import tempfile
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Type
 
 from asyncssh import SSHClientConnection
 
+import flytekit
+from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource, ResourceMeta
 from flytekit.extend.backend.utils import convert_to_flyte_phase
+from flytekit.extras.tasks.shell import _PythonFStringInterpolizer
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
@@ -58,6 +61,9 @@ class SlurmScriptAgent(AsyncAgentBase):
         if "script" in task_template.custom:
             script = task_template.custom["script"]
             assert script != self.DUMMY_SCRIPT, "Please write the user-defined batch script content."
+            script = self._interpolate_script(
+                script, input_literal_map=inputs, python_input_types=task_template.custom["python_input_types"]
+            )
 
             batch_script_path = self.REMOTE_PATH
             upload_script = True
@@ -103,6 +109,30 @@ class SlurmScriptAgent(AsyncAgentBase):
     async def delete(self, resource_meta: SlurmJobMetadata, **kwargs) -> None:
         conn = await ssh_connect(ssh_config=resource_meta.ssh_config)
         _ = await conn.run(f"scancel {resource_meta.job_id}", check=True)
+
+    def _interpolate_script(
+        self,
+        script: str,
+        input_literal_map: Optional[LiteralMap] = None,
+        python_input_types: Optional[Dict[str, Type]] = None,
+    ) -> str:
+        """Interpolate the user-defined script with the specified input arguments.
+
+        Args:
+            script: The user-defined script with placeholders for dynamic input values.
+            input_literal_map: The input literal map.
+            python_input_types: A dictionary of input names to types.
+
+        Returns:
+            script: The interpolated script.
+        """
+        input_kwargs = TypeEngine.literal_map_to_kwargs(
+            flytekit.current_context(), lm=input_literal_map, python_types=python_input_types
+        )
+        interpolizer = _PythonFStringInterpolizer()
+        script = interpolizer.interpolate(script, inputs=input_kwargs)
+
+        return script
 
 
 def _get_sbatch_cmd(sbatch_conf: Dict[str, str], batch_script_path: str, batch_script_args: List[str] = None) -> str:

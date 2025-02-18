@@ -3,14 +3,14 @@ Slurm task.
 """
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Type
 
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.interface import Interface
 from flytekit.extend import TaskPlugins
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
-from flytekit.extras.tasks.shell import ShellTask
+from flytekit.extras.tasks.shell import OutputLocation, ShellTask
 
 
 @dataclass
@@ -79,13 +79,19 @@ class SlurmShellTask(AsyncAgentExecutorMixin, ShellTask[Slurm]):
         name: str,
         task_config: Slurm,
         script: Optional[str] = None,
+        inputs: Optional[Dict[str, Type]] = None,
+        output_locs: Optional[List[OutputLocation]] = None,
         **kwargs,
     ):
+        self._inputs = inputs
+
         super(SlurmShellTask, self).__init__(
             name,
             task_config=task_config,
             task_type=self._TASK_TYPE,
             script=script,
+            inputs=inputs,
+            output_locs=output_locs,
             **kwargs,
         )
 
@@ -94,8 +100,8 @@ class SlurmShellTask(AsyncAgentExecutorMixin, ShellTask[Slurm]):
             "ssh_config": self.task_config.ssh_config,
             "batch_script_args": self.task_config.batch_script_args,
             "sbatch_conf": self.task_config.sbatch_conf,
-            # User-defined script content
             "script": self._script,
+            "python_input_types": self._inputs,
         }
 
 
