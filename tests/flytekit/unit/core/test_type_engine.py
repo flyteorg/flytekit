@@ -2868,21 +2868,22 @@ def test_get_underlying_type(t, expected):
 
 
 @pytest.mark.parametrize(
-    "t,expected",
+    "t,expected,allow_pickle",
     [
-        (None, (None, None)),
-        (typing.Dict, ()),
-        (typing.Dict[str, str], (str, str)),
+        (None, (None, None), False),
+        (typing.Dict, (), False),
+        (typing.Dict[str, str], (str, str), False),
         (
-                Annotated[typing.Dict[str, str], kwtypes(allow_pickle=True)],
-                (str, str),
+            Annotated[typing.Dict[str, str], kwtypes(allow_pickle=True)],
+            (str, str),
+            True,
         ),
-        (typing.Dict[Annotated[str, "a-tag"], int], (Annotated[str, "a-tag"], int)),
+        (typing.Dict[Annotated[str, "a-tag"], int], (Annotated[str, "a-tag"], int), False),
     ],
 )
-def test_dict_get(t, expected):
+def test_dict_get(t, expected, allow_pickle):
     assert DictTransformer.extract_types(t) == expected
-
+    assert DictTransformer.is_pickle(t) == allow_pickle
 
 def test_DataclassTransformer_get_literal_type():
     @dataclass
@@ -3818,3 +3819,35 @@ def test_strict_type_matching_error():
     lt = TypeEngine.to_literal_type(typing.List[float])
     with pytest.raises(ValueError):
         strict_type_hint_matching(xs, lt)
+
+
+@pytest.mark.asyncio
+async def test_dict_transformer_annotated_type():
+    ctx = FlyteContext.current_context()
+
+    # Test case 1: Regular Dict type
+    regular_dict = {"a": 1, "b": 2}
+    regular_dict_type = Dict[str, int]
+    expected_type = TypeEngine.to_literal_type(regular_dict_type)
+
+    # This should work fine
+    literal1 = await TypeEngine.async_to_literal(ctx, regular_dict, regular_dict_type, expected_type)
+    assert literal1.map.literals["a"].scalar.primitive.integer == 1
+    assert literal1.map.literals["b"].scalar.primitive.integer == 2
+
+    # Test case 2: Annotated Dict type
+    annotated_dict = {"x": 10, "y": 20}
+    annotated_dict_type = Annotated[Dict[str, int], "some_metadata"]
+    expected_type = TypeEngine.to_literal_type(annotated_dict_type)
+
+    literal2 = await TypeEngine.async_to_literal(ctx, annotated_dict, annotated_dict_type, expected_type)
+    assert literal2.map.literals["x"].scalar.primitive.integer == 10
+    assert literal2.map.literals["y"].scalar.primitive.integer == 20
+
+    # Test case 3: Nested Annotated Dict type
+    nested_dict = {"outer": {"inner": 42}}
+    nested_dict_type = Dict[str, Annotated[Dict[str, int], "inner_metadata"]]
+    expected_type = TypeEngine.to_literal_type(nested_dict_type)
+
+    literal3 = await TypeEngine.async_to_literal(ctx, nested_dict, nested_dict_type, expected_type)
+    assert literal3.map.literals["outer"].map.literals["inner"].scalar.primitive.integer == 42

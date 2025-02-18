@@ -178,6 +178,9 @@ Task Utilities
    :toctree: generated/
 
    HashMethod
+   Cache
+   CachePolicy
+   VersionParameters
 
 Artifacts
 =========
