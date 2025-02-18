@@ -102,6 +102,7 @@ class SlurmShellTask(AsyncAgentExecutorMixin, ShellTask[Slurm]):
             "sbatch_conf": self.task_config.sbatch_conf,
             "script": self._script,
             "python_input_types": self._inputs,
+            "output_locs": self._output_locs,
         }
 
 

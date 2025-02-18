@@ -1,6 +1,6 @@
 import tempfile
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Dict, List, Optional, Tuple, Type
 
 from asyncssh import SSHClientConnection
 
@@ -8,7 +8,7 @@ import flytekit
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource, ResourceMeta
 from flytekit.extend.backend.utils import convert_to_flyte_phase
-from flytekit.extras.tasks.shell import _PythonFStringInterpolizer
+from flytekit.extras.tasks.shell import OutputLocation, _PythonFStringInterpolizer
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
@@ -23,10 +23,12 @@ class SlurmJobMetadata(ResourceMeta):
         job_id: Slurm job id.
         ssh_config: Options of SSH client connection. For available options, please refer to
             <newly-added-ssh-utils-file>
+        outputs: A dictionary mapping from the output variable name to the output location.
     """
 
     job_id: str
     ssh_config: Dict[str, Any]
+    outputs: Dict[str, str]
 
 
 class SlurmScriptAgent(AsyncAgentBase):
@@ -61,8 +63,11 @@ class SlurmScriptAgent(AsyncAgentBase):
         if "script" in task_template.custom:
             script = task_template.custom["script"]
             assert script != self.DUMMY_SCRIPT, "Please write the user-defined batch script content."
-            script = self._interpolate_script(
-                script, input_literal_map=inputs, python_input_types=task_template.custom["python_input_types"]
+            script, outputs = self._interpolate_script(
+                script,
+                input_literal_map=inputs,
+                python_input_types=task_template.custom["python_input_types"],
+                output_locs=task_template.custom["output_locs"],
             )
 
             batch_script_path = self.REMOTE_PATH
@@ -87,7 +92,7 @@ class SlurmScriptAgent(AsyncAgentBase):
         # Retrieve Slurm job id
         job_id = res.stdout.split()[-1]
 
-        return SlurmJobMetadata(job_id=job_id, ssh_config=ssh_config)
+        return SlurmJobMetadata(job_id=job_id, ssh_config=ssh_config, outputs=outputs)
 
     async def get(self, resource_meta: SlurmJobMetadata, **kwargs) -> Resource:
         conn = await ssh_connect(ssh_config=resource_meta.ssh_config)
@@ -104,7 +109,7 @@ class SlurmScriptAgent(AsyncAgentBase):
                 msg = msg_res.stdout
         cur_phase = convert_to_flyte_phase(job_state)
 
-        return Resource(phase=cur_phase, message=msg)
+        return Resource(phase=cur_phase, message=msg, outputs=resource_meta.outputs)
 
     async def delete(self, resource_meta: SlurmJobMetadata, **kwargs) -> None:
         conn = await ssh_connect(ssh_config=resource_meta.ssh_config)
@@ -115,24 +120,35 @@ class SlurmScriptAgent(AsyncAgentBase):
         script: str,
         input_literal_map: Optional[LiteralMap] = None,
         python_input_types: Optional[Dict[str, Type]] = None,
-    ) -> str:
-        """Interpolate the user-defined script with the specified input arguments.
+        output_locs: Optional[List[OutputLocation]] = None,
+    ) -> Tuple[str, Dict[str, str]]:
+        """Interpolate the user-defined script with the specified input and output arguments.
 
         Args:
-            script: The user-defined script with placeholders for dynamic input values.
+            script: The user-defined script with placeholders for dynamic input and output values.
             input_literal_map: The input literal map.
             python_input_types: A dictionary of input names to types.
+            output_locs: Output locations.
 
         Returns:
-            script: The interpolated script.
+            A tuple (script, outputs), where script is the interpolated script, and outputs is a
+            dictionary mapping from the output variable name to the output location.
         """
         input_kwargs = TypeEngine.literal_map_to_kwargs(
             flytekit.current_context(), lm=input_literal_map, python_types=python_input_types
         )
         interpolizer = _PythonFStringInterpolizer()
-        script = interpolizer.interpolate(script, inputs=input_kwargs)
 
-        return script
+        # Interpolate output locations with input values
+        outputs = {}
+        if output_locs is not None:
+            for oloc in output_locs:
+                outputs[oloc.var] = interpolizer.interpolate(oloc.location, inputs=input_kwargs)
+
+        # Interpolate the script
+        script = interpolizer.interpolate(script, inputs=input_kwargs, outputs=outputs)
+
+        return script, outputs
 
 
 def _get_sbatch_cmd(sbatch_conf: Dict[str, str], batch_script_path: str, batch_script_args: List[str] = None) -> str:
