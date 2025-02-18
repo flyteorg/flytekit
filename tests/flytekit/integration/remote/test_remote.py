@@ -217,7 +217,7 @@ def test_monitor_workflow_execution(register):
     )
 
     poll_interval = datetime.timedelta(seconds=1)
-    time_to_give_up = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=600)
+    time_to_give_up = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=60)
 
     execution = remote.sync_execution(execution, sync_nodes=True)
     while datetime.datetime.now(datetime.timezone.utc) < time_to_give_up:
@@ -255,7 +255,7 @@ def test_sync_execution_sync_nodes_get_all_executions(register):
     )
 
     poll_interval = datetime.timedelta(seconds=1)
-    time_to_give_up = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=60)
+    time_to_give_up = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=600)
 
     execution = remote.sync_execution(execution, sync_nodes=True)
     while datetime.datetime.now(datetime.timezone.utc) < time_to_give_up:
