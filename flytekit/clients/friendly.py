@@ -7,9 +7,7 @@ from flyteidl.admin import execution_pb2 as _execution_pb2
 from flyteidl.admin import launch_plan_pb2 as _launch_plan_pb2
 from flyteidl.admin import matchable_resource_pb2 as _matchable_resource_pb2
 from flyteidl.admin import node_execution_pb2 as _node_execution_pb2
-from flyteidl.admin import (
-    project_domain_attributes_pb2 as _project_domain_attributes_pb2,
-)
+from flyteidl.admin import project_domain_attributes_pb2 as _project_domain_attributes_pb2
 from flyteidl.admin import project_pb2 as _project_pb2
 from flyteidl.admin import task_execution_pb2 as _task_execution_pb2
 from flyteidl.admin import task_pb2 as _task_pb2
