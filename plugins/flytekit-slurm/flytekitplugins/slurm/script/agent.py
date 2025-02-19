@@ -53,6 +53,8 @@ class SlurmScriptAgent(AsyncAgentBase):
         inputs: Optional[LiteralMap] = None,
         **kwargs,
     ) -> SlurmJobMetadata:
+        outputs = {}
+
         # Retrieve task config
         ssh_config = task_template.custom["ssh_config"]
         batch_script_args = task_template.custom["batch_script_args"]
