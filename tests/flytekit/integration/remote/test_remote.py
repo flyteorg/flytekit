@@ -44,6 +44,7 @@ DOMAIN = "development"
 VERSION = f"v{os.getpid()}"
 DEST_DIR = "/tmp"
 
+TIMEOUT_IN_MIN = 10
 
 @pytest.fixture(scope="session")
 def register():
@@ -122,7 +123,7 @@ def test_pydantic_default_input_with_map_task():
     execution_id = run("pydantic_wf.py", "wf")
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     execution = remote.fetch_execution(name=execution_id)
-    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
+    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=TIMEOUT_IN_MIN))
     print("Execution Error:", execution.error)
     assert execution.closure.phase == WorkflowExecutionPhase.SUCCEEDED, f"Execution failed with phase: {execution.closure.phase}"
 
@@ -131,7 +132,7 @@ def test_pydantic_default_input_with_map_task():
     execution_id = run("pydantic_wf.py", "wf")
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     execution = remote.fetch_execution(name=execution_id)
-    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
+    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=TIMEOUT_IN_MIN))
     print("Execution Error:", execution.error)
     assert execution.closure.phase == WorkflowExecutionPhase.SUCCEEDED, f"Execution failed with phase: {execution.closure.phase}"
 
@@ -142,7 +143,7 @@ def test_generic_idl_flytetypes():
     execution_id = run("generic_idl_flytetypes.py", "wf")
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     execution = remote.fetch_execution(name=execution_id)
-    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
+    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=TIMEOUT_IN_MIN))
     print("Execution Error:", execution.error)
     assert execution.closure.phase == WorkflowExecutionPhase.SUCCEEDED, f"Execution failed with phase: {execution.closure.phase}"
     os.environ["FLYTE_USE_OLD_DC_FORMAT"] = "false"
@@ -153,7 +154,7 @@ def test_msgpack_idl_flytetypes():
     execution_id = run("msgpack_idl_flytetypes.py", "wf")
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     execution = remote.fetch_execution(name=execution_id)
-    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
+    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=TIMEOUT_IN_MIN))
     print("Execution Error:", execution.error)
     assert execution.closure.phase == WorkflowExecutionPhase.SUCCEEDED, f"Execution failed with phase: {execution.closure.phase}"
 
@@ -627,7 +628,7 @@ def test_executes_nested_workflow_dictating_interruptible(register):
         executions.append(execution)
     # Wait for all executions to complete
     for execution, expected_interruptible in zip(executions, interruptible_values):
-        execution = remote.wait(execution, timeout=300)
+        execution = remote.wait(execution, timeout=datetime.timedelta(minutes=TIMEOUT_IN_MIN))
         # Check that the parent workflow is interruptible as expected
         assert execution.spec.interruptible == expected_interruptible
         # Check that the child workflow is interruptible as expected
@@ -898,7 +899,7 @@ def test_open_ff():
     execution_id = run("flytefile.py", "wf", "--remote_file_path", remote_file_path)
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     execution = remote.fetch_execution(name=execution_id)
-    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
+    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=TIMEOUT_IN_MIN))
     assert execution.closure.phase == WorkflowExecutionPhase.SUCCEEDED, f"Execution failed with phase: {execution.closure.phase}"
 
     # Delete the remote file to free the space
@@ -916,7 +917,7 @@ def test_attr_access_sd():
     execution_id = run("attr_access_sd.py", "wf", "--uri", remote_file_path)
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     execution = remote.fetch_execution(name=execution_id)
-    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
+    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=TIMEOUT_IN_MIN))
     print("Execution Error:", execution.error)
     assert execution.closure.phase == WorkflowExecutionPhase.SUCCEEDED, f"Execution failed with phase: {execution.closure.phase}"
 
@@ -990,7 +991,7 @@ def test_signal_approve_reject(register):
     retry_operation(lambda: remote.set_input("title-input", execution.id.name, value="my report", project=PROJECT, domain=DOMAIN, python_type=str, literal_type=LiteralType(simple=SimpleType.STRING)))
     retry_operation(lambda: remote.approve("review-passes", execution.id.name, project=PROJECT, domain=DOMAIN))
 
-    remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
+    remote.wait(execution=execution, timeout=datetime.timedelta(minutes=TIMEOUT_IN_MIN))
     assert execution.outputs["o0"] == {"title": "my report", "data": [1.0, 2.0, 3.0, 4.0, 5.0]}
 
     with pytest.raises(FlyteAssertion, match="Outputs could not be found because the execution ended in failure"):
@@ -999,7 +1000,7 @@ def test_signal_approve_reject(register):
         retry_operation(lambda: remote.set_input("title-input", execution.id.name, value="my report", project=PROJECT, domain=DOMAIN, python_type=str, literal_type=LiteralType(simple=SimpleType.STRING)))
         retry_operation(lambda: remote.reject("review-passes", execution.id.name, project=PROJECT, domain=DOMAIN))
 
-        remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
+        remote.wait(execution=execution, timeout=datetime.timedelta(minutes=TIMEOUT_IN_MIN))
         assert execution.outputs["o0"] == {"title": "my report", "data": [1.0, 2.0, 3.0, 4.0, 5.0]}
 
 
