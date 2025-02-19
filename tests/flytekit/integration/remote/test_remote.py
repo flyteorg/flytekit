@@ -162,6 +162,7 @@ def test_fetch_execute_launch_plan(register):
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     flyte_launch_plan = remote.fetch_launch_plan(name="basic.hello_world.my_wf", version=VERSION)
     execution = remote.execute(flyte_launch_plan, inputs={}, wait=True)
+    print("Execution Error:", execution.error)
     assert execution.outputs["o0"] == "hello world"
 
 
@@ -613,6 +614,7 @@ def test_execute_workflow_with_maptask(register):
         wait=True,
     )
     assert execution.outputs["o0"] == [4, 5, 6]
+    assert len(execution.node_executions["n0"].task_executions) == 1
 
 def test_executes_nested_workflow_dictating_interruptible(register):
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
@@ -915,6 +917,7 @@ def test_attr_access_sd():
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     execution = remote.fetch_execution(name=execution_id)
     execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=10))
+    print("Execution Error:", execution.error)
     assert execution.closure.phase == WorkflowExecutionPhase.SUCCEEDED, f"Execution failed with phase: {execution.closure.phase}"
 
     # Delete the remote file to free the space
@@ -1044,3 +1047,31 @@ def test_check_secret(kubectl_secret, task):
         f"Execution failed with phase: {execution.closure.phase}"
     )
     assert execution.outputs['o0'] == kubectl_secret
+
+
+def test_execute_workflow_with_dataclass():
+    """Test remote execution of a workflow with dataclass input."""
+    from tests.flytekit.integration.remote.workflows.basic.dataclass_wf import wf, MyConfig
+
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN, interactive_mode_enabled=True)
+
+    config = MyConfig(op_list=["a", "b", "c"])
+    out = remote.execute(
+        wf,
+        inputs={"config": config},
+        wait=True,
+        version=VERSION,
+        image_config=ImageConfig.from_images(IMAGE),
+    )
+    assert out.outputs["o0"] == "a,b,c"
+
+    # Test with None value
+    config = MyConfig(op_list=None)
+    out = remote.execute(
+        wf,
+        inputs={"config": config},
+        wait=True,
+        version=VERSION + "_none",
+        image_config=ImageConfig.from_images(IMAGE),
+    )
+    assert out.outputs["o0"] == ""

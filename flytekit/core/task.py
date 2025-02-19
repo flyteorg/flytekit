@@ -5,6 +5,7 @@ import inspect
 import os
 from functools import partial, update_wrapper
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, TypeVar, Union, overload
+from typing import Literal as L
 
 from typing_extensions import ParamSpec  # type: ignore
 
@@ -126,6 +127,7 @@ def task(
     pod_template_name: Optional[str] = ...,
     accelerator: Optional[BaseAccelerator] = ...,
     pickle_untyped: bool = ...,
+    shared_memory: Optional[Union[L[True], str]] = None,
     **kwargs,
 ) -> Callable[[Callable[..., FuncOut]], PythonFunctionTask[T]]: ...
 
@@ -163,6 +165,7 @@ def task(
     pod_template_name: Optional[str] = ...,
     accelerator: Optional[BaseAccelerator] = ...,
     pickle_untyped: bool = ...,
+    shared_memory: Optional[Union[L[True], str]] = ...,
     **kwargs,
 ) -> Union[Callable[P, FuncOut], PythonFunctionTask[T]]: ...
 
@@ -205,6 +208,7 @@ def task(
     pod_template_name: Optional[str] = None,
     accelerator: Optional[BaseAccelerator] = None,
     pickle_untyped: bool = False,
+    shared_memory: Optional[Union[L[True], str]] = None,
     **kwargs,
 ) -> Union[
     Callable[P, FuncOut],
@@ -338,6 +342,8 @@ def task(
     :param pod_template_name: The name of the existing PodTemplate resource which will be used in this task.
     :param accelerator: The accelerator to use for this task.
     :param pickle_untyped: Boolean that indicates if the task allows unspecified data types.
+    :param shared_memory: If True, then shared memory will be attached to the container where the size is equal
+        to the allocated memory. If int, then the shared memory is set to that size.
     """
     # Maintain backwards compatibility with the old cache parameters, while cleaning up the task function definition.
     cache_serialize = kwargs.get("cache_serialize")
@@ -428,6 +434,7 @@ def task(
             pod_template_name=pod_template_name,
             accelerator=accelerator,
             pickle_untyped=pickle_untyped,
+            shared_memory=shared_memory,
         )
         update_wrapper(task_instance, decorated_fn)
         return task_instance

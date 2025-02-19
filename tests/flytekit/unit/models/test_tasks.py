@@ -5,6 +5,7 @@ import pytest
 from flyteidl.core.tasks_pb2 import ExtendedResources, TaskMetadata
 from google.protobuf import text_format
 
+from flytekit.core.resources import construct_extended_resources
 import flytekit.models.interface as interface_models
 import flytekit.models.literals as literal_models
 from flytekit import Description, Documentation, SourceCode
@@ -110,7 +111,7 @@ def test_task_template(in_tuple):
             {"d": "e"},
         ),
         config={"a": "b"},
-        extended_resources=ExtendedResources(gpu_accelerator=T4.to_flyte_idl()),
+        extended_resources=construct_extended_resources(accelerator=T4, shared_memory="2Gi"),
     )
     assert obj.id.resource_type == identifier.ResourceType.TASK
     assert obj.id.project == "project"
@@ -130,6 +131,7 @@ def test_task_template(in_tuple):
     assert obj.extended_resources.gpu_accelerator.device == "nvidia-tesla-t4"
     assert not obj.extended_resources.gpu_accelerator.HasField("unpartitioned")
     assert not obj.extended_resources.gpu_accelerator.HasField("partition_size")
+    assert obj.extended_resources.shared_memory.size_limit == "2Gi"
 
 
 def test_task_spec():

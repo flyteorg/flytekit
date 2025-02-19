@@ -2552,7 +2552,7 @@ class FlyteRemote(object):
             return execution
 
         # If a node ran a static subworkflow or a dynamic subworkflow then the parent flag will be set.
-        if execution.metadata.is_parent_node or execution.metadata.is_array:
+        if execution.metadata.is_parent_node:
             # We'll need to query child node executions regardless since this is a parent node
             child_node_executions = iterate_node_executions(
                 self.client,
@@ -2606,22 +2606,31 @@ class FlyteRemote(object):
                     "not have inputs and outputs filled in"
                 )
                 return execution
-            elif execution._node.array_node is not None:
-                # if there's a task node underneath the array node, let's fetch the interface for it
-                if execution._node.array_node.node.task_node is not None:
-                    tid = execution._node.array_node.node.task_node.reference_id
-                    t = self.fetch_task(tid.project, tid.domain, tid.name, tid.version)
-                    if t.interface:
-                        execution._interface = t.interface
-                    else:
-                        logger.error(f"Fetched map task does not have an interface, skipping i/o {t}")
-                        return execution
-                else:
-                    logger.error(f"Array node not over task, skipping i/o {t}")
-                    return execution
             else:
                 logger.error(f"NE {execution} undeterminable, {type(execution._node)}, {execution._node}")
                 raise ValueError(f"Node execution undeterminable, entity has type {type(execution._node)}")
+
+        # Handle the case for array nodes
+        elif execution.metadata.is_array:
+            if execution._node.array_node is None:
+                logger.error("Array node not found")
+                return execution
+            # if there's a task node underneath the array node, let's fetch the interface for it
+            if execution._node.array_node.node.task_node is not None:
+                tid = execution._node.array_node.node.task_node.reference_id
+                t = self.fetch_task(tid.project, tid.domain, tid.name, tid.version)
+                execution._task_executions = [
+                    self.sync_task_execution(FlyteTaskExecution.promote_from_model(task_execution), t)
+                    for task_execution in iterate_task_executions(self.client, execution.id)
+                ]
+                if t.interface:
+                    execution._interface = t.interface
+                else:
+                    logger.error(f"Fetched map task does not have an interface, skipping i/o {t}")
+                    return execution
+            else:
+                logger.error("Array node not over task, skipping i/o")
+                return execution
 
         # Handle the case for gate nodes
         elif execution._node.gate_node is not None:
