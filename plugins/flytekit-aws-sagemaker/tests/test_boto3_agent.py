@@ -158,6 +158,7 @@ async def test_agent(mock_boto_call, mock_return_value):
     )
 
     assert resource.phase == TaskExecution.SUCCEEDED
+    assert isinstance(resource.outputs, literals.LiteralMap)
 
     if mock_return_value[0][0]:
         outputs = literal_map_string_repr(resource.outputs)
