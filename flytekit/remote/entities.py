@@ -348,7 +348,14 @@ class FlyteGateNode(_workflow_model.GateNode):
 
 
 class FlyteArrayNode(_workflow_model.ArrayNode):
-    def __init__(self, node, parallelism, min_successes, min_success_ratio, flyte_task_node=None):
+    def __init__(
+        self,
+        node: _workflow_model.Node,
+        parallelism: int,
+        min_successes: int,
+        min_success_ratio: float,
+        flyte_task_node: Optional[FlyteTaskNode] = None,
+    ):
         super().__init__(node, parallelism, min_successes, min_success_ratio)
         self._flyte_task_node = flyte_task_node
 
@@ -500,6 +507,7 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
                     model.array_node,
                     flyte_task_node=cls._promote_task_node(tasks[model.array_node.node.task_node.reference_id]),
                 )
+            # default case
             else:
                 flyte_array_node = FlyteArrayNode.promote_from_model(model.array_node)
         else:

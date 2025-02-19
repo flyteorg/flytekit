@@ -627,6 +627,9 @@ def test_execution_workflow_with_maptask_in_dynamic(register):
         wait=True,
     )
     assert execution.outputs["o0"] == [2, 3, 4]
+    assert "n0" in execution.node_executions
+    assert execution.node_executions["n0"].subworkflow_node_executions is not None
+    assert "n0-0-dn0" in execution.node_executions["n0"].subworkflow_node_executions
     assert len(execution.node_executions["n0"].subworkflow_node_executions["n0-0-dn0"].task_executions) == 1
 
 
