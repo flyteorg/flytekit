@@ -92,7 +92,7 @@ class RayFunctionTask(PythonFunctionTask):
             working_dir = os.getcwd()
             init_params["runtime_env"] = {
                 "working_dir": working_dir,
-                "excludes": ["script_mode.tar.gz", "fast*.tar.gz"],
+                "excludes": ["script_mode.tar.gz", "fast*.tar.gz", ".python_history"],
             }
 
         ray.init(**init_params)
