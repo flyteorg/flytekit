@@ -36,7 +36,7 @@ from tests.flytekit.integration.remote.utils import SimpleFileTransfer
 
 
 MODULE_PATH = pathlib.Path(__file__).parent / "workflows/basic"
-CONFIG = os.environ.get("FLYTECTL_CONFIG", str(pathlib.Path.home() / ".flyte" / "config-dogfood-gcp.yaml"))
+CONFIG = os.environ.get("FLYTECTL_CONFIG", str(pathlib.Path.home() / ".flyte" / "config-sandbox.yaml"))
 # Run `make build-dev` to build and push the image to the local registry.
 IMAGE = os.environ.get("FLYTEKIT_IMAGE", "localhost:30000/flytekit:dev")
 PROJECT = "flytesnacks"

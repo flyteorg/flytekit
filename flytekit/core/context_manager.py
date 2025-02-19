@@ -403,12 +403,10 @@ class SecretsManager(object):
         if ctx.execution_state is None or ctx.execution_state.is_local_execution():
             env_prefixes.append("")
 
-        print("env_prefixes", env_prefixes)
         for env_prefix in env_prefixes:
             env_var = self._get_secrets_env_var(
                 group=group, key=key, group_version=group_version, env_prefix=env_prefix
             )
-            print("env_var", env_var)
             v = os.environ.get(env_var)
             if v is not None:
                 return v.strip()
