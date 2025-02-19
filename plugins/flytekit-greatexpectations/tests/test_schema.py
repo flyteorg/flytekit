@@ -5,6 +5,8 @@ import typing
 
 import pandas as pd
 import pytest
+
+from flytekit.core.type_engine import TypeTransformerFailedError
 from flytekitplugins.great_expectations import BatchRequestConfig, GreatExpectationsFlyteConfig, GreatExpectationsType
 from great_expectations.exceptions import InvalidBatchRequestError, ValidationError
 
@@ -144,7 +146,7 @@ def test_invalid_ge_schema_batchrequest_pandas_config():
         my_task(directory="my_assets")
 
     # Capture IndexError
-    with pytest.raises(InvalidBatchRequestError):
+    with pytest.raises(TypeTransformerFailedError):
         my_wf()
 
 
