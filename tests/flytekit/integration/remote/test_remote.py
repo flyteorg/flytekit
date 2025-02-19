@@ -36,7 +36,7 @@ from tests.flytekit.integration.remote.utils import SimpleFileTransfer
 
 
 MODULE_PATH = pathlib.Path(__file__).parent / "workflows/basic"
-CONFIG = os.environ.get("FLYTECTL_CONFIG", str(pathlib.Path.home() / ".flyte" / "config-sandbox.yaml"))
+CONFIG = os.environ.get("FLYTECTL_CONFIG", str(pathlib.Path.home() / ".flyte" / "config-dogfood-gcp.yaml"))
 # Run `make build-dev` to build and push the image to the local registry.
 IMAGE = os.environ.get("FLYTEKIT_IMAGE", "localhost:30000/flytekit:dev")
 PROJECT = "flytesnacks"
@@ -879,7 +879,8 @@ def test_attr_access_sd():
     execution_id = run("attr_access_sd.py", "wf", "--uri", remote_file_path)
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     execution = remote.fetch_execution(name=execution_id)
-    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
+    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=10))
+    assert execution.error is None, f"Execution failed with error: {execution.error}"
     assert execution.closure.phase == WorkflowExecutionPhase.SUCCEEDED, f"Execution failed with phase: {execution.closure.phase}"
 
     # Delete the remote file to free the space
