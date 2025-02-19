@@ -498,9 +498,7 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
                     )
                 flyte_array_node = FlyteArrayNode.promote_from_model(model.array_node, flyte_task_node=cls._promote_task_node(tasks[model.array_node.node.task_node.reference_id]))
             else:
-                raise _system_exceptions.FlyteSystemException(
-                    "Array node must have either task or workflow node specified"
-                )
+                flyte_array_node = FlyteArrayNode.promote_from_model(model.array_node)
         else:
             raise _system_exceptions.FlyteSystemException(
                 f"Bad Node model, neither task nor workflow detected, node: {model}"
