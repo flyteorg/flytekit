@@ -100,6 +100,7 @@ async def ssh_connect(ssh_config: Dict[str, Any]) -> SSHClientConnection:
         client_keys.extend([user_client_keys] if isinstance(user_client_keys, str) else user_client_keys)
 
     ssh_config["client_keys"] = client_keys
+    print(f"Updated SSH config: {ssh_config}")
     try:
         conn = await asyncssh.connect(**ssh_config)
         return conn
