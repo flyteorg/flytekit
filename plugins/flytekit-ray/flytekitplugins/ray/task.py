@@ -92,7 +92,7 @@ class RayFunctionTask(PythonFunctionTask):
             working_dir = os.getcwd()
             init_params["runtime_env"] = {
                 "working_dir": working_dir,
-                "excludes": ["script_mode.tar.gz", "fast*.tar.gz"],
+                "excludes": ["script_mode.tar.gz", "fast*.tar.gz", ".python_history"],
             }
 
         ray.init(**init_params)
@@ -104,16 +104,23 @@ class RayFunctionTask(PythonFunctionTask):
         runtime_env = base64.b64encode(json.dumps(cfg.runtime_env).encode()).decode() if cfg.runtime_env else None
         runtime_env_yaml = yaml.dump(cfg.runtime_env) if cfg.runtime_env else None
 
-        if cfg.head_node_config.requests or cfg.head_node_config.limits:
-            head_pod_template = PodTemplate(
-                pod_spec=pod_spec_from_resources(
-                    primary_container_name=_RAY_HEAD_CONTAINER_NAME,
-                    requests=cfg.head_node_config.requests,
-                    limits=cfg.head_node_config.limits,
+        head_group_spec = None
+        if cfg.head_node_config:
+            if cfg.head_node_config.requests or cfg.head_node_config.limits:
+                head_pod_template = PodTemplate(
+                    pod_spec=pod_spec_from_resources(
+                        primary_container_name=_RAY_HEAD_CONTAINER_NAME,
+                        requests=cfg.head_node_config.requests,
+                        limits=cfg.head_node_config.limits,
+                    )
                 )
+            else:
+                head_pod_template = cfg.head_node_config.pod_template
+
+            head_group_spec = HeadGroupSpec(
+                cfg.head_node_config.ray_start_params,
+                K8sPod.from_pod_template(head_pod_template) if head_pod_template else None,
             )
-        else:
-            head_pod_template = cfg.head_node_config.pod_template
 
         worker_group_spec: typing.List[WorkerGroupSpec] = []
         for c in cfg.worker_node_config:
@@ -134,14 +141,7 @@ class RayFunctionTask(PythonFunctionTask):
 
         ray_job = RayJob(
             ray_cluster=RayCluster(
-                head_group_spec=(
-                    HeadGroupSpec(
-                        cfg.head_node_config.ray_start_params,
-                        K8sPod.from_pod_template(head_pod_template) if head_pod_template else None,
-                    )
-                    if cfg.head_node_config
-                    else None
-                ),
+                head_group_spec=head_group_spec,
                 worker_group_spec=worker_group_spec,
                 enable_autoscaling=(cfg.enable_autoscaling if cfg.enable_autoscaling else False),
             ),
