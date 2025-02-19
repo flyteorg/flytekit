@@ -60,7 +60,7 @@ def test_ge_schema_task():
     valid_result = valid_wf()
     assert valid_result == 9999
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(TypeTransformerFailedError):
         invalid_wf()
 
 
