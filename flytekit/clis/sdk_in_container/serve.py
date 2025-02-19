@@ -55,14 +55,14 @@ def serve(ctx: click.Context):
     "for testing.",
 )
 @click.option(
-    "--files",
+    "--modules",
     required=False,
     multiple=True,
     type=str,
     help="List of additional files or module that defines the agent",
 )
 @click.pass_context
-def agent(_: click.Context, port, prometheus_port, worker, timeout, files):
+def agent(_: click.Context, port, prometheus_port, worker, timeout, modules):
     """
     Start a grpc server for the agent service.
     """
@@ -71,13 +71,13 @@ def agent(_: click.Context, port, prometheus_port, worker, timeout, files):
     working_dir = os.getcwd()
     if all(os.path.realpath(path) != working_dir for path in sys.path):
         sys.path.append(working_dir)
-    for f in files:
-        importlib.import_module(f)
+    for m in modules:
+        importlib.import_module(m)
 
-    asyncio.run(_start_grpc_server(port, prometheus_port, worker, timeout, files))
+    asyncio.run(_start_grpc_server(port, prometheus_port, worker, timeout))
 
 
-async def _start_grpc_server(port: int, prometheus_port: int, worker: int, timeout: int, files: str):
+async def _start_grpc_server(port: int, prometheus_port: int, worker: int, timeout: int):
     from flytekit.extend.backend.agent_service import AgentMetadataService, AsyncAgentService, SyncAgentService
 
     click.secho("🚀 Starting the agent service...")
