@@ -9,6 +9,7 @@ import click
 from flytekit import LaunchPlan
 from flytekit.core import context_manager as flyte_context
 from flytekit.core.base_task import PythonTask
+from flytekit.core.python_function_task import EagerAsyncPythonFunctionTask
 from flytekit.core.workflow import WorkflowBase
 from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models import task as task_models
@@ -59,6 +60,13 @@ def get_registrable_entities(
             if isinstance(entity, WorkflowBase):
                 lp = LaunchPlan.get_default_launch_plan(ctx, entity)
                 get_serializable(new_api_serializable_entities, ctx.serialization_settings, lp, options)
+
+            if isinstance(entity, EagerAsyncPythonFunctionTask):
+                wf = entity.get_as_workflow()
+                lp = LaunchPlan.get_default_launch_plan(ctx, wf)
+                get_serializable(new_api_serializable_entities, ctx.serialization_settings, lp, options)
+                print("EagerAsyncPythonFunctionTask")
+                print(wf)
 
     new_api_model_values = list(new_api_serializable_entities.values())
     entities_to_be_serialized = list(filter(_should_register_with_admin, new_api_model_values))

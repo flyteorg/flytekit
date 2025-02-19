@@ -20,6 +20,7 @@ from __future__ import annotations
 import inspect
 import os
 import signal
+import typing
 from abc import ABC
 from collections import OrderedDict
 from contextlib import suppress
@@ -28,11 +29,11 @@ from typing import Any, Callable, Iterable, List, Optional, Tuple, TypeVar, Unio
 
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core import launch_plan as _annotated_launch_plan
-from flytekit.core.base_task import Task, TaskMetadata, TaskResolverMixin
+from flytekit.core.base_task import PythonTask, Task, TaskMetadata, TaskResolverMixin
 from flytekit.core.constants import EAGER_ROOT_ENV_NAME
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.docstring import Docstring
-from flytekit.core.interface import transform_function_to_interface
+from flytekit.core.interface import Interface, transform_function_to_interface
 from flytekit.core.promise import (
     Promise,
     VoidPromise,
@@ -61,6 +62,9 @@ from flytekit.models import literals as _literal_models
 from flytekit.models import task as task_models
 from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.utils.asyn import loop_manager
+
+if typing.TYPE_CHECKING:
+    pass
 
 T = TypeVar("T")
 
@@ -636,3 +640,59 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
 
         with FlyteContextManager.with_context(builder):
             return loop_manager.run_sync(self.async_execute, self, **kwargs)
+
+    def get_as_workflow(self):
+        from flytekit.core.workflow import ImperativeWorkflow
+
+        cleanup = EagerFailureTask(name=f"{self.name}-cleanup", inputs=self.python_interface.inputs)
+        wb = ImperativeWorkflow(name=self.name)
+
+        input_kwargs = {}
+        for input_name, input_python_type in self.python_interface.inputs.items():
+            wb.add_workflow_input(input_name, input_python_type)
+            input_kwargs[input_name] = wb.inputs[input_name]
+
+        node = wb.add_entity(self, **input_kwargs)
+        for output_name, output_python_type in self.python_interface.outputs.items():
+            wb.add_workflow_output(output_name, node.outputs[output_name])
+
+        wb.add_on_failure_handler(cleanup)
+        return wb
+        # wb.add_workflow_input("in1", str)
+        #
+        # node = wb.add_entity(self, a=wb.inputs["in1"])
+        # wb.add_entity(t2)
+        # # This is analogous to a return statement
+        # wb.add_workflow_output("from_n0t1", node.outputs["o0"])
+
+
+class EagerFailureTask(PythonTask):
+    _TASK_TYPE = "eager_failure_task"
+
+    def __init__(self, name: str, inputs: Optional[typing.Dict[str, typing.Type]] = None, **kwargs):
+        """
+        A task that simply echoes the inputs back to the user.
+        The task's inputs and outputs interface are the same.
+
+        FlytePropeller uses echo plugin to handle this task, and it won't create a pod for this task.
+        It will simply pass the inputs to the outputs.
+        https://github.com/flyteorg/flyte/blob/master/flyteplugins/go/tasks/plugins/testing/echo.go
+
+        :param name: The name of the task.
+        :param inputs: Name and type of inputs specified as a dictionary.
+            e.g. {"a": int, "b": str}.
+        :param kwargs: All other args required by the parent type - PythonTask.
+
+        """
+        super().__init__(
+            task_type=self._TASK_TYPE,
+            name=name,
+            interface=Interface(inputs=inputs, outputs=None),
+            **kwargs,
+        )
+
+    def execute(self, **kwargs) -> Any:
+        from flytekit import current_context
+
+        current_exec_id = current_context().execution_id
+        print(f"Execution ID: {current_exec_id}")

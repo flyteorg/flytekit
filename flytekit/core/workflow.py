@@ -634,6 +634,62 @@ class ImperativeWorkflow(WorkflowBase):
     def add_subwf(self, sub_wf: WorkflowBase, **kwargs) -> Node:
         return self.add_entity(sub_wf, **kwargs)
 
+    def add_on_failure_handler(self, entity):
+        from flytekit.core.node_creation import create_node
+
+        ctx = FlyteContext.current_context()
+        if ctx.compilation_state is not None:
+            raise RuntimeError("Can't already be compiling")
+        with FlyteContextManager.with_context(ctx.with_compilation_state(self.compilation_state)) as ctx:
+            if entity.python_interface and self.python_interface:
+                workflow_inputs = self.python_interface.inputs
+                failure_node_inputs = entity.python_interface.inputs
+
+                # Workflow inputs should be a subset of failure node inputs.
+                if (failure_node_inputs | workflow_inputs) != failure_node_inputs:
+                    raise FlyteFailureNodeInputMismatchException(self.on_failure, self)
+                additional_keys = failure_node_inputs.keys() - workflow_inputs.keys()
+                # Raising an error if the additional inputs in the failure node are not optional.
+                for k in additional_keys:
+                    if not is_optional_type(failure_node_inputs[k]):
+                        raise FlyteFailureNodeInputMismatchException(self.on_failure, self)
+
+            n = create_node(entity=entity, **self._inputs)
+            self._failure_node = n
+
+            # Every time an entity is added, mark it as used. The above function though will gather all the input
+            # values but we're only interested in the ones that are Promises so let's filter for those.
+            # There's probably a way to clean this up, maybe key off of the name instead of value?
+
+            # return n  # type: ignore
+
+        # with FlyteContextManager.with_context(
+        #         ctx.with_compilation_state(CompilationState(prefix=prefix, task_resolver=resolver))
+        # ) as inner_comp_ctx:
+        #     # Now lets compile the failure-node if it exists
+        #     if self.on_failure:
+        #         if self.on_failure.python_interface and self.python_interface:
+        #             workflow_inputs = self.python_interface.inputs
+        #             failure_node_inputs = self.on_failure.python_interface.inputs
+        #
+        #             # Workflow inputs should be a subset of failure node inputs.
+        #             if (failure_node_inputs | workflow_inputs) != failure_node_inputs:
+        #                 raise FlyteFailureNodeInputMismatchException(self.on_failure, self)
+        #             additional_keys = failure_node_inputs.keys() - workflow_inputs.keys()
+        #             # Raising an error if the additional inputs in the failure node are not optional.
+        #             for k in additional_keys:
+        #                 if not is_optional_type(failure_node_inputs[k]):
+        #                     raise FlyteFailureNodeInputMismatchException(self.on_failure, self)
+        #
+        #         c = wf_args.copy()
+        #         self.on_failure(**c)
+        #         inner_nodes = None
+        #         if inner_comp_ctx.compilation_state and inner_comp_ctx.compilation_state.nodes:
+        #             inner_nodes = inner_comp_ctx.compilation_state.nodes
+        #         if not inner_nodes or len(inner_nodes) > 1:
+        #             raise AssertionError("Unable to compile failure node, only either a task or a workflow can be used")
+        #         self._failure_node = inner_nodes[0]
+
     def ready(self) -> bool:
         """
         This function returns whether or not the workflow is in a ready state, which means
