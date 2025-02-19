@@ -162,6 +162,7 @@ def test_fetch_execute_launch_plan(register):
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     flyte_launch_plan = remote.fetch_launch_plan(name="basic.hello_world.my_wf", version=VERSION)
     execution = remote.execute(flyte_launch_plan, inputs={}, wait=True)
+    print("Execution Error:", execution.error)
     assert execution.outputs["o0"] == "hello world"
 
 
@@ -508,8 +509,16 @@ def test_execute_reference_task(register):
         ...
 
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
-    execution = remote.execute(
+    remote_entity = remote.register_script(
         t1,
+        project=PROJECT,
+        domain=DOMAIN,
+        image_config=ImageConfig.auto(img_name=IMAGE),
+        destination_dir=DEST_DIR,
+        source_path=str(MODULE_PATH),
+    )
+    execution = remote.execute(
+        remote_entity,
         inputs={"a": 10},
         wait=True,
         overwrite_cache=True,
@@ -541,10 +550,10 @@ def test_execute_reference_workflow(register):
         domain=DOMAIN,
         image_config=ImageConfig.auto(img_name=IMAGE),
         destination_dir=DEST_DIR,
-        source_path=MODULE_PATH,
+        source_path=str(MODULE_PATH),
     )
     execution = remote.execute(
-        my_wf,
+        remote_entity,
         inputs={"a": 10, "b": "xyz"},
         wait=True,
         overwrite_cache=True,
@@ -570,8 +579,16 @@ def test_execute_reference_launchplan(register):
         return 3, "world"
 
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
-    execution = remote.execute(
+    remote_entity = remote.register_script(
         my_wf,
+        project=PROJECT,
+        domain=DOMAIN,
+        image_config=ImageConfig.auto(img_name=IMAGE),
+        destination_dir=DEST_DIR,
+        source_path=str(MODULE_PATH),
+    )
+    execution = remote.execute(
+        remote_entity,
         inputs={"a": 10, "b": "xyz"},
         wait=True,
         overwrite_cache=True,
@@ -597,6 +614,26 @@ def test_execute_workflow_with_maptask(register):
         wait=True,
     )
     assert execution.outputs["o0"] == [4, 5, 6]
+    assert len(execution.node_executions["n0"].task_executions) == 1
+
+def test_executes_nested_workflow_dictating_interruptible(register):
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    flyte_launch_plan = remote.fetch_launch_plan(name="basic.child_workflow.parent_wf", version=VERSION)
+    # The values we want to test for
+    interruptible_values = [True, False, None]
+    executions = []
+    for creation_interruptible in interruptible_values:
+        execution = remote.execute(flyte_launch_plan, inputs={"a": 10}, wait=False, interruptible=creation_interruptible)
+        executions.append(execution)
+    # Wait for all executions to complete
+    for execution, expected_interruptible in zip(executions, interruptible_values):
+        execution = remote.wait(execution, timeout=300)
+        # Check that the parent workflow is interruptible as expected
+        assert execution.spec.interruptible == expected_interruptible
+        # Check that the child workflow is interruptible as expected
+        subwf_execution_id = execution.node_executions["n1"].closure.workflow_node_metadata.execution_id.name
+        subwf_execution = remote.fetch_execution(project=PROJECT, domain=DOMAIN, name=subwf_execution_id)
+        assert subwf_execution.spec.interruptible == expected_interruptible
 
 
 @pytest.mark.lftransfers
@@ -1010,3 +1047,31 @@ def test_check_secret(kubectl_secret, task):
         f"Execution failed with phase: {execution.closure.phase}"
     )
     assert execution.outputs['o0'] == kubectl_secret
+
+
+def test_execute_workflow_with_dataclass():
+    """Test remote execution of a workflow with dataclass input."""
+    from tests.flytekit.integration.remote.workflows.basic.dataclass_wf import wf, MyConfig
+
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN, interactive_mode_enabled=True)
+
+    config = MyConfig(op_list=["a", "b", "c"])
+    out = remote.execute(
+        wf,
+        inputs={"config": config},
+        wait=True,
+        version=VERSION,
+        image_config=ImageConfig.from_images(IMAGE),
+    )
+    assert out.outputs["o0"] == "a,b,c"
+
+    # Test with None value
+    config = MyConfig(op_list=None)
+    out = remote.execute(
+        wf,
+        inputs={"config": config},
+        wait=True,
+        version=VERSION + "_none",
+        image_config=ImageConfig.from_images(IMAGE),
+    )
+    assert out.outputs["o0"] == ""
