@@ -86,14 +86,29 @@ async def ssh_connect(ssh_config: Dict[str, Any]) -> SSHClientConnection:
             "At least one must be set."
         )
 
+    import os
+
+    # ABAO VERSION
     # Construct a list of file paths to private keys
+    # client_keys = []
+    # if default_client_key is not None:
+    #     # Write the private key to a local path
+    #     # This may not be a good practice...
+    #     private_key_path = os.path.abspath("./slurm_private_key")
+    #
+    #     with open("./slurm_private_key", "w") as f:
+    #         f.write(default_client_key)
+    #     client_keys.append("./slurm_private_key")
+
+    # HANRU VERSION
     client_keys = []
     if default_client_key is not None:
         # Write the private key to a local path
         # This may not be a good practice...
-        with open("./slurm_private_key", "w") as f:
+        private_key_path = os.path.abspath("./slurm_private_key")
+        with open(private_key_path, "w") as f:
             f.write(default_client_key)
-        client_keys.append("./slurm_private_key")
+        client_keys.append(private_key_path)
 
     user_client_keys = ssh_config.get("client_keys")
     if user_client_keys is not None:
