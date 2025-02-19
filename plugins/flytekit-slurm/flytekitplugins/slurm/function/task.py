@@ -31,6 +31,7 @@ class SlurmFunction(object):
     script: Optional[str] = None
 
     def __post_init__(self):
+        # TODO: assert that we have to have hostname and username
         if self.sbatch_conf is None:
             self.sbatch_conf = {}
 
