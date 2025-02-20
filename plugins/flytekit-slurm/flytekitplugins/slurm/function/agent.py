@@ -1,7 +1,7 @@
 import tempfile
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
-
+import uuid
 from asyncssh import SSHClientConnection
 
 from flytekit import logger
@@ -32,9 +32,6 @@ class SlurmFunctionAgent(AsyncAgentBase):
     # SSH connection pool for multi-host environment
     _conn: Optional[SSHClientConnection] = None
 
-    # Tmp remote path of the batch script
-    REMOTE_PATH = "/tmp/task.slurm"
-
     def __init__(self) -> None:
         super(SlurmFunctionAgent, self).__init__(task_type_name="slurm_fn", metadata_type=SlurmJobMetadata)
 
@@ -44,6 +41,8 @@ class SlurmFunctionAgent(AsyncAgentBase):
         inputs: Optional[LiteralMap] = None,
         **kwargs,
     ) -> SlurmJobMetadata:
+        unique_script_name = f"/tmp/task_{uuid.uuid4().hex}.slurm"
+
         # Retrieve task config
         ssh_config = task_template.custom["ssh_config"]
         sbatch_conf = task_template.custom["sbatch_conf"]
@@ -54,7 +53,7 @@ class SlurmFunctionAgent(AsyncAgentBase):
             sbatch_conf=sbatch_conf,
             entrypoint=" ".join(task_template.container.args),
             script=script,
-            batch_script_path=self.REMOTE_PATH,
+            batch_script_path=unique_script_name,
         )
 
         logger.info("@@@ task_template.container.args:")
@@ -70,7 +69,7 @@ class SlurmFunctionAgent(AsyncAgentBase):
             f.write(script)
             f.flush()
             async with conn.start_sftp_client() as sftp:
-                await sftp.put(f.name, self.REMOTE_PATH)
+                await sftp.put(f.name, unique_script_name)
         res = await conn.run(cmd, check=True)
 
         # Retrieve Slurm job id

@@ -5,7 +5,7 @@ Utilities of asyncssh connections.
 import sys
 from dataclasses import asdict, dataclass
 from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar, Union
-
+from flytekit import logger
 import asyncssh
 from asyncssh import SSHClientConnection
 from asyncssh.known_hosts import KnownHostsArg
@@ -69,7 +69,7 @@ async def ssh_connect(ssh_config: Dict[str, Any]) -> SSHClientConnection:
         conn = await asyncssh.connect(**ssh_config)
         return conn
     except Exception as e:
-        print(
+        logger.info(
             "Failed to make an SSH connection using the default OpenSSH client config (~/.ssh/config) or "
             f"the provided private keys. Error details:\n{e}"
         )
@@ -77,7 +77,7 @@ async def ssh_connect(ssh_config: Dict[str, Any]) -> SSHClientConnection:
     try:
         default_client_key = get_agent_secret(secret_key=SLURM_PRIVATE_KEY)
     except ValueError:
-        print("The secret for key FLYTE_SLURM_PRIVATE_KEY is not set.")
+        logger.info("The secret for key FLYTE_SLURM_PRIVATE_KEY is not set.")
         default_client_key = None
 
     if default_client_key is None and ssh_config.get("client_keys") == ():
@@ -115,12 +115,12 @@ async def ssh_connect(ssh_config: Dict[str, Any]) -> SSHClientConnection:
         client_keys.extend([user_client_keys] if isinstance(user_client_keys, str) else user_client_keys)
 
     ssh_config["client_keys"] = client_keys
-    print(f"Updated SSH config: {ssh_config}")
+    logger.info(f"Updated SSH config: {ssh_config}")
     try:
         conn = await asyncssh.connect(**ssh_config)
         return conn
     except Exception as e:
-        print(
+        logger.info(
             "Failed to make an SSH connection using the provided private keys. Please verify your setup."
             f"Error details:\n{e}"
         )
@@ -137,4 +137,4 @@ if __name__ == "__main__":
 
         return out
 
-    print(asyncio.run(test_connect()))
+    logger.info(asyncio.run(test_connect()))
