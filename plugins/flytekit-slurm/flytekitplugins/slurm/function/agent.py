@@ -34,6 +34,29 @@ class SlurmFunctionAgent(AsyncAgentBase):
 
     ssh_config_to_ssh_conn: Dict[SSHConfig, SSHClientConnection] = {}
 
+    async def _get_or_create_ssh_connection(self, ssh_config: Dict[str, Any]) -> SSHClientConnection:
+        """Get existing SSH connection or create a new one if needed.
+
+        Args:
+            ssh_config: SSH configuration dictionary
+
+        Returns:
+            SSHClientConnection: Active SSH connection
+        """
+        ssh_dataclass_config = SSHConfig(**ssh_config)
+        if self.ssh_config_to_ssh_conn.get(ssh_dataclass_config) is None:
+            conn = await ssh_connect(ssh_config=ssh_config)
+            self.ssh_config_to_ssh_conn[ssh_dataclass_config] = conn
+        else:
+            conn = self.ssh_config_to_ssh_conn[ssh_dataclass_config]
+            try:
+                await conn.run("echo [TEST] SSH connection", check=True)
+            except Exception as e:
+                logger.info(f"Re-establishing SSH connection due to error: {e}")
+                conn = await ssh_connect(ssh_config=ssh_config)
+                self.ssh_config_to_ssh_conn[ssh_dataclass_config] = conn
+        return conn
+
     def __init__(self) -> None:
         super(SlurmFunctionAgent, self).__init__(task_type_name="slurm_fn", metadata_type=SlurmJobMetadata)
 
@@ -66,20 +89,7 @@ class SlurmFunctionAgent(AsyncAgentBase):
         logger.info(script)
 
         # Run Slurm job
-        ssh_dataclass_config = SSHConfig(**ssh_config)
-        if self.ssh_config_to_ssh_conn.get(ssh_dataclass_config) is None:
-            conn = await ssh_connect(ssh_config=ssh_config)
-            self.ssh_config_to_ssh_conn[ssh_dataclass_config] = conn
-        else:
-            conn = self.ssh_config_to_ssh_conn[ssh_dataclass_config]
-            try:
-                await conn.run("echo [TEST] SSH connection", check=True)
-            except Exception as e:
-                logger.info(f"Re-establishing SSH connection due to error: {e}")
-                conn = await ssh_connect(ssh_config=ssh_config)
-                self.ssh_config_to_ssh_conn[ssh_dataclass_config] = conn
-
-        # conn = await ssh_connect(ssh_config=ssh_config)
+        conn = await self._get_or_create_ssh_connection(ssh_config)
         with tempfile.NamedTemporaryFile("w") as f:
             f.write(script)
             f.flush()
@@ -95,21 +105,7 @@ class SlurmFunctionAgent(AsyncAgentBase):
 
     async def get(self, resource_meta: SlurmJobMetadata, **kwargs) -> Resource:
         ssh_config = resource_meta.ssh_config
-        # Run Slurm job
-        ssh_dataclass_config = SSHConfig(**ssh_config)
-        if self.ssh_config_to_ssh_conn.get(ssh_dataclass_config) is None:
-            conn = await ssh_connect(ssh_config=ssh_config)
-            self.ssh_config_to_ssh_conn[ssh_dataclass_config] = conn
-        else:
-            conn = self.ssh_config_to_ssh_conn[ssh_dataclass_config]
-            try:
-                await conn.run("echo [TEST] SSH connection", check=True)
-            except Exception as e:
-                logger.info(f"Re-establishing SSH connection due to error: {e}")
-                conn = await ssh_connect(ssh_config=ssh_config)
-                self.ssh_config_to_ssh_conn[ssh_dataclass_config] = conn
-
-        # conn = await ssh_connect(ssh_config=resource_meta.ssh_config)
+        conn = await self._get_or_create_ssh_connection(ssh_config)
         job_res = await conn.run(f"scontrol show job {resource_meta.job_id}", check=True)
 
         # Determine the current flyte phase from Slurm job state
