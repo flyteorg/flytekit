@@ -700,7 +700,7 @@ eager_failure_task_resolver = EagerFailureTaskResolver()
 class EagerFailureHandlerTask(PythonAutoContainerTask):
     _TASK_TYPE = "eager_failure_handler_task"
 
-    def __init__(self, name:str, inputs: typing.Dict[str, typing.Type] = None, **kwargs):
+    def __init__(self, name: str, inputs: typing.Dict[str, typing.Type] = None, **kwargs):
         """ """
         super().__init__(
             task_type=self._TASK_TYPE,
