@@ -60,8 +60,8 @@ class SlurmFunctionAgent(AsyncAgentBase):
         else:
             conn = self.ssh_config_to_ssh_conn[ssh_cluster_config]
             try:
-                logger.info("re-using new connection")
                 await conn.run("echo [TEST] SSH connection", check=True)
+                logger.info("re-using new connection")
             except Exception as e:
                 logger.info(f"Re-establishing SSH connection due to error: {e}")
                 conn = await ssh_connect(ssh_config=ssh_config)
@@ -171,7 +171,7 @@ def _get_sbatch_cmd_and_script(
     cmd.append(batch_script_path)
 
     if script is None:
-        script = f"""#!/bin/bash
+        script = f"""#!/bin/bash -i
         {entrypoint}
         """
     else:
