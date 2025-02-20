@@ -355,19 +355,26 @@ class FlyteArrayNode(_workflow_model.ArrayNode):
         min_successes: int,
         min_success_ratio: float,
         flyte_task_node: Optional[FlyteTaskNode] = None,
+        flyte_workflow_node: Optional[FlyteWorkflowNode] = None,
     ):
         super().__init__(node, parallelism, min_successes, min_success_ratio)
         self._flyte_task_node = flyte_task_node
+        self._flyte_workflow_node = flyte_workflow_node
 
     @property
     def flyte_task_node(self):
         return self._flyte_task_node
+
+    @property
+    def flyte_workflow_node(self):
+        return self._flyte_workflow_node
 
     @classmethod
     def promote_from_model(
         cls,
         model: _workflow_model.ArrayNode,
         flyte_task_node: Optional[FlyteTaskNode] = None,
+        flyte_workflow_node: Optional[FlyteWorkflowNode] = None,
     ):
         return cls(
             node=model._node,
@@ -375,6 +382,7 @@ class FlyteArrayNode(_workflow_model.ArrayNode):
             min_successes=model._min_successes,
             min_success_ratio=model._min_success_ratio,
             flyte_task_node=flyte_task_node,
+            flyte_workflow_node=flyte_workflow_node,
         )
 
 
@@ -506,6 +514,18 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
                 flyte_array_node = FlyteArrayNode.promote_from_model(
                     model.array_node,
                     flyte_task_node=cls._promote_task_node(tasks[model.array_node.node.task_node.reference_id]),
+                )
+            # map over launch plan
+            elif model.array_node.node.workflow_node is not None:
+                workflow_node, converted_sub_workflows = cls._promote_workflow_node(
+                    model.array_node.node.workflow_node,
+                    sub_workflows,
+                    node_launch_plans,
+                    tasks,
+                    converted_sub_workflows,
+                )
+                flyte_array_node = FlyteArrayNode.promote_from_model(
+                    model.array_node, flyte_workflow_node=workflow_node
                 )
             # default case
             else:

@@ -497,6 +497,11 @@ class FlyteRemote(object):
                     lp_ref = node.workflow_node.launchplan_ref
                     find_launch_plan(lp_ref, node_launch_plans)
 
+                # Inspect array nodes for launch plans
+                if node.array_node is not None and node.array_node.node.workflow_node is not None and node.array_node.node.workflow_node.launchplan_ref is not None:
+                    lp_ref = node.array_node.node.workflow_node.launchplan_ref
+                    find_launch_plan(lp_ref, node_launch_plans)
+
                 # Inspect conditional branch nodes for launch plans
                 def get_launch_plan_from_branch(
                     branch_node: BranchNode, node_launch_plans: Dict[id_models, launch_plan_models.LaunchPlanSpec]
@@ -2627,6 +2632,17 @@ class FlyteRemote(object):
                 else:
                     logger.error(f"Fetched map task does not have an interface, skipping i/o {t}")
                     return execution
+            elif execution._node.array_node.node.workflow_node is not None:
+                breakpoint()
+                sub_flyte_workflow = execution._node.flyte_entity.flyte_workflow_node
+                launched_exec_id = execution.closure.workflow_node_metadata.execution_id
+                launched_exec = self.fetch_execution(
+                    project=launched_exec_id.project, domain=launched_exec_id.domain, name=launched_exec_id.name
+                )
+                self.sync_execution(launched_exec)
+                execution._workflow_executions.append(launched_exec)
+                execution._interface = launched_exec._flyte_workflow.interface
+                return execution
             else:
                 logger.error("Array node not over task, skipping i/o")
                 return execution
