@@ -1,9 +1,8 @@
+import json
 from datetime import timedelta
 from unittest import mock
 from unittest.mock import AsyncMock
-import json
-import msgpack
-import base64
+
 import pytest
 from flyteidl.core.execution_pb2 import TaskExecution
 from flytekitplugins.openai.batch.agent import BatchEndpointMetadata
@@ -157,6 +156,7 @@ async def test_openai_batch_agent(mock_retrieve, mock_create, mock_context):
     mock_retrieve.return_value = batch_retrieve_result
     resource = await agent.get(metadata)
     assert resource.phase == TaskExecution.SUCCEEDED
+    assert isinstance(resource.outputs, literals.LiteralMap)
 
     outputs = literal_map_string_repr(resource.outputs)
 

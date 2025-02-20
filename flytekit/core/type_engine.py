@@ -1532,7 +1532,6 @@ class TypeEngine(typing.Generic[T]):
             raise TypeTransformerFailedError(
                 f"Error converting input '{k}' at position {i}:\n"
                 f"Literal value: {lm.literals[k]}\n"
-                f"Literal type: {literal_types}\n"
                 f"Expected Python type: {python_interface_inputs[k]}\n"
                 f"Exception: {e}"
             )
