@@ -655,6 +655,8 @@ class ImperativeWorkflow(WorkflowBase):
                         raise FlyteFailureNodeInputMismatchException(self.on_failure, self)
 
             n = create_node(entity=entity, **self._inputs)
+            n2 = ctx.compilation_state.nodes.pop(-1)
+            print(n2)
             self._failure_node = n
 
             # Every time an entity is added, mark it as used. The above function though will gather all the input
