@@ -350,31 +350,30 @@ class FlyteGateNode(_workflow_model.GateNode):
 class FlyteArrayNode(_workflow_model.ArrayNode):
     def __init__(
         self,
-        node: _workflow_model.Node,
+        flyte_node: FlyteNode,
         parallelism: int,
         min_successes: int,
         min_success_ratio: float,
-        flyte_task_node: Optional[FlyteTaskNode] = None,
+
     ):
-        super().__init__(node, parallelism, min_successes, min_success_ratio)
-        self._flyte_task_node = flyte_task_node
+        super().__init__(flyte_node, parallelism, min_successes, min_success_ratio)
+        self._flyte_node = flyte_node
 
     @property
-    def flyte_task_node(self):
-        return self._flyte_task_node
+    def flyte_node(self) -> FlyteNode:
+        return self._flyte_node
 
     @classmethod
     def promote_from_model(
         cls,
         model: _workflow_model.ArrayNode,
-        flyte_task_node: Optional[FlyteTaskNode] = None,
+        flyte_node: FlyteNode,
     ):
         return cls(
-            node=model._node,
+            flyte_node=flyte_node,
             parallelism=model._parallelism,
             min_successes=model._min_successes,
             min_success_ratio=model._min_success_ratio,
-            flyte_task_node=flyte_task_node,
         )
 
 
@@ -497,19 +496,21 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
         elif model.gate_node is not None:
             flyte_gate_node = FlyteGateNode.promote_from_model(model.gate_node)
         elif model.array_node is not None:
-            # map over task
-            if model.array_node.node.task_node is not None:
-                if model.array_node.node.task_node.reference_id not in tasks:
-                    raise RuntimeError(
-                        f"Remote Workflow closure does not have task with id {model.array_node.node.task_node.reference_id}."
-                    )
-                flyte_array_node = FlyteArrayNode.promote_from_model(
-                    model.array_node,
-                    flyte_task_node=cls._promote_task_node(tasks[model.array_node.node.task_node.reference_id]),
+            if model.array_node.node is None:
+                raise _system_exceptions.FlyteSystemException(
+                    f"Bad Node model, array node detected but no node specified, node: {model}"
                 )
-            # default case
-            else:
-                flyte_array_node = FlyteArrayNode.promote_from_model(model.array_node)
+            flyte_node, converted_sub_workflows = cls.promote_from_model(
+                model.array_node.node,
+                sub_workflows,
+                node_launch_plans,
+                tasks,
+                converted_sub_workflows,
+            )
+            flyte_array_node = FlyteArrayNode.promote_from_model(
+                model.array_node,
+                flyte_node,
+            )
         else:
             raise _system_exceptions.FlyteSystemException(
                 f"Bad Node model, neither task nor workflow detected, node: {model}"
