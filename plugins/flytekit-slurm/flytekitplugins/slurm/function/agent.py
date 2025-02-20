@@ -50,7 +50,7 @@ class SlurmFunctionAgent(AsyncAgentBase):
         Returns:
             SSHClientConnection: Active SSH connection
         """
-        host=ssh_config.get["host"]
+        host=ssh_config.get("host")
         username=ssh_config.get("username")
         ssh_cluster_config = SlurmCluster(host=host, username=username)
         if self.ssh_config_to_ssh_conn.get(ssh_cluster_config) is None:
