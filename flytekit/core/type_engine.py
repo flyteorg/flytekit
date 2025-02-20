@@ -40,6 +40,7 @@ from flytekit.core.constants import CACHE_KEY_METADATA, FLYTE_USE_OLD_DC_FORMAT,
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.hash import HashMethod
 from flytekit.core.type_helpers import load_type_from_tag
+from flytekit.core.type_match_checking import literal_types_match
 from flytekit.core.utils import load_proto_from_file, str2bool, timeit
 from flytekit.exceptions import user as user_exceptions
 from flytekit.interaction.string_literals import literal_map_string_repr
@@ -2019,25 +2020,43 @@ class DictTransformer(AsyncTypeTransformer[dict]):
 
     @staticmethod
     def extract_types(t: Optional[Type[dict]]) -> typing.Tuple:
+        if t is None:
+            return None, None
+
+        # Get the origin and type arguments.
         _origin = get_origin(t)
         _args = get_args(t)
-        if _origin is not None:
-            if _origin is Annotated and _args:
-                # _args holds the type arguments to the dictionary, in other words:
-                # >>> get_args(Annotated[dict[int, str], FlyteAnnotation("abc")])
-                # (dict[int, str], <flytekit.core.annotation.FlyteAnnotation object at 0x107f6ff80>)
-                for x in _args[1:]:
-                    if isinstance(x, FlyteAnnotation):
-                        raise ValueError(
-                            f"Flytekit does not currently have support for FlyteAnnotations applied to dicts. {t} cannot be parsed."
-                        )
-            if _origin is dict and _args is not None:
+
+        # If not annotated or dict, return None, None.
+        if _origin is None:
+            return None, None
+
+        # If this is something like Annotated[dict[int, str], FlyteAnnotation("abc")],
+        # we need to check if there's a FlyteAnnotation in the metadata.
+        if _origin is Annotated:
+            # This case should never happen since Python's typing system requires at least two arguments
+            # for Annotated[...] - a type and an annotation. Including this check for completeness.
+            if not _args:
+                return None, None
+
+            first_arg = _args[0]
+            # Check the rest of the metadata (after the dict type itself).
+            for x in _args[1:]:
+                if isinstance(x, FlyteAnnotation):
+                    raise ValueError(
+                        f"Flytekit does not currently have support for FlyteAnnotations applied to dicts. {t} cannot be parsed."
+                    )
+            # Recursively process the first argument if it's Annotated (or dict).
+            return DictTransformer.extract_types(first_arg)
+
+        # If the origin is dict, return the type arguments if they exist.
+        if _origin is dict:
+            # _args can be ().
+            if _args is not None:
                 return _args  # type: ignore
-            elif _origin is Annotated:
-                return DictTransformer.extract_types(_args[0])
-            else:
-                raise ValueError(f"Trying to extract dictionary type information from a non-dict type {t}")
-        return None, None
+
+        # Otherwise, we do not support this type in extract_types.
+        raise ValueError(f"Trying to extract dictionary type information from a non-dict type {t}")
 
     @staticmethod
     async def dict_to_generic_literal(
@@ -2413,6 +2432,27 @@ def dataclass_from_dict(cls: type, src: typing.Dict[str, typing.Any]) -> typing.
             constructor_inputs[field_name] = value
 
     return cls(**constructor_inputs)
+
+
+def strict_type_hint_matching(input_val: typing.Any, target_literal_type: LiteralType) -> typing.Type:
+    """
+    Try to be smarter about guessing the type of the input (and hence the transformer).
+    If the literal type from the transformer for type(v), matches the literal type of the interface, then we
+    can use type(). Otherwise, fall back to guess python type from the literal type.
+    Raises ValueError, like in case of [1,2,3] type() will just give `list`, which won't work.
+    Raises ValueError also if the transformer found for the raw type doesn't have a literal type match.
+    """
+    native_type = type(input_val)
+    transformer: TypeTransformer = TypeEngine.get_transformer(native_type)
+    inferred_literal_type = transformer.get_literal_type(native_type)
+    # note: if no good match, transformer will be the pickle transformer, but type will not match unless it's the
+    # pickle type so will fall back to normal guessing
+    if literal_types_match(inferred_literal_type, target_literal_type):
+        return type(input_val)
+
+    raise ValueError(
+        f"Transformer for {native_type} returned literal type {inferred_literal_type} which doesn't match {target_literal_type}"
+    )
 
 
 def _check_and_covert_float(lv: Literal) -> float:
