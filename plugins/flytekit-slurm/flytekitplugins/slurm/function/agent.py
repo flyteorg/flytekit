@@ -54,11 +54,13 @@ class SlurmFunctionAgent(AsyncAgentBase):
         username=ssh_config.get("username")
         ssh_cluster_config = SlurmCluster(host=host, username=username)
         if self.ssh_config_to_ssh_conn.get(ssh_cluster_config) is None:
+            logger.info("ssh connection key not found, creating new connection")
             conn = await ssh_connect(ssh_config=ssh_config)
             self.ssh_config_to_ssh_conn[ssh_cluster_config] = conn
         else:
             conn = self.ssh_config_to_ssh_conn[ssh_cluster_config]
             try:
+                logger.info("re-using new connection")
                 await conn.run("echo [TEST] SSH connection", check=True)
             except Exception as e:
                 logger.info(f"Re-establishing SSH connection due to error: {e}")
