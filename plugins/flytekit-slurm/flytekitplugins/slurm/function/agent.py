@@ -10,7 +10,7 @@ from flytekit.extend.backend.utils import convert_to_flyte_phase
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
-from ..ssh_utils import ssh_connect
+from ..ssh_utils import ssh_connect, SSHConfig
 
 @dataclass
 class SlurmJobMetadata(ResourceMeta):
@@ -31,6 +31,8 @@ class SlurmFunctionAgent(AsyncAgentBase):
 
     # SSH connection pool for multi-host environment
     _conn: Optional[SSHClientConnection] = None
+
+    ssh_config_to_ssh_conn: Dict[SSHConfig, SSHClientConnection] = {}
 
     def __init__(self) -> None:
         super(SlurmFunctionAgent, self).__init__(task_type_name="slurm_fn", metadata_type=SlurmJobMetadata)
@@ -64,7 +66,20 @@ class SlurmFunctionAgent(AsyncAgentBase):
         logger.info(script)
 
         # Run Slurm job
-        conn = await ssh_connect(ssh_config=ssh_config)
+        ssh_dataclass_config = SSHConfig(**ssh_config)
+        if self.ssh_config_to_ssh_conn.get(ssh_dataclass_config) is None:
+            conn = await ssh_connect(ssh_config=ssh_config)
+            self.ssh_config_to_ssh_conn[ssh_dataclass_config] = conn
+        else:
+            conn = self.ssh_config_to_ssh_conn[ssh_dataclass_config]
+            try:
+                await conn.run("echo [TEST] SSH connection", check=True)
+            except Exception as e:
+                logger.info(f"Re-establishing SSH connection due to error: {e}")
+                conn = await ssh_connect(ssh_config=ssh_config)
+                self.ssh_config_to_ssh_conn[ssh_dataclass_config] = conn
+
+        # conn = await ssh_connect(ssh_config=ssh_config)
         with tempfile.NamedTemporaryFile("w") as f:
             f.write(script)
             f.flush()
@@ -79,7 +94,22 @@ class SlurmFunctionAgent(AsyncAgentBase):
         return SlurmJobMetadata(job_id=job_id, ssh_config=ssh_config)
 
     async def get(self, resource_meta: SlurmJobMetadata, **kwargs) -> Resource:
-        conn = await ssh_connect(ssh_config=resource_meta.ssh_config)
+        ssh_config = resource_meta.ssh_config
+        # Run Slurm job
+        ssh_dataclass_config = SSHConfig(**ssh_config)
+        if self.ssh_config_to_ssh_conn.get(ssh_dataclass_config) is None:
+            conn = await ssh_connect(ssh_config=ssh_config)
+            self.ssh_config_to_ssh_conn[ssh_dataclass_config] = conn
+        else:
+            conn = self.ssh_config_to_ssh_conn[ssh_dataclass_config]
+            try:
+                await conn.run("echo [TEST] SSH connection", check=True)
+            except Exception as e:
+                logger.info(f"Re-establishing SSH connection due to error: {e}")
+                conn = await ssh_connect(ssh_config=ssh_config)
+                self.ssh_config_to_ssh_conn[ssh_dataclass_config] = conn
+
+        # conn = await ssh_connect(ssh_config=resource_meta.ssh_config)
         job_res = await conn.run(f"scontrol show job {resource_meta.job_id}", check=True)
 
         # Determine the current flyte phase from Slurm job state
