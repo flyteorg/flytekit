@@ -25,6 +25,13 @@ class SlurmJobMetadata(ResourceMeta):
     job_id: str
     ssh_config: Dict[str, Any]
 
+@dataclass
+class SlurmCluster:
+    host: str
+    username: Optional[str] = None
+
+    def __hash__(self):
+        return hash((self.host, self.username))
 
 class SlurmFunctionAgent(AsyncAgentBase):
     name = "Slurm Function Agent"
@@ -32,7 +39,7 @@ class SlurmFunctionAgent(AsyncAgentBase):
     # SSH connection pool for multi-host environment
     _conn: Optional[SSHClientConnection] = None
 
-    ssh_config_to_ssh_conn: Dict[SSHConfig, SSHClientConnection] = {}
+    ssh_config_to_ssh_conn: Dict[SlurmCluster, SSHClientConnection] = {}
 
     async def _get_or_create_ssh_connection(self, ssh_config: Dict[str, Any]) -> SSHClientConnection:
         """Get existing SSH connection or create a new one if needed.
@@ -43,18 +50,20 @@ class SlurmFunctionAgent(AsyncAgentBase):
         Returns:
             SSHClientConnection: Active SSH connection
         """
-        ssh_dataclass_config = SSHConfig(**ssh_config)
-        if self.ssh_config_to_ssh_conn.get(ssh_dataclass_config) is None:
+        host=ssh_config.get["host"]
+        username=ssh_config.get("username")
+        ssh_cluster_config = SlurmCluster(host=host, username=username)
+        if self.ssh_config_to_ssh_conn.get(ssh_cluster_config) is None:
             conn = await ssh_connect(ssh_config=ssh_config)
-            self.ssh_config_to_ssh_conn[ssh_dataclass_config] = conn
+            self.ssh_config_to_ssh_conn[ssh_cluster_config] = conn
         else:
-            conn = self.ssh_config_to_ssh_conn[ssh_dataclass_config]
+            conn = self.ssh_config_to_ssh_conn[ssh_cluster_config]
             try:
                 await conn.run("echo [TEST] SSH connection", check=True)
             except Exception as e:
                 logger.info(f"Re-establishing SSH connection due to error: {e}")
                 conn = await ssh_connect(ssh_config=ssh_config)
-                self.ssh_config_to_ssh_conn[ssh_dataclass_config] = conn
+                self.ssh_config_to_ssh_conn[ssh_cluster_config] = conn
         return conn
 
     def __init__(self) -> None:
