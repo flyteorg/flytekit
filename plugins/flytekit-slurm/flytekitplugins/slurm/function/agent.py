@@ -125,7 +125,7 @@ class SlurmFunctionAgent(AsyncAgentBase):
         return Resource(phase=cur_phase, message=msg)
 
     async def delete(self, resource_meta: SlurmJobMetadata, **kwargs) -> None:
-        conn = await ssh_connect(ssh_config=resource_meta.ssh_config)
+        conn = await self._get_or_create_ssh_connection(resource_meta.ssh_config)
         _ = await conn.run(f"scancel {resource_meta.job_id}", check=True)
 
 

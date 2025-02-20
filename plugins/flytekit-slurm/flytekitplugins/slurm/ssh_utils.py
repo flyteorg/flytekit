@@ -49,6 +49,16 @@ class SSHConfig:
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
 
+    def __eq__(self, other):
+        if not isinstance(other, SSHConfig):
+            return False
+        return (
+                self.host == other.host and
+                self.username == other.username and
+                self.client_keys == other.client_keys and
+                self.known_hosts == other.known_hosts
+        )
+
 
 async def ssh_connect(ssh_config: Dict[str, Any]) -> SSHClientConnection:
     """Make an SSH client connection.
