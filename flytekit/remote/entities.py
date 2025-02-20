@@ -354,7 +354,6 @@ class FlyteArrayNode(_workflow_model.ArrayNode):
         parallelism: int,
         min_successes: int,
         min_success_ratio: float,
-
     ):
         super().__init__(flyte_node, parallelism, min_successes, min_success_ratio)
         self._flyte_node = flyte_node
