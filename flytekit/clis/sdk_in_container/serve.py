@@ -68,6 +68,8 @@ def agent(_: click.Context, port, prometheus_port, worker, timeout, modules):
     """
     import asyncio
 
+    from flytekit.extras.webhook import WebhookTask  # noqa: F401
+
     working_dir = os.getcwd()
     if all(os.path.realpath(path) != working_dir for path in sys.path):
         sys.path.append(working_dir)
