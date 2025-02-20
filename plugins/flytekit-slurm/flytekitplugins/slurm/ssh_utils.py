@@ -16,7 +16,7 @@ T = TypeVar("T", bound="SSHConfig")
 SLURM_PRIVATE_KEY = "FLYTE_SLURM_PRIVATE_KEY"
 
 
-@dataclass
+@dataclass(frozen=True)
 class SSHConfig:
     """A customized version of SSHClientConnectionOptions, tailored to specific needs.
 
