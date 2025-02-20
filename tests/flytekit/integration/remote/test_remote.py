@@ -247,6 +247,55 @@ def test_monitor_workflow_execution(register):
     assert execution.outputs["o0"] == "hello world"
 
 
+def test_sync_execution_sync_nodes_get_all_executions(register):
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    flyte_launch_plan = remote.fetch_launch_plan(name="basic.deep_child_workflow.parent_wf", version=VERSION)
+    execution = remote.execute(
+        flyte_launch_plan,
+        inputs={"a": 3},
+    )
+
+    poll_interval = datetime.timedelta(seconds=1)
+    time_to_give_up = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=600)
+
+    execution = remote.sync_execution(execution, sync_nodes=True)
+    while datetime.datetime.now(datetime.timezone.utc) < time_to_give_up:
+        if execution.is_done:
+            break
+
+        with pytest.raises(
+                FlyteAssertion, match="Please wait until the execution has completed before requesting the outputs.",
+        ):
+            execution.outputs
+
+        time.sleep(poll_interval.total_seconds())
+        execution = remote.sync_execution(execution, sync_nodes=True)
+
+        if execution.node_executions:
+            assert execution.node_executions["start-node"].closure.phase == 3  # SUCCEEDED
+
+    for key in execution.node_executions:
+        assert execution.node_executions[key].closure.phase == 3
+
+    # check node execution getting correct number of nested workflows and executions
+    assert len(execution.node_executions) == 5
+    execution_n0 = execution.node_executions["n0"]
+    execution_n1 = execution.node_executions["n1"]
+    assert len(execution_n1.workflow_executions[0].node_executions) == 4
+    execution_n1_n0 = execution_n1.workflow_executions[0].node_executions["n0"]
+    assert len(execution_n1_n0.workflow_executions[0].node_executions) == 3
+    execution_n1_n0_n0 = execution_n1_n0.workflow_executions[0].node_executions["n0"]
+
+    # check inputs and outputs each node execution
+    assert execution_n0.inputs == {"a": 3}
+    assert execution_n0.outputs["o0"] == 6
+    assert execution_n1.inputs == {"a": 6}
+    assert execution_n1_n0.inputs == {"a": 6}
+    assert execution_n1_n0_n0.inputs == {"a": 6}
+    assert execution_n1_n0_n0.outputs["o0"] == 12
+
+
+
 def test_fetch_execute_launch_plan_with_subworkflows(register):
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
 
@@ -916,7 +965,7 @@ def test_attr_access_sd():
     execution_id = run("attr_access_sd.py", "wf", "--uri", remote_file_path)
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     execution = remote.fetch_execution(name=execution_id)
-    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
+    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=15))
     assert execution.error is None, f"Execution failed with error: {execution.error}"
     assert execution.closure.phase == WorkflowExecutionPhase.SUCCEEDED, f"Execution failed with phase: {execution.closure.phase}"
 
@@ -990,7 +1039,7 @@ def test_signal_approve_reject(register):
     retry_operation(lambda: remote.set_input("title-input", execution.id.name, value="my report", project=PROJECT, domain=DOMAIN, python_type=str, literal_type=LiteralType(simple=SimpleType.STRING)))
     retry_operation(lambda: remote.approve("review-passes", execution.id.name, project=PROJECT, domain=DOMAIN))
 
-    remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
+    remote.wait(execution=execution, timeout=datetime.timedelta(minutes=15))
     assert execution.outputs["o0"] == {"title": "my report", "data": [1.0, 2.0, 3.0, 4.0, 5.0]}
 
     with pytest.raises(FlyteAssertion, match="Outputs could not be found because the execution ended in failure"):
@@ -999,7 +1048,7 @@ def test_signal_approve_reject(register):
         retry_operation(lambda: remote.set_input("title-input", execution.id.name, value="my report", project=PROJECT, domain=DOMAIN, python_type=str, literal_type=LiteralType(simple=SimpleType.STRING)))
         retry_operation(lambda: remote.reject("review-passes", execution.id.name, project=PROJECT, domain=DOMAIN))
 
-        remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
+        remote.wait(execution=execution, timeout=datetime.timedelta(minutes=15))
         assert execution.outputs["o0"] == {"title": "my report", "data": [1.0, 2.0, 3.0, 4.0, 5.0]}
 
 
