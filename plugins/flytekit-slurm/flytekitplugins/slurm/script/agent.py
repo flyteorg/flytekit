@@ -101,6 +101,7 @@ class SlurmScriptAgent(AsyncAgentBase):
         job_res = await conn.run(f"scontrol show job {resource_meta.job_id}", check=True)
 
         # Determine the current flyte phase from Slurm job state
+        msg = ""
         job_state = "running"
         for o in job_res.stdout.split(" "):
             if "JobState" in o:

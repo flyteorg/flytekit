@@ -26,12 +26,12 @@ class SlurmFunction(object):
             function will be executed directly.
     """
 
-    ssh_config: Dict[str, Any]
+    ssh_config: Dict[str, Union[str, list[str]]]
     sbatch_conf: Optional[Dict[str, str]] = None
     script: Optional[str] = None
 
     def __post_init__(self):
-        # TODO: assert that we have to have hostname and username
+        # TODO: assert ssh_config["host"] is not None
         if self.sbatch_conf is None:
             self.sbatch_conf = {}
 

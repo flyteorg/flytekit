@@ -132,10 +132,26 @@ class AsyncAgentService(AsyncAgentServiceServicer):
             agent = AgentRegistry.get_agent(request.task_category.name, request.task_category.version)
         else:
             agent = AgentRegistry.get_agent(request.task_type)
-        logger.info(f"{agent.name} start checking the status of the job")
-        res = await mirror_async_methods(agent.get, resource_meta=agent.metadata_type.decode(request.resource_meta))
-        resource = await res.to_flyte_idl()
-        return GetTaskResponse(resource=resource)
+
+        from flytekit import FlyteContextManager
+        from flytekit.core import context_manager
+        from flytekit.core.data_persistence import FileAccessProvider
+        # output_prefix from task template
+        # This is for shell task write output to the output_prefix
+        ctx = FlyteContextManager.current_context()
+        builder = ctx.with_file_access(
+            FileAccessProvider(
+                local_sandbox_dir=ctx.file_access.local_sandbox_dir,
+                raw_output_prefix=request.output_prefix,
+                data_config=ctx.file_access.data_config,
+            )
+
+        )
+        with context_manager.FlyteContextManager.with_context(builder):
+            logger.info(f"{agent.name} start checking the status of the job")
+            res = await mirror_async_methods(agent.get, resource_meta=agent.metadata_type.decode(request.resource_meta))
+            resource = await res.to_flyte_idl()
+            return GetTaskResponse(resource=resource)
 
     @record_agent_metrics
     async def DeleteTask(self, request: DeleteTaskRequest, context: grpc.ServicerContext) -> DeleteTaskResponse:

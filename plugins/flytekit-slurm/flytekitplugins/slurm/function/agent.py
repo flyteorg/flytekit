@@ -12,9 +12,6 @@ from flytekit.models.task import TaskTemplate
 
 from ..ssh_utils import ssh_connect
 
-SLURM_PRIVATE_KEY = "FLYTE_SLURM_PRIVATE_KEY"
-
-
 @dataclass
 class SlurmJobMetadata(ResourceMeta):
     """Slurm job metadata.
