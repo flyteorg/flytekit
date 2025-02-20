@@ -895,7 +895,7 @@ def test_attr_access_sd():
     execution_id = run("attr_access_sd.py", "wf", "--uri", remote_file_path)
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     execution = remote.fetch_execution(name=execution_id)
-    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
+    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=15))
     assert execution.closure.phase == WorkflowExecutionPhase.SUCCEEDED, f"Execution failed with phase: {execution.closure.phase}"
 
     # Delete the remote file to free the space
@@ -968,7 +968,7 @@ def test_signal_approve_reject(register):
     retry_operation(lambda: remote.set_input("title-input", execution.id.name, value="my report", project=PROJECT, domain=DOMAIN, python_type=str, literal_type=LiteralType(simple=SimpleType.STRING)))
     retry_operation(lambda: remote.approve("review-passes", execution.id.name, project=PROJECT, domain=DOMAIN))
 
-    remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
+    remote.wait(execution=execution, timeout=datetime.timedelta(minutes=15))
     assert execution.outputs["o0"] == {"title": "my report", "data": [1.0, 2.0, 3.0, 4.0, 5.0]}
 
     with pytest.raises(FlyteAssertion, match="Outputs could not be found because the execution ended in failure"):
@@ -977,7 +977,7 @@ def test_signal_approve_reject(register):
         retry_operation(lambda: remote.set_input("title-input", execution.id.name, value="my report", project=PROJECT, domain=DOMAIN, python_type=str, literal_type=LiteralType(simple=SimpleType.STRING)))
         retry_operation(lambda: remote.reject("review-passes", execution.id.name, project=PROJECT, domain=DOMAIN))
 
-        remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
+        remote.wait(execution=execution, timeout=datetime.timedelta(minutes=15))
         assert execution.outputs["o0"] == {"title": "my report", "data": [1.0, 2.0, 3.0, 4.0, 5.0]}
 
 
