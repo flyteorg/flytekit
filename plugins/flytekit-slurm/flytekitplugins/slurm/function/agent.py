@@ -1,7 +1,8 @@
 import tempfile
-from dataclasses import dataclass
-from typing import Any, Dict, Optional
 import uuid
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Tuple, Union
+
 from asyncssh import SSHClientConnection
 
 from flytekit import logger
@@ -10,7 +11,8 @@ from flytekit.extend.backend.utils import convert_to_flyte_phase
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
-from ..ssh_utils import ssh_connect, SSHConfig
+from ..ssh_utils import ssh_connect
+
 
 @dataclass
 class SlurmJobMetadata(ResourceMeta):
@@ -23,7 +25,8 @@ class SlurmJobMetadata(ResourceMeta):
     """
 
     job_id: str
-    ssh_config: Dict[str, Any]
+    ssh_config: Dict[str, Union[str, List[str], Tuple[str, ...]]]
+
 
 @dataclass
 class SlurmCluster:
@@ -33,40 +36,12 @@ class SlurmCluster:
     def __hash__(self):
         return hash((self.host, self.username))
 
+
 class SlurmFunctionAgent(AsyncAgentBase):
     name = "Slurm Function Agent"
 
     # SSH connection pool for multi-host environment
-    _conn: Optional[SSHClientConnection] = None
-
     ssh_config_to_ssh_conn: Dict[SlurmCluster, SSHClientConnection] = {}
-
-    async def _get_or_create_ssh_connection(self, ssh_config: Dict[str, Any]) -> SSHClientConnection:
-        """Get existing SSH connection or create a new one if needed.
-
-        Args:
-            ssh_config: SSH configuration dictionary
-
-        Returns:
-            SSHClientConnection: Active SSH connection
-        """
-        host=ssh_config.get("host")
-        username=ssh_config.get("username")
-        ssh_cluster_config = SlurmCluster(host=host, username=username)
-        if self.ssh_config_to_ssh_conn.get(ssh_cluster_config) is None:
-            logger.info("ssh connection key not found, creating new connection")
-            conn = await ssh_connect(ssh_config=ssh_config)
-            self.ssh_config_to_ssh_conn[ssh_cluster_config] = conn
-        else:
-            conn = self.ssh_config_to_ssh_conn[ssh_cluster_config]
-            try:
-                await conn.run("echo [TEST] SSH connection", check=True)
-                logger.info("re-using new connection")
-            except Exception as e:
-                logger.info(f"Re-establishing SSH connection due to error: {e}")
-                conn = await ssh_connect(ssh_config=ssh_config)
-                self.ssh_config_to_ssh_conn[ssh_cluster_config] = conn
-        return conn
 
     def __init__(self) -> None:
         super(SlurmFunctionAgent, self).__init__(task_type_name="slurm_fn", metadata_type=SlurmJobMetadata)
@@ -138,6 +113,37 @@ class SlurmFunctionAgent(AsyncAgentBase):
     async def delete(self, resource_meta: SlurmJobMetadata, **kwargs) -> None:
         conn = await self._get_or_create_ssh_connection(resource_meta.ssh_config)
         _ = await conn.run(f"scancel {resource_meta.job_id}", check=True)
+
+    async def _get_or_create_ssh_connection(
+        self, ssh_config: Dict[str, Union[str, List[str], Tuple[str, ...]]]
+    ) -> SSHClientConnection:
+        """Get an existing SSH connection or create a new one if needed.
+
+        Args:
+            ssh_config: SSH configuration dictionary.
+
+        Returns:
+            An active SSH connection, either pre-existing or newly established.
+        """
+        host = ssh_config.get("host")
+        username = ssh_config.get("username")
+
+        ssh_cluster_config = SlurmCluster(host=host, username=username)
+        if self.ssh_config_to_ssh_conn.get(ssh_cluster_config) is None:
+            logger.info("ssh connection key not found, creating new connection")
+            conn = await ssh_connect(ssh_config=ssh_config)
+            self.ssh_config_to_ssh_conn[ssh_cluster_config] = conn
+        else:
+            conn = self.ssh_config_to_ssh_conn[ssh_cluster_config]
+            try:
+                await conn.run("echo [TEST] SSH connection", check=True)
+                logger.info("re-using new connection")
+            except Exception as e:
+                logger.info(f"Re-establishing SSH connection due to error: {e}")
+                conn = await ssh_connect(ssh_config=ssh_config)
+                self.ssh_config_to_ssh_conn[ssh_cluster_config] = conn
+
+        return conn
 
 
 def _get_sbatch_cmd_and_script(

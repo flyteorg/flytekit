@@ -2,14 +2,15 @@
 Utilities of asyncssh connections.
 """
 
+import os
 import sys
 from dataclasses import asdict, dataclass
 from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar, Union
-from flytekit import logger
+
 import asyncssh
 from asyncssh import SSHClientConnection
-from asyncssh.known_hosts import KnownHostsArg
 
+from flytekit import logger
 from flytekit.extend.backend.utils import get_agent_secret
 
 T = TypeVar("T", bound="SSHConfig")
@@ -31,16 +32,11 @@ class SSHConfig:
         client_keys: File paths to private keys which will be used to authenticate the
             client via public key authentication. The default value is not None since
             client public key authentication is mandatory.
-        known_hosts: The list of keys which will be used to validate the server host key
-            presented during the SSH handshake. If this is not specified, the keys will
-            be looked up in the file .ssh/known_hosts. If this is explicitly set to None,
-            server host key validation will be disabled.
     """
 
     host: str
-    username: str
+    username: Optional[str] = None
     client_keys: Union[str, List[str], Tuple[str, ...]] = ()
-    known_hosts: Optional[KnownHostsArg] = None
 
     @classmethod
     def from_dict(cls: Type[T], ssh_config: Dict[str, Any]) -> T:
@@ -52,12 +48,7 @@ class SSHConfig:
     def __eq__(self, other):
         if not isinstance(other, SSHConfig):
             return False
-        return (
-                self.host == other.host and
-                self.username == other.username and
-                self.client_keys == other.client_keys and
-                self.known_hosts == other.known_hosts
-        )
+        return self.host == other.host and self.username == other.username and self.client_keys == other.client_keys
 
 
 async def ssh_connect(ssh_config: Dict[str, Any]) -> SSHClientConnection:
@@ -71,6 +62,7 @@ async def ssh_connect(ssh_config: Dict[str, Any]) -> SSHClientConnection:
     """
     # Validate ssh_config
     ssh_config = SSHConfig.from_dict(ssh_config).to_dict()
+    ssh_config["known_hosts"] = None
 
     # Make the first SSH connection using either OpenSSH client config files or
     # a user-defined private key. If using OpenSSH config, it will attempt to
@@ -96,21 +88,6 @@ async def ssh_connect(ssh_config: Dict[str, Any]) -> SSHClientConnection:
             "At least one must be set."
         )
 
-    import os
-
-    # ABAO VERSION
-    # Construct a list of file paths to private keys
-    # client_keys = []
-    # if default_client_key is not None:
-    #     # Write the private key to a local path
-    #     # This may not be a good practice...
-    #     private_key_path = os.path.abspath("./slurm_private_key")
-    #
-    #     with open("./slurm_private_key", "w") as f:
-    #         f.write(default_client_key)
-    #     client_keys.append("./slurm_private_key")
-
-    # HANRU VERSION
     client_keys = []
     if default_client_key is not None:
         # Write the private key to a local path

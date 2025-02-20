@@ -3,7 +3,7 @@ Slurm task.
 """
 
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from flytekit import FlyteContextManager, PythonFunctionTask
 from flytekit.configuration import SerializationSettings
@@ -26,12 +26,12 @@ class SlurmFunction(object):
             function will be executed directly.
     """
 
-    ssh_config: Dict[str, Union[str, list[str]]]
+    ssh_config: Dict[str, Union[str, List[str], Tuple[str, ...]]]
     sbatch_conf: Optional[Dict[str, str]] = None
     script: Optional[str] = None
 
     def __post_init__(self):
-        # TODO: assert ssh_config["host"] is not None
+        assert self.ssh_config["host"] is not None, "'host' must be specified in ssh_config."
         if self.sbatch_conf is None:
             self.sbatch_conf = {}
 
