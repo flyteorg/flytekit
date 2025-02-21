@@ -86,6 +86,9 @@ def test_scalar_to_string():
     )
     assert scalar_to_string(scalar) == 1
 
+    scalar = Scalar(binary=Binary(b'\x82\xa7compact\xc3\xa6schema\x00', "msgpack"))
+    assert scalar_to_string(scalar) == '{"compact": true, "schema": 0}'
+
 
 def test_literal_string_repr():
     lit = Literal(scalar=Scalar(primitive=Primitive(integer=1)))

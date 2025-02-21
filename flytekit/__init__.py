@@ -178,6 +178,9 @@ Task Utilities
    :toctree: generated/
 
    HashMethod
+   Cache
+   CachePolicy
+   VersionParameters
 
 Artifacts
 =========
@@ -223,6 +226,7 @@ from flytekit.core.array_node_map_task import map_task
 from flytekit.core.artifact import Artifact
 from flytekit.core.base_sql_task import SQLTask
 from flytekit.core.base_task import SecurityContext, TaskMetadata, kwtypes
+from flytekit.core.cache import Cache, CachePolicy, VersionParameters
 from flytekit.core.checkpointer import Checkpoint
 from flytekit.core.condition import conditional
 from flytekit.core.container_task import ContainerTask
