@@ -985,6 +985,45 @@ def test_positional_args_task():
     assert wf_pure_positional_args() == ret
     assert wf_mixed_positional_and_keyword_args() == ret
 
+def test_positional_args_workflow_with_default_value():
+    arg1 = 5
+    arg2 = 6
+    ret = 17
+
+    @task
+    def t1(x: int, y: int) -> int:
+        return x + y * 2
+
+    @workflow
+    def sub_wf(x: int = 1, y: int = 2) -> int:
+        return t1(x=x, y=y)
+
+    @workflow
+    def wf_pure_positional_args() -> int:
+        return sub_wf(arg1, arg2)
+
+    @workflow
+    def wf_mixed_positional_and_keyword_args() -> int:
+        return sub_wf(arg1, y=arg2)
+
+    wf_pure_positional_args_spec = get_serializable(OrderedDict(), serialization_settings, wf_pure_positional_args)
+    wf_mixed_positional_and_keyword_args_spec = get_serializable(OrderedDict(), serialization_settings, wf_mixed_positional_and_keyword_args)
+
+    arg1_binding = Scalar(primitive=Primitive(integer=arg1))
+    arg2_binding = Scalar(primitive=Primitive(integer=arg2))
+    output_type = LiteralType(simple=SimpleType.INTEGER)
+
+    assert wf_pure_positional_args_spec.template.nodes[0].inputs[0].binding.value == arg1_binding
+    assert wf_pure_positional_args_spec.template.nodes[0].inputs[1].binding.value == arg2_binding
+    assert wf_pure_positional_args_spec.template.interface.outputs["o0"].type == output_type
+
+    assert wf_mixed_positional_and_keyword_args_spec.template.nodes[0].inputs[0].binding.value == arg1_binding
+    assert wf_mixed_positional_and_keyword_args_spec.template.nodes[0].inputs[1].binding.value == arg2_binding
+    assert wf_mixed_positional_and_keyword_args_spec.template.interface.outputs["o0"].type == output_type
+
+    assert wf_pure_positional_args() == ret
+    assert wf_mixed_positional_and_keyword_args() == ret
+
 def test_positional_args_workflow():
     arg1 = 5
     arg2 = 6
