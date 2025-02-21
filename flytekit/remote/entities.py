@@ -362,16 +362,12 @@ class FlyteArrayNode(_workflow_model.ArrayNode):
     def flyte_node(self) -> FlyteNode:
         return self._flyte_node
 
-    @property
-    def flyte_workflow_node(self):
-        return self._flyte_workflow_node
-
     @classmethod
     def promote_from_model(
         cls,
         model: _workflow_model.ArrayNode,
         flyte_node: FlyteNode,
-    ):
+    ) -> FlyteArrayNode:
         return cls(
             flyte_node=flyte_node,
             parallelism=model._parallelism,
