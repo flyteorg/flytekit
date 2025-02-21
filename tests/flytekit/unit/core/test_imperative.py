@@ -3,19 +3,21 @@ import typing
 from collections import OrderedDict
 
 import pytest
-
+from dataclasses import dataclass, fields, field
 import flytekit.configuration
 from flytekit.configuration import Image, ImageConfig
 from flytekit.core.base_task import kwtypes
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.task import reference_task, task
 from flytekit.core.workflow import ImperativeWorkflow, get_promise, workflow
+from flytekit.core.python_function_task import EagerFailureHandlerTask
 from flytekit.exceptions.user import FlyteValidationException
 from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
 from flytekit.models import literals as literal_models
 from flytekit.tools.translator import get_serializable
 from flytekit.types.file import FlyteFile
 from flytekit.types.schema import FlyteSchema
+from flytekit.models.admin.workflow import WorkflowSpec
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = flytekit.configuration.SerializationSettings(
@@ -135,6 +137,59 @@ def test_imperative_map_bound():
     wb.add_workflow_output("from_n0t1", node.outputs["o0"])
 
     assert wb(in1=3, in2=4, in3=5) == {"a": 7, "b": 9}
+
+
+def test_imperative_with_failure():
+
+    @dataclass
+    class DC:
+        string: typing.Optional[str] = None
+
+    @task
+    def t1(a: typing.Dict[str, typing.List[int]]) -> typing.Dict[str, int]:
+        return {k: sum(v) for k, v in a.items()}
+
+    @task
+    def t2():
+        print("side effect")
+
+    @task
+    def t3(dc: DC) -> DC:
+        if dc.string is None:
+            DC(string="default")
+        return DC(string=dc.string + " world")
+
+    wb = ImperativeWorkflow(name="my.workflow.a")
+
+    # mapped inputs
+    in1 = wb.add_workflow_input("in1", int)
+    wb.add_workflow_input("in2", int)
+    in3 = wb.add_workflow_input("in3", int)
+    node = wb.add_entity(t1, a={"a": [in1, wb.inputs["in2"]], "b": [wb.inputs["in2"], in3]})
+    wb.add_workflow_output("from_n0t1", node.outputs["o0"])
+
+    # pure side effect task
+    wb.add_entity(t2)
+
+    failure_task = EagerFailureHandlerTask(name="sample-failure-task", inputs=wb.python_interface.inputs)
+    wb.add_on_failure_handler(failure_task)
+
+    # Add a data
+    dc_input = wb.add_workflow_input("dc_in", DC)
+    node_dc = wb.add_entity(t3, dc=dc_input)
+    wb.add_workflow_output("updated_dc", node_dc.outputs["o0"])
+
+    r = wb(in1=3, in2=4, in3=5, dc_in=DC(string="hello"))
+    assert r.from_n0t1 == {"a": 7, "b": 9}
+    assert r.updated_dc.string == "hello world"
+
+    wf_spec: WorkflowSpec = get_serializable(OrderedDict(), serialization_settings, wb)
+    assert len(wf_spec.template.nodes) == 3
+    assert len(wf_spec.template.interface.inputs) == 4
+
+    node_names = [n.id for n in wf_spec.template.nodes]
+    assert wf_spec.template.failure_node is not None
+    assert wf_spec.template.failure_node.id == "nfail"
 
 
 def test_imperative_with_list_io():
