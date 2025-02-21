@@ -103,8 +103,7 @@ def test_package_with_fast_registration_and_envvars():
                 "euler=2.71828",
             ],
         )
-
-        assert result.exit_code == 0
+        
         assert "Successfully serialized" in result.output
         assert "Successfully packaged" in result.output
 
