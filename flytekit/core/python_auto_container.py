@@ -223,10 +223,12 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
             cpu_request=self.resources.requests.cpu,
             gpu_request=self.resources.requests.gpu,
             memory_request=self.resources.requests.mem,
+            oom_reserved_memory_request = self.resources.requests.oom_reserved_mem,
             ephemeral_storage_limit=self.resources.limits.ephemeral_storage,
             cpu_limit=self.resources.limits.cpu,
             gpu_limit=self.resources.limits.gpu,
             memory_limit=self.resources.limits.mem,
+            oom_reserved_memory_limit=self.resources.limits.oom_reserved_mem,
         )
 
     def get_k8s_pod(self, settings: SerializationSettings) -> _task_model.K8sPod:

@@ -34,6 +34,7 @@ class Resources(DataClassJSONMixin):
     mem: Optional[Union[str, int]] = None
     gpu: Optional[Union[str, int]] = None
     ephemeral_storage: Optional[Union[str, int]] = None
+    oom_reserved_mem: Optional[Union[str, int]] = None
 
     def __post_init__(self):
         def _check_cpu(value):
@@ -52,6 +53,7 @@ class Resources(DataClassJSONMixin):
         _check_others(self.mem)
         _check_others(self.gpu)
         _check_others(self.ephemeral_storage)
+        _check_others(self.oom_reserved_mem)
 
 
 @dataclass
@@ -79,6 +81,8 @@ def _convert_resources_to_resource_entries(resources: Resources) -> List[_Resour
                 value=str(resources.ephemeral_storage),
             )
         )
+    if resources.oom_reserved_mem is not None:
+        resource_entries.append(_ResourceEntry(name=_ResourceName.OOM_RESERVED_MEMORY, value=str(resources.oom_reserved_mem)))
     return resource_entries
 
 
@@ -117,6 +121,7 @@ def pod_spec_from_resources(
             "mem": "memory",
             "gpu": k8s_gpu_resource_key,
             "ephemeral_storage": "ephemeral-storage",
+            "oom_reserved_mem": "oom-reserved-memory",
         }
 
         k8s_pod_resources = {}

@@ -29,6 +29,7 @@ class Resources(_common.FlyteIdlEntity):
         GPU = _core_task.Resources.GPU
         MEMORY = _core_task.Resources.MEMORY
         EPHEMERAL_STORAGE = _core_task.Resources.EPHEMERAL_STORAGE
+        OOM_RESERVED_MEMORY = _core_task.Resources.OOM_RESERVED_MEMORY
 
     class ResourceEntry(_common.FlyteIdlEntity):
         def __init__(self, name, value):
