@@ -34,6 +34,9 @@ from flytekit.loggers import set_flytekit_log_properties
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskExecutionMetadata, TaskTemplate
 
+# It's used to force agent to run in the same event loop in the local execution.
+local_agent_loop = asyncio.new_event_loop()
+
 
 class TaskCategory:
     def __init__(self, name: str, version: int = 0):
@@ -285,7 +288,7 @@ class SyncAgentExecutorMixin:
         output_prefix = ctx.file_access.get_random_remote_directory()
 
         agent = AgentRegistry.get_agent(task_template.type, task_template.task_type_version)
-        resource = asyncio.run(
+        resource = local_agent_loop.run_until_complete(
             self._do(agent=agent, template=task_template, output_prefix=output_prefix, inputs=kwargs)
         )
         if resource.phase != TaskExecution.SUCCEEDED:
@@ -335,10 +338,10 @@ class AsyncAgentExecutorMixin:
         task_template = get_serializable(OrderedDict(), ss, self).template
         self._agent = AgentRegistry.get_agent(task_template.type, task_template.task_type_version)
 
-        resource_meta = asyncio.run(
+        resource_meta = local_agent_loop.run_until_complete(
             self._create(task_template=task_template, output_prefix=output_prefix, inputs=kwargs)
         )
-        resource = asyncio.run(self._get(resource_meta=resource_meta))
+        resource = local_agent_loop.run_until_complete(self._get(resource_meta=resource_meta))
 
         if resource.phase != TaskExecution.SUCCEEDED:
             raise FlyteUserException(f"Failed to run the task {self.name} with error: {resource.message}")

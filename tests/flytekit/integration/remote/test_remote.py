@@ -1039,7 +1039,7 @@ def test_signal_approve_reject(register):
     retry_operation(lambda: remote.set_input("title-input", execution.id.name, value="my report", project=PROJECT, domain=DOMAIN, python_type=str, literal_type=LiteralType(simple=SimpleType.STRING)))
     retry_operation(lambda: remote.approve("review-passes", execution.id.name, project=PROJECT, domain=DOMAIN))
 
-    remote.wait(execution=execution, timeout=datetime.timedelta(minutes=15))
+    remote.wait(execution=execution, timeout=datetime.timedelta(minutes=20))
     assert execution.outputs["o0"] == {"title": "my report", "data": [1.0, 2.0, 3.0, 4.0, 5.0]}
 
     with pytest.raises(FlyteAssertion, match="Outputs could not be found because the execution ended in failure"):

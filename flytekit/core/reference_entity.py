@@ -13,7 +13,6 @@ from flytekit.core.promise import (
     translate_inputs_to_literals,
 )
 from flytekit.core.type_engine import TypeEngine
-from flytekit.exceptions import user as _user_exceptions
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
@@ -200,10 +199,20 @@ class ReferenceEntity(object):
         #     nothing. Subsequent tasks will have to know how to unwrap these. If by chance a non-Flyte task uses a
         #     task output as an input, things probably will fail pretty obviously.
         #     Since this is a reference entity, it still needs to be mocked otherwise an exception will be raised.
-        if len(args) > 0:
-            raise _user_exceptions.FlyteAssertion(
-                f"Cannot call reference entity with args - detected {len(args)} positional args {args}"
+
+        interface = self.python_interface
+
+        # Check if we have more arguments than expected
+        if len(args) > len(interface.inputs):
+            raise AssertionError(
+                f"Received more arguments than expected in function '{self.name}'. Expected {len(interface.inputs)} but got {len(args)}"
             )
+
+        # Convert args to kwargs
+        for arg, input_name in zip(args, interface.inputs.keys()):
+            if input_name in kwargs:
+                raise AssertionError(f"Got multiple values for argument '{input_name}' in function '{self.name}'")
+            kwargs[input_name] = arg
 
         ctx = FlyteContext.current_context()
         if ctx.compilation_state is not None and ctx.compilation_state.mode == 1:

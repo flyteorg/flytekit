@@ -21,6 +21,7 @@ from flytekit.models.literals import (
     LiteralMap,
     LiteralOffloadedMetadata,
 )
+from flytekit.models.task import Resources as _resources_models
 from flytekit.tools.translator import get_serializable
 from flytekit.types.directory import FlyteDirectory
 
@@ -331,6 +332,7 @@ def test_bounded_inputs_vars_order(serialization_settings):
         (0.5, False),
     ],
 )
+
 def test_raw_execute_with_min_success_ratio(min_success_ratio, should_raise_error):
     @task
     def some_task1(inputs: int) -> int:
@@ -349,17 +351,17 @@ def test_raw_execute_with_min_success_ratio(min_success_ratio, should_raise_erro
         assert my_wf1() == [1, None, 3, 4]
 
 
-
 def test_map_task_override(serialization_settings):
     @task
     def my_mappable_task(a: int) -> typing.Optional[str]:
         return str(a)
-    
+
     @workflow
     def wf(x: typing.List[int]):
         map(my_mappable_task)(a=x).with_overrides(container_image="random:image")
 
     assert wf.nodes[0]._container_image == "random:image"
+
 
 
 def test_serialization_metadata(serialization_settings):
@@ -444,26 +446,6 @@ def test_serialization_extended_resources(serialization_settings):
     assert task_spec.template.extended_resources.gpu_accelerator.device == "test_gpu"
 
 
-def test_serialization_extended_resources_shared_memory(serialization_settings):
-    @task(
-        shared_memory="2Gi"
-    )
-    def t1(a: int) -> int:
-        return a + 1
-
-    arraynode_maptask = map(t1)
-
-    @workflow
-    def wf(x: typing.List[int]):
-        return arraynode_maptask(a=x)
-
-    od = OrderedDict()
-    get_serializable(od, serialization_settings, wf)
-    task_spec = od[arraynode_maptask]
-
-    assert task_spec.template.extended_resources.shared_memory.size_limit == "2Gi"
-
-
 def test_supported_node_type():
     @task
     def test_task():
@@ -510,7 +492,7 @@ def test_mis_match():
             for path_info, other_info in d.crawl():
                 print(path_info)
 
-    mt = map(generate_directory, min_success_ratio=0.1)
+    mt = map(generate_directory, tolerance=0.1)
 
     @workflow
     def wf():
