@@ -2615,10 +2615,9 @@ class FlyteRemote(object):
             if execution._node.array_node is None:
                 logger.error("Array node not found")
                 return execution
-            # if there's a task node underneath the array node, let's fetch the interface for it
+            # if there's a task node underneath the array node
             if execution._node.array_node.node.task_node is not None:
-                tid = execution._node.array_node.node.task_node.reference_id
-                t = self.fetch_task(tid.project, tid.domain, tid.name, tid.version)
+                t = execution._node.flyte_entity.flyte_node.task_node.flyte_task
                 execution._task_executions = [
                     self.sync_task_execution(FlyteTaskExecution.promote_from_model(task_execution), t)
                     for task_execution in iterate_task_executions(self.client, execution.id)
