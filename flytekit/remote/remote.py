@@ -2641,13 +2641,14 @@ class FlyteRemote(object):
                 launch_plan = self.fetch_launch_plan(
                     launch_plan_id.project, launch_plan_id.domain, launch_plan_id.name, launch_plan_id.version
                 )
+                task_execution_interface = launch_plan.interface.transform_interface_to_list()
                 execution._task_executions = [
                     self.sync_task_execution(
-                        FlyteTaskExecution.promote_from_model(task_execution), launch_plan.interface
+                        FlyteTaskExecution.promote_from_model(task_execution), task_execution_interface
                     )
                     for task_execution in iterate_task_executions(self.client, execution.id)
                 ]
-                execution._interface = launch_plan.interface
+                execution._interface = task_execution_interface
                 return execution
             else:
                 logger.error("Array node not over task, skipping i/o")
