@@ -548,6 +548,7 @@ def run_remote(
     with p:
         p.update(t, visible=True)
         p.start_task(t)
+        print(run_level_params.tags)
         execution = remote.execute(
             entity,
             inputs=inputs,
