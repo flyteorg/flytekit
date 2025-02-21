@@ -19,11 +19,16 @@ class SlurmFunction(object):
     Args:
         ssh_config: Options of SSH client connection. For available options, please refer to
             <newly-added-ssh-utils-file>
-        sbatch_conf: Options of sbatch command.
+        sbatch_conf: Options of sbatch command. If not provided, defaults to an empty dict.
         script: User-defined script where "{task.fn}" serves as a placeholder for the
             task function execution. Users should insert "{task.fn}" at the desired
             execution point within the script. If the script is not provided, the task
             function will be executed directly.
+
+    Attributes:
+        ssh_config (Dict[str, Union[str, List[str], Tuple[str, ...]]]): SSH client configuration options.
+        sbatch_conf (Optional[Dict[str, str]]): Slurm sbatch command options.
+        script (Optional[str]): Custom script template for task execution.
     """
 
     ssh_config: Dict[str, Union[str, List[str], Tuple[str, ...]]]

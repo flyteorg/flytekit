@@ -21,7 +21,12 @@ class SlurmJobMetadata(ResourceMeta):
     Args:
         job_id: Slurm job id.
         ssh_config: Options of SSH client connection. For available options, please refer to
-            <newly-added-ssh-utils-file>
+            the ssh_utils module.
+
+    Attributes:
+        job_id (str): Slurm job id.
+        ssh_config (Dict[str, Union[str, List[str], Tuple[str, ...]]]): SSH configuration options
+            for establishing client connections.
     """
 
     job_id: str
@@ -67,13 +72,6 @@ class SlurmFunctionAgent(AsyncAgentBase):
             batch_script_path=unique_script_name,
         )
 
-        logger.info("@@@ task_template.container.args:")
-        logger.info(task_template.container.args)
-        logger.info("@@@ Slurm Command: ")
-        logger.info(cmd)
-        logger.info("@@@ Batch script: ")
-        logger.info(script)
-
         # Run Slurm job
         conn = await self._get_or_create_ssh_connection(ssh_config)
         with tempfile.NamedTemporaryFile("w") as f:
@@ -85,7 +83,6 @@ class SlurmFunctionAgent(AsyncAgentBase):
 
         # Retrieve Slurm job id
         job_id = res.stdout.split()[-1]
-        logger.info("@@@ create slurm job id: " + job_id)
 
         return SlurmJobMetadata(job_id=job_id, ssh_config=ssh_config)
 
@@ -104,8 +101,6 @@ class SlurmFunctionAgent(AsyncAgentBase):
                 msg_res = await conn.run(f"cat {stdout_path}", check=True)
                 msg = msg_res.stdout
 
-        logger.info("@@@ GET PHASE: ")
-        logger.info(str(job_state))
         cur_phase = convert_to_flyte_phase(job_state)
 
         return Resource(phase=cur_phase, message=msg)
@@ -120,10 +115,10 @@ class SlurmFunctionAgent(AsyncAgentBase):
         """Get an existing SSH connection or create a new one if needed.
 
         Args:
-            ssh_config: SSH configuration dictionary.
+            ssh_config (Dict[str, Union[str, List[str], Tuple[str, ...]]]): SSH configuration dictionary.
 
         Returns:
-            An active SSH connection, either pre-existing or newly established.
+            SSHClientConnection: An active SSH connection, either pre-existing or newly established.
         """
         host = ssh_config.get("host")
         username = ssh_config.get("username")
@@ -151,22 +146,25 @@ def _get_sbatch_cmd_and_script(
     entrypoint: str,
     script: Optional[str] = None,
     batch_script_path: str = "/tmp/task.slurm",
-) -> str:
+) -> Tuple[str, str]:
     """Construct the Slurm sbatch command and the batch script content.
 
     Flyte entrypoint, pyflyte-execute, is run within a bash shell process.
 
     Args:
-        sbatch_conf: Options of sbatch command.
-        entrypoint: Flyte entrypoint.
-        script: User-defined script where "{task.fn}" serves as a placeholder for the
+        sbatch_conf (Dict[str, str]): Options of sbatch command.
+        entrypoint (str): Flyte entrypoint.
+        script (Optional[str], optional): User-defined script where "{task.fn}" serves as a placeholder for the
             task function execution. Users should insert "{task.fn}" at the desired
             execution point within the script. If the script is not provided, the task
-            function will be executed directly.
-        batch_script_path: Absolute path of the batch script on Slurm cluster.
+            function will be executed directly. Defaults to None.
+        batch_script_path (str, optional): Absolute path of the batch script on Slurm cluster.
+            Defaults to "/tmp/task.slurm".
 
     Returns:
-        cmd: Slurm sbatch command.
+        Tuple[str, str]: A tuple containing:
+            - cmd: Slurm sbatch command
+            - script: The batch script content
     """
     # Setup sbatch options
     cmd = ["sbatch"]
