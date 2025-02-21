@@ -274,8 +274,12 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
             annotations=self.annotations.to_flyte_idl(),
             auth_role=self.auth_role.to_flyte_idl() if self.auth_role else None,
             raw_output_data_config=self.raw_output_data_config.to_flyte_idl(),
+<<<<<<< HEAD
             concurrency=self.concurrency,
             max_parallelism=self.max_parallelism,
+=======
+            max_parallelism=self.concurrency if self.concurrency is not None else self.max_parallelism,
+>>>>>>> 2635dc6ae (fix: Replace concurrency with max_parallelism in LaunchPlanSpec.to_flyte_idl)
             security_context=self.security_context.to_flyte_idl() if self.security_context else None,
             overwrite_cache=self.overwrite_cache if self.overwrite_cache else None,
         )

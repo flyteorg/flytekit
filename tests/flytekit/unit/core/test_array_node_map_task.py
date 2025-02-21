@@ -350,11 +350,10 @@ def test_raw_execute_with_min_success_ratio(min_success_ratio, should_raise_erro
 
 
 def test_map_task_override(serialization_settings):
-    
     @task
     def my_mappable_task(a: int) -> typing.Optional[str]:
         return str(a)
-    
+
     @workflow
     def wf(x: typing.List[int]):
         map(my_mappable_task)(a=x).with_overrides(container_image="random:image")
