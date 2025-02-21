@@ -712,10 +712,35 @@ class EagerFailureHandlerTask(PythonAutoContainerTask):
         )
 
     def dispatch_execute(self, ctx: FlyteContext, input_literal_map: LiteralMap) -> LiteralMap:
+        # Recursive imports
         from flytekit import current_context
+        from flytekit.configuration.plugin import get_plugin
 
+        # move
+        from flytekit.models.admin import common as admin_common_models
+        from flytekit.models.filters import ValueIn
+
+        most_recent = admin_common_models.Sort("created_at", admin_common_models.Sort.Direction.DESCENDING)
         current_exec_id = current_context().execution_id
+        project = current_exec_id.project
+        domain = current_exec_id.domain
+        name = current_exec_id.name
         print(f"Execution ID: {current_exec_id}")
+        logger.info(f"Cleaning up potentially still running tasks for execution {name} in {project}/{domain}")
+
+        remote = get_plugin().get_remote(
+            config=None, project=project, domain=domain
+        )
+        limit = 100
+        key_filter = ValueIn("execution_tag.key", ["eager-exec"])
+        exec_models, _ = remote.client.list_executions_paginated(
+            project,
+            domain,
+            limit,
+            filters=[key_filter],
+            sort_by=most_recent,
+        )
+        print(exec_models)
 
         # Just echo it back.
         return input_literal_map
