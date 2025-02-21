@@ -333,6 +333,7 @@ jobs:
           - flytekit-papermill
           - flytekit-polars
           - flytekit-ray
+          - flytekit-slurm
           - flytekit-snowflake
           - flytekit-spark
           - flytekit-sqlalchemy
