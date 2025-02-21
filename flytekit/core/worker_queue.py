@@ -362,6 +362,7 @@ class Controller:
             l = self.get_labels()
             e = self.get_env()
             options = Options(labels=l)
+            logger.warning(f"Options {options}")
             exec_name = self.get_execution_name(wi.entity, idx, wi.input_kwargs)
             logger.info(f"Generated execution name {exec_name} for {idx}th call of {wi.entity.name}")
             from flytekit.remote.remote_callable import RemoteEntity
