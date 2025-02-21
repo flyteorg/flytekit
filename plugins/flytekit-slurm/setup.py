@@ -17,7 +17,6 @@ setup(
     namespace_packages=["flytekitplugins"],
     packages=[
         f"flytekitplugins.{PLUGIN_NAME}",
-        f"flytekitplugins.{PLUGIN_NAME}.script",
         f"flytekitplugins.{PLUGIN_NAME}.function",
     ],
     install_requires=plugin_requires,
