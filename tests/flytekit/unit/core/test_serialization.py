@@ -988,14 +988,17 @@ def test_positional_args_task():
 def test_positional_args_workflow_with_default_value():
     arg1 = 5
     arg2 = 6
+    default_arg1 = 1
+    default_arg2 = 2
     ret = 17
+    ret_arg2_default = 9
 
     @task
     def t1(x: int, y: int) -> int:
         return x + y * 2
 
     @workflow
-    def sub_wf(x: int = 1, y: int = 2) -> int:
+    def sub_wf(x: int = default_arg1, y: int = default_arg2) -> int:
         return t1(x=x, y=y)
 
     @workflow
@@ -1006,11 +1009,17 @@ def test_positional_args_workflow_with_default_value():
     def wf_mixed_positional_and_keyword_args() -> int:
         return sub_wf(arg1, y=arg2)
 
+    @workflow
+    def wf_mixed_positional_and_default_value() -> int:
+        return sub_wf(arg1)
+
     wf_pure_positional_args_spec = get_serializable(OrderedDict(), serialization_settings, wf_pure_positional_args)
     wf_mixed_positional_and_keyword_args_spec = get_serializable(OrderedDict(), serialization_settings, wf_mixed_positional_and_keyword_args)
+    wf_mixed_positional_and_default_value_spec = get_serializable(OrderedDict(), serialization_settings, wf_mixed_positional_and_default_value)
 
     arg1_binding = Scalar(primitive=Primitive(integer=arg1))
     arg2_binding = Scalar(primitive=Primitive(integer=arg2))
+    default_arg2_binding = Scalar(primitive=Primitive(integer=default_arg2))
     output_type = LiteralType(simple=SimpleType.INTEGER)
 
     assert wf_pure_positional_args_spec.template.nodes[0].inputs[0].binding.value == arg1_binding
@@ -1021,8 +1030,13 @@ def test_positional_args_workflow_with_default_value():
     assert wf_mixed_positional_and_keyword_args_spec.template.nodes[0].inputs[1].binding.value == arg2_binding
     assert wf_mixed_positional_and_keyword_args_spec.template.interface.outputs["o0"].type == output_type
 
+    assert wf_mixed_positional_and_default_value_spec.template.nodes[0].inputs[0].binding.value == arg1_binding
+    assert wf_mixed_positional_and_default_value_spec.template.nodes[0].inputs[1].binding.value == default_arg2_binding
+    assert wf_mixed_positional_and_default_value_spec.template.interface.outputs["o0"].type == output_type
+
     assert wf_pure_positional_args() == ret
     assert wf_mixed_positional_and_keyword_args() == ret
+    assert wf_mixed_positional_and_default_value() == ret_arg2_default
 
 def test_positional_args_workflow():
     arg1 = 5
