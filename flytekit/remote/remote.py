@@ -2405,7 +2405,7 @@ class FlyteRemote(object):
         :param execution:
         :param entity_definition:
         :param sync_nodes: By default sync will fetch data on all underlying node executions (recursively,
-          so subworkflows will also get picked up). Set this to False in order to prevent that (which
+          so subworkflows and launch plans will also get picked up). Set this to False in order to prevent that (which
           will make this call faster).
         :return: Returns the same execution object, but with additional information pulled in.
         """
@@ -2542,7 +2542,7 @@ class FlyteRemote(object):
             launched_exec = self.fetch_execution(
                 project=launched_exec_id.project, domain=launched_exec_id.domain, name=launched_exec_id.name
             )
-            self.sync_execution(launched_exec)
+            self.sync_execution(launched_exec, sync_nodes=True)
             if launched_exec.is_done:
                 # The synced underlying execution should've had these populated.
                 execution._inputs = launched_exec.inputs
@@ -2615,10 +2615,9 @@ class FlyteRemote(object):
             if execution._node.array_node is None:
                 logger.error("Array node not found")
                 return execution
-            # if there's a task node underneath the array node, let's fetch the interface for it
+            # if there's a task node underneath the array node
             if execution._node.array_node.node.task_node is not None:
-                tid = execution._node.array_node.node.task_node.reference_id
-                t = self.fetch_task(tid.project, tid.domain, tid.name, tid.version)
+                t = execution._node.flyte_entity.flyte_node.task_node.flyte_task
                 execution._task_executions = [
                     self.sync_task_execution(FlyteTaskExecution.promote_from_model(task_execution), t)
                     for task_execution in iterate_task_executions(self.client, execution.id)
