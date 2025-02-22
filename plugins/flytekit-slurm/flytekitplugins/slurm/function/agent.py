@@ -93,6 +93,7 @@ class SlurmFunctionAgent(AsyncAgentBase):
 
         # Determine the current flyte phase from Slurm job state
         job_state = "running"
+        msg = "No stdout available"
         for o in job_res.stdout.split(" "):
             if "JobState" in o:
                 job_state = o.split("=")[1].strip().lower()
