@@ -5,7 +5,7 @@ import pytest
 from flytekitplugins.awssagemaker_inference import triton_image_uri
 from flytekitplugins.awssagemaker_inference.boto3_mixin import (
     Boto3AgentMixin,
-    update_dict_fn,
+    format_dict,
 )
 
 from flytekit import FlyteContext, StructuredDataset
@@ -50,7 +50,7 @@ def test_inputs():
         },
     )
 
-    result = update_dict_fn(
+    result = format_dict(
         service="s3",
         original_dict=original_dict,
         update_dict={"inputs": literal_map_string_repr(inputs)},
@@ -75,7 +75,7 @@ def test_container():
     original_dict = {"a": "{images.primary_container_image}"}
     images = {"primary_container_image": "cr.flyte.org/flyteorg/flytekit:py3.11-1.10.3"}
 
-    result = update_dict_fn(
+    result = format_dict(
         service="sagemaker", original_dict=original_dict, update_dict={"images": images}
     )
 
