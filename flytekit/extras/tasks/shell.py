@@ -367,7 +367,7 @@ class ShellTask(PythonInstanceTask[T]):
         return None
 
     def post_execute(self, user_params: ExecutionParameters, rval: typing.Any) -> typing.Any:
-        return self._config_task_instance.post_execute(user_params, rval)
+        return self._config_task_instance.pre_execute(user_params)
 
 
 class RawShellTask(ShellTask):
