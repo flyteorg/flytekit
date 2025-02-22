@@ -681,6 +681,22 @@ def test_execution_workflow_with_maptask_in_dynamic(register):
     assert "n0-0-dn0" in execution.node_executions["n0"].subworkflow_node_executions
     assert len(execution.node_executions["n0"].subworkflow_node_executions["n0-0-dn0"].task_executions) == 1
 
+def test_execution_workflow_with_maptask_over_lp(register):
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    d: typing.List[int] = [1, 2, 3]
+    flyte_launch_plan = remote.fetch_launch_plan(name="basic.dynamic_array_map.workflow_with_map_over_lp", version=VERSION)
+    execution = remote.execute(
+        flyte_launch_plan,
+        inputs={"data": d},
+        version=VERSION,
+        wait=True,
+    )
+    assert execution.outputs["o0"] == [2, 3, 4]
+    assert "n0" in execution.node_executions
+    assert len(execution.node_executions["n0"].task_executions) == 1
+    assert execution.node_executions["n0"].task_executions[0].inputs == {"data": d}
+    assert execution.node_executions["n0"].task_executions[0].outputs == {"o0": [2, 3, 4]}
+
 
 def test_executes_nested_workflow_dictating_interruptible(register):
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
