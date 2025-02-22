@@ -63,13 +63,10 @@ from flytekit.models import literals as _literal_models
 from flytekit.models import task as task_models
 from flytekit.models.admin import common as admin_common_models
 from flytekit.models.admin import workflow as admin_workflow_models
-from flytekit.models.filters import ValueIn, ValueNotIn
+from flytekit.models.filters import ValueIn
 from flytekit.models.literals import LiteralMap
 from flytekit.models.security import Secret
 from flytekit.utils.asyn import loop_manager
-
-if typing.TYPE_CHECKING:
-    pass
 
 T = TypeVar("T")
 
@@ -650,6 +647,8 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
         from flytekit.core.workflow import ImperativeWorkflow
 
         cleanup = EagerFailureHandlerTask(name=f"{self.name}-cleanup", inputs=self.python_interface.inputs)
+        # todo: remove this before merging
+        #   this is actually bad, but useful for developing
         cleanup._container_image = self._container_image
         wb = ImperativeWorkflow(name=self.name)
 
@@ -696,11 +695,12 @@ class EagerFailureTaskResolver(TaskResolverMixin):
 eager_failure_task_resolver = EagerFailureTaskResolver()
 
 
-class EagerFailureHandlerTask(PythonAutoContainerTask):
+class EagerFailureHandlerTask(PythonAutoContainerTask, metaclass=FlyteTrackedABC):
     _TASK_TYPE = "eager_failure_handler_task"
 
-    def __init__(self, name: str, inputs: typing.Dict[str, typing.Type] = None, **kwargs):
+    def __init__(self, name: str, inputs: typing.Optional[typing.Dict[str, typing.Type]] = None, **kwargs):
         """ """
+        inputs = inputs or {}
         super().__init__(
             task_type=self._TASK_TYPE,
             name=name,
@@ -719,7 +719,6 @@ class EagerFailureHandlerTask(PythonAutoContainerTask):
         This task is responsible only for ensuring that all executions are terminated.
         """
         # Recursive imports
-        print("here! 1", flush=True)
         from flytekit import current_context
         from flytekit.configuration.plugin import get_plugin
 
@@ -729,12 +728,10 @@ class EagerFailureHandlerTask(PythonAutoContainerTask):
         domain = current_exec_id.domain
         name = current_exec_id.name
         logger.info(f"Cleaning up potentially still running tasks for execution {name} in {project}/{domain}")
-        print("here! 2", flush=True)
         remote = get_plugin().get_remote(config=None, project=project, domain=domain)
         key_filter = ValueIn("execution_tag.key", ["eager-exec"])
         value_filter = ValueIn("execution_tag.value", [name])
-        phase_filter = ValueNotIn("phase", ["ABORTED", "SUCCEEDED", "FAILED", "TIMED_OUT"])
-        print("here! 3", flush=True)
+        phase_filter = ValueIn("phase", ["UNDEFINED", "QUEUED", "RUNNING"])
         # This should be made more robust, currently lacking retries and exception handling
         while True:
             exec_models, _ = remote.client.list_executions_paginated(
@@ -744,9 +741,10 @@ class EagerFailureHandlerTask(PythonAutoContainerTask):
                 filters=[key_filter, value_filter, phase_filter],
                 sort_by=most_recent,
             )
+            logger.info(f"Found {len(exec_models)} executions this round for termination")
             if not exec_models:
                 break
-            print(exec_models, flush=True)
+            logger.info(exec_models)
             for exec_model in exec_models:
                 logger.info(f"Terminating execution {exec_model.id}, phase {exec_model.closure.phase}")
                 remote.client.terminate_execution(exec_model.id, f"clean up by parent eager execution {name}")

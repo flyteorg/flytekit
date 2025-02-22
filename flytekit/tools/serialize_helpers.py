@@ -65,8 +65,6 @@ def get_registrable_entities(
                 wf = entity.get_as_workflow()
                 lp = LaunchPlan.get_default_launch_plan(ctx, wf)
                 get_serializable(new_api_serializable_entities, ctx.serialization_settings, lp, options)
-                print("EagerAsyncPythonFunctionTask")
-                print(wf)
 
     new_api_model_values = list(new_api_serializable_entities.values())
     entities_to_be_serialized = list(filter(_should_register_with_admin, new_api_model_values))

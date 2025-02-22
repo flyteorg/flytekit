@@ -1555,7 +1555,6 @@ class FlyteRemote(object):
             # and domain, which is specified in the first two arguments of client.create_execution. This is useful
             # in the case that I want to use a flyte entity from e.g. project "A" but actually execute the entity on a
             # different project "B". For now, this method doesn't support this use case.
-            print(f"In _execute options {options}")
 
             exec_id = self.client.create_execution(
                 project or self.default_project,
@@ -1700,7 +1699,6 @@ class FlyteRemote(object):
             The ``name`` and ``version`` arguments do not apply to ``FlyteTask``, ``FlyteLaunchPlan``, and
             ``FlyteWorkflow`` entity inputs. These values are determined by referencing the entity identifier values.
         """
-        print(f"remote.execute Options: {options}")
         if entity.python_interface:
             type_hints = type_hints or entity.python_interface.inputs
         if isinstance(entity, FlyteTask) or isinstance(entity, FlyteLaunchPlan):
