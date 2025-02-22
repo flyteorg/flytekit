@@ -32,7 +32,7 @@ def test_slurm_task():
         script=script_file
         )
     )
-    def plus_one(x: int) -> int: 
+    def plus_one(x: int) -> int:
         return x + 1
 
     assert plus_one.task_config is not None
@@ -53,5 +53,3 @@ def test_slurm_task():
     assert retrieved_settings["ssh_config"] == {"host": "your-slurm-host", "username": "ubuntu"}
     assert retrieved_settings["sbatch_conf"] == {"partition": "debug", "job-name": "tiny-slurm", "output": "/home/ubuntu/fn_task.log"}
     assert retrieved_settings["script"] == script_file
-
-    
