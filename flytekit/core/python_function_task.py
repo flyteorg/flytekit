@@ -20,6 +20,7 @@ from __future__ import annotations
 import inspect
 import os
 import signal
+import time
 import typing
 from abc import ABC
 from collections import OrderedDict
@@ -60,8 +61,11 @@ from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as task_models
+from flytekit.models.admin import common as admin_common_models
 from flytekit.models.admin import workflow as admin_workflow_models
+from flytekit.models.filters import ValueIn, ValueNotIn
 from flytekit.models.literals import LiteralMap
+from flytekit.models.security import Secret
 from flytekit.utils.asyn import loop_manager
 
 if typing.TYPE_CHECKING:
@@ -708,6 +712,7 @@ class EagerFailureHandlerTask(PythonAutoContainerTask):
             interface=Interface(inputs=inputs, outputs=None),
             task_config=None,
             task_resolver=eager_failure_task_resolver,
+            secret_requests=[Secret(key="EAGER_API_KEY")],  # todo: remove this before merging
             **kwargs,
         )
 
@@ -716,33 +721,36 @@ class EagerFailureHandlerTask(PythonAutoContainerTask):
         from flytekit import current_context
         from flytekit.configuration.plugin import get_plugin
 
-        # move
-        from flytekit.models.admin import common as admin_common_models
-        from flytekit.models.filters import ValueIn
-
         most_recent = admin_common_models.Sort("created_at", admin_common_models.Sort.Direction.DESCENDING)
         current_exec_id = current_context().execution_id
         project = current_exec_id.project
         domain = current_exec_id.domain
         name = current_exec_id.name
-        print(f"Execution ID: {current_exec_id}")
         logger.info(f"Cleaning up potentially still running tasks for execution {name} in {project}/{domain}")
 
-        remote = get_plugin().get_remote(
-            config=None, project=project, domain=domain
-        )
-        limit = 100
+        remote = get_plugin().get_remote(config=None, project=project, domain=domain)
         key_filter = ValueIn("execution_tag.key", ["eager-exec"])
-        exec_models, _ = remote.client.list_executions_paginated(
-            project,
-            domain,
-            limit,
-            filters=[key_filter],
-            sort_by=most_recent,
-        )
-        print(exec_models)
+        # todo: add value filter
+        value_filter = ValueIn("execution_tag.key", ["eager-exec"])
+        phase_filter = ValueNotIn("phase", ["ABORTED", "SUCCEEDED", "FAILED", "TIMED_OUT"])
+        # This should be made more robust, currently lacking retries and exception handling
+        while True:
+            exec_models, _ = remote.client.list_executions_paginated(
+                project,
+                domain,
+                limit=100,
+                filters=[key_filter, value_filter, phase_filter],
+                sort_by=most_recent,
+            )
+            if not exec_models:
+                break
+            print(exec_models)
+            for exec_model in exec_models:
+                logger.info(f"Terminating execution {exec_model.id}, phase {exec_model.closure.phase}")
+                remote.client.terminate_execution(exec_model.id)
+            time.sleep(0.5)
 
-        # Just echo it back.
+        # Just echo back
         return input_literal_map
 
     def execute(self, **kwargs) -> Any:
