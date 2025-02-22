@@ -65,6 +65,8 @@ async def ssh_connect(ssh_config: Dict[str, Any]) -> SSHClientConnection:
     """
     # Validate ssh_config
     ssh_config = SSHConfig.from_dict(ssh_config).to_dict()
+    # This is required to avoid the error "asyncssh.misc.HostKeyNotVerifiable" when connecting to a new host.
+    ssh_config["known_hosts"] = None
 
     # Make the first SSH connection using either OpenSSH client config files or
     # a user-defined private key. If using OpenSSH config, it will attempt to
