@@ -727,7 +727,7 @@ class EagerFailureHandlerTask(PythonAutoContainerTask, metaclass=FlyteTrackedABC
         project = current_exec_id.project
         domain = current_exec_id.domain
         name = current_exec_id.name
-        logger.info(f"Cleaning up potentially still running tasks for execution {name} in {project}/{domain}")
+        logger.warning(f"Cleaning up potentially still running tasks for execution {name} in {project}/{domain}")
         remote = get_plugin().get_remote(config=None, project=project, domain=domain)
         key_filter = ValueIn("execution_tag.key", ["eager-exec"])
         value_filter = ValueIn("execution_tag.value", [name])
@@ -741,12 +741,12 @@ class EagerFailureHandlerTask(PythonAutoContainerTask, metaclass=FlyteTrackedABC
                 filters=[key_filter, value_filter, phase_filter],
                 sort_by=most_recent,
             )
-            logger.info(f"Found {len(exec_models)} executions this round for termination")
+            logger.warning(f"Found {len(exec_models)} executions this round for termination")
             if not exec_models:
                 break
-            logger.info(exec_models)
+            logger.warning(exec_models)
             for exec_model in exec_models:
-                logger.info(f"Terminating execution {exec_model.id}, phase {exec_model.closure.phase}")
+                logger.warning(f"Terminating execution {exec_model.id}, phase {exec_model.closure.phase}")
                 remote.client.terminate_execution(exec_model.id, f"clean up by parent eager execution {name}")
             time.sleep(0.5)
 
