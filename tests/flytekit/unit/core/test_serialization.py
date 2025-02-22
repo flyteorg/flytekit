@@ -1077,6 +1077,34 @@ def test_positional_args_workflow():
     assert wf_pure_positional_args() == ret
     assert wf_mixed_positional_and_keyword_args() == ret
 
+
+def test_positional_args_workflow_extra_args_or_kwargs():
+    arg1 = 5
+    arg2 = 6
+    ret = 17
+
+    @task
+    def t1(x: int, y: int) -> int:
+        return x + y * 2
+
+    @workflow
+    def sub_wf(x: int, y: int) -> int:
+        return t1(x=x, y=y)
+
+    @workflow
+    def wf_pure_args_extra_args() -> int:
+        return sub_wf(arg1, arg2, arg2)
+
+    @workflow
+    def wf_mixed_positional_and_keyword_args_extra_args() -> int:
+        return sub_wf(arg1, arg2, y=arg2)
+
+    with pytest.raises(AssertionError, match="Received more arguments than expected in function 'tests.flytekit.unit.core.test_serialization.sub_wf'. Expected 2 but got 3"):
+        wf_pure_args_extra_args()
+
+    with pytest.raises(AssertionError, match="Got multiple values for argument 'y' in function 'tests.flytekit.unit.core.test_serialization.sub_wf'"):
+        wf_mixed_positional_and_keyword_args_extra_args()
+
 def test_positional_args_chained_tasks():
     @task
     def t1(x: int, y: int) -> int:
