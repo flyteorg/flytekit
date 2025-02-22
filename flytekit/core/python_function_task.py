@@ -730,8 +730,7 @@ class EagerFailureHandlerTask(PythonAutoContainerTask):
 
         remote = get_plugin().get_remote(config=None, project=project, domain=domain)
         key_filter = ValueIn("execution_tag.key", ["eager-exec"])
-        # todo: add value filter
-        value_filter = ValueIn("execution_tag.key", ["eager-exec"])
+        value_filter = ValueIn("execution_tag.value", [name])
         phase_filter = ValueNotIn("phase", ["ABORTED", "SUCCEEDED", "FAILED", "TIMED_OUT"])
         # This should be made more robust, currently lacking retries and exception handling
         while True:
