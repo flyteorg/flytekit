@@ -1,36 +1,9 @@
-from flytekit.core.python_function_task import EagerFailureHandlerTask
-import re
-import os
-import typing
 from collections import OrderedDict
 
-import mock
-import pytest
-
 import flytekit.configuration
-from flytekit import ContainerTask, ImageSpec, kwtypes
-from flytekit.configuration import Image, ImageConfig, SerializationSettings
-from flytekit.core.condition import conditional
-from flytekit.core.python_auto_container import get_registerable_container_image
-from flytekit.core.task import task
-from flytekit.core.workflow import workflow
-from flytekit.exceptions.user import FlyteAssertion, FlyteMissingTypeException
-from flytekit.image_spec.image_spec import ImageBuildEngine
-from flytekit.models.admin.workflow import WorkflowSpec
-from flytekit.models.annotation import TypeAnnotation
-from flytekit.models.literals import (
-    BindingData,
-    BindingDataCollection,
-    BindingDataMap,
-    Literal,
-    Primitive,
-    Scalar,
-    Union,
-    Void,
-)
-from flytekit.models.types import LiteralType, SimpleType, TypeStructure, UnionType
+from flytekit.configuration import Image, ImageConfig
+from flytekit.core.python_function_task import EagerFailureHandlerTask
 from flytekit.tools.translator import get_serializable
-from flytekit.types.error.error import FlyteError
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = flytekit.configuration.SerializationSettings(
@@ -43,7 +16,7 @@ serialization_settings = flytekit.configuration.SerializationSettings(
 
 
 def test_failure():
-    t = EagerFailureHandlerTask(inputs={"a": int})
+    t = EagerFailureHandlerTask(name="tester", inputs={"a": int})
 
     spec = get_serializable(OrderedDict(), serialization_settings, t)
     print(spec)

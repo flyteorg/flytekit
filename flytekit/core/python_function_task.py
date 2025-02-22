@@ -707,7 +707,7 @@ class EagerFailureHandlerTask(PythonAutoContainerTask, metaclass=FlyteTrackedABC
             interface=Interface(inputs=inputs, outputs=None),
             task_config=None,
             task_resolver=eager_failure_task_resolver,
-            secret_requests=[Secret(key="EAGER_API_KEY")],  # todo: remove this before merging
+            secret_requests=[Secret(group="", key="EAGER_API_KEY")],  # todo: remove this before merging
             **kwargs,
         )
 
