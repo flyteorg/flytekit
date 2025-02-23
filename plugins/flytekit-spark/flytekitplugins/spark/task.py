@@ -10,7 +10,7 @@ from google.protobuf.json_format import MessageToDict
 from flytekit import FlyteContextManager, PythonFunctionTask, lazy_module, logger
 from flytekit.configuration import DefaultImages, SerializationSettings
 from flytekit.core.context_manager import ExecutionParameters
-from flytekit.core.pod_template import PodTemplate
+from flytekit.core.pod_template import PRIMARY_CONTAINER_DEFAULT_NAME, PodTemplate
 from flytekit.extend import ExecutionState, TaskPlugins
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 from flytekit.image_spec import ImageSpec
@@ -190,6 +190,18 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
         """
         if pod_template is None:
             return None
+
+        task_primary_container_name = (
+            self.pod_template.primary_container_name if self.pod_template else PRIMARY_CONTAINER_DEFAULT_NAME
+        )
+
+        if pod_template.primary_container_name != task_primary_container_name:
+            logger.warning(
+                "Primary container name ('%s') set in spark differs from the one in @task ('%s'). "
+                "The primary container name in @task will be overridden.",
+                pod_template.primary_container_name,
+                task_primary_container_name,
+            )
 
         return K8sPod.from_pod_template(pod_template)
 
