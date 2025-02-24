@@ -28,7 +28,7 @@ class TaskExecutionMetadata(_common.FlyteIdlEntity):
     @classmethod
     def from_flyte_idl(cls, proto):
         """
-        :param flyteidl.event.TaskExecutionMetadata proto:
+        :param flyteidl.event.event_pb2.TaskExecutionMetadata proto:
         :rtype: TaskExecutionMetadata
         """
         return cls(

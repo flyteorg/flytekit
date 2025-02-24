@@ -12,7 +12,6 @@ from flytekit.models import common as _common
 from flytekit.models import interface as _interface
 from flytekit.models import types as type_models
 from flytekit.models.core import condition as _condition
-from flytekit.models.core import identifier
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.literals import Binding as _Binding
 from flytekit.models.literals import RetryStrategy as _RetryStrategy
@@ -745,7 +744,7 @@ class WorkflowNode(_common.FlyteIdlEntity):
         self._sub_workflow_ref = sub_workflow_ref
 
     @property
-    def launchplan_ref(self) -> identifier.Identifier:
+    def launchplan_ref(self):
         """
         [Optional] A globally unique identifier for the launch plan.  Should map to Admin.
 

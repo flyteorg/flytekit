@@ -367,7 +367,7 @@ class FlyteArrayNode(_workflow_model.ArrayNode):
         cls,
         model: _workflow_model.ArrayNode,
         flyte_node: FlyteNode,
-    ) -> FlyteArrayNode:
+    ):
         return cls(
             flyte_node=flyte_node,
             parallelism=model._parallelism,
