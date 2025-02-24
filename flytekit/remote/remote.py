@@ -497,6 +497,15 @@ class FlyteRemote(object):
                     lp_ref = node.workflow_node.launchplan_ref
                     find_launch_plan(lp_ref, node_launch_plans)
 
+                # Inspect array nodes for launch plans
+                if (
+                    node.array_node is not None
+                    and node.array_node.node.workflow_node is not None
+                    and node.array_node.node.workflow_node.launchplan_ref is not None
+                ):
+                    lp_ref = node.array_node.node.workflow_node.launchplan_ref
+                    find_launch_plan(lp_ref, node_launch_plans)
+
                 # Inspect conditional branch nodes for launch plans
                 def get_launch_plan_from_branch(
                     branch_node: BranchNode, node_launch_plans: Dict[id_models, launch_plan_models.LaunchPlanSpec]
@@ -2619,7 +2628,7 @@ class FlyteRemote(object):
             if execution._node.array_node.node.task_node is not None:
                 t = execution._node.flyte_entity.flyte_node.task_node.flyte_task
                 execution._task_executions = [
-                    self.sync_task_execution(FlyteTaskExecution.promote_from_model(task_execution), t)
+                    self.sync_task_execution(FlyteTaskExecution.promote_from_model(task_execution), t.interface)
                     for task_execution in iterate_task_executions(self.client, execution.id)
                 ]
                 if t.interface:
@@ -2627,6 +2636,20 @@ class FlyteRemote(object):
                 else:
                     logger.error(f"Fetched map task does not have an interface, skipping i/o {t}")
                     return execution
+            elif execution._node.array_node.node.workflow_node is not None:
+                launch_plan_id = execution._node.array_node.node.workflow_node.launchplan_ref
+                launch_plan = self.fetch_launch_plan(
+                    launch_plan_id.project, launch_plan_id.domain, launch_plan_id.name, launch_plan_id.version
+                )
+                task_execution_interface = launch_plan.interface.transform_interface_to_list()
+                execution._task_executions = [
+                    self.sync_task_execution(
+                        FlyteTaskExecution.promote_from_model(task_execution), task_execution_interface
+                    )
+                    for task_execution in iterate_task_executions(self.client, execution.id)
+                ]
+                execution._interface = task_execution_interface
+                return execution
             else:
                 logger.error("Array node not over task, skipping i/o")
                 return execution
@@ -2640,7 +2663,7 @@ class FlyteRemote(object):
         else:
             execution._task_executions = [
                 self.sync_task_execution(
-                    FlyteTaskExecution.promote_from_model(t), node_mapping[node_id].task_node.flyte_task
+                    FlyteTaskExecution.promote_from_model(t), node_mapping[node_id].task_node.flyte_task.interface
                 )
                 for t in iterate_task_executions(self.client, execution.id)
             ]
@@ -2655,15 +2678,16 @@ class FlyteRemote(object):
         return execution
 
     def sync_task_execution(
-        self, execution: FlyteTaskExecution, entity_definition: typing.Optional[FlyteTask] = None
+        self, execution: FlyteTaskExecution, entity_interface: typing.Optional[TypedInterface] = None
     ) -> FlyteTaskExecution:
         """Sync a FlyteTaskExecution object with its corresponding remote state."""
         execution._closure = self.client.get_task_execution(execution.id).closure
         execution_data = self.client.get_task_execution_data(execution.id)
         task_id = execution.id.task_id
-        if entity_definition is None:
+        if entity_interface is None:
             entity_definition = self.fetch_task(task_id.project, task_id.domain, task_id.name, task_id.version)
-        return self._assign_inputs_and_outputs(execution, execution_data, entity_definition.interface)
+            entity_interface = entity_definition.interface
+        return self._assign_inputs_and_outputs(execution, execution_data, entity_interface)
 
     #############################
     # Terminate Execution State #
