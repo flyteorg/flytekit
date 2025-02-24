@@ -146,7 +146,7 @@ class Node(object):
 
         if timeout is not Node.TIMEOUT_OVERRIDE_SENTINEL:
             if timeout is None:
-                node_metadata._timeout = 0
+                node_metadata._timeout = datetime.timedelta()
             elif isinstance(timeout, int):
                 node_metadata._timeout = datetime.timedelta(seconds=timeout)
             elif isinstance(timeout, datetime.timedelta):

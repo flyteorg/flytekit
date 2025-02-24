@@ -309,7 +309,7 @@ preset_timeout = datetime.timedelta(seconds=100)
     "timeout,t1_expected_timeout_overridden, t1_expected_timeout_unset, t2_expected_timeout_overridden, "
     "t2_expected_timeout_unset",
     [
-        (None, 0, 0, 0, preset_timeout),
+        (None, datetime.timedelta(0), 0, datetime.timedelta(0), preset_timeout),
         (10, datetime.timedelta(seconds=10), 0,
          datetime.timedelta(seconds=10), preset_timeout)
     ],
