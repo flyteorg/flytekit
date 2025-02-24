@@ -303,18 +303,42 @@ def test_resources_override():
     ]
 
 
+preset_timeout = datetime.timedelta(seconds=100)
+
+
 @pytest.mark.parametrize(
-    "timeout,expected",
-    [(None, datetime.timedelta()), (10, datetime.timedelta(seconds=10))],
+    "timeout,t1_expected_timeout_overridden, t1_expected_timeout_unset, t2_expected_timeout_overridden, "
+    "t2_expected_timeout_unset",
+    [
+        (None, datetime.timedelta(0), 0, datetime.timedelta(0), preset_timeout),
+        (10, datetime.timedelta(seconds=10), 0,
+         datetime.timedelta(seconds=10), preset_timeout)
+    ],
 )
-def test_timeout_override(timeout, expected):
+def test_timeout_override(
+        timeout,
+        t1_expected_timeout_overridden,
+        t1_expected_timeout_unset,
+        t2_expected_timeout_overridden,
+        t2_expected_timeout_unset,
+    ):
     @task
     def t1(a: str) -> str:
         return f"*~*~*~{a}*~*~*~"
 
+    @task(
+        timeout=preset_timeout
+    )
+    def t2(a: str) -> str:
+        return f"*~*~*~{a}*~*~*~"
+
     @workflow
     def my_wf(a: str) -> str:
-        return t1(a=a).with_overrides(timeout=timeout)
+        s = t1(a=a).with_overrides(timeout=timeout)
+        s1 = t1(a=s).with_overrides()
+        s2 = t2(a=s1).with_overrides(timeout=timeout)
+        s3 = t2(a=s2).with_overrides()
+        return s3
 
     serialization_settings = flytekit.configuration.SerializationSettings(
         project="test_proj",
@@ -324,8 +348,11 @@ def test_timeout_override(timeout, expected):
         env={},
     )
     wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
-    assert len(wf_spec.template.nodes) == 1
-    assert wf_spec.template.nodes[0].metadata.timeout == expected
+    assert len(wf_spec.template.nodes) == 4
+    assert wf_spec.template.nodes[0].metadata.timeout == t1_expected_timeout_overridden
+    assert wf_spec.template.nodes[1].metadata.timeout == t1_expected_timeout_unset
+    assert wf_spec.template.nodes[2].metadata.timeout == t2_expected_timeout_overridden
+    assert wf_spec.template.nodes[3].metadata.timeout == t2_expected_timeout_unset
 
 
 def test_timeout_override_invalid_value():
