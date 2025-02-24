@@ -12,6 +12,7 @@ from flytekit.models import common as _common
 from flytekit.models import interface as _interface
 from flytekit.models import types as type_models
 from flytekit.models.core import condition as _condition
+from flytekit.models.core import identifier
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.literals import Binding as _Binding
 from flytekit.models.literals import RetryStrategy as _RetryStrategy
@@ -642,22 +643,21 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
         return self._pod_template
 
     def to_flyte_idl(self):
+        pod_template_override = None
+        if self.pod_template is not None:
+            pod_template_override = tasks_pb2.K8sPod(
+                metadata=K8sObjectMetadata(
+                    labels=self.pod_template.labels,
+                    annotations=self.pod_template.annotations,
+                ).to_flyte_idl(),
+                pod_spec=json_format.Parse(json.dumps(self.pod_template.pod_spec), struct_pb2.Struct()),
+                primary_container_name=self.pod_template.primary_container_name,
+            )
         return _core_workflow.TaskNodeOverrides(
             resources=self.resources.to_flyte_idl() if self.resources is not None else None,
             extended_resources=self.extended_resources,
             container_image=self.container_image,
-            pod_template=tasks_pb2.K8sPod(
-                metadata=K8sObjectMetadata(
-                    labels=self.pod_template.labels if self.pod_template else None,
-                    annotations=self.pod_template.annotations if self.pod_template else None,
-                ).to_flyte_idl()
-                if self.pod_template is not None
-                else None,
-                pod_spec=json_format.Parse(json.dumps(self.pod_template.pod_spec), struct_pb2.Struct())
-                if self.pod_template
-                else None,
-                primary_container_name=self.pod_template.primary_container_name if self.pod_template else None,
-            ),
+            pod_template=pod_template_override,
         )
 
     @classmethod
@@ -665,9 +665,20 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
         resources = Resources.from_flyte_idl(pb2_object.resources)
         extended_resources = pb2_object.extended_resources if pb2_object.HasField("extended_resources") else None
         container_image = pb2_object.container_image if len(pb2_object.container_image) > 0 else None
+        pod_template = pb2_object.pod_template if pb2_object.HasField("pod_template") else None
         if bool(resources.requests) or bool(resources.limits):
-            return cls(resources=resources, extended_resources=extended_resources, container_image=container_image)
-        return cls(resources=None, extended_resources=extended_resources, container_image=container_image)
+            return cls(
+                resources=resources,
+                extended_resources=extended_resources,
+                container_image=container_image,
+                pod_template=pod_template,
+            )
+        return cls(
+            resources=None,
+            extended_resources=extended_resources,
+            container_image=container_image,
+            pod_template=pod_template,
+        )
 
 
 class TaskNode(_common.FlyteIdlEntity):
@@ -734,7 +745,7 @@ class WorkflowNode(_common.FlyteIdlEntity):
         self._sub_workflow_ref = sub_workflow_ref
 
     @property
-    def launchplan_ref(self):
+    def launchplan_ref(self) -> identifier.Identifier:
         """
         [Optional] A globally unique identifier for the launch plan.  Should map to Admin.
 

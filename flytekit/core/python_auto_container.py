@@ -5,6 +5,7 @@ import re
 from abc import ABC
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, TypeVar, Union
+from typing import Literal as L
 
 from flyteidl.core import tasks_pb2
 
@@ -13,7 +14,7 @@ from flytekit.constants import CopyFileDetection
 from flytekit.core.base_task import PythonTask, TaskMetadata, TaskResolverMixin
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.pod_template import PodTemplate
-from flytekit.core.resources import Resources, ResourceSpec
+from flytekit.core.resources import Resources, ResourceSpec, construct_extended_resources
 from flytekit.core.tracked_abc import FlyteTrackedABC
 from flytekit.core.tracker import TrackedInstance, extract_task_module
 from flytekit.core.utils import _get_container_definition, _serialize_pod_spec, timeit
@@ -51,6 +52,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         pod_template: Optional[PodTemplate] = None,
         pod_template_name: Optional[str] = None,
         accelerator: Optional[BaseAccelerator] = None,
+        shared_memory: Optional[Union[L[True], str]] = None,
         **kwargs,
     ):
         """
@@ -78,6 +80,8 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         :param pod_template: Custom PodTemplate for this task.
         :param pod_template_name: The name of the existing PodTemplate resource which will be used in this task.
         :param accelerator: The accelerator to use for this task.
+        :param shared_memory: If True, then shared memory will be attached to the container where the size is equal
+            to the allocated memory. If str, then the shared memory is set to that size.
         """
         sec_ctx = None
         if secret_requests:
@@ -128,6 +132,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
 
         self.pod_template = pod_template
         self.accelerator = accelerator
+        self.shared_memory = shared_memory
 
     @property
     def task_resolver(self) -> TaskResolverMixin:
@@ -252,10 +257,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         """
         Returns the extended resources to allocate to the task on hosted Flyte.
         """
-        if self.accelerator is None:
-            return None
-
-        return tasks_pb2.ExtendedResources(gpu_accelerator=self.accelerator.to_flyte_idl())
+        return construct_extended_resources(accelerator=self.accelerator, shared_memory=self.shared_memory)
 
 
 class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):

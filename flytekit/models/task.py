@@ -9,7 +9,6 @@ from flyteidl.core import tasks_pb2 as _core_task
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 from google.protobuf.wrappers_pb2 import BoolValue
-from kubernetes.client import ApiClient
 
 from flytekit.models import common as _common
 from flytekit.models import interface as _interface
@@ -1078,6 +1077,8 @@ class K8sPod(_common.FlyteIdlEntity):
 
     @classmethod
     def from_pod_template(cls, pod_template: "PodTemplate") -> "K8sPod":
+        from kubernetes.client import ApiClient
+
         return cls(
             metadata=K8sObjectMetadata(labels=pod_template.labels, annotations=pod_template.annotations),
             pod_spec=ApiClient().sanitize_for_serialization(pod_template.pod_spec),
