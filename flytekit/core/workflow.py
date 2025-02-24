@@ -294,9 +294,24 @@ class WorkflowBase(object):
         Workflow needs to fill in default arguments before invoking the call handler.
         """
         # Get default arguments and override with kwargs passed in
-        input_kwargs = self.python_interface.default_inputs_as_kwargs
+        interface = self.python_interface
+        input_kwargs = interface.default_inputs_as_kwargs
+
+        if len(args) > len(interface.inputs):
+            raise AssertionError(
+                f"Received more arguments than expected in function '{self.name}'. Expected {len(interface.inputs)} but got {len(args)}"
+            )
+        if len(input_kwargs) != 0:
+            for _, input_name in zip(args, interface.inputs.keys()):
+                if input_name in input_kwargs:
+                    # delete the default value if provide args
+                    del input_kwargs[input_name]
+
         input_kwargs.update(kwargs)
-        self.compile()
+        ctx = FlyteContext.current_context()
+        # todo: remove this conditional once context manager is thread safe
+        if not (ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.EAGER_EXECUTION):
+            self.compile()
         try:
             return flyte_entity_call_handler(self, *args, **input_kwargs)
         except Exception as exc:

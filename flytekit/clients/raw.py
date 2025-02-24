@@ -3,7 +3,7 @@ from __future__ import annotations
 import typing
 
 import grpc
-from flyteidl.admin.project_pb2 import ProjectListRequest
+from flyteidl.admin.project_pb2 import GetDomainRequest, ProjectListRequest
 from flyteidl.admin.signal_pb2 import SignalList, SignalListRequest, SignalSetRequest, SignalSetResponse
 from flyteidl.service import admin_pb2_grpc as _admin_service
 from flyteidl.service import dataproxy_pb2 as _dataproxy_pb2
@@ -519,6 +519,21 @@ class RawSynchronousFlyteClient(object):
         :rtype: flyteidl.admin.project_pb2.ProjectUpdateResponse
         """
         return self._stub.UpdateProject(project, metadata=self._metadata)
+
+    ####################################################################################################################
+    #
+    #  Domain Endpoints
+    #
+    ####################################################################################################################
+
+    def get_domains(self):
+        """
+        This will return a list of domains registered with the Flyte Admin Service
+        :param flyteidl.admin.project_pb2.GetDomainRequest get_domain_request:
+        :rtype: flyteidl.admin.project_pb2.GetDomainsResponse
+        """
+        get_domain_request = GetDomainRequest()
+        return self._stub.GetDomains(get_domain_request, metadata=self._metadata)
 
     ####################################################################################################################
     #

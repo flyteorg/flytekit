@@ -19,11 +19,12 @@ my_plugin = "my_module:MyCustomPlugin"
 """
 
 import os
-from typing import Optional, Protocol, runtime_checkable
+from typing import List, Optional, Protocol, runtime_checkable
 
 from click import Group
 from importlib_metadata import entry_points
 
+from flytekit import CachePolicy
 from flytekit.configuration import Config, get_config_file
 from flytekit.loggers import logger
 from flytekit.remote import FlyteRemote
@@ -52,6 +53,10 @@ class FlytekitPluginProtocol(Protocol):
     @staticmethod
     def get_auth_success_html(endpoint: str) -> Optional[str]:
         """Get default success html for auth. Return None to use flytekit's default success html."""
+
+    @staticmethod
+    def get_default_cache_policies() -> List[CachePolicy]:
+        """Get default cache policies for tasks."""
 
 
 class FlytekitPlugin:
@@ -102,6 +107,11 @@ class FlytekitPlugin:
     def get_auth_success_html(endpoint: str) -> Optional[str]:
         """Get default success html. Return None to use flytekit's default success html."""
         return None
+
+    @staticmethod
+    def get_default_cache_policies() -> List[CachePolicy]:
+        """Get default cache policies for tasks."""
+        return []
 
 
 def _get_plugin_from_entrypoint():
