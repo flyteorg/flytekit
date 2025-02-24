@@ -40,7 +40,7 @@ from flytekit.tools.repo import NoSerializableEntitiesError, serialize_and_packa
     required=False,
     type=click.Path(exists=True, file_okay=False, readable=True, resolve_path=True, allow_dash=True),
     default=".",
-    help="Local filesystem path to the root of the package.",
+    help="Local filesystem path to the root of the package. Example: --source /path/to/workflows",
 )
 @click.option(
     "-o",
@@ -129,6 +129,20 @@ def package(
     For workflows, one pb file is produced for each workflow, representing a WorkflowClosure object. The closure
     object contains the WorkflowTemplate, along with the relevant tasks for that workflow.
     This serialization step will set the name of the tasks to the fully qualified name of the task function.
+
+    Given a Python package containing Flyte entities with a structure like this ...
+
+    .
+    └── some_package
+        ├── __init__.py
+        └── some_module
+            ├── __init__.py
+            └── wf.py
+
+    ... you can package the Flyte entities contained in this Python package by executing the following command:
+    pyflyte --pkgs some_package package
+
+    This command parses and compiles the user's Python code into Flyte protobuf objects that can be registered with the backend.
     """
     # Ensure that the two flags are consistent
     if fast:
