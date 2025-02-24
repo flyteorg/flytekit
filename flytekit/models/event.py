@@ -4,10 +4,11 @@ from flytekit.models import common as _common
 
 
 class TaskExecutionMetadata(_common.FlyteIdlEntity):
-    def __init__(self, external_resources):
-        """
-        :param google.protobuf.internal.containers.RepeatedCompositeFieldContainer external_resources:
-        """
+    """
+    :param google.protobuf.internal.containers.RepeatedCompositeFieldContainer external_resources:
+    """
+
+    def __init__(self, external_resources=None):
         self._external_resources = external_resources
 
     @property
