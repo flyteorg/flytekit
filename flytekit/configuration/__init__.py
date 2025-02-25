@@ -638,6 +638,25 @@ class AzureBlobStorageConfig(object):
         kwargs = set_if_exists(kwargs, "client_secret", _internal.AZURE.CLIENT_SECRET.read(config_file))
         return AzureBlobStorageConfig(**kwargs)
 
+@dataclass(init=True, repr=True, eq=True, frozen=True)
+class ImageBuilderConfig(object):
+    """
+    Any GCS specific configuration.
+    """
+
+    name: str = ""
+    uv_image: str = "ghcr.io/astral-sh/uv:0.5.1"
+    micromamba: str = "mambaorg/micromamba:2.0.3-debian12-slim"
+
+    @classmethod
+    def auto(cls, config_file: typing.Union[str, ConfigFile] = None) -> GCSConfig:
+        config_file = get_config_file(config_file)
+        kwargs = {}
+        kwargs = set_if_exists(kwargs, "name", _internal.Local.IMAGE_BUILDER_NAME.read(config_file))
+        kwargs = set_if_exists(kwargs, "uv_image", _internal.Local.UV_IMAGE.read(config_file))
+        kwargs = set_if_exists(kwargs, "micromamba", _internal.Local.MICROMAMBA.read(config_file))
+        return ImageBuilderConfig(**kwargs)
+
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
 class DataConfig(object):
@@ -651,6 +670,8 @@ class DataConfig(object):
     gcs: GCSConfig = GCSConfig()
     azure: AzureBlobStorageConfig = AzureBlobStorageConfig()
     generic: GenericPersistenceConfig = GenericPersistenceConfig()
+    image_builder: ImageBuilderConfig = ImageBuilderConfig()
+
 
     @classmethod
     def auto(cls, config_file: typing.Union[str, ConfigFile] = None) -> DataConfig:
@@ -660,6 +681,7 @@ class DataConfig(object):
             s3=S3Config.auto(config_file),
             gcs=GCSConfig.auto(config_file),
             generic=GenericPersistenceConfig.auto(config_file),
+            image_builder=ImageBuilderConfig.auto(config_file),
         )
 
 

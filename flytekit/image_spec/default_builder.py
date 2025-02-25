@@ -93,8 +93,8 @@ id=micromamba \
 
 DOCKER_FILE_TEMPLATE = Template("""\
 #syntax=docker/dockerfile:1.5
-FROM ghcr.io/astral-sh/uv:0.5.1 as uv
-FROM mambaorg/micromamba:2.0.3-debian12-slim as micromamba
+FROM $UV_IMAGE as uv
+FROM $MICROMAMBA as micromamba
 
 FROM $BASE_IMAGE
 
@@ -313,6 +313,13 @@ def prepare_python_executable(image_spec: ImageSpec) -> _PythonInstallTemplate:
 def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
     """Populate tmp_dir with Dockerfile as specified by the `image_spec`."""
     base_image = image_spec.base_image or "debian:bookworm-slim"
+    from flytekit.configuration import DataConfig
+    data_config = DataConfig().auto()
+
+
+    image_builder_uv = data_config.image_builder.uv_image
+    image_builder_micromamba = data_config.image_builder.micromamba
+
 
     if image_spec.cuda is not None or image_spec.cudnn is not None:
         msg = (
@@ -416,6 +423,8 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
         ENTRYPOINT=entrypoint,
         RUN_COMMANDS=run_commands,
         EXTRA_COPY_CMDS=extra_copy_cmds,
+        UV_IMAGE = image_builder_uv,
+        MICROMAMBA=image_builder_micromamba,
     )
 
     dockerfile_path = tmp_dir / "Dockerfile"
