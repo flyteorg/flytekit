@@ -621,7 +621,6 @@ def get_serializable_array_node(
         execution_mode=array_node.execution_mode,
         is_original_sub_node_interface=array_node.is_original_sub_node_interface,
         data_mode=array_node.data_mode,
-        union_array_node_spec=getattr(array_node, "union_array_node_spec", None),
         fixed_inputs=array_node.fixed_inputs,
     )
 
