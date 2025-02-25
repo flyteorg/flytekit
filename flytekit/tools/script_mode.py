@@ -10,7 +10,7 @@ import sys
 import tarfile
 import tempfile
 import typing
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from types import ModuleType
 from typing import List, Optional, Tuple, Union
@@ -73,7 +73,7 @@ def compress_scripts(source_path: str, destination: str, modules: List[ModuleTyp
 def tar_strip_file_attributes(tar_info: tarfile.TarInfo) -> tarfile.TarInfo:
     # set time to epoch timestamp 0, aka 00:00:00 UTC on 1 January 1980
     # note that when extracting this tarfile, this time will be shown as the modified date
-    tar_info.mtime = datetime(1980, 1, 1).timestamp()
+    tar_info.mtime = datetime(1980, 1, 1, tzinfo=timezone.utc).timestamp()
 
     # user/group info
     tar_info.uid = 0
