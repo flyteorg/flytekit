@@ -228,6 +228,10 @@ class ArrayNode:
     def is_original_sub_node_interface(self) -> bool:
         return True
 
+    @property
+    def bound_inputs(self) -> Set[str]:
+        return set()
+
     def __call__(self, *args, **kwargs):
         if not self._bindings:
             ctx = FlyteContext.current_context()
