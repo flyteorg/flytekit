@@ -58,12 +58,16 @@ class Node(object):
         bindings: List[_literal_models.Binding],
         upstream_nodes: List[Node],
         flyte_entity: Any,
+        fixed_inputs: Optional[List[_literal_models.Binding]] = None,
     ):
         if id is None:
             raise ValueError("Illegal construction of node, without a Node ID")
+        if fixed_inputs is None:
+            fixed_inputs = []
         self._id = _dnsify(id)
         self._metadata = metadata
         self._bindings = bindings
+        self._fixed_inputs = fixed_inputs
         self._upstream_nodes = upstream_nodes
         self._flyte_entity = flyte_entity
         self._aliases: _workflow_model.Alias = None
@@ -105,6 +109,10 @@ class Node(object):
     @property
     def bindings(self) -> List[_literal_models.Binding]:
         return self._bindings
+
+    @property
+    def fixed_inputs(self) -> List[_literal_models.Binding]:
+        return self._fixed_inputs
 
     @property
     def upstream_nodes(self) -> List[Node]:
