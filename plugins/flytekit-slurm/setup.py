@@ -4,7 +4,7 @@ PLUGIN_NAME = "slurm"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>1.13.8", "flyteidl>=1.11.0b1", "asyncssh"]
+plugin_requires = ["flytekit>=1.15.0", "flyteidl>=1.15.0", "asyncssh"]
 
 __version__ = "0.0.0+develop"
 
@@ -30,6 +30,7 @@ setup(
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
         "Topic :: Scientific/Engineering",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Software Development",
