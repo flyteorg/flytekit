@@ -28,6 +28,7 @@ dependencies = [
     # Issue being tracked in https://github.com/flyteorg/flyte/issues/6082.
     "grpcio<=1.68.0",
     "grpcio-status<=1.68.0",
+    "httpx",
     "importlib-metadata",
     "joblib",
     "jsonlines",
