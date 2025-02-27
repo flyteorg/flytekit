@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 from typing import TYPE_CHECKING, Union
 
 from flytekit.core.base_task import PythonTask
@@ -10,6 +11,7 @@ from flytekit.core.promise import VoidPromise
 from flytekit.core.workflow import WorkflowBase
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.loggers import logger
+from flytekit.utils.asyn import run_sync
 
 if TYPE_CHECKING:
     from flytekit.remote.remote_callable import RemoteEntity
@@ -77,7 +79,10 @@ def create_node(
     # When compiling, calling the entity will create a node.
     ctx = FlyteContext.current_context()
     if ctx.compilation_state is not None and ctx.compilation_state.mode == 1:
-        outputs = entity(**kwargs)
+        if inspect.iscoroutinefunction(entity.__call__):
+            outputs = run_sync(entity, **kwargs)
+        else:
+            outputs = entity(**kwargs)
         # This is always the output of create_and_link_node which returns create_task_output, which can be
         # VoidPromise, Promise, or our custom namedtuple of Promises.
         node = ctx.compilation_state.nodes[-1]

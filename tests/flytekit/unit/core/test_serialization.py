@@ -549,6 +549,19 @@ def test_default_args_task_int_type():
     assert wf_with_sub_wf() == (default_val, input_val)
 
 
+def test_failure_node_naming():
+    @task
+    def t1(a: int) -> int:
+        return a
+
+    @workflow
+    def wf(a: int) -> int:
+        return t1(a=a).with_overrides(node_name="efn")
+
+    with pytest.raises(ValueError):
+        get_serializable(OrderedDict(), serialization_settings, wf)
+
+
 def test_default_args_task_str_type():
     default_val = ""
     input_val = "foo"

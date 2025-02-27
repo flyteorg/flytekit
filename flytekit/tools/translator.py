@@ -229,6 +229,10 @@ def get_serializable_workflow(
         if n.id == _common_constants.GLOBAL_INPUT_NODE_ID:
             continue
 
+        # Ensure no node is named the failure node id
+        if n.id == _common_constants.DEFAULT_FAILURE_NODE_ID:
+            raise ValueError(f"Node {n.id} is reserved for the failure node")
+
         # Recursively serialize the node
         serialized_nodes.append(get_serializable(entity_mapping, settings, n, options))
 

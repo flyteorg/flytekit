@@ -64,6 +64,8 @@ class Filter(_FlyteIdlEntity):
             return Contains._parse_from_string(string)
         elif string.startswith("value_in("):
             return ValueIn._parse_from_string(string)
+        elif string.startswith("value_not_in("):
+            return ValueNotIn._parse_from_string(string)
         else:
             raise ValueError("'{}' could not be parsed into a filter.".format(string))
 
@@ -133,3 +135,7 @@ class Contains(SetFilter):
 
 class ValueIn(SetFilter):
     _comparator = "value_in"
+
+
+class ValueNotIn(SetFilter):
+    _comparator = "value_not_in"
