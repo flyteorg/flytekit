@@ -70,6 +70,8 @@ from flytekit.utils.asyn import loop_manager
 
 T = TypeVar("T")
 
+CLEANUP_LOOP_DELAY_SECONDS = 1
+
 
 class PythonInstanceTask(PythonAutoContainerTask[T], ABC):  # type: ignore
     """
@@ -748,7 +750,7 @@ class EagerFailureHandlerTask(PythonAutoContainerTask, metaclass=FlyteTrackedABC
             for exec_model in exec_models:
                 logger.warning(f"Terminating execution {exec_model.id}, phase {exec_model.closure.phase}")
                 remote.client.terminate_execution(exec_model.id, f"clean up by parent eager execution {name}")
-            time.sleep(0.5)
+            time.sleep(CLEANUP_LOOP_DELAY_SECONDS)
 
         # Just echo back
         return input_literal_map

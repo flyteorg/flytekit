@@ -156,7 +156,7 @@ def test_imperative_with_failure():
     @task
     def t3(dc: DC) -> DC:
         if dc.string is None:
-            DC(string="default")
+            return DC(string="default")
         return DC(string=dc.string + " world")  # type: ignore[operator]
 
     wb = ImperativeWorkflow(name="my.workflow.a")
