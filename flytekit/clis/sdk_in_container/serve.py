@@ -72,6 +72,7 @@ def agent(_: click.Context, port, prometheus_port, worker, timeout, modules):
         from flytekit.extras.webhook import WebhookTask  # noqa: F401
     except ImportError:
         from flytekit import logger
+
         logger.debug("Webhook is not installed. Please install it using `pip install flytekit[agent]`")
 
     working_dir = os.getcwd()
