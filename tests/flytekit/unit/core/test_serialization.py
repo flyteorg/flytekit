@@ -556,7 +556,7 @@ def test_failure_node_naming():
 
     @workflow
     def wf(a: int) -> int:
-        return t1(a=a).with_overrides(node_name="nfail")
+        return t1(a=a).with_overrides(node_name="efn")
 
     with pytest.raises(ValueError):
         get_serializable(OrderedDict(), serialization_settings, wf)

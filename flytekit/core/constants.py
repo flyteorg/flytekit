@@ -11,7 +11,7 @@ GLOBAL_INPUT_NODE_ID = ""
 START_NODE_ID = "start-node"
 END_NODE_ID = "end-node"
 
-DEFAULT_FAILURE_NODE_ID = "nfail"
+DEFAULT_FAILURE_NODE_ID = "efn"
 
 # If set this environment variable overrides the default container image and the default base image in ImageSpec.
 FLYTE_INTERNAL_IMAGE_ENV_VAR = "FLYTE_INTERNAL_IMAGE"

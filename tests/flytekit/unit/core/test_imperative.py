@@ -189,7 +189,7 @@ def test_imperative_with_failure():
 
     node_names = [n.id for n in wf_spec.template.nodes]
     assert wf_spec.template.failure_node is not None
-    assert wf_spec.template.failure_node.id == "nfail"
+    assert wf_spec.template.failure_node.id == "efn"
 
 
 def test_imperative_with_list_io():
