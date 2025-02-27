@@ -19,7 +19,7 @@ from typing_extensions import Annotated, get_origin
 
 import flytekit
 import flytekit.configuration
-from flytekit import Secret, SQLTask, dynamic, kwtypes, map_task
+from flytekit import Secret, SQLTask, dynamic, kwtypes, map
 from flytekit.configuration import FastSerializationSettings, Image, ImageConfig
 from flytekit.core import context_manager, launch_plan, promise
 from flytekit.core.condition import conditional
@@ -598,7 +598,7 @@ def test_wf1_with_map():
 
     @workflow
     def my_wf(a: typing.List[int]) -> int:
-        x = map_task(t1, metadata=TaskMetadata(retries=1))(a=a)
+        x = map(t1, metadata=TaskMetadata(retries=1))(a=a)
         return t2(x=x)
 
     x = my_wf(a=[5, 6])
