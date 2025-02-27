@@ -150,5 +150,7 @@ skip = "./docs/build,./.git,*.txt"
 
 [project.optional-dependencies]
 agent = [
+    "grpcio-health-checking<=1.68.0",
     "httpx",
+    "prometheus-client",
 ]
