@@ -5,6 +5,7 @@ from abc import abstractmethod
 from datetime import timedelta
 from typing import Dict, List, Optional, Union
 
+from flytekit.core import utils
 from flytekit.core.type_engine import LiteralsResolver
 from flytekit.exceptions import user as user_exceptions
 from flytekit.models import execution as execution_models
@@ -105,7 +106,7 @@ class FlyteWorkflowExecution(RemoteExecutionBase, execution_models.Execution):
         **kwargs,
     ):
         super(FlyteWorkflowExecution, self).__init__(*args, **kwargs)
-        self._node_executions = None
+        self._node_executions: Optional[Dict[str, FlyteNodeExecution]] = None
         self._flyte_workflow: Optional[FlyteWorkflow] = None
         self._remote = remote
         self._type_hints = type_hints
@@ -118,6 +119,18 @@ class FlyteWorkflowExecution(RemoteExecutionBase, execution_models.Execution):
     def node_executions(self) -> Dict[str, FlyteNodeExecution]:
         """Get a dictionary of node executions that are a part of this workflow execution."""
         return self._node_executions or {}
+
+    @property
+    def node_executions_list(self, contains_start_and_end_node=False) -> List[FlyteNodeExecution]:
+        if self._node_executions is None:
+            return []
+        node_executions_list = (
+            self._node_executions.values()
+            if contains_start_and_end_node
+            else list(filter(lambda x: not utils.is_start_or_end_node(x.id.node_id), self._node_executions.values()))
+        )
+        node_executions_list.sort(key=lambda x: x.id.node_id)
+        return node_executions_list
 
     @property
     def error(self) -> core_execution_models.ExecutionError:
@@ -219,9 +232,26 @@ class FlyteNodeExecution(RemoteExecutionBase, node_execution_models.NodeExecutio
         super(FlyteNodeExecution, self).__init__(*args, **kwargs)
         self._task_executions = None
         self._workflow_executions = []
-        self._underlying_node_executions = None
+        self._underlying_node_executions: typing.Optional[List[FlyteNodeExecution]] = None
         self._interface: typing.Optional[TypedInterface] = None
         self._flyte_node = None
+
+    def __iter__(self):
+        self.idx = 0
+        if self._underlying_node_executions:
+            self._underlying_node_executions.sort(key=lambda x: x.id.node_id)
+        return self
+
+    def __next__(self) -> FlyteNodeExecution:
+        if self._underlying_node_executions is None:
+            raise StopIteration
+        while self.idx < len(self._underlying_node_executions):
+            x = self._underlying_node_executions[self.idx]
+            self.idx += 1
+            if utils.is_start_or_end_node(x.id.node_id):
+                continue
+            return x
+        raise StopIteration
 
     @property
     def task_executions(self) -> List[FlyteTaskExecution]:
