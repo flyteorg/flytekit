@@ -46,6 +46,7 @@ T = typing.TypeVar("T")
 @dataclass
 class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONMixin):
     path: typing.Union[str, os.PathLike] = field(default=None, metadata=config(mm_field=fields.String()))  # type: ignore
+    metadata: typing.Optional[dict[str, str]] = None
     """
     Since there is no native Python implementation of files and directories for the Flyte Blob type, (like how int
     exists for Flyte's Integer type) we need to create one so that users can express that their tasks take
@@ -158,18 +159,18 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
             return "/tmp/local_file.csv"
     """
 
-    def _serialize(self) -> typing.Dict[str, str]:
+    def _serialize(self) -> typing.Dict[str, typing.Any]:
         lv = FlyteFilePathTransformer().to_literal(FlyteContextManager.current_context(), self, type(self), None)
-        return {"path": lv.scalar.blob.uri}
+        return {"path": lv.scalar.blob.uri, "metadata": lv.metadata}
 
     @classmethod
     def _deserialize(cls, value) -> "FlyteFile":
         return FlyteFilePathTransformer().dict_to_flyte_file(dict_obj=value, expected_python_type=cls)
 
     @model_serializer
-    def serialize_flyte_file(self) -> Dict[str, str]:
+    def serialize_flyte_file(self) -> Dict[str, typing.Any]:
         lv = FlyteFilePathTransformer().to_literal(FlyteContextManager.current_context(), self, type(self), None)
-        return {"path": lv.scalar.blob.uri}
+        return {"path": lv.scalar.blob.uri, "metadata": lv.metadata}
 
     @model_validator(mode="after")
     def deserialize_flyte_file(self, info) -> "FlyteFile":
@@ -188,7 +189,8 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
                         ),
                         uri=self.path,
                     )
-                )
+                ),
+                metadata=self.metadata,
             ),
             type(self),
         )
@@ -281,6 +283,7 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
         path: typing.Union[str, os.PathLike],
         downloader: typing.Callable = noop,
         remote_path: typing.Optional[typing.Union[os.PathLike, str, bool]] = None,
+        metadata: typing.Optional[dict[str, str]] = None,
     ):
         """
         FlyteFile's init method.
@@ -295,6 +298,7 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
         # Make this field public, so that the dataclass transformer can set a value for it
         # https://github.com/flyteorg/flytekit/blob/bcc8541bd6227b532f8462563fe8aac902242b21/flytekit/core/type_engine.py#L298
         self.path = path
+        self.metadata = metadata
         self._downloader = downloader
         self._downloaded = False
         self._remote_path = remote_path
@@ -538,7 +542,9 @@ class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
             # If the object has a remote source, then we just convert it back. This means that if someone is just
             # going back and forth between a FlyteFile Python value and a Blob Flyte IDL value, we don't do anything.
             if python_val._remote_source is not None:
-                return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=python_val._remote_source)))
+                return Literal(
+                    scalar=Scalar(blob=Blob(metadata=meta, uri=python_val._remote_source)), metadata=python_val.metadata
+                )
 
             # If the user specified the remote_path to be False, that means no matter what, do not upload. Also if the
             # path given is already a remote path, say https://www.google.com, the concept of uploading to the Flyte
@@ -593,10 +599,15 @@ class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
             else:
                 remote_path = await ctx.file_access.async_put_raw_data(source_path, **headers)
             # If the source path is a local file, the remote path will be a remote storage path.
-            return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=unquote(str(remote_path)))))
+            return Literal(
+                scalar=Scalar(blob=Blob(metadata=meta, uri=unquote(str(remote_path)))),
+                metadata=getattr(python_val, "metadata", None),
+            )
         # If not uploading, then we can only take the original source path as the uri.
         else:
-            return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=source_path)))
+            return Literal(
+                scalar=Scalar(blob=Blob(metadata=meta, uri=source_path)), metadata=getattr(python_val, "metadata", None)
+            )
 
     @staticmethod
     def get_additional_headers(source_path: str | os.PathLike) -> typing.Dict[str, str]:
@@ -608,6 +619,7 @@ class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
         self, dict_obj: typing.Dict[str, str], expected_python_type: typing.Union[typing.Type[FlyteFile], os.PathLike]
     ) -> FlyteFile:
         path = dict_obj.get("path", None)
+        metadata = dict_obj.get("metadata", None)
 
         if path is None:
             raise ValueError("FlyteFile's path should not be None")
@@ -624,7 +636,8 @@ class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
                         ),
                         uri=path,
                     )
-                )
+                ),
+                metadata=metadata,
             ),
             expected_python_type,
         )
@@ -704,6 +717,7 @@ class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
 
         try:
             uri = lv.scalar.blob.uri
+            metadata = lv.metadata
         except AttributeError:
             raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
 
@@ -718,7 +732,7 @@ class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
         # In this condition, we still return a FlyteFile instance, but it's a simple one that has no downloading tricks
         # Using is instead of issubclass because FlyteFile does actually subclass it
         if expected_python_type is os.PathLike:
-            return FlyteFile(uri)
+            return FlyteFile(path=uri, metadata=metadata)
 
         # Correctly handle `Annotated[FlyteFile, ...]` by extracting the origin type
         expected_python_type = get_underlying_type(expected_python_type)
@@ -730,7 +744,7 @@ class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
         # This is a local file path, like /usr/local/my_file, don't mess with it. Certainly, downloading it doesn't
         # make any sense.
         if not ctx.file_access.is_remote(uri):
-            return expected_python_type(uri)  # type: ignore
+            return expected_python_type(path=uri, metadata=metadata)  # type: ignore
 
         # For the remote case, return an FlyteFile object that can download
         local_path = ctx.file_access.get_random_local_path(uri)
@@ -738,7 +752,7 @@ class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
         _downloader = partial(ctx.file_access.get_data, remote_path=uri, local_path=local_path, is_multipart=False)
 
         expected_format = FlyteFilePathTransformer.get_format(expected_python_type)
-        ff = FlyteFile.__class_getitem__(expected_format)(path=local_path, downloader=_downloader)
+        ff = FlyteFile.__class_getitem__(expected_format)(path=local_path, downloader=_downloader, metadata=metadata)
         ff._remote_source = uri
         return ff
 
