@@ -1,15 +1,16 @@
+from typing import Optional
 from flytekit import task, workflow
 from flytekit.types.file import FlyteFile
 
 
 @task
-def create_ff(file_path: str) -> FlyteFile:
+def create_ff(file_path: str, info: str) -> FlyteFile:
     """Create a FlyteFile."""
-    return FlyteFile(path=file_path)
+    return FlyteFile(path=file_path, metadata={"info": info})
 
 
 @task
-def read_ff(ff: FlyteFile) -> None:
+def read_ff(ff: FlyteFile, info: Optional[str] = None) -> None:
     """Read input FlyteFile.
 
     This can be used in the case in which a FlyteFile is created
@@ -18,6 +19,11 @@ def read_ff(ff: FlyteFile) -> None:
     with open(ff, "r") as f:
         content = f.read()
         print(f"FILE CONTENT | {content}")
+
+    if info:
+        assert ff.metadata["info"] == info
+    else:
+        assert ff.metadata is None
 
 
 @task
@@ -41,9 +47,9 @@ def create_and_read_ff(file_path: str) -> FlyteFile:
 
 
 @workflow
-def wf(remote_file_path: str) -> None:
-    ff_1 = create_ff(file_path=remote_file_path)
-    read_ff(ff=ff_1)
+def wf(remote_file_path: str, info: str = "abc") -> None:
+    ff_1 = create_ff(file_path=remote_file_path, info=info)
+    read_ff(ff=ff_1, info=info)
     ff_2 = create_and_read_ff(file_path=remote_file_path)
     read_ff(ff=ff_2)
 
