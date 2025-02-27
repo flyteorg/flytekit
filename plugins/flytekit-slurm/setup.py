@@ -1,11 +1,10 @@
 from setuptools import setup
 
-PLUGIN_NAME = "awssagemaker"
-INFERENCE_PACKAGE = "awssagemaker_inference"
+PLUGIN_NAME = "slurm"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>1.14.6", "aioboto3>=12.3.0", "xxhash"]
+plugin_requires = ["flytekit>=1.15.0", "flyteidl>=1.15.0", "asyncssh"]
 
 __version__ = "0.0.0+develop"
 
@@ -14,16 +13,20 @@ setup(
     version=__version__,
     author="flyteorg",
     author_email="admin@flyte.org",
-    description="Flytekit AWS SageMaker Plugin",
+    description="This package holds the Slurm plugins for flytekit",
     namespace_packages=["flytekitplugins"],
-    packages=[f"flytekitplugins.{INFERENCE_PACKAGE}"],
+    packages=[
+        f"flytekitplugins.{PLUGIN_NAME}",
+        f"flytekitplugins.{PLUGIN_NAME}.function",
+    ],
     install_requires=plugin_requires,
     license="apache2",
-    python_requires=">=3.10",
+    python_requires=">=3.9",
     classifiers=[
         "Intended Audience :: Science/Research",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: Apache Software License",
+        "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
@@ -33,5 +36,5 @@ setup(
         "Topic :: Software Development :: Libraries",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
-    entry_points={"flytekit.plugins": [f"{INFERENCE_PACKAGE}=flytekitplugins.{INFERENCE_PACKAGE}"]},
+    entry_points={"flytekit.plugins": [f"{PLUGIN_NAME}=flytekitplugins.{PLUGIN_NAME}"]},
 )
