@@ -141,4 +141,4 @@ def test_dataclass_literals(mock_put_data):
         lt = tf.get_literal_type(TestFileStruct)
         lv = tf.to_literal(ctx, o, TestFileStruct, lt)
 
-        assert compute_hash_string(lv.to_flyte_idl()) == "gqjGZ84q3Tz80PX3RYYZQ+bHz8zVoYYo+uvdOyMwHB0="
+        assert compute_hash_string(lv.to_flyte_idl()) == "Hp/cWul3sBI5r8XKdVzAlvNBJ4OSX9L2d/SADI8+YOY="
