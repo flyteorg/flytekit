@@ -69,7 +69,7 @@ def agent(_: click.Context, port, prometheus_port, worker, timeout, modules):
     import asyncio
 
     try:
-        from flytekit.extras.webhook import WebhookTask  # noqa: F401
+        from flytekit.extras.webhook import WebhookAgent  # noqa: F401 Webhook Agent Registration
     except ImportError:
         from flytekit import logger
 
