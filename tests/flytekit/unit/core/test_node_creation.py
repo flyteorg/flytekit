@@ -493,10 +493,15 @@ def test_override_image():
 
     @workflow
     def wf() -> str:
+        bar().with_overrides(image="hello/world")
         bar().with_overrides(container_image="hello/world")
         return "hi"
 
+    assert wf.nodes[0]._image == "hello/world"
     assert wf.nodes[0]._container_image == "hello/world"
+    assert wf.nodes[1]._image == "hello/world"
+    assert wf.nodes[1]._container_image == "hello/world"
+
 
 def test_pod_template_override():
     @task
@@ -602,3 +607,38 @@ def test_cache_override_values():
     assert wf_spec.template.nodes[0].metadata.cache_serializable
     assert wf_spec.template.nodes[0].metadata.cacheable
     assert wf_spec.template.nodes[0].metadata.cache_version == "foo"
+
+
+def test_override_image_behavior():
+    # Define expected warning and error messages
+    WARN_MSG = "container_image is deprecated and will be removed in the future. Please use image instead."
+    ERR_MSG = (
+        "Cannot specify both image and container_image. "
+        "Please use image because container_image is deprecated and will be removed in the future."
+    )
+
+    @task
+    def dummy_task():
+        print("hello")
+
+
+    # Specify both image and container_image
+    @workflow
+    def wf1():
+        create_node(dummy_task).with_overrides(image="hello/world", container_image="hello/world:v2")
+    with pytest.raises(ValueError, match=ERR_MSG):
+        wf1()
+
+    # Specify only container_image
+    @workflow
+    def wf2():
+        create_node(dummy_task).with_overrides(container_image="hello/world")
+    with pytest.warns(DeprecationWarning, match=WARN_MSG):
+        wf2()
+    assert wf2.nodes[0]._image == wf2.nodes[0]._container_image == "hello/world"
+
+    # Specify only image
+    @workflow
+    def wf3():
+        create_node(dummy_task).with_overrides(image="hello/world")
+    assert wf3.nodes[0]._image == wf3.nodes[0]._container_image == "hello/world"

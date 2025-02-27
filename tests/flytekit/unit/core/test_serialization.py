@@ -267,23 +267,23 @@ def test_bad_configuration():
 def test_serialization_images(mock_image_spec_builder):
     ImageBuildEngine.register("test", mock_image_spec_builder)
 
-    @task(container_image="{{.image.xyz.fqn}}:{{.image.xyz.version}}")
+    @task(image="{{.image.xyz.fqn}}:{{.image.xyz.version}}")
     def t1(a: int) -> int:
         return a
 
-    @task(container_image="{{.image.abc.fqn}}:{{.image.xyz.version}}")
+    @task(image="{{.image.abc.fqn}}:{{.image.xyz.version}}")
     def t2():
         pass
 
-    @task(container_image="docker.io/org/myimage:latest")
+    @task(image="docker.io/org/myimage:latest")
     def t4():
         pass
 
-    @task(container_image="docker.io/org/myimage:{{.image.xyz.version}}")
+    @task(image="docker.io/org/myimage:{{.image.xyz.version}}")
     def t5(a: int) -> int:
         return a
 
-    @task(container_image="{{.image.xyz_123.fqn}}:{{.image.xyz_123.version}}")
+    @task(image="{{.image.xyz_123.fqn}}:{{.image.xyz_123.version}}")
     def t6(a: int) -> int:
         return a
 
@@ -294,7 +294,7 @@ def test_serialization_images(mock_image_spec_builder):
         builder="test",
     )
 
-    @task(container_image=image_spec)
+    @task(image=image_spec)
     def t7(a: int) -> int:
         return a
 
