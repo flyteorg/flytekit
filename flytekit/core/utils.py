@@ -69,10 +69,12 @@ def _get_container_definition(
     cpu_request: Optional[Union[str, int, float]] = None,
     gpu_request: Optional[Union[str, int]] = None,
     memory_request: Optional[Union[str, int]] = None,
+    oom_reserved_memory_request: Optional[Union[str, int]] = None,
     ephemeral_storage_limit: Optional[Union[str, int]] = None,
     cpu_limit: Optional[Union[str, int, float]] = None,
     gpu_limit: Optional[Union[str, int]] = None,
     memory_limit: Optional[Union[str, int]] = None,
+    oom_reserved_memory_limit: Optional[Union[str, int]] = None,
     environment: Optional[Dict[str, str]] = None,
 ) -> "task_models.Container":
     ephemeral_storage_limit = ephemeral_storage_limit
@@ -83,6 +85,8 @@ def _get_container_definition(
     gpu_request = gpu_request
     memory_limit = memory_limit
     memory_request = memory_request
+    oom_reserved_memory_limit = oom_reserved_memory_limit
+    oom_reserved_memory_request = oom_reserved_memory_request
 
     from flytekit.models import task as task_models
 
@@ -101,6 +105,13 @@ def _get_container_definition(
         requests.append(task_models.Resources.ResourceEntry(task_models.Resources.ResourceName.GPU, gpu_request))
     if memory_request:
         requests.append(task_models.Resources.ResourceEntry(task_models.Resources.ResourceName.MEMORY, memory_request))
+    if oom_reserved_memory_request:
+        requests.append(
+            task_models.Resources.ResourceEntry(
+                task_models.Resources.ResourceName.OOM_RESERVED_MEMORY,
+                oom_reserved_memory_request,
+            )
+        )
 
     limits = []
     if ephemeral_storage_limit:
@@ -116,6 +127,13 @@ def _get_container_definition(
         limits.append(task_models.Resources.ResourceEntry(task_models.Resources.ResourceName.GPU, gpu_limit))
     if memory_limit:
         limits.append(task_models.Resources.ResourceEntry(task_models.Resources.ResourceName.MEMORY, memory_limit))
+    if oom_reserved_memory_limit:
+        limits.append(
+            task_models.Resources.ResourceEntry(
+                task_models.Resources.ResourceName.OOM_RESERVED_MEMORY,
+                oom_reserved_memory_limit,
+            )
+        )
 
     if environment is None:
         environment = {}
