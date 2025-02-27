@@ -161,7 +161,10 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
 
     def _serialize(self) -> typing.Dict[str, typing.Any]:
         lv = FlyteFilePathTransformer().to_literal(FlyteContextManager.current_context(), self, type(self), None)
-        return {"path": lv.scalar.blob.uri, "metadata": lv.metadata}
+        out = {"path": lv.scalar.blob.uri}
+        if lv.metadata:
+            out["metadata"] = lv.metadata
+        return out
 
     @classmethod
     def _deserialize(cls, value) -> "FlyteFile":
@@ -170,7 +173,10 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
     @model_serializer
     def serialize_flyte_file(self) -> Dict[str, typing.Any]:
         lv = FlyteFilePathTransformer().to_literal(FlyteContextManager.current_context(), self, type(self), None)
-        return {"path": lv.scalar.blob.uri, "metadata": lv.metadata}
+        out = {"path": lv.scalar.blob.uri}
+        if lv.metadata:
+            out["metadata"] = lv.metadata
+        return out
 
     @model_validator(mode="after")
     def deserialize_flyte_file(self, info) -> "FlyteFile":
