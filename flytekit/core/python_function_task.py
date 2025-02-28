@@ -557,13 +557,6 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
                 )
                 raw_output = ctx.user_space_params.raw_output_prefix if ctx.user_space_params else None
                 logger.info(f"Constructing default remote with no config and {project}, {domain}, {raw_output}")
-                import os
-                from union._config import _get_union_api_env_var
-                api_value_tuple = _get_union_api_env_var()
-                print(f"111!!!!!!!!!!!!!!!!??????????>>>>>>>>>>>>!!!!!!!!!!! {os.environ['_UNION_EAGER_API_KEY']}",
-                      flush=True)
-                print(f"111!!!!!!!!!!!!!!!!??????????>>>>!!!!! {api_value_tuple}", flush=True)
-
                 remote = get_plugin().get_remote(
                     config=None, project=project, domain=domain, data_upload_location=raw_output
                 )
@@ -656,9 +649,6 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
         from flytekit.core.workflow import ImperativeWorkflow
 
         cleanup = EagerFailureHandlerTask(name=f"{self.name}-cleanup", inputs=self.python_interface.inputs)
-        # todo: remove this before merging
-        #   this is actually bad, but useful for developing
-        cleanup._container_image = self._container_image
         wb = ImperativeWorkflow(name=self.name)
 
         input_kwargs = {}
@@ -736,11 +726,6 @@ class EagerFailureHandlerTask(PythonAutoContainerTask, metaclass=FlyteTrackedABC
         domain = current_exec_id.domain
         name = current_exec_id.name
         logger.warning(f"Cleaning up potentially still running tasks for execution {name} in {project}/{domain}")
-        import os
-        from union._config import _get_union_api_env_var
-        api_value_tuple = _get_union_api_env_var()
-        print(f"!!!!!!!!!!!!!!!!??????????>>>>>>>>>>>>!!!!!!!!!!! {os.environ['_UNION_EAGER_API_KEY']}", flush=True)
-        print(f"!!!!!!!!!!!!!!!!??????????>>>>!!!!! {api_value_tuple}", flush=True)
         try:
             remote = get_plugin().get_remote(config=None, project=project, domain=domain)
         except Exception as e:
