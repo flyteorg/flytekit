@@ -111,6 +111,11 @@ class FlyteWorkflowExecution(RemoteExecutionBase, execution_models.Execution):
         self._remote = remote
         self._type_hints = type_hints
 
+    def traverse_node_executions(self, exclude_start_end_nodes=True):
+        for root_node in self.node_executions_list:
+            for node in root_node.traverse(exclude_start_end_nodes):
+                yield node
+
     @property
     def flyte_workflow(self) -> Optional[FlyteWorkflow]:
         return self._flyte_workflow
@@ -236,22 +241,12 @@ class FlyteNodeExecution(RemoteExecutionBase, node_execution_models.NodeExecutio
         self._interface: typing.Optional[TypedInterface] = None
         self._flyte_node = None
 
-    def __iter__(self):
-        self.idx = 0
-        if self._underlying_node_executions:
-            self._underlying_node_executions.sort(key=lambda x: x.id.node_id)
-        return self
-
-    def __next__(self) -> FlyteNodeExecution:
-        if self._underlying_node_executions is None:
-            raise StopIteration
-        while self.idx < len(self._underlying_node_executions):
-            x = self._underlying_node_executions[self.idx]
-            self.idx += 1
-            if utils.is_start_or_end_node(x.id.node_id):
-                continue
-            return x
-        raise StopIteration
+    def traverse(self, exclude_start_end_nodes=True):
+        if exclude_start_end_nodes and utils.is_start_or_end_node(self.id.node_id):
+            return
+        yield self
+        for underlying_node in self._underlying_node_executions or []:
+            yield from underlying_node.traverse(exclude_start_end_nodes)
 
     @property
     def task_executions(self) -> List[FlyteTaskExecution]:
