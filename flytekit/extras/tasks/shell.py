@@ -248,21 +248,13 @@ class ShellTask(PythonInstanceTask[T]):
                 raise ValueError(f"FileNotFound: the specified Script file at path {script_file} cannot be loaded")
             script_file = os.path.abspath(script_file)
 
-        if task_config is not None:
-            fully_qualified_class_name = task_config.__module__ + "." + task_config.__class__.__name__
-            if fully_qualified_class_name not in [
-                "flytekitplugins.pod.task.Pod",
-                "flytekitplugins.slurm.script.task.Slurm",
-            ]:
-                raise ValueError("TaskConfig can either be empty - indicating simple container task or a PodConfig.")
-
         # Each instance of NotebookTask instantiates an underlying task with a dummy function that will only be used
         # to run pre- and post- execute functions using the corresponding task plugin.
         # We rename the function name here to ensure the generated task has a unique name and avoid duplicate task name
         # errors.
-        # This seem like a hack. We should use a plugin_class that doesn't require a fake-function to make work.
+        # This seems like a hack. We should use a plugin_class that doesn't require a fake-function to make work.
         plugin_class = TaskPlugins.find_pythontask_plugin(type(task_config))
-        if plugin_class.__name__ in ["SlurmShellTask"]:
+        if "shell" in plugin_class.__name__.lower():
             self._config_task_instance = None
         else:
             self._config_task_instance = plugin_class(task_config=task_config, task_function=_dummy_task_func)
