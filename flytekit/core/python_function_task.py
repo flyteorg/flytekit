@@ -734,7 +734,12 @@ class EagerFailureHandlerTask(PythonAutoContainerTask, metaclass=FlyteTrackedABC
         api_value_tuple = _get_union_api_env_var()
         print(f"!!!!!!!!!!!!!!!!??????????>>>>>>>>>>>>!!!!!!!!!!! {os.environ['_UNION_EAGER_API_KEY']}", flush=True)
         print(f"!!!!!!!!!!!!!!!!??????????>>>>!!!!! {api_value_tuple}", flush=True)
-        remote = get_plugin().get_remote(config=None, project=project, domain=domain)
+        try:
+            remote = get_plugin().get_remote(config=None, project=project, domain=domain)
+        except Exception as e:
+            print(e, flush=True)
+            import sys
+            sys.exit(1)
         key_filter = ValueIn("execution_tag.key", ["eager-exec"])
         value_filter = ValueIn("execution_tag.value", [name])
         phase_filter = ValueIn("phase", ["UNDEFINED", "QUEUED", "RUNNING"])
