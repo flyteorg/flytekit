@@ -65,7 +65,6 @@ from flytekit.models.admin import common as admin_common_models
 from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.models.filters import ValueIn
 from flytekit.models.literals import LiteralMap
-from flytekit.models.security import Secret
 from flytekit.utils.asyn import loop_manager
 
 T = TypeVar("T")
@@ -731,6 +730,7 @@ class EagerFailureHandlerTask(PythonAutoContainerTask, metaclass=FlyteTrackedABC
         except Exception as e:
             print(e, flush=True)
             import sys
+
             sys.exit(1)
         key_filter = ValueIn("execution_tag.key", ["eager-exec"])
         value_filter = ValueIn("execution_tag.value", [name])
