@@ -422,6 +422,10 @@ def test_serialization_metadata2(serialization_settings):
     array_node = wf1_spec.template.nodes[0]
     assert array_node.array_node._execution_mode == _core_workflow.ArrayNode.FULL_STATE
 
+    subnode = array_node.array_node.node
+    assert subnode._inputs == []
+    assert subnode._fixed_inputs == []
+
 
 def test_serialization_extended_resources(serialization_settings):
     @task(

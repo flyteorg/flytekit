@@ -416,6 +416,7 @@ def get_serializable_node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=entity.bindings,
+            fixed_inputs=entity.fixed_inputs,
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
         )
@@ -437,7 +438,8 @@ def get_serializable_node(
         node_model = workflow_model.Node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
-            inputs=entity.bindings,
+            inputs=entity.flyte_entity.bindings,
+            fixed_inputs=entity.flyte_entity.fixed_inputs,
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
             array_node=get_serializable_array_node(entity_mapping, settings, entity, options=options),
@@ -447,6 +449,7 @@ def get_serializable_node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=entity.bindings,
+            fixed_inputs=entity.fixed_inputs,
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
             array_node=get_serializable_array_node_map_task(entity_mapping, settings, entity, options=options),
@@ -467,6 +470,7 @@ def get_serializable_node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=entity.bindings,
+            fixed_inputs=entity.fixed_inputs,
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
             task_node=workflow_model.TaskNode(
@@ -497,6 +501,7 @@ def get_serializable_node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=entity.bindings,
+            fixed_inputs=entity.fixed_inputs,
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
             workflow_node=workflow_model.WorkflowNode(sub_workflow_ref=wf_spec.template.id),
@@ -507,6 +512,7 @@ def get_serializable_node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=entity.bindings,
+            fixed_inputs=entity.fixed_inputs,
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
             branch_node=get_serializable(entity_mapping, settings, entity.flyte_entity, options=options),
@@ -520,11 +526,17 @@ def get_serializable_node(
         for b in entity.bindings:
             if b.var not in entity.flyte_entity.fixed_inputs.literals:
                 node_input.append(b)
+        # TODO clean up and explain
+        fixed_node_inputs = []
+        for b in entity.fixed_inputs:
+            if b.var not in entity.flyte_entity.fixed_inputs.literals:
+                fixed_node_inputs.append(b)
 
         node_model = workflow_model.Node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=node_input,
+            fixed_inputs=fixed_node_inputs,
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
             workflow_node=workflow_model.WorkflowNode(launchplan_ref=lp_spec.id),
@@ -546,6 +558,7 @@ def get_serializable_node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=entity.bindings,
+            fixed_inputs=entity.fixed_inputs,
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
             gate_node=gn,
@@ -558,6 +571,7 @@ def get_serializable_node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=entity.bindings,
+            fixed_inputs=entity.fixed_inputs,
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
             task_node=workflow_model.TaskNode(
@@ -577,6 +591,7 @@ def get_serializable_node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=entity.bindings,
+            fixed_inputs=entity.fixed_inputs,
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
             workflow_node=workflow_model.WorkflowNode(sub_workflow_ref=wf_spec.id),
@@ -589,11 +604,17 @@ def get_serializable_node(
         for b in entity.bindings:
             if b.var not in entity.flyte_entity.fixed_inputs.literals:
                 node_input.append(b)
+        # TODO clean up and explain
+        fixed_node_inputs = []
+        for b in entity.fixed_inputs:
+            if b.var not in entity.flyte_entity.fixed_inputs.literals:
+                fixed_node_inputs.append(b)
 
         node_model = workflow_model.Node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
             inputs=node_input,
+            fixed_inputs=fixed_node_inputs,
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
             workflow_node=workflow_model.WorkflowNode(launchplan_ref=entity.flyte_entity.id),
@@ -613,8 +634,12 @@ def get_serializable_array_node(
     array_node = node.flyte_entity
     # pass in parent node metadata to be set for subnode
     array_node.metadata = node.metadata
+    subnode = get_serializable_node(entity_mapping, settings, array_node, options=options)
+    # parent node holds the needed inputs. No need to have duplicate in the subnode spec
+    subnode._inputs = []
+    subnode._fixed_inputs = []
     return ArrayNodeModel(
-        node=get_serializable_node(entity_mapping, settings, array_node, options=options),
+        node=subnode,
         parallelism=array_node.concurrency,
         min_successes=array_node.min_successes,
         min_success_ratio=array_node.min_success_ratio,
@@ -642,16 +667,20 @@ def get_serializable_array_node_map_task(
             container_image=node._container_image,
         ),
     )
-    node = workflow_model.Node(
+    subnode = workflow_model.Node(
         id=entity.name,
         metadata=entity.sub_node_metadata,
         inputs=node.bindings,
+        fixed_inputs=entity.fixed_inputs,
         upstream_node_ids=[],
         output_aliases=[],
         task_node=task_node,
     )
+    # parent node holds the needed inputs. No need to have duplicate in the subnode spec
+    subnode._inputs = []
+    subnode._fixed_inputs = []
     return ArrayNodeModel(
-        node=node,
+        node=subnode,
         parallelism=entity.concurrency,
         min_successes=entity.min_successes,
         min_success_ratio=entity.min_success_ratio,

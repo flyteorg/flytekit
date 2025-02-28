@@ -168,6 +168,11 @@ class ArrayNodeMapTask(PythonTask):
         return self._bound_inputs
 
     @property
+    def fixed_inputs(self) -> List[_literal_models.Binding]:
+        # Required in get_serializable_node
+        return []
+
+    @property
     def execution_mode(self) -> _core_workflow.ArrayNode.ExecutionMode:
         return self._execution_mode
 
@@ -371,6 +376,7 @@ class ArrayNodeMapTask(PythonTask):
 
 def map_task(
     target: Union[LaunchPlan, PythonFunctionTask, "FlyteLaunchPlan"],
+    fixed_inputs: Optional[Dict[str, Any]] = None,
     concurrency: Optional[int] = None,
     min_successes: Optional[int] = None,
     min_success_ratio: float = 1.0,
@@ -387,6 +393,7 @@ def map_task(
         array node will inherit parallelism from the workflow
     :param min_successes: The minimum number of successful executions
     :param min_success_ratio: The minimum ratio of successful executions
+    :param fixed_inputs: ...
     """
     from flytekit.remote import FlyteLaunchPlan
 
@@ -396,6 +403,7 @@ def map_task(
             concurrency=concurrency,
             min_successes=min_successes,
             min_success_ratio=min_success_ratio,
+            fixed_inputs=fixed_inputs,
         )
     return array_node_map_task(
         task_function=target,
