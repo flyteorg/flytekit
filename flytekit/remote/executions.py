@@ -112,7 +112,7 @@ class FlyteWorkflowExecution(RemoteExecutionBase, execution_models.Execution):
         self._type_hints = type_hints
 
     def traverse_node_executions(self, exclude_start_end_nodes=True):
-        for root_node in self.node_executions_list:
+        for root_node in self.node_executions.values():
             for node in root_node.traverse(exclude_start_end_nodes):
                 yield node
 
@@ -124,18 +124,6 @@ class FlyteWorkflowExecution(RemoteExecutionBase, execution_models.Execution):
     def node_executions(self) -> Dict[str, FlyteNodeExecution]:
         """Get a dictionary of node executions that are a part of this workflow execution."""
         return self._node_executions or {}
-
-    @property
-    def node_executions_list(self, contains_start_and_end_node=False) -> List[FlyteNodeExecution]:
-        if self._node_executions is None:
-            return []
-        node_executions_list = (
-            self._node_executions.values()
-            if contains_start_and_end_node
-            else list(filter(lambda x: not utils.is_start_or_end_node(x.id.node_id), self._node_executions.values()))
-        )
-        node_executions_list.sort(key=lambda x: x.id.node_id)
-        return node_executions_list
 
     @property
     def error(self) -> core_execution_models.ExecutionError:
