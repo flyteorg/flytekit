@@ -557,6 +557,13 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
                 )
                 raw_output = ctx.user_space_params.raw_output_prefix if ctx.user_space_params else None
                 logger.info(f"Constructing default remote with no config and {project}, {domain}, {raw_output}")
+                import os
+                from union._config import _get_union_api_env_var
+                api_value_tuple = _get_union_api_env_var()
+                print(f"111!!!!!!!!!!!!!!!!??????????>>>>>>>>>>>>!!!!!!!!!!! {os.environ['_UNION_EAGER_API_KEY']}",
+                      flush=True)
+                print(f"111!!!!!!!!!!!!!!!!??????????>>>>!!!!! {api_value_tuple}", flush=True)
+
                 remote = get_plugin().get_remote(
                     config=None, project=project, domain=domain, data_upload_location=raw_output
                 )
