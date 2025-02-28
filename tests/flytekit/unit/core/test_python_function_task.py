@@ -115,11 +115,10 @@ def test_container_image_conversion(mock_image_spec_builder):
     assert get_registerable_container_image(image_spec, cfg) == image_spec.image_name()
 
 
-def test_get_registerable_container_image_no_images():
-    cfg = ImageConfig()
-
-    with pytest.raises(ValueError):
-        get_registerable_container_image("", cfg)
+def test_empty_image_config():
+    ERR_MSG = "Either 'default_image' or 'images' must be provided."
+    with pytest.raises(ValueError, match=ERR_MSG):
+        cfg = ImageConfig()
 
 
 def test_py_func_task_get_container():

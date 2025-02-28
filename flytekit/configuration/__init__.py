@@ -270,6 +270,15 @@ class ImageConfig(DataClassJsonMixin):
     default_image: Optional[Image] = None
     images: Optional[List[Image]] = None
 
+    def __post_init__(self) -> None:
+        """Ensure that at least one of 'default_image' or 'images' is provided.
+
+        If both are missing, an error is raised to prevent invalid configuration.
+        For more details, see https://github.com/flyteorg/flyte/issues/6157.
+        """
+        if self.default_image is None and self.images is None:
+            raise ValueError("Either 'default_image' or 'images' must be provided.")
+
     def find_image(self, name) -> Optional[Image]:
         """
         Return an image, by name, if it exists.
