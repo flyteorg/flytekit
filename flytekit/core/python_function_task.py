@@ -729,6 +729,8 @@ class EagerFailureHandlerTask(PythonAutoContainerTask, metaclass=FlyteTrackedABC
         domain = current_exec_id.domain
         name = current_exec_id.name
         logger.warning(f"Cleaning up potentially still running tasks for execution {name} in {project}/{domain}")
+        import os
+        print(f"!!!!!!!!!!!!!!!!??????????>>>>>>>>>>>>!!!!!!!!!!! {os.environ['_UNION_EAGER_API_KEY']}", flush=True)
         remote = get_plugin().get_remote(config=None, project=project, domain=domain)
         key_filter = ValueIn("execution_tag.key", ["eager-exec"])
         value_filter = ValueIn("execution_tag.value", [name])
