@@ -12,6 +12,7 @@ from flytekit.models import common as _common
 from flytekit.models import interface as _interface
 from flytekit.models import types as type_models
 from flytekit.models.core import condition as _condition
+from flytekit.models.core import identifier
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.literals import Binding as _Binding
 from flytekit.models.literals import RetryStrategy as _RetryStrategy
@@ -394,6 +395,7 @@ class ArrayNode(_common.FlyteIdlEntity):
         execution_mode=None,
         is_original_sub_node_interface=False,
         data_mode=None,
+        bound_inputs=None,
     ) -> None:
         """
         TODO: docstring
@@ -406,6 +408,7 @@ class ArrayNode(_common.FlyteIdlEntity):
         self._execution_mode = execution_mode
         self._is_original_sub_node_interface = is_original_sub_node_interface
         self._data_mode = data_mode
+        self._bound_inputs = bound_inputs
 
     @property
     def node(self) -> "Node":
@@ -420,6 +423,7 @@ class ArrayNode(_common.FlyteIdlEntity):
             execution_mode=self._execution_mode,
             is_original_sub_node_interface=BoolValue(value=self._is_original_sub_node_interface),
             data_mode=self._data_mode,
+            bound_inputs=self._bound_inputs,
         )
 
     @classmethod
@@ -744,7 +748,7 @@ class WorkflowNode(_common.FlyteIdlEntity):
         self._sub_workflow_ref = sub_workflow_ref
 
     @property
-    def launchplan_ref(self):
+    def launchplan_ref(self) -> identifier.Identifier:
         """
         [Optional] A globally unique identifier for the launch plan.  Should map to Admin.
 

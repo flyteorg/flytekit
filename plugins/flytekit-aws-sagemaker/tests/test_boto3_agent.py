@@ -68,7 +68,7 @@ idempotence_token = "74443947857331f7"
 @mock.patch(
     "flytekitplugins.awssagemaker_inference.boto3_agent.Boto3AgentMixin._call",
 )
-async def test_agent(mock_boto_call, mock_return_value):
+async def test_agent(mock_boto_call, mock_return_value, request):
     mock_boto_call.return_value = mock_return_value[0]
 
     agent = AgentRegistry.get_agent("boto")
@@ -158,6 +158,9 @@ async def test_agent(mock_boto_call, mock_return_value):
     )
 
     assert resource.phase == TaskExecution.SUCCEEDED
+
+    if request.node.callspec.indices["mock_return_value"] in (0, 1):
+        assert isinstance(resource.outputs, literals.LiteralMap)
 
     if mock_return_value[0][0]:
         outputs = literal_map_string_repr(resource.outputs)
