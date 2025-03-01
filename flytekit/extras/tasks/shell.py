@@ -221,6 +221,7 @@ class ShellTask(PythonInstanceTask[T]):
         script: typing.Optional[str] = None,
         script_file: typing.Optional[str] = None,
         task_config: T = None,
+        task_type: typing.Optional[str] = None,
         shell: str = "/bin/sh",
         inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
         output_locs: typing.Optional[typing.List[OutputLocation]] = None,
@@ -233,6 +234,7 @@ class ShellTask(PythonInstanceTask[T]):
             script: The actual script specified as a string
             script_file: A path to the file that contains the script (Only script or script_file) can be provided
             task_config: Configuration for the task, can be either a Pod (or coming soon, BatchJob) config
+            task_type: String task type to be associated with this Task
             shell: Shell to use to run the script
             inputs: A Dictionary of input names to types
             output_locs: A list of :py:class:`OutputLocations`
@@ -273,9 +275,7 @@ class ShellTask(PythonInstanceTask[T]):
         super().__init__(
             name,
             task_config,
-            task_type=kwargs.pop("task_type")
-            if self._config_task_instance is None
-            else self._config_task_instance.task_type,
+            task_type=task_type,
             interface=Interface(inputs=inputs, outputs=outputs),
             **kwargs,
         )
