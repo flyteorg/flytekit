@@ -1,4 +1,5 @@
 import tempfile
+import uuid
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple, Type
 
@@ -38,9 +39,6 @@ class SlurmScriptAgent(AsyncAgentBase):
     # _ssh_clients: Dict[str, SSHClientConnection]
     _conn: Optional[SSHClientConnection] = None
 
-    # Tmp remote path of the batch script
-    REMOTE_PATH = "/tmp/echo_shell.slurm"
-
     # Dummy script content
     DUMMY_SCRIPT = "#!/bin/bash"
 
@@ -53,6 +51,7 @@ class SlurmScriptAgent(AsyncAgentBase):
         inputs: Optional[LiteralMap] = None,
         **kwargs,
     ) -> SlurmJobMetadata:
+        uniq_script_path = f"/tmp/task_{uuid.uuid4().hex}.slurm"
         outputs = {}
 
         # Retrieve task config
@@ -72,7 +71,7 @@ class SlurmScriptAgent(AsyncAgentBase):
                 output_locs=task_template.custom["output_locs"],
             )
 
-            batch_script_path = self.REMOTE_PATH
+            batch_script_path = uniq_script_path
             upload_script = True
         else:
             # Assume the batch script is already on Slurm
@@ -88,7 +87,7 @@ class SlurmScriptAgent(AsyncAgentBase):
                 f.write(script)
                 f.flush()
                 async with conn.start_sftp_client() as sftp:
-                    await sftp.put(f.name, self.REMOTE_PATH)
+                    await sftp.put(f.name, batch_script_path)
         res = await conn.run(cmd, check=True)
 
         # Retrieve Slurm job id
