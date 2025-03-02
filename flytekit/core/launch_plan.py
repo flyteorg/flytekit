@@ -246,8 +246,8 @@ class LaunchPlan(object):
         :param raw_output_data_config: Optional location of offloaded data for things like S3, etc.
         :param auth_role: Add an auth role if necessary.
         :param concurrency: Controls the maximum number of tasknodes that can be run in parallel for the entire
-        workflow. This is useful to achieve fairness. Note: MapTasks are regarded as one unit, and
-        parallelism/concurrency of MapTasks is independent from this.
+          workflow. This is useful to achieve fairness. Note: MapTasks are regarded as one unit, and
+          parallelism/concurrency of MapTasks is independent from this.
         :param max_parallelism: [Deprecated] Use concurrency instead.
         :param trigger: [alpha] This is a new syntax for specifying schedules.
         :param overwrite_cache: If set to True, the execution will always overwrite cache

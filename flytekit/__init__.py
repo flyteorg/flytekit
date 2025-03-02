@@ -269,12 +269,6 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetType,
 )
 
-warnings.warn(
-    "'map_task' is deprecated and will be removed in a future version. Use 'map' instead.",
-    DeprecationWarning,
-    stacklevel=2,
-)
-map_task = map
 
 
 def current_context() -> ExecutionParameters:
