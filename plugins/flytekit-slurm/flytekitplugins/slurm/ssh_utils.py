@@ -26,11 +26,11 @@ class SSHConfig:
     For the official options, please refer to:
     https://asyncssh.readthedocs.io/en/latest/api.html#asyncssh.SSHClientConnectionOptions
 
-    Args:
-        host: The hostname or address to connect to.
-        username: The username to authenticate as on the server.
-        client_keys: File paths to private keys which will be used to authenticate the
-            client via public key authentication. The default value is not None since
+    Attributes:
+        host (str): The hostname or address to connect to.
+        username (Optional[str]): The username to authenticate as on the server.
+        client_keys (Union[str, List[str], Tuple[str, ...]]): File paths to private keys which will be used to authenticate the
+            client via public key authentication. The default value is an empty tuple since
             client public key authentication is mandatory.
     """
 
@@ -55,13 +55,17 @@ async def ssh_connect(ssh_config: Dict[str, Any]) -> SSHClientConnection:
     """Make an SSH client connection.
 
     Args:
-        ssh_config: Options of SSH client connection defined in SSHConfig.
+        ssh_config (Dict[str, Any]): Options of SSH client connection defined in SSHConfig.
 
     Returns:
-        An SSH client connection object.
+        SSHClientConnection: An SSH client connection object.
+
+    Raises:
+        ValueError: If both FLYTE_SLURM_PRIVATE_KEY secret and ssh_config['private_key'] are missing.
     """
     # Validate ssh_config
     ssh_config = SSHConfig.from_dict(ssh_config).to_dict()
+    # This is required to avoid the error "asyncssh.misc.HostKeyNotVerifiable" when connecting to a new host.
     ssh_config["known_hosts"] = None
 
     # Make the first SSH connection using either OpenSSH client config files or

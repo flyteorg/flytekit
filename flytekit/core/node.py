@@ -49,6 +49,8 @@ class Node(object):
     ID, which from the registration step
     """
 
+    TIMEOUT_OVERRIDE_SENTINEL = object()
+
     def __init__(
         self,
         id: str,
@@ -130,7 +132,7 @@ class Node(object):
     def _override_node_metadata(
         self,
         name,
-        timeout: Optional[Union[int, datetime.timedelta]] = None,
+        timeout: Optional[Union[int, datetime.timedelta, object]] = TIMEOUT_OVERRIDE_SENTINEL,
         retries: Optional[int] = None,
         interruptible: typing.Optional[bool] = None,
         cache: typing.Optional[bool] = None,
@@ -145,14 +147,16 @@ class Node(object):
         else:
             node_metadata = self._metadata
 
-        if timeout is None:
-            node_metadata._timeout = datetime.timedelta()
-        elif isinstance(timeout, int):
-            node_metadata._timeout = datetime.timedelta(seconds=timeout)
-        elif isinstance(timeout, datetime.timedelta):
-            node_metadata._timeout = timeout
-        else:
-            raise ValueError("timeout should be duration represented as either a datetime.timedelta or int seconds")
+        if timeout is not Node.TIMEOUT_OVERRIDE_SENTINEL:
+            if timeout is None:
+                node_metadata._timeout = datetime.timedelta()
+            elif isinstance(timeout, int):
+                node_metadata._timeout = datetime.timedelta(seconds=timeout)
+            elif isinstance(timeout, datetime.timedelta):
+                node_metadata._timeout = timeout
+            else:
+                raise ValueError("timeout should be duration represented as either a datetime.timedelta or int seconds")
+
         if retries is not None:
             assert_not_promise(retries, "retries")
             node_metadata._retries = (
@@ -184,7 +188,7 @@ class Node(object):
         aliases: Optional[Dict[str, str]] = None,
         requests: Optional[Resources] = None,
         limits: Optional[Resources] = None,
-        timeout: Optional[Union[int, datetime.timedelta]] = None,
+        timeout: Optional[Union[int, datetime.timedelta, object]] = TIMEOUT_OVERRIDE_SENTINEL,
         retries: Optional[int] = None,
         interruptible: Optional[bool] = None,
         name: Optional[str] = None,
