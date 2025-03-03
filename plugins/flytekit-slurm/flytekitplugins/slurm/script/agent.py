@@ -137,7 +137,7 @@ class SlurmScriptAgent(AsyncAgentBase):
             dictionary mapping from the output variable name to the output location.
         """
         input_kwargs = TypeEngine.literal_map_to_kwargs(
-            flytekit.current_context(), lm=input_literal_map, python_types=python_input_types
+            flytekit.current_context(), lm=input_literal_map, python_types={} if python_input_types is None else python_input_types
         )
         interpolizer = _PythonFStringInterpolizer()
 
