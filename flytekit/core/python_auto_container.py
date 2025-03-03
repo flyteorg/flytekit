@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import re
+import warnings
 from abc import ABC
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, TypeVar, Union
@@ -43,7 +44,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         name: str,
         task_config: T,
         task_type="python-task",
-        container_image: Optional[Union[str, ImageSpec]] = None,
+        image: Optional[Union[str, ImageSpec]] = None,
         requests: Optional[Resources] = None,
         limits: Optional[Resources] = None,
         environment: Optional[Dict[str, str]] = None,
@@ -59,7 +60,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         :param name: unique name for the task, usually the function's module and name.
         :param task_config: Configuration object for Task. Should be a unique type for that specific Task.
         :param task_type: String task type to be associated with this Task
-        :param container_image: String FQN for the image.
+        :param image: String FQN or ImageSpec for the image.
         :param requests: custom resource request settings.
         :param limits: custom resource limit settings.
         :param environment: Environment variables you want the task to have when run.
@@ -82,6 +83,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         :param accelerator: The accelerator to use for this task.
         :param shared_memory: If True, then shared memory will be attached to the container where the size is equal
             to the allocated memory. If str, then the shared memory is set to that size.
+        :param container_image: Deprecated, please use `image` instead.
         """
         sec_ctx = None
         if secret_requests:
@@ -94,7 +96,23 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         kwargs["metadata"] = kwargs["metadata"] if "metadata" in kwargs else TaskMetadata()
         kwargs["metadata"].pod_template_name = pod_template_name
 
-        self._container_image = container_image
+        # Rename the `container_image` parameter to `image` for improved user experience.
+        # Currently, both `image` and `container_image` are supported to maintain backward compatibility.
+        # For more details, please refer to https://github.com/flyteorg/flyte/issues/6140.
+        if image is not None and kwargs.get("container_image") is not None:
+            raise ValueError(
+                "Cannot specify both image and container_image. "
+                "Please use image because container_image is deprecated and will be removed in the future."
+            )
+        elif kwargs.get("container_image") is not None:
+            warnings.warn(
+                "container_image is deprecated and will be removed in the future. Please use image instead.",
+                DeprecationWarning,
+            )
+            self._image = kwargs["container_image"]
+        else:
+            self._image = image
+
         # TODO(katrogan): Implement resource overrides
         self._resources = ResourceSpec(
             requests=requests if requests else Resources(), limits=limits if limits else Resources()
@@ -139,8 +157,27 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         return self._task_resolver
 
     @property
+    def image(self) -> Optional[Union[str, ImageSpec]]:
+        return self._image
+
+    @property
     def container_image(self) -> Optional[Union[str, ImageSpec]]:
-        return self._container_image
+        """Deprecated, please use `image` instead."""
+        return self._image
+
+    @property
+    def _container_image(self) -> Optional[Union[str, ImageSpec]]:
+        """Deprecated, please use `image` instead."""
+        return self._image
+
+    @_container_image.setter
+    def _container_image(self, image: Optional[Union[str, ImageSpec]]):
+        """Deprecated, please use `image` instead.
+
+        This setter is for backward compatibility, so that setting `_container_image`
+        will adjust the new `_image` parameter directly.
+        """
+        self._image = image
 
     @property
     def resources(self) -> ResourceSpec:

@@ -351,9 +351,14 @@ def test_map_task_override(serialization_settings):
 
     @workflow
     def wf(x: typing.List[int]):
+        map_task(my_mappable_task)(a=x).with_overrides(image="random:image")
         map_task(my_mappable_task)(a=x).with_overrides(container_image="random:image")
 
+    assert wf.nodes[0]._image == "random:image"
     assert wf.nodes[0]._container_image == "random:image"
+    assert wf.nodes[1]._image == "random:image"
+    assert wf.nodes[1]._container_image == "random:image"
+
 
 def test_map_task_pod_template_override(serialization_settings):
     @task

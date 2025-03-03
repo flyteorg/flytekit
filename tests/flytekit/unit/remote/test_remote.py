@@ -512,7 +512,7 @@ def test_get_image_names(
 
     image_spec = ImageSpec(requirements="requirements.txt", registry="flyteorg")
 
-    @task(container_image=image_spec)
+    @task(image=image_spec)
     def say_hello(name: str) -> str:
         return f"hello {name}!"
 
