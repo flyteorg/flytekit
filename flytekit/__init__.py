@@ -270,7 +270,6 @@ from flytekit.types.structured.structured_dataset import (
 )
 
 
-
 def current_context() -> ExecutionParameters:
     """
     Use this method to get a handle of specific parameters available in a flyte task.
