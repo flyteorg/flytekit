@@ -318,7 +318,7 @@ class Controller:
             if len(self.entries) > 0:
                 with self.entries_lock:
                     html = self.render_html()
-                    Deck("Eager Executions", html)
+                    Deck("Eager Executions", html).publish()
 
             # This is a blocking call so we don't hit the API too much.
             time.sleep(2)
