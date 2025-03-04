@@ -19,6 +19,7 @@ from flytekit.core.options import Options
 from flytekit.core.reference_entity import ReferenceEntity
 from flytekit.core.utils import _dnsify
 from flytekit.core.workflow import WorkflowBase
+from flytekit.deck.deck import Deck
 from flytekit.exceptions.system import FlyteSystemException
 from flytekit.loggers import developer_logger, logger
 from flytekit.models.common import Labels
@@ -313,6 +314,11 @@ class Controller:
 
             # Take the lock again and apply all the updates
             self._apply_updates(update_items)
+
+            if len(self.entries) > 0:
+                with self.entries_lock:
+                    html = self.render_html()
+                    Deck("Eager Executions", html)
 
             # This is a blocking call so we don't hit the API too much.
             time.sleep(2)
