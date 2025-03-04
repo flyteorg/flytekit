@@ -3,10 +3,12 @@ from __future__ import annotations
 import datetime
 import typing
 from typing import Any, Dict, List, Optional, Union
+from typing import Literal as L
 
 from flyteidl.core import tasks_pb2
 
-from flytekit.core.resources import Resources, convert_resources_to_resource_model
+from flytekit.core.pod_template import PodTemplate
+from flytekit.core.resources import Resources, construct_extended_resources, convert_resources_to_resource_model
 from flytekit.core.utils import _dnsify
 from flytekit.extras.accelerators import BaseAccelerator
 from flytekit.loggers import logger
@@ -47,6 +49,8 @@ class Node(object):
     ID, which from the registration step
     """
 
+    TIMEOUT_OVERRIDE_SENTINEL = object()
+
     def __init__(
         self,
         id: str,
@@ -67,6 +71,7 @@ class Node(object):
         self._resources: typing.Optional[_resources_model] = None
         self._extended_resources: typing.Optional[tasks_pb2.ExtendedResources] = None
         self._container_image: typing.Optional[str] = None
+        self._pod_template: typing.Optional[PodTemplate] = None
 
     def runs_before(self, other: Node):
         """
@@ -124,13 +129,66 @@ class Node(object):
     def metadata(self) -> _workflow_model.NodeMetadata:
         return self._metadata
 
+    def _override_node_metadata(
+        self,
+        name,
+        timeout: Optional[Union[int, datetime.timedelta, object]] = TIMEOUT_OVERRIDE_SENTINEL,
+        retries: Optional[int] = None,
+        interruptible: typing.Optional[bool] = None,
+        cache: typing.Optional[bool] = None,
+        cache_version: typing.Optional[str] = None,
+        cache_serialize: typing.Optional[bool] = None,
+    ):
+        from flytekit.core.array_node_map_task import ArrayNodeMapTask
+
+        if isinstance(self.flyte_entity, ArrayNodeMapTask):
+            # override the sub-node's metadata
+            node_metadata = self.flyte_entity.sub_node_metadata
+        else:
+            node_metadata = self._metadata
+
+        if timeout is not Node.TIMEOUT_OVERRIDE_SENTINEL:
+            if timeout is None:
+                node_metadata._timeout = datetime.timedelta()
+            elif isinstance(timeout, int):
+                node_metadata._timeout = datetime.timedelta(seconds=timeout)
+            elif isinstance(timeout, datetime.timedelta):
+                node_metadata._timeout = timeout
+            else:
+                raise ValueError("timeout should be duration represented as either a datetime.timedelta or int seconds")
+
+        if retries is not None:
+            assert_not_promise(retries, "retries")
+            node_metadata._retries = (
+                _literal_models.RetryStrategy(0) if retries is None else _literal_models.RetryStrategy(retries)
+            )
+
+        if interruptible is not None:
+            assert_not_promise(interruptible, "interruptible")
+            node_metadata._interruptible = interruptible
+
+        if name is not None:
+            node_metadata._name = name
+
+        if cache is not None:
+            assert_not_promise(cache, "cache")
+            node_metadata._cacheable = cache
+
+        if cache_version is not None:
+            assert_not_promise(cache_version, "cache_version")
+            node_metadata._cache_version = cache_version
+
+        if cache_serialize is not None:
+            assert_not_promise(cache_serialize, "cache_serialize")
+            node_metadata._cache_serializable = cache_serialize
+
     def with_overrides(
         self,
         node_name: Optional[str] = None,
         aliases: Optional[Dict[str, str]] = None,
         requests: Optional[Resources] = None,
         limits: Optional[Resources] = None,
-        timeout: Optional[Union[int, datetime.timedelta]] = None,
+        timeout: Optional[Union[int, datetime.timedelta, object]] = TIMEOUT_OVERRIDE_SENTINEL,
         retries: Optional[int] = None,
         interruptible: Optional[bool] = None,
         name: Optional[str] = None,
@@ -140,6 +198,8 @@ class Node(object):
         cache: Optional[bool] = None,
         cache_version: Optional[str] = None,
         cache_serialize: Optional[bool] = None,
+        shared_memory: Optional[Union[L[True], str]] = None,
+        pod_template: Optional[PodTemplate] = None,
         *args,
         **kwargs,
     ):
@@ -174,27 +234,6 @@ class Node(object):
             assert_no_promises_in_resources(resources)
             self._resources = resources
 
-        if timeout is None:
-            self._metadata._timeout = datetime.timedelta()
-        elif isinstance(timeout, int):
-            self._metadata._timeout = datetime.timedelta(seconds=timeout)
-        elif isinstance(timeout, datetime.timedelta):
-            self._metadata._timeout = timeout
-        else:
-            raise ValueError("timeout should be duration represented as either a datetime.timedelta or int seconds")
-        if retries is not None:
-            assert_not_promise(retries, "retries")
-            self._metadata._retries = (
-                _literal_models.RetryStrategy(0) if retries is None else _literal_models.RetryStrategy(retries)
-            )
-
-        if interruptible is not None:
-            assert_not_promise(interruptible, "interruptible")
-            self._metadata._interruptible = interruptible
-
-        if name is not None:
-            self._metadata._name = name
-
         if task_config is not None:
             logger.warning("This override is beta. We may want to revisit this in the future.")
             if not isinstance(task_config, type(self.run_entity._task_config)):
@@ -207,19 +246,17 @@ class Node(object):
 
         if accelerator is not None:
             assert_not_promise(accelerator, "accelerator")
-            self._extended_resources = tasks_pb2.ExtendedResources(gpu_accelerator=accelerator.to_flyte_idl())
 
-        if cache is not None:
-            assert_not_promise(cache, "cache")
-            self._metadata._cacheable = cache
+        if shared_memory is not None:
+            assert_not_promise(shared_memory, "shared_memory")
 
-        if cache_version is not None:
-            assert_not_promise(cache_version, "cache_version")
-            self._metadata._cache_version = cache_version
+        self._extended_resources = construct_extended_resources(accelerator=accelerator, shared_memory=shared_memory)
 
-        if cache_serialize is not None:
-            assert_not_promise(cache_serialize, "cache_serialize")
-            self._metadata._cache_serializable = cache_serialize
+        self._override_node_metadata(name, timeout, retries, interruptible, cache, cache_version, cache_serialize)
+
+        if pod_template is not None:
+            assert_not_promise(pod_template, "podtemplate")
+            self._pod_template = pod_template
 
         return self
 

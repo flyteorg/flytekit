@@ -40,6 +40,7 @@ from flytekit.core.constants import CACHE_KEY_METADATA, FLYTE_USE_OLD_DC_FORMAT,
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.hash import HashMethod
 from flytekit.core.type_helpers import load_type_from_tag
+from flytekit.core.type_match_checking import literal_types_match
 from flytekit.core.utils import load_proto_from_file, str2bool, timeit
 from flytekit.exceptions import user as user_exceptions
 from flytekit.interaction.string_literals import literal_map_string_repr
@@ -59,6 +60,8 @@ if typing.TYPE_CHECKING:
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
 TITLE = "title"
+
+_TYPE_ENGINE_COROS_BATCH_SIZE = int(os.environ.get("_F_TE_MAX_COROS", "10"))
 
 
 # In Mashumaro, the default encoder uses strict_map_key=False, while the default decoder uses strict_map_key=True.
@@ -876,7 +879,7 @@ class DataclassTransformer(TypeTransformer[object]):
             return list(map(lambda x: self._fix_val_int(ListTransformer.get_sub_type(t), x), val))
 
         if isinstance(val, dict):
-            ktype, vtype = DictTransformer.extract_types_or_metadata(t)
+            ktype, vtype = DictTransformer.extract_types(t)
             # Handle nested Dict. e.g. {1: {2: 3}, 4: {5: 6}})
             return {
                 self._fix_val_int(cast(type, ktype), k): self._fix_val_int(cast(type, vtype), v) for k, v in val.items()
@@ -1222,9 +1225,6 @@ class TypeEngine(typing.Generic[T]):
         if python_type in cls._REGISTRY:
             return cls._REGISTRY[python_type]
 
-        if dataclasses.is_dataclass(python_type):
-            return cls._DATACLASS_TRANSFORMER
-
         return None
 
     @classmethod
@@ -1242,6 +1242,16 @@ class TypeEngine(typing.Generic[T]):
                 v = cls._get_transformer(t)
                 if v is not None:
                     return v
+
+        # flytekit's dataclass type transformer is left for last to give users a chance to register a type transformer
+        # to handle dataclass-like objects as part of the mro evaluation.
+        #
+        # N.B.: keep in mind that there are no compatibility guarantees between these user-defined dataclass transformers
+        # and the flytekit one. This incompatibility is *not* a new behavior introduced by the recent type engine
+        # refactor (https://github.com/flyteorg/flytekit/pull/2815), but it is worth calling out explicitly as a known
+        # limitation nonetheless.
+        if dataclasses.is_dataclass(python_type):
+            return cls._DATACLASS_TRANSFORMER
 
         display_pickle_warning(str(python_type))
         from flytekit.types.pickle.pickle import FlytePickleTransformer
@@ -1352,7 +1362,7 @@ class TypeEngine(typing.Generic[T]):
     ) -> Literal:
         """
         The current dance is because we are allowing users to call from an async function, this synchronous
-        to_literal function, and allowing this to_literal function, to then invoke yet another async functionl,
+        to_literal function, and allowing this to_literal function, to then invoke yet another async function,
         namely an async transformer.
         """
         from flytekit.core.promise import Promise
@@ -1518,9 +1528,13 @@ class TypeEngine(typing.Generic[T]):
                     TypeEngine.async_to_python_value(ctx, lm.literals[k], python_interface_inputs[k])
                 )
             await asyncio.gather(*kwargs.values())
-        except TypeTransformerFailedError as exc:
-            exc.args = (f"Error converting input '{k}' at position {i}:\n  {exc.args[0]}",)
-            raise
+        except Exception as e:
+            raise TypeTransformerFailedError(
+                f"Error converting input '{k}' at position {i}:\n"
+                f"Literal value: {lm.literals[k]}\n"
+                f"Expected Python type: {python_interface_inputs[k]}\n"
+                f"Exception: {e}"
+            )
 
         kwargs = {k: v.result() for k, v in kwargs.items() if v is not None}
         return kwargs
@@ -1674,10 +1688,9 @@ class ListTransformer(AsyncTypeTransformer[T]):
             raise TypeTransformerFailedError("Expected a list")
 
         t = self.get_sub_type(python_type)
-        lit_list = [
-            asyncio.create_task(TypeEngine.async_to_literal(ctx, x, t, expected.collection_type)) for x in python_val
-        ]
-        lit_list = await _run_coros_in_chunks(lit_list)
+        lit_list = [TypeEngine.async_to_literal(ctx, x, t, expected.collection_type) for x in python_val]
+
+        lit_list = await _run_coros_in_chunks(lit_list, batch_size=_TYPE_ENGINE_COROS_BATCH_SIZE)
 
         return Literal(collection=LiteralCollection(literals=lit_list))
 
@@ -1699,7 +1712,7 @@ class ListTransformer(AsyncTypeTransformer[T]):
 
         st = self.get_sub_type(expected_python_type)
         result = [TypeEngine.async_to_python_value(ctx, x, st) for x in lits]
-        result = await _run_coros_in_chunks(result)
+        result = await _run_coros_in_chunks(result, batch_size=_TYPE_ENGINE_COROS_BATCH_SIZE)
         return result  # type: ignore  # should be a list, thinks its a tuple
 
     def guess_python_type(self, literal_type: LiteralType) -> list:  # type: ignore
@@ -1875,6 +1888,7 @@ class UnionTransformer(AsyncTypeTransformer[T]):
     ) -> typing.Union[Literal, asyncio.Future]:
         python_type = get_underlying_type(python_type)
 
+        potential_types = []
         found_res = False
         is_ambiguous = False
         res = None
@@ -1894,14 +1908,19 @@ class UnionTransformer(AsyncTypeTransformer[T]):
                     is_ambiguous = True
                 res_type = _add_tag_to_type(trans.get_literal_type(t), trans.name)
                 found_res = True
+                potential_types.append(t)
             except Exception as e:
-                logger.warning(
+                logger.debug(
                     f"UnionTransformer failed attempt to convert from {python_val} to {t} error: {e}",
                 )
                 continue
 
         if is_ambiguous:
-            raise TypeError("Ambiguous choice of variant for union type")
+            raise TypeError(
+                f"Ambiguous choice of variant for union type.\n"
+                f"Potential types: {potential_types}\n"
+                "These types are structurally the same, because it's attributes have the same names and associated types."
+            )
 
         if found_res:
             return Literal(scalar=Scalar(union=Union(value=res, stored_type=res_type)))
@@ -1999,22 +2018,44 @@ class DictTransformer(AsyncTypeTransformer[dict]):
         super().__init__("Typed Dict", dict)
 
     @staticmethod
-    def extract_types_or_metadata(t: Optional[Type[dict]]) -> typing.Tuple:
+    def extract_types(t: Optional[Type[dict]]) -> typing.Tuple:
+        if t is None:
+            return None, None
+
+        # Get the origin and type arguments.
         _origin = get_origin(t)
         _args = get_args(t)
-        if _origin is not None:
-            if _origin is Annotated and _args:
-                # _args holds the type arguments to the dictionary, in other words:
-                # >>> get_args(Annotated[dict[int, str], FlyteAnnotation("abc")])
-                # (dict[int, str], <flytekit.core.annotation.FlyteAnnotation object at 0x107f6ff80>)
-                for x in _args[1:]:
-                    if isinstance(x, FlyteAnnotation):
-                        raise ValueError(
-                            f"Flytekit does not currently have support for FlyteAnnotations applied to dicts. {t} cannot be parsed."
-                        )
-            if _origin in [dict, Annotated] and _args is not None:
+
+        # If not annotated or dict, return None, None.
+        if _origin is None:
+            return None, None
+
+        # If this is something like Annotated[dict[int, str], FlyteAnnotation("abc")],
+        # we need to check if there's a FlyteAnnotation in the metadata.
+        if _origin is Annotated:
+            # This case should never happen since Python's typing system requires at least two arguments
+            # for Annotated[...] - a type and an annotation. Including this check for completeness.
+            if not _args:
+                return None, None
+
+            first_arg = _args[0]
+            # Check the rest of the metadata (after the dict type itself).
+            for x in _args[1:]:
+                if isinstance(x, FlyteAnnotation):
+                    raise ValueError(
+                        f"Flytekit does not currently have support for FlyteAnnotations applied to dicts. {t} cannot be parsed."
+                    )
+            # Recursively process the first argument if it's Annotated (or dict).
+            return DictTransformer.extract_types(first_arg)
+
+        # If the origin is dict, return the type arguments if they exist.
+        if _origin is dict:
+            # _args can be ().
+            if _args is not None:
                 return _args  # type: ignore
-        return None, None
+
+        # Otherwise, we do not support this type in extract_types.
+        raise ValueError(f"Trying to extract dictionary type information from a non-dict type {t}")
 
     @staticmethod
     async def dict_to_generic_literal(
@@ -2080,31 +2121,24 @@ class DictTransformer(AsyncTypeTransformer[dict]):
             raise TypeTransformerFailedError(f"Cannot convert `{v}` to Flyte Literal.\n" f"Error Message: {e}")
 
     @staticmethod
-    def is_pickle(python_type: Type[dict]) -> typing.Tuple[bool, Type]:
-        base_type, *metadata = DictTransformer.extract_types_or_metadata(python_type)
+    def is_pickle(python_type: Type[dict]) -> bool:
+        _origin = get_origin(python_type)
+        metadata: typing.Tuple = ()
+        if _origin is Annotated:
+            metadata = get_args(python_type)[1:]
 
         for each_metadata in metadata:
             if isinstance(each_metadata, OrderedDict):
                 allow_pickle = each_metadata.get("allow_pickle", False)
-                return allow_pickle, base_type
+                return allow_pickle
 
-        return False, base_type
-
-    @staticmethod
-    def dict_types(python_type: Type) -> typing.Tuple[typing.Any, ...]:
-        if get_origin(python_type) is Annotated:
-            base_type, *_ = DictTransformer.extract_types_or_metadata(python_type)
-            tp = get_args(base_type)
-        else:
-            tp = DictTransformer.extract_types_or_metadata(python_type)
-
-        return tp
+        return False
 
     def get_literal_type(self, t: Type[dict]) -> LiteralType:
         """
         Transforms a native python dictionary to a flyte-specific ``LiteralType``
         """
-        tp = self.dict_types(t)
+        tp = DictTransformer.extract_types(t)
 
         if tp:
             if tp[0] == str:
@@ -2125,10 +2159,9 @@ class DictTransformer(AsyncTypeTransformer[dict]):
             raise TypeTransformerFailedError("Expected a dict")
 
         allow_pickle = False
-        base_type = None
 
         if get_origin(python_type) is Annotated:
-            allow_pickle, base_type = DictTransformer.is_pickle(python_type)
+            allow_pickle = DictTransformer.is_pickle(python_type)
 
         if expected and expected.simple and expected.simple == SimpleType.STRUCT:
             if str2bool(os.getenv(FLYTE_USE_OLD_DC_FORMAT)):
@@ -2141,18 +2174,11 @@ class DictTransformer(AsyncTypeTransformer[dict]):
                 raise ValueError("Flyte MapType expects all keys to be strings")
             # TODO: log a warning for Annotated objects that contain HashMethod
 
-            if base_type:
-                _, v_type = get_args(base_type)
-            else:
-                _, v_type = self.extract_types_or_metadata(python_type)
-
-            lit_map[k] = asyncio.create_task(
-                TypeEngine.async_to_literal(ctx, v, cast(type, v_type), expected.map_value_type)
-            )
-
-        await _run_coros_in_chunks([c for c in lit_map.values()])
-        for k, v in lit_map.items():
-            lit_map[k] = v.result()
+            _, v_type = self.extract_types(python_type)
+            lit_map[k] = TypeEngine.async_to_literal(ctx, v, cast(type, v_type), expected.map_value_type)
+        vals = await _run_coros_in_chunks([c for c in lit_map.values()], batch_size=_TYPE_ENGINE_COROS_BATCH_SIZE)
+        for idx, k in zip(range(len(vals)), lit_map.keys()):
+            lit_map[k] = vals[idx]
 
         return Literal(map=LiteralMap(literals=lit_map))
 
@@ -2161,9 +2187,9 @@ class DictTransformer(AsyncTypeTransformer[dict]):
             return self.from_binary_idl(lv.scalar.binary, expected_python_type)  # type: ignore
 
         if lv and lv.map and lv.map.literals is not None:
-            tp = self.dict_types(expected_python_type)
+            tp = DictTransformer.extract_types(expected_python_type)
 
-            if tp is None or tp[0] is None:
+            if tp is None or len(tp) == 0 or tp[0] is None:
                 raise TypeError(
                     "TypeMismatch: Cannot convert to python dictionary from Flyte Literal Dictionary as the given "
                     "dictionary does not have sub-type hints or they do not match with the originating dictionary "
@@ -2173,12 +2199,11 @@ class DictTransformer(AsyncTypeTransformer[dict]):
                 raise TypeError("TypeMismatch. Destination dictionary does not accept 'str' key")
             py_map = {}
             for k, v in lv.map.literals.items():
-                fut = asyncio.create_task(TypeEngine.async_to_python_value(ctx, v, cast(Type, tp[1])))
-                py_map[k] = fut
+                py_map[k] = TypeEngine.async_to_python_value(ctx, v, cast(Type, tp[1]))
 
-            await _run_coros_in_chunks([c for c in py_map.values()])
-            for k, v in py_map.items():
-                py_map[k] = v.result()
+            vals = await _run_coros_in_chunks([c for c in py_map.values()], batch_size=_TYPE_ENGINE_COROS_BATCH_SIZE)
+            for idx, k in zip(range(len(vals)), py_map.keys()):
+                py_map[k] = vals[idx]
 
             return py_map
 
@@ -2406,6 +2431,27 @@ def dataclass_from_dict(cls: type, src: typing.Dict[str, typing.Any]) -> typing.
             constructor_inputs[field_name] = value
 
     return cls(**constructor_inputs)
+
+
+def strict_type_hint_matching(input_val: typing.Any, target_literal_type: LiteralType) -> typing.Type:
+    """
+    Try to be smarter about guessing the type of the input (and hence the transformer).
+    If the literal type from the transformer for type(v), matches the literal type of the interface, then we
+    can use type(). Otherwise, fall back to guess python type from the literal type.
+    Raises ValueError, like in case of [1,2,3] type() will just give `list`, which won't work.
+    Raises ValueError also if the transformer found for the raw type doesn't have a literal type match.
+    """
+    native_type = type(input_val)
+    transformer: TypeTransformer = TypeEngine.get_transformer(native_type)
+    inferred_literal_type = transformer.get_literal_type(native_type)
+    # note: if no good match, transformer will be the pickle transformer, but type will not match unless it's the
+    # pickle type so will fall back to normal guessing
+    if literal_types_match(inferred_literal_type, target_literal_type):
+        return type(input_val)
+
+    raise ValueError(
+        f"Transformer for {native_type} returned literal type {inferred_literal_type} which doesn't match {target_literal_type}"
+    )
 
 
 def _check_and_covert_float(lv: Literal) -> float:

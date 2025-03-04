@@ -1,6 +1,7 @@
 from flyteidl.admin import task_execution_pb2 as _task_execution_pb2
 
 from flytekit.models import common as _common
+from flytekit.models import event as _event
 from flytekit.models.core import execution as _execution
 from flytekit.models.core import identifier as _identifier
 
@@ -16,6 +17,7 @@ class TaskExecutionClosure(_common.FlyteIdlEntity):
         updated_at,
         output_uri=None,
         error=None,
+        metadata=None,
     ):
         """
         :param int phase: Enum value from flytekit.models.core.execution.TaskExecutionPhase
@@ -28,6 +30,7 @@ class TaskExecutionClosure(_common.FlyteIdlEntity):
             literals.
         :param flytekit.models.core.execution.ExecutionError error: If task has failed and in terminal state, this will
             be set to the error encountered.
+        :param flytekit.models.event.TaskExecutionMetadata metadata: Metadata associated with the task execution.
         """
         self._phase = phase
         self._logs = logs
@@ -37,6 +40,7 @@ class TaskExecutionClosure(_common.FlyteIdlEntity):
         self._updated_at = updated_at
         self._output_uri = output_uri
         self._error = error
+        self._metadata = metadata
 
     @property
     def phase(self):
@@ -95,6 +99,13 @@ class TaskExecutionClosure(_common.FlyteIdlEntity):
         """
         return self._error
 
+    @property
+    def metadata(self):
+        """
+        :rtype: flytekit.models.event.TaskExecutionMetadata
+        """
+        return self._metadata
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.task_execution_pb2.TaskExecutionClosure
@@ -104,6 +115,7 @@ class TaskExecutionClosure(_common.FlyteIdlEntity):
             logs=[l.to_flyte_idl() for l in self.logs],
             output_uri=self.output_uri,
             error=self.error.to_flyte_idl() if self.error is not None else None,
+            metadata=self.metadata.to_flyte_idl() if self.metadata is not None else None,
         )
         p.started_at.FromDatetime(self.started_at)
         p.created_at.FromDatetime(self.created_at)
@@ -126,6 +138,7 @@ class TaskExecutionClosure(_common.FlyteIdlEntity):
             created_at=p.created_at.ToDatetime(),
             updated_at=p.updated_at.ToDatetime(),
             duration=p.duration.ToTimedelta(),
+            metadata=_event.TaskExecutionMetadata.from_flyte_idl(p.metadata) if p.HasField("metadata") else None,
         )
 
 

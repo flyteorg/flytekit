@@ -294,9 +294,24 @@ class WorkflowBase(object):
         Workflow needs to fill in default arguments before invoking the call handler.
         """
         # Get default arguments and override with kwargs passed in
-        input_kwargs = self.python_interface.default_inputs_as_kwargs
+        interface = self.python_interface
+        input_kwargs = interface.default_inputs_as_kwargs
+
+        if len(args) > len(interface.inputs):
+            raise AssertionError(
+                f"Received more arguments than expected in function '{self.name}'. Expected {len(interface.inputs)} but got {len(args)}"
+            )
+        if len(input_kwargs) != 0:
+            for _, input_name in zip(args, interface.inputs.keys()):
+                if input_name in input_kwargs:
+                    # delete the default value if provide args
+                    del input_kwargs[input_name]
+
         input_kwargs.update(kwargs)
-        self.compile()
+        ctx = FlyteContext.current_context()
+        # todo: remove this conditional once context manager is thread safe
+        if not (ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.EAGER_EXECUTION):
+            self.compile()
         try:
             return flyte_entity_call_handler(self, *args, **input_kwargs)
         except Exception as exc:
@@ -631,6 +646,40 @@ class ImperativeWorkflow(WorkflowBase):
     def add_subwf(self, sub_wf: WorkflowBase, **kwargs) -> Node:
         return self.add_entity(sub_wf, **kwargs)
 
+    def add_on_failure_handler(self, entity):
+        """
+        This is a special function that mimics the add_entity function, but this is only used
+        to add the failure node. Failure nodes are special because we don't want
+        them to be part of the main workflow.
+        """
+        from flytekit.core.node_creation import create_node
+
+        ctx = FlyteContext.current_context()
+        if ctx.compilation_state is not None:
+            raise RuntimeError("Can't already be compiling")
+        with FlyteContextManager.with_context(ctx.with_compilation_state(self.compilation_state)) as ctx:
+            if entity.python_interface and self.python_interface:
+                workflow_inputs = self.python_interface.inputs
+                failure_node_inputs = entity.python_interface.inputs
+
+                # Workflow inputs should be a subset of failure node inputs.
+                if (failure_node_inputs | workflow_inputs) != failure_node_inputs:
+                    raise FlyteFailureNodeInputMismatchException(self.on_failure, self)
+                additional_keys = failure_node_inputs.keys() - workflow_inputs.keys()
+                # Raising an error if the additional inputs in the failure node are not optional.
+                for k in additional_keys:
+                    if not is_optional_type(failure_node_inputs[k]):
+                        raise FlyteFailureNodeInputMismatchException(self.on_failure, self)
+
+            n = create_node(entity=entity, **self._inputs)
+            # Maybe this can be cleaned up, but the create node function creates a node
+            # and add it to the compilation state. We need to pop it off because we don't
+            # want it in the actual workflow.
+            ctx.compilation_state.nodes.pop(-1)
+            self._failure_node = n
+            n._id = _common_constants.DEFAULT_FAILURE_NODE_ID
+            return n  # type: ignore
+
     def ready(self) -> bool:
         """
         This function returns whether or not the workflow is in a ready state, which means
@@ -686,6 +735,12 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             docs=docs,
             default_options=default_options,
         )
+
+        # Set this here so that the lhs call doesn't fail at least. This is only useful in the context of the
+        # ClassStorageTaskResolver, to satisfy the understanding that my_wf.lhs should be fetch the workflow object
+        # from the module.
+        self._lhs = workflow_function.__name__
+
         self.compiled = False
 
     @property

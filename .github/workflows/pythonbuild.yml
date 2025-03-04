@@ -39,7 +39,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os:
+          - ubuntu-24.04-arm
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
         python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
     steps:
       - uses: actions/checkout@v4
@@ -50,7 +54,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Cache pip
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           # This path is specific to Ubuntu
           path: ~/.cache/pip
@@ -78,7 +82,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os:
+          - ubuntu-24.04-arm
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
         python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
     steps:
       - uses: actions/checkout@v4
@@ -89,7 +97,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Cache pip
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           # This path is specific to Ubuntu
           path: ~/.cache/pip
@@ -141,7 +149,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Cache pip
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           # This path is specific to Ubuntu
           path: ~/.cache/pip
@@ -178,7 +186,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Cache pip
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           # This path is specific to Ubuntu
           path: ~/.cache/pip
@@ -222,7 +230,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Cache pip
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           # This path is specific to Ubuntu
           path: ~/.cache/pip
@@ -266,6 +274,10 @@ jobs:
           AWS_SECRET_ACCESS_KEY: miniostorage
         run: |
           make ${{ matrix.makefile-cmd }}
+      - name: Setup tmate session
+        if: ${{ failure() }}
+        uses: mxschmitt/action-tmate@v3
+        timeout-minutes: 60
       - name: Codecov
         uses: codecov/codecov-action@v3.1.0
         with:
@@ -303,6 +315,7 @@ jobs:
           - flytekit-huggingface
           - flytekit-identity-aware-proxy
           - flytekit-inference
+          - flytekit-k8sdataservice
           - flytekit-k8s-pod
           - flytekit-kf-mpi
           - flytekit-kf-pytorch
@@ -319,10 +332,12 @@ jobs:
           # flytekit-onnx-tensorflow
           - flytekit-omegaconf
           - flytekit-openai
+          - flytekit-optuna
           - flytekit-pandera
           - flytekit-papermill
           - flytekit-polars
           - flytekit-ray
+          - flytekit-slurm
           - flytekit-snowflake
           - flytekit-spark
           - flytekit-sqlalchemy
@@ -384,7 +399,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Cache pip
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           # This path is specific to Ubuntu
           path: ~/.cache/pip
@@ -429,7 +444,7 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: 3.12
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('**/dev-requirements.in') }}

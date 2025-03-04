@@ -8,7 +8,7 @@ import warnings
 from pathlib import Path
 from string import Template
 from subprocess import run
-from typing import ClassVar, List
+from typing import ClassVar, List, NamedTuple, Tuple
 
 import click
 
@@ -23,15 +23,44 @@ from flytekit.tools.script_mode import ls_files
 
 UV_LOCK_INSTALL_TEMPLATE = Template(
     """\
+WORKDIR /root
 RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/uv,id=uv \
     --mount=from=uv,source=/uv,target=/usr/bin/uv \
     --mount=type=bind,target=uv.lock,src=uv.lock \
     --mount=type=bind,target=pyproject.toml,src=pyproject.toml \
+    $PIP_SECRET_MOUNT \
     uv sync $PIP_INSTALL_ARGS
+WORKDIR /
 
 # Update PATH and UV_PYTHON to point to the venv created by uv sync
-ENV PATH="/.venv/bin:$$PATH" \
-    UV_PYTHON=/.venv/bin/python
+ENV PATH="/root/.venv/bin:$$PATH" \
+    UV_PYTHON=/root/.venv/bin/python
+"""
+)
+
+POETRY_LOCK_TEMPLATE = Template(
+    """\
+RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/uv,id=uv \
+    --mount=from=uv,source=/uv,target=/usr/bin/uv \
+    uv pip install poetry
+
+ENV POETRY_CACHE_DIR=/tmp/poetry_cache \
+    POETRY_VIRTUALENVS_IN_PROJECT=true
+
+# poetry install does not work running in /, so we move to /root to create the venv
+WORKDIR /root
+
+RUN --mount=type=cache,sharing=locked,mode=0777,target=/tmp/poetry_cache,id=poetry \
+    --mount=type=bind,target=poetry.lock,src=poetry.lock \
+    --mount=type=bind,target=pyproject.toml,src=pyproject.toml \
+    $PIP_SECRET_MOUNT \
+    poetry install $PIP_INSTALL_ARGS
+
+WORKDIR /
+
+# Update PATH and UV_PYTHON to point to venv
+ENV PATH="/root/.venv/bin:$$PATH" \
+    UV_PYTHON=/root/.venv/bin/python
 """
 )
 
@@ -40,14 +69,26 @@ UV_PYTHON_INSTALL_COMMAND_TEMPLATE = Template(
 RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/uv,id=uv \
     --mount=from=uv,source=/uv,target=/usr/bin/uv \
     --mount=type=bind,target=requirements_uv.txt,src=requirements_uv.txt \
+    $PIP_SECRET_MOUNT \
     uv pip install $PIP_INSTALL_ARGS
 """
 )
+
 
 APT_INSTALL_COMMAND_TEMPLATE = Template("""\
 RUN --mount=type=cache,sharing=locked,mode=0777,target=/var/cache/apt,id=apt \
     apt-get update && apt-get install -y --no-install-recommends \
     $APT_PACKAGES
+""")
+
+MICROMAMBA_INSTALL_COMMAND_TEMPLATE = Template("""\
+RUN --mount=type=cache,sharing=locked,mode=0777,target=/opt/micromamba/pkgs,\
+id=micromamba \
+    --mount=from=micromamba,source=/usr/bin/micromamba,target=/usr/bin/micromamba \
+    micromamba config set use_lockfiles False && \
+    micromamba create -n runtime --root-prefix /opt/micromamba \
+    -c conda-forge $CONDA_CHANNELS \
+    python=$PYTHON_VERSION $CONDA_PACKAGES
 """)
 
 DOCKER_FILE_TEMPLATE = Template("""\
@@ -59,25 +100,21 @@ FROM $BASE_IMAGE
 
 USER root
 $APT_INSTALL_COMMAND
-COPY --from=micromamba /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+RUN --mount=from=micromamba,source=/etc/ssl/certs/ca-certificates.crt,target=/tmp/ca-certificates.crt \
+    [ -f /etc/ssl/certs/ca-certificates.crt ] || \
+    mkdir -p /etc/ssl/certs/ && cp /tmp/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
 RUN id -u flytekit || useradd --create-home --shell /bin/bash flytekit
 RUN chown -R flytekit /root && chown -R flytekit /home
 
-RUN --mount=type=cache,sharing=locked,mode=0777,target=/opt/micromamba/pkgs,\
-id=micromamba \
-    --mount=from=micromamba,source=/usr/bin/micromamba,target=/usr/bin/micromamba \
-    micromamba config set use_lockfiles False && \
-    micromamba create -n runtime --root-prefix /opt/micromamba \
-    -c conda-forge $CONDA_CHANNELS \
-    python=$PYTHON_VERSION $CONDA_PACKAGES
+$INSTALL_PYTHON_TEMPLATE
 
 # Configure user space
-ENV PATH="/opt/micromamba/envs/runtime/bin:$$PATH" \
+ENV PATH="$EXTRA_PATH:$$PATH" \
+    UV_PYTHON=$PYTHON_EXEC \
     UV_LINK_MODE=copy \
     FLYTE_SDK_RICH_TRACEBACKS=0 \
     SSL_CERT_DIR=/etc/ssl/certs \
-    UV_PYTHON=/opt/micromamba/envs/runtime/bin/python \
     $ENV
 
 $UV_PYTHON_INSTALL_COMMAND
@@ -128,36 +165,51 @@ def _is_flytekit(package: str) -> bool:
     return name == "flytekit"
 
 
-def prepare_uv_lock_command(image_spec: ImageSpec, pip_install_args: List[str], tmp_dir: Path) -> str:
-    # uv sync is experimental, so our uv.lock support is also experimental
-    # the parameters we pass into install args could be different
-    warnings.warn("uv.lock support is experimental", UserWarning)
-
+def _copy_lock_files_into_context(image_spec: ImageSpec, lock_file: str, tmp_dir: Path):
     if image_spec.packages is not None:
-        msg = "Support for uv.lock files and packages is mutually exclusive"
+        msg = f"Support for {lock_file} files and packages is mutually exclusive"
         raise ValueError(msg)
 
-    uv_lock_path = tmp_dir / "uv.lock"
-    shutil.copy2(image_spec.requirements, uv_lock_path)
+    lock_path = tmp_dir / lock_file
+    shutil.copy2(image_spec.requirements, lock_path)
 
-    # uv.lock requires pyproject.toml to be included
+    # lock requires pyproject.toml to be included
     pyproject_toml_path = tmp_dir / "pyproject.toml"
     dir_name = os.path.dirname(image_spec.requirements)
 
     pyproject_toml_src = os.path.join(dir_name, "pyproject.toml")
     if not os.path.exists(pyproject_toml_src):
-        msg = "To use uv.lock, a pyproject.toml must be in the same directory as the lock file"
+        msg = f"To use {lock_file}, a pyproject.toml file must be in the same directory as the lock file"
         raise ValueError(msg)
 
     shutil.copy2(pyproject_toml_src, pyproject_toml_path)
 
+
+def _secret_id(index: int) -> str:
+    return f"secret_{index}"
+
+
+def prepare_uv_lock_command(image_spec: ImageSpec, tmp_dir: Path) -> Tuple[Template, List[str]]:
+    # uv sync is experimental, so our uv.lock support is also experimental
+    # the parameters we pass into install args could be different
+    warnings.warn("uv.lock support is experimental", UserWarning)
+
+    _copy_lock_files_into_context(image_spec, "uv.lock", tmp_dir)
+
     # --locked: Assert that the `uv.lock` will remain unchanged
     # --no-dev: Omit the development dependency group
     # --no-install-project: Do not install the current project
-    pip_install_args.extend(["--locked", "--no-dev", "--no-install-project"])
-    pip_install_args = " ".join(pip_install_args)
+    additional_pip_install_args = ["--locked", "--no-dev", "--no-install-project"]
 
-    return UV_LOCK_INSTALL_TEMPLATE.substitute(PIP_INSTALL_ARGS=pip_install_args)
+    return UV_LOCK_INSTALL_TEMPLATE, additional_pip_install_args
+
+
+def prepare_poetry_lock_command(image_spec: ImageSpec, tmp_dir: Path) -> Tuple[Template, List[str]]:
+    _copy_lock_files_into_context(image_spec, "poetry.lock", tmp_dir)
+
+    # --no-root: Do not install the current project
+    additional_pip_install_args = ["--no-root"]
+    return POETRY_LOCK_TEMPLATE, additional_pip_install_args
 
 
 def prepare_python_install(image_spec: ImageSpec, tmp_dir: Path) -> str:
@@ -169,30 +221,93 @@ def prepare_python_install(image_spec: ImageSpec, tmp_dir: Path) -> str:
         extra_urls = [f"--extra-index-url {url}" for url in image_spec.pip_extra_index_url]
         pip_install_args.extend(extra_urls)
 
+    pip_secret_mount = ""
+    if image_spec.pip_secret_mounts:
+        pip_secret_mount = " ".join(
+            f"--mount=type=secret,id={_secret_id(i)},target={dst}"
+            for i, (_, dst) in enumerate(image_spec.pip_secret_mounts)
+        )
+
+    if image_spec.pip_extra_args:
+        pip_install_args.append(image_spec.pip_extra_args)
+
     requirements = []
+    template = None
     if image_spec.requirements:
         requirement_basename = os.path.basename(image_spec.requirements)
         if requirement_basename == "uv.lock":
-            return prepare_uv_lock_command(image_spec, pip_install_args, tmp_dir)
+            template, additional_pip_install_args = prepare_uv_lock_command(image_spec, tmp_dir)
+            pip_install_args.extend(additional_pip_install_args)
+        elif requirement_basename == "poetry.lock":
+            template, additional_pip_install_args = prepare_poetry_lock_command(image_spec, tmp_dir)
+            pip_install_args.extend(additional_pip_install_args)
+        else:
+            with open(image_spec.requirements) as f:
+                requirements.extend([line.strip() for line in f.readlines()])
 
-        # Assume this is a requirements.txt file
-        with open(image_spec.requirements) as f:
-            requirements.extend([line.strip() for line in f.readlines()])
+    if template is None:
+        template = UV_PYTHON_INSTALL_COMMAND_TEMPLATE
+        if image_spec.packages:
+            requirements.extend(image_spec.packages)
 
-    if image_spec.packages:
-        requirements.extend(image_spec.packages)
+        # Adds flytekit if it is not specified
+        if not any(_is_flytekit(package) for package in requirements):
+            requirements.append(get_flytekit_for_pypi())
 
-    # Adds flytekit if it is not specified
-    if not any(_is_flytekit(package) for package in requirements):
-        requirements.append(get_flytekit_for_pypi())
-
-    requirements_uv_path = tmp_dir / "requirements_uv.txt"
-    requirements_uv_path.write_text("\n".join(requirements))
-    pip_install_args.extend(["--requirement", "requirements_uv.txt"])
+        requirements_uv_path = tmp_dir / "requirements_uv.txt"
+        requirements_uv_path.write_text("\n".join(requirements))
+        pip_install_args.extend(["--requirement", "requirements_uv.txt"])
 
     pip_install_args = " ".join(pip_install_args)
 
-    return UV_PYTHON_INSTALL_COMMAND_TEMPLATE.substitute(PIP_INSTALL_ARGS=pip_install_args)
+    return template.substitute(
+        PIP_INSTALL_ARGS=pip_install_args,
+        PIP_SECRET_MOUNT=pip_secret_mount,
+    )
+
+
+class _PythonInstallTemplate(NamedTuple):
+    python_exec: str
+    template: str
+    extra_path: str
+
+
+def prepare_python_executable(image_spec: ImageSpec) -> _PythonInstallTemplate:
+    if image_spec.python_exec:
+        if image_spec.conda_channels:
+            raise ValueError("conda_channels is not supported with python_exec")
+        if image_spec.conda_packages:
+            raise ValueError("conda_packages is not supported with python_exec")
+        return _PythonInstallTemplate(python_exec=image_spec.python_exec, template="", extra_path="")
+
+    conda_packages = image_spec.conda_packages or []
+    conda_channels = image_spec.conda_channels or []
+
+    if conda_packages:
+        conda_packages_concat = " ".join(conda_packages)
+    else:
+        conda_packages_concat = ""
+
+    if conda_channels:
+        conda_channels_concat = " ".join(f"-c {channel}" for channel in conda_channels)
+    else:
+        conda_channels_concat = ""
+
+    if image_spec.python_version:
+        python_version = image_spec.python_version
+    else:
+        python_version = f"{sys.version_info.major}.{sys.version_info.minor}"
+
+    template = MICROMAMBA_INSTALL_COMMAND_TEMPLATE.substitute(
+        PYTHON_VERSION=python_version,
+        CONDA_PACKAGES=conda_packages_concat,
+        CONDA_CHANNELS=conda_channels_concat,
+    )
+    return _PythonInstallTemplate(
+        python_exec="/opt/micromamba/envs/runtime/bin/python",
+        template=template,
+        extra_path="/opt/micromamba/envs/runtime/bin",
+    )
 
 
 def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
@@ -255,23 +370,7 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
     else:
         copy_command_runtime = ""
 
-    conda_packages = image_spec.conda_packages or []
-    conda_channels = image_spec.conda_channels or []
-
-    if conda_packages:
-        conda_packages_concat = " ".join(conda_packages)
-    else:
-        conda_packages_concat = ""
-
-    if conda_channels:
-        conda_channels_concat = " ".join(f"-c {channel}" for channel in conda_channels)
-    else:
-        conda_channels_concat = ""
-
-    if image_spec.python_version:
-        python_version = image_spec.python_version
-    else:
-        python_version = f"{sys.version_info.major}.{sys.version_info.minor}"
+    python_install_template = prepare_python_executable(image_spec=image_spec)
 
     if image_spec.entrypoint is None:
         entrypoint = ""
@@ -306,11 +405,11 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
         extra_copy_cmds = ""
 
     docker_content = DOCKER_FILE_TEMPLATE.substitute(
-        PYTHON_VERSION=python_version,
         UV_PYTHON_INSTALL_COMMAND=uv_python_install_command,
-        CONDA_PACKAGES=conda_packages_concat,
-        CONDA_CHANNELS=conda_channels_concat,
         APT_INSTALL_COMMAND=apt_install_command,
+        INSTALL_PYTHON_TEMPLATE=python_install_template.template,
+        EXTRA_PATH=python_install_template.extra_path,
+        PYTHON_EXEC=python_install_template.python_exec,
         BASE_IMAGE=base_image,
         ENV=env,
         COPY_COMMAND_RUNTIME=copy_command_runtime,
@@ -346,6 +445,7 @@ class DefaultImageBuilder(ImageSpecBuilder):
         "base_image",
         "pip_index",
         "pip_extra_index_url",
+        "pip_secret_mounts",
         # "registry_config",
         "commands",
         "copy",
@@ -366,7 +466,7 @@ class DefaultImageBuilder(ImageSpecBuilder):
             if value is not None and name not in self._SUPPORTED_IMAGE_SPEC_PARAMETERS and not name.startswith("_")
         ]
         if unsupported_parameters:
-            msg = f"The following parameters are unsupported and ignored: " f"{unsupported_parameters}"
+            msg = f"The following parameters are unsupported and ignored: {unsupported_parameters}"
             warnings.warn(msg, UserWarning, stacklevel=2)
 
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -382,6 +482,10 @@ class DefaultImageBuilder(ImageSpecBuilder):
                 "--platform",
                 image_spec.platform,
             ]
+
+            if image_spec.pip_secret_mounts:
+                for i, (src, _) in enumerate(image_spec.pip_secret_mounts):
+                    command.extend(["--secret", f"id={_secret_id(i)},src={src}"])
 
             if image_spec.registry and push:
                 command.append("--push")

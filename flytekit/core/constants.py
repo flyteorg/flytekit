@@ -11,6 +11,8 @@ GLOBAL_INPUT_NODE_ID = ""
 START_NODE_ID = "start-node"
 END_NODE_ID = "end-node"
 
+DEFAULT_FAILURE_NODE_ID = "efn"
+
 # If set this environment variable overrides the default container image and the default base image in ImageSpec.
 FLYTE_INTERNAL_IMAGE_ENV_VAR = "FLYTE_INTERNAL_IMAGE"
 
@@ -38,3 +40,7 @@ EAGER_ROOT_ENV_NAME = "_F_EE_ROOT"
 CACHE_KEY_METADATA = "cache-key-metadata"
 
 SERIALIZATION_FORMAT = "serialization-format"
+
+# Shared memory mount name and path
+SHARED_MEMORY_MOUNT_NAME = "flyte-shared-memory"
+SHARED_MEMORY_MOUNT_PATH = "/dev/shm"

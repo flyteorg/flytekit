@@ -1,3 +1,6 @@
+import importlib
+import os
+import sys
 from concurrent import futures
 
 import grpc
@@ -30,6 +33,13 @@ def serve(ctx: click.Context):
     help="Grpc port for the agent service",
 )
 @click.option(
+    "--prometheus_port",
+    default="9090",
+    is_flag=False,
+    type=int,
+    help="Prometheus port for the agent service",
+)
+@click.option(
     "--worker",
     default="10",
     is_flag=False,
@@ -44,21 +54,41 @@ def serve(ctx: click.Context):
     help="It will wait for the specified number of seconds before shutting down grpc server. It should only be used "
     "for testing.",
 )
+@click.option(
+    "--modules",
+    required=False,
+    multiple=True,
+    type=str,
+    help="List of additional files or module that defines the agent",
+)
 @click.pass_context
-def agent(_: click.Context, port, worker, timeout):
+def agent(_: click.Context, port, prometheus_port, worker, timeout, modules):
     """
     Start a grpc server for the agent service.
     """
     import asyncio
 
-    asyncio.run(_start_grpc_server(port, worker, timeout))
+    working_dir = os.getcwd()
+    if all(os.path.realpath(path) != working_dir for path in sys.path):
+        sys.path.append(working_dir)
+    for m in modules:
+        importlib.import_module(m)
+
+    asyncio.run(_start_grpc_server(port, prometheus_port, worker, timeout))
 
 
-async def _start_grpc_server(port: int, worker: int, timeout: int):
-    from flytekit.extend.backend.agent_service import AgentMetadataService, AsyncAgentService, SyncAgentService
+async def _start_grpc_server(port: int, prometheus_port: int, worker: int, timeout: int):
+    try:
+        from flytekit.extend.backend.agent_service import AgentMetadataService, AsyncAgentService, SyncAgentService
+        from flytekit.extras.webhook import WebhookAgent  # noqa: F401 Webhook Agent Registration
+    except ImportError as e:
+        raise ImportError(
+            "Flyte agent dependencies are not installed. Please install it using `pip install flytekit[agent]`"
+        ) from e
 
     click.secho("🚀 Starting the agent service...")
-    _start_http_server()
+    _start_http_server(prometheus_port)
+
     print_agents_metadata()
 
     server = grpc.aio.server(futures.ThreadPoolExecutor(max_workers=worker))
@@ -73,12 +103,12 @@ async def _start_grpc_server(port: int, worker: int, timeout: int):
     await server.wait_for_termination(timeout)
 
 
-def _start_http_server():
+def _start_http_server(prometheus_port: int):
     try:
         from prometheus_client import start_http_server
 
         click.secho("Starting up the server to expose the prometheus metrics...")
-        start_http_server(9090)
+        start_http_server(prometheus_port)
     except ImportError as e:
         click.secho(f"Failed to start the prometheus server with error {e}", fg="red")
 

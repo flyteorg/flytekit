@@ -8,7 +8,9 @@ from flytekit import Resources
 from flytekit.core.resources import (
     pod_spec_from_resources,
     convert_resources_to_resource_model,
+    construct_extended_resources,
 )
+from flytekit.extras.accelerators import T4
 
 _ResourceName = _task_models.Resources.ResourceName
 
@@ -110,12 +112,12 @@ def test_resources_round_trip():
 def test_pod_spec_from_resources_requests_limits_set():
     requests = Resources(cpu="1", mem="1Gi", gpu="1", ephemeral_storage="1Gi")
     limits = Resources(cpu="4", mem="2Gi", gpu="1", ephemeral_storage="1Gi")
-    k8s_pod_name = "foo"
+    primary_container_name = "foo"
 
     expected_pod_spec = V1PodSpec(
         containers=[
             V1Container(
-                name=k8s_pod_name,
+                name=primary_container_name,
                 resources=V1ResourceRequirements(
                     requests={
                         "cpu": "1",
@@ -133,19 +135,19 @@ def test_pod_spec_from_resources_requests_limits_set():
             )
         ]
     )
-    pod_spec = pod_spec_from_resources(k8s_pod_name=k8s_pod_name, requests=requests, limits=limits)
-    assert expected_pod_spec == V1PodSpec(**pod_spec)
+    pod_spec = pod_spec_from_resources(primary_container_name=primary_container_name, requests=requests, limits=limits)
+    assert expected_pod_spec == pod_spec
 
 
 def test_pod_spec_from_resources_requests_set():
     requests = Resources(cpu="1", mem="1Gi")
     limits = None
-    k8s_pod_name = "foo"
+    primary_container_name = "foo"
 
     expected_pod_spec = V1PodSpec(
         containers=[
             V1Container(
-                name=k8s_pod_name,
+                name=primary_container_name,
                 resources=V1ResourceRequirements(
                     requests={"cpu": "1", "memory": "1Gi"},
                     limits={"cpu": "1", "memory": "1Gi"},
@@ -153,5 +155,20 @@ def test_pod_spec_from_resources_requests_set():
             )
         ]
     )
-    pod_spec = pod_spec_from_resources(k8s_pod_name=k8s_pod_name, requests=requests, limits=limits)
-    assert expected_pod_spec == V1PodSpec(**pod_spec)
+    pod_spec = pod_spec_from_resources(primary_container_name=primary_container_name, requests=requests, limits=limits)
+    assert expected_pod_spec == pod_spec
+
+
+@pytest.mark.parametrize("shared_memory", [None, False])
+def test_construct_extended_resources_shared_memory_none(shared_memory):
+    resources = construct_extended_resources(shared_memory=shared_memory)
+    assert resources is None
+
+
+@pytest.mark.parametrize("shared_memory, expected_size_limit", [
+    ("2Gi", "2Gi"),
+    (True, ""),
+])
+def test_construct_extended_resources_shared_memory(shared_memory, expected_size_limit):
+    resources = construct_extended_resources(shared_memory=shared_memory)
+    assert resources.shared_memory.size_limit == expected_size_limit

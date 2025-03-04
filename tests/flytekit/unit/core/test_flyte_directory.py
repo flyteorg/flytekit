@@ -1,5 +1,6 @@
 import os
 import pathlib
+import pickle
 import shutil
 import tempfile
 import typing
@@ -20,7 +21,7 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
 from flytekit.exceptions.user import FlyteAssertion
 from flytekit.models.core.types import BlobType
-from flytekit.models.literals import LiteralMap
+from flytekit.models.literals import LiteralMap, Blob, BlobMetadata
 from flytekit.types.directory.types import FlyteDirectory, FlyteDirToMultipartBlobTransformer
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
@@ -407,8 +408,7 @@ def test_flytefile_in_dataclass(local_dummy_directory):
     assert dc1 == dc2
 
 
-def test_input_from_flyte_console_attribute_access_flytefile(
-        local_dummy_directory):
+def test_input_from_flyte_console_attribute_access_flytefile(local_dummy_directory):
     # Flyte Console will send the input data as protobuf Struct
 
     dict_obj = {"path": local_dummy_directory}
@@ -422,3 +422,27 @@ def test_input_from_flyte_console_attribute_access_flytefile(
         FlyteContextManager.current_context(), upstream_output, FlyteDirectory)
     assert isinstance(downstream_input, FlyteDirectory)
     assert downstream_input == FlyteDirectory(local_dummy_directory)
+
+
+def test_flyte_directory_is_pickleable():
+    upstream_output = Literal(
+        scalar=Scalar(
+            blob=Blob(
+                uri="s3://sample-path/directory",
+                metadata=BlobMetadata(
+                    type=BlobType(
+                        dimensionality=BlobType.BlobDimensionality.MULTIPART,
+                        format=""
+                    )
+                )
+            )
+        )
+    )
+    downstream_input = TypeEngine.to_python_value(
+        FlyteContextManager.current_context(), upstream_output, FlyteDirectory
+    )
+
+    # test round trip pickling
+    pickled_input = pickle.dumps(downstream_input)
+    unpickled_input = pickle.loads(pickled_input)
+    assert downstream_input == unpickled_input
