@@ -578,7 +578,7 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
                 # Note: The construction of this object is in this function because this function should be on the
                 # main thread of pyflyte-execute. It needs to be on the main thread because signal handlers can only
                 # be installed on the main thread.
-                c = Controller(remote=remote, ss=ss, tag=tag, root_tag=root_tag, exec_prefix=prefix)
+                c = Controller(remote=remote, ss=ss, tag=tag, root_tag=root_tag, exec_prefix=prefix, task_ctx=ctx)
                 handler = c.get_signal_handler()
                 signal.signal(signal.SIGINT, handler)
                 signal.signal(signal.SIGTERM, handler)

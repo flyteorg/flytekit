@@ -14,6 +14,7 @@ from enum import Enum
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.constants import EAGER_ROOT_ENV_NAME, EAGER_TAG_KEY, EAGER_TAG_ROOT_KEY
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.options import Options
 from flytekit.core.reference_entity import ReferenceEntity
@@ -164,11 +165,20 @@ class Controller:
     in a loop similar to a controller loop in a k8s operator.
     """
 
-    def __init__(self, remote: FlyteRemote, ss: SerializationSettings, tag: str, root_tag: str, exec_prefix: str):
+    def __init__(
+        self,
+        remote: FlyteRemote,
+        ss: SerializationSettings,
+        tag: str,
+        root_tag: str,
+        exec_prefix: str,
+        task_ctx: typing.Optional[FlyteContext] = None,
+    ):
         logger.debug(
             f"Creating Controller for eager execution with {remote.config.platform.endpoint},"
             f" {tag=}, {root_tag=}, {exec_prefix=} and ss: {ss}"
         )
+        self.task_ctx = task_ctx
 
         self.entries: typing.Dict[str, typing.List[WorkItem]] = {}
         self.remote = remote
@@ -319,7 +329,8 @@ class Controller:
                 with self.entries_lock:
                     html = self.render_html()
                     print("Current entries: ", html, flush=True)
-                    Deck("Eager Executions", html).publish()
+                    with FlyteContextManager.with_context(self.task_ctx):
+                        Deck("Eager Executions", html).publish()
             print(f"published {len(self.entries)}", flush=True)
 
             # This is a blocking call so we don't hit the API too much.
