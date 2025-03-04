@@ -46,7 +46,7 @@ from flytekit.extend.backend.base_connector import (
     is_terminal_phase,
     render_task_template,
 )
-from flytekit.extend.backend.utils import convert_to_flyte_phase, get_agent_secret
+from flytekit.extend.backend.utils import convert_to_flyte_phase, get_agent_secret, get_connector_secret
 from flytekit.models import literals
 from flytekit.models.core.identifier import (
     Identifier,
@@ -219,7 +219,7 @@ def test_dummy_connector():
 )
 @pytest.mark.asyncio
 async def test_async_agent_service(connector, consume_metadata):
-    AgentRegistry.register(agent, override=True)
+    ConnectorRegistry.register(connector, override=True)
     service = AsyncConnectorService()
     ctx = MagicMock(spec=grpc.ServicerContext)
 
@@ -280,7 +280,7 @@ def test_register_connector():
 @pytest.mark.asyncio
 async def test_connector_metadata_service():
     connector = DummyConnector()
-    ConnectorRegistry.register(agent, override=True)
+    ConnectorRegistry.register(connector, override=True)
 
     ctx = MagicMock(spec=grpc.ServicerContext)
     metadata_service = ConnectorMetadataService()
@@ -288,14 +288,14 @@ async def test_connector_metadata_service():
     assert isinstance(res, ListAgentsResponse)
     res = await metadata_service.GetAgent(GetAgentRequest(name="Dummy Connector"), ctx)
     assert res.agent.name == connector.name
-    assert res.agent.supported_task_types[0] == agent.task_category.name
-    assert res.agent.supported_task_categories[0].name == agent.task_category.name
+    assert res.agent.supported_task_types[0] == connector.task_category.name
+    assert res.agent.supported_task_categories[0].name == connector.task_category.name
 
 
 def test_openai_connector():
-    ConnectorRegistry.register(MockOpenAIAgent(), override=True)
+    ConnectorRegistry.register(MockOpenAIConnector(), override=True)
 
-    class OpenAITask(SyncAgentExecutorMixin, PythonTask):
+    class OpenAITask(SyncConnectorExecutorMixin, PythonTask):
         def __init__(self, **kwargs):
             super().__init__(
                 task_type="openai",
@@ -333,7 +333,7 @@ async def get_request_iterator(task_type: str):
 
 
 @pytest.mark.asyncio
-async def test_sync_agent_service():
+async def test_sync_connector_service():
     ConnectorRegistry.register(MockOpenAIConnector(), override=True)
     ctx = MagicMock(spec=grpc.ServicerContext)
 
@@ -385,9 +385,10 @@ def test_convert_to_flyte_phase():
 
 
 @patch("flytekit.current_context")
-def test_get_agent_secret(mocked_context):
+def test_get_connector_secret(mocked_context):
     mocked_context.return_value.secrets.get.return_value = "mocked token"
     assert get_agent_secret("mocked key") == "mocked token"
+    assert get_connector_secret("mocked key") == "mocked token"
 
 
 def test_render_task_template():
@@ -496,7 +497,7 @@ def test_agent_complex_type():
                 phase=TaskExecution.SUCCEEDED, outputs={"foos": [Foo(val="a"), Foo(val="b")], "has_foos": True}
             )
 
-    AgentRegistry.register(FooAgent(), override=True)
+    ConnectorRegistry.register(FooAgent(), override=True)
 
     class FooTask(SyncAgentExecutorMixin, PythonTask):  # type: ignore
         _TASK_TYPE = "foo"

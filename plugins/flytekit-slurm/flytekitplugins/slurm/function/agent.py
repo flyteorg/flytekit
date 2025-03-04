@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Tuple, Union
 from asyncssh import SSHClientConnection
 
 from flytekit import logger
-from flytekit.extend.backend.base_agent import AgentRegistry, AsyncConnectorBase, Resource, ResourceMeta
+from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource, ResourceMeta
 from flytekit.extend.backend.utils import convert_to_flyte_phase
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
@@ -42,7 +42,7 @@ class SlurmCluster:
         return hash((self.host, self.username))
 
 
-class SlurmFunctionAgent(AsyncConnectorBase):
+class SlurmFunctionAgent(AsyncAgentBase):
     name = "Slurm Function Agent"
 
     # SSH connection pool for multi-host environment

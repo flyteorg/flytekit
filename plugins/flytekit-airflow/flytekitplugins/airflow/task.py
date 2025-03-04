@@ -85,7 +85,7 @@ class AirflowContainerTask(PythonAutoContainerTask[AirflowObj]):
     The airflow task module, name and parameters are stored in the task config.
 
     Some of the Airflow operators are not deferrable, For example, BeamRunJavaPipelineOperator, BeamRunPythonPipelineOperator.
-    These tasks don't have an async method to get the job status, so cannot be used in the Flyte agent. We run these tasks in a container.
+    These tasks don't have an async method to get the job status, so cannot be used in the Flyte connector. We run these tasks in a container.
     """
 
     def __init__(
@@ -161,7 +161,7 @@ def _get_airflow_instance(
 def _is_deferrable(cls: Type) -> bool:
     """
     This function is used to check if the Airflow operator is deferrable.
-    If the operator is not deferrable, we run it in a container instead of the agent.
+    If the operator is not deferrable, we run it in a container instead of the connector.
     """
     # Only Airflow operators are deferrable.
     if not issubclass(cls, airflow_models.BaseOperator):

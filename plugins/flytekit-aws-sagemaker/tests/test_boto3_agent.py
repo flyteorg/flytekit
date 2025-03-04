@@ -64,9 +64,9 @@ idempotence_token = "74443947857331f7"
     ],
 )
 @mock.patch(
-    "flytekitplugins.awssagemaker_inference.boto3_connector.Boto3AgentMixin._call",
+    "flytekitplugins.awssagemaker_inference.boto3_connector.Boto3ConnectorMixin._call",
 )
-async def test_agent(mock_boto_call, mock_return_value, request):
+async def test_connector(mock_boto_call, mock_return_value, request):
     mock_boto_call.return_value = mock_return_value[0]
 
     connector = ConnectorRegistry.get_connector("boto")

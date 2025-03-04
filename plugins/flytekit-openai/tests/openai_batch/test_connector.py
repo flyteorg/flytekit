@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 from flyteidl.core.execution_pb2 import TaskExecution
-from flytekitplugins.openai.batch.agent import BatchEndpointMetadata
+from flytekitplugins.openai.batch.connector import BatchEndpointMetadata
 from openai.types import Batch, BatchError, BatchRequestCounts
 from openai.types.batch import Errors
 
@@ -112,8 +112,8 @@ batch_retrieve_result_failure = Batch(
 @mock.patch("flytekit.current_context")
 @mock.patch("openai.resources.batches.AsyncBatches.create", new_callable=AsyncMock)
 @mock.patch("openai.resources.batches.AsyncBatches.retrieve", new_callable=AsyncMock)
-async def test_openai_batch_agent(mock_retrieve, mock_create, mock_context):
-    agent = AgentRegistry.get_connector("openai-batch")
+async def test_openai_batch_connector(mock_retrieve, mock_create, mock_context):
+    connector = AgentRegistry.get_connector("openai-batch")
     task_id = Identifier(
         resource_type=ResourceType.TASK,
         project="project",
@@ -154,7 +154,7 @@ async def test_openai_batch_agent(mock_retrieve, mock_create, mock_context):
     # GET
     # Status: Completed
     mock_retrieve.return_value = batch_retrieve_result
-    resource = await agent.get(metadata)
+    resource = await connector.get(metadata)
     assert resource.phase == TaskExecution.SUCCEEDED
     assert isinstance(resource.outputs, literals.LiteralMap)
 
@@ -166,7 +166,7 @@ async def test_openai_batch_agent(mock_retrieve, mock_create, mock_context):
 
     # Status: Failed
     mock_retrieve.return_value = batch_retrieve_result_failure
-    resource = await agent.get(metadata)
+    resource = await connector.get(metadata)
     assert resource.phase == TaskExecution.FAILED
     assert resource.message == "This line is not parseable as valid JSON."
 
@@ -179,5 +179,5 @@ async def test_openai_batch_agent(mock_retrieve, mock_create, mock_context):
             )
         },
     )
-    response = await agent.create(task_template, task_inputs)
+    response = await connector.create(task_template, task_inputs)
     assert response == metadata

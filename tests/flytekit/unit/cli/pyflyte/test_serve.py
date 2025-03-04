@@ -7,3 +7,6 @@ def test_pyflyte_serve():
     runner = CliRunner()
     result = runner.invoke(pyflyte.main, ["serve", "agent", "--port", "0", "--timeout", "1"], catch_exceptions=False)
     assert result.exit_code == 0
+
+    result = runner.invoke(pyflyte.main, ["serve", "connector", "--port", "0", "--timeout", "1"], catch_exceptions=False)
+    assert result.exit_code == 0

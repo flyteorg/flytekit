@@ -14,7 +14,7 @@ from flytekit.models.task import Sql, TaskTemplate
 
 @mock.patch("google.cloud.bigquery.job.QueryJob")
 @mock.patch("google.cloud.bigquery.Client")
-def test_bigquery_agent(mock_client, mock_query_job):
+def test_bigquery_connector(mock_client, mock_query_job):
     job_id = "dummy_id"
     mock_instance = mock_client.return_value
     mock_query_job_instance = mock_query_job.return_value

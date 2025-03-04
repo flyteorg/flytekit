@@ -270,7 +270,7 @@ class ConnectorRegistry(object):
     @staticmethod
     def get_connector_metadata(name: str) -> Agent:
         if name not in ConnectorRegistry._METADATA:
-            raise FlyteConnectorNotFound(f"Cannot find agent for name: {name}.")
+            raise FlyteConnectorNotFound(f"Cannot find connector for name: {name}.")
         return ConnectorRegistry._METADATA[name]
 
 

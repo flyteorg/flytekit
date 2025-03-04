@@ -59,8 +59,8 @@ def _get_databricks_job_spec(task_template: TaskTemplate) -> dict:
     return databricks_job
 
 
-class DatabricksAgent(AsyncConnectorBase):
-    name = "Databricks Agent"
+class DatabricksConnector(AsyncConnectorBase):
+    name = "Databricks Connector"
 
     def __init__(self):
         super().__init__(task_type_name="spark", metadata_type=DatabricksJobMetadata)
@@ -127,7 +127,7 @@ class DatabricksAgent(AsyncConnectorBase):
                 await resp.json()
 
 
-class DatabricksAgentV2(DatabricksAgent):
+class DatabricksAgentV2(DatabricksConnector):
     """
     Add DatabricksAgentV2 to support running the k8s spark and databricks spark together in the same workflow.
     This is necessary because one task type can only be handled by a single backend plugin.
@@ -137,7 +137,7 @@ class DatabricksAgentV2(DatabricksAgent):
     """
 
     def __init__(self):
-        super(DatabricksAgent, self).__init__(task_type_name="databricks", metadata_type=DatabricksJobMetadata)
+        super(DatabricksConnector, self).__init__(task_type_name="databricks", metadata_type=DatabricksJobMetadata)
 
 
 def get_header() -> typing.Dict[str, str]:
@@ -149,5 +149,5 @@ def result_state_is_available(life_cycle_state: str) -> bool:
     return life_cycle_state == "TERMINATED"
 
 
-ConnectorRegistry.register(DatabricksAgent())
+ConnectorRegistry.register(DatabricksConnector())
 ConnectorRegistry.register(DatabricksAgentV2())

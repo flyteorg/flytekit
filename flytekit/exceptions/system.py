@@ -48,7 +48,7 @@ class FlyteSystemAssertion(FlyteSystemException, AssertionError):
 
 
 class FlyteConnectorNotFound(FlyteSystemException, AssertionError):
-    _ERROR_CODE = "SYSTEM:AgentNotFound"
+    _ERROR_CODE = "SYSTEM:ConnectorNotFound"
 
 
 class FlyteDownloadDataException(FlyteSystemException):

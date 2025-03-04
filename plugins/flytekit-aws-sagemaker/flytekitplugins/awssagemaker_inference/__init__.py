@@ -9,7 +9,7 @@
    BotoTask
    SageMakerModelTask
    SageMakerEndpointConfigTask
-   SageMakerEndpointAgent
+   SageMakerEndpointConnector
    SageMakerEndpointTask
    SageMakerDeleteEndpointConfigTask
    SageMakerDeleteEndpointTask
