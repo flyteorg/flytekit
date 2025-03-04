@@ -318,7 +318,9 @@ class Controller:
             if len(self.entries) > 0:
                 with self.entries_lock:
                     html = self.render_html()
+                    print("Current entries: ", html, flush=True)
                     Deck("Eager Executions", html).publish()
+            print(f"published {len(self.entries)}", flush=True)
 
             # This is a blocking call so we don't hit the API too much.
             time.sleep(2)
