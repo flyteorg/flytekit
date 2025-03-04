@@ -456,6 +456,7 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
         node_dependency_hints: Optional[
             Iterable[Union["PythonFunctionTask", "_annotated_launch_plan.LaunchPlan", WorkflowBase]]
         ] = None,
+        enable_deck: bool = True,
         **kwargs,
     ):
         # delete execution mode from kwargs
@@ -475,6 +476,7 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
             PythonFunctionTask.ExecutionBehavior.EAGER,
             task_resolver,
             node_dependency_hints,
+            enable_deck=enable_deck,
             **kwargs,
         )
 
