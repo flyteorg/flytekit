@@ -6,7 +6,7 @@ from flytekitplugins.k8sdataservice.k8s.manager import K8sManager
 from flytekitplugins.k8sdataservice.task import DataServiceConfig
 
 from flytekit import logger
-from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource, ResourceMeta
+from flytekit.extend.backend.base_agent import AgentRegistry, AsyncConnectorBase, Resource, ResourceMeta
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
@@ -17,7 +17,7 @@ class DataServiceMetadata(ResourceMeta):
     name: str
 
 
-class DataServiceAgent(AsyncAgentBase):
+class DataServiceAgent(AsyncConnectorBase):
     name = "K8s DataService Async Agent"
 
     def __init__(self):

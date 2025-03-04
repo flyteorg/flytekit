@@ -8,7 +8,7 @@ from flytekit import FlyteContextManager, lazy_module
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import (
     AgentRegistry,
-    AsyncAgentBase,
+    AsyncConnectorBase,
     Resource,
     ResourceMeta,
 )
@@ -45,7 +45,7 @@ class BatchEndpointMetadata(ResourceMeta):
         return cloudpickle.loads(data)
 
 
-class BatchEndpointAgent(AsyncAgentBase):
+class BatchEndpointAgent(AsyncConnectorBase):
     name = "OpenAI Batch Endpoint Agent"
 
     def __init__(self):

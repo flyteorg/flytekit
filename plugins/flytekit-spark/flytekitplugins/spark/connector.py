@@ -8,7 +8,7 @@ from flyteidl.core.execution_pb2 import TaskExecution
 
 from flytekit import lazy_module
 from flytekit.core.constants import FLYTE_FAIL_ON_ERROR
-from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource, ResourceMeta
+from flytekit.extend.backend.base_connector import ConnectorRegistry, AsyncConnectorBase, Resource, ResourceMeta
 from flytekit.extend.backend.utils import convert_to_flyte_phase, get_agent_secret
 from flytekit.models.core.execution import TaskLog
 from flytekit.models.literals import LiteralMap
@@ -59,7 +59,7 @@ def _get_databricks_job_spec(task_template: TaskTemplate) -> dict:
     return databricks_job
 
 
-class DatabricksAgent(AsyncAgentBase):
+class DatabricksAgent(AsyncConnectorBase):
     name = "Databricks Agent"
 
     def __init__(self):
@@ -149,5 +149,5 @@ def result_state_is_available(life_cycle_state: str) -> bool:
     return life_cycle_state == "TERMINATED"
 
 
-AgentRegistry.register(DatabricksAgent())
-AgentRegistry.register(DatabricksAgentV2())
+ConnectorRegistry.register(DatabricksAgent())
+ConnectorRegistry.register(DatabricksAgentV2())

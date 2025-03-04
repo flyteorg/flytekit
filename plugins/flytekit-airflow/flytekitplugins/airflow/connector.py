@@ -15,7 +15,7 @@ from airflow.triggers.base import BaseTrigger, TriggerEvent
 from airflow.utils.context import Context
 from flytekit import logger
 from flytekit.exceptions.user import FlyteUserException
-from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource, ResourceMeta
+from flytekit.extend.backend.base_connector import ConnectorRegistry, AsyncConnectorBase, Resource, ResourceMeta
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
@@ -39,7 +39,7 @@ class AirflowMetadata(ResourceMeta):
         return cloudpickle.loads(data)
 
 
-class AirflowAgent(AsyncAgentBase):
+class AirflowAgent(AsyncConnectorBase):
     """
     It is used to run Airflow tasks. It is registered as an agent in the AgentRegistry.
     There are three kinds of Airflow tasks: AirflowOperator, AirflowSensor, and AirflowHook.
@@ -163,4 +163,4 @@ def get_log_links(
     return log_links
 
 
-AgentRegistry.register(AirflowAgent())
+ConnectorRegistry.register(AirflowAgent())

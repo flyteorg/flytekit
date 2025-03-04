@@ -27,7 +27,7 @@ from flytekit import current_context
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions.base import FlyteException
 from flytekit.exceptions.user import FlyteUserException
-from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource, ResourceMeta
+from flytekit.extend.backend.base_agent import AgentRegistry, AsyncConnectorBase, Resource, ResourceMeta
 from flytekit.loggers import logger
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
@@ -42,7 +42,7 @@ class PerianMetadata(ResourceMeta):
     job_id: str
 
 
-class PerianAgent(AsyncAgentBase):
+class PerianAgent(AsyncConnectorBase):
     """Flyte Agent for executing tasks on PERIAN Job Platform"""
 
     name = "Perian Agent"

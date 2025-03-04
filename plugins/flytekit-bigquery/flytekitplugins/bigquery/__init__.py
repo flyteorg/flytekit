@@ -12,5 +12,5 @@ This package contains things that are useful when extending Flytekit.
    BigQueryAgent
 """
 
-from .agent import BigQueryAgent
+from .agent import BigQueryConnector
 from .task import BigQueryConfig, BigQueryTask

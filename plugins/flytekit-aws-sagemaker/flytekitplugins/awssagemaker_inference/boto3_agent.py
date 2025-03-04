@@ -11,7 +11,7 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import (
     AgentRegistry,
     Resource,
-    SyncAgentBase,
+    SyncConnectorBase,
 )
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
@@ -32,7 +32,7 @@ def convert_floats_with_no_fraction_to_ints(data):
     return data
 
 
-class BotoAgent(SyncAgentBase):
+class BotoAgent(SyncConnectorBase):
     """A general purpose boto3 agent that can be used to call any boto3 method."""
 
     name = "Boto Agent"

@@ -39,7 +39,7 @@ def test_bigquery_agent(mock_client, mock_query_job):
     mock_instance.query.return_value = MockJob()
     mock_instance.cancel_job.return_value = MockJob()
 
-    agent = AgentRegistry.get_agent("bigquery_query_job_task")
+    agent = AgentRegistry.get_connector("bigquery_query_job_task")
 
     task_id = Identifier(
         resource_type=ResourceType.TASK, project="project", domain="domain", name="name", version="version"

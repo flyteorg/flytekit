@@ -64,7 +64,7 @@ def create_test_setup(original_name: str = "gnn-1234", existing_release_name: st
 @patch("flytekitplugins.k8sdataservice.agent.K8sManager.delete_stateful_set")
 @patch("flytekitplugins.k8sdataservice.agent.K8sManager.delete_service")
 def test_gnn_agent(mock_delete_service, mock_delete_stateful_set, mock_check_status, mock_create_data_service):
-    agent = AgentRegistry.get_agent("dataservicetask")
+    agent = AgentRegistry.get_connector("dataservicetask")
     task_id, task_metadata, task_config = create_test_setup(existing_release_name="")
     int_type = types.LiteralType(types.SimpleType.INTEGER)
     interfaces = interface_models.TypedInterface(
@@ -114,7 +114,7 @@ def test_gnn_agent(mock_delete_service, mock_delete_stateful_set, mock_check_sta
 @patch("flytekitplugins.k8sdataservice.agent.K8sManager.delete_stateful_set")
 @patch("flytekitplugins.k8sdataservice.agent.K8sManager.delete_service")
 def test_gnn_agent_reuse_data_service(mock_delete_service, mock_delete_stateful_set, mock_check_status, mock_create_data_service):
-    agent = AgentRegistry.get_agent("dataservicetask")
+    agent = AgentRegistry.get_connector("dataservicetask")
     task_id, task_metadata, task_config = create_test_setup(original_name="gnn-2345", existing_release_name="gnn-2345")
 
     int_type = types.LiteralType(types.SimpleType.INTEGER)
@@ -166,7 +166,7 @@ def test_gnn_agent_reuse_data_service(mock_delete_service, mock_delete_stateful_
 @patch("flytekitplugins.k8sdataservice.agent.K8sManager.delete_stateful_set")
 @patch("flytekitplugins.k8sdataservice.agent.K8sManager.delete_service")
 def test_gnn_agent_status(mock_delete_service, mock_delete_stateful_set, mock_check_status, mock_create_data_service):
-    agent = AgentRegistry.get_agent("dataservicetask")
+    agent = AgentRegistry.get_connector("dataservicetask")
     task_id, task_metadata, task_config = create_test_setup(original_name="gnn-2345", existing_release_name="gnn-2345")
 
     int_type = types.LiteralType(types.SimpleType.INTEGER)
@@ -217,7 +217,7 @@ def test_gnn_agent_status(mock_delete_service, mock_delete_stateful_set, mock_ch
 @patch("flytekitplugins.k8sdataservice.agent.K8sManager.delete_stateful_set")
 @patch("flytekitplugins.k8sdataservice.agent.K8sManager.delete_service")
 def test_gnn_agent_no_configmap(mock_delete_service, mock_delete_stateful_set, mock_check_status, mock_create_data_service):
-    agent = AgentRegistry.get_agent("dataservicetask")
+    agent = AgentRegistry.get_connector("dataservicetask")
     task_id, task_metadata, task_config = create_test_setup(original_name="gnn-2345", existing_release_name="gnn-2345")
 
     int_type = types.LiteralType(types.SimpleType.INTEGER)
@@ -269,7 +269,7 @@ def test_gnn_agent_no_configmap(mock_delete_service, mock_delete_stateful_set, m
 @patch("flytekitplugins.k8sdataservice.agent.K8sManager.delete_stateful_set")
 @patch("flytekitplugins.k8sdataservice.agent.K8sManager.delete_service")
 def test_gnn_agent_status_failed(mock_delete_service, mock_delete_stateful_set, mock_check_status, mock_create_data_service):
-    agent = AgentRegistry.get_agent("dataservicetask")
+    agent = AgentRegistry.get_connector("dataservicetask")
     task_id, task_metadata, task_config = create_test_setup(original_name="gnn-2345", existing_release_name="gnn-2345")
 
     int_type = types.LiteralType(types.SimpleType.INTEGER)

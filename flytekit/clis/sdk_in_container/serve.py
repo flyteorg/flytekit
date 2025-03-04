@@ -135,7 +135,7 @@ def _start_health_check_server(server: grpc.Server, worker: int):
 def print_agents_metadata():
     from flytekit.extend.backend.base_agent import AgentRegistry
 
-    agents = AgentRegistry.list_agents()
+    agents = AgentRegistry.list_connectors()
 
     table = Table(title="Agent Metadata")
     table.add_column("Agent Name", style="cyan", no_wrap=True)

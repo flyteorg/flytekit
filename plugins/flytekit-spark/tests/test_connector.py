@@ -11,7 +11,7 @@ from flytekit.core.constants import FLYTE_FAIL_ON_ERROR
 from flytekitplugins.spark.agent import DATABRICKS_API_ENDPOINT, DatabricksJobMetadata, get_header, \
     _get_databricks_job_spec
 
-from flytekit.extend.backend.base_agent import AgentRegistry
+from flytekit.extend.backend.base_connector import ConnectorRegistry
 from flytekit.interfaces.cli_identifiers import Identifier
 from flytekit.models import literals, task
 from flytekit.models.core.identifier import ResourceType
@@ -19,8 +19,8 @@ from flytekit.models.task import Container, Resources, TaskTemplate
 
 
 @pytest.mark.asyncio
-async def test_databricks_agent():
-    agent = AgentRegistry.get_agent("spark")
+async def test_databricks_connector():
+    agent = ConnectorRegistry.get_connector("spark")
 
     task_id = Identifier(
         resource_type=ResourceType.TASK, project="project", domain="domain", name="name", version="version"

@@ -27,15 +27,15 @@ from flytekit.core import utils
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import ExecutionState, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, dataclass_from_dict
-from flytekit.exceptions.system import FlyteAgentNotFound
+from flytekit.exceptions.system import FlyteConnectorNotFound
 from flytekit.exceptions.user import FlyteUserException
 from flytekit.extend.backend.utils import is_terminal_phase, mirror_async_methods, render_task_template
 from flytekit.loggers import set_flytekit_log_properties
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskExecutionMetadata, TaskTemplate
 
-# It's used to force agent to run in the same event loop in the local execution.
-local_agent_loop = asyncio.new_event_loop()
+# It's used to force connector to run in the same event loop in the local execution.
+local_connector_loop = asyncio.new_event_loop()
 
 
 class TaskCategory:
@@ -134,8 +134,8 @@ class Resource:
         )
 
 
-class AgentBase(ABC):
-    name = "Base Agent"
+class ConnectorBase(ABC):
+    name = "Base Connector"
 
     def __init__(self, task_type_name: str, task_type_version: int = 0, **kwargs):
         self._task_category = TaskCategory(name=task_type_name, version=task_type_version)
@@ -143,44 +143,48 @@ class AgentBase(ABC):
     @property
     def task_category(self) -> TaskCategory:
         """
-        task category that the agent supports
+        task category that the connector supports
         """
         return self._task_category
 
 
-class SyncAgentBase(AgentBase):
+class SyncConnectorBase(ConnectorBase):
     """
-    This is the base class for all sync agents. It defines the interface that all agents must implement.
-    The agent service is responsible for invoking agents.
-    Propeller sends a request to agent service, and gets a response in the same call.
+    This is the base class for all sync connectors.
+    It defines the interface that all connectors must implement.
+    The connector service is responsible for invoking connectors.
+    Propeller sends a request to connector service, and gets a response in the same call.
 
-    All the agents should be registered in the AgentRegistry. Agent Service
-    will look up the agent based on the task type. Every task type can only have one agent.
+    All the connectors should be registered in the ConnectorRegistry.
+    Connector Service
+    will look up the connector based on the task type. Every task type can only have one connector.
     """
 
-    name = "Base Sync Agent"
+    name = "Base Sync Connector"
 
     @abstractmethod
     def do(
         self, task_template: TaskTemplate, output_prefix: str, inputs: Optional[LiteralMap] = None, **kwargs
     ) -> Resource:
         """
-        This is the method that the agent will run.
+        This is the method that the connector will run.
         """
         raise NotImplementedError
 
 
-class AsyncAgentBase(AgentBase):
+class AsyncConnectorBase(ConnectorBase):
     """
-    This is the base class for all async agents. It defines the interface that all agents must implement.
-    The agent service is responsible for invoking agents. The propeller will communicate with the agent service
+    This is the base class for all async connectors.
+    It defines the interface that all connectors must implement.
+    The connector service is responsible for invoking connectors. The propeller will communicate with the connector service
     to create tasks, get the status of tasks, and delete tasks.
 
-    All the agents should be registered in the AgentRegistry. Agent Service
-    will look up the agent based on the task type. Every task type can only have one agent.
+    All the connectors should be registered in the ConnectorRegistry.
+    Connector Service
+    will look up the connector based on the task type. Every task type can only have one connector.
     """
 
-    name = "Base Async Agent"
+    name = "Base Async Connector"
 
     def __init__(self, metadata_type: ResourceMeta, **kwargs):
         super().__init__(**kwargs)
@@ -221,65 +225,67 @@ class AsyncAgentBase(AgentBase):
         raise NotImplementedError
 
 
-class AgentRegistry(object):
+class ConnectorRegistry(object):
     """
-    This is the registry for all agents.
-    The agent service will look up the agent registry based on the task type.
-    The agent metadata service will look up the agent metadata based on the agent name.
+    This is the registry for all connectors.
+    The connector service will look up the connector registry based on the task type.
+    The connector metadata service will look up the connector metadata based on the connector name.
     """
 
-    _REGISTRY: Dict[TaskCategory, Union[AsyncAgentBase, SyncAgentBase]] = {}
+    _REGISTRY: Dict[TaskCategory, Union[AsyncConnectorBase, SyncConnectorBase]] = {}
     _METADATA: Dict[str, Agent] = {}
 
     @staticmethod
-    def register(agent: Union[AsyncAgentBase, SyncAgentBase], override: bool = False):
-        if agent.task_category in AgentRegistry._REGISTRY and override is False:
-            raise ValueError(f"Duplicate agent for task type: {agent.task_category}")
-        AgentRegistry._REGISTRY[agent.task_category] = agent
+    def register(connector: Union[AsyncConnectorBase, SyncConnectorBase], override: bool = False):
+        if connector.task_category in ConnectorRegistry._REGISTRY and override is False:
+            raise ValueError(f"Duplicate connector for task type: {connector.task_category}")
+        ConnectorRegistry._REGISTRY[connector.task_category] = connector
 
-        task_category = _TaskCategory(name=agent.task_category.name, version=agent.task_category.version)
+        task_category = _TaskCategory(name=connector.task_category.name, version=connector.task_category.version)
 
-        if agent.name in AgentRegistry._METADATA:
-            agent_metadata = AgentRegistry.get_agent_metadata(agent.name)
-            agent_metadata.supported_task_categories.append(task_category)
-            agent_metadata.supported_task_types.append(task_category.name)
+        if connector.name in ConnectorRegistry._METADATA:
+            connector_metadata = ConnectorRegistry.get_connector_metadata(connector.name)
+            connector_metadata.supported_task_categories.append(task_category)
+            connector_metadata.supported_task_types.append(task_category.name)
         else:
-            agent_metadata = Agent(
-                name=agent.name,
+            connector_metadata = Agent(
+                name=connector.name,
                 supported_task_types=[task_category.name],
                 supported_task_categories=[task_category],
-                is_sync=isinstance(agent, SyncAgentBase),
+                is_sync=isinstance(connector, SyncConnectorBase),
             )
-            AgentRegistry._METADATA[agent.name] = agent_metadata
+            ConnectorRegistry._METADATA[connector.name] = connector_metadata
 
     @staticmethod
-    def get_agent(task_type_name: str, task_type_version: int = 0) -> Union[SyncAgentBase, AsyncAgentBase]:
+    def get_connector(task_type_name: str, task_type_version: int = 0) -> Union[SyncConnectorBase, AsyncConnectorBase]:
         task_category = TaskCategory(name=task_type_name, version=task_type_version)
-        if task_category not in AgentRegistry._REGISTRY:
-            raise FlyteAgentNotFound(f"Cannot find agent for task category: {task_category}.")
-        return AgentRegistry._REGISTRY[task_category]
+        if task_category not in ConnectorRegistry._REGISTRY:
+            raise FlyteConnectorNotFound(f"Cannot find connector for task category: {task_category}.")
+        return ConnectorRegistry._REGISTRY[task_category]
 
     @staticmethod
-    def list_agents() -> List[Agent]:
-        return list(AgentRegistry._METADATA.values())
+    def list_connectors() -> List[Agent]:
+        return list(ConnectorRegistry._METADATA.values())
 
     @staticmethod
-    def get_agent_metadata(name: str) -> Agent:
-        if name not in AgentRegistry._METADATA:
-            raise FlyteAgentNotFound(f"Cannot find agent for name: {name}.")
-        return AgentRegistry._METADATA[name]
+    def get_connector_metadata(name: str) -> Agent:
+        if name not in ConnectorRegistry._METADATA:
+            raise FlyteConnectorNotFound(f"Cannot find agent for name: {name}.")
+        return ConnectorRegistry._METADATA[name]
 
 
-class SyncAgentExecutorMixin:
+class SyncConnectorExecutorMixin:
     """
     This mixin class is used to run the sync task locally, and it's only used for local execution.
-    Task should inherit from this class if the task can be run in the agent.
+    Task should inherit from this class if the task can be run in the connector.
 
     Synchronous tasks run quickly and can return their results instantly.
     Sending a prompt to ChatGPT and getting a response, or retrieving some metadata from a backend system.
     """
 
-    def execute(self: PythonTask, **kwargs) -> LiteralMap:
+    T = typing.TypeVar("T", PythonTask, "SyncConnectorExecutorMixin")
+
+    def execute(self: T, **kwargs) -> LiteralMap:
         from flytekit.tools.translator import get_serializable
 
         ctx = FlyteContext.current_context()
@@ -287,9 +293,9 @@ class SyncAgentExecutorMixin:
         task_template = get_serializable(OrderedDict(), ss, self).template
         output_prefix = ctx.file_access.get_random_remote_directory()
 
-        agent = AgentRegistry.get_agent(task_template.type, task_template.task_type_version)
-        resource = local_agent_loop.run_until_complete(
-            self._do(agent=agent, template=task_template, output_prefix=output_prefix, inputs=kwargs)
+        connector = ConnectorRegistry.get_connector(task_template.type, task_template.task_type_version)
+        resource = local_connector_loop.run_until_complete(
+            self._do(connector=connector, template=task_template, output_prefix=output_prefix, inputs=kwargs)
         )
         if resource.phase != TaskExecution.SUCCEEDED:
             raise FlyteUserException(f"Failed to run the task {self.name} with error: {resource.message}")
@@ -299,8 +305,8 @@ class SyncAgentExecutorMixin:
         return resource.outputs
 
     async def _do(
-        self: PythonTask,
-        agent: SyncAgentBase,
+        self: T,
+        connector: SyncConnectorBase,
         template: TaskTemplate,
         output_prefix: str,
         inputs: Dict[str, Any] = None,
@@ -309,39 +315,40 @@ class SyncAgentExecutorMixin:
             ctx = FlyteContext.current_context()
             literal_map = await TypeEngine._dict_to_literal_map(ctx, inputs or {}, self.get_input_types())
             return await mirror_async_methods(
-                agent.do, task_template=template, inputs=literal_map, output_prefix=output_prefix
+                connector.do, task_template=template, inputs=literal_map, output_prefix=output_prefix
             )
         except Exception as e:
             e.args = (f"Failed to run the task {self.name} with error: {e.args[0]}",)
             raise
 
 
-class AsyncAgentExecutorMixin:
+class AsyncConnectorExecutorMixin:
     """
     This mixin class is used to run the async task locally, and it's only used for local execution.
-    Task should inherit from this class if the task can be run in the agent.
+    Task should inherit from this class if the task can be run in the connector.
 
     Asynchronous tasks are tasks that take a long time to complete, such as running a query.
     """
 
-    _clean_up_task: bool = False
-    _agent: AsyncAgentBase = None
+    T = typing.TypeVar("T", PythonTask, "AsyncConnectorExecutorMixin")
 
-    def execute(self: PythonTask, **kwargs) -> LiteralMap:
+    _clean_up_task: bool = False
+    _connector: AsyncConnectorBase = None
+    resource_meta = None
+
+    def execute(self: T, **kwargs) -> LiteralMap:
         ctx = FlyteContext.current_context()
         ss = ctx.serialization_settings or SerializationSettings(ImageConfig())
         output_prefix = ctx.file_access.get_random_remote_directory()
-        self.resource_meta = None
-
         from flytekit.tools.translator import get_serializable
 
         task_template = get_serializable(OrderedDict(), ss, self).template
-        self._agent = AgentRegistry.get_agent(task_template.type, task_template.task_type_version)
+        self._connector = ConnectorRegistry.get_connector(task_template.type, task_template.task_type_version)
 
-        resource_meta = local_agent_loop.run_until_complete(
+        resource_meta = local_connector_loop.run_until_complete(
             self._create(task_template=task_template, output_prefix=output_prefix, inputs=kwargs)
         )
-        resource = local_agent_loop.run_until_complete(self._get(resource_meta=resource_meta))
+        resource = local_connector_loop.run_until_complete(self._get(resource_meta=resource_meta))
 
         if resource.phase != TaskExecution.SUCCEEDED:
             raise FlyteUserException(f"Failed to run the task {self.name} with error: {resource.message}")
@@ -359,7 +366,7 @@ class AsyncAgentExecutorMixin:
         return resource.outputs
 
     async def _create(
-        self: PythonTask, task_template: TaskTemplate, output_prefix: str, inputs: Dict[str, Any] = None
+        self: T, task_template: TaskTemplate, output_prefix: str, inputs: Dict[str, Any] = None
     ) -> ResourceMeta:
         ctx = FlyteContext.current_context()
         if isinstance(self, PythonFunctionTask):
@@ -383,11 +390,11 @@ class AsyncAgentExecutorMixin:
             output_prefix=output_prefix,
         )
 
-        FlyteContextManager.add_signal_handler(partial(self.agent_signal_handler, resource_meta))
+        FlyteContextManager.add_signal_handler(partial(self.connector_signal_handler, resource_meta))
         self.resource_meta = resource_meta
         return resource_meta
 
-    async def _get(self: PythonTask, resource_meta: ResourceMeta) -> Resource:
+    async def _get(self: T, resource_meta: ResourceMeta) -> Resource:
         phase = TaskExecution.RUNNING
 
         progress = Progress(transient=True)
@@ -418,11 +425,11 @@ class AsyncAgentExecutorMixin:
 
         return resource
 
-    def agent_signal_handler(self, resource_meta: ResourceMeta, signum: int, frame: FrameType) -> Any:
-        if inspect.iscoroutinefunction(self._agent.delete):
+    def connector_signal_handler(self, resource_meta: ResourceMeta, signum: int, frame: FrameType) -> Any:
+        if inspect.iscoroutinefunction(self._connector.delete):
             # Use asyncio.run to run the async function in the main thread since the loop manager is killed when the
             # signal is received.
-            asyncio.run(self._agent.delete(resource_meta))
+            asyncio.run(self._connector.delete(resource_meta=resource_meta))
         else:
-            self._agent.delete(resource_meta)
+            self._connector.delete(resource_meta)
         self._clean_up_task = True

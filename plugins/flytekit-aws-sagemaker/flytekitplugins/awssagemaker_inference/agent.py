@@ -5,7 +5,7 @@ import cloudpickle
 
 from flytekit.extend.backend.base_agent import (
     AgentRegistry,
-    AsyncAgentBase,
+    AsyncConnectorBase,
     Resource,
     ResourceMeta,
 )
@@ -37,7 +37,7 @@ states = {
 }
 
 
-class SageMakerEndpointAgent(Boto3AgentMixin, AsyncAgentBase):
+class SageMakerEndpointAgent(Boto3AgentMixin, AsyncConnectorBase):
     """This agent creates an endpoint."""
 
     name = "SageMaker Endpoint Agent"

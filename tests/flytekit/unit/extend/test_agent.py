@@ -29,7 +29,7 @@ from flytekit.configuration import (
 )
 from flytekit.core.base_task import PythonTask, kwtypes
 from flytekit.core.interface import Interface
-from flytekit.exceptions.system import FlyteAgentNotFound
+from flytekit.exceptions.system import FlyteConnectorNotFound
 from flytekit.extend.backend.agent_service import (
     AgentMetadataService,
     AsyncAgentService,
@@ -37,11 +37,11 @@ from flytekit.extend.backend.agent_service import (
 )
 from flytekit.extend.backend.base_agent import (
     AgentRegistry,
-    AsyncAgentBase,
+    AsyncConnectorBase,
     AsyncAgentExecutorMixin,
     Resource,
     ResourceMeta,
-    SyncAgentBase,
+    SyncConnectorBase,
     SyncAgentExecutorMixin,
     is_terminal_phase,
     render_task_template,
@@ -70,7 +70,7 @@ class DummyMetadata(ResourceMeta):
     task_name: typing.Optional[str] = None
 
 
-class DummyAgent(AsyncAgentBase):
+class DummyAgent(AsyncConnectorBase):
     name = "Dummy Agent"
 
     def __init__(self):
@@ -90,7 +90,7 @@ class DummyAgent(AsyncAgentBase):
         ...
 
 
-class AsyncDummyAgent(AsyncAgentBase):
+class AsyncDummyAgent(AsyncConnectorBase):
     name = "Async Dummy Agent"
 
     def __init__(self):
@@ -119,7 +119,7 @@ class AsyncDummyAgent(AsyncAgentBase):
         ...
 
 
-class MockOpenAIAgent(SyncAgentBase):
+class MockOpenAIAgent(SyncConnectorBase):
     name = "mock openAI Agent"
 
     def __init__(self):
@@ -135,7 +135,7 @@ class MockOpenAIAgent(SyncAgentBase):
         return Resource(phase=TaskExecution.SUCCEEDED, outputs={"o0": 1})
 
 
-class MockAsyncOpenAIAgent(SyncAgentBase):
+class MockAsyncOpenAIAgent(SyncConnectorBase):
     name = "mock async openAI Agent"
 
     def __init__(self):
@@ -188,7 +188,7 @@ task_execution_metadata = TaskExecutionMetadata(
 
 def test_dummy_agent():
     AgentRegistry.register(DummyAgent(), override=True)
-    agent = AgentRegistry.get_agent("dummy")
+    agent = AgentRegistry.get_connector("dummy")
     template = get_task_template("dummy")
     metadata = DummyMetadata(job_id=dummy_id)
     assert agent.create(template, task_inputs) == DummyMetadata(job_id=dummy_id)
@@ -254,26 +254,26 @@ async def test_async_agent_service(agent, consume_metadata):
     )
     assert res == DeleteTaskResponse()
 
-    agent_metadata = AgentRegistry.get_agent_metadata(agent.name)
+    agent_metadata = AgentRegistry.get_connector_metadata(agent.name)
     assert agent_metadata.supported_task_types[0] == agent.task_category.name
     assert agent_metadata.supported_task_categories[0].name == agent.task_category.name
 
-    with pytest.raises(FlyteAgentNotFound):
-        AgentRegistry.get_agent_metadata("non-exist-namr")
+    with pytest.raises(FlyteConnectorNotFound):
+        AgentRegistry.get_connector_metadata("non-exist-namr")
 
 
 def test_register_agent():
     agent = DummyAgent()
     AgentRegistry.register(agent, override=True)
-    assert AgentRegistry.get_agent("dummy").name == agent.name
+    assert AgentRegistry.get_connector("dummy").name == agent.name
 
     with pytest.raises(ValueError, match="Duplicate agent for task type: dummy_v0"):
         AgentRegistry.register(agent)
 
-    with pytest.raises(FlyteAgentNotFound):
-        AgentRegistry.get_agent("non-exist-type")
+    with pytest.raises(FlyteConnectorNotFound):
+        AgentRegistry.get_connector("non-exist-type")
 
-    agents = AgentRegistry.list_agents()
+    agents = AgentRegistry.list_connectors()
     assert len(agents) >= 1
 
 
@@ -482,7 +482,7 @@ def test_agent_complex_type():
     class Foo:
         val: str
 
-    class FooAgent(SyncAgentBase):
+    class FooAgent(SyncConnectorBase):
         def __init__(self) -> None:
             super().__init__(task_type_name="foo")
 

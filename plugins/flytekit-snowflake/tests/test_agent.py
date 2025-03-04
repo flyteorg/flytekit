@@ -31,7 +31,7 @@ async def test_snowflake_agent(mock_get_private_key):
     mock_cursor.sfqid = "dummy_id"
     mock_conn_instance.cursor.return_value = mock_cursor
 
-    agent = AgentRegistry.get_agent("snowflake")
+    agent = AgentRegistry.get_connector("snowflake")
     task_id = Identifier(
         resource_type=ResourceType.TASK, project="project", domain="domain", name="name", version="version"
     )

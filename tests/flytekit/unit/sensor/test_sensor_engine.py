@@ -33,7 +33,7 @@ async def test_sensor_engine():
             "path": literals.Literal(scalar=literals.Scalar(primitive=literals.Primitive(string_value=file.name))),
         },
     )
-    agent = AgentRegistry.get_agent("sensor")
+    agent = AgentRegistry.get_connector("sensor")
 
     res = await agent.create(tmp, task_inputs)
 

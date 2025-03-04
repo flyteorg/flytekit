@@ -7,7 +7,7 @@ from google.cloud import bigquery
 
 from flytekit import FlyteContextManager, StructuredDataset, logger
 from flytekit.core.type_engine import TypeEngine
-from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource, ResourceMeta
+from flytekit.extend.backend.base_agent import AgentRegistry, AsyncConnectorBase, Resource, ResourceMeta
 from flytekit.extend.backend.utils import convert_to_flyte_phase
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
@@ -31,7 +31,7 @@ class BigQueryMetadata(ResourceMeta):
     location: str
 
 
-class BigQueryAgent(AsyncAgentBase):
+class BigQueryConnector(AsyncConnectorBase):
     name = "Bigquery Agent"
 
     def __init__(self):
@@ -94,4 +94,4 @@ class BigQueryAgent(AsyncAgentBase):
         client.cancel_job(resource_meta.job_id, resource_meta.project, resource_meta.location)
 
 
-AgentRegistry.register(BigQueryAgent())
+AgentRegistry.register(BigQueryConnector())

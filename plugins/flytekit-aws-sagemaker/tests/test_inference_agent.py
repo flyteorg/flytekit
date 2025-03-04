@@ -88,7 +88,7 @@ idempotence_token = "74443947857331f7"
 async def test_agent(mock_boto_call, mock_return_value):
     mock_boto_call.return_value = mock_return_value
 
-    agent = AgentRegistry.get_agent("sagemaker-endpoint")
+    agent = AgentRegistry.get_connector("sagemaker-endpoint")
     task_id = Identifier(
         resource_type=ResourceType.TASK,
         project="project",

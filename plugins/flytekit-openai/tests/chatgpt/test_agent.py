@@ -22,7 +22,7 @@ async def mock_acreate(*args, **kwargs) -> str:
 
 @pytest.mark.asyncio
 async def test_chatgpt_agent():
-    agent = AgentRegistry.get_agent("chatgpt")
+    agent = AgentRegistry.get_connector("chatgpt")
     task_id = Identifier(
         resource_type=ResourceType.TASK, project="project", domain="domain", name="name", version="version"
     )

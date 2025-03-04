@@ -6,7 +6,7 @@ from flyteidl.core.execution_pb2 import TaskExecution
 
 from flytekit import FlyteContextManager, lazy_module
 from flytekit.core.type_engine import TypeEngine
-from flytekit.extend.backend.base_agent import AgentRegistry, Resource, SyncAgentBase
+from flytekit.extend.backend.base_agent import AgentRegistry, Resource, SyncConnectorBase
 from flytekit.extend.backend.utils import get_agent_secret
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
@@ -17,7 +17,7 @@ TIMEOUT_SECONDS = 10
 OPENAI_API_KEY = "FLYTE_OPENAI_API_KEY"
 
 
-class ChatGPTAgent(SyncAgentBase):
+class ChatGPTAgent(SyncConnectorBase):
     name = "ChatGPT Agent"
 
     def __init__(self):

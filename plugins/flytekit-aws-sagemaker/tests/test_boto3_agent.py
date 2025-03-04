@@ -71,7 +71,7 @@ idempotence_token = "74443947857331f7"
 async def test_agent(mock_boto_call, mock_return_value, request):
     mock_boto_call.return_value = mock_return_value[0]
 
-    agent = AgentRegistry.get_agent("boto")
+    agent = AgentRegistry.get_connector("boto")
     task_id = Identifier(
         resource_type=ResourceType.TASK,
         project="project",

@@ -3,7 +3,7 @@ from typing import Optional
 import httpx
 from flyteidl.core.execution_pb2 import TaskExecution
 
-from flytekit.extend.backend.base_agent import AgentRegistry, Resource, SyncAgentBase
+from flytekit.extend.backend.base_agent import AgentRegistry, Resource, SyncConnectorBase
 from flytekit.interaction.string_literals import literal_map_string_repr
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
@@ -12,7 +12,7 @@ from flytekit.utils.dict_formatter import format_dict
 from .constants import DATA_KEY, HEADERS_KEY, METHOD_KEY, SHOW_DATA_KEY, SHOW_URL_KEY, TASK_TYPE, TIMEOUT_SEC, URL_KEY
 
 
-class WebhookAgent(SyncAgentBase):
+class WebhookAgent(SyncConnectorBase):
     """
     WebhookAgent is responsible for handling webhook tasks.
 

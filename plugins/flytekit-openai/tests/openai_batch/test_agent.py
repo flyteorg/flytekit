@@ -113,7 +113,7 @@ batch_retrieve_result_failure = Batch(
 @mock.patch("openai.resources.batches.AsyncBatches.create", new_callable=AsyncMock)
 @mock.patch("openai.resources.batches.AsyncBatches.retrieve", new_callable=AsyncMock)
 async def test_openai_batch_agent(mock_retrieve, mock_create, mock_context):
-    agent = AgentRegistry.get_agent("openai-batch")
+    agent = AgentRegistry.get_connector("openai-batch")
     task_id = Identifier(
         resource_type=ResourceType.TASK,
         project="project",
