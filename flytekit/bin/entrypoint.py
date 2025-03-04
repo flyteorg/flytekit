@@ -173,6 +173,11 @@ def _dispatch_execute(
         input_proto = utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
         idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
 
+        if task_def.enable_deck:
+            new_params = ctx.user_space_params.with_enable_deck(enable_deck=True).build()
+            new_es = ctx.execution_state.with_params(user_space_params=new_params)
+            ctx = ctx.new_builder().with_execution_state(new_es).build()
+
         # Step2
         # Invoke task - dispatch_execute
         outputs = task_def.dispatch_execute(ctx, idl_input_literals)
