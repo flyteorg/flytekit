@@ -2639,7 +2639,7 @@ class FlyteRemote(object):
                 launch_plan = self.fetch_launch_plan(
                     launch_plan_id.project, launch_plan_id.domain, launch_plan_id.name, launch_plan_id.version
                 )
-                task_execution_interface = launch_plan.interface.transform_interface_to_list()
+                task_execution_interface = launch_plan.interface.transform_interface_to_list(bound_inputs=set())
                 execution._task_executions = [
                     self.sync_task_execution(
                         FlyteTaskExecution.promote_from_model(task_execution), task_execution_interface
