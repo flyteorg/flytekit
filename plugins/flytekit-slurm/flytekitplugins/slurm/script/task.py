@@ -77,7 +77,7 @@ class SlurmTask(AsyncAgentExecutorMixin, PythonTask[SlurmRemoteScript]):
         }
 
 
-class SlurmShellTask(AsyncAgentExecutorMixin, PythonInstanceTask[Slurm]):
+class SlurmShellTask(AsyncAgentExecutorMixin, PythonTask[Slurm]):
     _TASK_TYPE = "slurm"
 
     def __init__(
@@ -96,12 +96,10 @@ class SlurmShellTask(AsyncAgentExecutorMixin, PythonInstanceTask[Slurm]):
         outputs = self._validate_output_locs()
 
         super().__init__(
-            name,
+            name=name,
             task_type=self._TASK_TYPE,
             task_config=task_config,
-            script=script,
             interface=Interface(inputs=inputs, outputs=outputs),
-            container_image=ImageConfig.auto_default_image().default_image.fqn,
             **kwargs,
         )
 
