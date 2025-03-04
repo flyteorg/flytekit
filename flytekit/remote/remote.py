@@ -2978,7 +2978,7 @@ class FlyteRemote(object):
 
         return FastSerializationSettings(enabled=True, distribution_location=native_url, destination_dir=".")
 
-    def get_execution_metrics(self, id: WorkflowExecutionIdentifier, depth: int = 10) -> typing.Dict[str, typing.Any]:
+    def get_execution_metrics(self, id: WorkflowExecutionIdentifier, depth: int = 10) -> FlyteExecutionSpan:
         """
         Get the metrics for a given execution.
         """

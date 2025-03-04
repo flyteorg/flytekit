@@ -1,11 +1,8 @@
 import rich_click as click
-import yaml
-from flyteidl.admin.execution_pb2 import WorkflowExecutionGetMetricsRequest
-from flyteidl.core.identifier_pb2 import WorkflowExecutionIdentifier
 
 from flytekit.clis.sdk_in_container.constants import CTX_DOMAIN, CTX_PROJECT
 from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_click_context
-from flytekit.utils import metrics as metrics_utils
+from flytekit.interfaces import cli_identifiers
 
 CTX_DEPTH = "depth"
 
@@ -69,15 +66,12 @@ def metrics_dump(
 
     # retrieve remote
     remote = get_and_save_remote_with_click_context(ctx, project, domain)
-    sync_client = remote.client
-
     # retrieve workflow execution metrics
-    workflow_execution_id = WorkflowExecutionIdentifier(project=project, domain=domain, name=execution_id)
-
-    request = WorkflowExecutionGetMetricsRequest(id=workflow_execution_id, depth=depth)
-    response = sync_client.get_execution_metrics(request)
-
-    metrics_utils.dump_execution_span(response.span)
+    workflow_execution_id = cli_identifiers.WorkflowExecutionIdentifier(
+        project=project, domain=domain, name=execution_id
+    )
+    execution_metrics = remote.get_execution_metrics(id=workflow_execution_id, depth=depth)
+    execution_metrics.dump()
 
 
 @click.command("explain", help=_explain_help)
@@ -93,15 +87,12 @@ def metrics_explain(
 
     # retrieve remote
     remote = get_and_save_remote_with_click_context(ctx, project, domain)
-    sync_client = remote.client
-
     # retrieve workflow execution metrics
-    workflow_execution_id = WorkflowExecutionIdentifier(project=project, domain=domain, name=execution_id)
-
-    request = WorkflowExecutionGetMetricsRequest(id=workflow_execution_id, depth=depth)
-    response = sync_client.get_execution_metrics(request)
-
-    metrics_utils.explain_execution_span(response.span)
+    workflow_execution_id = cli_identifiers.WorkflowExecutionIdentifier(
+        project=project, domain=domain, name=execution_id
+    )
+    execution_metrics = remote.get_execution_metrics(id=workflow_execution_id, depth=depth)
+    execution_metrics.explain()
 
 
 metrics.add_command(metrics_dump)
