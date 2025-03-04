@@ -1,14 +1,12 @@
 from datetime import datetime, timedelta
 from unittest import mock
-import msgpack
-import base64
 import json
 
 import pytest
 from flyteidl.core.execution_pb2 import TaskExecution
 
 from flytekit import FlyteContext
-from flytekit.extend.backend.base_agent import AgentRegistry
+from flytekit.extend.backend.base_connector import ConnectorRegistry
 from flytekit.interaction.string_literals import literal_map_string_repr
 from flytekit.interfaces.cli_identifiers import Identifier
 from flytekit.models import literals
@@ -66,12 +64,12 @@ idempotence_token = "74443947857331f7"
     ],
 )
 @mock.patch(
-    "flytekitplugins.awssagemaker_inference.boto3_agent.Boto3AgentMixin._call",
+    "flytekitplugins.awssagemaker_inference.boto3_connector.Boto3AgentMixin._call",
 )
 async def test_agent(mock_boto_call, mock_return_value, request):
     mock_boto_call.return_value = mock_return_value[0]
 
-    agent = AgentRegistry.get_connector("boto")
+    connector = ConnectorRegistry.get_connector("boto")
     task_id = Identifier(
         resource_type=ResourceType.TASK,
         project="project",
@@ -142,7 +140,7 @@ async def test_agent(mock_boto_call, mock_return_value, request):
     if isinstance(mock_return_value[0], Exception):
         mock_boto_call.side_effect = mock_return_value[0]
 
-        resource = await agent.do(
+        resource = await connector.do(
             task_template=task_template,
             inputs=task_inputs,
             output_prefix=output_prefix,
@@ -153,7 +151,7 @@ async def test_agent(mock_boto_call, mock_return_value, request):
         assert resource.outputs["idempotence_token"] == idempotence_token
         return
 
-    resource = await agent.do(
+    resource = await connector.do(
         task_template=task_template, inputs=task_inputs, output_prefix=output_prefix
     )
 

@@ -39,7 +39,7 @@ class AirflowMetadata(ResourceMeta):
         return cloudpickle.loads(data)
 
 
-class AirflowAgent(AsyncConnectorBase):
+class AirflowConnector(AsyncConnectorBase):
     """
     It is used to run Airflow tasks. It is registered as an agent in the AgentRegistry.
     There are three kinds of Airflow tasks: AirflowOperator, AirflowSensor, and AirflowHook.
@@ -163,4 +163,4 @@ def get_log_links(
     return log_links
 
 
-ConnectorRegistry.register(AirflowAgent())
+ConnectorRegistry.register(AirflowConnector())

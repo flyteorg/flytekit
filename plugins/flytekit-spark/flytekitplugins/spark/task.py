@@ -11,7 +11,7 @@ from flytekit import FlyteContextManager, PythonFunctionTask, lazy_module, logge
 from flytekit.configuration import DefaultImages, SerializationSettings
 from flytekit.core.context_manager import ExecutionParameters
 from flytekit.extend import ExecutionState, TaskPlugins
-from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
+from flytekit.extend.backend.base_connector import AsyncConnectorExecutorMixin
 from flytekit.image_spec import ImageSpec
 
 from .models import SparkJob, SparkType
@@ -58,7 +58,7 @@ class Databricks(Spark):
     def __post_init__(self):
         logger.warn(
             "Databricks is deprecated. Use 'from flytekitplugins.spark import Databricks' instead,"
-            "and make sure to upgrade the version of flyteagent deployment to >v1.13.0.",
+            "and make sure to upgrade the version of flyte connector deployment to >v1.13.0.",
         )
 
 
@@ -118,7 +118,7 @@ def new_spark_session(name: str, conf: Dict[str, str] = None):
     # sess.stop()
 
 
-class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
+class PysparkFunctionTask(AsyncConnectorExecutorMixin, PythonFunctionTask[Spark]):
     """
     Actual Plugin that transforms the local python code for execution within a spark context
     """
@@ -222,9 +222,9 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
                         " please set --raw-output-data-prefix to a remote path. e.g. s3://, gcs//, etc."
                     )
                 if ctx.execution_state and ctx.execution_state.is_local_execution():
-                    return AsyncAgentExecutorMixin.execute(self, **kwargs)
+                    return AsyncConnectorExecutorMixin.execute(self, **kwargs)
             except Exception as e:
-                click.secho(f"❌ Agent failed to run the task with error: {e}", fg="red")
+                click.secho(f"❌ Connector failed to run the task with error: {e}", fg="red")
                 click.secho("Falling back to local execution", fg="red")
         return PythonFunctionTask.execute(self, **kwargs)
 

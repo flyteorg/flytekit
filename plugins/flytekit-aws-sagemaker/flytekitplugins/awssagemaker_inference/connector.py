@@ -3,8 +3,8 @@ from typing import Any, Dict, Optional
 
 import cloudpickle
 
-from flytekit.extend.backend.base_agent import (
-    AgentRegistry,
+from flytekit.extend.backend.base_connector import (
+    ConnectorRegistry,
     AsyncConnectorBase,
     Resource,
     ResourceMeta,
@@ -13,7 +13,7 @@ from flytekit.extend.backend.utils import convert_to_flyte_phase
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
-from .boto3_mixin import Boto3AgentMixin, CustomException
+from .boto3_mixin import Boto3ConnectorMixin, CustomException
 
 
 @dataclass
@@ -37,10 +37,10 @@ states = {
 }
 
 
-class SageMakerEndpointAgent(Boto3AgentMixin, AsyncConnectorBase):
+class SageMakerEndpointConnector(Boto3ConnectorMixin, AsyncConnectorBase):
     """This agent creates an endpoint."""
 
-    name = "SageMaker Endpoint Agent"
+    name = "SageMaker Endpoint Connector"
 
     def __init__(self):
         super().__init__(
@@ -122,4 +122,4 @@ class SageMakerEndpointAgent(Boto3AgentMixin, AsyncConnectorBase):
         )
 
 
-AgentRegistry.register(SageMakerEndpointAgent())
+ConnectorRegistry.register(SageMakerEndpointConnector())

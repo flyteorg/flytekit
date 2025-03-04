@@ -13,7 +13,7 @@ from flytekit.core.interface import Interface
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.tracker import TrackedInstance
 from flytekit.core.utils import timeit
-from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
+from flytekit.extend.backend.base_connector import AsyncConnectorExecutorMixin
 
 airflow = lazy_module("airflow")
 airflow_models = lazy_module("airflow.models")
@@ -108,10 +108,12 @@ class AirflowContainerTask(PythonAutoContainerTask[AirflowObj]):
         _get_airflow_instance(self.task_config).execute(context=airflow_context.Context())
 
 
-class AirflowTask(AsyncAgentExecutorMixin, PythonTask[AirflowObj]):
+class AirflowTask(AsyncConnectorExecutorMixin, PythonTask[AirflowObj]):
     """
-    This python task is used to wrap an Airflow task. It is used to run an Airflow task in Flyte agent.
-    The airflow task module, name and parameters are stored in the task config. We run the Airflow task in the agent.
+    This python task is used to wrap an Airflow task.
+    It is used to run an Airflow task in Flyte connector.
+    The airflow task module, name and parameters are stored in the task config.
+    We run the Airflow task in the connector.
     """
 
     _TASK_TYPE = "airflow"
@@ -186,7 +188,7 @@ def _flyte_operator(*args, **kwargs):
     cls = args[0]
     try:
         if FlyteContextManager.current_context().user_space_params.get_original_task:
-            # Return an original task when running in the agent.
+            # Return an original task when running in the connector.
             return object.__new__(cls)
     except AssertionError:
         # This happens when the task is created in the dynamic workflow.

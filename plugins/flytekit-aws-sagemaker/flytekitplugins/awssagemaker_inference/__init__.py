@@ -5,7 +5,7 @@
    :template: custom.rst
    :toctree: generated/
 
-   BotoAgent
+   BotoConnector
    BotoTask
    SageMakerModelTask
    SageMakerEndpointConfigTask
@@ -19,8 +19,8 @@
    delete_sagemaker_deployment
 """
 
-from .agent import SageMakerEndpointAgent
-from .boto3_agent import BotoAgent
+from .connector import SageMakerEndpointConnector
+from .boto3_connector import BotoConnector
 from .boto3_task import BotoConfig, BotoTask
 from .task import (
     SageMakerDeleteEndpointConfigTask,
