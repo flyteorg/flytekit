@@ -88,7 +88,7 @@ class ArrayNode:
                 self.target.python_interface, self._bound_inputs, output_as_list_of_optionals
             )
         elif self.target.interface:
-            self._remote_interface = self.target.interface.transform_interface_to_list(set())
+            self._remote_interface = self.target.interface.transform_interface_to_list(self.bound_inputs)
         else:
             raise ValueError("No interface found for the target entity.")
 
