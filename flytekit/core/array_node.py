@@ -79,16 +79,21 @@ class ArrayNode:
 
         # TODO - bound inputs are not supported at the moment
         self._bound_inputs: Set[str] = set()
+        self._excluded_inputs: Set[str] = set()
+        if isinstance(target, (LaunchPlan, FlyteLaunchPlan)):
+            self._excluded_inputs = target.fixed_inputs.literals.keys()
 
         output_as_list_of_optionals = min_success_ratio is not None and min_success_ratio != 1 and n_outputs == 1
 
         self._remote_interface = None
         if self.target.python_interface:
             self._python_interface = transform_interface_to_list_interface(
-                self.target.python_interface, self._bound_inputs, output_as_list_of_optionals
+                self.target.python_interface, self._bound_inputs, self._excluded_inputs, output_as_list_of_optionals
             )
         elif self.target.interface:
-            self._remote_interface = self.target.interface.transform_interface_to_list(set())
+            self._remote_interface = self.target.interface.transform_interface_to_list(
+                self._bound_inputs, self._excluded_inputs
+            )
         else:
             raise ValueError("No interface found for the target entity.")
 

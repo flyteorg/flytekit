@@ -386,7 +386,7 @@ def test_transform_interface_to_list_interface(optional_outputs, expected_type):
     def t() -> int:
         return 123
 
-    list_interface = transform_interface_to_list_interface(t.python_interface, set(), optional_outputs=optional_outputs)
+    list_interface = transform_interface_to_list_interface(t.python_interface, set(), set(), optional_outputs=optional_outputs)
     assert list_interface.outputs["o0"] == typing.List[expected_type]
 
 
