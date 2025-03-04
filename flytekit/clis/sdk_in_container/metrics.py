@@ -77,10 +77,7 @@ def metrics_dump(
     request = WorkflowExecutionGetMetricsRequest(id=workflow_execution_id, depth=depth)
     response = sync_client.get_execution_metrics(request)
 
-    # aggregate spans and print
-    id, info = metrics_utils.aggregate_reference_span(response.span)
-    yaml.emitter.Emitter.process_tag = lambda self, *args, **kw: None
-    print(yaml.dump({id: info}, indent=2))
+    metrics_utils.dump_execution_span(response.span)
 
 
 @click.command("explain", help=_explain_help)
@@ -104,7 +101,7 @@ def metrics_explain(
     request = WorkflowExecutionGetMetricsRequest(id=workflow_execution_id, depth=depth)
     response = sync_client.get_execution_metrics(request)
 
-    metrics_utils.dump_execution_span(response.span)
+    metrics_utils.explain_execution_span(response.span)
 
 
 metrics.add_command(metrics_dump)
