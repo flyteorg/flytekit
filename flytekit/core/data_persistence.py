@@ -36,16 +36,12 @@ from fsspec.asyn import AsyncFileSystem
 from fsspec.utils import get_protocol
 from obstore.exceptions import GenericError
 from obstore.store import AzureStore, GCSStore, S3Store
+from obstore.fsspec import register
 from typing_extensions import Unpack
 
 from flytekit import configuration
 from flytekit.configuration import DataConfig
 from flytekit.core.local_fsspec import FlyteLocalFileSystem
-from flytekit.core.obstore_filesystem import (
-    ObstoreAzureBlobFileSystem,
-    ObstoreGCSFileSystem,
-    ObstoreS3FileSystem,
-)
 from flytekit.core.utils import timeit
 from flytekit.exceptions.system import (
     FlyteDownloadDataException,
@@ -62,22 +58,38 @@ _FSSPEC_S3_KEY_ID = "access_key_id"
 _FSSPEC_S3_SECRET = "secret_access_key"
 _ANON = "skip_signature"
 
-Uploadable = typing.Union[str, os.PathLike, pathlib.Path, bytes, io.BufferedReader, io.BytesIO, io.StringIO]
+Uploadable = typing.Union[
+    str, os.PathLike, pathlib.Path, bytes, io.BufferedReader, io.BytesIO, io.StringIO
+]
 
 # This is the default chunk size flytekit will use for writing to S3 and GCS. This is set to 25MB by default and is
 # configurable by the user if needed. This is used when put() is called on filesystems.
-_WRITE_SIZE_CHUNK_BYTES = int(os.environ.get("_F_P_WRITE_CHUNK_SIZE", "26214400"))  # 25 * 2**20
+_WRITE_SIZE_CHUNK_BYTES = int(
+    os.environ.get("_F_P_WRITE_CHUNK_SIZE", "26214400")
+)  # 25 * 2**20
 
 
-@lru_cache
-def s3store_from_env(bucket: str, retries: int, backoff: timedelta, **store_kwargs) -> S3Store:
-    # Config refer to https://developmentseed.org/obstore/latest/api/store/aws/#obstore.store.S3Store.from_env
-    store = S3Store.from_env(
-        bucket,
-        **store_kwargs,
-        virtual_hosted_style_request=False,  # not include bucket name in the domain name
-        client_options={"timeout": "99999s", "allow_http": True},
-        retry_config={
+def s3_setup_args(
+    s3_cfg: configuration.S3Config, anonymous: bool = False, **kwargs
+) -> Dict[str, Any]:
+    """
+    Setup s3 storage, bucket is needed to create obstore store object
+    """
+
+    config: Dict[str, Any] = {}
+
+    config[_FSSPEC_S3_KEY_ID] = kwargs.pop(_FSSPEC_S3_KEY_ID, s3_cfg.access_key_id)
+    config[_FSSPEC_S3_SECRET] = kwargs.pop(_FSSPEC_S3_SECRET, s3_cfg.secret_access_key)
+    config["endpoint_url"] = kwargs.pop("endpoint_url", s3_cfg.endpoint)
+
+    retries = kwargs.pop("retries", s3_cfg.retries)
+    backoff = kwargs.pop("backoff", s3_cfg.backoff)
+
+    if anonymous:
+        kwargs[_ANON] = "true"
+
+    retry_config = (
+        {
             "max_retries": retries,
             "backoff": {
                 "base": 2,
@@ -88,136 +100,58 @@ def s3store_from_env(bucket: str, retries: int, backoff: timedelta, **store_kwar
         },
     )
 
-    return store
+    client_options = {"timeout": "99999s", "allow_http": "true"}
 
-
-@lru_cache
-def gcsstore_from_env(bucket: str) -> GCSStore:
-    store = GCSStore.from_env(bucket)
-    return store
-
-
-@lru_cache
-def azurestore_from_env(container: str, **store_kwargs) -> AzureStore:
-    # Config refer to https://developmentseed.org/obstore/latest/api/store/azure/#obstore.store.AzureStore.from_env
-    store = AzureStore.from_env(container, **store_kwargs)
-    return store
-
-
-def s3_setup_args(
-    s3_cfg: configuration.S3Config, bucket: str = "", anonymous: bool = False, **kwargs
-) -> Dict[str, Any]:
-    """
-    Setup s3 storage, bucket is needed to create obstore store object
-    """
-    store_kwargs: Dict[str, Any] = {}
-
-    if _FSSPEC_S3_KEY_ID in kwargs or s3_cfg.access_key_id is not None:
-        store_kwargs[_FSSPEC_S3_KEY_ID] = kwargs.get(_FSSPEC_S3_KEY_ID, s3_cfg.access_key_id)
-    if _FSSPEC_S3_SECRET in kwargs or s3_cfg.secret_access_key is not None:
-        store_kwargs[_FSSPEC_S3_SECRET] = kwargs.get(_FSSPEC_S3_SECRET, s3_cfg.secret_access_key)
-    if "endpoint_url" in kwargs or s3_cfg.endpoint is not None:
-        store_kwargs["endpoint_url"] = kwargs.get("endpoint_url", s3_cfg.endpoint)
-    if "retries" in kwargs or s3_cfg.retries is not None:
-        store_kwargs["retries"] = kwargs.get("retries", s3_cfg.retries)
-    if "backoff" in kwargs or s3_cfg.backoff is not None:
-        store_kwargs["backoff"] = kwargs.get("backoff", s3_cfg.backoff)
-    if anonymous:
-        store_kwargs[_ANON] = "true"
-
-    store = s3store_from_env(bucket, **store_kwargs)
-
-    kwargs["store"] = store
+    kwargs["config"] = config
+    kwargs["client_options"] = client_options
+    kwargs["retry_config"] = retry_config
 
     return kwargs
 
 
-def gs_setup_args(gcs_cfg: configuration.GCSConfig, bucket: str = "", anonymous: bool = False) -> Dict[str, Any]:
+def gs_setup_args(
+    gcs_cfg: configuration.GCSConfig, anonymous: bool = False
+) -> Dict[str, Any]:
     """
     Setup gcs storage, bucket is needed to create obstore store object
     """
     kwargs: Dict[str, Any] = {}
-
-    store = gcsstore_from_env(bucket)
-
-    kwargs["store"] = store
 
     return kwargs
 
 
 def azure_setup_args(
     azure_cfg: configuration.AzureBlobStorageConfig,
-    bucket: str = "",
     anonymous: bool = False,
     **kwargs,
 ) -> Dict[str, Any]:
     """
     Setup azure blob storage, bucket is needed to create obstore store object
     """
-    store_kwargs: Dict[str, Any] = {}
 
-    if "account_name" in kwargs or azure_cfg.account_name is not None:
-        store_kwargs["account_name"] = kwargs.get("account_name", azure_cfg.account_name)
-    if "account_key" in kwargs or azure_cfg.account_key is not None:
-        store_kwargs["account_key"] = kwargs.get("account_key", azure_cfg.account_key)
-    if "client_id" in kwargs or azure_cfg.client_id is not None:
-        store_kwargs["client_id"] = kwargs.get("client_id", azure_cfg.client_id)
-    if "client_secret" in kwargs or azure_cfg.client_secret is not None:
-        store_kwargs["client_secret"] = kwargs.get("client_secret", azure_cfg.client_secret)
-    if "tenant_id" in kwargs or azure_cfg.tenant_id is not None:
-        store_kwargs["tenant_id"] = kwargs.get("tenant_id", azure_cfg.tenant_id)
+    config: Dict[str, Any] = {}
+
+    config["account_name"] = kwargs.get("account_name", azure_cfg.account_name)
+    config["account_key"] = kwargs.get("account_key", azure_cfg.account_key)
+    config["client_id"] = kwargs.get("client_id", azure_cfg.client_id)
+    config["client_secret"] = kwargs.get("client_secret", azure_cfg.client_secret)
+    config["tenant_id"] = kwargs.get("tenant_id", azure_cfg.tenant_id)
+
     if anonymous:
-        store_kwargs[_ANON] = "true"
+        kwargs[_ANON] = "true"
 
-    store = azurestore_from_env(bucket, **store_kwargs)
+    client_options = {"timeout": "99999s", "allow_http": "true"}
 
-    kwargs["store"] = store
+    kwargs["config"] = config
+    kwargs["client_options"] = client_options
 
     return kwargs
-
-
-def split_path(path: str) -> Tuple[str, str]:
-    """
-    Split bucket and file path
-
-    Parameters
-    ----------
-    path : string
-        Input path, like `s3://mybucket/path/to/file`
-
-    Examples
-    --------
-    >>> split_path("s3://mybucket/path/to/file")
-    ['mybucket', 'path/to/file']
-    """
-    support_types = ["s3", "gs", "abfs"]
-    protocol = get_protocol(path)
-    if protocol not in support_types:
-        # no bucket for file
-        return "", path
-
-    if path.startswith(protocol + "://"):
-        path = path[len(protocol) + 3 :]
-    elif path.startswith(protocol + "::"):
-        path = path[len(protocol) + 2 :]
-    path = path.strip("/")
-
-    if "/" not in path:
-        return path, ""
-    else:
-        path_li = path.split("/")
-        bucket = path_li[0]
-        # use obstore for s3 and gcs only now, no need to split
-        # bucket out of path for other storage
-        file_path = "/".join(path_li[1:])
-        return (bucket, file_path)
 
 
 def get_fsspec_storage_options(
     protocol: str,
     data_config: typing.Optional[DataConfig] = None,
     anonymous: bool = False,
-    bucket: str = "",
     **kwargs,
 ) -> Dict[str, Any]:
     data_config = data_config or DataConfig.auto()
@@ -226,20 +160,22 @@ def get_fsspec_storage_options(
         return {"auto_mkdir": True, **kwargs}
     if protocol == "s3":
         return {
-            **s3_setup_args(data_config.s3, bucket, anonymous=anonymous, **kwargs),
+            **s3_setup_args(data_config.s3, anonymous=anonymous, **kwargs),
             **kwargs,
         }
     if protocol == "gs":
-        return {**gs_setup_args(data_config.gcs, bucket, anonymous=anonymous), **kwargs}
+        return {**gs_setup_args(data_config.gcs, anonymous=anonymous), **kwargs}
     if protocol in ("abfs", "abfss"):
         return {
-            **azure_setup_args(data_config.azure, bucket, anonymous=anonymous, **kwargs),
+            **azure_setup_args(data_config.azure, anonymous=anonymous, **kwargs),
             **kwargs,
         }
     return {}
 
 
-def get_additional_fsspec_call_kwargs(protocol: typing.Union[str, tuple], method_name: str) -> Dict[str, Any]:
+def get_additional_fsspec_call_kwargs(
+    protocol: typing.Union[str, tuple], method_name: str
+) -> Dict[str, Any]:
     """
     These are different from the setup args functions defined above. Those kwargs are applied when asking fsspec
     to create the filesystem. These kwargs returned here are for when the filesystem's methods are invoked.
@@ -299,7 +235,9 @@ class FileAccessProvider(object):
         """
         # Local access
         if local_sandbox_dir is None or local_sandbox_dir == "":
-            raise ValueError("FileAccessProvider needs to be created with a valid local_sandbox_dir")
+            raise ValueError(
+                "FileAccessProvider needs to be created with a valid local_sandbox_dir"
+            )
         local_sandbox_dir_appended = os.path.join(local_sandbox_dir, "local_flytekit")
         self._local_sandbox_dir = pathlib.Path(local_sandbox_dir_appended)
         self._local_sandbox_dir.mkdir(parents=True, exist_ok=True)
@@ -312,7 +250,9 @@ class FileAccessProvider(object):
         else:
             self._execution_metadata = None
         self._default_protocol = get_protocol(str(raw_output_prefix))
-        self._default_remote = cast(fsspec.AbstractFileSystem, self.get_filesystem(self._default_protocol))
+        self._default_remote = cast(
+            fsspec.AbstractFileSystem, self.get_filesystem(self._default_protocol)
+        )
         if os.name == "nt" and raw_output_prefix.startswith("file://"):
             raise FlyteAssertion("Cannot use the file:// prefix on Windows.")
         self._raw_output_prefix = (
@@ -341,36 +281,39 @@ class FileAccessProvider(object):
         protocol: typing.Optional[str] = None,
         anonymous: bool = False,
         path: typing.Optional[str] = None,
-        bucket: str = "",
         **kwargs,
     ) -> fsspec.AbstractFileSystem:
-        # TODO: add bucket to adlfs
         if not protocol:
             return self._default_remote
         if protocol == "file":
             kwargs["auto_mkdir"] = True
             return FlyteLocalFileSystem(**kwargs)
         elif protocol == "s3":
-            s3kwargs = s3_setup_args(self._data_config.s3, bucket, anonymous=anonymous, **kwargs)
+            s3kwargs = s3_setup_args(
+                self._data_config.s3, anonymous=anonymous, **kwargs
+            )
             s3kwargs.update(kwargs)
             return fsspec.filesystem(protocol, **s3kwargs)  # type: ignore
         elif protocol == "gs":
-            gskwargs = gs_setup_args(self._data_config.gcs, bucket, anonymous=anonymous)
+            gskwargs = gs_setup_args(self._data_config.gcs, anonymous=anonymous)
             gskwargs.update(kwargs)
             return fsspec.filesystem(protocol, **gskwargs)  # type: ignore
         elif protocol == "abfs":
-            azkwargs = azure_setup_args(self._data_config.azure, bucket, anonymous=anonymous, **kwargs)
+            azkwargs = azure_setup_args(
+                self._data_config.azure, anonymous=anonymous, **kwargs
+            )
             azkwargs.update(kwargs)
             return fsspec.filesystem(protocol, **azkwargs)  # type: ignore
         elif protocol == "ftp":
-            kwargs.update(fsspec.implementations.ftp.FTPFileSystem._get_kwargs_from_urls(path))
+            kwargs.update(
+                fsspec.implementations.ftp.FTPFileSystem._get_kwargs_from_urls(path)
+            )
             return fsspec.filesystem(protocol, **kwargs)
 
         storage_options = get_fsspec_storage_options(
             protocol=protocol,
             anonymous=anonymous,
             data_config=self._data_config,
-            bucket=bucket,
             **kwargs,
         )
         kwargs.update(storage_options)
@@ -378,7 +321,7 @@ class FileAccessProvider(object):
         return fsspec.filesystem(protocol, **kwargs)
 
     async def get_async_filesystem_for_path(
-        self, path: str = "", bucket: str = "", anonymous: bool = False, **kwargs
+        self, path: str = "", anonymous: bool = False, **kwargs
     ) -> Union[AsyncFileSystem, fsspec.AbstractFileSystem]:
         protocol = get_protocol(path)
         loop = asyncio.get_running_loop()
@@ -387,17 +330,16 @@ class FileAccessProvider(object):
             protocol,
             anonymous=anonymous,
             path=path,
-            bucket=bucket,
             asynchronous=True,
             loop=loop,
             **kwargs,
         )
 
     def get_filesystem_for_path(
-        self, path: str = "", bucket: str = "", anonymous: bool = False, **kwargs
+        self, path: str = "", anonymous: bool = False, **kwargs
     ) -> fsspec.AbstractFileSystem:
         protocol = get_protocol(path)
-        return self.get_filesystem(protocol, anonymous=anonymous, path=path, bucket=bucket, **kwargs)
+        return self.get_filesystem(protocol, anonymous=anonymous, path=path, *kwargs)
 
     @staticmethod
     def is_remote(path: Union[str, os.PathLike]) -> bool:
@@ -448,7 +390,9 @@ class FileAccessProvider(object):
     def sep(self, file_system: typing.Optional[fsspec.AbstractFileSystem]) -> str:
         if file_system is None or file_system.protocol == "file":
             return os.sep
-        if isinstance(file_system.protocol, tuple) or isinstance(file_system.protocol, list):
+        if isinstance(file_system.protocol, tuple) or isinstance(
+            file_system.protocol, list
+        ):
             if "file" in file_system.protocol:
                 return os.sep
         return file_system.sep
@@ -466,9 +410,10 @@ class FileAccessProvider(object):
             raise oe
 
     @retry_request
-    async def get(self, from_path: str, to_path: str, recursive: bool = False, **kwargs):
-        bucket, from_path_file_only = split_path(from_path)
-        file_system = await self.get_async_filesystem_for_path(from_path, bucket)
+    async def get(
+        self, from_path: str, to_path: str, recursive: bool = False, **kwargs
+    ):
+        file_system = await self.get_async_filesystem_for_path(from_path)
         if recursive:
             from_path, to_path = self.recursive_paths(from_path, to_path)
         try:
@@ -482,17 +427,23 @@ class FileAccessProvider(object):
                 )
             logger.info(f"Getting {from_path} to {to_path}")
             if isinstance(file_system, AsyncFileSystem):
-                dst = await file_system._get(from_path_file_only, to_path, recursive=recursive, **kwargs)  # pylint: disable=W0212
+                dst = await file_system._get(
+                    from_path, to_path, recursive=recursive, **kwargs
+                )  # pylint: disable=W0212
             else:
                 dst = file_system.get(from_path, to_path, recursive=recursive, **kwargs)
             if isinstance(dst, (str, pathlib.Path)):
                 return dst
             return to_path
         except (OSError, GenericError) as oe:
-            logger.debug(f"Error in getting {from_path} to {to_path} rec {recursive} {oe}")
+            logger.debug(
+                f"Error in getting {from_path} to {to_path} rec {recursive} {oe}"
+            )
             if isinstance(file_system, AsyncFileSystem):
                 try:
-                    exists = await file_system._exists(from_path)  # pylint: disable=W0212
+                    exists = await file_system._exists(
+                        from_path
+                    )  # pylint: disable=W0212
                 except GenericError:
                     # for obstore, as it does not raise FileNotFoundError in fsspec but GenericError
                     # force it to try get_filesystem(anonymous=True)
@@ -501,23 +452,30 @@ class FileAccessProvider(object):
                 exists = file_system.exists(from_path)
             if not exists:
                 raise FlyteDataNotFoundException(from_path)
-            file_system = self.get_filesystem(get_protocol(from_path), anonymous=True, asynchronous=True)
+            file_system = self.get_filesystem(
+                get_protocol(from_path), anonymous=True, asynchronous=True
+            )
             if file_system is not None:
                 logger.debug(f"Attempting anonymous get with {file_system}")
                 if isinstance(file_system, AsyncFileSystem):
-                    return await file_system._get(from_path, to_path, recursive=recursive, **kwargs)  # pylint: disable=W0212
+                    return await file_system._get(
+                        from_path, to_path, recursive=recursive, **kwargs
+                    )  # pylint: disable=W0212
                 else:
-                    return file_system.get(from_path, to_path, recursive=recursive, **kwargs)
+                    return file_system.get(
+                        from_path, to_path, recursive=recursive, **kwargs
+                    )
             raise oe
 
     @retry_request
-    async def _put(self, from_path: str, to_path: str, recursive: bool = False, **kwargs):
+    async def _put(
+        self, from_path: str, to_path: str, recursive: bool = False, **kwargs
+    ):
         """
         More of an internal function to be called by put_data and put_raw_data
         This does not need a separate sync function.
         """
-        bucket, to_path_file_only = split_path(to_path)
-        file_system = await self.get_async_filesystem_for_path(to_path, bucket)
+        file_system = await self.get_async_filesystem_for_path(to_path)
         from_path = self.strip_file_header(from_path)
         if recursive:
             # Only check this for the local filesystem
@@ -537,11 +495,15 @@ class FileAccessProvider(object):
                 kwargs["metadata"] = {}
             kwargs["metadata"].update(self._execution_metadata)
 
-        additional_kwargs = get_additional_fsspec_call_kwargs(file_system.protocol, file_system.put.__name__)
+        additional_kwargs = get_additional_fsspec_call_kwargs(
+            file_system.protocol, file_system.put.__name__
+        )
         kwargs.update(additional_kwargs)
 
         if isinstance(file_system, AsyncFileSystem):
-            dst = await file_system._put(from_path, to_path_file_only, recursive=recursive, **kwargs)  # pylint: disable=W0212
+            dst = await file_system._put(
+                from_path, to_path, recursive=recursive, **kwargs
+            )  # pylint: disable=W0212
         else:
             dst = file_system.put(from_path, to_path, recursive=recursive, **kwargs)
         if isinstance(dst, (str, pathlib.Path)):
@@ -584,18 +546,32 @@ class FileAccessProvider(object):
         :return: Returns the final path data was written to.
         """
         # First figure out what the destination path should be, then call put.
-        upload_prefix = self.get_random_string() if upload_prefix is None else upload_prefix
-        to_path = self.join(self.raw_output_prefix, upload_prefix) if not skip_raw_data_prefix else upload_prefix
+        upload_prefix = (
+            self.get_random_string() if upload_prefix is None else upload_prefix
+        )
+        to_path = (
+            self.join(self.raw_output_prefix, upload_prefix)
+            if not skip_raw_data_prefix
+            else upload_prefix
+        )
         if file_name:
             to_path = self.join(to_path, file_name)
         else:
-            if isinstance(lpath, str) or isinstance(lpath, os.PathLike) or isinstance(lpath, pathlib.Path):
+            if (
+                isinstance(lpath, str)
+                or isinstance(lpath, os.PathLike)
+                or isinstance(lpath, pathlib.Path)
+            ):
                 to_path = self.join(to_path, self.get_file_tail(str(lpath)))
             else:
                 to_path = self.join(to_path, self.get_random_string())
 
         # If lpath is a file, then use put.
-        if isinstance(lpath, str) or isinstance(lpath, os.PathLike) or isinstance(lpath, pathlib.Path):
+        if (
+            isinstance(lpath, str)
+            or isinstance(lpath, os.PathLike)
+            or isinstance(lpath, pathlib.Path)
+        ):
             p = pathlib.Path(lpath)
             from_path = str(lpath)
             if not p.exists():
@@ -610,13 +586,11 @@ class FileAccessProvider(object):
                 r = await self._put(from_path, to_path, **kwargs)
             return r or to_path
 
-        bucket, _ = split_path(to_path)
-
         # See https://github.com/fsspec/s3fs/issues/871 for more background and pending work on the fsspec side to
         # support effectively async open(). For now these use-cases below will revert to sync calls.
         # raw bytes
         if isinstance(lpath, bytes):
-            fs = self.get_filesystem_for_path(to_path, bucket)
+            fs = self.get_filesystem_for_path(to_path)
             with fs.open(to_path, "wb", **kwargs) as s:
                 s.write(lpath)
             return to_path
@@ -625,7 +599,7 @@ class FileAccessProvider(object):
         if isinstance(lpath, io.BufferedReader) or isinstance(lpath, io.BytesIO):
             if not lpath.readable():
                 raise FlyteAssertion("Buffered reader must be readable")
-            fs = self.get_filesystem_for_path(to_path, bucket)
+            fs = self.get_filesystem_for_path(to_path)
             lpath.seek(0)
             with fs.open(to_path, "wb", **kwargs) as s:
                 while data := lpath.read(read_chunk_size_bytes):
@@ -635,7 +609,7 @@ class FileAccessProvider(object):
         if isinstance(lpath, io.StringIO):
             if not lpath.readable():
                 raise FlyteAssertion("Buffered reader must be readable")
-            fs = self.get_filesystem_for_path(to_path, bucket)
+            fs = self.get_filesystem_for_path(to_path)
             lpath.seek(0)
             with fs.open(to_path, "wb", **kwargs) as s:
                 while data_str := lpath.read(read_chunk_size_bytes):
@@ -668,7 +642,9 @@ class FileAccessProvider(object):
             raise ValueError("Must provide at least one argument")
         base, tails = args[0], list(args[1:])
         if get_protocol(base) not in str(fs.protocol):
-            logger.warning(f"joining {base} with incorrect fs {fs.protocol} vs {get_protocol(base)}")
+            logger.warning(
+                f"joining {base} with incorrect fs {fs.protocol} vs {get_protocol(base)}"
+            )
         if base.endswith(fs.sep):  # noqa
             base = base[:-1]
         l = [base]
@@ -711,7 +687,9 @@ class FileAccessProvider(object):
         p = fs.sep.join(s_pref)
         return p
 
-    def get_random_local_path(self, file_path_or_file_name: typing.Optional[str] = None) -> str:
+    def get_random_local_path(
+        self, file_path_or_file_name: typing.Optional[str] = None
+    ) -> str:
         """
         Use file_path_or_file_name, when you want a random directory, but want to preserve the leaf file name
         """
@@ -728,7 +706,9 @@ class FileAccessProvider(object):
         pathlib.Path(_dir).mkdir(parents=True, exist_ok=True)
         return _dir
 
-    def get_random_remote_path(self, file_path_or_file_name: typing.Optional[str] = None) -> str:
+    def get_random_remote_path(
+        self, file_path_or_file_name: typing.Optional[str] = None
+    ) -> str:
         if file_path_or_file_name:
             return self.join(
                 self.raw_output_prefix,
@@ -772,7 +752,9 @@ class FileAccessProvider(object):
         """
         return self.put_data(local_path, remote_path, is_multipart=True, **kwargs)
 
-    async def async_get_data(self, remote_path: str, local_path: str, is_multipart: bool = False, **kwargs):
+    async def async_get_data(
+        self, remote_path: str, local_path: str, is_multipart: bool = False, **kwargs
+    ):
         """
         :param remote_path:
         :param local_path:
@@ -781,7 +763,9 @@ class FileAccessProvider(object):
         try:
             pathlib.Path(local_path).parent.mkdir(parents=True, exist_ok=True)
             with timeit(f"Download data to local from {remote_path}"):
-                await self.get(remote_path, to_path=local_path, recursive=is_multipart, **kwargs)
+                await self.get(
+                    remote_path, to_path=local_path, recursive=is_multipart, **kwargs
+                )
         except FlyteDataNotFoundException:
             raise
         except Exception as ex:
@@ -810,7 +794,9 @@ class FileAccessProvider(object):
         try:
             local_path = str(local_path)
             with timeit(f"Upload data to {remote_path}"):
-                put_result = await self._put(cast(str, local_path), remote_path, recursive=is_multipart, **kwargs)
+                put_result = await self._put(
+                    cast(str, local_path), remote_path, recursive=is_multipart, **kwargs
+                )
                 # This is an unfortunate workaround to ensure that we return the correct path for the remote location
                 # Callers of this put_data function in flytekit have been changed to assign the remote path to the
                 # output
@@ -828,9 +814,8 @@ class FileAccessProvider(object):
     put_data = loop_manager.synced(async_put_data)
 
 
-fsspec.register_implementation("s3", ObstoreS3FileSystem)
-fsspec.register_implementation("gs", ObstoreGCSFileSystem)
-fsspec.register_implementation("abfs", ObstoreAzureBlobFileSystem)
+register(["s3", "gs", "abfs"])
+
 
 flyte_tmp_dir = tempfile.mkdtemp(prefix="flyte-")
 default_local_file_access_provider = FileAccessProvider(
