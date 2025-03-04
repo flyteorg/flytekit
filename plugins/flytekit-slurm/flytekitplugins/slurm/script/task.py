@@ -121,11 +121,6 @@ class SlurmShellTask(AsyncAgentExecutorMixin, PythonInstanceTask[Slurm]):
             outputs[v.var] = v.var_type
         return outputs
 
-    def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
-        return user_params
-
-    def post_execute(self, user_params: ExecutionParameters, rval: typing.Any) -> typing.Any:
-        return rval
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         return {
