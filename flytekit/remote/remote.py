@@ -101,6 +101,7 @@ from flytekit.remote.entities import FlyteLaunchPlan, FlyteNode, FlyteTask, Flyt
 from flytekit.remote.executions import FlyteNodeExecution, FlyteTaskExecution, FlyteWorkflowExecution
 from flytekit.remote.interface import TypedInterface
 from flytekit.remote.lazy_entity import LazyEntity
+from flytekit.remote.metrics import FlyteExecutionSpan
 from flytekit.remote.remote_callable import RemoteEntity
 from flytekit.remote.remote_fs import get_flyte_fs
 from flytekit.tools.fast_registration import FastPackageOptions, fast_package
@@ -2976,6 +2977,12 @@ class FlyteRemote(object):
             _, native_url = self.upload_file(dest)
 
         return FastSerializationSettings(enabled=True, distribution_location=native_url, destination_dir=".")
+
+    def get_execution_metrics(self, id: WorkflowExecutionIdentifier, depth: int = 10) -> typing.Dict[str, typing.Any]:
+        """
+        Get the metrics for a given execution.
+        """
+        return FlyteExecutionSpan.from_flyte_idl(self.client.get_execution_metrics(id, depth))
 
     @classmethod
     def for_endpoint(
