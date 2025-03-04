@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 import datetime
 import typing
 from datetime import timedelta
@@ -140,48 +141,17 @@ class ArtifactIDSpecification(object):
         return f"ArtifactIDSpecification({self.artifact.name}, {self.artifact.partition_keys}, TP: {self.artifact.time_partitioned})"
 
 
+@dataclasses.dataclass
 class ArtifactQuery(object):
-    def __init__(
-        self,
-        artifact: Artifact,
-        name: str,
-        project: Optional[str] = None,
-        domain: Optional[str] = None,
-        time_partition: Optional[TimePartition] = None,
-        partitions: Optional[Partitions] = None,
-        tag: Optional[str] = None,
-    ):
-        if not name:
-            raise ValueError("Cannot create query without name")
-
-        # So normally, if you just do MyData.query(partitions="region": Inputs.region), it will just
-        # use the input value to fill in the partition. But if you do
-        #   MyData.query(region=OtherArtifact.partitions.region)
-        # then you now have a dependency on the other artifact. This list keeps track of all the other Artifacts you've
-        # referenced.
-        self.artifact = artifact
-        bindings: typing.List[Artifact] = []
-        if time_partition:
-            if time_partition.reference_artifact and time_partition.reference_artifact is not artifact:
-                bindings.append(time_partition.reference_artifact)
-        if partitions and partitions.partitions:
-            for k, v in partitions.partitions.items():
-                if v.reference_artifact and v.reference_artifact is not artifact:
-                    bindings.append(v.reference_artifact)
-
-        self.name = name
-        self.project = project
-        self.domain = domain
-        self.time_partition = time_partition
-        self.partitions = partitions
-        self.tag = tag
-        if len(bindings) > 0:
-            b = set(bindings)
-            if len(b) > 1:
-                raise ValueError(f"Multiple bindings found in query {self}")
-            self.binding: Optional[Artifact] = bindings[0]
-        else:
-            self.binding = None
+    artifact: Optional[Artifact] = None
+    name: Optional[str] = None
+    project: Optional[str] = None
+    domain: Optional[str] = None
+    time_partition: Optional[TimePartition] = None
+    partitions: Optional[Partitions] = None
+    tag: Optional[str] = None
+    uri: Optional[str] = None
+    binding: Optional[Artifact] = None
 
     @property
     def bound(self) -> bool:
@@ -201,6 +171,57 @@ class ArtifactQuery(object):
                 return False
 
         return True
+
+    @staticmethod
+    def from_details(
+            artifact: Artifact,
+            name: str,
+            project: Optional[str] = None,
+            domain: Optional[str] = None,
+            time_partition: Optional[TimePartition] = None,
+            partitions: Optional[Partitions] = None,
+            tag: Optional[str] = None,
+        ) -> ArtifactQuery:
+            a = ArtifactQuery()
+            if not name:
+                raise ValueError("Cannot create query without name")
+
+            # So normally, if you just do MyData.query(partitions="region": Inputs.region), it will just
+            # use the input value to fill in the partition. But if you do
+            #   MyData.query(region=OtherArtifact.partitions.region)
+            # then you now have a dependency on the other artifact. This list keeps track of all the other Artifacts you've
+            # referenced.
+            a.artifact = artifact
+            bindings: typing.List[Artifact] = []
+            if time_partition:
+                if time_partition.reference_artifact and time_partition.reference_artifact is not artifact:
+                    bindings.append(time_partition.reference_artifact)
+            if partitions and partitions.partitions:
+                for k, v in partitions.partitions.items():
+                    if v.reference_artifact and v.reference_artifact is not artifact:
+                        bindings.append(v.reference_artifact)
+
+            a.name = name
+            a.project = project
+            a.domain = domain
+            a.time_partition = time_partition
+            a.partitions = partitions
+            a.tag = tag
+            if len(bindings) > 0:
+                b = set(bindings)
+                if len(b) > 1:
+                    raise ValueError(f"Multiple bindings found in query {a}")
+                a.binding = bindings[0]
+            else:
+                a.binding = None
+
+            return a
+
+    @staticmethod
+    def from_uri(uri: str) -> ArtifactQuery:
+        a = ArtifactQuery()
+        a.uri = uri
+        return a
 
     def to_flyte_idl(
         self,
@@ -577,7 +598,7 @@ class Artifact(object):
 
         tp = tp or (self.time_partition if self.time_partitioned else None)
 
-        aq = ArtifactQuery(
+        aq = ArtifactQuery.from_details(
             artifact=self,
             name=self.name,
             project=project or self.project or None,
@@ -585,6 +606,7 @@ class Artifact(object):
             time_partition=tp,
             partitions=p_obj or self.partitions,
         )
+
         return aq
 
     @property
@@ -676,6 +698,9 @@ class DefaultArtifactSerializationHandler(ArtifactSerializationHandler):
         return None
 
     def artifact_query_to_idl(self, aq: ArtifactQuery, **kwargs) -> art_id.ArtifactQuery:
+        if aq.uri and aq.uri != "":
+            return art_id.ArtifactQuery(uri=aq.uri)
+
         ak = art_id.ArtifactKey(
             name=aq.name,
             project=aq.project,
