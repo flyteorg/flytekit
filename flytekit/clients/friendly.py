@@ -672,6 +672,17 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             .id
         )
 
+    def get_execution_metrics(self, id, depth=10):
+        return (
+            super(SynchronousFlyteClient, self)
+            .get_execution_metrics(
+                get_execution_metrics_request=_execution_pb2.WorkflowExecutionGetMetricsRequest(
+                    id=id.to_flyte_idl(), depth=depth
+                )
+            )
+            .span
+        )
+
     ####################################################################################################################
     #
     #  Node Execution Endpoints
