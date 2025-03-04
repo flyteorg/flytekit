@@ -1,4 +1,4 @@
-from flytekit.configuration import Image, ImageConfig, SerializationSettings 
+from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekitplugins.slurm import Slurm, SlurmRemoteScript, SlurmTask, SlurmShellTask
 
 
@@ -54,7 +54,7 @@ def test_slurm_shell_task():
     assert slurm_shell_task.task_config.sbatch_conf == {"partition": "debug", "job-name": "tiny-slurm", "output": "/home/ubuntu/slurm_shell_task.log"}
     assert slurm_shell_task.script == script
 
-    # Define dummy SerializationSettings    
+    # Define dummy SerializationSettings
     default_img = Image(name="default", fqn="test", tag="tag")
     settings = SerializationSettings(
         project="project",

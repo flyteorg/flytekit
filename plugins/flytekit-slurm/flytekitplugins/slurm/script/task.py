@@ -2,15 +2,21 @@
 Slurm task.
 """
 
+import typing
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Type
 
-from flytekit.configuration import SerializationSettings
+from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask
+from flytekit.core.context_manager import ExecutionParameters
 from flytekit.core.interface import Interface
+from flytekit.core.python_function_task import PythonInstanceTask
+from flytekit.core.task import TaskPlugins
 from flytekit.extend import TaskPlugins
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
-from flytekit.extras.tasks.shell import OutputLocation, ShellTask
+from flytekit.extras.tasks.shell import OutputLocation
+from flytekit.types.directory import FlyteDirectory
+from flytekit.types.file import FlyteFile
 
 
 @dataclass
@@ -71,7 +77,7 @@ class SlurmTask(AsyncAgentExecutorMixin, PythonTask[SlurmRemoteScript]):
         }
 
 
-class SlurmShellTask(AsyncAgentExecutorMixin, ShellTask[Slurm]):
+class SlurmShellTask(AsyncAgentExecutorMixin, PythonInstanceTask[Slurm]):
     _TASK_TYPE = "slurm"
 
     def __init__(
@@ -84,16 +90,42 @@ class SlurmShellTask(AsyncAgentExecutorMixin, ShellTask[Slurm]):
         **kwargs,
     ):
         self._inputs = inputs
+        self._output_locs = output_locs if output_locs else []
+        self._script = script
 
-        super(SlurmShellTask, self).__init__(
+        outputs = self._validate_output_locs()
+
+        super().__init__(
             name,
-            task_config=task_config,
             task_type=self._TASK_TYPE,
+            task_config=task_config,
             script=script,
-            inputs=inputs,
-            output_locs=output_locs,
+            interface=Interface(inputs=inputs, outputs=outputs),
+            container_image=ImageConfig.auto_default_image().default_image.fqn,
             **kwargs,
         )
+
+    def _validate_output_locs(self) -> typing.Dict[str, typing.Type]:
+        outputs = {}
+        for v in self._output_locs:
+            if v is None:
+                raise ValueError("OutputLocation cannot be none")
+            if not isinstance(v, OutputLocation):
+                raise ValueError("Every output type should be an output location on the file-system")
+            if v.location is None:
+                raise ValueError(f"Output Location not provided for output var {v.var}")
+            if not issubclass(v.var_type, FlyteFile) and not issubclass(v.var_type, FlyteDirectory):
+                raise ValueError(
+                    "Currently only outputs of type FlyteFile/FlyteDirectory and their derived types are supported"
+                )
+            outputs[v.var] = v.var_type
+        return outputs
+
+    def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
+        return user_params
+
+    def post_execute(self, user_params: ExecutionParameters, rval: typing.Any) -> typing.Any:
+        return rval
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         return {
