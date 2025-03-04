@@ -134,7 +134,7 @@ def connector(_: click.Context, port, prometheus_port, worker, timeout, modules)
 
 async def _start_grpc_server(name: str, port: int, prometheus_port: int, worker: int, timeout: int):
     try:
-        from flytekit.extend.backend.agent_service import AgentMetadataService, AsyncAgentService, SyncAgentService
+        from flytekit.extend.backend.connector_service import ConnectorMetadataService, AsyncConnectorService, SyncConnectorService
         from flytekit.extras.webhook import WebhookConnector  # noqa: F401 Webhook Agent Registration
     except ImportError as e:
         raise ImportError(
@@ -148,9 +148,9 @@ async def _start_grpc_server(name: str, port: int, prometheus_port: int, worker:
 
     server = grpc.aio.server(futures.ThreadPoolExecutor(max_workers=worker))
 
-    add_AsyncAgentServiceServicer_to_server(AsyncAgentService(), server)
-    add_SyncAgentServiceServicer_to_server(SyncAgentService(), server)
-    add_AgentMetadataServiceServicer_to_server(AgentMetadataService(), server)
+    add_AsyncAgentServiceServicer_to_server(AsyncConnectorService(), server)
+    add_SyncAgentServiceServicer_to_server(SyncConnectorService(), server)
+    add_AgentMetadataServiceServicer_to_server(ConnectorMetadataService(), server)
     _start_health_check_server(server, worker)
 
     server.add_insecure_port(f"[::]:{port}")
