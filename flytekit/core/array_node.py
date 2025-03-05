@@ -9,7 +9,7 @@ from flytekit.core.interface import (
     transform_interface_to_list_interface,
     transform_interface_to_typed_interface,
 )
-from flytekit.core.launch_plan import LaunchPlan
+from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
 from flytekit.core.node import Node
 from flytekit.core.promise import (
     Promise,
@@ -81,7 +81,9 @@ class ArrayNode:
         self._bound_inputs: Set[str] = set()
         self._excluded_inputs: Set[str] = set()
         if isinstance(target, (LaunchPlan, FlyteLaunchPlan)):
-            self._excluded_inputs = target.fixed_inputs.literals.keys()
+            # rely on user defined workflow interface since we don't fetch reference launch plans from admin
+            if not isinstance(target, ReferenceLaunchPlan):
+                self._excluded_inputs = target.fixed_inputs.literals.keys()
 
         output_as_list_of_optionals = min_success_ratio is not None and min_success_ratio != 1 and n_outputs == 1
 
