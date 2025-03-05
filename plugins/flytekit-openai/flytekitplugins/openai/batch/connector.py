@@ -7,8 +7,8 @@ import cloudpickle
 from flytekit import FlyteContextManager, lazy_module
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_connector import (
-    ConnectorRegistry,
     AsyncConnectorBase,
+    ConnectorRegistry,
     Resource,
     ResourceMeta,
 )

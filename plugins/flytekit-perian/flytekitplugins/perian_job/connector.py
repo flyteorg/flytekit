@@ -27,7 +27,7 @@ from flytekit import current_context
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions.base import FlyteException
 from flytekit.exceptions.user import FlyteUserException
-from flytekit.extend.backend.base_connector import ConnectorRegistry, AsyncConnectorBase, Resource, ResourceMeta
+from flytekit.extend.backend.base_connector import AsyncConnectorBase, ConnectorRegistry, Resource, ResourceMeta
 from flytekit.loggers import logger
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate

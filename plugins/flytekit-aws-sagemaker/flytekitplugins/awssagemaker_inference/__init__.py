@@ -19,9 +19,9 @@
    delete_sagemaker_deployment
 """
 
-from .connector import SageMakerEndpointConnector
 from .boto3_connector import BotoConnector
 from .boto3_task import BotoConfig, BotoTask
+from .connector import SageMakerEndpointConnector
 from .task import (
     SageMakerDeleteEndpointConfigTask,
     SageMakerDeleteEndpointTask,

@@ -4,8 +4,8 @@ from typing import Any, Dict, Optional
 import cloudpickle
 
 from flytekit.extend.backend.base_connector import (
-    ConnectorRegistry,
     AsyncConnectorBase,
+    ConnectorRegistry,
     Resource,
     ResourceMeta,
 )

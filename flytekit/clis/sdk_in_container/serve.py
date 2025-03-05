@@ -68,6 +68,7 @@ def agent(_: click.Context, port, prometheus_port, worker, timeout, modules):
     Start a grpc server for the agent service.
     """
     import asyncio
+
     warnings.warn("This command is deprecated. Please use `flyte serve connector` instead.", DeprecationWarning)
 
     working_dir = os.getcwd()
@@ -134,7 +135,11 @@ def connector(_: click.Context, port, prometheus_port, worker, timeout, modules)
 
 async def _start_grpc_server(name: str, port: int, prometheus_port: int, worker: int, timeout: int):
     try:
-        from flytekit.extend.backend.connector_service import ConnectorMetadataService, AsyncConnectorService, SyncConnectorService
+        from flytekit.extend.backend.connector_service import (
+            AsyncConnectorService,
+            ConnectorMetadataService,
+            SyncConnectorService,
+        )
         from flytekit.extras.webhook import WebhookConnector  # noqa: F401 Webhook Agent Registration
     except ImportError as e:
         raise ImportError(

@@ -8,7 +8,7 @@ from flyteidl.core.execution_pb2 import TaskExecution
 
 from flytekit import lazy_module
 from flytekit.core.constants import FLYTE_FAIL_ON_ERROR
-from flytekit.extend.backend.base_connector import ConnectorRegistry, AsyncConnectorBase, Resource, ResourceMeta
+from flytekit.extend.backend.base_connector import AsyncConnectorBase, ConnectorRegistry, Resource, ResourceMeta
 from flytekit.extend.backend.utils import convert_to_flyte_phase, get_agent_secret
 from flytekit.models.core.execution import TaskLog
 from flytekit.models.literals import LiteralMap
