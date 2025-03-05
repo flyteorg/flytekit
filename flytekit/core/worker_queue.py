@@ -331,6 +331,8 @@ class Controller:
                     print("Current entries: ", html, flush=True)
                     # FlyteContextManager.push_context(self.task_ctx)
                     Deck("Eager Executions", html).publish()
+                    with self.remote.remote_context():
+                        Deck("More Eager Executions", html).publish()
             print(f"published {len(self.entries)}", flush=True)
 
             # This is a blocking call so we don't hit the API too much.
@@ -338,6 +340,8 @@ class Controller:
 
     def _execute(self) -> None:
         try:
+            print(f"remote ctx {self.remote._ctx}")
+            print(f"task ctx {self.task_ctx}")
             FlyteContextManager.push_context(self.task_ctx)
             self._poll()
         except Exception as e:
