@@ -328,13 +328,6 @@ class Controller:
                     FlyteContextManager.push_context(self.remote._ctx)
                     Deck("Eager Executions", html).publish()
                     FlyteContextManager.pop_context()
-                    # print(f"Publishing deck {rctx}", flush=True)  # remove before merging
-                    # cc = FlyteContextManager.current_context()
-                    # print(f"{cc is rctx}", flush=True)
-                    # print(f"{cc.user_space_params}", flush=True)
-                    # print(f"{rctx.user_space_params}", flush=True)
-                    # print(f"Remote ctx {self.remote._ctx}", flush=True)
-            print(f"published {len(self.entries)}", flush=True)  # remove before merging
 
             # This is a blocking call so we don't hit the API too much.
             time.sleep(2)
