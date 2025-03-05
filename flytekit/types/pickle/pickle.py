@@ -92,7 +92,6 @@ class FlytePickleTransformer(AsyncTypeTransformer[FlytePickle]):
             )
         )
         remote_path = await FlytePickle.to_pickle(ctx, python_val)
-        print(remote_path)
         return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
 
     def guess_python_type(self, literal_type: LiteralType) -> typing.Type[FlytePickle[typing.Any]]:
