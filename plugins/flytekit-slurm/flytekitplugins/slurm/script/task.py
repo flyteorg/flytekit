@@ -11,22 +11,24 @@ from flytekit.core.interface import Interface
 from flytekit.extend import TaskPlugins
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 from flytekit.extras.tasks.shell import OutputLocation
-from flytekit.types.file import FlyteFile
 from flytekit.types.directory import FlyteDirectory
+from flytekit.types.file import FlyteFile
 
 
 @dataclass
 class Slurm(object):
-    """Configure Slurm settings. Note that we focus on sbatch command now.
+    """
+    Configure Slurm settings. Note that we focus on sbatch command now.
 
-    Compared with spark, please refer to https://api-docs.databricks.com/python/pyspark/latest/api/pyspark.SparkContext.html.
+    Compared with spark, please refer to:
+    https://api-docs.databricks.com/python/pyspark/latest/api/pyspark.SparkContext.html.
 
-    Args:
-        ssh_config: Options of SSH client connection. For available options, please refer to
-            <newly-added-ssh-utils-file>
-        sbatch_conf: Options of sbatch command. For available options, please refer to
+    Attributes:
+        ssh_config (Dict[str, Any]): Options of SSH client connection. For available options, please refer to
+            <newly-added-ssh-utils-file>.
+        sbatch_conf (Optional[Dict[str, str]]): Options of sbatch command. For available options, please refer to
             https://slurm.schedmd.com/sbatch.html.
-        batch_script_args: Additional args for the batch script on Slurm cluster.
+        batch_script_args (Optional[List[str]]): Additional args for the batch script on Slurm cluster.
     """
 
     ssh_config: Dict[str, Any]

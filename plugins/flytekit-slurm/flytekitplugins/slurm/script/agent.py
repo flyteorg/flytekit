@@ -18,13 +18,13 @@ from ..ssh_utils import SlurmCluster, get_ssh_conn
 
 @dataclass
 class SlurmJobMetadata(ResourceMeta):
-    """Slurm job metadata.
+    """
+    Slurm job metadata.
 
-    Args:
-        job_id: Slurm job id.
-        ssh_config: Options of SSH client connection. For available options, please refer to
-            <newly-added-ssh-utils-file>
-        outputs: A dictionary mapping from the output variable name to the output location.
+    Attributes:
+        job_id (str): Slurm job id.
+        ssh_config (Dict[str, Any]): SSH connection configuration options.
+        outputs (Dict[str, str]): Mapping from the output variable name to the output location.
     """
 
     job_id: str
@@ -95,7 +95,9 @@ class SlurmScriptAgent(AsyncAgentBase):
         return SlurmJobMetadata(job_id=job_id, ssh_config=ssh_config, outputs=outputs)
 
     async def get(self, resource_meta: SlurmJobMetadata, **kwargs) -> Resource:
-        conn = await get_ssh_conn(ssh_config=resource_meta.ssh_config, slurm_cluster_to_ssh_conn=self.slurm_clustesr_to_ssh_conn)
+        conn = await get_ssh_conn(
+            ssh_config=resource_meta.ssh_config, slurm_cluster_to_ssh_conn=self.slurm_clustesr_to_ssh_conn
+        )
         job_res = await conn.run(f"scontrol show job {resource_meta.job_id}", check=True)
 
         # Determine the current flyte phase from Slurm job state
@@ -113,7 +115,9 @@ class SlurmScriptAgent(AsyncAgentBase):
         return Resource(phase=cur_phase, message=msg, outputs=resource_meta.outputs)
 
     async def delete(self, resource_meta: SlurmJobMetadata, **kwargs) -> None:
-        conn = await get_ssh_conn(ssh_config=resource_meta.ssh_config, slurm_cluster_to_ssh_conn=self.slurm_clustesr_to_ssh_conn)
+        conn = await get_ssh_conn(
+            ssh_config=resource_meta.ssh_config, slurm_cluster_to_ssh_conn=self.slurm_clustesr_to_ssh_conn
+        )
         _ = await conn.run(f"scancel {resource_meta.job_id}", check=True)
 
     def _interpolate_script(
@@ -123,20 +127,24 @@ class SlurmScriptAgent(AsyncAgentBase):
         python_input_types: Optional[Dict[str, Type]] = None,
         output_locs: Optional[List[OutputLocation]] = None,
     ) -> Tuple[str, Dict[str, str]]:
-        """Interpolate the user-defined script with the specified input and output arguments.
+        """
+        Interpolate the user-defined script with the specified input and output arguments.
 
         Args:
-            script: The user-defined script with placeholders for dynamic input and output values.
-            input_literal_map: The input literal map.
-            python_input_types: A dictionary of input names to types.
-            output_locs: Output locations.
+            script (str): The user-defined script with placeholders for dynamic input/output.
+            input_literal_map (Optional[LiteralMap]): The Flyte LiteralMap of inputs.
+            python_input_types (Optional[Dict[str, Type]]): Mapping of input names to their Python/typing types.
+            output_locs (Optional[List[OutputLocation]]): List of output locations to be interpolated.
 
         Returns:
-            A tuple (script, outputs), where script is the interpolated script, and outputs is a
-            dictionary mapping from the output variable name to the output location.
+            Tuple[str, Dict[str, str]]:
+                - A two-element tuple in which the first element is the interpolated script (str),
+                and the second is a dictionary mapping each output variable name to its final location (str).
         """
         input_kwargs = TypeEngine.literal_map_to_kwargs(
-            flytekit.current_context(), lm=input_literal_map, python_types={} if python_input_types is None else python_input_types
+            flytekit.current_context(),
+            lm=input_literal_map,
+            python_types={} if python_input_types is None else python_input_types,
         )
         interpolizer = _PythonFStringInterpolizer()
 
@@ -153,19 +161,17 @@ class SlurmScriptAgent(AsyncAgentBase):
 
 
 def _get_sbatch_cmd(sbatch_conf: Dict[str, str], batch_script_path: str, batch_script_args: List[str] = None) -> str:
-    """Construct Slurm sbatch command.
-
-    We assume all main scripts and dependencies are on Slurm cluster.
+    """
+    Construct the Slurm sbatch command.
 
     Args:
-        sbatch_conf: Options of srun command.
-        batch_script_path: Absolute path of the batch script on Slurm cluster.
-        batch_script_args: Additional args for the batch script on Slurm cluster.
+        sbatch_conf (Dict[str, str]): Slurm sbatch configuration options (e.g., partition, job-name, etc.).
+        batch_script_path (str): Absolute path on the Slurm cluster of the script to run.
+        batch_script_args (List[str], optional): Additional arguments to pass to the batch script.
 
     Returns:
-        cmd: Slurm sbatch command.
+        str: The sbatch command string that can be executed on the Slurm cluster.
     """
-    # Setup sbatch options
     cmd = ["sbatch"]
     for opt, val in sbatch_conf.items():
         cmd.extend([f"--{opt}", str(val)])

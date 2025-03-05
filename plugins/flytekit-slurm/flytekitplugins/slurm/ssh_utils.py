@@ -20,7 +20,7 @@ SLURM_PRIVATE_KEY = "FLYTE_SLURM_PRIVATE_KEY"
 @dataclass
 class SlurmCluster:
     """A Slurm cluster instance is defined by a pair of (Slurm host, username).
-    
+
     Attributes:
         host (str): The hostname or address to connect to.
         username (Optional[str]): The username to authenticate as on the server.
@@ -138,16 +138,24 @@ async def get_ssh_conn(
     ssh_config: Dict[str, Union[str, List[str], Tuple[str, ...]]],
     slurm_cluster_to_ssh_conn: Dict[SlurmCluster, SSHClientConnection],
 ) -> Tuple[SlurmCluster, SSHClientConnection]:
-    """Get an existing SSH connection or create a new one if needed.
-
-    Is it necessary to ensure immutability in this function?
+    """
+    Get an existing SSH connection or create a new one if needed.
 
     Args:
-        ssh_config (Dict[str, Union[str, List[str], Tuple[str, ...]]]): SSH configuration dictionary.
+        ssh_config (Dict[str, Union[str, List[str], Tuple[str, ...]]]):
+            SSH configuration dictionary, including host and username.
+        slurm_cluster_to_ssh_conn (Dict[SlurmCluster, SSHClientConnection]):
+            A mapping of SlurmCluster to existing SSHClientConnection objects.
 
     Returns:
-        SSHClientConnection: An active SSH connection, either pre-existing or newly established.
+        Tuple[SlurmCluster, SSHClientConnection]:
+            A tuple containing (SlurmCluster, SSHClientConnection). If no connection
+            for the given SlurmCluster exists, a new one is created and cached.
     """
+
+    # (Optional) normal code comment instead of docstring line:
+    # Is it necessary to ensure immutability in this function?
+
     host = ssh_config.get("host")
     username = ssh_config.get("username")
     slurm_cluster = SlurmCluster(host=host, username=username)
