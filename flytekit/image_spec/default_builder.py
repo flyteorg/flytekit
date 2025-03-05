@@ -473,10 +473,11 @@ class DefaultImageBuilder(ImageSpecBuilder):
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
             create_docker_context(image_spec, tmp_path)
+            builder = "buildx" if run(["docker", "buildx", "version"]).returncode == 0 else "image"
 
             command = [
                 "docker",
-                "image",
+                builder,
                 "build",
                 "--tag",
                 f"{image_spec.image_name()}",
