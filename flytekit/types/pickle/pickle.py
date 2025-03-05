@@ -47,7 +47,9 @@ class FlytePickle(typing.Generic[T]):
         with open(uri, "w+b") as outfile:
             cloudpickle.dump(python_val, outfile)
 
-        return await ctx.file_access.async_put_raw_data(uri)
+        path = await ctx.file_access.async_put_raw_data(uri)
+        print("path", path)
+        return path
 
     @classmethod
     async def from_pickle(cls, uri: str) -> typing.Any:
@@ -92,6 +94,7 @@ class FlytePickleTransformer(AsyncTypeTransformer[FlytePickle]):
             )
         )
         remote_path = await FlytePickle.to_pickle(ctx, python_val)
+        print(remote_path)
         return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
 
     def guess_python_type(self, literal_type: LiteralType) -> typing.Type[FlytePickle[typing.Any]]:

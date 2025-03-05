@@ -1169,7 +1169,7 @@ class FlyteRemote(object):
         # Create a zip file containing all the entries.
         zip_file = fast_package(root, output, deref_symlinks, options)
         # Upload zip file to Admin using FlyteRemote.
-        return self.upload_file(pathlib.Path(zip_file))
+        return self.upload_file(pathlib.Path(zip_file), file_name=pathlib.Path(zip_file).name)
 
     def upload_file(
         self,
@@ -1177,6 +1177,7 @@ class FlyteRemote(object):
         project: typing.Optional[str] = None,
         domain: typing.Optional[str] = None,
         filename_root: typing.Optional[str] = None,
+        file_name: typing.Optional[str] = None,
     ) -> typing.Tuple[bytes, str]:
         """
         Function will use remote's client to hash and then upload the file using Admin's data proxy service.
@@ -1190,12 +1191,16 @@ class FlyteRemote(object):
         if not to_upload.is_file():
             raise ValueError(f"{to_upload} is not a single file, upload arg must be a single file.")
         md5_bytes, str_digest, _ = hash_file(to_upload)
+        print("md5_bytes", md5_bytes)
+        print("file_name", file_name)
+        if file_name is None:
+            file_name = str(str_digest)
 
         upload_location = self.client.get_upload_signed_url(
             project=project or self.default_project,
             domain=domain or self.default_domain,
             content_md5=md5_bytes,
-            filename=to_upload.name,
+            filename=file_name,
             filename_root=filename_root,
         )
 
@@ -1352,7 +1357,7 @@ class FlyteRemote(object):
                 archive_fname = pathlib.Path(os.path.join(tmp_dir, "script_mode.tar.gz"))
                 compress_scripts(source_path, str(archive_fname), get_all_modules(source_path, module_name))
                 md5_bytes, upload_native_url = self.upload_file(
-                    archive_fname, project or self.default_project, domain or self.default_domain
+                    archive_fname, project or self.default_project, domain or self.default_domain, file_name=archive_fname.name
                 )
 
         serialization_settings = SerializationSettings(
@@ -2973,7 +2978,7 @@ class FlyteRemote(object):
                     "The size of the task to pickled exceeds the limit of 150MB. Please reduce the size of the task."
                 )
             logger.debug(f"Uploading Pickled representation of Workflow `{entity.name}` to remote storage...")
-            _, native_url = self.upload_file(dest)
+            _, native_url = self.upload_file(dest, file_name=dest.name)
 
         return FastSerializationSettings(enabled=True, distribution_location=native_url, destination_dir=".")
 

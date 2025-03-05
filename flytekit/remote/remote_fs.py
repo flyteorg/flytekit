@@ -146,6 +146,8 @@ class FlyteFS(HTTPFileSystem):
         _, native_url = self._remote.upload_file(
             pathlib.Path(lpath), self._remote.default_project, self._remote.default_domain, prefix
         )
+        print("prefix", prefix)
+        print("native_url", native_url)
         return native_url
 
     @staticmethod
