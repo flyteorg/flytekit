@@ -329,7 +329,7 @@ class AsyncAgentExecutorMixin:
 
     def execute(self: PythonTask, **kwargs) -> LiteralMap:
         ctx = FlyteContext.current_context()
-        ss = ctx.serialization_settings or SerializationSettings(ImageConfig.auto_default_image())
+        ss = ctx.serialization_settings or SerializationSettings(ImageConfig())
         output_prefix = ctx.file_access.get_random_remote_directory()
         self.resource_meta = None
 
