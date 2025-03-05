@@ -456,20 +456,19 @@ class Controller:
 
         for entity_name, items_list in self.entries.items():
             for item in items_list:
-                if not item.is_in_terminal_state:
-                    logger.warning(
-                        f"Item for {item.entity.name} with inputs {item.input_kwargs}"
-                        f" isn't ready, skipping for deck rendering..."
-                    )
-                    continue
+                exec_output = ""
+                if item.is_in_terminal_state:
+                    exec_output = item.result if item.result else item.error
+
                 kind = _entity_type(item.entity)
+
                 output = f"{output}\n" + NODE_HTML_TEMPLATE.format(
                     entity_type=kind,
                     entity_name=item.entity.name,
                     execution_name=item.wf_exec.id.name,  # type: ignore[union-attr]
                     url=self.remote.generate_console_url(item.wf_exec),
                     inputs=item.input_kwargs,
-                    outputs=item.result if item.result else item.error,
+                    outputs=exec_output,
                 )
 
         return output
