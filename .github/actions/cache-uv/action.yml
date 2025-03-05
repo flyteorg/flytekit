@@ -1,0 +1,14 @@
+name: 'Cache uv dir'
+description: 'Action to cache uv artifacts'
+inputs:
+  python-version:
+    required: true
+runs:
+  using: 'composite'
+  steps:
+    - uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/uv
+          ~/.cache/pip
+        key: uv-${{ runner.os }}-${{ inputs.python-version }}-${{ hashFiles('uv.lock', 'pyproject.toml') }}'
