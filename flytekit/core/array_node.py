@@ -80,10 +80,9 @@ class ArrayNode:
         # TODO - bound inputs are not supported at the moment
         self._bound_inputs: Set[str] = set()
         self._excluded_inputs: Set[str] = set()
-        if isinstance(target, (LaunchPlan, FlyteLaunchPlan)):
-            # rely on user defined workflow interface since we don't fetch reference launch plans from admin
-            if not isinstance(target, ReferenceLaunchPlan):
-                self._excluded_inputs = target.fixed_inputs.literals.keys()
+        # rely on user defined workflow interface since we don't fetch reference launch plans from admin
+        if isinstance(target, (LaunchPlan, FlyteLaunchPlan)) and not isinstance(target, ReferenceLaunchPlan):
+            self._excluded_inputs = set(target.fixed_inputs.literals)
 
         output_as_list_of_optionals = min_success_ratio is not None and min_success_ratio != 1 and n_outputs == 1
 
