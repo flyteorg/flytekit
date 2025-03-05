@@ -325,3 +325,4 @@ def test_exec_params():
     )
 
     assert ep.task_id.name == "local"
+    print(ep)
