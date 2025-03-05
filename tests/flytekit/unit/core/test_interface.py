@@ -375,19 +375,39 @@ def test_doc_string():
 
 
 @pytest.mark.parametrize(
-    "optional_outputs, expected_type",
+    "bound_inputs, excluded_inputs, optional_outputs, expected_input_types, expected_output_type",
     [
-        (False, int),
-        (True, typing.Optional[int]),
+        (set(), set(), True, {"a": typing.List[int], "b": typing.List[typing.Optional[str]]}, typing.List[typing.Optional[int]]),
+        (set(), set(), False, {"a": typing.List[int], "b": typing.List[typing.Optional[str]]}, typing.List[int]),
+        ({"a"}, set(), False, {"a": int, "b": typing.List[typing.Optional[str]]}, typing.List[int]),
+        (set(), {"b"}, False, {"a": typing.List[int]}, typing.List[int]),
+        ({"a"}, {"b"}, False, {"a": int}, typing.List[int]),
+        ({"a", "b"}, set(), False, {"a": int, "b": typing.Optional[str]}, typing.List[int]),
+        (set(), {"a", "b"}, False, {}, typing.List[int]),
     ],
 )
-def test_transform_interface_to_list_interface(optional_outputs, expected_type):
+def test_transform_interface_to_list_interface(
+        bound_inputs,
+        excluded_inputs,
+        optional_outputs,
+        expected_input_types,
+        expected_output_type
+):
     @task
-    def t() -> int:
-        return 123
+    def t(a: int, b: typing.Optional[str]) -> int:
+        return a + 123
 
-    list_interface = transform_interface_to_list_interface(t.python_interface, set(), set(), optional_outputs=optional_outputs)
-    assert list_interface.outputs["o0"] == typing.List[expected_type]
+    list_interface = transform_interface_to_list_interface(
+        t.python_interface,
+        bound_inputs=bound_inputs,
+        excluded_inputs=excluded_inputs,
+        optional_outputs=optional_outputs
+    )
+
+    for k, v in expected_input_types.items():
+        assert list_interface.inputs[k] == v
+    assert len(list_interface.inputs) == len(expected_input_types)
+    assert list_interface.outputs["o0"] == expected_output_type
 
 
 @pytest.mark.parametrize(
