@@ -10,7 +10,9 @@ from flytekit.core.base_task import PythonTask
 from flytekit.core.interface import Interface
 from flytekit.extend import TaskPlugins
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
-from flytekit.extras.tasks.shell import OutputLocation, ShellTask
+from flytekit.extras.tasks.shell import OutputLocation
+from flytekit.types.file import FlyteFile
+from flytekit.types.directory import FlyteDirectory
 
 
 @dataclass
@@ -71,29 +73,47 @@ class SlurmTask(AsyncAgentExecutorMixin, PythonTask[SlurmRemoteScript]):
         }
 
 
-class SlurmShellTask(AsyncAgentExecutorMixin, ShellTask[Slurm]):
+class SlurmShellTask(AsyncAgentExecutorMixin, PythonTask[Slurm]):
     _TASK_TYPE = "slurm"
 
     def __init__(
         self,
         name: str,
         task_config: Slurm,
-        script: Optional[str] = None,
+        script: str,
         inputs: Optional[Dict[str, Type]] = None,
         output_locs: Optional[List[OutputLocation]] = None,
         **kwargs,
     ):
         self._inputs = inputs
+        self._output_locs = output_locs if output_locs is not None else []
+        self._script = script
 
-        super(SlurmShellTask, self).__init__(
-            name,
-            task_config=task_config,
+        outputs = self._validate_output_locs()
+
+        super().__init__(
+            name=name,
             task_type=self._TASK_TYPE,
-            script=script,
-            inputs=inputs,
-            output_locs=output_locs,
+            task_config=task_config,
+            interface=Interface(inputs=inputs, outputs=outputs),
             **kwargs,
         )
+
+    def _validate_output_locs(self) -> Dict[str, Type]:
+        outputs = {}
+        for v in self._output_locs:
+            if v is None:
+                raise ValueError("OutputLocation cannot be none")
+            if not isinstance(v, OutputLocation):
+                raise ValueError("Every output type should be an output location on the file-system")
+            if v.location is None:
+                raise ValueError(f"Output Location not provided for output var {v.var}")
+            if not issubclass(v.var_type, FlyteFile) and not issubclass(v.var_type, FlyteDirectory):
+                raise ValueError(
+                    "Currently only outputs of type FlyteFile/FlyteDirectory and their derived types are supported"
+                )
+            outputs[v.var] = v.var_type
+        return outputs
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         return {
@@ -104,6 +124,10 @@ class SlurmShellTask(AsyncAgentExecutorMixin, ShellTask[Slurm]):
             "python_input_types": self._inputs,
             "output_locs": self._output_locs,
         }
+
+    @property
+    def script(self) -> str:
+        return self._script
 
 
 TaskPlugins.register_pythontask_plugin(SlurmRemoteScript, SlurmTask)
