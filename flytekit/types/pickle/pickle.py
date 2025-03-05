@@ -47,9 +47,7 @@ class FlytePickle(typing.Generic[T]):
         with open(uri, "w+b") as outfile:
             cloudpickle.dump(python_val, outfile)
 
-        path = await ctx.file_access.async_put_raw_data(uri)
-        print("path", path)
-        return path
+        return await ctx.file_access.async_put_raw_data(uri)
 
     @classmethod
     async def from_pickle(cls, uri: str) -> typing.Any:

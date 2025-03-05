@@ -1191,8 +1191,6 @@ class FlyteRemote(object):
         if not to_upload.is_file():
             raise ValueError(f"{to_upload} is not a single file, upload arg must be a single file.")
         md5_bytes, str_digest, _ = hash_file(to_upload)
-        print("md5_bytes", md5_bytes)
-        print("file_name", file_name)
         if file_name is None:
             file_name = str(str_digest)
 
@@ -1357,7 +1355,10 @@ class FlyteRemote(object):
                 archive_fname = pathlib.Path(os.path.join(tmp_dir, "script_mode.tar.gz"))
                 compress_scripts(source_path, str(archive_fname), get_all_modules(source_path, module_name))
                 md5_bytes, upload_native_url = self.upload_file(
-                    archive_fname, project or self.default_project, domain or self.default_domain, file_name=archive_fname.name
+                    archive_fname,
+                    project or self.default_project,
+                    domain or self.default_domain,
+                    file_name=archive_fname.name,
                 )
 
         serialization_settings = SerializationSettings(
