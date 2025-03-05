@@ -558,8 +558,6 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
                 )
                 raw_output = ctx.user_space_params.raw_output_prefix if ctx.user_space_params else None
                 logger.info(f"Constructing default remote with no config and {project}, {domain}, {raw_output}")
-                c = FlyteContextManager.current_context()
-                print(f"about to create remote {c.execution_state.user_space_params}", flush=True)
                 remote = get_plugin().get_remote(
                     config=None, project=project, domain=domain, data_upload_location=raw_output
                 )
@@ -580,7 +578,7 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
                 # Note: The construction of this object is in this function because this function should be on the
                 # main thread of pyflyte-execute. It needs to be on the main thread because signal handlers can only
                 # be installed on the main thread.
-                c = Controller(remote=remote, ss=ss, tag=tag, root_tag=root_tag, exec_prefix=prefix, task_ctx=ctx)
+                c = Controller(remote=remote, ss=ss, tag=tag, root_tag=root_tag, exec_prefix=prefix)
                 handler = c.get_signal_handler()
                 signal.signal(signal.SIGINT, handler)
                 signal.signal(signal.SIGTERM, handler)

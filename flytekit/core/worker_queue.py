@@ -14,7 +14,7 @@ from enum import Enum
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.constants import EAGER_ROOT_ENV_NAME, EAGER_TAG_KEY, EAGER_TAG_ROOT_KEY
-from flytekit.core.context_manager import FlyteContext, FlyteContextManager
+from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.options import Options
 from flytekit.core.reference_entity import ReferenceEntity
@@ -172,20 +172,17 @@ class Controller:
         tag: str,
         root_tag: str,
         exec_prefix: str,
-        task_ctx: typing.Optional[FlyteContext] = None,
     ):
         logger.debug(
             f"Creating Controller for eager execution with {remote.config.platform.endpoint},"
             f" {tag=}, {root_tag=}, {exec_prefix=} and ss: {ss}"
         )
-        self.task_ctx = task_ctx
 
         self.entries: typing.Dict[str, typing.List[WorkItem]] = {}
         self.remote = remote
         self.ss = ss
         self.exec_prefix = exec_prefix
         self.entries_lock = threading.Lock()
-        from flytekit.core.context_manager import FlyteContextManager
 
         # Import this to ensure context is loaded... python is reloading this module because its in a different thread
         FlyteContextManager.current_context()
@@ -330,7 +327,7 @@ class Controller:
                     html = self.render_html()
                     print("Current entries: ", html, flush=True)  # remove before merging
                     with self.remote.remote_context():
-                        Deck("More Eager Executions", html).publish()
+                        Deck("Eager Executions", html).publish()
             print(f"published {len(self.entries)}", flush=True)  # remove before merging
 
             # This is a blocking call so we don't hit the API too much.
@@ -338,7 +335,6 @@ class Controller:
 
     def _execute(self) -> None:
         try:
-            FlyteContextManager.push_context(self.task_ctx)
             self._poll()
         except Exception as e:
             logger.error(f"Error in eager execution processor: {e}")
@@ -507,7 +503,6 @@ class Controller:
 
     @classmethod
     def for_sandbox(cls, exec_prefix: typing.Optional[str] = None) -> Controller:
-        from flytekit.core.context_manager import FlyteContextManager
         from flytekit.remote import FlyteRemote
 
         ctx = FlyteContextManager.current_context()
