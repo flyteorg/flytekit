@@ -36,7 +36,7 @@ class SlurmScriptAgent(AsyncAgentBase):
     name = "Slurm Script Agent"
 
     # SSH connection pool for multi-host environment
-    slurm_clustesr_to_ssh_conn: Dict[SlurmCluster, SSHClientConnection] = {}
+    slurm_cluster_to_ssh_conn: Dict[SlurmCluster, SSHClientConnection] = {}
 
     # Dummy script content
     DUMMY_SCRIPT = "#!/bin/bash"
@@ -80,7 +80,7 @@ class SlurmScriptAgent(AsyncAgentBase):
         )
 
         # Run Slurm job
-        conn = await get_ssh_conn(ssh_config=ssh_config, slurm_cluster_to_ssh_conn=self.slurm_clustesr_to_ssh_conn)
+        conn = await get_ssh_conn(ssh_config=ssh_config, slurm_cluster_to_ssh_conn=self.slurm_cluster_to_ssh_conn)
         if upload_script:
             with tempfile.NamedTemporaryFile("w") as f:
                 f.write(script)
@@ -96,7 +96,7 @@ class SlurmScriptAgent(AsyncAgentBase):
 
     async def get(self, resource_meta: SlurmJobMetadata, **kwargs) -> Resource:
         conn = await get_ssh_conn(
-            ssh_config=resource_meta.ssh_config, slurm_cluster_to_ssh_conn=self.slurm_clustesr_to_ssh_conn
+            ssh_config=resource_meta.ssh_config, slurm_cluster_to_ssh_conn=self.slurm_cluster_to_ssh_conn
         )
         job_res = await conn.run(f"scontrol show job {resource_meta.job_id}", check=True)
 
@@ -116,7 +116,7 @@ class SlurmScriptAgent(AsyncAgentBase):
 
     async def delete(self, resource_meta: SlurmJobMetadata, **kwargs) -> None:
         conn = await get_ssh_conn(
-            ssh_config=resource_meta.ssh_config, slurm_cluster_to_ssh_conn=self.slurm_clustesr_to_ssh_conn
+            ssh_config=resource_meta.ssh_config, slurm_cluster_to_ssh_conn=self.slurm_cluster_to_ssh_conn
         )
         _ = await conn.run(f"scancel {resource_meta.job_id}", check=True)
 
