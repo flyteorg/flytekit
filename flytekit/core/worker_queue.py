@@ -328,20 +328,16 @@ class Controller:
             if len(self.entries) > 0:
                 with self.entries_lock:
                     html = self.render_html()
-                    print("Current entries: ", html, flush=True)
-                    # FlyteContextManager.push_context(self.task_ctx)
-                    Deck("Eager Executions", html).publish()
+                    print("Current entries: ", html, flush=True)  # remove before merging
                     with self.remote.remote_context():
                         Deck("More Eager Executions", html).publish()
-            print(f"published {len(self.entries)}", flush=True)
+            print(f"published {len(self.entries)}", flush=True)  # remove before merging
 
             # This is a blocking call so we don't hit the API too much.
             time.sleep(2)
 
     def _execute(self) -> None:
         try:
-            print(f"remote ctx {self.remote._ctx}")
-            print(f"task ctx {self.task_ctx}")
             FlyteContextManager.push_context(self.task_ctx)
             self._poll()
         except Exception as e:

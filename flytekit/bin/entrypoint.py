@@ -175,24 +175,15 @@ def _dispatch_execute(
 
         # Step2
         # Invoke task - dispatch_execute
-
         if task_def.enable_deck:
             new_params = ctx.user_space_params.with_enable_deck(enable_deck=True).build()
             new_es = ctx.execution_state.with_params(user_space_params=new_params)
-            print(f"Deck enabled for task {task_def.name}")
+            logger.debug(f"Enabling deck in context for execution of {task_def.name}")
             cb = ctx.new_builder().with_execution_state(new_es)
-            # print(f"Ctx 1 {ctx} {id(ctx)}")
-            # print(f"Ctx 2 {ctx2} {id(ctx2)}")
             with FlyteContextManager.with_context(cb) as ctx:
                 outputs = task_def.dispatch_execute(ctx, idl_input_literals)
         else:
             outputs = task_def.dispatch_execute(ctx, idl_input_literals)
-
-        # print(f"val {ctx.execution_state.user_space_params.enable_deck}", flush=True)
-        #
-        # if not ctx.execution_state.user_space_params.enable_deck:
-        #     print("force true", flush=True)
-        #     ctx.execution_state.user_space_params._enable_deck = True
 
         # Step3a
         if isinstance(outputs, VoidPromise):
