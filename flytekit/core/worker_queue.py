@@ -329,8 +329,8 @@ class Controller:
                 with self.entries_lock:
                     html = self.render_html()
                     print("Current entries: ", html, flush=True)
-                    with FlyteContextManager.with_context(self.task_ctx):
-                        Deck("Eager Executions", html).publish()
+                    # FlyteContextManager.push_context(self.task_ctx)
+                    Deck("Eager Executions", html).publish()
             print(f"published {len(self.entries)}", flush=True)
 
             # This is a blocking call so we don't hit the API too much.
@@ -338,6 +338,7 @@ class Controller:
 
     def _execute(self) -> None:
         try:
+            FlyteContextManager.push_context(self.task_ctx)
             self._poll()
         except Exception as e:
             logger.error(f"Error in eager execution processor: {e}")
