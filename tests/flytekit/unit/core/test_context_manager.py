@@ -325,4 +325,5 @@ def test_exec_params():
     )
 
     assert ep.task_id.name == "local"
-    print(ep)
+    ep_str = str(ep)
+    assert ep_str.startswith("ExecutionParameters(")
