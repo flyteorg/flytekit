@@ -1147,3 +1147,14 @@ def test_execute_workflow_with_dataclass():
         image_config=ImageConfig.from_images(IMAGE),
     )
     assert out.outputs["o0"] == ""
+
+
+def test_register_wf_twice(register):
+    from workflows.basic import pickle_wf
+
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    fast_version = f"{VERSION}_fast"
+    serialization_settings = SerializationSettings(image_config=ImageConfig.auto(img_name=IMAGE))
+    remote.fast_register_workflow(pickle_wf, serialization_settings, version=fast_version)
+    # Register the same workflow again should not raise an error
+    remote.fast_register_workflow(pickle_wf, serialization_settings, version=fast_version)

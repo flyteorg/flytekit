@@ -1169,7 +1169,7 @@ class FlyteRemote(object):
         # Create a zip file containing all the entries.
         zip_file = fast_package(root, output, deref_symlinks, options)
         # Upload zip file to Admin using FlyteRemote.
-        return self.upload_file(pathlib.Path(zip_file), file_name=pathlib.Path(zip_file).name)
+        return self.upload_file(pathlib.Path(zip_file))
 
     def upload_file(
         self,
@@ -1186,13 +1186,15 @@ class FlyteRemote(object):
         :param project: Project to upload under, if not supplied will use the remote's default
         :param domain: Domain to upload under, if not specified will use the remote's default
         :param filename_root: If provided will be used as the root of the filename. If not, Admin will use a hash
+        :param file_name: If provided will be used as the filename.
+        If not, will use the file name of the file being uploaded.
         :return: The uploaded location.
         """
         if not to_upload.is_file():
             raise ValueError(f"{to_upload} is not a single file, upload arg must be a single file.")
         md5_bytes, str_digest, _ = hash_file(to_upload)
         if file_name is None:
-            file_name = str(str_digest)
+            file_name = to_upload.name
 
         upload_location = self.client.get_upload_signed_url(
             project=project or self.default_project,
@@ -1358,7 +1360,6 @@ class FlyteRemote(object):
                     archive_fname,
                     project or self.default_project,
                     domain or self.default_domain,
-                    file_name=archive_fname.name,
                 )
 
         serialization_settings = SerializationSettings(
@@ -2979,7 +2980,7 @@ class FlyteRemote(object):
                     "The size of the task to pickled exceeds the limit of 150MB. Please reduce the size of the task."
                 )
             logger.debug(f"Uploading Pickled representation of Workflow `{entity.name}` to remote storage...")
-            _, native_url = self.upload_file(dest, file_name=dest.name)
+            _, native_url = self.upload_file(dest)
 
         return FastSerializationSettings(enabled=True, distribution_location=native_url, destination_dir=".")
 
