@@ -221,7 +221,6 @@ class ShellTask(PythonInstanceTask[T]):
         script: typing.Optional[str] = None,
         script_file: typing.Optional[str] = None,
         task_config: T = None,
-        task_type: typing.Optional[str] = None,
         shell: str = "/bin/sh",
         inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
         output_locs: typing.Optional[typing.List[OutputLocation]] = None,
@@ -234,7 +233,6 @@ class ShellTask(PythonInstanceTask[T]):
             script: The actual script specified as a string
             script_file: A path to the file that contains the script (Only script or script_file) can be provided
             task_config: Configuration for the task, can be either a Pod (or coming soon, BatchJob) config
-            task_type: String task type to be associated with this Task
             shell: Shell to use to run the script
             inputs: A Dictionary of input names to types
             output_locs: A list of :py:class:`OutputLocations`
@@ -250,20 +248,22 @@ class ShellTask(PythonInstanceTask[T]):
                 raise ValueError(f"FileNotFound: the specified Script file at path {script_file} cannot be loaded")
             script_file = os.path.abspath(script_file)
 
+        if task_config is not None:
+            fully_qualified_class_name = task_config.__module__ + "." + task_config.__class__.__name__
+            if not fully_qualified_class_name == "flytekitplugins.pod.task.Pod":
+                raise ValueError("TaskConfig can either be empty - indicating simple container task or a PodConfig.")
+
         # Each instance of NotebookTask instantiates an underlying task with a dummy function that will only be used
         # to run pre- and post- execute functions using the corresponding task plugin.
         # We rename the function name here to ensure the generated task has a unique name and avoid duplicate task name
         # errors.
-        # This seems like a hack. We should use a plugin_class that doesn't require a fake-function to make work.
+        # This seem like a hack. We should use a plugin_class that doesn't require a fake-function to make work.
         plugin_class = TaskPlugins.find_pythontask_plugin(type(task_config))
-        if "shell" in plugin_class.__name__.lower():
-            self._config_task_instance = None
-        else:
-            self._config_task_instance = plugin_class(task_config=task_config, task_function=_dummy_task_func)
-            # Rename the internal task so that there are no conflicts at serialization time. Technically these internal
-            # tasks should not be serialized at all, but we don't currently have a mechanism for skipping Flyte entities
-            # at serialization time.
-            self._config_task_instance._name = f"_bash.{name}"
+        self._config_task_instance = plugin_class(task_config=task_config, task_function=_dummy_task_func)
+        # Rename the internal task so that there are no conflicts at serialization time. Technically these internal
+        # tasks should not be serialized at all, but we don't currently have a mechanism for skipping Flyte entities
+        # at serialization time.
+        self._config_task_instance._name = f"_bash.{name}"
         self._script = script
         self._script_file = script_file
         self._debug = debug
@@ -275,7 +275,7 @@ class ShellTask(PythonInstanceTask[T]):
         super().__init__(
             name,
             task_config,
-            task_type=task_type,
+            task_type=self._config_task_instance.task_type,
             interface=Interface(inputs=inputs, outputs=outputs),
             **kwargs,
         )
@@ -309,10 +309,7 @@ class ShellTask(PythonInstanceTask[T]):
         return self._script_file
 
     def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
-        if self._config_task_instance is None:
-            return user_params
-        else:
-            return self._config_task_instance.pre_execute(user_params)
+        return self._config_task_instance.pre_execute(user_params)
 
     def execute(self, **kwargs) -> typing.Any:
         """
@@ -370,10 +367,7 @@ class ShellTask(PythonInstanceTask[T]):
         return None
 
     def post_execute(self, user_params: ExecutionParameters, rval: typing.Any) -> typing.Any:
-        if self._config_task_instance is None:
-            return rval
-        else:
-            return self._config_task_instance.post_execute(user_params, rval)
+        return self._config_task_instance.post_execute(user_params, rval)
 
 
 class RawShellTask(ShellTask):
