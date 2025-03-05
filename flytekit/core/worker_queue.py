@@ -325,8 +325,13 @@ class Controller:
             if len(self.entries) > 0:
                 with self.entries_lock:
                     html = self.render_html()
-                    print("Current entries: ", html, flush=True)  # remove before merging
-                    with self.remote.remote_context():
+                    with self.remote.remote_context() as rctx:
+                        print(f"Publishing deck {rctx}", flush=True)  # remove before merging
+                        cc = FlyteContextManager.current_context()
+                        print(f"{cc is rctx}", flush=True)
+                        print(f"{cc.user_space_params}", flush=True)
+                        print(f"{rctx.user_space_params}", flush=True)
+                        print(f"Remote ctx {self.remote._ctx}", flush=True)
                         Deck("Eager Executions", html).publish()
             print(f"published {len(self.entries)}", flush=True)  # remove before merging
 
