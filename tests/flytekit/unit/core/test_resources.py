@@ -100,29 +100,29 @@ def test_incorrect_type_resources():
 
 @pytest.mark.parametrize(
     "resource, expected_spec", [
-        (Resources(cpu=[1, 2]), ResourceSpec.from_single_resources(requests=Resources(cpu=1), limits=Resources(cpu=2))),
+        (Resources(cpu=[1, 2]), ResourceSpec(requests=Resources(cpu=1), limits=Resources(cpu=2))),
         (
             Resources(mem=["1Gi", "4Gi"]),
-            ResourceSpec.from_single_resources(requests=Resources(mem="1Gi"), limits=Resources(mem="4Gi"))
+            ResourceSpec(requests=Resources(mem="1Gi"), limits=Resources(mem="4Gi"))
         ),
-        (Resources(gpu=[1, 2]), ResourceSpec.from_single_resources(requests=Resources(gpu=1), limits=Resources(gpu=2))),
+        (Resources(gpu=[1, 2]), ResourceSpec(requests=Resources(gpu=1), limits=Resources(gpu=2))),
         (
             Resources(cpu="1", mem=[1024, 2058], ephemeral_storage="2Gi"),
-            ResourceSpec.from_single_resources(
+            ResourceSpec(
                 requests=Resources(cpu="1", mem=1024, ephemeral_storage="2Gi"),
                 limits=Resources(cpu="1", mem=2058, ephemeral_storage="2Gi")
             )
         ),
         (
             Resources(cpu="10", mem=1024, ephemeral_storage="2Gi", gpu=1),
-            ResourceSpec.from_single_resources(
+            ResourceSpec(
                 requests=Resources(cpu="10", mem=1024, ephemeral_storage="2Gi", gpu=1),
                 limits=Resources(cpu="10", mem=1024, ephemeral_storage="2Gi", gpu=1)
             )
         ),
         (
             Resources(ephemeral_storage="2Gi"),
-            ResourceSpec.from_single_resources(
+            ResourceSpec(
                 requests=Resources(ephemeral_storage="2Gi"),
                 limits=Resources(ephemeral_storage="2Gi")
             )

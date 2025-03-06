@@ -67,39 +67,9 @@ class Resources(DataClassJSONMixin):
 
 
 @dataclass
-class SimpleResource(Resources):
-    """
-    Same as Resource, but does not accept tuples or list for it's parameters.
-    """
-
-    cpu: Optional[Union[str, int, float]] = None
-    mem: Optional[Union[str, int]] = None
-    gpu: Optional[Union[str, int]] = None
-    ephemeral_storage: Optional[Union[str, int]] = None
-
-    @classmethod
-    def from_resources(cls, resources: Optional[Resources] = None) -> "SimpleResource":
-        if resources is None:
-            return cls()
-
-        _check_resource_is_singular(resources)
-        kwargs = {}
-        for field in fields(resources):
-            kwargs[field.name] = getattr(resources, field.name)
-        return cls(**kwargs)
-
-
-@dataclass
 class ResourceSpec(DataClassJSONMixin):
-    requests: SimpleResource
-    limits: SimpleResource
-
-    @classmethod
-    def from_single_resources(cls, requests: Optional[Resources] = None, limits: Optional[Resources] = None):
-        """
-        Convert requests and limits that represent a singular value into a ResourceSpec.
-        """
-        return cls(requests=SimpleResource.from_resources(requests), limits=SimpleResource.from_resources(limits))
+    requests: Resources
+    limits: Resources
 
     @classmethod
     def from_multiple_resource(cls, resource: Resources) -> "ResourceSpec":
@@ -118,10 +88,7 @@ class ResourceSpec(DataClassJSONMixin):
                 else:
                     requests[attr], limits[attr] = value, value
 
-        return ResourceSpec(
-            requests=SimpleResource.from_resources(Resources(**requests)),
-            limits=SimpleResource.from_resources(Resources(**limits)),
-        )
+        return ResourceSpec(requests=Resources(**requests), limits=Resources(**limits))
 
 
 def _check_resource_is_singular(resource: Resources):
@@ -132,6 +99,7 @@ def _check_resource_is_singular(resource: Resources):
         value = getattr(resource, field.name)
         if isinstance(value, (tuple, list)):
             raise ValueError(f"{value} can not be a list or tuple")
+    return resource
 
 
 _ResourceName = task_models.Resources.ResourceName

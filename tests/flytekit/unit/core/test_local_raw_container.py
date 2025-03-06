@@ -323,11 +323,11 @@ def test_input_output_dir_manipulation():
     "kwargs, expected_resource", [
         (
             {"limits": Resources(cpu=1), "requests": Resources(mem="1Gi")},
-            ResourceSpec.from_single_resources(limits=Resources(cpu=1), requests=Resources(mem="1Gi"))
+            ResourceSpec(limits=Resources(cpu=1), requests=Resources(mem="1Gi"))
         ),
         (
             {"resources": Resources(cpu=(1, 2), mem="1Gi")},
-            ResourceSpec.from_multiple_resource(Resources(cpu=(1, 2), mem="1Gi"))
+            ResourceSpec(limits=Resources(cpu=1, mem="1Gi"), requests=Resources(cpu=2, mem="1Gi"))
         )
     ]
 )

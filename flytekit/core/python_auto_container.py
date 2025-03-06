@@ -108,7 +108,10 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
                 raise ValueError(msg)
             self._resources = ResourceSpec.from_multiple_resource(resources)
         else:
-            self._resources = ResourceSpec.from_single_resources(requests=requests, limits=limits)
+            self._resources = ResourceSpec(
+                requests=Resources() if requests is None else requests,
+                limits=Resources() if limits is None else limits,
+            )
 
         # The serialization of the other tasks (Task -> protobuf), as well as the initialization of the current task, may occur simultaneously.
         # We should make sure super().__init__ is being called after setting _container_image because PythonAutoContainerTask
@@ -230,18 +233,11 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
                 env.update(elem)
         return _get_container_definition(
             image=self.get_image(settings),
+            resource_spec=self.resources,
             command=[],
             args=self.get_command(settings=settings),
             data_loading_config=None,
             environment=env,
-            ephemeral_storage_request=self.resources.requests.ephemeral_storage,
-            cpu_request=self.resources.requests.cpu,
-            gpu_request=self.resources.requests.gpu,
-            memory_request=self.resources.requests.mem,
-            ephemeral_storage_limit=self.resources.limits.ephemeral_storage,
-            cpu_limit=self.resources.limits.cpu,
-            gpu_limit=self.resources.limits.gpu,
-            memory_limit=self.resources.limits.mem,
         )
 
     def get_k8s_pod(self, settings: SerializationSettings) -> _task_model.K8sPod:

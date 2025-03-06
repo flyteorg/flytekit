@@ -97,7 +97,10 @@ class ContainerTask(PythonTask):
                 raise ValueError(msg)
             self._resources = ResourceSpec.from_multiple_resource(resources)
         else:
-            self._resources = ResourceSpec.from_single_resources(requests=requests, limits=limits)
+            self._resources = ResourceSpec(
+                requests=Resources() if requests is None else requests,
+                limits=Resources() if limits is None else limits,
+            )
         self.pod_template = pod_template
         self.local_logs = local_logs
 
@@ -317,18 +320,11 @@ class ContainerTask(PythonTask):
         env = {**env, **self.environment} if self.environment else env
         return _get_container_definition(
             image=self._get_image(settings),
+            resource_spec=self.resources,
             command=self._cmd,
             args=self._args,
             data_loading_config=self._get_data_loading_config(),
             environment=env,
-            ephemeral_storage_request=self.resources.requests.ephemeral_storage,
-            cpu_request=self.resources.requests.cpu,
-            gpu_request=self.resources.requests.gpu,
-            memory_request=self.resources.requests.mem,
-            ephemeral_storage_limit=self.resources.limits.ephemeral_storage,
-            cpu_limit=self.resources.limits.cpu,
-            gpu_limit=self.resources.limits.gpu,
-            memory_limit=self.resources.limits.mem,
         )
 
     def get_k8s_pod(self, settings: SerializationSettings) -> _task_model.K8sPod:

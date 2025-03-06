@@ -104,7 +104,10 @@ class PythonCustomizedContainerTask(ExecutableTemplateShimTask, PythonTask[TC]):
             security_ctx=sec_ctx,
             **kwargs,
         )
-        self._resources = ResourceSpec.from_single_resources(requests=requests, limits=limits)
+        self._resources = ResourceSpec(
+            requests=Resources() if requests is None else requests,
+            limits=Resources() if limits is None else limits,
+        )
         self._environment = environment or {}
         self._container_image = container_image
         self._task_resolver = task_resolver or default_task_template_resolver
@@ -168,18 +171,11 @@ class PythonCustomizedContainerTask(ExecutableTemplateShimTask, PythonTask[TC]):
         env = {**settings.env, **self.environment} if self.environment else settings.env
         return _get_container_definition(
             image=self.get_image(settings),
+            resource_spec=self.resources,
             command=[],
             args=self.get_command(settings=settings),
             data_loading_config=None,
             environment=env,
-            ephemeral_storage_request=self.resources.requests.ephemeral_storage,
-            cpu_request=self.resources.requests.cpu,
-            gpu_request=self.resources.requests.gpu,
-            memory_request=self.resources.requests.mem,
-            ephemeral_storage_limit=self.resources.limits.ephemeral_storage,
-            cpu_limit=self.resources.limits.cpu,
-            gpu_limit=self.resources.limits.gpu,
-            memory_limit=self.resources.limits.mem,
         )
 
     def serialize_to_model(self, settings: SerializationSettings) -> _task_model.TaskTemplate:
