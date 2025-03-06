@@ -109,7 +109,8 @@ class ResourceSpec(DataClassJSONMixin):
         requests = {}
         limits = {}
 
-        def _set_value(attr):
+        for field in fields(resource):
+            attr = field.name
             value = getattr(resource, attr)
             if value is not None:
                 if isinstance(value, (list, tuple)):
@@ -117,10 +118,10 @@ class ResourceSpec(DataClassJSONMixin):
                 else:
                     requests[attr], limits[attr] = value, value
 
-        for field in fields(resource):
-            _set_value(field.name)
-
-        return ResourceSpec(requests=SimpleResource(**requests), limits=SimpleResource(**limits))
+        return ResourceSpec(
+            requests=SimpleResource.from_resources(Resources(**requests)),
+            limits=SimpleResource.from_resources(Resources(**limits)),
+        )
 
 
 def _check_resource_is_singular(resource: Resources):
