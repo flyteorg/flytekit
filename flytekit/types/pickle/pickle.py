@@ -42,12 +42,13 @@ class FlytePickle(typing.Generic[T]):
     @classmethod
     async def to_pickle(cls, ctx: FlyteContext, python_val: typing.Any) -> str:
         h = hashlib.md5()
-        h.update(cloudpickle.dumps(python_val))
+        str_bytes = cloudpickle.dumps(python_val)
+        h.update(str_bytes)
 
         uri = ctx.file_access.get_random_local_path(file_path_or_file_name=h.hexdigest())
         os.makedirs(os.path.dirname(uri), exist_ok=True)
         with open(uri, "w+b") as outfile:
-            cloudpickle.dump(python_val, outfile)
+            outfile.write(str_bytes)
 
         return await ctx.file_access.async_put_raw_data(uri)
 
