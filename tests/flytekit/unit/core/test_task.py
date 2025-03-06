@@ -22,8 +22,12 @@ def test_task_resources():
     def my_task():
         pass
 
-    assert my_task.resources.requests == Resources(cpu="1", mem=1024, gpu=1)
-    assert my_task.resources.limits == Resources(cpu="2", mem=2048, gpu=1)
+    assert my_task.resources.requests.cpu == "1"
+    assert my_task.resources.requests.mem == 1024
+    assert my_task.resources.requests.gpu == 1
+    assert my_task.resources.limits.cpu == "2"
+    assert my_task.resources.limits.mem == 2048
+    assert my_task.resources.limits.gpu == 1
 
 
 def test_task_resources_error():
