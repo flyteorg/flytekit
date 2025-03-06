@@ -28,6 +28,12 @@ class Resources(DataClassJSONMixin):
         # This allocates 1Gi of such local storage.
         Resources(ephemeral_storage="1Gi")
 
+    When used together with `@task(resources=)`, you a specific the request and limits with one object.
+    When the value is set to a tuple or list, the first value is the request and the
+    second value is the limit. If the value is a single value, then both the requests and limit is
+    set to that value. For example, the `Resource(cpu=("1", "2"), mem=1024)` will set the cpu request to 1, cpu limit to 2,
+    mem limit and request to 1024.
+
     .. note::
 
         Persistent storage is not currently supported on the Flyte backend.
@@ -36,28 +42,28 @@ class Resources(DataClassJSONMixin):
     Also refer to the `K8s conventions. <https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-units-in-kubernetes>`__
     """
 
-    cpu: Optional[Union[str, int, float]] = None
-    mem: Optional[Union[str, int]] = None
-    gpu: Optional[Union[str, int]] = None
+    cpu: Optional[Union[str, int, float, list, tuple]] = None
+    mem: Optional[Union[str, int, list, tuple]] = None
+    gpu: Optional[Union[str, int, list, tuple]] = None
     ephemeral_storage: Optional[Union[str, int]] = None
 
     def __post_init__(self):
-        def _check_cpu(value):
+        def _check_value(value, valid_types: tuple[type]):
             if value is None:
                 return
-            if not isinstance(value, (str, int, float)):
-                raise AssertionError(f"{value} should be of type str or int or float")
+            is_valid_single = isinstance(value, valid_types)
+            is_valid_multiple = isinstance(value, (list, tuple)) and all(isinstance(v, valid_types) for v in value)
+            if not is_valid_single and not is_valid_multiple:
+                valid_type_str = ", ".join(v.__name__ for v in valid_types)
+                raise AssertionError(f"{value} should be of type {valid_type_str} or a list/tuple of {valid_type_str}")
 
-        def _check_others(value):
-            if value is None:
-                return
-            if not isinstance(value, (str, int)):
-                raise AssertionError(f"{value} should be of type str or int")
+            if is_valid_multiple and len(value) != 2:
+                raise ValueError(f"{value} must be of length 2")
 
-        _check_cpu(self.cpu)
-        _check_others(self.mem)
-        _check_others(self.gpu)
-        _check_others(self.ephemeral_storage)
+        _check_value(self.cpu, (str, int, float))
+        _check_value(self.mem, (str, int))
+        _check_value(self.gpu, (str, int))
+        _check_value(self.ephemeral_storage, (str, int))
 
 
 @dataclass
@@ -66,11 +72,43 @@ class ResourceSpec(DataClassJSONMixin):
     limits: Resources
 
 
+def _to_resource_spec(resource: Resources) -> ResourceSpec:
+    """
+    Convert Resource into a Resource spec.
+    """
+    requests = {}
+    limits = {}
+
+    def _set_value(attr):
+        value = getattr(resource, attr)
+        if value is not None:
+            if isinstance(value, (list, tuple)):
+                requests[attr], limits[attr] = value
+            else:
+                requests[attr], limits[attr] = value, value
+
+    for field in fields(resource):
+        _set_value(field.name)
+
+    return ResourceSpec(requests=Resources(**requests), limits=Resources(**limits))
+
+
+def _check_resource_is_singular(resource: Resources):
+    """
+    Raise a value error if the resource has a tuple.
+    """
+    for field in fields(resource):
+        value = getattr(resource, field.name)
+        if isinstance(value, (tuple, list)):
+            raise ValueError(f"{value} can not be a list or a tuple")
+
+
 _ResourceName = task_models.Resources.ResourceName
 _ResourceEntry = task_models.Resources.ResourceEntry
 
 
 def _convert_resources_to_resource_entries(resources: Resources) -> List[_ResourceEntry]:  # type: ignore
+    _check_resource_is_singular(resources)
     resource_entries = []
     if resources.cpu is not None:
         resource_entries.append(_ResourceEntry(name=_ResourceName.CPU, value=str(resources.cpu)))
@@ -158,6 +196,7 @@ def pod_spec_from_resources(
 
         k8s_pod_resources = {}
 
+        _check_resource_is_singular(resources)
         for resource in fields(resources):
             resource_value = getattr(resources, resource.name)
             if resource_value is not None:

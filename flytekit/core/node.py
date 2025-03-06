@@ -8,7 +8,12 @@ from typing import Literal as L
 from flyteidl.core import tasks_pb2
 
 from flytekit.core.pod_template import PodTemplate
-from flytekit.core.resources import Resources, construct_extended_resources, convert_resources_to_resource_model
+from flytekit.core.resources import (
+    Resources,
+    _to_resource_spec,
+    construct_extended_resources,
+    convert_resources_to_resource_model,
+)
 from flytekit.core.utils import _dnsify
 from flytekit.extras.accelerators import BaseAccelerator
 from flytekit.loggers import logger
@@ -200,6 +205,7 @@ class Node(object):
         cache_serialize: Optional[bool] = None,
         shared_memory: Optional[Union[L[True], str]] = None,
         pod_template: Optional[PodTemplate] = None,
+        resources: Optional[Resources] = None,
         *args,
         **kwargs,
     ):
@@ -216,6 +222,14 @@ class Node(object):
             for k, v in aliases.items():
                 self._aliases.append(_workflow_model.Alias(var=k, alias=v))
 
+        if resources is not None:
+            if limits is not None or requests is not None:
+                msg = "`resource` can not be used together with the `limits` or `requests`. Please only set `resource`."
+                raise ValueError(msg)
+            resource_spec = _to_resource_spec(resources)
+            requests = resource_spec.requests
+            limits = resource_spec.limits
+
         if requests is not None or limits is not None:
             if requests and not isinstance(requests, Resources):
                 raise AssertionError("requests should be specified as flytekit.Resources")
@@ -230,9 +244,9 @@ class Node(object):
                     )
                 )
 
-            resources = convert_resources_to_resource_model(requests=requests, limits=limits)
-            assert_no_promises_in_resources(resources)
-            self._resources = resources
+            resources_ = convert_resources_to_resource_model(requests=requests, limits=limits)
+            assert_no_promises_in_resources(resources_)
+            self._resources = resources_
 
         if task_config is not None:
             logger.warning("This override is beta. We may want to revisit this in the future.")

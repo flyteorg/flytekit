@@ -5,6 +5,7 @@ from kubernetes.client import V1Container, V1PodSpec, V1ResourceRequirements
 
 import flytekit.models.task as _task_models
 from flytekit import Resources
+from flytekit.core.resources import ResourceSpec
 from flytekit.core.resources import (
     pod_spec_from_resources,
     convert_resources_to_resource_model,
@@ -81,6 +82,45 @@ def test_incorrect_type_resources():
         Resources(gpu=0.1)  # type: ignore
     with pytest.raises(AssertionError):
         Resources(ephemeral_storage=0.1)  # type: ignore
+    with pytest.raises(ValueError):
+        Resources(cpu=[1])
+    with pytest.raises(ValueError):
+        Resources(cpu=[1, 2, 3])
+
+
+@pytest.mark.parametrize(
+    "resource, expected_spec", [
+        (Resources(cpu=[1, 2]), ResourceSpec(requests=Resources(cpu=1), limits=Resources(cpu=2))),
+        (
+            Resources(mem=["1Gi", "4Gi"]),
+            ResourceSpec(requests=Resources(mem="1Gi"), limits=Resources(mem="4Gi"))
+        ),
+        (Resources(gpu=[1, 2]), ResourceSpec(requests=Resources(gpu=1), limits=Resources(gpu=2))),
+        (
+            Resources(cpu="1", mem=[1024, 2058], ephemeral_storage="2Gi"),
+            ResourceSpec(
+                requests=Resources(cpu="1", mem=1024, ephemeral_storage="2Gi"),
+                limits=Resources(cpu="1", mem=2058, ephemeral_storage="2Gi")
+            )
+        ),
+        (
+            Resources(cpu="10", mem=1024, ephemeral_storage="2Gi", gpu=1),
+            ResourceSpec(
+                requests=Resources(cpu="10", mem=1024, ephemeral_storage="2Gi", gpu=1),
+                limits=Resources(cpu="10", mem=1024, ephemeral_storage="2Gi", gpu=1)
+            )
+        ),
+        (
+            Resources(ephemeral_storage="2Gi"),
+            ResourceSpec(
+                requests=Resources(ephemeral_storage="2Gi"),
+                limits=Resources(ephemeral_storage="2Gi")
+            )
+         ),
+    ]
+)
+def test_to_resource_spec(resource, expected_spec):
+    assert resource.to_resource_spec() == expected_spec
 
 
 def test_resources_serialization():
