@@ -143,9 +143,8 @@ class FlyteFS(HTTPFileSystem):
         Make the request and upload, but then how do we get the s3 paths back to the user?
         """
         prefix = kwargs.pop(_PREFIX_KEY)
-        _, str_digest, _ = hash_file(pathlib.Path(lpath))
         _, native_url = self._remote.upload_file(
-            pathlib.Path(lpath), self._remote.default_project, self._remote.default_domain, prefix, str_digest
+            pathlib.Path(lpath), self._remote.default_project, self._remote.default_domain, prefix
         )
         return native_url
 

@@ -1150,7 +1150,7 @@ def test_execute_workflow_with_dataclass():
 
 
 def test_register_wf_twice(register):
-    from workflows.basic import pickle_wf
+    from tests.flytekit.integration.remote.workflows.basic import pickle_wf
 
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     fast_version = f"{VERSION}_fast"
