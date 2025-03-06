@@ -334,7 +334,6 @@ def test_map_task_resources_override_directly():
 
     assert wf_spec.template.nodes[0].array_node.node.task_node.overrides.resources.limits == [
         _resources_models.ResourceEntry(_resources_models.ResourceName.CPU, "2"),
-        _resources_models.ResourceEntry(_resources_models.ResourceName.MEMORY, "100"),
         _resources_models.ResourceEntry(_resources_models.ResourceName.EPHEMERAL_STORAGE, "1Gi"),
     ]
 
@@ -500,7 +499,6 @@ def test_void_promise_override_resource_directly():
     ]
     assert wf_spec.template.nodes[0].task_node.overrides.resources.limits == [
         _resources_models.ResourceEntry(_resources_models.ResourceName.CPU, "2"),
-        _resources_models.ResourceEntry(_resources_models.ResourceName.MEMORY, "100"),
     ]
 
 

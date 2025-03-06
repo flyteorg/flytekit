@@ -110,21 +110,21 @@ def test_incorrect_type_resources():
             Resources(cpu="1", mem=[1024, 2058], ephemeral_storage="2Gi"),
             ResourceSpec(
                 requests=Resources(cpu="1", mem=1024, ephemeral_storage="2Gi"),
-                limits=Resources(cpu="1", mem=2058, ephemeral_storage="2Gi")
+                limits=Resources(mem=2058)
             )
         ),
         (
             Resources(cpu="10", mem=1024, ephemeral_storage="2Gi", gpu=1),
             ResourceSpec(
                 requests=Resources(cpu="10", mem=1024, ephemeral_storage="2Gi", gpu=1),
-                limits=Resources(cpu="10", mem=1024, ephemeral_storage="2Gi", gpu=1)
+                limits=Resources()
             )
         ),
         (
             Resources(ephemeral_storage="2Gi"),
             ResourceSpec(
                 requests=Resources(ephemeral_storage="2Gi"),
-                limits=Resources(ephemeral_storage="2Gi")
+                limits=Resources()
             )
          ),
     ]
