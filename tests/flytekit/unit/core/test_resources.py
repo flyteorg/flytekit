@@ -23,6 +23,16 @@ def test_convert_no_requests_no_limits():
     assert resource_model.limits == []
 
 
+@pytest.mark.parametrize("kwargs", [
+    {"requests": Resources(cpu=[1, 2])},
+    {"limits": Resources(mem=[1, 2])}
+])
+def test_convert_tuple_request(kwargs):
+    msg = "can not be a list or tuple"
+    with pytest.raises(ValueError, match=msg):
+        convert_resources_to_resource_model(**kwargs)
+
+
 @pytest.mark.parametrize(
     argnames=("resource_dict", "expected_resource_name"),
     argvalues=(
@@ -212,3 +222,13 @@ def test_construct_extended_resources_shared_memory_none(shared_memory):
 def test_construct_extended_resources_shared_memory(shared_memory, expected_size_limit):
     resources = construct_extended_resources(shared_memory=shared_memory)
     assert resources.shared_memory.size_limit == expected_size_limit
+
+
+@pytest.mark.parametrize("kwargs", [
+    {"requests": Resources(cpu=[1, 2])},
+    {"limits": Resources(mem=[1, 2])}
+])
+def test_pod_spec_from_resources_error(kwargs):
+    msg = "can not be a list or tuple"
+    with pytest.raises(ValueError, match=msg):
+        pod_spec_from_resources(primary_container_name="primary", **kwargs)

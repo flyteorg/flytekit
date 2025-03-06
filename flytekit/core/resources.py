@@ -100,7 +100,7 @@ def _check_resource_is_singular(resource: Resources):
     for field in fields(resource):
         value = getattr(resource, field.name)
         if isinstance(value, (tuple, list)):
-            raise ValueError(f"{value} can not be a list or a tuple")
+            raise ValueError(f"{value} can not be a list or tuple")
 
 
 _ResourceName = task_models.Resources.ResourceName
