@@ -44,10 +44,8 @@ class FlytePickle(typing.Generic[T]):
         h = hashlib.md5()
         h.update(python_val)
 
-        local_dir = ctx.file_access.get_random_local_directory()
-        os.makedirs(local_dir, exist_ok=True)
-        local_path = ctx.file_access.get_random_local_path(file_path_or_file_name=h.hexdigest())
-        uri = os.path.join(local_dir, local_path)
+        uri = ctx.file_access.get_random_local_path(file_path_or_file_name=h.hexdigest())
+        os.makedirs(os.path.dirname(uri), exist_ok=True)
         with open(uri, "w+b") as outfile:
             cloudpickle.dump(python_val, outfile)
 
