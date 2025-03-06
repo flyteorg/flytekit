@@ -9,9 +9,8 @@ import asyncio
 from botocore.parsers import base64
 import fsspec
 import mock
-from obstore.store import S3Store
 import pytest
-from s3fs import S3FileSystem
+from obstore.fsspec import FsspecStore
 
 from flytekit.configuration import Config, DataConfig, S3Config
 from flytekit.core.context_manager import FlyteContextManager, FlyteContext
@@ -19,6 +18,8 @@ from flytekit.core.data_persistence import (
     FileAccessProvider,
     get_fsspec_storage_options,
     s3_setup_args,
+    _FSSPEC_S3_KEY_ID,
+    _FSSPEC_S3_SECRET,
 )
 from flytekit.core.type_engine import TypeEngine
 from flytekit.types.directory.types import FlyteDirectory
@@ -170,16 +171,22 @@ async def test_async_file_system():
     remote_path = "test:///tmp/test.py"
     local_path = "test.py"
 
-    class MockAsyncFileSystem(S3FileSystem):
+    class MockAsyncFileSystem(FsspecStore):
+        protocol = "test"
+        asynchronous = True
         def __init__(self, *args, **kwargs):
-            super().__init__(args, kwargs)
+            super().__init__(*args, **kwargs)
 
         async def _put_file(self, *args, **kwargs):
-            # s3fs._put_file returns None as well
+            # FsspecStore._put_file returns None as well
             return None
 
+        async def _isdir(self, *args, **kwargs):
+            # Return False indicating not directory here
+            return False
+
         async def _get_file(self, *args, **kwargs):
-            # s3fs._get_file returns None as well
+            # FsspecStore._get_file returns None as well
             return None
 
         async def _lsdir(
@@ -239,25 +246,17 @@ def test_local_provider_get_empty():
 
 @mock.patch("flytekit.configuration.get_config_file")
 @mock.patch("os.environ")
-@mock.patch("flytekit.core.data_persistence.s3store_from_env")
-def test_s3_setup_args_env_empty(mock_from_env, mock_os, mock_get_config_file):
+def test_s3_setup_args_env_empty(mock_os, mock_get_config_file):
     mock_get_config_file.return_value = None
     mock_os.get.return_value = None
     s3c = S3Config.auto()
     kwargs = s3_setup_args(s3c)
-
-    mock_from_env.return_value = mock.Mock()
-    mock_from_env.assert_called_with(
-        "",
-        retries=3,
-        backoff=timedelta(seconds=5),
-    )
+    assert all(key in kwargs for key in ("client_options", "retry_config"))
 
 
 @mock.patch("flytekit.configuration.get_config_file")
 @mock.patch("os.environ")
-@mock.patch("flytekit.core.data_persistence.s3store_from_env")
-def test_s3_setup_args_env_both(mock_from_env, mock_os, mock_get_config_file):
+def test_s3_setup_args_env_both(mock_os, mock_get_config_file):
     mock_get_config_file.return_value = None
 
     ee = {
@@ -269,20 +268,15 @@ def test_s3_setup_args_env_both(mock_from_env, mock_os, mock_get_config_file):
     mock_os.get.side_effect = lambda x, y: ee.get(x)
     kwargs = s3_setup_args(S3Config.auto())
 
-    mock_from_env.return_value = mock.Mock()
-    mock_from_env.assert_called_with(
-        "",
-        retries=3,
-        backoff=timedelta(seconds=5),
-        access_key_id = "flyte",
-        secret_access_key = "flyte-secret",
-    )
+    assert kwargs["config"] == {
+        _FSSPEC_S3_KEY_ID: "flyte",
+        _FSSPEC_S3_SECRET: "flyte-secret",
+    }
 
 
 @mock.patch("flytekit.configuration.get_config_file")
 @mock.patch("os.environ")
-@mock.patch("flytekit.core.data_persistence.s3store_from_env")
-def test_s3_setup_args_env_flyte(mock_from_env, mock_os, mock_get_config_file):
+def test_s3_setup_args_env_flyte(mock_os, mock_get_config_file):
     mock_get_config_file.return_value = None
     ee = {
         "FLYTE_AWS_ACCESS_KEY_ID": "flyte",
@@ -291,20 +285,15 @@ def test_s3_setup_args_env_flyte(mock_from_env, mock_os, mock_get_config_file):
     mock_os.get.side_effect = lambda x, y: ee.get(x)
     kwargs = s3_setup_args(S3Config.auto())
 
-    mock_from_env.return_value = mock.Mock()
-    mock_from_env.assert_called_with(
-        "",
-        retries=3,
-        backoff=timedelta(seconds=5),
-        access_key_id = "flyte",
-        secret_access_key = "flyte-secret",
-    )
+    assert kwargs["config"] == {
+        _FSSPEC_S3_KEY_ID: "flyte",
+        _FSSPEC_S3_SECRET: "flyte-secret",
+    }
 
 
 @mock.patch("flytekit.configuration.get_config_file")
 @mock.patch("os.environ")
-@mock.patch("flytekit.core.data_persistence.s3store_from_env")
-def test_s3_setup_args_env_aws(mock_from_env, mock_os, mock_get_config_file):
+def test_s3_setup_args_env_aws(mock_os, mock_get_config_file):
     mock_get_config_file.return_value = None
     ee = {
         "AWS_ACCESS_KEY_ID": "ignore-user",
@@ -312,35 +301,25 @@ def test_s3_setup_args_env_aws(mock_from_env, mock_os, mock_get_config_file):
     }
     mock_os.get.side_effect = lambda x, y: ee.get(x)
     kwargs = s3_setup_args(S3Config.auto())
-
-    mock_from_env.return_value = mock.Mock()
-    mock_from_env.assert_called_with(
-        "",
-        retries=3,
-        backoff=timedelta(seconds=5),
-    )
+    # not explicitly in kwargs, since fsspec/boto3 will use these env vars by default
+    assert "config" not in kwargs
 
 
 @mock.patch("flytekit.configuration.get_config_file")
 @mock.patch("os.environ")
-@mock.patch("flytekit.core.data_persistence.gcsstore_from_env")
-def test_get_fsspec_storage_options_gcs(mock_from_env, mock_os, mock_get_config_file):
+def test_get_fsspec_storage_options_gcs(mock_os, mock_get_config_file):
     mock_get_config_file.return_value = None
     ee = {
         "FLYTE_GCP_GSUTIL_PARALLELISM": "False",
     }
     mock_os.get.side_effect = lambda x, y: ee.get(x)
     storage_options = get_fsspec_storage_options("gs", DataConfig.auto())
-    mock_from_env.return_value = mock.Mock()
-    mock_from_env.assert_called_with(
-        "",  # bucket name is empty
-    )
+    assert storage_options == {}
 
 
 @mock.patch("flytekit.configuration.get_config_file")
 @mock.patch("os.environ")
-@mock.patch("flytekit.core.data_persistence.gcsstore_from_env")
-def test_get_fsspec_storage_options_gcs_with_overrides(mock_from_env, mock_os, mock_get_config_file):
+def test_get_fsspec_storage_options_gcs_with_overrides(mock_os, mock_get_config_file):
     mock_get_config_file.return_value = None
     ee = {
         "FLYTE_GCP_GSUTIL_PARALLELISM": "False",
@@ -350,16 +329,11 @@ def test_get_fsspec_storage_options_gcs_with_overrides(mock_from_env, mock_os, m
         "gs", DataConfig.auto(), anonymous=True, other_argument="value"
     )
     assert "other_argument" in storage_options
-    mock_from_env.return_value = mock.Mock()
-    mock_from_env.assert_called_with(
-        "",  # bucket name is empty
-    )
 
 
 @mock.patch("flytekit.configuration.get_config_file")
 @mock.patch("os.environ")
-@mock.patch("flytekit.core.data_persistence.azurestore_from_env")
-def test_get_fsspec_storage_options_azure(mock_from_env, mock_os, mock_get_config_file):
+def test_get_fsspec_storage_options_azure(mock_os, mock_get_config_file):
     mock_get_config_file.return_value = None
     account_key = "accountkey"
 
@@ -375,21 +349,16 @@ def test_get_fsspec_storage_options_azure(mock_from_env, mock_os, mock_get_confi
     mock_os.get.side_effect = lambda x, y: ee.get(x)
     storage_options = get_fsspec_storage_options("abfs", DataConfig.auto())
 
-    mock_from_env.return_value = mock.Mock()
-    mock_from_env.assert_called_with(
-        "",
-        account_name = "accountname",
-        account_key = account_key_base64,
-        client_id = "clientid",
-        client_secret = "clientsecret",
-        tenant_id = "tenantid",
-    )
+    assert storage_options["config"]["account_name"] == "accountname"
+    assert storage_options["config"]["account_key"] == account_key_base64
+    assert storage_options["config"]["client_id"] == "clientid"
+    assert storage_options["config"]["client_secret"] == "clientsecret"
+    assert storage_options["config"]["tenant_id"] == "tenantid"
 
 
 @mock.patch("flytekit.configuration.get_config_file")
 @mock.patch("os.environ")
-@mock.patch("flytekit.core.data_persistence.azurestore_from_env")
-def test_get_fsspec_storage_options_azure_with_overrides(mock_from_env, mock_os, mock_get_config_file):
+def test_get_fsspec_storage_options_azure_with_overrides(mock_os, mock_get_config_file):
     mock_get_config_file.return_value = None
 
     account_key = "accountkey"
@@ -408,14 +377,9 @@ def test_get_fsspec_storage_options_azure_with_overrides(mock_from_env, mock_os,
         other_argument="value",
     )
 
-    mock_from_env.return_value = mock.Mock()
-    mock_from_env.assert_called_with(
-        "",
-        account_name = "other_accountname",
-        account_key = account_key_base64,
-        skip_signature = "true",
-    )
-
+    assert storage_options["config"]["account_name"] == "other_accountname"
+    assert storage_options["config"]["account_key"] == account_key_base64
+    assert storage_options["config"]["skip_signature"] == True
 
 
 def test_crawl_local_nt(source_folder):

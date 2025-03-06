@@ -9,7 +9,6 @@ import tempfile
 import fsspec
 import mock
 import pytest
-from azure.identity import ClientSecretCredential, DefaultAzureCredential
 from botocore.parsers import base64
 from mock import AsyncMock
 
@@ -155,8 +154,7 @@ def test_generate_new_custom_path():
     assert np == "s3://foo-bucket/my-default-prefix/bar.txt"
 
 
-@mock.patch("flytekit.core.data_persistence.azurestore_from_env")
-def test_initialise_azure_file_provider_with_account_key(mock_from_env):
+def test_initialise_azure_file_provider_with_account_key():
     account_key = "accountkey"
     account_key_base64 = base64.b64encode(account_key.encode()).decode()
 
@@ -166,16 +164,11 @@ def test_initialise_azure_file_provider_with_account_key(mock_from_env):
     ):
         fp = FileAccessProvider("/tmp", "abfs://container/path/within/container")
 
-        mock_from_env.return_value = mock.Mock()
-        mock_from_env.assert_called_with(
-            "",
-            account_name = "accountname",
-            account_key = account_key_base64,
-        )
+        assert fp.get_filesystem().config["account_name"] == "accountname"
+        assert fp.get_filesystem().config["account_key"] == account_key_base64
 
 
-@mock.patch("obstore.store.AzureStore.from_env")
-def test_initialise_azure_file_provider_with_service_principal(mock_from_env):
+def test_initialise_azure_file_provider_with_service_principal():
     with mock.patch.dict(
         os.environ,
         {
@@ -187,18 +180,13 @@ def test_initialise_azure_file_provider_with_service_principal(mock_from_env):
     ):
         fp = FileAccessProvider("/tmp", "abfs://container/path/within/container")
 
-        mock_from_env.return_value = mock.Mock()
-        mock_from_env.assert_called_with(
-            "",
-            account_name = "accountname",
-            client_secret = "clientsecret",
-            client_id = "clientid",
-            tenant_id = "tenantid",
-        )
+        assert fp.get_filesystem().config["account_name"] == "accountname"
+        assert fp.get_filesystem().config["client_secret"] == "clientsecret"
+        assert fp.get_filesystem().config["client_id"] == "clientid"
+        assert fp.get_filesystem().config["tenant_id"] == "tenantid"
 
 
-@mock.patch("obstore.store.AzureStore.from_env")
-def test_initialise_azure_file_provider_with_default_credential(mock_from_env):
+def test_initialise_azure_file_provider_with_default_credential():
     with mock.patch.dict(
             os.environ,
             {
@@ -208,11 +196,7 @@ def test_initialise_azure_file_provider_with_default_credential(mock_from_env):
     ):
         fp = FileAccessProvider("/tmp", "abfs://container/path/within/container")
 
-        mock_from_env.return_value = mock.Mock()
-        mock_from_env.assert_called_with(
-            "",
-            account_name = "accountname",
-        )
+        assert fp.get_filesystem().config["account_name"] == "accountname"
 
 
 def test_get_file_system():
