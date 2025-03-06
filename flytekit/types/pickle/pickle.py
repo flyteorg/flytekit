@@ -42,7 +42,7 @@ class FlytePickle(typing.Generic[T]):
     @classmethod
     async def to_pickle(cls, ctx: FlyteContext, python_val: typing.Any) -> str:
         h = hashlib.md5()
-        h.update(python_val)
+        h.update(cloudpickle.dumps(python_val))
 
         uri = ctx.file_access.get_random_local_path(file_path_or_file_name=h.hexdigest())
         os.makedirs(os.path.dirname(uri), exist_ok=True)
