@@ -7,7 +7,7 @@ import tempfile
 import warnings
 from pathlib import Path
 from string import Template
-from subprocess import run
+from subprocess import run, DEVNULL
 from typing import ClassVar, List, NamedTuple, Tuple
 
 import click
@@ -472,8 +472,16 @@ class DefaultImageBuilder(ImageSpecBuilder):
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
-            create_docker_context(image_spec, tmp_path)
-            builder = "buildx" if run(["docker", "buildx", "version"]).returncode == 0 else "image"
+            create_docker_context(image_spec, tmp_path)            
+            try:
+                builder = "buildx" if run(
+                    ["docker", "buildx", "version"],
+                    stdout=DEVNULL,
+                    stderr=DEVNULL,
+                    check=True
+                ).returncode == 0 else "image"
+            except:
+                builder = "image"
 
             command = [
                 "docker",
