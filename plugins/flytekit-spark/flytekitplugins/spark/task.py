@@ -13,6 +13,7 @@ from flytekit.core.context_manager import ExecutionParameters
 from flytekit.extend import ExecutionState, TaskPlugins
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 from flytekit.image_spec import ImageSpec
+from flytekit.image_spec.image_spec import ImageBuildEngine
 
 from .models import SparkJob, SparkType
 
@@ -141,6 +142,11 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
             if container_image.base_image is None:
                 img = f"cr.flyte.org/flyteorg/flytekit:spark-{DefaultImages.get_version_suffix()}"
                 self._container_image = dataclasses.replace(container_image, base_image=img)
+                builder = ImageBuildEngine._get_builder(container_image.builder)
+                if builder == "default":
+                    # Install the dependencies in the default venv in the spark base image
+                    self._container_image = dataclasses.replace(container_image, python_exec="/usr/bin/python3")
+
                 # default executor path and applications path in apache/spark-py:3.3.1
                 self._default_executor_path = self._default_executor_path or "/usr/bin/python3"
                 self._default_applications_path = (
