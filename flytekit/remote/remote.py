@@ -1177,7 +1177,6 @@ class FlyteRemote(object):
         project: typing.Optional[str] = None,
         domain: typing.Optional[str] = None,
         filename_root: typing.Optional[str] = None,
-        file_name: typing.Optional[str] = None,
     ) -> typing.Tuple[bytes, str]:
         """
         Function will use remote's client to hash and then upload the file using Admin's data proxy service.
@@ -1186,21 +1185,18 @@ class FlyteRemote(object):
         :param project: Project to upload under, if not supplied will use the remote's default
         :param domain: Domain to upload under, if not specified will use the remote's default
         :param filename_root: If provided will be used as the root of the filename. If not, Admin will use a hash
-        :param file_name: If provided will be used as the filename.
         If not, will use the file name of the file being uploaded.
         :return: The uploaded location.
         """
         if not to_upload.is_file():
             raise ValueError(f"{to_upload} is not a single file, upload arg must be a single file.")
         md5_bytes, str_digest, _ = hash_file(to_upload)
-        if file_name is None:
-            file_name = to_upload.name
 
         upload_location = self.client.get_upload_signed_url(
             project=project or self.default_project,
             domain=domain or self.default_domain,
             content_md5=md5_bytes,
-            filename=file_name,
+            filename=to_upload.name,
             filename_root=filename_root,
         )
 
