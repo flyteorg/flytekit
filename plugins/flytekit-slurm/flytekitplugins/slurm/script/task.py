@@ -36,7 +36,6 @@ class Slurm(object):
             self.sbatch_conf = {}
 
 
-# See https://stackoverflow.com/questions/51575931/class-inheritance-in-python-3-7-dataclasses
 @dataclass
 class SlurmRemoteScript(Slurm):
     """Encounter collision if Slurm is shared btw SlurmTask and SlurmShellTask."""
