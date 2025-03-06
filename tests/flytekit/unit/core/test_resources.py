@@ -10,6 +10,7 @@ from flytekit.core.resources import (
     pod_spec_from_resources,
     convert_resources_to_resource_model,
     construct_extended_resources,
+    _to_resource_spec,
 )
 from flytekit.extras.accelerators import T4
 
@@ -130,7 +131,7 @@ def test_incorrect_type_resources():
     ]
 )
 def test_to_resource_spec(resource, expected_spec):
-    assert resource.to_resource_spec() == expected_spec
+    assert _to_resource_spec(resource) == expected_spec
 
 
 def test_resources_serialization():
