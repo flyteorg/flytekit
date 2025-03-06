@@ -187,9 +187,8 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
                             )
                         ),
                         uri=self.path,
-                    ),
-                ),
-                metadata=self._metadata,
+                    )
+                )
             ),
             type(self),
         )
@@ -282,7 +281,6 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
         path: typing.Union[str, os.PathLike],
         downloader: typing.Callable = noop,
         remote_path: typing.Optional[typing.Union[os.PathLike, str, bool]] = None,
-        metadata: typing.Optional[typing.Dict[str, str]] = None,
     ):
         """
         FlyteFile's init method.
@@ -301,7 +299,6 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
         self._downloaded = False
         self._remote_path = remote_path
         self._remote_source: typing.Optional[typing.Union[str, os.PathLike]] = None
-        self._metadata = metadata
 
         # Setup local path and downloader for delayed downloading
         # We introduce another attribute self._local_path to avoid overriding user-defined self.path
