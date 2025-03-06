@@ -78,33 +78,37 @@ def s3_setup_args(
 
     config: Dict[str, Any] = {}
 
-    config[_FSSPEC_S3_KEY_ID] = kwargs.pop(_FSSPEC_S3_KEY_ID, s3_cfg.access_key_id)
-    config[_FSSPEC_S3_SECRET] = kwargs.pop(_FSSPEC_S3_SECRET, s3_cfg.secret_access_key)
-    config["endpoint_url"] = kwargs.pop("endpoint_url", s3_cfg.endpoint)
+    if _FSSPEC_S3_KEY_ID in kwargs or s3_cfg.access_key_id:
+        config[_FSSPEC_S3_KEY_ID] = kwargs.pop(_FSSPEC_S3_KEY_ID, s3_cfg.access_key_id)
+    if _FSSPEC_S3_SECRET in kwargs or s3_cfg.secret_access_key:
+        config[_FSSPEC_S3_SECRET] = kwargs.pop(
+            _FSSPEC_S3_SECRET, s3_cfg.secret_access_key
+        )
+    if "endpoint_url" in kwargs or s3_cfg.endpoint:
+        config["endpoint_url"] = kwargs.pop("endpoint_url", s3_cfg.endpoint)
 
     retries = kwargs.pop("retries", s3_cfg.retries)
     backoff = kwargs.pop("backoff", s3_cfg.backoff)
 
     if anonymous:
-        kwargs[_ANON] = "true"
+        kwargs[_ANON] = True
 
-    retry_config = (
-        {
-            "max_retries": retries,
-            "backoff": {
-                "base": 2,
-                "init_backoff": backoff,
-                "max_backoff": timedelta(seconds=16),
-            },
-            "retry_timeout": timedelta(minutes=3),
+    retry_config = {
+        "max_retries": retries,
+        "backoff": {
+            "base": 2,
+            "init_backoff": backoff,
+            "max_backoff": timedelta(seconds=16),
         },
-    )
+        "retry_timeout": timedelta(minutes=3),
+    }
 
     client_options = {"timeout": "99999s", "allow_http": "true"}
 
-    kwargs["config"] = config
-    kwargs["client_options"] = client_options
-    kwargs["retry_config"] = retry_config
+    if config:
+        kwargs["config"] = config
+    kwargs["client_options"] = client_options or None
+    kwargs["retry_config"] = retry_config or None
 
     return kwargs
 
@@ -131,18 +135,24 @@ def azure_setup_args(
 
     config: Dict[str, Any] = {}
 
-    config["account_name"] = kwargs.get("account_name", azure_cfg.account_name)
-    config["account_key"] = kwargs.get("account_key", azure_cfg.account_key)
-    config["client_id"] = kwargs.get("client_id", azure_cfg.client_id)
-    config["client_secret"] = kwargs.get("client_secret", azure_cfg.client_secret)
-    config["tenant_id"] = kwargs.get("tenant_id", azure_cfg.tenant_id)
+    if "account_name" in kwargs or azure_cfg.account_name:
+        config["account_name"] = kwargs.get("account_name", azure_cfg.account_name)
+    if "account_key" in kwargs or azure_cfg.account_key:
+        config["account_key"] = kwargs.get("account_key", azure_cfg.account_key)
+    if "client_id" in kwargs or azure_cfg.client_id:
+        config["client_id"] = kwargs.get("client_id", azure_cfg.client_id)
+    if "client_secret" in kwargs or azure_cfg.client_secret:
+        config["client_secret"] = kwargs.get("client_secret", azure_cfg.client_secret)
+    if "tenant_id" in kwargs or azure_cfg.tenant_id:
+        config["tenant_id"] = kwargs.get("tenant_id", azure_cfg.tenant_id)
 
     if anonymous:
-        kwargs[_ANON] = "true"
+        kwargs[_ANON] = True
 
     client_options = {"timeout": "99999s", "allow_http": "true"}
 
-    kwargs["config"] = config
+    if config:
+        kwargs["config"] = config
     kwargs["client_options"] = client_options
 
     return kwargs
