@@ -10,7 +10,6 @@ from flytekit.core.resources import (
     pod_spec_from_resources,
     convert_resources_to_resource_model,
     construct_extended_resources,
-    _to_resource_spec,
 )
 from flytekit.extras.accelerators import T4
 
@@ -101,37 +100,37 @@ def test_incorrect_type_resources():
 
 @pytest.mark.parametrize(
     "resource, expected_spec", [
-        (Resources(cpu=[1, 2]), ResourceSpec(requests=Resources(cpu=1), limits=Resources(cpu=2))),
+        (Resources(cpu=[1, 2]), ResourceSpec.from_single_resources(requests=Resources(cpu=1), limits=Resources(cpu=2))),
         (
             Resources(mem=["1Gi", "4Gi"]),
-            ResourceSpec(requests=Resources(mem="1Gi"), limits=Resources(mem="4Gi"))
+            ResourceSpec.from_single_resources(requests=Resources(mem="1Gi"), limits=Resources(mem="4Gi"))
         ),
-        (Resources(gpu=[1, 2]), ResourceSpec(requests=Resources(gpu=1), limits=Resources(gpu=2))),
+        (Resources(gpu=[1, 2]), ResourceSpec.from_single_resources(requests=Resources(gpu=1), limits=Resources(gpu=2))),
         (
             Resources(cpu="1", mem=[1024, 2058], ephemeral_storage="2Gi"),
-            ResourceSpec(
+            ResourceSpec.from_single_resources(
                 requests=Resources(cpu="1", mem=1024, ephemeral_storage="2Gi"),
                 limits=Resources(cpu="1", mem=2058, ephemeral_storage="2Gi")
             )
         ),
         (
             Resources(cpu="10", mem=1024, ephemeral_storage="2Gi", gpu=1),
-            ResourceSpec(
+            ResourceSpec.from_single_resources(
                 requests=Resources(cpu="10", mem=1024, ephemeral_storage="2Gi", gpu=1),
                 limits=Resources(cpu="10", mem=1024, ephemeral_storage="2Gi", gpu=1)
             )
         ),
         (
             Resources(ephemeral_storage="2Gi"),
-            ResourceSpec(
+            ResourceSpec.from_single_resources(
                 requests=Resources(ephemeral_storage="2Gi"),
                 limits=Resources(ephemeral_storage="2Gi")
             )
          ),
     ]
 )
-def test_to_resource_spec(resource, expected_spec):
-    assert _to_resource_spec(resource) == expected_spec
+def test_to_resource_spec(resource: Resources, expected_spec: ResourceSpec):
+    assert ResourceSpec.from_multiple_resource(resource) == expected_spec
 
 
 def test_resources_serialization():

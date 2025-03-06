@@ -14,7 +14,7 @@ from flytekit.constants import CopyFileDetection
 from flytekit.core.base_task import PythonTask, TaskMetadata, TaskResolverMixin
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.pod_template import PodTemplate
-from flytekit.core.resources import Resources, ResourceSpec, _to_resource_spec, construct_extended_resources
+from flytekit.core.resources import Resources, ResourceSpec, construct_extended_resources
 from flytekit.core.tracked_abc import FlyteTrackedABC
 from flytekit.core.tracker import TrackedInstance, extract_task_module
 from flytekit.core.utils import _get_container_definition, _serialize_pod_spec, timeit
@@ -106,11 +106,9 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
             if limits is not None or requests is not None:
                 msg = "`resource` can not be used together with the `limits` or `requests`. Please only set `resource`."
                 raise ValueError(msg)
-            self._resources = _to_resource_spec(resources)
+            self._resources = ResourceSpec.from_multiple_resource(resources)
         else:
-            self._resources = ResourceSpec(
-                requests=requests if requests else Resources(), limits=limits if limits else Resources()
-            )
+            self._resources = ResourceSpec.from_single_resources(requests=requests, limits=limits)
 
         # The serialization of the other tasks (Task -> protobuf), as well as the initialization of the current task, may occur simultaneously.
         # We should make sure super().__init__ is being called after setting _container_image because PythonAutoContainerTask

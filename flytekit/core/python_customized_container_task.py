@@ -104,9 +104,7 @@ class PythonCustomizedContainerTask(ExecutableTemplateShimTask, PythonTask[TC]):
             security_ctx=sec_ctx,
             **kwargs,
         )
-        self._resources = ResourceSpec(
-            requests=requests if requests else Resources(), limits=limits if limits else Resources()
-        )
+        self._resources = ResourceSpec.from_single_resources(requests=requests, limits=limits)
         self._environment = environment or {}
         self._container_image = container_image
         self._task_resolver = task_resolver or default_task_template_resolver

@@ -10,7 +10,7 @@ from flyteidl.core import tasks_pb2
 from flytekit.core.pod_template import PodTemplate
 from flytekit.core.resources import (
     Resources,
-    _to_resource_spec,
+    ResourceSpec,
     construct_extended_resources,
     convert_resources_to_resource_model,
 )
@@ -226,7 +226,7 @@ class Node(object):
             if limits is not None or requests is not None:
                 msg = "`resource` can not be used together with the `limits` or `requests`. Please only set `resource`."
                 raise ValueError(msg)
-            resource_spec = _to_resource_spec(resources)
+            resource_spec = ResourceSpec.from_multiple_resource(resources)
             requests = resource_spec.requests
             limits = resource_spec.limits
 

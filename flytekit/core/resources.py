@@ -67,30 +67,60 @@ class Resources(DataClassJSONMixin):
 
 
 @dataclass
+class SimpleResource(Resources):
+    """
+    Same as Resource, but does not accept tuples or list for it's parameters.
+    """
+
+    cpu: Optional[Union[str, int, float]] = None
+    mem: Optional[Union[str, int]] = None
+    gpu: Optional[Union[str, int]] = None
+    ephemeral_storage: Optional[Union[str, int]] = None
+
+    @classmethod
+    def from_resources(cls, resources: Optional[Resources] = None) -> "SimpleResource":
+        if resources is None:
+            return cls()
+
+        _check_resource_is_singular(resources)
+        kwargs = {}
+        for field in fields(resources):
+            kwargs[field.name] = getattr(resources, field.name)
+        return cls(**kwargs)
+
+
+@dataclass
 class ResourceSpec(DataClassJSONMixin):
-    requests: Resources
-    limits: Resources
+    requests: SimpleResource
+    limits: SimpleResource
 
+    @classmethod
+    def from_single_resources(cls, requests: Optional[Resources] = None, limits: Optional[Resources] = None):
+        """
+        Convert requests and limits that represent a singular value into a ResourceSpec.
+        """
+        return cls(requests=SimpleResource.from_resources(requests), limits=SimpleResource.from_resources(limits))
 
-def _to_resource_spec(resource: Resources) -> ResourceSpec:
-    """
-    Convert Resource into a Resource spec.
-    """
-    requests = {}
-    limits = {}
+    @classmethod
+    def from_multiple_resource(cls, resource: Resources) -> "ResourceSpec":
+        """
+        Convert Resources that represent both a requests and limits into a ResourceSpec.
+        """
+        requests = {}
+        limits = {}
 
-    def _set_value(attr):
-        value = getattr(resource, attr)
-        if value is not None:
-            if isinstance(value, (list, tuple)):
-                requests[attr], limits[attr] = value
-            else:
-                requests[attr], limits[attr] = value, value
+        def _set_value(attr):
+            value = getattr(resource, attr)
+            if value is not None:
+                if isinstance(value, (list, tuple)):
+                    requests[attr], limits[attr] = value
+                else:
+                    requests[attr], limits[attr] = value, value
 
-    for field in fields(resource):
-        _set_value(field.name)
+        for field in fields(resource):
+            _set_value(field.name)
 
-    return ResourceSpec(requests=Resources(**requests), limits=Resources(**limits))
+        return ResourceSpec(requests=SimpleResource(**requests), limits=SimpleResource(**limits))
 
 
 def _check_resource_is_singular(resource: Resources):
