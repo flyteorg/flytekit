@@ -1185,7 +1185,6 @@ class FlyteRemote(object):
         :param project: Project to upload under, if not supplied will use the remote's default
         :param domain: Domain to upload under, if not specified will use the remote's default
         :param filename_root: If provided will be used as the root of the filename. If not, Admin will use a hash
-        If not, will use the file name of the file being uploaded.
         :return: The uploaded location.
         """
         if not to_upload.is_file():
