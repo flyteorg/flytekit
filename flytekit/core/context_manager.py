@@ -158,6 +158,21 @@ class ExecutionParameters(object):
     def builder(self) -> Builder:
         return ExecutionParameters.Builder(current=self)
 
+    def __repr__(self):
+        cp = f" checkpoint={self.checkpoint}," if self._checkpoint else ""
+        return (
+            f"ExecutionParameters(execution_date={self.execution_date},"
+            f" stats={self.stats},"
+            f" tmp_dir={self.working_directory},"
+            f" execution_id={self.execution_id},"
+            f" {cp},"
+            f" decks={self.decks},"
+            f" raw_output_prefix={self.raw_output_prefix},"
+            f" task_id={self.task_id},"
+            f" output_metadata_prefix={self.output_metadata_prefix},"
+            f" enable_deck={self.enable_deck})"
+        )
+
     def __init__(
         self,
         execution_date,
