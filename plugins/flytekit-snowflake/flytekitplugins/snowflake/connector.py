@@ -5,8 +5,8 @@ from flyteidl.core.execution_pb2 import TaskExecution, TaskLog
 
 from flytekit import FlyteContextManager, StructuredDataset, logger
 from flytekit.core.type_engine import TypeEngine
-from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource, ResourceMeta
-from flytekit.extend.backend.utils import convert_to_flyte_phase, get_agent_secret
+from flytekit.extend.backend.base_connector import AsyncConnectorBase, ConnectorRegistry, Resource, ResourceMeta
+from flytekit.extend.backend.utils import convert_to_flyte_phase, get_connector_secret
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 from flytekit.models.types import LiteralType, StructuredDatasetType
@@ -31,7 +31,7 @@ def get_private_key():
     from cryptography.hazmat.backends import default_backend
     from cryptography.hazmat.primitives import serialization
 
-    pk_string = get_agent_secret(SNOWFLAKE_PRIVATE_KEY)
+    pk_string = get_connector_secret(SNOWFLAKE_PRIVATE_KEY)
     # cryptography needs str to be stripped and converted to bytes
     pk_string = pk_string.strip().encode()
     p_key = serialization.load_pem_private_key(pk_string, password=None, backend=default_backend())
@@ -56,8 +56,8 @@ def get_connection(metadata: SnowflakeJobMetadata) -> sc:
     )
 
 
-class SnowflakeAgent(AsyncAgentBase):
-    name = "Snowflake Agent"
+class SnowflakeConnector(AsyncConnectorBase):
+    name = "Snowflake Connector"
 
     def __init__(self):
         super().__init__(task_type_name=TASK_TYPE, metadata_type=SnowflakeJobMetadata)
@@ -148,4 +148,4 @@ def construct_query_link(resource_meta: SnowflakeJobMetadata) -> str:
     return url
 
 
-AgentRegistry.register(SnowflakeAgent())
+ConnectorRegistry.register(SnowflakeConnector())

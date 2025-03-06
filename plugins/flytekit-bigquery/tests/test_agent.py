@@ -2,10 +2,10 @@ from datetime import timedelta
 from unittest import mock
 
 from flyteidl.core.execution_pb2 import TaskExecution
-from flytekitplugins.bigquery.agent import BigQueryMetadata
+from flytekitplugins.bigquery.connector import BigQueryMetadata
 
 import flytekit.models.interface as interface_models
-from flytekit.extend.backend.base_agent import AgentRegistry
+from flytekit.extend.backend.base_connector import ConnectorRegistry
 from flytekit.interfaces.cli_identifiers import Identifier
 from flytekit.models import literals, task, types
 from flytekit.models.core.identifier import ResourceType
@@ -14,7 +14,7 @@ from flytekit.models.task import Sql, TaskTemplate
 
 @mock.patch("google.cloud.bigquery.job.QueryJob")
 @mock.patch("google.cloud.bigquery.Client")
-def test_bigquery_agent(mock_client, mock_query_job):
+def test_bigquery_connector(mock_client, mock_query_job):
     job_id = "dummy_id"
     mock_instance = mock_client.return_value
     mock_query_job_instance = mock_query_job.return_value
@@ -39,7 +39,7 @@ def test_bigquery_agent(mock_client, mock_query_job):
     mock_instance.query.return_value = MockJob()
     mock_instance.cancel_job.return_value = MockJob()
 
-    agent = AgentRegistry.get_agent("bigquery_query_job_task")
+    connector = ConnectorRegistry.get_connector("bigquery_query_job_task")
 
     task_id = Identifier(
         resource_type=ResourceType.TASK, project="project", domain="domain", name="name", version="version"
@@ -86,8 +86,8 @@ def test_bigquery_agent(mock_client, mock_query_job):
     )
 
     metadata = BigQueryMetadata(job_id="dummy_id", project="dummy_project", location="us-central1")
-    assert agent.create(dummy_template, task_inputs) == metadata
-    resource = agent.get(metadata)
+    assert connector.create(dummy_template, task_inputs) == metadata
+    resource = connector.get(metadata)
     assert resource.phase == TaskExecution.SUCCEEDED
     assert (
         resource.outputs["results"].uri
@@ -98,5 +98,5 @@ def test_bigquery_agent(mock_client, mock_query_job):
         resource.log_links[0].uri
         == "https://console.cloud.google.com/bigquery?project=dummy_project&j=bq:us-central1:dummy_id&page=queryresults"
     )
-    agent.delete(metadata)
+    connector.delete(metadata)
     mock_instance.cancel_job.assert_called()

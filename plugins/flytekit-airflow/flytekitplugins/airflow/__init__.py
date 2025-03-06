@@ -9,8 +9,8 @@ This package contains things that are useful when extending Flytekit.
 
    AirflowConfig
    AirflowTask
-   AirflowAgent
+   AirflowConnector
 """
 
-from .agent import AirflowAgent
+from .connector import AirflowConnector
 from .task import AirflowObj, AirflowTask

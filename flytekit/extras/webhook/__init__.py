@@ -1,4 +1,4 @@
-from .agent import WebhookAgent
+from .connector import WebhookConnector
 from .task import WebhookTask
 
-__all__ = ["WebhookTask", "WebhookAgent"]
+__all__ = ["WebhookTask", "WebhookConnector"]
