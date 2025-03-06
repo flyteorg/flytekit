@@ -1,8 +1,4 @@
-"""
-Slurm task.
-"""
-
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Type
 
 from flytekit.configuration import SerializationSettings
@@ -41,11 +37,16 @@ class Slurm(object):
 
 
 # See https://stackoverflow.com/questions/51575931/class-inheritance-in-python-3-7-dataclasses
-@dataclass(kw_only=True)
+@dataclass
 class SlurmRemoteScript(Slurm):
     """Encounter collision if Slurm is shared btw SlurmTask and SlurmShellTask."""
 
-    batch_script_path: str
+    batch_script_path: str = field(default=None)
+
+    def __post_init__(self):
+        super().__post_init__()
+        if self.batch_script_path is None:
+            raise ValueError("batch_script_path must be provided")
 
 
 class SlurmTask(AsyncAgentExecutorMixin, PythonTask[SlurmRemoteScript]):
