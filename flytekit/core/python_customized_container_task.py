@@ -105,8 +105,7 @@ class PythonCustomizedContainerTask(ExecutableTemplateShimTask, PythonTask[TC]):
             **kwargs,
         )
         self._resources = ResourceSpec(
-            requests=Resources() if requests is None else requests,
-            limits=Resources() if limits is None else limits,
+            requests=requests if requests else Resources(), limits=limits if limits else Resources()
         )
         self._environment = environment or {}
         self._container_image = container_image

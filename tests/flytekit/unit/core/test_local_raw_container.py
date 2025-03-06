@@ -327,7 +327,7 @@ def test_input_output_dir_manipulation():
         ),
         (
             {"resources": Resources(cpu=(1, 2), mem="1Gi")},
-            ResourceSpec(limits=Resources(cpu=1, mem="1Gi"), requests=Resources(cpu=2, mem="1Gi"))
+            ResourceSpec(requests=Resources(cpu=1, mem="1Gi"), limits=Resources(cpu=2, mem="1Gi"))
         )
     ]
 )
