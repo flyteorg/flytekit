@@ -12,7 +12,7 @@ from flytekit.configuration import DefaultImages, SerializationSettings
 from flytekit.core.context_manager import ExecutionParameters
 from flytekit.extend import ExecutionState, TaskPlugins
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
-from flytekit.image_spec import ImageSpec
+from flytekit.image_spec import DefaultImageBuilder, ImageSpec
 
 from .models import SparkJob, SparkType
 
@@ -141,7 +141,7 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
             if container_image.base_image is None:
                 img = f"cr.flyte.org/flyteorg/flytekit:spark-{DefaultImages.get_version_suffix()}"
                 self._container_image = dataclasses.replace(container_image, base_image=img)
-                if container_image.builder == "default":
+                if container_image.builder == DefaultImageBuilder.builder_type:
                     # Install the dependencies in the default venv in the spark base image
                     self._container_image = dataclasses.replace(container_image, python_exec="/usr/bin/python3")
 

@@ -425,6 +425,8 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
 class DefaultImageBuilder(ImageSpecBuilder):
     """Image builder using Docker and buildkit."""
 
+    builder_type = "default"
+
     _SUPPORTED_IMAGE_SPEC_PARAMETERS: ClassVar[set] = {
         "id",
         "name",
