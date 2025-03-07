@@ -116,6 +116,7 @@ class ImageSpec:
 
         builder_registry = ImageBuildEngine.get_registry()
         if self.builder is None and builder_registry:
+            # Use the builder with the highest priority by default
             self.builder = max(builder_registry, key=lambda name: builder_registry[name][1])
 
         parameters_str_list = [
