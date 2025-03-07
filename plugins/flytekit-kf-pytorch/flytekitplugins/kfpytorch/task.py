@@ -106,7 +106,8 @@ class PyTorch(object):
         worker: Configuration for the worker replica group.
         run_policy: Configuration for the run policy.
         num_workers: [DEPRECATED] This argument is deprecated. Use `worker.replicas` instead.
-        increase_shared_mem (bool): PyTorch uses shared memory to share data between processes. If torch multiprocessing is used
+        increase_shared_mem (bool): [DEPRECATED] This argument is deprecated. Use `@task(shared_memory=...)` instead.
+            PyTorch uses shared memory to share data between processes. If torch multiprocessing is used
             (e.g. for multi-processed data loaders) the default shared memory segment size that the container runs with might not be enough
             and and one might have to increase the shared memory size. This option configures the task's pod template to mount
             an `emptyDir` volume with medium `Memory` to to `/dev/shm`.
@@ -146,7 +147,8 @@ class Elastic(object):
             Default timeouts are set to 15 minutes to account for the fact that some workers might start faster than others: Some pods might
             be assigned to a running node which might have the image in its cache while other workers might require a node scale up and image pull.
 
-        increase_shared_mem (bool): PyTorch uses shared memory to share data between processes. If torch multiprocessing is used
+        increase_shared_mem (bool): [DEPRECATED] This argument is deprecated. Use `@task(shared_memory=...)` instead.
+            PyTorch uses shared memory to share data between processes. If torch multiprocessing is used
             (e.g. for multi-processed data loaders) the default shared memory segment size that the container runs with might not be enough
             and and one might have to increase the shared memory size. This option configures the task's pod template to mount
             an `emptyDir` volume with medium `Memory` to to `/dev/shm`.
