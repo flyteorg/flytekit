@@ -642,7 +642,7 @@ class AzureBlobStorageConfig(object):
 @dataclass(init=True, repr=True, eq=True, frozen=True)
 class ImageBuilderConfig(object):
     """
-    Any GCS specific configuration.
+    Any image builder specific configuration.
     """
 
     name: str = ""
@@ -650,7 +650,7 @@ class ImageBuilderConfig(object):
     micromamba_image: str = "mambaorg/micromamba:2.0.3-debian12-slim"
 
     @classmethod
-    def auto(cls, config_file: typing.Union[str, ConfigFile] = None) -> GCSConfig:
+    def auto(cls, config_file: typing.Union[str, ConfigFile] = None) -> ImageBuilderConfig:
         config_file = get_config_file(config_file)
         kwargs = {}
         kwargs = set_if_exists(kwargs, "name", _internal.Local.IMAGE_BUILDER_NAME.read(config_file))
@@ -681,7 +681,6 @@ class DataConfig(object):
             s3=S3Config.auto(config_file),
             gcs=GCSConfig.auto(config_file),
             generic=GenericPersistenceConfig.auto(config_file),
-            image_builder=ImageBuilderConfig.auto(config_file),
         )
 
 
