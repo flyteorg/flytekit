@@ -2562,7 +2562,8 @@ class FlyteRemote(object):
             if launched_exec.is_done:
                 # The synced underlying execution should've had these populated.
                 execution._inputs = launched_exec.inputs
-                execution._outputs = launched_exec.outputs
+                if launched_exec.is_successful:
+                    execution._outputs = launched_exec.outputs
             execution._workflow_executions.append(launched_exec)
             execution._interface = launched_exec._flyte_workflow.interface
             return execution
