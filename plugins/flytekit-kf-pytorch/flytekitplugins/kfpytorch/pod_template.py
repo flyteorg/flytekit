@@ -10,8 +10,7 @@ def add_shared_mem_volume_to_pod_template(pod_template: PodTemplate) -> None:
 
     warn(
         "Configuring shared memory via `@task(task_config=Elastic(..., increase_shared_mem=True))` or "
-        "`PyTorch(..., increase_shared_mem=True)` is deprecated. Use `@task(shared_memory=True, task_config="
-        "Elastic(..., increase_shared_mem=False)` instead."
+        "`PyTorch(..., increase_shared_mem=True)` is deprecated. Use `@task(shared_memory=True)` instead."
     )
 
     mount_path = "/dev/shm"

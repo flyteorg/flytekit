@@ -191,7 +191,8 @@ class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
             task_type_version=1,
             **kwargs,
         )
-        if self.task_config.increase_shared_mem:
+
+        if self.task_config.increase_shared_mem and (self.shared_memory is False or self.shared_memory is None):
             if self.pod_template is None:
                 self.pod_template = PodTemplate()
             add_shared_mem_volume_to_pod_template(self.pod_template)
@@ -338,7 +339,7 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
         """
         self.rdzv_backend = "c10d"
 
-        if self.task_config.increase_shared_mem:
+        if self.task_config.increase_shared_mem and (self.shared_memory is False or self.shared_memory is None):
             if self.pod_template is None:
                 self.pod_template = PodTemplate()
             add_shared_mem_volume_to_pod_template(self.pod_template)
