@@ -638,6 +638,7 @@ class AzureBlobStorageConfig(object):
         kwargs = set_if_exists(kwargs, "client_secret", _internal.AZURE.CLIENT_SECRET.read(config_file))
         return AzureBlobStorageConfig(**kwargs)
 
+
 @dataclass(init=True, repr=True, eq=True, frozen=True)
 class ImageBuilderConfig(object):
     """
@@ -671,7 +672,6 @@ class DataConfig(object):
     azure: AzureBlobStorageConfig = AzureBlobStorageConfig()
     generic: GenericPersistenceConfig = GenericPersistenceConfig()
     image_builder: ImageBuilderConfig = ImageBuilderConfig()
-
 
     @classmethod
     def auto(cls, config_file: typing.Union[str, ConfigFile] = None) -> DataConfig:

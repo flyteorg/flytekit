@@ -77,7 +77,9 @@ class Local(object):
     CACHE_OVERWRITE = ConfigEntry(LegacyConfigEntry(SECTION, "cache_overwrite", bool))
     IMAGE_BUILDER_NAME = ConfigEntry(LegacyConfigEntry(SECTION, "name"), YamlConfigEntry("image_builder.name"))
     UV_IMAGE = ConfigEntry(LegacyConfigEntry(SECTION, "uv_image"), YamlConfigEntry("image_builder.uv_image"))
-    MICROMAMBA_IMAGE = ConfigEntry(LegacyConfigEntry(SECTION, "micromamba_image"), YamlConfigEntry("image_builder.micromamba_image"))
+    MICROMAMBA_IMAGE = ConfigEntry(
+        LegacyConfigEntry(SECTION, "micromamba_image"), YamlConfigEntry("image_builder.micromamba_image")
+    )
 
 
 class Credentials(object):

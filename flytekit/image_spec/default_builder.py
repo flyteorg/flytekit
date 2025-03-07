@@ -314,12 +314,11 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
     """Populate tmp_dir with Dockerfile as specified by the `image_spec`."""
     base_image = image_spec.base_image or "debian:bookworm-slim"
     from flytekit.configuration import DataConfig
-    data_config = DataConfig().auto()
 
+    data_config = DataConfig().auto()
 
     image_builder_uv = data_config.image_builder.uv_image
     image_builder_micromamba_image = data_config.image_builder.micromamba_image
-
 
     if image_spec.cuda is not None or image_spec.cudnn is not None:
         msg = (
@@ -423,7 +422,7 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
         ENTRYPOINT=entrypoint,
         RUN_COMMANDS=run_commands,
         EXTRA_COPY_CMDS=extra_copy_cmds,
-        UV_IMAGE = image_builder_uv,
+        UV_IMAGE=image_builder_uv,
         MICROMAMBA_IMAGE=image_builder_micromamba_image,
     )
 
