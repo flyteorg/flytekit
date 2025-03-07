@@ -56,7 +56,7 @@ class Databricks(Spark):
     databricks_instance: Optional[str] = None
 
     def __post_init__(self):
-        logger.warn(
+        logger.warning(
             "Databricks is deprecated. Use 'from flytekitplugins.spark import Databricks' instead,"
             "and make sure to upgrade the version of flyteagent deployment to >v1.13.0.",
         )
@@ -143,7 +143,7 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
                 self._container_image = dataclasses.replace(container_image, base_image=img)
                 if container_image.builder == DefaultImageBuilder.builder_type:
                     # Install the dependencies in the default venv in the spark base image
-                    self._container_image = dataclasses.replace(container_image, python_exec="/usr/bin/python3")
+                    self._container_image = dataclasses.replace(self._container_image, python_exec="/usr/bin/python3")
 
                 # default executor path and applications path in apache/spark-py:3.3.1
                 self._default_executor_path = self._default_executor_path or "/usr/bin/python3"
