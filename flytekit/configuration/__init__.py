@@ -640,7 +640,7 @@ class AzureBlobStorageConfig(object):
 
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
-class ImageBuilderConfig(object):
+class DefaultConfig(object):
     """
     Any image builder specific configuration.
     """
@@ -650,13 +650,32 @@ class ImageBuilderConfig(object):
     micromamba_image: str = "mambaorg/micromamba:2.0.3-debian12-slim"
 
     @classmethod
-    def auto(cls, config_file: typing.Union[str, ConfigFile] = None) -> ImageBuilderConfig:
+    def auto(cls, config_file: typing.Union[str, ConfigFile] = None) -> DefaultConfig:
         config_file = get_config_file(config_file)
         kwargs = {}
         kwargs = set_if_exists(kwargs, "name", _internal.Local.IMAGE_BUILDER_NAME.read(config_file))
         kwargs = set_if_exists(kwargs, "uv_image", _internal.Local.UV_IMAGE.read(config_file))
         kwargs = set_if_exists(kwargs, "micromamba_image", _internal.Local.MICROMAMBA_IMAGE.read(config_file))
-        return ImageBuilderConfig(**kwargs)
+        return DefaultConfig(**kwargs)
+
+
+@dataclass(init=True, repr=True, eq=True, frozen=True)
+class ImageBuilderConfig(object):
+    """
+    Any image builder specific configuration.
+    """
+
+    default: DefaultConfig = DefaultConfig()
+    """
+        We can add envd in the future.
+    """
+
+    @classmethod
+    def auto(cls, config_file: typing.Union[str, ConfigFile] = None) -> ImageBuilderConfig:
+        config_file = get_config_file(config_file)
+        return ImageBuilderConfig(
+            default=DefaultConfig.auto(config_file),
+        )
 
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)

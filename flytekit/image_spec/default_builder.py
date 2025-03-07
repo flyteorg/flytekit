@@ -317,8 +317,8 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
 
     image_builder = ImageBuilderConfig().auto()
 
-    image_builder_uv = image_builder.uv_image
-    image_builder_micromamba_image = image_builder.micromamba_image
+    image_builder_uv = image_builder.default.uv_image
+    image_builder_micromamba_image = image_builder.default.micromamba_image
 
     if image_spec.cuda is not None or image_spec.cudnn is not None:
         msg = (
