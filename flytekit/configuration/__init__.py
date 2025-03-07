@@ -671,7 +671,6 @@ class DataConfig(object):
     gcs: GCSConfig = GCSConfig()
     azure: AzureBlobStorageConfig = AzureBlobStorageConfig()
     generic: GenericPersistenceConfig = GenericPersistenceConfig()
-    image_builder: ImageBuilderConfig = ImageBuilderConfig()
 
     @classmethod
     def auto(cls, config_file: typing.Union[str, ConfigFile] = None) -> DataConfig:
