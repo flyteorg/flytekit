@@ -77,7 +77,7 @@ class Local(object):
     CACHE_OVERWRITE = ConfigEntry(LegacyConfigEntry(SECTION, "cache_overwrite", bool))
     IMAGE_BUILDER_NAME = ConfigEntry(LegacyConfigEntry(SECTION, "name"), YamlConfigEntry("image_builder.name"))
     UV_IMAGE = ConfigEntry(LegacyConfigEntry(SECTION, "uv_image"), YamlConfigEntry("image_builder.uv_image"))
-    MICROMAMBA = ConfigEntry(LegacyConfigEntry(SECTION, "micromamba"), YamlConfigEntry("image_builder.micromamba"))
+    MICROMAMBA_IMAGE = ConfigEntry(LegacyConfigEntry(SECTION, "micromamba_image"), YamlConfigEntry("image_builder.micromamba_image"))
 
 
 class Credentials(object):
@@ -154,7 +154,6 @@ class Platform(object):
         LegacyConfigEntry(SECTION, "ca_cert_file_path"), YamlConfigEntry("admin.caCertFilePath")
     )
     HTTP_PROXY_URL = ConfigEntry(LegacyConfigEntry(SECTION, "http_proxy_url"), YamlConfigEntry("admin.httpProxyURL"))
-    UV_IMAGE = ConfigEntry(LegacyConfigEntry(SECTION, "uv_image"), YamlConfigEntry("image_builder.uv_image"))
 
 
 class LocalSDK(object):

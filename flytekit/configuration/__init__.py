@@ -646,7 +646,7 @@ class ImageBuilderConfig(object):
 
     name: str = ""
     uv_image: str = "ghcr.io/astral-sh/uv:0.5.1"
-    micromamba: str = "mambaorg/micromamba:2.0.3-debian12-slim"
+    micromamba_image: str = "mambaorg/micromamba:2.0.3-debian12-slim"
 
     @classmethod
     def auto(cls, config_file: typing.Union[str, ConfigFile] = None) -> GCSConfig:
@@ -654,7 +654,7 @@ class ImageBuilderConfig(object):
         kwargs = {}
         kwargs = set_if_exists(kwargs, "name", _internal.Local.IMAGE_BUILDER_NAME.read(config_file))
         kwargs = set_if_exists(kwargs, "uv_image", _internal.Local.UV_IMAGE.read(config_file))
-        kwargs = set_if_exists(kwargs, "micromamba", _internal.Local.MICROMAMBA.read(config_file))
+        kwargs = set_if_exists(kwargs, "micromamba_image", _internal.Local.MICROMAMBA_IMAGE.read(config_file))
         return ImageBuilderConfig(**kwargs)
 
 

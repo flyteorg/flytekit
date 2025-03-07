@@ -94,7 +94,7 @@ id=micromamba \
 DOCKER_FILE_TEMPLATE = Template("""\
 #syntax=docker/dockerfile:1.5
 FROM $UV_IMAGE as uv
-FROM $MICROMAMBA as micromamba
+FROM $MICROMAMBA_IMAGE as micromamba
 
 FROM $BASE_IMAGE
 
@@ -318,7 +318,7 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
 
 
     image_builder_uv = data_config.image_builder.uv_image
-    image_builder_micromamba = data_config.image_builder.micromamba
+    image_builder_micromamba_image = data_config.image_builder.micromamba_image
 
 
     if image_spec.cuda is not None or image_spec.cudnn is not None:
@@ -424,7 +424,7 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
         RUN_COMMANDS=run_commands,
         EXTRA_COPY_CMDS=extra_copy_cmds,
         UV_IMAGE = image_builder_uv,
-        MICROMAMBA=image_builder_micromamba,
+        MICROMAMBA_IMAGE=image_builder_micromamba_image,
     )
 
     dockerfile_path = tmp_dir / "Dockerfile"
