@@ -366,15 +366,20 @@ def transform_types_to_list_of_type(
 
 
 def transform_interface_to_list_interface(
-    interface: Interface, bound_inputs: typing.Set[str], optional_outputs: bool = False
+    interface: Interface,
+    bound_inputs: typing.Set[str],
+    excluded_inputs: typing.Set[str],
+    optional_outputs: bool = False,
 ) -> Interface:
     """
     Takes a single task interface and interpolates it to an array interface - to allow performing distributed python map
     like functions
     :param interface: Interface to be upgraded to a list interface
     :param bound_inputs: fixed inputs that should not be updated to a list and will be maintained as is
+    :param excluded_inputs: inputs that should be excluded from the interface such as fixed_inputs in a launch_plan
     """
-    map_inputs = transform_types_to_list_of_type(interface.inputs, bound_inputs)
+    filtered_inputs = {k: v for k, v in interface.inputs.items() if k not in excluded_inputs}
+    map_inputs = transform_types_to_list_of_type(filtered_inputs, bound_inputs)
     map_outputs = transform_types_to_list_of_type(interface.outputs, set(), optional_outputs)
 
     return Interface(inputs=map_inputs, outputs=map_outputs)
