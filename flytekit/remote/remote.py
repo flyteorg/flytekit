@@ -1353,7 +1353,9 @@ class FlyteRemote(object):
                 archive_fname = pathlib.Path(os.path.join(tmp_dir, "script_mode.tar.gz"))
                 compress_scripts(source_path, str(archive_fname), get_all_modules(source_path, module_name))
                 md5_bytes, upload_native_url = self.upload_file(
-                    archive_fname, project or self.default_project, domain or self.default_domain
+                    archive_fname,
+                    project or self.default_project,
+                    domain or self.default_domain,
                 )
 
         serialization_settings = SerializationSettings(
