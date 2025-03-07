@@ -916,6 +916,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 except KeyError:
                     decoder = MessagePackDecoder(expected_python_type, pre_decoder_func=_default_msgpack_decoder)
                     self._msgpack_decoder[expected_python_type] = decoder
+
                 dc = decoder.decode(binary_idl_object.value)
 
             return dc
