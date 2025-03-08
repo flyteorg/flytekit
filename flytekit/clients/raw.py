@@ -416,6 +416,13 @@ class RawSynchronousFlyteClient(object):
         """
         return self._stub.TerminateExecution(terminate_execution_request, metadata=self._metadata)
 
+    def delete_execution_phase(self, delete_execution_phase_request):
+        """
+        :param flyteidl.admin.execution_pb2.DeleteExecutionPhaseRequest delete_execution_phase_request:
+        :rtype: flyteidl.admin.execution_pb2.DeleteExecutionPhaseResponse
+        """
+        return self._stub.DeleteExecutionPhase(delete_execution_phase_request, metadata=self._metadata)
+
     def relaunch_execution(self, relaunch_execution_request):
         """
         :param flyteidl.admin.execution_pb2.ExecutionRelaunchRequest relaunch_execution_request:
