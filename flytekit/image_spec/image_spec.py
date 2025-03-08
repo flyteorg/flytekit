@@ -114,6 +114,11 @@ class ImageSpec:
         if self.source_root is not None:
             self.source_copy_mode = self.source_copy_mode or CopyFileDetection.LOADED_MODULES
 
+        builder_registry = ImageBuildEngine.get_registry()
+        if self.builder is None and builder_registry:
+            # Use the builder with the highest priority by default
+            self.builder = max(builder_registry, key=lambda name: builder_registry[name][1])
+
         parameters_str_list = [
             "packages",
             "conda_channels",
@@ -440,6 +445,10 @@ class ImageBuildEngine:
         cls._REGISTRY[builder_type] = (image_spec_builder, priority)
 
     @classmethod
+    def get_registry(cls) -> Dict[str, Tuple[ImageSpecBuilder, int]]:
+        return cls._REGISTRY
+
+    @classmethod
     @lru_cache
     def build(cls, image_spec: ImageSpec):
         from flytekit.core.context_manager import FlyteContextManager
@@ -455,13 +464,8 @@ class ImageBuildEngine:
             cls.build(spec.base_image)
             spec.base_image = spec.base_image.image_name()
 
-        if spec.builder is None and cls._REGISTRY:
-            builder = max(cls._REGISTRY, key=lambda name: cls._REGISTRY[name][1])
-        else:
-            builder = spec.builder
-
         img_name = spec.image_name()
-        img_builder = cls._get_builder(builder)
+        img_builder = cls._get_builder(spec.builder)
         if img_builder.should_build(spec):
             fully_qualified_image_name = img_builder.build_image(spec)
             if fully_qualified_image_name is not None:
