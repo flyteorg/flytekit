@@ -255,14 +255,24 @@ class RunLevelParams(PyFlyteParams):
             ),
         )
     )
+
+    concurrency: int = make_click_option_field(
+        click.Option(
+            param_decls=["--concurrency"],
+            required=False,
+            type=int,
+            show_default=True,
+            help="Number of nodes of a workflow that can be executed in parallel. If not specified,"
+            " project/domain defaults are used. If 0 then it is unlimited.",
+        )
+    )
     max_parallelism: int = make_click_option_field(
         click.Option(
             param_decls=["--max-parallelism"],
             required=False,
             type=int,
             show_default=True,
-            help="Number of nodes of a workflow that can be executed in parallel. If not specified,"
-            " project/domain defaults are used. If 0 then it is unlimited.",
+            help="[Deprecated] Use --concurrency instead",
         )
     )
     disable_notifications: bool = make_click_option_field(
@@ -516,7 +526,7 @@ def options_from_run_params(run_level_params: RunLevelParams) -> Options:
         raw_output_data_config=RawOutputDataConfig(output_location_prefix=run_level_params.raw_output_data_prefix)
         if run_level_params.raw_output_data_prefix
         else None,
-        max_parallelism=run_level_params.max_parallelism,
+        concurrency=run_level_params.max_parallelism,
         disable_notifications=run_level_params.disable_notifications,
         security_context=security.SecurityContext(
             run_as=security.Identity(k8s_service_account=run_level_params.service_account)
