@@ -101,6 +101,7 @@ from flytekit.remote.entities import FlyteLaunchPlan, FlyteNode, FlyteTask, Flyt
 from flytekit.remote.executions import FlyteNodeExecution, FlyteTaskExecution, FlyteWorkflowExecution
 from flytekit.remote.interface import TypedInterface
 from flytekit.remote.lazy_entity import LazyEntity
+from flytekit.remote.metrics import FlyteExecutionSpan
 from flytekit.remote.remote_callable import RemoteEntity
 from flytekit.remote.remote_fs import get_flyte_fs
 from flytekit.tools.fast_registration import FastPackageOptions, fast_package
@@ -2561,7 +2562,8 @@ class FlyteRemote(object):
             if launched_exec.is_done:
                 # The synced underlying execution should've had these populated.
                 execution._inputs = launched_exec.inputs
-                execution._outputs = launched_exec.outputs
+                if launched_exec.is_successful:
+                    execution._outputs = launched_exec.outputs
             execution._workflow_executions.append(launched_exec)
             execution._interface = launched_exec._flyte_workflow.interface
             return execution
@@ -2639,7 +2641,7 @@ class FlyteRemote(object):
                 launch_plan = self.fetch_launch_plan(
                     launch_plan_id.project, launch_plan_id.domain, launch_plan_id.name, launch_plan_id.version
                 )
-                task_execution_interface = launch_plan.interface.transform_interface_to_list()
+                task_execution_interface = launch_plan.interface.transform_interface_to_list(bound_inputs=set())
                 execution._task_executions = [
                     self.sync_task_execution(
                         FlyteTaskExecution.promote_from_model(task_execution), task_execution_interface
@@ -2976,6 +2978,12 @@ class FlyteRemote(object):
             _, native_url = self.upload_file(dest)
 
         return FastSerializationSettings(enabled=True, distribution_location=native_url, destination_dir=".")
+
+    def get_execution_metrics(self, id: WorkflowExecutionIdentifier, depth: int = 10) -> FlyteExecutionSpan:
+        """
+        Get the metrics for a given execution.
+        """
+        return FlyteExecutionSpan.from_flyte_idl(self.client.get_execution_metrics(id, depth))
 
     @classmethod
     def for_endpoint(

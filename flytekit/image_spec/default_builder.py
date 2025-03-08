@@ -112,6 +112,7 @@ $INSTALL_PYTHON_TEMPLATE
 # Configure user space
 ENV PATH="$EXTRA_PATH:$$PATH" \
     UV_PYTHON=$PYTHON_EXEC \
+    UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
     FLYTE_SDK_RICH_TRACEBACKS=0 \
     SSL_CERT_DIR=/etc/ssl/certs \
@@ -424,6 +425,8 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
 
 class DefaultImageBuilder(ImageSpecBuilder):
     """Image builder using Docker and buildkit."""
+
+    builder_type = "default"
 
     _SUPPORTED_IMAGE_SPEC_PARAMETERS: ClassVar[set] = {
         "id",

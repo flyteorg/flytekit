@@ -150,6 +150,13 @@ class FlyteWorkflowExecution(RemoteExecutionBase, execution_models.Execution):
         }
 
     @property
+    def is_successful(self) -> bool:
+        """
+        Whether or not the execution is successful.
+        """
+        return self.closure.phase == core_execution_models.WorkflowExecutionPhase.SUCCEEDED
+
+    @property
     def outputs(self) -> Optional[LiteralsResolver]:
         outputs = super().outputs
         if outputs and self._type_hints:
