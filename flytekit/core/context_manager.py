@@ -405,12 +405,6 @@ class SecretsManager(object):
         Retrieves a secret using the resolution order -> Env followed by file. If not found raises a ValueError
         param encode_mode, defines the mode to open files, it can either be "r" to read file, or "rb" to read binary file
         """
-
-        from flytekit.configuration.plugin import get_plugin
-
-        if not get_plugin().secret_requires_group():
-            group, group_version = None, None
-
         env_prefixes = [self._env_prefix]
 
         # During local execution check for the key without a prefix
