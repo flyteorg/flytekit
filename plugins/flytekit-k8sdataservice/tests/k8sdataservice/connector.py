@@ -1,11 +1,8 @@
-import json
-from dataclasses import asdict
 from datetime import timedelta
-from unittest.mock import patch, MagicMock
-import grpc
+from unittest.mock import patch
 from google.protobuf import json_format
 from flytekitplugins.k8sdataservice.task import DataServiceConfig
-from flytekitplugins.k8sdataservice.agent import DataServiceMetadata
+from flytekitplugins.k8sdataservice.connector import DataServiceMetadata
 from google.protobuf.struct_pb2 import Struct
 from flyteidl.core.execution_pb2 import TaskExecution
 import flytekit.models.interface as interface_models
@@ -59,10 +56,10 @@ def create_test_setup(original_name: str = "gnn-1234", existing_release_name: st
     return task_id, task_metadata, task_config
 
 
-@patch("flytekitplugins.k8sdataservice.agent.K8sManager.create_data_service", return_value="gnn-1234")
-@patch("flytekitplugins.k8sdataservice.agent.K8sManager.check_stateful_set_status", return_value="succeeded")
-@patch("flytekitplugins.k8sdataservice.agent.K8sManager.delete_stateful_set")
-@patch("flytekitplugins.k8sdataservice.agent.K8sManager.delete_service")
+@patch("flytekitplugins.k8sdataservice.connector.K8sManager.create_data_service", return_value="gnn-1234")
+@patch("flytekitplugins.k8sdataservice.connector.K8sManager.check_stateful_set_status", return_value="succeeded")
+@patch("flytekitplugins.k8sdataservice.connector.K8sManager.delete_stateful_set")
+@patch("flytekitplugins.k8sdataservice.connector.K8sManager.delete_service")
 def test_gnn_agent(mock_delete_service, mock_delete_stateful_set, mock_check_status, mock_create_data_service):
     agent = AgentRegistry.get_connector("dataservicetask")
     task_id, task_metadata, task_config = create_test_setup(existing_release_name="")
@@ -109,10 +106,10 @@ def test_gnn_agent(mock_delete_service, mock_delete_stateful_set, mock_check_sta
     mock_delete_service.assert_called_once_with("gnn-1234")
 
 
-@patch("flytekitplugins.k8sdataservice.agent.K8sManager.create_data_service", return_value="gnn-1234")
-@patch("flytekitplugins.k8sdataservice.agent.K8sManager.check_stateful_set_status", return_value="succeeded")
-@patch("flytekitplugins.k8sdataservice.agent.K8sManager.delete_stateful_set")
-@patch("flytekitplugins.k8sdataservice.agent.K8sManager.delete_service")
+@patch("flytekitplugins.k8sdataservice.connector.K8sManager.create_data_service", return_value="gnn-1234")
+@patch("flytekitplugins.k8sdataservice.connector.K8sManager.check_stateful_set_status", return_value="succeeded")
+@patch("flytekitplugins.k8sdataservice.connector.K8sManager.delete_stateful_set")
+@patch("flytekitplugins.k8sdataservice.connector.K8sManager.delete_service")
 def test_gnn_agent_reuse_data_service(mock_delete_service, mock_delete_stateful_set, mock_check_status, mock_create_data_service):
     agent = AgentRegistry.get_connector("dataservicetask")
     task_id, task_metadata, task_config = create_test_setup(original_name="gnn-2345", existing_release_name="gnn-2345")
@@ -161,10 +158,10 @@ def test_gnn_agent_reuse_data_service(mock_delete_service, mock_delete_stateful_
     mock_delete_service.assert_called_once_with("gnn-2345")
 
 
-@patch("flytekitplugins.k8sdataservice.agent.K8sManager.create_data_service", return_value="gnn-1234")
-@patch("flytekitplugins.k8sdataservice.agent.K8sManager.check_stateful_set_status", return_value="running")
-@patch("flytekitplugins.k8sdataservice.agent.K8sManager.delete_stateful_set")
-@patch("flytekitplugins.k8sdataservice.agent.K8sManager.delete_service")
+@patch("flytekitplugins.k8sdataservice.connector.K8sManager.create_data_service", return_value="gnn-1234")
+@patch("flytekitplugins.k8sdataservice.connector.K8sManager.check_stateful_set_status", return_value="running")
+@patch("flytekitplugins.k8sdataservice.connector.K8sManager.delete_stateful_set")
+@patch("flytekitplugins.k8sdataservice.connector.K8sManager.delete_service")
 def test_gnn_agent_status(mock_delete_service, mock_delete_stateful_set, mock_check_status, mock_create_data_service):
     agent = AgentRegistry.get_connector("dataservicetask")
     task_id, task_metadata, task_config = create_test_setup(original_name="gnn-2345", existing_release_name="gnn-2345")
@@ -212,10 +209,10 @@ def test_gnn_agent_status(mock_delete_service, mock_delete_stateful_set, mock_ch
     mock_delete_service.assert_called_once_with("gnn-2345")
 
 
-@patch("flytekitplugins.k8sdataservice.agent.K8sManager.create_data_service", return_value="gnn-1234")
-@patch("flytekitplugins.k8sdataservice.agent.K8sManager.check_stateful_set_status", return_value="succeeded")
-@patch("flytekitplugins.k8sdataservice.agent.K8sManager.delete_stateful_set")
-@patch("flytekitplugins.k8sdataservice.agent.K8sManager.delete_service")
+@patch("flytekitplugins.k8sdataservice.connector.K8sManager.create_data_service", return_value="gnn-1234")
+@patch("flytekitplugins.k8sdataservice.connector.K8sManager.check_stateful_set_status", return_value="succeeded")
+@patch("flytekitplugins.k8sdataservice.connector.K8sManager.delete_stateful_set")
+@patch("flytekitplugins.k8sdataservice.connector.K8sManager.delete_service")
 def test_gnn_agent_no_configmap(mock_delete_service, mock_delete_stateful_set, mock_check_status, mock_create_data_service):
     agent = AgentRegistry.get_connector("dataservicetask")
     task_id, task_metadata, task_config = create_test_setup(original_name="gnn-2345", existing_release_name="gnn-2345")
@@ -264,10 +261,10 @@ def test_gnn_agent_no_configmap(mock_delete_service, mock_delete_stateful_set, m
     mock_delete_service.assert_called_once_with("gnn-2345")
 
 
-@patch("flytekitplugins.k8sdataservice.agent.K8sManager.create_data_service", return_value="gnn-1234")
-@patch("flytekitplugins.k8sdataservice.agent.K8sManager.check_stateful_set_status", return_value="pending")
-@patch("flytekitplugins.k8sdataservice.agent.K8sManager.delete_stateful_set")
-@patch("flytekitplugins.k8sdataservice.agent.K8sManager.delete_service")
+@patch("flytekitplugins.k8sdataservice.connector.K8sManager.create_data_service", return_value="gnn-1234")
+@patch("flytekitplugins.k8sdataservice.connector.K8sManager.check_stateful_set_status", return_value="pending")
+@patch("flytekitplugins.k8sdataservice.connector.K8sManager.delete_stateful_set")
+@patch("flytekitplugins.k8sdataservice.connector.K8sManager.delete_service")
 def test_gnn_agent_status_failed(mock_delete_service, mock_delete_stateful_set, mock_check_status, mock_create_data_service):
     agent = AgentRegistry.get_connector("dataservicetask")
     task_id, task_metadata, task_config = create_test_setup(original_name="gnn-2345", existing_release_name="gnn-2345")
