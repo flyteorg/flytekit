@@ -499,7 +499,7 @@ def test_agent_complex_type():
 
     ConnectorRegistry.register(FooAgent(), override=True)
 
-    class FooTask(SyncAgentExecutorMixin, PythonTask):  # type: ignore
+    class FooTask(SyncConnectorExecutorMixin, PythonTask):  # type: ignore
         _TASK_TYPE = "foo"
 
         def __init__(self, name: str, **kwargs: typing.Any) -> None:

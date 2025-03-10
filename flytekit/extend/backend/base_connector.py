@@ -384,7 +384,7 @@ class AsyncConnectorExecutorMixin:
             literal_map = TypeEngine.dict_to_literal_map(ctx, inputs or {}, self.get_input_types())
 
         resource_meta = await mirror_async_methods(
-            self._agent.create,
+            self._connector.create,
             task_template=task_template,
             inputs=literal_map,
             output_prefix=output_prefix,
