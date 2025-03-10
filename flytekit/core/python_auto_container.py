@@ -85,8 +85,8 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
             to the allocated memory. If str, then the shared memory is set to that size.
         :param resources: Specify both the request and the limit. When the value is set to a tuple or list, the
             first value is the request and the second value is the limit. If the value is a single value, then both the
-            requests and limit is set to that value. For example, the `Resource(cpu=("1", "2"), mem=1024)` will set
-            the cpu request to 1, cpu limit to 2, mem limit and request to 1024.
+            requests and limit is set to that value. For example, the `Resource(cpu=("1", "2"), mem="1Gi")` will set
+            the cpu request to 1, cpu limit to 2, and mem request to 1Gi.
         """
         sec_ctx = None
         if secret_requests:
