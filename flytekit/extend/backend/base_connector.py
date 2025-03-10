@@ -406,7 +406,7 @@ class AsyncConnectorExecutorMixin:
             while not is_terminal_phase(phase):
                 progress.start_task(task)
                 time.sleep(1)
-                resource = await mirror_async_methods(self._agent.get, resource_meta=resource_meta)
+                resource = await mirror_async_methods(self._connector.get, resource_meta=resource_meta)
                 if self._clean_up_task:
                     sys.exit(1)
 
