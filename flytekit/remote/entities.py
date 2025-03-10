@@ -808,6 +808,18 @@ class FlyteLaunchPlan(hash_mixin.HashOnReferenceMixin, RemoteEntity, _launch_pla
     """A class encapsulating a remote Flyte launch plan."""
 
     def __init__(self, id, *args, **kwargs):
+        if "concurrency" in kwargs:
+            kwargs["max_parallelism"] = kwargs.pop("concurrency")
+        elif "max_parallelism" in kwargs:
+            import warnings
+
+            warnings.warn(
+                "max_parallelism is deprecated and will be removed in a future version. Use concurrency instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            self._max_parallelism = kwargs["max_parallelism"]
+
         super(FlyteLaunchPlan, self).__init__(*args, **kwargs)
         # Set all the attributes we expect this class to have
         self._id = id
@@ -817,6 +829,21 @@ class FlyteLaunchPlan(hash_mixin.HashOnReferenceMixin, RemoteEntity, _launch_pla
         self._interface = None
         # If fetched when creating this object, can store it here.
         self._flyte_workflow = None
+
+    @property
+    def concurrency(self) -> int:
+        return self._max_parallelism
+
+    @property
+    def max_parallelism(self) -> int:
+        import warnings
+
+        warnings.warn(
+            "max_parallelism is deprecated and will be removed in a future version. Use concurrency instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self._max_parallelism
 
     @property
     def name(self) -> str:

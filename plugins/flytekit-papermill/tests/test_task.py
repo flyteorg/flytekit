@@ -15,7 +15,7 @@ from flytekitplugins.pod import Pod
 from kubernetes.client import V1Container, V1PodSpec
 
 import flytekit
-from flytekit import StructuredDataset, kwtypes, map_task, task, workflow
+from flytekit import StructuredDataset, kwtypes, map, task, workflow
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clis.sdk_in_container import pyflyte
 from flytekit.configuration import Image, ImageConfig
@@ -414,7 +414,7 @@ def test_flyte_types():
 def test_map_over_notebook_task():
     @workflow
     def wf(a: float) -> typing.List[float]:
-        return map_task(nb_sub_task)(a=[a, a])
+        return map(nb_sub_task)(a=[a, a])
 
     assert wf(a=3.14) == [9.8596, 9.8596]
 

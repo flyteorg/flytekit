@@ -12,7 +12,7 @@ from google.protobuf.timestamp_pb2 import Timestamp
 from typing_extensions import Annotated, get_args
 
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
-from flytekit.core.array_node_map_task import map_task
+from flytekit.core.array_node_map_task import map
 from flytekit.core.artifact import Artifact, Inputs, TimePartition
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager, OutputMetadataTracker
 from flytekit.core.interface import detect_artifact
@@ -579,7 +579,7 @@ def test_map_doesnt_add_any_metadata():
         df = pd.DataFrame({"a": [1, 2, 3], "b": [b_value, b_value, b_value]})
         return a1_b.create_from(df, b="dynamic!")
 
-    mt1 = map_task(t1)
+    mt1 = map(t1)
     entities = OrderedDict()
     mt1_s = get_serializable(entities, serialization_settings, mt1)
     o0 = mt1_s.template.interface.outputs["o0"]
