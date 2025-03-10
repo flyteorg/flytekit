@@ -11,6 +11,7 @@ import tarfile
 import tempfile
 import typing
 from datetime import datetime, timezone
+from functools import lru_cache
 from pathlib import Path
 from types import ModuleType
 from typing import List, Optional, Tuple, Union
@@ -292,6 +293,7 @@ def get_all_modules(source_path: str, module_name: Optional[str]) -> List[Module
         return sys_modules
 
 
+@lru_cache
 def hash_file(file_path: typing.Union[os.PathLike, str]) -> (bytes, str, int):
     """
     Hash a file and produce a digest to be used as a version

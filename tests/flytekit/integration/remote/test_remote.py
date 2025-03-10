@@ -1147,3 +1147,26 @@ def test_execute_workflow_with_dataclass():
         image_config=ImageConfig.from_images(IMAGE),
     )
     assert out.outputs["o0"] == ""
+
+
+def test_register_wf_twice(register):
+    # Register the same workflow again should not raise an error
+    out = subprocess.run(
+        [
+            "pyflyte",
+            "--verbose",
+            "-c",
+            CONFIG,
+            "register",
+            "--image",
+            IMAGE,
+            "--project",
+            PROJECT,
+            "--domain",
+            DOMAIN,
+            "--version",
+            VERSION,
+            MODULE_PATH / "pickle_wf.py",
+        ]
+    )
+    assert out.returncode == 0
