@@ -218,7 +218,7 @@ def test_dummy_connector():
     ids=["sync", "async"],
 )
 @pytest.mark.asyncio
-async def test_async_agent_service(connector, consume_metadata):
+async def test_async_connector_service(connector, consume_metadata):
     ConnectorRegistry.register(connector, override=True)
     service = AsyncConnectorService()
     ctx = MagicMock(spec=grpc.ServicerContext)
@@ -416,25 +416,25 @@ def test_render_task_template():
         "flytekit.core.python_auto_container.default_task_resolver",
         "--",
         "task-module",
-        "test_agent",
+        "test_connector",
         "task-name",
         "simple_task",
     ]
 
 
 @pytest.fixture
-def sample_agents():
-    async_agent = Agent(
+def sample_connectors():
+    async_connector = Agent(
         name="Sensor",
         is_sync=False,
         supported_task_categories=[TaskCategory(name="sensor", version=0)],
     )
-    sync_agent = Agent(
+    sync_connector = Agent(
         name="ChatGPT Agent",
         is_sync=True,
         supported_task_categories=[TaskCategory(name="chatgpt", version=0)],
     )
-    return [async_agent, sync_agent]
+    return [async_connector, sync_connector]
 
 
 def test_resource_type():
@@ -478,12 +478,12 @@ def test_resource_type():
     assert o2.custom_info == o.custom_info
 
 
-def test_agent_complex_type():
+def test_connector_complex_type():
     @dataclass
     class Foo:
         val: str
 
-    class FooAgent(SyncConnectorBase):
+    class FooConnector(SyncConnectorBase):
         def __init__(self) -> None:
             super().__init__(task_type_name="foo")
 
@@ -497,7 +497,7 @@ def test_agent_complex_type():
                 phase=TaskExecution.SUCCEEDED, outputs={"foos": [Foo(val="a"), Foo(val="b")], "has_foos": True}
             )
 
-    ConnectorRegistry.register(FooAgent(), override=True)
+    ConnectorRegistry.register(FooConnector(), override=True)
 
     class FooTask(SyncConnectorExecutorMixin, PythonTask):  # type: ignore
         _TASK_TYPE = "foo"

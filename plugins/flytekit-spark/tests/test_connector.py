@@ -8,7 +8,7 @@ from aioresponses import aioresponses
 from flyteidl.core.execution_pb2 import TaskExecution
 
 from flytekit.core.constants import FLYTE_FAIL_ON_ERROR
-from flytekitplugins.spark.agent import DATABRICKS_API_ENDPOINT, DatabricksJobMetadata, get_header, \
+from flytekitplugins.spark.connector import DATABRICKS_API_ENDPOINT, DatabricksJobMetadata, get_header, \
     _get_databricks_job_spec
 
 from flytekit.extend.backend.base_connector import ConnectorRegistry

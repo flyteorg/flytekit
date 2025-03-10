@@ -6,7 +6,7 @@ from flytekitplugins.k8sdataservice.k8s.manager import K8sManager
 from flytekitplugins.k8sdataservice.task import DataServiceConfig
 
 from flytekit import logger
-from flytekit.extend.backend.base_agent import AgentRegistry, AsyncConnectorBase, Resource, ResourceMeta
+from flytekit.extend.backend.base_connector import ConnectorRegistry, AsyncConnectorBase, Resource, ResourceMeta
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
@@ -95,4 +95,4 @@ class DataServiceAgent(AsyncConnectorBase):
         self.k8s_manager.delete_service(name)
 
 
-AgentRegistry.register(DataServiceAgent())
+ConnectorRegistry.register(DataServiceAgent())
