@@ -683,8 +683,6 @@ class FlyteDirToMultipartBlobTransformer(AsyncTypeTransformer[FlyteDirectory]):
         return self.dict_to_flyte_directory(python_val, expected_python_type)
 
     def _is_valid_jsonl_file(self, file_path: str) -> bool:
-        if not os.path.isfile(file_path) or not file_path.endswith(".jsonl"):
-            return False
         try:
             with jsonlines.open(file_path) as reader:
                 for _ in reader:
@@ -708,7 +706,7 @@ class FlyteDirToMultipartBlobTransformer(AsyncTypeTransformer[FlyteDirectory]):
             if fd:  # Remote directory case
                 for base, x in fd.crawl():
                     src = str(os.path.join(base, x))
-                    local_src_file = FlyteFile(src).download()
+                    local_src_file = FlyteFile.from_source(src)
                     if self._is_valid_jsonl_file(local_src_file):
                         with jsonlines.open(local_src_file) as reader:
                             for obj in reader:
