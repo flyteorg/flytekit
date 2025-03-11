@@ -345,6 +345,14 @@ def test_bound_inputs_collision():
 
     assert m1 == ["1 - 0.1 - d", "2 - 0.2 - d", "3 - 0.3 - d"]
 
+    with pytest.raises(ValueError, match="bound_inputs and bound_inputs_values should have the same keys if both set"):
+        ArrayNodeMapTask(task1, bound_inputs_values={"c": param_c}, bound_inputs={"b"})(a=param_a, b=param_b)
+
+    try:
+        ArrayNodeMapTask(task1, bound_inputs_values={"c": param_c}, bound_inputs={"c"})(a=param_a, b=param_b)
+    except Exception as e:
+        pytest.fail(f"Unexpected exception raised: {e}")
+
 
 @task()
 def task_1(a: int, b: int, c: str) -> str:
