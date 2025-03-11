@@ -356,7 +356,7 @@ def test_task_2() -> int:
     return 2
 
 
-def get_wf1(serialization_settings):
+def get_wf_bound_input(serialization_settings):
     @workflow()
     def wf1() -> List[str]:
         return ArrayNodeMapTask(test_task_1, bound_inputs_values={"a": 1})(b=[1, 2, 3], c=["a", "b", "c"])
@@ -364,7 +364,7 @@ def get_wf1(serialization_settings):
     return wf1
 
 
-def get_wf2(serialization_settings):
+def get_wf_partials(serialization_settings):
     @workflow()
     def wf2() -> List[str]:
         return ArrayNodeMapTask(functools.partial(test_task_1, a=1))(b=[1, 2, 3], c=["a", "b", "c"])
@@ -372,7 +372,7 @@ def get_wf2(serialization_settings):
     return wf2
 
 
-def get_wf3(serialization_settings):
+def get_wf_bound_input_upstream(serialization_settings):
 
     @workflow()
     def wf3() -> List[str]:
@@ -382,7 +382,7 @@ def get_wf3(serialization_settings):
     return wf3
 
 
-def get_wf4(serialization_settings):
+def get_wf_partials_upstream(serialization_settings):
 
     @workflow()
     def wf4() -> List[str]:
@@ -392,13 +392,22 @@ def get_wf4(serialization_settings):
     return wf4
 
 
-def get_wf5(serialization_settings):
+def get_wf_bound_input_partials_collision(serialization_settings):
 
     @workflow()
     def wf5() -> List[str]:
         return ArrayNodeMapTask(functools.partial(test_task_1, a=1), bound_inputs_values={"a": 2})(b=[1, 2, 3], c=["a", "b", "c"])
 
     return wf5
+
+
+def get_wf_bound_input_overrides(serialization_settings):
+
+    @workflow()
+    def wf6() -> List[str]:
+        return ArrayNodeMapTask(test_task_1, bound_inputs_values={"a": 1})(a=[1, 2, 3], b=[1, 2, 3], c=["a", "b", "c"])
+
+    return wf6
 
 
 def get_int_binding(value):
@@ -420,11 +429,12 @@ C_BINDINGS_LIST = [get_str_binding("a"), get_str_binding("b"), get_str_binding("
 @pytest.mark.parametrize(
     ("wf", "upstream_nodes", "expected_inputs"),
     [
-        (get_wf1, {}, {"a": get_int_binding(1), "b": B_BINDINGS_LIST, "c": C_BINDINGS_LIST}),
-        (get_wf2, {}, {"a": get_int_binding(1), "b": B_BINDINGS_LIST, "c": C_BINDINGS_LIST}),
-        (get_wf3, {"n0"}, {"a": promise_binding("n0", "o0"), "b": B_BINDINGS_LIST, "c": C_BINDINGS_LIST}),
-        (get_wf4, {"n0"}, {"a": promise_binding("n0", "o0"), "b": B_BINDINGS_LIST, "c": C_BINDINGS_LIST}),
-        (get_wf5, {}, {"a": get_int_binding(2), "b": B_BINDINGS_LIST, "c": C_BINDINGS_LIST}),
+        (get_wf_bound_input, {}, {"a": get_int_binding(1), "b": B_BINDINGS_LIST, "c": C_BINDINGS_LIST}),
+        (get_wf_partials, {}, {"a": get_int_binding(1), "b": B_BINDINGS_LIST, "c": C_BINDINGS_LIST}),
+        (get_wf_bound_input_upstream, {"n0"}, {"a": promise_binding("n0", "o0"), "b": B_BINDINGS_LIST, "c": C_BINDINGS_LIST}),
+        (get_wf_partials_upstream, {"n0"}, {"a": promise_binding("n0", "o0"), "b": B_BINDINGS_LIST, "c": C_BINDINGS_LIST}),
+        (get_wf_bound_input_partials_collision, {}, {"a": get_int_binding(2), "b": B_BINDINGS_LIST, "c": C_BINDINGS_LIST}),
+        (get_wf_bound_input_overrides, {}, {"a": get_int_binding(1), "b": B_BINDINGS_LIST, "c": C_BINDINGS_LIST}),
     ]
 )
 def test_bound_inputs_serialization(wf, upstream_nodes, expected_inputs, serialization_settings):
