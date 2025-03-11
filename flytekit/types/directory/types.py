@@ -708,8 +708,9 @@ class FlyteDirToMultipartBlobTransformer(AsyncTypeTransformer[FlyteDirectory]):
             if fd:  # Remote directory case
                 for base, x in fd.crawl():
                     src = str(os.path.join(base, x))
-                    if self._is_valid_jsonl_file(src):
-                        with jsonlines.open(src) as reader:
+                    local_src_file = FlyteFile(src).download()
+                    if self._is_valid_jsonl_file(local_src_file):
+                        with jsonlines.open(local_src_file) as reader:
                             for obj in reader:
                                 out.write(obj)
             else:  # Local directory case
