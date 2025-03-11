@@ -92,9 +92,6 @@ class ArrayNodeMapTask(PythonTask):
 
         self._bound_inputs_values: Dict[str, Any] = bound_inputs_values or {}
         if self._bound_inputs_values:
-            for arg in self._bound_inputs_values.values():
-                if isinstance(arg, list):
-                    raise ValueError("Cannot use a partial task with lists as inputs")
             # bounded input values override any collisions w/ partials
             self._bound_inputs.update(set(self._bound_inputs_values))
 
