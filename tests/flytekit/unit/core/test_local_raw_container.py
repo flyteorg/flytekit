@@ -8,7 +8,8 @@ import docker
 import pytest
 
 import flytekit
-from flytekit import ContainerTask, kwtypes, task, workflow
+from flytekit import ContainerTask, kwtypes, task, workflow, Resources
+from flytekit.core.resources import ResourceSpec
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import FlyteFile
 
@@ -316,3 +317,48 @@ def test_input_output_dir_manipulation():
     assert d == "hello"
     assert e == now
     assert f == datetime.timedelta(days=1, hours=3, minutes=2, seconds=3, microseconds=5)
+
+
+@pytest.mark.parametrize(
+    "kwargs, expected_resource", [
+        (
+            {"limits": Resources(cpu=1), "requests": Resources(mem="1Gi")},
+            ResourceSpec(limits=Resources(cpu=1), requests=Resources(mem="1Gi"))
+        ),
+        (
+            {"resources": Resources(cpu=(1, 2), mem="1Gi")},
+            ResourceSpec(requests=Resources(cpu=1, mem="1Gi"), limits=Resources(cpu=2))
+        )
+    ]
+)
+def test_container_task_resources(kwargs, expected_resource):
+    square = ContainerTask(
+        name="square",
+        input_data_dir="/var/inputs",
+        output_data_dir="/var/outputs",
+        inputs=kwtypes(val=int),
+        outputs=kwtypes(out=int),
+        image="alpine",
+        environment={"a": "b"},
+        command=["sh", "-c", "echo $(( {{.Inputs.val}} * {{.Inputs.val}} )) | tee /var/outputs/out"],
+        **kwargs
+    )
+
+    assert square.resources == expected_resource
+
+
+def test_container_task_resources_error():
+    msg = "`resource` can not be used together with"
+    with pytest.raises(ValueError, match=msg):
+        ContainerTask(
+            name="square",
+            input_data_dir="/var/inputs",
+            output_data_dir="/var/outputs",
+            inputs=kwtypes(val=int),
+            outputs=kwtypes(out=int),
+            image="alpine",
+            environment={"a": "b"},
+            command=["sh", "-c", "echo $(( {{.Inputs.val}} * {{.Inputs.val}} )) | tee /var/outputs/out"],
+            resources=Resources(cpu=("1", "2"), mem=(1024, 2048), gpu=1),
+            limits=Resources(cpu=1)
+        )
