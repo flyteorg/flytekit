@@ -294,3 +294,10 @@ def test_image_spec_same_id_and_tag_with_pip_secret_mounts():
     image_spec_with_pip_secret_mounts = ImageSpec(name="my_image", pip_secret_mounts=[("src", "dst")])
     assert image_spec.id == image_spec_with_pip_secret_mounts.id
     assert image_spec.tag == image_spec_with_pip_secret_mounts.tag
+
+
+def test_image_spec_same_id_and_tag_with_builder():
+    image_spec = ImageSpec(name="my_image")
+    image_spec_with_builder = ImageSpec(name="my_image", builder="envd")
+    assert image_spec.id == image_spec_with_builder.id
+    assert image_spec.tag == image_spec_with_builder.tag
