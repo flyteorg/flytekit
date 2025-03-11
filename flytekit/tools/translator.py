@@ -661,6 +661,7 @@ def get_serializable_array_node_map_task(
         min_success_ratio=entity.min_success_ratio,
         execution_mode=entity.execution_mode,
         is_original_sub_node_interface=entity.is_original_sub_node_interface,
+        bound_inputs=entity.bound_inputs,
     )
 
 

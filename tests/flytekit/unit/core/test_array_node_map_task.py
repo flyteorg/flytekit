@@ -16,10 +16,14 @@ from flytekit.core.array_node_map_task import ArrayNodeMapTask, ArrayNodeMapTask
 from flytekit.core.task import TaskMetadata
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extras.accelerators import GPUAccelerator
+from flytekit.models import types
 from flytekit.models.literals import (
+    BindingData,
     Literal,
     LiteralMap,
     LiteralOffloadedMetadata,
+    Scalar,
+    Primitive,
 )
 from flytekit.tools.translator import get_serializable
 from flytekit.types.directory import FlyteDirectory
@@ -307,7 +311,11 @@ def test_parameter_order():
     m2 = map_task(functools.partial(task2, c=param_c))(a=param_a, b=param_b)
     m3 = map_task(functools.partial(task3, c=param_c))(a=param_a, b=param_b)
 
-    assert m1 == m2 == m3 == ["1 - 0.1 - c", "2 - 0.2 - c", "3 - 0.3 - c"]
+    m4 = ArrayNodeMapTask(task1, bound_inputs_values={"c": param_c})(a=param_a, b=param_b)
+    m5 = ArrayNodeMapTask(task2, bound_inputs_values={"c": param_c})(a=param_a, b=param_b)
+    m6 = ArrayNodeMapTask(task3, bound_inputs_values={"c": param_c})(a=param_a, b=param_b)
+
+    assert m1 == m2 == m3 == m4 == m5 == m6 == ["1 - 0.1 - c", "2 - 0.2 - c", "3 - 0.3 - c"]
 
 
 def test_bounded_inputs_vars_order(serialization_settings):
@@ -320,6 +328,127 @@ def test_bounded_inputs_vars_order(serialization_settings):
     args = mtr.loader_args(serialization_settings, mt)
 
     assert args[1] == "a,b,c"
+
+
+def test_bound_inputs_collision():
+    @task()
+    def task1(a: int, b: float, c: str) -> str:
+        return f"{a} - {b} - {c}"
+
+    param_a = [1, 2, 3]
+    param_b = [0.1, 0.2, 0.3]
+    param_c = "c"
+    param_d = "d"
+
+    partial_task = functools.partial(task1, c=param_c)
+    m1 = ArrayNodeMapTask(partial_task, bound_inputs_values={"c": param_d})(a=param_a, b=param_b)
+
+    assert m1 == ["1 - 0.1 - d", "2 - 0.2 - d", "3 - 0.3 - d"]
+
+
+@task()
+def test_task_1(a: int, b: int, c: str) -> str:
+    return f"{a} - {b} - {c}"
+
+
+@task()
+def test_task_2() -> int:
+    return 2
+
+
+def get_wf1(serialization_settings):
+    @workflow()
+    def wf1() -> List[str]:
+        return ArrayNodeMapTask(test_task_1, bound_inputs_values={"a": 1})(b=[1, 2, 3], c=["a", "b", "c"])
+
+    return wf1
+
+
+def get_wf2(serialization_settings):
+    @workflow()
+    def wf2() -> List[str]:
+        return ArrayNodeMapTask(functools.partial(test_task_1, a=1))(b=[1, 2, 3], c=["a", "b", "c"])
+
+    return wf2
+
+
+def get_wf3(serialization_settings):
+
+    @workflow()
+    def wf3() -> List[str]:
+        a = test_task_2()
+        return ArrayNodeMapTask(test_task_1, bound_inputs_values={"a": a})(b=[1, 2, 3], c=["a", "b", "c"])
+
+    return wf3
+
+
+def get_wf4(serialization_settings):
+
+    @workflow()
+    def wf4() -> List[str]:
+        a = test_task_2()
+        return ArrayNodeMapTask(functools.partial(test_task_1, a=a))(b=[1, 2, 3], c=["a", "b", "c"])
+
+    return wf4
+
+
+def get_wf5(serialization_settings):
+
+    @workflow()
+    def wf5() -> List[str]:
+        return ArrayNodeMapTask(functools.partial(test_task_1, a=1), bound_inputs_values={"a": 2})(b=[1, 2, 3], c=["a", "b", "c"])
+
+    return wf5
+
+
+def get_int_binding(value):
+    return BindingData(scalar=Scalar(primitive=Primitive(integer=value)))
+
+
+def get_str_binding(value):
+    return BindingData(scalar=Scalar(primitive=Primitive(string_value=value)))
+
+
+def promise_binding(node_id, var):
+    return BindingData(promise=types.OutputReference(node_id=node_id, var=var))
+
+
+B_BINDINGS_LIST = [get_int_binding(1), get_int_binding(2), get_int_binding(3)]
+C_BINDINGS_LIST = [get_str_binding("a"), get_str_binding("b"), get_str_binding("c")]
+
+
+@pytest.mark.parametrize(
+    ("wf", "upstream_nodes", "expected_inputs"),
+    [
+        (get_wf1, {}, {"a": get_int_binding(1), "b": B_BINDINGS_LIST, "c": C_BINDINGS_LIST}),
+        (get_wf2, {}, {"a": get_int_binding(1), "b": B_BINDINGS_LIST, "c": C_BINDINGS_LIST}),
+        (get_wf3, {"n0"}, {"a": promise_binding("n0", "o0"), "b": B_BINDINGS_LIST, "c": C_BINDINGS_LIST}),
+        (get_wf4, {"n0"}, {"a": promise_binding("n0", "o0"), "b": B_BINDINGS_LIST, "c": C_BINDINGS_LIST}),
+        (get_wf5, {}, {"a": get_int_binding(2), "b": B_BINDINGS_LIST, "c": C_BINDINGS_LIST}),
+    ]
+)
+def test_bound_inputs_serialization(wf, upstream_nodes, expected_inputs, serialization_settings):
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, wf(serialization_settings))
+    assert len(wf_spec.template.nodes) == len(upstream_nodes) + 1
+    parent_node = wf_spec.template.nodes[len(upstream_nodes)]
+
+    assert len(parent_node.inputs) == len(expected_inputs)
+    inputs_map = {x.var: x for x in parent_node.inputs}
+
+    for param, expected_input in expected_inputs.items():
+        node_input = inputs_map[param]
+        assert node_input
+        if isinstance(expected_input, list):
+            bindings = node_input.binding.collection.bindings
+            assert len(bindings) == len(expected_inputs[param])
+            for i, binding in enumerate(bindings):
+                assert binding == expected_input[i]
+        else:
+            binding = node_input.binding
+            assert binding == expected_input
+
+    assert parent_node.array_node._bound_inputs == {"a"}
+    assert set(parent_node.upstream_node_ids) == set(upstream_nodes)
 
 
 @pytest.mark.parametrize(
