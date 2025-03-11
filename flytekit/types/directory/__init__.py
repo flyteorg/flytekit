@@ -16,7 +16,7 @@ Similar to :py:class:`flytekit.types.file.FlyteFile` there are some 'preformatte
 
 import typing
 
-from .types import FlyteDirectory, FlyteDirToMultipartBlobTransformer
+from .types import FlyteDirectory, FlyteDirToMultipartBlobTransformer, StreamingKwargs
 
 # The following section provides some predefined aliases for commonly used FlyteDirectory formats.
 
