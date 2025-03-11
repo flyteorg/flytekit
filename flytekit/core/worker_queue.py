@@ -298,8 +298,8 @@ class Controller:
                                     )
 
                                 exc = EagerException(
-                                    f"Error executing {update.work_item.entity.name} with error:"
-                                    f" {update.wf_exec.closure.error}"
+                                    f"Error executing {update.work_item.entity.name} with error Type:"
+                                    f" {update.wf_exec.closure.error.code}. Message: {update.wf_exec.closure.error.message}"
                                 )
                                 item.error = exc
 
