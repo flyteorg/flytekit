@@ -347,19 +347,19 @@ def test_bound_inputs_collision():
 
 
 @task()
-def test_task_1(a: int, b: int, c: str) -> str:
+def task_1(a: int, b: int, c: str) -> str:
     return f"{a} - {b} - {c}"
 
 
 @task()
-def test_task_2() -> int:
+def task_2() -> int:
     return 2
 
 
 def get_wf_bound_input(serialization_settings):
     @workflow()
     def wf1() -> List[str]:
-        return ArrayNodeMapTask(test_task_1, bound_inputs_values={"a": 1})(b=[1, 2, 3], c=["a", "b", "c"])
+        return ArrayNodeMapTask(task_1, bound_inputs_values={"a": 1})(b=[1, 2, 3], c=["a", "b", "c"])
 
     return wf1
 
@@ -367,7 +367,7 @@ def get_wf_bound_input(serialization_settings):
 def get_wf_partials(serialization_settings):
     @workflow()
     def wf2() -> List[str]:
-        return ArrayNodeMapTask(functools.partial(test_task_1, a=1))(b=[1, 2, 3], c=["a", "b", "c"])
+        return ArrayNodeMapTask(functools.partial(task_1, a=1))(b=[1, 2, 3], c=["a", "b", "c"])
 
     return wf2
 
@@ -376,8 +376,8 @@ def get_wf_bound_input_upstream(serialization_settings):
 
     @workflow()
     def wf3() -> List[str]:
-        a = test_task_2()
-        return ArrayNodeMapTask(test_task_1, bound_inputs_values={"a": a})(b=[1, 2, 3], c=["a", "b", "c"])
+        a = task_2()
+        return ArrayNodeMapTask(task_1, bound_inputs_values={"a": a})(b=[1, 2, 3], c=["a", "b", "c"])
 
     return wf3
 
@@ -386,8 +386,8 @@ def get_wf_partials_upstream(serialization_settings):
 
     @workflow()
     def wf4() -> List[str]:
-        a = test_task_2()
-        return ArrayNodeMapTask(functools.partial(test_task_1, a=a))(b=[1, 2, 3], c=["a", "b", "c"])
+        a = task_2()
+        return ArrayNodeMapTask(functools.partial(task_1, a=a))(b=[1, 2, 3], c=["a", "b", "c"])
 
     return wf4
 
@@ -396,7 +396,7 @@ def get_wf_bound_input_partials_collision(serialization_settings):
 
     @workflow()
     def wf5() -> List[str]:
-        return ArrayNodeMapTask(functools.partial(test_task_1, a=1), bound_inputs_values={"a": 2})(b=[1, 2, 3], c=["a", "b", "c"])
+        return ArrayNodeMapTask(functools.partial(task_1, a=1), bound_inputs_values={"a": 2})(b=[1, 2, 3], c=["a", "b", "c"])
 
     return wf5
 
@@ -405,7 +405,7 @@ def get_wf_bound_input_overrides(serialization_settings):
 
     @workflow()
     def wf6() -> List[str]:
-        return ArrayNodeMapTask(test_task_1, bound_inputs_values={"a": 1})(a=[1, 2, 3], b=[1, 2, 3], c=["a", "b", "c"])
+        return ArrayNodeMapTask(task_1, bound_inputs_values={"a": 1})(a=[1, 2, 3], b=[1, 2, 3], c=["a", "b", "c"])
 
     return wf6
 
