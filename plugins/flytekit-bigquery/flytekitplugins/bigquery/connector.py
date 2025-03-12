@@ -32,7 +32,7 @@ class BigQueryMetadata(ResourceMeta):
 
 
 class BigQueryConnector(AsyncConnectorBase):
-    name = "Bigquery Agent"
+    name = "Bigquery Connector"
 
     def __init__(self):
         super().__init__(task_type_name="bigquery_query_job_task", metadata_type=BigQueryMetadata)

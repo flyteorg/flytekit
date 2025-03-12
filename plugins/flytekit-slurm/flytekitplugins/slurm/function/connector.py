@@ -42,14 +42,14 @@ class SlurmCluster:
         return hash((self.host, self.username))
 
 
-class SlurmFunctionAgent(AsyncConnectorBase):
-    name = "Slurm Function Agent"
+class SlurmFunctionConnector(AsyncConnectorBase):
+    name = "Slurm Function Connector"
 
     # SSH connection pool for multi-host environment
     ssh_config_to_ssh_conn: Dict[SlurmCluster, SSHClientConnection] = {}
 
     def __init__(self) -> None:
-        super(SlurmFunctionAgent, self).__init__(task_type_name="slurm_fn", metadata_type=SlurmJobMetadata)
+        super(SlurmFunctionConnector, self).__init__(task_type_name="slurm_fn", metadata_type=SlurmJobMetadata)
 
     async def create(
         self,
@@ -187,4 +187,4 @@ def _get_sbatch_cmd_and_script(
     return cmd, script
 
 
-ConnectorRegistry.register(SlurmFunctionAgent())
+ConnectorRegistry.register(SlurmFunctionConnector())

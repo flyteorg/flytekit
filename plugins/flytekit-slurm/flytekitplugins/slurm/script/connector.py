@@ -32,8 +32,8 @@ class SlurmJobMetadata(ResourceMeta):
     outputs: Dict[str, str]
 
 
-class SlurmScriptAgent(AsyncConnectorBase):
-    name = "Slurm Script Agent"
+class SlurmScriptConnector(AsyncConnectorBase):
+    name = "Slurm Script Connector"
 
     # SSH connection pool for multi-host environment
     slurm_cluster_to_ssh_conn: Dict[SlurmCluster, SSHClientConnection] = {}
@@ -42,7 +42,7 @@ class SlurmScriptAgent(AsyncConnectorBase):
     DUMMY_SCRIPT = "#!/bin/bash"
 
     def __init__(self) -> None:
-        super(SlurmScriptAgent, self).__init__(task_type_name="slurm", metadata_type=SlurmJobMetadata)
+        super(SlurmScriptConnector, self).__init__(task_type_name="slurm", metadata_type=SlurmJobMetadata)
 
     async def create(
         self,
@@ -188,4 +188,4 @@ def _get_sbatch_cmd(sbatch_conf: Dict[str, str], batch_script_path: str, batch_s
     return cmd
 
 
-ConnectorRegistry.register(SlurmScriptAgent())
+ConnectorRegistry.register(SlurmScriptConnector())

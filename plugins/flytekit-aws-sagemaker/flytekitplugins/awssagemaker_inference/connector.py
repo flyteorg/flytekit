@@ -38,7 +38,7 @@ states = {
 
 
 class SageMakerEndpointConnector(Boto3ConnectorMixin, AsyncConnectorBase):
-    """This agent creates an endpoint."""
+    """This connector creates an endpoint."""
 
     name = "SageMaker Endpoint Connector"
 

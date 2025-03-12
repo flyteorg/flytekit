@@ -17,8 +17,8 @@ class DataServiceMetadata(ResourceMeta):
     name: str
 
 
-class DataServiceAgent(AsyncConnectorBase):
-    name = "K8s DataService Async Agent"
+class DataServiceConnector(AsyncConnectorBase):
+    name = "K8s DataService Async Connector"
 
     def __init__(self):
         self.k8s_manager = K8sManager()
@@ -30,7 +30,7 @@ class DataServiceAgent(AsyncConnectorBase):
     ) -> DataServiceMetadata:
         graph_engine_config = task_template.custom
         self.k8s_manager.set_configs(graph_engine_config)
-        logger.info(f"Loaded agent config file {self.config}")
+        logger.info(f"Loaded connector config file {self.config}")
         existing_release_name = graph_engine_config.get("ExistingReleaseName", None)
         logger.info(f"The existing data service release name is {existing_release_name}")
 
@@ -95,4 +95,4 @@ class DataServiceAgent(AsyncConnectorBase):
         self.k8s_manager.delete_service(name)
 
 
-ConnectorRegistry.register(DataServiceAgent())
+ConnectorRegistry.register(DataServiceConnector())

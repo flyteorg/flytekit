@@ -91,6 +91,7 @@ class Resource:
         message: The return message from the job.
         log_links: The log links of the job. For example, the link to the BigQuery Console.
         outputs: The outputs of the job. If return python native types, the agent will convert them to flyte literals.
+        custom_info: The custom info of the job.For example, the job config.
     """
 
     phase: TaskExecution.Phase

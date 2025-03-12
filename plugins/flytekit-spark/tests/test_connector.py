@@ -20,7 +20,7 @@ from flytekit.models.task import Container, Resources, TaskTemplate
 
 @pytest.mark.asyncio
 async def test_databricks_connector():
-    agent = ConnectorRegistry.get_connector("spark")
+    connector = ConnectorRegistry.get_connector("spark")
 
     task_id = Identifier(
         resource_type=ResourceType.TASK, project="project", domain="domain", name="name", version="version"
@@ -124,7 +124,7 @@ async def test_databricks_connector():
     delete_url = f"https://test-account.cloud.databricks.com{DATABRICKS_API_ENDPOINT}/runs/cancel"
     with aioresponses() as mocked:
         mocked.post(create_url, status=http.HTTPStatus.OK, payload=mock_create_response)
-        res = await agent.create(dummy_template, None)
+        res = await connector.create(dummy_template, None)
         spec = _get_databricks_job_spec(dummy_template)
         data = json.dumps(spec)
         mocked.assert_called_with(create_url, method="POST", data=data, headers=get_header())
@@ -134,7 +134,7 @@ async def test_databricks_connector():
         assert res == databricks_metadata
 
         mocked.get(get_url, status=http.HTTPStatus.OK, payload=mock_get_response)
-        resource = await agent.get(databricks_metadata)
+        resource = await connector.get(databricks_metadata)
         assert resource.phase == TaskExecution.SUCCEEDED
         assert resource.outputs is None
         assert resource.message == "OK"
@@ -142,7 +142,7 @@ async def test_databricks_connector():
         assert resource.log_links[0].uri == "https://test-account.cloud.databricks.com/#job/1/run/123"
 
         mocked.post(delete_url, status=http.HTTPStatus.OK, payload=mock_delete_response)
-        await agent.delete(databricks_metadata)
+        await connector.delete(databricks_metadata)
 
     assert get_header() == {"Authorization": f"Bearer {mocked_token}", "content-type": "application/json"}
 

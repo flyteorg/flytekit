@@ -9,7 +9,7 @@ from flytekitplugins.openai.batch.connector import BatchEndpointMetadata
 from openai.types import Batch, BatchError, BatchRequestCounts
 from openai.types.batch import Errors
 
-from flytekit.extend.backend.base_agent import AgentRegistry
+from flytekit.extend.backend.base_connector import ConnectorRegistry
 from flytekit.interaction.string_literals import literal_map_string_repr
 from flytekit.interfaces.cli_identifiers import Identifier
 from flytekit.models import literals
@@ -113,7 +113,7 @@ batch_retrieve_result_failure = Batch(
 @mock.patch("openai.resources.batches.AsyncBatches.create", new_callable=AsyncMock)
 @mock.patch("openai.resources.batches.AsyncBatches.retrieve", new_callable=AsyncMock)
 async def test_openai_batch_connector(mock_retrieve, mock_create, mock_context):
-    connector = AgentRegistry.get_connector("openai-batch")
+    connector = ConnectorRegistry.get_connector("openai-batch")
     task_id = Identifier(
         resource_type=ResourceType.TASK,
         project="project",

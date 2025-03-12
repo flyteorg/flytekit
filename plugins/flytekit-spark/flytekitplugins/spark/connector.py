@@ -9,7 +9,7 @@ from flyteidl.core.execution_pb2 import TaskExecution
 from flytekit import lazy_module
 from flytekit.core.constants import FLYTE_FAIL_ON_ERROR
 from flytekit.extend.backend.base_connector import AsyncConnectorBase, ConnectorRegistry, Resource, ResourceMeta
-from flytekit.extend.backend.utils import convert_to_flyte_phase, get_agent_secret
+from flytekit.extend.backend.utils import convert_to_flyte_phase, get_connector_secret
 from flytekit.models.core.execution import TaskLog
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
@@ -127,13 +127,13 @@ class DatabricksConnector(AsyncConnectorBase):
                 await resp.json()
 
 
-class DatabricksAgentV2(DatabricksConnector):
+class DatabricksConnectorV2(DatabricksConnector):
     """
-    Add DatabricksAgentV2 to support running the k8s spark and databricks spark together in the same workflow.
+    Add DatabricksConnectorV2 to support running the k8s spark and databricks spark together in the same workflow.
     This is necessary because one task type can only be handled by a single backend plugin.
 
     spark -> k8s spark plugin
-    databricks -> databricks agent
+    databricks -> databricks connector
     """
 
     def __init__(self):
@@ -141,7 +141,7 @@ class DatabricksAgentV2(DatabricksConnector):
 
 
 def get_header() -> typing.Dict[str, str]:
-    token = get_agent_secret("FLYTE_DATABRICKS_ACCESS_TOKEN")
+    token = get_connector_secret("FLYTE_DATABRICKS_ACCESS_TOKEN")
     return {"Authorization": f"Bearer {token}", "content-type": "application/json"}
 
 
@@ -150,4 +150,4 @@ def result_state_is_available(life_cycle_state: str) -> bool:
 
 
 ConnectorRegistry.register(DatabricksConnector())
-ConnectorRegistry.register(DatabricksAgentV2())
+ConnectorRegistry.register(DatabricksConnectorV2())
