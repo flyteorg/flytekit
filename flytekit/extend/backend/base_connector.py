@@ -86,12 +86,18 @@ class Resource:
     """
     This is the output resource of the job.
 
-    Args:
-        phase: The phase of the job.
-        message: The return message from the job.
-        log_links: The log links of the job. For example, the link to the BigQuery Console.
-        outputs: The outputs of the job. If return python native types, the agent will convert them to flyte literals.
-        custom_info: The custom info of the job.For example, the job config.
+    Attributes
+    ----------
+        phase : TaskExecution.Phase
+            The phase of the job.
+        message : Optional[str]
+            The return message from the job.
+        log_links : Optional[List[TaskLog]]
+            The log links of the job. For example, the link to the BigQuery Console.
+        outputs : Optional[Union[LiteralMap, typing.Dict[str, Any]]]
+            The outputs of the job. If return python native types, the agent will convert them to flyte literals.
+        custom_info : Optional[typing.Dict[str, Any]]
+            The custom info of the job. For example, the job config.
     """
 
     phase: TaskExecution.Phase
