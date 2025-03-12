@@ -286,8 +286,7 @@ class SyncAgentExecutorMixin:
         ss = ctx.serialization_settings or SerializationSettings(ImageConfig())
         task_template = get_serializable(OrderedDict(), ss, self).template
         if task_template.metadata.timeout:
-            logger.info("Timeout is not supported for local execution.\n"
-                        "Ignoring the timeout.")
+            logger.info("Timeout is not supported for local execution.\n" "Ignoring the timeout.")
         output_prefix = ctx.file_access.get_random_remote_directory()
 
         agent = AgentRegistry.get_agent(task_template.type, task_template.task_type_version)
@@ -340,8 +339,7 @@ class AsyncAgentExecutorMixin:
 
         task_template = get_serializable(OrderedDict(), ss, self).template
         if task_template.metadata.timeout:
-            logger.info("Timeout is not supported for local execution.\n"
-                        "Ignoring the timeout.")
+            logger.info("Timeout is not supported for local execution.\n" "Ignoring the timeout.")
         self._agent = AgentRegistry.get_agent(task_template.type, task_template.task_type_version)
 
         resource_meta = local_agent_loop.run_until_complete(
