@@ -56,15 +56,12 @@ class Boto3ConnectorMixin:
     """
     This mixin facilitates the creation of a Boto3 connector for any AWS service.
     It provides a single method, `_call`, which can be employed to invoke any Boto3 method.
+
+    :param service: The AWS service to use, e.g., sagemaker.
+    :param region: The region for the boto3 client; can be overridden when calling boto3 methods.
     """
 
     def __init__(self, *, service: str, region: Optional[str] = None, **kwargs):
-        """
-        Initialize the Boto3ConnectorMixin.
-
-        :param service: The AWS service to use, e.g., sagemaker.
-        :param region: The region for the boto3 client; can be overridden when calling boto3 methods.
-        """
         self._service = service
         self._region = region
 

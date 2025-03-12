@@ -197,7 +197,7 @@ async def test_call_with_truncated_idempotence_token(mock_session):
     )
 
     mock_method.assert_called_with(
-        ModelName="xgboost-random-string-1234567890123456789012345678-432aa64034f3",
+        ModelName="xgboost-random-string-1234567890123456789012345678-1a25e4bb9886",
         PrimaryContainer={
             "Image": "301217895009.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tritonserver:21.08-py3",
             "ModelDataUrl": "s3://sagemaker-connector-xgboost/model.tar.gz",
@@ -205,7 +205,7 @@ async def test_call_with_truncated_idempotence_token(mock_session):
     )
 
     assert result == mock_method.return_value
-    assert idempotence_token == "432aa64034f37edb"
+    assert idempotence_token == "1a25e4bb988697a7"
 
 
 @pytest.mark.asyncio
