@@ -7,7 +7,7 @@ from asyncssh import SSHClientConnection
 
 import flytekit
 from flytekit.core.type_engine import TypeEngine
-from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource, ResourceMeta
+from flytekit.extend.backend.base_connector import ConnectorRegistry, AsyncConnectorBase, Resource, ResourceMeta
 from flytekit.extend.backend.utils import convert_to_flyte_phase
 from flytekit.extras.tasks.shell import OutputLocation, _PythonFStringInterpolizer
 from flytekit.models.literals import LiteralMap
@@ -32,7 +32,7 @@ class SlurmJobMetadata(ResourceMeta):
     outputs: Dict[str, str]
 
 
-class SlurmScriptAgent(AsyncAgentBase):
+class SlurmScriptAgent(AsyncConnectorBase):
     name = "Slurm Script Agent"
 
     # SSH connection pool for multi-host environment
@@ -188,4 +188,4 @@ def _get_sbatch_cmd(sbatch_conf: Dict[str, str], batch_script_path: str, batch_s
     return cmd
 
 
-AgentRegistry.register(SlurmScriptAgent())
+ConnectorRegistry.register(SlurmScriptAgent())

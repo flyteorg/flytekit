@@ -81,6 +81,6 @@ jobs:
           tags: ${{ steps.flyteagent-names.outputs.tags }}
           build-args: |
             VERSION=${{ github.sha }}
-          file: ./Dockerfile.agent
+          file: ./Dockerfile.connector
           cache-from: type=gha
           cache-to: type=gha,mode=max
