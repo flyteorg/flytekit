@@ -5,6 +5,7 @@ import hashlib
 import os
 import pathlib
 import re
+import sys
 import typing
 from abc import abstractmethod
 from dataclasses import asdict, dataclass
@@ -47,6 +48,10 @@ class ImageSpec:
         platform: Specify the target platforms for the build output (for example, windows/amd64 or linux/amd64,darwin/arm64
         pip_index: Specify the custom pip index url
         pip_extra_index_url: Specify one or more pip index urls as a list
+        pip_secret_mounts: Specify a list of tuples to mount secret for pip install. Each tuple should contain the path to
+            the secret file and the mount path. For example, [(".gitconfig", "/etc/gitconfig")]. This is experimental and
+            the interface may change in the future. Configuring this should not change the built image.
+        pip_extra_args: Specify one or more extra pip install arguments as a space-delimited string
         registry_config: Specify the path to a JSON registry config file
         entrypoint: List of strings to overwrite the entrypoint of the base image with, set to [] to remove the entrypoint.
         commands: Command to run during the building process
@@ -60,6 +65,8 @@ class ImageSpec:
                   Python files into the image.
 
             If the option is set by the user, then that option is of course used.
+        copy: List of files/directories to copy to /root. e.g. ["src/file1.txt", "src/file2.txt"]
+        python_exec: Python executable to use for install packages
     """
 
     name: str = "flytekit"
@@ -79,22 +86,38 @@ class ImageSpec:
     platform: str = "linux/amd64"
     pip_index: Optional[str] = None
     pip_extra_index_url: Optional[List[str]] = None
+    pip_secret_mounts: Optional[List[Tuple[str, str]]] = None
+    pip_extra_args: Optional[str] = None
     registry_config: Optional[str] = None
     entrypoint: Optional[List[str]] = None
     commands: Optional[List[str]] = None
     tag_format: Optional[str] = None
     source_copy_mode: Optional[CopyFileDetection] = None
+    copy: Optional[List[str]] = None
+    python_exec: Optional[str] = None
 
     def __post_init__(self):
         self.name = self.name.lower()
         self._is_force_push = os.environ.get(FLYTE_FORCE_PUSH_IMAGE_SPEC, False)  # False by default
         if self.registry:
             self.registry = self.registry.lower()
+            if not validate_container_registry_name(self.registry):
+                raise ValueError(
+                    f"Invalid container registry name: '{self.registry}'.\n Expected formats:\n"
+                    f"- 'localhost:30000' (for local registries)\n"
+                    f"- 'ghcr.io/username' (for GitHub Container Registry)\n"
+                    f"- 'docker.io/username' (for docker hub)\n"
+                )
 
         # If not set, help the user set this option as well, to support the older default behavior where existence
         # of the source root implied that copying of files was needed.
         if self.source_root is not None:
             self.source_copy_mode = self.source_copy_mode or CopyFileDetection.LOADED_MODULES
+
+        builder_registry = ImageBuildEngine.get_registry()
+        if self.builder is None and builder_registry:
+            # Use the builder with the highest priority by default
+            self.builder = max(builder_registry, key=lambda name: builder_registry[name][1])
 
         parameters_str_list = [
             "packages",
@@ -113,6 +136,15 @@ class ImageSpec:
                 error_msg = f"{parameter} must be a list of strings or None"
                 raise ValueError(error_msg)
 
+        if self.pip_secret_mounts is not None:
+            pip_secret_mounts_is_list_tuple = isinstance(self.pip_secret_mounts, list) and all(
+                isinstance(v, tuple) and len(v) == 2 and all(isinstance(vv, str) for vv in v)
+                for v in self.pip_secret_mounts
+            )
+            if not pip_secret_mounts_is_list_tuple:
+                error_msg = "pip_secret_mounts must be a list of tuples of two strings or None"
+                raise ValueError(error_msg)
+
     @cached_property
     def id(self) -> str:
         """
@@ -128,8 +160,11 @@ class ImageSpec:
 
         :return: a unique identifier of the ImageSpec
         """
+        parameters_to_exclude = ["pip_secret_mounts"]
         # Only get the non-None values in the ImageSpec to ensure the hash is consistent across different Flytekit versions.
-        image_spec_dict = asdict(self, dict_factory=lambda x: {k: v for (k, v) in x if v is not None})
+        image_spec_dict = asdict(
+            self, dict_factory=lambda x: {k: v for (k, v) in x if v is not None and k not in parameters_to_exclude}
+        )
         image_spec_bytes = image_spec_dict.__str__().encode("utf-8")
         return base64.urlsafe_b64encode(hashlib.md5(image_spec_bytes).digest()).decode("ascii").rstrip("=")
 
@@ -171,6 +206,12 @@ class ImageSpec:
             # Since the source root is supposed to represent the files, store the digest into the source root as a
             # shortcut to represent all the files.
             spec = dataclasses.replace(spec, source_root=ls_digest)
+
+        if self.copy:
+            from flytekit.tools.fast_registration import compute_digest
+
+            digest = compute_digest(self.copy, None)
+            spec = dataclasses.replace(spec, copy=digest)
 
         if spec.requirements:
             requirements = hashlib.sha1(pathlib.Path(spec.requirements).read_bytes().strip()).hexdigest()
@@ -225,7 +266,10 @@ class ImageSpec:
             if e.response.status_code == 404:
                 return False
 
-            if re.match(f"unknown: repository .*{self.name} not found", e.explanation):
+            if re.match(
+                f"unknown: (artifact|repository) .*{self.name}(|:{self.tag}) not found",
+                e.explanation,
+            ):
                 click.secho(f"Received 500 error with explanation: {e.explanation}", fg="yellow")
                 return False
 
@@ -299,6 +343,12 @@ class ImageSpec:
         new_image_spec = self._update_attribute("apt_packages", apt_packages)
         return new_image_spec
 
+    def with_copy(self, src: Union[str, List[str]]) -> "ImageSpec":
+        """
+        Builder that returns a new image spec with the source files copied to the destination directory.
+        """
+        return self._update_attribute("copy", src)
+
     def force_push(self) -> "ImageSpec":
         """
         Builder that returns a new image spec with force push enabled.
@@ -307,6 +357,37 @@ class ImageSpec:
         copied_image_spec._is_force_push = True
 
         return copied_image_spec
+
+    @classmethod
+    def from_env(cls, *, pinned_packages: Optional[List[str]] = None, **kwargs) -> "ImageSpec":
+        """Create ImageSpec with the environment's Python version and packages pinned to the ones in the environment."""
+
+        from importlib.metadata import version
+
+        # Invalid kwargs when using `ImageSpec.from_env`
+        invalid_kwargs = ["python_version"]
+        for invalid_kwarg in invalid_kwargs:
+            if invalid_kwarg in kwargs and kwargs[invalid_kwarg] is not None:
+                msg = (
+                    f"{invalid_kwarg} can not be used with `from_env` because it will be inferred from the environment"
+                )
+                raise ValueError(msg)
+
+        version_info = sys.version_info
+        python_version = f"{version_info.major}.{version_info.minor}"
+
+        if "packages" in kwargs:
+            packages = kwargs.pop("packages")
+        else:
+            packages = []
+
+        pinned_packages = pinned_packages or []
+
+        for package_to_pin in pinned_packages:
+            package_version = version(package_to_pin)
+            packages.append(f"{package_to_pin}=={package_version}")
+
+        return ImageSpec(packages=packages, python_version=python_version, **kwargs)
 
 
 class ImageSpecBuilder:
@@ -364,6 +445,10 @@ class ImageBuildEngine:
         cls._REGISTRY[builder_type] = (image_spec_builder, priority)
 
     @classmethod
+    def get_registry(cls) -> Dict[str, Tuple[ImageSpecBuilder, int]]:
+        return cls._REGISTRY
+
+    @classmethod
     @lru_cache
     def build(cls, image_spec: ImageSpec):
         from flytekit.core.context_manager import FlyteContextManager
@@ -379,13 +464,8 @@ class ImageBuildEngine:
             cls.build(spec.base_image)
             spec.base_image = spec.base_image.image_name()
 
-        if spec.builder is None and cls._REGISTRY:
-            builder = max(cls._REGISTRY, key=lambda name: cls._REGISTRY[name][1])
-        else:
-            builder = spec.builder
-
         img_name = spec.image_name()
-        img_builder = cls._get_builder(builder)
+        img_builder = cls._get_builder(spec.builder)
         if img_builder.should_build(spec):
             fully_qualified_image_name = img_builder.build_image(spec)
             if fully_qualified_image_name is not None:
@@ -407,3 +487,12 @@ class ImageBuildEngine:
                     f" Please upgrade envd to v0.3.39+."
                 )
         return cls._REGISTRY[builder][0]
+
+
+def validate_container_registry_name(name: str) -> bool:
+    """Validate Docker container registry name."""
+    # Define the regular expression for the registry name
+    registry_pattern = r"^(localhost:\d{1,5}|([a-z\d\._-]+)(:\d{1,5})?)(/[\w\.-]+)*$"
+
+    # Use regex to validate the given name
+    return bool(re.match(registry_pattern, name))

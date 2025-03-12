@@ -2,28 +2,35 @@ from __future__ import annotations
 
 import _datetime
 import collections
+import json
 import types
 import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field, is_dataclass
-from typing import Dict, Generator, List, Optional, Type, Union
+from typing import Dict, Generator, Generic, List, Optional, Type, Union
 
+import msgpack
 from dataclasses_json import config
 from fsspec.utils import get_protocol
+from google.protobuf import json_format as _json_format
+from google.protobuf.struct_pb2 import Struct
 from marshmallow import fields
 from mashumaro.mixins.json import DataClassJSONMixin
 from mashumaro.types import SerializableType
 from typing_extensions import Annotated, TypeAlias, get_args, get_origin
 
 from flytekit import lazy_module
+from flytekit.core.constants import MESSAGEPACK
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-from flytekit.core.type_engine import TypeEngine, TypeTransformer
+from flytekit.core.type_engine import AsyncTypeTransformer, TypeEngine, TypeTransformerFailedError, modify_literal_uris
 from flytekit.deck.renderer import Renderable
+from flytekit.extras.pydantic_transformer.decorator import model_serializer, model_validator
 from flytekit.loggers import developer_logger, logger
 from flytekit.models import literals
 from flytekit.models import types as type_models
-from flytekit.models.literals import Literal, Scalar, StructuredDatasetMetadata
+from flytekit.models.literals import Binary, Literal, Scalar, StructuredDatasetMetadata
 from flytekit.models.types import LiteralType, SchemaType, StructuredDatasetType
+from flytekit.utils.asyn import loop_manager
 
 if typing.TYPE_CHECKING:
     import pandas as pd
@@ -56,6 +63,7 @@ class StructuredDataset(SerializableType, DataClassJSONMixin):
     file_format: typing.Optional[str] = field(default=GENERIC_FORMAT, metadata=config(mm_field=fields.String()))
 
     def _serialize(self) -> Dict[str, Optional[str]]:
+        # dataclass case
         lv = StructuredDatasetTransformerEngine().to_literal(
             FlyteContextManager.current_context(), self, type(self), None
         )
@@ -78,7 +86,7 @@ class StructuredDataset(SerializableType, DataClassJSONMixin):
             FlyteContextManager.current_context(),
             Literal(
                 scalar=Scalar(
-                    structured_dataset=StructuredDataset(
+                    structured_dataset=literals.StructuredDataset(
                         metadata=StructuredDatasetMetadata(
                             structured_dataset_type=StructuredDatasetType(format=file_format)
                         ),
@@ -87,6 +95,39 @@ class StructuredDataset(SerializableType, DataClassJSONMixin):
                 )
             ),
             cls,
+        )
+
+    @model_serializer
+    def serialize_structured_dataset(self) -> Dict[str, Optional[str]]:
+        # pydantic case
+        lv = StructuredDatasetTransformerEngine().to_literal(
+            FlyteContextManager.current_context(), self, type(self), None
+        )
+        sd = StructuredDataset(uri=lv.scalar.structured_dataset.uri)
+        sd.file_format = lv.scalar.structured_dataset.metadata.structured_dataset_type.format
+        return {
+            "uri": sd.uri,
+            "file_format": sd.file_format,
+        }
+
+    @model_validator(mode="after")
+    def deserialize_structured_dataset(self, info) -> StructuredDataset:
+        if info.context is None or info.context.get("deserialize") is not True:
+            return self
+
+        return StructuredDatasetTransformerEngine().to_python_value(
+            FlyteContextManager.current_context(),
+            Literal(
+                scalar=Scalar(
+                    structured_dataset=literals.StructuredDataset(
+                        metadata=StructuredDatasetMetadata(
+                            structured_dataset_type=StructuredDatasetType(format=self.file_format)
+                        ),
+                        uri=self.uri,
+                    )
+                )
+            ),
+            type(self),
         )
 
     @classmethod
@@ -131,6 +172,18 @@ class StructuredDataset(SerializableType, DataClassJSONMixin):
         return self._literal_sd
 
     def open(self, dataframe_type: Type[DF]):
+        from flytekit.types.structured import lazy_import_structured_dataset_handler
+
+        """
+        Load the handler if needed. For the use case like:
+        @task
+        def t1(sd: StructuredDataset):
+          import pandas as pd
+          sd.open(pd.DataFrame).all()
+
+        pandas is imported inside the task, so pandnas handler won't be loaded during deserialization in type engine.
+        """
+        lazy_import_structured_dataset_handler()
         self._dataframe_type = dataframe_type
         return self
 
@@ -138,7 +191,44 @@ class StructuredDataset(SerializableType, DataClassJSONMixin):
         if self._dataframe_type is None:
             raise ValueError("No dataframe type set. Use open() to set the local dataframe type you want to use.")
         ctx = FlyteContextManager.current_context()
+
+        if self.uri is not None and self.dataframe is None:
+            expected = TypeEngine.to_literal_type(StructuredDataset)
+            self._set_literal(ctx, expected)
+
         return flyte_dataset_transformer.open_as(ctx, self.literal, self._dataframe_type, self.metadata)
+
+    def _set_literal(self, ctx: FlyteContext, expected: LiteralType) -> None:
+        """
+        Explicitly set the StructuredDataset Literal to handle the following cases:
+
+        1. Read a dataframe from a StructuredDataset with an uri, for example:
+
+        @task
+        def return_sd() -> StructuredDataset:
+            sd = StructuredDataset(uri="s3://my-s3-bucket/s3_flyte_dir/df.parquet", file_format="parquet")
+            df = sd.open(pd.DataFrame).all()
+            return df
+
+        For details, please refer to this issue: https://github.com/flyteorg/flyte/issues/5954.
+
+        2. Need access to self._literal_sd when converting task output LiteralMap back to flyteidl, please see:
+        https://github.com/flyteorg/flytekit/blob/f938661ff8413219d1bea77f6914a58c302d5c6c/flytekit/bin/entrypoint.py#L326
+
+        For details, please refer to this issue: https://github.com/flyteorg/flyte/issues/5956.
+        """
+        to_literal = loop_manager.synced(flyte_dataset_transformer.async_to_literal)
+        self._literal_sd = to_literal(ctx, self, StructuredDataset, expected).scalar.structured_dataset
+        if self.metadata is None:
+            self._metadata = self._literal_sd.metadata
+
+    def set_literal(self, ctx: FlyteContext, expected: LiteralType) -> None:
+        """
+        A public wrapper method to set the StructuredDataset Literal.
+
+        This method provides external access to the internal _set_literal method.
+        """
+        return self._set_literal(ctx, expected)
 
     def iter(self) -> Generator[DF, None, None]:
         if self._dataframe_type is None:
@@ -221,7 +311,7 @@ def extract_cols_and_format(
     return t, ordered_dict_cols, fmt, pa_schema
 
 
-class StructuredDatasetEncoder(ABC):
+class StructuredDatasetEncoder(ABC, Generic[T]):
     def __init__(
         self,
         python_type: Type[T],
@@ -288,7 +378,7 @@ class StructuredDatasetEncoder(ABC):
         raise NotImplementedError
 
 
-class StructuredDatasetDecoder(ABC):
+class StructuredDatasetDecoder(ABC, Generic[DF]):
     def __init__(
         self,
         python_type: Type[DF],
@@ -397,7 +487,7 @@ def get_supported_types():
 class DuplicateHandlerError(ValueError): ...
 
 
-class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
+class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]):
     """
     Think of this transformer as a higher-level meta transformer that is used for all the dataframe types.
     If you are bringing a custom data frame type, or any data frame type, to flytekit, instead of
@@ -592,7 +682,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
     def assert_type(self, t: Type[StructuredDataset], v: typing.Any):
         return
 
-    def to_literal(
+    async def async_to_literal(
         self,
         ctx: FlyteContext,
         python_val: Union[StructuredDataset, typing.Any],
@@ -604,6 +694,13 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         python_type, *attrs = extract_cols_and_format(python_type)
         # In case it's a FlyteSchema
         sdt = StructuredDatasetType(format=self.DEFAULT_FORMATS.get(python_type, GENERIC_FORMAT))
+
+        if issubclass(python_type, StructuredDataset) and not isinstance(python_val, StructuredDataset):
+            # Catch a common mistake
+            raise TypeTransformerFailedError(
+                f"Expected a StructuredDataset instance, but got {type(python_val)} instead."
+                f" Did you forget to wrap your dataframe in a StructuredDataset instance?"
+            )
 
         if expected and expected.structured_dataset_type:
             sdt = StructuredDatasetType(
@@ -642,10 +739,31 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             #       return StructuredDataset(uri=uri)
             if python_val.dataframe is None:
                 uri = python_val.uri
+                file_format = python_val.file_format
+
+                # Check the user-specified uri
                 if not uri:
                     raise ValueError(f"If dataframe is not specified, then the uri should be specified. {python_val}")
                 if not ctx.file_access.is_remote(uri):
-                    uri = ctx.file_access.put_raw_data(uri)
+                    uri = await ctx.file_access.async_put_raw_data(uri)
+
+                # Check the user-specified file_format
+                # When users specify file_format for a StructuredDataset, the file_format should be retained conditionally.
+                # For details, please refer to https://github.com/flyteorg/flyte/issues/6096.
+                # Following illustrates why we can't always copy the user-specified file_format over:
+                #
+                # @task
+                # def modify_format(sd: Annotated[StructuredDataset, {}, "task-format"]) -> StructuredDataset:
+                #     return sd
+                #
+                # sd = StructuredDataset(uri="s3://my-s3-bucket/df.parquet", file_format="user-format")
+                # sd2 = modify_format(sd=sd)
+                #
+                # In this case, we expect sd2.file_format to be task-format (as shown in Annotated), not user-format.
+                # If we directly copy the user-specified file_format over, the type hint information will be missing.
+                if sdt.format == GENERIC_FORMAT and file_format != GENERIC_FORMAT:
+                    sdt.format = file_format
+
                 sd_model = literals.StructuredDataset(
                     uri=uri,
                     metadata=StructuredDatasetMetadata(structured_dataset_type=sdt),
@@ -656,6 +774,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             # that we will need to invoke an encoder for. Figure out which encoder to call and invoke it.
             df_type = type(python_val.dataframe)
             protocol = self._protocol_from_type_or_prefix(ctx, df_type, python_val.uri)
+
             return self.encode(
                 ctx,
                 python_val,
@@ -711,11 +830,102 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         # with a format of "" is used.
         sd_model.metadata._structured_dataset_type.format = handler.supported_format
         lit = Literal(scalar=Scalar(structured_dataset=sd_model))
+
+        # Because the handler.encode may have uploaded something, and because the sd may end up living inside a
+        # dataclass, we need to modify any uploaded flyte:// urls here.
+        modify_literal_uris(lit)
         sd._literal_sd = sd_model
         sd._already_uploaded = True
         return lit
 
-    def to_python_value(
+    def dict_to_structured_dataset(
+        self, dict_obj: typing.Dict[str, str], expected_python_type: Type[T] | StructuredDataset
+    ) -> T | StructuredDataset:
+        uri = dict_obj.get("uri", None)
+        file_format = dict_obj.get("file_format", None)
+
+        if uri is None:
+            raise ValueError("StructuredDataset's uri and file format should not be None")
+
+        # Instead of using python native StructuredDataset, we need to build a literals.StructuredDataset
+        # The reason is that _literal_sd of python sd is accessed when task output LiteralMap is converted back to flyteidl
+        # Hence, _literal_sd must have to_flyte_idl method
+        # See https://github.com/flyteorg/flytekit/blob/f938661ff8413219d1bea77f6914a58c302d5c6c/flytekit/bin/entrypoint.py#L326
+        # For details, please refer to this issue: https://github.com/flyteorg/flyte/issues/5956.
+        sdt = StructuredDatasetType(format=file_format)
+        metad = literals.StructuredDatasetMetadata(structured_dataset_type=sdt)
+        sd_literal = literals.StructuredDataset(uri=uri, metadata=metad)
+
+        return StructuredDatasetTransformerEngine().to_python_value(
+            FlyteContextManager.current_context(),
+            Literal(scalar=Scalar(structured_dataset=sd_literal)),
+            expected_python_type,
+        )
+
+    def from_binary_idl(
+        self, binary_idl_object: Binary, expected_python_type: Type[T] | StructuredDataset
+    ) -> T | StructuredDataset:
+        """
+        If the input is from flytekit, the Life Cycle will be as follows:
+
+        Life Cycle:
+        binary IDL                 -> resolved binary         -> bytes                   -> expected Python object
+        (flytekit customized          (propeller processing)     (flytekit binary IDL)      (flytekit customized
+        serialization)                                                                       deserialization)
+
+        Example Code:
+        @dataclass
+        class DC:
+            sd: StructuredDataset
+
+        @workflow
+        def wf(dc: DC):
+            t_sd(dc.sd)
+
+        Note:
+        - The deserialization is the same as put a structured dataset in a dataclass, which will deserialize by the mashumaro's API.
+
+        Related PR:
+        - Title: Override Dataclass Serialization/Deserialization Behavior for FlyteTypes via Mashumaro
+        - Link: https://github.com/flyteorg/flytekit/pull/2554
+        """
+        if binary_idl_object.tag == MESSAGEPACK:
+            python_val = msgpack.loads(binary_idl_object.value)
+            return self.dict_to_structured_dataset(dict_obj=python_val, expected_python_type=expected_python_type)
+        else:
+            raise TypeTransformerFailedError(f"Unsupported binary format: `{binary_idl_object.tag}`")
+
+    def from_generic_idl(
+        self, generic: Struct, expected_python_type: Type[T] | StructuredDataset
+    ) -> T | StructuredDataset:
+        """
+        If the input is from Flyte Console, the Life Cycle will be as follows:
+
+        Life Cycle:
+        json str            -> protobuf struct         -> resolved protobuf struct   -> expected Python object
+        (console user input)   (console output)           (propeller)                   (flytekit customized deserialization)
+
+        Example Code:
+        @dataclass
+        class DC:
+            sd: StructuredDataset
+
+        @workflow
+        def wf(dc: DC):
+            t_sd(dc.sd)
+
+        Note:
+        - The deserialization is the same as put a structured dataset in a dataclass, which will deserialize by the mashumaro's API.
+
+        Related PR:
+        - Title: Override Dataclass Serialization/Deserialization Behavior for FlyteTypes via Mashumaro
+        - Link: https://github.com/flyteorg/flytekit/pull/2554
+        """
+        json_str = _json_format.MessageToJson(generic)
+        python_val = json.loads(json_str)
+        return self.dict_to_structured_dataset(dict_obj=python_val, expected_python_type=expected_python_type)
+
+    async def async_to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T] | StructuredDataset
     ) -> T | StructuredDataset:
         """
@@ -748,6 +958,13 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         |                             | the running task's signature.           |                                      |
         +-----------------------------+-----------------------------------------+--------------------------------------+
         """
+        # Handle dataclass attribute access
+        if lv.scalar:
+            if lv.scalar.binary:
+                return self.from_binary_idl(lv.scalar.binary, expected_python_type)
+            if lv.scalar.generic:
+                return self.from_generic_idl(lv.scalar.generic, expected_python_type)
+
         # Detect annotations and extract out all the relevant information that the user might supply
         expected_python_type, column_dict, storage_fmt, pa_schema = extract_cols_and_format(expected_python_type)
 

@@ -1,7 +1,7 @@
 import base64
 import shlex
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 from flyteidl.core.execution_pb2 import TaskExecution
 from perian import (
@@ -17,12 +17,14 @@ from perian import (
     JobStatus,
     MemoryQueryInput,
     Name,
+    OSStorageConfig,
     ProviderQueryInput,
     RegionQueryInput,
     Size,
 )
 
 from flytekit import current_context
+from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions.base import FlyteException
 from flytekit.exceptions.user import FlyteUserException
 from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource, ResourceMeta
@@ -35,13 +37,13 @@ PERIAN_API_URL = "https://api.perian.cloud"
 
 @dataclass
 class PerianMetadata(ResourceMeta):
-    """Metadata for Perian jobs"""
+    """Metadata for PERIAN jobs"""
 
     job_id: str
 
 
 class PerianAgent(AsyncAgentBase):
-    """Flyte Agent for executing tasks on Perian"""
+    """Flyte Agent for executing tasks on PERIAN Job Platform"""
 
     name = "Perian Agent"
 
@@ -57,9 +59,13 @@ class PerianAgent(AsyncAgentBase):
         **kwargs,
     ) -> PerianMetadata:
         logger.info("Creating new Perian job")
-
+        ctx = current_context()
+        literal_types = task_template.interface.inputs
+        input_kwargs = (
+            TypeEngine.literal_map_to_kwargs(ctx, inputs, literal_types=literal_types) if inputs.literals else None
+        )
         config = Configuration(host=PERIAN_API_URL)
-        job_request = self._build_create_job_request(task_template)
+        job_request = self._build_create_job_request(task_template, input_kwargs)
         with ApiClient(config) as api_client:
             api_instance = JobApi(api_client)
             response = api_instance.create_job(
@@ -105,7 +111,9 @@ class PerianAgent(AsyncAgentBase):
         if response.status_code != 200:
             raise FlyteException(f"Failed to cancel Perian job: {response.text}")
 
-    def _build_create_job_request(self, task_template: TaskTemplate) -> CreateJobRequest:
+    def _build_create_job_request(
+        self, task_template: TaskTemplate, inputs: Optional[Dict[str, Any]]
+    ) -> CreateJobRequest:
         params = task_template.custom
         secrets = current_context().secrets
 
@@ -130,9 +138,9 @@ class PerianAgent(AsyncAgentBase):
 
         docker_registry = None
         try:
-            dr_url = secrets.get("docker_registry_url")
-            dr_username = secrets.get("docker_registry_username")
-            dr_password = secrets.get("docker_registry_password")
+            dr_url = secrets.get(key="docker_registry_url")
+            dr_username = secrets.get(key="docker_registry_username")
+            dr_password = secrets.get(key="docker_registry_password")
             if any([dr_url, dr_username, dr_password]):
                 docker_registry = DockerRegistryCredentials(
                     url=dr_url,
@@ -143,28 +151,58 @@ class PerianAgent(AsyncAgentBase):
             pass
 
         container = task_template.container
-        if ":" in container.image:
-            docker_run.image_name, docker_run.image_tag = container.image.rsplit(":", 1)
+        if container:
+            image = container.image
         else:
-            docker_run.image_name = container.image
-        if container.args:
-            docker_run.command = shlex.join(container.args)
+            image = params["image"]
+        if ":" in image:
+            docker_run.image_name, docker_run.image_tag = image.rsplit(":", 1)
+        else:
+            docker_run.image_name = image
+
+        if container:
+            command = container.args
+        else:
+            command = self._render_command_template(params["command"], inputs)
+        if command:
+            docker_run.command = shlex.join(command)
+
+        if params.get("environment"):
+            if docker_run.env_variables:
+                docker_run.env_variables.update(params["environment"])
+            else:
+                docker_run.env_variables = params["environment"]
+
+        storage_config = None
+        if params.get("os_storage_size"):
+            storage_config = OSStorageConfig(size=int(params["os_storage_size"]))
 
         return CreateJobRequest(
             auto_failover_instance_type=True,
             requirements=reqs,
             docker_run_parameters=docker_run,
             docker_registry_credentials=docker_registry,
+            os_storage_config=storage_config,
         )
+
+    def _render_command_template(self, command: List[str], inputs: Optional[Dict[str, Any]]) -> List[str]:
+        if not inputs:
+            return command
+        rendered_command = []
+        for c in command:
+            for key, val in inputs.items():
+                c = c.replace("{{.inputs." + key + "}}", str(val))
+            rendered_command.append(c)
+        return rendered_command
 
     def _read_storage_credentials(self) -> DockerRunParameters:
         secrets = current_context().secrets
         docker_run = DockerRunParameters()
         # AWS
         try:
-            aws_access_key_id = secrets.get("aws_access_key_id")
-            aws_secret_access_key = secrets.get("aws_secret_access_key")
-            docker_run.env_variables = {
+            aws_access_key_id = secrets.get(key="aws_access_key_id")
+            aws_secret_access_key = secrets.get(key="aws_secret_access_key")
+            docker_run.secrets = {
                 "AWS_ACCESS_KEY_ID": aws_access_key_id,
                 "AWS_SECRET_ACCESS_KEY": aws_secret_access_key,
             }
@@ -174,8 +212,8 @@ class PerianAgent(AsyncAgentBase):
         # GCP
         try:
             creds_file = "/data/gcp-credentials.json"  # to be mounted in the container
-            google_application_credentials = secrets.get("google_application_credentials")
-            docker_run.env_variables = {
+            google_application_credentials = secrets.get(key="google_application_credentials")
+            docker_run.secrets = {
                 "GOOGLE_APPLICATION_CREDENTIALS": creds_file,
             }
             docker_run.container_files = [
@@ -195,8 +233,8 @@ class PerianAgent(AsyncAgentBase):
 
     def _build_headers(self) -> dict:
         secrets = current_context().secrets
-        org = secrets.get("perian_organization")
-        token = secrets.get("perian_token")
+        org = secrets.get(key="perian_organization")
+        token = secrets.get(key="perian_token")
         if not org or not token:
             raise FlyteUserException("perian_organization and perian_token must be provided in the secrets")
         return {

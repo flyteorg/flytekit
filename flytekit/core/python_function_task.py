@@ -18,20 +18,34 @@
 from __future__ import annotations
 
 import inspect
+import os
+import signal
+import time
+import typing
 from abc import ABC
 from collections import OrderedDict
 from contextlib import suppress
 from enum import Enum
-from typing import Any, Callable, Iterable, List, Optional, TypeVar, Union, cast
+from typing import Any, Callable, Iterable, List, Optional, Tuple, TypeVar, Union, cast
 
+from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core import launch_plan as _annotated_launch_plan
-from flytekit.core.base_task import Task, TaskResolverMixin
+from flytekit.core.base_task import Task, TaskMetadata, TaskResolverMixin
+from flytekit.core.constants import EAGER_ROOT_ENV_NAME
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.docstring import Docstring
-from flytekit.core.interface import transform_function_to_interface
-from flytekit.core.promise import VoidPromise, translate_inputs_to_literals
+from flytekit.core.interface import Interface, transform_function_to_interface
+from flytekit.core.promise import (
+    Promise,
+    VoidPromise,
+    async_flyte_entity_call_handler,
+    translate_inputs_to_literals,
+)
 from flytekit.core.python_auto_container import PythonAutoContainerTask, default_task_resolver
+from flytekit.core.tracked_abc import FlyteTrackedABC
 from flytekit.core.tracker import extract_task_module, is_functools_wrapped_module_level, isnested, istestfunction
+from flytekit.core.utils import _dnsify
+from flytekit.core.worker_queue import Controller
 from flytekit.core.workflow import (
     PythonFunctionWorkflow,
     WorkflowBase,
@@ -39,14 +53,23 @@ from flytekit.core.workflow import (
     WorkflowMetadata,
     WorkflowMetadataDefaults,
 )
+from flytekit.deck.deck import Deck
+from flytekit.exceptions.eager import EagerException
+from flytekit.exceptions.system import FlyteNonRecoverableSystemException
 from flytekit.exceptions.user import FlyteValueException
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as task_models
+from flytekit.models.admin import common as admin_common_models
 from flytekit.models.admin import workflow as admin_workflow_models
+from flytekit.models.filters import ValueIn
+from flytekit.models.literals import LiteralMap
+from flytekit.utils.asyn import loop_manager
 
 T = TypeVar("T")
+
+CLEANUP_LOOP_DELAY_SECONDS = 1
 
 
 class PythonInstanceTask(PythonAutoContainerTask[T], ABC):  # type: ignore
@@ -112,23 +135,31 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         node_dependency_hints: Optional[
             Iterable[Union["PythonFunctionTask", "_annotated_launch_plan.LaunchPlan", WorkflowBase]]
         ] = None,
+        pickle_untyped: bool = False,
         **kwargs,
     ):
         """
         :param T task_config: Configuration object for Task. Should be a unique type for that specific Task
         :param Callable task_function: Python function that has type annotations and works for the task
-        :param Optional[List[str]] ignore_input_vars: When supplied, these input variables will be removed from the interface. This
+        :param Optional[List[str]] ignore_input_vars: When supplied, these input variables will be removed from the
+        interface. This
                                   can be used to inject some client side variables only. Prefer using ExecutionParams
         :param Optional[ExecutionBehavior] execution_mode: Defines how the execution should behave, for example
             executing normally or specially handling a dynamic case.
         :param str task_type: String task type to be associated with this Task
-        :param Optional[Iterable[Union["PythonFunctionTask", "_annotated_launch_plan.LaunchPlan", WorkflowBase]]] node_dependency_hints:
+        :param Optional[Iterable[Union["PythonFunctionTask", "_annotated_launch_plan.LaunchPlan", WorkflowBase]]]
+        node_dependency_hints:
             A list of tasks, launchplans, or workflows that this task depends on. This is only
             for dynamic tasks/workflows, where flyte cannot automatically determine the dependencies prior to runtime.
+        :param bool pickle_untyped: If set to True, the task will pickle untyped outputs. This is just a convenience
+            flag to avoid having to specify the output types in the interface. This is not recommended for production
+            use.
         """
         if task_function is None:
             raise ValueError("TaskFunction is a required parameter for PythonFunctionTask")
-        self._native_interface = transform_function_to_interface(task_function, Docstring(callable_=task_function))
+        self._native_interface = transform_function_to_interface(
+            task_function, Docstring(callable_=task_function), pickle_untyped=pickle_untyped
+        )
         mutated_interface = self._native_interface.remove_inputs(ignore_input_vars)
         name, _, _, _ = extract_task_module(task_function)
         super().__init__(
@@ -196,11 +227,6 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         """
         if self.execution_mode == self.ExecutionBehavior.DEFAULT:
             return self._task_function(**kwargs)
-        elif self.execution_mode == self.ExecutionBehavior.EAGER:
-            # if the task is a coroutine function, inject the context object so that the async_entity
-            # has access to the FlyteContext.
-            kwargs["async_ctx"] = FlyteContextManager.current_context()
-            return self._task_function(**kwargs)
         elif self.execution_mode == self.ExecutionBehavior.DYNAMIC:
             return self.dynamic_execute(self._task_function, **kwargs)
 
@@ -244,6 +270,14 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
             # See comment on reference entity checking a bit down below in this function.
             # This is the only circular dependency between the translator.py module and the rest of the flytekit
             # authoring experience.
+
+            # TODO: After backend support pickling dynamic task, add fast_register_file_uploader to the FlyteContext,
+            # and pass the fast_registerfile_uploader to serializer via the options.
+            # If during runtime we are execution a dynamic function that is pickled, all subsequent sub-tasks in
+            # dynamic should also be pickled. As this is not possible to do during static compilation, we will have to
+            # upload the pickled file to the metadata store directly during runtime.
+            # If at runtime we are in dynamic task, we will automatically have the fast_register_file_uploader set,
+            # so we can use that to pass the file uploader to the translator.
             workflow_spec: admin_workflow_models.WorkflowSpec = get_serializable(
                 model_entities, ctx.serialization_settings, wf
             )
@@ -272,7 +306,8 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
 
                 if not isinstance(model, task_models.TaskSpec):
                     raise TypeError(
-                        f"Unexpected type for serialized form of task. Expected {task_models.TaskSpec}, but got {type(model)}"
+                        f"Unexpected type for serialized form of task. Expected {task_models.TaskSpec}, "
+                        f"but got {type(model)}"
                     )
 
                 # Store the valid task template so that we can pass it to the
@@ -375,3 +410,353 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
                 python_dependencies_deck.append(renderer.to_html())
 
         return super()._write_decks(native_inputs, native_outputs_as_map, ctx, new_user_params)
+
+
+class AsyncPythonFunctionTask(PythonFunctionTask[T], metaclass=FlyteTrackedABC):
+    """
+    This is the base task for eager tasks, as well as normal async tasks
+    Really only need to override the call function.
+    """
+
+    async def __call__(  # type: ignore[override]
+        self, *args: object, **kwargs: object
+    ) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, None]:
+        return await async_flyte_entity_call_handler(self, *args, **kwargs)  # type: ignore
+
+    async def async_execute(self, *args, **kwargs) -> Any:
+        """
+        Overrides the base execute function. This function does not handle dynamic at all. Eager and dynamic don't mix.
+        """
+        # Args is present because the asyn helper function passes it, but everything should be in kwargs by this point
+        assert not args
+        if self.execution_mode == self.ExecutionBehavior.DEFAULT:
+            return await self._task_function(**kwargs)
+        elif self.execution_mode == self.ExecutionBehavior.DYNAMIC:
+            raise NotImplementedError
+
+    execute = loop_manager.synced(async_execute)
+
+
+class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTrackedABC):
+    """
+    This is the base eager task (aka eager workflow) type. It replaces the previous experiment eager task type circa
+    Q4 2024. Users unfamiliar with this concept should refer to the documentation for more information.
+    But basically, Python becomes propeller, and every task invocation, creates a stack frame on the Flyte cluster in
+    the form of an execution rather than on the actual memory stack.
+
+    """
+
+    def __init__(
+        self,
+        task_config: T,
+        task_function: Callable,
+        task_type="python-task",
+        ignore_input_vars: Optional[List[str]] = None,
+        task_resolver: Optional[TaskResolverMixin] = None,
+        node_dependency_hints: Optional[
+            Iterable[Union["PythonFunctionTask", "_annotated_launch_plan.LaunchPlan", WorkflowBase]]
+        ] = None,
+        enable_deck: bool = True,
+        **kwargs,
+    ):
+        # delete execution mode from kwargs
+        if "execution_mode" in kwargs:
+            del kwargs["execution_mode"]
+
+        if "metadata" in kwargs:
+            kwargs["metadata"].is_eager = True
+        else:
+            kwargs["metadata"] = TaskMetadata(is_eager=True)
+
+        super().__init__(
+            task_config,
+            task_function,
+            task_type,
+            ignore_input_vars,
+            PythonFunctionTask.ExecutionBehavior.EAGER,
+            task_resolver,
+            node_dependency_hints,
+            enable_deck=enable_deck,
+            **kwargs,
+        )
+
+    def local_execution_mode(self) -> ExecutionState.Mode:
+        return ExecutionState.Mode.EAGER_LOCAL_EXECUTION
+
+    async def async_execute(self, *args, **kwargs) -> Any:
+        """
+        Overrides the base execute function. This function does not handle dynamic at all. Eager and dynamic don't mix.
+
+        Some notes on the different call scenarios since it's a little different than other tasks.
+        a) starting local execution - eager_task()
+            -> last condition of call handler,
+            -> set execution mode and self.local_execute()
+            -> self.execute(native_vals)
+              -> 1) -> task function() or 2) -> self.run_with_backend()  # fn name will be changed.
+        b) inside an eager task local execution - calling normal_task()
+            -> call handler detects in eager local execution (middle part of call handler)
+            -> call normal_task's local_execute()
+        c) inside an eager task local execution - calling async_normal_task()
+            -> produces a coro, which when awaited/run
+                -> call handler detects in eager local execution (middle part of call handler)
+                -> call async_normal_task's local_execute()
+                -> call AsyncPythonFunctionTask's async_execute(), which awaits the task function
+        d) inside an eager task local execution - calling another_eager_task()
+            -> produces a coro, which when awaited/run
+                -> call handler detects in eager local execution (middle part of call handler)
+                -> call another_eager_task's local_execute()
+                -> results are returned instead of being passed to create_native_named_tuple
+        d) eager_task, starting backend execution from entrypoint.py
+            -> eager_task.dispatch_execute(literals)
+            -> eager_task.execute(native values)
+            -> awaits eager_task.run_with_backend()  # fn name will be changed
+        e) in an eager task during backend execution, calling any flyte_entity()
+            -> add the entity to the worker queue and await the result.
+        """
+        # Args is present because the asyn helper function passes it, but everything should be in kwargs by this point
+        assert len(args) == 1
+        ctx = FlyteContextManager.current_context()
+        is_local_execution = cast(ExecutionState, ctx.execution_state).is_local_execution()
+        if not is_local_execution:
+            # a real execution
+            return await self.run_with_backend(**kwargs)
+        else:
+            # set local mode and proceed with running the function.  This makes the
+            mode = self.local_execution_mode()
+            with FlyteContextManager.with_context(
+                ctx.with_execution_state(cast(ExecutionState, ctx.execution_state).with_params(mode=mode))
+            ):
+                return await self._task_function(**kwargs)
+
+    def execute(self, **kwargs) -> Any:
+        ctx = FlyteContextManager.current_context()
+        is_local_execution = cast(ExecutionState, ctx.execution_state).is_local_execution()
+        builder = ctx.new_builder()
+        if not is_local_execution:
+            # ensure that the worker queue is in context
+            if not ctx.worker_queue:
+                from flytekit.configuration.plugin import get_plugin
+
+                # This should be read from transport at real runtime if available, but if not, we should either run
+                # remote in interactive mode, or let users configure the version to use.
+                ss = ctx.serialization_settings
+                if not ss:
+                    ss = SerializationSettings(
+                        image_config=ImageConfig.auto_default_image(),
+                    )
+
+                # In order to build the controller, we really just need a remote.
+                project = (
+                    ctx.user_space_params.execution_id.project
+                    if ctx.user_space_params and ctx.user_space_params.execution_id
+                    else "flytesnacks"
+                )
+                domain = (
+                    ctx.user_space_params.execution_id.domain
+                    if ctx.user_space_params and ctx.user_space_params.execution_id
+                    else "development"
+                )
+                raw_output = ctx.user_space_params.raw_output_prefix if ctx.user_space_params else None
+                logger.info(f"Constructing default remote with no config and {project}, {domain}, {raw_output}")
+                remote = get_plugin().get_remote(
+                    config=None, project=project, domain=domain, data_upload_location=raw_output
+                )
+
+                # tag is the current execution id
+                # root tag is read from the environment variable if it exists, if not, it's the current execution id
+                if not ctx.user_space_params or not ctx.user_space_params.execution_id:
+                    raise AssertionError(
+                        "User facing context and execution ID should be" " present when not running locally"
+                    )
+                tag = ctx.user_space_params.execution_id.name
+                root_tag = os.environ.get(EAGER_ROOT_ENV_NAME, tag)
+
+                # Prefix is a combination of the name of this eager workflow, and the current execution id.
+                prefix = self.name.split(".")[-1][:8]
+                prefix = f"e-{prefix}-{tag[:5]}"
+                prefix = _dnsify(prefix)
+                # Note: The construction of this object is in this function because this function should be on the
+                # main thread of pyflyte-execute. It needs to be on the main thread because signal handlers can only
+                # be installed on the main thread.
+                c = Controller(remote=remote, ss=ss, tag=tag, root_tag=root_tag, exec_prefix=prefix)
+                handler = c.get_signal_handler()
+                signal.signal(signal.SIGINT, handler)
+                signal.signal(signal.SIGTERM, handler)
+                builder = ctx.with_worker_queue(c)
+            else:
+                raise AssertionError("Worker queue should not be already present in the context for eager execution")
+        with FlyteContextManager.with_context(builder):
+            return loop_manager.run_sync(self.async_execute, self, **kwargs)
+
+    # easier to use explicit input kwargs
+    async def run_with_backend(self, **kwargs):
+        """
+        This is the main entry point to kick off a live run. Like if you're running locally, but want to use a
+        Flyte backend, or running for real on a Flyte backend.
+        """
+
+        # set up context
+        ctx = FlyteContextManager.current_context()
+        mode = ExecutionState.Mode.EAGER_EXECUTION
+        builder = ctx.with_execution_state(cast(ExecutionState, ctx.execution_state).with_params(mode=mode))
+
+        with FlyteContextManager.with_context(builder) as ctx:
+            base_error = None
+            try:
+                result = await self._task_function(**kwargs)
+            except EagerException as ee:
+                # Catch and re-raise a different exception to render Deck even in case of failure.
+                logger.error(f"Leaving eager execution because of {ee}")
+                base_error = ee
+
+            html = cast(Controller, ctx.worker_queue).render_html()
+            Deck("Eager Executions", html)
+
+            if base_error:
+                # now have to fail this eager task, because we don't want it to show up as succeeded.
+                raise FlyteNonRecoverableSystemException(base_error)
+            return result
+
+    def run(self, remote: "FlyteRemote", ss: SerializationSettings, **kwargs):  # type: ignore[name-defined]
+        """
+        This is a helper function to help run eager parent tasks locally, pointing to a remote cluster. This is used
+        only for local testing for now.
+        """
+        ctx = FlyteContextManager.current_context()
+        # tag is the current execution id
+        # root tag is read from the environment variable if it exists, if not, it's the current execution id
+        if not ctx.user_space_params or not ctx.user_space_params.execution_id:
+            raise AssertionError("User facing context and execution ID should be present when not running locally")
+        tag = ctx.user_space_params.execution_id.name
+        root_tag = os.environ.get(EAGER_ROOT_ENV_NAME, tag)
+
+        # Prefix is a combination of the name of this eager workflow, and the current execution id.
+        prefix = self.name.split(".")[-1][:8]
+        prefix = f"e-{prefix}-{tag[:5]}"
+        prefix = _dnsify(prefix)
+        # Note: The construction of this object is in this function because this function should be on the
+        # main thread of pyflyte-execute. It needs to be on the main thread because signal handlers can only
+        # be installed on the main thread.
+        c = Controller(remote=remote, ss=ss, tag=tag, root_tag=root_tag, exec_prefix=prefix)
+        handler = c.get_signal_handler()
+        signal.signal(signal.SIGINT, handler)
+        signal.signal(signal.SIGTERM, handler)
+        builder = ctx.with_worker_queue(c)
+
+        with FlyteContextManager.with_context(builder):
+            return loop_manager.run_sync(self.async_execute, self, **kwargs)
+
+    def get_as_workflow(self):
+        from flytekit.core.workflow import ImperativeWorkflow
+
+        cleanup = EagerFailureHandlerTask(name=f"{self.name}-cleanup", inputs=self.python_interface.inputs)
+        wb = ImperativeWorkflow(name=self.name)
+
+        input_kwargs = {}
+        for input_name, input_python_type in self.python_interface.inputs.items():
+            wb.add_workflow_input(input_name, input_python_type)
+            input_kwargs[input_name] = wb.inputs[input_name]
+
+        node = wb.add_entity(self, **input_kwargs)
+        for output_name, output_python_type in self.python_interface.outputs.items():
+            wb.add_workflow_output(output_name, node.outputs[output_name])
+
+        wb.add_on_failure_handler(cleanup)
+        return wb
+
+
+class EagerFailureTaskResolver(TaskResolverMixin):
+    @property
+    def location(self) -> str:
+        return f"{EagerFailureTaskResolver.__module__}.eager_failure_task_resolver"
+
+    def name(self) -> str:
+        return "eager_failure_task_resolver"
+
+    def load_task(self, loader_args: List[str]) -> Task:
+        """
+        Given the set of identifier keys, should return one Python Task or raise an error if not found
+        """
+        return EagerFailureHandlerTask(name="no_input_default_cleanup_task", inputs={})
+
+    def loader_args(self, settings: SerializationSettings, t: Task) -> List[str]:
+        """
+        Return a list of strings that can help identify the parameter Task
+        """
+        return ["eager", "failure", "handler"]
+
+    def get_all_tasks(self) -> List[Task]:
+        """
+        Future proof method. Just making it easy to access all tasks (Not required today as we auto register them)
+        """
+        return []
+
+
+eager_failure_task_resolver = EagerFailureTaskResolver()
+
+
+class EagerFailureHandlerTask(PythonAutoContainerTask, metaclass=FlyteTrackedABC):
+    _TASK_TYPE = "eager_failure_handler_task"
+
+    def __init__(self, name: str, inputs: typing.Optional[typing.Dict[str, typing.Type]] = None, **kwargs):
+        """ """
+        inputs = inputs or {}
+        super().__init__(
+            task_type=self._TASK_TYPE,
+            name=name,
+            interface=Interface(inputs=inputs, outputs=None),
+            task_config=None,
+            task_resolver=eager_failure_task_resolver,
+            **kwargs,
+        )
+
+    def dispatch_execute(self, ctx: FlyteContext, input_literal_map: LiteralMap) -> LiteralMap:
+        """
+        This task should only be called during remote execution. Because when rehydrating this task at execution
+        time, we don't have access to the python interface of the corresponding eager task/workflow, we don't
+        have the Python types to convert the input literal map, but nor do we need them.
+        This task is responsible only for ensuring that all executions are terminated.
+        """
+        # Recursive imports
+        from flytekit import current_context
+        from flytekit.configuration.plugin import get_plugin
+
+        most_recent = admin_common_models.Sort("created_at", admin_common_models.Sort.Direction.DESCENDING)
+        current_exec_id = current_context().execution_id
+        project = current_exec_id.project
+        domain = current_exec_id.domain
+        name = current_exec_id.name
+        logger.warning(f"Cleaning up potentially still running tasks for execution {name} in {project}/{domain}")
+        try:
+            remote = get_plugin().get_remote(config=None, project=project, domain=domain)
+        except Exception as e:
+            print(e, flush=True)
+            import sys
+
+            sys.exit(1)
+        key_filter = ValueIn("execution_tag.key", ["eager-exec"])
+        value_filter = ValueIn("execution_tag.value", [name])
+        phase_filter = ValueIn("phase", ["UNDEFINED", "QUEUED", "RUNNING"])
+        # This should be made more robust, currently lacking retries and exception handling
+        while True:
+            exec_models, _ = remote.client.list_executions_paginated(
+                project,
+                domain,
+                limit=100,
+                filters=[key_filter, value_filter, phase_filter],
+                sort_by=most_recent,
+            )
+            logger.warning(f"Found {len(exec_models)} executions this round for termination")
+            if not exec_models:
+                break
+            logger.warning(exec_models)
+            for exec_model in exec_models:
+                logger.warning(f"Terminating execution {exec_model.id}, phase {exec_model.closure.phase}")
+                remote.client.terminate_execution(exec_model.id, f"clean up by parent eager execution {name}")
+            time.sleep(CLEANUP_LOOP_DELAY_SECONDS)
+
+        # Just echo back
+        return input_literal_map
+
+    def execute(self, **kwargs) -> Any:
+        raise AssertionError("this task shouldn't need to call execute")

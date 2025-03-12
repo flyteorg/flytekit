@@ -1,23 +1,29 @@
 from __future__ import annotations
 
 import datetime
+import json
 import os
 import typing
 from abc import abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Type
+from typing import Dict, Optional, Type
 
+import msgpack
 from dataclasses_json import config
+from google.protobuf import json_format as _json_format
+from google.protobuf.struct_pb2 import Struct
 from marshmallow import fields
 from mashumaro.mixins.json import DataClassJSONMixin
 from mashumaro.types import SerializableType
 
+from flytekit.core.constants import MESSAGEPACK
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
+from flytekit.core.type_engine import AsyncTypeTransformer, TypeEngine, TypeTransformerFailedError
+from flytekit.extras.pydantic_transformer.decorator import model_serializer, model_validator
 from flytekit.loggers import logger
-from flytekit.models.literals import Literal, Scalar, Schema
+from flytekit.models.literals import Binary, Literal, Scalar, Schema
 from flytekit.models.types import LiteralType, SchemaType
 
 T = typing.TypeVar("T")
@@ -183,7 +189,7 @@ class FlyteSchema(SerializableType, DataClassJSONMixin):
     This is the main schema class that users should use.
     """
 
-    def _serialize(self) -> typing.Dict[str, typing.Optional[str]]:
+    def _serialize(self) -> Dict[str, Optional[str]]:
         FlyteSchemaTransformer().to_literal(FlyteContextManager.current_context(), self, type(self), None)
         return {"remote_path": self.remote_path}
 
@@ -199,6 +205,23 @@ class FlyteSchema(SerializableType, DataClassJSONMixin):
             FlyteContextManager.current_context(),
             Literal(scalar=Scalar(schema=Schema(remote_path, t._get_schema_type(cls)))),
             cls,
+        )
+
+    @model_serializer
+    def serialize_flyte_schema(self) -> Dict[str, Optional[str]]:
+        FlyteSchemaTransformer().to_literal(FlyteContextManager.current_context(), self, type(self), None)
+        return {"remote_path": self.remote_path}
+
+    @model_validator(mode="after")
+    def deserialize_flyte_schema(self, info) -> FlyteSchema:
+        if info.context is None or info.context.get("deserialize") is not True:
+            return self
+
+        t = FlyteSchemaTransformer()
+        return t.to_python_value(
+            FlyteContextManager.current_context(),
+            Literal(scalar=Scalar(schema=Schema(self.remote_path, t._get_schema_type(type(self))))),
+            type(self),
         )
 
     @classmethod
@@ -371,7 +394,7 @@ def _get_numpy_type_mappings() -> typing.Dict[Type, SchemaType.SchemaColumn.Sche
         return {}
 
 
-class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
+class FlyteSchemaTransformer(AsyncTypeTransformer[FlyteSchema]):
     _SUPPORTED_TYPES: typing.Dict[Type, SchemaType.SchemaColumn.SchemaColumnType] = {
         float: SchemaType.SchemaColumn.SchemaColumnType.FLOAT,
         int: SchemaType.SchemaColumn.SchemaColumnType.INTEGER,
@@ -404,7 +427,7 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
     def get_literal_type(self, t: Type[FlyteSchema]) -> LiteralType:
         return LiteralType(schema=self._get_schema_type(t))
 
-    def to_literal(
+    async def async_to_literal(
         self, ctx: FlyteContext, python_val: FlyteSchema, python_type: Type[FlyteSchema], expected: LiteralType
     ) -> Literal:
         if isinstance(python_val, FlyteSchema):
@@ -419,7 +442,9 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
                 # This means the local path is empty. Don't try to overwrite the remote data
                 logger.debug(f"Skipping upload for {python_val} because it was never downloaded.")
             else:
-                remote_path = ctx.file_access.put_data(python_val.local_path, remote_path, is_multipart=True)
+                remote_path = await ctx.file_access.async_put_data(
+                    python_val.local_path, remote_path, is_multipart=True
+                )
             return Literal(scalar=Scalar(schema=Schema(remote_path, self._get_schema_type(python_type))))
 
         remote_path = ctx.file_access.join(ctx.file_access.raw_output_prefix, ctx.file_access.get_random_string())
@@ -436,10 +461,95 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
         writer = schema.open(type(python_val))
         writer.write(python_val)
         if not h.handles_remote_io:
-            schema.remote_path = ctx.file_access.put_data(schema.local_path, schema.remote_path, is_multipart=True)
+            schema.remote_path = await ctx.file_access.async_put_data(
+                schema.local_path, schema.remote_path, is_multipart=True
+            )
         return Literal(scalar=Scalar(schema=Schema(schema.remote_path, self._get_schema_type(python_type))))
 
-    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[FlyteSchema]) -> FlyteSchema:
+    def dict_to_flyte_schema(
+        self, dict_obj: typing.Dict[str, str], expected_python_type: Type[FlyteSchema]
+    ) -> FlyteSchema:
+        remote_path = dict_obj.get("remote_path", None)
+
+        if remote_path is None:
+            raise ValueError("FlyteSchema's path should not be None")
+
+        t = FlyteSchemaTransformer()
+        return t.to_python_value(
+            FlyteContextManager.current_context(),
+            Literal(scalar=Scalar(schema=Schema(remote_path, t._get_schema_type(expected_python_type)))),
+            expected_python_type,
+        )
+
+    def from_binary_idl(self, binary_idl_object: Binary, expected_python_type: Type[FlyteSchema]) -> FlyteSchema:
+        """
+        If the input is from flytekit, the Life Cycle will be as follows:
+
+        Life Cycle:
+        binary IDL                 -> resolved binary         -> bytes                   -> expected Python object
+        (flytekit customized          (propeller processing)     (flytekit binary IDL)      (flytekit customized
+        serialization)                                                                       deserialization)
+
+        Example Code:
+        @dataclass
+        class DC:
+            fs: FlyteSchema
+
+        @workflow
+        def wf(dc: DC):
+            t_fs(dc.fs)
+
+        Note:
+        - The deserialization is the same as put a flyte schema in a dataclass, which will deserialize by the mashumaro's API.
+
+        Related PR:
+        - Title: Override Dataclass Serialization/Deserialization Behavior for FlyteTypes via Mashumaro
+        - Link: https://github.com/flyteorg/flytekit/pull/2554
+        """
+        if binary_idl_object.tag == MESSAGEPACK:
+            python_val = msgpack.loads(binary_idl_object.value)
+            return self.dict_to_flyte_schema(dict_obj=python_val, expected_python_type=expected_python_type)
+        else:
+            raise TypeTransformerFailedError(f"Unsupported binary format: `{binary_idl_object.tag}`")
+
+    def from_generic_idl(self, generic: Struct, expected_python_type: Type[FlyteSchema]) -> FlyteSchema:
+        """
+        If the input is from Flyte Console, the Life Cycle will be as follows:
+
+        Life Cycle:
+        json str            -> protobuf struct         -> resolved protobuf struct   -> expected Python object
+        (console user input)   (console output)           (propeller)                   (flytekit customized deserialization)
+
+        Example Code:
+        @dataclass
+        class DC:
+            fs: FlyteSchema
+
+        @workflow
+        def wf(dc: DC):
+            t_fs(dc.fs)
+
+        Note:
+        - The deserialization is the same as put a flyte schema in a dataclass, which will deserialize by the mashumaro's API.
+
+        Related PR:
+        - Title: Override Dataclass Serialization/Deserialization Behavior for FlyteTypes via Mashumaro
+        - Link: https://github.com/flyteorg/flytekit/pull/2554
+        """
+        json_str = _json_format.MessageToJson(generic)
+        python_val = json.loads(json_str)
+        return self.dict_to_flyte_schema(dict_obj=python_val, expected_python_type=expected_python_type)
+
+    async def async_to_python_value(
+        self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[FlyteSchema]
+    ) -> FlyteSchema:
+        # Handle dataclass attribute access
+        if lv.scalar:
+            if lv.scalar.binary:
+                return self.from_binary_idl(lv.scalar.binary, expected_python_type)
+            if lv.scalar.generic:
+                return self.from_generic_idl(lv.scalar.generic, expected_python_type)
+
         def downloader(x, y):
             ctx.file_access.get_data(x, y, is_multipart=True)
 

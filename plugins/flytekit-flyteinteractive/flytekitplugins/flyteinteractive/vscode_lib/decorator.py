@@ -11,7 +11,5 @@ from flytekit.interactive.vscode_lib.decorator import (  # noqa: F401
     prepare_interactive_python,
     prepare_launch_json,
     prepare_resume_task_python,
-    resume_task,
-    resume_task_handler,
     vscode,
 )

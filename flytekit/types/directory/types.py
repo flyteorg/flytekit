@@ -1,27 +1,34 @@
 from __future__ import annotations
 
+import json
 import os
 import pathlib
 import random
 import typing
 from dataclasses import dataclass, field
+from functools import partial
 from pathlib import Path
-from typing import Any, Generator, Tuple
+from typing import Any, Dict, Generator, Tuple
 from uuid import UUID
 
 import fsspec
+import msgpack
 from dataclasses_json import DataClassJsonMixin, config
 from fsspec.utils import get_protocol
+from google.protobuf import json_format as _json_format
+from google.protobuf.struct_pb2 import Struct
 from marshmallow import fields
 from mashumaro.types import SerializableType
 
-from flytekit import BlobType
+from flytekit.core.constants import MESSAGEPACK
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError, get_batch_size
+from flytekit.core.type_engine import AsyncTypeTransformer, TypeEngine, TypeTransformerFailedError, get_batch_size
 from flytekit.exceptions.user import FlyteAssertion
+from flytekit.extras.pydantic_transformer.decorator import model_serializer, model_validator
 from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_types
-from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
+from flytekit.models.core.types import BlobType
+from flytekit.models.literals import Binary, Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 from flytekit.types.file import FileExt, FlyteFile
 
@@ -129,12 +136,21 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
 
     @classmethod
     def _deserialize(cls, value) -> "FlyteDirectory":
-        path = value.get("path", None)
+        return FlyteDirToMultipartBlobTransformer().dict_to_flyte_directory(dict_obj=value, expected_python_type=cls)
 
-        if path is None:
-            raise ValueError("FlyteDirectory's path should not be None")
+    @model_serializer
+    def serialize_flyte_dir(self) -> Dict[str, str]:
+        lv = FlyteDirToMultipartBlobTransformer().to_literal(
+            FlyteContextManager.current_context(), self, type(self), None
+        )
+        return {"path": lv.scalar.blob.uri}
 
-        return FlyteDirToMultipartBlobTransformer().to_python_value(
+    @model_validator(mode="after")
+    def deserialize_flyte_dir(self, info) -> FlyteDirectory:
+        if info.context is None or info.context.get("deserialize") is not True:
+            return self
+
+        pv = FlyteDirToMultipartBlobTransformer().to_python_value(
             FlyteContextManager.current_context(),
             Literal(
                 scalar=Scalar(
@@ -144,12 +160,13 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
                                 format="", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
                             )
                         ),
-                        uri=path,
+                        uri=self.path,
                     )
                 )
             ),
-            cls,
+            type(self),
         )
+        return pv
 
     def __init__(
         self,
@@ -203,6 +220,23 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
             raise ValueError("Stem should not have a file extension.")
         remote_path = ctx.file_access.generate_new_custom_path(alt=alt, stem=stem)
         return cls(path=remote_path)
+
+    @classmethod
+    def new(cls, dirname: str | os.PathLike) -> FlyteDirectory:
+        """
+        Create a new FlyteDirectory object in current Flyte working directory.
+        """
+
+        if os.path.isabs(dirname):
+            raise ValueError("Path should be relative.")
+
+        ctx = FlyteContextManager.current_context()
+
+        path = os.path.join(ctx.user_space_params.working_directory, dirname)
+
+        os.makedirs(path, exist_ok=False)
+
+        return cls(path=path)
 
     def __class_getitem__(cls, item: typing.Union[typing.Type, str]) -> typing.Type[FlyteDirectory]:
         if item is None:
@@ -334,14 +368,12 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
         file_access = FlyteContextManager.current_context().file_access
         if not file_access.is_remote(final_path):
             for p in os.listdir(final_path):
-                if os.path.isfile(os.path.join(final_path, p)):
-                    paths.append(FlyteFile(p))
+                joined_path = os.path.join(final_path, p)
+                if os.path.isfile(joined_path):
+                    paths.append(FlyteFile(joined_path))
                 else:
-                    paths.append(FlyteDirectory(p))
+                    paths.append(FlyteDirectory(joined_path))
             return paths
-
-        def create_downloader(_remote_path: str, _local_path: str, is_multipart: bool):
-            return lambda: file_access.get_data(_remote_path, _local_path, is_multipart=is_multipart)
 
         fs = file_access.get_filesystem_for_path(final_path)
         for key in fs.listdir(final_path):
@@ -349,14 +381,14 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
             if key["type"] == "file":
                 local_path = file_access.get_random_local_path()
                 os.makedirs(pathlib.Path(local_path).parent, exist_ok=True)
-                downloader = create_downloader(remote_path, local_path, is_multipart=False)
+                downloader = partial(file_access.get_data, remote_path, local_path, is_multipart=False)
 
                 flyte_file: FlyteFile = FlyteFile(local_path, downloader=downloader)
                 flyte_file._remote_source = remote_path
                 paths.append(flyte_file)
             else:
                 local_folder = file_access.get_random_local_directory()
-                downloader = create_downloader(remote_path, local_folder, is_multipart=True)
+                downloader = partial(file_access.get_data, remote_path, local_folder, is_multipart=True)
 
                 flyte_directory: FlyteDirectory = FlyteDirectory(path=local_folder, downloader=downloader)
                 flyte_directory._remote_source = remote_path
@@ -404,8 +436,15 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
     def __str__(self):
         return str(self.path)
 
+    def __truediv__(self, other: str | os.PathLike) -> Path:
+        """
+        This is a convenience method to allow for easy concatenation of paths.
+        """
 
-class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
+        return Path(self.path) / other
+
+
+class FlyteDirToMultipartBlobTransformer(AsyncTypeTransformer[FlyteDirectory]):
     """
     This transformer handles conversion between the Python native FlyteDirectory class defined above, and the Flyte
     IDL literal/type of Multipart Blob. Please see the FlyteDirectory comments for additional information.
@@ -442,7 +481,7 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
     def get_literal_type(self, t: typing.Type[FlyteDirectory]) -> LiteralType:
         return _type_models.LiteralType(blob=self._blob_type(format=FlyteDirToMultipartBlobTransformer.get_format(t)))
 
-    def to_literal(
+    async def async_to_literal(
         self,
         ctx: FlyteContext,
         python_val: FlyteDirectory,
@@ -497,17 +536,116 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
                 remote_directory = ctx.file_access.get_random_remote_directory()
             if not pathlib.Path(source_path).is_dir():
                 raise FlyteAssertion("Expected a directory. {} is not a directory".format(source_path))
-            ctx.file_access.put_data(source_path, remote_directory, is_multipart=True, batch_size=batch_size)
+            # remote_directory will convert the path from `flyte://` to `s3://` or `gs://`
+            remote_directory = await ctx.file_access.async_put_data(
+                source_path, remote_directory, is_multipart=True, batch_size=batch_size
+            )
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_directory)))
 
         # If not uploading, then we can only take the original source path as the uri.
         else:
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=source_path)))
 
-    def to_python_value(
+    def dict_to_flyte_directory(
+        self, dict_obj: typing.Dict[str, str], expected_python_type: typing.Type[FlyteDirectory]
+    ) -> FlyteDirectory:
+        path = dict_obj.get("path", None)
+
+        if path is None:
+            raise ValueError("FlyteDirectory's path should not be None")
+
+        return self.to_python_value(
+            FlyteContextManager.current_context(),
+            Literal(
+                scalar=Scalar(
+                    blob=Blob(
+                        metadata=BlobMetadata(
+                            type=_core_types.BlobType(
+                                format="", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
+                            )
+                        ),
+                        uri=path,
+                    )
+                )
+            ),
+            expected_python_type,
+        )
+
+    def from_binary_idl(
+        self, binary_idl_object: Binary, expected_python_type: typing.Type[FlyteDirectory]
+    ) -> FlyteDirectory:
+        """
+        If the input is from flytekit, the Life Cycle will be as follows:
+
+        Life Cycle:
+        binary IDL                 -> resolved binary         -> bytes                   -> expected Python object
+        (flytekit customized          (propeller processing)     (flytekit binary IDL)      (flytekit customized
+        serialization)                                                                       deserialization)
+
+        Example Code:
+        @dataclass
+        class DC:
+            fd: FlyteDirectory
+
+        @workflow
+        def wf(dc: DC):
+            t_fd(dc.fd)
+
+        Note:
+        - The deserialization is the same as put a flyte directory in a dataclass, which will deserialize by the mashumaro's API.
+
+        Related PR:
+        - Title: Override Dataclass Serialization/Deserialization Behavior for FlyteTypes via Mashumaro
+        - Link: https://github.com/flyteorg/flytekit/pull/2554
+        """
+        if binary_idl_object.tag == MESSAGEPACK:
+            python_val = msgpack.loads(binary_idl_object.value)
+            return self.dict_to_flyte_directory(python_val, expected_python_type)
+        else:
+            raise TypeTransformerFailedError(f"Unsupported binary format: `{binary_idl_object.tag}`")
+
+    def from_generic_idl(self, generic: Struct, expected_python_type: typing.Type[FlyteDirectory]) -> FlyteDirectory:
+        """
+        If the input is from Flyte Console, the Life Cycle will be as follows:
+
+        Life Cycle:
+        json str            -> protobuf struct         -> resolved protobuf struct   -> expected Python object
+        (console user input)   (console output)           (propeller)                   (flytekit customized deserialization)
+
+        Example Code:
+        @dataclass
+        class DC:
+            fd: FlyteDirectory
+
+        @workflow
+        def wf(dc: DC):
+            t_fd(dc.fd)
+
+        Note:
+        - The deserialization is the same as put a flyte directory in a dataclass, which will deserialize by the mashumaro's API.
+
+        Related PR:
+        - Title: Override Dataclass Serialization/Deserialization Behavior for FlyteTypes via Mashumaro
+        - Link: https://github.com/flyteorg/flytekit/pull/2554
+        """
+        json_str = _json_format.MessageToJson(generic)
+        python_val = json.loads(json_str)
+        return self.dict_to_flyte_directory(python_val, expected_python_type)
+
+    async def async_to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Type[FlyteDirectory]
     ) -> FlyteDirectory:
-        uri = lv.scalar.blob.uri
+        # Handle dataclass attribute access
+        if lv.scalar:
+            if lv.scalar.binary:
+                return self.from_binary_idl(lv.scalar.binary, expected_python_type)
+            if lv.scalar.generic:
+                return self.from_generic_idl(lv.scalar.generic, expected_python_type)
+
+        try:
+            uri = lv.scalar.blob.uri
+        except AttributeError:
+            raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
 
         if lv.scalar.blob.metadata.type.dimensionality != BlobType.BlobDimensionality.MULTIPART:
             raise TypeTransformerFailedError(f"{lv.scalar.blob.uri} is not a directory.")
@@ -525,8 +663,7 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
 
         batch_size = get_batch_size(expected_python_type)
 
-        def _downloader():
-            return ctx.file_access.get_data(uri, local_folder, is_multipart=True, batch_size=batch_size)
+        _downloader = partial(ctx.file_access.get_data, uri, local_folder, is_multipart=True, batch_size=batch_size)
 
         expected_format = self.get_format(expected_python_type)
 

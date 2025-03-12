@@ -1,6 +1,6 @@
 import mock
 
-from flytekit import FlyteContext
+from flytekit import FlyteContext, FlyteContextManager
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import FlyteFile
 
@@ -26,6 +26,16 @@ def test_new_remote_dir_alt():
     ff = FlyteDirectory.new_remote(alt="my-alt-bucket", stem="my-stem")
     assert "my-alt-bucket" in ff.path
     assert "my-stem" in ff.path
+
+def test_new_auto_new_dir():
+    fd = FlyteDirectory.new("my_dir")
+    assert FlyteContextManager.current_context().user_space_params.working_directory in fd.path
+
+def test_add_path_to_dir():
+    fd = FlyteDirectory.new("my_other_dir")
+    cwd = FlyteContextManager.current_context().user_space_params.working_directory
+    assert cwd in str(fd / "myfile.txt")
+
 
 @mock.patch("flytekit.types.directory.types.os.name", "nt")
 def test_sep_nt():

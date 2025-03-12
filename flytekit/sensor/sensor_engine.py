@@ -25,7 +25,7 @@ class SensorEngine(AsyncAgentBase):
             python_interface_inputs = {
                 name: TypeEngine.guess_python_type(lt.type) for name, lt in task_template.interface.inputs.items()
             }
-            native_inputs = TypeEngine.literal_map_to_kwargs(ctx, inputs, python_interface_inputs)
+            native_inputs = await TypeEngine._literal_map_to_kwargs(ctx, inputs, python_interface_inputs)
             sensor_metadata.inputs = native_inputs
 
         return sensor_metadata

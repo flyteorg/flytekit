@@ -10,7 +10,3 @@ Experimental Features
 .. autosummary::
    :nosignatures:
    :toctree: generated/
-
-   ~experimental.map_task
-   ~experimental.eager
-   ~experimental.EagerException

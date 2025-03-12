@@ -5,14 +5,18 @@ import hashlib
 import os
 import shutil
 import site
+import stat
 import sys
 import tarfile
 import tempfile
 import typing
+from datetime import datetime, timezone
+from functools import lru_cache
 from pathlib import Path
 from types import ModuleType
 from typing import List, Optional, Tuple, Union
 
+import flytekit
 from flytekit.constants import CopyFileDetection
 from flytekit.loggers import logger
 from flytekit.tools.ignore import IgnoreGroup
@@ -68,9 +72,9 @@ def compress_scripts(source_path: str, destination: str, modules: List[ModuleTyp
 # intended to be passed as a filter to tarfile.add
 # https://docs.python.org/3/library/tarfile.html#tarfile.TarFile.add
 def tar_strip_file_attributes(tar_info: tarfile.TarInfo) -> tarfile.TarInfo:
-    # set time to epoch timestamp 0, aka 00:00:00 UTC on 1 January 1970
+    # set time to epoch timestamp 0, aka 00:00:00 UTC on 1 January 1980
     # note that when extracting this tarfile, this time will be shown as the modified date
-    tar_info.mtime = 0
+    tar_info.mtime = datetime(1980, 1, 1, tzinfo=timezone.utc).timestamp()
 
     # user/group info
     tar_info.uid = 0
@@ -116,6 +120,7 @@ def ls_files(
     else:
         all_files = list_all_files(source_path, deref_symlinks, ignore_group)
 
+    all_files.sort()
     hasher = hashlib.md5()
     for abspath in all_files:
         relpath = os.path.relpath(abspath, source_path)
@@ -141,6 +146,9 @@ def _pathhash_update(path: Union[os.PathLike, str], hasher: hashlib._Hash) -> No
     hasher.update("".join(path_list).encode("utf-8"))
 
 
+EXCLUDE_DIRS = {".git"}
+
+
 def list_all_files(source_path: str, deref_symlinks, ignore_group: Optional[IgnoreGroup] = None) -> List[str]:
     all_files = []
 
@@ -148,6 +156,7 @@ def list_all_files(source_path: str, deref_symlinks, ignore_group: Optional[Igno
     visited_inodes = set()
 
     for root, dirnames, files in os.walk(source_path, topdown=True, followlinks=deref_symlinks):
+        dirnames[:] = [d for d in dirnames if d not in EXCLUDE_DIRS]
         if deref_symlinks:
             inode = os.stat(root).st_ino
             if inode in visited_inodes:
@@ -161,6 +170,10 @@ def list_all_files(source_path: str, deref_symlinks, ignore_group: Optional[Igno
             # Only consider files that exist (e.g. disregard symlinks that point to non-existent files)
             if not os.path.exists(abspath):
                 logger.info(f"Skipping non-existent file {abspath}")
+                continue
+            # Skip socket files
+            if stat.S_ISSOCK(os.stat(abspath).st_mode):
+                logger.info(f"Skip socket file {abspath}")
                 continue
             if ignore_group:
                 if ignore_group.is_ignored(abspath):
@@ -176,21 +189,38 @@ def list_all_files(source_path: str, deref_symlinks, ignore_group: Optional[Igno
     return all_files
 
 
+def _file_is_in_directory(file: str, directory: str) -> bool:
+    """Return True if file is in directory and in its children."""
+    try:
+        return os.path.commonpath([file, directory]) == directory
+    except ValueError as e:
+        # ValueError is raised by windows if the paths are not from the same drive
+        logger.debug(f"{file} and {directory} are not in the same drive: {str(e)}")
+        return False
+
+
 def list_imported_modules_as_files(source_path: str, modules: List[ModuleType]) -> List[str]:
     """Copies modules into destination that are in modules. The module files are copied only if:
 
     1. Not a site-packages. These are installed packages and not user files.
-    2. Not in the bin. These are also installed and not user files.
+    2. Not in the sys.base_prefix or sys.prefix. These are also installed and not user files.
     3. Does not share a common path with the source_path.
     """
     # source path is the folder holding the main script.
     # but in register/package case, there are multiple folders.
     # identify a common root amongst the packages listed?
 
-    site_packages = site.getsitepackages()
-    site_packages_set = set(site_packages)
-    bin_directory = os.path.dirname(sys.executable)
     files = []
+    flytekit_root = os.path.dirname(flytekit.__file__)
+
+    # These directories contain installed packages or modules from the Python standard library.
+    # If a module is from these directories, then they are not user files.
+    invalid_directories = [
+        flytekit_root,
+        sys.prefix,
+        sys.base_prefix,
+        site.getusersitepackages(),
+    ] + site.getsitepackages()
 
     for mod in modules:
         try:
@@ -201,33 +231,11 @@ def list_imported_modules_as_files(source_path: str, modules: List[ModuleType]) 
         if mod_file is None:
             continue
 
-        # Check to see if mod_file is in site_packages or bin_directory, which are
-        # installed packages & libraries that are not user files. This happens when
-        # there is a virtualenv like `.venv` in the working directory.
-        try:
-            if os.path.commonpath(site_packages + [mod_file]) in site_packages_set:
-                # Do not upload files from site-packages
-                continue
+        if any(_file_is_in_directory(mod_file, directory) for directory in invalid_directories):
+            continue
 
-            if os.path.commonpath([bin_directory, mod_file]) == bin_directory:
-                # Do not upload from the bin directory
-                continue
-
-        except ValueError:
-            # ValueError is raised by windows if the paths are not from the same drive
-            # If the files are not in the same drive, then mod_file is not
-            # in the site-packages or bin directory.
-            pass
-
-        try:
-            common_path = os.path.commonpath([mod_file, source_path])
-            if common_path != source_path:
-                # Do not upload files that do not share a common directory with the source
-                continue
-        except ValueError:
-            # ValueError is raised by windows if the paths are not from the same drive
-            # If they are not in the same directory, then they do not share a common path,
-            # so we do not upload the file.
+        if not _file_is_in_directory(mod_file, source_path):
+            # Only upload files where the module file in the source directory
             continue
 
         files.append(mod_file)
@@ -239,7 +247,7 @@ def add_imported_modules_from_source(source_path: str, destination: str, modules
     """Copies modules into destination that are in modules. The module files are copied only if:
 
     1. Not a site-packages. These are installed packages and not user files.
-    2. Not in the bin. These are also installed and not user files.
+    2. Not in the sys.base_prefix or sys.prefix. These are also installed and not user files.
     3. Does not share a common path with the source_path.
     """
     # source path is the folder holding the main script.
@@ -285,6 +293,7 @@ def get_all_modules(source_path: str, module_name: Optional[str]) -> List[Module
         return sys_modules
 
 
+@lru_cache
 def hash_file(file_path: typing.Union[os.PathLike, str]) -> (bytes, str, int):
     """
     Hash a file and produce a digest to be used as a version

@@ -5,7 +5,7 @@ from typing import Type
 import pandas
 
 from flytekit import FlyteContext
-from flytekit.core.type_engine import T, TypeEngine, TypeTransformer
+from flytekit.core.type_engine import AsyncTypeTransformer, T, TypeEngine
 from flytekit.models.literals import Literal, Scalar, Schema
 from flytekit.models.types import LiteralType, SchemaType
 from flytekit.types.schema import LocalIOSchemaReader, LocalIOSchemaWriter, SchemaEngine, SchemaFormat, SchemaHandler
@@ -75,7 +75,7 @@ class PandasSchemaWriter(LocalIOSchemaWriter[pandas.DataFrame]):
         return self._parquet_engine.write(df, to_file=path, **kwargs)
 
 
-class PandasDataFrameTransformer(TypeTransformer[pandas.DataFrame]):
+class PandasDataFrameTransformer(AsyncTypeTransformer[pandas.DataFrame]):
     """
     Transforms a pd.DataFrame to Schema without column types.
     """
@@ -91,7 +91,7 @@ class PandasDataFrameTransformer(TypeTransformer[pandas.DataFrame]):
     def get_literal_type(self, t: Type[pandas.DataFrame]) -> LiteralType:
         return LiteralType(schema=self._get_schema_type())
 
-    def to_literal(
+    async def async_to_literal(
         self,
         ctx: FlyteContext,
         python_val: pandas.DataFrame,
@@ -105,16 +105,16 @@ class PandasDataFrameTransformer(TypeTransformer[pandas.DataFrame]):
             ctx.file_access.raw_output_prefix,
             ctx.file_access.get_random_string(),
         )
-        remote_path = ctx.file_access.put_data(local_dir, remote_path, is_multipart=True)
+        remote_path = await ctx.file_access.async_put_data(local_dir, remote_path, is_multipart=True)
         return Literal(scalar=Scalar(schema=Schema(remote_path, self._get_schema_type())))
 
-    def to_python_value(
+    async def async_to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[pandas.DataFrame]
     ) -> pandas.DataFrame:
         if not (lv and lv.scalar and lv.scalar.schema):
             return pandas.DataFrame()
         local_dir = ctx.file_access.get_random_local_directory()
-        ctx.file_access.get_data(lv.scalar.schema.uri, local_dir, is_multipart=True)
+        await ctx.file_access.async_get_data(lv.scalar.schema.uri, local_dir, is_multipart=True)
         r = PandasSchemaReader(local_dir=local_dir, cols=None, fmt=SchemaFormat.PARQUET)
         return r.all()
 

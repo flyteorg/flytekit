@@ -357,6 +357,10 @@ def my_wf_example(a: int) -> typing.Tuple[int, int]:
     return x, e
 
 
+def test_workflow_lhs():
+    assert my_wf_example._lhs == "my_wf_example"
+
+
 def test_all_node_types():
     assert my_wf_example(a=1) == (6, 16)
     entity_mapping = OrderedDict()
@@ -466,8 +470,16 @@ def test_compile_wf_at_compile_time():
         assert ctx.compilation_state is None
 
 
+@pytest.mark.parametrize(
+    "error_message", [
+        "Fail!",
+        None,
+        "",
+        ("big", "boom!")
+    ]
+)
 @patch("builtins.print")
-def test_failure_node_local_execution(mock_print, exec_prefix):
+def test_failure_node_local_execution(mock_print, error_message, exec_prefix):
     @task
     def clean_up(name: str, err: typing.Optional[FlyteError] = None):
         print(f"Deleting cluster {name} due to {err}")
@@ -485,7 +497,7 @@ def test_failure_node_local_execution(mock_print, exec_prefix):
     @task
     def t1(a: int, b: str):
         print(f"{a} {b}")
-        raise ValueError("Fail!")
+        raise ValueError(error_message)
 
     @workflow(on_failure=clean_up)
     def wf(name: str = "flyteorg"):
@@ -499,7 +511,7 @@ def test_failure_node_local_execution(mock_print, exec_prefix):
 
     # Adjusted the error message to match the one in the failure
     expected_error_message = str(
-        FlyteError(message=f"Error encountered while executing '{exec_prefix}tests.flytekit.unit.core.test_workflows.t1':\n  Fail!", failed_node_id="fn0")
+        FlyteError(message=f"Error encountered while executing '{exec_prefix}tests.flytekit.unit.core.test_workflows.t1':\n  {error_message}", failed_node_id="fn0")
     )
 
     assert mock_print.call_count > 0

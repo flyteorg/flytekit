@@ -19,6 +19,8 @@ from flytekit.models.literals import LiteralMap
 from flytekit.tools.translator import get_serializable_task
 from flytekit.types.file import FlyteFile
 
+pd = pytest.importorskip("pandas")
+
 settings = flytekit.configuration.SerializationSettings(
     project="test_proj",
     domain="test_domain",
@@ -373,3 +375,19 @@ def test_iter():
     ) as new_ctx:
         with pytest.raises(FlyteUserRuntimeException):
             dynamic_task.dispatch_execute(new_ctx, input_literal_map)
+
+
+def test_dyn_pd():
+    @task
+    def nested_task() -> pd.DataFrame:  # type: ignore
+        return pd.DataFrame({"a": [1, 2, 3]})
+
+    @dynamic
+    def my_dynamic() -> list[pd.DataFrame]:  # type: ignore
+        dfs = []
+        for i in range(3):
+            dfs.append(nested_task())
+        return dfs
+
+    list_pd = my_dynamic()
+    assert len(list_pd) == 3

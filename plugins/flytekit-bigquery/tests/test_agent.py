@@ -90,7 +90,7 @@ def test_bigquery_agent(mock_client, mock_query_job):
     resource = agent.get(metadata)
     assert resource.phase == TaskExecution.SUCCEEDED
     assert (
-        resource.outputs.literals["results"].scalar.structured_dataset.uri
+        resource.outputs["results"].uri
         == "bq://dummy_project:dummy_dataset.dummy_table"
     )
     assert resource.log_links[0].name == "BigQuery Console"

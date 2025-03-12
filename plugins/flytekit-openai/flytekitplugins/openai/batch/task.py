@@ -60,7 +60,6 @@ class OpenAIFileDefaultImages(DefaultImages):
     """Default images for the openai batch plugin."""
 
     _DEFAULT_IMAGE_PREFIXES = {
-        PythonVersion.PYTHON_3_8: "cr.flyte.org/flyteorg/flytekit:py3.8-openai-batch-",
         PythonVersion.PYTHON_3_9: "cr.flyte.org/flyteorg/flytekit:py3.9-openai-batch-",
         PythonVersion.PYTHON_3_10: "cr.flyte.org/flyteorg/flytekit:py3.10-openai-batch-",
         PythonVersion.PYTHON_3_11: "cr.flyte.org/flyteorg/flytekit:py3.11-openai-batch-",

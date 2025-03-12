@@ -16,6 +16,7 @@ from flytekit.core.workflow import workflow
 from flytekit.exceptions.user import FlyteAssertion, FlyteMissingTypeException
 from flytekit.image_spec.image_spec import ImageBuildEngine
 from flytekit.models.admin.workflow import WorkflowSpec
+from flytekit.models.annotation import TypeAnnotation
 from flytekit.models.literals import (
     BindingData,
     BindingDataCollection,
@@ -548,6 +549,19 @@ def test_default_args_task_int_type():
     assert wf_with_sub_wf() == (default_val, input_val)
 
 
+def test_failure_node_naming():
+    @task
+    def t1(a: int) -> int:
+        return a
+
+    @workflow
+    def wf(a: int) -> int:
+        return t1(a=a).with_overrides(node_name="efn")
+
+    with pytest.raises(ValueError):
+        get_serializable(OrderedDict(), serialization_settings, wf)
+
+
 def test_default_args_task_str_type():
     default_val = ""
     input_val = "foo"
@@ -829,9 +843,7 @@ def test_default_args_task_dict_type():
         }
     )
 
-    assert wf_with_input_spec.template.interface.outputs["o0"].type == LiteralType(
-        map_value_type=LiteralType(simple=SimpleType.INTEGER)
-    )
+    assert wf_with_input_spec.template.interface.outputs["o0"].type == LiteralType(map_value_type=LiteralType(simple=SimpleType.INTEGER))
 
     assert wf_with_input() == input_val
 
@@ -1024,6 +1036,87 @@ def test_positional_args_workflow():
 
     assert wf_pure_positional_args() == ret
     assert wf_mixed_positional_and_keyword_args() == ret
+
+def test_positional_args_workflow_with_default_value():
+    arg1 = 5
+    arg2 = 6
+    default_arg1 = 1
+    default_arg2 = 2
+    ret = 17
+    ret_arg2_default = 9
+
+    @task
+    def t1(x: int, y: int) -> int:
+        return x + y * 2
+
+    @workflow
+    def sub_wf(x: int = default_arg1, y: int = default_arg2) -> int:
+        return t1(x=x, y=y)
+
+    @workflow
+    def wf_pure_positional_args() -> int:
+        return sub_wf(arg1, arg2)
+
+    @workflow
+    def wf_mixed_positional_and_keyword_args() -> int:
+        return sub_wf(arg1, y=arg2)
+
+    @workflow
+    def wf_mixed_positional_and_default_value() -> int:
+        return sub_wf(arg1)
+
+    wf_pure_positional_args_spec = get_serializable(OrderedDict(), serialization_settings, wf_pure_positional_args)
+    wf_mixed_positional_and_keyword_args_spec = get_serializable(OrderedDict(), serialization_settings, wf_mixed_positional_and_keyword_args)
+    wf_mixed_positional_and_default_value_spec = get_serializable(OrderedDict(), serialization_settings, wf_mixed_positional_and_default_value)
+
+    arg1_binding = Scalar(primitive=Primitive(integer=arg1))
+    arg2_binding = Scalar(primitive=Primitive(integer=arg2))
+    default_arg2_binding = Scalar(primitive=Primitive(integer=default_arg2))
+    output_type = LiteralType(simple=SimpleType.INTEGER)
+
+    assert wf_pure_positional_args_spec.template.nodes[0].inputs[0].binding.value == arg1_binding
+    assert wf_pure_positional_args_spec.template.nodes[0].inputs[1].binding.value == arg2_binding
+    assert wf_pure_positional_args_spec.template.interface.outputs["o0"].type == output_type
+
+    assert wf_mixed_positional_and_keyword_args_spec.template.nodes[0].inputs[0].binding.value == arg1_binding
+    assert wf_mixed_positional_and_keyword_args_spec.template.nodes[0].inputs[1].binding.value == arg2_binding
+    assert wf_mixed_positional_and_keyword_args_spec.template.interface.outputs["o0"].type == output_type
+
+    assert wf_mixed_positional_and_default_value_spec.template.nodes[0].inputs[0].binding.value == arg1_binding
+    assert wf_mixed_positional_and_default_value_spec.template.nodes[0].inputs[1].binding.value == default_arg2_binding
+    assert wf_mixed_positional_and_default_value_spec.template.interface.outputs["o0"].type == output_type
+
+    assert wf_pure_positional_args() == ret
+    assert wf_mixed_positional_and_keyword_args() == ret
+    assert wf_mixed_positional_and_default_value() == ret_arg2_default
+
+
+def test_positional_args_workflow_extra_args_or_kwargs():
+    arg1 = 5
+    arg2 = 6
+    ret = 17
+
+    @task
+    def t1(x: int, y: int) -> int:
+        return x + y * 2
+
+    @workflow
+    def sub_wf(x: int, y: int) -> int:
+        return t1(x=x, y=y)
+
+    @workflow
+    def wf_pure_args_extra_args() -> int:
+        return sub_wf(arg1, arg2, arg2)
+
+    @workflow
+    def wf_mixed_positional_and_keyword_args_extra_args() -> int:
+        return sub_wf(arg1, arg2, y=arg2)
+
+    with pytest.raises(AssertionError, match="Received more arguments than expected in function 'tests.flytekit.unit.core.test_serialization.sub_wf'. Expected 2 but got 3"):
+        wf_pure_args_extra_args()
+
+    with pytest.raises(AssertionError, match="Got multiple values for argument 'y' in function 'tests.flytekit.unit.core.test_serialization.sub_wf'"):
+        wf_mixed_positional_and_keyword_args_extra_args()
 
 def test_positional_args_chained_tasks():
     @task

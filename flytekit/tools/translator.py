@@ -1,12 +1,11 @@
 import sys
 import typing
 from collections import OrderedDict
-from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from flyteidl.admin import schedule_pb2
 
-from flytekit import ImageSpec, PythonFunctionTask, SourceCode
+from flytekit import ImageSpec, PodTemplate, PythonFunctionTask, SourceCode
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core import constants as _common_constants
 from flytekit.core import context_manager
@@ -19,16 +18,18 @@ from flytekit.core.gate import Gate
 from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
 from flytekit.core.legacy_map_task import MapPythonTask
 from flytekit.core.node import Node
-from flytekit.core.python_auto_container import PythonAutoContainerTask
+from flytekit.core.options import Options
+from flytekit.core.python_auto_container import (
+    PythonAutoContainerTask,
+)
+from flytekit.core.python_function_task import EagerAsyncPythonFunctionTask
 from flytekit.core.reference_entity import ReferenceEntity, ReferenceSpec, ReferenceTemplate
 from flytekit.core.task import ReferenceTask
-from flytekit.core.utils import ClassDecorator, _dnsify
+from flytekit.core.utils import ClassDecorator, _dnsify, _serialize_pod_spec
 from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase
 from flytekit.models import common as _common_models
-from flytekit.models import common as common_models
 from flytekit.models import interface as interface_models
 from flytekit.models import launch_plan as _launch_plan_models
-from flytekit.models import security
 from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.models.admin.workflow import WorkflowSpec
 from flytekit.models.core import identifier as _identifier_model
@@ -59,50 +60,6 @@ FlyteControlPlaneEntity = Union[
     BranchNodeModel,
     ArrayNodeModel,
 ]
-
-
-@dataclass
-class Options(object):
-    """
-    These are options that can be configured for a launchplan during registration or overridden during an execution.
-    For instance two people may want to run the same workflow but have the offloaded data stored in two different
-    buckets. Or you may want labels or annotations to be different. This object is used when launching an execution
-    in a Flyte backend, and also when registering launch plans.
-
-    Args:
-        labels: Custom labels to be applied to the execution resource
-        annotations: Custom annotations to be applied to the execution resource
-        security_context: Indicates security context for permissions triggered with this launch plan
-        raw_output_data_config: Optional location of offloaded data for things like S3, etc.
-            remote prefix for storage location of the form ``s3://<bucket>/key...`` or
-            ``gcs://...`` or ``file://...``. If not specified will use the platform configured default. This is where
-            the data for offloaded types is stored.
-        max_parallelism: Controls the maximum number of tasknodes that can be run in parallel for the entire workflow.
-        notifications: List of notifications for this execution.
-        disable_notifications: This should be set to true if all notifications are intended to be disabled for this execution.
-    """
-
-    labels: typing.Optional[common_models.Labels] = None
-    annotations: typing.Optional[common_models.Annotations] = None
-    raw_output_data_config: typing.Optional[common_models.RawOutputDataConfig] = None
-    security_context: typing.Optional[security.SecurityContext] = None
-    max_parallelism: typing.Optional[int] = None
-    notifications: typing.Optional[typing.List[common_models.Notification]] = None
-    disable_notifications: typing.Optional[bool] = None
-    overwrite_cache: typing.Optional[bool] = None
-
-    @classmethod
-    def default_from(
-        cls, k8s_service_account: typing.Optional[str] = None, raw_data_prefix: typing.Optional[str] = None
-    ) -> "Options":
-        return cls(
-            security_context=security.SecurityContext(run_as=security.Identity(k8s_service_account=k8s_service_account))
-            if k8s_service_account
-            else None,
-            raw_output_data_config=common_models.RawOutputDataConfig(output_location_prefix=raw_data_prefix)
-            if raw_data_prefix
-            else None,
-        )
 
 
 def to_serializable_case(
@@ -186,9 +143,9 @@ def get_serializable_task(
                 if isinstance(e.container_image, ImageSpec):
                     if settings.image_config.images is None:
                         settings.image_config = ImageConfig.create_from(settings.image_config.default_image)
-                    settings.image_config.images.append(
-                        Image.look_up_image_info(e.container_image.id, e.get_image(settings))
-                    )
+                    img = Image.look_up_image_info(e.container_image.id, e.get_image(settings))
+                    if img not in settings.image_config.images:
+                        settings.image_config.images.append(img)
 
         # In case of Dynamic tasks, we want to pass the serialization context, so that they can reconstruct the state
         # from the serialization context. This is passed through an environment variable, that is read from
@@ -198,6 +155,9 @@ def get_serializable_task(
         if entity.node_dependency_hints is not None:
             for entity_hint in entity.node_dependency_hints:
                 get_serializable(entity_mapping, settings, entity_hint, options)
+
+    if isinstance(entity, EagerAsyncPythonFunctionTask):
+        settings = settings.with_serialized_context()
 
     container = entity.get_container(settings)
     # This pod will be incorrect when doing fast serialize
@@ -225,11 +185,13 @@ def get_serializable_task(
                 entity.reset_command_fn()
 
     entity_config = entity.get_config(settings) or {}
-
     extra_config = {}
 
-    if hasattr(entity, "task_function") and isinstance(entity.task_function, ClassDecorator):
-        extra_config = entity.task_function.get_extra_config()
+    if hasattr(entity, "task_function"):
+        if isinstance(entity.task_function, ClassDecorator):
+            extra_config = entity.task_function.get_extra_config()
+    if entity.enable_deck:
+        entity.metadata.generates_deck = True
 
     merged_config = {**entity_config, **extra_config}
 
@@ -266,6 +228,10 @@ def get_serializable_workflow(
         # Ignore start nodes
         if n.id == _common_constants.GLOBAL_INPUT_NODE_ID:
             continue
+
+        # Ensure no node is named the failure node id
+        if n.id == _common_constants.DEFAULT_FAILURE_NODE_ID:
+            raise ValueError(f"Node {n.id} is reserved for the failure node")
 
         # Recursively serialize the node
         serialized_nodes.append(get_serializable(entity_mapping, settings, n, options))
@@ -425,6 +391,7 @@ def get_serializable_launch_plan(
             expected_inputs=interface_models.ParameterMap({}),
             expected_outputs=interface_models.VariableMap({}),
         ),
+        auto_activate=entity.should_auto_activate,
     )
 
     return lp_model
@@ -473,7 +440,7 @@ def get_serializable_node(
     if isinstance(entity.flyte_entity, ArrayNode):
         node_model = workflow_model.Node(
             id=_dnsify(entity.id),
-            metadata=entity.flyte_entity.construct_node_metadata(),
+            metadata=entity.metadata,
             inputs=entity.bindings,
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
@@ -492,6 +459,13 @@ def get_serializable_node(
         # if entity._aliases:
         #     node_model._output_aliases = entity._aliases
     elif isinstance(entity.flyte_entity, PythonTask):
+        # handle pod template overrides
+        override_pod_spec = {}
+        if entity._pod_template is not None and settings.should_fast_serialize():
+            entity.flyte_entity.set_command_fn(_fast_serialize_command_fn(settings, entity.flyte_entity))
+            override_pod_spec = _serialize_pod_spec(
+                entity._pod_template, entity.flyte_entity._get_container(settings), settings
+            )
         task_spec = get_serializable(entity_mapping, settings, entity.flyte_entity, options=options)
         node_model = workflow_model.Node(
             id=_dnsify(entity.id),
@@ -505,6 +479,16 @@ def get_serializable_node(
                     resources=entity._resources,
                     extended_resources=entity._extended_resources,
                     container_image=entity._container_image,
+                    pod_template=PodTemplate(
+                        pod_spec=override_pod_spec,
+                        labels=entity._pod_template.labels if entity._pod_template.labels else None,
+                        annotations=entity._pod_template.annotations if entity._pod_template.annotations else None,
+                        primary_container_name=entity._pod_template.primary_container_name
+                        if entity._pod_template.primary_container_name
+                        else None,
+                    )
+                    if entity._pod_template
+                    else None,
                 ),
             ),
         )
@@ -631,12 +615,17 @@ def get_serializable_array_node(
     options: Optional[Options] = None,
 ) -> ArrayNodeModel:
     array_node = node.flyte_entity
+    # pass in parent node metadata to be set for subnode
+    array_node.metadata = node.metadata
     return ArrayNodeModel(
         node=get_serializable_node(entity_mapping, settings, array_node, options=options),
         parallelism=array_node.concurrency,
         min_successes=array_node.min_successes,
         min_success_ratio=array_node.min_success_ratio,
         execution_mode=array_node.execution_mode,
+        is_original_sub_node_interface=array_node.is_original_sub_node_interface,
+        data_mode=array_node.data_mode,
+        bound_inputs=array_node.bound_inputs,
     )
 
 
@@ -659,7 +648,7 @@ def get_serializable_array_node_map_task(
     )
     node = workflow_model.Node(
         id=entity.name,
-        metadata=entity.construct_node_metadata(),
+        metadata=entity.sub_node_metadata,
         inputs=node.bindings,
         upstream_node_ids=[],
         output_aliases=[],
@@ -670,6 +659,8 @@ def get_serializable_array_node_map_task(
         parallelism=entity.concurrency,
         min_successes=entity.min_successes,
         min_success_ratio=entity.min_success_ratio,
+        execution_mode=entity.execution_mode,
+        is_original_sub_node_interface=entity.is_original_sub_node_interface,
     )
 
 

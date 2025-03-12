@@ -7,7 +7,6 @@ from flytekit import FlyteContextManager, StructuredDataset, logger
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource, ResourceMeta
 from flytekit.extend.backend.utils import convert_to_flyte_phase, get_agent_secret
-from flytekit.models import literals
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 from flytekit.models.types import LiteralType, StructuredDatasetType
@@ -114,16 +113,14 @@ class SnowflakeAgent(AsyncAgentBase):
         if cur_phase == TaskExecution.SUCCEEDED and resource_meta.has_output:
             ctx = FlyteContextManager.current_context()
             uri = f"snowflake://{resource_meta.user}:{resource_meta.account}/{resource_meta.warehouse}/{resource_meta.database}/{resource_meta.schema}/{resource_meta.query_id}"
-            res = literals.LiteralMap(
-                {
-                    "results": TypeEngine.to_literal(
-                        ctx,
-                        StructuredDataset(uri=uri),
-                        StructuredDataset,
-                        LiteralType(structured_dataset_type=StructuredDatasetType(format="")),
-                    )
-                }
-            )
+            res = {
+                "results": TypeEngine.to_literal(
+                    ctx,
+                    StructuredDataset(uri=uri),
+                    StructuredDataset,
+                    LiteralType(structured_dataset_type=StructuredDatasetType(format="")),
+                )
+            }
 
         return Resource(phase=cur_phase, outputs=res, log_links=[log_link])
 

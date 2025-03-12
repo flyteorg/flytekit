@@ -1,24 +1,33 @@
 import functools
+from datetime import timedelta
 import os
+import tempfile
 import typing
 from collections import OrderedDict
 from typing import List
-from typing_extensions import Annotated
-import tempfile
 
 import pytest
+from flyteidl.core import workflow_pb2 as _core_workflow
 
-from flytekit import dynamic, map_task, task, workflow
-from flytekit.types.directory import FlyteDirectory
+from flytekit import dynamic, map_task, task, workflow, eager, PythonFunctionTask
 from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SerializationSettings
 from flytekit.core import context_manager
 from flytekit.core.array_node_map_task import ArrayNodeMapTask, ArrayNodeMapTaskResolver
 from flytekit.core.task import TaskMetadata
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extras.accelerators import GPUAccelerator
-from flytekit.experimental.eager_function import eager
+from flytekit.models.literals import (
+    Literal,
+    LiteralMap,
+    LiteralOffloadedMetadata,
+)
 from flytekit.tools.translator import get_serializable
-from flytekit.types.pickle import BatchSize
+from flytekit.types.directory import FlyteDirectory
+
+
+class PythonFunctionTaskExtension(PythonFunctionTask):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
 
 @pytest.fixture
@@ -30,6 +39,19 @@ def serialization_settings():
         version="version",
         env=None,
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
+    )
+
+
+@pytest.fixture
+def interactive_serialization_settings():
+    default_img = Image(name="default", fqn="test", tag="tag")
+    return SerializationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env=None,
+        image_config=ImageConfig(default_image=default_img, images=[default_img]),
+        interactive_mode_enabled=True,
     )
 
 
@@ -83,13 +105,6 @@ def test_remote_execution(serialization_settings):
 
 def test_map_task_with_pickle():
     @task
-    def say_hello(name: Annotated[typing.Any, BatchSize(10)]) -> str:
-        return f"hello {name}!"
-
-    with pytest.raises(ValueError, match="Choosing a BatchSize for map tasks inputs is not supported."):
-        map_task(say_hello)(name=["abc", "def"])
-
-    @task
     def say_hello(name: typing.Any) -> str:
         return f"hello {name}!"
 
@@ -105,7 +120,6 @@ def test_serialization(serialization_settings):
     task_spec = get_serializable(OrderedDict(), serialization_settings, arraynode_maptask)
 
     assert task_spec.template.metadata.retries.retries == 2
-    assert task_spec.template.custom["minSuccessRatio"] == 1.0
     assert task_spec.template.type == "python-task"
     assert task_spec.template.task_type_version == 1
     assert task_spec.template.container.args == [
@@ -369,24 +383,44 @@ def test_serialization_metadata(serialization_settings):
 
 def test_serialization_metadata2(serialization_settings):
     @task
-    def t1(a: int) -> int:
+    def t1(a: int) -> typing.Optional[int]:
         return a + 1
 
-    arraynode_maptask = map_task(t1, metadata=TaskMetadata(retries=2, interruptible=True))
+    arraynode_maptask = map_task(
+        t1,
+        min_success_ratio=0.9,
+        concurrency=10,
+        metadata=TaskMetadata(retries=2, interruptible=True, timeout=timedelta(seconds=10))
+    )
     assert arraynode_maptask.metadata.interruptible
 
     @workflow
     def wf(x: typing.List[int]):
         return arraynode_maptask(a=x)
 
+    full_state_array_node_map_task = map_task(PythonFunctionTaskExtension(task_config={}, task_function=t1))
+
+    @workflow
+    def wf1(x: typing.List[int]):
+        return full_state_array_node_map_task(a=x)
+
     od = OrderedDict()
     wf_spec = get_serializable(od, serialization_settings, wf)
 
-    assert arraynode_maptask.construct_node_metadata().interruptible
-    assert wf_spec.template.nodes[0].metadata.interruptible
+    array_node = wf_spec.template.nodes[0]
+    assert array_node.metadata.timeout == timedelta()
+    assert array_node.array_node._min_success_ratio == 0.9
+    assert array_node.array_node._parallelism == 10
+    assert not array_node.array_node._is_original_sub_node_interface
+    assert array_node.array_node._execution_mode == _core_workflow.ArrayNode.MINIMAL_STATE
     task_spec = od[arraynode_maptask]
     assert task_spec.template.metadata.retries.retries == 2
     assert task_spec.template.metadata.interruptible
+    assert task_spec.template.metadata.timeout == timedelta(seconds=10)
+
+    wf1_spec = get_serializable(od, serialization_settings, wf1)
+    array_node = wf1_spec.template.nodes[0]
+    assert array_node.array_node._execution_mode == _core_workflow.ArrayNode.FULL_STATE
 
 
 def test_serialization_extended_resources(serialization_settings):
@@ -407,6 +441,26 @@ def test_serialization_extended_resources(serialization_settings):
     task_spec = od[arraynode_maptask]
 
     assert task_spec.template.extended_resources.gpu_accelerator.device == "test_gpu"
+
+
+def test_serialization_extended_resources_shared_memory(serialization_settings):
+    @task(
+        shared_memory="2Gi"
+    )
+    def t1(a: int) -> int:
+        return a + 1
+
+    arraynode_maptask = map_task(t1)
+
+    @workflow
+    def wf(x: typing.List[int]):
+        return arraynode_maptask(a=x)
+
+    od = OrderedDict()
+    get_serializable(od, serialization_settings, wf)
+    task_spec = od[arraynode_maptask]
+
+    assert task_spec.template.extended_resources.shared_memory.size_limit == "2Gi"
 
 
 def test_supported_node_type():
@@ -443,7 +497,7 @@ def test_unsupported_node_types():
 def test_mis_match():
     @task
     def generate_directory(word: str) -> FlyteDirectory:
-        temp_dir1 = tempfile.TemporaryDirectory(delete=False)
+        temp_dir1 = tempfile.TemporaryDirectory()
         with open(os.path.join(temp_dir1.name, "file.txt"), "w") as tmp:
             tmp.write(f"Hello world {word}!\n")
         return FlyteDirectory(path=temp_dir1.name)
@@ -464,3 +518,41 @@ def test_mis_match():
 
     with pytest.raises(AssertionError):
         wf.compile()
+
+
+def test_load_offloaded_literal(tmp_path, monkeypatch):
+    @task
+    def say_hello(name: str) -> str:
+        return f"hello {name}!"
+
+    ctx = context_manager.FlyteContextManager.current_context()
+    with context_manager.FlyteContextManager.with_context(
+            ctx.with_execution_state(
+                ctx.execution_state.with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION)
+            )
+    ) as ctx:
+        list_strs = ["a", "b", "c"]
+        lt = TypeEngine.to_literal_type(typing.List[str])
+        to_be_offloaded = TypeEngine.to_literal(ctx, list_strs, typing.List[str], lt)
+        with open(f"{tmp_path}/literal.pb", "wb") as f:
+            f.write(to_be_offloaded.to_flyte_idl().SerializeToString())
+
+        literal = Literal(
+            offloaded_metadata=LiteralOffloadedMetadata(
+                uri=f"{tmp_path}/literal.pb",
+                inferred_type=lt,
+            ),
+        )
+
+        lm = LiteralMap({
+            "name": literal
+        })
+
+        for index, map_input_str in enumerate(list_strs):
+            monkeypatch.setenv("BATCH_JOB_ARRAY_INDEX_VAR_NAME", "name")
+            monkeypatch.setenv("name", str(index))
+            t = map_task(say_hello)
+            res = t.dispatch_execute(ctx, lm)
+            assert len(res.literals) == 1
+            assert res.literals[f"o{0}"].scalar.primitive.string_value == f"hello {map_input_str}!"
+            monkeypatch.undo()

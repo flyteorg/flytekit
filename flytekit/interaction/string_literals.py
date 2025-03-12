@@ -1,6 +1,8 @@
 import base64
+import json
 import typing
 
+import msgpack
 from google.protobuf.json_format import MessageToDict
 
 from flytekit.models.literals import Literal, LiteralMap, Primitive, Scalar
@@ -42,6 +44,8 @@ def scalar_to_string(scalar: Scalar) -> typing.Any:
     if scalar.blob:
         return scalar.blob.uri
     if scalar.binary:
+        if scalar.binary.tag == "msgpack":
+            return json.dumps(msgpack.unpackb(scalar.binary.value))
         return base64.b64encode(scalar.binary.value)
     if scalar.generic:
         return MessageToDict(scalar.generic)
@@ -61,6 +65,9 @@ def literal_string_repr(lit: Literal) -> typing.Any:
         return [literal_string_repr(i) for i in lit.collection.literals]
     if lit.map:
         return {k: literal_string_repr(v) for k, v in lit.map.literals.items()}
+    if lit.offloaded_metadata:
+        # TODO: load literal from offloaded literal?
+        return f"Offloaded literal metadata: {lit.offloaded_metadata}"
     raise ValueError(f"Unknown literal type {lit}")
 
 

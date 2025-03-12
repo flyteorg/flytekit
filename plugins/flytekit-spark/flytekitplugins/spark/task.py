@@ -1,4 +1,6 @@
+import dataclasses
 import os
+import shutil
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional, Union, cast
 
@@ -8,10 +10,9 @@ from google.protobuf.json_format import MessageToDict
 from flytekit import FlyteContextManager, PythonFunctionTask, lazy_module, logger
 from flytekit.configuration import DefaultImages, SerializationSettings
 from flytekit.core.context_manager import ExecutionParameters
-from flytekit.core.python_auto_container import get_registerable_container_image
 from flytekit.extend import ExecutionState, TaskPlugins
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
-from flytekit.image_spec import ImageSpec
+from flytekit.image_spec import DefaultImageBuilder, ImageSpec
 
 from .models import SparkJob, SparkType
 
@@ -55,7 +56,7 @@ class Databricks(Spark):
     databricks_instance: Optional[str] = None
 
     def __post_init__(self):
-        logger.warn(
+        logger.warning(
             "Databricks is deprecated. Use 'from flytekitplugins.spark import Databricks' instead,"
             "and make sure to upgrade the version of flyteagent deployment to >v1.13.0.",
         )
@@ -134,11 +135,16 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
         self.sess: Optional[SparkSession] = None
         self._default_executor_path: str = task_config.executor_path
         self._default_applications_path: str = task_config.applications_path
+        self._container_image = container_image
 
         if isinstance(container_image, ImageSpec):
             if container_image.base_image is None:
                 img = f"cr.flyte.org/flyteorg/flytekit:spark-{DefaultImages.get_version_suffix()}"
-                container_image.base_image = img
+                self._container_image = dataclasses.replace(container_image, base_image=img)
+                if container_image.builder == DefaultImageBuilder.builder_type:
+                    # Install the dependencies in the default venv in the spark base image
+                    self._container_image = dataclasses.replace(self._container_image, python_exec="/usr/bin/python3")
+
                 # default executor path and applications path in apache/spark-py:3.3.1
                 self._default_executor_path = self._default_executor_path or "/usr/bin/python3"
                 self._default_applications_path = (
@@ -154,16 +160,9 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
             task_config=task_config,
             task_type=task_type,
             task_function=task_function,
-            container_image=container_image,
+            container_image=self._container_image,
             **kwargs,
         )
-
-    def get_image(self, settings: SerializationSettings) -> str:
-        if isinstance(self.container_image, ImageSpec):
-            # Ensure that the code is always copied into the image, even during fast-registration.
-            self.container_image.source_root = settings.source_root
-
-        return get_registerable_container_image(self.container_image, settings.image_config)
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         job = SparkJob(
@@ -201,6 +200,19 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
             sess_builder = sess_builder.config(conf=spark_conf)
 
         self.sess = sess_builder.getOrCreate()
+
+        if (
+            ctx.serialization_settings
+            and ctx.serialization_settings.fast_serialization_settings
+            and ctx.serialization_settings.fast_serialization_settings.enabled
+            and ctx.execution_state
+            and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION
+        ):
+            file_name = "flyte_wf"
+            file_format = "zip"
+            shutil.make_archive(file_name, file_format, os.getcwd())
+            self.sess.sparkContext.addPyFile(f"{file_name}.{file_format}")
+
         return user_params.builder().add_attr("SPARK_SESSION", self.sess).build()
 
     def execute(self, **kwargs) -> Any:

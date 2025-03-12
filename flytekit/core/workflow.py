@@ -8,12 +8,8 @@ from enum import Enum
 from functools import update_wrapper
 from typing import Any, Callable, Coroutine, Dict, List, Optional, Tuple, Type, Union, cast, overload
 
+from typing_extensions import ParamSpec  # type: ignore
 from typing_inspect import is_optional_type
-
-try:
-    from typing import ParamSpec
-except ImportError:
-    from typing_extensions import ParamSpec  # type: ignore
 
 from flytekit.core import constants as _common_constants
 from flytekit.core import launch_plan as _annotated_launch_plan
@@ -34,6 +30,7 @@ from flytekit.core.interface import (
     transform_interface_to_typed_interface,
 )
 from flytekit.core.node import Node
+from flytekit.core.options import Options
 from flytekit.core.promise import (
     NodeOutput,
     Promise,
@@ -194,6 +191,7 @@ class WorkflowBase(object):
         python_interface: Interface,
         on_failure: Optional[Union[WorkflowBase, Task]] = None,
         docs: Optional[Documentation] = None,
+        default_options: Optional[Options] = None,
         **kwargs,
     ):
         self._name = name
@@ -208,6 +206,7 @@ class WorkflowBase(object):
         self._on_failure = on_failure
         self._failure_node = None
         self._docs = docs
+        self._default_options = default_options
 
         if self._python_interface.docstring:
             if self.docs is None:
@@ -272,6 +271,10 @@ class WorkflowBase(object):
     def failure_node(self) -> Optional[Node]:
         return self._failure_node
 
+    @property
+    def default_options(self) -> Optional[Options]:
+        return self._default_options
+
     def __repr__(self):
         return (
             f"WorkflowBase - {self._name} && "
@@ -291,9 +294,24 @@ class WorkflowBase(object):
         Workflow needs to fill in default arguments before invoking the call handler.
         """
         # Get default arguments and override with kwargs passed in
-        input_kwargs = self.python_interface.default_inputs_as_kwargs
+        interface = self.python_interface
+        input_kwargs = interface.default_inputs_as_kwargs
+
+        if len(args) > len(interface.inputs):
+            raise AssertionError(
+                f"Received more arguments than expected in function '{self.name}'. Expected {len(interface.inputs)} but got {len(args)}"
+            )
+        if len(input_kwargs) != 0:
+            for _, input_name in zip(args, interface.inputs.keys()):
+                if input_name in input_kwargs:
+                    # delete the default value if provide args
+                    del input_kwargs[input_name]
+
         input_kwargs.update(kwargs)
-        self.compile()
+        ctx = FlyteContext.current_context()
+        # todo: remove this conditional once context manager is thread safe
+        if not (ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.EAGER_EXECUTION):
+            self.compile()
         try:
             return flyte_entity_call_handler(self, *args, **input_kwargs)
         except Exception as exc:
@@ -628,6 +646,40 @@ class ImperativeWorkflow(WorkflowBase):
     def add_subwf(self, sub_wf: WorkflowBase, **kwargs) -> Node:
         return self.add_entity(sub_wf, **kwargs)
 
+    def add_on_failure_handler(self, entity):
+        """
+        This is a special function that mimics the add_entity function, but this is only used
+        to add the failure node. Failure nodes are special because we don't want
+        them to be part of the main workflow.
+        """
+        from flytekit.core.node_creation import create_node
+
+        ctx = FlyteContext.current_context()
+        if ctx.compilation_state is not None:
+            raise RuntimeError("Can't already be compiling")
+        with FlyteContextManager.with_context(ctx.with_compilation_state(self.compilation_state)) as ctx:
+            if entity.python_interface and self.python_interface:
+                workflow_inputs = self.python_interface.inputs
+                failure_node_inputs = entity.python_interface.inputs
+
+                # Workflow inputs should be a subset of failure node inputs.
+                if (failure_node_inputs | workflow_inputs) != failure_node_inputs:
+                    raise FlyteFailureNodeInputMismatchException(self.on_failure, self)
+                additional_keys = failure_node_inputs.keys() - workflow_inputs.keys()
+                # Raising an error if the additional inputs in the failure node are not optional.
+                for k in additional_keys:
+                    if not is_optional_type(failure_node_inputs[k]):
+                        raise FlyteFailureNodeInputMismatchException(self.on_failure, self)
+
+            n = create_node(entity=entity, **self._inputs)
+            # Maybe this can be cleaned up, but the create node function creates a node
+            # and add it to the compilation state. We need to pop it off because we don't
+            # want it in the actual workflow.
+            ctx.compilation_state.nodes.pop(-1)
+            self._failure_node = n
+            n._id = _common_constants.DEFAULT_FAILURE_NODE_ID
+            return n  # type: ignore
+
     def ready(self) -> bool:
         """
         This function returns whether or not the workflow is in a ready state, which means
@@ -661,10 +713,14 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         docstring: Optional[Docstring] = None,
         on_failure: Optional[Union[WorkflowBase, Task]] = None,
         docs: Optional[Documentation] = None,
+        pickle_untyped: bool = False,
+        default_options: Optional[Options] = None,
     ):
         name, _, _, _ = extract_task_module(workflow_function)
         self._workflow_function = workflow_function
-        native_interface = transform_function_to_interface(workflow_function, docstring=docstring)
+        native_interface = transform_function_to_interface(
+            workflow_function, docstring=docstring, pickle_untyped=pickle_untyped
+        )
 
         # TODO do we need this - can this not be in launchplan only?
         #    This can be in launch plan only, but is here only so that we don't have to re-evaluate. Or
@@ -677,7 +733,14 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             python_interface=native_interface,
             on_failure=on_failure,
             docs=docs,
+            default_options=default_options,
         )
+
+        # Set this here so that the lhs call doesn't fail at least. This is only useful in the context of the
+        # ClassStorageTaskResolver, to satisfy the understanding that my_wf.lhs should be fetch the workflow object
+        # from the module.
+        self._lhs = workflow_function.__name__
+
         self.compiled = False
 
     @property
@@ -688,9 +751,13 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         return f"{self.name}.{t.__module__}.{t.name}"
 
     def _validate_add_on_failure_handler(self, ctx: FlyteContext, prefix: str, wf_args: Dict[str, Promise]):
-        # Compare
+        resolver = (
+            ctx.compilation_state.task_resolver
+            if ctx.compilation_state and ctx.compilation_state.task_resolver
+            else self
+        )
         with FlyteContextManager.with_context(
-            ctx.with_compilation_state(CompilationState(prefix=prefix, task_resolver=self))
+            ctx.with_compilation_state(CompilationState(prefix=prefix, task_resolver=resolver))
         ) as inner_comp_ctx:
             # Now lets compile the failure-node if it exists
             if self.on_failure:
@@ -728,9 +795,14 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         ctx = FlyteContextManager.current_context()
         all_nodes = []
         prefix = ctx.compilation_state.prefix if ctx.compilation_state is not None else ""
+        resolver = (
+            ctx.compilation_state.task_resolver
+            if ctx.compilation_state and ctx.compilation_state.task_resolver
+            else self
+        )
 
         with FlyteContextManager.with_context(
-            ctx.with_compilation_state(CompilationState(prefix=prefix, task_resolver=self))
+            ctx.with_compilation_state(CompilationState(prefix=prefix, task_resolver=resolver))
         ) as comp_ctx:
             # Construct the default input promise bindings, but then override with the provided inputs, if any
             input_kwargs = construct_input_promises([k for k in self.interface.inputs.keys()])
@@ -828,6 +900,8 @@ def workflow(
     interruptible: bool = ...,
     on_failure: Optional[Union[WorkflowBase, Task]] = ...,
     docs: Optional[Documentation] = ...,
+    pickle_untyped: bool = ...,
+    default_options: Optional[Options] = ...,
 ) -> Callable[[Callable[..., FuncOut]], PythonFunctionWorkflow]: ...
 
 
@@ -838,6 +912,8 @@ def workflow(
     interruptible: bool = ...,
     on_failure: Optional[Union[WorkflowBase, Task]] = ...,
     docs: Optional[Documentation] = ...,
+    pickle_untyped: bool = ...,
+    default_options: Optional[Options] = ...,
 ) -> Union[Callable[P, FuncOut], PythonFunctionWorkflow]: ...
 
 
@@ -847,6 +923,8 @@ def workflow(
     interruptible: bool = False,
     on_failure: Optional[Union[WorkflowBase, Task]] = None,
     docs: Optional[Documentation] = None,
+    pickle_untyped: bool = False,
+    default_options: Optional[Options] = None,
 ) -> Union[Callable[P, FuncOut], Callable[[Callable[P, FuncOut]], PythonFunctionWorkflow], PythonFunctionWorkflow]:
     """
     This decorator declares a function to be a Flyte workflow. Workflows are declarative entities that construct a DAG
@@ -878,6 +956,10 @@ def workflow(
     :param on_failure: Invoke this workflow or task on failure. The Workflow / task has to match the signature of
          the current workflow, with an additional parameter called `error` Error
     :param docs: Description entity for the workflow
+    :param pickle_untyped: This is a flag that allows users to bypass the type-checking that Flytekit does when constructing
+         the workflow. This is not recommended for general use.
+    :param default_options: Default options for the workflow when creating a default launch plan. Currently only
+         the labels and annotations are allowed to be set as defaults.
     """
 
     def wrapper(fn: Callable[P, FuncOut]) -> PythonFunctionWorkflow:
@@ -892,6 +974,8 @@ def workflow(
             docstring=Docstring(callable_=fn),
             on_failure=on_failure,
             docs=docs,
+            pickle_untyped=pickle_untyped,
+            default_options=default_options,
         )
         update_wrapper(workflow_instance, fn)
         return workflow_instance

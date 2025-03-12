@@ -16,7 +16,6 @@ from flyteidl.admin.agent_pb2 import (
     GetTaskResponse,
     ListAgentsRequest,
     ListAgentsResponse,
-    Resource,
 )
 from flyteidl.service.agent_pb2_grpc import (
     AgentMetadataServiceServicer,
@@ -25,8 +24,8 @@ from flyteidl.service.agent_pb2_grpc import (
 )
 from prometheus_client import Counter, Summary
 
-from flytekit import FlyteContext, logger
-from flytekit.core.type_engine import TypeEngine
+from flytekit import logger
+from flytekit.bin.entrypoint import get_traceback_str
 from flytekit.exceptions.system import FlyteAgentNotFound
 from flytekit.extend.backend.base_agent import AgentRegistry, SyncAgentBase, mirror_async_methods
 from flytekit.models.literals import LiteralMap
@@ -65,7 +64,7 @@ def _handle_exception(e: Exception, context: grpc.ServicerContext, task_type: st
         context.set_details(error_message)
         request_failure_count.labels(task_type=task_type, operation=operation, error_code=HTTPStatus.NOT_FOUND).inc()
     else:
-        error_message = f"failed to {operation} {task_type} task with error: {e}."
+        error_message = f"failed to {operation} {task_type} task with error:\n {get_traceback_str(e)}."
         logger.error(error_message)
         context.set_code(grpc.StatusCode.INTERNAL)
         context.set_details(error_message)
@@ -118,14 +117,14 @@ class AsyncAgentService(AsyncAgentServiceServicer):
         task_execution_metadata = TaskExecutionMetadata.from_flyte_idl(request.task_execution_metadata)
 
         logger.info(f"{agent.name} start creating the job")
-        resource_mata = await mirror_async_methods(
+        resource_meta = await mirror_async_methods(
             agent.create,
             task_template=template,
             inputs=inputs,
             output_prefix=request.output_prefix,
             task_execution_metadata=task_execution_metadata,
         )
-        return CreateTaskResponse(resource_meta=resource_mata.encode())
+        return CreateTaskResponse(resource_meta=resource_meta.encode())
 
     @record_agent_metrics
     async def GetTask(self, request: GetTaskRequest, context: grpc.ServicerContext) -> GetTaskResponse:
@@ -135,17 +134,8 @@ class AsyncAgentService(AsyncAgentServiceServicer):
             agent = AgentRegistry.get_agent(request.task_type)
         logger.info(f"{agent.name} start checking the status of the job")
         res = await mirror_async_methods(agent.get, resource_meta=agent.metadata_type.decode(request.resource_meta))
-
-        if res.outputs is None:
-            outputs = None
-        elif isinstance(res.outputs, LiteralMap):
-            outputs = res.outputs.to_flyte_idl()
-        else:
-            ctx = FlyteContext.current_context()
-            outputs = TypeEngine.dict_to_literal_map_pb(ctx, res.outputs)
-        return GetTaskResponse(
-            resource=Resource(phase=res.phase, log_links=res.log_links, message=res.message, outputs=outputs)
-        )
+        resource = await res.to_flyte_idl()
+        return GetTaskResponse(resource=resource)
 
     @record_agent_metrics
     async def DeleteTask(self, request: DeleteTaskRequest, context: grpc.ServicerContext) -> DeleteTaskResponse:
@@ -178,17 +168,8 @@ class SyncAgentService(SyncAgentServiceServicer):
                     agent.do, task_template=template, inputs=literal_map, output_prefix=output_prefix
                 )
 
-                if res.outputs is None:
-                    outputs = None
-                elif isinstance(res.outputs, LiteralMap):
-                    outputs = res.outputs.to_flyte_idl()
-                else:
-                    ctx = FlyteContext.current_context()
-                    outputs = TypeEngine.dict_to_literal_map_pb(ctx, res.outputs)
-
-                header = ExecuteTaskSyncResponseHeader(
-                    resource=Resource(phase=res.phase, log_links=res.log_links, message=res.message, outputs=outputs)
-                )
+                resource = await res.to_flyte_idl()
+                header = ExecuteTaskSyncResponseHeader(resource=resource)
                 yield ExecuteTaskSyncResponse(header=header)
             request_success_count.labels(task_type=task_type, operation=do_operation).inc()
         except Exception as e:

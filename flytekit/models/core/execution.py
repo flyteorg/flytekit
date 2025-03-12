@@ -147,6 +147,9 @@ class ExecutionError(_common.FlyteIdlEntity):
         """
         return cls(code=p.code, message=p.message, error_uri=p.error_uri, kind=p.kind)
 
+    def _repr_html_(self) -> str:
+        return f"<b>{self.code}</b> <pre>{self.message}</pre>"
+
 
 class TaskLog(_common.FlyteIdlEntity):
     class MessageFormat(object):

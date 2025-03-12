@@ -1,25 +1,24 @@
 from __future__ import annotations
 
 import datetime
+import inspect
 import os
-from functools import update_wrapper
+from functools import partial, update_wrapper
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, TypeVar, Union, overload
+from typing import Literal as L
 
-from flytekit.core.utils import str2bool
-
-try:
-    from typing import ParamSpec
-except ImportError:
-    from typing_extensions import ParamSpec  # type: ignore
+from typing_extensions import ParamSpec  # type: ignore
 
 from flytekit.core import launch_plan as _annotated_launchplan
 from flytekit.core import workflow as _annotated_workflow
 from flytekit.core.base_task import PythonTask, TaskMetadata, TaskResolverMixin
+from flytekit.core.cache import Cache, VersionParameters
 from flytekit.core.interface import Interface, output_name_generator, transform_function_to_interface
 from flytekit.core.pod_template import PodTemplate
-from flytekit.core.python_function_task import PythonFunctionTask
+from flytekit.core.python_function_task import AsyncPythonFunctionTask, EagerAsyncPythonFunctionTask, PythonFunctionTask
 from flytekit.core.reference_entity import ReferenceEntity, TaskReference
 from flytekit.core.resources import Resources
+from flytekit.core.utils import str2bool
 from flytekit.deck import DeckField
 from flytekit.extras.accelerators import BaseAccelerator
 from flytekit.image_spec.image_spec import ImageSpec
@@ -99,10 +98,7 @@ FuncOut = TypeVar("FuncOut")
 def task(
     _task_function: None = ...,
     task_config: Optional[T] = ...,
-    cache: bool = ...,
-    cache_serialize: bool = ...,
-    cache_version: str = ...,
-    cache_ignore_input_vars: Tuple[str, ...] = ...,
+    cache: Union[bool, Cache] = ...,
     retries: int = ...,
     interruptible: Optional[bool] = ...,
     deprecated: str = ...,
@@ -130,6 +126,10 @@ def task(
     pod_template: Optional["PodTemplate"] = ...,
     pod_template_name: Optional[str] = ...,
     accelerator: Optional[BaseAccelerator] = ...,
+    pickle_untyped: bool = ...,
+    shared_memory: Optional[Union[L[True], str]] = None,
+    resources: Optional[Resources] = ...,
+    **kwargs,
 ) -> Callable[[Callable[..., FuncOut]], PythonFunctionTask[T]]: ...
 
 
@@ -137,10 +137,7 @@ def task(
 def task(
     _task_function: Callable[P, FuncOut],
     task_config: Optional[T] = ...,
-    cache: bool = ...,
-    cache_serialize: bool = ...,
-    cache_version: str = ...,
-    cache_ignore_input_vars: Tuple[str, ...] = ...,
+    cache: Union[bool, Cache] = ...,
     retries: int = ...,
     interruptible: Optional[bool] = ...,
     deprecated: str = ...,
@@ -168,16 +165,17 @@ def task(
     pod_template: Optional["PodTemplate"] = ...,
     pod_template_name: Optional[str] = ...,
     accelerator: Optional[BaseAccelerator] = ...,
+    pickle_untyped: bool = ...,
+    shared_memory: Optional[Union[L[True], str]] = ...,
+    resources: Optional[Resources] = ...,
+    **kwargs,
 ) -> Union[Callable[P, FuncOut], PythonFunctionTask[T]]: ...
 
 
 def task(
     _task_function: Optional[Callable[P, FuncOut]] = None,
     task_config: Optional[T] = None,
-    cache: bool = False,
-    cache_serialize: bool = False,
-    cache_version: str = "",
-    cache_ignore_input_vars: Tuple[str, ...] = (),
+    cache: Union[bool, Cache] = False,
     retries: int = 0,
     interruptible: Optional[bool] = None,
     deprecated: str = "",
@@ -211,6 +209,10 @@ def task(
     pod_template: Optional["PodTemplate"] = None,
     pod_template_name: Optional[str] = None,
     accelerator: Optional[BaseAccelerator] = None,
+    pickle_untyped: bool = False,
+    shared_memory: Optional[Union[L[True], str]] = None,
+    resources: Optional[Resources] = None,
+    **kwargs,
 ) -> Union[
     Callable[P, FuncOut],
     Callable[[Callable[P, FuncOut]], PythonFunctionTask[T]],
@@ -248,15 +250,17 @@ def task(
     :param _task_function: This argument is implicitly passed and represents the decorated function
     :param task_config: This argument provides configuration for a specific task types.
                         Please refer to the plugins documentation for the right object to use.
-    :param cache: Boolean that indicates if caching should be enabled
-    :param cache_serialize: Boolean that indicates if identical (ie. same inputs) instances of this task should be
-          executed in serial when caching is enabled. This means that given multiple concurrent executions over
-          identical inputs, only a single instance executes and the rest wait to reuse the cached results. This
-          parameter does nothing without also setting the cache parameter.
-    :param cache_version: Cache version to use. Changes to the task signature will automatically trigger a cache miss,
-           but you can always manually update this field as well to force a cache miss. You should also manually bump
-           this version if the function body/business logic has changed, but the signature hasn't.
-    :param cache_ignore_input_vars: Input variables that should not be included when calculating hash for cache.
+    :param cache: Boolean or Cache that indicates how caching is configured.
+    :deprecated param cache_serialize: (deprecated - please use Cache) Boolean that indicates if identical (ie. same inputs)
+          instances of this task should be executed in serial when caching is enabled. This means that given multiple
+          concurrent executions over identical inputs, only a single instance executes and the rest wait to reuse the
+          cached results. This parameter does nothing without also setting the cache parameter.
+    :deprecated param cache_version: (deprecated - please use Cache) Cache version to use. Changes to the task signature will
+           automatically trigger a cache miss, but you can always manually update this field as well to force a cache
+           miss. You should also manually bump this version if the function body/business logic has changed, but the
+           signature hasn't.
+    :deprecated param cache_ignore_input_vars: (deprecated - please use Cache) Input variables that should not be included when
+           calculating hash for cache.
     :param retries: Number of times to retry this task during a workflow execution.
     :param interruptible: [Optional] Boolean that indicates that this task can be interrupted and/or scheduled on nodes
                           with lower QoS guarantees. This will directly reduce the `$`/`execution cost` associated,
@@ -302,6 +306,13 @@ def task(
                      Possible options for secret stores are - Vault, Confidant, Kube secrets, AWS KMS etc
                      Refer to :py:class:`Secret` to understand how to specify the request for a secret. It
                      may change based on the backend provider.
+
+                     .. note::
+
+                         During local execution, the secrets will be pulled from the local environment variables
+                         with the format `{GROUP}_{GROUP_VERSION}_{KEY}`, where all the characters are capitalized
+                         and the prefix is not used.
+
     :param execution_mode: This is mainly for internal use. Please ignore. It is filled in automatically.
     :param node_dependency_hints: A list of tasks, launchplans, or workflows that this task depends on. This is only
         for dynamic tasks/workflows, where flyte cannot automatically determine the dependencies prior to runtime.
@@ -333,9 +344,57 @@ def task(
     :param pod_template: Custom PodTemplate for this task.
     :param pod_template_name: The name of the existing PodTemplate resource which will be used in this task.
     :param accelerator: The accelerator to use for this task.
+    :param pickle_untyped: Boolean that indicates if the task allows unspecified data types.
+    :param shared_memory: If True, then shared memory will be attached to the container where the size is equal
+        to the allocated memory. If int, then the shared memory is set to that size.
+    :param resources: Specify both the request and the limit. When the value is set to a tuple or list, the
+        first value is the request and the second value is the limit. If the value is a single value, then both the
+        requests and limit is set to that value. For example, the `Resource(cpu=("1", "2"), mem="1Gi")` will set the cpu
+        request to 1, cpu limit to 2, and mem request to 1Gi.
     """
+    # Maintain backwards compatibility with the old cache parameters, while cleaning up the task function definition.
+    cache_serialize = kwargs.get("cache_serialize")
+    cache_version = kwargs.get("cache_version")
+    cache_ignore_input_vars = kwargs.get("cache_ignore_input_vars")
 
-    def wrapper(fn: Callable[P, Any]) -> PythonFunctionTask[T]:
+    def wrapper(fn: Callable[P, FuncOut]) -> PythonFunctionTask[T]:
+        nonlocal cache, cache_serialize, cache_version, cache_ignore_input_vars
+
+        # If the cache is of type bool but cache_version is not set, then assume that we want to use the
+        # default cache policies in Cache
+        if isinstance(cache, bool) and cache is True and cache_version is None:
+            cache = Cache(
+                serialize=cache_serialize if cache_serialize is not None else False,
+                ignored_inputs=cache_ignore_input_vars if cache_ignore_input_vars is not None else tuple(),
+            )
+
+        if isinstance(cache, Cache):
+            # Validate that none of the deprecated cache-related parameters are set.
+            if cache_serialize is not None or cache_version is not None or cache_ignore_input_vars is not None:
+                raise ValueError(
+                    "cache_serialize, cache_version, and cache_ignore_input_vars are deprecated. Please use Cache object"
+                )
+            cache_version = cache.get_version(
+                VersionParameters(
+                    func=fn,
+                    container_image=container_image,
+                    pod_template=pod_template,
+                    pod_template_name=pod_template_name,
+                )
+            )
+            cache_serialize = cache.serialize
+            cache_ignore_input_vars = cache.get_ignored_inputs()
+            cache = True
+
+        # Set default values to each of the cache-related variables. Notice how this only applies if the values are not
+        # set explicitly, which only happens if they are not set at all in the invocation of the task.
+        if cache_serialize is None:
+            cache_serialize = False
+        if cache_version is None:
+            cache_version = ""
+        if cache_ignore_input_vars is None:
+            cache_ignore_input_vars = tuple()
+
         _metadata = TaskMetadata(
             cache=cache,
             cache_serialize=cache_serialize,
@@ -347,9 +406,22 @@ def task(
             timeout=timeout,
         )
 
-        decorated_fn = decorate_function(fn)
+        if inspect.iscoroutinefunction(fn):
+            # TODO: figure out vscode decoration for async tasks, wait to do this until this vscode pattern has
+            #   stabilized.
+            #   https://github.com/flyteorg/flyte/issues/6071
+            decorated_fn = fn
+        else:
+            decorated_fn = decorate_function(fn)
+        task_plugin = TaskPlugins.find_pythontask_plugin(type(task_config))
+        if inspect.iscoroutinefunction(fn):
+            if task_plugin is PythonFunctionTask:
+                task_plugin = AsyncPythonFunctionTask
+            else:
+                if not issubclass(task_plugin, AsyncPythonFunctionTask):
+                    raise AssertionError(f"Task plugin {task_plugin} is not compatible with async functions")
 
-        task_instance = TaskPlugins.find_pythontask_plugin(type(task_config))(
+        task_instance = task_plugin(
             task_config,
             decorated_fn,
             metadata=_metadata,
@@ -368,6 +440,9 @@ def task(
             pod_template=pod_template,
             pod_template_name=pod_template_name,
             accelerator=accelerator,
+            pickle_untyped=pickle_untyped,
+            shared_memory=shared_memory,
+            resources=resources,
         )
         update_wrapper(task_instance, decorated_fn)
         return task_instance
@@ -481,3 +556,96 @@ class Echo(PythonTask):
             return values[0]
         else:
             return tuple(values)
+
+
+def eager(
+    _fn=None,
+    *args,
+    **kwargs,
+) -> Union[EagerAsyncPythonFunctionTask, partial]:
+    """Eager workflow decorator.
+
+    This type of task will execute all Flyte entities within it eagerly, meaning that all python constructs can be
+    used inside of an ``@eager``-decorated function. This is because eager workflows use a
+    :py:class:`~flytekit.remote.remote.FlyteRemote` object to kick off executions when a flyte entity needs to produce a
+    value. Basically think about it as: every Flyte entity that is called(), the stack frame is an execution with its
+    own Flyte URL. Results (or the error) are fetched when the execution is finished.
+
+    For example:
+
+    .. code-block:: python
+
+        from flytekit import task, eager
+
+        @task
+        def add_one(x: int) -> int:
+            return x + 1
+
+        @task
+        def double(x: int) -> int:
+            return x * 2
+
+        @eager
+        async def eager_workflow(x: int) -> int:
+            out = add_one(x=x)
+            return double(x=out)
+
+        # run locally with asyncio
+        if __name__ == "__main__":
+            import asyncio
+
+            result = asyncio.run(eager_workflow(x=1))
+            print(f"Result: {result}")  # "Result: 4"
+
+    Unlike :py:func:`dynamic workflows <flytekit.dynamic>`, eager workflows are not compiled into a workflow spec, but
+    uses python's `async <https://docs.python.org/3/library/asyncio.html>`__ capabilities to execute flyte entities.
+
+    .. note::
+
+       Eager workflows only support `@task`, `@workflow`, and `@eager` entities. Conditionals are not supported, use a
+       plain Python if statement instead.
+
+    .. important::
+
+       A ``client_secret_group`` and ``client_secret_key`` is needed for authenticating via
+       :py:class:`~flytekit.remote.remote.FlyteRemote` using the ``client_credentials`` authentication, which is
+       configured via :py:class:`~flytekit.configuration.PlatformConfig`.
+
+       .. code-block:: python
+
+            from flytekit.remote import FlyteRemote
+            from flytekit.configuration import Config
+
+            @eager(
+                remote=FlyteRemote(config=Config.auto(config_file="config.yaml")),
+                client_secret_group="my_client_secret_group",
+                client_secret_key="my_client_secret_key",
+            )
+            async def eager_workflow(x: int) -> int:
+                out = await add_one(x)
+                return await double(one)
+
+       Where ``config.yaml`` contains is a flytectl-compatible config file.
+       For more details, see `here <https://docs.flyte.org/en/latest/flytectl/overview.html#configuration>`__.
+
+       When using a sandbox cluster started with ``flytectl demo start``, however, the ``client_secret_group``
+       and ``client_secret_key`` are not needed, :
+
+       .. code-block:: python
+
+            @eager
+            async def eager_workflow(x: int) -> int:
+                ...
+    """
+
+    if _fn is None:
+        return partial(
+            eager,
+            **kwargs,
+        )
+
+    if "enable_deck" in kwargs:
+        del kwargs["enable_deck"]
+
+    et = EagerAsyncPythonFunctionTask(task_config=None, task_function=_fn, enable_deck=True, **kwargs)
+    return et

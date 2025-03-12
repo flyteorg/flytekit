@@ -21,7 +21,6 @@
 import asyncio
 import collections
 import datetime
-import inspect
 import warnings
 from abc import abstractmethod
 from base64 import b64encode
@@ -71,6 +70,11 @@ from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
 from flytekit.core.utils import timeit
 from flytekit.deck import DeckField
+from flytekit.exceptions.system import (
+    FlyteDownloadDataException,
+    FlyteNonRecoverableSystemException,
+    FlyteUploadDataException,
+)
 from flytekit.exceptions.user import FlyteUserRuntimeException
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
@@ -81,6 +85,7 @@ from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.documentation import Description, Documentation
 from flytekit.models.interface import Variable
 from flytekit.models.security import SecurityContext
+from flytekit.utils.asyn import run_sync
 
 DYNAMIC_PARTITIONS = "_uap"
 MODEL_CARD = "_ucm"
@@ -110,21 +115,18 @@ class TaskMetadata(object):
 
     See the :std:ref:`IDL <idl:protos/docs/core/core:taskmetadata>` for the protobuf definition.
 
-    Args:
-        cache (bool): Indicates if caching should be enabled. See :std:ref:`Caching <cookbook:caching>`
-        cache_serialize (bool): Indicates if identical (ie. same inputs) instances of this task should be executed in serial when caching is enabled. See :std:ref:`Caching <cookbook:caching>`
-        cache_version (str): Version to be used for the cached value
-        cache_ignore_input_vars (Tuple[str, ...]): Input variables that should not be included when calculating hash for cache
-        interruptible (Optional[bool]): Indicates that this task can be interrupted and/or scheduled on nodes with
-            lower QoS guarantees that can include pre-emption. This can reduce the monetary cost executions incur at the
-            cost of performance penalties due to potential interruptions
-        deprecated (str): Can be used to provide a warning message for deprecated task. Absence or empty str indicates
-            that the task is active and not deprecated
+    Attributes:
+        cache (bool): Indicates if caching should be enabled. See :std:ref:`Caching <cookbook:caching>`.
+        cache_serialize (bool): Indicates if identical (i.e. same inputs) instances of this task should be executed in serial when caching is enabled. See :std:ref:`Caching <cookbook:caching>`.
+        cache_version (str): Version to be used for the cached value.
+        cache_ignore_input_vars (Tuple[str, ...]): Input variables that should not be included when calculating hash for cache.
+        interruptible (Optional[bool]): Indicates that this task can be interrupted and/or scheduled on nodes with lower QoS guarantees that can include pre-emption.
+        deprecated (str): Can be used to provide a warning message for a deprecated task. An absence or empty string indicates that the task is active and not deprecated.
         retries (int): for retries=n; n > 0, on failures of this task, the task will be retried at-least n number of times.
-        timeout (Optional[Union[datetime.timedelta, int]]): the max amount of time for which one execution of this task
-            should be executed for. The execution will be terminated if the runtime exceeds the given timeout
-            (approximately)
-        pod_template_name (Optional[str]): the name of existing PodTemplate resource in the cluster which will be used in this task.
+        timeout (Optional[Union[datetime.timedelta, int]]): The maximum duration for which one execution of this task should run. The execution will be terminated if the runtime exceeds this timeout.
+        pod_template_name (Optional[str]): The name of an existing PodTemplate resource in the cluster which will be used for this task.
+        generates_deck (bool): Indicates whether the task will generate a Deck URI.
+        is_eager (bool): Indicates whether the task should be treated as eager.
     """
 
     cache: bool = False
@@ -136,6 +138,8 @@ class TaskMetadata(object):
     retries: int = 0
     timeout: Optional[Union[datetime.timedelta, int]] = None
     pod_template_name: Optional[str] = None
+    generates_deck: bool = False
+    is_eager: bool = False
 
     def __post_init__(self):
         if self.timeout:
@@ -173,8 +177,10 @@ class TaskMetadata(object):
             discovery_version=self.cache_version,
             deprecated_error_message=self.deprecated,
             cache_serializable=self.cache_serialize,
+            generates_deck=self.generates_deck,
             pod_template_name=self.pod_template_name,
             cache_ignore_input_vars=self.cache_ignore_input_vars,
+            is_eager=self.is_eager,
         )
 
 
@@ -341,9 +347,6 @@ class Task(object):
             # Code is simpler with duplication and less metaprogramming, but introduces regressions
             # if one is changed and not the other.
             outputs_literal_map = self.sandbox_execute(ctx, input_literal_map)
-
-        if inspect.iscoroutine(outputs_literal_map):
-            return outputs_literal_map
 
         outputs_literals = outputs_literal_map.literals
 
@@ -611,7 +614,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
     ) -> Dict[str, Any]:
         return TypeEngine.literal_map_to_kwargs(ctx, literal_map, self.python_interface.inputs)
 
-    def _output_to_literal_map(self, native_outputs: Dict[int, Any], ctx: FlyteContext):
+    async def _output_to_literal_map(self, native_outputs: Dict[int, Any], ctx: FlyteContext):
         expected_output_names = list(self._outputs_interface.keys())
         if len(expected_output_names) == 1:
             # Here we have to handle the fact that the task could've been declared with a typing.NamedTuple of
@@ -632,28 +635,35 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         with timeit("Translate the output to literals"):
             literals = {}
             omt = ctx.output_metadata_tracker
+            # Here is where we iterate through the outputs, need to call new type engine.
             for i, (k, v) in enumerate(native_outputs_as_map.items()):
                 literal_type = self._outputs_interface[k].type
                 py_type = self.get_type_for_output_var(k, v)
 
                 if isinstance(v, tuple):
                     raise TypeError(f"Output({k}) in task '{self.name}' received a tuple {v}, instead of {py_type}")
-                try:
-                    lit = TypeEngine.to_literal(ctx, v, py_type, literal_type)
-                    literals[k] = lit
-                except Exception as e:
+                literals[k] = asyncio.create_task(TypeEngine.async_to_literal(ctx, v, py_type, literal_type))
+
+            await asyncio.gather(*literals.values(), return_exceptions=True)
+
+            for i, (k2, v2) in enumerate(literals.items()):
+                if v2.exception() is not None:
                     # only show the name of output key if it's user-defined (by default Flyte names these as "o<n>")
-                    key = k if k != f"o{i}" else i
-                    msg = (
+                    key = k2 if k2 != f"o{i}" else i
+                    e: BaseException = v2.exception()  # type: ignore  # we know this is not optional
+                    py_type = self.get_type_for_output_var(k2, native_outputs_as_map[k2])
+                    e.args = (
                         f"Failed to convert outputs of task '{self.name}' at position {key}.\n"
                         f"Failed to convert type {type(native_outputs_as_map[expected_output_names[i]])} to type {py_type}.\n"
-                        f"Error Message: {e}."
+                        f"Error Message: {e.args[0]}.",
                     )
-                    logger.error(msg)
-                    raise TypeError(msg) from e
-                # Now check if there is any output metadata associated with this output variable and attach it to the
-                # literal
-                if omt is not None:
+                    raise e
+                literals[k2] = v2.result()
+
+            if omt is not None:
+                for i, (k, v) in enumerate(native_outputs_as_map.items()):
+                    # Now check if there is any output metadata associated with this output variable and attach it to the
+                    # literal
                     om = omt.get(v)
                     if om:
                         metadata = {}
@@ -673,7 +683,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                             encoded = b64encode(s).decode("utf-8")
                             metadata[DYNAMIC_PARTITIONS] = encoded
                         if metadata:
-                            lit.set_metadata(metadata)
+                            literals[k].set_metadata(metadata)  # type: ignore  # we know these have been resolved
 
         return _literal_models.LiteralMap(literals=literals), native_outputs_as_map
 
@@ -701,7 +711,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
     async def _async_execute(self, native_inputs, native_outputs, ctx, exec_ctx, new_user_params):
         native_outputs = await native_outputs
         native_outputs = self.post_execute(new_user_params, native_outputs)
-        literals_map, native_outputs_as_map = self._output_to_literal_map(native_outputs, exec_ctx)
+        literals_map, native_outputs_as_map = await self._output_to_literal_map(native_outputs, exec_ctx)
         self._write_decks(native_inputs, native_outputs_as_map, ctx, new_user_params)
         return literals_map
 
@@ -717,10 +727,14 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
           may be none
         * ``DynamicJobSpec`` is returned when a dynamic workflow is executed
         """
-        if DeckField.TIMELINE.value in self.deck_fields and ctx.user_space_params is not None:
-            ctx.user_space_params.decks.append(ctx.user_space_params.timeline_deck)
+
         # Invoked before the task is executed
         new_user_params = self.pre_execute(ctx.user_space_params)
+
+        if self.enable_deck and ctx.user_space_params is not None:
+            if DeckField.TIMELINE.value in self.deck_fields:
+                ctx.user_space_params.decks.append(ctx.user_space_params.timeline_deck)
+            new_user_params = ctx.user_space_params.with_enable_deck(enable_deck=True).build()
 
         # Create another execution context with the new user params, but let's keep the same working dir
         with FlyteContextManager.with_context(
@@ -729,14 +743,18 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             )
             # type: ignore
         ) as exec_ctx:
+            is_local_execution = cast(ExecutionState, exec_ctx.execution_state).is_local_execution()
             # TODO We could support default values here too - but not part of the plan right now
             # Translate the input literals to Python native
             try:
                 native_inputs = self._literal_map_to_python_input(input_literal_map, exec_ctx)
-            except Exception as exc:
-                exc.args = (f"Error encountered while converting inputs of '{self.name}':\n  {exc.args[0]}",)
+            except (FlyteUploadDataException, FlyteDownloadDataException):
                 raise
-
+            except Exception as e:
+                if is_local_execution:
+                    e.args = (f"Error encountered while converting inputs of '{self.name}':\n  {e}",)
+                    raise
+                raise FlyteNonRecoverableSystemException(e) from e
             # TODO: Logger should auto inject the current context information to indicate if the task is running within
             #   a workflow or a subworkflow etc
             logger.info(f"Invoking {self.name} with inputs: {native_inputs}")
@@ -744,35 +762,11 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 try:
                     native_outputs = self.execute(**native_inputs)
                 except Exception as e:
-                    ctx = FlyteContextManager().current_context()
-                    if ctx.execution_state and ctx.execution_state.is_local_execution():
+                    if is_local_execution:
                         # If the task is being executed locally, we want to raise the original exception
-                        e.args = (f"Error encountered while executing '{self.name}':\n  {e.args[0]}",)
+                        e.args = (f"Error encountered while executing '{self.name}':\n  {e}",)
                         raise
                     raise FlyteUserRuntimeException(e) from e
-
-            if inspect.iscoroutine(native_outputs):
-                # If native outputs is a coroutine, then this is an eager workflow.
-                if exec_ctx.execution_state:
-                    if exec_ctx.execution_state.mode == ExecutionState.Mode.LOCAL_TASK_EXECUTION:
-                        # Just return task outputs as a coroutine if the eager workflow is being executed locally,
-                        # outside of a workflow. This preserves the expectation that the eager workflow is an async
-                        # function.
-                        return native_outputs
-                    elif exec_ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
-                        # If executed inside of a workflow being executed locally, then run the coroutine to get the
-                        # actual results.
-                        return asyncio.run(
-                            self._async_execute(
-                                native_inputs,
-                                native_outputs,
-                                ctx,
-                                exec_ctx,
-                                new_user_params,
-                            )
-                        )
-
-                return self._async_execute(native_inputs, native_outputs, ctx, exec_ctx, new_user_params)
 
             # Lets run the post_execute method. This may result in a IgnoreOutputs Exception, which is
             # bubbled up to be handled at the callee layer.
@@ -787,9 +781,20 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             ):
                 return native_outputs
 
-            literals_map, native_outputs_as_map = self._output_to_literal_map(native_outputs, exec_ctx)
-            self._write_decks(native_inputs, native_outputs_as_map, ctx, new_user_params)
-            # After the execute has been successfully completed
+            try:
+                with timeit("dispatch execute"):
+                    literals_map, native_outputs_as_map = run_sync(
+                        self._output_to_literal_map, native_outputs, exec_ctx
+                    )
+                self._write_decks(native_inputs, native_outputs_as_map, ctx, new_user_params)
+            except (FlyteUploadDataException, FlyteDownloadDataException):
+                raise
+            except Exception as e:
+                if is_local_execution:
+                    raise
+                raise FlyteNonRecoverableSystemException(e) from e
+
+            # After the execution has been successfully completed
             return literals_map
 
     def pre_execute(self, user_params: Optional[ExecutionParameters]) -> Optional[ExecutionParameters]:  # type: ignore
@@ -833,7 +838,18 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         """
         If true, this task will not output deck html file
         """
+        warnings.warn(
+            "`disable_deck` is deprecated and will be removed in the future.\n" "Please use `enable_deck` instead.",
+            DeprecationWarning,
+        )
         return self._disable_deck
+
+    @property
+    def enable_deck(self) -> bool:
+        """
+        If true, this task will output deck html file
+        """
+        return not self._disable_deck
 
     @property
     def deck_fields(self) -> List[DeckField]:

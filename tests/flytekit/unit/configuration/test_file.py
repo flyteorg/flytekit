@@ -7,7 +7,7 @@ import pytest
 from pathlib import Path
 from pytimeparse.timeparse import timeparse
 
-from flytekit.configuration import ConfigEntry, get_config_file, set_if_exists
+from flytekit.configuration import ConfigEntry, get_config_file, set_if_exists, Config
 from flytekit.configuration.file import LegacyConfigEntry, _exists, FLYTECTL_CONFIG_ENV_VAR, FLYTECTL_CONFIG_ENV_VAR_OVERRIDE
 from flytekit.configuration.internal import Platform
 
@@ -160,3 +160,16 @@ def test_use_ssl():
     config_file = get_config_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/good.config"))
     res = Platform.INSECURE.read(config_file)
     assert res is False
+
+
+def test_config_for_endpoint_with_file():
+    cfg_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/creds_secret_env_var.yaml")
+
+    with mock.patch.dict(os.environ, {"FAKE_SECRET_NAME": "fake_secret_value"}):
+        cfg = Config.for_endpoint("main", config_file=cfg_path)
+        assert cfg.platform.client_id == "propeller"
+        assert cfg.platform.endpoint == "main"
+
+        cfg2 = Config.auto(config_file=cfg_path)
+        assert cfg2.platform.client_id == "propeller"
+        assert cfg2.platform.client_credentials_secret == cfg.platform.client_credentials_secret

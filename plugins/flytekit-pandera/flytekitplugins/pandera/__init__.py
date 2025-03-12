@@ -7,7 +7,11 @@ This package contains things that are useful when extending Flytekit.
    :template: custom.rst
    :toctree: generated/
 
-   PanderaTransformer
+   PanderaPandasTransformer
+   PandasReportRenderer
+   ValidationConfig
 """
 
-from .schema import PanderaTransformer
+from .config import ValidationConfig
+from .pandas_renderer import PandasReportRenderer
+from .pandas_transformer import PanderaPandasTransformer

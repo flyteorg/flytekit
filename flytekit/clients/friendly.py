@@ -11,13 +11,17 @@ from flyteidl.admin import project_domain_attributes_pb2 as _project_domain_attr
 from flyteidl.admin import project_pb2 as _project_pb2
 from flyteidl.admin import task_execution_pb2 as _task_execution_pb2
 from flyteidl.admin import task_pb2 as _task_pb2
+from flyteidl.admin import version_pb2 as _version_pb2
 from flyteidl.admin import workflow_attributes_pb2 as _workflow_attributes_pb2
 from flyteidl.admin import workflow_pb2 as _workflow_pb2
+from flyteidl.core import identifier_pb2 as _identifier_pb2
 from flyteidl.service import dataproxy_pb2 as _data_proxy_pb2
+from flyteidl.service.dataproxy_pb2 import ARTIFACT_TYPE_DECK
 from google.protobuf.duration_pb2 import Duration
 
 from flytekit.clients.raw import RawSynchronousFlyteClient as _RawSynchronousFlyteClient
 from flytekit.models import common as _common
+from flytekit.models import domain as _domain
 from flytekit.models import execution as _execution
 from flytekit.models import filters as _filters
 from flytekit.models import launch_plan as _launch_plan
@@ -668,6 +672,17 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             .id
         )
 
+    def get_execution_metrics(self, id, depth=10):
+        return (
+            super(SynchronousFlyteClient, self)
+            .get_execution_metrics(
+                get_execution_metrics_request=_execution_pb2.WorkflowExecutionGetMetricsRequest(
+                    id=id.to_flyte_idl(), depth=depth
+                )
+            )
+            .span
+        )
+
     ####################################################################################################################
     #
     #  Node Execution Endpoints
@@ -895,6 +910,21 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
 
     ####################################################################################################################
     #
+    #  Domain Endpoints
+    #
+    ####################################################################################################################
+
+    def get_domains(self):
+        """
+        This returns a list of domains.
+
+        :rtype: list[flytekit.models.Domain]
+        """
+        domains = super(SynchronousFlyteClient, self).get_domains()
+        return [_domain.Domain.from_flyte_idl(domain) for domain in domains.domains]
+
+    ####################################################################################################################
+    #
     #  Matching Attributes Endpoints
     #
     ####################################################################################################################
@@ -1046,3 +1076,55 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
 
         resp = self._dataproxy_stub.GetData(req, metadata=self._metadata)
         return resp
+
+    def get_download_artifact_signed_url(
+        self,
+        node_id: str,
+        project: str,
+        domain: str,
+        name: str,
+        artifact_type: _data_proxy_pb2.ArtifactType = ARTIFACT_TYPE_DECK,
+        expires_in: datetime.timedelta = None,
+    ) -> _data_proxy_pb2.CreateDownloadLinkResponse:
+        """
+        Get a signed url for an artifact.
+
+        :param node_id: Node id associated with artifact
+        :param project: Name of the project the resource belongs to
+        :param domain: Name of the domain the resource belongs to
+        :param name: User or system provided value for the resource
+        :param artifact_type: ArtifactType of the artifact requested
+        :param expires_in: If provided this defines a requested expiration duration for the generated url
+        :rtype: flyteidl.service.dataproxy_pb2.CreateDownloadLinkResponse
+        """
+        expires_in_pb = None
+        if expires_in:
+            expires_in_pb = Duration()
+            expires_in_pb.FromTimedelta(expires_in)
+        return super(SynchronousFlyteClient, self).create_download_link(
+            _data_proxy_pb2.CreateDownloadLinkRequest(
+                artifact_type=artifact_type,
+                node_execution_id=_identifier_pb2.NodeExecutionIdentifier(
+                    node_id=node_id,
+                    execution_id=_identifier_pb2.WorkflowExecutionIdentifier(
+                        project=project,
+                        domain=domain,
+                        name=name,
+                    ),
+                ),
+                expires_in=expires_in_pb,
+            )
+        )
+
+    def get_control_plane_version(self) -> str:
+        """
+        Retrieve the Control Plane version from Flyteadmin.
+
+        This method calls Flyteadmin's GetVersion API to obtain the current version information of the control plane.
+        The retrieved version can be used to enable or disable specific features based on the Flyteadmin version.
+
+        Returns:
+            str: The version string of the control plane.
+        """
+        version_response = self._stub.GetVersion(_version_pb2.GetVersionRequest(), metadata=self._metadata)
+        return version_response.control_plane_version.Version

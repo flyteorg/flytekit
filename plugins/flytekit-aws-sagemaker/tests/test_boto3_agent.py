@@ -1,5 +1,8 @@
 from datetime import datetime, timedelta
 from unittest import mock
+import msgpack
+import base64
+import json
 
 import pytest
 from flyteidl.core.execution_pb2 import TaskExecution
@@ -65,7 +68,7 @@ idempotence_token = "74443947857331f7"
 @mock.patch(
     "flytekitplugins.awssagemaker_inference.boto3_agent.Boto3AgentMixin._call",
 )
-async def test_agent(mock_boto_call, mock_return_value):
+async def test_agent(mock_boto_call, mock_return_value, request):
     mock_boto_call.return_value = mock_return_value[0]
 
     agent = AgentRegistry.get_agent("boto")
@@ -156,11 +159,17 @@ async def test_agent(mock_boto_call, mock_return_value):
 
     assert resource.phase == TaskExecution.SUCCEEDED
 
+    if request.node.callspec.indices["mock_return_value"] in (0, 1):
+        assert isinstance(resource.outputs, literals.LiteralMap)
+
     if mock_return_value[0][0]:
         outputs = literal_map_string_repr(resource.outputs)
         if "pickle_check" in mock_return_value[0][0]:
             assert "pickle_file" in outputs["result"]
         else:
+            raw_result = outputs["result"]
+            parsed_result = json.loads(raw_result)
+            outputs["result"] = parsed_result
             assert (
                 outputs["result"]["EndpointConfigArn"]
                 == "arn:aws:sagemaker:us-east-2:000000000:endpoint-config/sagemaker-xgboost-endpoint-config"

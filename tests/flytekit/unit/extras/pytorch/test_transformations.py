@@ -1,12 +1,14 @@
 from collections import OrderedDict
+from typing import Union
 
 import pytest
 import torch
 
 import flytekit
-from flytekit import task
+from flytekit import task, workflow
 from flytekit.configuration import Image, ImageConfig
 from flytekit.core import context_manager
+from flytekit.core.type_engine import TypeTransformerFailedError
 from flytekit.extras.pytorch import (
     PyTorchCheckpoint,
     PyTorchCheckpointTransformer,
@@ -17,6 +19,7 @@ from flytekit.models.core.types import BlobType
 from flytekit.models.literals import BlobMetadata
 from flytekit.models.types import LiteralType
 from flytekit.tools.translator import get_serializable
+
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = flytekit.configuration.SerializationSettings(
@@ -130,3 +133,42 @@ def test_example_checkpoint():
         task_spec.template.interface.outputs["o0"].type.blob.format
         is PyTorchCheckpointTransformer.PYTORCH_CHECKPOINT_FORMAT
     )
+
+
+def test_to_literal_unambiguity():
+    """Test that the pytorch type transformers raise an error when the input is a list of tensors or modules.
+
+    The PyTorchTypeTransformer uses `torch.save` for serialization which is able to serialize a list of tensors
+    or modules but this causes ambiguity in the Union type transformer as it cannot distinguish whether the
+    ListTransformer should invoke the PyTorchTypeTransformer for every element in the list or the
+    PyTorchTypeTransformer for the entire list.
+    """
+    ctx = context_manager.FlyteContext.current_context()
+
+    with pytest.raises(TypeTransformerFailedError):
+        test_inp = torch.tensor([1, 2, 3])
+        trans = PyTorchTensorTransformer()
+        trans.to_literal(ctx, [test_inp], torch.Tensor, trans.get_literal_type(torch.Tensor))
+
+
+    with pytest.raises(TypeTransformerFailedError):
+        model = torch.nn.Linear(2, 2)
+        trans = PyTorchModuleTransformer()
+        trans.to_literal(ctx, [model], torch.nn.Module, trans.get_literal_type(torch.nn.Module))
+
+
+def test_torch_tensor_list_union():
+    """Test that a task can return a union of list of tensor and tensor.
+
+    See test_to_literal_unambiguity for more details why this failed.
+    """
+
+    @task
+    def foo() -> Union[list[torch.Tensor], torch.Tensor]:
+        return [torch.tensor([1, 2, 3])]
+
+    @workflow
+    def wf():
+        foo()
+
+    wf()

@@ -1,4 +1,6 @@
 import datetime
+import pathlib
+import pickle
 import re
 import sys
 import typing
@@ -529,7 +531,7 @@ def test_stable_cache_key():
         }
     )
     key = _calculate_cache_key("task_name_1", "31415", lm)
-    assert key == "task_name_1-31415-189e755a8f41c006889c291fcaedb4eb"
+    assert key == "task_name_1-31415-e3a85f91467d1e1f721ebe8129b2de31"
 
 
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
@@ -627,3 +629,23 @@ def test_set_cache_ignore_input_vars_without_set_cache():
         @task(cache_ignore_input_vars=["a"])
         def add(a: int, b: int) -> int:
             return a + b
+
+
+@pytest.mark.serial
+def test_cache_old_version_of_literal_map():
+    cache_key = "t.produce_dc-1-ea65cfadb0079394a8be1f4aa1e96e2b"
+
+    # Load a literal map from a previous version of the cache from a local file
+    with open(pathlib.Path(__file__).parent / "testdata/pickled_value.bin", "rb") as f:
+        literal_map = pickle.loads(f.read())
+        LocalTaskCache._cache.set(cache_key, literal_map)
+
+    assert _calculate_cache_key("t.produce_dc", "1", LiteralMap(literals={})) == cache_key
+
+    # Hit the cache directly and confirm that the loaded object does not have the `_offloaded_metadata` attribute
+    literal_map = LocalTaskCache._cache.get(cache_key)
+    assert hasattr(literal_map.literals['o0'], "_offloaded_metadata") is False
+
+    # Now load the same object from the cache and confirm that the `_offloaded_metadata` attribute is now present
+    loaded_literal_map = LocalTaskCache.get("t.produce_dc", "1", LiteralMap(literals={}), ())
+    assert hasattr(loaded_literal_map.literals['o0'], "_offloaded_metadata") is True

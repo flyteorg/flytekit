@@ -1,4 +1,5 @@
 import os
+import sys
 import typing
 
 import rich_click as click
@@ -54,17 +55,18 @@ from flytekit.tools.repo import NoSerializableEntitiesError, serialize_and_packa
     is_flag=True,
     default=False,
     required=False,
-    help="[Will be deprecated, see --copy] This flag enables fast packaging, that allows `no container build`"
-    " deploys of flyte workflows and tasks. You can specify --copy all/auto instead"
+    help="[Deprecated, see --copy] This flag enables fast packaging, that allows `no container build`"
+    " deploys of flyte workflows and tasks. You should specify --copy all/auto instead"
     " Note this needs additional configuration, refer to the docs.",
 )
 @click.option(
     "--copy",
     required=False,
     type=click.Choice(["all", "auto", "none"], case_sensitive=False),
-    default=None,  # this will be changed to "none" after removing fast option
+    default="none",
+    show_default=True,
     callback=parse_copy,
-    help="[Beta] Specify whether local files should be copied and uploaded so task containers have up-to-date code"
+    help="Specify whether local files should be copied and uploaded so task containers have up-to-date code"
     " 'all' will behave as the current 'fast' flag, copying all files, 'auto' copies only loaded Python modules",
 )
 @click.option(
@@ -128,11 +130,17 @@ def package(
     object contains the WorkflowTemplate, along with the relevant tasks for that workflow.
     This serialization step will set the name of the tasks to the fully qualified name of the task function.
     """
-    if copy is not None and fast:
-        raise ValueError("--fast and --copy cannot be used together. Please use --copy all instead.")
-    elif copy == CopyFileDetection.ALL or copy == CopyFileDetection.LOADED_MODULES:
-        # for those migrating, who only set --copy all/auto but don't have --fast set.
-        fast = True
+    # Ensure that the two flags are consistent
+    if fast:
+        if "--copy" in sys.argv:
+            raise click.BadParameter(
+                click.style(
+                    "Cannot use both --fast and --copy flags together. Please move to --copy",
+                    fg="red",
+                )
+            )
+        click.secho("The --fast flag is deprecated, please use --copy all instead", fg="yellow")
+        copy = CopyFileDetection.ALL
 
     if os.path.exists(output) and not force:
         raise click.BadParameter(
@@ -145,7 +153,7 @@ def package(
     serialization_settings = SerializationSettings(
         image_config=image_config,
         fast_serialization_settings=FastSerializationSettings(
-            enabled=fast,
+            enabled=copy != CopyFileDetection.NO_COPY,
             destination_dir=in_container_source_path,
         ),
         python_interpreter=python_interpreter,
@@ -161,8 +169,6 @@ def package(
         show_files = ctx.obj[constants.CTX_VERBOSE] > 0
 
         fast_options = FastPackageOptions([], copy_style=copy, show_files=show_files)
-        serialize_and_package(
-            pkgs, serialization_settings, source, output, fast, deref_symlinks, fast_options=fast_options
-        )
+        serialize_and_package(pkgs, serialization_settings, source, output, deref_symlinks, fast_options=fast_options)
     except NoSerializableEntitiesError:
         click.secho(f"No flyte objects found in packages {pkgs}", fg="yellow")

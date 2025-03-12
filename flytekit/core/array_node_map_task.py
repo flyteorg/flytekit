@@ -1,14 +1,13 @@
 # TODO: has to support the SupportsNodeCreation protocol
 import functools
 import hashlib
-import logging
 import math
 import os  # TODO: use flytekit logger
 from contextlib import contextmanager
-from typing import Any, Dict, List, Optional, Set, Union, cast
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Union, cast
 
-import typing_extensions
 from flyteidl.core import tasks_pb2
+from flyteidl.core import workflow_pb2 as _core_workflow
 
 from flytekit.configuration import SerializationSettings
 from flytekit.core import tracker
@@ -18,17 +17,19 @@ from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteCon
 from flytekit.core.interface import transform_interface_to_list_interface
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanceTask
-from flytekit.core.type_engine import TypeEngine, is_annotated
+from flytekit.core.task import ReferenceTask
+from flytekit.core.type_engine import TypeEngine
 from flytekit.core.utils import timeit
 from flytekit.loggers import logger
 from flytekit.models import literals as _literal_models
-from flytekit.models.array_job import ArrayJob
 from flytekit.models.core.workflow import NodeMetadata
 from flytekit.models.interface import Variable
 from flytekit.models.task import Container, K8sPod, Sql, Task
 from flytekit.tools.module_loader import load_object_from_module
-from flytekit.types.pickle import pickle
-from flytekit.types.pickle.pickle import FlytePickleTransformer
+from flytekit.utils.asyn import loop_manager
+
+if TYPE_CHECKING:
+    from flytekit.remote import FlyteLaunchPlan
 
 
 class ArrayNodeMapTask(PythonTask):
@@ -73,16 +74,6 @@ class ArrayNodeMapTask(PythonTask):
                 "Only PythonFunctionTask with default execution mode (not @dynamic or @eager) and PythonInstanceTask are supported in map tasks."
             )
 
-        for k, v in actual_task.python_interface.inputs.items():
-            if bound_inputs and k in bound_inputs:
-                continue
-            transformer = TypeEngine.get_transformer(v)
-            if isinstance(transformer, FlytePickleTransformer):
-                if is_annotated(v):
-                    for annotation in typing_extensions.get_args(v)[1:]:
-                        if isinstance(annotation, pickle.BatchSize):
-                            raise ValueError("Choosing a BatchSize for map tasks inputs is not supported.")
-
         n_outputs = len(actual_task.python_interface.outputs)
         if n_outputs > 1:
             raise ValueError("Only tasks with a single output are supported in map tasks.")
@@ -115,6 +106,14 @@ class ArrayNodeMapTask(PythonTask):
         self._min_success_ratio: Optional[float] = min_success_ratio
         self._collection_interface = collection_interface
 
+        self._execution_mode: _core_workflow.ArrayNode.ExecutionMode = _core_workflow.ArrayNode.FULL_STATE
+        if (
+            type(python_function_task) in {PythonFunctionTask, PythonInstanceTask}
+            or isinstance(python_function_task, functools.partial)
+            and type(python_function_task.func) in {PythonFunctionTask, PythonInstanceTask}
+        ):
+            self._execution_mode = _core_workflow.ArrayNode.MINIMAL_STATE
+
         if "metadata" not in kwargs and actual_task.metadata:
             kwargs["metadata"] = actual_task.metadata
         if "security_ctx" not in kwargs and actual_task.security_context:
@@ -129,6 +128,9 @@ class ArrayNodeMapTask(PythonTask):
             **kwargs,
         )
 
+        self.sub_node_metadata: NodeMetadata = super().construct_node_metadata()
+        self.sub_node_metadata._name = self.name
+
     @property
     def name(self) -> str:
         return self._name
@@ -138,10 +140,12 @@ class ArrayNodeMapTask(PythonTask):
         return self._collection_interface
 
     def construct_node_metadata(self) -> NodeMetadata:
-        # TODO: add support for other Flyte entities
-        nm = super().construct_node_metadata()
-        nm._name = self.name
-        return nm
+        """
+        This returns metadata for the parent ArrayNode, not the sub-node getting mapped over
+        """
+        return NodeMetadata(
+            name=self.name,
+        )
 
     @property
     def min_success_ratio(self) -> Optional[float]:
@@ -163,6 +167,14 @@ class ArrayNodeMapTask(PythonTask):
     def bound_inputs(self) -> Set[str]:
         return self._bound_inputs
 
+    @property
+    def execution_mode(self) -> _core_workflow.ArrayNode.ExecutionMode:
+        return self._execution_mode
+
+    @property
+    def is_original_sub_node_interface(self) -> bool:
+        return False
+
     def get_extended_resources(self, settings: SerializationSettings) -> Optional[tasks_pb2.ExtendedResources]:
         return self.python_function_task.get_extended_resources(settings)
 
@@ -178,7 +190,7 @@ class ArrayNodeMapTask(PythonTask):
             self.python_function_task.reset_command_fn()
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
-        return ArrayJob(parallelism=self._concurrency, min_success_ratio=self._min_success_ratio).to_dict()
+        return self._run_task.get_custom(settings) or {}
 
     def get_config(self, settings: SerializationSettings) -> Optional[Dict[str, str]]:
         return self.python_function_task.get_config(settings)
@@ -251,7 +263,9 @@ class ArrayNodeMapTask(PythonTask):
             inputs_interface = self._run_task.python_interface.inputs
             for k in self.interface.inputs.keys():
                 v = literal_map.literals[k]
-
+                # If the input is offloaded, we need to unwrap it
+                if v.offloaded_metadata:
+                    v = loop_manager.run_sync(TypeEngine.unwrap_offloaded_literal, ctx, v)
                 if k not in self.bound_inputs:
                     # assert that v.collection is not None
                     if not v.collection or not isinstance(v.collection.literals, list):
@@ -356,7 +370,7 @@ class ArrayNodeMapTask(PythonTask):
 
 
 def map_task(
-    target: Union[LaunchPlan, PythonFunctionTask],
+    target: Union[LaunchPlan, PythonFunctionTask, "FlyteLaunchPlan"],
     concurrency: Optional[int] = None,
     min_successes: Optional[int] = None,
     min_success_ratio: float = 1.0,
@@ -374,7 +388,9 @@ def map_task(
     :param min_successes: The minimum number of successful executions
     :param min_success_ratio: The minimum ratio of successful executions
     """
-    if isinstance(target, LaunchPlan):
+    from flytekit.remote import FlyteLaunchPlan
+
+    if isinstance(target, (LaunchPlan, FlyteLaunchPlan, ReferenceTask)):
         return array_node(
             target=target,
             concurrency=concurrency,
@@ -454,7 +470,7 @@ class ArrayNodeMapTaskResolver(tracker.TrackedInstance, TaskResolverMixin):
         vars "var1,var2,.." resolver "resolver" [resolver_args]
         """
         _, bound_vars, _, resolver, *resolver_args = loader_args
-        logging.info(f"MapTask found task resolver {resolver} and arguments {resolver_args}")
+        logger.info(f"MapTask found task resolver {resolver} and arguments {resolver_args}")
         resolver_obj = load_object_from_module(resolver)
         # Use the resolver to load the actual task object
         _task_def = resolver_obj.load_task(loader_args=resolver_args)

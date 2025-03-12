@@ -1,8 +1,13 @@
+import importlib.util
 import logging
 import os
 import typing
 
-from pythonjsonlogger import jsonlogger
+if importlib.util.find_spec("pythonjsonlogger.json"):
+    # Module was renamed: https://github.com/nhairs/python-json-logger/releases/tag/v3.1.0
+    from pythonjsonlogger import json as jsonlogger
+else:
+    from pythonjsonlogger import jsonlogger
 
 from .tools import interactive
 
@@ -177,13 +182,17 @@ def get_level_from_cli_verbosity(verbosity: int) -> int:
     :return: logging level
     """
     if verbosity == 0:
-        return logging.CRITICAL
+        return _get_env_logging_level(default_level=logging.CRITICAL)
     elif verbosity == 1:
         return logging.WARNING
     elif verbosity == 2:
         return logging.INFO
     else:
         return logging.DEBUG
+
+
+def is_display_progress_enabled() -> bool:
+    return os.getenv(LOGGING_RICH_FMT_ENV_VAR, False)
 
 
 # Default initialization

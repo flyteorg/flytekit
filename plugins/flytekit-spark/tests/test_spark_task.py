@@ -1,14 +1,19 @@
+import os.path
+from unittest import mock
+
 import pandas as pd
 import pyspark
 import pytest
+
+from flytekit.core import context_manager
 from flytekitplugins.spark import Spark
 from flytekitplugins.spark.task import Databricks, new_spark_session
 from pyspark.sql import SparkSession
 
 import flytekit
-from flytekit import StructuredDataset, StructuredDatasetTransformerEngine, task
-from flytekit.configuration import Image, ImageConfig, SerializationSettings
-from flytekit.core.context_manager import ExecutionParameters, FlyteContextManager
+from flytekit import StructuredDataset, StructuredDatasetTransformerEngine, task, ImageSpec
+from flytekit.configuration import Image, ImageConfig, SerializationSettings, FastSerializationSettings, DefaultImages
+from flytekit.core.context_manager import ExecutionParameters, FlyteContextManager, ExecutionState
 
 
 @pytest.fixture(scope="function")
@@ -118,3 +123,68 @@ def test_to_html():
     tf = StructuredDatasetTransformerEngine()
     output = tf.to_html(FlyteContextManager.current_context(), sd, pyspark.sql.DataFrame)
     assert pd.DataFrame(df.schema, columns=["StructField"]).to_html() == output
+
+
+@mock.patch('pyspark.context.SparkContext.addPyFile')
+def test_spark_addPyFile(mock_add_pyfile):
+    @task(
+        task_config=Spark(
+            spark_conf={"spark": "1"},
+        )
+    )
+    def my_spark(a: int) -> int:
+        return a
+
+    default_img = Image(name="default", fqn="test", tag="tag")
+    serialization_settings = SerializationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env={"FOO": "baz"},
+        image_config=ImageConfig(default_image=default_img, images=[default_img]),
+        fast_serialization_settings=FastSerializationSettings(
+            enabled=True,
+            destination_dir="/User/flyte/workflows",
+            distribution_location="s3://my-s3-bucket/fast/123",
+        ),
+    )
+
+    ctx = context_manager.FlyteContextManager.current_context()
+    with context_manager.FlyteContextManager.with_context(
+            ctx.with_execution_state(
+                ctx.new_execution_state().with_params(mode=ExecutionState.Mode.TASK_EXECUTION)).with_serialization_settings(serialization_settings)
+    ) as new_ctx:
+        my_spark.pre_execute(new_ctx.user_space_params)
+        mock_add_pyfile.assert_called_once()
+        os.remove(os.path.join(os.getcwd(), "flyte_wf.zip"))
+
+
+def test_spark_with_image_spec():
+    custom_image = ImageSpec(
+        registry="ghcr.io/flyteorg",
+        packages=["flytekitplugins-spark"],
+    )
+
+    @task(
+        task_config=Spark(spark_conf={"spark.driver.memory": "1000M"}),
+        container_image=custom_image,
+    )
+    def spark1(partitions: int) -> float:
+        print("Starting Spark with Partitions: {}".format(partitions))
+        return 1.0
+
+    assert spark1.container_image.base_image == f"cr.flyte.org/flyteorg/flytekit:spark-{DefaultImages.get_version_suffix()}"
+    assert spark1._default_executor_path == "/usr/bin/python3"
+    assert spark1._default_applications_path == "local:///usr/local/bin/entrypoint.py"
+
+    @task(
+        task_config=Spark(spark_conf={"spark.driver.memory": "1000M"}),
+        container_image=custom_image,
+    )
+    def spark2(partitions: int) -> float:
+        print("Starting Spark with Partitions: {}".format(partitions))
+        return 1.0
+
+    assert spark2.container_image.base_image == f"cr.flyte.org/flyteorg/flytekit:spark-{DefaultImages.get_version_suffix()}"
+    assert spark2._default_executor_path == "/usr/bin/python3"
+    assert spark2._default_applications_path == "local:///usr/local/bin/entrypoint.py"

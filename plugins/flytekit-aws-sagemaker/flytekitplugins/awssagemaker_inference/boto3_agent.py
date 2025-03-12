@@ -123,7 +123,7 @@ class BotoAgent(SyncAgentBase):
             )
             with context_manager.FlyteContextManager.with_context(builder) as new_ctx:
                 outputs = LiteralMap(
-                    literals={
+                    {
                         "result": TypeEngine.to_literal(
                             new_ctx,
                             truncated_result if truncated_result else result,

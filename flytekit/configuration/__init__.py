@@ -30,7 +30,7 @@ be ``FLYTE_PLATFORM_URL``.
    file.
 
 **YAML Format Configuration File**: A configuration file that contains settings for both
-`flytectl <https://docs.flyte.org/en/latest/flytectl/overview.html>`__ and ``flytekit``. This is the recommended configuration
+`flytectl <https://docs.flyte.org/en/latest/flytectl/api/overview.html>`__ and ``flytekit``. This is the recommended configuration
 file format. Invoke the :ref:`flytectl config init <flytectl_config_init>` command to create a boilerplate
 ``~/.flyte/config.yaml`` file, and  ``flytectl --help`` to learn about all of the configuration yaml options.
 
@@ -777,7 +777,14 @@ class Config(object):
         :return: Config
         """
         c = cls.auto(config_file)
-        return c.with_params(platform=PlatformConfig.for_endpoint(endpoint, insecure), data_config=data_config)
+        from dataclasses import replace
+
+        p = (
+            replace(c.platform, endpoint=endpoint, insecure=insecure)
+            if config_file and c.platform
+            else PlatformConfig.for_endpoint(endpoint, insecure)
+        )
+        return c.with_params(platform=p, data_config=data_config)
 
 
 @dataclass

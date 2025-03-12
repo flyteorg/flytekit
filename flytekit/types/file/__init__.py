@@ -25,7 +25,7 @@ import typing
 
 from typing_extensions import Annotated, get_args, get_origin
 
-from .file import FlyteFile
+from .file import FlyteFile, FlyteFilePathTransformer
 
 
 class FileExt:

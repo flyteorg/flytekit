@@ -98,6 +98,9 @@ def _create_str_from_package_list(packages):
 
 
 def create_envd_config(image_spec: ImageSpec) -> str:
+    if image_spec.python_exec is not None:
+        raise ValueError("python_exec is not supported with the envd image builder")
+
     base_image = DefaultImages.default_image() if image_spec.base_image is None else image_spec.base_image
     if image_spec.cuda:
         if image_spec.python_version is None:
@@ -175,6 +178,44 @@ def build():
             envd_config += '    io.copy(host_path="./", envd_path="/root")\n'
         else:
             envd_config += '    io.copy(source="./", target="/root")\n'
+
+    if image_spec.copy:
+
+        def add_envd_copy_command(src_path: pathlib.Path, envd_config: str) -> str:
+            envd_version = metadata.version("envd")
+            if Version(envd_version) <= Version("0.3.37"):
+                if src_path.is_dir():
+                    envd_config += (
+                        f'    io.copy(host_path="{src_path.as_posix()}", envd_path="/root/{src_path.as_posix()}/")\n'
+                    )
+                else:
+                    envd_config += f'    io.copy(host_path="{src_path.as_posix()}", envd_path="/root/{src_path.parent.as_posix()}/")\n'
+            else:
+                if src_path.is_dir():
+                    envd_config += (
+                        f'    io.copy(source="{src_path.as_posix()}", target="/root/{src_path.as_posix()}/")\n'
+                    )
+                else:
+                    envd_config += (
+                        f'    io.copy(source="{src_path.as_posix()}", target="/root/{src_path.parent.as_posix()}/")\n'
+                    )
+            return envd_config
+
+        for src in image_spec.copy:
+            src_path = pathlib.Path(src)
+
+            if src_path.is_absolute() or ".." in src_path.parts:
+                raise ValueError("Absolute paths or paths with '..' are not allowed in COPY command.")
+
+            dst_path = pathlib.Path(cfg_path).parent / src_path
+            dst_path.parent.mkdir(parents=True, exist_ok=True)
+
+            if src_path.is_dir():
+                shutil.copytree(src_path, dst_path, dirs_exist_ok=True)
+            else:
+                shutil.copy(src_path, dst_path)
+
+            envd_config = add_envd_copy_command(src_path, envd_config)
 
     with open(cfg_path, "w+") as f:
         f.write(envd_config)

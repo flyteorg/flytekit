@@ -240,8 +240,16 @@ def generate_service_account_id_token(webapp_client_id: str, service_account_key
         os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = service_account_key
 
     application_default_credentials, _ = default()
-    token = get_service_account_id_token(webapp_client_id, application_default_credentials.service_account_email)
-    click.echo(token)
+
+    try:
+        service_account_email = application_default_credentials.service_account_email
+        token = get_service_account_id_token(webapp_client_id, service_account_email)
+        click.echo(token)
+    except AttributeError:
+        raise click.ClickException(
+            "You appear to be authenticated with user credentials. Revert to service account credentials "
+            "with `gcloud auth application-default revoke` or instead use `flyte-iap generate-user-id-token`."
+        )
 
 
 if __name__ == "__main__":

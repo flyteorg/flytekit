@@ -16,7 +16,9 @@ from __future__ import annotations
 import logging as _logging
 import os
 import pathlib
+import signal
 import tempfile
+import threading
 import traceback
 import typing
 from contextlib import contextmanager
@@ -24,6 +26,7 @@ from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
+from types import FrameType
 from typing import Generator, List, Optional, Union
 
 from flytekit.configuration import Config, SecretsConfig, SerializationSettings
@@ -37,8 +40,10 @@ from flytekit.loggers import developer_logger, user_space_logger
 from flytekit.models.core import identifier as _identifier
 
 if typing.TYPE_CHECKING:
-    from flytekit import Deck
     from flytekit.clients import friendly as friendly_client  # noqa
+    from flytekit.clients.friendly import SynchronousFlyteClient
+    from flytekit.core.worker_queue import Controller
+    from flytekit.deck.deck import Deck
 
 # TODO: resolve circular import from flytekit.core.python_auto_container import TaskResolverMixin
 
@@ -89,6 +94,7 @@ class ExecutionParameters(object):
         logging: Optional[_logging.Logger] = None
         task_id: typing.Optional[_identifier.Identifier] = None
         output_metadata_prefix: Optional[str] = None
+        enable_deck: bool = False
 
         def __init__(self, current: typing.Optional[ExecutionParameters] = None):
             self.stats = current.stats if current else None
@@ -102,6 +108,7 @@ class ExecutionParameters(object):
             self.raw_output_prefix = current.raw_output_prefix if current else None
             self.task_id = current.task_id if current else None
             self.output_metadata_prefix = current.output_metadata_prefix if current else None
+            self.enable_deck = current.enable_deck if current else False
 
         def add_attr(self, key: str, v: typing.Any) -> ExecutionParameters.Builder:
             self.attrs[key] = v
@@ -121,6 +128,7 @@ class ExecutionParameters(object):
                 raw_output_prefix=self.raw_output_prefix,
                 task_id=self.task_id,
                 output_metadata_prefix=self.output_metadata_prefix,
+                enable_deck=self.enable_deck,
                 **self.attrs,
             )
 
@@ -142,8 +150,28 @@ class ExecutionParameters(object):
         b.working_dir = task_sandbox_dir
         return b
 
+    def with_enable_deck(self, enable_deck: bool) -> Builder:
+        b = self.new_builder(self)
+        b.enable_deck = enable_deck
+        return b
+
     def builder(self) -> Builder:
         return ExecutionParameters.Builder(current=self)
+
+    def __repr__(self):
+        cp = f" checkpoint={self.checkpoint}," if self._checkpoint else ""
+        return (
+            f"ExecutionParameters(execution_date={self.execution_date},"
+            f" stats={self.stats},"
+            f" tmp_dir={self.working_directory},"
+            f" execution_id={self.execution_id},"
+            f" {cp},"
+            f" decks={self.decks},"
+            f" raw_output_prefix={self.raw_output_prefix},"
+            f" task_id={self.task_id},"
+            f" output_metadata_prefix={self.output_metadata_prefix},"
+            f" enable_deck={self.enable_deck})"
+        )
 
     def __init__(
         self,
@@ -157,6 +185,7 @@ class ExecutionParameters(object):
         checkpoint=None,
         decks=None,
         task_id: typing.Optional[_identifier.Identifier] = None,
+        enable_deck: bool = False,
         **kwargs,
     ):
         """
@@ -185,6 +214,7 @@ class ExecutionParameters(object):
         self._decks = decks
         self._task_id = task_id
         self._timeline_deck = None
+        self._enable_deck = enable_deck
 
     @property
     def stats(self) -> taggable.TaggableStats:
@@ -293,6 +323,13 @@ class ExecutionParameters(object):
         self._timeline_deck = time_line_deck
         return time_line_deck
 
+    @property
+    def enable_deck(self) -> bool:
+        """
+        Returns whether deck is enabled or not
+        """
+        return self._enable_deck
+
     def __getattr__(self, attr_name: str) -> typing.Any:
         """
         This houses certain task specific context. For example in Spark, it houses the SparkSession, etc
@@ -346,6 +383,7 @@ class SecretsManager(object):
     def __init__(self, secrets_cfg: typing.Optional[SecretsConfig] = None):
         if secrets_cfg is None:
             secrets_cfg = SecretsConfig.auto()
+
         self._base_dir = secrets_cfg.default_dir.strip()
         self._file_prefix = secrets_cfg.file_prefix.strip()
         self._env_prefix = secrets_cfg.env_prefix.strip()
@@ -367,17 +405,22 @@ class SecretsManager(object):
         Retrieves a secret using the resolution order -> Env followed by file. If not found raises a ValueError
         param encode_mode, defines the mode to open files, it can either be "r" to read file, or "rb" to read binary file
         """
+        env_prefixes = [self._env_prefix]
 
-        from flytekit.configuration.plugin import get_plugin
+        # During local execution check for the key without a prefix
+        ctx = FlyteContextManager.current_context()
+        if ctx.execution_state is None or ctx.execution_state.is_local_execution():
+            env_prefixes.append("")
 
-        if not get_plugin().secret_requires_group():
-            group, group_version = None, None
+        for env_prefix in env_prefixes:
+            env_var = self._get_secrets_env_var(
+                group=group, key=key, group_version=group_version, env_prefix=env_prefix
+            )
+            v = os.environ.get(env_var)
+            if v is not None:
+                return v.strip()
 
-        env_var = self.get_secrets_env_var(group, key, group_version)
         fpath = self.get_secrets_file(group, key, group_version)
-        v = os.environ.get(env_var)
-        if v is not None:
-            return v.strip()
         if os.path.exists(fpath):
             with open(fpath, encode_mode) as f:
                 return f.read().strip()
@@ -392,8 +435,17 @@ class SecretsManager(object):
         """
         Returns a string that matches the ENV Variable to look for the secrets
         """
+        return self._get_secrets_env_var(group=group, key=key, group_version=group_version, env_prefix=self._env_prefix)
+
+    def _get_secrets_env_var(
+        self,
+        group: Optional[str] = None,
+        key: Optional[str] = None,
+        group_version: Optional[str] = None,
+        env_prefix: str = "",
+    ):
         l = [k.upper() for k in filter(None, (group, group_version, key))]
-        return f"{self._env_prefix}{'_'.join(l)}"
+        return f"{env_prefix}{'_'.join(l)}"
 
     def get_secrets_file(
         self, group: Optional[str] = None, key: Optional[str] = None, group_version: Optional[str] = None
@@ -505,6 +557,10 @@ class ExecutionState(object):
         # This is the mode that is used to indicate a dynamic task
         DYNAMIC_TASK_EXECUTION = 4
 
+        EAGER_EXECUTION = 5
+
+        EAGER_LOCAL_EXECUTION = 6
+
     mode: Optional[ExecutionState.Mode]
     working_dir: Union[os.PathLike, str]
     engine_dir: Optional[Union[os.PathLike, str]]
@@ -565,6 +621,7 @@ class ExecutionState(object):
         return (
             self.mode == ExecutionState.Mode.LOCAL_TASK_EXECUTION
             or self.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
+            or self.mode == ExecutionState.Mode.EAGER_LOCAL_EXECUTION
         )
 
 
@@ -642,6 +699,7 @@ class FlyteContext(object):
     in_a_condition: bool = False
     origin_stackframe: Optional[traceback.FrameSummary] = None
     output_metadata_tracker: Optional[OutputMetadataTracker] = None
+    worker_queue: Optional[Controller] = None
 
     @property
     def user_space_params(self) -> Optional[ExecutionParameters]:
@@ -668,6 +726,7 @@ class FlyteContext(object):
             execution_state=self.execution_state,
             in_a_condition=self.in_a_condition,
             output_metadata_tracker=self.output_metadata_tracker,
+            worker_queue=self.worker_queue,
         )
 
     def enter_conditional_section(self) -> Builder:
@@ -692,12 +751,20 @@ class FlyteContext(object):
     def with_output_metadata_tracker(self, t: OutputMetadataTracker) -> Builder:
         return self.new_builder().with_output_metadata_tracker(t)
 
+    def with_worker_queue(self, wq: Controller) -> Builder:
+        return self.new_builder().with_worker_queue(wq)
+
+    def with_client(self, c: SynchronousFlyteClient) -> Builder:
+        return self.new_builder().with_client(c)
+
     def new_compilation_state(self, prefix: str = "") -> CompilationState:
         """
         Creates and returns a default compilation state. For most of the code this should be the entrypoint
         of compilation, otherwise the code should always uses - with_compilation_state
         """
-        return CompilationState(prefix=prefix)
+        from flytekit.core.python_auto_container import default_task_resolver
+
+        return CompilationState(prefix=prefix, task_resolver=default_task_resolver)
 
     def new_execution_state(self, working_dir: Optional[os.PathLike] = None) -> ExecutionState:
         """
@@ -753,6 +820,7 @@ class FlyteContext(object):
         serialization_settings: Optional[SerializationSettings] = None
         in_a_condition: bool = False
         output_metadata_tracker: Optional[OutputMetadataTracker] = None
+        worker_queue: Optional[Controller] = None
 
         def build(self) -> FlyteContext:
             return FlyteContext(
@@ -764,6 +832,7 @@ class FlyteContext(object):
                 serialization_settings=self.serialization_settings,
                 in_a_condition=self.in_a_condition,
                 output_metadata_tracker=self.output_metadata_tracker,
+                worker_queue=self.worker_queue,
             )
 
         def enter_conditional_section(self) -> FlyteContext.Builder:
@@ -812,6 +881,14 @@ class FlyteContext(object):
             self.output_metadata_tracker = t
             return self
 
+        def with_worker_queue(self, wq: Controller) -> FlyteContext.Builder:
+            self.worker_queue = wq
+            return self
+
+        def with_client(self, c: SynchronousFlyteClient) -> FlyteContext.Builder:
+            self.flyte_client = c
+            return self
+
         def new_compilation_state(self, prefix: str = "") -> CompilationState:
             """
             Creates and returns a default compilation state. For most of the code this should be the entrypoint
@@ -849,6 +926,12 @@ class FlyteContextManager(object):
         # but correspondingly a pop_context should be called
         FlyteContextManager.pop_context()
     """
+
+    signal_handlers: typing.List[typing.Callable[[int, FrameType], typing.Any]] = []
+
+    @staticmethod
+    def add_signal_handler(handler: typing.Callable[[int, FrameType], typing.Any]):
+        FlyteContextManager.signal_handlers.append(handler)
 
     @staticmethod
     def get_origin_stackframe(limit=2) -> traceback.FrameSummary:
@@ -932,6 +1015,16 @@ class FlyteContextManager(object):
         # Ensure a local directory is available for users to work with.
         user_space_path = os.path.join(cfg.local_sandbox_path, "user_space")
         pathlib.Path(user_space_path).mkdir(parents=True, exist_ok=True)
+
+        def main_signal_handler(signum: int, frame: FrameType):
+            for handler in FlyteContextManager.signal_handlers:
+                handler(signum, frame)
+            exit(1)
+
+        # This initialize function is also called by other threads (since the context manager lives in a ContextVar)
+        # so we should not run this if we're not the main thread.
+        if threading.current_thread().name == threading.main_thread().name:
+            signal.signal(signal.SIGINT, main_signal_handler)
 
         # Note we use the SdkWorkflowExecution object purely for formatting into the ex:project:domain:name format users
         # are already acquainted with

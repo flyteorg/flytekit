@@ -1,4 +1,5 @@
 import os
+import sys
 from unittest.mock import Mock
 
 import mock
@@ -7,7 +8,7 @@ import pytest
 from flytekit.core import context_manager
 from flytekit.core.context_manager import ExecutionState
 from flytekit.image_spec import ImageSpec
-from flytekit.image_spec.image_spec import _F_IMG_ID, ImageBuildEngine, FLYTE_FORCE_PUSH_IMAGE_SPEC
+from flytekit.image_spec.image_spec import _F_IMG_ID, ImageBuildEngine
 from flytekit.core.python_auto_container import update_image_spec_copy_handling
 from flytekit.configuration import SerializationSettings, FastSerializationSettings, ImageConfig
 from flytekit.constants import CopyFileDetection
@@ -24,7 +25,7 @@ def test_image_spec(mock_image_spec_builder, monkeypatch):
         builder="dummy",
         packages=["pandas"],
         apt_packages=["git"],
-        python_version="3.8",
+        python_version="3.9",
         registry="localhost:30001",
         base_image=base_image,
         cuda="11.2.2",
@@ -32,15 +33,17 @@ def test_image_spec(mock_image_spec_builder, monkeypatch):
         requirements=REQUIREMENT_FILE,
         registry_config=REGISTRY_CONFIG_FILE,
         entrypoint=["/bin/bash"],
+        copy=["/src/file1.txt"]
     )
     assert image_spec._is_force_push is False
 
     image_spec = image_spec.with_commands("echo hello")
     image_spec = image_spec.with_packages("numpy")
     image_spec = image_spec.with_apt_packages("wget")
+    image_spec = image_spec.with_copy(["/src", "/src/file2.txt"])
     image_spec = image_spec.force_push()
 
-    assert image_spec.python_version == "3.8"
+    assert image_spec.python_version == "3.9"
     assert image_spec.base_image == base_image
     assert image_spec.packages == ["pandas", "numpy"]
     assert image_spec.apt_packages == ["git", "wget"]
@@ -58,8 +61,9 @@ def test_image_spec(mock_image_spec_builder, monkeypatch):
     assert image_spec.commands == ["echo hello"]
     assert image_spec._is_force_push is True
     assert image_spec.entrypoint == ["/bin/bash"]
+    assert image_spec.copy == ["/src/file1.txt", "/src", "/src/file2.txt"]
 
-    assert image_spec.image_name() == f"localhost:30001/flytekit:nDg0IzEKso7jtbBnpLWTnw"
+    assert image_spec.image_name() == f"localhost:30001/flytekit:AjLtng9gJfYzLnjbNy70gA"
     ctx = context_manager.FlyteContext.current_context()
     with context_manager.FlyteContextManager.with_context(
         ctx.with_execution_state(ctx.execution_state.with_params(mode=ExecutionState.Mode.TASK_EXECUTION))
@@ -87,10 +91,7 @@ def test_image_spec(mock_image_spec_builder, monkeypatch):
 
 
 def test_image_spec_engine_priority():
-    image_spec = ImageSpec(name="FLYTEKIT")
-    image_name = image_spec.image_name()
-
-    new_image_name = f"fqn.xyz/{image_name}"
+    new_image_name = "fqn.xyz/flytekit"
     mock_image_builder_10 = Mock()
     mock_image_builder_10.build_image.return_value = new_image_name
     mock_image_builder_default = Mock()
@@ -98,6 +99,8 @@ def test_image_spec_engine_priority():
 
     ImageBuildEngine.register("build_10", mock_image_builder_10, priority=10)
     ImageBuildEngine.register("build_default", mock_image_builder_default)
+
+    image_spec = ImageSpec(name="FLYTEKIT")
 
     ImageBuildEngine.build(image_spec)
     mock_image_builder_10.build_image.assert_called_once_with(image_spec)
@@ -111,7 +114,7 @@ def test_build_existing_image_with_force_push():
     image_spec = ImageSpec(name="hello", builder="test").force_push()
 
     builder = Mock()
-    builder.build_image.return_value = "new_image_name"
+    builder.build_image.return_value = "fqn.xyz/new_image_name:v-test"
     ImageBuildEngine.register("test", builder)
 
     ImageBuildEngine.build(image_spec)
@@ -155,6 +158,19 @@ def test_image_spec_validation_string_list(parameter_name, value):
 
     with pytest.raises(ValueError, match=msg):
         ImageSpec(**input_params)
+
+@pytest.mark.parametrize(
+    "parameter_name", ["pip_secret_mounts", ]
+)
+@pytest.mark.parametrize("value", ["secrets.txt", ("secret_src", "id", "secret_dst")])
+def test_image_spec_validation_two_string_tuple_list(parameter_name, value):
+    msg = f"{parameter_name} must be a list of tuples of two strings or None"
+
+    input_params = {parameter_name: value}
+
+    with pytest.raises(ValueError, match=msg):
+        ImageSpec(**input_params)
+
 
 
 def test_copy_is_set_if_source_root_is_set():
@@ -215,3 +231,66 @@ def test_update_image_spec_copy_handling():
     update_image_spec_copy_handling(image_spec, ss)
     assert image_spec.source_copy_mode is None
     assert image_spec.source_root is None
+
+
+def test_registry_name():
+    invalid_registry_names = [
+        "invalid:port:50000",
+        "ghcr.io/flyteorg:latest",
+        "flyteorg:latest"
+    ]
+    for invalid_registry_name in invalid_registry_names:
+        with pytest.raises(ValueError, match="Invalid container registry name"):
+            ImageSpec(registry=invalid_registry_name)
+
+    valid_registry_names = [
+        "localhost:30000",
+        "localhost:30000/flyte",
+        "192.168.1.1:30000",
+        "192.168.1.1:30000/myimage",
+        "ghcr.io/flyteorg",
+        "my.registry.com/myimage",
+        "my.registry.com:5000/myimage",
+        "myregistry:5000/myimage",
+        "us-west1-docker.pkg.dev/example.com/my-project/my-repo"
+        "flyteorg",
+    ]
+    for valid_registry_name in valid_registry_names:
+        ImageSpec(registry=valid_registry_name)
+
+
+def test_image_spec_from_env_error():
+    msg = "python_version can not be used with `from_env`"
+    with pytest.raises(ValueError, match=msg):
+        ImageSpec.from_env(pinned_packages=["joblib"], python_version="3.9")
+
+
+def test_image_spec_from_env_with_pinned_packages():
+    import joblib
+    import msgpack
+    joblib_version = joblib.__version__
+    msgpack_version = msgpack.__version__
+
+    version_info = sys.version_info
+    python_version = f"{version_info.major}.{version_info.minor}"
+
+    image_spec = ImageSpec.from_env(pinned_packages=["joblib", "msgpack"], packages=["scikit-learn"])
+    assert image_spec.python_version == python_version
+    assert f"joblib=={joblib_version}" in image_spec.packages
+    assert f"msgpack=={msgpack_version}" in image_spec.packages
+    assert 'scikit-learn' in image_spec.packages
+
+
+def test_image_spec_from_env_empty():
+    version_info = sys.version_info
+    python_version = f"{version_info.major}.{version_info.minor}"
+
+    image_spec = ImageSpec.from_env()
+    assert image_spec.python_version == python_version
+
+
+def test_image_spec_same_id_and_tag_with_pip_secret_mounts():
+    image_spec = ImageSpec(name="my_image")
+    image_spec_with_pip_secret_mounts = ImageSpec(name="my_image", pip_secret_mounts=[("src", "dst")])
+    assert image_spec.id == image_spec_with_pip_secret_mounts.id
+    assert image_spec.tag == image_spec_with_pip_secret_mounts.tag

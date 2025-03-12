@@ -10,4 +10,4 @@ Flytekit Pickle Type
    FlytePickle
 """
 
-from .pickle import BatchSize, FlytePickle
+from .pickle import FlytePickle
