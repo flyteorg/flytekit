@@ -220,9 +220,11 @@ class Task(object):
         self._task_type_version = task_type_version
         self._security_ctx = security_ctx
         self._docs = docs
-        self._timeout = timeout
-        # put timeout to metadata here
-        # raise error if metadata and timeout are both set
+        
+        if metadata and timeout:
+            from flytekit import logger
+            logger.warning(f"Timeout parameter will be ignored because metadata is already set.\n"
+                           f"If you want to set a timeout, please put timeout in metadata or just use timeout parameter.")
 
         FlyteEntities.entities.append(self)
 
