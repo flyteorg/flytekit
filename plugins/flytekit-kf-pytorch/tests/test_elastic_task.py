@@ -202,7 +202,7 @@ def test_output_metadata_passing(start_method: str) -> None:
     ],
 )
 def test_recoverable_error(recoverable: bool, start_method: str) -> None:
-    """Test that recoverable errors are propagated from the workers to the connector process."""
+    """Test that recoverable errors are propagated from the workers to the agent process."""
     world_size = 2
 
     class CustomRecoverableException(FlyteRecoverableException):

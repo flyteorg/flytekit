@@ -148,8 +148,16 @@ extend-exclude = ["tests/", "**/tests/**"]
 ignore-words-list = "ot,te,raison,fo,lits,assertIn"
 skip = "./docs/build,./.git,*.txt"
 
+# TODO: Remove it when we remove all the agent code
 [project.optional-dependencies]
 agent = [
+    "grpcio-health-checking<=1.68.0",
+    "httpx",
+    "prometheus-client",
+]
+
+[project.optional-dependencies]
+connector = [
     "grpcio-health-checking<=1.68.0",
     "httpx",
     "prometheus-client",
