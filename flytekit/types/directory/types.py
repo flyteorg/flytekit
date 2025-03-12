@@ -6,6 +6,7 @@ import pathlib
 import random
 import typing
 from dataclasses import dataclass, field
+from enum import Enum
 from functools import partial
 from pathlib import Path
 from typing import Annotated, Any, Dict, Generator, Tuple
@@ -18,7 +19,7 @@ from dataclasses_json import DataClassJsonMixin, config
 from fsspec.utils import get_protocol
 from google.protobuf import json_format as _json_format
 from google.protobuf.struct_pb2 import Struct
-from marshmallow import fields
+from marshmallow import fields, validate
 from mashumaro.types import SerializableType
 from typing_extensions import get_args, get_origin
 
@@ -62,13 +63,23 @@ PathType = typing.Union[str, os.PathLike]
 def noop(): ...
 
 
+class DataFormat(Enum):
+    JSONL = "jsonl"
+    PARQUET = "parquet"
+    ARROW = "arrow"
+
+
 @dataclass
 class StreamingKwargs(DataClassJsonMixin):
     shards_config: typing.Dict[str, Any] = field(default=None, metadata=config(mm_field=fields.Dict()))
     stream_config: typing.Dict[str, Any] = field(default=None, metadata=config(mm_field=fields.Dict()))
+    data_format: str = field(
+        default=DataFormat.JSONL,
+        metadata=config(mm_field=fields.String(validate=validate.OneOf([format.value for format in DataFormat]))),
+    )
 
     def __post_init__(self):
-        columns = self.shards_config.get("columns")
+        columns = self.shards_config.get("columns") if self.shards_config else None
         if columns:
             self.shards_config["columns"] = {k: v.__name__ if isinstance(v, type) else v for k, v in columns.items()}
 
@@ -691,33 +702,100 @@ class FlyteDirToMultipartBlobTransformer(AsyncTypeTransformer[FlyteDirectory]):
         except (jsonlines.InvalidLineError, UnicodeDecodeError):
             return False
 
+    def _is_valid_parquet_file(self, file_path: str) -> bool:
+        import pyarrow.parquet as pq
+
+        try:
+            pq.ParquetFile(file_path)
+            return True
+        except Exception:
+            return False
+
+    def _is_valid_arrow_file(self, file_path: str) -> bool:
+        import pyarrow as pa
+
+        try:
+            with pa.memory_map(file_path, "r") as mmap:
+                pa.RecordBatchStreamReader(mmap)
+                return True
+        except Exception:
+            return False
+
+    def _write_jsonl(self, out, src: str):
+        if self._is_valid_jsonl_file(src):
+            with jsonlines.open(src) as reader:
+                for obj in reader:
+                    out.write(obj)
+        else:
+            raise ValueError(f"Invalid JSONL file: {src}")
+
+    def _process_batches(self, out, reader):
+        import numpy as np
+
+        for batch in reader:
+            records = (
+                {
+                    name: np.array(val.as_py())
+                    if hasattr(val, "as_py") and isinstance(val.as_py(), list)
+                    else val.as_py()
+                    if hasattr(val, "as_py")
+                    else np.array(val)
+                    if isinstance(val, list)
+                    else val
+                    for name, val in zip(batch.schema.names, row)
+                }
+                for row in zip(*batch.columns)
+            )
+            for record in records:
+                out.write(record)
+
+    def _write_parquet_or_arrow(self, out, src: str, is_parquet: bool = True):
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+
+        if is_parquet:
+            if not self._is_valid_parquet_file(src):
+                raise ValueError(f"Invalid Parquet file: {src}")
+            reader = pq.ParquetFile(src).iter_batches(batch_size=5)
+        else:
+            if not self._is_valid_arrow_file(src):
+                raise ValueError(f"Invalid Arrow file: {src}")
+            with pa.memory_map(src, "r") as mmap, pa.RecordBatchStreamReader(mmap) as reader:
+                self._process_batches(out, reader)
+                return
+
+        self._process_batches(out, reader)
+
     def _create_shards(
         self, ctx: FlyteContext, uri: str, fd: FlyteDirectory = None, aa: StreamingKwargs = None
     ) -> typing.Union[bool, str]:
         if not aa.shards_config:
             return None
 
-        # Set output path if not provided
-        if "out" not in aa.shards_config:
-            aa.shards_config["out"] = ctx.file_access.get_random_local_directory()
+        aa.shards_config.setdefault("out", ctx.file_access.get_random_local_directory())
 
-        # Create shards
+        if aa.data_format == DataFormat.JSONL:
+            writer_func = self._write_jsonl
+        elif aa.data_format == DataFormat.PARQUET:
+            writer_func = self._write_parquet_or_arrow
+        elif aa.data_format == DataFormat.ARROW:
+            writer_func = partial(self._write_parquet_or_arrow, is_parquet=False)
+        else:
+            raise ValueError(f"Unsupported data format: {aa.data_format}")
+
         with MDSWriter(**aa.shards_config) as out:
-            if fd:  # Remote directory case
-                for base, x in fd.crawl():
-                    src = str(os.path.join(base, x))
-                    local_src_file = FlyteFile.from_source(src)
-                    if self._is_valid_jsonl_file(local_src_file):
-                        with jsonlines.open(local_src_file) as reader:
-                            for obj in reader:
-                                out.write(obj)
-            else:  # Local directory case
-                uri_path = Path(uri)
-                for src in uri_path.glob("*.jsonl"):
-                    if self._is_valid_jsonl_file(str(src)):
-                        with jsonlines.open(src) as reader:
-                            for obj in reader:
-                                out.write(obj)
+            if fd:
+                sources = (FlyteFile.from_source(str(Path(base) / x)) for base, x in fd.crawl())
+            else:
+                sources = Path(uri).rglob(f"*.{aa.data_format.name.lower()}")
+
+            try:
+                first_source = next(sources)  # Check if at least one file exists
+                writer_func(out, str(first_source))
+                for src in sources:  # Continue processing the rest
+                    writer_func(out, str(src))
+            except StopIteration:
+                raise ValueError(f"No {aa.data_format.name.lower()} files found in {uri}")
 
         return aa.shards_config["out"]
 
@@ -728,27 +806,20 @@ class FlyteDirToMultipartBlobTransformer(AsyncTypeTransformer[FlyteDirectory]):
         fd: FlyteDirectory = None,
         base_type: typing.Type = None,
         annotate_args: typing.List = None,
-        expected_python_type: typing.Type = None,
     ) -> typing.Union[StreamingDataset, FlyteDirectory]:
         for aa in annotate_args:
             if isinstance(aa, StreamingKwargs):
                 # Process shards if configured
-                output_path = None
-                if aa.shards_config:
-                    output_path = self._create_shards(ctx, uri, fd, aa)
+                output_path = self._create_shards(ctx, uri, fd, aa) if aa.shards_config else None
 
-                # Process streaming configuration if present
-                if aa.stream_config:
-                    if output_path:  # If shards were created
-                        return StreamingDataset(local=output_path, **aa.stream_config)
-                    else:  # Use original path (assuming shards are present in the remote directory)
-                        return StreamingDataset(remote=uri, **aa.stream_config)
+                return StreamingDataset(
+                    local=output_path or uri if output_path or not fd else None,
+                    remote=uri if not output_path and fd else None,
+                    **(aa.stream_config or {}),  # Make config optional
+                )
 
         # Return appropriate object if we didn't create a StreamingDataset
-        if fd:  # Remote case
-            return fd
-        else:  # Local case
-            return base_type(uri, remote_directory=False)
+        return fd or base_type(uri, remote_directory=False)
 
     async def async_to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Type[FlyteDirectory]
@@ -793,7 +864,6 @@ class FlyteDirToMultipartBlobTransformer(AsyncTypeTransformer[FlyteDirectory]):
                     fd=None,
                     base_type=base_type,
                     annotate_args=annotate_args,
-                    expected_python_type=expected_python_type,
                 )
             else:
                 return (base_type or expected_python_type)(uri, remote_directory=False)
@@ -814,7 +884,6 @@ class FlyteDirToMultipartBlobTransformer(AsyncTypeTransformer[FlyteDirectory]):
                 fd=fd,
                 base_type=base_type,
                 annotate_args=annotate_args,
-                expected_python_type=expected_python_type,
             )
 
         return fd
