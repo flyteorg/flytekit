@@ -93,8 +93,8 @@ id=micromamba \
 
 DOCKER_FILE_TEMPLATE = Template("""\
 #syntax=docker/dockerfile:1.5
-FROM ghcr.io/astral-sh/uv:0.5.1 as uv
-FROM mambaorg/micromamba:2.0.3-debian12-slim as micromamba
+FROM $UV_IMAGE as uv
+FROM $MICROMAMBA_IMAGE as micromamba
 
 FROM $BASE_IMAGE
 
@@ -417,6 +417,8 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
         ENTRYPOINT=entrypoint,
         RUN_COMMANDS=run_commands,
         EXTRA_COPY_CMDS=extra_copy_cmds,
+        UV_IMAGE=image_spec.builder_config["uv_image"],
+        MICROMAMBA_IMAGE=image_spec.builder_config["micromamba_image"],
     )
 
     dockerfile_path = tmp_dir / "Dockerfile"

@@ -95,6 +95,9 @@ class ImageSpec:
     source_copy_mode: Optional[CopyFileDetection] = None
     copy: Optional[List[str]] = None
     python_exec: Optional[str] = None
+    builder_config: Optional[typing.Dict[str, str]] = (
+        {"uv_image": "ghcr.io/astral-sh/uv:0.5.1", "micromamba_image": "mambaorg/micromamba:2.0.3-debian12-slim"},
+    )
 
     def __post_init__(self):
         self.name = self.name.lower()
