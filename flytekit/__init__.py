@@ -23,7 +23,7 @@ These are the essentials needed to get started writing tasks and workflows.
    current_context
    ExecutionParameters
    FlyteContext
-   map_task
+   map
    ~core.workflow.ImperativeWorkflow
    ~core.node_creation.create_node
    ~core.promise.NodeOutput

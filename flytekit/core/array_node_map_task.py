@@ -447,7 +447,7 @@ def array_node_map_task(
 
     .. important::
 
-       This is an experimental drop-in replacement for :py:func:`~flytekit.map_task`.
+       This is an experimental drop-in replacement for :py:func:`~`.
 
     :param task_function: This argument is implicitly passed and represents the repeatable function
     :param concurrency: If specified, this limits the number of mapped tasks than can run in parallel to the given batch
