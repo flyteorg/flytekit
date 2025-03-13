@@ -58,13 +58,19 @@ async def test_chatgpt_connector():
         },
     )
     message = "mocked_message"
-    mocked_token = "mocked_openai_api_key"
-    mocked_context = mock.patch("flytekit.current_context", autospec=True).start()
-    mocked_context.return_value.secrets.get.return_value = mocked_token
-
-    with mock.patch("openai.resources.chat.completions.AsyncCompletions.create", new=mock_acreate):
-        # Directly await the coroutine without using asyncio.run
-        response = await connector.do(tmp, task_inputs)
+    
+    # Create a more specific mock for the context
+    mock_context = mock.MagicMock()
+    mock_secrets = mock.MagicMock()
+    # Return a string directly instead of a MagicMock
+    mock_secrets.get.return_value = "mocked_openai_api_key"
+    mock_context.secrets = mock_secrets
+    
+    # Patch the current_context function to return our specific mock
+    with mock.patch("flytekit.FlyteContextManager.current_context", return_value=mock_context):
+        with mock.patch("openai.resources.chat.completions.AsyncCompletions.create", new=mock_acreate):
+            # Directly await the coroutine without using asyncio.run
+            response = await connector.do(tmp, task_inputs)
 
     assert response.phase == TaskExecution.SUCCEEDED
     assert response.outputs == {"o0": message}
