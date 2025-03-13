@@ -7,7 +7,7 @@ from datetime import datetime
 import time
 
 # Setup basic logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 # Define the resource protocol
@@ -34,6 +34,7 @@ class ResourceProtocol(Protocol):
 
 # Type variable for generic resource
 R = TypeVar('R', bound=ResourceProtocol)
+
 
 class Informer(Generic[R]):
     """Base informer with either polling or watch mode"""
@@ -141,12 +142,16 @@ class Controller(Generic[R]):
 
     async def add_resource(self, resource: R):
         """Public API to add a resource without waiting for completion"""
+        print(f"{threading.current_thread().name} Adding resource {resource.name}")
         await self.informer.add_resource(resource)
         await self.shared_queue.put(resource.name)
+        print(f"{threading.current_thread().name} Done adding resource {resource.name}")
 
     async def submit_resource(self, resource: R) -> R:
         """Submit a resource and await its completion, returning the final state"""
+        print(f"{threading.current_thread().name} Submitting resource {resource.name}")
         async with self.informer._lock:
+            # TODO change informer to have get and other methods. we should never access resources directly
             if resource.name in self.informer.resources:
                 raise ValueError(f"Resource {resource.name} already exists")
             if resource.name in self.completion_events:
@@ -156,16 +161,20 @@ class Controller(Generic[R]):
         self.completion_events[resource.name] = Event()
         await self.add_resource(resource)
 
+        print(f"{threading.current_thread().name} Waiting for completion of {resource.name}")
         # Wait for completion
         await self.completion_events[resource.name].wait()
+        print(f"{threading.current_thread().name} Resource {resource.name} completed")
 
         # Get final resource state and clean up
-        async with self.informer._lock:
-            final_resource = self.informer.resources.get(resource.name)
-            del self.completion_events[resource.name]
-            if final_resource:
-                await self.informer.remove_resource(resource.name)
-            return final_resource
+        final_resource = self.informer.resources.get(resource.name)
+        if final_resource is None:
+            raise ValueError(f"Resource {resource.name} not found")
+        del self.completion_events[resource.name]
+        print(f"{threading.current_thread().name} Removed completion event for {resource.name}")
+        await self.informer.remove_resource(resource.name)
+        print(f"{threading.current_thread().name} Removed resource {resource.name}, final={final_resource}")
+        return final_resource
 
     async def launch_resource(self, resource: R):
         """Attempt to launch a resource until successful"""
@@ -194,7 +203,6 @@ class Controller(Generic[R]):
         elif resource.is_terminal():
             if resource.name in self.completion_events:
                 self.completion_events[resource.name].set()  # Signal completion
-            await self.informer.remove_resource(resource.name)
 
     async def get_resource_status(self) -> Tuple[Set[str], Set[str]]:
         """Return current set of launched (running) and waiting-to-be-launched resources"""
@@ -206,25 +214,28 @@ class Controller(Generic[R]):
     async def _log_resource_stats(self):
         """Periodically log resource stats if debug is enabled"""
         while self.running:
-            if logger.isEnabledFor(logging.DEBUG):
-                launched, waiting = await self.get_resource_status()
-                logger.debug(f"Resource stats: Launched={launched}, Waiting={waiting}")
+            launched, waiting = await self.get_resource_status()
+            logger.debug(f"Resource stats: Launched={launched}, Waiting={waiting}")
             await asyncio.sleep(2.0)
 
     async def run(self):
         """Run loop with resource status logging"""
+        print(f"{threading.current_thread().name} Controller starting")
         if self.running:
             logger.warning("Controller already running")
             return
 
-        print("Controller running")
+        print(f"{threading.current_thread().name} Controller running")
         self.running = True
         await self.informer.start()
+        print(f"{threading.current_thread().name} Informer started")
         asyncio.create_task(self._log_resource_stats())
 
         while self.running:
             try:
+                print(f"{threading.current_thread().name} Waiting for resource")
                 item = await self.shared_queue.get()
+                print(f"{threading.current_thread().name} Got resource {item}")
 
                 if isinstance(item, str):
                     logger.info(f"Received resource name: {item}")
@@ -239,17 +250,6 @@ class Controller(Generic[R]):
             except Exception as e:
                 logger.error(f"Error in controller loop: {e}")
                 await asyncio.sleep(1.0)
-
-    def _run(self, loop):
-        """Run the controller in the background"""
-        loop.run_until_complete(self.run())
-
-    def start(self):
-        """Synchronously start the controller in the background."""
-        print("Starting controller")
-        thread = threading.Thread(target=self._run, kwargs={"loop" :asyncio.new_event_loop()}, daemon=True)
-        thread.start()
-
 
     async def stop(self):
         """Stop the controller"""

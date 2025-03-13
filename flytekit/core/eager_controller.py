@@ -38,7 +38,7 @@ class LocalNode(ResourceProtocol):
         try:
             # Assuming RunnableEntity.__call__ is synchronous
             # If it's async, remove the await asyncio.to_thread()
-            result = await asyncio.to_thread(self.entity.__call__, **self.input_kwargs)
+            result = await self.entity._task_function(**self.input_kwargs)
             self.result = result
             self.error = None
         except Exception as e:
@@ -56,16 +56,21 @@ class LocalNode(ResourceProtocol):
         """
         Launch the RunnableEntity in the background
         """
+        print(f"Launching {self.key}")
         if self._task is None:
             self._task = asyncio.create_task(self._run_entity())
+            print(f"Launched {self.key} with task {self._task}")
         return True
 
     def is_terminal(self) -> bool:
         """
         Returns True if the node has completed (successfully or with error)
         """
+        print(f"Checking terminal status for {self.key}")
         if self._task is None:
+            print(f"Task not found for {self.key}")
             return False
+        print(f"Task status for {self.key}: {self._task.done()}")
         return self._task.done()
 
     @cached_property
@@ -78,6 +83,10 @@ class LocalNode(ResourceProtocol):
         hex = hashlib.md5(components.encode()).hexdigest()
         exec_name = f"{hex}"
         return exec_name
+
+    def is_started(self) -> bool:
+        """Check if resource has been started."""
+        return self._task is not None
 
 
 class EagerController(Controller[LocalNode]):
