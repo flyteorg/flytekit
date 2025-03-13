@@ -290,7 +290,7 @@ def test_inputs_outputs_length():
         _ = map_task(many_outputs)
 
 
-def test_parameter_order():
+def test_partials_local_execute():
     @task()
     def task1(a: int, b: float, c: str) -> str:
         return f"{a} - {b} - {c}"
@@ -302,6 +302,10 @@ def test_parameter_order():
     @task()
     def task3(c: str, a: int, b: float) -> str:
         return f"{a} - {b} - {c}"
+
+    @task()
+    def task4(c: list[str], a: list[int], b: list[float]) -> list[str]:
+        return [f"{a[i]} - {b[i]} - {c[i]}" for i in range(len(a))]
 
     param_a = [1, 2, 3]
     param_b = [0.1, 0.2, 0.3]
@@ -316,6 +320,19 @@ def test_parameter_order():
     m6 = ArrayNodeMapTask(task3, bound_inputs_values={"c": param_c})(a=param_a, b=param_b)
 
     assert m1 == m2 == m3 == m4 == m5 == m6 == ["1 - 0.1 - c", "2 - 0.2 - c", "3 - 0.3 - c"]
+
+    param_a = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+    param_b = [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6], [0.7, 0.8, 0.9]]
+    param_c = ["c", "d", "e"]
+
+    m7 = map_task(functools.partial(task4, c=param_c))(a=param_a, b=param_b)
+    m8 = ArrayNodeMapTask(task4, bound_inputs_values={"c": param_c})(a=param_a, b=param_b)
+
+    assert m7 == m8 == [
+        ['1 - 0.1 - c', '2 - 0.2 - d', '3 - 0.3 - e'],
+        ['4 - 0.4 - c', '5 - 0.5 - d', '6 - 0.6 - e'],
+        ['7 - 0.7 - c', '8 - 0.8 - d', '9 - 0.9 - e']
+    ]
 
 
 def test_bounded_inputs_vars_order(serialization_settings):
