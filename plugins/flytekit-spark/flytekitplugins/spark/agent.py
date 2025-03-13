@@ -72,7 +72,7 @@ class DatabricksAgent(AsyncAgentBase):
         databricks_instance = task_template.custom["databricksInstance"]
         databricks_url = f"https://{databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/submit"
 
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(verify_ssl=False)) as session:
             async with session.post(databricks_url, headers=get_header(), data=data) as resp:
                 response = await resp.json()
                 if resp.status != http.HTTPStatus.OK:
@@ -86,7 +86,7 @@ class DatabricksAgent(AsyncAgentBase):
             f"https://{databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/get?run_id={resource_meta.run_id}"
         )
 
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(verify_ssl=False)) as session:
             async with session.get(databricks_url, headers=get_header()) as resp:
                 if resp.status != http.HTTPStatus.OK:
                     raise RuntimeError(f"Failed to get databricks job {resource_meta.run_id} with error: {resp.reason}")
@@ -118,7 +118,7 @@ class DatabricksAgent(AsyncAgentBase):
         databricks_url = f"https://{resource_meta.databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/cancel"
         data = json.dumps({"run_id": resource_meta.run_id})
 
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(verify_ssl=False)) as session:
             async with session.post(databricks_url, headers=get_header(), data=data) as resp:
                 if resp.status != http.HTTPStatus.OK:
                     raise RuntimeError(
