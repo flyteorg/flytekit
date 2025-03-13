@@ -7,7 +7,7 @@ from asyncssh import SSHClientConnection
 
 import flytekit
 from flytekit.core.type_engine import TypeEngine
-from flytekit.extend.backend.base_connector import ConnectorRegistry, AsyncConnectorBase, Resource, ResourceMeta
+from flytekit.extend.backend.base_connector import AsyncConnectorBase, ConnectorRegistry, Resource, ResourceMeta
 from flytekit.extend.backend.utils import convert_to_flyte_phase
 from flytekit.extras.tasks.shell import OutputLocation, _PythonFStringInterpolizer
 from flytekit.models.literals import LiteralMap
