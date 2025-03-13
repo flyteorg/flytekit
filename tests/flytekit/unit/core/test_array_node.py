@@ -8,7 +8,7 @@ from flytekit import task, workflow
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.array_node import array_node
-from flytekit.core.array_node_map_task import map_task
+from flytekit.core.array_node_map_task import map
 from flytekit.core.launch_plan import LaunchPlan, reference_launch_plan
 from flytekit.models import types
 from flytekit.models.core import identifier as identifier_models
@@ -373,8 +373,8 @@ def test_local_exec_lp_min_successes(min_successes, min_success_ratio, should_ra
 
 
 def test_map_task_wrapper():
-    mapped_task = map_task(multiply)(val=[1, 3, 5], val1=[2, 4, 6], val2=[7, 8, 9])
+    mapped_task = map(multiply)(val=[1, 3, 5], val1=[2, 4, 6], val2=[7, 8, 9])
     assert mapped_task == [14, 96, 270]
 
-    mapped_lp = map_task(lp)(a=[1, 3, 5], b=[2, 4, 6], c=[7, 8, 9])
+    mapped_lp = map(lp)(a=[1, 3, 5], b=[2, 4, 6], c=[7, 8, 9])
     assert mapped_lp == [14, 96, 270]
