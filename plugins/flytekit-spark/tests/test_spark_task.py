@@ -40,14 +40,6 @@ from kubernetes.client.models import (
 )
 
 
-# @pytest.fixture(scope="function")
-# def reset_spark_session() -> None:
-#     pyspark.sql.SparkSession.builder.getOrCreate().stop()
-#     yield
-#     pyspark.sql.SparkSession.builder.getOrCreate().stop()
-
-
-
 @pytest.fixture(scope="function")
 def reset_spark_session() -> None:
     if SparkSession._instantiatedSession:
