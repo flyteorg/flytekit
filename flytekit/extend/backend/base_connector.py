@@ -360,7 +360,7 @@ class AsyncConnectorExecutorMixin:
         if resource.phase != TaskExecution.SUCCEEDED:
             raise FlyteUserException(f"Failed to run the task {self.name} with error: {resource.message}")
 
-        # Read the literals from a remote file if the agent doesn't return the output literals.
+        # Read the literals from a remote file if the connector doesn't return the output literals.
         if task_template.interface.outputs and resource.outputs is None:
             local_outputs_file = ctx.file_access.get_random_local_path()
             ctx.file_access.get_data(f"{output_prefix}/outputs.pb", local_outputs_file)
