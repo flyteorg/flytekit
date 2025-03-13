@@ -1,5 +1,6 @@
 import http
 import json
+import os
 import typing
 from dataclasses import dataclass
 from typing import Optional
@@ -17,6 +18,7 @@ from flytekit.models.task import TaskTemplate
 aiohttp = lazy_module("aiohttp")
 
 DATABRICKS_API_ENDPOINT = "/api/2.1/jobs"
+DEFAULT_DATABRICKS_INSTANCE_ENV_KEY = "FLYTE_DATABRICKS_INSTANCE"
 
 
 @dataclass
@@ -69,7 +71,15 @@ class DatabricksAgent(AsyncAgentBase):
         self, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs
     ) -> DatabricksJobMetadata:
         data = json.dumps(_get_databricks_job_spec(task_template))
-        databricks_instance = task_template.custom["databricksInstance"]
+        databricks_instance = task_template.custom.get(
+            "databricksInstance", os.getenv(DEFAULT_DATABRICKS_INSTANCE_ENV_KEY)
+        )
+
+        if not databricks_instance:
+            raise ValueError(
+                f"Missing databricks instance. Please set the value through the task config or set the {DEFAULT_DATABRICKS_INSTANCE_ENV_KEY} environment variable in the agent."
+            )
+
         databricks_url = f"https://{databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/submit"
 
         async with aiohttp.ClientSession() as session:
