@@ -62,8 +62,12 @@ class BaseSensor(AsyncAgentExecutorMixin, PythonTask):
         for k, _ in signature.parameters.items():  # type: ignore
             annotation = type_hints.get(k, None)
             inputs[k] = annotation
-        metadata = TaskMetadata(timeout=timeout)
 
+        if kwargs.get("metadata", None) and timeout:
+            raise ValueError("You cannot set timeout and metadata at the same time in the sensor")
+
+        metadata = TaskMetadata(timeout=timeout)
+      
         super().__init__(
             task_type=task_type,
             name=name,
