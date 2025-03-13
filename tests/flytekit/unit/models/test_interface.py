@@ -51,14 +51,53 @@ def test_typed_interface(literal_type):
     assert len(deserialized_typed_interface.inputs) == 1
     assert len(deserialized_typed_interface.outputs) == 2
 
-    deserialized_typed_interface_list = typed_interface.transform_interface_to_list()
-    assert deserialized_typed_interface_list.inputs["a"].type == types.LiteralType(collection_type=literal_type)
-    assert deserialized_typed_interface_list.outputs["b"].type == types.LiteralType(collection_type=literal_type)
-    assert deserialized_typed_interface_list.outputs["c"].type == types.LiteralType(collection_type=literal_type)
-    assert deserialized_typed_interface_list.inputs["a"].description == "description1"
-    assert deserialized_typed_interface_list.outputs["b"].description == "description2"
-    assert deserialized_typed_interface_list.outputs["c"].description == "description3"
-    assert len(deserialized_typed_interface_list.inputs) == 1
+
+@pytest.mark.parametrize("literal_type", LIST_OF_ALL_LITERAL_TYPES)
+@pytest.mark.parametrize(
+    "bound_inputs, excluded_inputs",
+    [
+        (set(), set()),
+        ({"a"}, set()),
+        (set(), {"b"}),
+        ({"a"}, {"b"}),
+        ({"a", "b"}, set()),
+        (set(), {"a", "b"}),
+    ])
+def test_transform_interface_to_list(literal_type, bound_inputs, excluded_inputs):
+    typed_interface = interface.TypedInterface(
+        {
+            "a": interface.Variable(literal_type, "description1"),
+            "b": interface.Variable(literal_type, "description2")
+        },
+        {
+            "c": interface.Variable(literal_type, "description3"),
+            "d": interface.Variable(literal_type, "description4")
+        },
+    )
+
+    deserialized_typed_interface_list = typed_interface.transform_interface_to_list(
+        bound_inputs=bound_inputs,
+        excluded_inputs=excluded_inputs
+    )
+
+    for param in typed_interface.inputs:
+        if param in excluded_inputs:
+            assert param not in deserialized_typed_interface_list.inputs
+        elif param in bound_inputs:
+            assert deserialized_typed_interface_list.inputs[param].type == literal_type
+        else:
+            assert deserialized_typed_interface_list.inputs[param].type == types.LiteralType(
+                collection_type=literal_type
+            )
+
+    for param in typed_interface.outputs:
+        assert deserialized_typed_interface_list.outputs[param].type == types.LiteralType(
+            collection_type=literal_type
+        )
+        assert (deserialized_typed_interface_list.outputs[param].description ==
+                typed_interface.outputs[param].description)
+
+    assert len(deserialized_typed_interface_list.inputs) == 2 - len(excluded_inputs)
     assert len(deserialized_typed_interface_list.outputs) == 2
 
 

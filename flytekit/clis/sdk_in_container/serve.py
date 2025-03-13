@@ -68,8 +68,6 @@ def agent(_: click.Context, port, prometheus_port, worker, timeout, modules):
     """
     import asyncio
 
-    from flytekit.extras.webhook import WebhookTask  # noqa: F401
-
     working_dir = os.getcwd()
     if all(os.path.realpath(path) != working_dir for path in sys.path):
         sys.path.append(working_dir)
@@ -80,7 +78,13 @@ def agent(_: click.Context, port, prometheus_port, worker, timeout, modules):
 
 
 async def _start_grpc_server(port: int, prometheus_port: int, worker: int, timeout: int):
-    from flytekit.extend.backend.agent_service import AgentMetadataService, AsyncAgentService, SyncAgentService
+    try:
+        from flytekit.extend.backend.agent_service import AgentMetadataService, AsyncAgentService, SyncAgentService
+        from flytekit.extras.webhook import WebhookAgent  # noqa: F401 Webhook Agent Registration
+    except ImportError as e:
+        raise ImportError(
+            "Flyte agent dependencies are not installed. Please install it using `pip install flytekit[agent]`"
+        ) from e
 
     click.secho("🚀 Starting the agent service...")
     _start_http_server(prometheus_port)

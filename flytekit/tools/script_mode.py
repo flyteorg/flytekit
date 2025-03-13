@@ -10,7 +10,8 @@ import sys
 import tarfile
 import tempfile
 import typing
-from datetime import datetime
+from datetime import datetime, timezone
+from functools import lru_cache
 from pathlib import Path
 from types import ModuleType
 from typing import List, Optional, Tuple, Union
@@ -73,7 +74,7 @@ def compress_scripts(source_path: str, destination: str, modules: List[ModuleTyp
 def tar_strip_file_attributes(tar_info: tarfile.TarInfo) -> tarfile.TarInfo:
     # set time to epoch timestamp 0, aka 00:00:00 UTC on 1 January 1980
     # note that when extracting this tarfile, this time will be shown as the modified date
-    tar_info.mtime = datetime(1980, 1, 1).timestamp()
+    tar_info.mtime = datetime(1980, 1, 1, tzinfo=timezone.utc).timestamp()
 
     # user/group info
     tar_info.uid = 0
@@ -292,6 +293,7 @@ def get_all_modules(source_path: str, module_name: Optional[str]) -> List[Module
         return sys_modules
 
 
+@lru_cache
 def hash_file(file_path: typing.Union[os.PathLike, str]) -> (bytes, str, int):
     """
     Hash a file and produce a digest to be used as a version

@@ -41,6 +41,7 @@ class ArrayNodeMapTask(PythonTask):
         min_successes: Optional[int] = None,
         min_success_ratio: Optional[float] = None,
         bound_inputs: Optional[Set[str]] = None,
+        bound_inputs_values: Optional[Dict[str, Any]] = None,
         **kwargs,
     ):
         """
@@ -49,6 +50,7 @@ class ArrayNodeMapTask(PythonTask):
         :param min_successes: The minimum number of successful executions
         :param min_success_ratio: The minimum ratio of successful executions
         :param bound_inputs: The set of inputs that should be bound to the map task
+        :param bound_inputs_values: Inputs that are bound to the array node and will not be mapped over
         :param kwargs: Additional keyword arguments to pass to the base class
         """
         self._partial = None
@@ -78,14 +80,25 @@ class ArrayNodeMapTask(PythonTask):
         if n_outputs > 1:
             raise ValueError("Only tasks with a single output are supported in map tasks.")
 
+        # Note, bound_inputs are passed in during run time when executing the task
+        # so both values shouldn't be set at the same time
+        if bound_inputs and bound_inputs_values:
+            if bound_inputs != set(bound_inputs_values):
+                raise ValueError("bound_inputs and bound_inputs_values should have the same keys if both set")
+
         self._bound_inputs: Set[str] = bound_inputs or set(bound_inputs) if bound_inputs else set()
         if self._partial:
             self._bound_inputs.update(self._partial.keywords.keys())
 
+        self._bound_inputs_values: Dict[str, Any] = bound_inputs_values or {}
+        if self._bound_inputs_values:
+            # bounded input values override any collisions w/ partials
+            self._bound_inputs.update(set(self._bound_inputs_values))
+
         # Transform the interface to List[Optional[T]] in case `min_success_ratio` is set
         output_as_list_of_optionals = min_success_ratio is not None and min_success_ratio != 1 and n_outputs == 1
         collection_interface = transform_interface_to_list_interface(
-            actual_task.python_interface, self._bound_inputs, output_as_list_of_optionals
+            actual_task.python_interface, self._bound_inputs, set(), output_as_list_of_optionals
         )
 
         self._run_task: Union[PythonFunctionTask, PythonInstanceTask] = actual_task  # type: ignore
@@ -247,6 +260,8 @@ class ArrayNodeMapTask(PythonTask):
         if self._partial:
             """If partial exists, then mix-in all partial values"""
             kwargs = {**self._partial.keywords, **kwargs}
+        # bounded input values override any collisions w/ partials
+        kwargs.update(self._bound_inputs_values)
         return super().__call__(*args, **kwargs)
 
     def _literal_map_to_python_input(

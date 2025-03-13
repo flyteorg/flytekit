@@ -664,6 +664,9 @@ def test_execute_workflow_with_maptask(register):
     )
     assert execution.outputs["o0"] == [4, 5, 6]
     assert len(execution.node_executions["n0"].task_executions) == 1
+    assert len(execution.node_executions["n0"].task_executions[0].closure.metadata.external_resources) == len(d)
+    for i in range(len(d)):
+        assert execution.node_executions["n0"].task_executions[0].closure.metadata.external_resources[i].phase == 3 # SUCCEEDED
 
 def test_execution_workflow_with_maptask_in_dynamic(register):
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
@@ -680,6 +683,9 @@ def test_execution_workflow_with_maptask_in_dynamic(register):
     assert execution.node_executions["n0"].subworkflow_node_executions is not None
     assert "n0-0-dn0" in execution.node_executions["n0"].subworkflow_node_executions
     assert len(execution.node_executions["n0"].subworkflow_node_executions["n0-0-dn0"].task_executions) == 1
+    assert len(execution.node_executions["n0"].subworkflow_node_executions["n0-0-dn0"].task_executions[0].closure.metadata.external_resources) == len(d)
+    for i in range(len(d)):
+        assert execution.node_executions["n0"].subworkflow_node_executions["n0-0-dn0"].task_executions[0].closure.metadata.external_resources[i].phase == 3 # SUCCEEDED
 
 
 def test_executes_nested_workflow_dictating_interruptible(register):
@@ -1141,3 +1147,26 @@ def test_execute_workflow_with_dataclass():
         image_config=ImageConfig.from_images(IMAGE),
     )
     assert out.outputs["o0"] == ""
+
+
+def test_register_wf_twice(register):
+    # Register the same workflow again should not raise an error
+    out = subprocess.run(
+        [
+            "pyflyte",
+            "--verbose",
+            "-c",
+            CONFIG,
+            "register",
+            "--image",
+            IMAGE,
+            "--project",
+            PROJECT,
+            "--domain",
+            DOMAIN,
+            "--version",
+            VERSION,
+            MODULE_PATH / "pickle_wf.py",
+        ]
+    )
+    assert out.returncode == 0

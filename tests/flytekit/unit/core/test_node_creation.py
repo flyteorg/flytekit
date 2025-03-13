@@ -303,18 +303,18 @@ def test_resources_override():
     ]
 
 
-@pytest.mark.parametrize(
-    "timeout,expected",
-    [(None, datetime.timedelta()), (10, datetime.timedelta(seconds=10))],
-)
-def test_timeout_override(timeout, expected):
+def test_map_task_resources_override_directly():
     @task
     def t1(a: str) -> str:
         return f"*~*~*~{a}*~*~*~"
 
     @workflow
-    def my_wf(a: str) -> str:
-        return t1(a=a).with_overrides(timeout=timeout)
+    def my_wf(a: typing.List[str]) -> typing.List[str]:
+        mappy = map_task(t1)
+        map_node = mappy(a=a).with_overrides(
+            resources=Resources(cpu=("1", "2"), mem="100", ephemeral_storage=("500Mi", "1Gi")),
+        )
+        return map_node
 
     serialization_settings = flytekit.configuration.SerializationSettings(
         project="test_proj",
@@ -325,7 +325,69 @@ def test_timeout_override(timeout, expected):
     )
     wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
     assert len(wf_spec.template.nodes) == 1
-    assert wf_spec.template.nodes[0].metadata.timeout == expected
+    assert wf_spec.template.nodes[0].array_node.node.task_node.overrides is not None
+    assert wf_spec.template.nodes[0].array_node.node.task_node.overrides.resources.requests == [
+        _resources_models.ResourceEntry(_resources_models.ResourceName.CPU, "1"),
+        _resources_models.ResourceEntry(_resources_models.ResourceName.MEMORY, "100"),
+        _resources_models.ResourceEntry(_resources_models.ResourceName.EPHEMERAL_STORAGE, "500Mi"),
+    ]
+
+    assert wf_spec.template.nodes[0].array_node.node.task_node.overrides.resources.limits == [
+        _resources_models.ResourceEntry(_resources_models.ResourceName.CPU, "2"),
+        _resources_models.ResourceEntry(_resources_models.ResourceName.EPHEMERAL_STORAGE, "1Gi"),
+    ]
+
+
+preset_timeout = datetime.timedelta(seconds=100)
+
+
+@pytest.mark.parametrize(
+    "timeout,t1_expected_timeout_overridden, t1_expected_timeout_unset, t2_expected_timeout_overridden, "
+    "t2_expected_timeout_unset",
+    [
+        (None, datetime.timedelta(0), 0, datetime.timedelta(0), preset_timeout),
+        (10, datetime.timedelta(seconds=10), 0,
+         datetime.timedelta(seconds=10), preset_timeout)
+    ],
+)
+def test_timeout_override(
+        timeout,
+        t1_expected_timeout_overridden,
+        t1_expected_timeout_unset,
+        t2_expected_timeout_overridden,
+        t2_expected_timeout_unset,
+    ):
+    @task
+    def t1(a: str) -> str:
+        return f"*~*~*~{a}*~*~*~"
+
+    @task(
+        timeout=preset_timeout
+    )
+    def t2(a: str) -> str:
+        return f"*~*~*~{a}*~*~*~"
+
+    @workflow
+    def my_wf(a: str) -> str:
+        s = t1(a=a).with_overrides(timeout=timeout)
+        s1 = t1(a=s).with_overrides()
+        s2 = t2(a=s1).with_overrides(timeout=timeout)
+        s3 = t2(a=s2).with_overrides()
+        return s3
+
+    serialization_settings = flytekit.configuration.SerializationSettings(
+        project="test_proj",
+        domain="test_domain",
+        version="abc",
+        image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+        env={},
+    )
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
+    assert len(wf_spec.template.nodes) == 4
+    assert wf_spec.template.nodes[0].metadata.timeout == t1_expected_timeout_overridden
+    assert wf_spec.template.nodes[1].metadata.timeout == t1_expected_timeout_unset
+    assert wf_spec.template.nodes[2].metadata.timeout == t2_expected_timeout_overridden
+    assert wf_spec.template.nodes[3].metadata.timeout == t2_expected_timeout_unset
 
 
 def test_timeout_override_invalid_value():
@@ -410,6 +472,33 @@ def test_void_promise_override():
     assert wf_spec.template.nodes[0].task_node.overrides.resources.requests == [
         _resources_models.ResourceEntry(_resources_models.ResourceName.CPU, "1"),
         _resources_models.ResourceEntry(_resources_models.ResourceName.MEMORY, "100"),
+    ]
+
+
+def test_void_promise_override_resource_directly():
+    @task
+    def t1(a: str):
+        print(f"*~*~*~{a}*~*~*~")
+
+    @workflow
+    def my_wf(a: str):
+        t1(a=a).with_overrides(resources=Resources(cpu=("1", "2"), mem="100"))
+
+    serialization_settings = flytekit.configuration.SerializationSettings(
+        project="test_proj",
+        domain="test_domain",
+        version="abc",
+        image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+        env={},
+    )
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
+    assert len(wf_spec.template.nodes) == 1
+    assert wf_spec.template.nodes[0].task_node.overrides.resources.requests == [
+        _resources_models.ResourceEntry(_resources_models.ResourceName.CPU, "1"),
+        _resources_models.ResourceEntry(_resources_models.ResourceName.MEMORY, "100"),
+    ]
+    assert wf_spec.template.nodes[0].task_node.overrides.resources.limits == [
+        _resources_models.ResourceEntry(_resources_models.ResourceName.CPU, "2"),
     ]
 
 
