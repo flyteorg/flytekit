@@ -58,14 +58,14 @@ async def test_chatgpt_connector():
         },
     )
     message = "mocked_message"
-    
+
     # Create a more specific mock for the context
     mock_context = mock.MagicMock()
     mock_secrets = mock.MagicMock()
     # Return a string directly instead of a MagicMock
     mock_secrets.get.return_value = "mocked_openai_api_key"
     mock_context.secrets = mock_secrets
-    
+
     # Patch the current_context function to return our specific mock
     with mock.patch("flytekit.FlyteContextManager.current_context", return_value=mock_context):
         with mock.patch("openai.resources.chat.completions.AsyncCompletions.create", new=mock_acreate):
