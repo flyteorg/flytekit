@@ -160,7 +160,7 @@ class ImageSpec:
 
         :return: a unique identifier of the ImageSpec
         """
-        parameters_to_exclude = ["pip_secret_mounts"]
+        parameters_to_exclude = ["pip_secret_mounts", "builder"]
         # Only get the non-None values in the ImageSpec to ensure the hash is consistent across different Flytekit versions.
         image_spec_dict = asdict(
             self, dict_factory=lambda x: {k: v for (k, v) in x if v is not None and k not in parameters_to_exclude}
