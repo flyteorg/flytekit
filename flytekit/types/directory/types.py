@@ -726,8 +726,6 @@ class FlyteDirToMultipartBlobTransformer(AsyncTypeTransformer[FlyteDirectory]):
             with jsonlines.open(src) as reader:
                 for obj in reader:
                     out.write(obj)
-        else:
-            raise ValueError(f"Invalid JSONL file: {src}")
 
     def _process_batches(self, out, reader):
         import numpy as np
@@ -754,17 +752,15 @@ class FlyteDirToMultipartBlobTransformer(AsyncTypeTransformer[FlyteDirectory]):
         import pyarrow.parquet as pq
 
         if is_parquet:
-            if not self._is_valid_parquet_file(src):
-                raise ValueError(f"Invalid Parquet file: {src}")
-            reader = pq.ParquetFile(src).iter_batches(batch_size=5)
-        else:
-            if not self._is_valid_arrow_file(src):
-                raise ValueError(f"Invalid Arrow file: {src}")
-            with pa.memory_map(src, "r") as mmap, pa.RecordBatchStreamReader(mmap) as reader:
+            if self._is_valid_parquet_file(src):
+                reader = pq.ParquetFile(src).iter_batches(batch_size=5)
                 self._process_batches(out, reader)
-                return
-
-        self._process_batches(out, reader)
+        else:
+            if self._is_valid_arrow_file(src):
+                with pa.memory_map(src, "r") as mmap, pa.RecordBatchStreamReader(mmap) as reader:
+                    self._process_batches(out, reader)
+                    return
+        return
 
     def _create_shards(
         self, ctx: FlyteContext, uri: str, fd: FlyteDirectory = None, aa: StreamingKwargs = None
@@ -785,7 +781,7 @@ class FlyteDirToMultipartBlobTransformer(AsyncTypeTransformer[FlyteDirectory]):
 
         with MDSWriter(**aa.shards_config) as out:
             if fd:
-                sources = (FlyteFile.from_source(str(Path(base) / x)) for base, x in fd.crawl())
+                sources = (FlyteFile.from_source(os.path.join(base, x)).download() for base, x in fd.crawl())
             else:
                 sources = Path(uri).rglob(f"*.{aa.data_format.name.lower()}")
 
@@ -793,7 +789,7 @@ class FlyteDirToMultipartBlobTransformer(AsyncTypeTransformer[FlyteDirectory]):
                 first_source = next(sources)  # Check if at least one file exists
                 writer_func(out, str(first_source))
                 for src in sources:  # Continue processing the rest
-                    writer_func(out, str(src))
+                    writer_func(out, src)
             except StopIteration:
                 raise ValueError(f"No {aa.data_format.name.lower()} files found in {uri}")
 
