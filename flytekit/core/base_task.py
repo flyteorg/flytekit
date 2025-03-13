@@ -209,24 +209,15 @@ class Task(object):
         task_type_version=0,
         security_ctx: Optional[SecurityContext] = None,
         docs: Optional[Documentation] = None,
-        timeout: Optional[Union[datetime.timedelta, int]] = None,
         **kwargs,
     ):
         self._task_type = task_type
         self._name = name
         self._interface = interface
-        self._metadata = metadata if metadata else TaskMetadata(timeout=timeout)
+        self._metadata = metadata if metadata else TaskMetadata()
         self._task_type_version = task_type_version
         self._security_ctx = security_ctx
         self._docs = docs
-
-        if metadata and timeout:
-            from flytekit import logger
-
-            logger.warning(
-                "Timeout parameter will be ignored because metadata is already set.\n"
-                "If you want to set a timeout, please put timeout in metadata or just use timeout parameter."
-            )
 
         FlyteEntities.entities.append(self)
 
@@ -483,7 +474,6 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             DeckField.INPUT,
             DeckField.OUTPUT,
         ),
-        timeout: Optional[Union[datetime.timedelta, int]] = None,
         **kwargs,
     ):
         """
@@ -506,7 +496,6 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             task_type=task_type,
             name=name,
             interface=transform_interface_to_typed_interface(interface, allow_partial_artifact_id_binding=True),
-            timeout=timeout,
             **kwargs,
         )
         self._python_interface = interface if interface else Interface()
