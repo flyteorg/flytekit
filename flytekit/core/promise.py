@@ -1435,7 +1435,8 @@ async def async_flyte_entity_call_handler(
         # for both nested eager, async, and sync tasks, submit to the informer.
         if not ctx.worker_queue:
             raise AssertionError("Worker queue missing, must be set when trying to execute tasks in an eager workflow")
-        result = await ctx.worker_queue.add(entity, input_kwargs=kwargs)
+        print(f"Submitting node {entity.name} to worker queue")
+        result = await ctx.worker_queue.submit_node(entity, kwargs)
         return result
 
     # eager local execution, and all other call patterns are handled by the sync version

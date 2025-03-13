@@ -4,6 +4,7 @@ import asyncio
 import atexit
 import hashlib
 import re
+import shelve
 import threading
 import time
 import typing
@@ -12,9 +13,11 @@ from dataclasses import dataclass
 from enum import Enum
 
 from flytekit.configuration import ImageConfig, SerializationSettings
+from flytekit.core import history_store
 from flytekit.core.base_task import PythonTask
 from flytekit.core.constants import EAGER_ROOT_ENV_NAME, EAGER_TAG_KEY, EAGER_TAG_ROOT_KEY
 from flytekit.core.context_manager import FlyteContextManager
+from flytekit.core.history_store import ItemStatus, Data
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.options import Options
 from flytekit.core.reference_entity import ReferenceEntity
@@ -72,13 +75,6 @@ NODE_HTML_TEMPLATE = """
 """
 
 
-class ItemStatus(Enum):
-    PENDING = "Pending"
-    RUNNING = "Running"
-    SUCCESS = "Success"
-    FAILED = "Failed"
-
-
 @dataclass
 class Update:
     # The item to update
@@ -89,6 +85,7 @@ class Update:
     status: typing.Optional[ItemStatus] = None
     wf_exec: typing.Optional[FlyteWorkflowExecution] = None
     error: typing.Optional[BaseException] = None
+    outputs: typing.Optional[typing.Any] = None
 
 
 @dataclass(unsafe_hash=True)
@@ -182,6 +179,7 @@ class Controller:
         self.remote = remote
         self.ss = ss
         self.exec_prefix = exec_prefix
+        self._store = history_store.Store()
         self.entries_lock = threading.Lock()
 
         # Import this to ensure context is loaded... python is reloading this module because its in a different thread
@@ -284,6 +282,7 @@ class Controller:
                             if update.wf_exec is None:
                                 raise AssertionError(f"update's wf_exec missing for {item.entity.name}")
                             item.result = update.wf_exec.outputs.as_python_native(item.python_interface)
+                            self._store.update(entity_name, Data(input_kwargs=item.input_kwargs, result=item.result, status=item.status), history_store.Status.SUCCEEDED)
                         elif update.status == ItemStatus.FAILED:
                             # If update object already has an error, then use that, otherwise look for one in the
                             # execution closure.
@@ -302,6 +301,7 @@ class Controller:
                                     f" {update.wf_exec.closure.error.code}. Message: {update.wf_exec.closure.error.message}"
                                 )
                                 item.error = exc
+                            self._store.update(entity_name, Data(item.input_kwargs, error=item.error, status=item.status), history_store.Status.FAILED, str(item.error))
 
                         # otherwise it's still pending or running
 
@@ -379,6 +379,7 @@ class Controller:
             options = Options(labels=l)
             exec_name = self.get_execution_name(wi.entity, idx, wi.input_kwargs)
             logger.info(f"Generated execution name {exec_name} for {idx}th call of {wi.entity.name}")
+
             from flytekit.remote.remote_callable import RemoteEntity
 
             if isinstance(wi.entity, RemoteEntity):
@@ -409,12 +410,21 @@ class Controller:
         """
         Add an entity along with the requested inputs to be submitted to Admin for running and return a future
         """
+        print(f"Adding {entity.name} with {input_kwargs}")
         # need to also check to see if the entity has already been registered, and if not, register it.
         i = WorkItem(entity=entity, input_kwargs=input_kwargs)
 
         with self.entries_lock:
             if entity.name not in self.entries:
                 self.entries[entity.name] = []
+            if not self._store.has(entity.name, input_kwargs):
+                self._store.add(entity.name, Data(input_kwargs), node_group=None)
+            else:
+                v = self._store.get(entity.name, input_kwargs)
+                if v.status == ItemStatus.SUCCESS:
+                    return v.result
+                elif v.status == ItemStatus.FAILED:
+                    raise v.error
             self.entries[entity.name].append(i)
 
         # wait for it to finish one way or another

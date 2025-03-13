@@ -42,7 +42,7 @@ from flytekit.models.core import identifier as _identifier
 if typing.TYPE_CHECKING:
     from flytekit.clients import friendly as friendly_client  # noqa
     from flytekit.clients.friendly import SynchronousFlyteClient
-    from flytekit.core.worker_queue import Controller
+    from flytekit.core.eager_controller import EagerController
     from flytekit.deck.deck import Deck
 
 # TODO: resolve circular import from flytekit.core.python_auto_container import TaskResolverMixin
@@ -699,7 +699,7 @@ class FlyteContext(object):
     in_a_condition: bool = False
     origin_stackframe: Optional[traceback.FrameSummary] = None
     output_metadata_tracker: Optional[OutputMetadataTracker] = None
-    worker_queue: Optional[Controller] = None
+    worker_queue: Optional[EagerController] = None
 
     @property
     def user_space_params(self) -> Optional[ExecutionParameters]:
@@ -751,7 +751,7 @@ class FlyteContext(object):
     def with_output_metadata_tracker(self, t: OutputMetadataTracker) -> Builder:
         return self.new_builder().with_output_metadata_tracker(t)
 
-    def with_worker_queue(self, wq: Controller) -> Builder:
+    def with_worker_queue(self, wq: EagerController) -> Builder:
         return self.new_builder().with_worker_queue(wq)
 
     def with_client(self, c: SynchronousFlyteClient) -> Builder:
@@ -820,7 +820,7 @@ class FlyteContext(object):
         serialization_settings: Optional[SerializationSettings] = None
         in_a_condition: bool = False
         output_metadata_tracker: Optional[OutputMetadataTracker] = None
-        worker_queue: Optional[Controller] = None
+        worker_queue: Optional[EagerController] = None
 
         def build(self) -> FlyteContext:
             return FlyteContext(
@@ -881,7 +881,7 @@ class FlyteContext(object):
             self.output_metadata_tracker = t
             return self
 
-        def with_worker_queue(self, wq: Controller) -> FlyteContext.Builder:
+        def with_worker_queue(self, wq: EagerController) -> FlyteContext.Builder:
             self.worker_queue = wq
             return self
 
