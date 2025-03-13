@@ -2201,6 +2201,20 @@ def test_promise_illegal_resources():
         my_wf(a=1)
 
 
+def test_promise_illegal_resource_combination():
+
+    @task
+    def t1(a: int) -> int:
+        return a + 1
+
+    @workflow
+    def my_wf(a: int) -> int:
+        return t1(a=a).with_overrides(requests=Resources(cpu=1), resources=Resources(cpu=[1, 2]))
+
+    with pytest.raises(ValueError):
+        my_wf(a=1)
+
+
 def test_promise_illegal_retries():
     @task
     def t1(a: int) -> int:

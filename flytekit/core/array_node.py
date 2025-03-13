@@ -9,7 +9,7 @@ from flytekit.core.interface import (
     transform_interface_to_list_interface,
     transform_interface_to_typed_interface,
 )
-from flytekit.core.launch_plan import LaunchPlan
+from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
 from flytekit.core.node import Node
 from flytekit.core.promise import (
     Promise,
@@ -79,16 +79,22 @@ class ArrayNode:
 
         # TODO - bound inputs are not supported at the moment
         self._bound_inputs: Set[str] = set()
+        self._excluded_inputs: Set[str] = set()
+        # rely on user defined workflow interface since we don't fetch reference launch plans from admin
+        if isinstance(target, (LaunchPlan, FlyteLaunchPlan)) and not isinstance(target, ReferenceLaunchPlan):
+            self._excluded_inputs = set(target.fixed_inputs.literals)
 
         output_as_list_of_optionals = min_success_ratio is not None and min_success_ratio != 1 and n_outputs == 1
 
         self._remote_interface = None
         if self.target.python_interface:
             self._python_interface = transform_interface_to_list_interface(
-                self.target.python_interface, self._bound_inputs, output_as_list_of_optionals
+                self.target.python_interface, self._bound_inputs, self._excluded_inputs, output_as_list_of_optionals
             )
         elif self.target.interface:
-            self._remote_interface = self.target.interface.transform_interface_to_list(self.bound_inputs)
+            self._remote_interface = self.target.interface.transform_interface_to_list(
+                self._bound_inputs, self._excluded_inputs
+            )
         else:
             raise ValueError("No interface found for the target entity.")
 

@@ -398,6 +398,7 @@ class Controller:
                 image_config=self.ss.image_config,
                 options=options,
                 envs=e,
+                serialization_settings=self.ss,
             )
             return wf_exec
         else:
