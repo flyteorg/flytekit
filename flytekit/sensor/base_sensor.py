@@ -67,7 +67,7 @@ class BaseSensor(AsyncAgentExecutorMixin, PythonTask):
             raise ValueError("You cannot set timeout and metadata at the same time in the sensor")
 
         metadata = TaskMetadata(timeout=timeout)
-      
+
         super().__init__(
             task_type=task_type,
             name=name,
