@@ -271,6 +271,14 @@ class ConnectorRegistry(object):
         return ConnectorRegistry._REGISTRY[task_category]
 
     @staticmethod
+    def get_agent(task_type_name: str, task_type_version: int = 0) -> Union[SyncConnectorBase, AsyncConnectorBase]:
+        # Keep this function for backward compatibility.
+        task_category = TaskCategory(name=task_type_name, version=task_type_version)
+        if task_category not in ConnectorRegistry._REGISTRY:
+            raise FlyteConnectorNotFound(f"Cannot find connector for task category: {task_category}.")
+        return ConnectorRegistry._REGISTRY[task_category]
+
+    @staticmethod
     def list_connectors() -> List[Agent]:
         return list(ConnectorRegistry._METADATA.values())
 
