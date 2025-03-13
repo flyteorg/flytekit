@@ -35,8 +35,7 @@ def test_file_sensor_timeout_initialization():
     assert sensor.metadata.timeout == timeout
 
 
-@mock.patch("flytekit.extend.backend.base_agent.logger")
-def test_agent_executor_timeout_logging(mock_logger):
+def test_agent_executor_timeout_logging():
     # Create a sensor with timeout
     sensor = BaseSensor(name="test_sensor", timeout=60)
     
