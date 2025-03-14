@@ -4,12 +4,14 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple, Type
 
 from asyncssh import SSHClientConnection
+from asyncssh.sftp import SFTPNoSuchFile
 
 import flytekit
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource, ResourceMeta
 from flytekit.extend.backend.utils import convert_to_flyte_phase
 from flytekit.extras.tasks.shell import OutputLocation, _PythonFStringInterpolizer
+from flytekit.loggers import logger
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
@@ -87,6 +89,13 @@ class SlurmScriptAgent(AsyncAgentBase):
                 f.flush()
                 async with conn.start_sftp_client() as sftp:
                     await sftp.put(f.name, batch_script_path)
+        else:
+            async with conn.start_sftp_client() as sftp:
+                try:
+                    await sftp.get(batch_script_path, "tmp")
+                    # Remove the downloaded file??
+                except SFTPNoSuchFile:
+                    logger.debug("Standard output file path doesn't exist on the Slurm cluster.")
         res = await conn.run(cmd, check=True)
 
         # Retrieve Slurm job id
