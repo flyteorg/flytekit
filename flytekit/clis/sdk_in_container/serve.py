@@ -140,10 +140,10 @@ async def _start_grpc_server(name: str, port: int, prometheus_port: int, worker:
             ConnectorMetadataService,
             SyncConnectorService,
         )
-        from flytekit.extras.webhook import WebhookConnector  # noqa: F401 Webhook Agent Registration
+        from flytekit.extras.webhook import WebhookConnector  # noqa: F401 Webhook Connector Registration
     except ImportError as e:
         raise ImportError(
-            f"Flyte agent dependencies are not installed. Please install it using `pip install flytekit[{name.lower()}]`"
+            f"Flyte connector dependencies are not installed. Please install it using `pip install flytekit[{name.lower()}]`"
         ) from e
 
     click.secho(f"🚀 Starting the {name.lower()} service...")
@@ -193,20 +193,20 @@ def _start_health_check_server(server: grpc.Server, worker: int):
 
 
 def print_metadata(name: str):
-    from flytekit.extend.backend.base_agent import AgentRegistry
+    from flytekit.extend.backend.base_connector import ConnectorRegistry
 
-    agents = AgentRegistry.list_connectors()
+    connectors = ConnectorRegistry.list_connectors()
 
     table = Table(title=f"{name} Metadata")
     table.add_column(f"{name} Name", style="cyan", no_wrap=True)
     table.add_column("Support Task Types", style="cyan")
     table.add_column("Is Sync", style="green")
 
-    for a in agents:
+    for connector in connectors:
         categories = ""
-        for c in a.supported_task_categories:
-            categories += f"{c.name} (v{c.version}) "
-        table.add_row(a.name, categories, str(a.is_sync))
+        for category in connector.supported_task_categories:
+            categories += f"{category.name} ({category.version}) "
+        table.add_row(connector.name, categories, str(connector.is_sync))
 
     console = Console()
     console.print(table)
