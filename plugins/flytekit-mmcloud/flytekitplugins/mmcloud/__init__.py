@@ -9,8 +9,8 @@ This package contains things that are useful when extending Flytekit.
 
    MMCloudConfig
    MMCloudTask
-   MMCloudAgent
+   MMCloudConnector
 """
 
-from .agent import MMCloudAgent
+from .connector import MMCloudConnector
 from .task import MMCloudConfig, MMCloudTask

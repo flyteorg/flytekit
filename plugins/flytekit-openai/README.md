@@ -1,6 +1,6 @@
 # OpenAI Plugins
 
-The plugin currently features ChatGPT and Batch API agents.
+The plugin currently features ChatGPT and Batch API connectors.
 
 To install the plugin, run the following command:
 
@@ -48,8 +48,8 @@ if __name__ == "__main__":
 
 ## Batch API
 
-The Batch API agent allows you to submit requests for asynchronous batch processing on OpenAI.
-You can provide either a JSONL file or a JSON iterator, and the agent handles the upload to OpenAI,
+The Batch API connector allows you to submit requests for asynchronous batch processing on OpenAI.
+You can provide either a JSONL file or a JSON iterator, and the connector handles the upload to OpenAI,
 creation of the batch, and downloading of the output and error files.
 
 ```python

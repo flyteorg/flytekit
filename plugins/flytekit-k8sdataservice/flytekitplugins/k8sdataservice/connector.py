@@ -6,7 +6,7 @@ from flytekitplugins.k8sdataservice.k8s.manager import K8sManager
 from flytekitplugins.k8sdataservice.task import DataServiceConfig
 
 from flytekit import logger
-from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource, ResourceMeta
+from flytekit.extend.backend.base_connector import AsyncConnectorBase, ConnectorRegistry, Resource, ResourceMeta
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
@@ -17,8 +17,8 @@ class DataServiceMetadata(ResourceMeta):
     name: str
 
 
-class DataServiceAgent(AsyncAgentBase):
-    name = "K8s DataService Async Agent"
+class DataServiceConnector(AsyncConnectorBase):
+    name = "K8s DataService Async Connector"
 
     def __init__(self):
         self.k8s_manager = K8sManager()
@@ -30,7 +30,7 @@ class DataServiceAgent(AsyncAgentBase):
     ) -> DataServiceMetadata:
         graph_engine_config = task_template.custom
         self.k8s_manager.set_configs(graph_engine_config)
-        logger.info(f"Loaded agent config file {self.config}")
+        logger.info(f"Loaded connector config file {self.config}")
         existing_release_name = graph_engine_config.get("ExistingReleaseName", None)
         logger.info(f"The existing data service release name is {existing_release_name}")
 
@@ -95,4 +95,4 @@ class DataServiceAgent(AsyncAgentBase):
         self.k8s_manager.delete_service(name)
 
 
-AgentRegistry.register(DataServiceAgent())
+ConnectorRegistry.register(DataServiceConnector())

@@ -46,7 +46,7 @@ def wf(s: str) -> (dict, dict, dict):
     return simple_get(), get_with_params(s=v, item_id=10), w(s=v)
 
 
-@patch("flytekit.extras.webhook.WebhookAgent._make_http_request")
+@patch("flytekit.extras.webhook.WebhookConnector._make_http_request")
 def test_wf(request_mock):
     request_mock.return_value = (200, "Hello")
     # Execute the workflow

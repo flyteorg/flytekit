@@ -4,7 +4,7 @@ from flytekit import ImageSpec, kwtypes
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.interface import Interface
-from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
+from flytekit.extend.backend.base_connector import AsyncConnectorExecutorMixin
 
 from .boto3_task import BotoConfig, BotoTask
 
@@ -73,7 +73,7 @@ class SageMakerEndpointConfigTask(BotoTask):
         )
 
 
-class SageMakerEndpointTask(AsyncAgentExecutorMixin, PythonTask):
+class SageMakerEndpointTask(AsyncConnectorExecutorMixin, PythonTask):
     _TASK_TYPE = "sagemaker-endpoint"
 
     def __init__(

@@ -31,7 +31,7 @@ def test_sagemaker_deployment_workflow():
             ],
             "AsyncInferenceConfig": {
                 "OutputConfig": {
-                    "S3OutputPath": "s3://sagemaker-agent-xgboost/inference-output/output"
+                    "S3OutputPath": "s3://sagemaker-connector-xgboost/inference-output/output"
                 }
             },
         },
@@ -75,7 +75,7 @@ def test_sagemaker_deployment_workflow_with_region_at_runtime():
             ],
             "AsyncInferenceConfig": {
                 "OutputConfig": {
-                    "S3OutputPath": "s3://sagemaker-agent-xgboost/inference-output/output"
+                    "S3OutputPath": "s3://sagemaker-connector-xgboost/inference-output/output"
                 }
             },
         },

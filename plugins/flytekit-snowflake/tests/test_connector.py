@@ -4,20 +4,20 @@ from unittest.mock import MagicMock
 
 import pytest
 from flyteidl.core.execution_pb2 import TaskExecution
-from flytekitplugins.snowflake.agent import SnowflakeJobMetadata
+from flytekitplugins.snowflake.connector import SnowflakeJobMetadata
 
 import flytekit.models.interface as interface_models
 from flytekit import lazy_module
-from flytekit.extend.backend.base_agent import AgentRegistry
+from flytekit.extend.backend.base_connector import ConnectorRegistry
 from flytekit.interfaces.cli_identifiers import Identifier
 from flytekit.models import literals, task, types
 from flytekit.models.core.identifier import ResourceType
 from flytekit.models.task import Sql, TaskTemplate
 
 
-@mock.patch("flytekitplugins.snowflake.agent.get_private_key", return_value="pb")
+@mock.patch("flytekitplugins.snowflake.connector.get_private_key", return_value="pb")
 @pytest.mark.asyncio
-async def test_snowflake_agent(mock_get_private_key):
+async def test_snowflake_connector(mock_get_private_key):
     query_status_mock = MagicMock()
     query_status_mock.name = "SUCCEEDED"
 
@@ -31,7 +31,7 @@ async def test_snowflake_agent(mock_get_private_key):
     mock_cursor.sfqid = "dummy_id"
     mock_conn_instance.cursor.return_value = mock_cursor
 
-    agent = AgentRegistry.get_agent("snowflake")
+    connector = ConnectorRegistry.get_connector("snowflake")
     task_id = Identifier(
         resource_type=ResourceType.TASK, project="project", domain="domain", name="name", version="version"
     )
@@ -92,14 +92,14 @@ async def test_snowflake_agent(mock_get_private_key):
         has_output=False,
     )
 
-    metadata = await agent.create(dummy_template, task_inputs)
+    metadata = await connector.create(dummy_template, task_inputs)
     assert metadata == snowflake_metadata
 
-    resource = await agent.get(metadata)
+    resource = await connector.get(metadata)
     assert resource.phase == TaskExecution.SUCCEEDED
     assert resource.outputs == None
 
-    delete_response = await agent.delete(snowflake_metadata)
+    delete_response = await connector.delete(snowflake_metadata)
     assert delete_response is None
 
     # Verify that the expected methods were called on the mock cursor

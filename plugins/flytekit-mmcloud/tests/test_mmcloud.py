@@ -7,13 +7,13 @@ from unittest.mock import MagicMock
 import grpc
 import pytest
 from flyteidl.core.execution_pb2 import TaskExecution
-from flytekitplugins.mmcloud import MMCloudAgent, MMCloudConfig, MMCloudTask
+from flytekitplugins.mmcloud import MMCloudConnector, MMCloudConfig, MMCloudTask
 from flytekitplugins.mmcloud.utils import async_check_output, flyte_to_mmcloud_resources
 
 from flytekit import Resources, task
 from flytekit.configuration import DefaultImages, ImageConfig, SerializationSettings
 from flytekit.extend import get_serializable
-from flytekit.extend.backend.base_agent import AgentRegistry
+from flytekit.extend.backend.base_connector import ConnectorRegistry
 
 float_missing = which("float") is None
 
@@ -95,7 +95,7 @@ def test_flyte_to_mmcloud_resources():
 
 
 @pytest.mark.skipif(float_missing, reason="float binary is required")
-def test_async_agent():
+def test_async_connector():
     serialization_settings = SerializationSettings(image_config=ImageConfig())
     context = MagicMock(spec=grpc.ServicerContext)
     container_image = DefaultImages.default_image()
@@ -110,12 +110,12 @@ def test_async_agent():
         return f"Hello, {name}."
 
     task_spec = get_serializable(OrderedDict(), serialization_settings, say_hello0)
-    agent = AgentRegistry.get_agent(task_spec.template.type)
+    connector = ConnectorRegistry.get_connector(task_spec.template.type)
 
-    assert isinstance(agent, MMCloudAgent)
+    assert isinstance(connector, MMCloudConnector)
 
     create_task_response = asyncio.run(
-        agent.create(
+        connector.create(
             context=context,
             output_prefix="",
             task_template=task_spec.template,
@@ -124,13 +124,13 @@ def test_async_agent():
     )
     resource_meta = create_task_response.resource_meta
 
-    get_task_response = asyncio.run(agent.get(context=context, resource_meta=resource_meta))
+    get_task_response = asyncio.run(connector.get(context=context, resource_meta=resource_meta))
     phase = get_task_response.resource.phase
     assert phase in (TaskExecution.RUNNING, TaskExecution.SUCCEEDED)
 
-    asyncio.run(agent.delete(context=context, resource_meta=resource_meta))
+    asyncio.run(connector.delete(context=context, resource_meta=resource_meta))
 
-    get_task_response = asyncio.run(agent.get(context=context, resource_meta=resource_meta))
+    get_task_response = asyncio.run(connector.get(context=context, resource_meta=resource_meta))
     phase = get_task_response.resource.phase
     assert phase == TaskExecution.FAILED
 
@@ -146,7 +146,7 @@ def test_async_agent():
     task_spec = get_serializable(OrderedDict(), serialization_settings, say_hello1)
     with pytest.raises(subprocess.CalledProcessError):
         create_task_response = asyncio.run(
-            agent.create(
+            connector.create(
                 context=context,
                 output_prefix="",
                 task_template=task_spec.template,
@@ -165,7 +165,7 @@ def test_async_agent():
     task_spec = get_serializable(OrderedDict(), serialization_settings, say_hello2)
     with pytest.raises(subprocess.CalledProcessError):
         create_task_response = asyncio.run(
-            agent.create(
+            connector.create(
                 context=context,
                 output_prefix="",
                 task_template=task_spec.template,
@@ -183,7 +183,7 @@ def test_async_agent():
 
     task_spec = get_serializable(OrderedDict(), serialization_settings, say_hello3)
     create_task_response = asyncio.run(
-        agent.create(
+        connector.create(
             context=context,
             output_prefix="",
             task_template=task_spec.template,
@@ -191,7 +191,7 @@ def test_async_agent():
         )
     )
     resource_meta = create_task_response.resource_meta
-    asyncio.run(agent.delete(context=context, resource_meta=resource_meta))
+    asyncio.run(connector.delete(context=context, resource_meta=resource_meta))
 
     @task(
         task_config=MMCloudConfig(),
@@ -203,7 +203,7 @@ def test_async_agent():
 
     task_spec = get_serializable(OrderedDict(), serialization_settings, say_hello4)
     create_task_response = asyncio.run(
-        agent.create(
+        connector.create(
             context=context,
             output_prefix="",
             task_template=task_spec.template,
@@ -211,7 +211,7 @@ def test_async_agent():
         )
     )
     resource_meta = create_task_response.resource_meta
-    asyncio.run(agent.delete(context=context, resource_meta=resource_meta))
+    asyncio.run(connector.delete(context=context, resource_meta=resource_meta))
 
     @task(
         task_config=MMCloudConfig(),
@@ -222,7 +222,7 @@ def test_async_agent():
 
     task_spec = get_serializable(OrderedDict(), serialization_settings, say_hello5)
     create_task_response = asyncio.run(
-        agent.create(
+        connector.create(
             context=context,
             output_prefix="",
             task_template=task_spec.template,
@@ -230,4 +230,4 @@ def test_async_agent():
         )
     )
     resource_meta = create_task_response.resource_meta
-    asyncio.run(agent.delete(context=context, resource_meta=resource_meta))
+    asyncio.run(connector.delete(context=context, resource_meta=resource_meta))

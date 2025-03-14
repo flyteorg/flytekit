@@ -1,10 +1,10 @@
 # AWS SageMaker Plugin
 
-The plugin currently features a SageMaker deployment agent.
+The plugin currently features a SageMaker deployment connector.
 
 ## Inference
 
-The deployment agent enables you to deploy models, create and trigger inference endpoints.
+The deployment connector enables you to deploy models, create and trigger inference endpoints.
 Additionally, you can entirely remove the SageMaker deployment using the `delete_sagemaker_deployment` workflow.
 
 To install the plugin, run the following command:

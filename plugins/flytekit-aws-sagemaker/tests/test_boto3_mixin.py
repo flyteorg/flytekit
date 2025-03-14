@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from flytekitplugins.awssagemaker_inference import triton_image_uri
 from flytekitplugins.awssagemaker_inference.boto3_mixin import (
-    Boto3AgentMixin,
+    Boto3ConnectorMixin,
     format_dict,
 )
 
@@ -85,7 +85,7 @@ def test_container():
 @pytest.mark.asyncio
 @patch("flytekitplugins.awssagemaker_inference.boto3_mixin.aioboto3.Session")
 async def test_call_with_no_idempotence_token(mock_session):
-    mixin = Boto3AgentMixin(service="sagemaker")
+    mixin = Boto3ConnectorMixin(service="sagemaker")
 
     mock_client = AsyncMock()
     mock_session.return_value.client.return_value.__aenter__.return_value = mock_client
@@ -95,7 +95,7 @@ async def test_call_with_no_idempotence_token(mock_session):
         "ModelName": "{inputs.model_name}",
         "PrimaryContainer": {
             "Image": "{images.image}",
-            "ModelDataUrl": "s3://sagemaker-agent-xgboost/model.tar.gz",
+            "ModelDataUrl": "s3://sagemaker-connector-xgboost/model.tar.gz",
         },
     }
     inputs = TypeEngine.dict_to_literal_map(
@@ -115,7 +115,7 @@ async def test_call_with_no_idempotence_token(mock_session):
         ModelName="xgboost",
         PrimaryContainer={
             "Image": "301217895009.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tritonserver:21.08-py3",
-            "ModelDataUrl": "s3://sagemaker-agent-xgboost/model.tar.gz",
+            "ModelDataUrl": "s3://sagemaker-connector-xgboost/model.tar.gz",
         },
     )
 
@@ -126,7 +126,7 @@ async def test_call_with_no_idempotence_token(mock_session):
 @pytest.mark.asyncio
 @patch("flytekitplugins.awssagemaker_inference.boto3_mixin.aioboto3.Session")
 async def test_call_with_idempotence_token(mock_session):
-    mixin = Boto3AgentMixin(service="sagemaker")
+    mixin = Boto3ConnectorMixin(service="sagemaker")
 
     mock_client = AsyncMock()
     mock_session.return_value.client.return_value.__aenter__.return_value = mock_client
@@ -136,7 +136,7 @@ async def test_call_with_idempotence_token(mock_session):
         "ModelName": "{inputs.model_name}-{idempotence_token}",
         "PrimaryContainer": {
             "Image": "{images.image}",
-            "ModelDataUrl": "s3://sagemaker-agent-xgboost/model.tar.gz",
+            "ModelDataUrl": "s3://sagemaker-connector-xgboost/model.tar.gz",
         },
     }
     inputs = TypeEngine.dict_to_literal_map(
@@ -153,21 +153,21 @@ async def test_call_with_idempotence_token(mock_session):
     )
 
     mock_method.assert_called_with(
-        ModelName="xgboost-23dba5d7c5aa79a8",
+        ModelName="xgboost-2de338ec95ee0da6",
         PrimaryContainer={
             "Image": "301217895009.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tritonserver:21.08-py3",
-            "ModelDataUrl": "s3://sagemaker-agent-xgboost/model.tar.gz",
+            "ModelDataUrl": "s3://sagemaker-connector-xgboost/model.tar.gz",
         },
     )
 
     assert result == mock_method.return_value
-    assert idempotence_token == "23dba5d7c5aa79a8"
+    assert idempotence_token == "2de338ec95ee0da6"
 
 
 @pytest.mark.asyncio
 @patch("flytekitplugins.awssagemaker_inference.boto3_mixin.aioboto3.Session")
 async def test_call_with_truncated_idempotence_token(mock_session):
-    mixin = Boto3AgentMixin(service="sagemaker")
+    mixin = Boto3ConnectorMixin(service="sagemaker")
 
     mock_client = AsyncMock()
     mock_session.return_value.client.return_value.__aenter__.return_value = mock_client
@@ -177,7 +177,7 @@ async def test_call_with_truncated_idempotence_token(mock_session):
         "ModelName": "{inputs.model_name}-{idempotence_token}",
         "PrimaryContainer": {
             "Image": "{images.image}",
-            "ModelDataUrl": "s3://sagemaker-agent-xgboost/model.tar.gz",
+            "ModelDataUrl": "s3://sagemaker-connector-xgboost/model.tar.gz",
         },
     }
     inputs = TypeEngine.dict_to_literal_map(
@@ -197,21 +197,21 @@ async def test_call_with_truncated_idempotence_token(mock_session):
     )
 
     mock_method.assert_called_with(
-        ModelName="xgboost-random-string-1234567890123456789012345678-432aa64034f3",
+        ModelName="xgboost-random-string-1234567890123456789012345678-1a25e4bb9886",
         PrimaryContainer={
             "Image": "301217895009.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tritonserver:21.08-py3",
-            "ModelDataUrl": "s3://sagemaker-agent-xgboost/model.tar.gz",
+            "ModelDataUrl": "s3://sagemaker-connector-xgboost/model.tar.gz",
         },
     )
 
     assert result == mock_method.return_value
-    assert idempotence_token == "432aa64034f37edb"
+    assert idempotence_token == "1a25e4bb988697a7"
 
 
 @pytest.mark.asyncio
 @patch("flytekitplugins.awssagemaker_inference.boto3_mixin.aioboto3.Session")
 async def test_call_with_truncated_idempotence_token_as_input(mock_session):
-    mixin = Boto3AgentMixin(service="sagemaker")
+    mixin = Boto3ConnectorMixin(service="sagemaker")
 
     mock_client = AsyncMock()
     mock_session.return_value.client.return_value.__aenter__.return_value = mock_client

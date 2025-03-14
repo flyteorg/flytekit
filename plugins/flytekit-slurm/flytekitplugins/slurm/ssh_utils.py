@@ -11,7 +11,7 @@ import asyncssh
 from asyncssh import SSHClientConnection
 
 from flytekit import logger
-from flytekit.extend.backend.utils import get_agent_secret
+from flytekit.extend.backend.utils import get_connector_secret
 
 T = TypeVar("T", bound="SSHConfig")
 SLURM_PRIVATE_KEY = "FLYTE_SLURM_PRIVATE_KEY"
@@ -97,7 +97,7 @@ async def ssh_connect(ssh_config: Dict[str, Any]) -> SSHClientConnection:
         )
 
     try:
-        default_client_key = get_agent_secret(secret_key=SLURM_PRIVATE_KEY)
+        default_client_key = get_connector_secret(secret_key=SLURM_PRIVATE_KEY)
     except ValueError:
         logger.info("The secret for key FLYTE_SLURM_PRIVATE_KEY is not set.")
         default_client_key = None

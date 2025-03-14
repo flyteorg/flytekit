@@ -15,7 +15,7 @@ from airflow.triggers.base import BaseTrigger, TriggerEvent
 from airflow.utils.context import Context
 from flytekit import logger
 from flytekit.exceptions.user import FlyteUserException
-from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource, ResourceMeta
+from flytekit.extend.backend.base_connector import AsyncConnectorBase, ConnectorRegistry, Resource, ResourceMeta
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
@@ -39,13 +39,14 @@ class AirflowMetadata(ResourceMeta):
         return cloudpickle.loads(data)
 
 
-class AirflowAgent(AsyncAgentBase):
+class AirflowConnector(AsyncConnectorBase):
     """
-    It is used to run Airflow tasks. It is registered as an agent in the AgentRegistry.
+    It is used to run Airflow tasks.
+    It is registered as an connector in the Connector Registry.
     There are three kinds of Airflow tasks: AirflowOperator, AirflowSensor, and AirflowHook.
 
     Sensor is always invoked in get method. Calling get method to check if the certain condition is met.
-    For example, FileSensor is used to check if the file exists. If file doesn't exist, agent returns
+    For example, FileSensor is used to check if the file exists. If file doesn't exist, connector returns
     RUNNING status, otherwise, it returns SUCCEEDED status.
 
     Hook is a high-level interface to an external platform that lets you quickly and easily talk to
@@ -60,7 +61,7 @@ class AirflowAgent(AsyncAgentBase):
      In this case, those operators will be converted to AirflowContainerTask and executed in the pod.
     """
 
-    name = "Airflow Agent"
+    name = "Airflow Connector"
 
     def __init__(self):
         super().__init__(task_type_name="airflow", metadata_type=AirflowMetadata)
@@ -128,7 +129,7 @@ class AirflowAgent(AsyncAgentBase):
                 # If there is no trigger, it means the operator is not deferrable. In this case, this operator will be
                 # executed in the creation step. Therefore, we can directly return to SUCCEEDED here.
                 # For instance, SlackWebhookOperator is not deferrable. It sends a message to Slack in the creation step.
-                # If the message is sent successfully, agent will return SUCCEEDED here. Otherwise, it will raise an exception at creation step.
+                # If the message is sent successfully, connector will return SUCCEEDED here. Otherwise, it will raise an exception at creation step.
                 cur_phase = TaskExecution.SUCCEEDED
 
         else:
@@ -163,4 +164,4 @@ def get_log_links(
     return log_links
 
 
-AgentRegistry.register(AirflowAgent())
+ConnectorRegistry.register(AirflowConnector())
