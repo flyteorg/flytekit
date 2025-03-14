@@ -1,14 +1,15 @@
 import collections
+import datetime
 import inspect
 import typing
 from abc import abstractmethod
 from dataclasses import asdict, dataclass
-from typing import Any, Dict, Optional, TypeVar
+from typing import Any, Dict, Optional, TypeVar, Union
 
 from typing_extensions import Protocol, get_type_hints, runtime_checkable
 
 from flytekit.configuration import SerializationSettings
-from flytekit.core.base_task import PythonTask
+from flytekit.core.base_task import PythonTask, TaskMetadata
 from flytekit.core.interface import Interface
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin, ResourceMeta
 
@@ -50,6 +51,7 @@ class BaseSensor(AsyncAgentExecutorMixin, PythonTask):
     def __init__(
         self,
         name: str,
+        timeout: Optional[Union[datetime.timedelta, int]] = None,
         sensor_config: Optional[T] = None,
         task_type: str = "sensor",
         **kwargs,
@@ -61,11 +63,17 @@ class BaseSensor(AsyncAgentExecutorMixin, PythonTask):
             annotation = type_hints.get(k, None)
             inputs[k] = annotation
 
+        if kwargs.get("metadata", None) and timeout:
+            raise ValueError("You cannot set timeout and metadata at the same time in the sensor")
+
+        metadata = TaskMetadata(timeout=timeout)
+
         super().__init__(
             task_type=task_type,
             name=name,
             task_config=None,
             interface=Interface(inputs=inputs),
+            metadata=metadata,
             **kwargs,
         )
         self._sensor_config = sensor_config
