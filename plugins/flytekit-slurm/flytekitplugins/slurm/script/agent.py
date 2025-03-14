@@ -1,15 +1,18 @@
+import json
 import tempfile
 import uuid
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple, Type
 
 from asyncssh import SSHClientConnection
+from asyncssh.sftp import SFTPNoSuchFile
 
 import flytekit
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource, ResourceMeta
 from flytekit.extend.backend.utils import convert_to_flyte_phase
 from flytekit.extras.tasks.shell import OutputLocation, _PythonFStringInterpolizer
+from flytekit.loggers import logger
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
@@ -98,19 +101,25 @@ class SlurmScriptAgent(AsyncAgentBase):
         conn = await get_ssh_conn(
             ssh_config=resource_meta.ssh_config, slurm_cluster_to_ssh_conn=self.slurm_cluster_to_ssh_conn
         )
-        job_res = await conn.run(f"scontrol show job {resource_meta.job_id}", check=True)
+        job_res = await conn.run(f"scontrol --json show job {resource_meta.job_id}", check=True)
+        job_info = json.loads(job_res.stdout)["jobs"][0]
+        if resource_meta.job_id != str(job_info["job_id"]):
+            raise ValueError(f"Mismatch in job IDs: expected {resource_meta.job_id}, but got {job_info['job_id']}")
 
         # Determine the current flyte phase from Slurm job state
-        msg = ""
-        job_state = "running"
-        for o in job_res.stdout.split(" "):
-            if "JobState" in o:
-                job_state = o.split("=")[1].strip().lower()
-            elif "StdOut" in o:
-                stdout_path = o.split("=")[1].strip()
-                msg_res = await conn.run(f"cat {stdout_path}", check=True)
-                msg = msg_res.stdout
+        job_state = job_info["job_state"][0].strip().lower()
         cur_phase = convert_to_flyte_phase(job_state)
+
+        # Read stdout of the Slurm job
+        msg = ""
+        async with conn.start_sftp_client() as sftp:
+            try:
+                await sftp.get(job_info["standard_output"], "./job.log")
+                with open("./job.log", "r") as f:
+                    msg = f.read()
+                    logger.info(f">>> Slurm Stdout <<<\n{msg}")
+            except SFTPNoSuchFile:
+                logger.debug("Standard output file path doesn't exist on the Slurm cluster.")
 
         return Resource(phase=cur_phase, message=msg, outputs=resource_meta.outputs)
 
