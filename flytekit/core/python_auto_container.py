@@ -455,6 +455,8 @@ def get_registerable_container_image(img: Optional[Union[str, ImageSpec]], cfg: 
             else:
                 raise AssertionError(f"Only fqn and version are supported replacements, {attr} is not supported")
         return img
+    # At least one of 'default_image' or 'images' must be provided
+    # Could we remove the following check?
     if cfg.default_image is None:
         raise ValueError("An image is required for PythonAutoContainer tasks")
     return cfg.default_image.full
