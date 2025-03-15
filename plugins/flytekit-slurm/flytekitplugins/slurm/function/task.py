@@ -9,13 +9,13 @@ from flytekit.image_spec import ImageSpec
 
 
 @dataclass
-class SlurmFunction(object):
+class SlurmFunctionConfig(object):
     """Configure Slurm settings. Note that we focus on sbatch command now.
 
     Args:
         ssh_config: Options of SSH client connection. For available options, please refer to
             <newly-added-ssh-utils-file>
-        sbatch_conf: Options of sbatch command. If not provided, defaults to an empty dict.
+        sbatch_config: Options of sbatch command. If not provided, defaults to an empty dict.
         script: User-defined script where "{task.fn}" serves as a placeholder for the
             task function execution. Users should insert "{task.fn}" at the desired
             execution point within the script. If the script is not provided, the task
@@ -23,21 +23,21 @@ class SlurmFunction(object):
 
     Attributes:
         ssh_config (Dict[str, Union[str, List[str], Tuple[str, ...]]]): SSH client configuration options.
-        sbatch_conf (Optional[Dict[str, str]]): Slurm sbatch command options.
+        sbatch_config (Optional[Dict[str, str]]): Slurm sbatch command options.
         script (Optional[str]): Custom script template for task execution.
     """
 
     ssh_config: Dict[str, Union[str, List[str], Tuple[str, ...]]]
-    sbatch_conf: Optional[Dict[str, str]] = None
+    sbatch_config: Optional[Dict[str, str]] = None
     script: Optional[str] = None
 
     def __post_init__(self):
         assert self.ssh_config["host"] is not None, "'host' must be specified in ssh_config."
-        if self.sbatch_conf is None:
-            self.sbatch_conf = {}
+        if self.sbatch_config is None:
+            self.sbatch_config = {}
 
 
-class SlurmFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[SlurmFunction]):
+class SlurmFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[SlurmFunctionConfig]):
     """
     Actual Plugin that transforms the local python code for execution within a slurm context...
     """
@@ -46,7 +46,7 @@ class SlurmFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[SlurmFunctio
 
     def __init__(
         self,
-        task_config: SlurmFunction,
+        task_config: SlurmFunctionConfig,
         task_function: Callable,
         container_image: Optional[Union[str, ImageSpec]] = None,
         **kwargs,
@@ -62,7 +62,7 @@ class SlurmFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[SlurmFunctio
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         return {
             "ssh_config": self.task_config.ssh_config,
-            "sbatch_conf": self.task_config.sbatch_conf,
+            "sbatch_config": self.task_config.sbatch_config,
             "script": self.task_config.script,
         }
 
@@ -76,4 +76,4 @@ class SlurmFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[SlurmFunctio
             return PythonFunctionTask.execute(self, **kwargs)
 
 
-TaskPlugins.register_pythontask_plugin(SlurmFunction, SlurmFunctionTask)
+TaskPlugins.register_pythontask_plugin(SlurmFunctionConfig, SlurmFunctionTask)
