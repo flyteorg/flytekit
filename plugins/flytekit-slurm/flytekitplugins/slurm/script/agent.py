@@ -56,7 +56,7 @@ class SlurmScriptAgent(AsyncAgentBase):
         # Retrieve task config
         ssh_config = task_template.custom["ssh_config"]
         batch_script_args = task_template.custom["batch_script_args"]
-        sbatch_conf = task_template.custom["sbatch_conf"]
+        sbatch_config = task_template.custom["sbatch_config"]
 
         # Construct sbatch command for Slurm cluster
         upload_script = False
@@ -76,7 +76,7 @@ class SlurmScriptAgent(AsyncAgentBase):
             # Assume the batch script is already on Slurm
             batch_script_path = task_template.custom["batch_script_path"]
         cmd = _get_sbatch_cmd(
-            sbatch_conf=sbatch_conf, batch_script_path=batch_script_path, batch_script_args=batch_script_args
+            sbatch_config=sbatch_config, batch_script_path=batch_script_path, batch_script_args=batch_script_args
         )
 
         # Run Slurm job
@@ -160,12 +160,12 @@ class SlurmScriptAgent(AsyncAgentBase):
         return script, outputs
 
 
-def _get_sbatch_cmd(sbatch_conf: Dict[str, str], batch_script_path: str, batch_script_args: List[str] = None) -> str:
+def _get_sbatch_cmd(sbatch_config: Dict[str, str], batch_script_path: str, batch_script_args: List[str] = None) -> str:
     """
     Construct the Slurm sbatch command.
 
     Args:
-        sbatch_conf (Dict[str, str]): Slurm sbatch configuration options (e.g., partition, job-name, etc.).
+        sbatch_config (Dict[str, str]): Slurm sbatch configuration options (e.g., partition, job-name, etc.).
         batch_script_path (str): Absolute path on the Slurm cluster of the script to run.
         batch_script_args (List[str], optional): Additional arguments to pass to the batch script.
 
@@ -173,7 +173,7 @@ def _get_sbatch_cmd(sbatch_conf: Dict[str, str], batch_script_path: str, batch_s
         str: The sbatch command string that can be executed on the Slurm cluster.
     """
     cmd = ["sbatch"]
-    for opt, val in sbatch_conf.items():
+    for opt, val in sbatch_config.items():
         cmd.extend([f"--{opt}", str(val)])
 
     # Assign the batch script to run

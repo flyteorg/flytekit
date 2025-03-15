@@ -61,12 +61,12 @@ class SlurmFunctionAgent(AsyncAgentBase):
 
         # Retrieve task config
         ssh_config = task_template.custom["ssh_config"]
-        sbatch_conf = task_template.custom["sbatch_conf"]
+        sbatch_config = task_template.custom["sbatch_config"]
         script = task_template.custom["script"]
 
         # Construct command for Slurm cluster
         cmd, script = _get_sbatch_cmd_and_script(
-            sbatch_conf=sbatch_conf,
+            sbatch_config=sbatch_config,
             entrypoint=" ".join(task_template.container.args),
             script=script,
             batch_script_path=unique_script_name,
@@ -143,7 +143,7 @@ class SlurmFunctionAgent(AsyncAgentBase):
 
 
 def _get_sbatch_cmd_and_script(
-    sbatch_conf: Dict[str, str],
+    sbatch_config: Dict[str, str],
     entrypoint: str,
     script: Optional[str] = None,
     batch_script_path: str = "/tmp/task.slurm",
@@ -153,7 +153,7 @@ def _get_sbatch_cmd_and_script(
     Flyte entrypoint, pyflyte-execute, is run within a bash shell process.
 
     Args:
-        sbatch_conf (Dict[str, str]): Options of sbatch command.
+        sbatch_config (Dict[str, str]): Options of sbatch command.
         entrypoint (str): Flyte entrypoint.
         script (Optional[str], optional): User-defined script where "{task.fn}" serves as a placeholder for the
             task function execution. Users should insert "{task.fn}" at the desired
@@ -169,7 +169,7 @@ def _get_sbatch_cmd_and_script(
     """
     # Setup sbatch options
     cmd = ["sbatch"]
-    for opt, val in sbatch_conf.items():
+    for opt, val in sbatch_config.items():
         cmd.extend([f"--{opt}", str(val)])
 
     # Assign the batch script to run
