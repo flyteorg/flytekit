@@ -91,11 +91,11 @@ class SlurmScriptAgent(AsyncAgentBase):
                     await sftp.put(f.name, batch_script_path)
         else:
             async with conn.start_sftp_client() as sftp:
-                try:
-                    await sftp.get(batch_script_path, "tmp")
-                    # Remove the downloaded file??
-                except SFTPNoSuchFile:
-                    logger.debug("Standard output file path doesn't exist on the Slurm cluster.")
+                with tempfile.NamedTemporaryFile("w") as f:
+                    try:
+                        await sftp.get(batch_script_path, f.name)
+                    except SFTPNoSuchFile:
+                        logger.debug("The specified batch script doesn't exist on the Slurm cluster.")
         res = await conn.run(cmd, check=True)
 
         # Retrieve Slurm job id
