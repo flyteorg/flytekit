@@ -113,13 +113,16 @@ class SlurmScriptAgent(AsyncAgentBase):
         # Read stdout of the Slurm job
         msg = ""
         async with conn.start_sftp_client() as sftp:
-            try:
-                await sftp.get(job_info["standard_output"], "./job.log")
-                with open("./job.log", "r") as f:
-                    msg = f.read()
-                    logger.info(f">>> Slurm Stdout <<<\n{msg}")
-            except SFTPNoSuchFile:
-                logger.debug("Standard output file path doesn't exist on the Slurm cluster.")
+            with tempfile.NamedTemporaryFile("w") as f:
+                try:
+                    await sftp.get(job_info["standard_output"], f.name)
+                except SFTPNoSuchFile:
+                    logger.debug("Standard output file path doesn't exist on the Slurm cluster.")
+
+                # Remove duplicated logs!
+                with open(f.name, "r") as f2:
+                    msg = f2.read()
+                    logger.info(f">>> slurm stdout <<<\n{msg}")
 
         return Resource(phase=cur_phase, message=msg, outputs=resource_meta.outputs)
 
