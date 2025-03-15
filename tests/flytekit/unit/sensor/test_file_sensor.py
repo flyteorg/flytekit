@@ -79,8 +79,19 @@ def test_agent_executor_timeout_logging():
     assert sensor.metadata.timeout == datetime.timedelta(seconds=60)
 
 def test_file_sensor_set_timeout_and_metadata_at_the_same_time():
-    timeout = datetime.timedelta(seconds=60)
-    metadata = TaskMetadata(timeout=timeout)
+    """
+    The test is the combination of the following cases:
+    1. Set timeout and metadata with timeout at the same time
+    2. Set timeout and metadata without timeout
+    3. Set timeout and no metadata
+    4. Not set timeout and metadata with timeout
+    """
 
-    with pytest.raises(ValueError, match="You cannot set timeout and metadata at the same time in the sensor"):
-        FileSensor(name="test_sensor", timeout=60, metadata=metadata)
+    timeout = datetime.timedelta(seconds=60)
+
+    with pytest.raises(ValueError, match="You cannot set both timeout and metadata parameters at the same time in the sensor"):
+        FileSensor(name="test_sensor", timeout=60, metadata=TaskMetadata(timeout=timeout))
+
+    FileSensor(name="test_sensor", timeout=60, metadata=TaskMetadata())
+    FileSensor(name="test_sensor", timeout=60)
+    FileSensor(name="test_sensor", metadata=TaskMetadata(timeout=timeout))
