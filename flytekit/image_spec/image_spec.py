@@ -67,7 +67,7 @@ class ImageSpec:
             If the option is set by the user, then that option is of course used.
         copy: List of files/directories to copy to /root. e.g. ["src/file1.txt", "src/file2.txt"]
         python_exec: Python executable to use for install packages
-         builder_config:
+        builder_config: Custom builder images configuration, such as uv and micromamba images.
     """
 
     name: str = "flytekit"
