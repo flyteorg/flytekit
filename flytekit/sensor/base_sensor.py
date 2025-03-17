@@ -63,10 +63,15 @@ class BaseSensor(AsyncConnectorExecutorMixin, PythonTask):
             annotation = type_hints.get(k, None)
             inputs[k] = annotation
 
-        if kwargs.get("metadata", None) and timeout:
-            raise ValueError("You cannot set timeout and metadata at the same time in the sensor")
-
-        metadata = TaskMetadata(timeout=timeout)
+        # Handle metadata and timeout logic
+        metadata = kwargs.pop("metadata", None)
+        if metadata is not None and timeout is not None:
+            if metadata.timeout is not None:
+                raise ValueError("You cannot set both timeout and metadata parameters at the same time in the sensor")
+            else:
+                metadata.timeout = timeout
+        else:
+            metadata = TaskMetadata(timeout=timeout) if timeout else TaskMetadata()
 
         super().__init__(
             task_type=task_type,
