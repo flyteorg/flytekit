@@ -11,7 +11,7 @@ from functools import partial
 from types import FrameType
 from typing import Any, Dict, List, Optional, Union
 
-from flyteidl.admin.agent_pb2 import Agent
+from flyteidl.admin.agent_pb2 import Agent, GetTaskLogsResponse, GetTaskMetricsResponse
 from flyteidl.admin.agent_pb2 import Resource as _Resource
 from flyteidl.admin.agent_pb2 import TaskCategory as _TaskCategory
 from flyteidl.core import literals_pb2
@@ -228,6 +228,18 @@ class AsyncConnectorBase(ConnectorBase):
     def delete(self, resource_meta: ResourceMeta, **kwargs):
         """
         Delete the task. This call should be idempotent. It should raise an error if fails to delete the task.
+        """
+        raise NotImplementedError
+
+    def get_metrics(self, resource_meta: ResourceMeta, **kwargs) -> GetTaskMetricsResponse:
+        """
+        Return the metrics for the task.
+        """
+        raise NotImplementedError
+
+    def get_logs(self, resource_meta: ResourceMeta, **kwargs) -> GetTaskLogsResponse:
+        """
+        Return the metrics for the task.
         """
         raise NotImplementedError
 
