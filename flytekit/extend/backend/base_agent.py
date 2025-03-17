@@ -283,7 +283,9 @@ class SyncAgentExecutorMixin:
         from flytekit.tools.translator import get_serializable
 
         ctx = FlyteContext.current_context()
-        ss = ctx.serialization_settings or SerializationSettings(ImageConfig())
+        # If ctx.serialization_settings is None, a default image must be provided.
+        # For more details, see https://github.com/flyteorg/flyte/issues/6157.
+        ss = ctx.serialization_settings or SerializationSettings(ImageConfig.auto_default_image())
         task_template = get_serializable(OrderedDict(), ss, self).template
         if task_template.metadata.timeout:
             logger.info("Timeout is not supported for local execution.\n" "Ignoring the timeout.")
@@ -331,7 +333,9 @@ class AsyncAgentExecutorMixin:
 
     def execute(self: PythonTask, **kwargs) -> LiteralMap:
         ctx = FlyteContext.current_context()
-        ss = ctx.serialization_settings or SerializationSettings(ImageConfig())
+        # If ctx.serialization_settings is None, a default image must be provided.
+        # For more details, see https://github.com/flyteorg/flyte/issues/6157.
+        ss = ctx.serialization_settings or SerializationSettings(ImageConfig.auto_default_image())
         output_prefix = ctx.file_access.get_random_remote_directory()
         self.resource_meta = None
 
