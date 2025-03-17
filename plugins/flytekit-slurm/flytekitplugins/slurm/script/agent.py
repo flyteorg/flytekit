@@ -1,11 +1,14 @@
 import tempfile
 import uuid
+from time import sleep
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple, Type
 
 from asyncssh import SSHClientConnection
+from asyncssh.process import ProcessError
 
 import flytekit
+from flytekit import logger
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource, ResourceMeta
 from flytekit.extend.backend.utils import convert_to_flyte_phase
@@ -108,8 +111,19 @@ class SlurmScriptAgent(AsyncAgentBase):
                 job_state = o.split("=")[1].strip().lower()
             elif "StdOut" in o:
                 stdout_path = o.split("=")[1].strip()
-                msg_res = await conn.run(f"cat {stdout_path}", check=True)
+                retries = 3
+                while retries > 0:
+                    msg_res = await conn.run(f"cat {stdout_path}")
+                    if msg_res.returncode != 0:
+                        retries -= 1
+                        logger.info(f"Failed to read stdout file: {stdout_path}. Will retry {retries} more times.")
+                        sleep(5)
+                    else:
+                        logger.info(f"Successfully read stdout file: {stdout_path}")
+                        break
+
                 msg = msg_res.stdout
+                    
         cur_phase = convert_to_flyte_phase(job_state)
 
         return Resource(phase=cur_phase, message=msg, outputs=resource_meta.outputs)

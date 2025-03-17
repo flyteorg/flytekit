@@ -1,5 +1,6 @@
 import tempfile
 import uuid
+from time import sleep
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple, Union
 
@@ -99,7 +100,17 @@ class SlurmFunctionAgent(AsyncAgentBase):
                 job_state = o.split("=")[1].strip().lower()
             elif "StdOut" in o:
                 stdout_path = o.split("=")[1].strip()
-                msg_res = await conn.run(f"cat {stdout_path}", check=True)
+                retries = 3
+                while retries > 0:
+                    msg_res = await conn.run(f"cat {stdout_path}")
+                    if msg_res.returncode != 0:
+                        retries -= 1
+                        logger.info(f"Failed to read stdout file: {stdout_path}. Will retry {retries} more times.")
+                        sleep(5)
+                    else:
+                        logger.info(f"Successfully read stdout file: {stdout_path}")
+                        break
+
                 msg = msg_res.stdout
 
         cur_phase = convert_to_flyte_phase(job_state)
