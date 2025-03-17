@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple, Type
 
 from asyncssh import SSHClientConnection
-from asyncssh.sftp import SFTPNoSuchFile
+from asyncssh.sftp import SFTPError
 
 import flytekit
 from flytekit.core.type_engine import TypeEngine
@@ -91,11 +91,15 @@ class SlurmScriptAgent(AsyncAgentBase):
                     await sftp.put(f.name, batch_script_path)
         else:
             async with conn.start_sftp_client() as sftp:
-                with tempfile.NamedTemporaryFile("w") as f:
-                    try:
-                        await sftp.get(batch_script_path, f.name)
-                    except SFTPNoSuchFile:
-                        logger.debug("The specified batch script doesn't exist on the Slurm cluster.")
+                try:
+                    script_exists = await sftp.exists(batch_script_path)
+                except SFTPError as e:
+                    logger.debug(f"Failed to check if the batch script exists on the Slurm cluster: {e}")
+                    return
+
+            if not script_exists:
+                logger.debug("The specified batch script doesn't exist on the Slurm cluster.")
+                return
         res = await conn.run(cmd, check=True)
 
         # Retrieve Slurm job id
