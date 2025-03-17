@@ -26,12 +26,12 @@ from prometheus_client import Counter, Summary
 
 from flytekit import logger
 from flytekit.bin.entrypoint import get_traceback_str
-from flytekit.exceptions.system import FlyteAgentNotFound
-from flytekit.extend.backend.base_agent import AgentRegistry, SyncAgentBase, mirror_async_methods
+from flytekit.exceptions.system import FlyteConnectorNotFound
+from flytekit.extend.backend.base_connector import ConnectorRegistry, SyncConnectorBase, mirror_async_methods
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskExecutionMetadata, TaskTemplate
 
-metric_prefix = "flyte_agent_"
+metric_prefix = "flyte_connector_"
 create_operation = "create"
 get_operation = "get"
 delete_operation = "delete"
@@ -50,15 +50,15 @@ request_failure_count = Counter(
 )
 request_latency = Summary(
     f"{metric_prefix}request_latency_seconds",
-    "Time spent processing agent request",
+    "Time spent processing connector request",
     ["task_type", "operation"],
 )
 input_literal_size = Summary(f"{metric_prefix}input_literal_bytes", "Size of input literal", ["task_type"])
 
 
 def _handle_exception(e: Exception, context: grpc.ServicerContext, task_type: str, operation: str):
-    if isinstance(e, FlyteAgentNotFound):
-        error_message = f"Cannot find agent for task type: {task_type}."
+    if isinstance(e, FlyteConnectorNotFound):
+        error_message = f"Cannot find connector for task type: {task_type}."
         logger.error(error_message)
         context.set_code(grpc.StatusCode.NOT_FOUND)
         context.set_details(error_message)
@@ -73,7 +73,7 @@ def _handle_exception(e: Exception, context: grpc.ServicerContext, task_type: st
         ).inc()
 
 
-def record_agent_metrics(func: typing.Callable):
+def record_connector_metrics(func: typing.Callable):
     async def wrapper(
         self,
         request: typing.Union[CreateTaskRequest, GetTaskRequest, DeleteTaskRequest],
@@ -108,17 +108,17 @@ def record_agent_metrics(func: typing.Callable):
     return wrapper
 
 
-class AsyncAgentService(AsyncAgentServiceServicer):
-    @record_agent_metrics
+class AsyncConnectorService(AsyncAgentServiceServicer):
+    @record_connector_metrics
     async def CreateTask(self, request: CreateTaskRequest, context: grpc.ServicerContext) -> CreateTaskResponse:
         template = TaskTemplate.from_flyte_idl(request.template)
         inputs = LiteralMap.from_flyte_idl(request.inputs) if request.inputs else None
-        agent = AgentRegistry.get_agent(template.type, template.task_type_version)
+        connector = ConnectorRegistry.get_connector(template.type, template.task_type_version)
         task_execution_metadata = TaskExecutionMetadata.from_flyte_idl(request.task_execution_metadata)
 
-        logger.info(f"{agent.name} start creating the job")
+        logger.info(f"{connector.name} start creating the job")
         resource_meta = await mirror_async_methods(
-            agent.create,
+            connector.create,
             task_template=template,
             inputs=inputs,
             output_prefix=request.output_prefix,
@@ -126,29 +126,33 @@ class AsyncAgentService(AsyncAgentServiceServicer):
         )
         return CreateTaskResponse(resource_meta=resource_meta.encode())
 
-    @record_agent_metrics
+    @record_connector_metrics
     async def GetTask(self, request: GetTaskRequest, context: grpc.ServicerContext) -> GetTaskResponse:
         if request.task_category and request.task_category.name:
-            agent = AgentRegistry.get_agent(request.task_category.name, request.task_category.version)
+            connector = ConnectorRegistry.get_connector(request.task_category.name, request.task_category.version)
         else:
-            agent = AgentRegistry.get_agent(request.task_type)
-        logger.info(f"{agent.name} start checking the status of the job")
-        res = await mirror_async_methods(agent.get, resource_meta=agent.metadata_type.decode(request.resource_meta))
+            connector = ConnectorRegistry.get_connector(request.task_type)
+        logger.info(f"{connector.name} start checking the status of the job")
+        res = await mirror_async_methods(
+            connector.get, resource_meta=connector.metadata_type.decode(request.resource_meta)
+        )
         resource = await res.to_flyte_idl()
         return GetTaskResponse(resource=resource)
 
-    @record_agent_metrics
+    @record_connector_metrics
     async def DeleteTask(self, request: DeleteTaskRequest, context: grpc.ServicerContext) -> DeleteTaskResponse:
         if request.task_category and request.task_category.name:
-            agent = AgentRegistry.get_agent(request.task_category.name, request.task_category.version)
+            connector = ConnectorRegistry.get_connector(request.task_category.name, request.task_category.version)
         else:
-            agent = AgentRegistry.get_agent(request.task_type)
-        logger.info(f"{agent.name} start deleting the job")
-        await mirror_async_methods(agent.delete, resource_meta=agent.metadata_type.decode(request.resource_meta))
+            connector = ConnectorRegistry.get_connector(request.task_type)
+        logger.info(f"{connector.name} start deleting the job")
+        await mirror_async_methods(
+            connector.delete, resource_meta=connector.metadata_type.decode(request.resource_meta)
+        )
         return DeleteTaskResponse()
 
 
-class SyncAgentService(SyncAgentServiceServicer):
+class SyncConnectorService(SyncAgentServiceServicer):
     async def ExecuteTaskSync(
         self, request_iterator: typing.AsyncIterator[ExecuteTaskSyncRequest], context: grpc.ServicerContext
     ) -> typing.AsyncIterator[ExecuteTaskSyncResponse]:
@@ -158,14 +162,14 @@ class SyncAgentService(SyncAgentServiceServicer):
         task_type = template.type
         try:
             with request_latency.labels(task_type=task_type, operation=do_operation).time():
-                agent = AgentRegistry.get_agent(task_type, template.task_type_version)
-                if not isinstance(agent, SyncAgentBase):
-                    raise ValueError(f"[{agent.name}] does not support sync execution")
+                connector = ConnectorRegistry.get_connector(task_type, template.task_type_version)
+                if not isinstance(connector, SyncConnectorBase):
+                    raise ValueError(f"[{connector.name}] does not support sync execution")
 
                 request = await request_iterator.__anext__()
                 literal_map = LiteralMap.from_flyte_idl(request.inputs) if request.inputs else None
                 res = await mirror_async_methods(
-                    agent.do, task_template=template, inputs=literal_map, output_prefix=output_prefix
+                    connector.do, task_template=template, inputs=literal_map, output_prefix=output_prefix
                 )
 
                 resource = await res.to_flyte_idl()
@@ -176,9 +180,9 @@ class SyncAgentService(SyncAgentServiceServicer):
             _handle_exception(e, context, template.type, do_operation)
 
 
-class AgentMetadataService(AgentMetadataServiceServicer):
+class ConnectorMetadataService(AgentMetadataServiceServicer):
     async def GetAgent(self, request: GetAgentRequest, context: grpc.ServicerContext) -> GetAgentResponse:
-        return GetAgentResponse(agent=AgentRegistry.get_agent_metadata(request.name))
+        return GetAgentResponse(agent=ConnectorRegistry.get_connector_metadata(request.name))
 
     async def ListAgents(self, request: ListAgentsRequest, context: grpc.ServicerContext) -> ListAgentsResponse:
-        return ListAgentsResponse(agents=AgentRegistry.list_agents())
+        return ListAgentsResponse(agents=ConnectorRegistry.list_connectors())

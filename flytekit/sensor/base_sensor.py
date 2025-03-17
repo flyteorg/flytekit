@@ -11,7 +11,7 @@ from typing_extensions import Protocol, get_type_hints, runtime_checkable
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask, TaskMetadata
 from flytekit.core.interface import Interface
-from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin, ResourceMeta
+from flytekit.extend.backend.base_connector import AsyncConnectorExecutorMixin, ResourceMeta
 
 
 @runtime_checkable
@@ -41,11 +41,11 @@ class SensorMetadata(ResourceMeta):
 T = TypeVar("T", bound=SensorConfig)
 
 
-class BaseSensor(AsyncAgentExecutorMixin, PythonTask):
+class BaseSensor(AsyncConnectorExecutorMixin, PythonTask):
     """
     Base class for all sensors. Sensors are tasks that are designed to run forever and periodically check for some
     condition to be met. When the condition is met, the sensor will complete. Sensors are designed to be run by the
-    sensor agent, and not by the Flyte engine.
+    connector and not by the Flyte engine.
     """
 
     def __init__(

@@ -13,7 +13,7 @@ setup(
     version=__version__,
     author="Omar Tarabai",
     author_email="otarabai@perian.io",
-    description="Flyte agent for Perian Job Platform (perian.io)",
+    description="Flyte connector for Perian Job Platform (perian.io)",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
     namespace_packages=["flytekitplugins"],
