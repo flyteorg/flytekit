@@ -54,7 +54,7 @@ from flytekit.utils.asyn import loop_manager
 # for key and secret
 _FSSPEC_S3_KEY_ID = "access_key_id"
 _FSSPEC_S3_SECRET = "secret_access_key"
-_ANON = "skip_signature"
+_SKIP_SIGNATURE = "skip_signature"
 
 Uploadable = typing.Union[str, os.PathLike, pathlib.Path, bytes, io.BufferedReader, io.BytesIO, io.StringIO]
 
@@ -81,7 +81,7 @@ def s3_setup_args(s3_cfg: configuration.S3Config, anonymous: bool = False, **kwa
     backoff = kwargs.pop("backoff", s3_cfg.backoff)
 
     if anonymous:
-        config[_ANON] = True
+        config[_SKIP_SIGNATURE] = True
 
     retry_config = {
         "max_retries": retries,
@@ -135,7 +135,7 @@ def azure_setup_args(
         config["tenant_id"] = kwargs.get("tenant_id", azure_cfg.tenant_id)
 
     if anonymous:
-        config[_ANON] = True
+        config[_SKIP_SIGNATURE] = True
 
     client_options = {"timeout": "99999s", "allow_http": "true"}
 
