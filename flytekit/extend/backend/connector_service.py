@@ -12,6 +12,10 @@ from flyteidl.admin.agent_pb2 import (
     ExecuteTaskSyncResponseHeader,
     GetAgentRequest,
     GetAgentResponse,
+    GetTaskLogsRequest,
+    GetTaskLogsResponse,
+    GetTaskMetricsRequest,
+    GetTaskMetricsResponse,
     GetTaskRequest,
     GetTaskResponse,
     ListAgentsRequest,
@@ -150,6 +154,28 @@ class AsyncConnectorService(AsyncAgentServiceServicer):
             connector.delete, resource_meta=connector.metadata_type.decode(request.resource_meta)
         )
         return DeleteTaskResponse()
+
+    async def GetTaskMetrics(
+        self, request: GetTaskMetricsRequest, context: grpc.ServicerContext
+    ) -> GetTaskMetricsResponse:
+        if request.task_category and request.task_category.name:
+            connector = ConnectorRegistry.get_connector(request.task_category.name, request.task_category.version)
+        else:
+            connector = ConnectorRegistry.get_connector(request.task_type)
+        logger.info(f"{connector.name} start getting metrics of the job")
+        return await mirror_async_methods(
+            connector.get_metrics, resource_meta=connector.metadata_type.decode(request.resource_meta)
+        )
+
+    async def GetTaskLogs(self, request: GetTaskLogsRequest, context: grpc.ServicerContext) -> GetTaskLogsResponse:
+        if request.task_category and request.task_category.name:
+            connector = ConnectorRegistry.get_connector(request.task_category.name, request.task_category.version)
+        else:
+            connector = ConnectorRegistry.get_connector(request.task_type)
+        logger.info(f"{connector.name} start getting logs of the job")
+        return await mirror_async_methods(
+            connector.get_logs, resource_meta=connector.metadata_type.decode(request.resource_meta)
+        )
 
 
 class SyncConnectorService(SyncAgentServiceServicer):

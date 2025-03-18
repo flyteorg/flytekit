@@ -15,10 +15,12 @@ from flyteidl.admin.agent_pb2 import (
     GetTaskRequest,
     ListAgentsRequest,
     ListAgentsResponse,
-    TaskCategory, DeleteTaskResponse,
+    TaskCategory, DeleteTaskResponse, GetTaskLogsResponse, GetTaskLogsResponseBody, GetTaskMetricsResponse,
+    GetTaskMetricsRequest, GetTaskLogsRequest,
 )
 from flyteidl.core.execution_pb2 import TaskExecution, TaskLog
 from flyteidl.core.identifier_pb2 import ResourceType
+from flyteidl.core.metrics_pb2 import ExecutionMetricResult
 
 from flytekit import PythonFunctionTask, task
 from flytekit.configuration import (
@@ -117,6 +119,12 @@ class AsyncDummyConnector(AsyncConnectorBase):
 
     async def delete(self, resource_meta: DummyMetadata, **kwargs):
         ...
+
+    async def get_metrics(self, resource_meta: DummyMetadata, **kwargs) -> GetTaskMetricsResponse:
+        return GetTaskMetricsResponse(results=[ExecutionMetricResult(metric="EXECUTION_METRIC_LIMIT_MEMORY_BYTES", data=None)])
+
+    async def get_logs(self, resource_meta: DummyMetadata, **kwargs) -> GetTaskLogsResponse:
+        return GetTaskLogsResponse(body=GetTaskLogsResponseBody(results=["foo", "bar"]))
 
 
 class MockOpenAIConnector(SyncConnectorBase):
@@ -253,6 +261,13 @@ async def test_async_connector_service(connector, consume_metadata):
         ctx,
     )
     assert res == DeleteTaskResponse()
+    if connector.task_category.name == "async_dummy":
+        res = await service.GetTaskMetrics(GetTaskMetricsRequest(task_category=task_category, resource_meta=metadata_bytes), ctx)
+        assert res.results[0].metric == "EXECUTION_METRIC_LIMIT_MEMORY_BYTES"
+
+        res = await service.GetTaskLogs(GetTaskLogsRequest(task_category=task_category, resource_meta=metadata_bytes), ctx)
+        assert res.body.results == ["foo", "bar"]
+
 
     connector_metadata = ConnectorRegistry.get_connector_metadata(connector.name)
     assert connector_metadata.supported_task_types[0] == connector.task_category.name
