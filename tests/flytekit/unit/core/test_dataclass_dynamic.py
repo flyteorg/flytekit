@@ -20,8 +20,6 @@ from mashumaro.config import BaseConfig
 
 
 class SimpleObjectOriginal:
-    # Of course we COULD make this a dataclass; this is overly simple for repro purposes,
-    # and in reality this class is a lot more complex!
     def __init__(self, a: Optional[str] = None, b: Optional[int] = None):
         self.a = a
         self.b = b
@@ -93,4 +91,4 @@ def test_simple_object_yee():
         n = check_int(o=result)
         n.with_overrides(limits=Resources(cpu="3", mem="500Mi"))
 
-    my_dynamic2()
+    my_dynamic()

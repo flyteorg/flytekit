@@ -1535,7 +1535,7 @@ def flyte_entity_call_handler(
         expected_outputs = len(entity.python_interface.outputs)
         if expected_outputs == 0:
             if result is None or isinstance(result, VoidPromise):
-                return None
+                return VoidPromise(entity.name)
             else:
                 raise ValueError(f"Received an output when workflow local execution expected None. Received: {result}")
 
