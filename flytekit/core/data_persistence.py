@@ -93,7 +93,7 @@ def s3_setup_args(s3_cfg: configuration.S3Config, anonymous: bool = False, **kwa
         "retry_timeout": timedelta(minutes=3),
     }
 
-    client_options = {"timeout": "99999s", "allow_http": "true"}
+    client_options = {"timeout": "99999s", "allow_http": True}
 
     if config:
         kwargs["config"] = config
@@ -750,7 +750,7 @@ class FileAccessProvider(object):
     put_data = loop_manager.synced(async_put_data)
 
 
-register(["s3", "gs", "abfs"])
+register(["s3", "gs", "abfs"], asynchronous=True)
 
 
 flyte_tmp_dir = tempfile.mkdtemp(prefix="flyte-")
