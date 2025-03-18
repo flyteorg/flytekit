@@ -277,7 +277,7 @@ class FileAccessProvider(object):
             return fsspec.filesystem(protocol, **s3kwargs)  # type: ignore
         elif protocol == "gs":
             return fsspec.filesystem(protocol, **kwargs)  # type: ignore
-        elif protocol == "abfs":
+        elif protocol in ("abfs", "abfss"):
             azkwargs = azure_setup_args(self._data_config.azure, anonymous=anonymous, **kwargs)
             azkwargs.update(kwargs)
             return fsspec.filesystem(protocol, **azkwargs)  # type: ignore
