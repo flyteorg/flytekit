@@ -12,7 +12,6 @@ readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.9,<3.13"
 dependencies = [
     # Please maintain an alphabetical order in the following list
-    "adlfs>=2023.3.0",
     "click>=6.6",
     "cloudpickle>=2.0.0",
     "croniter>=0.3.20",
@@ -22,7 +21,6 @@ dependencies = [
     "docstring-parser>=0.9.0",
     "flyteidl>=1.15.1",
     "fsspec>=2023.3.0",
-    "gcsfs>=2023.3.0",
     "googleapis-common-protos>=1.57",
     # Skipping those versions to account for the unwanted output coming from grpcio and grpcio-status.
     # Issue being tracked in https://github.com/flyteorg/flyte/issues/6082.
@@ -38,7 +36,7 @@ dependencies = [
     "marshmallow-jsonschema>=0.12.0",
     "mashumaro>=3.15",
     "msgpack>=1.1.0",
-    "obstore",
+    "obstore==0.5.1",
     "protobuf!=4.25.0",
     "pygments",
     "python-json-logger>=2.0.0",
@@ -47,7 +45,6 @@ dependencies = [
     "requests>=2.18.4",
     "rich",
     "rich_click",
-    "s3fs>=2023.3.0,!=2024.3.1",
     "statsd>=3.0.0",
     "typing_extensions",
     "urllib3>=1.22",
