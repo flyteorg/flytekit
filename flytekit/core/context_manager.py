@@ -399,6 +399,7 @@ class SecretsManager(object):
         group: Optional[str] = None,
         key: Optional[str] = None,
         group_version: Optional[str] = None,
+        env_var: Optional[str] = None,
         encode_mode: str = "r",
     ) -> str:
         """
@@ -413,10 +414,15 @@ class SecretsManager(object):
             env_prefixes.append("")
 
         for env_prefix in env_prefixes:
-            env_var = self._get_secrets_env_var(
+            group_env_var = self._get_secrets_env_var(
                 group=group, key=key, group_version=group_version, env_prefix=env_prefix
             )
-            v = os.environ.get(env_var)
+            v = os.environ.get(group_env_var)
+            if v is not None:
+                return v.strip()
+
+        if env_var is not None:
+            v = os.environ.get(env_var, None)
             if v is not None:
                 return v.strip()
 
@@ -424,9 +430,10 @@ class SecretsManager(object):
         if os.path.exists(fpath):
             with open(fpath, encode_mode) as f:
                 return f.read().strip()
+        env_vars = ",".join([k for k in filter(None, (group_env_var, env_var))])
         raise ValueError(
             f"Please make sure to add secret_requests=[Secret(group={group}, key={key})] in @task. Unable to find secret for key {key} in group {group} "
-            f"in Env Var:{env_var} and FilePath: {fpath}"
+            f"in Env Var:{env_vars} and FilePath: {fpath}"
         )
 
     def get_secrets_env_var(
@@ -443,7 +450,7 @@ class SecretsManager(object):
         key: Optional[str] = None,
         group_version: Optional[str] = None,
         env_prefix: str = "",
-    ):
+    ) -> str:
         l = [k.upper() for k in filter(None, (group, group_version, key))]
         return f"{env_prefix}{'_'.join(l)}"
 
