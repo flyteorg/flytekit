@@ -103,15 +103,6 @@ def s3_setup_args(s3_cfg: configuration.S3Config, anonymous: bool = False, **kwa
     return kwargs
 
 
-def gs_setup_args(gcs_cfg: configuration.GCSConfig, anonymous: bool = False) -> Dict[str, Any]:
-    """
-    Setup gcs storage, bucket is needed to create obstore store object
-    """
-    kwargs: Dict[str, Any] = {}
-
-    return kwargs
-
-
 def azure_setup_args(
     azure_cfg: configuration.AzureBlobStorageConfig,
     anonymous: bool = False,
@@ -162,7 +153,7 @@ def get_fsspec_storage_options(
             **kwargs,
         }
     if protocol == "gs":
-        return {**gs_setup_args(data_config.gcs, anonymous=anonymous), **kwargs}
+        return kwargs
     if protocol in ("abfs", "abfss"):
         return {
             **azure_setup_args(data_config.azure, anonymous=anonymous, **kwargs),
@@ -285,9 +276,7 @@ class FileAccessProvider(object):
             s3kwargs.update(kwargs)
             return fsspec.filesystem(protocol, **s3kwargs)  # type: ignore
         elif protocol == "gs":
-            gskwargs = gs_setup_args(self._data_config.gcs, anonymous=anonymous)
-            gskwargs.update(kwargs)
-            return fsspec.filesystem(protocol, **gskwargs)  # type: ignore
+            return fsspec.filesystem(protocol, **kwargs)  # type: ignore
         elif protocol == "abfs":
             azkwargs = azure_setup_args(self._data_config.azure, anonymous=anonymous, **kwargs)
             azkwargs.update(kwargs)
