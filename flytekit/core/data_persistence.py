@@ -739,7 +739,7 @@ class FileAccessProvider(object):
     put_data = loop_manager.synced(async_put_data)
 
 
-register(["s3", "gs", "abfs"], asynchronous=True)
+register(["s3", "gs", "abfs", "abfss"], asynchronous=True)
 
 
 flyte_tmp_dir = tempfile.mkdtemp(prefix="flyte-")
