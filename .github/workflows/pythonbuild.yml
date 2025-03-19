@@ -310,6 +310,7 @@ jobs:
           - flytekit-duckdb
           - flytekit-envd
           - flytekit-flyteinteractive
+          - flytekit-geopandas
           - flytekit-greatexpectations
           - flytekit-hive
           - flytekit-huggingface
