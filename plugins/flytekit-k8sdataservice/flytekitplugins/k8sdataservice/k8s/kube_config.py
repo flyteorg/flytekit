@@ -15,6 +15,6 @@ class KubeConfig:
         try:
             logger.info("Attempting to load in-cluster configuration.")
             config.load_incluster_config()  # This will use the service account credentials
-            logger.info("Successfully loaded in-cluster configuration using the agent service account.")
+            logger.info("Successfully loaded in-cluster configuration using the connector service account.")
         except config.ConfigException as e:
             logger.warning(f"Failed to load in-cluster configuration. {e}")

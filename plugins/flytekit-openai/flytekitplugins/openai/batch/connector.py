@@ -6,13 +6,13 @@ import cloudpickle
 
 from flytekit import FlyteContextManager, lazy_module
 from flytekit.core.type_engine import TypeEngine
-from flytekit.extend.backend.base_agent import (
-    AgentRegistry,
-    AsyncAgentBase,
+from flytekit.extend.backend.base_connector import (
+    AsyncConnectorBase,
+    ConnectorRegistry,
     Resource,
     ResourceMeta,
 )
-from flytekit.extend.backend.utils import convert_to_flyte_phase, get_agent_secret
+from flytekit.extend.backend.utils import convert_to_flyte_phase, get_connector_secret
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
@@ -45,8 +45,8 @@ class BatchEndpointMetadata(ResourceMeta):
         return cloudpickle.loads(data)
 
 
-class BatchEndpointAgent(AsyncAgentBase):
-    name = "OpenAI Batch Endpoint Agent"
+class BatchEndpointConnector(AsyncConnectorBase):
+    name = "OpenAI Batch Endpoint Connector"
 
     def __init__(self):
         super().__init__(task_type_name="openai-batch", metadata_type=BatchEndpointMetadata)
@@ -67,7 +67,7 @@ class BatchEndpointAgent(AsyncAgentBase):
 
         async_client = openai.AsyncOpenAI(
             organization=custom.get("openai_organization"),
-            api_key=get_agent_secret(secret_key=OPENAI_API_KEY),
+            api_key=get_connector_secret(secret_key=OPENAI_API_KEY),
         )
 
         custom["config"].setdefault("completion_window", "24h")
@@ -88,7 +88,7 @@ class BatchEndpointAgent(AsyncAgentBase):
     ) -> Resource:
         async_client = openai.AsyncOpenAI(
             organization=resource_meta.openai_org,
-            api_key=get_agent_secret(secret_key=OPENAI_API_KEY),
+            api_key=get_connector_secret(secret_key=OPENAI_API_KEY),
         )
 
         retrieved_result = await async_client.batches.retrieve(resource_meta.batch_id)
@@ -116,10 +116,10 @@ class BatchEndpointAgent(AsyncAgentBase):
     ):
         async_client = openai.AsyncOpenAI(
             organization=resource_meta.openai_org,
-            api_key=get_agent_secret(secret_key=OPENAI_API_KEY),
+            api_key=get_connector_secret(secret_key=OPENAI_API_KEY),
         )
 
         await async_client.batches.cancel(resource_meta.batch_id)
 
 
-AgentRegistry.register(BatchEndpointAgent())
+ConnectorRegistry.register(BatchEndpointConnector())

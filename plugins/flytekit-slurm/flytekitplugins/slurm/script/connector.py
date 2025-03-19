@@ -8,7 +8,7 @@ from asyncssh.sftp import SFTPError
 
 import flytekit
 from flytekit.core.type_engine import TypeEngine
-from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource, ResourceMeta
+from flytekit.extend.backend.base_connector import AsyncConnectorBase, ConnectorRegistry, Resource, ResourceMeta
 from flytekit.extend.backend.utils import convert_to_flyte_phase
 from flytekit.extras.tasks.shell import OutputLocation, _PythonFStringInterpolizer
 from flytekit.loggers import logger
@@ -34,8 +34,8 @@ class SlurmJobMetadata(ResourceMeta):
     outputs: Dict[str, str]
 
 
-class SlurmScriptAgent(AsyncAgentBase):
-    name = "Slurm Script Agent"
+class SlurmScriptConnector(AsyncConnectorBase):
+    name = "Slurm Script Connector"
 
     # SSH connection pool for multi-host environment
     slurm_cluster_to_ssh_conn: Dict[SlurmCluster, SSHClientConnection] = {}
@@ -44,7 +44,7 @@ class SlurmScriptAgent(AsyncAgentBase):
     DUMMY_SCRIPT = "#!/bin/bash"
 
     def __init__(self) -> None:
-        super(SlurmScriptAgent, self).__init__(task_type_name="slurm", metadata_type=SlurmJobMetadata)
+        super(SlurmScriptConnector, self).__init__(task_type_name="slurm", metadata_type=SlurmJobMetadata)
 
     async def create(
         self,
@@ -201,4 +201,4 @@ def _get_sbatch_cmd(sbatch_conf: Dict[str, str], batch_script_path: str, batch_s
     return cmd
 
 
-AgentRegistry.register(SlurmScriptAgent())
+ConnectorRegistry.register(SlurmScriptConnector())
