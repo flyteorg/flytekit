@@ -95,11 +95,11 @@ class SlurmScriptAgent(AsyncAgentBase):
                     script_exists = await sftp.exists(batch_script_path)
                 except SFTPError as e:
                     logger.debug(f"Failed to check if the batch script exists on the Slurm cluster: {e}")
-                    return
+                    raise RuntimeError("Failed to check if the batch script exists on the Slurm cluster.") from e
 
             if not script_exists:
-                logger.debug("The specified batch script doesn't exist on the Slurm cluster.")
-                return
+                logger.debug(f"The specified batch script at {batch_script_path} doesn't exist on the Slurm cluster.")
+                raise FileNotFoundError(f"The batch script at {batch_script_path} doesn't exist on the Slurm cluster.")
         res = await conn.run(cmd, check=True)
 
         # Retrieve Slurm job id
