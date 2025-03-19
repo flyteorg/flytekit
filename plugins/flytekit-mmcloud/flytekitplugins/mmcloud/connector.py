@@ -8,7 +8,7 @@ from typing import Optional
 from flytekitplugins.mmcloud.utils import async_check_output, mmcloud_status_to_flyte_phase
 
 from flytekit import current_context
-from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource, ResourceMeta
+from flytekit.extend.backend.base_connector import AsyncConnectorBase, ConnectorRegistry, Resource, ResourceMeta
 from flytekit.loggers import logger
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
@@ -19,8 +19,8 @@ class MMCloudMetadata(ResourceMeta):
     job_id: str
 
 
-class MMCloudAgent(AsyncAgentBase):
-    name = "MMCloud Agent"
+class MMCloudConnector(AsyncConnectorBase):
+    name = "MMCloud Connector"
 
     def __init__(self):
         super().__init__(task_type_name="mmcloud_task", metadata_type=MMCloudMetadata)
@@ -199,4 +199,4 @@ class MMCloudAgent(AsyncAgentBase):
         logger.info(f"Submitted cancel request for MMCloud job: {job_id}")
 
 
-AgentRegistry.register(MMCloudAgent())
+ConnectorRegistry.register(MMCloudConnector())

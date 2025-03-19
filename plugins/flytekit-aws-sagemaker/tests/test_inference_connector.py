@@ -4,9 +4,9 @@ from unittest import mock
 
 import pytest
 from flyteidl.core.execution_pb2 import TaskExecution
-from flytekitplugins.awssagemaker_inference.agent import SageMakerEndpointMetadata
+from flytekitplugins.awssagemaker_inference.connector import SageMakerEndpointMetadata
 
-from flytekit.extend.backend.base_agent import AgentRegistry
+from flytekit.extend.backend.base_connector import ConnectorRegistry
 from flytekit.interfaces.cli_identifiers import Identifier
 from flytekit.models import literals
 from flytekit.models.core.identifier import ResourceType
@@ -48,7 +48,7 @@ idempotence_token = "74443947857331f7"
                 "LastModifiedTime": "2024-01-31T22:16:37.001000+05:30",
                 "AsyncInferenceConfig": {
                     "OutputConfig": {
-                        "S3OutputPath": "s3://sagemaker-agent-xgboost/inference-output/output"
+                        "S3OutputPath": "s3://sagemaker-connector-xgboost/inference-output/output"
                     }
                 },
                 "ResponseMetadata": {
@@ -83,12 +83,12 @@ idempotence_token = "74443947857331f7"
     ],
 )
 @mock.patch(
-    "flytekitplugins.awssagemaker_inference.agent.Boto3AgentMixin._call",
+    "flytekitplugins.awssagemaker_inference.connector.Boto3ConnectorMixin._call",
 )
-async def test_agent(mock_boto_call, mock_return_value):
+async def test_connector(mock_boto_call, mock_return_value):
     mock_boto_call.return_value = mock_return_value
 
-    agent = AgentRegistry.get_agent("sagemaker-endpoint")
+    connector = ConnectorRegistry.get_connector("sagemaker-endpoint")
     task_id = Identifier(
         resource_type=ResourceType.TASK,
         project="project",
@@ -138,7 +138,7 @@ async def test_agent(mock_boto_call, mock_return_value):
 
     # Exception check
     if isinstance(mock_return_value, Exception):
-        response = await agent.create(task_template)
+        response = await connector.create(task_template)
         assert response == metadata
 
         mock_boto_call.side_effect = CustomException(
@@ -156,15 +156,15 @@ async def test_agent(mock_boto_call, mock_return_value):
         )
 
         with pytest.raises(Exception, match="resource limits being exceeded"):
-            resource = await agent.get(metadata)
+            await connector.get(metadata)
         return
 
     # CREATE
-    response = await agent.create(task_template)
+    response = await connector.create(task_template)
     assert response == metadata
 
     # GET
-    resource = await agent.get(metadata)
+    resource = await connector.get(metadata)
     assert resource.phase == TaskExecution.SUCCEEDED
 
     assert (
@@ -173,5 +173,5 @@ async def test_agent(mock_boto_call, mock_return_value):
     )
 
     # DELETE
-    delete_response = await agent.delete(metadata)
+    delete_response = await connector.delete(metadata)
     assert delete_response is None

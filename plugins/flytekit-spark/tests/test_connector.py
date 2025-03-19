@@ -8,7 +8,7 @@ from aioresponses import aioresponses
 from flyteidl.core.execution_pb2 import TaskExecution
 
 from flytekit.core.constants import FLYTE_FAIL_ON_ERROR
-from flytekitplugins.spark.agent import DATABRICKS_API_ENDPOINT, DatabricksJobMetadata, get_header, \
+from flytekitplugins.spark.connector import DATABRICKS_API_ENDPOINT, DatabricksJobMetadata, get_header, \
     _get_databricks_job_spec, DEFAULT_DATABRICKS_INSTANCE_ENV_KEY
 
 from flytekit.extend.backend.base_agent import AgentRegistry
@@ -17,6 +17,7 @@ from flytekit.models import literals, task
 from flytekit.models.core.identifier import ResourceType
 from flytekit.models.task import Container, Resources, TaskTemplate
 import os
+
 
 @pytest.fixture(scope="function")
 def task_template() -> TaskTemplate:
@@ -157,6 +158,14 @@ async def test_databricks_agent(task_template: TaskTemplate):
 
 
 @pytest.mark.asyncio
+async def test_agent_create_with_no_instance(task_template: TaskTemplate):
+    agent = AgentRegistry.get_agent("spark")
+
+    with pytest.raises(ValueError) as e:
+        await agent.create(task_template, None)
+
+
+@pytest.mark.asyncio
 async def test_agent_create_with_default_instance(task_template: TaskTemplate):
     agent = AgentRegistry.get_agent("spark")
 
@@ -183,10 +192,3 @@ async def test_agent_create_with_default_instance(task_template: TaskTemplate):
         assert res == databricks_metadata
 
     mock.patch.stopall()
-
-@pytest.mark.asyncio
-async def test_agent_create_with_no_instance(task_template: TaskTemplate):
-    agent = AgentRegistry.get_agent("spark")
-
-    with pytest.raises(ValueError) as e:
-        await agent.create(task_template, None)
