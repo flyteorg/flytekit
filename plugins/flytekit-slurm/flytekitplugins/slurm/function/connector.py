@@ -5,7 +5,6 @@ from typing import Dict, List, Optional, Tuple, Union
 
 from asyncssh import SSHClientConnection
 
-from flytekit import logger
 from flytekit.extend.backend.base_connector import AsyncConnectorBase, ConnectorRegistry, Resource, ResourceMeta
 from flytekit.extend.backend.utils import convert_to_flyte_phase
 from flytekit.models.literals import LiteralMap
@@ -31,15 +30,6 @@ class SlurmJobMetadata(ResourceMeta):
 
     job_id: str
     ssh_config: Dict[str, Union[str, List[str], Tuple[str, ...]]]
-
-
-@dataclass
-class SlurmCluster:
-    host: str
-    username: Optional[str] = None
-
-    def __hash__(self):
-        return hash((self.host, self.username))
 
 
 class SlurmFunctionConnector(AsyncConnectorBase):
