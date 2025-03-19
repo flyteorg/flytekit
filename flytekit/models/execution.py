@@ -45,6 +45,12 @@ class ExecutionMetadata(_common_models.FlyteIdlEntity):
         MANUAL = 0
         SCHEDULED = 1
         SYSTEM = 2
+        RELAUNCH = 3
+        CHILD_WORKFLOW = 4
+        RECOVERED = 5
+        TRIGGER = 6
+        # 7 is reserved
+        EAGER_CHILD = 8
 
     def __init__(
         self,

@@ -1496,6 +1496,7 @@ class FlyteRemote(object):
         tags: typing.Optional[typing.List[str]] = None,
         cluster_pool: typing.Optional[str] = None,
         execution_cluster_label: typing.Optional[str] = None,
+        execution_mode: int = ExecutionMetadata.ExecutionMode.MANUAL,
     ) -> FlyteWorkflowExecution:
         """Common method for execution across all entities.
 
@@ -1579,7 +1580,7 @@ class FlyteRemote(object):
                 ExecutionSpec(
                     entity.id,
                     ExecutionMetadata(
-                        ExecutionMetadata.ExecutionMode.MANUAL,
+                        execution_mode,
                         "placeholder",  # Admin replaces this from oidc token if auth is enabled.
                         0,
                     ),
@@ -1669,6 +1670,7 @@ class FlyteRemote(object):
         cluster_pool: typing.Optional[str] = None,
         execution_cluster_label: typing.Optional[str] = None,
         serialization_settings: typing.Optional[SerializationSettings] = None,
+        execution_mode: int = ExecutionMetadata.ExecutionMode.MANUAL,
     ) -> FlyteWorkflowExecution:
         """
         Execute a task, workflow, or launchplan, either something that's been declared locally, or a fetched entity.
@@ -1713,6 +1715,7 @@ class FlyteRemote(object):
         :param execution_cluster_label: Specify label of cluster(s) on which newly created execution should be placed.
         :param serialization_settings: Optionally provide serialization settings, in case the entity being run needs
           to first be registered. If not provided, a default will be used.
+        :param execution_mode: Execution mode for the execution. Defaults to MANUAL.
 
         .. note:
 
@@ -1738,6 +1741,7 @@ class FlyteRemote(object):
                 tags=tags,
                 cluster_pool=cluster_pool,
                 execution_cluster_label=execution_cluster_label,
+                execution_mode=execution_mode,
             )
         if isinstance(entity, FlyteWorkflow):
             return self.execute_remote_wf(
@@ -1825,6 +1829,7 @@ class FlyteRemote(object):
                 execution_cluster_label=execution_cluster_label,
                 options=options,
                 serialization_settings=serialization_settings,
+                execution_mode=execution_mode,
             )
         if isinstance(entity, WorkflowBase):
             return self.execute_local_workflow(
@@ -1889,6 +1894,7 @@ class FlyteRemote(object):
         tags: typing.Optional[typing.List[str]] = None,
         cluster_pool: typing.Optional[str] = None,
         execution_cluster_label: typing.Optional[str] = None,
+        execution_mode: int = ExecutionMetadata.ExecutionMode.MANUAL,
     ) -> FlyteWorkflowExecution:
         """Execute a FlyteTask, or FlyteLaunchplan.
 
@@ -1910,6 +1916,7 @@ class FlyteRemote(object):
             tags=tags,
             cluster_pool=cluster_pool,
             execution_cluster_label=execution_cluster_label,
+            execution_mode=execution_mode,
         )
 
     def execute_remote_wf(
@@ -2139,6 +2146,7 @@ class FlyteRemote(object):
         execution_cluster_label: typing.Optional[str] = None,
         options: typing.Optional[Options] = None,
         serialization_settings: typing.Optional[SerializationSettings] = None,
+        execution_mode: int = ExecutionMetadata.ExecutionMode.MANUAL,
     ) -> FlyteWorkflowExecution:
         """
         Execute a @task-decorated function or TaskTemplate task.
@@ -2161,6 +2169,7 @@ class FlyteRemote(object):
         :param execution_cluster_label: Specify label of cluster(s) on which newly created execution should be placed.
         :param options: Options to customize the execution.
         :param serialization_settings: If the task needs to be registered, this can be passed in.
+        :param execution_mode: Execution mode for the execution. Defaults to MANUAL.
 
         :return: FlyteWorkflowExecution object.
         """
@@ -2199,6 +2208,7 @@ class FlyteRemote(object):
             tags=tags,
             cluster_pool=cluster_pool,
             execution_cluster_label=execution_cluster_label,
+            execution_mode=execution_mode,
         )
 
     def execute_local_workflow(
