@@ -26,6 +26,7 @@ from flytekit.loggers import developer_logger, logger
 from flytekit.models.common import Labels
 from flytekit.models.core.execution import WorkflowExecutionPhase
 from flytekit.utils.rate_limiter import RateLimiter
+from flytekit.models.execution import ExecutionMetadata
 
 if typing.TYPE_CHECKING:
     from flytekit.remote.remote_callable import RemoteEntity
@@ -399,6 +400,7 @@ class Controller:
                 options=options,
                 envs=e,
                 serialization_settings=self.ss,
+                execution_mode=ExecutionMetadata.ExecutionMode.EAGER_CHILD,
             )
             return wf_exec
         else:
