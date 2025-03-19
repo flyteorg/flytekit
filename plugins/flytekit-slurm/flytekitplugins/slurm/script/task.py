@@ -5,7 +5,7 @@ from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.interface import Interface
 from flytekit.extend import TaskPlugins
-from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
+from flytekit.extend.backend.base_connector import AsyncConnectorExecutorMixin
 from flytekit.extras.tasks.shell import OutputLocation
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import FlyteFile
@@ -48,7 +48,7 @@ class SlurmRemoteScript(Slurm):
             raise ValueError("batch_script_path must be provided")
 
 
-class SlurmTask(AsyncAgentExecutorMixin, PythonTask[SlurmRemoteScript]):
+class SlurmTask(AsyncConnectorExecutorMixin, PythonTask[SlurmRemoteScript]):
     _TASK_TYPE = "slurm"
 
     def __init__(
@@ -75,7 +75,7 @@ class SlurmTask(AsyncAgentExecutorMixin, PythonTask[SlurmRemoteScript]):
         }
 
 
-class SlurmShellTask(AsyncAgentExecutorMixin, PythonTask[Slurm]):
+class SlurmShellTask(AsyncConnectorExecutorMixin, PythonTask[Slurm]):
     _TASK_TYPE = "slurm"
 
     def __init__(

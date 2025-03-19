@@ -10,6 +10,6 @@ This package contains things that are useful when extending Flytekit.
    DataServiceTask
 """
 
-from .agent import DataServiceAgent  # noqa: F401
+from .connector import DataServiceConnector  # noqa: F401
 from .sensor import CleanupSensor  # noqa: F401
 from .task import DataServiceConfig, DataServiceTask  # noqa: F401

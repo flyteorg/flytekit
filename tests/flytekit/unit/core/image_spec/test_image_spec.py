@@ -63,7 +63,7 @@ def test_image_spec(mock_image_spec_builder, monkeypatch):
     assert image_spec.entrypoint == ["/bin/bash"]
     assert image_spec.copy == ["/src/file1.txt", "/src", "/src/file2.txt"]
 
-    assert image_spec.image_name() == f"localhost:30001/flytekit:AjLtng9gJfYzLnjbNy70gA"
+    assert image_spec.image_name() == f"localhost:30001/flytekit:{image_spec.tag}"
     ctx = context_manager.FlyteContext.current_context()
     with context_manager.FlyteContextManager.with_context(
         ctx.with_execution_state(ctx.execution_state.with_params(mode=ExecutionState.Mode.TASK_EXECUTION))
@@ -294,3 +294,10 @@ def test_image_spec_same_id_and_tag_with_pip_secret_mounts():
     image_spec_with_pip_secret_mounts = ImageSpec(name="my_image", pip_secret_mounts=[("src", "dst")])
     assert image_spec.id == image_spec_with_pip_secret_mounts.id
     assert image_spec.tag == image_spec_with_pip_secret_mounts.tag
+
+
+def test_image_spec_same_id_and_tag_with_builder():
+    image_spec = ImageSpec(name="my_image")
+    image_spec_with_builder = ImageSpec(name="my_image", builder="envd")
+    assert image_spec.id == image_spec_with_builder.id
+    assert image_spec.tag == image_spec_with_builder.tag
