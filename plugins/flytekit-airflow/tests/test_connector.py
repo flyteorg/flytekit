@@ -7,7 +7,7 @@ from airflow.sensors.bash import BashSensor
 from airflow.sensors.time_sensor import TimeSensor
 from flyteidl.core.execution_pb2 import TaskExecution
 from flytekitplugins.airflow import AirflowObj
-from flytekitplugins.airflow.agent import AirflowAgent, AirflowMetadata
+from flytekitplugins.airflow.connector import AirflowConnector, AirflowMetadata
 
 from flytekit import workflow
 from flytekit.interfaces.cli_identifiers import Identifier
@@ -56,7 +56,7 @@ def test_resource_metadata():
 
 
 @pytest.mark.asyncio
-async def test_airflow_agent():
+async def test_airflow_connector():
     cfg = AirflowObj(
         module="airflow.operators.bash",
         name="BashOperator",
@@ -88,10 +88,10 @@ async def test_airflow_agent():
         custom={"task_config_pkl": jsonpickle.encode(cfg)},
     )
 
-    agent = AirflowAgent()
-    metadata = await agent.create(dummy_template, None)
-    resource = await agent.get(metadata)
+    connector = AirflowConnector()
+    metadata = await connector.create(dummy_template, None)
+    resource = await connector.get(metadata)
     assert resource.phase == TaskExecution.SUCCEEDED
     assert resource.message is None
-    res = await agent.delete(metadata)
+    res = await connector.delete(metadata)
     assert res is None

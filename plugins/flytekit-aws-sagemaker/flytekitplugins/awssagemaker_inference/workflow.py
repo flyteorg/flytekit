@@ -70,7 +70,7 @@ def create_sagemaker_deployment(
     :param endpoint_input_types: Mapping of SageMaker endpoint inputs to their types.
     :param region: The region for SageMaker API calls.
     :param region_at_runtime: Set this to True if you want to provide the region at runtime.
-    :param idempotence_token: Set this to False if you don't want the agent to automatically append a token/hash to the deployment names.
+    :param idempotence_token: Set this to False if you don't want the connector to automatically append a token/hash to the deployment names.
     """
     if not any((region, region_at_runtime)):
         raise ValueError("Region parameter is required.")
