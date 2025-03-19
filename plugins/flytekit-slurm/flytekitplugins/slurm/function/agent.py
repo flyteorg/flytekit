@@ -93,8 +93,6 @@ class SlurmFunctionAgent(AsyncAgentBase):
         conn = await self._get_or_create_ssh_connection(ssh_config)
         job_res = await conn.run(f"scontrol --json show job {resource_meta.job_id}", check=True)
         job_info = json.loads(job_res.stdout)["jobs"][0]
-        if resource_meta.job_id != str(job_info["job_id"]):
-            raise ValueError(f"Mismatch in job IDs: expected {resource_meta.job_id}, but got {job_info['job_id']}")
 
         # Determine the current flyte phase from Slurm job state
         job_state = job_info["job_state"][0].strip().lower()
@@ -103,16 +101,16 @@ class SlurmFunctionAgent(AsyncAgentBase):
         # Read stdout of the Slurm job
         msg = ""
         async with conn.start_sftp_client() as sftp:
-            with tempfile.NamedTemporaryFile("w") as f:
+            with tempfile.NamedTemporaryFile("w+") as f:
                 try:
                     await sftp.get(job_info["standard_output"], f.name)
-                except SFTPNoSuchFile:
-                    logger.debug("Standard output file path doesn't exist on the Slurm cluster.")
 
-                # Remove duplicated logs!
-                with open(f.name, "r") as f2:
-                    msg = f2.read()
-                    logger.info(f">>> slurm stdout <<<\n{msg}")
+                    msg = f.read()
+                    logger.info(f"[SLURM STDOUT] {msg}")
+                    raise SFTPNoSuchFile(reason="test")
+                except SFTPNoSuchFile as e:
+                    logger.debug("Standard output file path doesn't exist on the Slurm cluster.")
+                    raise RuntimeError("Standard output file path doesn't exist on the Slurm cluster.") from e
 
         return Resource(phase=cur_phase, message=msg)
 
