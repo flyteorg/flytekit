@@ -1,10 +1,13 @@
+import datetime
+from typing import Optional, Union
+
 from flytekit import FlyteContextManager
 from flytekit.sensor.base_sensor import BaseSensor
 
 
 class FileSensor(BaseSensor):
-    def __init__(self, name: str, **kwargs):
-        super().__init__(name=name, **kwargs)
+    def __init__(self, name: str, timeout: Optional[Union[datetime.timedelta, int]] = None, **kwargs):
+        super().__init__(name=name, timeout=timeout, **kwargs)
 
     async def poke(self, path: str) -> bool:
         file_access = FlyteContextManager.current_context().file_access

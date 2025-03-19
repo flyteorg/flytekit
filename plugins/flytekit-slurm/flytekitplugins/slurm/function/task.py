@@ -4,7 +4,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from flytekit import FlyteContextManager, PythonFunctionTask
 from flytekit.configuration import SerializationSettings
 from flytekit.extend import TaskPlugins
-from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
+from flytekit.extend.backend.base_connector import AsyncConnectorExecutorMixin
 from flytekit.image_spec import ImageSpec
 
 
@@ -37,7 +37,7 @@ class SlurmFunction(object):
             self.sbatch_conf = {}
 
 
-class SlurmFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[SlurmFunction]):
+class SlurmFunctionTask(AsyncConnectorExecutorMixin, PythonFunctionTask[SlurmFunction]):
     """
     Actual Plugin that transforms the local python code for execution within a slurm context...
     """
@@ -69,8 +69,8 @@ class SlurmFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[SlurmFunctio
     def execute(self, **kwargs) -> Any:
         ctx = FlyteContextManager.current_context()
         if ctx.execution_state and ctx.execution_state.is_local_execution():
-            # Mimic the propeller's behavior in local agent test
-            return AsyncAgentExecutorMixin.execute(self, **kwargs)
+            # Mimic the propeller's behavior in local connector test
+            return AsyncConnectorExecutorMixin.execute(self, **kwargs)
         else:
             # Execute the task with a direct python function call
             return PythonFunctionTask.execute(self, **kwargs)

@@ -5,7 +5,8 @@ from typing import Dict, List, Optional, Tuple, Union
 
 from asyncssh import SSHClientConnection
 
-from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource, ResourceMeta
+from flytekit import logger
+from flytekit.extend.backend.base_connector import AsyncConnectorBase, ConnectorRegistry, Resource, ResourceMeta
 from flytekit.extend.backend.utils import convert_to_flyte_phase
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
@@ -32,14 +33,23 @@ class SlurmJobMetadata(ResourceMeta):
     ssh_config: Dict[str, Union[str, List[str], Tuple[str, ...]]]
 
 
-class SlurmFunctionAgent(AsyncAgentBase):
-    name = "Slurm Function Agent"
+@dataclass
+class SlurmCluster:
+    host: str
+    username: Optional[str] = None
+
+    def __hash__(self):
+        return hash((self.host, self.username))
+
+
+class SlurmFunctionConnector(AsyncConnectorBase):
+    name = "Slurm Function Connector"
 
     # SSH connection pool for multi-host environment
     slurm_cluster_to_ssh_conn: Dict[SlurmCluster, SSHClientConnection] = {}
 
     def __init__(self) -> None:
-        super(SlurmFunctionAgent, self).__init__(task_type_name="slurm_fn", metadata_type=SlurmJobMetadata)
+        super(SlurmFunctionConnector, self).__init__(task_type_name="slurm_fn", metadata_type=SlurmJobMetadata)
 
     async def create(
         self,
@@ -149,4 +159,4 @@ def _get_sbatch_cmd_and_script(
     return cmd, script
 
 
-AgentRegistry.register(SlurmFunctionAgent())
+ConnectorRegistry.register(SlurmFunctionConnector())

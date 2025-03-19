@@ -4,7 +4,7 @@ from unittest import mock
 import pytest
 from flyteidl.core.execution_pb2 import TaskExecution
 
-from flytekit.extend.backend.base_agent import AgentRegistry
+from flytekit.extend.backend.base_connector import ConnectorRegistry
 from flytekit.interfaces.cli_identifiers import Identifier
 from flytekit.models import literals
 from flytekit.models.core.identifier import ResourceType
@@ -21,8 +21,8 @@ async def mock_acreate(*args, **kwargs) -> str:
 
 
 @pytest.mark.asyncio
-async def test_chatgpt_agent():
-    agent = AgentRegistry.get_agent("chatgpt")
+async def test_chatgpt_connector():
+    connector = ConnectorRegistry.get_connector("chatgpt")
     task_id = Identifier(
         resource_type=ResourceType.TASK, project="project", domain="domain", name="name", version="version"
     )
@@ -58,13 +58,19 @@ async def test_chatgpt_agent():
         },
     )
     message = "mocked_message"
-    mocked_token = "mocked_openai_api_key"
-    mocked_context = mock.patch("flytekit.current_context", autospec=True).start()
-    mocked_context.return_value.secrets.get.return_value = mocked_token
 
-    with mock.patch("openai.resources.chat.completions.AsyncCompletions.create", new=mock_acreate):
-        # Directly await the coroutine without using asyncio.run
-        response = await agent.do(tmp, task_inputs)
+    # Create a more specific mock for the context
+    mock_context = mock.MagicMock()
+    mock_secrets = mock.MagicMock()
+    # Return a string directly instead of a MagicMock
+    mock_secrets.get.return_value = "mocked_openai_api_key"
+    mock_context.secrets = mock_secrets
+
+    # Patch the current_context function to return our specific mock
+    with mock.patch("flytekit.FlyteContextManager.current_context", return_value=mock_context):
+        with mock.patch("openai.resources.chat.completions.AsyncCompletions.create", new=mock_acreate):
+            # Directly await the coroutine without using asyncio.run
+            response = await connector.do(tmp, task_inputs)
 
     assert response.phase == TaskExecution.SUCCEEDED
     assert response.outputs == {"o0": message}

@@ -478,7 +478,6 @@ class DefaultImageBuilder(ImageSpecBuilder):
 
             command = [
                 "docker",
-                "image",
                 "build",
                 "--tag",
                 f"{image_spec.image_name()}",

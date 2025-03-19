@@ -8,7 +8,7 @@ from flytekit import Resources, kwtypes, logger
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.interface import Interface
-from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
+from flytekit.extend.backend.base_connector import AsyncConnectorExecutorMixin
 
 
 @dataclass
@@ -26,7 +26,7 @@ class DataServiceConfig(object):
     Cluster: Optional[str] = None
 
 
-class DataServiceTask(AsyncAgentExecutorMixin, PythonTask[DataServiceConfig]):
+class DataServiceTask(AsyncConnectorExecutorMixin, PythonTask[DataServiceConfig]):
     _TASK_TYPE = "dataservicetask"
 
     def __init__(

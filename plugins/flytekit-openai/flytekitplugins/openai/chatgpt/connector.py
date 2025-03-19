@@ -6,8 +6,8 @@ from flyteidl.core.execution_pb2 import TaskExecution
 
 from flytekit import FlyteContextManager, lazy_module
 from flytekit.core.type_engine import TypeEngine
-from flytekit.extend.backend.base_agent import AgentRegistry, Resource, SyncAgentBase
-from flytekit.extend.backend.utils import get_agent_secret
+from flytekit.extend.backend.base_connector import ConnectorRegistry, Resource, SyncConnectorBase
+from flytekit.extend.backend.utils import get_connector_secret
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
@@ -17,8 +17,8 @@ TIMEOUT_SECONDS = 10
 OPENAI_API_KEY = "FLYTE_OPENAI_API_KEY"
 
 
-class ChatGPTAgent(SyncAgentBase):
-    name = "ChatGPT Agent"
+class ChatGPTConnector(SyncConnectorBase):
+    name = "ChatGPT Connector"
 
     def __init__(self):
         super().__init__(task_type_name="chatgpt")
@@ -37,7 +37,7 @@ class ChatGPTAgent(SyncAgentBase):
         custom["chatgpt_config"]["messages"] = [{"role": "user", "content": message}]
         client = openai.AsyncOpenAI(
             organization=custom["openai_organization"],
-            api_key=get_agent_secret(secret_key=OPENAI_API_KEY),
+            api_key=get_connector_secret(secret_key=OPENAI_API_KEY),
         )
 
         logger = logging.getLogger("httpx")
@@ -50,4 +50,4 @@ class ChatGPTAgent(SyncAgentBase):
         return Resource(phase=TaskExecution.SUCCEEDED, outputs=outputs)
 
 
-AgentRegistry.register(ChatGPTAgent())
+ConnectorRegistry.register(ChatGPTConnector())
