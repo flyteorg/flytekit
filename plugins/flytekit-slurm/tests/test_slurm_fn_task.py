@@ -5,7 +5,7 @@ import flytekit
 from flytekit import StructuredDataset, StructuredDatasetTransformerEngine, task, ImageSpec
 from flytekit.configuration import Image, ImageConfig, SerializationSettings, FastSerializationSettings, DefaultImages
 from flytekit.core.context_manager import ExecutionParameters, FlyteContextManager, ExecutionState
-from flytekitplugins.slurm import SlurmFunction
+from flytekitplugins.slurm import SlurmFunctionConfig
 
 
 def test_slurm_task():
@@ -19,12 +19,12 @@ def test_slurm_task():
 
     @task(
     # container_image=image,
-    task_config=SlurmFunction(
+    task_config=SlurmFunctionConfig(
         ssh_config={
             "host": "your-slurm-host",
             "username": "ubuntu",
         },
-        sbatch_conf={
+        sbatch_config={
             "partition": "debug",
             "job-name": "tiny-slurm",
             "output": "/home/ubuntu/fn_task.log"
@@ -37,7 +37,7 @@ def test_slurm_task():
 
     assert plus_one.task_config is not None
     assert plus_one.task_config.ssh_config == {"host": "your-slurm-host", "username": "ubuntu"}
-    assert plus_one.task_config.sbatch_conf == {"partition": "debug", "job-name": "tiny-slurm", "output": "/home/ubuntu/fn_task.log"}
+    assert plus_one.task_config.sbatch_config == {"partition": "debug", "job-name": "tiny-slurm", "output": "/home/ubuntu/fn_task.log"}
     assert plus_one.task_config.script == script_file
 
     default_img = Image(name="default", fqn="test", tag="tag")
@@ -51,5 +51,5 @@ def test_slurm_task():
 
     retrieved_settings = plus_one.get_custom(settings)
     assert retrieved_settings["ssh_config"] == {"host": "your-slurm-host", "username": "ubuntu"}
-    assert retrieved_settings["sbatch_conf"] == {"partition": "debug", "job-name": "tiny-slurm", "output": "/home/ubuntu/fn_task.log"}
+    assert retrieved_settings["sbatch_config"] == {"partition": "debug", "job-name": "tiny-slurm", "output": "/home/ubuntu/fn_task.log"}
     assert retrieved_settings["script"] == script_file
