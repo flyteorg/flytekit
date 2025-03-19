@@ -117,7 +117,6 @@ class SlurmScriptAgent(AsyncAgentBase):
 
                     msg = f.read()
                     logger.info(f"[SLURM STDOUT] {msg}")
-                    raise SFTPNoSuchFile(reason="test")
                 except SFTPNoSuchFile as e:
                     logger.debug("Standard output file path doesn't exist on the Slurm cluster.")
                     raise RuntimeError("Standard output file path doesn't exist on the Slurm cluster.") from e
