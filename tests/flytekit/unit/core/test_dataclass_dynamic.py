@@ -73,22 +73,11 @@ def generate_int() -> int:
     return 42
 
 
-@task
-def check_int(o: int):
-    assert o == 42
-
-
 def test_simple_object_yee():
     @dynamic
     def my_dynamic():
         result = generate_result()
         n = check_result(obj=result)
-        n.with_overrides(limits=Resources(cpu="3", mem="500Mi"))
-
-    @dynamic
-    def my_dynamic2():
-        result = generate_int()
-        n = check_int(o=result)
         n.with_overrides(limits=Resources(cpu="3", mem="500Mi"))
 
     my_dynamic()
