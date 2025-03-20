@@ -12,7 +12,7 @@ from flytekit.types.file import FlyteFile
 
 
 @dataclass
-class Slurm(object):
+class SlurmConfig(object):
     """
     Configure Slurm settings. Note that we focus on sbatch command now.
 
@@ -22,22 +22,22 @@ class Slurm(object):
     Attributes:
         ssh_config (Dict[str, Any]): Options of SSH client connection. For available options, please refer to
             <newly-added-ssh-utils-file>.
-        sbatch_conf (Optional[Dict[str, str]]): Options of sbatch command. For available options, please refer to
+        sbatch_config (Optional[Dict[str, str]]): Options of sbatch command. For available options, please refer to
             https://slurm.schedmd.com/sbatch.html.
         batch_script_args (Optional[List[str]]): Additional args for the batch script on Slurm cluster.
     """
 
     ssh_config: Dict[str, Any]
-    sbatch_conf: Optional[Dict[str, str]] = None
+    sbatch_config: Optional[Dict[str, str]] = None
     batch_script_args: Optional[List[str]] = None
 
     def __post_init__(self):
-        if self.sbatch_conf is None:
-            self.sbatch_conf = {}
+        if self.sbatch_config is None:
+            self.sbatch_config = {}
 
 
 @dataclass
-class SlurmRemoteScript(Slurm):
+class SlurmScriptConfig(SlurmConfig):
     """Encounter collision if Slurm is shared btw SlurmTask and SlurmShellTask."""
 
     batch_script_path: str = field(default=None)
@@ -48,13 +48,13 @@ class SlurmRemoteScript(Slurm):
             raise ValueError("batch_script_path must be provided")
 
 
-class SlurmTask(AsyncConnectorExecutorMixin, PythonTask[SlurmRemoteScript]):
+class SlurmTask(AsyncConnectorExecutorMixin, PythonTask[SlurmScriptConfig]):
     _TASK_TYPE = "slurm"
 
     def __init__(
         self,
         name: str,
-        task_config: SlurmRemoteScript,
+        task_config: SlurmScriptConfig,
         **kwargs,
     ):
         super(SlurmTask, self).__init__(
@@ -71,17 +71,17 @@ class SlurmTask(AsyncConnectorExecutorMixin, PythonTask[SlurmRemoteScript]):
             "ssh_config": self.task_config.ssh_config,
             "batch_script_path": self.task_config.batch_script_path,
             "batch_script_args": self.task_config.batch_script_args,
-            "sbatch_conf": self.task_config.sbatch_conf,
+            "sbatch_config": self.task_config.sbatch_config,
         }
 
 
-class SlurmShellTask(AsyncConnectorExecutorMixin, PythonTask[Slurm]):
+class SlurmShellTask(AsyncConnectorExecutorMixin, PythonTask[SlurmConfig]):
     _TASK_TYPE = "slurm"
 
     def __init__(
         self,
         name: str,
-        task_config: Slurm,
+        task_config: SlurmConfig,
         script: str,
         inputs: Optional[Dict[str, Type]] = None,
         output_locs: Optional[List[OutputLocation]] = None,
@@ -121,7 +121,7 @@ class SlurmShellTask(AsyncConnectorExecutorMixin, PythonTask[Slurm]):
         return {
             "ssh_config": self.task_config.ssh_config,
             "batch_script_args": self.task_config.batch_script_args,
-            "sbatch_conf": self.task_config.sbatch_conf,
+            "sbatch_config": self.task_config.sbatch_config,
             "script": self._script,
             "python_input_types": self._inputs,
             "output_locs": self._output_locs,
@@ -132,5 +132,5 @@ class SlurmShellTask(AsyncConnectorExecutorMixin, PythonTask[Slurm]):
         return self._script
 
 
-TaskPlugins.register_pythontask_plugin(SlurmRemoteScript, SlurmTask)
-TaskPlugins.register_pythontask_plugin(Slurm, SlurmShellTask)
+TaskPlugins.register_pythontask_plugin(SlurmScriptConfig, SlurmTask)
+TaskPlugins.register_pythontask_plugin(SlurmConfig, SlurmShellTask)
