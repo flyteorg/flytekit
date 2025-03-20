@@ -319,7 +319,7 @@ def test_directory_guess():
     assert fft.extension() == ""
 
 
-@mock.patch("obstore.fsspec.FsspecStore._ls")
+@mock.patch("obstore.fsspec.FsspecStore.listdir")
 @mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_data")
 def test_list_dir(mock_get_data, mock_ls):
     remote_dir = "s3://test-flytedir"
