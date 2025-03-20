@@ -140,6 +140,7 @@ class TaskMetadata(object):
     pod_template_name: Optional[str] = None
     generates_deck: bool = False
     is_eager: bool = False
+    execution_mode: "PythonFunctionTask.ExecutionBehavior" = None
 
     def __post_init__(self):
         if self.timeout:
@@ -155,6 +156,10 @@ class TaskMetadata(object):
             raise ValueError(
                 f"Cache ignore input vars are specified ``cache_ignore_input_vars={self.cache_ignore_input_vars}`` but ``cache`` is not enabled."
             )
+        if self.execution_mode is None:
+            from flytekit.core.python_function_task import PythonFunctionTask
+
+            self.execution_mode = PythonFunctionTask.ExecutionBehavior.DEFAULT
 
     @property
     def retry_strategy(self) -> _literal_models.RetryStrategy:
@@ -179,6 +184,7 @@ class TaskMetadata(object):
             cache_serializable=self.cache_serialize,
             generates_deck=self.generates_deck,
             pod_template_name=self.pod_template_name,
+            execution_mode=self.execution_mode,
             cache_ignore_input_vars=self.cache_ignore_input_vars,
             is_eager=self.is_eager,
         )

@@ -397,6 +397,7 @@ def task(
             interruptible=interruptible,
             deprecated=deprecated,
             timeout=timeout,
+            execution_mode=execution_mode,
         )
 
         if inspect.iscoroutinefunction(fn):
