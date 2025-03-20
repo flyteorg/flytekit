@@ -32,8 +32,10 @@ class XarrayZarrTypeTransformer(TypeTransformer[xr.Dataset]):
         expected: LiteralType,
     ) -> Literal:
         remote_dir = ctx.file_access.get_random_remote_path("data.zarr")
-        # this actually works if there is a dask cluster! Is this safe in geneal?
-        with Client():
+        # Opening with the dask client will attach the client eliminating the
+        # need for users to connect to the client if a task tasks a xr.Dataset
+        # type.
+        with Client(timeout=120):
             python_val.to_zarr(remote_dir, mode="w")
         return Literal(scalar=Scalar(blob=Blob(uri=remote_dir, metadata=BlobMetadata(type=self._TYPE_INFO))))
 
@@ -72,7 +74,9 @@ class XarrayDaZarrTypeTransformer(TypeTransformer[xr.DataArray]):
         expected: LiteralType,
     ) -> Literal:
         remote_dir = ctx.file_access.get_random_remote_path("data.zarr")
-        # this actually works if there is a dask cluster! Is this safe in geneal?
+        # Opening with the dask client will attach the client eliminating the
+        # need for users to connect to the client if a task tasks a xr.Dataset
+        # type.
         with Client(timeout=120):
             python_val.to_zarr(remote_dir, mode="w")
         return Literal(scalar=Scalar(blob=Blob(uri=remote_dir, metadata=BlobMetadata(type=self._TYPE_INFO))))
