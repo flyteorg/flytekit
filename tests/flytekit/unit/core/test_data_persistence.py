@@ -9,7 +9,7 @@ import tempfile
 import fsspec
 import mock
 import pytest
-from azure.identity import ClientSecretCredential, DefaultAzureCredential
+from botocore.parsers import base64
 from mock import AsyncMock
 
 from flytekit.configuration import Config
@@ -155,14 +155,17 @@ def test_generate_new_custom_path():
 
 
 def test_initialise_azure_file_provider_with_account_key():
+    account_key = "accountkey"
+    account_key_base64 = base64.b64encode(account_key.encode()).decode()
+
     with mock.patch.dict(
         os.environ,
-        {"FLYTE_AZURE_STORAGE_ACCOUNT_NAME": "accountname", "FLYTE_AZURE_STORAGE_ACCOUNT_KEY": "accountkey"},
+        {"FLYTE_AZURE_STORAGE_ACCOUNT_NAME": "accountname", "FLYTE_AZURE_STORAGE_ACCOUNT_KEY": account_key_base64},
     ):
         fp = FileAccessProvider("/tmp", "abfs://container/path/within/container")
-        assert fp.get_filesystem().account_name == "accountname"
-        assert fp.get_filesystem().account_key == "accountkey"
-        assert fp.get_filesystem().sync_credential is None
+
+        assert fp.get_filesystem().config["account_name"] == "accountname"
+        assert fp.get_filesystem().config["account_key"] == account_key_base64
 
 
 def test_initialise_azure_file_provider_with_service_principal():
@@ -176,11 +179,11 @@ def test_initialise_azure_file_provider_with_service_principal():
         },
     ):
         fp = FileAccessProvider("/tmp", "abfs://container/path/within/container")
-        assert fp.get_filesystem().account_name == "accountname"
-        assert isinstance(fp.get_filesystem().sync_credential, ClientSecretCredential)
-        assert fp.get_filesystem().client_secret == "clientsecret"
-        assert fp.get_filesystem().client_id == "clientid"
-        assert fp.get_filesystem().tenant_id == "tenantid"
+
+        assert fp.get_filesystem().config["account_name"] == "accountname"
+        assert fp.get_filesystem().config["client_secret"] == "clientsecret"
+        assert fp.get_filesystem().config["client_id"] == "clientid"
+        assert fp.get_filesystem().config["tenant_id"] == "tenantid"
 
 
 def test_initialise_azure_file_provider_with_default_credential():
@@ -192,8 +195,8 @@ def test_initialise_azure_file_provider_with_default_credential():
             },
     ):
         fp = FileAccessProvider("/tmp", "abfs://container/path/within/container")
-        assert fp.get_filesystem().account_name == "accountname"
-        assert isinstance(fp.get_filesystem().sync_credential, DefaultAzureCredential)
+
+        assert fp.get_filesystem().config["account_name"] == "accountname"
 
 
 def test_get_file_system():
