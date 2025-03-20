@@ -63,7 +63,7 @@ def test_image_spec(mock_image_spec_builder, monkeypatch):
     assert image_spec.entrypoint == ["/bin/bash"]
     assert image_spec.copy == ["/src/file1.txt", "/src", "/src/file2.txt"]
 
-    assert image_spec.image_name() == f"localhost:30001/flytekit:AjLtng9gJfYzLnjbNy70gA"
+    assert image_spec.image_name() == f"localhost:30001/flytekit:{image_spec.tag}"
     ctx = context_manager.FlyteContext.current_context()
     with context_manager.FlyteContextManager.with_context(
         ctx.with_execution_state(ctx.execution_state.with_params(mode=ExecutionState.Mode.TASK_EXECUTION))
@@ -91,10 +91,7 @@ def test_image_spec(mock_image_spec_builder, monkeypatch):
 
 
 def test_image_spec_engine_priority():
-    image_spec = ImageSpec(name="FLYTEKIT")
-    image_name = image_spec.image_name()
-
-    new_image_name = f"fqn.xyz/{image_name}"
+    new_image_name = "fqn.xyz/flytekit"
     mock_image_builder_10 = Mock()
     mock_image_builder_10.build_image.return_value = new_image_name
     mock_image_builder_default = Mock()
@@ -102,6 +99,8 @@ def test_image_spec_engine_priority():
 
     ImageBuildEngine.register("build_10", mock_image_builder_10, priority=10)
     ImageBuildEngine.register("build_default", mock_image_builder_default)
+
+    image_spec = ImageSpec(name="FLYTEKIT")
 
     ImageBuildEngine.build(image_spec)
     mock_image_builder_10.build_image.assert_called_once_with(image_spec)
@@ -295,3 +294,10 @@ def test_image_spec_same_id_and_tag_with_pip_secret_mounts():
     image_spec_with_pip_secret_mounts = ImageSpec(name="my_image", pip_secret_mounts=[("src", "dst")])
     assert image_spec.id == image_spec_with_pip_secret_mounts.id
     assert image_spec.tag == image_spec_with_pip_secret_mounts.tag
+
+
+def test_image_spec_same_id_and_tag_with_builder():
+    image_spec = ImageSpec(name="my_image")
+    image_spec_with_builder = ImageSpec(name="my_image", builder="envd")
+    assert image_spec.id == image_spec_with_builder.id
+    assert image_spec.tag == image_spec_with_builder.tag

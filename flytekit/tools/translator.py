@@ -143,9 +143,9 @@ def get_serializable_task(
                 if isinstance(e.container_image, ImageSpec):
                     if settings.image_config.images is None:
                         settings.image_config = ImageConfig.create_from(settings.image_config.default_image)
-                    settings.image_config.images.append(
-                        Image.look_up_image_info(e.container_image.id, e.get_image(settings))
-                    )
+                    img = Image.look_up_image_info(e.container_image.id, e.get_image(settings))
+                    if img not in settings.image_config.images:
+                        settings.image_config.images.append(img)
 
         # In case of Dynamic tasks, we want to pass the serialization context, so that they can reconstruct the state
         # from the serialization context. This is passed through an environment variable, that is read from
@@ -661,6 +661,7 @@ def get_serializable_array_node_map_task(
         min_success_ratio=entity.min_success_ratio,
         execution_mode=entity.execution_mode,
         is_original_sub_node_interface=entity.is_original_sub_node_interface,
+        bound_inputs=entity.bound_inputs,
     )
 
 

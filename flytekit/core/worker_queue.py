@@ -14,11 +14,13 @@ from enum import Enum
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.constants import EAGER_ROOT_ENV_NAME, EAGER_TAG_KEY, EAGER_TAG_ROOT_KEY
+from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.options import Options
 from flytekit.core.reference_entity import ReferenceEntity
 from flytekit.core.utils import _dnsify
 from flytekit.core.workflow import WorkflowBase
+from flytekit.deck.deck import Deck
 from flytekit.exceptions.system import FlyteSystemException
 from flytekit.loggers import developer_logger, logger
 from flytekit.models.common import Labels
@@ -163,7 +165,14 @@ class Controller:
     in a loop similar to a controller loop in a k8s operator.
     """
 
-    def __init__(self, remote: FlyteRemote, ss: SerializationSettings, tag: str, root_tag: str, exec_prefix: str):
+    def __init__(
+        self,
+        remote: FlyteRemote,
+        ss: SerializationSettings,
+        tag: str,
+        root_tag: str,
+        exec_prefix: str,
+    ):
         logger.debug(
             f"Creating Controller for eager execution with {remote.config.platform.endpoint},"
             f" {tag=}, {root_tag=}, {exec_prefix=} and ss: {ss}"
@@ -174,7 +183,6 @@ class Controller:
         self.ss = ss
         self.exec_prefix = exec_prefix
         self.entries_lock = threading.Lock()
-        from flytekit.core.context_manager import FlyteContextManager
 
         # Import this to ensure context is loaded... python is reloading this module because its in a different thread
         FlyteContextManager.current_context()
@@ -314,6 +322,13 @@ class Controller:
             # Take the lock again and apply all the updates
             self._apply_updates(update_items)
 
+            if len(self.entries) > 0:
+                with self.entries_lock:
+                    html = self.render_html()
+                    FlyteContextManager.push_context(self.remote._ctx)
+                    Deck("Eager Executions", html).publish()
+                    FlyteContextManager.pop_context()
+
             # This is a blocking call so we don't hit the API too much.
             time.sleep(2)
 
@@ -383,6 +398,7 @@ class Controller:
                 image_config=self.ss.image_config,
                 options=options,
                 envs=e,
+                serialization_settings=self.ss,
             )
             return wf_exec
         else:
@@ -436,20 +452,19 @@ class Controller:
 
         for entity_name, items_list in self.entries.items():
             for item in items_list:
-                if not item.is_in_terminal_state:
-                    logger.warning(
-                        f"Item for {item.entity.name} with inputs {item.input_kwargs}"
-                        f" isn't ready, skipping for deck rendering..."
-                    )
-                    continue
+                exec_output = ""
+                if item.is_in_terminal_state:
+                    exec_output = item.result if item.result else item.error
+
                 kind = _entity_type(item.entity)
+
                 output = f"{output}\n" + NODE_HTML_TEMPLATE.format(
                     entity_type=kind,
                     entity_name=item.entity.name,
                     execution_name=item.wf_exec.id.name,  # type: ignore[union-attr]
                     url=self.remote.generate_console_url(item.wf_exec),
                     inputs=item.input_kwargs,
-                    outputs=item.result if item.result else item.error,
+                    outputs=exec_output,
                 )
 
         return output
@@ -488,7 +503,6 @@ class Controller:
 
     @classmethod
     def for_sandbox(cls, exec_prefix: typing.Optional[str] = None) -> Controller:
-        from flytekit.core.context_manager import FlyteContextManager
         from flytekit.remote import FlyteRemote
 
         ctx = FlyteContextManager.current_context()

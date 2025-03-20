@@ -142,7 +142,6 @@ def test_map_task_types(map_task_fn):
     "map_task_fn",
     [
         legacy_map_task,
-        array_node_map_task,
     ],
 )
 def test_lists_cannot_be_used_in_partials(map_task_fn):

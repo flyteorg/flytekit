@@ -17,7 +17,7 @@ This package contains things that are useful when extending Flytekit.
 
 from flytekit.configuration import internal as _internal
 
-from .agent import DatabricksAgent
+from .connector import DatabricksConnector
 from .pyspark_transformers import PySparkPipelineModelTransformer
 from .schema import SparkDataFrameSchemaReader, SparkDataFrameSchemaWriter, SparkDataFrameTransformer  # noqa
 from .sd_transformers import ParquetToSparkDecodingHandler, SparkToParquetEncodingHandler

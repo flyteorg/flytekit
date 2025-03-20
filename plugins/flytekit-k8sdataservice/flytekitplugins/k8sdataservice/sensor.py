@@ -29,8 +29,8 @@ class CleanupSensor(BaseSensor):
     async def poke(self, release_name: str, cleanup_data_service: bool, cluster: str) -> bool:
         """poke will delete the graph engine resources based on the user's configuration
         1. This has to be done in the control plane by design. We don't expect any users's running pod to be authn/z to manage resources
-        2. This can not be done in the async agent because the delete callback is only invoked on abortion operation or failure phase.
-           while this makes sense but what we need is a separate task to delete graph engine without complicating the regular async agent flow.
+        2. This can not be done in the async connector because the delete callback is only invoked on abortion operation or failure phase.
+           while this makes sense but what we need is a separate task to delete graph engine without complicating the regular async connector flow.
         3. In the near future, we will add the poking logic on the training job's status. In the initial implementation, we skipped
         it for simplicity. This is also why we use the sensor API to keep forward compatibility
         """

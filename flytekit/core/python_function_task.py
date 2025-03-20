@@ -29,8 +29,7 @@ from enum import Enum
 from typing import Any, Callable, Iterable, List, Optional, Tuple, TypeVar, Union, cast
 
 from flyteidl.core import tasks_pb2
-
-from flytekit.configuration import ImageConfig, SerializationSettings
+from flytekit.configuration import ImageConfig, ImageSpec, SerializationSettings
 from flytekit.core import launch_plan as _annotated_launch_plan
 from flytekit.core.base_task import Task, TaskMetadata, TaskResolverMixin
 from flytekit.core.constants import EAGER_ROOT_ENV_NAME
@@ -43,7 +42,10 @@ from flytekit.core.promise import (
     async_flyte_entity_call_handler,
     translate_inputs_to_literals,
 )
-from flytekit.core.python_auto_container import PythonAutoContainerTask, default_task_resolver
+from flytekit.core.python_auto_container import (
+    PythonAutoContainerTask,
+    default_task_resolver,
+)
 from flytekit.core.tracked_abc import FlyteTrackedABC
 from flytekit.core.tracker import extract_task_module, is_functools_wrapped_module_level, isnested, istestfunction
 from flytekit.core.utils import _dnsify
@@ -473,6 +475,7 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
         node_dependency_hints: Optional[
             Iterable[Union["PythonFunctionTask", "_annotated_launch_plan.LaunchPlan", WorkflowBase]]
         ] = None,
+        enable_deck: bool = True,
         **kwargs,
     ):
         # delete execution mode from kwargs
@@ -492,6 +495,7 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
             PythonFunctionTask.ExecutionBehavior.EAGER,
             task_resolver,
             node_dependency_hints,
+            enable_deck=enable_deck,
             **kwargs,
         )
 
@@ -664,7 +668,9 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
     def get_as_workflow(self):
         from flytekit.core.workflow import ImperativeWorkflow
 
-        cleanup = EagerFailureHandlerTask(name=f"{self.name}-cleanup", inputs=self.python_interface.inputs)
+        cleanup = EagerFailureHandlerTask(
+            name=f"{self.name}-cleanup", container_image=self.container_image, inputs=self.python_interface.inputs
+        )
         wb = ImperativeWorkflow(name=self.name)
 
         input_kwargs = {}
@@ -713,12 +719,19 @@ eager_failure_task_resolver = EagerFailureTaskResolver()
 class EagerFailureHandlerTask(PythonAutoContainerTask, metaclass=FlyteTrackedABC):
     _TASK_TYPE = "eager_failure_handler_task"
 
-    def __init__(self, name: str, inputs: typing.Optional[typing.Dict[str, typing.Type]] = None, **kwargs):
+    def __init__(
+        self,
+        name: str,
+        container_image: Optional[Union[str, ImageSpec]] = None,
+        inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
+        **kwargs,
+    ):
         """ """
         inputs = inputs or {}
         super().__init__(
             task_type=self._TASK_TYPE,
             name=name,
+            container_image=container_image,
             interface=Interface(inputs=inputs, outputs=None),
             task_config=None,
             task_resolver=eager_failure_task_resolver,

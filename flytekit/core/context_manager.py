@@ -158,6 +158,21 @@ class ExecutionParameters(object):
     def builder(self) -> Builder:
         return ExecutionParameters.Builder(current=self)
 
+    def __repr__(self):
+        cp = f" checkpoint={self.checkpoint}," if self._checkpoint else ""
+        return (
+            f"ExecutionParameters(execution_date={self.execution_date},"
+            f" stats={self.stats},"
+            f" tmp_dir={self.working_directory},"
+            f" execution_id={self.execution_id},"
+            f" {cp},"
+            f" decks={self.decks},"
+            f" raw_output_prefix={self.raw_output_prefix},"
+            f" task_id={self.task_id},"
+            f" output_metadata_prefix={self.output_metadata_prefix},"
+            f" enable_deck={self.enable_deck})"
+        )
+
     def __init__(
         self,
         execution_date,
@@ -390,12 +405,6 @@ class SecretsManager(object):
         Retrieves a secret using the resolution order -> Env followed by file. If not found raises a ValueError
         param encode_mode, defines the mode to open files, it can either be "r" to read file, or "rb" to read binary file
         """
-
-        from flytekit.configuration.plugin import get_plugin
-
-        if not get_plugin().secret_requires_group():
-            group, group_version = None, None
-
         env_prefixes = [self._env_prefix]
 
         # During local execution check for the key without a prefix

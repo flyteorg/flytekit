@@ -174,6 +174,19 @@ def test_secret_manager_no_group(monkeypatch):
     assert sec.get_secrets_file(key="ABC") == str(expected_path)
 
 
+def test_secret_no_group_required_with_group(monkeypatch, tmp_path):
+    plugin_mock = Mock()
+    plugin_mock.secret_requires_group.return_value = False
+    mock_global_plugin = {"plugin": plugin_mock}
+    monkeypatch.setattr(flytekit.configuration.plugin, "_GLOBAL_CONFIG", mock_global_plugin)
+
+    cfg = SecretsConfig.auto()
+    sec = SecretsManager(secrets_cfg=cfg)
+    monkeypatch.setenv(f"{cfg.env_prefix}MY-GROUP_V1_ABC", "my-super-secret")
+
+    assert sec.get(key="ABC", group="my-group", group_version="v1") == "my-super-secret"
+
+
 def test_secrets_manager_get_file():
     sec = SecretsManager()
     cfg = SecretsConfig.auto()
@@ -325,3 +338,5 @@ def test_exec_params():
     )
 
     assert ep.task_id.name == "local"
+    ep_str = str(ep)
+    assert ep_str.startswith("ExecutionParameters(")

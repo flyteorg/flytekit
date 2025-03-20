@@ -10,12 +10,13 @@ from abc import ABC, abstractmethod
 from functools import wraps
 from hashlib import sha224 as _sha224
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, cast
 
 from flyteidl.core import tasks_pb2 as _core_task
 
 from flytekit.configuration import SerializationSettings
 from flytekit.core.pod_template import PodTemplate
+from flytekit.core.resources import ResourceSpec, _check_resource_is_singular
 from flytekit.loggers import logger
 
 if TYPE_CHECKING:
@@ -62,27 +63,23 @@ def _dnsify(value: str) -> str:
 
 def _get_container_definition(
     image: str,
+    resource_spec: ResourceSpec,
     command: List[str],
     args: Optional[List[str]] = None,
     data_loading_config: Optional["task_models.DataLoadingConfig"] = None,
-    ephemeral_storage_request: Optional[Union[str, int]] = None,
-    cpu_request: Optional[Union[str, int, float]] = None,
-    gpu_request: Optional[Union[str, int]] = None,
-    memory_request: Optional[Union[str, int]] = None,
-    ephemeral_storage_limit: Optional[Union[str, int]] = None,
-    cpu_limit: Optional[Union[str, int, float]] = None,
-    gpu_limit: Optional[Union[str, int]] = None,
-    memory_limit: Optional[Union[str, int]] = None,
     environment: Optional[Dict[str, str]] = None,
 ) -> "task_models.Container":
-    ephemeral_storage_limit = ephemeral_storage_limit
-    ephemeral_storage_request = ephemeral_storage_request
-    cpu_limit = cpu_limit
-    cpu_request = cpu_request
-    gpu_limit = gpu_limit
-    gpu_request = gpu_request
-    memory_limit = memory_limit
-    memory_request = memory_request
+    limits = _check_resource_is_singular(resource_spec.limits)
+    requests = _check_resource_is_singular(resource_spec.requests)
+
+    ephemeral_storage_limit = limits.ephemeral_storage
+    ephemeral_storage_request = requests.ephemeral_storage
+    cpu_limit = limits.cpu
+    cpu_request = requests.cpu
+    gpu_limit = limits.gpu
+    gpu_request = requests.gpu
+    memory_limit = limits.mem
+    memory_request = requests.mem
 
     from flytekit.models import task as task_models
 
