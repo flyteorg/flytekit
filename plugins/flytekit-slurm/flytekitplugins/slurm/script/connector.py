@@ -4,12 +4,14 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple, Type
 
 from asyncssh import SSHClientConnection
+from asyncssh.sftp import SFTPError
 
 import flytekit
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_connector import AsyncConnectorBase, ConnectorRegistry, Resource, ResourceMeta
 from flytekit.extend.backend.utils import convert_to_flyte_phase
 from flytekit.extras.tasks.shell import OutputLocation, _PythonFStringInterpolizer
+from flytekit.loggers import logger
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
@@ -87,6 +89,17 @@ class SlurmScriptConnector(AsyncConnectorBase):
                 f.flush()
                 async with conn.start_sftp_client() as sftp:
                     await sftp.put(f.name, batch_script_path)
+        else:
+            async with conn.start_sftp_client() as sftp:
+                try:
+                    script_exists = await sftp.exists(batch_script_path)
+                except SFTPError as e:
+                    logger.debug(f"Failed to check if the batch script exists on the Slurm cluster: {e}")
+                    raise RuntimeError("Failed to check if the batch script exists on the Slurm cluster.") from e
+
+            if not script_exists:
+                logger.debug(f"The specified batch script at {batch_script_path} doesn't exist on the Slurm cluster.")
+                raise FileNotFoundError(f"The batch script at {batch_script_path} doesn't exist on the Slurm cluster.")
         res = await conn.run(cmd, check=True)
 
         # Retrieve Slurm job id
