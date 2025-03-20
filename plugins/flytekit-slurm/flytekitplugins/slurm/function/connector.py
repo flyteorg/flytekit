@@ -107,9 +107,8 @@ class SlurmFunctionConnector(AsyncConnectorBase):
 
                     msg = f.read()
                     logger.info(f"[SLURM STDOUT] {msg}")
-                except SFTPNoSuchFile as e:
+                except SFTPNoSuchFile:
                     logger.debug("Standard output file path doesn't exist on the Slurm cluster.")
-                    raise RuntimeError("Standard output file path doesn't exist on the Slurm cluster.") from e
 
         return Resource(phase=cur_phase, message=msg)
 
