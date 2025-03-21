@@ -1,8 +1,5 @@
 import typing
 
-import xarray as xr
-from dask.distributed import Client
-
 from flytekit import (
     Blob,
     BlobMetadata,
@@ -11,8 +8,16 @@ from flytekit import (
     Literal,
     LiteralType,
     Scalar,
+    lazy_module,
 )
 from flytekit.extend import TypeEngine, TypeTransformer
+
+if typing.TYPE_CHECKING:
+    import xarray as xr
+    from dask.distributed import Client
+else:
+    pandas = lazy_module("xarray")
+    pyarrow = lazy_module("dask.distributed")
 
 
 class XarrayZarrTypeTransformer(TypeTransformer[xr.Dataset]):
