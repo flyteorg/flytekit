@@ -1541,7 +1541,6 @@ class FlyteRemote(object):
 
             for k, v in inputs.items():
                 if v is None and entity.interface.inputs.get(k).type.simple == SimpleType.BOOLEAN:
-                    inputs[k] = False
                     v = False
                 if input_flyte_type_map.get(k) is None:
                     raise user_exceptions.FlyteValueException(
