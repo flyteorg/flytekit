@@ -1539,7 +1539,7 @@ def flyte_entity_call_handler(
             else:
                 raise ValueError(f"Received an output when workflow local execution expected None. Received: {result}")
 
-        if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.DYNAMIC_TASK_EXECUTION:
+        if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_DYNAMIC_TASK_EXECUTION:
             return result
 
         if (1 < expected_outputs == len(cast(Tuple[Promise], result))) or (

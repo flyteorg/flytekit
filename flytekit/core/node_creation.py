@@ -138,7 +138,7 @@ def create_node(
     # https://github.com/flyteorg/flytekit/blob/0815345faf0fae5dc26746a43d4bda4cc2cdf830/flytekit/core/python_function_task.py#L262
     elif ctx.execution_state and (
         ctx.execution_state.is_local_execution()
-        or ctx.execution_state.mode == ExecutionState.Mode.DYNAMIC_TASK_EXECUTION
+        or ctx.execution_state.mode == ExecutionState.Mode.LOCAL_DYNAMIC_TASK_EXECUTION
     ):
         if isinstance(entity, RemoteEntity):
             raise AssertionError(f"Remote entities are not yet runnable locally {entity.name}")
