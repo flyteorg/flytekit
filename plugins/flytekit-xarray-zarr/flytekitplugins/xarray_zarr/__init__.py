@@ -1,5 +1,5 @@
 """
-.. currentmodule:: flytekitplugins.geopandas
+.. currentmodule:: flytekitplugins.xarray_zarr
 
 This package contains things that are useful when extending Flytekit.
 
@@ -7,8 +7,8 @@ This package contains things that are useful when extending Flytekit.
    :template: custom.rst
    :toctree: generated/
 
-   GeoPandasDecodingHandler
-   GeoPandasEncodingHandler
+   XarrayDaZarrTypeTransformer
+   XarrayZarrTypeTransformer
 """
 
 from .xarray_transformers import XarrayDaZarrTypeTransformer, XarrayZarrTypeTransformer
