@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from flytekit import map_task
+from flytekit import map
 from typing import  List
 from flytekit import task, workflow
 
@@ -14,7 +14,7 @@ def print_float(my_float: float):
 
 @workflow
 def wf(bm: MyBaseModel = MyBaseModel()):
-    map_task(print_float)(my_float=bm.my_floats)
+    map(print_float)(my_float=bm.my_floats)
 
 if __name__ == "__main__":
     wf()
