@@ -346,7 +346,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
             logger.debug(f"Executing Dynamic workflow, using raw inputs {kwargs}")
             self._create_and_cache_dynamic_workflow()
             if self.execution_mode == self.ExecutionBehavior.DYNAMIC:
-                es = ctx.new_execution_state().with_params(mode=ExecutionState.Mode.DYNAMIC_TASK_EXECUTION)
+                es = ctx.new_execution_state().with_params(mode=ExecutionState.Mode.LOCAL_DYNAMIC_TASK_EXECUTION)
             else:
                 es = cast(ExecutionState, ctx.execution_state)
             with FlyteContextManager.with_context(ctx.with_execution_state(es)):
