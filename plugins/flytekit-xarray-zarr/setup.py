@@ -1,8 +1,8 @@
 from setuptools import setup
 
-PLUGIN_NAME = "xarray_zarr"
+PLUGIN_NAME = "xarray"
 
-microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
+microlib_name = f"flytekitplugins-{PLUGIN_NAME}-zarr"
 
 plugin_requires = ["flytekit>=1.3.0b2,<2.0.0", "xarray", "zarr", "distributed"]
 

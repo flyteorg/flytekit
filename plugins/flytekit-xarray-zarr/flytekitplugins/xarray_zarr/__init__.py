@@ -1,5 +1,5 @@
 """
-.. currentmodule:: flytekitplugins.xarray_zarr
+.. currentmodule:: flytekitplugins.xarray
 
 This package contains things that are useful when extending Flytekit.
 
