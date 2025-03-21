@@ -23,7 +23,7 @@ touch /opt/spark/RELEASE
 
 # Fetch Spark Distribution
 wget https://archive.apache.org/dist/spark/spark-3.5.5/spark-3.5.5-bin-hadoop3.tgz -O spark-dist.tgz
-echo 'ec5ff678136b1ff981e396d1f7b5dfbf399439c5cb853917e8c954723194857607494a89b7e205fce988ec48b1590b5caeae3b18e1b5db1370c0522b256ff376  spark-dist.tgz' | sha512sum --check
+echo 'ec5ff678136b1ff981e396d1f7b5dfbf399439c5cb853917e8c954723194857607494a89b7e205fce988ec48b1590b5caeae3b18e1b5db1370c0522b256ff376  spark-dist.tgz' > spark-dist.tgz.sha512 && sha512sum --check spark-dist.tgz.sha512
 mkdir -p spark-dist
 tar -xvf spark-dist.tgz -C spark-dist --strip-components 1
 
