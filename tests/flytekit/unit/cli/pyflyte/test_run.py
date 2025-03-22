@@ -877,16 +877,16 @@ def test_entity_non_found_in_file():
 def test_remote_task(mock_client, mock_remote):
 
     ctx = FlyteContextManager.current_context()
-    
+
     @task()
     def example_task(flag: bool) -> bool:
         return flag
-        
+
     mock_remote_instance = mock.MagicMock()
     mock_remote.return_value = mock_remote_instance
     mock_remote_instance.context = ctx
     mock_remote_instance._client = mock_client
-    
+
     mock_remote_instance.fetch_task.return_value = example_task
 
     runner = CliRunner()
