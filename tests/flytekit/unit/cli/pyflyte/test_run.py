@@ -29,8 +29,7 @@ from flytekit.remote import FlyteRemote
 from typing import Iterator, List
 from flytekit.types.iterator import JSON
 from flytekit import workflow, LaunchPlan
-import tempfile
-import shutil
+
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.clients.friendly import SynchronousFlyteClient
 
