@@ -29,6 +29,10 @@ from flytekit.remote import FlyteRemote
 from typing import Iterator, List
 from flytekit.types.iterator import JSON
 from flytekit import workflow, LaunchPlan
+import tempfile
+import shutil
+from flytekit.core.context_manager import FlyteContextManager
+from flytekit.clients.friendly import SynchronousFlyteClient
 
 pytest.importorskip("pandas")
 
@@ -867,3 +871,46 @@ def test_entity_non_found_in_file():
     )
     assert result.exit_code == 1
     assert "FlyteEntityNotFoundException: Task/Workflow \'my_wffffff\' not found in module \n\'pyflyte.workflow\'" in result.stdout
+
+@mock.patch("flytekit.configuration.plugin.FlyteRemote", spec=FlyteRemote)
+@mock.patch("flytekit.clients.friendly.SynchronousFlyteClient", spec=SynchronousFlyteClient)
+def test_remote_task(mock_client, mock_remote):
+
+    ctx = FlyteContextManager.current_context()
+    
+    @task()
+    def example_task(flag: bool) -> bool:
+        return flag
+        
+    mock_remote_instance = mock.MagicMock()
+    mock_remote.return_value = mock_remote_instance
+    mock_remote_instance.context = ctx
+    mock_remote_instance._client = mock_client
+    
+    mock_remote_instance.fetch_task.return_value = example_task
+
+    runner = CliRunner()
+
+    result_1 = runner.invoke(
+        pyflyte.main,
+        [
+            "run", "remote-task",
+            "some_module.example_task",
+            "--no-flag"
+        ],
+        catch_exceptions=False,
+    )
+
+    assert result_1.exit_code == 0
+
+    result_2 = runner.invoke(
+        pyflyte.main,
+        [
+            "run", "remote-task",
+            "some_module.example_task",
+            "--flag"
+        ],
+        catch_exceptions=False,
+    )
+
+    assert result_2.exit_code == 0
