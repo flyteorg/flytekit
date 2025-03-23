@@ -41,6 +41,8 @@ class GenericSparkConf(object):
 
 class GenericSparkTask(PythonFunctionTask[GenericSparkConf]):
 
+    _SPARK_TASK_TYPE = "spark"
+
     def __init__(
         self,
         task_config: GenericSparkConf,
@@ -68,16 +70,16 @@ class GenericSparkTask(PythonFunctionTask[GenericSparkConf]):
             application_file=f"local://" + self.task_config.applications_path,
             executor_path=settings.python_interpreter,
             main_class=self.task_config.main_class,
-            spark_type=self.task_config.spark_type.value(),
+            spark_type=SparkType.PYTHON,
         )
         return MessageToDict(job.to_flyte_idl())
 
-    def get_command(self, settings: SerializationSettings) -> List[str]:
-        args = []
-        for k, _ in self.interface.inputs.items():
-            args.append(f"--{k}")
-            args.append(f"{{.Inputs.{k}}}")
-        return args
+    # def get_command(self, settings: SerializationSettings) -> List[str]:
+    #     args = []
+    #     for k, _ in self.interface.inputs.items():
+    #         args.append(f"--{k}")
+    #         args.append(f"{{.Inputs.{k}}}")
+    #     return args
 
     def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
         import pyspark as _pyspark
