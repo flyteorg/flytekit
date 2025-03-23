@@ -7,6 +7,7 @@ from typing import Dict, List, Optional, Tuple, Union
 from asyncssh import SSHClientConnection
 from asyncssh.sftp import SFTPNoSuchFile
 
+from flytekit import logger
 from flytekit.extend.backend.base_connector import AsyncConnectorBase, ConnectorRegistry, Resource, ResourceMeta
 from flytekit.extend.backend.utils import convert_to_flyte_phase
 from flytekit.models.literals import LiteralMap
@@ -79,8 +80,9 @@ class SlurmFunctionConnector(AsyncConnectorBase):
         return SlurmJobMetadata(job_id=job_id, ssh_config=ssh_config)
 
     async def get(self, resource_meta: SlurmJobMetadata, **kwargs) -> Resource:
-        ssh_config = resource_meta.ssh_config
-        conn = await self._get_or_create_ssh_connection(ssh_config)
+        conn = await get_ssh_conn(
+            ssh_config=resource_meta.ssh_config, slurm_cluster_to_ssh_conn=self.slurm_cluster_to_ssh_conn
+        )
         job_res = await conn.run(f"scontrol --json show job {resource_meta.job_id}", check=True)
         job_info = json.loads(job_res.stdout)["jobs"][0]
 
