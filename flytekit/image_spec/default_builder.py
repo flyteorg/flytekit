@@ -454,6 +454,7 @@ class DefaultImageBuilder(ImageSpecBuilder):
         # "registry_config",
         "commands",
         "copy",
+        "builder_config",
     }
 
     def build_image(self, image_spec: ImageSpec) -> str:
