@@ -417,8 +417,8 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
         ENTRYPOINT=entrypoint,
         RUN_COMMANDS=run_commands,
         EXTRA_COPY_CMDS=extra_copy_cmds,
-        UV_IMAGE=image_spec.builder_config["uv_image"],
-        MICROMAMBA_IMAGE=image_spec.builder_config["micromamba_image"],
+        UV_IMAGE=image_spec.builder_config.get("uv_image"),
+        MICROMAMBA_IMAGE=image_spec.builder_config.get("micromamba_image"),
     )
 
     dockerfile_path = tmp_dir / "Dockerfile"

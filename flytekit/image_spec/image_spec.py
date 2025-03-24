@@ -96,12 +96,7 @@ class ImageSpec:
     source_copy_mode: Optional[CopyFileDetection] = None
     copy: Optional[List[str]] = None
     python_exec: Optional[str] = None
-    builder_config: Optional[typing.Dict[str, str]] = (
-        {
-            "uv_image": "ghcr.io/astral-sh/uv:0.5.1",
-            "micromamba_image": "mambaorg/micromamba:2.0.3-debian12-slim",
-        },
-    )
+    builder_config: Optional[typing.Dict[str, str]] = None
 
     def __post_init__(self):
         self.name = self.name.lower()
@@ -151,6 +146,12 @@ class ImageSpec:
             if not pip_secret_mounts_is_list_tuple:
                 error_msg = "pip_secret_mounts must be a list of tuples of two strings or None"
                 raise ValueError(error_msg)
+
+        if self.builder_config is None:
+            self.builder_config = {
+                "uv_image": "ghcr.io/astral-sh/uv:0.5.1",
+                "micromamba_image": "mambaorg/micromamba:2.0.3-debian12-slim",
+            }
 
     @cached_property
     def id(self) -> str:
