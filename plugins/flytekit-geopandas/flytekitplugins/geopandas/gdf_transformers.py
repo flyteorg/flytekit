@@ -39,9 +39,10 @@ class GeoPandasEncodingHandler(StructuredDatasetEncoder):
         structured_dataset: StructuredDataset,
         structured_dataset_type: StructuredDatasetType,
     ) -> literals.StructuredDataset:
-        uri = str(ctx.file_access.get_random_remote_path("data.parquet"))
-        if not ctx.file_access.is_remote(uri):
-            Path(uri).mkdir(parents=True, exist_ok=True)
+        dir = Path(ctx.file_access.get_random_remote_directory())
+        if not ctx.file_access.is_remote(dir):
+            dir.mkdir(parents=True, exist_ok=True)
+        uri = str(dir / "data.parquet")
         df = typing.cast(gpd.GeoDataFrame, structured_dataset.dataframe)
         df.to_parquet(uri)
         structured_dataset_type.format = PARQUET
