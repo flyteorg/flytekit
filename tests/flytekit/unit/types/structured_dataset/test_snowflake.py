@@ -46,7 +46,7 @@ def test_sf_wf(mock_connect, mock_get_private_key):
     def t1(df: pd.DataFrame) -> Annotated[StructuredDataset, my_cols]:
         return StructuredDataset(
             dataframe=df,
-            uri="snowflake://dummy_user/dummy_account/COMPUTE_WH/FLYTEAGENT/PUBLIC/TEST"
+            uri="snowflake://dummy_user/dummy_account/COMPUTE_WH/FLYTE/PUBLIC/TEST"
         )
 
     @task

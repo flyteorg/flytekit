@@ -1053,6 +1053,7 @@ class K8sPod(_common.FlyteIdlEntity):
             metadata=self._metadata.to_flyte_idl() if self.metadata else None,
             pod_spec=_json_format.Parse(_json.dumps(self.pod_spec), _struct.Struct()) if self.pod_spec else None,
             data_config=self.data_config.to_flyte_idl() if self.data_config else None,
+            primary_container_name=self.primary_container_name,
         )
 
     @classmethod
@@ -1081,6 +1082,7 @@ class K8sPod(_common.FlyteIdlEntity):
         return cls(
             metadata=K8sObjectMetadata(labels=pod_template.labels, annotations=pod_template.annotations),
             pod_spec=ApiClient().sanitize_for_serialization(pod_template.pod_spec),
+            primary_container_name=pod_template.primary_container_name,
         )
 
 

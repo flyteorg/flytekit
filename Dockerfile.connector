@@ -1,0 +1,31 @@
+FROM python:3.10-slim-bookworm AS connector-slim
+
+LABEL org.opencontainers.image.authors="Flyte Team <users@flyte.org>"
+LABEL org.opencontainers.image.source=https://github.com/flyteorg/flytekit
+
+ARG VERSION
+
+RUN apt-get update && apt-get install build-essential -y \
+    && pip install uv
+
+RUN uv pip install --system --no-cache-dir -U flytekit[connector]==$VERSION \
+  flytekitplugins-airflow==$VERSION \
+  flytekitplugins-bigquery==$VERSION \
+  flytekitplugins-k8sdataservice==$VERSION \
+  flytekitplugins-openai==$VERSION \
+  flytekitplugins-slurm==$VERSION \
+  flytekitplugins-snowflake==$VERSION \
+  flytekitplugins-awssagemaker==$VERSION \
+  && apt-get clean autoclean \
+  && apt-get autoremove --yes \
+  && rm -rf /var/lib/{apt,dpkg,cache,log}/ \
+  && :
+
+CMD ["pyflyte", "serve", "connector", "--port", "8000"]
+
+FROM connector-slim AS connector-all
+ARG VERSION
+
+RUN uv pip install --system --no-cache-dir -U \
+  flytekitplugins-mmcloud==$VERSION \
+  flytekitplugins-spark==$VERSION
