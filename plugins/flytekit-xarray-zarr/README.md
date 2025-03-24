@@ -17,13 +17,11 @@ import xarray as xr
 from flytekit import task, workflow
 from flytekitplugins.dask import Dask, WorkerGroup
 
-dask_task = task(
+
+@task(
     task_config=Dask(workers=WorkerGroup(number_of_workers=6)),
-    enable_deck=True, # enables input/output html views of xarray objects
+    enable_deck=True,
 )
-
-
-@dask_task
 def generate_xarray_task() -> xr.Dataset:
     return xr.Dataset(
         {
@@ -35,13 +33,16 @@ def generate_xarray_task() -> xr.Dataset:
     )
 
 
-@dask_task
+@task(
+    task_config=Dask(workers=WorkerGroup(number_of_workers=6)),
+    enable_deck=True,
+)
 def preprocess_xarray_task(ds: xr.Dataset) -> xr.Dataset:
     return ds * 2
 
 
 @workflow
-def test_xarray_workflow() -> xr.DataArray:
+def xarray_workflow() -> xr.Dataset:
     ds = generate_xarray_task()
     return preprocess_xarray_task(ds=ds)
 ```
